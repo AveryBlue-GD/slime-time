@@ -422,9 +422,9 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	_sfx("chalice")
 	if is_random():
-		_finish(true, "CHALICE GET!\nA NEW MAZE AWAITS...", END_DELAY)
+		_finish(true, "CHALICE CONSUMED!\nA NEW MAZE AWAITS...", END_DELAY)
 		return
-	var text := "CHALICE GET!\nLEVEL %d CLEARED" % level
+	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
 	var delay := END_DELAY
 	if level >= Levels.COUNT:
 		text = "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT
