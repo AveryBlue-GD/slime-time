@@ -1,6 +1,6 @@
 extends Control
 
-## Key remapping (plus the sound on/off switch). Click an action's key, then press the new key
+## Key remapping (plus sound on/off, volume and fullscreen). Click an action's key, then press the new key
 ## (Esc cancels). If the key was already used by another action, the two actions swap keys.
 
 const ACTION_NAMES := {
@@ -11,6 +11,7 @@ const ACTION_NAMES := {
 var key_buttons := {}
 var waiting_for := ""
 var sound_button: Button
+var fullscreen_button: Button
 
 
 func _ready() -> void:
@@ -38,11 +39,14 @@ func _ready() -> void:
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	note.offset_top = 117
 	note.offset_bottom = 127
-	var reset := UIKit.make_button("RESET TO DEFAULTS", _on_reset, Vector2(100, 13))
-	reset.position = Vector2(60, 146)
-	sound_button = UIKit.make_button("", _toggle_sound, Vector2(90, 13))
-	sound_button.position = Vector2(170, 146)
+	var reset := UIKit.make_button("RESET KEYS", _on_reset, Vector2(76, 13))
+	reset.position = Vector2(22, 146)
+	sound_button = UIKit.make_button("", _toggle_sound, Vector2(84, 13))
+	sound_button.position = Vector2(104, 146)
 	add_child(sound_button)
+	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(108, 13))
+	fullscreen_button.position = Vector2(194, 146)
+	add_child(fullscreen_button)
 	_refresh_sound()
 	add_child(reset)
 	var volume_row := UIKit.make_volume_slider(110.0)
@@ -54,6 +58,11 @@ func _ready() -> void:
 func _refresh() -> void:
 	for action: String in key_buttons:
 		key_buttons[action].text = Progress.key_name(Progress.bindings[action])
+
+
+## Keeps the fullscreen label right whether it was toggled here or with F11.
+func _process(_delta: float) -> void:
+	fullscreen_button.text = "FULLSCREEN: " + ("ON" if Progress.is_fullscreen() else "OFF")
 
 
 func _toggle_sound() -> void:

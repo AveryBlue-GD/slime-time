@@ -76,9 +76,16 @@ func _ready() -> void:
 ## F11 toggles fullscreen anywhere in the game (desktop and browser).
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_fullscreen"):
-		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		toggle_fullscreen()
 		get_viewport().set_input_as_handled()
+
+
+func is_fullscreen() -> bool:
+	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+
+
+func toggle_fullscreen() -> void:
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if is_fullscreen() else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func load_progress() -> void:
