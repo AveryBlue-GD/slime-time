@@ -8,7 +8,8 @@ The player is a slime in a maze that starts completely black. The only way to re
 ## Movement & trail
 - **Free movement:** the slime glides smoothly in any direction (8-way input, analog-feeling), with acceleration and a bit of slippery deceleration, so it feels gooey rather than snappy.
 - The slime paints a continuous goo trail on the floor wherever it goes. Reveal works at a fine grid (e.g. 4x4 px cells under the slime's footprint), so the map is uncovered in smooth, organic blobs, not whole tiles. [default]
-- Trailed areas stay visible permanently. **Walls touching the trail also become visible** (fully textured, slightly dimmer than the goo-lit floor).
+- **Walls touching the trail also become visible** (fully textured, slightly dimmer than the goo-lit floor).
+- **Light fades back:** areas near the slime stay fully lit; once it moves away they darken in steps (after ~3, 7, 12 and 18 s) down to a dim memory of the path, never fully black. Returning relights them.
 - The chalice is hidden until the trail comes within about 1 tile of it. [default]
 - Walking costs slime per pixel traveled (tuned so crossing one 16 px tile costs about 1%). Standing still costs nothing. [default]
 

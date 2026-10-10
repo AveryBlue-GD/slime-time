@@ -3,12 +3,18 @@
 Run from the project root:  python tools/make_placeholder_art.py
 Replace the output with real art (e.g. from Aseprite) whenever you like.
 
-Outputs (all 16x16 tiles):
-- slime.png, chalice.png
+Outputs (all 16x16 tiles/frames):
+- slime_sheet.png + slime_sheet.json : every slime animation in 20x20 frames (room to squash and
+  stretch a ~14 px body), one animation per row
+  (the JSON lists each animation's row, frame count, fps and looping)
+- shadow.png : shadow under the slime while it's in the air
+- chalice_sheet.png : 4-frame sparkle
 - walls.png  : 16 columns (neighbor mask: N=1 E=2 S=4 W=8 set when that neighbor is also wall)
                x 12 rows (row = damage * 3 + style; damage 0 intact .. 3 broken; style 0 plain, 1 mossy, 2 stained)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
 """
+import json
+import math
 import random
 import struct
 import zlib
@@ -41,25 +47,6 @@ PAL = {
     "o": (209, 136, 58, 255),   # gold shadow
 }
 
-SLIME = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "......kkkk......",
-    "....kkmmmmkk....",
-    "...kmllmmmmmk...",
-    "..kmlelmmmmmmk..",
-    "..kmllmkmmkmmk..",
-    "..kmmmmkmmkmmk..",
-    "..kmmmmmmmmmnk..",
-    "..knmmmmmmmnnk..",
-    ".kknnnmmmmnnnkk.",
-    ".knnnnnnnnnnnnk.",
-    "..kkkkkkkkkkkk..",
-]
-
 CHALICE = [
     "................",
     "...kkkkkkkkkk...",
@@ -84,8 +71,8 @@ DIRS8 = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
 FLOOR_TYPES = ["plain", "cracked", "moss", "puddle", "pebbles", "bones", "worn", "rubble"]
 
 
-def blank(c: str) -> list[list[str]]:
-    return [[c] * 16 for _ in range(16)]
+def blank(c: str, size: int = 16) -> list[list[str]]:
+    return [[c] * size for _ in range(size)]
 
 
 def put(g, x, y, c, only_opaque=False) -> None:
@@ -267,6 +254,166 @@ def floor_tile(kind: str, seed: int) -> list[str]:
     return ["".join(r) for r in g]
 
 
+# ---------------------------------------------------------------- slime
+
+GOO = {"light": "l", "mid": "m", "dark": "n", "spec": "e"}
+HALF_DRY = {"light": "l", "mid": "w", "dark": "n", "spec": "x"}
+DRY = {"light": "x", "mid": "w", "dark": "W", "spec": "x"}
+
+DIR_NAMES = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
+DIR_VECS = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
+CARDINALS = {"e": (1, 0), "s": (0, 1), "w": (-1, 0), "n": (0, -1)}
+FRAME = 20
+
+
+def unit(v) -> tuple[float, float]:
+    length = math.hypot(*v)
+    return (v[0] / length, v[1] / length)
+
+
+def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=(0, 1),
+          eyes="open", colors=GOO, extras=()) -> list[str]:
+    """Top-down slime blob centered in a FRAME x FRAME frame.
+
+    The base body is an ellipse with 7x6 px radii, scaled by sx/sy, then stretched by
+    `along` in direction d and `perp` across it. `look` is where the face points
+    (eyes are hidden when it points up, away from the viewer). `extras` are (x, y, color)
+    pixels drawn on empty space afterwards: droplets, sparkles.
+    """
+    g = blank(".", FRAME)
+    dx, dy = unit(d)
+    cx, cy = FRAME / 2 + shift[0], FRAME / 2 + shift[1]
+    inside = {}
+    for y in range(FRAME):
+        for x in range(FRAME):
+            px, py = x + 0.5 - cx, y + 0.5 - cy
+            u, v = (px * dx + py * dy) / along, (-px * dy + py * dx) / perp
+            nx, ny = (u * dx - v * dy) / (7.0 * sx), (u * dy + v * dx) / (6.0 * sy)
+            if nx * nx + ny * ny <= 1.0:
+                inside[(x, y)] = (nx, ny)
+
+    for (x, y), (nx, ny) in inside.items():
+        if ny > 0.45:
+            g[y][x] = colors["dark"]
+        elif nx < -0.2 and ny < -0.1 and nx * nx + ny * ny > 0.35:
+            g[y][x] = colors["light"]
+        else:
+            g[y][x] = colors["mid"]
+    if inside:
+        sx_, sy_ = min(inside, key=lambda p: (inside[p][0] + 0.4) ** 2 + (inside[p][1] + 0.45) ** 2)
+        g[sy_][sx_] = colors["spec"]
+    for y in range(FRAME):
+        for x in range(FRAME):
+            if (x, y) not in inside and any((x + ox, y + oy) in inside for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                g[y][x] = "k"
+
+    if look is not None and eyes != "none":
+        lx, ly = unit(look)
+        ax, ay = cx + lx * 2.2, cy - 0.5 + ly * 2.0
+        if ly < -0.8:
+            spots = []                               # facing away: back of the head
+        elif ly < -0.3:
+            spots = [ax + (1.5 if lx > 0 else -1.5)]  # turned away: one eye peeks out
+        else:
+            gap = 2.0 if eyes in ("happy", "x") else 1.5
+            spots = [ax - gap, ax + gap]
+        ey = int(math.floor(ay))
+        for spot in spots:
+            ex = int(math.floor(spot))
+            pixels = {
+                "open": [(0, 0), (0, 1)],
+                "closed": [(0, 1)],
+                "happy": [(0, 0), (-1, 1), (1, 1)],
+                "x": [(-1, -1), (1, -1), (0, 0), (-1, 1), (1, 1)],
+            }[eyes]
+            for ox, oy in pixels:
+                if (ex + ox, ey + oy) in inside:
+                    g[ey + oy][ex + ox] = "k"
+
+    for x, y, c in extras:
+        if 0 <= x < FRAME and 0 <= y < FRAME and g[y][x] == ".":
+            g[y][x] = c
+    return ["".join(r) for r in g]
+
+
+def splat_droplets(vec, frame: int) -> list[tuple[int, int, str]]:
+    """Goo spattered along the wall the slime hit (wall lies in direction vec)."""
+    across = (-vec[1], vec[0])
+    spots = {0: [(6, -6, "m"), (6, 6, "m"), (5, -7, "l")], 1: [(7, -7, "n"), (7, 7, "m"), (6, 5, "n")]}.get(frame, [])
+    mid = FRAME // 2
+    return [(int(mid + a * vec[0] + c * across[0]), int(mid + a * vec[1] + c * across[1]), col) for a, c, col in spots]
+
+
+def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
+    """name -> (frames, fps, loop). fps 0 = frames are picked by game state, not time."""
+    anims = {
+        "idle": ([slime(sx=a, sy=b, shift=(0, s), eyes=e) for a, b, s, e in
+                  [(1, 1, 0, "open"), (1.04, 0.95, 0.3, "open"), (1.07, 0.91, 0.5, "open"), (1.04, 0.95, 0.3, "closed")]],
+                 4, True),
+    }
+    for name, vec in zip(DIR_NAMES, DIR_VECS):
+        u = unit(vec)
+        anims[f"glide_{name}"] = ([
+            slime(along=a, perp=p, d=vec, shift=(u[0] * k, u[1] * k), look=u)
+            for a, p, k in [(1.12, 0.9, 0.6), (1.0, 1.0, 0.0), (0.9, 1.05, -0.5), (1.0, 1.0, 0.0)]
+        ], 10, True)
+        anims[f"charge_{name}"] = ([
+            slime(sx=1 + 0.05 * i, sy=1 - 0.11 * i, shift=(0, 0.6 * i), look=u, eyes="closed" if i == 3 else "open")
+            for i in range(4)
+        ], 0, False)
+        anims[f"launch_{name}"] = ([
+            slime(along=0.8, perp=1.1, d=vec, look=u), slime(along=1.25, perp=0.8, d=vec, look=u),
+        ], 0, False)
+        anims[f"air_{name}"] = ([
+            slime(along=a, perp=p, d=vec, look=u) for a, p in [(1.25, 0.8), (1.15, 0.86), (1.06, 0.92), (0.96, 1.0)]
+        ], 0, False)
+        anims[f"land_{name}"] = ([
+            slime(sx=a, sy=b, shift=(0, s), look=u, eyes=e)
+            for a, b, s, e in [(1.16, 0.72, 1.2, "closed"), (0.94, 1.08, -0.3, "open"), (1.05, 0.95, 0.2, "open"), (1, 1, 0, "open")]
+        ], 16, False)
+    for name, vec in CARDINALS.items():
+        anims[f"splat_{name}"] = ([
+            slime(along=a, perp=p, d=vec, shift=(vec[0] * off, vec[1] * off), eyes="closed" if i < 2 else "open",
+                  extras=splat_droplets(vec, i))
+            for i, (a, p, off) in enumerate([(0.45, 1.15, 3.0), (0.6, 1.1, 2.4), (0.8, 1.04, 1.2), (0.95, 1.0, 0.3)])
+        ], 0, False)
+    anims["recover"] = ([slime(sx=1.05, sy=0.95), slime(sx=0.97, sy=1.04)], 12, False)
+    anims["dry"] = ([
+        slime(sx=0.95, sy=0.95, eyes="closed"),
+        slime(sx=0.9, sy=0.8, shift=(0, 1), eyes="closed", colors=HALF_DRY),
+        slime(sx=0.85, sy=0.6, shift=(0, 2), eyes="none", colors=DRY),
+        slime(sx=0.9, sy=0.42, shift=(0, 3), eyes="none", colors=DRY),
+    ], 6, False)
+    sparkles = [[(3, 4, "Y"), (16, 3, "y")], [(2, 8, "y"), (17, 6, "Y"), (9, 1, "Y")], [(4, 2, "Y"), (15, 2, "y")], [(1, 5, "Y"), (18, 8, "Y")]]
+    anims["celebrate"] = ([
+        slime(sx=a, sy=b, shift=(0, s), eyes="happy", extras=sparkles[i])
+        for i, (a, b, s) in enumerate([(1.1, 0.9, 1), (0.92, 1.1, -1.5), (1, 1, -2.5), (1.05, 0.95, -0.5)])
+    ], 8, True)
+    return anims
+
+
+def chalice_frames() -> list[list[str]]:
+    """The chalice with a glint that travels around it."""
+    glints = [[], [(4, 2)], [(11, 4), (12, 13)], [(3, 12)]]
+    frames = []
+    for spots in glints:
+        g = [list(r) for r in CHALICE]
+        for x, y in spots:
+            g[y][x] = "e"
+            for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if g[y + oy][x + ox] == ".":
+                    g[y + oy][x + ox] = "Y"
+        frames.append(["".join(r) for r in g])
+    return frames
+
+
+SHADOW = ["." * 16] * 6 + [
+    "....kkkkkkkk....",
+    "...kkkkkkkkkk...",
+    "....kkkkkkkk....",
+] + ["." * 16] * 7
+
+
 # ---------------------------------------------------------------- output
 
 def write_png(path: Path, rows: list[str]) -> None:
@@ -289,13 +436,22 @@ def write_png(path: Path, rows: list[str]) -> None:
 
 def atlas(tile_rows: list[list[list[str]]]) -> list[str]:
     """Joins a grid of 16x16 tiles (list of rows of tiles) into one image."""
-    return ["".join(tile[y] for tile in row) for row in tile_rows for y in range(16)]
+    return ["".join(tile[y] for tile in row) for row in tile_rows for y in range(len(row[0]))]
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    write_png(OUT / "slime.png", SLIME)
-    write_png(OUT / "chalice.png", CHALICE)
+    anims = slime_animations()
+    columns = max(len(frames) for frames, _, _ in anims.values())
+    empty = ["." * FRAME] * FRAME
+    write_png(OUT / "slime_sheet.png", atlas([frames + [empty] * (columns - len(frames)) for frames, _, _ in anims.values()]))
+    manifest = {name: {"row": row, "frames": len(frames), "fps": fps, "loop": loop}
+                for row, (name, (frames, fps, loop)) in enumerate(anims.items())}
+    (OUT / "slime_sheet.json").write_text(json.dumps({"frame_size": FRAME, "anims": manifest}, indent=1))
+    print(f"wrote assets/sprites/slime_sheet.json ({len(anims)} animations, "
+          f"{sum(len(f) for f, _, _ in anims.values())} frames)")
+    write_png(OUT / "shadow.png", SHADOW)
+    write_png(OUT / "chalice_sheet.png", atlas([chalice_frames()]))
     write_png(OUT / "walls.png", atlas([
         [wall_tile(mask, damage, style, seed=1000 + damage * 300 + style * 50 + mask) for mask in range(16)]
         for damage in range(4) for style in range(3)

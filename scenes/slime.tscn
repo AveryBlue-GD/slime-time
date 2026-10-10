@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/slime.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/sprites/slime.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/shadow.png" id="2_shadow"]
 [ext_resource type="Script" path="res://scripts/jump_guide.gd" id="3_guide"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
@@ -12,9 +12,13 @@ z_index = 11
 motion_mode = 1
 script = ExtResource("1_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_tex")
-offset = Vector2(0, -2)
+[node name="Shadow" type="Sprite2D" parent="."]
+visible = false
+modulate = Color(1, 1, 1, 0.45)
+position = Vector2(0, 5)
+texture = ExtResource("2_shadow")
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")

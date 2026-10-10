@@ -1,7 +1,7 @@
 class_name Slime
 extends CharacterBody2D
 
-## Free gliding movement plus a charge jump.
+## Free gliding movement plus a charge jump, animated from assets/sprites/slime_sheet.png.
 ## Hold "jump" to charge: the slime slides to a stop and the movement keys only aim.
 ## Release to leap in the aimed direction. Hitting a wall mid-air is a splat.
 ## Speeds are in pixels per second at the 320x180 base resolution.
@@ -20,6 +20,14 @@ const JUMP_SPEED := 220.0
 const SPLAT_STUN := 0.4
 ## How strongly a single-direction press pulls the slime onto the center line of its lane.
 const LANE_PULL := 10.0
+## Below this speed the slime shows its idle wobble instead of gliding.
+const IDLE_SPEED := 6.0
+const LAND_ANIM_TIME := 0.25
+const RECOVER_ANIM_TIME := 0.15
+## Share of a jump spent on the launch frames before the airborne frames.
+const LAUNCH_SHARE := 0.15
+## Animation suffixes for 8 directions, in 45-degree steps clockwise from east (y points down).
+const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 
 @export var max_speed := 72.0
 @export var acceleration := 420.0
@@ -37,16 +45,67 @@ var _jump_dir := Vector2.ZERO
 var _jump_distance := 0.0
 var _jump_traveled := 0.0
 var _stun_left := 0.0
+var _splat_side := "n"
+var _land_anim_left := 0.0
+var _recover_anim_left := 0.0
+## Set by play_dry_up()/play_celebrate(); overrides the state-driven animation.
+var _special_anim := ""
 
-@onready var sprite: Sprite2D = $Sprite2D
+static var _sprite_frames: SpriteFrames
+
+@onready var sprite: AnimatedSprite2D = $Sprite
+@onready var shadow: Sprite2D = $Shadow
 
 
 static func jump_distance_for(charge_value: float) -> float:
 	return lerpf(MIN_JUMP_TILES, MAX_JUMP_TILES, clampf(charge_value, 0.0, 100.0) / 100.0) * TILE
 
 
+## Builds SpriteFrames from the generated sheet + manifest (once, shared by every slime).
+static func load_sprite_frames() -> SpriteFrames:
+	if _sprite_frames:
+		return _sprite_frames
+	var sheet: Texture2D = preload("res://assets/sprites/slime_sheet.png")
+	var manifest: Dictionary = preload("res://assets/sprites/slime_sheet.json").data
+	var size := int(manifest.frame_size)
+	_sprite_frames = SpriteFrames.new()
+	_sprite_frames.remove_animation("default")
+	for anim_name: String in manifest.anims:
+		var info: Dictionary = manifest.anims[anim_name]
+		_sprite_frames.add_animation(anim_name)
+		_sprite_frames.set_animation_speed(anim_name, maxf(info.fps, 1.0))
+		_sprite_frames.set_animation_loop(anim_name, info.loop)
+		for i in int(info.frames):
+			var frame := AtlasTexture.new()
+			frame.atlas = sheet
+			frame.region = Rect2(i * size, int(info.row) * size, size, size)
+			_sprite_frames.add_frame(anim_name, frame)
+	return _sprite_frames
+
+
+## Name suffix ("e", "se", ...) for the 45-degree direction closest to v.
+static func dir_name(v: Vector2) -> String:
+	return DIR_NAMES[wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)]
+
+
+func _ready() -> void:
+	sprite.sprite_frames = load_sprite_frames()
+	sprite.play("idle")
+
+
 func is_airborne() -> bool:
 	return state == State.AIRBORNE
+
+
+func play_dry_up() -> void:
+	_special_anim = "dry"
+	sprite.play("dry")
+
+
+func play_celebrate() -> void:
+	_special_anim = "celebrate"
+	sprite.position.y = 0.0
+	sprite.play("celebrate")
 
 
 ## Leaps in the facing direction. Called on releasing the jump key (and by tests).
@@ -65,8 +124,6 @@ func _physics_process(delta: float) -> void:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input != Vector2.ZERO and (state == State.GLIDE or state == State.CHARGING):
 		facing = input.normalized()
-		if facing.x != 0.0:
-			sprite.flip_h = facing.x < 0.0
 
 	if state == State.GLIDE and not frozen and Input.is_action_just_pressed("jump"):
 		state = State.CHARGING
@@ -90,6 +147,56 @@ func _physics_process(delta: float) -> void:
 			_stun_left -= delta
 			if _stun_left <= 0.0:
 				state = State.GLIDE
+				_recover_anim_left = RECOVER_ANIM_TIME
+
+	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
+	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
+	_animate()
+
+
+## Picks the animation (and, for state-driven ones, the exact frame) for the current state.
+func _animate() -> void:
+	shadow.visible = state == State.AIRBORNE
+	if _special_anim != "":
+		return
+	var facing_name := dir_name(facing)
+	match state:
+		State.GLIDE:
+			if _recover_anim_left > 0.0:
+				_play("recover")
+			elif _land_anim_left > 0.0:
+				_show_frame("land_" + facing_name, 1.0 - _land_anim_left / LAND_ANIM_TIME)
+			elif velocity.length() > IDLE_SPEED:
+				_play("glide_" + dir_name(velocity))
+				sprite.speed_scale = clampf(velocity.length() / max_speed, 0.4, 1.0)
+			else:
+				_play("idle")
+		State.CHARGING:
+			_show_frame("charge_" + facing_name, charge / 100.0)
+		State.AIRBORNE:
+			var t := _jump_traveled / _jump_distance
+			var jump_name := dir_name(_jump_dir)
+			if t < LAUNCH_SHARE:
+				_show_frame("launch_" + jump_name, t / LAUNCH_SHARE)
+			else:
+				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
+		State.STUNNED:
+			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / SPLAT_STUN)
+
+
+func _play(anim: String) -> void:
+	if sprite.animation != anim or not sprite.is_playing():
+		sprite.speed_scale = 1.0
+		sprite.play(anim)
+
+
+## Shows the frame of `anim` at `progress` (0-1) without playing it on a timer.
+func _show_frame(anim: String, progress: float) -> void:
+	if sprite.animation != anim:
+		sprite.animation = anim
+	sprite.pause()
+	var count := sprite.sprite_frames.get_frame_count(anim)
+	sprite.frame = clampi(int(progress * count), 0, count - 1)
 
 
 func _glide(input: Vector2, delta: float) -> void:
@@ -132,6 +239,8 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	if hit_wall:
 		state = State.STUNNED
 		_stun_left = SPLAT_STUN
+		_splat_side = dir_name(-wall_normal)
 	else:
 		state = State.GLIDE
+		_land_anim_left = LAND_ANIM_TIME
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)

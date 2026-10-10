@@ -9,7 +9,9 @@ extends Node2D
 ##
 ## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
 ## - trail_image: goo color where the slime has been
-## - fog_image:   black over everything not yet revealed (dimmed over walls next to the trail)
+## - fog_image:   per cell, when it was last lit and how bright it may get (see fog.gdshader).
+##   Never-revealed cells are black. Revealed cells near the slime stay lit; once it moves
+##   away they fade back toward darkness in steps (FADE_AFTER / FADE_ALPHA).
 
 const TILE := 16
 const FOG_CELL := 2
@@ -27,6 +29,14 @@ const LANDING_RADIUS := 11.0
 const STAIN_RADIUS := 6.0
 
 const WIN_FINAL_DELAY := 5.0
+
+## Revealed cells within this distance of the slime are kept fully lit.
+const LIGHT_RADIUS := 20.0
+## Fade layers: a cell last lit less than FADE_AFTER[i] seconds ago has darkness FADE_ALPHA[i];
+## older than the last step, it settles at the final FADE_ALPHA (a dim memory of the path).
+const FADE_AFTER: Array[float] = [3.0, 7.0, 12.0, 18.0]
+const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
+const UNREVEALED := Color(0, -1, 0, 0)
 
 ## Tile atlases from tools/make_placeholder_art.py.
 ## walls.png: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
@@ -62,6 +72,8 @@ var trail_image: Image
 var revealed_walls := {}
 var textures_dirty := false
 var last_slime_pos: Vector2
+## Seconds since the level started; the fog's clock.
+var elapsed := 0.0
 ## Slime spent on the most recent jump (for tests and tuning).
 var last_jump_cost := 0.0
 
@@ -104,10 +116,12 @@ func _ready() -> void:
 	_flush_textures()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	elapsed += delta
+	var pos := slime.position
+	_relight(pos)
 	if finished:
 		return
-	var pos := slime.position
 	if slime.is_airborne():
 		last_slime_pos = pos
 	else:
@@ -124,6 +138,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	(fog_sprite.material as ShaderMaterial).set_shader_parameter("now", elapsed)
 	_flush_textures()
 
 
@@ -131,10 +146,20 @@ func is_wall_tile(tile: Vector2i) -> bool:
 	return MazeGenerator.is_wall(maze, tile)
 
 
-## Fog opacity (0 = fully revealed, 1 = black) at a pixel position. Used by tests.
+## Fog opacity (0 = fully lit, 1 = black) at a pixel position right now; matches fog.gdshader.
 func fog_alpha_at(pos: Vector2) -> float:
-	var cell := Vector2i((pos / FOG_CELL).floor())
-	return fog_image.get_pixelv(cell).a
+	var cell := fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor()))
+	if cell.g < 0.0:
+		return 1.0
+	return maxf(fade_alpha(elapsed - cell.r), cell.g)
+
+
+## Darkness of a revealed cell last lit `age` seconds ago.
+static func fade_alpha(age: float) -> float:
+	for i in FADE_AFTER.size():
+		if age < FADE_AFTER[i]:
+			return FADE_ALPHA[i]
+	return FADE_ALPHA[-1]
 
 
 ## Picks a wall variant for every wall tile (edges from its neighbors, damage and style from
@@ -210,11 +235,16 @@ func _make_atlas(texture: Texture2D, grid: Vector2i) -> TileSetAtlasSource:
 
 func _build_overlays() -> void:
 	var cells: Vector2i = maze.size * TILE / FOG_CELL
-	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
-	fog_image.fill(Color.BLACK)
+	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGF)
+	fog_image.fill(UNREVEALED)
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	trail_image.fill(CLEAR)
 	fog_sprite.texture = ImageTexture.create_from_image(fog_image)
+	var fog_material := ShaderMaterial.new()
+	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
+	fog_material.set_shader_parameter("fade_after", PackedFloat32Array(FADE_AFTER))
+	fog_material.set_shader_parameter("fade_alpha", PackedFloat32Array(FADE_ALPHA))
+	fog_sprite.material = fog_material
 	trail_sprite.texture = ImageTexture.create_from_image(trail_image)
 	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
@@ -250,8 +280,25 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			elif trail_image.get_pixelv(cell).a > 0.0:
 				continue
 			trail_image.set_pixelv(cell, GOO_DARK if posmod(hash(cell), 5) == 0 else GOO)
-			fog_image.set_pixelv(cell, CLEAR)
+			fog_image.set_pixelv(cell, Color(elapsed, 0.0, 0.0))
 			textures_dirty = true
+
+
+## Keeps already-revealed cells around the slime fully lit (restarts their fade).
+func _relight(pos: Vector2) -> void:
+	var r := Vector2(LIGHT_RADIUS, LIGHT_RADIUS)
+	var first := Vector2i(((pos - r) / FOG_CELL).floor()).max(Vector2i.ZERO)
+	var last := Vector2i(((pos + r) / FOG_CELL).floor()).min(fog_image.get_size() - Vector2i.ONE)
+	for cy in range(first.y, last.y + 1):
+		for cx in range(first.x, last.x + 1):
+			var cell := Vector2i(cx, cy)
+			if ((Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL).distance_to(pos) > LIGHT_RADIUS:
+				continue
+			var value := fog_image.get_pixelv(cell)
+			if value.g >= 0.0 and value.r < elapsed:
+				value.r = elapsed
+				fog_image.set_pixelv(cell, value)
+				textures_dirty = true
 
 
 func _reveal_walls_near(pos: Vector2, radius: float) -> void:
@@ -270,7 +317,7 @@ func _reveal_walls_near(pos: Vector2, radius: float) -> void:
 				continue
 			revealed_walls[tile] = true
 			fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
-				Color(0, 0, 0, WALL_FOG_ALPHA))
+				Color(elapsed, WALL_FOG_ALPHA, 0.0))
 			textures_dirty = true
 
 
@@ -297,6 +344,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
 	chalice.visible = true
+	slime.play_celebrate()
 	if level >= Levels.COUNT:
 		_finish(true, "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT, WIN_FINAL_DELAY)
 	else:
@@ -304,8 +352,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 
 
 func _dry_up() -> void:
-	var tween := create_tween()
-	tween.tween_property(slime.get_node("Sprite2D"), "modulate", Color(0.5, 0.45, 0.4, 0.6), 0.6)
+	slime.play_dry_up()
 	_finish(false, "DRIED UP", END_DELAY)
 
 

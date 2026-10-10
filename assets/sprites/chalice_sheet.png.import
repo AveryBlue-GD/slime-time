@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bvmichwfmbq13"
-path="res://.godot/imported/chalice.png-e78b991ba3caa350983cd3a52f0cd358.ctex"
+uid="uid://bnu35wfuvxho5"
+path="res://.godot/imported/chalice_sheet.png-77b811d268833cd13bf23086e8f2ebe6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/chalice.png"
-dest_files=["res://.godot/imported/chalice.png-e78b991ba3caa350983cd3a52f0cd358.ctex"]
+source_file="res://assets/sprites/chalice_sheet.png"
+dest_files=["res://.godot/imported/chalice_sheet.png-77b811d268833cd13bf23086e8f2ebe6.ctex"]
 
 [params]
 

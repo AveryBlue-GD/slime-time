@@ -1,0 +1,293 @@
+{
+ "frame_size": 20,
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 4,
+   "fps": 4,
+   "loop": true
+  },
+  "glide_e": {
+   "row": 1,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_e": {
+   "row": 2,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_e": {
+   "row": 3,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_e": {
+   "row": 4,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_e": {
+   "row": 5,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_se": {
+   "row": 6,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_se": {
+   "row": 7,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_se": {
+   "row": 8,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_se": {
+   "row": 9,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_se": {
+   "row": 10,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_s": {
+   "row": 11,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_s": {
+   "row": 12,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_s": {
+   "row": 13,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_s": {
+   "row": 14,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_s": {
+   "row": 15,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_sw": {
+   "row": 16,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_sw": {
+   "row": 17,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_sw": {
+   "row": 18,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_sw": {
+   "row": 19,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_sw": {
+   "row": 20,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_w": {
+   "row": 21,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_w": {
+   "row": 22,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_w": {
+   "row": 23,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_w": {
+   "row": 24,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_w": {
+   "row": 25,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_nw": {
+   "row": 26,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_nw": {
+   "row": 27,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_nw": {
+   "row": 28,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_nw": {
+   "row": 29,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_nw": {
+   "row": 30,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_n": {
+   "row": 31,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_n": {
+   "row": 32,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_n": {
+   "row": 33,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_n": {
+   "row": 34,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_n": {
+   "row": 35,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "glide_ne": {
+   "row": 36,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  "charge_ne": {
+   "row": 37,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "launch_ne": {
+   "row": 38,
+   "frames": 2,
+   "fps": 0,
+   "loop": false
+  },
+  "air_ne": {
+   "row": 39,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "land_ne": {
+   "row": 40,
+   "frames": 4,
+   "fps": 16,
+   "loop": false
+  },
+  "splat_e": {
+   "row": 41,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "splat_s": {
+   "row": 42,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "splat_w": {
+   "row": 43,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "splat_n": {
+   "row": 44,
+   "frames": 4,
+   "fps": 0,
+   "loop": false
+  },
+  "recover": {
+   "row": 45,
+   "frames": 2,
+   "fps": 12,
+   "loop": false
+  },
+  "dry": {
+   "row": 46,
+   "frames": 4,
+   "fps": 6,
+   "loop": false
+  },
+  "celebrate": {
+   "row": 47,
+   "frames": 4,
+   "fps": 8,
+   "loop": true
+  }
+ }
+}
