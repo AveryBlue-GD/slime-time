@@ -42,6 +42,9 @@ var randoms_cleared := 0
 var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
+## Not saved: a skin the current level forces (its first run is played in the newest skin earned).
+## While set, it replaces the selected skin everywhere (slime, trail, HUD, menus).
+var skin_override := ""
 
 
 func _ready() -> void:
@@ -134,24 +137,37 @@ func is_skin_unlocked(id: String) -> bool:
 	return Skins.is_unlocked(id, levels_cleared, randoms_won)
 
 
-## True when the rainbow skin is selected (and unlocked).
+## The skin in use right now: a level's forced first-run skin, else the selected one.
+func active_skin() -> String:
+	return skin_override if skin_override != "" else selected_skin
+
+
+## Skin a story level must be played in, or "" for free choice: a level's first run (before it
+## has ever been cleared) uses the skin just earned by clearing the level before it (Ember for
+## level 1). Once the level is cleared, replays use whatever skin is selected.
+func forced_skin_for(level: int) -> String:
+	return Skins.skin_for_level(level - 1) if level > levels_cleared else ""
+
+
+## True when the rainbow skin is in use (and unlocked).
 func is_rainbow() -> bool:
-	return selected_skin == Skins.RAINBOW and is_skin_unlocked(Skins.RAINBOW)
+	return active_skin() == Skins.RAINBOW and is_skin_unlocked(Skins.RAINBOW)
 
 
 func skin_color() -> Color:
-	if not is_skin_unlocked(selected_skin):
+	var id := active_skin()
+	if skin_override == "" and not is_skin_unlocked(id):
 		return Skins.get_preset(Skins.DEFAULT).color
-	if selected_skin == Skins.RAINBOW:
+	if id == Skins.RAINBOW:
 		return Skins.RAINBOW_BASE
-	if selected_skin == Skins.CUSTOM:
+	if id == Skins.CUSTOM:
 		return custom_color
-	return Skins.get_preset(selected_skin).color
+	return Skins.get_preset(id).color
 
 
 ## Glow strength in play: only the custom skin glows, and only once the game is beaten.
 func glow_amount() -> float:
-	if selected_skin == Skins.CUSTOM and is_skin_unlocked(Skins.CUSTOM):
+	if active_skin() == Skins.CUSTOM and is_skin_unlocked(Skins.CUSTOM):
 		return glow
 	return 0.0
 

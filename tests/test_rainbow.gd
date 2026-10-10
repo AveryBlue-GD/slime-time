@@ -54,6 +54,7 @@ func _initialize() -> void:
 	await _stop_running(game)
 
 	# --- Rainbow look
+	progress.levels_cleared = 1  # level 1 already cleared, so its skin isn't forced
 	progress.select_skin(Skins.RAINBOW)
 	_check(progress.is_rainbow(), "rainbow can be selected once unlocked")
 	game = MAIN.instantiate()

@@ -40,6 +40,9 @@ func _ready() -> void:
 	add_child(status)
 
 	_build_custom_panel()
+	var rule := UIKit.make_label("NEW LEVELS ARE FIRST PLAYED IN YOUR NEWEST SKIN", 8, UIKit.TEXT_DIM)
+	rule.position = Vector2(50, 167)
+	add_child(rule)
 	UIKit.add_back_button(self)
 	_refresh()
 	tiles[Progress.selected_skin].grab_focus()

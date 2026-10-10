@@ -76,6 +76,14 @@ func _process(delta: float) -> void:
 		fill.color = goo_color
 
 
+## Shows a message for a few seconds (unless something else replaces it meanwhile).
+func flash_message(text: String, seconds: float) -> void:
+	show_message(text)
+	await get_tree().create_timer(seconds).timeout
+	if is_instance_valid(message) and message.text == text:
+		message.visible = false
+
+
 func show_message(text: String) -> void:
 	message.text = text
 	message.visible = true

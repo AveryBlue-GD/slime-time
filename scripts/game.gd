@@ -62,6 +62,8 @@ const GOO_ALPHA := 120
 const RAINBOW_TRAIL_SPEED := 0.08
 const CLEAR := Color(0, 0, 0, 0)
 const TITLE_SCENE := "res://scenes/title.tscn"
+## Seconds the "first run: playing as ..." notice stays up.
+const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
 const SHAKE_TIME := 0.25
@@ -130,7 +132,10 @@ func _ready() -> void:
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
 
+	var forced := ""
 	if progress:
+		forced = "" if is_random() else progress.forced_skin_for(level)
+		progress.skin_override = forced
 		skin_color = progress.skin_color()
 		glow_radius = progress.glow_amount() * GLOW_MAX_RADIUS
 		rainbow = progress.is_rainbow()
@@ -139,6 +144,9 @@ func _ready() -> void:
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
 	slime.apply_skin(skin_color, rainbow)
 	hud.set_skin_color(skin_color, rainbow)
+
+	if forced != "":
+		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
 
 	_build_tiles(config.seed, config.get("tile_level", level))
 	_build_overlays()
@@ -156,6 +164,11 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
+
+
+func _exit_tree() -> void:
+	if progress:
+		progress.skin_override = ""
 
 
 func is_random() -> bool:

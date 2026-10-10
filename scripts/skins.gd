@@ -62,6 +62,17 @@ static func display_name(id: String) -> String:
 	return get_preset(id).get("name", "")
 
 
+## Id of the skin that clearing `level` unlocks (level 0 = the starting skin). The next level's
+## first run is played in it, to show off the reward.
+static func skin_for_level(level: int) -> String:
+	if level >= Levels.COUNT:
+		return CUSTOM
+	for preset: Dictionary in PRESETS:
+		if preset.unlock == level:
+			return preset.id
+	return DEFAULT
+
+
 ## Display name of the skin that clearing `level` unlocks ("" if none).
 static func unlocked_by_level(level: int) -> String:
 	if level == Levels.COUNT:

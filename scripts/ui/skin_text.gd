@@ -3,7 +3,8 @@ extends Node
 
 ## Colors text from the equipped skin: titles get a bright version of the skin color, body text a
 ## pale tint, hints a muted one. Applies to every label in the "skin_text" group (UIKit.make_label
-## and the HUD put them there) and to button text in `theme_owner`'s theme.
+## and the HUD put them there) and to button text and the selected-button outline in
+## `theme_owner`'s theme.
 ## With the rainbow skin the colors keep cycling, offset by each label's position so the rainbow
 ## sweeps across the screen.
 
@@ -46,6 +47,10 @@ func recolor() -> void:
 		var button_base := rainbow_color(_time, 160.0) if rainbow else base
 		for color_name: String in BUTTON_COLORS:
 			theme_owner.theme.set_color(color_name, "Button", color_for(ROLE_TEXT, button_base))
+		# The outline around the selected (focused) button glows in the skin's title color.
+		var focus := theme_owner.theme.get_stylebox("focus", "Button") as StyleBoxFlat
+		if focus:
+			focus.border_color = color_for(ROLE_TITLE, button_base)
 
 
 ## Text color for a role, built from a skin color (kept bright enough to read on dark).
