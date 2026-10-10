@@ -1,18 +1,31 @@
 extends Control
 
-## Start page: continue, level select, randomizer, skins, controls, quit.
+## Start page: the big gooey logo (tinted to the equipped skin), then continue, level select,
+## randomizer, skins, controls, quit.
+
+## Rainbow skin: how wide one full rainbow is across the logo (px).
+const LOGO_RAINBOW_WIDTH := 90.0
 
 var buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "SLIME TIME")
-	var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow())
-	preview.position = Vector2(160, 42)
-	add_child(preview)
+	UIKit.setup_screen(self, "")
+	# The logo is drawn in the slime sheet's goo shades, so the skin shader recolors it too.
+	var logo := TextureRect.new()
+	logo.texture = preload("res://assets/sprites/title.png")
+	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
+	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 2)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(logo)
+	for x in [52, 268]:
+		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow())
+		preview.position = Vector2(x, 118)
+		add_child(preview)
 
 	var menu := VBoxContainer.new()
-	menu.position = Vector2(100, 66)
+	menu.position = Vector2(100, 76)
 	menu.custom_minimum_size = Vector2(120, 0)
 	menu.add_theme_constant_override("separation", 2)
 	add_child(menu)
