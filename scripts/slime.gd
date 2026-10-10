@@ -100,8 +100,8 @@ func _ready() -> void:
 
 
 ## Recolors the slime (palette swap of its goo shades).
-func apply_skin(color: Color) -> void:
-	Skins.apply_to(sprite.material, color)
+func apply_skin(color: Color, rainbow := false) -> void:
+	Skins.apply_to(sprite.material, color, rainbow)
 
 
 func is_airborne() -> bool:

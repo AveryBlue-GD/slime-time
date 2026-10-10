@@ -3,12 +3,19 @@ extends RefCounted
 
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Ember from the
 ## start, then one per level 1-9). "custom" (color wheel + glow) unlocks after the final level.
+## "rainbow" unlocks after beating RAINBOW_RANDOMS randomizer mazes: rainbow bands flow across
+## the slime like a wave, and its trail cycles through the rainbow.
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 
 const DEFAULT := "ember"
 const CUSTOM := "custom"
 const CUSTOM_NAME := "YOUR COLOR"
+const RAINBOW := "rainbow"
+const RAINBOW_NAME := "RAINBOW"
+const RAINBOW_RANDOMS := 5
+## Stand-in base color for the rainbow skin wherever one color is needed.
+const RAINBOW_BASE := Color8(230, 60, 60)
 
 const PRESETS := [
 	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 0},
@@ -41,8 +48,18 @@ static func unlock_level(id: String) -> int:
 	return Levels.COUNT if id == CUSTOM else int(get_preset(id).get("unlock", 0))
 
 
-static func is_unlocked(id: String, levels_cleared: int) -> bool:
+static func is_unlocked(id: String, levels_cleared: int, randoms_won := 0) -> bool:
+	if id == RAINBOW:
+		return randoms_won >= RAINBOW_RANDOMS
 	return levels_cleared >= unlock_level(id)
+
+
+static func display_name(id: String) -> String:
+	if id == CUSTOM:
+		return CUSTOM_NAME
+	if id == RAINBOW:
+		return RAINBOW_NAME
+	return get_preset(id).get("name", "")
 
 
 ## Display name of the skin that clearing `level` unlocks ("" if none).
@@ -64,15 +81,16 @@ static func shades(base: Color) -> Dictionary:
 	}
 
 
-## Palette-swap material for a slime sprite in this color.
-static func make_material(base: Color) -> ShaderMaterial:
+## Palette-swap material for a slime sprite in this color (or the flowing rainbow).
+static func make_material(base: Color, rainbow := false) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://assets/shaders/slime_skin.gdshader")
-	apply_to(material, base)
+	apply_to(material, base, rainbow)
 	return material
 
 
-static func apply_to(material: ShaderMaterial, base: Color) -> void:
+static func apply_to(material: ShaderMaterial, base: Color, rainbow := false) -> void:
+	material.set_shader_parameter("rainbow", rainbow)
 	var colors := shades(base)
 	material.set_shader_parameter("light", colors.light)
 	material.set_shader_parameter("mid", colors.mid)

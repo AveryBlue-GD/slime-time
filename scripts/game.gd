@@ -58,6 +58,8 @@ const BROKEN := 3
 const RUBBLE_CHANCE := 0.7
 
 const GOO_ALPHA := 120
+## Rainbow skin: the trail's hue advances this many full rainbows per second of play.
+const RAINBOW_TRAIL_SPEED := 0.08
 const CLEAR := Color(0, 0, 0, 0)
 const TITLE_SCENE := "res://scenes/title.tscn"
 const VICTORY_SCENE := "res://scenes/victory.tscn"
@@ -92,6 +94,7 @@ var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
 var glow_radius := 0.0
+var rainbow := false
 var shake_left := 0.0
 var shake_strength := 0.0
 
@@ -130,11 +133,12 @@ func _ready() -> void:
 	if progress:
 		skin_color = progress.skin_color()
 		glow_radius = progress.glow_amount() * GLOW_MAX_RADIUS
+		rainbow = progress.is_rainbow()
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
-	slime.apply_skin(skin_color)
-	hud.set_skin_color(skin_color)
+	slime.apply_skin(skin_color, rainbow)
+	hud.set_skin_color(skin_color, rainbow)
 
 	_build_tiles(config.seed, config.get("tile_level", level))
 	_build_overlays()
@@ -348,9 +352,18 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 				_reveal_wall(tile)
 			elif trail_image.get_pixelv(cell).a > 0.0:
 				continue
-			trail_image.set_pixelv(cell, goo_dark if posmod(hash(cell), 5) == 0 else goo)
+			trail_image.set_pixelv(cell, _goo_color(posmod(hash(cell), 5) == 0))
 			fog_image.set_pixelv(cell, Color(elapsed, KIND_FLOOR, elapsed))
 			textures_dirty = true
+
+
+## Trail color for a newly painted cell: the skin's goo, or for the rainbow skin a hue that
+## shifts as you go, so the trail lays down rainbow bands along your path.
+func _goo_color(dark: bool) -> Color:
+	if not rainbow:
+		return goo_dark if dark else goo
+	var hue := fposmod(elapsed * RAINBOW_TRAIL_SPEED, 1.0) * 0.83
+	return Color.from_hsv(hue, 0.85, 0.5 if dark else 0.9, GOO_ALPHA / 255.0)
 
 
 ## Keeps already-revealed cells around the slime fully lit (restarts their fade).
@@ -422,7 +435,11 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	_sfx("chalice")
 	if is_random():
-		_finish(true, "CHALICE CONSUMED!\nA NEW MAZE AWAITS...", END_DELAY)
+		var random_text := "CHALICE CONSUMED!\nA NEW MAZE AWAITS..."
+		if progress and progress.randoms_won + 1 == Skins.RAINBOW_RANDOMS:
+			random_text += "\nNEW SKIN: " + Skins.RAINBOW_NAME
+			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
+		_finish(true, random_text, END_DELAY)
 		return
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
 	var delay := END_DELAY
@@ -441,11 +458,12 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 
 func _dry_up() -> void:
 	slime.play_dry_up()
-	_finish(false, "DRIED UP", END_DELAY)
+	_finish(false, "DRIED UP\nSHUFFLING THE MAZE..." if is_random() else "DRIED UP", END_DELAY)
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
-## result, then loads what comes next: the next level, a fresh random maze, a retry, or the title.
+## result, then loads what comes next: the next level, a fresh random maze (after a win or a
+## dry-up), a retry of the story level, or the victory screen.
 func _finish(won: bool, text: String, delay: float) -> void:
 	finished = true
 	slime.frozen = true
@@ -454,13 +472,14 @@ func _finish(won: bool, text: String, delay: float) -> void:
 	if not _is_running_scene():
 		return
 	var to_victory := false
-	if won and progress:
-		if is_random():
-			progress.randoms_cleared += 1
-			progress.new_random_maze()
+	if progress and is_random():
+		if won:
+			progress.complete_random()
 		else:
-			progress.complete_level(level)
-			to_victory = level >= Levels.COUNT
+			progress.new_random_maze()
+	elif won and progress:
+		progress.complete_level(level)
+		to_victory = level >= Levels.COUNT
 	await get_tree().create_timer(delay).timeout
 	if not _is_running_scene():
 		return

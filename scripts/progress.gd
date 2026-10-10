@@ -38,6 +38,8 @@ var bindings := DEFAULT_KEYS.duplicate()
 var mode := MODE_STORY
 var random_seed := 1
 var randoms_cleared := 0
+## Randomizer mazes beaten in total (saved); unlocks the rainbow skin.
+var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
 
@@ -53,6 +55,7 @@ func _ready() -> void:
 			saving_enabled = false
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
+			randoms_won = maxi(randoms_won, Skins.RAINBOW_RANDOMS)
 		elif arg == "--random":
 			start_random()
 		elif arg.begins_with("--skin="):
@@ -67,6 +70,7 @@ func load_progress() -> void:
 	levels_cleared = clampi(file.get_value("progress", "levels_cleared", 0), 0, Levels.COUNT)
 	highest_unlocked = clampi(file.get_value("progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
+	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
 	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
 	custom_color = file.get_value("skin", "custom_color", custom_color)
 	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
@@ -83,6 +87,7 @@ func save_progress() -> void:
 	file.set_value("progress", "levels_cleared", levels_cleared)
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
 	file.set_value("progress", "current_level", current_level)
+	file.set_value("progress", "randoms_won", randoms_won)
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "glow", glow)
@@ -106,6 +111,14 @@ func start_story(level: int) -> void:
 	current_level = clampi(level, 1, highest_unlocked)
 
 
+## Records a randomizer win (saved) and lines up a fresh maze.
+func complete_random() -> void:
+	randoms_cleared += 1
+	randoms_won += 1
+	save_progress()
+	new_random_maze()
+
+
 func start_random() -> void:
 	mode = MODE_RANDOM
 	new_random_maze()
@@ -117,9 +130,20 @@ func new_random_maze() -> void:
 
 # ---------------------------------------------------------------- skins
 
+func is_skin_unlocked(id: String) -> bool:
+	return Skins.is_unlocked(id, levels_cleared, randoms_won)
+
+
+## True when the rainbow skin is selected (and unlocked).
+func is_rainbow() -> bool:
+	return selected_skin == Skins.RAINBOW and is_skin_unlocked(Skins.RAINBOW)
+
+
 func skin_color() -> Color:
-	if not Skins.is_unlocked(selected_skin, levels_cleared):
+	if not is_skin_unlocked(selected_skin):
 		return Skins.get_preset(Skins.DEFAULT).color
+	if selected_skin == Skins.RAINBOW:
+		return Skins.RAINBOW_BASE
 	if selected_skin == Skins.CUSTOM:
 		return custom_color
 	return Skins.get_preset(selected_skin).color
@@ -127,13 +151,13 @@ func skin_color() -> Color:
 
 ## Glow strength in play: only the custom skin glows, and only once the game is beaten.
 func glow_amount() -> float:
-	if selected_skin == Skins.CUSTOM and Skins.is_unlocked(Skins.CUSTOM, levels_cleared):
+	if selected_skin == Skins.CUSTOM and is_skin_unlocked(Skins.CUSTOM):
 		return glow
 	return 0.0
 
 
 func select_skin(id: String) -> void:
-	if Skins.is_unlocked(id, levels_cleared):
+	if is_skin_unlocked(id):
 		selected_skin = id
 		save_progress()
 

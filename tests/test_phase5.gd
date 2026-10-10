@@ -144,7 +144,7 @@ func _initialize() -> void:
 	_check(enabled == 3, "level select: levels 1-3 open, the rest locked (%d open)" % enabled)
 	screen.free()
 	screen = await _open("res://scenes/skins.tscn")
-	_check(screen.tiles.size() == 11 and not screen.custom_panel.visible, "skins screen: 11 tiles, color wheel hidden until unlocked")
+	_check(screen.tiles.size() == 12 and not screen.custom_panel.visible, "skins screen: 12 tiles, color wheel hidden until unlocked")
 	screen.free()
 	progress.levels_cleared = 10
 	progress.selected_skin = Skins.CUSTOM

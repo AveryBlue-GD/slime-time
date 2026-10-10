@@ -109,10 +109,10 @@ static func make_volume_slider(width := 90.0) -> HBoxContainer:
 
 
 ## Idle slime preview in the given color (2 = double size).
-static func make_slime_preview(color: Color, scale := 1) -> AnimatedSprite2D:
+static func make_slime_preview(color: Color, scale := 1, rainbow := false) -> AnimatedSprite2D:
 	var preview := AnimatedSprite2D.new()
 	preview.sprite_frames = Slime.load_sprite_frames()
-	preview.material = Skins.make_material(color)
+	preview.material = Skins.make_material(color, rainbow)
 	preview.scale = Vector2(scale, scale)
 	preview.play("idle")
 	return preview

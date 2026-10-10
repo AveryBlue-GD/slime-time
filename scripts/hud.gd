@@ -8,6 +8,8 @@ const LOW_COLOR := Color8(220, 40, 50)
 
 var fill: ColorRect
 var goo_color := Color8(239, 125, 47)
+var _rainbow := false
+var _hue := 0.0
 var label: Label
 var level_label: Label
 var message: Label
@@ -57,9 +59,20 @@ func set_level_text(text: String) -> void:
 	level_label.text = text
 
 
-func set_skin_color(color: Color) -> void:
+func set_skin_color(color: Color, rainbow := false) -> void:
 	goo_color = color
 	fill.color = color
+	_rainbow = rainbow
+
+
+## Rainbow skin: the meter cycles through the rainbow (unless it's low and flashing red).
+func _process(delta: float) -> void:
+	if not _rainbow:
+		return
+	_hue = fposmod(_hue + delta * 0.25, 0.83)
+	goo_color = Color.from_hsv(_hue, 0.8, 0.95)
+	if fill.color != LOW_COLOR:
+		fill.color = goo_color
 
 
 func show_message(text: String) -> void:

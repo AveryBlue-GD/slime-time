@@ -1,7 +1,8 @@
 extends Control
 
 ## Skin select: a tile per skin (locked ones are silhouettes), and for the custom skin, once the
-## game is beaten, a color wheel with brightness and glow sliders.
+## game is beaten, a color wheel with brightness and glow sliders. The rainbow skin unlocks from
+## randomizer wins.
 
 const TILE_SIZE := Vector2(44, 32)
 
@@ -26,6 +27,7 @@ func _ready() -> void:
 	var ids: Array[String] = []
 	for preset: Dictionary in Skins.PRESETS:
 		ids.append(preset.id)
+	ids.append(Skins.RAINBOW)
 	ids.append(Skins.CUSTOM)
 	for id in ids:
 		grid.add_child(_make_tile(id))
@@ -43,10 +45,10 @@ func _ready() -> void:
 
 
 func _make_tile(id: String) -> Button:
-	var unlocked := Skins.is_unlocked(id, Progress.levels_cleared)
+	var unlocked: bool = Progress.is_skin_unlocked(id)
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE_SIZE)
-	var color: Color = Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color
-	var preview := UIKit.make_slime_preview(color)
+	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
+	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
 		preview.modulate = Color(0, 0, 0, 0.85)
@@ -101,7 +103,7 @@ func _make_slider(at: Vector2, start: float) -> HSlider:
 
 
 func _on_tile(id: String) -> void:
-	if Skins.is_unlocked(id, Progress.levels_cleared):
+	if Progress.is_skin_unlocked(id):
 		Progress.select_skin(id)
 	_refresh(id)
 
@@ -119,19 +121,22 @@ func _on_custom_changed() -> void:
 ## Updates the status line (for `focus_id`, or the selected skin) and the custom panel.
 func _refresh(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_skin
-	var unlocked := Skins.is_unlocked(id, Progress.levels_cleared)
-	var skin_name: String = Skins.CUSTOM_NAME if id == Skins.CUSTOM else Skins.get_preset(id).name
+	var unlocked: bool = Progress.is_skin_unlocked(id)
+	var skin_name := Skins.display_name(id)
 	if not unlocked:
-		var need := Skins.unlock_level(id)
-		status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT if id == Skins.CUSTOM \
-			else "LOCKED - CLEAR LEVEL %d" % need
+		if id == Skins.CUSTOM:
+			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
+		elif id == Skins.RAINBOW:
+			status.text = "LOCKED - BEAT %d RANDOM MAZES (%d/%d)" % [Skins.RAINBOW_RANDOMS, Progress.randoms_won, Skins.RAINBOW_RANDOMS]
+		else:
+			status.text = "LOCKED - CLEAR LEVEL %d" % Skins.unlock_level(id)
 	else:
 		status.text = skin_name + ("  (SELECTED)" if id == Progress.selected_skin else "")
 	for tile_id: String in tiles:
 		var tile: Button = tiles[tile_id]
 		var selected: bool = tile_id == Progress.selected_skin
 		tile.add_theme_stylebox_override("normal", UIKit._box(UIKit.BUTTON_PRESSED if selected else UIKit.BUTTON))
-	var custom_ready := Progress.selected_skin == Skins.CUSTOM and Skins.is_unlocked(Skins.CUSTOM, Progress.levels_cleared)
+	var custom_ready: bool = Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	custom_panel.visible = custom_ready
 	if custom_ready:
 		wheel.value = brightness.value
