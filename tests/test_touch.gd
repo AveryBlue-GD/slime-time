@@ -2,11 +2,10 @@ extends SceneTree
 
 ## Touch control checks with simulated finger events: the joystick glides the slime and snaps to
 ## 8 directions (with a dead zone), the jump button charges and launches, the pause button
-## pauses, a keyboard hides the controls, and the rotate hint shows only for upright touchscreens.
+## pauses, a keyboard hides the controls, and on an upright phone the controls sit at the bottom.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_touch.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const RotateHint := preload("res://scripts/ui/rotate_hint.gd")
 
 var failures := 0
 var progress: Node
@@ -83,8 +82,10 @@ func _initialize() -> void:
 	current_scene = null
 	game.free()
 
-	_check(RotateHint.should_show(Vector2i(390, 844), true) and not RotateHint.should_show(Vector2i(844, 390), true)
-		and not RotateHint.should_show(Vector2i(390, 844), false), "rotate hint: only for upright touchscreens")
+	# Held upright the view stretches tall (e.g. 390x844); the controls follow the screen's corners.
+	var tall := TouchControls.layout(Vector2(390, 844))
+	_check(tall.joy_home.y > 780 and tall.jump_center.y > 780 and tall.jump_center.x > 330 and tall.pause_rect.position.x > 360,
+		"upright phone: joystick and JUMP at the bottom corners, pause top-right")
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))

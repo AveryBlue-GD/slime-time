@@ -164,6 +164,8 @@ func _ready() -> void:
 
 	camera.limit_right = maze.size.x * TILE
 	camera.limit_bottom = maze.size.y * TILE
+	_fit_camera_to_screen()
+	get_viewport().size_changed.connect(_fit_camera_to_screen)
 	camera.reset_smoothing()
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
@@ -206,6 +208,13 @@ func _process(_delta: float) -> void:
 	fog_material.set_shader_parameter("glow_pos", slime.position + slime.sprite.position)
 	_shake_camera(_delta)
 	_flush_textures()
+
+
+## The view stretches to the screen's shape. On a tall screen (a phone held upright) the maze would
+## sit small in a band across the middle, so the camera zooms in 2x (whole pixels stay crisp).
+func _fit_camera_to_screen() -> void:
+	var view := get_viewport().get_visible_rect().size
+	camera.zoom = Vector2(2, 2) if view.y > view.x else Vector2.ONE
 
 
 func _shake_camera(delta: float) -> void:

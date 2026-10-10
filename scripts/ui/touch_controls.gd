@@ -7,22 +7,20 @@ extends CanvasLayer
 ## - right half: the JUMP button (hold to charge, aim with the joystick, release to leap)
 ## - top-right corner: pause
 ## Shown on touchscreens (or with the --touch debug flag); hidden again when a keyboard is used.
+## The view stretches to the screen's shape (a phone can be held either way), so positions are
+## worked out from the current view size: joystick and JUMP sit in the bottom corners.
 
-const SCREEN := Vector2(320, 180)
 const JOY_RADIUS := 20.0
 const KNOB_RADIUS := 8.0
 ## Joystick dead zone, as a share of its radius.
 const DEADZONE := 0.35
-const JOY_HOME := Vector2(40, 140)
-const JUMP_CENTER := Vector2(282, 142)
 const JUMP_RADIUS := 19.0
-const PAUSE_RECT := Rect2(302, 13, 15, 13)
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
-var _joy_center := JOY_HOME
+var _joy_center := Vector2.ZERO
 var _jump_touch := -1
 var _canvas: Control
 
@@ -34,8 +32,29 @@ func _ready() -> void:
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_canvas.draw.connect(_draw_controls)
 	add_child(_canvas)
+	_joy_center = layout(_screen()).joy_home
+	get_viewport().size_changed.connect(_on_screen_resized)
 	var progress := get_node_or_null("/root/Progress")
 	visible = DisplayServer.is_touchscreen_available() or (progress != null and progress.force_touch)
+
+
+## Where the controls go on a view of `screen` size.
+static func layout(screen: Vector2) -> Dictionary:
+	return {
+		joy_home = Vector2(40, screen.y - 40),
+		jump_center = Vector2(screen.x - 38, screen.y - 38),
+		pause_rect = Rect2(screen.x - 18, 13, 15, 13),
+	}
+
+
+func _screen() -> Vector2:
+	return get_viewport().get_visible_rect().size
+
+
+func _on_screen_resized() -> void:
+	if _joy_touch == -1:
+		_joy_center = layout(_screen()).joy_home
+	_canvas.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
@@ -62,15 +81,16 @@ func _notification(what: int) -> void:
 
 
 func _touch_down(index: int, pos: Vector2) -> void:
-	if PAUSE_RECT.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
+	var screen := _screen()
+	if layout(screen).pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		var pause := InputEventAction.new()
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
-	elif pos.x < SCREEN.x / 2.0:
+	elif pos.x < screen.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
-			_joy_center = pos.clamp(Vector2(JOY_RADIUS, JOY_RADIUS + 12), SCREEN - Vector2(JOY_RADIUS, JOY_RADIUS))
+			_joy_center = pos.clamp(Vector2(JOY_RADIUS, JOY_RADIUS + 12), screen - Vector2(JOY_RADIUS, JOY_RADIUS))
 			_move_joystick(pos)
 	elif _jump_touch == -1:
 		_jump_touch = index
@@ -81,7 +101,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 func _touch_up(index: int) -> void:
 	if index == _joy_touch:
 		_joy_touch = -1
-		_joy_center = JOY_HOME
+		_joy_center = layout(_screen()).joy_home
 		joy_vector = Vector2.ZERO
 		_steer(Vector2.ZERO)
 	elif index == _jump_touch:
@@ -113,7 +133,8 @@ func _steer(dir: Vector2) -> void:
 func _release_all() -> void:
 	_joy_touch = -1
 	_jump_touch = -1
-	_joy_center = JOY_HOME
+	if _canvas:
+		_joy_center = layout(_screen()).joy_home
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
 	Input.action_release("jump")
@@ -122,6 +143,9 @@ func _release_all() -> void:
 
 
 func _draw_controls() -> void:
+	var spots := layout(_screen())
+	var jump_center: Vector2 = spots.jump_center
+	var pause_rect: Rect2 = spots.pause_rect
 	var color := _skin_color()
 	var dim := Color(UIKit.BG, 0.45)
 	# Joystick: base ring + knob.
@@ -131,16 +155,16 @@ func _draw_controls() -> void:
 		Color(color, 0.85 if _joy_touch != -1 else 0.5))
 	# Jump button.
 	var pressed := _jump_touch != -1
-	_canvas.draw_circle(JUMP_CENTER, JUMP_RADIUS, Color(color, 0.55) if pressed else dim)
-	_canvas.draw_arc(JUMP_CENTER, JUMP_RADIUS, 0.0, TAU, 32, Color(color, 0.8), 1.0)
+	_canvas.draw_circle(jump_center, JUMP_RADIUS, Color(color, 0.55) if pressed else dim)
+	_canvas.draw_arc(jump_center, JUMP_RADIUS, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	var font := _canvas.get_theme_default_font()
 	var label_width := font.get_string_size("JUMP", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), "JUMP",
+	_canvas.draw_string(font, (jump_center + Vector2(-label_width / 2.0, 3)).round(), "JUMP",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
 	# Pause button: two bars.
-	_canvas.draw_rect(PAUSE_RECT, dim)
-	_canvas.draw_rect(Rect2(PAUSE_RECT.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))
-	_canvas.draw_rect(Rect2(PAUSE_RECT.position + Vector2(9, 3), Vector2(2, 7)), Color(color, 0.9))
+	_canvas.draw_rect(pause_rect, dim)
+	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))
+	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(9, 3), Vector2(2, 7)), Color(color, 0.9))
 
 
 func _skin_color() -> Color:
