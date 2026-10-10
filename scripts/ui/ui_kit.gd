@@ -35,8 +35,9 @@ static func make_theme() -> Theme:
 	return theme
 
 
-## Full-screen menu root: theme, background, and a title at the top.
-static func setup_screen(root: Control, title: String) -> void:
+## Full-screen menu root: theme, background, a title at the top, and skin-colored text.
+## Returns the SkinText node (call its recolor() after changing the skin).
+static func setup_screen(root: Control, title: String) -> SkinText:
 	root.theme = make_theme()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
@@ -51,6 +52,15 @@ static func setup_screen(root: Control, title: String) -> void:
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		label.offset_top = 2
 		label.offset_bottom = 22
+	return add_skin_text(root)
+
+
+## Adds a SkinText node so labels and oot's button text follow the equipped skin's color.
+static func add_skin_text(root: Control) -> SkinText:
+	var skin_text := SkinText.new()
+	skin_text.theme_owner = root
+	root.add_child(skin_text)
+	return skin_text
 
 
 static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
@@ -59,6 +69,11 @@ static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The standard UI colors stand for roles that SkinText recolors from the equipped skin.
+	var role: String = {GOLD: SkinText.ROLE_TITLE, TEXT: SkinText.ROLE_TEXT, TEXT_DIM: SkinText.ROLE_DIM}.get(color, "")
+	if role != "":
+		label.set_meta("role", role)
+		label.add_to_group(SkinText.GROUP)
 	return label
 
 

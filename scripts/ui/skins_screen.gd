@@ -13,10 +13,11 @@ var wheel: ColorWheel
 var brightness: HSlider
 var glow_slider: HSlider
 var big_preview: AnimatedSprite2D
+var skin_text: SkinText
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "SKINS")
+	skin_text = UIKit.setup_screen(self, "SKINS")
 	var grid := GridContainer.new()
 	grid.columns = 6
 	grid.position = Vector2(18, 22)
@@ -105,6 +106,7 @@ func _make_slider(at: Vector2, start: float) -> HSlider:
 func _on_tile(id: String) -> void:
 	if Progress.is_skin_unlocked(id):
 		Progress.select_skin(id)
+		skin_text.recolor()
 	_refresh(id)
 
 
@@ -116,6 +118,7 @@ func _on_custom_changed() -> void:
 	Skins.apply_to(big_preview.material, Progress.custom_color)
 	Skins.apply_to(tiles[Skins.CUSTOM].get_meta("preview").material, Progress.custom_color)
 	big_preview.modulate = Color(1, 1, 1).lerp(Color(1.6, 1.6, 1.6), Progress.glow * 0.5)
+	skin_text.recolor()
 
 
 ## Updates the status line (for `focus_id`, or the selected skin) and the custom panel.

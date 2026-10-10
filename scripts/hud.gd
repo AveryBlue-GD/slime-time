@@ -39,7 +39,7 @@ func _ready() -> void:
 	level_label.offset_right = -4
 	add_child(level_label)
 
-	message = _make_label()
+	message = _make_label(SkinText.ROLE_TITLE)
 	message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -47,6 +47,7 @@ func _ready() -> void:
 	add_child(message)
 
 	set_slime(100.0)
+	add_child(SkinText.new())
 
 
 func set_slime(percent: float) -> void:
@@ -80,8 +81,10 @@ func show_message(text: String) -> void:
 	message.visible = true
 
 
-func _make_label() -> Label:
+func _make_label(role := SkinText.ROLE_TEXT) -> Label:
 	var l := Label.new()
+	l.set_meta("role", role)
+	l.add_to_group(SkinText.GROUP)
 	l.add_theme_font_size_override("font_size", 8)
 	l.add_theme_color_override("font_outline_color", FRAME_COLOR)
 	l.add_theme_constant_override("outline_size", 2)

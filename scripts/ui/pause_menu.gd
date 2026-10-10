@@ -44,6 +44,7 @@ func _ready() -> void:
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	_refresh_sound()
+	UIKit.add_skin_text(root)
 
 
 func open() -> void:

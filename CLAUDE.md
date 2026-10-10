@@ -4,7 +4,7 @@
 
 ## Pixel-art rules (keep these consistent)
 - Base resolution **320x180**, window 1280x720, stretch mode `viewport` + `integer` scaling.
-- **16x16 tiles**; slime frames are 20x20 (≈14 px body, room to squash/stretch). Nearest-neighbor filtering is the project default; never enable texture filtering. UI text uses the generated pixel font (`assets/fonts/pixel.fnt`, 5x7 glyphs, project default font): size 8 for text, 16 for titles (integer-scaled).
+- **16x16 tiles**; slime frames are 20x20 (≈14 px body, room to squash/stretch). Nearest-neighbor filtering is the project default; never enable texture filtering. UI text uses the generated slimy pixel font (`assets/fonts/pixel.fnt`: 5x7 glyphs with goo drips in the 2 px below the baseline, shaded white/grey so it tints well; project default font): size 8 for text, 16 for titles (integer-scaled). Text color follows the equipped skin via `SkinText` (`scripts/ui/skin_text.gd`): labels made with `UIKit.make_label` using GOLD/TEXT/TEXT_DIM become title/text/dim roles; rainbow cycles.
 - `snap_2d_transforms_to_pixel` is on; avoid sub-pixel scaling or rotation of sprites.
 - Colors come from the palette in `tools/make_placeholder_art.py` (`PAL`). New art should reuse it.
 
