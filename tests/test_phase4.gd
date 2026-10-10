@@ -54,7 +54,7 @@ func _initialize() -> void:
 		await physics_frame
 	_check(slime.sprite.animation == "splat_n", "hitting the wall above shows splat_n (got %s)" % slime.sprite.animation)
 	_check(not slime.shadow.visible, "shadow hides on landing")
-	await _wait(0.45)
+	await _wait(0.35)
 	_check(slime.sprite.animation == "recover", "after the stun the slime wobbles back (got %s)" % slime.sprite.animation)
 
 	# Fading: the start is lit, then left alone it steps down toward darkness.

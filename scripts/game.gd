@@ -3,9 +3,9 @@ extends Node2D
 ## One maze: the map starts black, the slime's goo trail reveals it, moving drains the slime
 ## meter, and touching the golden chalice wins. Plays a story level or a randomizer maze.
 ##
-## Jumps leave no trail in the air, only a splat where they land. A clean landing costs
-## JUMP_COST_FACTOR of gliding the same distance; hitting a wall adds SPLAT_PENALTY and
-## stains the wall with goo.
+## Jumps leave no trail in the air, only a splat where they land. A jump costs JUMP_COST_FACTOR
+## of gliding the distance flown; hitting a wall adds a penalty (SPLAT_PENALTY_MIN for a tiny hop
+## up to SPLAT_PENALTY_MAX for a full-power leap), shakes the screen and stains the wall.
 ##
 ## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
 ## - trail_image: goo (in the skin's colors) where the slime has been
@@ -26,8 +26,9 @@ const CHALICE_REVEAL_DISTANCE := 24.0
 const END_DELAY := 2.0
 const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
-## Flat percent of slime lost when a jump hits a wall.
-const SPLAT_PENALTY := 8.0
+## Extra percent of slime lost when a jump hits a wall, scaled by how hard it was charged.
+const SPLAT_PENALTY_MIN := 2.0
+const SPLAT_PENALTY_MAX := 5.0
 const LANDING_RADIUS := 11.0
 const STAIN_RADIUS := 6.0
 
@@ -59,6 +60,10 @@ const RUBBLE_CHANCE := 0.7
 const GOO_ALPHA := 120
 const CLEAR := Color(0, 0, 0, 0)
 const TITLE_SCENE := "res://scenes/title.tscn"
+const VICTORY_SCENE := "res://scenes/victory.tscn"
+## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
+const SHAKE_TIME := 0.25
+const SHAKE_MAX := 3.0
 
 signal level_finished(won: bool)
 
@@ -87,6 +92,8 @@ var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
 var glow_radius := 0.0
+var shake_left := 0.0
+var shake_strength := 0.0
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -95,6 +102,8 @@ var glow_radius := 0.0
 @onready var slime: Slime = $Slime
 @onready var chalice: Area2D = $Chalice
 @onready var hud: CanvasLayer = $HUD
+@onready var pause_menu: CanvasLayer = $PauseMenu
+@onready var camera: Camera2D = $Slime/Camera2D
 @onready var progress: Node = get_node_or_null("/root/Progress")
 
 
@@ -137,7 +146,6 @@ func _ready() -> void:
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 
-	var camera: Camera2D = slime.get_node("Camera2D")
 	camera.limit_right = maze.size.x * TILE
 	camera.limit_bottom = maze.size.y * TILE
 	camera.reset_smoothing()
@@ -175,7 +183,17 @@ func _process(_delta: float) -> void:
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	fog_material.set_shader_parameter("glow_pos", slime.position + slime.sprite.position)
+	_shake_camera(_delta)
 	_flush_textures()
+
+
+func _shake_camera(delta: float) -> void:
+	if shake_left <= 0.0:
+		camera.offset = Vector2.ZERO
+		return
+	shake_left = maxf(shake_left - delta, 0.0)
+	var strength := ceilf(shake_strength * shake_left / SHAKE_TIME)
+	camera.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength)).round()
 
 
 func is_wall_tile(tile: Vector2i) -> bool:
@@ -192,6 +210,12 @@ func fog_alpha_at(pos: Vector2) -> float:
 	if cell.g > 0.5:
 		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
 	return alpha
+
+
+## Extra slime lost when a jump planned to cover intended_distance px hits a wall.
+static func splat_penalty(intended_distance: float) -> float:
+	var power := inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance)
+	return lerpf(SPLAT_PENALTY_MIN, SPLAT_PENALTY_MAX, clampf(power, 0.0, 1.0))
 
 
 ## Darkness of a revealed floor cell last lit `age` seconds ago.
@@ -379,11 +403,13 @@ func _flush_textures() -> void:
 
 
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
-	last_jump_cost = intended_distance / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
+	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall:
-		last_jump_cost += SPLAT_PENALTY
+		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
+		shake_left = SHAKE_TIME
+		shake_strength = lerpf(1.0, SHAKE_MAX, inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
 	last_slime_pos = slime.position
 	slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
 	hud.set_slime(slime_remaining)
@@ -394,6 +420,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		return
 	chalice.visible = true
 	slime.play_celebrate()
+	_sfx("chalice")
 	if is_random():
 		_finish(true, "CHALICE GET!\nA NEW MAZE AWAITS...", END_DELAY)
 		return
@@ -408,6 +435,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 			text += "\nUNLOCKED: COLOR WHEEL + GLOW!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
+		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	_finish(true, text, delay)
 
 
@@ -425,19 +453,19 @@ func _finish(won: bool, text: String, delay: float) -> void:
 	level_finished.emit(won)
 	if not _is_running_scene():
 		return
-	var back_to_title := false
+	var to_victory := false
 	if won and progress:
 		if is_random():
 			progress.randoms_cleared += 1
 			progress.new_random_maze()
 		else:
 			progress.complete_level(level)
-			back_to_title = level >= Levels.COUNT
+			to_victory = level >= Levels.COUNT
 	await get_tree().create_timer(delay).timeout
 	if not _is_running_scene():
 		return
-	if back_to_title:
-		get_tree().change_scene_to_file(TITLE_SCENE)
+	if to_victory:
+		get_tree().change_scene_to_file(VICTORY_SCENE)
 	else:
 		get_tree().reload_current_scene()
 
@@ -450,6 +478,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _is_running_scene():
 		return
 	if event.is_action_pressed("menu"):
-		get_tree().change_scene_to_file(TITLE_SCENE)
+		get_viewport().set_input_as_handled()
+		pause_menu.open()
 	elif event.is_action_pressed("restart"):
 		get_tree().reload_current_scene()
+
+
+func _sfx(sound_name: String) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play(sound_name)

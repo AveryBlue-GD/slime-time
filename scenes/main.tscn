@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="PackedScene" path="res://scenes/slime.tscn" id="2_slime"]
 [ext_resource type="PackedScene" path="res://scenes/chalice.tscn" id="3_chalice"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="5_pause"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_game")
@@ -26,3 +27,6 @@ centered = false
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("4_hud")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("5_pause")

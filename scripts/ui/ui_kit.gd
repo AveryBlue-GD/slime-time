@@ -66,6 +66,10 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = min_size
+	button.pressed.connect(func() -> void:
+		var sfx := button.get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play("click", -6.0))
 	button.pressed.connect(on_press)
 	return button
 

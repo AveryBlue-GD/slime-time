@@ -17,13 +17,15 @@ const CHARGE_TIME := 1.5
 const MIN_JUMP_TILES := 1.0
 const MAX_JUMP_TILES := 8.0
 const JUMP_SPEED := 220.0
-const SPLAT_STUN := 0.4
+const SPLAT_STUN := 0.3
 ## How strongly a single-direction press pulls the slime onto the center line of its lane.
 const LANE_PULL := 10.0
 ## Below this speed the slime shows its idle wobble instead of gliding.
 const IDLE_SPEED := 6.0
 const LAND_ANIM_TIME := 0.25
 const RECOVER_ANIM_TIME := 0.15
+## Seconds between squish sounds while gliding at full speed.
+const SQUISH_INTERVAL := 0.28
 ## Share of a jump spent on the launch frames before the airborne frames.
 const LAUNCH_SHARE := 0.15
 ## Animation suffixes for 8 directions, in 45-degree steps clockwise from east (y points down).
@@ -44,9 +46,12 @@ var facing := Vector2.RIGHT
 var _jump_dir := Vector2.ZERO
 var _jump_distance := 0.0
 var _jump_traveled := 0.0
+## Distance actually flown by the latest jump (shorter than planned when it hits a wall).
+var last_jump_traveled := 0.0
 var _stun_left := 0.0
 var _splat_side := "n"
 var _land_anim_left := 0.0
+var _squish_left := 0.0
 var _recover_anim_left := 0.0
 ## Set by play_dry_up()/play_celebrate(); overrides the state-driven animation.
 var _special_anim := ""
@@ -104,6 +109,8 @@ func is_airborne() -> bool:
 
 
 func play_dry_up() -> void:
+	_sfx_stop("charge")
+	_sfx("dry")
 	_special_anim = "dry"
 	sprite.play("dry")
 
@@ -122,6 +129,8 @@ func launch(charge_value: float) -> void:
 	velocity = Vector2.ZERO
 	charge = 0.0
 	state = State.AIRBORNE
+	_sfx_stop("charge")
+	_sfx("jump", -4.0, lerpf(1.2, 0.85, _jump_distance / jump_distance_for(100.0)))
 
 
 func _physics_process(delta: float) -> void:
@@ -134,6 +143,7 @@ func _physics_process(delta: float) -> void:
 	if state == State.GLIDE and not frozen and Input.is_action_just_pressed("jump"):
 		state = State.CHARGING
 		charge = 0.0
+		_sfx("charge", -8.0)
 
 	match state:
 		State.GLIDE:
@@ -143,6 +153,7 @@ func _physics_process(delta: float) -> void:
 			if frozen:
 				state = State.GLIDE
 				charge = 0.0
+				_sfx_stop("charge")
 			else:
 				charge = minf(charge + 100.0 / CHARGE_TIME * delta, 100.0)
 				if not Input.is_action_pressed("jump"):
@@ -155,6 +166,10 @@ func _physics_process(delta: float) -> void:
 				state = State.GLIDE
 				_recover_anim_left = RECOVER_ANIM_TIME
 
+	_squish_left -= delta
+	if state == State.GLIDE and velocity.length() > IDLE_SPEED and _squish_left <= 0.0:
+		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
+		_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
 	_animate()
@@ -231,7 +246,7 @@ func _lane_velocity(coord: float) -> float:
 func _fly(delta: float) -> void:
 	var step := minf(JUMP_SPEED * delta, _jump_distance - _jump_traveled)
 	var collision := move_and_collide(_jump_dir * step)
-	_jump_traveled += step
+	_jump_traveled += collision.get_travel().length() if collision else step
 	var arc_height := 3.0 + _jump_distance / TILE * 1.5
 	sprite.position.y = -roundf(sin(PI * _jump_traveled / _jump_distance) * arc_height)
 	if collision:
@@ -242,11 +257,26 @@ func _fly(delta: float) -> void:
 
 func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	sprite.position.y = 0.0
+	last_jump_traveled = _jump_traveled
 	if hit_wall:
 		state = State.STUNNED
 		_stun_left = SPLAT_STUN
 		_splat_side = dir_name(-wall_normal)
+		_sfx("splat")
 	else:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME
+		_sfx("land", -3.0)
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
+
+
+func _sfx(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play(sound_name, volume_db, pitch)
+
+
+func _sfx_stop(sound_name: String) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.stop(sound_name)

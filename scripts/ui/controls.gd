@@ -1,7 +1,7 @@
 extends Control
 
-## Key remapping. Click an action's key, then press the new key (Esc cancels). If the key was
-## already used by another action, the two actions swap keys.
+## Key remapping (plus the sound on/off switch). Click an action's key, then press the new key
+## (Esc cancels). If the key was already used by another action, the two actions swap keys.
 
 const ACTION_NAMES := {
 	move_up = "MOVE UP", move_down = "MOVE DOWN", move_left = "MOVE LEFT", move_right = "MOVE RIGHT",
@@ -10,6 +10,7 @@ const ACTION_NAMES := {
 
 var key_buttons := {}
 var waiting_for := ""
+var sound_button: Button
 
 
 func _ready() -> void:
@@ -31,13 +32,17 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 
-	var note := UIKit.make_label("ARROW KEYS ALWAYS MOVE TOO.  ESC OPENS THIS MENU.", 8, UIKit.TEXT_DIM)
+	var note := UIKit.make_label("ARROW KEYS ALWAYS MOVE TOO.  ESC PAUSES THE GAME.", 8, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.position = Vector2(0, 128)
 	note.size = Vector2(320, 12)
 	add_child(note)
 	var reset := UIKit.make_button("RESET TO DEFAULTS", _on_reset, Vector2(100, 13))
-	reset.position = Vector2(110, 146)
+	reset.position = Vector2(60, 146)
+	sound_button = UIKit.make_button("", _toggle_sound, Vector2(90, 13))
+	sound_button.position = Vector2(170, 146)
+	add_child(sound_button)
+	_refresh_sound()
 	add_child(reset)
 	UIKit.add_back_button(self)
 
@@ -45,6 +50,16 @@ func _ready() -> void:
 func _refresh() -> void:
 	for action: String in key_buttons:
 		key_buttons[action].text = Progress.key_name(Progress.bindings[action])
+
+
+func _toggle_sound() -> void:
+	Progress.sound_on = not Progress.sound_on
+	Progress.save_progress()
+	_refresh_sound()
+
+
+func _refresh_sound() -> void:
+	sound_button.text = "SOUND: " + ("ON" if Progress.sound_on else "OFF")
 
 
 func _start_rebind(action: String) -> void:

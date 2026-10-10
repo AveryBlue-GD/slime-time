@@ -62,8 +62,10 @@ func _initialize() -> void:
 	var glide_cost: float = start.distance_to(game.slime.position) / 16.0 * game.slime_cost_per_tile
 	_check(landed_hit == 1, "jumping into a wall splats")
 	_check(absf(game.slime.position.y - (16.0 + Slime.RADIUS)) < 0.5, "slime stops against the wall (y = %.1f)" % game.slime.position.y)
-	_check(absf(game.last_jump_cost - (128.0 / 16.0 * game.slime_cost_per_tile * 0.5 + game.SPLAT_PENALTY)) < 0.01,
-		"splat costs the jump plus the %d%% penalty (%.2f%%)" % [game.SPLAT_PENALTY, game.last_jump_cost])
+	var flown: float = start.distance_to(game.slime.position)
+	_check(absf(game.last_jump_cost - (flown / 16.0 * game.slime_cost_per_tile * 0.5 + game.SPLAT_PENALTY_MAX)) < 0.01,
+		"full-power splat costs the distance flown plus the %d%% max penalty (%.2f%%)" % [game.SPLAT_PENALTY_MAX, game.last_jump_cost])
+	_check(game.splat_penalty(16.0) == game.SPLAT_PENALTY_MIN, "a tiny hop into a wall only adds the %d%% min penalty" % game.SPLAT_PENALTY_MIN)
 	_check(game.last_jump_cost > glide_cost, "splat costs more than gliding there (%.2f%% vs %.2f%%)" % [game.last_jump_cost, glide_cost])
 	_check(game.fog_alpha_at(Vector2(start.x, 14.0)) == 0.0, "splat stains the wall with goo")
 	_check(game.slime.state == Slime.State.STUNNED, "splat stuns the slime")

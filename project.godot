@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.7")
 [autoload]
 
 Progress="*res://scripts/progress.gd"
+Sfx="*res://scripts/sfx.gd"
 
 [display]
 
@@ -29,6 +30,7 @@ window/stretch/scale_mode="integer"
 
 [gui]
 
+theme/custom_font="res://assets/fonts/pixel.fnt"
 theme/default_font_antialiasing=0
 theme/default_font_hinting=2
 theme/default_font_subpixel_positioning=0

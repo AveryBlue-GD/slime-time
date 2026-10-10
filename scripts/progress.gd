@@ -28,6 +28,7 @@ var selected_skin := Skins.DEFAULT
 var custom_color := Color8(239, 125, 47)
 ## Glow strength for the custom skin, 0-1.
 var glow := 0.6
+var sound_on := true
 ## action -> physical keycode of its primary key.
 var bindings := DEFAULT_KEYS.duplicate()
 
@@ -66,6 +67,7 @@ func load_progress() -> void:
 	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
 	custom_color = file.get_value("skin", "custom_color", custom_color)
 	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
+	sound_on = file.get_value("settings", "sound_on", true)
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
 
@@ -80,6 +82,7 @@ func save_progress() -> void:
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "glow", glow)
+	file.set_value("settings", "sound_on", sound_on)
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.save(save_path)
