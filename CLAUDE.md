@@ -1,4 +1,4 @@
-# Claude Pixel Game Test — "Slime Maze"
+# Slime Time
 
 2D pixel-art game in **Godot 4.7** (GDScript). A slime glides through a pitch-black maze; its goo trail reveals the map, moving drains the slime meter, and a golden chalice is the exit. Full design and build phases: [docs/game-design.md](docs/game-design.md). **All 6 build phases are done.** Further work is tuning, content and polish requested by the user.
 

@@ -1,4 +1,4 @@
-# Game: "Slime Maze" — build it in this Godot project
+# Game: "Slime Time" — build it in this Godot project
 
 Follow the rules in CLAUDE.md (320x180 base resolution, 16x16 tiles, nearest-neighbor, palette in tools/make_placeholder_art.py). Replace the current top-down sandbox with this game. Build it in the phases listed at the bottom, and after each phase run the tests, take a screenshot, check it, and commit.
 

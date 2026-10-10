@@ -6,7 +6,7 @@ var buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "SLIME MAZE")
+	UIKit.setup_screen(self, "SLIME TIME")
 	var preview := UIKit.make_slime_preview(Progress.skin_color(), 2)
 	preview.position = Vector2(160, 42)
 	add_child(preview)
