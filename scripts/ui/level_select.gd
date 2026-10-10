@@ -18,7 +18,9 @@ func _ready() -> void:
 
 	for level in range(1, Levels.COUNT + 1):
 		var status := ""
-		if level <= Progress.levels_cleared:
+		if Progress.best_time(level) >= 0.0:
+			status = UIKit.format_time(Progress.best_time(level))
+		elif level <= Progress.levels_cleared:
 			status = "CLEARED"
 		elif level > Progress.highest_unlocked:
 			status = "LOCKED"

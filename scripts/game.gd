@@ -100,6 +100,8 @@ var glow_radius := 0.0
 var rainbow := false
 ## Hard mode: fully dimmed areas turn back into unexplored fog.
 var hard_mode := false
+## Seconds spent on this maze (stops on pause and when the maze ends).
+var run_time := 0.0
 var shake_left := 0.0
 var shake_strength := 0.0
 
@@ -186,6 +188,8 @@ func _physics_process(delta: float) -> void:
 	_relight(pos)
 	if finished:
 		return
+	run_time += delta
+	hud.set_time(run_time)
 	if slime.is_airborne():
 		last_slime_pos = pos
 	else:
@@ -481,6 +485,14 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		_finish(true, random_text, END_DELAY)
 		return
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
+	# Records: a first clear just sets the record; only beating an existing one celebrates.
+	var best: float = progress.best_time(level) if progress else -1.0
+	text += "\nTIME " + UIKit.format_time(run_time)
+	if best >= 0.0 and run_time < best:
+		hud.show_record(run_time)
+		get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx("unlock"))
+	elif best >= 0.0:
+		text += "   BEST " + UIKit.format_time(best)
 	var delay := END_DELAY
 	if level >= Levels.COUNT:
 		text = "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT
@@ -517,6 +529,7 @@ func _finish(won: bool, text: String, delay: float) -> void:
 		else:
 			progress.new_random_maze()
 	elif won and progress:
+		progress.record_time(level, run_time)
 		progress.complete_level(level)
 		to_victory = level >= Levels.COUNT
 	await get_tree().create_timer(delay).timeout

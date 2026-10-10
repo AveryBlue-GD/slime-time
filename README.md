@@ -32,4 +32,5 @@ Play the browser version sideways. Touch controls appear automatically:
 
 - Jumping costs half as much slime as gliding the same distance, but hitting a wall costs extra. Judge the distance well!
 - Areas you've explored slowly fog back over, so remember your way.
+- Every level is timed. Your record for each level shows on Level Select; beat it for a NEW RECORD!
 - Each level you clear unlocks a new slime color. Beat all 10 for a color wheel and a glow, and beat 5 **Randomizer** mazes for a rainbow slime.

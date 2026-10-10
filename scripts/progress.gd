@@ -33,6 +33,8 @@ var sound_on := true
 var volume := 0.8
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
+## Record (fastest) clear time per story level, in seconds.
+var best_times := {}
 ## Levels whose "first run: playing as ..." notice has already been shown.
 var skin_notices_seen: Array[int] = []
 ## action -> physical keycode of its primary key.
@@ -107,6 +109,10 @@ func load_progress() -> void:
 	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
 	hard_mode = file.get_value("settings", "hard_mode", false)
 	skin_notices_seen.assign(file.get_value("progress", "skin_notices_seen", []))
+	best_times = {}
+	for level in range(1, Levels.COUNT + 1):
+		if file.has_section_key("records", "level_%d" % level):
+			best_times[level] = float(file.get_value("records", "level_%d" % level))
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
 
@@ -126,6 +132,8 @@ func save_progress() -> void:
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
+	for level: int in best_times:
+		file.set_value("records", "level_%d" % level, best_times[level])
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.save(save_path)
@@ -175,6 +183,22 @@ func active_skin() -> String:
 ## Skin a story level must be played in, or "" for free choice: a level's first run (before it
 ## has ever been cleared) uses the skin just earned by clearing the level before it (Ember for
 ## level 1). Once the level is cleared, replays use whatever skin is selected.
+## Record time for a level in seconds, or -1 if it has never been cleared with a time.
+func best_time(level: int) -> float:
+	return best_times.get(level, -1.0)
+
+
+## Saves `seconds` as the level's record if it's the first time or faster. Returns true only when
+## an existing record was beaten (a first clear just sets the record).
+func record_time(level: int, seconds: float) -> bool:
+	var previous := best_time(level)
+	if previous >= 0.0 and seconds >= previous:
+		return false
+	best_times[level] = seconds
+	save_progress()
+	return previous >= 0.0
+
+
 ## True (once per level, saved) when the level's forced-skin notice should be shown.
 func take_skin_notice(level: int) -> bool:
 	if level in skin_notices_seen:

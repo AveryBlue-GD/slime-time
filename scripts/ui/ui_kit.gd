@@ -58,7 +58,7 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 	return add_skin_text(root)
 
 
-## Adds a SkinText node so labels and oot's button text follow the equipped skin's color.
+## Adds a SkinText node so labels and the root's button text follow the equipped skin's color.
 static func add_skin_text(root: Control) -> SkinText:
 	var skin_text := SkinText.new()
 	skin_text.theme_owner = root
@@ -134,6 +134,12 @@ static func make_slime_preview(color: Color, scale := 1, rainbow := false) -> An
 	preview.scale = Vector2(scale, scale)
 	preview.play("idle")
 	return preview
+
+
+## Run time as m:ss.s (e.g. 1:02.3).
+static func format_time(seconds: float) -> String:
+	var tenths := int(seconds * 10.0)
+	return "%d:%02d.%d" % [tenths / 600, (tenths / 10) % 60, tenths % 10]
 
 
 static func go(tree: SceneTree, scene: String) -> void:
