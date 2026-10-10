@@ -17,9 +17,9 @@ func _ready() -> void:
 	UIKit.setup_screen(self, "CONTROLS")
 	var rows := GridContainer.new()
 	rows.columns = 2
-	rows.position = Vector2(70, 28)
+	rows.position = Vector2(70, 24)
 	rows.add_theme_constant_override("h_separation", 8)
-	rows.add_theme_constant_override("v_separation", 3)
+	rows.add_theme_constant_override("v_separation", 2)
 	add_child(rows)
 	for action: String in ACTION_NAMES:
 		var label := UIKit.make_label(ACTION_NAMES[action])
@@ -32,11 +32,12 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 
-	var note := UIKit.make_label("ARROW KEYS ALWAYS MOVE TOO.  ESC PAUSES THE GAME.", 8, UIKit.TEXT_DIM)
+	var note := UIKit.make_label("ARROWS ALWAYS MOVE TOO - ESC PAUSES", 8, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.position = Vector2(0, 128)
-	note.size = Vector2(320, 12)
 	add_child(note)
+	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	note.offset_top = 117
+	note.offset_bottom = 127
 	var reset := UIKit.make_button("RESET TO DEFAULTS", _on_reset, Vector2(100, 13))
 	reset.position = Vector2(60, 146)
 	sound_button = UIKit.make_button("", _toggle_sound, Vector2(90, 13))
@@ -44,6 +45,9 @@ func _ready() -> void:
 	add_child(sound_button)
 	_refresh_sound()
 	add_child(reset)
+	var volume_row := UIKit.make_volume_slider(110.0)
+	volume_row.position = Vector2(95, 130)
+	add_child(volume_row)
 	UIKit.add_back_button(self)
 
 

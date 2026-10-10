@@ -29,6 +29,8 @@ var custom_color := Color8(239, 125, 47)
 ## Glow strength for the custom skin, 0-1.
 var glow := 0.6
 var sound_on := true
+## Master volume, 0-1 (applied to the Master audio bus).
+var volume := 0.8
 ## action -> physical keycode of its primary key.
 var bindings := DEFAULT_KEYS.duplicate()
 
@@ -43,6 +45,7 @@ var saving_enabled := true
 func _ready() -> void:
 	load_progress()
 	apply_bindings()
+	apply_volume()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
@@ -68,6 +71,7 @@ func load_progress() -> void:
 	custom_color = file.get_value("skin", "custom_color", custom_color)
 	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
 	sound_on = file.get_value("settings", "sound_on", true)
+	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
 
@@ -83,6 +87,7 @@ func save_progress() -> void:
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "glow", glow)
 	file.set_value("settings", "sound_on", sound_on)
+	file.set_value("settings", "volume", volume)
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.save(save_path)
@@ -131,6 +136,19 @@ func select_skin(id: String) -> void:
 	if Skins.is_unlocked(id, levels_cleared):
 		selected_skin = id
 		save_progress()
+
+
+# ---------------------------------------------------------------- sound
+
+func set_volume(value: float) -> void:
+	volume = clampf(value, 0.0, 1.0)
+	apply_volume()
+	save_progress()
+
+
+func apply_volume() -> void:
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(volume, 0.0001)))
+	AudioServer.set_bus_mute(0, volume <= 0.0)
 
 
 # ---------------------------------------------------------------- controls

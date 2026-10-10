@@ -34,6 +34,17 @@ func _initialize() -> void:
 	sfx.play("click")
 	_check(not _playing(sfx, "click"), "muted: nothing plays")
 	progress.sound_on = true
+	progress.set_volume(0.5)
+	_check(absf(AudioServer.get_bus_volume_db(0) - linear_to_db(0.5)) < 0.01 and not AudioServer.is_bus_mute(0),
+		"volume slider value drives the master volume")
+	progress.set_volume(0.0)
+	_check(AudioServer.is_bus_mute(0), "volume at zero mutes")
+	var reloaded: Node = preload("res://scripts/progress.gd").new()
+	reloaded.save_path = progress.save_path
+	reloaded.load_progress()
+	_check(reloaded.volume == 0.0, "volume is saved")
+	reloaded.free()
+	progress.set_volume(0.8)
 
 	# --- Splat: sound + brief screen shake
 	var game := await _spawn()
@@ -59,6 +70,8 @@ func _initialize() -> void:
 	Input.action_release("move_down")
 	_check(game.slime.position == before, "the slime can't move while paused")
 	_check(game.pause_menu.buttons.size() == 4, "pause menu: resume, restart, sound, quit")
+	var pause_slider: HSlider = game.pause_menu.volume_row.get_meta("slider")
+	_check(pause_slider.value == 0.8, "pause menu has a volume slider showing the current volume")
 	var esc := InputEventAction.new()
 	esc.action = "menu"
 	esc.pressed = true

@@ -82,6 +82,32 @@ static func add_back_button(root: Control) -> Button:
 	return button
 
 
+## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level).
+static func make_volume_slider(width := 90.0) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var label := make_label("VOLUME", 8, TEXT_DIM)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(width, 10)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	var progress: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Progress")
+	slider.value = progress.volume if progress else 0.8
+	slider.value_changed.connect(func(value: float) -> void:
+		if progress:
+			progress.set_volume(value)
+		var sfx := slider.get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play("click"))
+	row.add_child(slider)
+	row.set_meta("slider", slider)
+	return row
+
+
 ## Idle slime preview in the given color (2 = double size).
 static func make_slime_preview(color: Color, scale := 1) -> AnimatedSprite2D:
 	var preview := AnimatedSprite2D.new()

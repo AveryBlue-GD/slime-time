@@ -1,10 +1,11 @@
 extends CanvasLayer
 
-## In-game pause menu (Esc): resume, restart, sound on/off, quit to the title.
+## In-game pause menu (Esc): resume, restart, sound on/off, volume, quit to the title.
 ## Runs while the tree is paused; everything else in the level freezes.
 
 var buttons: Array[Button] = []
 var sound_button: Button
+var volume_row: HBoxContainer
 
 
 func _ready() -> void:
@@ -39,6 +40,9 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
+	volume_row = UIKit.make_volume_slider(60.0)
+	menu.add_child(volume_row)
+	menu.move_child(volume_row, 3)
 	_refresh_sound()
 
 
