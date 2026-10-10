@@ -1,0 +1,12 @@
+# Godot cache and editor state
+.godot/
+*.tmp
+
+# Build output
+/build/
+
+# Screenshots captured by tools/screenshot.ps1
+/.screens/
+
+# Personal Claude Code settings (shared ones live in .claude/settings.json)
+.claude/settings.local.json

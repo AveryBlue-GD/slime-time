@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(.\\tools\\godot.ps1 *)",
+      "PowerShell(.\\tools\\screenshot.ps1 *)",
+      "PowerShell(.\\tools\\screenshot.ps1)",
+      "PowerShell(python tools/*)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "Bash(powershell -File tools/godot.ps1 *)",
+      "Bash(powershell -File tools/screenshot.ps1 *)",
+      "Bash(python tools/*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
