@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode.
+## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -46,6 +46,8 @@ var randoms_cleared := 0
 var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
+## Debug (--touch): show the on-screen touch controls even without a touchscreen.
+var force_touch := false
 ## Not saved: a skin the current level forces (its first run is played in the newest skin earned).
 ## While set, it replaces the selected skin everywhere (slime, trail, HUD, menus).
 var skin_override := ""
@@ -63,6 +65,8 @@ func _ready() -> void:
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
 			randoms_won = maxi(randoms_won, Skins.RAINBOW_RANDOMS)
+		elif arg == "--touch":
+			force_touch = true
 		elif arg == "--hard":
 			saving_enabled = false
 			hard_mode = true

@@ -263,6 +263,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		_stun_left = SPLAT_STUN
 		_splat_side = dir_name(-wall_normal)
 		_sfx("splat")
+		Input.vibrate_handheld(60)  # phones buzz on a splat (no effect elsewhere)
 	else:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME

@@ -21,6 +21,13 @@ A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. 
 
 Keys can be remapped from **Controls** on the start page.
 
+### On a phone or tablet
+
+Play the browser version sideways. Touch controls appear automatically:
+- **Left thumb:** drag anywhere on the left half to glide (a joystick appears under your thumb).
+- **Right thumb:** hold **JUMP** to charge, aim with the joystick, let go to leap.
+- **Top-right:** pause.
+
 ## Tips
 
 - Jumping costs half as much slime as gliding the same distance, but hitting a wall costs extra. Judge the distance well!
