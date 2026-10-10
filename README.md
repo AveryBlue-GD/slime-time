@@ -23,7 +23,7 @@ Keys can be remapped from **Controls** on the start page.
 
 ### On a phone or tablet
 
-Play the browser version upright or sideways. Touch controls appear automatically:
+Play the browser version sideways. Touch controls appear automatically:
 - **Left thumb:** drag anywhere on the left half to glide (a joystick appears under your thumb).
 - **Right thumb:** hold **JUMP** to charge, aim with the joystick, let go to leap.
 - **Top-right:** pause.

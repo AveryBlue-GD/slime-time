@@ -15,10 +15,6 @@ const TEXT := Color8(244, 244, 244)
 const TEXT_DIM := Color8(148, 176, 194)
 const TEXT_OFF := Color8(86, 108, 134)
 const GOLD := Color8(255, 205, 117)
-## Menus are laid out for this size and centered on whatever the screen really is.
-const DESIGN_SIZE := Vector2(320, 180)
-## How far menu backgrounds reach past the design box (covers any phone shape).
-const SCREEN_PAD := Vector2(1000, 1000)
 
 
 static func make_theme() -> Theme:
@@ -42,17 +38,14 @@ static func make_theme() -> Theme:
 	return theme
 
 
-## Menu screen root: theme, background, a title at the top, and skin-colored text.
-## The root becomes a DESIGN_SIZE box centered on screen (screens lay out their contents in it),
-## so menus stay centered on wider or taller screens, like a phone held upright.
+## Full-screen menu root: theme, background, a title at the top, and skin-colored text.
 ## Returns the SkinText node (call its recolor() after changing the skin).
 static func setup_screen(root: Control, title: String) -> SkinText:
 	root.theme = make_theme()
-	center_box(root)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
 	bg.color = BG
-	bg.position = -SCREEN_PAD
-	bg.size = DESIGN_SIZE + SCREEN_PAD * 2.0
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bg)
 	if title != "":
@@ -65,16 +58,7 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 	return add_skin_text(root)
 
 
-## Makes `control` a DESIGN_SIZE box centered in its parent.
-static func center_box(control: Control) -> void:
-	control.set_anchors_preset(Control.PRESET_CENTER)
-	control.offset_left = -DESIGN_SIZE.x / 2.0
-	control.offset_right = DESIGN_SIZE.x / 2.0
-	control.offset_top = -DESIGN_SIZE.y / 2.0
-	control.offset_bottom = DESIGN_SIZE.y / 2.0
-
-
-## Adds a SkinText node so labels and the root's button text follow the equipped skin's color.
+## Adds a SkinText node so labels and oot's button text follow the equipped skin's color.
 static func add_skin_text(root: Control) -> SkinText:
 	var skin_text := SkinText.new()
 	skin_text.theme_owner = root

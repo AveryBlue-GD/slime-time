@@ -20,20 +20,17 @@ func _ready() -> void:
 	dim.color = Color(UIKit.BG, 0.75)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
-	var box := Control.new()  # centered 320x180 area holding the menu, whatever the screen shape
-	root.add_child(box)
-	UIKit.center_box(box)
 	var title := UIKit.make_label("PAUSED", 16, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
 	title.size = Vector2(320, 20)
-	box.add_child(title)
+	root.add_child(title)
 
 	var menu := VBoxContainer.new()
 	menu.position = Vector2(110, 62)
 	menu.custom_minimum_size = Vector2(100, 0)
 	menu.add_theme_constant_override("separation", 3)
-	box.add_child(menu)
+	root.add_child(menu)
 	sound_button = UIKit.make_button("", _toggle_sound)
 	buttons = [
 		UIKit.make_button("RESUME", resume),

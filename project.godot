@@ -19,6 +19,7 @@ config/icon="res://icon.png"
 
 Progress="*res://scripts/progress.gd"
 Sfx="*res://scripts/sfx.gd"
+RotateHint="*res://scripts/ui/rotate_hint.gd"
 
 [display]
 
@@ -27,7 +28,6 @@ window/size/viewport_height=180
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
-window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
 
 [gui]
@@ -87,7 +87,6 @@ restart={
 
 [rendering]
 
-environment/defaults/default_clear_color=Color(0.101961, 0.109804, 0.172549, 1)
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 2d/snap/snap_2d_transforms_to_pixel=true
