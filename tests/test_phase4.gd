@@ -64,11 +64,11 @@ func _initialize() -> void:
 	var far := MazeGenerator.cell_center(path[path.size() / 2], 16)  # well away from the start and the chalice
 	slime.position = far
 	game.last_slime_pos = far
-	await _wait(4.0)
+	await _wait(2.0)
 	var after_4: float = game.fog_alpha_at(start)
-	await _wait(5.0)
+	await _wait(3.0)
 	var after_9: float = game.fog_alpha_at(start)
-	await _wait(12.0)
+	await _wait(5.0)
 	var after_21: float = game.fog_alpha_at(start)
 	_check(after_4 > 0.0 and after_9 > after_4 and after_21 > after_9 and after_21 < 1.0,
 		"left behind, it darkens in layers: %.2f -> %.2f -> %.2f (never fully black)" % [after_4, after_9, after_21])

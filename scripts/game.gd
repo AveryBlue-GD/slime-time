@@ -37,7 +37,8 @@ const STAIN_RADIUS := 6.0
 const LIGHT_RADIUS := 20.0
 ## Fade layers: a cell last lit less than FADE_AFTER[i] seconds ago has darkness FADE_ALPHA[i];
 ## older than the last step, it settles at the final FADE_ALPHA (a dim memory of the path).
-const FADE_AFTER: Array[float] = [3.0, 7.0, 12.0, 18.0]
+## Hard mode: a cell older than the last step is covered by fog again.
+const FADE_AFTER: Array[float] = [1.5, 3.5, 6.0, 9.0]
 const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
 const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
