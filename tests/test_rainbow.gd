@@ -32,7 +32,7 @@ func _initialize() -> void:
 	await _frames(5)
 	_check(progress.randoms_won == 5, "winning a random maze counts toward the rainbow (%d/5)" % progress.randoms_won)
 	_check("NEW SKIN: RAINBOW" in game.hud.message.text, "the 5th random win announces the rainbow skin")
-	_check(progress.random_seed != 12345, "a win lines up a brand-new maze")
+	_check(progress.random_seed == 12345, "a win keeps the maze until NEW MAZE is picked")
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
 	reloaded.load_progress()

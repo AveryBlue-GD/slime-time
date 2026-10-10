@@ -152,12 +152,11 @@ func start_story(level: int) -> void:
 	current_level = clampi(level, 1, highest_unlocked)
 
 
-## Records a randomizer win (saved) and lines up a fresh maze.
+## Records a randomizer win (saved). The maze stays the same until the player picks NEW MAZE.
 func complete_random() -> void:
 	randoms_cleared += 1
 	randoms_won += 1
 	save_progress()
-	new_random_maze()
 
 
 func start_random() -> void:

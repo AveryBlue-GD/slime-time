@@ -66,6 +66,8 @@ const TITLE_SCENE := "res://scenes/title.tscn"
 ## Seconds the "first run: playing as ..." notice stays up.
 const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
+## After a win, the replay / next buttons appear after this long (so a held key can't press one).
+const CHOICE_DELAY := 0.6
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
 const SHAKE_TIME := 0.25
 const SHAKE_MAX := 3.0
@@ -102,6 +104,8 @@ var rainbow := false
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
+## True once this maze has been won (R then replays it rather than moving on).
+var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
 
@@ -113,6 +117,7 @@ var shake_strength := 0.0
 @onready var chalice: Area2D = $Chalice
 @onready var hud: CanvasLayer = $HUD
 @onready var pause_menu: CanvasLayer = $PauseMenu
+@onready var touch_controls: CanvasLayer = $TouchControls
 @onready var camera: Camera2D = $Slime/Camera2D
 @onready var progress: Node = get_node_or_null("/root/Progress")
 
@@ -478,7 +483,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	_sfx("chalice")
 	if is_random():
-		var random_text := "CHALICE CONSUMED!\nA NEW MAZE AWAITS..."
+		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time)
 		if progress and progress.randoms_won + 1 == Skins.RAINBOW_RANDOMS:
 			random_text += "\nNEW SKIN: " + Skins.RAINBOW_NAME
 			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
@@ -495,7 +500,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		text += "   BEST " + UIKit.format_time(best)
 	var delay := END_DELAY
 	if level >= Levels.COUNT:
-		text = "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT
+		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
 		delay = WIN_FINAL_DELAY
 	if progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
@@ -513,31 +518,63 @@ func _dry_up() -> void:
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
-## result, then loads what comes next: the next level, a fresh random maze (after a win or a
-## dry-up), a retry of the story level, or the victory screen.
-func _finish(won: bool, text: String, delay: float) -> void:
+## result. After a dry-up it retries automatically (a story level again, or a freshly shuffled
+## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
+func _finish(did_win: bool, text: String, delay: float) -> void:
 	finished = true
+	won = did_win
 	slime.frozen = true
+	touch_controls.hide_controls()
 	hud.show_message(text)
-	level_finished.emit(won)
+	level_finished.emit(did_win)
 	if not _is_running_scene():
 		return
-	var to_victory := false
-	if progress and is_random():
-		if won:
+	if not did_win:
+		if progress and is_random():
+			progress.new_random_maze()
+		await get_tree().create_timer(delay).timeout
+		if _is_running_scene():
+			get_tree().reload_current_scene()
+		return
+	if progress:
+		if is_random():
 			progress.complete_random()
 		else:
+			progress.record_time(level, run_time)
+			progress.complete_level(level)
+	await get_tree().create_timer(CHOICE_DELAY).timeout
+	if _is_running_scene():
+		_offer_next_steps()
+
+
+## The buttons shown after a win.
+func _offer_next_steps() -> void:
+	if is_random():
+		hud.show_choices([["REPLAY MAZE", replay], ["NEW MAZE", play_next]])
+	elif level >= Levels.COUNT:
+		hud.show_choices([["REPLAY", replay], ["CONTINUE", play_next]])
+	else:
+		hud.show_choices([["REPLAY", replay], ["NEXT LEVEL", play_next]])
+
+
+## Plays this same maze again (for a random maze, the same seed).
+func replay() -> void:
+	if progress and not is_random():
+		progress.start_story(level)
+	get_tree().reload_current_scene()
+
+
+## Moves on: the next story level, a new random maze, or the victory screen after the last level.
+func play_next() -> void:
+	if is_random():
+		if progress:
 			progress.new_random_maze()
-	elif won and progress:
-		progress.record_time(level, run_time)
-		progress.complete_level(level)
-		to_victory = level >= Levels.COUNT
-	await get_tree().create_timer(delay).timeout
-	if not _is_running_scene():
-		return
-	if to_victory:
+		get_tree().reload_current_scene()
+	elif level >= Levels.COUNT:
 		get_tree().change_scene_to_file(VICTORY_SCENE)
 	else:
+		if progress:
+			progress.start_story(level + 1)
 		get_tree().reload_current_scene()
 
 
@@ -552,7 +589,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		pause_menu.open()
 	elif event.is_action_pressed("restart"):
-		get_tree().reload_current_scene()
+		if won:
+			replay()
+		else:
+			get_tree().reload_current_scene()
 
 
 func _sfx(sound_name: String) -> void:

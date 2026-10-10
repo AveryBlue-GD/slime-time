@@ -110,6 +110,12 @@ func _steer(dir: Vector2) -> void:
 			Input.action_release(MOVE_ACTIONS[i])
 
 
+## Hides the controls (e.g. when a level ends and menu buttons take over).
+func hide_controls() -> void:
+	_release_all()
+	visible = false
+
+
 func _release_all() -> void:
 	_joy_touch = -1
 	_jump_touch = -1

@@ -22,6 +22,10 @@ var record_banner: CenterContainer
 var record_time_label: Label
 var _chalices: Array[TextureRect] = []
 var _chalice_clock := 0.0
+## Buttons offered after a win (replay / next).
+var choice_buttons: Array[Button] = []
+var _choice_root: Control
+var _skin_text: SkinText
 
 
 func _ready() -> void:
@@ -63,9 +67,12 @@ func _ready() -> void:
 	add_child(message)
 
 	_build_record_banner()
+	_build_choice_row()
 	set_slime(100.0)
 	set_time(0.0)
-	add_child(SkinText.new())
+	_skin_text = SkinText.new()
+	_skin_text.theme_owner = _choice_root
+	add_child(_skin_text)
 
 
 func set_slime(percent: float) -> void:
@@ -82,6 +89,39 @@ func set_time(seconds: float) -> void:
 func show_record(seconds: float) -> void:
 	record_time_label.text = UIKit.format_time(seconds)
 	record_banner.visible = true
+
+
+## Shows a row of buttons, each [text, Callable]; the last one gets keyboard focus.
+func show_choices(options: Array) -> void:
+	var row: HBoxContainer = _choice_root.get_child(0).get_child(0)
+	for child in row.get_children():
+		child.queue_free()
+	choice_buttons.clear()
+	for option: Array in options:
+		var button := UIKit.make_button(option[0], option[1], Vector2(84, 13))
+		row.add_child(button)
+		choice_buttons.append(button)
+	_choice_root.visible = true
+	_skin_text.recolor()
+	choice_buttons[-1].grab_focus()
+
+
+func _build_choice_row() -> void:
+	_choice_root = Control.new()
+	_choice_root.theme = UIKit.make_theme()
+	_choice_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_choice_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_choice_root.visible = false
+	add_child(_choice_root)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	center.offset_top = 152
+	center.offset_bottom = 168
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_choice_root.add_child(center)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	center.add_child(row)
 
 
 func _build_record_banner() -> void:
