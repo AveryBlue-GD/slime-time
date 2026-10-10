@@ -32,7 +32,7 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE TOO - ESC PAUSES", 8, UIKit.TEXT_DIM)
+	var note := UIKit.make_label("ARROWS ALWAYS MOVE - ESC PAUSES - F11 FULLSCREEN", 8, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)

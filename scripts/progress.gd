@@ -73,6 +73,14 @@ func _ready() -> void:
 			selected_skin = arg.trim_prefix("--skin=")
 
 
+## F11 toggles fullscreen anywhere in the game (desktop and browser).
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_fullscreen"):
+		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		get_viewport().set_input_as_handled()
+
+
 func load_progress() -> void:
 	var file := ConfigFile.new()
 	if file.load(save_path) != OK:

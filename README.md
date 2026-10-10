@@ -17,6 +17,7 @@ A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. 
 | Hold Space | Charge a jump (arrows aim), release to leap |
 | R | Restart the level |
 | Esc | Pause (volume, sound, restart, quit) |
+| F11 | Toggle fullscreen |
 
 Keys can be remapped from **Controls** on the start page.
 
