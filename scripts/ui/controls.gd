@@ -33,7 +33,7 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE - ESC PAUSES - F11 FULLSCREEN", 8, UIKit.TEXT_DIM)
+	var note := UIKit.make_label("ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN", 8, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -92,7 +92,8 @@ func _input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	var key := event as InputEventKey
-	if key.physical_keycode != KEY_ESCAPE and key.physical_keycode != 0:
+	# Esc and P are reserved for pausing (P because browsers keep Esc in fullscreen).
+	if key.physical_keycode not in [KEY_ESCAPE, KEY_P, 0]:
 		Progress.set_binding(waiting_for, key.physical_keycode)
 	var action := waiting_for
 	waiting_for = ""

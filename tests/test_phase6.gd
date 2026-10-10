@@ -72,6 +72,9 @@ func _initialize() -> void:
 	_check(game.pause_menu.buttons.size() == 4, "pause menu: resume, restart, sound, quit")
 	var pause_slider: HSlider = game.pause_menu.volume_row.get_meta("slider")
 	_check(pause_slider.value == 0.8, "pause menu has a volume slider showing the current volume")
+	var p_key := InputEventKey.new()
+	p_key.physical_keycode = KEY_P
+	_check(InputMap.event_is_action(p_key, "menu"), "P also pauses (browsers keep Esc for leaving fullscreen)")
 	var esc := InputEventAction.new()
 	esc.action = "menu"
 	esc.pressed = true
