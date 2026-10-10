@@ -11,12 +11,15 @@ signal jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED }
 
 const TILE := 16
-const RADIUS := 5.0
+## Collision radius: the body is 14 px across in a 16 px corridor, a snug fit.
+const RADIUS := 7.0
 const CHARGE_TIME := 1.5
 const MIN_JUMP_TILES := 1.0
 const MAX_JUMP_TILES := 8.0
 const JUMP_SPEED := 220.0
 const SPLAT_STUN := 0.4
+## How strongly a single-direction press pulls the slime onto the center line of its lane.
+const LANE_PULL := 10.0
 
 @export var max_speed := 72.0
 @export var acceleration := 420.0
@@ -92,9 +95,24 @@ func _physics_process(delta: float) -> void:
 func _glide(input: Vector2, delta: float) -> void:
 	if input != Vector2.ZERO:
 		velocity = velocity.move_toward(input * max_speed, acceleration * delta)
+		_center_in_lane(input)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
 	move_and_slide()
+
+
+## Pressing along one axis centers the slime on the other, so it lines up with the one-tile
+## corridors and slides into side openings instead of catching on corners.
+func _center_in_lane(input: Vector2) -> void:
+	if input.x != 0.0 and input.y == 0.0:
+		velocity.y = _lane_velocity(position.y)
+	elif input.y != 0.0 and input.x == 0.0:
+		velocity.x = _lane_velocity(position.x)
+
+
+func _lane_velocity(coord: float) -> float:
+	var center := (floorf(coord / TILE) + 0.5) * TILE
+	return clampf((center - coord) * LANE_PULL, -max_speed, max_speed)
 
 
 func _fly(delta: float) -> void:

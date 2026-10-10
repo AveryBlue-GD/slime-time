@@ -16,7 +16,7 @@ func _initialize() -> void:
 
 	# Charging with real input: holds still, aims, fills to ~50% in 0.75 s, launches on release.
 	var game := await _spawn()
-	var open_right: bool = not game.is_wall_tile(Vector2i(3, 1))
+	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
 	var open_action := "move_right" if open_right else "move_down"
 	var open_dir := Vector2.RIGHT if open_right else Vector2.DOWN
 	var start: Vector2 = game.slime.position
@@ -33,12 +33,15 @@ func _initialize() -> void:
 	_check(game.slime.is_airborne(), "releasing jump launches")
 	game.free()
 
-	# Clean jump along the open corridor.
+	# Clean jump down a straight corridor three cells long (placed wherever the maze has one).
 	game = await _spawn()
-	start = game.slime.position
-	var free_px := _free_run(game, open_dir) - Slime.RADIUS - 1.0
-	var distance := minf(free_px, 128.0)
-	game.slime.facing = open_dir
+	var run := _find_straight_run(game, 3)
+	var run_dir: Vector2 = Vector2(run.dir)
+	start = MazeGenerator.cell_center(run.cell, 16)
+	game.slime.position = start
+	game.last_slime_pos = start
+	var distance := 3.0 * MazeGenerator.CELL_SPAN * 16.0
+	game.slime.facing = run_dir
 	game.slime.launch((distance / 16.0 - 1.0) / 7.0 * 100.0)
 	await _wait_for_landing()
 	var expected_cost: float = distance / 16.0 * game.slime_cost_per_tile * game.JUMP_COST_FACTOR
@@ -46,7 +49,7 @@ func _initialize() -> void:
 	_check(absf(game.slime.position.distance_to(start) - distance) < 1.0, "lands at the charged distance")
 	_check(absf(game.last_jump_cost - expected_cost) < 0.01, "clean jump costs half of gliding (%.2f%%)" % game.last_jump_cost)
 	_check(absf(game.slime_remaining - (100.0 - expected_cost)) < 0.01, "no glide cost is charged in the air")
-	_check(game.fog_alpha_at(start + open_dir * distance / 2.0) == 1.0, "no trail is left mid-air")
+	_check(game.fog_alpha_at(start + run_dir * distance / 2.0) == 1.0, "no trail is left mid-air")
 	_check(game.fog_alpha_at(game.slime.position) == 0.0, "landing leaves a goo splat")
 	game.free()
 
@@ -58,7 +61,7 @@ func _initialize() -> void:
 	await _wait_for_landing()
 	var glide_cost: float = start.distance_to(game.slime.position) / 16.0 * game.slime_cost_per_tile
 	_check(landed_hit == 1, "jumping into a wall splats")
-	_check(absf(game.slime.position.y - 21.0) < 0.5, "slime stops against the wall (y = %.1f)" % game.slime.position.y)
+	_check(absf(game.slime.position.y - (16.0 + Slime.RADIUS)) < 0.5, "slime stops against the wall (y = %.1f)" % game.slime.position.y)
 	_check(absf(game.last_jump_cost - (128.0 / 16.0 * game.slime_cost_per_tile * 0.5 + game.SPLAT_PENALTY)) < 0.01,
 		"splat costs the jump plus the %d%% penalty (%.2f%%)" % [game.SPLAT_PENALTY, game.last_jump_cost])
 	_check(game.last_jump_cost > glide_cost, "splat costs more than gliding there (%.2f%% vs %.2f%%)" % [game.last_jump_cost, glide_cost])
@@ -82,16 +85,20 @@ func _spawn() -> Node2D:
 	return game
 
 
-## Pixels from the start cell's center to the first wall along dir (2-tile-wide corridor).
-func _free_run(game: Node2D, dir: Vector2) -> float:
-	var step := Vector2i(dir)
-	var side := Vector2i(step.y, step.x).abs()
-	var tile := Vector2i(1, 1) + step
-	while not game.is_wall_tile(tile) and not game.is_wall_tile(tile + side):
-		tile += step
-	var wall_edge := Vector2(tile * 16) if (step.x > 0 or step.y > 0) else Vector2((tile + Vector2i.ONE) * 16)
-	var along: Vector2 = (wall_edge - game.slime.position) * dir
-	return along.x + along.y
+## First cell (and direction, right or down) where the maze runs straight for `steps` cells.
+func _find_straight_run(game: Node2D, steps: int) -> Dictionary:
+	for y in game.maze.cells.y:
+		for x in game.maze.cells.x:
+			for dir: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+				var cell := Vector2i(x, y)
+				var ok := true
+				for i in steps:
+					ok = ok and (cell + dir) in MazeGenerator.open_neighbors(game.maze, cell)
+					cell += dir
+				if ok:
+					return {cell = Vector2i(x, y), dir = dir}
+	push_error("no straight run of %d cells" % steps)
+	return {}
 
 
 func _wait_for_landing() -> void:

@@ -12,17 +12,18 @@ extends Node2D
 ## - fog_image:   black over everything not yet revealed (dimmed over walls next to the trail)
 
 const TILE := 16
-const FOG_CELL := 4
-const TRAIL_RADIUS := 7.0
-## How far past the trail's edge walls get revealed (enough to see both sides of a corridor).
-const WALL_REVEAL_REACH := 12.0
+const FOG_CELL := 2
+## Wider than the corridor, so the trail paints the floor wall to wall.
+const TRAIL_RADIUS := 9.0
+## How far past the trail's edge walls get revealed.
+const WALL_REVEAL_REACH := 4.0
 const WALL_FOG_ALPHA := 0.45
 const CHALICE_REVEAL_DISTANCE := 24.0
 const END_DELAY := 2.0
 const JUMP_COST_FACTOR := 0.5
 ## Flat percent of slime lost when a jump hits a wall.
 const SPLAT_PENALTY := 8.0
-const LANDING_RADIUS := 9.0
+const LANDING_RADIUS := 11.0
 const STAIN_RADIUS := 6.0
 
 const WIN_FINAL_DELAY := 5.0
@@ -79,7 +80,9 @@ func _ready() -> void:
 		level = progress.current_level if progress else 1
 	var config := Levels.get_config(level)
 	maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
-	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN
+	# The slime grabs the chalice when their shapes touch, a little short of its center.
+	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
+	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
 	_build_tiles(config.seed)
 	_build_overlays()

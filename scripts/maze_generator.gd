@@ -1,12 +1,15 @@
 class_name MazeGenerator
 extends RefCounted
 
-## "Growing tree" maze. Each maze cell is a 2x2-tile open area with 1-tile walls between
-## cells, so the tile grid is (cells * 3 + 1). The same seed gives the same maze.
+## "Growing tree" maze. Each maze cell is a single open tile with 1-tile walls between cells,
+## so corridors are exactly one tile wide and the tile grid is (cells * 2 + 1).
+## The same seed gives the same maze.
 ## branching 0 always extends the newest corridor (long winding paths, few dead ends);
 ## higher values sometimes branch from older cells instead (more side passages and dead ends).
 
-const CELL_SPAN := 3
+## Open tiles per cell side, and tiles from one cell to the next (open + wall).
+const OPEN := 1
+const CELL_SPAN := OPEN + 1
 const DIRS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]
 
 
@@ -56,9 +59,9 @@ static func generate(cells: Vector2i, maze_seed: int, branching := 0.0) -> Dicti
 	return maze
 
 
-## Pixel position of the middle of a cell's 2x2 open area.
+## Pixel position of the middle of a cell's open area.
 static func cell_center(cell: Vector2i, tile_size: int) -> Vector2:
-	return Vector2(cell * CELL_SPAN + Vector2i(2, 2)) * tile_size
+	return (Vector2(cell * CELL_SPAN + Vector2i.ONE) + Vector2.ONE * OPEN / 2.0) * tile_size
 
 
 static func is_wall(maze: Dictionary, tile: Vector2i) -> bool:
@@ -75,7 +78,7 @@ static func shortest_path(maze: Dictionary, from: Vector2i, to: Vector2i) -> Arr
 		var cell: Vector2i = queue.pop_front()
 		if cell == to:
 			break
-		for next in _open_neighbors(maze, cell):
+		for next in open_neighbors(maze, cell):
 			if not came_from.has(next):
 				came_from[next] = cell
 				queue.append(next)
@@ -91,7 +94,7 @@ static func dead_end_count(maze: Dictionary) -> int:
 	for y in maze.cells.y:
 		for x in maze.cells.x:
 			var cell := Vector2i(x, y)
-			if cell != maze.start and _open_neighbors(maze, cell).size() == 1:
+			if cell != maze.start and open_neighbors(maze, cell).size() == 1:
 				count += 1
 	return count
 
@@ -101,19 +104,19 @@ static func _distances_from(maze: Dictionary, from: Vector2i) -> Dictionary:
 	var queue: Array[Vector2i] = [from]
 	while not queue.is_empty():
 		var cell: Vector2i = queue.pop_front()
-		for next in _open_neighbors(maze, cell):
+		for next in open_neighbors(maze, cell):
 			if not distances.has(next):
 				distances[next] = distances[cell] + 1
 				queue.append(next)
 	return distances
 
 
-static func _open_neighbors(maze: Dictionary, cell: Vector2i) -> Array[Vector2i]:
+static func open_neighbors(maze: Dictionary, cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var base := cell * CELL_SPAN + Vector2i.ONE
 	for dir in DIRS:
-		var between := base + Vector2i(2 if dir.x > 0 else (-1 if dir.x < 0 else 0),
-			2 if dir.y > 0 else (-1 if dir.y < 0 else 0))
+		var between := base + Vector2i(OPEN if dir.x > 0 else (-1 if dir.x < 0 else 0),
+			OPEN if dir.y > 0 else (-1 if dir.y < 0 else 0))
 		if _inside(cell + dir, maze.cells) and not is_wall(maze, between):
 			result.append(cell + dir)
 	return result
@@ -124,17 +127,17 @@ static func _inside(cell: Vector2i, cells: Vector2i) -> bool:
 
 
 static func _open_cell(walls: PackedByteArray, size: Vector2i, cell: Vector2i) -> void:
-	for dy in 2:
-		for dx in 2:
+	for dy in OPEN:
+		for dx in OPEN:
 			walls[(cell.y * CELL_SPAN + 1 + dy) * size.x + cell.x * CELL_SPAN + 1 + dx] = 0
 
 
 static func _open_between(walls: PackedByteArray, size: Vector2i, a: Vector2i, b: Vector2i) -> void:
 	if a.x != b.x:
 		var x := maxi(a.x, b.x) * CELL_SPAN
-		for dy in 2:
+		for dy in OPEN:
 			walls[(a.y * CELL_SPAN + 1 + dy) * size.x + x] = 0
 	else:
 		var y := maxi(a.y, b.y) * CELL_SPAN
-		for dx in 2:
+		for dx in OPEN:
 			walls[y * size.x + a.x * CELL_SPAN + 1 + dx] = 0

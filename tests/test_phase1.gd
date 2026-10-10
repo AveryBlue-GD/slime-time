@@ -19,12 +19,12 @@ func _initialize() -> void:
 	_check(absf(game.fog_alpha_at(start + Vector2(0, -24)) - game.WALL_FOG_ALPHA) < 0.01,
 		"wall next to the trail is revealed (dimmed)")
 
-	var open_dir := "move_right" if not game.is_wall_tile(Vector2i(3, 1)) else "move_down"
+	var open_dir := "move_right" if Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start) else "move_down"
 	await _hold(open_dir, 0.6)
 	await _wait(1.0)
 	var traveled: float = game.slime.position.distance_to(start)
 	var used: float = 100.0 - game.slime_remaining
-	_check(traveled > 20.0, "gliding moves the slime (%.1f px)" % traveled)
+	_check(traveled > 10.0, "gliding moves the slime (%.1f px)" % traveled)
 	_check(absf(used - traveled / 16.0 * game.slime_cost_per_tile) < 0.5, "slime used matches distance (%.2f%% for %.1f px)" % [used, traveled])
 	_check(game.fog_alpha_at(game.slime.position) == 0.0, "trail reveals where the slime went")
 

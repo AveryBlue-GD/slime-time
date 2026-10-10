@@ -2,24 +2,24 @@ class_name Levels
 extends RefCounted
 
 ## The 10 levels. Tune difficulty here.
-## - cells:     maze size in cells (each cell is 2x2 open tiles + walls)
+## - cells:     maze size in cells (each cell is one open tile; corridors are 1 tile wide)
 ## - branching: 0 = long winding corridors, higher = more side branches and dead ends
 ## - target:    fraction of the slime meter a perfect glide to the chalice uses
-## Seeds were picked so the path to the chalice grows steadily: 14, 17, 20 ... 44 cells.
+## Seeds were picked so the path to the chalice grows steadily: 22, 26, 30 ... 66 cells.
 
 const COUNT := 10
 
 const DATA := [
-	{cells = Vector2i(6, 4), seed = 1019, branching = 0.05, target = 0.60},
-	{cells = Vector2i(7, 4), seed = 2001, branching = 0.10, target = 0.63},
-	{cells = Vector2i(8, 5), seed = 3019, branching = 0.15, target = 0.66},
-	{cells = Vector2i(9, 5), seed = 4002, branching = 0.20, target = 0.70},
-	{cells = Vector2i(10, 6), seed = 5021, branching = 0.25, target = 0.73},
-	{cells = Vector2i(11, 6), seed = 6006, branching = 0.30, target = 0.77},
-	{cells = Vector2i(12, 7), seed = 7001, branching = 0.35, target = 0.80},
-	{cells = Vector2i(13, 7), seed = 8015, branching = 0.40, target = 0.83},
-	{cells = Vector2i(14, 8), seed = 9040, branching = 0.45, target = 0.87},
-	{cells = Vector2i(15, 9), seed = 10153, branching = 0.50, target = 0.90},
+	{cells = Vector2i(10, 6), seed = 1078, branching = 0.05, target = 0.60},
+	{cells = Vector2i(11, 7), seed = 2016, branching = 0.10, target = 0.63},
+	{cells = Vector2i(12, 7), seed = 3007, branching = 0.15, target = 0.66},
+	{cells = Vector2i(13, 8), seed = 4003, branching = 0.20, target = 0.70},
+	{cells = Vector2i(14, 8), seed = 5006, branching = 0.25, target = 0.73},
+	{cells = Vector2i(16, 9), seed = 6012, branching = 0.30, target = 0.77},
+	{cells = Vector2i(17, 10), seed = 7038, branching = 0.35, target = 0.80},
+	{cells = Vector2i(18, 10), seed = 8042, branching = 0.40, target = 0.83},
+	{cells = Vector2i(20, 11), seed = 9005, branching = 0.45, target = 0.87},
+	{cells = Vector2i(22, 12), seed = 10012, branching = 0.50, target = 0.90},
 ]
 
 ## Wall damage weights (intact, cracked, crumbling, broken) for level 1 and level 10;
