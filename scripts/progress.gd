@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes.
+## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -31,6 +31,10 @@ var glow := 0.6
 var sound_on := true
 ## Master volume, 0-1 (applied to the Master audio bus).
 var volume := 0.8
+## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
+var hard_mode := false
+## Levels whose "first run: playing as ..." notice has already been shown.
+var skin_notices_seen: Array[int] = []
 ## action -> physical keycode of its primary key.
 var bindings := DEFAULT_KEYS.duplicate()
 
@@ -59,6 +63,9 @@ func _ready() -> void:
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
 			randoms_won = maxi(randoms_won, Skins.RAINBOW_RANDOMS)
+		elif arg == "--hard":
+			saving_enabled = false
+			hard_mode = true
 		elif arg == "--random":
 			start_random()
 		elif arg.begins_with("--skin="):
@@ -79,6 +86,8 @@ func load_progress() -> void:
 	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
 	sound_on = file.get_value("settings", "sound_on", true)
 	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
+	hard_mode = file.get_value("settings", "hard_mode", false)
+	skin_notices_seen.assign(file.get_value("progress", "skin_notices_seen", []))
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
 
@@ -96,6 +105,8 @@ func save_progress() -> void:
 	file.set_value("skin", "glow", glow)
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
+	file.set_value("settings", "hard_mode", hard_mode)
+	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.save(save_path)
@@ -145,6 +156,20 @@ func active_skin() -> String:
 ## Skin a story level must be played in, or "" for free choice: a level's first run (before it
 ## has ever been cleared) uses the skin just earned by clearing the level before it (Ember for
 ## level 1). Once the level is cleared, replays use whatever skin is selected.
+## True (once per level, saved) when the level's forced-skin notice should be shown.
+func take_skin_notice(level: int) -> bool:
+	if level in skin_notices_seen:
+		return false
+	skin_notices_seen.append(level)
+	save_progress()
+	return true
+
+
+func set_hard_mode(on: bool) -> void:
+	hard_mode = on
+	save_progress()
+
+
 func forced_skin_for(level: int) -> String:
 	return Skins.skin_for_level(level - 1) if level > levels_cleared else ""
 

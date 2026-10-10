@@ -97,6 +97,8 @@ var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
 var glow_radius := 0.0
 var rainbow := false
+## Hard mode: fully dimmed areas turn back into unexplored fog.
+var hard_mode := false
 var shake_left := 0.0
 var shake_strength := 0.0
 
@@ -118,15 +120,17 @@ func _ready() -> void:
 			random_seed = progress.random_seed
 		else:
 			level = progress.current_level if progress else 1
+	hard_mode = progress.hard_mode if progress else false
+	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
 	if is_random():
 		config = Levels.random_config(random_seed)
 		maze = MazeGenerator.generate_noise(config.cells, config.seed)
-		hud.set_level_text("RANDOM MAZE #%d" % ((progress.randoms_cleared if progress else 0) + 1))
+		hud.set_level_text("RANDOM MAZE #%d%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag])
 	else:
 		config = Levels.get_config(level)
 		maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
-		hud.set_level_text("LEVEL %d/%d" % [level, Levels.COUNT])
+		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
@@ -145,7 +149,7 @@ func _ready() -> void:
 	slime.apply_skin(skin_color, rainbow)
 	hud.set_skin_color(skin_color, rainbow)
 
-	if forced != "":
+	if forced != "" and progress.take_skin_notice(level):
 		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
 
 	_build_tiles(config.seed, config.get("tile_level", level))
@@ -223,7 +227,10 @@ func fog_alpha_at(pos: Vector2) -> float:
 	var cell := fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor()))
 	if cell.g < 0.0:
 		return 1.0
-	var alpha := fade_alpha(elapsed - cell.r)
+	var age := elapsed - cell.r
+	if hard_mode and age >= FADE_AFTER[-1]:
+		return 1.0
+	var alpha := fade_alpha(age)
 	if cell.g > 0.5:
 		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
 	return alpha
@@ -333,6 +340,7 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("map_size", Vector2(maze.size * TILE))
 	fog_material.set_shader_parameter("glow_radius", glow_radius)
 	fog_material.set_shader_parameter("glow_color", skin_color)
+	fog_material.set_shader_parameter("hard_mode", hard_mode)
 	fog_sprite.material = fog_material
 
 

@@ -28,6 +28,9 @@ static func make_theme() -> Theme:
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		theme.set_color(color_name, "Button", TEXT)
 	theme.set_color("font_disabled_color", "Button", TEXT_OFF)
+	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		theme.set_color(color_name, "CheckBox", TEXT)
+	theme.set_stylebox("focus", "CheckBox", _box(Color(0, 0, 0, 0), GOLD))
 	theme.set_color("font_color", "Label", TEXT)
 	theme.set_stylebox("slider", "HSlider", _box(BUTTON))
 	theme.set_stylebox("grabber_area", "HSlider", _box(BUTTON_PRESSED))

@@ -47,10 +47,12 @@ func recolor() -> void:
 		var button_base := rainbow_color(_time, 160.0) if rainbow else base
 		for color_name: String in BUTTON_COLORS:
 			theme_owner.theme.set_color(color_name, "Button", color_for(ROLE_TEXT, button_base))
+			theme_owner.theme.set_color(color_name, "CheckBox", color_for(ROLE_TEXT, button_base))
 		# The outline around the selected (focused) button glows in the skin's title color.
-		var focus := theme_owner.theme.get_stylebox("focus", "Button") as StyleBoxFlat
-		if focus:
-			focus.border_color = color_for(ROLE_TITLE, button_base)
+		for type in ["Button", "CheckBox"]:
+			var focus := theme_owner.theme.get_stylebox("focus", type) as StyleBoxFlat
+			if focus:
+				focus.border_color = color_for(ROLE_TITLE, button_base)
 
 
 ## Text color for a role, built from a skin color (kept bright enough to read on dark).

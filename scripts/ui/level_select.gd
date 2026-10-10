@@ -1,8 +1,10 @@
 extends Control
 
-## Grid of the 10 story levels. Locked levels can't be picked; cleared ones are marked.
+## Grid of the 10 story levels (locked ones can't be picked; cleared ones are marked), plus the
+## hard mode checkbox: in hard mode, explored areas that fully dim are swallowed by fog again.
 
 var level_buttons: Array[Button] = []
+var hard_mode_box: CheckBox
 
 
 func _ready() -> void:
@@ -29,9 +31,17 @@ func _ready() -> void:
 
 	var info := UIKit.make_label("CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN", 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.position = Vector2(0, 108)
-	info.size = Vector2(320, 24)
 	add_child(info)
+	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	info.offset_top = 106
+	info.offset_bottom = 128
+
+	hard_mode_box = CheckBox.new()
+	hard_mode_box.text = "HARD MODE - FOG RETURNS WHEN AREAS FULLY DIM"
+	hard_mode_box.button_pressed = Progress.hard_mode
+	hard_mode_box.toggled.connect(func(on: bool) -> void: Progress.set_hard_mode(on))
+	hard_mode_box.position = Vector2(26, 136)
+	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
 
 

@@ -18,6 +18,8 @@ uniform float reveal_time = 0.35;
 const int LAYERS = 5;
 uniform float fade_after[4];
 uniform float fade_alpha[5];
+// Hard mode: once a cell has fully dimmed it is covered again like unexplored ground.
+uniform bool hard_mode = false;
 
 uniform vec2 map_size;
 uniform vec4 fog_deep = vec4(0.078, 0.078, 0.133, 1.0);
@@ -36,6 +38,9 @@ float cell_alpha(vec3 cell) {
 		return 1.0;
 	}
 	float age = now - cell.r;
+	if (hard_mode && age >= fade_after[LAYERS - 2]) {
+		return 1.0;
+	}
 	float alpha = fade_alpha[LAYERS - 1];
 	for (int i = 0; i < LAYERS - 1; i++) {
 		if (age < fade_after[i]) {

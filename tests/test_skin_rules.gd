@@ -16,6 +16,8 @@ func _initialize() -> void:
 	progress = root.get_node("Progress")
 	progress.save_path = "user://test_save.cfg"
 	progress.randoms_won = 0
+	progress.skin_notices_seen.clear()
+	progress.hard_mode = false
 
 	# Brand-new player: level 1 is played in Ember (the original orange).
 	progress.levels_cleared = 0
