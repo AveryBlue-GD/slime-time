@@ -9,7 +9,7 @@ The player is a slime in a maze that starts completely black. The only way to re
 - **Free movement:** the slime glides smoothly in any direction (8-way input, analog-feeling), with acceleration and a bit of slippery deceleration, so it feels gooey rather than snappy.
 - The slime paints a continuous goo trail on the floor wherever it goes. Reveal works at a fine grid (e.g. 4x4 px cells under the slime's footprint), so the map is uncovered in smooth, organic blobs, not whole tiles. [default]
 - **Walls touching the trail also become visible** (fully textured, slightly dimmer than the goo-lit floor).
-- **Light fades back:** areas near the slime stay fully lit; once it moves away they darken in steps (after ~3, 7, 12 and 18 s) down to a dim memory of the path, never fully black. Returning relights them.
+- **Light fades back:** areas near the slime stay fully lit; once it moves away they darken in steps (after ~3, 7, 12 and 18 s) down to a dim memory of the path, never fully black. Walls dim at the same moments as the floor (a constant shade darker). Returning relights them.
 - The chalice is hidden until the trail comes within about 1 tile of it. [default]
 - Walking costs slime per pixel traveled (tuned so crossing one 16 px tile costs about 1%). Standing still costs nothing. [default]
 
@@ -40,7 +40,7 @@ The player is a slime in a maze that starts completely black. The only way to re
 - Save progress (highest level reached, unlocked skins, selected skin, custom color, glow) to `user://save.cfg`.
 
 ## Skins
-- Clearing each of levels 1–9 unlocks a new preset color skin.
+- The default skin is **Ember (orange)**. Clearing each of levels 1–9 unlocks a new preset color skin.
 - **Beating the game (level 10) unlocks the finale reward:**
   - A **custom color wheel** (hue/saturation wheel plus a brightness slider).
   - **Luminescence:** the slime glows and actually lights up the dark maze around it (a PointLight2D with an adjustable intensity/radius slider, tinted to the slime's color). The glow reveals the area around the slime as it moves, on top of the trail.
@@ -55,8 +55,12 @@ The player is a slime in a maze that starts completely black. The only way to re
 - Goo trail: several blob variants so the trail doesn't look stamped.
 - Bundle the frames into sprite sheets and play them with AnimatedSprite2D.
 
+## Randomizer mode
+- From the title screen. Every win generates a brand-new maze from a fresh seed; dying retries the same maze.
+- Mazes are shaped by noise (corridors follow noise ridges; a second noise layer knocks out walls to add loops) and are **always completable**: built as a spanning tree over every cell, only ever removing walls afterwards, then verified with a breadth-first search. The slime budget comes from the real shortest path.
+
 ## Screens & UI
-Title screen → level select (only unlocked levels) → game → level-complete popup → next level. Pause menu with restart and quit. HUD: slime %, jump charge meter, level number.
+Title screen (Continue / Level select / Randomizer / Skins / Controls / Quit) → game → level-complete message (with any skin unlocked) → next level. Controls screen remaps every action (arrow keys always work too). Esc returns to the title. HUD: slime % (in the skin's color), jump charge meter, level number.
 
 ## Build in phases (stop and show me after each)
 1. Free gliding movement, goo trail, black map that the trail reveals (with walls next to the trail visible), slime meter, one test maze with the chalice.

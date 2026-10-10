@@ -90,7 +90,13 @@ static func dir_name(v: Vector2) -> String:
 
 func _ready() -> void:
 	sprite.sprite_frames = load_sprite_frames()
+	sprite.material = Skins.make_material(Skins.get_preset(Skins.DEFAULT).color)
 	sprite.play("idle")
+
+
+## Recolors the slime (palette swap of its goo shades).
+func apply_skin(color: Color) -> void:
+	Skins.apply_to(sprite.material, color)
 
 
 func is_airborne() -> bool:

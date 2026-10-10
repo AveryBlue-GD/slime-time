@@ -1,17 +1,18 @@
 extends Node2D
 
-## One maze level: the map starts black, the slime's goo trail reveals it, moving drains
-## the slime meter, and touching the golden chalice wins.
+## One maze: the map starts black, the slime's goo trail reveals it, moving drains the slime
+## meter, and touching the golden chalice wins. Plays a story level or a randomizer maze.
 ##
 ## Jumps leave no trail in the air, only a splat where they land. A clean landing costs
 ## JUMP_COST_FACTOR of gliding the same distance; hitting a wall adds SPLAT_PENALTY and
 ## stains the wall with goo.
 ##
 ## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
-## - trail_image: goo color where the slime has been
-## - fog_image:   per cell, when it was last lit and how bright it may get (see fog.gdshader).
-##   Never-revealed cells are black. Revealed cells near the slime stay lit; once it moves
-##   away they fade back toward darkness in steps (FADE_AFTER / FADE_ALPHA).
+## - trail_image: goo (in the skin's colors) where the slime has been
+## - fog_image:   per cell, r = when it was last lit, g = -1 never revealed / 0 floor / 1 wall
+##   (see fog.gdshader). Revealed cells near the slime stay lit; once it moves away they fade
+##   back toward darkness in steps (FADE_AFTER / FADE_ALPHA). Walls follow the same steps at
+##   the same moments, just a constant WALL_FOG_ALPHA darker, so everything dims together.
 
 const TILE := 16
 const FOG_CELL := 2
@@ -19,16 +20,16 @@ const FOG_CELL := 2
 const TRAIL_RADIUS := 9.0
 ## How far past the trail's edge walls get revealed.
 const WALL_REVEAL_REACH := 4.0
-const WALL_FOG_ALPHA := 0.45
+## How much darker revealed walls are than the floor beside them (0-1 of the remaining light).
+const WALL_FOG_ALPHA := 0.3
 const CHALICE_REVEAL_DISTANCE := 24.0
 const END_DELAY := 2.0
+const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
 ## Flat percent of slime lost when a jump hits a wall.
 const SPLAT_PENALTY := 8.0
 const LANDING_RADIUS := 11.0
 const STAIN_RADIUS := 6.0
-
-const WIN_FINAL_DELAY := 5.0
 
 ## Revealed cells within this distance of the slime are kept fully lit.
 const LIGHT_RADIUS := 20.0
@@ -37,6 +38,10 @@ const LIGHT_RADIUS := 20.0
 const FADE_AFTER: Array[float] = [3.0, 7.0, 12.0, 18.0]
 const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
 const UNREVEALED := Color(0, -1, 0, 0)
+const KIND_FLOOR := 0.0
+const KIND_WALL := 1.0
+## Light radius of a fully glowing slime (custom skin, after beating the game).
+const GLOW_MAX_RADIUS := 64.0
 
 ## Tile atlases from tools/make_placeholder_art.py.
 ## walls.png: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
@@ -51,16 +56,18 @@ const FLOOR_RUBBLE := 7
 const BROKEN := 3
 const RUBBLE_CHANCE := 0.7
 
-const GOO := Color8(56, 183, 100, 120)
-const GOO_DARK := Color8(37, 113, 121, 120)
+const GOO_ALPHA := 120
 const CLEAR := Color(0, 0, 0, 0)
+const TITLE_SCENE := "res://scenes/title.tscn"
 
 signal level_finished(won: bool)
 
-## Level to play (1-10). 0 = take it from the Progress autoload (or 1 without it).
+## Story level to play (1-10). 0 = ask the Progress autoload (or 1 without it).
 @export var level := 0
+## Non-zero: play a randomizer maze from this seed instead of a story level.
+@export var random_seed := 0
 
-## Percent of slime used per tile glided; set per level so a perfect run uses the level's target.
+## Percent of slime used per tile glided; set per maze so a perfect run uses its target.
 var slime_cost_per_tile := 1.0
 var slime_remaining := 100.0
 var finished := false
@@ -72,10 +79,14 @@ var trail_image: Image
 var revealed_walls := {}
 var textures_dirty := false
 var last_slime_pos: Vector2
-## Seconds since the level started; the fog's clock.
+## Seconds since the maze started; the fog's clock.
 var elapsed := 0.0
 ## Slime spent on the most recent jump (for tests and tuning).
 var last_jump_cost := 0.0
+var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
+var goo := Color(0, 0, 0)
+var goo_dark := Color(0, 0, 0)
+var glow_radius := 0.0
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -84,21 +95,40 @@ var last_jump_cost := 0.0
 @onready var slime: Slime = $Slime
 @onready var chalice: Area2D = $Chalice
 @onready var hud: CanvasLayer = $HUD
+@onready var progress: Node = get_node_or_null("/root/Progress")
 
 
 func _ready() -> void:
-	var progress := get_node_or_null("/root/Progress")
-	if level == 0:
-		level = progress.current_level if progress else 1
-	var config := Levels.get_config(level)
-	maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
+	if level == 0 and random_seed == 0:
+		if progress and progress.mode == progress.MODE_RANDOM:
+			random_seed = progress.random_seed
+		else:
+			level = progress.current_level if progress else 1
+	var config: Dictionary
+	if is_random():
+		config = Levels.random_config(random_seed)
+		maze = MazeGenerator.generate_noise(config.cells, config.seed)
+		hud.set_level_text("RANDOM MAZE #%d" % ((progress.randoms_cleared if progress else 0) + 1))
+	else:
+		config = Levels.get_config(level)
+		maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
+		hud.set_level_text("LEVEL %d/%d" % [level, Levels.COUNT])
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
-	_build_tiles(config.seed)
+
+	if progress:
+		skin_color = progress.skin_color()
+		glow_radius = progress.glow_amount() * GLOW_MAX_RADIUS
+	var shades := Skins.shades(skin_color)
+	goo = Color(shades.mid, GOO_ALPHA / 255.0)
+	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
+	slime.apply_skin(skin_color)
+	hud.set_skin_color(skin_color)
+
+	_build_tiles(config.seed, config.get("tile_level", level))
 	_build_overlays()
-	hud.set_level(level)
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
@@ -116,6 +146,10 @@ func _ready() -> void:
 	_flush_textures()
 
 
+func is_random() -> bool:
+	return random_seed != 0
+
+
 func _physics_process(delta: float) -> void:
 	elapsed += delta
 	var pos := slime.position
@@ -130,7 +164,7 @@ func _physics_process(delta: float) -> void:
 			last_slime_pos = pos
 			slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			_paint_goo(pos, TRAIL_RADIUS)
-	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
+	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE + glow_radius * 0.5:
 		chalice.visible = true
 	hud.set_slime(slime_remaining)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
@@ -138,7 +172,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	(fog_sprite.material as ShaderMaterial).set_shader_parameter("now", elapsed)
+	var fog_material := fog_sprite.material as ShaderMaterial
+	fog_material.set_shader_parameter("now", elapsed)
+	fog_material.set_shader_parameter("glow_pos", slime.position + slime.sprite.position)
 	_flush_textures()
 
 
@@ -146,15 +182,19 @@ func is_wall_tile(tile: Vector2i) -> bool:
 	return MazeGenerator.is_wall(maze, tile)
 
 
-## Fog opacity (0 = fully lit, 1 = black) at a pixel position right now; matches fog.gdshader.
+## Fog opacity (0 = fully lit, 1 = black) at a pixel position right now, not counting glow;
+## matches fog.gdshader.
 func fog_alpha_at(pos: Vector2) -> float:
 	var cell := fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor()))
 	if cell.g < 0.0:
 		return 1.0
-	return maxf(fade_alpha(elapsed - cell.r), cell.g)
+	var alpha := fade_alpha(elapsed - cell.r)
+	if cell.g > 0.5:
+		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
+	return alpha
 
 
-## Darkness of a revealed cell last lit `age` seconds ago.
+## Darkness of a revealed floor cell last lit `age` seconds ago.
 static func fade_alpha(age: float) -> float:
 	for i in FADE_AFTER.size():
 		if age < FADE_AFTER[i]:
@@ -163,16 +203,16 @@ static func fade_alpha(age: float) -> float:
 
 
 ## Picks a wall variant for every wall tile (edges from its neighbors, damage and style from
-## the level's weights) and a floor type for every tile. Seeded, so a level always looks the same.
-func _build_tiles(tile_seed: int) -> void:
+## the level's weights) and a floor type for every tile. Seeded, so a maze always looks the same.
+func _build_tiles(tile_seed: int, tile_level: int) -> void:
 	var tile_set := _make_tile_set()
 	floor_layer.tile_set = tile_set
 	wall_layer.tile_set = tile_set
 	var rng := RandomNumberGenerator.new()
 	rng.seed = tile_seed * 7919 + 17
-	var damage_weights := Levels.damage_weights(level)
+	var damage_weights := Levels.damage_weights(tile_level)
 	var style_weights := PackedFloat32Array(Levels.WALL_STYLE)
-	var floor_weights := Levels.floor_weights(level)
+	var floor_weights := Levels.floor_weights(tile_level)
 
 	for y in maze.size.y:
 		for x in maze.size.x:
@@ -240,14 +280,19 @@ func _build_overlays() -> void:
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	trail_image.fill(CLEAR)
 	fog_sprite.texture = ImageTexture.create_from_image(fog_image)
+	trail_sprite.texture = ImageTexture.create_from_image(trail_image)
+	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
+	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
+
 	var fog_material := ShaderMaterial.new()
 	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
 	fog_material.set_shader_parameter("fade_after", PackedFloat32Array(FADE_AFTER))
 	fog_material.set_shader_parameter("fade_alpha", PackedFloat32Array(FADE_ALPHA))
+	fog_material.set_shader_parameter("wall_shade", WALL_FOG_ALPHA)
+	fog_material.set_shader_parameter("map_size", Vector2(maze.size * TILE))
+	fog_material.set_shader_parameter("glow_radius", glow_radius)
+	fog_material.set_shader_parameter("glow_color", skin_color)
 	fog_sprite.material = fog_material
-	trail_sprite.texture = ImageTexture.create_from_image(trail_image)
-	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
-	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 
 
 ## Paints goo on the floor in a disc around pos, then reveals walls next to it.
@@ -256,12 +301,12 @@ func _paint_goo(pos: Vector2, radius: float) -> void:
 	_reveal_walls_near(pos, radius)
 
 
-## Splat stain on the wall the slime just hit, fully lit so it stands out.
+## Splat stain on the wall the slime just hit; lit like the floor so it stands out.
 func _stain_wall(pos: Vector2, wall_normal: Vector2) -> void:
 	_paint_cells(pos - wall_normal * (Slime.RADIUS + 1.0), STAIN_RADIUS, true)
 
 
-## Sets goo + clears fog for fog cells within radius of pos, on floor cells or wall cells only.
+## Sets goo + lights fog cells within radius of pos, on floor cells or wall cells only.
 func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 	var first := Vector2i(((pos - Vector2(radius, radius)) / FOG_CELL).floor())
 	var last := Vector2i(((pos + Vector2(radius, radius)) / FOG_CELL).floor())
@@ -276,11 +321,11 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			if is_wall_tile(tile) != on_walls:
 				continue
 			if on_walls:
-				revealed_walls[tile] = true  # keep the wall-reveal dimming from covering the stain
+				_reveal_wall(tile)
 			elif trail_image.get_pixelv(cell).a > 0.0:
 				continue
-			trail_image.set_pixelv(cell, GOO_DARK if posmod(hash(cell), 5) == 0 else GOO)
-			fog_image.set_pixelv(cell, Color(elapsed, 0.0, 0.0))
+			trail_image.set_pixelv(cell, goo_dark if posmod(hash(cell), 5) == 0 else goo)
+			fog_image.set_pixelv(cell, Color(elapsed, KIND_FLOOR, 0.0))
 			textures_dirty = true
 
 
@@ -308,17 +353,21 @@ func _reveal_walls_near(pos: Vector2, radius: float) -> void:
 	for ty in range(first.y, last.y + 1):
 		for tx in range(first.x, last.x + 1):
 			var tile := Vector2i(tx, ty)
-			if revealed_walls.has(tile) or not is_wall_tile(tile):
-				continue
-			if tx < 0 or ty < 0 or tx >= maze.size.x or ty >= maze.size.y:
+			if not is_wall_tile(tile) or tx < 0 or ty < 0 or tx >= maze.size.x or ty >= maze.size.y:
 				continue
 			var rect := Rect2(Vector2(tile * TILE), Vector2(TILE, TILE))
-			if pos.clamp(rect.position, rect.end).distance_to(pos) > reach:
-				continue
-			revealed_walls[tile] = true
-			fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
-				Color(elapsed, WALL_FOG_ALPHA, 0.0))
-			textures_dirty = true
+			if pos.clamp(rect.position, rect.end).distance_to(pos) <= reach:
+				_reveal_wall(tile)
+
+
+## Marks a whole wall tile revealed (lit now) the first time it's seen.
+func _reveal_wall(tile: Vector2i) -> void:
+	if revealed_walls.has(tile):
+		return
+	revealed_walls[tile] = true
+	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
+		Color(elapsed, KIND_WALL, 0.0))
+	textures_dirty = true
 
 
 func _flush_textures() -> void:
@@ -345,10 +394,21 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		return
 	chalice.visible = true
 	slime.play_celebrate()
+	if is_random():
+		_finish(true, "CHALICE GET!\nA NEW MAZE AWAITS...", END_DELAY)
+		return
+	var text := "CHALICE GET!\nLEVEL %d CLEARED" % level
+	var delay := END_DELAY
 	if level >= Levels.COUNT:
-		_finish(true, "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT, WIN_FINAL_DELAY)
-	else:
-		_finish(true, "CHALICE GET!\nLEVEL %d CLEARED" % level, END_DELAY)
+		text = "YOU ESCAPED ALL %d MAZES!" % Levels.COUNT
+		delay = WIN_FINAL_DELAY
+	if progress and progress.levels_cleared < level:
+		var unlocked := Skins.unlocked_by_level(level)
+		if level >= Levels.COUNT:
+			text += "\nUNLOCKED: COLOR WHEEL + GLOW!"
+		elif unlocked != "":
+			text += "\nNEW SKIN: " + unlocked
+	_finish(true, text, delay)
 
 
 func _dry_up() -> void:
@@ -356,8 +416,8 @@ func _dry_up() -> void:
 	_finish(false, "DRIED UP", END_DELAY)
 
 
-## Freezes play and shows the result. When this is the running scene (not a test), records
-## the win and reloads: the Progress autoload then hands the next level to the new scene.
+## Freezes play and shows the result. When this is the running scene (not a test), records the
+## result, then loads what comes next: the next level, a fresh random maze, a retry, or the title.
 func _finish(won: bool, text: String, delay: float) -> void:
 	finished = true
 	slime.frozen = true
@@ -365,11 +425,20 @@ func _finish(won: bool, text: String, delay: float) -> void:
 	level_finished.emit(won)
 	if not _is_running_scene():
 		return
-	var progress := get_node_or_null("/root/Progress")
+	var back_to_title := false
 	if won and progress:
-		progress.complete_level(level)
+		if is_random():
+			progress.randoms_cleared += 1
+			progress.new_random_maze()
+		else:
+			progress.complete_level(level)
+			back_to_title = level >= Levels.COUNT
 	await get_tree().create_timer(delay).timeout
-	if _is_running_scene():
+	if not _is_running_scene():
+		return
+	if back_to_title:
+		get_tree().change_scene_to_file(TITLE_SCENE)
+	else:
 		get_tree().reload_current_scene()
 
 
@@ -378,5 +447,9 @@ func _is_running_scene() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("restart") and _is_running_scene():
+	if not _is_running_scene():
+		return
+	if event.is_action_pressed("menu"):
+		get_tree().change_scene_to_file(TITLE_SCENE)
+	elif event.is_action_pressed("restart"):
 		get_tree().reload_current_scene()

@@ -34,8 +34,24 @@ const FLOOR_FIRST := [60.0, 10.0, 10.0, 6.0, 8.0, 2.0, 4.0]
 const FLOOR_LAST := [30.0, 18.0, 12.0, 12.0, 10.0, 10.0, 8.0]
 
 
+## Randomizer: a mid-sized noise maze with a mid-level slime budget and tile wear.
+const RANDOM_TARGET := 0.75
+const RANDOM_TILE_LEVEL := 6
+
+
 static func get_config(level: int) -> Dictionary:
 	return DATA[clampi(level, 1, COUNT) - 1]
+
+
+static func random_config(maze_seed: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = maze_seed
+	return {
+		cells = Vector2i(rng.randi_range(14, 18), rng.randi_range(8, 10)),
+		seed = maze_seed,
+		target = RANDOM_TARGET,
+		tile_level = RANDOM_TILE_LEVEL,
+	}
 
 
 static func damage_weights(level: int) -> PackedFloat32Array:

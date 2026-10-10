@@ -1,0 +1,79 @@
+class_name Skins
+extends RefCounted
+
+## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Ember from the
+## start, then one per level 1-9). "custom" (color wheel + glow) unlocks after the final level.
+## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
+## shades derived from the skin's base color, so one sprite sheet serves every skin.
+
+const DEFAULT := "ember"
+const CUSTOM := "custom"
+const CUSTOM_NAME := "YOUR COLOR"
+
+const PRESETS := [
+	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 0},
+	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 1},
+	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 2},
+	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 3},
+	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 4},
+	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 5},
+	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 6},
+	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 7},
+	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 8},
+	{id = "shadow", name = "SHADOW", color = Color8(84, 70, 110), unlock = 9},
+]
+
+## The goo shades the sprite sheet is drawn in (palette "l", "m", "n" in the art script).
+const SOURCE_LIGHT := Color8(148, 226, 112)
+const SOURCE_MID := Color8(56, 183, 100)
+const SOURCE_DARK := Color8(37, 113, 121)
+
+
+static func get_preset(id: String) -> Dictionary:
+	for preset: Dictionary in PRESETS:
+		if preset.id == id:
+			return preset
+	return {}
+
+
+## Levels that must be cleared before this skin can be used.
+static func unlock_level(id: String) -> int:
+	return Levels.COUNT if id == CUSTOM else int(get_preset(id).get("unlock", 0))
+
+
+static func is_unlocked(id: String, levels_cleared: int) -> bool:
+	return levels_cleared >= unlock_level(id)
+
+
+## Display name of the skin that clearing `level` unlocks ("" if none).
+static func unlocked_by_level(level: int) -> String:
+	if level == Levels.COUNT:
+		return CUSTOM_NAME
+	for preset: Dictionary in PRESETS:
+		if preset.unlock == level:
+			return preset.name
+	return ""
+
+
+## Light / mid / dark goo shades built from one base color.
+static func shades(base: Color) -> Dictionary:
+	return {
+		light = Color.from_hsv(wrapf(base.h + 0.03, 0.0, 1.0), base.s * 0.7, minf(base.v * 1.2 + 0.12, 1.0)),
+		mid = base,
+		dark = Color.from_hsv(wrapf(base.h - 0.05, 0.0, 1.0), minf(base.s * 1.1, 1.0), base.v * 0.55),
+	}
+
+
+## Palette-swap material for a slime sprite in this color.
+static func make_material(base: Color) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://assets/shaders/slime_skin.gdshader")
+	apply_to(material, base)
+	return material
+
+
+static func apply_to(material: ShaderMaterial, base: Color) -> void:
+	var colors := shades(base)
+	material.set_shader_parameter("light", colors.light)
+	material.set_shader_parameter("mid", colors.mid)
+	material.set_shader_parameter("dark", colors.dark)

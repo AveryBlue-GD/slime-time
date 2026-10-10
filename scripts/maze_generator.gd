@@ -59,6 +59,84 @@ static func generate(cells: Vector2i, maze_seed: int, branching := 0.0) -> Dicti
 	return maze
 
 
+## Randomizer maze shaped by a noise field. Always completable:
+## 1. A spanning tree is grown over every cell, so every cell connects to every other.
+##    The tree prefers to extend toward the neighbor where the noise is highest, so corridors
+##    follow the noise's ridges and flow in long organic curves instead of a regular weave.
+## 2. Extra walls are knocked out where a second noise layer is high, adding loops
+##    (only ever removing walls, which can't disconnect anything).
+## 3. The start-to-goal path is checked with a breadth-first search before returning.
+static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
+	var size := cells * CELL_SPAN + Vector2i.ONE
+	var walls := PackedByteArray()
+	walls.resize(size.x * size.y)
+	walls.fill(1)
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = maze_seed
+	var flow := FastNoiseLite.new()
+	flow.seed = maze_seed
+	flow.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	flow.frequency = 0.09
+	var loops := FastNoiseLite.new()
+	loops.seed = maze_seed ^ 0x5f3759df
+	loops.frequency = 0.15
+
+	var start := Vector2i.ZERO
+	var visited := {start: true}
+	var active: Array[Vector2i] = [start]
+	_open_cell(walls, size, start)
+	while not active.is_empty():
+		# Branch from an older cell where the noise is low, keep extending where it's high.
+		var index := active.size() - 1
+		if rng.randf() < 0.35 - 0.3 * flow.get_noise_2dv(Vector2(active[index])):
+			index = rng.randi_range(0, active.size() - 1)
+		var cell := active[index]
+		var best := Vector2i(-1, -1)
+		var best_score := -INF
+		for dir in DIRS:
+			var next := cell + dir
+			if not _inside(next, cells) or visited.has(next):
+				continue
+			var score := flow.get_noise_2dv(Vector2(next)) + rng.randf() * 0.35
+			if score > best_score:
+				best_score = score
+				best = next
+		if best.x < 0:
+			active.remove_at(index)
+			continue
+		visited[best] = true
+		_open_cell(walls, size, best)
+		_open_between(walls, size, cell, best)
+		active.append(best)
+
+	for y in cells.y:
+		for x in cells.x:
+			var cell := Vector2i(x, y)
+			for dir: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+				var next := cell + dir
+				if _inside(next, cells) and loops.get_noise_2dv(Vector2(cell) + Vector2(dir) * 0.5) > 0.45 \
+						and rng.randf() < 0.6:
+					_open_between(walls, size, cell, next)
+
+	var maze := {size = size, cells = cells, walls = walls, start = start}
+	var distances := _distances_from(maze, start)
+	var goal := start
+	for cell: Vector2i in distances:
+		if distances[cell] > distances[goal]:
+			goal = cell
+	maze.goal = goal
+	maze.goal_steps = distances[goal]
+	assert(is_completable(maze), "noise maze %d is not fully connected" % maze_seed)
+	return maze
+
+
+## True when every cell (and so the goal) can be reached from the start.
+static func is_completable(maze: Dictionary) -> bool:
+	var reached := _distances_from(maze, maze.start)
+	return reached.size() == maze.cells.x * maze.cells.y and reached.has(maze.get("goal", maze.start))
+
+
 ## Pixel position of the middle of a cell's open area.
 static func cell_center(cell: Vector2i, tile_size: int) -> Vector2:
 	return (Vector2(cell * CELL_SPAN + Vector2i.ONE) + Vector2.ONE * OPEN / 2.0) * tile_size

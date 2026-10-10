@@ -1,13 +1,13 @@
 extends CanvasLayer
 
-## Slime meter (top-left) and a center-screen message.
+## Slime meter (top-left, in the skin's color), level name (top-right) and a center message.
 
 const BAR_SIZE := Vector2(60, 4)
 const FRAME_COLOR := Color8(26, 28, 44)
-const GOO_COLOR := Color8(56, 183, 100)
-const LOW_COLOR := Color8(239, 125, 87)
+const LOW_COLOR := Color8(220, 40, 50)
 
 var fill: ColorRect
+var goo_color := Color8(239, 125, 47)
 var label: Label
 var level_label: Label
 var message: Label
@@ -21,7 +21,7 @@ func _ready() -> void:
 	add_child(frame)
 
 	fill = ColorRect.new()
-	fill.color = GOO_COLOR
+	fill.color = goo_color
 	fill.position = Vector2(5, 5)
 	fill.size = BAR_SIZE
 	add_child(fill)
@@ -33,7 +33,7 @@ func _ready() -> void:
 	level_label = _make_label()
 	level_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	level_label.offset_left = -80
+	level_label.offset_left = -120
 	level_label.offset_right = -4
 	add_child(level_label)
 
@@ -49,12 +49,17 @@ func _ready() -> void:
 
 func set_slime(percent: float) -> void:
 	fill.size.x = roundf(BAR_SIZE.x * clampf(percent, 0.0, 100.0) / 100.0)
-	fill.color = LOW_COLOR if percent < 20.0 else GOO_COLOR
+	fill.color = LOW_COLOR if percent < 20.0 else goo_color
 	label.text = "SLIME %d%%" % ceili(percent)
 
 
-func set_level(level: int) -> void:
-	level_label.text = "LEVEL %d/%d" % [level, Levels.COUNT]
+func set_level_text(text: String) -> void:
+	level_label.text = text
+
+
+func set_skin_color(color: Color) -> void:
+	goo_color = color
+	fill.color = color
 
 
 func show_message(text: String) -> void:
