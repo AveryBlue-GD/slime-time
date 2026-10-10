@@ -2,7 +2,7 @@
 .godot/
 *.tmp
 
-# Build output
+# Build output (exports go to build/windows and build/web)
 /build/
 
 # Screenshots captured by tools/screenshot.ps1

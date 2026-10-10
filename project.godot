@@ -13,6 +13,7 @@ config_version=5
 config/name="Slime Time"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7")
+config/icon="res://icon.png"
 
 [autoload]
 
