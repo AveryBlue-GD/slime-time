@@ -69,6 +69,8 @@ const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
 ## After a win, the replay / next buttons appear after this long (so a held key can't press one).
 const CHOICE_DELAY := 0.6
+## The chalice fanfare plays about a third quieter than other sounds (-3.5 dB = 67% amplitude).
+const CHALICE_VOLUME_DB := -3.5
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
 const SHAKE_TIME := 0.25
 const SHAKE_MAX := 3.0
@@ -483,7 +485,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		return
 	chalice.visible = true
 	slime.play_celebrate()
-	_sfx("chalice")
+	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
 		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time)
 		if progress and progress.randoms_won + 1 == Skins.RAINBOW_RANDOMS:
@@ -597,7 +599,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_tree().reload_current_scene()
 
 
-func _sfx(sound_name: String) -> void:
+func _sfx(sound_name: String, volume_db := 0.0) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		sfx.play(sound_name)
+		sfx.play(sound_name, volume_db)
