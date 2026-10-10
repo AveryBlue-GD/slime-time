@@ -48,7 +48,7 @@ func _ready() -> void:
 	band.position = Vector2(0, SIZE.y - 18)
 	band.size = Vector2(SIZE.x, 18)
 	overlay.add_child(band)
-	var tagline := UIKit.make_label("GLIDE.  SPLAT.  ESCAPE THE FOG.", 8, UIKit.GOLD)
+	var tagline := UIKit.make_label("LEAP!  SPLAT!  ESCAPE THE FOG!", 8, UIKit.GOLD)
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline.position = Vector2(0, SIZE.y - 14)
 	tagline.size = Vector2(SIZE.x, 10)
