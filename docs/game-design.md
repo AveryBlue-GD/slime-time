@@ -35,7 +35,7 @@ The player is a slime in a maze that starts completely black. The only way to re
 ## Levels
 - 10 levels that get harder: larger mazes, more dead ends, and a tighter slime budget.
 - Generate mazes procedurally from a fixed seed per level, so each level is the same every time it's played. [default]
-- **Every level must be beatable:** compute the shortest path to the chalice and set the slime budget so a perfect glide uses about 60% (level 1) down to about 90% (level 10). Add a test that checks this for all 10 levels.
+- **Every level must be beatable:** compute the shortest path to the chalice and set the slime budget so a perfect glide uses about 35% (level 1) up to about 62% (level 10). In hard mode it uses 93% up to 97%, so only a near-perfect run makes it, and splats cost double. Add a test that checks this for all 10 levels.
 - Touching the chalice → short celebration → next level loads immediately. After level 10 → a victory screen.
 - Save progress (highest level reached, unlocked skins, selected skin, custom color, glow) to `user://save.cfg`.
 

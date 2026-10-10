@@ -51,6 +51,21 @@ func _initialize() -> void:
 	_check(stats[-1].dead_ends > stats[0].dead_ends * 3, "dead ends grow (%d -> %d)" % [stats[0].dead_ends, stats[-1].dead_ends])
 	_check(stats[-1].broken > stats[0].broken * 3, "broken walls grow (%.0f%% -> %.0f%%)" % [stats[0].broken * 100.0, stats[-1].broken * 100.0])
 
+	# Hard mode: a perfect run still makes it, but with only a sliver of slime to spare.
+	var settings: Node = root.get_node("Progress")
+	settings.hard_mode = true
+	for level in [1, 10]:
+		var hard := await _spawn(level)
+		hard.add_child(AUTOPILOT.new())
+		for i in 60 * 180:
+			if hard.finished:
+				break
+			await physics_frame
+		_check(hard.won and hard.slime_remaining < 12.0,
+			"hard level %2d: a perfect run wins with only %.1f%% slime left" % [level, hard.slime_remaining])
+		hard.free()
+	settings.hard_mode = false
+
 	var a := await _spawn(5)
 	var b := await _spawn(5)
 	var same: bool = a.maze.walls == b.maze.walls
