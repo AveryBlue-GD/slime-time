@@ -1,9 +1,10 @@
 shader_type canvas_item;
 
-// Drifting fog over the maze. The texture has one texel per fog cell:
-//   r = game time (seconds) the cell was last lit by the slime
-//   g = -1 never revealed, 0 floor/goo, 1 wall
-//   b = game time the cell was first revealed
+// Drifting fog over the maze. The texture is plain RGBA8 (phones can't all load float textures),
+// one texel per fog cell, holding two 16-bit numbers counted in 1/TICKS second steps
+// (packed by game.gd _fog_color):
+//   r,g = when the cell was last lit by the slime
+//   b,a = (when it was first revealed + 1) * 2 + 1 if it's a wall; 0 = never revealed
 // Unexplored cells are fully covered by mist. A newly reached cell clears over `reveal_time`;
 // once the slime moves away, lit cells fade back toward mist in steps. Walls use the same steps
 // at the same moments, just `wall_shade` thicker. Fog edges are softened by blending
@@ -31,13 +32,18 @@ uniform vec4 glow_color = vec4(1.0);
 
 const float BAYER[16] = {0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0};
 const float DITHER_LEVELS = 8.0;
+const float TICKS = 16.0;
 
 // Fog amount for one cell's data (see the channel layout above).
-float cell_alpha(vec3 cell) {
-	if (cell.g < 0.0) {
+float cell_alpha(vec4 texel) {
+	vec4 bytes = floor(texel * 255.0 + 0.5);
+	float packed = bytes.b * 256.0 + bytes.a;
+	if (packed < 1.0) {
 		return 1.0;
 	}
-	float age = now - cell.r;
+	float wall = mod(packed, 2.0);
+	float first_revealed = (floor(packed / 2.0) - 1.0) / TICKS;
+	float age = now - (bytes.r * 256.0 + bytes.g) / TICKS;
 	if (hard_mode && age >= fade_after[LAYERS - 2]) {
 		return 1.0;
 	}
@@ -48,10 +54,10 @@ float cell_alpha(vec3 cell) {
 			break;
 		}
 	}
-	if (cell.g > 0.5) {
+	if (wall > 0.5) {
 		alpha += (1.0 - alpha) * wall_shade;
 	}
-	return max(alpha, 1.0 - clamp((now - cell.b) / reveal_time, 0.0, 1.0));
+	return max(alpha, 1.0 - clamp((now - first_revealed) / reveal_time, 0.0, 1.0));
 }
 
 float hash(vec2 p) {
@@ -69,13 +75,13 @@ float value_noise(vec2 p) {
 void fragment() {
 	vec2 t = TEXTURE_PIXEL_SIZE;
 	// Soft edge: weighted blend of this cell and its neighbors (13 taps, ~3 cells wide).
-	float alpha = cell_alpha(texture(TEXTURE, UV).rgb) * 4.0;
-	alpha += 2.0 * (cell_alpha(texture(TEXTURE, UV + vec2(t.x, 0.0)).rgb) + cell_alpha(texture(TEXTURE, UV - vec2(t.x, 0.0)).rgb)
-		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, t.y)).rgb) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, t.y)).rgb));
-	alpha += cell_alpha(texture(TEXTURE, UV + t).rgb) + cell_alpha(texture(TEXTURE, UV - t).rgb)
-		+ cell_alpha(texture(TEXTURE, UV + vec2(t.x, -t.y)).rgb) + cell_alpha(texture(TEXTURE, UV + vec2(-t.x, t.y)).rgb);
-	alpha += cell_alpha(texture(TEXTURE, UV + vec2(2.0 * t.x, 0.0)).rgb) + cell_alpha(texture(TEXTURE, UV - vec2(2.0 * t.x, 0.0)).rgb)
-		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, 2.0 * t.y)).rgb) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, 2.0 * t.y)).rgb);
+	float alpha = cell_alpha(texture(TEXTURE, UV)) * 4.0;
+	alpha += 2.0 * (cell_alpha(texture(TEXTURE, UV + vec2(t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(t.x, 0.0)))
+		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, t.y))));
+	alpha += cell_alpha(texture(TEXTURE, UV + t)) + cell_alpha(texture(TEXTURE, UV - t))
+		+ cell_alpha(texture(TEXTURE, UV + vec2(t.x, -t.y))) + cell_alpha(texture(TEXTURE, UV + vec2(-t.x, t.y)));
+	alpha += cell_alpha(texture(TEXTURE, UV + vec2(2.0 * t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(2.0 * t.x, 0.0)))
+		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, 2.0 * t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, 2.0 * t.y)));
 	alpha /= 20.0;
 
 	// Dither in world pixels so the pattern stays put as the camera moves.

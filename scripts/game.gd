@@ -9,8 +9,9 @@ extends Node2D
 ##
 ## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
 ## - trail_image: goo (in the skin's colors) where the slime has been
-## - fog_image:   per cell, r = when it was last lit, g = -1 never revealed / 0 floor / 1 wall,
-##   b = when it was first revealed (see fog.gdshader, which draws it as soft drifting mist). Revealed cells near the slime stay lit; once it moves away they fade
+## - fog_image:   per cell, when it was last lit, when it was first revealed, and floor vs wall,
+##   packed into a plain RGBA8 image (see _fog_color) so every device can use it -- many phone
+##   GPUs can't load float textures. fog.gdshader decodes it and draws soft drifting mist. Revealed cells near the slime stay lit; once it moves away they fade
 ##   back toward darkness in steps (FADE_AFTER / FADE_ALPHA). Walls follow the same steps at
 ##   the same moments, just a constant WALL_FOG_ALPHA darker, so everything dims together.
 
@@ -38,9 +39,9 @@ const LIGHT_RADIUS := 20.0
 ## older than the last step, it settles at the final FADE_ALPHA (a dim memory of the path).
 const FADE_AFTER: Array[float] = [3.0, 7.0, 12.0, 18.0]
 const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
-const UNREVEALED := Color(0, -1, 0, 0)
-const KIND_FLOOR := 0.0
-const KIND_WALL := 1.0
+const UNREVEALED := Color(0, 0, 0, 0)
+## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
+const FOG_TICKS := 16.0
 ## Light radius of a fully glowing slime (custom skin, after beating the game).
 const GLOW_MAX_RADIUS := 64.0
 
@@ -224,16 +225,34 @@ func is_wall_tile(tile: Vector2i) -> bool:
 ## Fog opacity (0 = fully lit, 1 = covered) at a pixel position right now; matches fog.gdshader's
 ## per-cell value, without its cosmetic extras (soft edges, clearing fade-in, glow).
 func fog_alpha_at(pos: Vector2) -> float:
-	var cell := fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor()))
-	if cell.g < 0.0:
+	var cell := _fog_decode(fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor())))
+	if not cell.revealed:
 		return 1.0
-	var age := elapsed - cell.r
+	var age: float = elapsed - cell.lit
 	if hard_mode and age >= FADE_AFTER[-1]:
 		return 1.0
 	var alpha := fade_alpha(age)
-	if cell.g > 0.5:
+	if cell.wall:
 		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
 	return alpha
+
+
+## Packs one fog cell into RGBA8: r,g = last-lit time; b,a = (first-revealed time + 1) * 2 + is_wall,
+## both in 1/FOG_TICKS second steps. b,a = 0 means never revealed. fog.gdshader decodes the same way.
+static func _fog_color(lit: float, revealed: float, wall: bool) -> Color:
+	var lit_ticks := clampi(int(lit * FOG_TICKS), 0, 65535)
+	var packed := (clampi(int(revealed * FOG_TICKS), 0, 32766) + 1) * 2 + (1 if wall else 0)
+	return Color8(lit_ticks >> 8, lit_ticks & 255, packed >> 8, packed & 255)
+
+
+static func _fog_decode(color: Color) -> Dictionary:
+	var packed := color.b8 * 256 + color.a8
+	return {
+		revealed = packed > 0,
+		wall = packed % 2 == 1,
+		lit = (color.r8 * 256 + color.g8) / FOG_TICKS,
+		first_revealed = ((packed >> 1) - 1) / FOG_TICKS,
+	}
 
 
 ## Extra slime lost when a jump planned to cover intended_distance px hits a wall.
@@ -323,7 +342,7 @@ func _make_atlas(texture: Texture2D, grid: Vector2i) -> TileSetAtlasSource:
 
 func _build_overlays() -> void:
 	var cells: Vector2i = maze.size * TILE / FOG_CELL
-	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBF)
+	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	fog_image.fill(UNREVEALED)
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	trail_image.fill(CLEAR)
@@ -374,7 +393,7 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			elif trail_image.get_pixelv(cell).a > 0.0:
 				continue
 			trail_image.set_pixelv(cell, _goo_color(posmod(hash(cell), 5) == 0))
-			fog_image.set_pixelv(cell, Color(elapsed, KIND_FLOOR, elapsed))
+			fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
 			textures_dirty = true
 
 
@@ -397,10 +416,9 @@ func _relight(pos: Vector2) -> void:
 			var cell := Vector2i(cx, cy)
 			if ((Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL).distance_to(pos) > LIGHT_RADIUS:
 				continue
-			var value := fog_image.get_pixelv(cell)
-			if value.g >= 0.0 and value.r < elapsed:
-				value.r = elapsed
-				fog_image.set_pixelv(cell, value)
+			var value := _fog_decode(fog_image.get_pixelv(cell))
+			if value.revealed and int(value.lit * FOG_TICKS) < int(elapsed * FOG_TICKS):
+				fog_image.set_pixelv(cell, _fog_color(elapsed, value.first_revealed, value.wall))
 				textures_dirty = true
 
 
@@ -424,7 +442,7 @@ func _reveal_wall(tile: Vector2i) -> void:
 		return
 	revealed_walls[tile] = true
 	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
-		Color(elapsed, KIND_WALL, elapsed))
+		_fog_color(elapsed, elapsed, true))
 	textures_dirty = true
 
 
