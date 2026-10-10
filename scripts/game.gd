@@ -9,8 +9,8 @@ extends Node2D
 ##
 ## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
 ## - trail_image: goo (in the skin's colors) where the slime has been
-## - fog_image:   per cell, r = when it was last lit, g = -1 never revealed / 0 floor / 1 wall
-##   (see fog.gdshader). Revealed cells near the slime stay lit; once it moves away they fade
+## - fog_image:   per cell, r = when it was last lit, g = -1 never revealed / 0 floor / 1 wall,
+##   b = when it was first revealed (see fog.gdshader, which draws it as soft drifting mist). Revealed cells near the slime stay lit; once it moves away they fade
 ##   back toward darkness in steps (FADE_AFTER / FADE_ALPHA). Walls follow the same steps at
 ##   the same moments, just a constant WALL_FOG_ALPHA darker, so everything dims together.
 
@@ -200,8 +200,8 @@ func is_wall_tile(tile: Vector2i) -> bool:
 	return MazeGenerator.is_wall(maze, tile)
 
 
-## Fog opacity (0 = fully lit, 1 = black) at a pixel position right now, not counting glow;
-## matches fog.gdshader.
+## Fog opacity (0 = fully lit, 1 = covered) at a pixel position right now; matches fog.gdshader's
+## per-cell value, without its cosmetic extras (soft edges, clearing fade-in, glow).
 func fog_alpha_at(pos: Vector2) -> float:
 	var cell := fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor()))
 	if cell.g < 0.0:
@@ -299,7 +299,7 @@ func _make_atlas(texture: Texture2D, grid: Vector2i) -> TileSetAtlasSource:
 
 func _build_overlays() -> void:
 	var cells: Vector2i = maze.size * TILE / FOG_CELL
-	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGF)
+	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBF)
 	fog_image.fill(UNREVEALED)
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	trail_image.fill(CLEAR)
@@ -349,7 +349,7 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			elif trail_image.get_pixelv(cell).a > 0.0:
 				continue
 			trail_image.set_pixelv(cell, goo_dark if posmod(hash(cell), 5) == 0 else goo)
-			fog_image.set_pixelv(cell, Color(elapsed, KIND_FLOOR, 0.0))
+			fog_image.set_pixelv(cell, Color(elapsed, KIND_FLOOR, elapsed))
 			textures_dirty = true
 
 
@@ -390,7 +390,7 @@ func _reveal_wall(tile: Vector2i) -> void:
 		return
 	revealed_walls[tile] = true
 	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
-		Color(elapsed, KIND_WALL, 0.0))
+		Color(elapsed, KIND_WALL, elapsed))
 	textures_dirty = true
 
 
