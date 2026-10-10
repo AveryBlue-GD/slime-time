@@ -18,6 +18,11 @@ const MIN_JUMP_TILES := 1.0
 const MAX_JUMP_TILES := 8.0
 const JUMP_SPEED := 220.0
 const SPLAT_STUN := 0.3
+## Splat knockback: the slime is thrown back (reflected off the wall) about this share of the
+## jump distance it still had left when it hit, sliding to a stop on the goo.
+const BOUNCE_FACTOR := 0.4
+## Below this speed a knockback counts as over.
+const KNOCKBACK_END_SPEED := 6.0
 ## How strongly a single-direction press pulls the slime onto the center line of its lane.
 const LANE_PULL := 10.0
 ## Below this speed the slime shows its idle wobble instead of gliding.
@@ -48,6 +53,8 @@ var _jump_distance := 0.0
 var _jump_traveled := 0.0
 ## Distance actually flown by the latest jump (shorter than planned when it hits a wall).
 var last_jump_traveled := 0.0
+## True while sliding from a splat's knockback (that slide costs no slime).
+var knocked_back := false
 var _stun_left := 0.0
 var _splat_side := "n"
 var _land_anim_left := 0.0
@@ -161,11 +168,14 @@ func _physics_process(delta: float) -> void:
 		State.AIRBORNE:
 			_fly(delta)
 		State.STUNNED:
+			_glide(Vector2.ZERO, delta)  # the knockback slides on while stunned
 			_stun_left -= delta
 			if _stun_left <= 0.0:
 				state = State.GLIDE
 				_recover_anim_left = RECOVER_ANIM_TIME
 
+	if knocked_back and (state == State.GLIDE and (input != Vector2.ZERO or velocity.length() < KNOCKBACK_END_SPEED)):
+		knocked_back = false
 	_squish_left -= delta
 	if state == State.GLIDE and velocity.length() > IDLE_SPEED and _squish_left <= 0.0:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
@@ -262,6 +272,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		state = State.STUNNED
 		_stun_left = SPLAT_STUN
 		_splat_side = dir_name(-wall_normal)
+		_knock_back(wall_normal)
 		_sfx("splat")
 		Input.vibrate_handheld(60)  # phones buzz on a splat (no effect elsewhere)
 	else:
@@ -269,6 +280,16 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		_land_anim_left = LAND_ANIM_TIME
 		_sfx("land", -3.0)
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
+
+
+## Throws the slime back off the wall it hit. The leftover jump distance is the momentum: the
+## slide covers BOUNCE_FACTOR of it, so a hard leap into a near wall flies back further than a
+## gentle hop. Friction (v^2 = 2 * friction * distance) sets the starting speed for that slide.
+func _knock_back(wall_normal: Vector2) -> void:
+	var leftover := maxf(_jump_distance - _jump_traveled, 0.0)
+	var slide := leftover * BOUNCE_FACTOR
+	velocity = _jump_dir.bounce(wall_normal).normalized() * sqrt(2.0 * friction * slide)
+	knocked_back = slide > 0.5
 
 
 func _sfx(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:

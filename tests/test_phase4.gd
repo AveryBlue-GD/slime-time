@@ -63,6 +63,7 @@ func _initialize() -> void:
 	var path := MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
 	var far := MazeGenerator.cell_center(path[path.size() / 2], 16)  # well away from the start and the chalice
 	slime.position = far
+	slime.velocity = Vector2.ZERO  # drop any leftover splat knockback
 	game.last_slime_pos = far
 	await _wait(2.0)
 	var after_4: float = game.fog_alpha_at(start)

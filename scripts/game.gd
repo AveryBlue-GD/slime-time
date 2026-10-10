@@ -202,7 +202,8 @@ func _physics_process(delta: float) -> void:
 		var moved := pos.distance_to(last_slime_pos)
 		if moved > 0.0:
 			last_slime_pos = pos
-			slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
+			if not slime.knocked_back:  # a splat's knockback slide is already paid for
+				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			_paint_goo(pos, TRAIL_RADIUS)
 	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE + glow_radius * 0.5:
 		chalice.visible = true

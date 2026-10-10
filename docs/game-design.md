@@ -21,7 +21,7 @@ The player is a slime in a maze that starts completely black. The only way to re
 - Hold Space to charge from 0 to 100 (a meter appears above the slime; full charge takes about 1.5s). Release to launch in the current movement or facing direction.
 - Jump distance scales with charge, from about 1 to 8 tiles. While charging, show a faint dotted landing marker so skilled players can judge distance, but it does NOT reveal what lies in between. [default]
 - Clean landing: costs **less** than gliding the same distance (about half). [default]
-- Hitting a wall mid-jump: the slime **splats** against it, is stunned briefly (0.3 s), and pays half the glide cost of the distance actually flown plus a penalty from 2% (tiny hop) to 5% (full-power leap); still more than carefully gliding there, but not crushing. The screen shakes and the splat leaves a goo stain on the wall.
+- Hitting a wall mid-jump: the slime **splats** against it, is stunned briefly (0.3 s), and pays half the glide cost of the distance actually flown plus a penalty from 2% (tiny hop) to 5% (full-power leap); still more than carefully gliding there, but not crushing. The screen shakes, the splat leaves a goo stain on the wall, and the slime is thrown back off the wall (reflected) by ~40% of the jump distance it had left, so hard leaps bounce further; that slide costs no extra slime.
 - No trail is left mid-air (only a landing splat and any wall splat), so jumping saves slime but reveals less of the map. [default]
 
 ## Walls & floors: varied textures
