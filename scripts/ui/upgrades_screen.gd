@@ -90,8 +90,8 @@ func _change(id: String, up: bool) -> void:
 	var changed: bool = Progress.buy_upgrade(id) if up else Progress.refund_upgrade(id)
 	if changed:
 		var sfx := get_node_or_null("/root/Sfx")
-		if sfx and up:
-			sfx.play("coin", -6.0)
+		if sfx and up:  # a power-up swell, a little higher for each level
+			sfx.play("upgrade", -4.0, 1.0 + 0.03 * (Progress.upgrade_level(id) - 1))
 	_refresh()
 
 

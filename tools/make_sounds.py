@@ -187,6 +187,15 @@ SOUNDS = {
     "coin": lambda: mix(sizzle(0.8, 0.42, seed=51),
                         metal_ring((540, 1310, 2090), 0.55, 0.12, droop=0.25),
                         [0.0] * int(0.06 * RATE) + gurgle(0.6, 22, 700, 1500, 0.06, seed=52)),
+    # Upgrade bought: the slime swells with power (a low wobbling surge), a climbing phrase of
+    # round tones settles on a held note with a soft ring on top, and bubbles rise through it.
+    # The upgrades screen pitches it up a little per level bought.
+    "upgrade": lambda: mix(bloop(110, 300, 0.3, 0.34, wobble=0.06, wobble_rate=9, attack=0.03, release=0.1),
+                           [0.0] * int(0.12 * RATE) + seq(
+                               *(bloop(f, f * 1.01, 0.07, 0.24, shape="tri", release=0.03) for f in (196, 247, 294)),
+                               bloop(392, 394, 0.42, 0.22, wobble=0.015, wobble_rate=6, shape="tri", release=0.36)),
+                           [0.0] * int(0.33 * RATE) + chime_tone(784, 0.4, 0.1),
+                           gurgle(0.6, 12, 260, 700, 0.08, seed=61)),
     # Gold skin, gliding: a little jingle of coins.
     "jingle": lambda: mix(chime_tone(784, 0.12, 0.3), [0.0] * int(0.03 * RATE) + chime_tone(1047, 0.12, 0.22),
                           [0.0] * int(0.06 * RATE) + chime_tone(880, 0.14, 0.18)),
