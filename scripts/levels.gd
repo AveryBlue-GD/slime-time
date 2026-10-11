@@ -5,22 +5,21 @@ extends RefCounted
 ## - cells:     maze size in cells (each cell is one open tile; corridors are 1 tile wide)
 ## - branching: 0 = long winding corridors, higher = more side branches and dead ends
 ## - target:    fraction of the slime meter a perfect glide to the chalice uses
-## - hard_target: the same in hard mode, which leaves almost no room for wrong turns
 ## Seeds were picked so the path to the chalice grows steadily: 22, 26, 30 ... 66 cells.
 
 const COUNT := 10
 
 const DATA := [
-	{cells = Vector2i(10, 6), seed = 1078, branching = 0.05, target = 0.35, hard_target = 0.93},
-	{cells = Vector2i(11, 7), seed = 2016, branching = 0.10, target = 0.38, hard_target = 0.93},
-	{cells = Vector2i(12, 7), seed = 3007, branching = 0.15, target = 0.41, hard_target = 0.94},
-	{cells = Vector2i(13, 8), seed = 4003, branching = 0.20, target = 0.44, hard_target = 0.94},
-	{cells = Vector2i(14, 8), seed = 5006, branching = 0.25, target = 0.47, hard_target = 0.95},
-	{cells = Vector2i(16, 9), seed = 6012, branching = 0.30, target = 0.50, hard_target = 0.95},
-	{cells = Vector2i(17, 10), seed = 7038, branching = 0.35, target = 0.53, hard_target = 0.96},
-	{cells = Vector2i(18, 10), seed = 8042, branching = 0.40, target = 0.56, hard_target = 0.96},
-	{cells = Vector2i(20, 11), seed = 9005, branching = 0.45, target = 0.59, hard_target = 0.97},
-	{cells = Vector2i(22, 12), seed = 10012, branching = 0.50, target = 0.62, hard_target = 0.97},
+	{cells = Vector2i(10, 6), seed = 1078, branching = 0.05, target = 0.60},
+	{cells = Vector2i(11, 7), seed = 2016, branching = 0.10, target = 0.63},
+	{cells = Vector2i(12, 7), seed = 3007, branching = 0.15, target = 0.66},
+	{cells = Vector2i(13, 8), seed = 4003, branching = 0.20, target = 0.70},
+	{cells = Vector2i(14, 8), seed = 5006, branching = 0.25, target = 0.73},
+	{cells = Vector2i(16, 9), seed = 6012, branching = 0.30, target = 0.77},
+	{cells = Vector2i(17, 10), seed = 7038, branching = 0.35, target = 0.80},
+	{cells = Vector2i(18, 10), seed = 8042, branching = 0.40, target = 0.83},
+	{cells = Vector2i(20, 11), seed = 9005, branching = 0.45, target = 0.87},
+	{cells = Vector2i(22, 12), seed = 10012, branching = 0.50, target = 0.90},
 ]
 
 ## Wall damage weights (intact, cracked, crumbling, broken) for level 1 and level 10;
@@ -36,8 +35,7 @@ const FLOOR_LAST := [30.0, 18.0, 12.0, 12.0, 10.0, 10.0, 8.0]
 
 
 ## Randomizer: a mid-sized noise maze with a mid-level slime budget and tile wear.
-const RANDOM_TARGET := 0.50
-const RANDOM_HARD_TARGET := 0.95
+const RANDOM_TARGET := 0.75
 const RANDOM_TILE_LEVEL := 6
 
 
@@ -52,7 +50,6 @@ static func random_config(maze_seed: int) -> Dictionary:
 		cells = Vector2i(rng.randi_range(14, 18), rng.randi_range(8, 10)),
 		seed = maze_seed,
 		target = RANDOM_TARGET,
-		hard_target = RANDOM_HARD_TARGET,
 		tile_level = RANDOM_TILE_LEVEL,
 	}
 

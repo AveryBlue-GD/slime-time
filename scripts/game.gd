@@ -30,8 +30,6 @@ const JUMP_COST_FACTOR := 0.5
 ## Extra percent of slime lost when a jump hits a wall, scaled by how hard it was charged.
 const SPLAT_PENALTY_MIN := 2.0
 const SPLAT_PENALTY_MAX := 5.0
-## Hard mode multiplies the splat penalty.
-const HARD_SPLAT_FACTOR := 2.0
 const LANDING_RADIUS := 11.0
 const STAIN_RADIUS := 6.0
 
@@ -147,8 +145,7 @@ func _ready() -> void:
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
-	var target: float = config.hard_target if hard_mode else config.target
-	slime_cost_per_tile = target * 100.0 / path_tiles
+	slime_cost_per_tile = config.target * 100.0 / path_tiles
 
 	var forced := ""
 	if progress:
@@ -474,7 +471,7 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall:
-		last_jump_cost += splat_penalty(intended_distance) * (HARD_SPLAT_FACTOR if hard_mode else 1.0)
+		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
 		shake_left = SHAKE_TIME
 		shake_strength = lerpf(1.0, SHAKE_MAX, inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
