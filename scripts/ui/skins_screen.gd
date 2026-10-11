@@ -58,10 +58,6 @@ func _make_tile(id: String) -> Button:
 		preview.modulate = Color(0, 0, 0, 0.85)
 		preview.pause()
 	tile.add_child(preview)
-	if id == Skins.CUSTOM:
-		var mark := UIKit.make_label("???" if not unlocked else "")
-		mark.position = Vector2(14, 20)
-		tile.add_child(mark)
 	tile.set_meta("preview", preview)
 	tiles[id] = tile
 	return tile
@@ -132,6 +128,9 @@ func _refresh(focus_id := "") -> void:
 	if not unlocked:
 		if id == Skins.CUSTOM:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
+		elif id == Skins.RAINBOW and not Progress.is_randomizer_unlocked():
+			# How to earn it stays a secret until the randomizer opens up.
+			status.text = "LOCKED - BEAT ALL %d LEVELS TO FIND OUT HOW" % Levels.COUNT
 		elif id == Skins.RAINBOW:
 			status.text = "LOCKED - BEAT %d RANDOM MAZES (%d/%d)" % [Skins.RAINBOW_RANDOMS, Progress.randoms_won, Skins.RAINBOW_RANDOMS]
 		else:

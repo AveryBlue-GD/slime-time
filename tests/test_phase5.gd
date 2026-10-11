@@ -151,11 +151,15 @@ func _initialize() -> void:
 	screen.free()
 	screen = await _open("res://scenes/skins.tscn")
 	_check(screen.tiles.size() == 12 and not screen.custom_panel.visible, "skins screen: 12 tiles, color wheel hidden until unlocked")
+	screen._refresh(Skins.RAINBOW)
+	_check(not "RANDOM" in screen.status.text, "the rainbow unlock method stays hidden before the story is beaten (%s)" % screen.status.text)
 	screen.free()
 	progress.levels_cleared = 10
 	progress.selected_skin = Skins.CUSTOM
 	screen = await _open("res://scenes/skins.tscn")
 	_check(screen.custom_panel.visible, "after beating the game the color wheel + glow panel shows")
+	screen._refresh(Skins.RAINBOW)
+	_check("RANDOM MAZES" in screen.status.text, "after the story it says how to earn the rainbow skin (%s)" % screen.status.text)
 	screen.free()
 	screen = await _open("res://scenes/controls.tscn")
 	_check(screen.key_buttons.size() == 6 and screen.key_buttons.jump.text == "SPACE", "controls screen lists 6 actions (jump = %s)" % screen.key_buttons.jump.text)
