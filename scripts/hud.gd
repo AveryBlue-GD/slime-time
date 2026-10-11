@@ -4,8 +4,10 @@ extends CanvasLayer
 ## color + percent), run timer (clock icon), level name. Plus a center message on a panel, the
 ## gold NEW RECORD! banner with sparkling chalices, and a soft vignette under it all.
 
-const BAR_SIZE := Vector2(50, 6)
-const SEGMENTS := 5
+## Four 25% chunks: 12 px each with 1 px gaps (4 * 12 + 3 = 51).
+const BAR_SIZE := Vector2(51, 6)
+const SEGMENTS := 4
+const CHUNK := 12
 const POD_MARGIN := 3
 ## Below this percent the meter turns red and pulses.
 const LOW_PERCENT := 20.0
@@ -148,7 +150,7 @@ func _build_meter() -> Control:
 	fill = _add_rect(meter, Vector2.ONE, BAR_SIZE, goo_color)
 	_shine = _add_rect(meter, Vector2.ONE, Vector2(BAR_SIZE.x, 1), Color(1, 1, 1, 0.35))
 	for i in range(1, SEGMENTS):
-		_add_rect(meter, Vector2(1 + i * BAR_SIZE.x / SEGMENTS, 1), Vector2(1, BAR_SIZE.y), Color(FRAME_COLOR, 0.6))
+		_add_rect(meter, Vector2(i * (CHUNK + 1), 1), Vector2(1, BAR_SIZE.y), Color(FRAME_COLOR, 0.6))
 	return meter
 
 
