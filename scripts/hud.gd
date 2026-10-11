@@ -284,7 +284,7 @@ func _build_record_banner() -> void:
 	row.add_theme_constant_override("separation", 6)
 	record_banner.add_child(row)
 	var words := VBoxContainer.new()
-	words.add_theme_constant_override("separation", 0)
+	words.add_theme_constant_override("separation", 5)  # room for the title's drips (they hang below its line box)
 	var title := _gold_label("NEW RECORD!", 16)
 	record_time_label = _gold_label("", 8)
 	words.add_child(title)
