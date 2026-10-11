@@ -13,6 +13,9 @@ uniform vec4 dark = vec4(0.145, 0.443, 0.475, 1.0);
 uniform vec4 deep = vec4(0.086, 0.259, 0.322, 1.0);
 uniform vec4 outline = vec4(0.047, 0.149, 0.188, 1.0);
 uniform bool rainbow = false;
+// Jelly test (0 = solid, 1 = see-through): the goo body lets the floor show through, while the
+// outline, shine and eyes stay solid so the slime still reads clearly.
+uniform float translucency = 0.0;
 // Rainbow cycles per second passing any point, and how wide one full rainbow is (px).
 uniform float rainbow_speed = 0.45;
 uniform float rainbow_width = 16.0;
@@ -24,6 +27,8 @@ const vec3 SOURCES[6] = {
 };
 // Rainbow version of each shade: saturation, value.
 const vec2 RAINBOW_SV[6] = {vec2(0.2, 1.0), vec2(0.45, 1.0), vec2(0.8, 0.95), vec2(0.85, 0.55), vec2(0.9, 0.36), vec2(0.9, 0.18)};
+// How see-through each goo shade gets at full translucency (highlight ... outline).
+const float JELLY_ALPHA[6] = {0.9, 0.55, 0.42, 0.52, 0.68, 1.0};
 const float MATCH = 0.02;
 const float HUE_STEPS = 12.0;
 
@@ -64,5 +69,9 @@ void fragment() {
 		vec4 swaps[6] = {highlight, light, mid, dark, deep, outline};
 		rgb = swaps[shade].rgb;
 	}
-	COLOR = vec4(rgb, texel.a) * tint;
+	float alpha = texel.a;
+	if (shade >= 0) {
+		alpha *= mix(1.0, JELLY_ALPHA[shade], translucency);
+	}
+	COLOR = vec4(rgb, alpha) * tint;
 }

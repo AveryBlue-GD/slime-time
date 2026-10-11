@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -35,6 +35,8 @@ var upgrades := {}
 ## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
 ## returns to the level (not saved).
 var return_to_game := false
+## Jelly test (--jelly, not saved): a see-through slime; collected coins sink in and dissolve.
+var jelly := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 const DEV_COINS := 999
@@ -110,6 +112,8 @@ func _ready() -> void:
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
+		elif arg == "--jelly":
+			jelly = true
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 

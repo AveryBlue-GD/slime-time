@@ -62,8 +62,6 @@ const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 
 ## Set by the game when the slime dries up or reaches the chalice.
 var frozen := false
-## Gold skin (set by the game): gliding jingles like money, jumps and landings are louder.
-var gold := false
 var state := State.GLIDE
 ## 0-100 while charging.
 var charge := 0.0
@@ -175,6 +173,11 @@ func _ready() -> void:
 	add_child(_drips)
 
 
+## Jelly test: how see-through the goo body is (0 = solid).
+func set_translucency(amount: float) -> void:
+	(sprite.material as ShaderMaterial).set_shader_parameter("translucency", amount)
+
+
 ## Recolors the slime (palette swap of its goo shades) and its droplets.
 func apply_skin(color: Color, rainbow := false) -> void:
 	Skins.apply_to(sprite.material, color, rainbow)
@@ -210,7 +213,7 @@ func launch(charge_value: float) -> void:
 	state = State.AIRBORNE
 	_sfx_stop("charge")
 	launched.emit(_jump_dir * JUMP_SPEED, _jump_distance / JUMP_SPEED)
-	_sfx("jump", 1.0 if gold else -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
+	_sfx("jump", -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
 
 
 func _physics_process(delta: float) -> void:
@@ -252,10 +255,7 @@ func _physics_process(delta: float) -> void:
 	_squish_left -= delta
 	if state == State.GLIDE and velocity.length() > IDLE_SPEED and _squish_left <= 0.0:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
-		if gold:
-			_sfx("jingle", -10.0, randf_range(0.9, 1.1))
-		else:
-			_sfx("squish", -12.0, randf_range(0.85, 1.15))
+		_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
 	_bounce_fx_left = maxf(_bounce_fx_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
@@ -423,7 +423,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	else:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME
-		_sfx("land", 2.0 if gold else -3.0)
+		_sfx("land", -3.0)
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
 
 

@@ -72,7 +72,7 @@ func _initialize() -> void:
 	_check(progress.selected_skin == Skins.GOLD, "finding every coin unlocks the gold skin")
 	game = await _play(2)
 	current_scene = null
-	_check(game.gold and game.slime.gold and game.skin_color == Skins.GOLD_COLOR, "the gold skin switches on its money effects")
+	_check(game.gold and game.skin_color == Skins.GOLD_COLOR, "the gold skin switches on its gold sparks")
 	game.free()
 
 	# --- RESET PROGRESS needs CONFIRM

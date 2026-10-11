@@ -6,7 +6,7 @@ extends RefCounted
 ## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel + glow) unlocks after the final level.
 ## "rainbow" unlocks by beating every level on hard mode: rainbow bands flow across the slime
 ## like a wave, and its trail cycles through the rainbow. "gold" unlocks by finding every coin in
-## the story: gliding jingles like money, and jumps and landings ring out louder with gold sparks.
+## the story: jumps and landings throw off gold sparks.
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 

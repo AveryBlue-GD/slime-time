@@ -125,7 +125,7 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
-## Gold skin: gliding jingles like money, jumps and landings ring out louder with gold sparks.
+## Gold skin: jumps and landings throw off gold sparks.
 var gold := false
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
@@ -194,6 +194,8 @@ func _ready() -> void:
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
 	slime.apply_skin(skin_color, rainbow)
+	if progress and progress.jelly:
+		slime.set_translucency(1.0)
 	hud.set_skin_color(skin_color, rainbow)
 
 	if equipped != "":
@@ -214,7 +216,6 @@ func _ready() -> void:
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
-	slime.gold = gold
 	if gold:
 		slime.launched.connect(func(_v: Vector2, _t: float) -> void: _gold_flourish(slime.position, 12))
 	restart_prompt = RestartPrompt.new()
@@ -627,9 +628,12 @@ func _pick_up_coins(pos: Vector2) -> void:
 			continue
 		coins.erase(coin)
 		progress.collect_coin(level, coin.cell)
-		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
 		_sfx("coin", -4.0)
-		coin.queue_free()
+		if progress.jelly:
+			coin.dissolve_into(slime, Skins.shades(skin_color).light)  # seen sinking into the body
+		else:
+			Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
+			coin.queue_free()
 		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
 		if progress.coins_earned() == Upgrades.full_tree_cost():  # the very last coin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.GOLD_NAME, 3.0)
@@ -697,10 +701,9 @@ func _break_wall(tile: Vector2i) -> void:
 	_sfx("crumble")
 
 
-## Gold skin: a gold spark burst (bigger for landings), and the move's sound rung out louder.
+## Gold skin: a gold spark burst (bigger for landings).
 func _gold_flourish(at: Vector2, sparks: int) -> void:
 	Fx.burst(self, at, Color8(255, 214, 90), sparks, 55.0)
-	_sfx("jingle", -2.0)
 
 
 ## Puts the selected hat on the slime: it pops off on every leap and comes back down on its head.
