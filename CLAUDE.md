@@ -37,7 +37,7 @@ Godot isn't on PATH; `tools/godot.ps1` finds the winget-installed console binary
 - Inspect a screenshot up close: `python tools/upscale_png.py .screens/latest.png .screens/zoom.png 4 [x y w h]`
 
 ## Workflow
-- Launching for the user to play: always add `--right-screen` (opens on their right monitor). "Launch" = their real save: `.	ools\godot.ps1 --path . -- --right-screen`; "dev mode" = everything unlocked, nothing saved: `.	ools\godot.ps1 --path . -- --unlock-all --right-screen` (run in the background).
+- Launching for the user to play: always add `--right-screen` (opens on their right monitor). "Launch" = their real save: `.\tools\godot.ps1 --path . -- --right-screen`; "dev mode" = everything unlocked, nothing saved: `.\tools\godot.ps1 --path . -- --unlock-all --right-screen` (run in the background).
 - After gameplay or visual changes: run the tests and take a screenshot to confirm before reporting done.
 - Input actions in `project.godot` `[input]`: `move_left/right/up/down` (WASD + arrows), `jump` (Space), `restart` (R), `menu` (Esc = pause / back, not remappable). `Progress.apply_bindings()` replaces the remappable ones at startup.
 - In canvas_item shaders, fragment `COLOR` already includes the texture; pass modulate through a varying if you need it (see `slime_skin.gdshader`).
