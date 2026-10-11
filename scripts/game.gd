@@ -69,11 +69,12 @@ const LOOK_AHEAD_TIME := 0.3
 const LOOK_AHEAD_MAX := 24.0
 const LOOK_AHEAD_SPEED := 3.0
 const CHALICE_GOLD := Color8(255, 205, 117)
-## Ambience (tools/make_ambience.py). Most themes are quiet apart from distant one-off sounds
-## (assets/sounds/ambient_<theme>_<n>.wav) played at random every AMBIENT_EVENT_GAP seconds, at a
-## random level within AMBIENT_EVENT_DB. Themes with a continuous bed (ambient_<theme>.wav: the
-## Sunken Shrine's waves, the Sandstone Sanctum's sandstorm) loop it at AMBIENT_VOLUME_DB.
-const AMBIENT_VOLUME_DB := -9.0
+## Ambience (tools/make_ambience.py). Every theme loops a bed (assets/sounds/ambient_<theme>.wav):
+## very faint (AMBIENT_FAINT_DB) except the Sunken Shrine's waves and the Sandstone Sanctum's
+## sandstorm (AMBIENT_BED_DB). On top, distant one-off sounds (ambient_<theme>_<n>.wav) play at
+## random every AMBIENT_EVENT_GAP seconds, at a random level within AMBIENT_EVENT_DB.
+const AMBIENT_FAINT_DB := -20.0
+const AMBIENT_BED_DB := {"sunken": -9.0, "sandstone": -9.0}
 const AMBIENT_FADE := 2.0
 const AMBIENT_EVENT_GAP := Vector2(4.0, 11.0)
 const AMBIENT_EVENT_DB := Vector2(-19.0, -11.0)
@@ -120,7 +121,7 @@ var slime_light: Sprite2D
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
-## Plays the theme's continuous ambient loop, if it has one (follows the sound on/off setting).
+## Plays the theme's continuous ambient loop (follows the sound on/off setting).
 var ambient: AudioStreamPlayer
 ## The theme's one-off ambient sounds, and the player and countdown for the next one.
 var ambient_events: Array[AudioStream] = []
@@ -268,7 +269,7 @@ func _start_ambience() -> void:
 		ambient.stream = stream
 		ambient.volume_db = -60.0
 		add_child(ambient)
-		create_tween().tween_property(ambient, "volume_db", AMBIENT_VOLUME_DB, AMBIENT_FADE)
+		create_tween().tween_property(ambient, "volume_db", AMBIENT_BED_DB.get(theme, AMBIENT_FAINT_DB), AMBIENT_FADE)
 	var k := 0
 	while ResourceLoader.exists("res://assets/sounds/ambient_%s_%d.wav" % [theme, k]):
 		ambient_events.append(load("res://assets/sounds/ambient_%s_%d.wav" % [theme, k]))

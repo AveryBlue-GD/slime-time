@@ -2,12 +2,14 @@
 
 Run from the project root:  python tools/make_ambience.py
 
-Most themes are quiet: instead of a constant bed they get a few distant one-off sounds, which
-the game plays now and then at random (game.gd AMBIENT_EVENT_GAP):
+Every theme has a continuous, seamless loop (assets/sounds/ambient_<theme>.wav). The Sunken
+Shrine's waves and the Sandstone Sanctum's sandstorm are played fairly loud; the rest are very
+faint and built from tones, resonance and water textures rather than plain noise: a moaning
+draft, an underground stream, a ghostly choir, a singing icy wind, a glassy hum, shimmering
+crystals, a magma rumble (game.gd AMBIENT_BED_DB).
+On top of that each theme has a few distant one-off sounds the game plays now and then at
+random (game.gd AMBIENT_EVENT_GAP):
 - assets/sounds/ambient_<theme>_<n>.wav  (n = 0, 1, 2, ...)
-Two themes also have a continuous, seamless loop under those:
-- assets/sounds/ambient_sunken.wav     rolling waves
-- assets/sounds/ambient_sandstone.wav  a sandstorm
 
 Events get a long echo so they sound far off in a big space. Everything uses fixed seeds, so
 reruns give the same files. 22.05 kHz, 16-bit mono.
@@ -319,6 +321,115 @@ def sandstorm() -> list[float]:
     return mix(out, lowpass(grains, 0.2))
 
 
+BED_N = int((LOOP + TAIL) * RATE)
+
+
+def resonant(track: list[float], center, damping: float) -> list[float]:
+    """State-variable band-pass whose center frequency follows center(t) (Hz). Low damping
+    makes it ring, turning noise into a pitched moan or whistle."""
+    low = band_ = 0.0
+    out = []
+    for i, x in enumerate(track):
+        f = 2 * math.sin(math.pi * min(center(i / RATE), RATE / 6) / RATE)
+        low += f * band_
+        high = x - low - damping * band_
+        band_ += f * high
+        out.append(band_)
+    peak = max(abs(s) for s in out) or 1.0
+    return [s / peak for s in out]
+
+
+def slow(t: float, cycles: int, phase: float = 0.0) -> float:
+    """A slow 0..1 wave with a whole number of cycles per loop (so it loops seamlessly)."""
+    return 0.5 + 0.5 * math.sin(2 * math.pi * cycles * t / LOOP + phase)
+
+
+def pad(freqs: list[float], gain: float, harmonics=(1.0,), vibrato=0.003, twinkle=0) -> list[float]:
+    """Sustained tones; `twinkle` gives each its own slow fade in and out (shimmer)."""
+    out, phases = [], [0.0] * len(freqs)
+    for i in range(BED_N):
+        t = i / RATE
+        value = 0.0
+        for k, f in enumerate(freqs):
+            phases[k] += f * (1 + vibrato * math.sin(2 * math.pi * (0.11 + 0.05 * k) * t)) / RATE
+            level = slow(t, twinkle + k % 3, k * 1.7) if twinkle else 1.0
+            value += level * sum(a * math.sin(2 * math.pi * phases[k] * (h + 1)) for h, a in enumerate(harmonics))
+        out.append(value / len(freqs) * gain)
+    return out
+
+
+def babble(rate: float, low: float, high: float, seed: int, smooth: float) -> list[float]:
+    """Running water: a constant stream of tiny bubbles."""
+    rng = random.Random(seed)
+    out = [0.0] * BED_N
+    for _ in range(int(rate * (LOOP + TAIL))):
+        place(out, bubble(rng.uniform(low, high), rng.uniform(0.03, 0.07), rng.uniform(0.2, 0.5), rise=2.0),
+              rng.uniform(0, LOOP + TAIL))
+    return lowpass(out, smooth)
+
+
+def dungeon_air() -> list[float]:
+    """A draft moaning through the corridors over a low, cold drone."""
+    moan = resonant(noise_lp(BED_N, 0.6, 60), lambda t: 170 + 140 * slow(t, 3), 0.1)
+    return mix([m * (0.4 + 0.6 * slow(i / RATE, 2, 1.0)) for i, m in enumerate(moan)], pad([73.4, 110], 0.35))
+
+
+def mine_stream() -> list[float]:
+    """An underground stream babbling somewhere behind the rock."""
+    return mix(babble(40, 220, 620, 61, 0.65), pad([55], 0.25))
+
+
+def sewer_flow() -> list[float]:
+    """Sewage sloshing through the pipes, and the pipes' low hum."""
+    hum = pad([60, 120], 0.3, vibrato=0.0)
+    return mix(babble(50, 110, 340, 62, 0.55), [h * (0.6 + 0.4 * slow(i / RATE, 4)) for i, h in enumerate(hum)])
+
+
+def ghost_choir() -> list[float]:
+    """A distant ghostly choir holding a minor chord, its vowels slowly shifting."""
+    out = []
+    phases = [0.0, 0.0, 0.0]
+    freqs = [146.8, 174.6, 220.0]
+    for i in range(BED_N):
+        t = i / RATE
+        vowel = slow(t, 2)  # "ooh" (few harmonics) <-> "aah" (more)
+        value = 0.0
+        for k, f in enumerate(freqs):
+            phases[k] += f * (1 + 0.006 * math.sin(2 * math.pi * (4.8 + k * 0.4) * t)) / RATE
+            ph = phases[k] * 2 * math.pi
+            value += math.sin(ph) + (0.2 + 0.5 * vowel) * math.sin(2 * ph) + 0.3 * vowel * math.sin(3 * ph)
+        out.append(value / 3 * (0.5 + 0.5 * slow(t, 3, 0.7)))
+    breath = resonant(noise_lp(BED_N, 0.3, 63), lambda t: 700, 0.3)
+    return mix(lowpass(out, 0.6), [b * 0.12 for b in breath])
+
+
+def icy_wind() -> list[float]:
+    """Wind singing over the ice: a thin whistle drifting in pitch, a faint frosty shimmer."""
+    whistle = resonant(noise_lp(BED_N, 0.2, 64), lambda t: 750 + 500 * slow(t, 3) + 120 * slow(t, 7, 2.0), 0.04)
+    gust = [w * (0.3 + 0.7 * slow(i / RATE, 2)) for i, w in enumerate(whistle)]
+    return mix(gust, pad([1760, 2637], 0.15, twinkle=2))
+
+
+def glass_hum() -> list[float]:
+    """The black glass humming: deep tones beating slowly against each other."""
+    return pad([55, 55.6, 110.3, 165], 0.6, harmonics=(1.0, 0.25))
+
+
+def crystal_shimmer() -> list[float]:
+    """Crystals faintly ringing in sympathy: a high, twinkling chord over a soft root."""
+    return mix(pad([1047, 1319, 1568, 2093, 2637], 0.5, twinkle=3), pad([262], 0.2))
+
+
+def magma_rumble() -> list[float]:
+    """Deep below, magma rolling: a low roaring rumble and slow, heavy bubbling."""
+    roar = resonant(noise_lp(BED_N, 0.5, 65), lambda t: 70 + 40 * slow(t, 2), 0.15)
+    rng = random.Random(66)
+    blorps = [0.0] * BED_N
+    for _ in range(int(3 * (LOOP + TAIL))):
+        place(blorps, bubble(rng.uniform(45, 90), rng.uniform(0.15, 0.3), 0.5, rise=1.3), rng.uniform(0, LOOP + TAIL))
+    return mix(roar, lowpass(blorps, 0.5), pad([38], 0.3, vibrato=0.02))
+
+
 def write_bed(name: str, track: list[float]) -> None:
     """Folds the tail into the start (seamless loop) and sets the loudness."""
     loop_n, tail_n = int(LOOP * RATE), int(TAIL * RATE)
@@ -342,8 +453,11 @@ def write_event(name: str, clip: list[float]) -> None:
 if __name__ == "__main__":
     for old in Path(OUT).glob("ambient_*.wav"):  # clear out files from earlier recipes
         old.unlink()
-    write_bed("ambient_sunken", waves())
-    write_bed("ambient_sandstone", sandstorm())
+    beds = {"sunken": waves, "sandstone": sandstorm, "dungeon": dungeon_air, "mossy": mine_stream,
+            "sewers": sewer_flow, "catacombs": ghost_choir, "frozen": icy_wind, "obsidian": glass_hum,
+            "crystal": crystal_shimmer, "volcanic": magma_rumble}
+    for theme, recipe in beds.items():
+        write_bed(f"ambient_{theme}", recipe())
     for theme, events in EVENTS.items():
         for k, (recipe, seed) in enumerate(events):
             write_event(f"ambient_{theme}_{k}", recipe(seed))

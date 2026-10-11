@@ -58,7 +58,10 @@ func _initialize() -> void:
 		all_have_sounds = all_have_sounds and ResourceLoader.exists("res://assets/sounds/ambient_%s_0.wav" % id)
 	_check(all_have_sounds, "every theme has its own ambient sounds")
 	game = await _spawn({level = 10})
-	_check(game.ambient == null and game.ambient_events.size() >= 3, "the Volcanic Vault has no constant hum, just %d occasional sounds" % game.ambient_events.size())
+	_check(game.ambient.playing and "ambient_volcanic" in game.ambient.stream.resource_path and game.ambient_events.size() >= 3,
+		"the Volcanic Vault has a faint magma rumble and %d occasional sounds" % game.ambient_events.size())
+	await _frames(int(game.AMBIENT_FADE * 60) + 10)
+	_check(game.ambient.volume_db <= game.AMBIENT_FAINT_DB + 0.1, "...and the rumble is very faint (%.0f dB)" % game.ambient.volume_db)
 	var heard := false
 	for i in 60 * 13:
 		await process_frame
@@ -87,6 +90,11 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
+
+
+func _frames(count: int) -> void:
+	for i in count:
+		await process_frame
 
 
 func _wall_texture(game: Node2D) -> Texture2D:

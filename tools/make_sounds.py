@@ -79,6 +79,32 @@ def wet_thud(seconds: float, volume=0.4, seed=1, release=0.1) -> list[float]:
     return samples
 
 
+def sizzle(seconds: float, volume=0.3, seed=1) -> list[float]:
+    """Steam hissing off: bright crackly noise that thins out and fades."""
+    rng = random.Random(seed)
+    samples, a = [], 0.0
+    count = int(seconds * RATE)
+    for i in range(count):
+        t = i / count
+        a = a * 0.5 + rng.uniform(-1, 1) * 0.5  # only lightly smoothed: a bright hiss
+        spit = 1.0 if rng.random() < 0.08 * (1 - t) else 0.35  # little spits of steam
+        samples.append(a * volume * spit * (1 - t) ** 1.5 * min(1.0, i / 200))
+    return samples
+
+
+def crunch(seconds: float, volume=0.4, seed=1) -> list[float]:
+    """A dry crust cracking: a cluster of short, sharp clicks."""
+    rng = random.Random(seed)
+    count = int(seconds * RATE)
+    samples = [0.0] * count
+    for _ in range(rng.randint(8, 12)):
+        at = rng.randrange(0, count - 150)
+        length = rng.randint(30, 120)
+        for j in range(length):
+            samples[at + j] += rng.uniform(-1, 1) * volume * (1 - j / length) ** 2
+    return samples
+
+
 def mix(*tracks: list[float]) -> list[float]:
     length = max(len(t) for t in tracks)
     return [sum(t[i] for t in tracks if i < len(t)) for i in range(length)]
@@ -127,9 +153,12 @@ SOUNDS = {
     "unlock": lambda: mix(seq(*(bloop(f, f * 1.01, 0.09, 0.26, shape="tri", release=0.04) for f in (294, 349, 392, 440, 523)),
                               bloop(523, 520, 0.35, 0.2, wobble=0.012, release=0.32)),
                           gurgle(0.75, 10, 300, 800, 0.1, seed=9)),
-    # Drying up: a sad, sagging gurgle whose bubbles get lower and fewer.
-    "dry": lambda: mix(bloop(260, 55, 0.8, 0.3, wobble=0.06, wobble_rate=4, release=0.35),
-                       gurgle(0.8, 8, 100, 400, 0.24, seed=11, falling=True)),
+    # Drying up: steam sizzles off the slime, a sad whine sags away, the last bubbles slow down
+    # and pop, and the crust cracks as it hardens.
+    "dry": lambda: mix(sizzle(1.1, 0.32, seed=21),
+                       bloop(520, 140, 1.0, 0.3, wobble=0.07, wobble_rate=5, attack=0.03, release=0.4),
+                       gurgle(0.9, 9, 160, 520, 0.24, seed=11, falling=True),
+                       [0.0] * int(0.95 * RATE) + crunch(0.35, 0.45, seed=22)),
     # Menu click: a single low bubble pop.
     "click": lambda: bubble(420, 0.05, 0.45, rise=1.7),
     # Pause: two soft bloops, down then lower.
