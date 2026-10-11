@@ -1,8 +1,9 @@
 extends SceneTree
 
-## Hard mode + one-time skin notice checks: in hard mode, explored areas that have fully dimmed
-## turn back into unexplored fog (and relight when you return); the level select checkbox toggles
-## and saves it; the "first run: playing as ..." notice shows only the first time a level loads.
+## Hard mode + one-time skin notice checks: hard mode has its own mazes, an 85%+ budget, no
+## upgrades, no coins and its own records; explored areas that have fully dimmed turn back into
+## unexplored fog (and relight when you return); the level select checkbox toggles and saves it;
+## a new level's skin is equipped (with a notice) only the first time it loads.
 ## Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_hard_mode.gd
 
@@ -22,19 +23,44 @@ func _initialize() -> void:
 	progress.skin_notices_seen.clear()
 	progress.hard_mode = false
 
-	# --- The forced-skin notice shows once per level, not on every restart.
-	var game := await _spawn()
-	_check(game.hud.message.visible and "PLAYING AS" in game.hud.message.text, "first load of a new level shows the forced-skin notice")
+	# --- A new level's skin is equipped (with a notice) once, not on every restart.
+	progress.levels_cleared = 1
+	progress.selected_skin = Skins.DEFAULT
+	var game := await _spawn(2)
+	_check(game.hud.message.visible and "EQUIPPED" in game.hud.message.text, "first load of a new level equips its skin, with a notice")
 	game.free()
-	game = await _spawn()
+	game = await _spawn(2)
 	_check(not game.hud.message.visible, "restarting the level doesn't show it again")
-	_check(game.skin_color == Skins.get_preset(Skins.DEFAULT).color, "...but the forced skin still applies")
 	game.free()
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
 	reloaded.load_progress()
-	_check(1 in reloaded.skin_notices_seen, "seen notices are saved")
+	_check(2 in reloaded.skin_notices_seen, "seen notices are saved")
 	reloaded.free()
+	progress.levels_cleared = 0
+
+	# --- Hard mode: its own mazes, a tight budget, no upgrades, no coins, its own records.
+	var normal := await _spawn(4)
+	var normal_cost: float = normal.slime_cost_per_tile
+	var normal_walls: PackedByteArray = normal.maze.walls
+	normal.free()
+	progress.set_hard_mode(true)
+	progress.upgrades = {"slime": 10, "speed": 10, "brightness": 10}
+	var hard := await _spawn(4)
+	_check(hard.maze.walls != normal_walls, "hard mode plays a different maze")
+	_check(Levels.HARD_TARGETS.min() >= 0.88, "every hard maze is budgeted so even a perfect run needs 85%+ of the slime")
+	_check(hard.slime_cost_per_tile > normal_cost and hard.light_reach == 0.0 and absf(hard.slime.max_speed - 72.0) < 0.01,
+		"upgrades are switched off in hard mode")
+	_check(hard.coins.is_empty() and not hard.hud._coins_left_pod.visible, "no coins in hard mode")
+	hard.free()
+	progress.upgrades = {}
+	progress.best_times = {}
+	progress.record_time(4, 30.0)
+	progress.set_hard_mode(false)
+	_check(progress.best_time(4) < 0.0, "hard-mode records are kept apart from normal ones")
+	progress.set_hard_mode(true)
+	_check(progress.best_time(4) == 30.0, "...and come back on hard mode")
+	progress.set_hard_mode(false)
 
 	# --- Hard mode: fully dimmed areas are swallowed by fog again.
 	progress.set_hard_mode(true)
@@ -85,9 +111,9 @@ func _initialize() -> void:
 	quit(1 if failures else 0)
 
 
-func _spawn() -> Node2D:
+func _spawn(level := 1) -> Node2D:
 	var game: Node2D = MAIN.instantiate()
-	game.level = 1
+	game.level = level
 	root.add_child(game)
 	await physics_frame
 	return game

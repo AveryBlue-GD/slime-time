@@ -125,6 +125,10 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
+## Gold skin: gliding jingles like money, jumps and landings ring out louder with gold sparks.
+var gold := false
+## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
+var restart_prompt: RestartPrompt
 ## Brightness upgrade: extra reach (px) of the slime's light (see Upgrades.light_reach).
 var light_reach := 0.0
 ## Dev wall power (see Upgrades): damage left on walls, by tile (100 = intact).
@@ -165,11 +169,11 @@ func _ready() -> void:
 	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
 	if is_random():
-		config = Levels.random_config(random_seed)
+		config = Levels.random_config(random_seed, hard_mode)
 		maze = MazeGenerator.generate_noise(config.cells, config.seed)
 		hud.set_level_text("RANDOM MAZE #%d%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag])
 	else:
-		config = Levels.get_config(level)
+		config = Levels.get_config(level, hard_mode)
 		maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
@@ -178,10 +182,11 @@ func _ready() -> void:
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
 	_apply_upgrades()
 
-	var forced := ""
+	# A new story level's very first attempt equips the skin just earned (see Progress).
+	var equipped := ""
 	if progress:
-		forced = "" if is_random() else progress.forced_skin_for(level)
-		progress.skin_override = forced
+		if not is_random() and not hard_mode:
+			equipped = progress.equip_first_run_skin(level)
 		skin_color = progress.skin_color()
 		glow_radius = progress.glow_amount() * GLOW_MAX_RADIUS
 		rainbow = progress.is_rainbow()
@@ -191,8 +196,9 @@ func _ready() -> void:
 	slime.apply_skin(skin_color, rainbow)
 	hud.set_skin_color(skin_color, rainbow)
 
-	if forced != "" and progress.take_skin_notice(level):
-		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
+	if equipped != "":
+		hud.flash_message("NEW SKIN EQUIPPED: %s" % Skins.display_name(equipped), FORCED_SKIN_NOTICE)
+	gold = progress != null and progress.is_gold()
 
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
@@ -208,6 +214,12 @@ func _ready() -> void:
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
+	slime.gold = gold
+	if gold:
+		slime.launched.connect(func(_v: Vector2, _t: float) -> void: _gold_flourish(slime.position, 12))
+	restart_prompt = RestartPrompt.new()
+	restart_prompt.game = self
+	add_child(restart_prompt)
 	_put_on_hat()
 
 	camera.limit_right = maze.size.x * TILE
@@ -538,6 +550,8 @@ func _flush_textures() -> void:
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
 	_paint_goo(slime.position, LANDING_RADIUS)
+	if gold:
+		_gold_flourish(slime.position, 22)
 	if hit_wall:
 		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
@@ -556,7 +570,7 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 ## Applies the bought upgrades (see Upgrades): more slime to spend, faster gliding, a wider
 ## light, and (dev only) wall power.
 func _apply_upgrades() -> void:
-	if progress == null:
+	if progress == null or hard_mode:  # hard mode is played without upgrades
 		return
 	slime_cost_per_tile /= Upgrades.slime_factor(progress.upgrade_level("slime"))
 	var speed := Upgrades.speed_factor(progress.upgrade_level("speed"))
@@ -589,7 +603,7 @@ func coin_cells(maze_seed: int) -> Array[Vector2i]:
 
 ## Puts out the coins of a story level that haven't been collected yet.
 func _place_coins(maze_seed: int) -> void:
-	if is_random() or progress == null:
+	if is_random() or hard_mode or progress == null:  # coins live in the normal story mazes
 		hud.set_coins(progress.coins() if progress else 0, 0, 0)
 		return
 	var theme_index := Themes.BY_LEVEL.find(theme)
@@ -617,6 +631,9 @@ func _pick_up_coins(pos: Vector2) -> void:
 		_sfx("coin", -4.0)
 		coin.queue_free()
 		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
+		if progress.coins_earned() == Upgrades.full_tree_cost():  # the very last coin
+			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.GOLD_NAME, 3.0)
+			_sfx("unlock")
 
 
 # ---------------------------------------------------------------- dev: wall power
@@ -680,6 +697,12 @@ func _break_wall(tile: Vector2i) -> void:
 	_sfx("crumble")
 
 
+## Gold skin: a gold spark burst (bigger for landings), and the move's sound rung out louder.
+func _gold_flourish(at: Vector2, sparks: int) -> void:
+	Fx.burst(self, at, Color8(255, 214, 90), sparks, 55.0)
+	_sfx("jingle", -2.0)
+
+
 ## Puts the selected hat on the slime: it pops off on every leap and comes back down on its head.
 func _put_on_hat() -> void:
 	if progress == null or progress.selected_hat == Hats.NONE:
@@ -713,9 +736,6 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
 		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time)
-		if progress and progress.randoms_won + 1 == Skins.RAINBOW_RANDOMS:
-			random_text += "\nNEW SKIN: " + Skins.RAINBOW_NAME
-			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 		_finish(true, random_text, END_DELAY)
 		return
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
@@ -731,7 +751,10 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if level >= Levels.COUNT:
 		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
 		delay = WIN_FINAL_DELAY
-	if progress and progress.levels_cleared < level:
+	if progress and hard_mode and not level in progress.hard_cleared and progress.hard_cleared.size() == Levels.COUNT - 1:
+		text += "\nEVERY LEVEL BEATEN ON HARD!\nNEW SKIN: " + Skins.RAINBOW_NAME
+		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
+	elif progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
 			text += "\nUNLOCKED: ANY SKIN YOU WANT + GLOW!"
@@ -843,10 +866,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		pause_menu.open()
 	elif event.is_action_pressed("restart"):
+		get_viewport().set_input_as_handled()
 		if won:
 			replay()
+		elif finished:
+			retry()  # the dry-up buttons already offer the upgrades
 		else:
-			get_tree().reload_current_scene()
+			restart_prompt.open()  # mid-run: restart, or spend coins on upgrades first
 
 
 func _sfx(sound_name: String, volume_db := 0.0) -> void:

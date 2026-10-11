@@ -1,25 +1,25 @@
 extends Control
 
 ## Grid of the 10 story levels (locked ones can't be picked; cleared ones are marked), plus the
-## hard mode checkbox: in hard mode, explored areas that fully dim are swallowed by fog again.
+## hard mode checkbox: hard mode plays its own mazes on a tight slime budget with no upgrades,
+## and explored areas that fully dim are swallowed by fog again. Tiles show that mode's records.
 
 var level_buttons: Array[Button] = []
+var grid: GridContainer
+var skin_text: SkinText
 var hard_mode_box: CheckBox
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "LEVEL SELECT")
-	var grid := GridContainer.new()
+	skin_text = UIKit.setup_screen(self, "LEVEL SELECT")
+	grid = GridContainer.new()
 	grid.columns = 5
 	grid.position = Vector2(42, 34)
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 4)
 	add_child(grid)
 
-	for level in range(1, Levels.COUNT + 1):
-		var button := _make_tile(level)
-		grid.add_child(button)
-		level_buttons.append(button)
+	_fill_grid()
 	level_buttons[Progress.current_level - 1].grab_focus()
 
 	UIKit.add_panel(self, Rect2(20, 101, 280, 50))
@@ -31,12 +31,27 @@ func _ready() -> void:
 	info.offset_bottom = 128
 
 	hard_mode_box = CheckBox.new()
-	hard_mode_box.text = "HARD MODE - FOG RETURNS WHEN AREAS FULLY DIM"
+	hard_mode_box.text = "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 	hard_mode_box.button_pressed = Progress.hard_mode
-	hard_mode_box.toggled.connect(func(on: bool) -> void: Progress.set_hard_mode(on))
+	hard_mode_box.toggled.connect(func(on: bool) -> void:
+		Progress.set_hard_mode(on)
+		_fill_grid())  # show that mode's record times
 	hard_mode_box.position = Vector2(26, 136)
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
+
+
+## (Re)builds the level tiles.
+func _fill_grid() -> void:
+	for child in grid.get_children():
+		child.queue_free()
+	level_buttons.clear()
+	for level in range(1, Levels.COUNT + 1):
+		var button := _make_tile(level)
+		grid.add_child(button)
+		level_buttons.append(button)
+	if skin_text:
+		skin_text.recolor.call_deferred()
 
 
 ## A level tile: the big level number, and under it the record time, a check (cleared, no
@@ -64,7 +79,7 @@ func _make_tile(level: int) -> Button:
 		row.add_child(UIKit.make_icon("lock", UIKit.TEXT_OFF))
 	elif Progress.best_time(level) >= 0.0:
 		row.add_child(UIKit.make_label(UIKit.format_time(Progress.best_time(level)), 8, UIKit.TEXT_DIM))
-	elif level <= Progress.levels_cleared:
+	elif (level in Progress.hard_cleared) if Progress.hard_mode else (level <= Progress.levels_cleared):
 		row.add_child(UIKit.make_icon("check", UIKit.GOLD))
 	return button
 

@@ -44,7 +44,7 @@ func _ready() -> void:
 		UIKit.make_button("RANDOMIZER", _on_randomizer),
 		UIKit.make_button("SKINS", func() -> void: UIKit.go(get_tree(), "res://scenes/skins.tscn")),
 		UIKit.make_button("UPGRADES", func() -> void: UIKit.go(get_tree(), "res://scenes/upgrades.tscn")),
-		UIKit.make_button("CONTROLS", func() -> void: UIKit.go(get_tree(), "res://scenes/controls.tscn")),
+		UIKit.make_button("SETTINGS", func() -> void: UIKit.go(get_tree(), "res://scenes/controls.tscn")),
 		UIKit.make_button("QUIT", func() -> void: get_tree().quit()),
 	]
 	# SKINS and UPGRADES share a row, so the menu stays the same height.
@@ -58,6 +58,8 @@ func _ready() -> void:
 				menu.add_child(pair)
 		else:
 			menu.add_child(button)
+	if OS.has_feature("web"):  # in a browser QUIT would just leave a dead page
+		buttons[-1].hide()
 	if not Progress.is_randomizer_unlocked():
 		var random_button := buttons[2]
 		random_button.disabled = true

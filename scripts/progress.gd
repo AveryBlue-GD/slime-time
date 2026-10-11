@@ -52,6 +52,8 @@ var hard_mode := false
 var best_times := {}
 ## Levels whose "first run: playing as ..." notice has already been shown.
 var skin_notices_seen: Array[int] = []
+## Levels beaten on hard mode (all ten unlock the rainbow skin).
+var hard_cleared: Array[int] = []
 ## action -> physical keycode of its primary key.
 var bindings := DEFAULT_KEYS.duplicate()
 
@@ -82,7 +84,8 @@ func _ready() -> void:
 			dev_tools = true
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
-			randoms_won = maxi(randoms_won, maxi(Skins.RAINBOW_RANDOMS, Hats.LIST.map(func(h: Dictionary) -> int: return h.wins).max()))
+			randoms_won = maxi(randoms_won, Hats.LIST.map(func(h: Dictionary) -> int: return h.wins).max())
+			hard_cleared.assign(range(1, Levels.COUNT + 1))
 		elif arg == "--touch":
 			force_touch = true
 		elif arg == "--hard":
@@ -154,10 +157,12 @@ func load_progress() -> void:
 	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
 	hard_mode = file.get_value("settings", "hard_mode", false)
 	skin_notices_seen.assign(file.get_value("progress", "skin_notices_seen", []))
+	hard_cleared.assign(file.get_value("progress", "hard_cleared", []))
 	best_times = {}
 	for level in range(1, Levels.COUNT + 1):
-		if file.has_section_key("records", "level_%d" % level):
-			best_times[level] = float(file.get_value("records", "level_%d" % level))
+		for key in [level, level + HARD_RECORDS]:
+			if file.has_section_key("records", "level_%d" % key):
+				best_times[key] = float(file.get_value("records", "level_%d" % key))
 	coins_found = {}
 	for level in range(1, Levels.COUNT + 1):
 		var found: Array = file.get_value("coins", "level_%d" % level, [])
@@ -190,6 +195,7 @@ func save_progress() -> void:
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
+	file.set_value("progress", "hard_cleared", hard_cleared)
 	for level: int in best_times:
 		file.set_value("records", "level_%d" % level, best_times[level])
 	for level: int in coins_found:
@@ -201,8 +207,11 @@ func save_progress() -> void:
 	file.save(save_path)
 
 
-## Records a story win and picks the next level (back to 1 after beating the last one).
+## Records a story win and picks the next level (back to 1 after beating the last one). On hard
+## mode it also counts toward the rainbow skin.
 func complete_level(level: int) -> void:
+	if hard_mode and not level in hard_cleared:
+		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
 	highest_unlocked = maxi(highest_unlocked, mini(level + 1, Levels.COUNT))
 	current_level = level + 1 if level < Levels.COUNT else 1
@@ -323,7 +332,9 @@ func select_hat(id: String) -> void:
 
 
 func is_skin_unlocked(id: String) -> bool:
-	return Skins.is_unlocked(id, levels_cleared, randoms_won)
+	if dev_tools:
+		return true
+	return Skins.is_unlocked(id, levels_cleared, hard_cleared.size(), coins_earned())
 
 
 ## The skin in use right now: a level's forced first-run skin, else the selected one.
@@ -331,12 +342,17 @@ func active_skin() -> String:
 	return skin_override if skin_override != "" else selected_skin
 
 
-## Skin a story level must be played in, or "" for free choice: a level's first run (before it
-## has ever been cleared) uses the skin just earned by clearing the level before it (Lime for
-## level 1). Once the level is cleared, replays use whatever skin is selected.
-## Record time for a level in seconds, or -1 if it has never been cleared with a time.
+## Hard mode keeps its own records: saved under the level number + this.
+const HARD_RECORDS := 100
+
+
+func _record_key(level: int) -> int:
+	return level + HARD_RECORDS if hard_mode else level
+
+
+## Record time for a level (on the current mode) in seconds, or -1 if never cleared with a time.
 func best_time(level: int) -> float:
-	return best_times.get(level, -1.0)
+	return best_times.get(_record_key(level), -1.0)
 
 
 ## Saves `seconds` as the level's record if it's the first time or faster. Returns true only when
@@ -345,7 +361,7 @@ func record_time(level: int, seconds: float) -> bool:
 	var previous := best_time(level)
 	if previous >= 0.0 and seconds >= previous:
 		return false
-	best_times[level] = seconds
+	best_times[_record_key(level)] = seconds
 	save_progress()
 	return previous >= 0.0
 
@@ -364,8 +380,52 @@ func set_hard_mode(on: bool) -> void:
 	save_progress()
 
 
+## The skin earned by the level before `level` (Lime for level 1): the one a new level's very
+## first attempt is played in, if the level hasn't been cleared yet.
 func forced_skin_for(level: int) -> String:
 	return Skins.skin_for_level(level - 1) if level > levels_cleared else ""
+
+
+## The very first attempt at a new level equips the skin just earned (it stays equipped, so the
+## menus match it; the player can change it any time after). Returns it, or "" if nothing changed.
+## Each level does this once (saved).
+func equip_first_run_skin(level: int) -> String:
+	var skin := forced_skin_for(level)
+	if skin == "" or level in skin_notices_seen or not is_skin_unlocked(skin):
+		return ""
+	skin_notices_seen.append(level)
+	var changed := selected_skin != skin
+	selected_skin = skin
+	save_progress()
+	return skin if changed else ""
+
+
+## Wipes all progress: levels, records, coins, upgrades, skins, hats and randomizer wins. Sound,
+## volume and key bindings are kept.
+func reset_progress() -> void:
+	levels_cleared = 0
+	highest_unlocked = 1
+	current_level = 1
+	mode = MODE_STORY
+	randoms_cleared = 0
+	randoms_won = 0
+	selected_skin = Skins.DEFAULT
+	selected_hat = Hats.NONE
+	custom_color = Color8(239, 125, 47)
+	glow = 0.6
+	hard_mode = false
+	best_times = {}
+	skin_notices_seen.clear()
+	hard_cleared.clear()
+	coins_found = {}
+	upgrades = {}
+	skin_override = ""
+	save_progress()
+
+
+## True when the gold skin is in use (and unlocked): money sounds and gold sparks.
+func is_gold() -> bool:
+	return active_skin() == Skins.GOLD and is_skin_unlocked(Skins.GOLD)
 
 
 ## True when the rainbow skin is in use (and unlocked).
@@ -379,6 +439,8 @@ func skin_color() -> Color:
 		return Skins.get_preset(Skins.DEFAULT).color
 	if id == Skins.RAINBOW:
 		return Skins.RAINBOW_BASE
+	if id == Skins.GOLD:
+		return Skins.GOLD_COLOR
 	if id == Skins.CUSTOM:
 		return custom_color
 	return Skins.get_preset(id).color

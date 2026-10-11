@@ -1,12 +1,13 @@
 extends Control
 
 ## Skin select: a tile per skin (locked ones are silhouettes), and for the custom skin, once the
-## game is beaten, a color wheel and a glow slider (brightness is an upgrade now). The rainbow skin unlocks from
-## randomizer wins. A HATS button flips to the hats page: a tile per hat (plus no hat), each
-## shown on a slime in your skin; hats unlock from randomizer wins too.
+## game is beaten, a color wheel and a glow slider (brightness is an upgrade now). The rainbow
+## skin unlocks from beating every level on hard mode, the gold skin from finding every coin.
+## A HATS button flips to the hats page: a tile per hat (plus no hat), each shown on a slime in
+## your skin; hats will unlock from randomizer wins.
 
-const TILE_SIZE := Vector2(44, 32)
-const SKINS_RULE := "NEW LEVELS START IN YOUR NEWEST SKIN"
+const TILE_SIZE := Vector2(40, 30)
+const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 const HATS_RULE := "WIN RANDOM MAZES TO UNLOCK HATS"
 const HATS_SOON_RULE := "HATS ARE COMING SOON"
 
@@ -38,6 +39,7 @@ func _ready() -> void:
 		ids.append(preset.id)
 	ids.append(Skins.CUSTOM)
 	ids.append(Skins.RAINBOW)
+	ids.append(Skins.GOLD)
 	for id in ids:
 		_skin_grid.add_child(_make_tile(id))
 
@@ -67,9 +69,9 @@ func _ready() -> void:
 
 func _make_grid() -> GridContainer:
 	var grid := GridContainer.new()
-	grid.columns = 6
-	grid.position = Vector2(18, 22)
-	grid.add_theme_constant_override("h_separation", 4)
+	grid.columns = 7
+	grid.position = Vector2(11, 23)
+	grid.add_theme_constant_override("h_separation", 3)
 	grid.add_theme_constant_override("v_separation", 4)
 	add_child(grid)
 	return grid
@@ -97,7 +99,7 @@ func show_page(which: String) -> void:
 func _make_tile(id: String) -> Button:
 	var unlocked: bool = Progress.is_skin_unlocked(id)
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE_SIZE)
-	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
+	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else (Skins.GOLD_COLOR if id == Skins.GOLD else Skins.get_preset(id).color))
 	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
@@ -195,11 +197,10 @@ func _refresh(focus_id := "") -> void:
 	if not unlocked:
 		if id == Skins.CUSTOM:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
-		elif id == Skins.RAINBOW and not Progress.is_randomizer_unlocked():
-			# How to earn it stays a secret until the randomizer opens up.
-			status.text = "LOCKED - BEAT ALL %d LEVELS TO FIND OUT HOW" % Levels.COUNT
 		elif id == Skins.RAINBOW:
-			status.text = "LOCKED - BEAT %d RANDOM MAZES (%d/%d)" % [Skins.RAINBOW_RANDOMS, Progress.randoms_won, Skins.RAINBOW_RANDOMS]
+			status.text = "LOCKED - BEAT EVERY LEVEL ON HARD (%d/%d)" % [Progress.hard_cleared.size(), Levels.COUNT]
+		elif id == Skins.GOLD:
+			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Upgrades.full_tree_cost()]
 		else:
 			status.text = "LOCKED - CLEAR LEVEL %d" % Skins.unlock_level(id)
 	else:

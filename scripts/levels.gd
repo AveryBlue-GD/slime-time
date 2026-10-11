@@ -25,6 +25,13 @@ const DATA := [
 	{cells = Vector2i(26, 14), seed = 10366, branching = 0.50, target = 0.99},
 ]
 
+## Hard mode plays different mazes (same sizes, their own seeds) on a much tighter budget: a
+## perfect run (even cutting every corner) always needs 85% or more of the slime, and upgrades
+## are switched off.
+const HARD_SEEDS: Array[int] = [51001, 52007, 53000, 54014, 55006, 56021, 57017, 58001, 59027, 60855]
+const HARD_TARGETS: Array[float] = [0.89, 0.90, 0.91, 0.91, 0.92, 0.93, 0.95, 0.96, 0.98, 1.0]
+const RANDOM_HARD_TARGET := 0.9
+
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
 ## Upgrades.full_tree_cost() (165): finding every coin maxes the whole upgrade tree. Each level
 ## has at least this many dead ends.
@@ -48,17 +55,22 @@ const RANDOM_TARGET := 0.85
 const RANDOM_TILE_LEVEL := 6
 
 
-static func get_config(level: int) -> Dictionary:
-	return DATA[clampi(level, 1, COUNT) - 1]
+static func get_config(level: int, hard := false) -> Dictionary:
+	var config: Dictionary = DATA[clampi(level, 1, COUNT) - 1]
+	if hard:
+		config = config.duplicate()
+		config.seed = HARD_SEEDS[clampi(level, 1, COUNT) - 1]
+		config.target = HARD_TARGETS[clampi(level, 1, COUNT) - 1]
+	return config
 
 
-static func random_config(maze_seed: int) -> Dictionary:
+static func random_config(maze_seed: int, hard := false) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
 	return {
 		cells = Vector2i(rng.randi_range(18, 24), rng.randi_range(10, 13)),
 		seed = maze_seed,
-		target = RANDOM_TARGET,
+		target = RANDOM_HARD_TARGET if hard else RANDOM_TARGET,
 		tile_level = RANDOM_TILE_LEVEL,
 	}
 

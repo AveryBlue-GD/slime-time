@@ -1,7 +1,8 @@
 extends Control
 
-## Key remapping (plus sound on/off, volume and fullscreen). Click an action's key, then press the new key
-## (Esc cancels). If the key was already used by another action, the two actions swap keys.
+## Settings: key remapping (click an action's key, then press the new key; Esc cancels; if the
+## key was already used by another action, the two swap), sound on/off, volume, fullscreen, and
+## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const ACTION_NAMES := {
 	move_up = "MOVE UP", move_down = "MOVE DOWN", move_left = "MOVE LEFT", move_right = "MOVE RIGHT",
@@ -12,10 +13,14 @@ var key_buttons := {}
 var waiting_for := ""
 var sound_button: Button
 var fullscreen_button: Button
+var reset_button: Button
+var reset_confirm: Control
+var confirm_button: Button
+var cancel_button: Button
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "CONTROLS")
+	UIKit.setup_screen(self, "SETTINGS")
 	var rows := GridContainer.new()
 	rows.columns = 2
 	rows.position = Vector2(70, 24)
@@ -33,7 +38,8 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN", 8, UIKit.TEXT_DIM)
+	var pause_keys := "P PAUSES" if OS.has_feature("web") else "ESC OR P PAUSES"  # browsers keep Esc for themselves
+	var note := UIKit.make_label("ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys, 8, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -53,6 +59,55 @@ func _ready() -> void:
 	volume_row.position = Vector2(95, 130)
 	add_child(volume_row)
 	UIKit.add_back_button(self)
+	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(96, 13))
+	reset_button.position = Vector2(220, 164)
+	add_child(reset_button)
+	_build_reset_confirm()
+
+
+## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
+func _build_reset_confirm() -> void:
+	reset_confirm = Control.new()
+	reset_confirm.mouse_filter = Control.MOUSE_FILTER_STOP  # blocks clicks on the settings behind it
+	add_child(reset_confirm)
+	reset_confirm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	reset_confirm.visible = false
+	var dim := ColorRect.new()
+	dim.color = Color(UIKit.BG, 0.85)
+	reset_confirm.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(reset_confirm, Rect2(24, 48, 272, 82))
+	_centered_label(UIKit.make_label("ERASE ALL PROGRESS?", 16, UIKit.GOLD), 54, 74)
+	_centered_label(UIKit.make_label("LEVELS, RECORDS, COINS, UPGRADES AND\nSKINS WILL BE GONE FOR GOOD", 8, UIKit.TEXT_DIM), 78, 98)
+	confirm_button = UIKit.make_button("CONFIRM", _reset, Vector2(70, 13))
+	confirm_button.position = Vector2(84, 108)
+	reset_confirm.add_child(confirm_button)
+	cancel_button = UIKit.make_button("CANCEL", _cancel_reset, Vector2(70, 13))
+	cancel_button.position = Vector2(166, 108)
+	reset_confirm.add_child(cancel_button)
+
+
+func _centered_label(label: Label, top: int, bottom: int) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reset_confirm.add_child(label)
+	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	label.offset_top = top
+	label.offset_bottom = bottom
+
+
+func _ask_reset() -> void:
+	reset_confirm.visible = true
+	cancel_button.grab_focus()  # the safe choice is the default
+
+
+func _cancel_reset() -> void:
+	reset_confirm.visible = false
+	reset_button.grab_focus()
+
+
+func _reset() -> void:
+	Progress.reset_progress()
+	UIKit.go(get_tree(), UIKit.TITLE_SCENE)
 
 
 func _refresh() -> void:
@@ -103,4 +158,7 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if waiting_for == "" and (event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel")):
-		UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+		if reset_confirm.visible:
+			_cancel_reset()
+		else:
+			UIKit.go(get_tree(), UIKit.TITLE_SCENE)

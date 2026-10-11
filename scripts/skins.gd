@@ -4,8 +4,9 @@ extends RefCounted
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
 ## start, then one per level 1-9). A level's first run is played in the skin the level before it
 ## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel + glow) unlocks after the final level.
-## "rainbow" unlocks after beating RAINBOW_RANDOMS randomizer mazes: rainbow bands flow across
-## the slime like a wave, and its trail cycles through the rainbow.
+## "rainbow" unlocks by beating every level on hard mode: rainbow bands flow across the slime
+## like a wave, and its trail cycles through the rainbow. "gold" unlocks by finding every coin in
+## the story: gliding jingles like money, and jumps and landings ring out louder with gold sparks.
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 
@@ -14,7 +15,9 @@ const CUSTOM := "custom"
 const CUSTOM_NAME := "ANY SKIN"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
-const RAINBOW_RANDOMS := 5
+const GOLD := "gold"
+const GOLD_NAME := "GOLD"
+const GOLD_COLOR := Color8(236, 184, 52)
 ## Stand-in base color for the rainbow skin wherever one color is needed.
 const RAINBOW_BASE := Color8(230, 60, 60)
 
@@ -49,9 +52,12 @@ static func unlock_level(id: String) -> int:
 	return Levels.COUNT if id == CUSTOM else int(get_preset(id).get("unlock", 0))
 
 
-static func is_unlocked(id: String, levels_cleared: int, randoms_won := 0) -> bool:
+## `hard_cleared` = levels beaten on hard mode, `coins` = coins found in the story.
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared := 0, coins := 0) -> bool:
 	if id == RAINBOW:
-		return randoms_won >= RAINBOW_RANDOMS
+		return hard_cleared >= Levels.COUNT
+	if id == GOLD:
+		return coins >= Upgrades.full_tree_cost()
 	return levels_cleared >= unlock_level(id)
 
 
@@ -60,6 +66,8 @@ static func display_name(id: String) -> String:
 		return CUSTOM_NAME
 	if id == RAINBOW:
 		return RAINBOW_NAME
+	if id == GOLD:
+		return GOLD_NAME
 	return get_preset(id).get("name", "")
 
 

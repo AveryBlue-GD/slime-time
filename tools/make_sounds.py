@@ -166,9 +166,15 @@ SOUNDS = {
                        bloop(520, 140, 1.0, 0.3, wobble=0.07, wobble_rate=5, attack=0.03, release=0.4),
                        gurgle(0.9, 9, 160, 520, 0.24, seed=11, falling=True),
                        [0.0] * int(0.95 * RATE) + crunch(0.35, 0.45, seed=22)),
-    # Coin: a clean little metallic clink (two quick bell tones) as the slime gulps it up.
-    "coin": lambda: mix(seq(chime_tone(988, 0.07, 0.35), chime_tone(1319, 0.32, 0.4)),
-                        bubble(300, 0.06, 0.18)),
+    # Coin: the coin sinking into the slime and dissolving: a soft low gulp, then a muffled fizz
+    # of tiny bubbles drifting down as it melts away, with just a dull hint of metal.
+    "coin": lambda: mix(bloop(260, 110, 0.12, 0.42, wobble=0.05, release=0.07),
+                        [0.0] * int(0.05 * RATE) + gurgle(0.55, 12, 140, 420, 0.16, seed=41, falling=True),
+                        [0.0] * int(0.04 * RATE) + wet_thud(0.5, 0.18, seed=42, release=0.4),
+                        chime_tone(392, 0.25, 0.08)),
+    # Gold skin, gliding: a little jingle of coins.
+    "jingle": lambda: mix(chime_tone(784, 0.12, 0.3), [0.0] * int(0.03 * RATE) + chime_tone(1047, 0.12, 0.22),
+                          [0.0] * int(0.06 * RATE) + chime_tone(880, 0.14, 0.18)),
     # A wall giving way (dev wall power): stone crunching apart and rubble pattering down.
     "crumble": lambda: mix(wet_thud(0.35, 0.5, seed=31, release=0.25), crunch(0.5, 0.5, seed=32),
                            bloop(160, 50, 0.3, 0.3, release=0.2)),

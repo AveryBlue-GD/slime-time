@@ -35,6 +35,8 @@ const RESTITUTION := 0.632  # sqrt(BOUNCE_FACTOR)
 const WALL_GRIP := 0.85
 ## Hitting a wall slower than this (px/s into it) just slides along it instead of bouncing.
 const MIN_BOUNCE_SPEED := 30.0
+## How far (px) a straight leap may be nudged sideways to slip past a corner it only clips.
+const CORNER_LEEWAY := 3.0
 ## Ricochets closer together than this share one splat effect (narrow corridors rattle).
 const BOUNCE_FX_GAP := 0.08
 ## Below this speed a knockback counts as over.
@@ -60,6 +62,8 @@ const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 
 ## Set by the game when the slime dries up or reaches the chalice.
 var frozen := false
+## Gold skin (set by the game): gliding jingles like money, jumps and landings are louder.
+var gold := false
 var state := State.GLIDE
 ## 0-100 while charging.
 var charge := 0.0
@@ -206,7 +210,7 @@ func launch(charge_value: float) -> void:
 	state = State.AIRBORNE
 	_sfx_stop("charge")
 	launched.emit(_jump_dir * JUMP_SPEED, _jump_distance / JUMP_SPEED)
-	_sfx("jump", -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
+	_sfx("jump", 1.0 if gold else -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
 
 
 func _physics_process(delta: float) -> void:
@@ -248,7 +252,10 @@ func _physics_process(delta: float) -> void:
 	_squish_left -= delta
 	if state == State.GLIDE and velocity.length() > IDLE_SPEED and _squish_left <= 0.0:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
-		_sfx("squish", -12.0, randf_range(0.85, 1.15))
+		if gold:
+			_sfx("jingle", -10.0, randf_range(0.9, 1.1))
+		else:
+			_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
 	_bounce_fx_left = maxf(_bounce_fx_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
@@ -364,13 +371,43 @@ func _lane_velocity(coord: float) -> float:
 func _fly(delta: float) -> void:
 	var step := minf(JUMP_SPEED * delta, _jump_distance - _jump_traveled)
 	var collision := move_and_collide(_jump_dir * step)
-	_jump_traveled += collision.get_travel().length() if collision else step
+	var moved := _moved_along(collision, step)
+	if collision and _slip_past_corner(collision):
+		collision = move_and_collide(_jump_dir * (step - moved))
+		moved += _moved_along(collision, step - moved)
+	_jump_traveled += moved
 	var arc_height := 3.0 + _jump_distance / TILE * 1.5
 	sprite.position.y = -roundf(sin(PI * _jump_traveled / _jump_distance) * arc_height)
 	if collision:
 		_land(true, collision.get_normal())
 	elif _jump_traveled >= _jump_distance:
 		_land(false, Vector2.ZERO)
+
+
+## How far a flight step actually went along the leap (sideways push-outs from a wall don't count).
+func _moved_along(collision: KinematicCollision2D, step: float) -> float:
+	return clampf(collision.get_travel().dot(_jump_dir), 0.0, step) if collision else step
+
+
+## Leeway for straight leaps: if the slime only clips the corner of a wall (hit from the side,
+## not head-on), it's nudged up to CORNER_LEEWAY px sideways past it, as long as that clears
+## the way, so a jump that looks clean is clean. Diagonal leaps get no leeway (their wall hits
+## are real, and ricochet).
+func _slip_past_corner(collision: KinematicCollision2D) -> bool:
+	if absf(_jump_dir.x) > 0.01 and absf(_jump_dir.y) > 0.01:
+		return false
+	var normal := collision.get_normal()
+	var across := _jump_dir.orthogonal()
+	var side := signf(normal.dot(across))
+	if side == 0.0 or normal.dot(_jump_dir) < -0.97:
+		return false  # square into a wall: a real splat
+	var ahead := _jump_dir * maxf(collision.get_remainder().length(), 1.0)
+	for nudge in range(1, int(CORNER_LEEWAY) + 1):
+		var shift := across * side * nudge
+		if not test_move(global_transform.translated(shift), ahead):
+			position += shift
+			return true
+	return false
 
 
 func _land(hit_wall: bool, wall_normal: Vector2) -> void:
@@ -386,7 +423,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	else:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME
-		_sfx("land", -3.0)
+		_sfx("land", 2.0 if gold else -3.0)
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
 
 

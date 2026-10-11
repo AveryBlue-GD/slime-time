@@ -1,9 +1,8 @@
 extends Node
 
-## Watchable demo: a brand-new save, played through the real game flow with the autopilot until
-## every skin is unlocked: title -> NEW GAME -> levels 1-10 (a skin unlocks with each, the color
-## wheel with the last) -> victory screen -> RANDOMIZER -> 5 random-maze wins (the rainbow skin)
-## -> the skins screen with everything unlocked (and the rainbow equipped).
+## Watchable demo: a brand-new save, played through the real game flow with the autopilot:
+## title -> NEW GAME -> levels 1-10 (a skin unlocks with each, equipped on its next level's first
+## try; the color wheel with the last) -> victory screen -> PICK YOUR COLOR -> the skins screen.
 ## Uses its own throwaway save file, so the real save is never touched. Run it with:
 ## .\tools\play.ps1 -Scene res://tests/demo_unlock_all.tscn
 
@@ -71,12 +70,9 @@ class Driver:
 			GAME:
 				_play(scene)
 			VICTORY:
-				_once(scene, VICTORY_PAUSE, func() -> void: _press(scene.buttons[1]))  # RANDOMIZER
+				_once(scene, VICTORY_PAUSE, func() -> void: _press(scene.buttons[0]))  # PICK YOUR COLOR
 			SKINS:
-				_once(scene, 1.5, func() -> void:
-					scene._on_tile(Skins.RAINBOW)
-					scene.tiles[Skins.RAINBOW].grab_focus()
-					queue_free())
+				_once(scene, 1.5, func() -> void: queue_free())
 
 	## In a level: hand it to the autopilot, then after a win move on (or, once the rainbow
 	## skin is earned, go and look at the skins).
@@ -95,10 +91,7 @@ class Driver:
 		await get_tree().create_timer(WIN_PAUSE).timeout
 		if not is_instance_valid(game):
 			return
-		if game.is_random() and Progress.randoms_won >= Skins.RAINBOW_RANDOMS:
-			UIKit.go(get_tree(), SKINS)
-		else:
-			_press(game.hud.choice_buttons[-1])  # NEXT LEVEL / CONTINUE / NEW MAZE
+		_press(game.hud.choice_buttons[-1])  # NEXT LEVEL / CONTINUE
 
 	## Runs `action` once per screen, after `pause` seconds on it.
 	func _once(scene: Node, pause: float, action: Callable) -> void:

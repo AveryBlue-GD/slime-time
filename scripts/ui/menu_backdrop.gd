@@ -32,6 +32,8 @@ func _ready() -> void:
 	var floor_layer := TileMapLayer.new()
 	var wall_layer := TileMapLayer.new()
 	var fillet_layer := TileMapLayer.new()
+	for layer in [floor_layer, wall_layer, fillet_layer]:
+		layer.collision_enabled = false  # scenery only: its walls must never block anything
 	_maze_root.add_child(floor_layer)
 	_maze_root.add_child(fillet_layer)
 	_maze_root.add_child(wall_layer)

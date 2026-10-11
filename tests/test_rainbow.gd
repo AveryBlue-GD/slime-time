@@ -1,8 +1,8 @@
 extends SceneTree
 
-## Rainbow skin + randomizer shuffle checks: the rainbow unlocks after 5 randomizer wins (saved),
-## the 5th win announces it, drying up in the randomizer shuffles to a new maze, and the rainbow
-## skin colors the slime, trail and meter. Uses a throwaway save file.
+## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by beating every level on hard
+## mode (saved; the last one announces it), drying up in the randomizer shuffles to a new maze,
+## and the rainbow skin colors the slime, trail and meter. Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_rainbow.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -21,24 +21,28 @@ func _initialize() -> void:
 	progress.randoms_won = 0
 
 	# --- Unlocking
+	progress.hard_cleared.clear()
+	progress.dev_tools = false
 	progress.select_skin(Skins.RAINBOW)
 	_check(progress.selected_skin == Skins.DEFAULT, "rainbow is locked at first")
-	progress.randoms_won = 4
-	_check(not progress.is_skin_unlocked(Skins.RAINBOW), "still locked after 4 random wins")
+	progress.hard_cleared.assign(range(1, Levels.COUNT))
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW), "still locked with 9 of 10 levels beaten on hard")
 
-	# 5th randomizer win, played as the running scene so the real win flow runs.
-	var game := await _spawn_running(12345)
+	# The last hard level, played as the running scene so the real win flow runs.
+	progress.set_hard_mode(true)
+	progress.levels_cleared = Levels.COUNT
+	var game := await _spawn_story_running(Levels.COUNT)
 	game.slime.position = game.chalice.position
 	await _frames(5)
-	_check(progress.randoms_won == 5, "winning a random maze counts toward the rainbow (%d/5)" % progress.randoms_won)
-	_check("NEW SKIN: RAINBOW" in game.hud.message.text, "the 5th random win announces the rainbow skin")
-	_check(progress.random_seed == 12345, "a win keeps the maze until NEW MAZE is picked")
+	_check(progress.is_skin_unlocked(Skins.RAINBOW), "beating every level on hard unlocks the rainbow skin")
+	_check("NEW SKIN: RAINBOW" in game.hud.message.text, "the last hard level announces it")
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
 	reloaded.load_progress()
-	_check(reloaded.randoms_won == 5, "random wins are saved")
+	_check(reloaded.hard_cleared.size() == Levels.COUNT, "hard-mode clears are saved")
 	reloaded.free()
 	await _stop_running(game)
+	progress.set_hard_mode(false)
 
 	# --- Drying up in the randomizer shuffles the maze.
 	game = await _spawn_running(777)
@@ -50,7 +54,7 @@ func _initialize() -> void:
 	Input.action_release(action)
 	_check(game.finished and progress.random_seed != 777, "drying up in the randomizer shuffles to a new maze")
 	_check("SHUFFLE" in game.hud.message.text, "the dry-up message says the maze will shuffle")
-	_check(progress.randoms_won == 5, "a dry-up doesn't count as a win")
+	_check(progress.randoms_won == 0, "a dry-up doesn't count as a win")
 	await _stop_running(game)
 
 	# --- Rainbow look
@@ -74,7 +78,7 @@ func _initialize() -> void:
 	var screen: Control = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.size() == 12, "skins screen has a rainbow tile")
+	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.has(Skins.GOLD) and screen.tiles.size() == 13, "skins screen has rainbow and gold tiles")
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
@@ -87,6 +91,17 @@ func _spawn_running(seed_value: int) -> Node2D:
 	progress.start_random()
 	progress.random_seed = seed_value
 	var game: Node2D = MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	return game
+
+
+## A story level set as the current scene, so its real end-of-level flow runs.
+func _spawn_story_running(level: int) -> Node2D:
+	progress.start_story(level)
+	var game: Node2D = MAIN.instantiate()
+	game.level = level
 	root.add_child(game)
 	current_scene = game
 	await physics_frame
