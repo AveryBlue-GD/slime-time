@@ -6,7 +6,8 @@ extends RefCounted
 ## every tile, plus (optionally) a fillet layer that rounds the inner corners where walls meet.
 ## Seeded, so a maze always looks the same. Used by the game and the menu backdrop.
 ##
-## Tile atlases from tools/make_placeholder_art.py.
+## Tile atlases from tools/make_placeholder_art.py (the original Dungeon look) or, per theme,
+## tools/make_theme_art.py (same layouts; paths from Themes.atlas_path).
 ## walls.png: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
 ##            row = damage * 3 + style. floors.png: column = floor type, row = variant.
 ## fillets.png: column = the same neighbor mask, for a floor tile (one row).
@@ -26,8 +27,8 @@ const RUBBLE_CHANCE := 0.7
 
 ## Returns each wall tile's damage level (0-3), by tile coordinate.
 static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dictionary, tile_seed: int,
-		tile_level: int, fillet_layer: TileMapLayer = null) -> Dictionary:
-	var tile_set := make_tile_set()
+		tile_level: int, fillet_layer: TileMapLayer = null, theme := Themes.DUNGEON) -> Dictionary:
+	var tile_set := make_tile_set(theme)
 	floor_layer.tile_set = tile_set
 	wall_layer.tile_set = tile_set
 	if fillet_layer:
@@ -81,16 +82,16 @@ static func _has_corner(mask: int) -> bool:
 	return (mask & 3) == 3 or (mask & 6) == 6 or (mask & 12) == 12 or (mask & 9) == 9
 
 
-static func make_tile_set() -> TileSet:
+static func make_tile_set(theme := Themes.DUNGEON) -> TileSet:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(TILE, TILE)
 	tile_set.add_physics_layer()
 
-	var walls := _make_atlas(preload("res://assets/sprites/walls.png"), Vector2i(WALL_MASKS, WALL_ROWS))
+	var walls := _make_atlas(load(Themes.atlas_path(theme, "walls")), Vector2i(WALL_MASKS, WALL_ROWS))
 	tile_set.add_source(walls, WALL_SOURCE)
-	tile_set.add_source(_make_atlas(preload("res://assets/sprites/floors.png"),
+	tile_set.add_source(_make_atlas(load(Themes.atlas_path(theme, "floors")),
 		Vector2i(FLOOR_TYPES, FLOOR_VARIANTS)), FLOOR_SOURCE)
-	tile_set.add_source(_make_atlas(load("res://assets/sprites/fillets.png"), Vector2i(WALL_MASKS, 1)), FILLET_SOURCE)
+	tile_set.add_source(_make_atlas(load(Themes.atlas_path(theme, "fillets")), Vector2i(WALL_MASKS, 1)), FILLET_SOURCE)
 
 	# Every wall blocks fully, however broken it looks.
 	var half := TILE / 2.0

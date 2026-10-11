@@ -163,9 +163,8 @@ func _ready() -> void:
 	if forced != "" and progress.take_skin_notice(level):
 		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
 
-	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer)
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
-	Themes.apply(theme, floor_layer, [wall_layer, fillet_layer])
+	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	hud.show_area_name(Themes.display_name(theme))
 	_build_overlays()
 

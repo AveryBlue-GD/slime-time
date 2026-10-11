@@ -28,19 +28,23 @@ func _initialize() -> void:
 	_check(random_ids.size() >= 6, "random mazes pick from many themes (%d seen)" % random_ids.size())
 
 	var game := await _spawn({level = 1})
-	_check(game.wall_layer.material == null and game.floor_layer.material == null, "the dungeon theme leaves the art untouched")
+	_check(_wall_texture(game).resource_path == "res://assets/sprites/walls.png", "level 1 uses the original dungeon art")
 	_check(game.fillet_layer.get_used_cells().size() > 0, "inner corners get rounded fillets (%d)" % game.fillet_layer.get_used_cells().size())
 	var fillets_on_floor := true
 	for tile: Vector2i in game.fillet_layer.get_used_cells():
 		fillets_on_floor = fillets_on_floor and not game.is_wall_tile(tile)
 	_check(fillets_on_floor, "fillets only sit on floor tiles")
-	_check(game.hud.area_label.visible and "DUNGEON" in game.hud.area_label.text, "the HUD names the area (%s)" % game.hud.area_label.text)
+	_check(game.hud.area_label.visible and "DANK DUNGEON" in game.hud.area_label.text, "the HUD names the area (%s)" % game.hud.area_label.text)
+	var alliterative := true
+	for id: String in Themes.ALL:
+		var words: PackedStringArray = Themes.display_name(id).split(" ")
+		alliterative = alliterative and words.size() == 2 and words[0][0] == words[1][0]
+	_check(alliterative, "every area name is alliterative")
 	game.free()
 
 	game = await _spawn({level = 7})
-	var material := game.wall_layer.material as ShaderMaterial
-	_check(game.theme == "frozen" and material != null and game.fillet_layer.material == material,
-		"level 7 is the Frozen Crypt: walls and fillets recolored together")
+	_check(game.theme == "frozen" and "frozen_walls" in _wall_texture(game).resource_path,
+		"level 7 is the Frozen Fortress, with its own tile art (%s)" % _wall_texture(game).resource_path)
 	var fog := game.fog_sprite.material as ShaderMaterial
 	_check(fog.get_shader_parameter("fog_mist") == Themes.ALL.frozen.fog[1], "...and its fog is tinted to match")
 	game.free()
@@ -52,6 +56,10 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
+
+
+func _wall_texture(game: Node2D) -> Texture2D:
+	return (game.wall_layer.tile_set.get_source(MazeTiles.WALL_SOURCE) as TileSetAtlasSource).texture
 
 
 func _spawn(settings: Dictionary) -> Node2D:
