@@ -70,7 +70,7 @@ func _ready() -> void:
 		random_button.add_theme_color_override("icon_disabled_color", UIKit.TEXT_OFF)
 	buttons[0].grab_focus()
 
-	var hint := UIKit.make_label("%d/%d LEVELS CLEARED" % [Progress.levels_cleared, Levels.COUNT], 8, UIKit.TEXT_DIM)
+	var hint := UIKit.make_label("ESCAPE THE FOG OR DRY TRYING!", 8, UIKit.TEXT_DIM)  # the tagline
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)  # centered under the menu
