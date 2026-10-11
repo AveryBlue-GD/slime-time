@@ -8,7 +8,7 @@ Outputs (all 16x16 tiles/frames):
   stretch a ~14 px body), one animation per row
   (the JSON lists each animation's row, frame count, fps and looping)
 - shadow.png : shadow under the slime while it's in the air
-- chalice_sheet.png : 4-frame sparkle
+- chalice_sheet.png : 4 frames of 16x20, a glint sliding along the rim
 - walls.png  : 16 columns (neighbor mask: N=1 E=2 S=4 W=8 set when that neighbor is also wall)
                x 12 rows (row = damage * 3 + style; damage 0 intact .. 3 broken; style 0 plain, 1 mossy, 2 stained)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
@@ -51,26 +51,43 @@ PAL = {
     "Y": (255, 240, 180, 255),  # gold highlight
     "y": (255, 205, 117, 255),  # gold
     "o": (209, 136, 58, 255),   # gold shadow
+    # The chalice's polished gold (lit from the left) and its details.
+    "j": (222, 158, 66, 255),   # chalice gold mid
+    "J": (164, 98, 40, 255),    # chalice gold shadow
+    "Z": (100, 54, 26, 255),    # chalice gold deep shadow
+    "Q": (44, 22, 14, 255),     # chalice outline (dark warm brown)
+    "a": (54, 26, 20, 255),     # inside the cup
+    "i": (168, 24, 44, 255),    # ruby
+    "M": (255, 138, 150, 255),  # ruby glint
 }
 
-CHALICE = [
-    "................",
-    "...kkkkkkkkkk...",
-    "...kYyyyyyyok...",
-    "...kyYyyyyyok...",
-    "....kyyyyyok....",
-    "....kyyyyyok....",
-    ".....kyyyok.....",
-    "......kyok......",
-    ".......yo.......",
-    ".......yo.......",
-    ".......yo.......",
-    "......kyok......",
-    ".....kyyyok.....",
-    "....kYyyyyook...",
-    "....kkkkkkkkk...",
-    "................",
+## The chalice, top to bottom: (half-width of the gold, part). Centered on x = 7.5 in a 16 px
+## frame (so every row is an even width); the outline is added around it afterwards.
+CHALICE_W, CHALICE_H = 16, 20
+CHALICE_PROFILE = [
+    (None, None), (None, None),
+    (6, "rim_back"),  # far side of the rim, inside of the cup below it
+    (6, "opening"),
+    (6, "lip"),       # near edge of the rim, catching the light
+    (6, "bowl"),
+    (6, "band"),      # an engraved band set with a ruby
+    (5, "bowl"),
+    (5, "bowl"),
+    (4, "bowl"),
+    (3, "bowl"),
+    (2, "bowl"),
+    (1, "stem"),
+    (2, "knot"),      # a ring on the stem
+    (1, "stem"),
+    (1, "stem"),
+    (2, "foot"),
+    (4, "foot"),
+    (5, "foot_edge"),
+    (None, None),
 ]
+## Polished-metal ramp across each row (left to right, lit from the left): a dim reflected
+## edge, the light side, a bright highlight band, the body, then shadow into deep shadow.
+CHALICE_RAMP = [(0.1, "J"), (0.26, "y"), (0.4, "Y"), (0.62, "j"), (0.82, "J"), (1.01, "Z")]
 
 N, E, S, W = 1, 2, 4, 8
 DIRS8 = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
@@ -486,19 +503,54 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
     return anims
 
 
+def chalice_frame(glint: int) -> list[str]:
+    """One frame of the chalice; `glint` (0-3) is where the moving glint is on the rim."""
+    g = [["."] * CHALICE_W for _ in range(CHALICE_H)]
+    for y, (half, part) in enumerate(CHALICE_PROFILE):
+        if half is None:
+            continue
+        left, right = 8 - half, 7 + half
+        for x in range(left, right + 1):
+            u = (x - left + 0.5) / (right - left + 1)
+            shade = next(c for limit, c in CHALICE_RAMP if u < limit)
+            if part in ("rim_back", "opening"):
+                inner = left < x < right
+                shade = "a" if inner else ("y" if x == left else "J")
+                if part == "rim_back" and inner and u < 0.35:
+                    shade = "J"  # the far rim seen from above, lit side
+                elif part == "rim_back" and inner:
+                    shade = "Z"
+            elif part == "lip":
+                shade = {"J": "j", "Z": "J"}.get(shade, shade)  # the rim catches more light
+            elif part == "band":
+                shade = "Z" if shade in ("J", "Z") else "J"  # engraved, darker
+            elif part == "knot":
+                shade = {"j": "y", "J": "j", "Z": "J"}.get(shade, shade)
+            elif part == "foot_edge":
+                shade = {"Y": "y", "y": "j", "j": "J", "J": "Z"}.get(shade, shade)
+            g[y][x] = shade
+    # The ruby on the band (2x2) with a glint.
+    band = next(y for y, (_, part) in enumerate(CHALICE_PROFILE) if part == "band")
+    g[band][7], g[band][8], g[band + 1][7], g[band + 1][8] = "M", "i", "i", "Z"
+    # A steady highlight on the bowl, and the glint that slides along the rim.
+    bowl = band + 2
+    g[bowl][5] = "e"
+    lip = next(y for y, (_, part) in enumerate(CHALICE_PROFILE) if part == "lip")
+    gx = 4 + glint * 2
+    g[lip][gx] = "e"
+    g[lip][gx + 1] = "Y"
+    # Dark warm outline around everything.
+    for y in range(CHALICE_H):
+        for x in range(CHALICE_W):
+            if g[y][x] == "." and any(0 <= x + dx < CHALICE_W and 0 <= y + dy < CHALICE_H and g[y + dy][x + dx] not in ".Q"
+                                      for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                g[y][x] = "Q"
+    return ["".join(r) for r in g]
+
+
 def chalice_frames() -> list[list[str]]:
-    """The chalice with a glint that travels around it."""
-    glints = [[], [(4, 2)], [(11, 4), (12, 13)], [(3, 12)]]
-    frames = []
-    for spots in glints:
-        g = [list(r) for r in CHALICE]
-        for x, y in spots:
-            g[y][x] = "e"
-            for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                if g[y + oy][x + ox] == ".":
-                    g[y + oy][x + ox] = "Y"
-        frames.append(["".join(r) for r in g])
-    return frames
+    """The chalice with a glint sliding along its rim."""
+    return [chalice_frame(k) for k in range(4)]
 
 
 def app_icon() -> list[str]:

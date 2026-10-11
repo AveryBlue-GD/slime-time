@@ -17,6 +17,8 @@ const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
 const CHALICE_FPS := 5.0
+## One frame of assets/sprites/chalice_sheet.png (4 frames side by side).
+const CHALICE_FRAME := Vector2(16, 20)
 
 var fill: ColorRect
 var _shine: ColorRect
@@ -222,8 +224,8 @@ func _build_choice_row() -> void:
 func _build_record_banner() -> void:
 	record_banner = CenterContainer.new()
 	record_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	record_banner.offset_top = 114
-	record_banner.offset_bottom = 148
+	record_banner.offset_top = 109
+	record_banner.offset_bottom = 150
 	record_banner.visible = false
 	add_child(record_banner)
 	var row := HBoxContainer.new()
@@ -244,12 +246,12 @@ func _make_chalice() -> TextureRect:
 	var chalice := TextureRect.new()
 	var frame := AtlasTexture.new()
 	frame.atlas = preload("res://assets/sprites/chalice_sheet.png")
-	frame.region = Rect2(0, 0, 16, 16)
+	frame.region = Rect2(Vector2.ZERO, CHALICE_FRAME)
 	chalice.texture = frame
 	# Drawn at 2x (whole pixels stay crisp) to match the big NEW RECORD! text.
 	chalice.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	chalice.stretch_mode = TextureRect.STRETCH_SCALE
-	chalice.custom_minimum_size = Vector2(32, 32)
+	chalice.custom_minimum_size = CHALICE_FRAME * 2
 	chalice.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_chalices.append(chalice)
 	return chalice
@@ -294,7 +296,7 @@ func _process(delta: float) -> void:
 		var frame := int(_chalice_clock * CHALICE_FPS) % 4
 		for i in _chalices.size():
 			# Glints alternate between the two chalices.
-			(_chalices[i].texture as AtlasTexture).region.position.x = ((frame + i * 2) % 4) * 16
+			(_chalices[i].texture as AtlasTexture).region.position.x = ((frame + i * 2) % 4) * CHALICE_FRAME.x
 	if _low:
 		_pulse += delta
 		fill.modulate = Color.WHITE.lerp(Color(1.6, 1.6, 1.6), 0.5 + 0.5 * sin(_pulse * 10.0))
