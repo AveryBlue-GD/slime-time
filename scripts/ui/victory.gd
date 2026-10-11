@@ -41,7 +41,7 @@ func _ready() -> void:
 		UIKit.make_button("RANDOMIZER", func() -> void:
 			Progress.start_random()
 			UIKit.go(get_tree(), UIKit.GAME_SCENE)),
-		UIKit.make_button("TITLE", func() -> void: UIKit.go(get_tree(), UIKit.TITLE_SCENE)),
+		UIKit.make_button("HUB", func() -> void: UIKit.go(get_tree(), UIKit.TITLE_SCENE)),
 	]
 	for button in buttons:
 		menu.add_child(button)

@@ -37,7 +37,7 @@ func _ready() -> void:
 		UIKit.make_button("RESUME", resume),
 		UIKit.make_button("RESTART", _restart),
 		sound_button,
-		UIKit.make_button("QUIT TO TITLE", _quit),
+		UIKit.make_button("QUIT TO HUB", _quit),
 	]
 	for button in buttons:
 		menu.add_child(button)

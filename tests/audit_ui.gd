@@ -7,7 +7,7 @@ extends Node
 ## - LAYOUT: every panel, button, grid and slider with its left / right margins on the screen.
 ## Prints one line per item; anything off by a pixel or more is marked "<<".
 ## Run (windowed, quietly):
-## .\tools\screenshot.ps1 -Frames 40 -Scene res://tests/audit_ui.tscn -GameArgs --unlock-all,--audit=res://scenes/title.tscn
+## .\tools\screenshot.ps1 -Frames 40 -Scene res://tests/audit_ui.tscn -GameArgs --unlock-all,--audit=res://scenes/level_select.tscn
 ## Optional --audit-step=hats|custom|confirm|pause|prompt|win|dry opens a sub-view first.
 
 const SIZE := Vector2i(320, 180)
@@ -16,7 +16,7 @@ const CAPTURE_FRAME := 25
 var view: SubViewport
 var screen: Node
 var frame := 0
-var target := "res://scenes/title.tscn"
+var target := "res://scenes/level_select.tscn"
 var step := ""
 
 

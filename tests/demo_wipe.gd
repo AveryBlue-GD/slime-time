@@ -7,7 +7,7 @@ const COVER := 0.75
 
 
 func _ready() -> void:
-	add_child(preload("res://scenes/title.tscn").instantiate())
+	add_child(preload("res://scenes/hub.tscn").instantiate())
 	Transition._paint()
 	Transition._set_edges(COVER, 0.0)
 	Transition._sheet.visible = true

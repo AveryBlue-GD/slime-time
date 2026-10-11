@@ -1,7 +1,7 @@
 extends Node
 
 ## Watchable demo: a brand-new save, played through the real game flow with the autopilot:
-## title -> NEW GAME -> levels 1-10 (a skin unlocks with each, equipped on its next level's first
+## hub -> story door -> level select -> levels 1-10 (a skin unlocks with each, equipped on its next level's first
 ## try; the color wheel with the last) -> victory screen -> PICK YOUR COLOR -> the skins screen.
 ## Uses its own throwaway save file, so the real save is never touched. Run it with:
 ## .\tools\play.ps1 -Scene res://tests/demo_unlock_all.tscn
@@ -12,7 +12,8 @@ const TITLE_PAUSE := 2.5
 const WIN_PAUSE := 3.5
 const VICTORY_PAUSE := 5.0
 
-const TITLE := "res://scenes/title.tscn"
+const TITLE := "res://scenes/hub.tscn"
+const LEVEL_SELECT := "res://scenes/level_select.tscn"
 const GAME := "res://scenes/main.tscn"
 const VICTORY := "res://scenes/victory.tscn"
 const SKINS := "res://scenes/skins.tscn"
@@ -64,8 +65,10 @@ class Driver:
 		if _wait > 0.0 or scene == null or Transition.busy:
 			return
 		match scene.scene_file_path:
-			TITLE:
-				_once(scene, TITLE_PAUSE, func() -> void: _press(scene.buttons[0]))  # NEW GAME
+			TITLE:  # the hub: glide to the story door and use it
+				_once(scene, TITLE_PAUSE, func() -> void: scene._use(scene._station("story")))
+			LEVEL_SELECT:
+				_once(scene, 1.0, func() -> void: _press(scene.level_buttons[Progress.current_level - 1]))
 			GAME:
 				_play(scene)
 			VICTORY:

@@ -3,7 +3,8 @@ extends RefCounted
 
 ## Shared look and helpers for the menu screens (320x180 base resolution, 8 px text).
 
-const TITLE_SCENE := "res://scenes/title.tscn"
+## The hub room is the title screen; every BACK leads there.
+const TITLE_SCENE := "res://scenes/hub.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 const BG := Color8(26, 28, 44)

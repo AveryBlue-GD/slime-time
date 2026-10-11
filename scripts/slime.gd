@@ -62,6 +62,8 @@ const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 
 ## Set by the game when the slime dries up or reaches the chalice.
 var frozen := false
+## False while the jump key means something else (the hub: next to a station it opens it).
+var can_charge := true
 var state := State.GLIDE
 ## 0-100 while charging.
 var charge := 0.0
@@ -223,7 +225,7 @@ func _physics_process(delta: float) -> void:
 	if input != Vector2.ZERO and (state == State.GLIDE or state == State.CHARGING):
 		facing = input.normalized()
 
-	if state == State.GLIDE and not frozen and Input.is_action_just_pressed("jump"):
+	if state == State.GLIDE and not frozen and can_charge and Input.is_action_just_pressed("jump"):
 		state = State.CHARGING
 		charge = 0.0
 		_sfx("charge", -8.0)

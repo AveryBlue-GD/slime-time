@@ -50,7 +50,7 @@ func _initialize() -> void:
 	game.pause_menu._quit()
 	await _frames(int(game.END_DELAY * 60) + 60)
 	_check(current_scene != null and current_scene.scene_file_path == UIKit.TITLE_SCENE and not paused,
-		"quitting to the title lands on the title, unpaused (%s)" % (current_scene.scene_file_path if current_scene else "none"))
+		"quitting to the hub lands in the hub, unpaused (%s)" % (current_scene.scene_file_path if current_scene else "none"))
 
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
