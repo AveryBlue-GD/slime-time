@@ -31,7 +31,7 @@ const PRESETS := [
 	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 4},         # 5 Toxic Tunnels: toxic ooze
 	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 5},      # 6 Creepy Catacombs: blood
 	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 6},        # 7 Frozen Fortress
-	{id = "shadow", name = "INKY", color = Color8(84, 70, 110), unlock = 7},        # 8 Obsidian Oubliette
+	{id = "shadow", name = "INKKY", color = Color8(84, 70, 110), unlock = 7},        # 8 Obsidian Oubliette
 	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 8},  # 9 Crystal Caverns
 	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},         # 10 Volcanic Vault: molten
 ]
