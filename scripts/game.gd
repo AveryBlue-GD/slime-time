@@ -107,10 +107,13 @@ var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
 var slime_light: Sprite2D
+## Art theme id (see Themes): one per story level, random per randomizer maze.
+var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
+@onready var fillet_layer: TileMapLayer = $Fillets
 @onready var trail_sprite: Sprite2D = $Trail
 @onready var fog_sprite: Sprite2D = $Fog
 @onready var slime: Slime = $Slime
@@ -160,7 +163,10 @@ func _ready() -> void:
 	if forced != "" and progress.take_skin_notice(level):
 		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
 
-	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level))
+	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer)
+	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
+	Themes.apply(theme, floor_layer, [wall_layer, fillet_layer])
+	hud.show_area_name(Themes.display_name(theme))
 	_build_overlays()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
@@ -321,6 +327,10 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("glow_radius", glow_radius)
 	fog_material.set_shader_parameter("glow_color", skin_color)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
+	var fog_colors := Themes.fog_colors(theme)
+	if not fog_colors.is_empty():
+		fog_material.set_shader_parameter("fog_deep", fog_colors[0])
+		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
 	fog_sprite.material = fog_material
 
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE, Color(skin_color, SLIME_LIGHT_STRENGTH))

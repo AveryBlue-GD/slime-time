@@ -31,10 +31,12 @@ func _ready() -> void:
 	add_child(_maze_root)
 	var floor_layer := TileMapLayer.new()
 	var wall_layer := TileMapLayer.new()
+	var fillet_layer := TileMapLayer.new()
 	_maze_root.add_child(floor_layer)
+	_maze_root.add_child(fillet_layer)
 	_maze_root.add_child(wall_layer)
 	var maze := MazeGenerator.generate(MAZE_CELLS, MAZE_SEED, 0.3)
-	MazeTiles.fill(floor_layer, wall_layer, maze, MAZE_SEED, 6)
+	MazeTiles.fill(floor_layer, wall_layer, maze, MAZE_SEED, 6, fillet_layer)
 	_travel = Vector2(maze.size * MazeTiles.TILE) - Vector2(320, 180)
 
 	var mist := ColorRect.new()

@@ -12,6 +12,8 @@ Outputs (all 16x16 tiles/frames):
 - walls.png  : 16 columns (neighbor mask: N=1 E=2 S=4 W=8 set when that neighbor is also wall)
                x 12 rows (row = damage * 3 + style; damage 0 intact .. 3 broken; style 0 plain, 1 mossy, 2 stained)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
+- fillets.png: 16 columns (same neighbor mask as walls, for a FLOOR tile): a small curved dark
+               fillet in each floor corner where two walls meet, so inner corners look rounded
 """
 import json
 import math
@@ -99,6 +101,23 @@ def blob(g, rng, cx, cy, radius: float, colors: str, density=0.85) -> None:
 
 # ---------------------------------------------------------------- walls
 
+## Exposed wall corners (two open sides meeting) are rounded off with this radius (px).
+CORNER_RADIUS = 4
+## Inner corners (a floor tile with walls on two touching sides) get a fillet this big.
+FILLET_RADIUS = 6
+CORNER_PAIRS = ((N, E), (E, S), (S, W), (W, N))
+
+
+def corner_cut(x: int, y: int, a: int, b: int, radius: float) -> bool:
+    """True if pixel (x, y) lies outside a quarter circle of `radius` rounding the corner
+    between sides a and b (so it should be cut away / filled)."""
+    right = E in (a, b)
+    bottom = S in (a, b)
+    # Distance into the corner from each of its two edges, in pixel-center coordinates.
+    dx = (x + 0.5) - (16 - radius) if right else radius - (x + 0.5)
+    dy = (y + 0.5) - (16 - radius) if bottom else radius - (y + 0.5)
+    return dx > 0 and dy > 0 and dx * dx + dy * dy > radius * radius
+
 def side_pixel(side: int, along: int, depth: int) -> tuple[int, int]:
     return {N: (along, depth), S: (along, 15 - depth), W: (depth, along), E: (15 - depth, along)}[side]
 
@@ -170,6 +189,14 @@ def wall_tile(mask: int, damage: int, style: int, seed: int) -> list[str]:
                     if abs(x - cx) + abs(y - cy) < size:
                         g[y][x] = "."
 
+    # Round off exposed corners (wall ends and lone pillars become smooth, not boxy).
+    for a, b in CORNER_PAIRS:
+        if a in open_sides and b in open_sides:
+            for y in range(16):
+                for x in range(16):
+                    if corner_cut(x, y, a, b, CORNER_RADIUS):
+                        g[y][x] = "."
+
     # Outline: opaque pixels touching a hole or an open edge get a dark rim.
     rim = []
     for y in range(16):
@@ -192,6 +219,26 @@ def wall_tile(mask: int, damage: int, style: int, seed: int) -> list[str]:
                 if g[y][x] == "." and rng.random() < (0.08 if damage == 2 else 0.16):
                     g[y][x] = rng.choice("wWz")
 
+    return ["".join(r) for r in g]
+
+
+def fillet_tile(mask: int) -> list[str]:
+    """Overlay for a floor tile whose neighbors in `mask` are walls: a dark curved fillet in every
+    corner where two walls meet, continuing the walls' dark rims around the bend."""
+    g = blank(".")
+    for a, b in CORNER_PAIRS:
+        if mask & a and mask & b:
+            for y in range(16):
+                for x in range(16):
+                    if corner_cut(x, y, a, b, FILLET_RADIUS):
+                        g[y][x] = "z"
+    # Dark rim along the curve (fillet pixels touching the open floor), like the walls' own rims.
+    for y in range(16):
+        for x in range(16):
+            if g[y][x] == "z" and any(
+                    0 <= x + dx < 16 and 0 <= y + dy < 16 and g[y + dy][x + dx] == "."
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))):
+                g[y][x] = "k"
     return ["".join(r) for r in g]
 
 
@@ -470,6 +517,7 @@ if __name__ == "__main__":
         [wall_tile(mask, damage, style, seed=1000 + damage * 300 + style * 50 + mask) for mask in range(16)]
         for damage in range(4) for style in range(3)
     ]))
+    write_png(OUT / "fillets.png", atlas([[fillet_tile(mask) for mask in range(16)]]))
     write_png(OUT / "floors.png", atlas([
         [floor_tile(kind, seed=5000 + variant * 20 + i) for i, kind in enumerate(FLOOR_TYPES)]
         for variant in range(4)

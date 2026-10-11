@@ -11,6 +11,8 @@ const CHUNK := 12
 const POD_MARGIN := 3
 ## Below this percent the meter turns red and pulses.
 const LOW_PERCENT := 20.0
+## Seconds the area name stays up before fading.
+const AREA_NAME_TIME := 2.0
 const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
@@ -27,6 +29,8 @@ var _hue := 0.0
 var label: Label
 var level_label: Label
 var message: Label
+## The area's name (the level theme), shown under the top bar as a maze starts, then fading.
+var area_label: Label
 var _message_panel: PanelContainer
 var time_label: Label
 ## Shown only when a level is beaten faster than its saved record.
@@ -73,6 +77,14 @@ func _ready() -> void:
 	var level_row := _make_pod(Control.PRESET_TOP_RIGHT)
 	level_label = _make_label()
 	level_row.add_child(level_label)
+
+	area_label = _make_label(SkinText.ROLE_DIM)
+	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	area_label.offset_top = 20
+	area_label.offset_bottom = 30
+	area_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	area_label.visible = false
+	add_child(area_label)
 
 	var message_center := CenterContainer.new()
 	message_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -251,6 +263,17 @@ func _gold_label(text: String, size: int) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", GOLD)
 	return l
+
+
+## Shows the area name for a moment, then fades it out.
+func show_area_name(text: String) -> void:
+	area_label.text = "- %s -" % text
+	area_label.visible = true
+	area_label.modulate.a = 1.0
+	var tween := create_tween()
+	tween.tween_interval(AREA_NAME_TIME)
+	tween.tween_property(area_label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(func() -> void: area_label.visible = false)
 
 
 func set_level_text(text: String) -> void:
