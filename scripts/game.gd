@@ -73,11 +73,11 @@ const CHALICE_GOLD := Color8(255, 205, 117)
 ## very faint (AMBIENT_FAINT_DB) except the Sunken Shrine's waves and the Sandstone Sanctum's
 ## sandstorm (AMBIENT_BED_DB). On top, distant one-off sounds (ambient_<theme>_<n>.wav) play at
 ## random every AMBIENT_EVENT_GAP seconds, at a random level within AMBIENT_EVENT_DB.
-const AMBIENT_FAINT_DB := -20.0
-const AMBIENT_BED_DB := {"sunken": -9.0, "sandstone": -9.0}
+const AMBIENT_FAINT_DB := -25.0
+const AMBIENT_BED_DB := {"sunken": -17.0, "sandstone": -17.0}
 const AMBIENT_FADE := 2.0
 const AMBIENT_EVENT_GAP := Vector2(4.0, 11.0)
-const AMBIENT_EVENT_DB := Vector2(-19.0, -11.0)
+const AMBIENT_EVENT_DB := Vector2(-25.0, -17.0)
 ## Extra quietness for some themes' events (the catacombs' scream is meant to be barely there).
 const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
 

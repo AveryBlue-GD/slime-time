@@ -279,46 +279,53 @@ EVENTS = {
 # ---------------------------------------------------------------- continuous beds
 
 def waves() -> list[float]:
-    """Rolling waves: each one surges in, crashes into a foamy fizz and drains back out."""
-    n = int((LOOP + TAIL) * RATE)
+    """Waves rolling in somewhere beyond the walls: each one a deep swell that builds, breaks with
+    a heavy, muffled crash and washes back out. Everything is kept low and soft (heavily
+    low-passed), more felt than heard."""
+    n = BED_N
     rng = random.Random(40)
-    body = band(n, 0.9, 0.995, 41)
-    foam = band(n, 0.3, 0.8, 42)
+    swell_noise = noise_lp(n, 0.995, 41)   # the deep body of the water
+    crash_noise = noise_lp(n, 0.97, 42)    # the break: a bit fuller, still dark
+    wash_noise = noise_lp(n, 0.93, 43)     # the wash running back over the sand
     count = 4  # waves per loop
     period = LOOP / count
-    strengths = [rng.uniform(0.7, 1.0) for _ in range(count)]
+    strengths = [rng.uniform(0.65, 1.0) for _ in range(count)]
     out = []
     for i in range(n):
-        t = i / RATE
-        k = int(t // period) % count
-        p = (t % period) / period  # 0..1 through this wave
-        surge = (p / 0.4) ** 2 if p < 0.4 else math.exp(-(p - 0.4) * 5)
-        fizz = 0.0 if p < 0.38 else math.exp(-(p - 0.38) * 3.5) * (0.6 + 0.4 * math.sin(p * 40) ** 2)
-        out.append((body[i] * (0.15 + surge) + foam[i] * fizz * 0.6) * strengths[k])
-    return out
+        t_ = i / RATE
+        k = int(t_ // period) % count
+        p = (t_ % period) / period  # 0..1 through this wave
+        build = (p / 0.45) ** 2 if p < 0.45 else math.exp(-(p - 0.45) * 4)
+        crash = math.exp(-((p - 0.47) / 0.07) ** 2)
+        wash = 0.0 if p < 0.48 else math.exp(-(p - 0.48) * 2.8) * (1 - math.exp(-(p - 0.48) * 30))
+        out.append((swell_noise[i] * (0.25 + 0.75 * build) + crash_noise[i] * crash * 0.8
+                    + wash_noise[i] * wash * 0.35) * strengths[k])
+    return lowpass(lowpass(out, 0.6), 0.6)
 
 
 def sandstorm() -> list[float]:
-    """A sandstorm: gusting hissy wind, a low howl, and sand grains pattering."""
-    n = int((LOOP + TAIL) * RATE)
+    """A sandstorm blowing past outside: wind howling through the gaps in the stone (noise rung
+    through resonant filters, so it moans in pitch as each gust rises and falls) over a low
+    rushing roar of sand. Kept low in pitch, no hiss."""
+    n = BED_N
     rng = random.Random(50)
-    wind = band(n, 0.75, 0.985, 51)
-    howl = band(n, 0.96, 0.997, 52)
-    gusts = [(rng.uniform(0, LOOP), rng.uniform(1.5, 3.5), rng.uniform(0.4, 0.9)) for _ in range(7)]
+    gusts = [(rng.uniform(0, LOOP), rng.uniform(1.8, 3.8), rng.uniform(0.5, 1.0)) for _ in range(6)]
+
+    def gust(t_: float) -> float:
+        g = 0.35 + 0.15 * slow(t_, 2)
+        for at, width, amp in gusts:
+            d = min(abs(t_ - at), abs(t_ - at - LOOP), abs(t_ - at + LOOP))
+            g += amp * math.exp(-(d / width) ** 2)
+        return min(g, 1.4)
+
+    howl = resonant(noise_lp(n, 0.5, 51), lambda t_: 85 + 110 * gust(t_), 0.06)
+    whine = resonant(noise_lp(n, 0.5, 52), lambda t_: 170 + 120 * gust(t_ + 0.7), 0.05)
+    roar = noise_lp(n, 0.985, 53)
     out = []
     for i in range(n):
-        t = i / RATE
-        g = 0.45 + 0.2 * math.sin(2 * math.pi * 2 * t / LOOP)
-        for at, width, amp in gusts:
-            d = min(abs(t - at), abs(t - at - LOOP), abs(t - at + LOOP))
-            g += amp * math.exp(-(d / width) ** 2)
-        out.append(wind[i] * g * 0.6 + howl[i] * (0.3 + 0.3 * g))
-    grains = [0.0] * n
-    for _ in range(int(LOOP * 60)):
-        at = rng.randrange(0, n - 40)
-        for j in range(rng.randint(6, 20)):
-            grains[at + j] += rng.uniform(-1, 1) * 0.12
-    return mix(out, lowpass(grains, 0.2))
+        g = gust(i / RATE)
+        out.append(howl[i] * g * 0.55 + whine[i] * g * g * 0.18 + roar[i] * (0.3 + 0.4 * g))
+    return lowpass(lowpass(out, 0.7), 0.7)
 
 
 BED_N = int((LOOP + TAIL) * RATE)
@@ -404,10 +411,10 @@ def ghost_choir() -> list[float]:
 
 
 def icy_wind() -> list[float]:
-    """Wind singing over the ice: a thin whistle drifting in pitch, a faint frosty shimmer."""
-    whistle = resonant(noise_lp(BED_N, 0.2, 64), lambda t: 750 + 500 * slow(t, 3) + 120 * slow(t, 7, 2.0), 0.04)
+    """Cold wind moaning over the ice: a low, hollow whistle drifting in pitch, a faint frosty shimmer."""
+    whistle = resonant(noise_lp(BED_N, 0.4, 64), lambda t: 260 + 180 * slow(t, 3) + 50 * slow(t, 7, 2.0), 0.04)
     gust = [w * (0.3 + 0.7 * slow(i / RATE, 2)) for i, w in enumerate(whistle)]
-    return mix(gust, pad([1760, 2637], 0.15, twinkle=2))
+    return lowpass(mix(gust, pad([440, 659], 0.12, twinkle=2)), 0.4)
 
 
 def glass_hum() -> list[float]:
@@ -417,7 +424,7 @@ def glass_hum() -> list[float]:
 
 def crystal_shimmer() -> list[float]:
     """Crystals faintly ringing in sympathy: a high, twinkling chord over a soft root."""
-    return mix(pad([1047, 1319, 1568, 2093, 2637], 0.5, twinkle=3), pad([262], 0.2))
+    return mix(pad([262, 330, 392, 523, 659], 0.5, twinkle=3), pad([131], 0.25))
 
 
 def magma_rumble() -> list[float]:
