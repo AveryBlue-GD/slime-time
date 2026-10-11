@@ -23,6 +23,11 @@ func _ready() -> void:
 		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow())
 		preview.position = Vector2(x, 118)
 		add_child(preview)
+		if Progress.selected_hat != Hats.NONE:  # the hat you're wearing, at the same 2x size
+			var hat := Hat.new()
+			hat.scale = preview.scale
+			add_child(hat)
+			hat.setup(Progress.selected_hat, preview)
 
 	UIKit.add_panel(self, Rect2(92, 71, 136, 92))
 	var menu := VBoxContainer.new()

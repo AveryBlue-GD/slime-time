@@ -9,6 +9,9 @@ extends CharacterBody2D
 signal jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2)
 ## A knockback ricochet off another wall; `impact` = speed into the wall (px/s).
 signal bounced(wall_normal: Vector2, impact: float)
+## A leap begins: the slime moves along the floor at `floor_velocity` for `flight_time` seconds
+## (a hat uses this to fly along with it).
+signal launched(floor_velocity: Vector2, flight_time: float)
 
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED }
 
@@ -82,6 +85,9 @@ var _recover_anim_left := 0.0
 var _special_anim := ""
 
 static var _sprite_frames: SpriteFrames
+## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
+static var _heads := {}
+static var _sheet_image: Image
 var _drips: CPUParticles2D
 
 @onready var sprite: AnimatedSprite2D = $Sprite
@@ -120,6 +126,34 @@ static func splat_side(wall_normal: Vector2) -> String:
 	if absf(wall_normal.x) > absf(wall_normal.y):
 		return "w" if wall_normal.x > 0.0 else "e"
 	return "n" if wall_normal.y > 0.0 else "s"
+
+
+## Top-center of the slime's body in a frame, relative to the sprite's center: where a hat sits.
+## Found from the sheet's pixels (the topmost row of the outline), so it follows every squash,
+## stretch and bounce of the animation.
+static func head_point(anim: String, frame: int) -> Vector2:
+	var key := "%s:%d" % [anim, frame]
+	if _heads.has(key):
+		return _heads[key]
+	var frames := load_sprite_frames()
+	var point := Vector2(0, -7)
+	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
+		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
+		if _sheet_image == null:
+			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
+			if _sheet_image.is_compressed():
+				_sheet_image.decompress()
+		for y in int(region.size.y):
+			var xs: Array[int] = []
+			for x in int(region.size.x):
+				if _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + y).a > 0.5:
+					xs.append(x)
+			if not xs.is_empty():
+				var center := (xs[0] + xs[-1] + 1) / 2.0
+				point = Vector2(center, y) - region.size / 2.0
+				break
+	_heads[key] = point
+	return point
 
 
 ## Name suffix ("e", "se", ...) for the 45-degree direction closest to v.
@@ -171,6 +205,7 @@ func launch(charge_value: float) -> void:
 	charge = 0.0
 	state = State.AIRBORNE
 	_sfx_stop("charge")
+	launched.emit(_jump_dir * JUMP_SPEED, _jump_distance / JUMP_SPEED)
 	_sfx("jump", -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
 
 

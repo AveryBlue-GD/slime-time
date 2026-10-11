@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -25,6 +25,8 @@ var levels_cleared := 0
 var current_level := 1
 
 var selected_skin := Skins.DEFAULT
+## The hat the slime wears (Hats.NONE for none); hats unlock from randomizer wins.
+var selected_hat := Hats.NONE
 var custom_color := Color8(239, 125, 47)
 ## Glow strength for the custom skin, 0-1.
 var glow := 0.6
@@ -77,6 +79,9 @@ func _ready() -> void:
 		elif arg.begins_with("--skin="):
 			saving_enabled = false
 			selected_skin = arg.trim_prefix("--skin=")
+		elif arg.begins_with("--hat="):
+			saving_enabled = false
+			selected_hat = arg.trim_prefix("--hat=")
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 
@@ -113,7 +118,12 @@ func load_progress() -> void:
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
 	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
 	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
+	if not is_skin_unlocked(selected_skin):  # e.g. a skin that has moved to a later level
+		selected_skin = Skins.DEFAULT
 	custom_color = file.get_value("skin", "custom_color", custom_color)
+	selected_hat = file.get_value("skin", "hat", Hats.NONE)
+	if not is_hat_unlocked(selected_hat):
+		selected_hat = Hats.NONE
 	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
 	sound_on = file.get_value("settings", "sound_on", true)
 	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
@@ -137,6 +147,7 @@ func save_progress() -> void:
 	file.set_value("progress", "randoms_won", randoms_won)
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
+	file.set_value("skin", "hat", selected_hat)
 	file.set_value("skin", "glow", glow)
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
@@ -185,6 +196,17 @@ func is_randomizer_unlocked() -> bool:
 	return levels_cleared >= Levels.COUNT
 
 
+func is_hat_unlocked(id: String) -> bool:
+	return Hats.is_unlocked(id, randoms_won)
+
+
+## Wears hat `id` (if unlocked) and saves.
+func select_hat(id: String) -> void:
+	if is_hat_unlocked(id):
+		selected_hat = id
+		save_progress()
+
+
 func is_skin_unlocked(id: String) -> bool:
 	return Skins.is_unlocked(id, levels_cleared, randoms_won)
 
@@ -195,7 +217,7 @@ func active_skin() -> String:
 
 
 ## Skin a story level must be played in, or "" for free choice: a level's first run (before it
-## has ever been cleared) uses the skin just earned by clearing the level before it (Ember for
+## has ever been cleared) uses the skin just earned by clearing the level before it (Lime for
 ## level 1). Once the level is cleared, replays use whatever skin is selected.
 ## Record time for a level in seconds, or -1 if it has never been cleared with a time.
 func best_time(level: int) -> float:

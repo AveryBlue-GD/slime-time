@@ -118,6 +118,8 @@ var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
 var slime_light: Sprite2D
+## The hat the slime is wearing, if any (see Hat).
+var hat: Hat
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
@@ -194,6 +196,7 @@ func _ready() -> void:
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
+	_put_on_hat()
 
 	camera.limit_right = maze.size.x * TILE
 	camera.limit_bottom = maze.size.y * TILE
@@ -513,6 +516,18 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	hud.set_slime(slime_remaining)
 
 
+## Puts the selected hat on the slime: it pops off on every leap and comes back down on its head.
+func _put_on_hat() -> void:
+	if progress == null or progress.selected_hat == Hats.NONE:
+		return
+	hat = Hat.new()
+	hat.z_index = slime.z_index + 1
+	add_child(hat)
+	hat.setup(progress.selected_hat, slime.sprite, slime)
+	hat.is_wall = func(at: Vector2) -> bool: return is_wall_tile(Vector2i((at / TILE).floor()))
+	slime.launched.connect(hat.pop)
+
+
 ## A knockback ricochet: a smaller splat (stain, goo spray, a shake that scales with the hit).
 func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 	var power := clampf(impact / 200.0, 0.0, 1.0)
@@ -528,6 +543,8 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		return
 	chalice.visible = true
 	slime.play_celebrate()
+	if hat:
+		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
 	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
@@ -553,7 +570,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: COLOR WHEEL + GLOW!"
+			text += "\nUNLOCKED: ANY SKIN YOU WANT + GLOW!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))

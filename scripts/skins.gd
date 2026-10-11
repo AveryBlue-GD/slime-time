@@ -1,16 +1,17 @@
 class_name Skins
 extends RefCounted
 
-## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Ember from the
-## start, then one per level 1-9). "custom" (color wheel + glow) unlocks after the final level.
+## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
+## start, then one per level 1-9). A level's first run is played in the skin the level before it
+## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel + glow) unlocks after the final level.
 ## "rainbow" unlocks after beating RAINBOW_RANDOMS randomizer mazes: rainbow bands flow across
 ## the slime like a wave, and its trail cycles through the rainbow.
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 
-const DEFAULT := "ember"
+const DEFAULT := "lime"
 const CUSTOM := "custom"
-const CUSTOM_NAME := "YOUR COLOR"
+const CUSTOM_NAME := "ANY SKIN"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
 const RAINBOW_RANDOMS := 5
@@ -18,16 +19,16 @@ const RAINBOW_RANDOMS := 5
 const RAINBOW_BASE := Color8(230, 60, 60)
 
 const PRESETS := [
-	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 0},
-	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 1},
-	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 2},
-	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 3},
-	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 4},
-	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 5},
-	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 6},
-	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 7},
-	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 8},
-	{id = "shadow", name = "SHADOW", color = Color8(84, 70, 110), unlock = 9},
+	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},           # 1 Dank Dungeon
+	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 1},           # 2 Mossy Mines: lichen
+	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 2},         # 3 Sandstone Sanctum: sun
+	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 3},         # 4 Sunken Shrine
+	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 4},         # 5 Toxic Tunnels: toxic ooze
+	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 5},      # 6 Creepy Catacombs: blood
+	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 6},        # 7 Frozen Fortress
+	{id = "shadow", name = "SHADOW", color = Color8(84, 70, 110), unlock = 7},        # 8 Obsidian Oubliette
+	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 8},  # 9 Crystal Caverns
+	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},         # 10 Volcanic Vault: molten
 ]
 
 ## The goo shades the sprite sheet is drawn in (palette "l", "m", "n" in the art script).

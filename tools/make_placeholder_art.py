@@ -554,9 +554,9 @@ def chalice_frames() -> list[list[str]]:
 
 
 def app_icon() -> list[str]:
-    """64x64 app/window icon: the idle slime in Ember orange (same shade math as Skins.shades)."""
+    """64x64 app/window icon: the idle slime in Lime green, the starting skin (same shade math as Skins.shades)."""
     import colorsys
-    h, s, v = colorsys.rgb_to_hsv(239 / 255, 125 / 255, 47 / 255)
+    h, s, v = colorsys.rgb_to_hsv(56 / 255, 183 / 255, 100 / 255)
     for key, (hh, ss, vv) in {
         "1": ((h + 0.05) % 1, s * 0.35, min(v * 1.25 + 0.3, 1)),
         "q": ((h + 0.03) % 1, s * 0.7, min(v * 1.2 + 0.12, 1)),

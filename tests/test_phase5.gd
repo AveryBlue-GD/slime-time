@@ -23,19 +23,24 @@ func _initialize() -> void:
 	_reset_progress()
 
 	# --- Skins
-	var ember: Color = Skins.get_preset(Skins.DEFAULT).color
-	_check(Skins.PRESETS.size() == 10 and ember.r > ember.g and ember.g > ember.b, "10 preset skins; the default (Ember) is orange")
+	var starter: Color = Skins.get_preset(Skins.DEFAULT).color
+	_check(Skins.PRESETS.size() == 10 and starter.g > starter.r and starter.g > starter.b, "10 preset skins; the starter (Lime) is green")
+	var matched := true
+	for level in range(2, Levels.COUNT + 1):  # each level's first-run skin suits its theme
+		matched = matched and Skins.get_preset(progress.forced_skin_for(level)).unlock == level - 1
+	_check(matched and progress.forced_skin_for(10) == "ember" and progress.forced_skin_for(7) == "frost",
+		"skins unlock in theme order (Frost for the Frozen Fortress, Ember for the Volcanic Vault)")
 	var unlock_levels := {}
 	for preset: Dictionary in Skins.PRESETS:
 		unlock_levels[preset.unlock] = true
 	_check(unlock_levels.size() == 10 and Skins.unlock_level(Skins.CUSTOM) == 10, "a new skin per level 1-9; custom after level 10")
 	progress.select_skin("ocean")
 	_check(progress.selected_skin == Skins.DEFAULT, "locked skins can't be selected")
-	progress.levels_cleared = 2
+	progress.levels_cleared = 3
 	progress.select_skin("ocean")
-	_check(progress.skin_color() == Skins.get_preset("ocean").color, "clearing level 2 unlocks Ocean")
+	_check(progress.skin_color() == Skins.get_preset("ocean").color, "clearing level 3 unlocks Ocean")
 	progress.selected_skin = Skins.CUSTOM
-	_check(progress.skin_color() == ember and progress.glow_amount() == 0.0, "custom skin and glow stay locked before beating the game")
+	_check(progress.skin_color() == starter and progress.glow_amount() == 0.0, "custom skin and glow stay locked before beating the game")
 	progress.levels_cleared = 10
 	progress.custom_color = Color(0.2, 0.4, 1.0)
 	progress.glow = 0.5
@@ -43,7 +48,7 @@ func _initialize() -> void:
 
 	# --- Skin in game: slime, trail and HUD all use it; glow only with the custom skin.
 	_reset_progress()
-	progress.levels_cleared = 2
+	progress.levels_cleared = 3  # Ocean unlocks with level 3
 	progress.select_skin("ocean")
 	var game := await _spawn({level = 1})
 	var ocean_mid: Color = Skins.shades(Skins.get_preset("ocean").color).mid
