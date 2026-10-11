@@ -22,13 +22,13 @@ func _ready() -> void:
 	_fill_grid()
 	level_buttons[Progress.current_level - 1].grab_focus()
 
-	UIKit.add_panel(self, Rect2(20, 101, 280, 50))
+	UIKit.add_panel(self, Rect2(14, 105, 292, 50))  # wide enough that the checkbox text clears the goo
 	var info := UIKit.make_label("CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN", 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	info.offset_top = 106
-	info.offset_bottom = 128
+	info.offset_top = 111
+	info.offset_bottom = 133
 
 	hard_mode_box = CheckBox.new()
 	hard_mode_box.text = "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
@@ -36,7 +36,7 @@ func _ready() -> void:
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
 		_fill_grid())  # show that mode's record times
-	hard_mode_box.position = Vector2(25, 136)  # 270 wide, centered
+	hard_mode_box.position = Vector2(25, 140)  # 270 wide, centered
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
 
@@ -57,17 +57,18 @@ func _fill_grid() -> void:
 ## A level tile: the big level number, and under it the record time, a check (cleared, no
 ## time saved) or a lock.
 func _make_tile(level: int) -> Button:
-	var button := UIKit.make_button("", func() -> void: _play(level), Vector2(44, 30))
+	# 32 tall: the number and the status line fit between the goo bands (rows 3-29).
+	var button := UIKit.make_button("", func() -> void: _play(level), Vector2(44, 32))
 	var locked := level > Progress.highest_unlocked
 	button.disabled = locked
 	var number := UIKit.make_label(str(level), 16, UIKit.TEXT_OFF if locked else UIKit.TEXT)
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	number.position = Vector2(0, 1)
+	number.position = Vector2(0, 3)
 	number.size = Vector2(44, 18)
 	button.add_child(number)
 
 	var status := CenterContainer.new()
-	status.position = Vector2(0, 20)
+	status.position = Vector2(0, 21)
 	status.size = Vector2(44, 9)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(status)

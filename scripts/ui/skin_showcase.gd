@@ -32,14 +32,22 @@ var _length := 0.0
 
 func _ready() -> void:
 	size = STAGE_SIZE
-	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_lay_floor()
+	# The goo frame over the floor's edges (see-through face), under the slime.
+	var frame := Panel.new()
+	var goo := GooBox.make_panel()
+	goo.face = Color(0, 0, 0, 0)
+	frame.add_theme_stylebox_override("panel", goo)
+	frame.size = STAGE_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(frame)
 	for step: Array in ROUTINE:
 		_length += step[1]
 
 
-## Dungeon floor tiles inside the frame (so the jelly has ground to show through), mostly plain
+## Dungeon floor tiles under the goo frame (so the jelly has ground to show through), mostly plain
 ## stone with the odd variant, the same every time.
 func _lay_floor() -> void:
 	var atlas: Texture2D = load("res://assets/sprites/floors.png")

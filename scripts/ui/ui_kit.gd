@@ -64,36 +64,30 @@ static func make_theme() -> Theme:
 	return theme
 
 
-## A beveled button face ("normal", "hover", "pressed" or "disabled").
-static func button_style(state: String) -> StyleBoxTexture:
-	var box := StyleBoxTexture.new()
-	box.texture = load(UI_DIR + "button_%s.png" % state)
-	box.texture_margin_left = 2
-	box.texture_margin_right = 2
-	box.texture_margin_top = 2
-	box.texture_margin_bottom = 3
-	box.content_margin_left = 4
-	box.content_margin_right = 4
-	var lift: int = {"hover": -1, "pressed": 1}.get(state, 0)
-	# The face is the button minus its 3 px bottom bevel: center the letters on the face.
-	box.content_margin_top = 1 + lift
-	box.content_margin_bottom = 3 - lift
-	return box
+## A goo-framed button ("normal", "hover", "pressed" or "disabled"; see GooBox). Hover brightens
+## the goo and pressing darkens the face; the text never moves, so it stays clear of the goo.
+static func button_style(state: String) -> StyleBox:
+	return GooBox.make_button(state)
 
 
-## The framed panel behind groups of buttons and messages (`hud` = the lighter HUD pod).
-static func panel_style(hud := false) -> StyleBoxTexture:
+## The goo-framed panel behind groups of buttons and messages (`hud` = the plain, lighter HUD pod).
+static func panel_style(hud := false) -> StyleBox:
+	if not hud:
+		var goo := GooBox.make_panel()
+		goo.content_margin_top = 6  # below the goo band and its lumps
+		goo.content_margin_bottom = 5
+		return goo
 	var box := StyleBoxTexture.new()
-	box.texture = load(UI_DIR + ("hud_pod.png" if hud else "panel.png"))
-	var margin := 3 if hud else 4
+	box.texture = load(UI_DIR + "hud_pod.png")
+	var margin := 3
 	box.texture_margin_left = margin
 	box.texture_margin_right = margin
 	box.texture_margin_top = margin
 	box.texture_margin_bottom = margin
-	box.content_margin_left = 3 if hud else 8
-	box.content_margin_right = 3 if hud else 8
-	box.content_margin_top = 2 if hud else 5
-	box.content_margin_bottom = 2 if hud else 5
+	box.content_margin_left = 3
+	box.content_margin_right = 3
+	box.content_margin_top = 2
+	box.content_margin_bottom = 2
 	return box
 
 
@@ -187,9 +181,18 @@ static func add_back_button(root: Control) -> Button:
 	return button
 
 
-## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level).
-static func make_volume_slider(width := 90.0) -> HBoxContainer:
+## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level),
+## inside a goo-framed box like a button's (the slider is the box's "slider" meta).
+static func make_volume_slider(width := 90.0) -> PanelContainer:
+	var box := PanelContainer.new()
+	var style := GooBox.make_button("normal")
+	style.content_margin_top = 2  # the 10 px slider fills the face between the goo bands
+	style.content_margin_bottom = 1
+	style.content_margin_left = 6  # clear of the goo at the sides
+	style.content_margin_right = 6
+	box.add_theme_stylebox_override("panel", style)
 	var row := HBoxContainer.new()
+	box.add_child(row)
 	row.add_theme_constant_override("separation", 6)
 	var label := make_label("VOLUME", 8, TEXT_DIM)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -209,8 +212,8 @@ static func make_volume_slider(width := 90.0) -> HBoxContainer:
 		if sfx:
 			sfx.play("click"))
 	row.add_child(slider)
-	row.set_meta("slider", slider)
-	return row
+	box.set_meta("slider", slider)
+	return box
 
 
 ## Idle slime preview in the given color (2 = double size).

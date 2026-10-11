@@ -30,11 +30,11 @@ func _ready() -> void:
 			add_child(hat)
 			hat.setup(Progress.selected_hat, preview)
 
-	UIKit.add_panel(self, Rect2(92, 71, 136, 92))
+	UIKit.add_panel(self, Rect2(92, 68, 136, 101))
 	var menu := VBoxContainer.new()
-	menu.position = Vector2(100, 76)
+	menu.position = Vector2(100, 74)  # below the panel's goo band
 	menu.custom_minimum_size = Vector2(120, 0)
-	menu.add_theme_constant_override("separation", 1)
+	menu.add_theme_constant_override("separation", 2)  # room for each button's goo drops
 	add_child(menu)
 
 	var fresh: bool = Progress.levels_cleared == 0 and Progress.current_level == 1
@@ -74,8 +74,8 @@ func _ready() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)  # centered under the menu
-	hint.offset_top = 168
-	hint.offset_bottom = 178
+	hint.offset_top = 172
+	hint.offset_bottom = 180
 
 
 func _on_play() -> void:

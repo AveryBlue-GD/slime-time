@@ -43,8 +43,15 @@ func recolor() -> void:
 		if rainbow:
 			color_base = rainbow_color(_time, label.global_position.x)
 		label.add_theme_color_override("font_color", color_for(label.get_meta("role", ROLE_TEXT), color_base))
+	# Button and panel frames are goo in the skin's color.
+	GooBox.set_goo_color(rainbow_color(_time, 160.0) if rainbow else base)
 	if theme_owner and theme_owner.theme:
 		var button_base := rainbow_color(_time, 160.0) if rainbow else base
+		# Slider fills are goo too.
+		for area in ["grabber_area", "grabber_area_highlight"]:
+			var fill := theme_owner.theme.get_stylebox(area, "HSlider") as StyleBoxFlat
+			if fill:
+				fill.bg_color = button_base if area == "grabber_area" else Skins.shades(button_base).light
 		for color_name: String in BUTTON_COLORS:
 			theme_owner.theme.set_color(color_name, "Button", color_for(ROLE_TEXT, button_base))
 			theme_owner.theme.set_color(color_name, "CheckBox", color_for(ROLE_TEXT, button_base))

@@ -5,7 +5,7 @@ extends CanvasLayer
 
 var buttons: Array[Button] = []
 var sound_button: Button
-var volume_row: HBoxContainer
+var volume_row: PanelContainer
 
 
 func _ready() -> void:
@@ -41,7 +41,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
-	volume_row = UIKit.make_volume_slider(58.0)  # VOLUME + slider = the 100 px button column
+	volume_row = UIKit.make_volume_slider(46.0)  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	_refresh_sound()

@@ -92,7 +92,7 @@ func _report(c: Control, image: Image) -> void:
 	if c is Label and c.text != "" and c.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER:
 		print("TEXT  %-22s %s %s" % ["\"%s\"" % c.text.get_slice("\n", 0).left(20), _text_offsets(r, image, c), margins])
 	elif c is Button and c.text != "":
-		var face := Rect2(r.position + Vector2(1, 1), r.size - Vector2(2, 4))  # inside the outline, above the bottom bevel
+		var face := Rect2(r.position + Vector2(2, 2), r.size - Vector2(4, 3))  # inside the goo frame (2 px band on top and sides, 1 at the bottom)
 		print("BTN   %-22s %s %s" % ["\"%s\"" % c.text.left(20), _text_offsets(face, image, c), margins])
 	elif c is Panel or c is PanelContainer or c is GridContainer or c is HSlider or (c is Button and c.get_child_count() > 0) or c is CheckBox:
 		var sym := absf(r.position.x - (SIZE.x - r.end.x))
