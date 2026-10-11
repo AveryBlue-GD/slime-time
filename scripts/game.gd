@@ -76,7 +76,7 @@ const CHALICE_GOLD := Color8(255, 205, 117)
 const AMBIENT_FAINT_DB := -25.0
 const AMBIENT_BED_DB := {"sunken": -17.0, "sandstone": -17.0}
 const AMBIENT_FADE := 2.0
-const AMBIENT_EVENT_GAP := Vector2(4.0, 11.0)
+const AMBIENT_EVENT_GAP := Vector2(10.0, 24.0)
 const AMBIENT_EVENT_DB := Vector2(-25.0, -17.0)
 ## Extra quietness for some themes' events (the catacombs' scream is meant to be barely there).
 const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
@@ -127,6 +127,7 @@ var ambient: AudioStreamPlayer
 var ambient_events: Array[AudioStream] = []
 var ambient_event_player: AudioStreamPlayer
 var _next_ambient_event := 0.0
+var _last_ambient_event := -1
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -276,7 +277,7 @@ func _start_ambience() -> void:
 		k += 1
 	ambient_event_player = AudioStreamPlayer.new()
 	add_child(ambient_event_player)
-	_next_ambient_event = randf_range(1.5, AMBIENT_EVENT_GAP.x)
+	_next_ambient_event = randf_range(3.0, AMBIENT_EVENT_GAP.x)
 	_update_ambience(0.0)
 
 
@@ -294,7 +295,12 @@ func _update_ambience(delta: float) -> void:
 	if _next_ambient_event > 0.0:
 		return
 	_next_ambient_event = randf_range(AMBIENT_EVENT_GAP.x, AMBIENT_EVENT_GAP.y)
-	ambient_event_player.stream = ambient_events.pick_random()
+	# Any of the theme's sounds except the one just played, so it never repeats back to back.
+	var pick := randi() % ambient_events.size()
+	if ambient_events.size() > 1 and pick == _last_ambient_event:
+		pick = (pick + 1 + randi() % (ambient_events.size() - 1)) % ambient_events.size()
+	_last_ambient_event = pick
+	ambient_event_player.stream = ambient_events[pick]
 	ambient_event_player.volume_db = randf_range(AMBIENT_EVENT_DB.x, AMBIENT_EVENT_DB.y) + AMBIENT_EVENT_TRIM.get(theme, 0.0)
 	ambient_event_player.pitch_scale = randf_range(0.9, 1.08)
 	ambient_event_player.play()

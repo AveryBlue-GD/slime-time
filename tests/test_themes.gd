@@ -62,8 +62,9 @@ func _initialize() -> void:
 		"the Volcanic Vault has a faint magma rumble and %d occasional sounds" % game.ambient_events.size())
 	await _frames(int(game.AMBIENT_FADE * 60) + 10)
 	_check(game.ambient.volume_db <= game.AMBIENT_FAINT_DB + 0.1, "...and the rumble is very faint (%.0f dB)" % game.ambient.volume_db)
+	_check(game.ambient_events.size() >= 6, "...with plenty of variety (%d different sounds)" % game.ambient_events.size())
 	var heard := false
-	for i in 60 * 13:
+	for i in 60 * 26:
 		await process_frame
 		heard = heard or game.ambient_event_player.playing
 	_check(heard, "an occasional sound plays within a few seconds")

@@ -225,6 +225,39 @@ def crystal_chimes(seed: int) -> list[float]:
     return echo(clip, 0.33, 0.45, 0.5, 1.5)
 
 
+CRYSTAL_NOTES = [392, 440, 523, 587, 659, 784, 880, 1047]
+
+
+def crystal_run(seed: int) -> list[float]:
+    """A run of crystals ringing one after another, rising or falling."""
+    rng = random.Random(seed)
+    first = rng.randrange(0, 4)
+    notes = CRYSTAL_NOTES[first:first + rng.randint(3, 5)]
+    if rng.random() < 0.5:
+        notes = notes[::-1]
+    clip = blank(3.0)
+    step = rng.uniform(0.12, 0.22)
+    for k, f in enumerate(notes):
+        place(clip, chime(f, 0.4, rng.uniform(1.2, 1.8)), k * step)
+    return echo(clip, 0.33, 0.45, 0.5, 1.5)
+
+
+def crystal_bell(seed: int) -> list[float]:
+    """One big crystal humming a long, deep note."""
+    rng = random.Random(seed)
+    f = rng.choice(CRYSTAL_NOTES[:3]) / 2
+    return echo(chime(f, 0.7, 3.0, partials=(1.0, 2.0, 2.76, 4.1)), 0.41, 0.4, 0.45, 2.0)
+
+
+def crystal_cluster(seed: int) -> list[float]:
+    """Several crystals struck at once, a soft shimmering chord."""
+    rng = random.Random(seed)
+    clip = blank(3.0)
+    for f in rng.sample(CRYSTAL_NOTES, rng.randint(2, 3)):
+        place(clip, chime(f, 0.35, rng.uniform(1.8, 2.4)), rng.uniform(0.0, 0.04))
+    return echo(clip, 0.37, 0.45, 0.5, 1.5)
+
+
 def magma_blorp(seed: int) -> list[float]:
     """Thick magma heaving up a big slow bubble that bursts with a pop."""
     rng = random.Random(seed)
@@ -261,18 +294,28 @@ def sand_trickle(seed: int) -> list[float]:
     return [s * e * 0.4 for s, e in zip(sand, env)]
 
 
-## Each theme's one-off sounds: (recipe, seed) pairs, written as ambient_<theme>_<n>.wav.
+## Each theme's one-off sounds: (recipe, seed) pairs, written as ambient_<theme>_<n>.wav. Every
+## recipe randomizes itself from its seed, so the same recipe with another seed is a new variant.
 EVENTS = {
-    "dungeon": [(drips, 1), (drips, 2), (stone_scrape, 3), (drips, 4)],
-    "mossy": [(drips, 5), (timber_creak, 6), (pebbles, 7), (timber_creak, 8)],
-    "sandstone": [(sand_trickle, 9), (stone_scrape, 10)],
-    "sunken": [(bubble_stream, 11), (bubble_stream, 12), (drips, 13)],
-    "sewers": [(sludge, 14), (sludge, 15), (drips, 16), (sludge, 17)],
-    "catacombs": [(faint_scream, 18), (bone_rattle, 19), (faint_scream, 20), (stone_scrape, 21)],
-    "frozen": [(icicle_drop, 22), (icicle_drop, 23), (ice_groan, 24), (icicle_drop, 25)],
-    "obsidian": [(glass_ping, 26), (glass_crack, 27), (glass_ping, 28)],
-    "crystal": [(crystal_chimes, 29), (crystal_chimes, 30), (crystal_chimes, 31)],
-    "volcanic": [(magma_blorp, 32), (magma_blorp, 33), (embers, 34), (steam_hiss, 35)],
+    "dungeon": [(drips, 1), (drips, 2), (stone_scrape, 3), (drips, 4), (stone_scrape, 101), (drips, 102),
+                (pebbles, 103)],
+    "mossy": [(drips, 5), (timber_creak, 6), (pebbles, 7), (timber_creak, 8), (drips, 104), (pebbles, 105),
+              (timber_creak, 106)],
+    "sandstone": [(sand_trickle, 9), (stone_scrape, 10), (sand_trickle, 107), (stone_scrape, 108), (pebbles, 109),
+                  (sand_trickle, 110)],
+    "sunken": [(bubble_stream, 11), (bubble_stream, 12), (drips, 13), (bubble_stream, 111), (drips, 112),
+               (bubble_stream, 113)],
+    "sewers": [(sludge, 14), (sludge, 15), (drips, 16), (sludge, 17), (drips, 114), (sludge, 115), (pebbles, 116)],
+    "catacombs": [(faint_scream, 18), (bone_rattle, 19), (faint_scream, 20), (stone_scrape, 21), (bone_rattle, 117),
+                  (faint_scream, 118), (bone_rattle, 119)],
+    "frozen": [(icicle_drop, 22), (icicle_drop, 23), (ice_groan, 24), (icicle_drop, 25), (ice_groan, 120),
+               (icicle_drop, 121), (icicle_drop, 122)],
+    "obsidian": [(glass_ping, 26), (glass_crack, 27), (glass_ping, 28), (glass_crack, 123), (glass_ping, 124),
+                 (stone_scrape, 125)],
+    "crystal": [(crystal_chimes, 29), (crystal_run, 30), (crystal_bell, 31), (crystal_cluster, 126),
+                (crystal_run, 127), (crystal_chimes, 128), (crystal_bell, 129)],
+    "volcanic": [(magma_blorp, 32), (magma_blorp, 33), (embers, 34), (steam_hiss, 35), (magma_blorp, 130),
+                 (embers, 131), (steam_hiss, 132)],
 }
 
 
