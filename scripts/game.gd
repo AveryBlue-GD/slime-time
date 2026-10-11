@@ -46,19 +46,6 @@ const FOG_TICKS := 16.0
 ## Light radius of a fully glowing slime (custom skin, after beating the game).
 const GLOW_MAX_RADIUS := 64.0
 
-## Tile atlases from tools/make_placeholder_art.py.
-## walls.png: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
-##            row = damage * 3 + style. floors.png: column = floor type, row = variant.
-const WALL_SOURCE := 0
-const FLOOR_SOURCE := 1
-const WALL_MASKS := 16
-const WALL_ROWS := 12
-const FLOOR_TYPES := 8
-const FLOOR_VARIANTS := 4
-const FLOOR_RUBBLE := 7
-const BROKEN := 3
-const RUBBLE_CHANCE := 0.7
-
 const GOO_ALPHA := 120
 ## Rainbow skin: the trail's hue advances this many full rainbows per second of play.
 const RAINBOW_TRAIL_SPEED := 0.08
@@ -74,6 +61,14 @@ const CHALICE_VOLUME_DB := -3.5
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
 const SHAKE_TIME := 0.25
 const SHAKE_MAX := 3.0
+## The slime's own soft light on the floor and walls around it (diameter px, strength 0-1).
+const SLIME_LIGHT_SIZE := 112
+const SLIME_LIGHT_STRENGTH := 0.22
+## Camera look-ahead: leads the slime by its velocity * LOOK_AHEAD_TIME, up to LOOK_AHEAD_MAX px.
+const LOOK_AHEAD_TIME := 0.3
+const LOOK_AHEAD_MAX := 24.0
+const LOOK_AHEAD_SPEED := 3.0
+const CHALICE_GOLD := Color8(255, 205, 117)
 
 signal level_finished(won: bool)
 
@@ -111,6 +106,8 @@ var run_time := 0.0
 var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
+var slime_light: Sprite2D
+var _look_ahead := Vector2.ZERO
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -163,7 +160,7 @@ func _ready() -> void:
 	if forced != "" and progress.take_skin_notice(level):
 		hud.flash_message("FIRST RUN: PLAYING AS %s" % Skins.display_name(forced), FORCED_SKIN_NOTICE)
 
-	_build_tiles(config.seed, config.get("tile_level", level))
+	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level))
 	_build_overlays()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
@@ -179,6 +176,14 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
+	_ease_in.call_deferred()
+
+
+## Restarts and next levels ease in from under a sheet of goo (only when actually playing).
+func _ease_in() -> void:
+	var transition := get_node_or_null("/root/Transition")
+	if transition and _is_running_scene():
+		transition.reveal()
 
 
 func _exit_tree() -> void:
@@ -218,8 +223,21 @@ func _process(_delta: float) -> void:
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	fog_material.set_shader_parameter("glow_pos", slime.position + slime.sprite.position)
+	slime_light.position = (slime.position + slime.sprite.position).round()
+	if rainbow:
+		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
+	_lead_camera(_delta)
 	_shake_camera(_delta)
 	_flush_textures()
+
+
+## Eases the camera ahead of the slime in the direction it's gliding.
+func _lead_camera(delta: float) -> void:
+	var target := (slime.velocity * LOOK_AHEAD_TIME).limit_length(LOOK_AHEAD_MAX)
+	if finished:
+		target = Vector2.ZERO
+	_look_ahead = _look_ahead.lerp(target, 1.0 - exp(-LOOK_AHEAD_SPEED * delta))
+	camera.position = _look_ahead.round()
 
 
 func _shake_camera(delta: float) -> void:
@@ -282,77 +300,6 @@ static func fade_alpha(age: float) -> float:
 	return FADE_ALPHA[-1]
 
 
-## Picks a wall variant for every wall tile (edges from its neighbors, damage and style from
-## the level's weights) and a floor type for every tile. Seeded, so a maze always looks the same.
-func _build_tiles(tile_seed: int, tile_level: int) -> void:
-	var tile_set := _make_tile_set()
-	floor_layer.tile_set = tile_set
-	wall_layer.tile_set = tile_set
-	var rng := RandomNumberGenerator.new()
-	rng.seed = tile_seed * 7919 + 17
-	var damage_weights := Levels.damage_weights(tile_level)
-	var style_weights := PackedFloat32Array(Levels.WALL_STYLE)
-	var floor_weights := Levels.floor_weights(tile_level)
-
-	for y in maze.size.y:
-		for x in maze.size.x:
-			var tile := Vector2i(x, y)
-			if not is_wall_tile(tile):
-				continue
-			var mask := 0
-			for bit_dir: Array in [[1, Vector2i.UP], [2, Vector2i.RIGHT], [4, Vector2i.DOWN], [8, Vector2i.LEFT]]:
-				if is_wall_tile(tile + bit_dir[1]):
-					mask |= bit_dir[0]
-			var damage := rng.rand_weighted(damage_weights)
-			var style := rng.rand_weighted(style_weights)
-			wall_damage[tile] = damage
-			wall_layer.set_cell(tile, WALL_SOURCE, Vector2i(mask, damage * 3 + style))
-
-	# Floor goes under walls too, so broken-off chunks of wall show floor through them.
-	for y in maze.size.y:
-		for x in maze.size.x:
-			var tile := Vector2i(x, y)
-			var type := 0
-			if not is_wall_tile(tile):
-				type = rng.rand_weighted(floor_weights)
-				if wall_damage.get(tile + Vector2i.UP, 0) == BROKEN and rng.randf() < RUBBLE_CHANCE:
-					type = FLOOR_RUBBLE
-			floor_layer.set_cell(tile, FLOOR_SOURCE, Vector2i(type, rng.randi_range(0, FLOOR_VARIANTS - 1)))
-
-
-func _make_tile_set() -> TileSet:
-	var tile_set := TileSet.new()
-	tile_set.tile_size = Vector2i(TILE, TILE)
-	tile_set.add_physics_layer()
-
-	var walls := _make_atlas(preload("res://assets/sprites/walls.png"), Vector2i(WALL_MASKS, WALL_ROWS))
-	tile_set.add_source(walls, WALL_SOURCE)
-	tile_set.add_source(_make_atlas(preload("res://assets/sprites/floors.png"),
-		Vector2i(FLOOR_TYPES, FLOOR_VARIANTS)), FLOOR_SOURCE)
-
-	# Every wall blocks fully, however broken it looks.
-	var half := TILE / 2.0
-	var square := PackedVector2Array([
-		Vector2(-half, -half), Vector2(half, -half), Vector2(half, half), Vector2(-half, half),
-	])
-	for row in WALL_ROWS:
-		for column in WALL_MASKS:
-			var data := walls.get_tile_data(Vector2i(column, row), 0)
-			data.add_collision_polygon(0)
-			data.set_collision_polygon_points(0, 0, square)
-	return tile_set
-
-
-func _make_atlas(texture: Texture2D, grid: Vector2i) -> TileSetAtlasSource:
-	var source := TileSetAtlasSource.new()
-	source.texture = texture
-	source.texture_region_size = Vector2i(TILE, TILE)
-	for row in grid.y:
-		for column in grid.x:
-			source.create_tile(Vector2i(column, row))
-	return source
-
-
 func _build_overlays() -> void:
 	var cells: Vector2i = maze.size * TILE / FOG_CELL
 	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
@@ -374,6 +321,10 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("glow_color", skin_color)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
 	fog_sprite.material = fog_material
+
+	slime_light = Fx.make_light(SLIME_LIGHT_SIZE, Color(skin_color, SLIME_LIGHT_STRENGTH))
+	slime_light.z_index = 5
+	add_child(slime_light)
 
 
 ## Paints goo on the floor in a disc around pos, then reveals walls next to it.
@@ -475,6 +426,9 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 		_stain_wall(slime.position, wall_normal)
 		shake_left = SHAKE_TIME
 		shake_strength = lerpf(1.0, SHAKE_MAX, inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
+		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, 18, 70.0, wall_normal, 70.0, rainbow)
+	else:
+		Fx.burst(self, slime.position, skin_color, 10, 35.0, Vector2.UP, 180.0, rainbow)
 	last_slime_pos = slime.position
 	slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
 	hud.set_slime(slime_remaining)
@@ -485,6 +439,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		return
 	chalice.visible = true
 	slime.play_celebrate()
+	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
 		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time)

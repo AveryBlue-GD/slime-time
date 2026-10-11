@@ -75,7 +75,8 @@ func _initialize() -> void:
 	var screen: Control = load("res://scenes/level_select.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(UIKit.format_time(progress.best_time(1)) in screen.level_buttons[0].text, "level select shows the record (%s)" % screen.level_buttons[0].text.replace("\n", " "))
+	var tile_text := " ".join(screen.level_buttons[0].find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text))
+	_check(UIKit.format_time(progress.best_time(1)) in tile_text, "level select shows the record (%s)" % tile_text)
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))

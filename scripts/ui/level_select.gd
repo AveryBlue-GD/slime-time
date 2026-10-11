@@ -17,20 +17,12 @@ func _ready() -> void:
 	add_child(grid)
 
 	for level in range(1, Levels.COUNT + 1):
-		var status := ""
-		if Progress.best_time(level) >= 0.0:
-			status = UIKit.format_time(Progress.best_time(level))
-		elif level <= Progress.levels_cleared:
-			status = "CLEARED"
-		elif level > Progress.highest_unlocked:
-			status = "LOCKED"
-		var button := UIKit.make_button("LV %d\n%s" % [level, status],
-			func() -> void: _play(level), Vector2(44, 30))
-		button.disabled = level > Progress.highest_unlocked
+		var button := _make_tile(level)
 		grid.add_child(button)
 		level_buttons.append(button)
 	level_buttons[Progress.current_level - 1].grab_focus()
 
+	UIKit.add_panel(self, Rect2(20, 101, 280, 50))
 	var info := UIKit.make_label("CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN", 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
@@ -45,6 +37,36 @@ func _ready() -> void:
 	hard_mode_box.position = Vector2(26, 136)
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
+
+
+## A level tile: the big level number, and under it the record time, a check (cleared, no
+## time saved) or a lock.
+func _make_tile(level: int) -> Button:
+	var button := UIKit.make_button("", func() -> void: _play(level), Vector2(44, 30))
+	var locked := level > Progress.highest_unlocked
+	button.disabled = locked
+	var number := UIKit.make_label(str(level), 16, UIKit.TEXT_OFF if locked else UIKit.TEXT)
+	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	number.position = Vector2(0, 1)
+	number.size = Vector2(44, 18)
+	button.add_child(number)
+
+	var status := CenterContainer.new()
+	status.position = Vector2(0, 20)
+	status.size = Vector2(44, 9)
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(status)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status.add_child(row)
+	if locked:
+		row.add_child(UIKit.make_icon("lock", UIKit.TEXT_OFF))
+	elif Progress.best_time(level) >= 0.0:
+		row.add_child(UIKit.make_label(UIKit.format_time(Progress.best_time(level)), 8, UIKit.TEXT_DIM))
+	elif level <= Progress.levels_cleared:
+		row.add_child(UIKit.make_icon("check", UIKit.GOLD))
+	return button
 
 
 func _play(level: int) -> void:

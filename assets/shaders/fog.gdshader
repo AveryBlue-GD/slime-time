@@ -94,7 +94,9 @@ void fragment() {
 	// Drifting mist: two layers of noise moving at different speeds, banded for a pixel look.
 	float n = value_noise(pixel / 30.0 + vec2(now * 0.12, now * 0.04)) * 0.65
 		+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
-	float band = floor(n * n * 5.0) / 4.0;
+	// A third, much larger and slower layer swells the mist in broad patches for depth.
+	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
+	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
 	vec3 rgb = mix(fog_deep.rgb, fog_mist.rgb, clamp(band, 0.0, 1.0));
 
 	if (glow_radius > 0.0) {

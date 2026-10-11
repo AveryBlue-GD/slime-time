@@ -141,7 +141,7 @@ func _refresh(focus_id := "") -> void:
 	for tile_id: String in tiles:
 		var tile: Button = tiles[tile_id]
 		var selected: bool = tile_id == Progress.selected_skin
-		tile.add_theme_stylebox_override("normal", UIKit._box(UIKit.BUTTON_PRESSED if selected else UIKit.BUTTON))
+		tile.add_theme_stylebox_override("normal", UIKit.button_style("hover" if selected else "normal"))
 	var custom_ready: bool = Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	custom_panel.visible = custom_ready
 	if custom_ready:

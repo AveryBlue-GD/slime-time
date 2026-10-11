@@ -24,10 +24,11 @@ func _ready() -> void:
 		preview.position = Vector2(x, 118)
 		add_child(preview)
 
+	UIKit.add_panel(self, Rect2(92, 71, 136, 92))
 	var menu := VBoxContainer.new()
 	menu.position = Vector2(100, 76)
 	menu.custom_minimum_size = Vector2(120, 0)
-	menu.add_theme_constant_override("separation", 2)
+	menu.add_theme_constant_override("separation", 1)
 	add_child(menu)
 
 	var fresh: bool = Progress.levels_cleared == 0 and Progress.current_level == 1

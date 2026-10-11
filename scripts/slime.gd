@@ -33,6 +33,8 @@ const RECOVER_ANIM_TIME := 0.15
 const SQUISH_INTERVAL := 0.28
 ## Share of a jump spent on the launch frames before the airborne frames.
 const LAUNCH_SHARE := 0.15
+## Gliding faster than this flicks goo droplets off behind the slime.
+const DRIP_SPEED := 30.0
 ## Animation suffixes for 8 directions, in 45-degree steps clockwise from east (y points down).
 const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 
@@ -64,6 +66,7 @@ var _recover_anim_left := 0.0
 var _special_anim := ""
 
 static var _sprite_frames: SpriteFrames
+var _drips: CPUParticles2D
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var shadow: Sprite2D = $Shadow
@@ -104,11 +107,17 @@ func _ready() -> void:
 	sprite.sprite_frames = load_sprite_frames()
 	sprite.material = Skins.make_material(Skins.get_preset(Skins.DEFAULT).color)
 	sprite.play("idle")
+	_drips = Fx.make_drips()
+	_drips.show_behind_parent = true
+	_drips.color = Skins.get_preset(Skins.DEFAULT).color
+	add_child(_drips)
 
 
-## Recolors the slime (palette swap of its goo shades).
+## Recolors the slime (palette swap of its goo shades) and its droplets.
 func apply_skin(color: Color, rainbow := false) -> void:
 	Skins.apply_to(sprite.material, color, rainbow)
+	_drips.color = color
+	_drips.color_initial_ramp = Fx.rainbow_gradient() if rainbow else null
 
 
 func is_airborne() -> bool:
@@ -182,6 +191,9 @@ func _physics_process(delta: float) -> void:
 		_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
+	_drips.emitting = state == State.GLIDE and not frozen and velocity.length() > DRIP_SPEED
+	if _drips.emitting:
+		_drips.direction = -velocity.normalized()
 	_animate()
 
 

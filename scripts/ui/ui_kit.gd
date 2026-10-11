@@ -15,39 +15,109 @@ const TEXT := Color8(244, 244, 244)
 const TEXT_DIM := Color8(148, 176, 194)
 const TEXT_OFF := Color8(86, 108, 134)
 const GOLD := Color8(255, 205, 117)
+## Pixel-art UI pieces from tools/make_ui_art.py.
+const UI_DIR := "res://assets/ui/"
 
 
 static func make_theme() -> Theme:
 	var theme := Theme.new()
 	theme.default_font_size = 8
-	theme.set_stylebox("normal", "Button", _box(BUTTON))
-	theme.set_stylebox("hover", "Button", _box(BUTTON_HOVER))
-	theme.set_stylebox("pressed", "Button", _box(BUTTON_PRESSED))
-	theme.set_stylebox("disabled", "Button", _box(BUTTON_DISABLED))
-	theme.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), GOLD))
+	# Beveled nine-slice buttons: hovering lifts the text 1 px, pressing pushes it down 1 px.
+	theme.set_stylebox("normal", "Button", button_style("normal"))
+	theme.set_stylebox("hover", "Button", button_style("hover"))
+	theme.set_stylebox("pressed", "Button", button_style("pressed"))
+	theme.set_stylebox("hover_pressed", "Button", button_style("pressed"))
+	theme.set_stylebox("disabled", "Button", button_style("disabled"))
+	theme.set_stylebox("focus", "Button", _focus_box())
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		theme.set_color(color_name, "Button", TEXT)
 	theme.set_color("font_disabled_color", "Button", TEXT_OFF)
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		theme.set_color(color_name, "CheckBox", TEXT)
-	theme.set_stylebox("focus", "CheckBox", _box(Color(0, 0, 0, 0), GOLD))
+	theme.set_stylebox("focus", "CheckBox", _focus_box())
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		theme.set_stylebox(state, "CheckBox", StyleBoxEmpty.new())
+	theme.set_icon("unchecked", "CheckBox", load(UI_DIR + "check_off.png"))
+	theme.set_icon("checked", "CheckBox", load(UI_DIR + "check_on.png"))
+	theme.set_constant("h_separation", "CheckBox", 4)
 	theme.set_color("font_color", "Label", TEXT)
-	theme.set_stylebox("slider", "HSlider", _box(BUTTON))
+	# A 1 px drop shadow keeps text readable over the drifting backdrop.
+	theme.set_color("font_shadow_color", "Label", Color(BG, 0.9))
+	theme.set_constant("shadow_offset_x", "Label", 1)
+	theme.set_constant("shadow_offset_y", "Label", 1)
+	var track := _box(Color8(30, 26, 40), Color8(26, 28, 44))
+	track.draw_center = true
+	track.content_margin_top = 1
+	track.content_margin_bottom = 1
+	theme.set_stylebox("slider", "HSlider", track)
 	theme.set_stylebox("grabber_area", "HSlider", _box(BUTTON_PRESSED))
-	theme.set_stylebox("grabber_area_highlight", "HSlider", _box(BUTTON_HOVER))
+	theme.set_stylebox("grabber_area_highlight", "HSlider", _box(Color8(56, 183, 100)))
+	theme.set_icon("grabber", "HSlider", load(UI_DIR + "grabber.png"))
+	theme.set_icon("grabber_highlight", "HSlider", load(UI_DIR + "grabber_hover.png"))
+	theme.set_stylebox("panel", "Panel", panel_style())
+	theme.set_stylebox("panel", "PanelContainer", panel_style())
 	return theme
 
 
-## Full-screen menu root: theme, background, a title at the top, and skin-colored text.
+## A beveled button face ("normal", "hover", "pressed" or "disabled").
+static func button_style(state: String) -> StyleBoxTexture:
+	var box := StyleBoxTexture.new()
+	box.texture = load(UI_DIR + "button_%s.png" % state)
+	box.texture_margin_left = 2
+	box.texture_margin_right = 2
+	box.texture_margin_top = 2
+	box.texture_margin_bottom = 3
+	box.content_margin_left = 4
+	box.content_margin_right = 4
+	var lift: int = {"hover": -1, "pressed": 1}.get(state, 0)
+	box.content_margin_top = 2 + lift
+	box.content_margin_bottom = 2 - lift
+	return box
+
+
+## The framed panel behind groups of buttons and messages (`hud` = the lighter HUD pod).
+static func panel_style(hud := false) -> StyleBoxTexture:
+	var box := StyleBoxTexture.new()
+	box.texture = load(UI_DIR + ("hud_pod.png" if hud else "panel.png"))
+	var margin := 3 if hud else 4
+	box.texture_margin_left = margin
+	box.texture_margin_right = margin
+	box.texture_margin_top = margin
+	box.texture_margin_bottom = margin
+	box.content_margin_left = 3 if hud else 8
+	box.content_margin_right = 3 if hud else 8
+	box.content_margin_top = 2 if hud else 5
+	box.content_margin_bottom = 2 if hud else 5
+	return box
+
+
+## Adds a framed panel covering `rect` (drawn behind whatever is added after it).
+static func add_panel(parent: Control, rect: Rect2) -> Panel:
+	var panel := Panel.new()
+	panel.position = rect.position
+	panel.size = rect.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(panel)
+	return panel
+
+
+## An 8x8 UI icon ("drop", "clock", "lock", "check").
+static func make_icon(icon_name: String, tint := TEXT) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.texture = load(UI_DIR + "icon_%s.png" % icon_name)
+	icon.modulate = tint
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return icon
+
+
+## Full-screen menu root: theme, the drifting maze backdrop, a title at the top, and skin-colored
+## text.
 ## Returns the SkinText node (call its recolor() after changing the skin).
 static func setup_screen(root: Control, title: String) -> SkinText:
 	root.theme = make_theme()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = BG
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(bg)
+	root.add_child(MenuBackdrop.new())
 	if title != "":
 		var label := make_label(title, 16, GOLD)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -55,6 +125,9 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		label.offset_top = 2
 		label.offset_bottom = 22
+		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
+		label.add_theme_constant_override("shadow_offset_x", 0)
+		label.add_theme_constant_override("shadow_offset_y", 2)
 	return add_skin_text(root)
 
 
@@ -142,8 +215,19 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d.%d" % [tenths / 600, (tenths / 10) % 60, tenths % 10]
 
 
+## Changes screens behind a goo wipe (instantly when the Transition autoload isn't there).
 static func go(tree: SceneTree, scene: String) -> void:
-	tree.change_scene_to_file(scene)
+	var transition := tree.root.get_node_or_null("Transition")
+	if transition:
+		transition.go(scene)
+	else:
+		tree.change_scene_to_file(scene)
+
+
+static func _focus_box() -> StyleBoxFlat:
+	var box := _box(Color(0, 0, 0, 0), GOLD)
+	box.set_expand_margin_all(1)
+	return box
 
 
 static func _box(color: Color, border := Color(0, 0, 0, 0)) -> StyleBoxFlat:

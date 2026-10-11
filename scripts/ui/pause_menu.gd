@@ -26,6 +26,7 @@ func _ready() -> void:
 	title.size = Vector2(320, 20)
 	root.add_child(title)
 
+	UIKit.add_panel(root, Rect2(100, 55, 120, 88))
 	var menu := VBoxContainer.new()
 	menu.position = Vector2(110, 62)
 	menu.custom_minimum_size = Vector2(100, 0)

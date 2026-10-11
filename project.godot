@@ -20,6 +20,7 @@ config/icon="res://icon.png"
 Progress="*res://scripts/progress.gd"
 Sfx="*res://scripts/sfx.gd"
 RotateHint="*res://scripts/ui/rotate_hint.gd"
+Transition="*res://scripts/ui/transition.gd"
 
 [display]
 
