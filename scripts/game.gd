@@ -169,6 +169,7 @@ func _ready() -> void:
 	chalice.visible = false
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
+	slime.bounced.connect(_on_bounced)
 
 	camera.limit_right = maze.size.x * TILE
 	camera.limit_bottom = maze.size.y * TILE
@@ -432,6 +433,16 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	last_slime_pos = slime.position
 	slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
 	hud.set_slime(slime_remaining)
+
+
+## A knockback ricochet: a smaller splat (stain, goo spray, a shake that scales with the hit).
+func _on_bounced(wall_normal: Vector2, impact: float) -> void:
+	var power := clampf(impact / 200.0, 0.0, 1.0)
+	_stain_wall(slime.position, wall_normal)
+	Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, int(lerpf(4, 12, power)), lerpf(25.0, 60.0, power), wall_normal, 70.0, rainbow)
+	if power > 0.3:
+		shake_left = SHAKE_TIME * 0.6
+		shake_strength = lerpf(1.0, SHAKE_MAX - 1.0, power)
 
 
 func _on_chalice_body_entered(body: Node2D) -> void:

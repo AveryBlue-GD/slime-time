@@ -7,6 +7,8 @@ extends CharacterBody2D
 ## Speeds are in pixels per second at the 320x180 base resolution.
 
 signal jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2)
+## A knockback ricochet off another wall; `impact` = speed into the wall (px/s).
+signal bounced(wall_normal: Vector2, impact: float)
 
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED }
 
@@ -18,9 +20,20 @@ const MIN_JUMP_TILES := 1.0
 const MAX_JUMP_TILES := 8.0
 const JUMP_SPEED := 220.0
 const SPLAT_STUN := 0.3
-## Splat knockback: the slime is thrown back (reflected off the wall) about this share of the
-## jump distance it still had left when it hit, sliding to a stop on the goo.
+## Splat knockback, pinball style. The jump distance still left when the slime hits a wall is
+## its momentum: as a speed, sqrt(2 * friction * leftover) (the speed that would glide that far).
+## Each wall hit splits the velocity into the part going into the wall, which bounces back
+## scaled by RESTITUTION, and the part along the wall, which keeps WALL_GRIP of itself. So a
+## head-on splat slides straight back BOUNCE_FACTOR (= RESTITUTION^2) of the leftover distance,
+## an angled one ricochets off at an angle and can carry on into more walls (each one sapping
+## energy) and a weak hop barely leaves the wall.
 const BOUNCE_FACTOR := 0.4
+const RESTITUTION := 0.632  # sqrt(BOUNCE_FACTOR)
+const WALL_GRIP := 0.85
+## Hitting a wall slower than this (px/s into it) just slides along it instead of bouncing.
+const MIN_BOUNCE_SPEED := 30.0
+## Ricochets closer together than this share one splat effect (narrow corridors rattle).
+const BOUNCE_FX_GAP := 0.08
 ## Below this speed a knockback counts as over.
 const KNOCKBACK_END_SPEED := 6.0
 ## How strongly a single-direction press pulls the slime onto the center line of its lane.
@@ -58,6 +71,9 @@ var last_jump_traveled := 0.0
 ## True while sliding from a splat's knockback (that slide costs no slime).
 var knocked_back := false
 var _stun_left := 0.0
+var _bounce_fx_left := 0.0
+## Wall ricochets since the last launch (after the splat itself).
+var ricochets := 0
 var _splat_side := "n"
 var _land_anim_left := 0.0
 var _squish_left := 0.0
@@ -142,6 +158,7 @@ func launch(charge_value: float) -> void:
 	_jump_dir = facing
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
+	ricochets = 0
 	velocity = Vector2.ZERO
 	charge = 0.0
 	state = State.AIRBORNE
@@ -190,6 +207,7 @@ func _physics_process(delta: float) -> void:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
 		_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
+	_bounce_fx_left = maxf(_bounce_fx_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
 	_drips.emitting = state == State.GLIDE and not frozen and velocity.length() > DRIP_SPEED
 	if _drips.emitting:
@@ -248,7 +266,42 @@ func _glide(input: Vector2, delta: float) -> void:
 		_center_in_lane(input)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
-	move_and_slide()
+	if knocked_back and input == Vector2.ZERO:
+		_ricochet(delta)
+	else:
+		move_and_slide()
+
+
+## Knockback movement: like move_and_slide, but walls hit fast enough bounce the slime off.
+func _ricochet(delta: float) -> void:
+	var motion := velocity * delta
+	for i in 4:  # a few hits per frame at most (corners)
+		var hit := move_and_collide(motion)
+		if hit == null:
+			return
+		var normal := hit.get_normal()
+		var impact := -velocity.dot(normal)
+		var left := hit.get_remainder().length()
+		if impact > MIN_BOUNCE_SPEED:
+			velocity = wall_bounce(velocity, normal)
+			ricochets += 1
+			if _bounce_fx_left <= 0.0:
+				_bounce_fx_left = BOUNCE_FX_GAP
+				_splat_side = dir_name(-normal)
+				_sfx("splat", lerpf(-14.0, -3.0, clampf(impact / 200.0, 0.0, 1.0)), randf_range(1.0, 1.2))
+				bounced.emit(normal, impact)
+		else:
+			velocity = velocity.slide(normal)
+		if left <= 0.0 or velocity == Vector2.ZERO:
+			return
+		motion = velocity.normalized() * left
+
+
+## Velocity after hitting a wall: the part into the wall bounces back at RESTITUTION, the part
+## along it keeps WALL_GRIP.
+static func wall_bounce(v: Vector2, wall_normal: Vector2) -> Vector2:
+	var into := wall_normal * v.dot(wall_normal)
+	return (v - into) * WALL_GRIP - into * RESTITUTION
 
 
 ## Pressing along one axis centers the slime on the other, so it lines up with the one-tile
@@ -294,14 +347,13 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
 
 
-## Throws the slime back off the wall it hit. The leftover jump distance is the momentum: the
-## slide covers BOUNCE_FACTOR of it, so a hard leap into a near wall flies back further than a
-## gentle hop. Friction (v^2 = 2 * friction * distance) sets the starting speed for that slide.
+## Throws the slime back off the wall it hit (see BOUNCE_FACTOR): the leftover jump distance,
+## turned into a speed, bounces off the wall like a ball.
 func _knock_back(wall_normal: Vector2) -> void:
 	var leftover := maxf(_jump_distance - _jump_traveled, 0.0)
-	var slide := leftover * BOUNCE_FACTOR
-	velocity = _jump_dir.bounce(wall_normal).normalized() * sqrt(2.0 * friction * slide)
-	knocked_back = slide > 0.5
+	velocity = wall_bounce(_jump_dir * sqrt(2.0 * friction * leftover), wall_normal)
+	knocked_back = velocity.length() > KNOCKBACK_END_SPEED
+	_bounce_fx_left = BOUNCE_FX_GAP
 
 
 func _sfx(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:
