@@ -9,6 +9,8 @@ const BAR_SIZE := Vector2(51, 6)
 const SEGMENTS := 4
 const CHUNK := 12
 const POD_MARGIN := 3
+## The timer pod sits this far right of center, leaving room for the meter and coins.
+const TIMER_SHIFT := 8
 ## Below this percent the meter turns red and pulses.
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
@@ -35,10 +37,11 @@ var message: Label
 var area_label: Label
 var _message_panel: PanelContainer
 var time_label: Label
-## Coin counter (under the slime meter): coins in hand, and in a story level how many of its
-## coins have been found.
+## Coins in hand (top bar, beside the slime meter), and coins still to find in this story level
+## (top bar, beside the level name; hidden in randomizer mazes, which have none).
 var coin_label: Label
-var coin_found_label: Label
+var coins_left_label: Label
+var _coins_left_pod: Control
 ## Shown only when a level is beaten faster than its saved record.
 var record_banner: CenterContainer
 var record_time_label: Label
@@ -61,8 +64,13 @@ func _ready() -> void:
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(vignette)
 
+	# The top bar: the meter and coins in hand on the left, the timer in the middle, the level on
+	# the right with the coins left to find here just under it.
+	var left_bar := _make_bar(Control.PRESET_TOP_LEFT)
+	var right_bar := _make_bar(Control.PRESET_TOP_RIGHT, true)
+
 	# Left pod: goo drop, segmented meter, percent.
-	var meter_row := _make_pod(Control.PRESET_TOP_LEFT)
+	var meter_row := _make_pod(left_bar)
 	_drop = UIKit.make_icon("drop", goo_color)
 	meter_row.add_child(_drop)
 	meter_row.add_child(_build_meter())
@@ -71,27 +79,29 @@ func _ready() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meter_row.add_child(label)
 
-	# Coin pod, under the meter: coins in hand and (in a story level) found / hidden here.
-	var coin_row := _make_pod(Control.PRESET_TOP_LEFT)
-	coin_row.get_parent().offset_top = POD_MARGIN + 16
+	# Coins in hand.
+	var coin_row := _make_pod(left_bar)
 	coin_row.add_child(UIKit.make_icon("coin", Color.WHITE))
 	coin_label = _make_label()
 	coin_row.add_child(coin_label)
-	coin_found_label = _make_label(SkinText.ROLE_DIM)
-	coin_row.add_child(coin_found_label)
 
 	# Center pod: clock + run time.
-	var time_row := _make_pod(Control.PRESET_CENTER_TOP)
+	var time_row := _make_pod(null)
 	time_row.add_child(UIKit.make_icon("clock", UIKit.TEXT))
 	time_label = _make_label()
 	time_label.custom_minimum_size = Vector2(32, 0)
 	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	time_row.add_child(time_label)
 
-	# Right pod: level name.
-	var level_row := _make_pod(Control.PRESET_TOP_RIGHT)
+	# The level name, and under it the coins still hidden in this level (a dim coin).
+	var level_row := _make_pod(right_bar)
 	level_label = _make_label()
 	level_row.add_child(level_label)
+	var left_row := _make_pod(right_bar)
+	_coins_left_pod = left_row.get_parent()
+	left_row.add_child(UIKit.make_icon("coin", Color(0.75, 0.75, 0.8)))
+	coins_left_label = _make_label(SkinText.ROLE_DIM)
+	left_row.add_child(coins_left_label)
 
 	area_label = _make_label(SkinText.ROLE_DIM)
 	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -139,26 +149,42 @@ func set_slime(percent: float) -> void:
 	label.text = "%d%%" % ceili(percent)
 
 
-## A framed pod anchored to a top corner (or the top center); returns its row to fill.
-func _make_pod(preset: Control.LayoutPreset) -> HBoxContainer:
+## Pods anchored to a top corner, side by side (or `stacked`, right-aligned); the right one grows
+## leftward.
+func _make_bar(preset: Control.LayoutPreset, stacked := false) -> BoxContainer:
+	var bar: BoxContainer = VBoxContainer.new() if stacked else HBoxContainer.new()
+	bar.alignment = BoxContainer.ALIGNMENT_BEGIN
+	bar.add_theme_constant_override("separation", 2)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bar)
+	bar.set_anchors_preset(preset)
+	bar.offset_top = POD_MARGIN
+	if preset == Control.PRESET_TOP_RIGHT:
+		bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		bar.offset_left = -POD_MARGIN
+		bar.offset_right = -POD_MARGIN
+	else:
+		bar.offset_left = POD_MARGIN
+		bar.offset_right = POD_MARGIN
+	return bar
+
+
+## A framed pod: in `bar`, or (null) on its own at the top, a little right of center (clear of
+## the meter and coins). Returns its row to fill.
+func _make_pod(bar: BoxContainer) -> HBoxContainer:
 	var pod := PanelContainer.new()
 	pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(pod)
-	pod.set_anchors_preset(preset)
-	pod.offset_top = POD_MARGIN
-	match preset:
-		Control.PRESET_TOP_LEFT:
-			pod.offset_left = POD_MARGIN
-			pod.offset_right = POD_MARGIN
-		Control.PRESET_TOP_RIGHT:
-			pod.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-			pod.offset_left = -POD_MARGIN
-			pod.offset_right = -POD_MARGIN
-		_:
-			pod.grow_horizontal = Control.GROW_DIRECTION_BOTH
-			pod.offset_left = 0
-			pod.offset_right = 0
+	if bar:
+		bar.add_child(pod)
+		pod.size_flags_horizontal = Control.SIZE_SHRINK_END
+	else:
+		add_child(pod)
+		pod.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		pod.offset_top = POD_MARGIN
+		pod.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		pod.offset_left = TIMER_SHIFT
+		pod.offset_right = TIMER_SHIFT
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -191,12 +217,13 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 	return rect
 
 
-## Updates the coin pod; `here` = 0 hides the found count (randomizer mazes have no coins).
-## `pop` flashes the count gold (a coin was just picked up).
+## Updates the coin counts: `total` in hand, and `found` of the `here` coins in this level
+## (`here` = 0 hides that pod: randomizer mazes have no coins). `pop` flashes the total gold
+## (a coin was just picked up).
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
-	coin_label.text = str(total)
-	coin_found_label.text = "%d/%d" % [found, here] if here > 0 else ""
-	coin_found_label.visible = here > 0
+	coin_label.text = str(mini(total, 999))
+	coins_left_label.text = "ALL FOUND" if found >= here else "%d LEFT" % (here - found)
+	_coins_left_pod.visible = here > 0
 	if pop:
 		coin_label.add_theme_color_override("font_color", GOLD)
 		var tween := create_tween()

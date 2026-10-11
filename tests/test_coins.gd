@@ -48,8 +48,8 @@ func _initialize() -> void:
 	await physics_frame
 	await physics_frame
 	_check(progress.has_coin(2, cell) and not first in game.coins, "touching a coin collects it")
-	_check(game.hud.coin_label.text == "1" and game.hud.coin_found_label.text == "1/%d" % Levels.COINS[1],
-		"the HUD counts it (%s, %s)" % [game.hud.coin_label.text, game.hud.coin_found_label.text])
+	_check(game.hud.coin_label.text == "1" and game.hud.coins_left_label.text == "%d LEFT" % (Levels.COINS[1] - 1),
+		"the HUD counts it: %s in hand, %s here" % [game.hud.coin_label.text, game.hud.coins_left_label.text])
 	game.free()
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
@@ -61,7 +61,7 @@ func _initialize() -> void:
 	_check(not cell in cells and game.coins.size() == Levels.COINS[1] - 1, "a collected coin never comes back")
 	game.free()
 	game = await _spawn({random_seed = 99})
-	_check(game.coins.is_empty() and not game.hud.coin_found_label.visible, "randomizer mazes have no coins")
+	_check(game.coins.is_empty() and not game.hud._coins_left_pod.visible, "randomizer mazes have no coins")
 	game.free()
 
 	# --- Buying and refunding upgrades

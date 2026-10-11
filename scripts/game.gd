@@ -760,8 +760,10 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 	if not did_win:
 		if progress and is_random():
 			progress.new_random_maze()
-		await get_tree().create_timer(delay).timeout
-		if _is_running_scene():
+		# The countdown pauses with the game (false = not while paused), and it's dropped if the
+		# player has left for the menu meanwhile.
+		await get_tree().create_timer(delay, false).timeout
+		if _is_running_scene() and not _leaving():
 			get_tree().reload_current_scene()
 		return
 	if progress:
@@ -770,8 +772,8 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 		else:
 			progress.record_time(level, run_time)
 			progress.complete_level(level)
-	await get_tree().create_timer(CHOICE_DELAY).timeout
-	if _is_running_scene():
+	await get_tree().create_timer(CHOICE_DELAY, false).timeout
+	if _is_running_scene() and not _leaving():
 		_offer_next_steps()
 
 
@@ -810,8 +812,14 @@ func _is_running_scene() -> bool:
 	return is_inside_tree() and get_tree().current_scene == self
 
 
+## True while a screen change is underway (e.g. quitting to the title from the pause menu).
+func _leaving() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	return transition != null and transition.busy
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not _is_running_scene():
+	if not _is_running_scene() or _leaving():
 		return
 	if event.is_action_pressed("menu"):
 		get_viewport().set_input_as_handled()

@@ -41,6 +41,7 @@ func go(scene: String) -> void:
 	_tween.tween_method(func(v: float) -> void: _set_edges(v, 0.0), 0.0, OFF_SCREEN, COVER_TIME) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await _tween.finished
+	get_tree().paused = false  # never arrive on a new screen still paused
 	get_tree().change_scene_to_file(scene)
 	await get_tree().process_frame
 	busy = false
