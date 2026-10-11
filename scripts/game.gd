@@ -79,6 +79,11 @@ const AMBIENT_EVENT_GAP := Vector2(10.0, 24.0)
 const AMBIENT_EVENT_DB := Vector2(-25.0, -17.0)
 ## Extra quietness for some themes' events (the catacombs' scream is meant to be barely there).
 const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
+## Glimmers: every so often a faint twinkle shows through the fog on a random unexplored floor
+## tile nearby. They come with distance traveled (gliding or leaping), not time: one per this many
+## px (picked at random in the range each time), between these many tiles from the slime.
+const GLIMMER_EVERY := Vector2(180.0, 360.0)
+const GLIMMER_REACH := Vector2i(3, 9)
 
 signal level_finished(won: bool)
 
@@ -99,6 +104,11 @@ var trail_image: Image
 var revealed_walls := {}
 var textures_dirty := false
 var last_slime_pos: Vector2
+## Distance traveled since the last glimmer, the distance the next one comes at, and where the
+## slime was last frame (for measuring).
+var glimmer_travel := 0.0
+var _next_glimmer := 0.0
+var _glimmer_from := Vector2.ZERO
 ## Seconds since the maze started; the fog's clock.
 var elapsed := 0.0
 ## Slime spent on the most recent jump (for tests and tuning).
@@ -204,6 +214,8 @@ func _ready() -> void:
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
+	_glimmer_from = slime.position
+	_next_glimmer = randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y)
 	chalice.position = MazeGenerator.cell_center(maze.goal, TILE)
 	chalice.visible = false
 	chalice.body_entered.connect(_on_chalice_body_entered)
@@ -259,6 +271,7 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	_count_glimmer_travel(pos)
 	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
 		chalice.visible = true
 	hud.set_slime(slime_remaining)
@@ -343,6 +356,71 @@ func _shake_camera(delta: float) -> void:
 	shake_left = maxf(shake_left - delta, 0.0)
 	var strength := ceilf(shake_strength * shake_left / SHAKE_TIME)
 	camera.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength)).round()
+
+
+## Adds the distance moved since last frame; past the next mark, a glimmer appears.
+func _count_glimmer_travel(pos: Vector2) -> void:
+	glimmer_travel += pos.distance_to(_glimmer_from)
+	_glimmer_from = pos
+	if glimmer_travel >= _next_glimmer:
+		glimmer_travel = 0.0
+		_next_glimmer = randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y)
+		_spawn_glimmer()
+
+
+## A twinkle on a random floor tile near the slime that is still fully fogged (if one is found).
+func _spawn_glimmer() -> void:
+	var here := Vector2i((slime.position / TILE).floor())
+	for attempt in 24:
+		var offset := Vector2i(randi_range(-GLIMMER_REACH.y, GLIMMER_REACH.y), randi_range(-GLIMMER_REACH.y, GLIMMER_REACH.y))
+		if maxi(absi(offset.x), absi(offset.y)) < GLIMMER_REACH.x:
+			continue
+		var tile := here + offset
+		if tile.x < 0 or tile.y < 0 or tile.x >= maze.size.x or tile.y >= maze.size.y or is_wall_tile(tile):
+			continue
+		var at := Vector2(tile * TILE + Vector2i(TILE / 2 + randi_range(-4, 4), TILE / 2 + randi_range(-4, 4)))
+		if fog_alpha_at(at) < 0.99:
+			continue
+		var glimmer := Glimmer.new()
+		glimmer.position = at
+		glimmer.color = Themes.fog_colors(theme)[1].lightened(0.6) if not Themes.fog_colors(theme).is_empty() else Color(0.85, 0.9, 1.0)
+		glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
+		glimmer.add_to_group("glimmer")
+		add_child(glimmer)
+		return
+
+
+## A tiny four-pointed twinkle that swells and fades (additive, so it reads as light in the fog).
+class Glimmer extends Node2D:
+	const LIFE := 0.9
+	var color := Color.WHITE
+	var _age := 0.0
+	var _light: Sprite2D
+
+	func _ready() -> void:
+		var additive := CanvasItemMaterial.new()
+		additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		material = additive
+		_light = Fx.make_light(14, Color(color, 0.0))
+		add_child(_light)
+
+	func _process(delta: float) -> void:
+		_age += delta
+		if _age >= LIFE:
+			queue_free()
+			return
+		_light.modulate.a = 0.3 * sin(_age / LIFE * PI)
+		queue_redraw()
+
+	func _draw() -> void:
+		# A bright center pixel with arms (up to 3 px) that grow and shrink with the twinkle.
+		var strength := sin(_age / LIFE * PI)
+		var arm := roundi(strength * 3.0)
+		draw_rect(Rect2(0, 0, 1, 1), Color(color, 0.7 * strength))
+		for i in range(1, arm + 1):
+			var c := Color(color, (0.5 if i == 1 else 0.25) * strength)
+			for dir: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				draw_rect(Rect2(Vector2(dir * i), Vector2.ONE), c)
 
 
 func is_wall_tile(tile: Vector2i) -> bool:
@@ -743,7 +821,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	elif progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: ANY SKIN YOU WANT!"
+			text += "\nUNLOCKED: " + Skins.CUSTOM_NAME + " (ANY COLOR YOU LIKE)!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))

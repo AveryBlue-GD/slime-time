@@ -1,8 +1,10 @@
 shader_type canvas_item;
 
 // Palette swap: the slime sheet is drawn in six green goo shades (highlight, light, mid, dark,
-// deep shadow, outline); each is replaced by the matching shade of the current skin. Every other
-// color (eyes, glints, ground shadow, dried crust) is kept.
+// deep shadow, outline); each is replaced by the matching shade of the current skin. The dried
+// crust of the dry-up frames (four stone greys) becomes a dull, darker version of the skin's own
+// shades, so every slime dries up in its own color. Every other color (eyes, glints, ground
+// shadow) is kept.
 // With `rainbow` on, the goo instead shows rainbow bands (red, orange, yellow, green, blue,
 // violet) that flow across the body from left to right with a slight ripple, like a wave.
 
@@ -29,6 +31,12 @@ const vec3 SOURCES[6] = {
 const vec2 RAINBOW_SV[6] = {vec2(0.2, 1.0), vec2(0.45, 1.0), vec2(0.8, 0.95), vec2(0.85, 0.55), vec2(0.9, 0.36), vec2(0.9, 0.18)};
 // How see-through each goo shade gets at full translucency (highlight ... outline).
 const float JELLY_ALPHA[6] = {0.9, 0.55, 0.42, 0.52, 0.68, 1.0};
+// The dry-up crust's greys ("x", "w", "W", "z") and the goo shade each one dries from.
+const vec3 CRUST[4] = {
+	vec3(194.0, 210.0, 222.0) / 255.0, vec3(148.0, 176.0, 194.0) / 255.0,
+	vec3(86.0, 108.0, 134.0) / 255.0, vec3(62.0, 74.0, 96.0) / 255.0
+};
+const int CRUST_FROM[4] = {1, 2, 3, 4};
 const float MATCH = 0.02;
 const float HUE_STEPS = 12.0;
 
@@ -57,17 +65,32 @@ void fragment() {
 			break;
 		}
 	}
-	if (shade >= 0 && rainbow) {
+	int crust = -1;
+	if (shade < 0) {
+		for (int i = 0; i < 4; i++) {
+			if (distance(rgb, CRUST[i]) < MATCH) {
+				crust = i;
+				break;
+			}
+		}
+	}
+	// Dried crust: the goo shade it came from, then dulled and darkened below.
+	int source = shade >= 0 ? shade : (crust >= 0 ? CRUST_FROM[crust] : -1);
+	if (source >= 0 && rainbow) {
 		vec2 p = floor(local_pos);
 		float wave = p.x + sin(p.y * 0.6 + TIME * 4.0) * 1.5;
 		// Hue falls as time passes, so each color travels toward +x; banded for a pixel look.
 		float hue = fract(floor((wave / rainbow_width - TIME * rainbow_speed) * HUE_STEPS) / HUE_STEPS);
 		// Red -> violet is the first 5/6 of the hue circle; squeeze it so magenta is skipped.
 		hue *= 0.83;
-		rgb = hsv_to_rgb(hue, RAINBOW_SV[shade].x, RAINBOW_SV[shade].y);
-	} else if (shade >= 0) {
+		rgb = hsv_to_rgb(hue, RAINBOW_SV[source].x, RAINBOW_SV[source].y);
+	} else if (source >= 0) {
 		vec4 swaps[6] = {highlight, light, mid, dark, deep, outline};
-		rgb = swaps[shade].rgb;
+		rgb = swaps[source].rgb;
+	}
+	if (crust >= 0) {
+		float grey = dot(rgb, vec3(0.3, 0.59, 0.11));
+		rgb = mix(vec3(grey), rgb, 0.55) * 0.8;
 	}
 	float alpha = texel.a;
 	if (shade >= 0) {

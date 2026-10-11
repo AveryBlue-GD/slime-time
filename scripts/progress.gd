@@ -43,6 +43,8 @@ var dev_tools := false
 const DEV_COINS := 999
 ## Spending coins dev mode adds (0 when --coins sets an exact amount).
 var dev_coins := DEV_COINS
+## --all-coins: every coin counts as found, wherever it is.
+var all_coins_debug := false
 var custom_color := Color8(239, 125, 47)
 var sound_on := true
 ## Master volume, 0-1 (applied to the Master audio bus).
@@ -74,7 +76,8 @@ var skin_override := ""
 
 
 func _ready() -> void:
-	load_progress()
+	if not _is_test_or_tool_run():
+		load_progress()
 	apply_bindings()
 	apply_volume()
 	for arg in OS.get_cmdline_user_args():
@@ -108,6 +111,15 @@ func _ready() -> void:
 			coins_found = {0: []}
 			for i in arg.trim_prefix("--coins=").to_int() + coins_spent():
 				coins_found[0].append("debug%d" % i)
+		elif arg == "--all-coins":  # every story coin found (for rainbow screenshots); not saved
+			saving_enabled = false
+			dev_coins = 0
+			all_coins_debug = true
+			coins_found = {}
+			for level in range(1, Levels.COUNT + 1):
+				coins_found[level] = []
+				for i in Levels.COINS[level - 1]:
+					coins_found[level].append("debug%d" % i)
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
@@ -136,6 +148,16 @@ func is_fullscreen() -> bool:
 
 func toggle_fullscreen() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if is_fullscreen() else DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+## Tests, screenshots and promo renders (scripts and scenes under res://tests/ or res://tools/)
+## start from a fresh default state instead of the player's save, so whatever the player last
+## did (hard mode on, jelly off...) can't change what they check or show.
+static func _is_test_or_tool_run() -> bool:
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("res://tests/") or arg.begins_with("res://tools/"):
+			return true
+	return false
 
 
 func load_progress() -> void:
@@ -252,7 +274,7 @@ static func coin_key(cell: Vector2i) -> String:
 
 
 func has_coin(level: int, cell: Vector2i) -> bool:
-	return coin_key(cell) in coins_found.get(level, [])
+	return all_coins_debug or coin_key(cell) in coins_found.get(level, [])
 
 
 ## Picks up a coin (once) and saves right away, so it counts even if the run ends in a dry-up.

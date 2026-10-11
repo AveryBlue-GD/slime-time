@@ -15,7 +15,7 @@ extends RefCounted
 
 const DEFAULT := "lime"
 const CUSTOM := "custom"
-const CUSTOM_NAME := "ANY SKIN"
+const CUSTOM_NAME := "CHAMELEON"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
 ## Whether new slime materials are see-through jelly (kept in step with Progress.jelly).

@@ -22,6 +22,7 @@ func _initialize() -> void:
 	progress.upgrades = {}
 	progress.dev_tools = false
 	progress.levels_cleared = 10
+	progress.hard_mode = false  # your real save may have it on; coins only exist outside hard mode
 
 	# --- The coin budget
 	var total := 0
@@ -115,6 +116,28 @@ func _initialize() -> void:
 	progress.dev_tools = false
 	progress.upgrades = {}
 	progress.coins_found = {}
+
+	# --- Coins glint in their own metal
+	game = await _spawn({level = 4})
+	var glow: Sprite2D = game.coins[0].get_child(0)
+	_check(game.coins[0].region_rect.size == Vector2(Coin.FRAME, Coin.FRAME) and Coin.FRAME == 12, "coins are 12x12 frames")
+	_check(Color(glow.modulate, 1.0).is_equal_approx(Color(Coin.GLOW[3], 1.0)), "a coin's glow is its level's metal")
+	game.free()
+
+	# --- Glimmers through the fog come with distance traveled, not time
+	game = await _spawn({level = 4})
+	for i in 240:  # standing still for 4 s
+		await physics_frame
+	_check(get_nodes_in_group("glimmer").is_empty(), "no glimmers while standing still")
+	game.glimmer_travel = 10000.0  # as if it had traveled far
+	await physics_frame
+	var glimmers := get_nodes_in_group("glimmer")
+	_check(glimmers.size() == 1, "traveling far enough brings a glimmer")
+	if glimmers.size() == 1:
+		var spark: Node2D = glimmers[0]
+		_check(game.fog_alpha_at(spark.position) >= 0.99 and not game.is_wall_tile(Vector2i((spark.position / 16.0).floor()))
+			and spark.z_index > game.fog_sprite.z_index, "...on a floor tile still in the fog, drawn over the fog")
+	game.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))

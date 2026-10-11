@@ -18,11 +18,15 @@ function Capture([string]$name, [string]$scene, [int]$frames, [string[]]$gameArg
     Write-Output "wrote $name"
 }
 
+# Every shot puts each level's own skin on it (the one its first run equips: Lime 1, Mint 2,
+# Lemon 3, Ocean 4, Grape 5, Crimson 6, Frost 7, Inkky 8, Bubblegum 9, Ember 10). The rainbow is
+# the only exception, and only with every coin found (--all-coins), as the game requires.
+
 # The cover renders itself at 315x250 (its own SubViewport) and saves the PNG directly: the
-# Frozen Fortress, an orange slime well into the maze with its light maxed out.
+# Frozen Fortress, a Frost slime well into the maze with its light maxed out.
 $raw = Join-Path $env:TEMP 'slimetime_cover_raw.png'
 $coverArgs = @('--path', $root, '--fixed-fps', '60') + (Get-RightScreenArgs 315 250) + @(
-    'res://tools/promo/cover.tscn', '--', '--quiet-window', '--unlock-all', '--skin=ember', '--upgrades=0,0,10',
+    'res://tools/promo/cover.tscn', '--', '--quiet-window', '--unlock-all', '--skin=frost', '--upgrades=0,0,10',
     '--cover-level=7', '--cover-frame=1300', "--out=$raw")
 Set-NoFocus
 try { & (Get-GodotExe) @coverArgs | Out-Null } finally { Remove-NoFocus }
@@ -31,10 +35,10 @@ Remove-Item $raw
 Write-Output 'wrote cover.png'
 
 Capture 'screenshot-1-title.png' 'res://scenes/title.tscn' 40 @('--unlock-all', '--skin=lime')
-Capture 'screenshot-2-sunken-shrine.png' 'res://tests/demo.tscn' 900 @('--unlock-all', '--skin=lemon', '--level=4', '--upgrades=0,0,8', '--coins=14')
-Capture 'screenshot-3-charged-leap.png' 'res://tools/promo/jump_shot.tscn' 360 @('--unlock-all', '--skin=ocean', '--coins=6')
-Capture 'screenshot-4-volcanic-vault.png' 'res://tests/demo.tscn' 1100 @('--unlock-all', '--skin=lime', '--level=10', '--upgrades=0,0,8', '--coins=37')
-Capture 'screenshot-5-crystal-rainbow.png' 'res://tests/demo.tscn' 1000 @('--unlock-all', '--skin=rainbow', '--level=9', '--upgrades=0,0,6', '--coins=29')
-Capture 'screenshot-6-new-record.png' 'res://tests/demo_record_run.tscn' 1050 @('--unlock-all', '--skin=grape', '--coins=9')
+Capture 'screenshot-2-sunken-shrine.png' 'res://tests/demo.tscn' 900 @('--unlock-all', '--skin=ocean', '--level=4', '--upgrades=0,0,8', '--coins=14')
+Capture 'screenshot-3-charged-leap.png' 'res://tools/promo/jump_shot.tscn' 360 @('--unlock-all', '--skin=mint', '--coins=6')  # level 2, the Mossy Mines
+Capture 'screenshot-4-volcanic-vault.png' 'res://tests/demo.tscn' 1100 @('--unlock-all', '--skin=ember', '--level=10', '--upgrades=0,0,8', '--coins=37')
+Capture 'screenshot-5-crystal-rainbow.png' 'res://tests/demo.tscn' 1000 @('--unlock-all', '--skin=rainbow', '--level=9', '--upgrades=0,0,6', '--all-coins')
+Capture 'screenshot-6-new-record.png' 'res://tests/demo_record_run.tscn' 1050 @('--unlock-all', '--skin=lemon', '--coins=9')  # level 3, the Sandstone Sanctum
 Capture 'screenshot-7-upgrades.png' 'res://scenes/upgrades.tscn' 40 @('--skin=mint', '--upgrades=6,4,7', '--coins=12')
 Capture 'screenshot-8-skins.png' 'res://scenes/skins.tscn' 40 @('--unlock-all', '--skin=bubblegum')

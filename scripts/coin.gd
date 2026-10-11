@@ -5,7 +5,12 @@ extends Sprite2D
 ## assets/sprites/coins.png, tools/make_coins.py). It sits under the fog, so it only shows once
 ## that spot is explored. The game collects it when the slime touches it (see game.gd).
 
-const FRAME := 10
+const FRAME := 12
+## Each theme's coin metal (Themes.BY_LEVEL order, matching tools/make_coins.py), for its glow.
+const GLOW: Array[Color] = [
+	Color(0.933, 0.737, 0.329), Color(0.337, 0.643, 0.376), Color(0.910, 0.722, 0.337), Color(0.510, 0.808, 0.792), Color(0.675, 0.369, 0.196),
+	Color(0.769, 0.737, 0.675), Color(0.643, 0.808, 0.933), Color(0.588, 0.376, 0.863), Color(0.886, 0.463, 0.776), Color(0.925, 0.431, 0.125),
+]
 const FRAMES := 8
 const SPIN_FPS := 10.0
 ## Touching distance between the slime's center and the coin's.
@@ -26,7 +31,8 @@ func setup(theme_index: int, at_cell: Vector2i) -> void:
 	region_enabled = true
 	region_rect = Rect2(0, theme_index * FRAME, FRAME, FRAME)
 	_time = randf() * FRAMES / SPIN_FPS
-	var glow := Fx.make_light(20, Color(1.0, 0.9, 0.6, 0.18))
+	# A soft glint in the coin's own metal.
+	var glow := Fx.make_light(20, Color(GLOW[theme_index % GLOW.size()], 0.22))
 	glow.z_index = -1
 	add_child(glow)
 
