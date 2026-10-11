@@ -99,35 +99,41 @@ def write(name: str, samples: list[float]) -> None:
     print(f"wrote assets/sounds/{name}.wav ({len(samples) / RATE:.2f}s)")
 
 
+## Pitched low and wet to suit the dungeon: nothing too bright or bouncy.
 SOUNDS = {
-    # Soft wet step while gliding: a little downward blup plus a tiny bubble.
-    "squish": lambda: mix(bloop(320, 150, 0.07, 0.35, release=0.05), bubble(520, 0.04, 0.15)),
-    # Charging: a wobbling, rising gurgle (stopped on release).
-    "charge": lambda: mix(bloop(140, 420, 1.5, 0.25, wobble=0.09, wobble_rate=6, attack=0.06, release=0.05),
-                          gurgle(1.5, 18, 300, 900, 0.12, seed=4)),
-    # Jump: a stretchy upward bloop with a pop as the slime lets go.
-    "jump": lambda: mix(bloop(180, 560, 0.16, 0.45, wobble=0.05, release=0.06), bubble(700, 0.05, 0.25)),
-    # Landing: a plop.
-    "land": lambda: mix(bloop(280, 90, 0.12, 0.5, release=0.08), wet_thud(0.1, 0.3, seed=5, release=0.08)),
-    # Splat: a big squelch, a slap, and goo bubbles spraying off.
-    "splat": lambda: mix(bloop(420, 60, 0.26, 0.45, wobble=0.12, wobble_rate=22, release=0.15),
-                         wet_thud(0.22, 0.5, seed=7, release=0.18),
-                         gurgle(0.3, 9, 250, 800, 0.25, seed=8)),
-    # Chalice: a bubbly rising arpeggio.
-    "chalice": lambda: seq(*(mix(bloop(f, f * 1.02, 0.1, 0.3, shape="tri", release=0.04), bubble(f * 2, 0.04, 0.12))
-                             for f in (523, 659, 784, 1047)),
-                           bloop(1047, 1060, 0.3, 0.3, wobble=0.02, shape="tri", release=0.25)),
-    # Unlock: sparkly bubbles drifting up.
-    "unlock": lambda: mix(seq(*(bloop(f, f * 1.03, 0.07, 0.28, shape="tri", release=0.03) for f in (1175, 1568, 1319, 1760, 2093)),
-                              bloop(2093, 2093, 0.3, 0.2, wobble=0.015, release=0.28)),
-                          gurgle(0.65, 10, 900, 1800, 0.12, seed=9)),
+    # Soft wet step while gliding: a low downward blup plus a tiny bubble.
+    "squish": lambda: mix(bloop(220, 105, 0.08, 0.35, release=0.05), bubble(360, 0.04, 0.12)),
+    # Charging: a low, wobbling, rising gurgle (stopped on release).
+    "charge": lambda: mix(bloop(90, 260, 1.5, 0.25, wobble=0.08, wobble_rate=5, attack=0.08, release=0.05),
+                          gurgle(1.5, 16, 180, 520, 0.11, seed=4)),
+    # Jump: a heavy, stretchy heave off the floor (a short low rise and a wet unstick).
+    "jump": lambda: mix(bloop(115, 240, 0.17, 0.42, wobble=0.04, release=0.07),
+                        wet_thud(0.09, 0.18, seed=3, release=0.07), bubble(340, 0.05, 0.14)),
+    # Landing: a deep plop.
+    "land": lambda: mix(bloop(200, 62, 0.13, 0.5, release=0.09), wet_thud(0.11, 0.32, seed=5, release=0.09)),
+    # Splat: a big low squelch, a slap, and goo bubbles spraying off.
+    "splat": lambda: mix(bloop(300, 45, 0.28, 0.45, wobble=0.12, wobble_rate=18, release=0.16),
+                         wet_thud(0.24, 0.5, seed=7, release=0.2),
+                         gurgle(0.3, 9, 160, 500, 0.22, seed=8)),
+    # Chalice consumed: two gulps as the slime swallows it, then a low, eerie minor chord swells
+    # and fades (A minor, triangle tones with a slow wobble) over sinking bubbles.
+    "chalice": lambda: seq(
+        bloop(240, 120, 0.12, 0.45, wobble=0.05, release=0.05),
+        bloop(200, 85, 0.16, 0.45, wobble=0.05, release=0.08),
+        mix(*(bloop(f, f * 0.995, 1.1, 0.16, wobble=0.012, wobble_rate=4.5, attack=0.18, release=0.7, shape="tri")
+              for f in (110, 220, 262, 330)),
+            gurgle(1.0, 10, 120, 360, 0.12, seed=12, falling=True))),
+    # Unlock: mellow bubbles drifting up (a gentle rising phrase, not a fanfare).
+    "unlock": lambda: mix(seq(*(bloop(f, f * 1.01, 0.09, 0.26, shape="tri", release=0.04) for f in (294, 349, 392, 440, 523)),
+                              bloop(523, 520, 0.35, 0.2, wobble=0.012, release=0.32)),
+                          gurgle(0.75, 10, 300, 800, 0.1, seed=9)),
     # Drying up: a sad, sagging gurgle whose bubbles get lower and fewer.
-    "dry": lambda: mix(bloop(380, 80, 0.8, 0.3, wobble=0.06, wobble_rate=5, release=0.35),
-                       gurgle(0.8, 8, 150, 600, 0.25, seed=11, falling=True)),
-    # Menu click: a single bubble pop.
-    "click": lambda: bubble(620, 0.05, 0.45, rise=1.8),
+    "dry": lambda: mix(bloop(260, 55, 0.8, 0.3, wobble=0.06, wobble_rate=4, release=0.35),
+                       gurgle(0.8, 8, 100, 400, 0.24, seed=11, falling=True)),
+    # Menu click: a single low bubble pop.
+    "click": lambda: bubble(420, 0.05, 0.45, rise=1.7),
     # Pause: two soft bloops, down then lower.
-    "pause": lambda: seq(bloop(520, 400, 0.07, 0.35, release=0.03), bloop(380, 260, 0.09, 0.35, release=0.05)),
+    "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }
 
 

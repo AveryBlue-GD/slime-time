@@ -53,6 +53,25 @@ func _initialize() -> void:
 	_check(fog.get_shader_parameter("fog_mist") == Themes.ALL.frozen.fog[1], "...and its fog is tinted to match")
 	game.free()
 
+	var all_beds := true
+	for id: String in Themes.ALL:
+		all_beds = all_beds and ResourceLoader.exists("res://assets/sounds/ambient_%s.wav" % id)
+	_check(all_beds, "every theme has an ambient sound bed")
+	game = await _spawn({level = 10})
+	var bed := game.ambient.stream as AudioStreamWAV
+	_check(game.ambient.playing and "ambient_volcanic" in bed.resource_path and bed.loop_mode == AudioStreamWAV.LOOP_FORWARD,
+		"the Volcanic Vault plays its own looping ambience")
+	var settings: Node = root.get_node("Progress")
+	settings.sound_on = false
+	await process_frame
+	await process_frame
+	_check(not game.ambient.playing, "turning sound off silences the ambience")
+	settings.sound_on = true
+	await process_frame
+	await process_frame
+	_check(game.ambient.playing, "...and turning it back on resumes it")
+	game.free()
+
 	game = await _spawn({random_seed = 777})
 	_check(game.theme == Themes.for_seed(777), "a random maze uses its seed's theme (%s)" % game.theme)
 	game.free()

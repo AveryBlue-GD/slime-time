@@ -171,7 +171,7 @@ func launch(charge_value: float) -> void:
 	charge = 0.0
 	state = State.AIRBORNE
 	_sfx_stop("charge")
-	_sfx("jump", -4.0, lerpf(1.2, 0.85, _jump_distance / jump_distance_for(100.0)))
+	_sfx("jump", -4.0, lerpf(1.05, 0.8, _jump_distance / jump_distance_for(100.0)))
 
 
 func _physics_process(delta: float) -> void:

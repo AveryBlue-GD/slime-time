@@ -69,6 +69,10 @@ const LOOK_AHEAD_TIME := 0.3
 const LOOK_AHEAD_MAX := 24.0
 const LOOK_AHEAD_SPEED := 3.0
 const CHALICE_GOLD := Color8(255, 205, 117)
+## The theme's ambient loop (assets/sounds/ambient_<theme>.wav, from tools/make_ambience.py):
+## how loud under the effects, and how long it takes to fade in.
+const AMBIENT_VOLUME_DB := -9.0
+const AMBIENT_FADE := 2.0
 
 signal level_finished(won: bool)
 
@@ -110,6 +114,8 @@ var slime_light: Sprite2D
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
+## Plays the theme's ambient loop (follows the sound on/off setting).
+var ambient: AudioStreamPlayer
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -166,6 +172,7 @@ func _ready() -> void:
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	hud.show_area_name(Themes.display_name(theme))
+	_start_ambience()
 	_build_overlays()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
@@ -233,8 +240,36 @@ func _process(_delta: float) -> void:
 	if rainbow:
 		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
 	_lead_camera(_delta)
+	_update_ambience()
 	_shake_camera(_delta)
 	_flush_textures()
+
+
+## Starts the theme's ambient bed looping, fading in from silence.
+func _start_ambience() -> void:
+	var stream := load("res://assets/sounds/ambient_%s.wav" % theme) as AudioStreamWAV
+	if stream == null:
+		return
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = int(stream.get_length() * stream.mix_rate)
+	ambient = AudioStreamPlayer.new()
+	ambient.stream = stream
+	ambient.volume_db = -60.0
+	add_child(ambient)
+	create_tween().tween_property(ambient, "volume_db", AMBIENT_VOLUME_DB, AMBIENT_FADE)
+	_update_ambience()
+
+
+## Keeps the ambience in step with the sound on/off setting.
+func _update_ambience() -> void:
+	if ambient == null:
+		return
+	var sound_on: bool = progress == null or progress.sound_on
+	if sound_on and not ambient.playing:
+		ambient.play()
+	elif not sound_on and ambient.playing:
+		ambient.stop()
 
 
 ## Eases the camera ahead of the slime in the direction it's gliding.
