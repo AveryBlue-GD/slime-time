@@ -37,6 +37,15 @@ func _initialize() -> void:
 	_check(soft.bounce < hard.bounce / 3.0, "a gentle hop barely bounces (%.1f px vs %.0f px)" % [soft.bounce, hard.bounce])
 	game.free()
 
+	# Corner hits give diagonal wall normals; every angle must still have a splat animation
+	# (a missing one made the slime vanish while stunned).
+	var frames := Slime.load_sprite_frames()
+	var all_found := true
+	for i in 32:
+		var normal := Vector2.from_angle(TAU * i / 32.0)
+		all_found = all_found and frames.has_animation("splat_" + Slime.splat_side(normal))
+	_check(all_found, "a splat at any angle (corners too) has an animation to show")
+
 	# The bounce rule itself: head-on comes straight back at RESTITUTION, glancing keeps its slide.
 	var head_on := Slime.wall_bounce(Vector2(100, 0), Vector2.LEFT)
 	_check(head_on.is_equal_approx(Vector2(-100 * Slime.RESTITUTION, 0)), "head-on: straight back, slower (%s)" % head_on)

@@ -114,6 +114,14 @@ static func load_sprite_frames() -> SpriteFrames:
 	return _sprite_frames
 
 
+## Which way the splat squashes ("n", "e", "s" or "w"; there are no diagonal splat frames): the
+## side the wall is on. A corner hit gives a diagonal normal, so this picks its stronger axis.
+static func splat_side(wall_normal: Vector2) -> String:
+	if absf(wall_normal.x) > absf(wall_normal.y):
+		return "w" if wall_normal.x > 0.0 else "e"
+	return "n" if wall_normal.y > 0.0 else "s"
+
+
 ## Name suffix ("e", "se", ...) for the 45-degree direction closest to v.
 static func dir_name(v: Vector2) -> String:
 	return DIR_NAMES[wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)]
@@ -287,7 +295,7 @@ func _ricochet(delta: float) -> void:
 			ricochets += 1
 			if _bounce_fx_left <= 0.0:
 				_bounce_fx_left = BOUNCE_FX_GAP
-				_splat_side = dir_name(-normal)
+				_splat_side = splat_side(normal)
 				_sfx("splat", lerpf(-14.0, -3.0, clampf(impact / 200.0, 0.0, 1.0)), randf_range(1.0, 1.2))
 				bounced.emit(normal, impact)
 		else:
@@ -336,7 +344,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	if hit_wall:
 		state = State.STUNNED
 		_stun_left = SPLAT_STUN
-		_splat_side = dir_name(-wall_normal)
+		_splat_side = splat_side(wall_normal)
 		_knock_back(wall_normal)
 		_sfx("splat")
 		Input.vibrate_handheld(60)  # phones buzz on a splat (no effect elsewhere)
