@@ -124,8 +124,9 @@ func _initialize() -> void:
 	_check(Color(glow.modulate, 1.0).is_equal_approx(Color(Coin.GLOW[3], 1.0)), "a coin's glow is its level's metal")
 	game.free()
 
-	# --- Glimmers through the fog come with distance traveled, not time
+	# --- Glimmers through the fog: with distance traveled (not time), only over hidden coins
 	game = await _spawn({level = 4})
+	game.glimmer_reach = 100000.0  # any coin in the level counts as near, for the test
 	for i in 240:  # standing still for 4 s
 		await physics_frame
 	_check(get_nodes_in_group("glimmer").is_empty(), "no glimmers while standing still")
@@ -135,8 +136,29 @@ func _initialize() -> void:
 	_check(glimmers.size() == 1, "traveling far enough brings a glimmer")
 	if glimmers.size() == 1:
 		var spark: Node2D = glimmers[0]
-		_check(game.fog_alpha_at(spark.position) >= 0.99 and not game.is_wall_tile(Vector2i((spark.position / 16.0).floor()))
-			and spark.z_index > game.fog_sprite.z_index, "...on a floor tile still in the fog, drawn over the fog")
+		var on_coin: bool = game.coins.any(func(c: Coin) -> bool: return c.position.round() == spark.position)
+		_check(on_coin and game.fog_alpha_at(spark.position) >= 0.99 and spark.z_index > game.fog_sprite.z_index,
+			"...right over a coin still hidden in the fog, drawn over the fog")
+	game.free()
+	for i in Levels.COINS[3]:  # every coin of level 4 found: nothing left to glimmer
+		progress.coins_found[4] = progress.coins_found.get(4, []) + ["found%d" % i]
+	progress.all_coins_debug = true
+	game = await _spawn({level = 4})
+	game.glimmer_reach = 100000.0
+	game.glimmer_travel = 10000.0
+	await physics_frame
+	await physics_frame
+	_check(game.coins.is_empty() and get_nodes_in_group("glimmer").is_empty(), "with every coin found there are no glimmers")
+	progress.all_coins_debug = false
+	progress.coins_found = {}
+
+	# --- The maze edge: a double wall, then fog carrying on
+	var w: int = game.maze.size.x
+	_check(game.wall_layer.get_cell_source_id(Vector2i(-1, 3)) != -1 and game.wall_layer.get_cell_source_id(Vector2i(w, 3)) != -1,
+		"a second ring of wall runs just outside the maze")
+	_check(game.fog_alpha_at(Vector2(-40, -40)) == 1.0 and game.outer_fog != null and game.outer_fog.visible,
+		"past the border, fog carries on (not black)")
+	_check(game.camera.limit_left < -16 and game.camera.limit_right > w * 16 + 16, "the camera can look past the double wall")
 	game.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))

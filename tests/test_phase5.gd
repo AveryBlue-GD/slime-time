@@ -53,7 +53,7 @@ func _initialize() -> void:
 	var ocean_mid: Color = Skins.shades(Skins.get_preset("ocean").color).mid
 	var slime_mid: Color = (game.slime.sprite.material as ShaderMaterial).get_shader_parameter("mid")
 	var start: Vector2 = game.slime.position
-	var trail: Color = game.trail_image.get_pixelv(Vector2i(start / game.FOG_CELL))
+	var trail: Color = game.trail_image.get_pixelv(game._cell_at(start))
 	_check(slime_mid.is_equal_approx(ocean_mid), "slime sprite is recolored to the skin")
 	_check(_close(trail, ocean_mid) or _close(trail, Skins.shades(Skins.get_preset("ocean").color).dark),
 		"goo trail is the skin's color")

@@ -50,7 +50,7 @@ func _initialize() -> void:
 	_check(game.theme == "frozen" and "frozen_walls" in _wall_texture(game).resource_path,
 		"level 7 is the Frozen Fortress, with its own tile art (%s)" % _wall_texture(game).resource_path)
 	var fog := game.fog_sprite.material as ShaderMaterial
-	_check(fog.get_shader_parameter("fog_mist") == Themes.ALL.frozen.fog[1], "...and its fog is tinted to match")
+	_check(fog.get_shader_parameter("fog_mist") == Themes.ALL.frozen.fog[1], "...and its fog is tinted to match (%s vs %s)" % [fog.get_shader_parameter("fog_mist"), Themes.ALL.frozen.fog[1]])
 	game.free()
 
 	var all_have_sounds := true

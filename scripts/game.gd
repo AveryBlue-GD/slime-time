@@ -79,11 +79,18 @@ const AMBIENT_EVENT_GAP := Vector2(10.0, 24.0)
 const AMBIENT_EVENT_DB := Vector2(-25.0, -17.0)
 ## Extra quietness for some themes' events (the catacombs' scream is meant to be barely there).
 const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
-## Glimmers: every so often a faint twinkle shows through the fog on a random unexplored floor
-## tile nearby. They come with distance traveled (gliding or leaping), not time: one per this many
-## px (picked at random in the range each time), between these many tiles from the slime.
+## Glimmers: every so often a faint twinkle shows through the fog over a coin still waiting there.
+## They come with distance traveled (gliding or leaping), not time: one per this many px (picked
+## at random in the range each time).
 const GLIMMER_EVERY := Vector2(180.0, 360.0)
-const GLIMMER_REACH := Vector2i(3, 9)
+## Only coins within this many px of the slime glimmer (about a screen away).
+const GLIMMER_REACH := 160.0
+## The maze's edge is doubled by a ring of BORDER wall tiles just outside it (covered by the fog
+## image too, so it's revealed like any wall); past that the fog simply carries on, and the
+## camera may look EDGE_FOG tiles beyond the ring so you can see where the maze ends.
+const BORDER := 1
+const EDGE_FOG := 2
+const BORDER_PX := Vector2(TILE * BORDER, TILE * BORDER)
 
 signal level_finished(won: bool)
 
@@ -100,6 +107,8 @@ var maze: Dictionary
 ## Damage level (0-3) of each wall tile, by tile coordinate.
 var wall_damage := {}
 var fog_image: Image
+## Plain fog filling everything outside the maze and its border ring.
+var outer_fog: Sprite2D
 var trail_image: Image
 var revealed_walls := {}
 var textures_dirty := false
@@ -107,6 +116,8 @@ var last_slime_pos: Vector2
 ## Distance traveled since the last glimmer, the distance the next one comes at, and where the
 ## slime was last frame (for measuring).
 var glimmer_travel := 0.0
+## How near a hidden coin must be to glimmer (px; GLIMMER_REACH, tests widen it).
+var glimmer_reach := GLIMMER_REACH
 var _next_glimmer := 0.0
 var _glimmer_from := Vector2.ZERO
 ## Seconds since the maze started; the fog's clock.
@@ -207,6 +218,7 @@ func _ready() -> void:
 
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
+	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER)
 	hud.show_area_name(Themes.display_name(theme))
 	_start_ambience()
 	_build_overlays()
@@ -226,8 +238,11 @@ func _ready() -> void:
 	add_child(restart_prompt)
 	_put_on_hat()
 
-	camera.limit_right = maze.size.x * TILE
-	camera.limit_bottom = maze.size.y * TILE
+	var edge := (BORDER + EDGE_FOG) * TILE
+	camera.limit_left = -edge
+	camera.limit_top = -edge
+	camera.limit_right = maze.size.x * TILE + edge
+	camera.limit_bottom = maze.size.y * TILE + edge
 	camera.reset_smoothing()
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
@@ -282,6 +297,7 @@ func _physics_process(delta: float) -> void:
 func _process(_delta: float) -> void:
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
+	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
 	slime_light.position = (slime.position + slime.sprite.position).round()
 	if rainbow:
 		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
@@ -368,26 +384,24 @@ func _count_glimmer_travel(pos: Vector2) -> void:
 		_spawn_glimmer()
 
 
-## A twinkle on a random floor tile near the slime that is still fully fogged (if one is found).
+## A twinkle over a coin that's still waiting in the fog near the slime (picked at random), in
+## that coin's metal: a hint of treasure. No coins left nearby (or none in the level), no glimmer.
 func _spawn_glimmer() -> void:
-	var here := Vector2i((slime.position / TILE).floor())
-	for attempt in 24:
-		var offset := Vector2i(randi_range(-GLIMMER_REACH.y, GLIMMER_REACH.y), randi_range(-GLIMMER_REACH.y, GLIMMER_REACH.y))
-		if maxi(absi(offset.x), absi(offset.y)) < GLIMMER_REACH.x:
+	var hidden: Array[Coin] = []
+	for coin in coins:
+		if not is_instance_valid(coin):
 			continue
-		var tile := here + offset
-		if tile.x < 0 or tile.y < 0 or tile.x >= maze.size.x or tile.y >= maze.size.y or is_wall_tile(tile):
-			continue
-		var at := Vector2(tile * TILE + Vector2i(TILE / 2 + randi_range(-4, 4), TILE / 2 + randi_range(-4, 4)))
-		if fog_alpha_at(at) < 0.99:
-			continue
-		var glimmer := Glimmer.new()
-		glimmer.position = at
-		glimmer.color = Themes.fog_colors(theme)[1].lightened(0.6) if not Themes.fog_colors(theme).is_empty() else Color(0.85, 0.9, 1.0)
-		glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
-		glimmer.add_to_group("glimmer")
-		add_child(glimmer)
+		if coin.position.distance_to(slime.position) <= glimmer_reach and fog_alpha_at(coin.position) >= 0.99:
+			hidden.append(coin)
+	if hidden.is_empty():
 		return
+	var coin: Coin = hidden.pick_random()
+	var glimmer := Glimmer.new()
+	glimmer.position = coin.position.round()
+	glimmer.color = Coin.GLOW[maxi(Themes.BY_LEVEL.find(theme), 0) % Coin.GLOW.size()].lightened(0.35)
+	glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
+	glimmer.add_to_group("glimmer")
+	add_child(glimmer)
 
 
 ## A tiny four-pointed twinkle that swells and fades (additive, so it reads as light in the fog).
@@ -430,7 +444,10 @@ func is_wall_tile(tile: Vector2i) -> bool:
 ## Fog opacity (0 = fully lit, 1 = covered) at a pixel position right now; matches fog.gdshader's
 ## per-cell value, without its cosmetic extras (soft edges, clearing fade-in).
 func fog_alpha_at(pos: Vector2) -> float:
-	var cell := _fog_decode(fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor())))
+	var at := _cell_at(pos)
+	if not Rect2i(Vector2i.ZERO, fog_image.get_size()).has_point(at):
+		return 1.0  # the outer fog
+	var cell := _fog_decode(fog_image.get_pixelv(at))
 	if not cell.revealed:
 		return 1.0
 	var age: float = elapsed - cell.lit
@@ -474,8 +491,23 @@ static func fade_alpha(age: float) -> float:
 	return FADE_ALPHA[-1]
 
 
+## The fog/trail image cell at a world position, and a cell's center back in the world: the
+## images start BORDER tiles up and left of the maze, to cover the border ring too.
+func _cell_at(pos: Vector2) -> Vector2i:
+	return Vector2i(((pos + BORDER_PX) / FOG_CELL).floor())
+
+
+func _cell_pos(cell: Vector2i) -> Vector2:
+	return (Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL - BORDER_PX
+
+
+## The fog cells covering one tile.
+func _tile_cells(tile: Vector2i) -> Rect2i:
+	return Rect2i((tile + Vector2i.ONE * BORDER) * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL))
+
+
 func _build_overlays() -> void:
-	var cells: Vector2i = maze.size * TILE / FOG_CELL
+	var cells: Vector2i = (maze.size + Vector2i.ONE * BORDER * 2) * TILE / FOG_CELL
 	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	fog_image.fill(UNREVEALED)
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
@@ -484,23 +516,55 @@ func _build_overlays() -> void:
 	trail_sprite.texture = ImageTexture.create_from_image(trail_image)
 	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
+	fog_sprite.position = -BORDER_PX
+	trail_sprite.position = -BORDER_PX
 
 	var fog_material := ShaderMaterial.new()
 	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
 	fog_material.set_shader_parameter("fade_after", PackedFloat32Array(FADE_AFTER))
 	fog_material.set_shader_parameter("fade_alpha", PackedFloat32Array(FADE_ALPHA))
 	fog_material.set_shader_parameter("wall_shade", WALL_FOG_ALPHA)
-	fog_material.set_shader_parameter("map_size", Vector2(maze.size * TILE))
+	fog_material.set_shader_parameter("map_size", Vector2(cells * FOG_CELL))
+	fog_material.set_shader_parameter("origin", -BORDER_PX)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
 	var fog_colors := Themes.fog_colors(theme)
 	if not fog_colors.is_empty():
 		fog_material.set_shader_parameter("fog_deep", fog_colors[0])
 		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
 	fog_sprite.material = fog_material
+	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 5
 	add_child(slime_light)
+
+
+## Fog beyond the maze and its border ring: one unrevealed cell stretched over a wide area,
+## drawn with the same mist (lined up by `origin`) and a hole where the maze's fog is.
+func _build_outer_fog(inner: ShaderMaterial, inner_rect: Rect2) -> void:
+	var reach := Vector2(SLIME_LIGHT_SIZE + 400, SLIME_LIGHT_SIZE + 400)
+	var area := Rect2(inner_rect.position - reach, inner_rect.size + reach * 2.0)
+	var cell := Image.create_empty(1, 1, false, Image.FORMAT_RGBA8)
+	cell.fill(UNREVEALED)
+	outer_fog = Sprite2D.new()
+	outer_fog.texture = ImageTexture.create_from_image(cell)
+	outer_fog.centered = false
+	outer_fog.position = area.position
+	outer_fog.scale = area.size
+	outer_fog.z_index = fog_sprite.z_index
+	# A fresh material with the inner one's settings (duplicate() drops color parameters, from
+	# both copies, in this Godot version).
+	var material := ShaderMaterial.new()
+	material.shader = inner.shader
+	for param in ["fade_after", "fade_alpha", "wall_shade", "hard_mode", "fog_deep", "fog_mist"]:
+		var value: Variant = inner.get_shader_parameter(param)
+		if value != null:
+			material.set_shader_parameter(param, value)
+	material.set_shader_parameter("map_size", area.size)
+	material.set_shader_parameter("origin", area.position)
+	material.set_shader_parameter("hole", Vector4(inner_rect.position.x, inner_rect.position.y, inner_rect.size.x, inner_rect.size.y))
+	outer_fog.material = material
+	add_child(outer_fog)
 
 
 ## Paints goo on the floor in a disc around pos, then reveals walls next to it.
@@ -516,13 +580,13 @@ func _stain_wall(pos: Vector2, wall_normal: Vector2) -> void:
 
 ## Sets goo + lights fog cells within radius of pos, on floor cells or wall cells only.
 func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
-	var first := Vector2i(((pos - Vector2(radius, radius)) / FOG_CELL).floor())
-	var last := Vector2i(((pos + Vector2(radius, radius)) / FOG_CELL).floor())
+	var first := _cell_at(pos - Vector2(radius, radius))
+	var last := _cell_at(pos + Vector2(radius, radius))
 	var bounds := Rect2i(Vector2i.ZERO, trail_image.get_size())
 	for cy in range(first.y, last.y + 1):
 		for cx in range(first.x, last.x + 1):
 			var cell := Vector2i(cx, cy)
-			var center := (Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL
+			var center := _cell_pos(cell)
 			if not bounds.has_point(cell) or center.distance_to(pos) > radius:
 				continue
 			var tile := Vector2i((center / TILE).floor())
@@ -551,12 +615,12 @@ func _goo_color(dark: bool) -> Color:
 func _relight(pos: Vector2) -> void:
 	var radius := LIGHT_RADIUS + light_reach
 	var r := Vector2(radius, radius)
-	var first := Vector2i(((pos - r) / FOG_CELL).floor()).max(Vector2i.ZERO)
-	var last := Vector2i(((pos + r) / FOG_CELL).floor()).min(fog_image.get_size() - Vector2i.ONE)
+	var first := _cell_at(pos - r).max(Vector2i.ZERO)
+	var last := _cell_at(pos + r).min(fog_image.get_size() - Vector2i.ONE)
 	for cy in range(first.y, last.y + 1):
 		for cx in range(first.x, last.x + 1):
 			var cell := Vector2i(cx, cy)
-			if ((Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL).distance_to(pos) > radius:
+			if _cell_pos(cell).distance_to(pos) > radius:
 				continue
 			var value := _fog_decode(fog_image.get_pixelv(cell))
 			if value.revealed and int(value.lit * FOG_TICKS) < int(elapsed * FOG_TICKS):
@@ -568,12 +632,12 @@ func _relight(pos: Vector2) -> void:
 ## a little beyond its goo trail, without laying goo there.
 func _reveal_light(pos: Vector2) -> void:
 	var radius := TRAIL_RADIUS + light_reach
-	var first := Vector2i(((pos - Vector2(radius, radius)) / FOG_CELL).floor()).max(Vector2i.ZERO)
-	var last := Vector2i(((pos + Vector2(radius, radius)) / FOG_CELL).floor()).min(fog_image.get_size() - Vector2i.ONE)
+	var first := _cell_at(pos - Vector2(radius, radius)).max(Vector2i.ZERO)
+	var last := _cell_at(pos + Vector2(radius, radius)).min(fog_image.get_size() - Vector2i.ONE)
 	for cy in range(first.y, last.y + 1):
 		for cx in range(first.x, last.x + 1):
 			var cell := Vector2i(cx, cy)
-			var center := (Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL
+			var center := _cell_pos(cell)
 			if center.distance_to(pos) > radius or is_wall_tile(Vector2i((center / TILE).floor())):
 				continue
 			if not _fog_decode(fog_image.get_pixelv(cell)).revealed:
@@ -589,7 +653,7 @@ func _reveal_walls_near(pos: Vector2, radius: float) -> void:
 	for ty in range(first.y, last.y + 1):
 		for tx in range(first.x, last.x + 1):
 			var tile := Vector2i(tx, ty)
-			if not is_wall_tile(tile) or tx < 0 or ty < 0 or tx >= maze.size.x or ty >= maze.size.y:
+			if not is_wall_tile(tile) or tx < -BORDER or ty < -BORDER or tx >= maze.size.x + BORDER or ty >= maze.size.y + BORDER:
 				continue
 			var rect := Rect2(Vector2(tile * TILE), Vector2(TILE, TILE))
 			if pos.clamp(rect.position, rect.end).distance_to(pos) <= reach:
@@ -601,8 +665,7 @@ func _reveal_wall(tile: Vector2i) -> void:
 	if revealed_walls.has(tile):
 		return
 	revealed_walls[tile] = true
-	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)),
-		_fog_color(elapsed, elapsed, true))
+	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
 	textures_dirty = true
 
 
@@ -742,7 +805,7 @@ func _break_wall(tile: Vector2i) -> void:
 	wall_health.erase(tile)
 	revealed_walls.erase(tile)
 	floor_layer.set_cell(tile, MazeTiles.FLOOR_SOURCE, Vector2i(MazeTiles.FLOOR_RUBBLE, 0))
-	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)), _fog_color(elapsed, elapsed, false))
+	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, false))
 	textures_dirty = true
 	for offset: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT,
 			Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:

@@ -22,6 +22,11 @@ uniform float fade_alpha[5];
 uniform bool hard_mode = false;
 
 uniform vec2 map_size;
+// World position of the texture's top-left corner (px), so the mist and dither line up between
+// the maze's fog and the plain fog that carries on beyond it.
+uniform vec2 origin = vec2(0.0);
+// A world rect (x, y, w, h; px) left uncovered: the outer fog's hole where the maze's own fog is.
+uniform vec4 hole = vec4(0.0);
 uniform vec4 fog_deep = vec4(0.078, 0.078, 0.133, 1.0);
 uniform vec4 fog_mist = vec4(0.247, 0.239, 0.341, 1.0);
 
@@ -69,6 +74,11 @@ float value_noise(vec2 p) {
 }
 
 void fragment() {
+	vec2 world_px = UV * map_size + origin;
+	if (hole.z > 0.0 && world_px.x >= hole.x && world_px.y >= hole.y
+			&& world_px.x < hole.x + hole.z && world_px.y < hole.y + hole.w) {
+		discard;
+	}
 	vec2 t = TEXTURE_PIXEL_SIZE;
 	// Soft edge: weighted blend of this cell and its neighbors (13 taps, ~3 cells wide).
 	float alpha = cell_alpha(texture(TEXTURE, UV)) * 4.0;
@@ -81,7 +91,7 @@ void fragment() {
 	alpha /= 20.0;
 
 	// Dither in world pixels so the pattern stays put as the camera moves.
-	vec2 pixel = floor(UV * map_size);
+	vec2 pixel = floor(world_px);
 	int bx = int(mod(pixel.x, 4.0));
 	int by = int(mod(pixel.y, 4.0));
 	float threshold = (BAYER[by * 4 + bx] + 0.5) / 16.0;

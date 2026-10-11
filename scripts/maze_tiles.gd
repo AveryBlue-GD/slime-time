@@ -87,6 +87,19 @@ static func construction_at(patches: FastNoiseLite, tile: Vector2i) -> int:
 
 
 ## Neighbor mask: N=1 E=2 S=4 W=8 set where that neighbor is a wall.
+## A `ring` of plain wall tiles (with floor under them) just outside the maze: with its outer
+## edge, a double wall that marks where the maze ends. (Anything outside the maze counts as wall,
+## so the masks join up with the edge.)
+static func add_border(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dictionary, ring := 1) -> void:
+	for y in range(-ring, maze.size.y + ring):
+		for x in range(-ring, maze.size.x + ring):
+			if x >= 0 and y >= 0 and x < maze.size.x and y < maze.size.y:
+				continue
+			var tile := Vector2i(x, y)
+			wall_layer.set_cell(tile, WALL_SOURCE, Vector2i(wall_mask(maze, tile), 0))
+			floor_layer.set_cell(tile, FLOOR_SOURCE, Vector2i(0, posmod(x * 7 + y * 3, FLOOR_VARIANTS)))
+
+
 static func wall_mask(maze: Dictionary, tile: Vector2i) -> int:
 	var mask := 0
 	for bit_dir: Array in [[1, Vector2i.UP], [2, Vector2i.RIGHT], [4, Vector2i.DOWN], [8, Vector2i.LEFT]]:
