@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -68,7 +68,7 @@ func _ready() -> void:
 			saving_enabled = false
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
-			randoms_won = maxi(randoms_won, Skins.RAINBOW_RANDOMS)
+			randoms_won = maxi(randoms_won, maxi(Skins.RAINBOW_RANDOMS, Hats.LIST.map(func(h: Dictionary) -> int: return h.wins).max()))
 		elif arg == "--touch":
 			force_touch = true
 		elif arg == "--hard":
