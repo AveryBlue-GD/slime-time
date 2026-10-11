@@ -1,21 +1,29 @@
 shader_type canvas_item;
 
-// Palette swap: the slime sheet is drawn in three green goo shades; each is replaced by the
-// matching shade of the current skin. Every other color (outline, eyes, dried crust) is kept.
+// Palette swap: the slime sheet is drawn in six green goo shades (highlight, light, mid, dark,
+// deep shadow, outline); each is replaced by the matching shade of the current skin. Every other
+// color (eyes, glints, ground shadow, dried crust) is kept.
 // With `rainbow` on, the goo instead shows rainbow bands (red, orange, yellow, green, blue,
 // violet) that flow across the body from left to right with a slight ripple, like a wave.
 
+uniform vec4 highlight = vec4(0.84, 0.98, 0.73, 1.0);
 uniform vec4 light = vec4(0.58, 0.886, 0.439, 1.0);
 uniform vec4 mid = vec4(0.22, 0.718, 0.392, 1.0);
 uniform vec4 dark = vec4(0.145, 0.443, 0.475, 1.0);
+uniform vec4 deep = vec4(0.086, 0.259, 0.322, 1.0);
+uniform vec4 outline = vec4(0.047, 0.149, 0.188, 1.0);
 uniform bool rainbow = false;
 // Rainbow cycles per second passing any point, and how wide one full rainbow is (px).
 uniform float rainbow_speed = 0.45;
 uniform float rainbow_width = 16.0;
 
-const vec3 SOURCE_LIGHT = vec3(148.0, 226.0, 112.0) / 255.0;
-const vec3 SOURCE_MID = vec3(56.0, 183.0, 100.0) / 255.0;
-const vec3 SOURCE_DARK = vec3(37.0, 113.0, 121.0) / 255.0;
+// The sheet's six goo shades ("H", "l", "m", "n", "D", "G" in the art script's palette).
+const vec3 SOURCES[6] = {
+	vec3(214.0, 250.0, 186.0) / 255.0, vec3(148.0, 226.0, 112.0) / 255.0, vec3(56.0, 183.0, 100.0) / 255.0,
+	vec3(37.0, 113.0, 121.0) / 255.0, vec3(22.0, 66.0, 82.0) / 255.0, vec3(12.0, 38.0, 48.0) / 255.0
+};
+// Rainbow version of each shade: saturation, value.
+const vec2 RAINBOW_SV[6] = {vec2(0.2, 1.0), vec2(0.45, 1.0), vec2(0.8, 0.95), vec2(0.85, 0.55), vec2(0.9, 0.36), vec2(0.9, 0.18)};
 const float MATCH = 0.02;
 const float HUE_STEPS = 12.0;
 
@@ -38,12 +46,11 @@ void fragment() {
 	vec4 texel = texture(TEXTURE, UV);
 	vec3 rgb = texel.rgb;
 	int shade = -1;
-	if (distance(rgb, SOURCE_LIGHT) < MATCH) {
-		shade = 0;
-	} else if (distance(rgb, SOURCE_MID) < MATCH) {
-		shade = 1;
-	} else if (distance(rgb, SOURCE_DARK) < MATCH) {
-		shade = 2;
+	for (int i = 0; i < 6; i++) {
+		if (distance(rgb, SOURCES[i]) < MATCH) {
+			shade = i;
+			break;
+		}
 	}
 	if (shade >= 0 && rainbow) {
 		vec2 p = floor(local_pos);
@@ -52,13 +59,10 @@ void fragment() {
 		float hue = fract(floor((wave / rainbow_width - TIME * rainbow_speed) * HUE_STEPS) / HUE_STEPS);
 		// Red -> violet is the first 5/6 of the hue circle; squeeze it so magenta is skipped.
 		hue *= 0.83;
-		rgb = shade == 0 ? hsv_to_rgb(hue, 0.45, 1.0) : (shade == 1 ? hsv_to_rgb(hue, 0.8, 0.95) : hsv_to_rgb(hue, 0.85, 0.55));
-	} else if (shade == 0) {
-		rgb = light.rgb;
-	} else if (shade == 1) {
-		rgb = mid.rgb;
-	} else if (shade == 2) {
-		rgb = dark.rgb;
+		rgb = hsv_to_rgb(hue, RAINBOW_SV[shade].x, RAINBOW_SV[shade].y);
+	} else if (shade >= 0) {
+		vec4 swaps[6] = {highlight, light, mid, dark, deep, outline};
+		rgb = swaps[shade].rgb;
 	}
 	COLOR = vec4(rgb, texel.a) * tint;
 }

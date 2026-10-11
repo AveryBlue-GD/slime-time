@@ -83,12 +83,17 @@ static func unlocked_by_level(level: int) -> String:
 	return ""
 
 
-## Light / mid / dark goo shades built from one base color.
+## Goo shades built from one base color: highlight, light, mid (the base), dark, deep shadow and
+## the outline. Shadows drift a little toward cooler hues and lights toward warmer ones.
+## (tools/make_placeholder_art.py app_icon uses the same math.)
 static func shades(base: Color) -> Dictionary:
 	return {
+		highlight = Color.from_hsv(wrapf(base.h + 0.05, 0.0, 1.0), base.s * 0.35, minf(base.v * 1.25 + 0.3, 1.0)),
 		light = Color.from_hsv(wrapf(base.h + 0.03, 0.0, 1.0), base.s * 0.7, minf(base.v * 1.2 + 0.12, 1.0)),
 		mid = base,
 		dark = Color.from_hsv(wrapf(base.h - 0.05, 0.0, 1.0), minf(base.s * 1.1, 1.0), base.v * 0.55),
+		deep = Color.from_hsv(wrapf(base.h - 0.08, 0.0, 1.0), minf(base.s * 1.15, 1.0), base.v * 0.33),
+		outline = Color.from_hsv(wrapf(base.h - 0.1, 0.0, 1.0), minf(base.s * 1.2, 1.0), base.v * 0.17),
 	}
 
 
@@ -103,6 +108,5 @@ static func make_material(base: Color, rainbow := false) -> ShaderMaterial:
 static func apply_to(material: ShaderMaterial, base: Color, rainbow := false) -> void:
 	material.set_shader_parameter("rainbow", rainbow)
 	var colors := shades(base)
-	material.set_shader_parameter("light", colors.light)
-	material.set_shader_parameter("mid", colors.mid)
-	material.set_shader_parameter("dark", colors.dark)
+	for shade: String in colors:
+		material.set_shader_parameter(shade, colors[shade])

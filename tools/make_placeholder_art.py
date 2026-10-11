@@ -29,9 +29,13 @@ PAL = {
     ".": (0, 0, 0, 0),
     "k": (26, 28, 44, 255),     # outline / deepest shadow
     "e": (244, 244, 244, 255),  # highlight white
+    "H": (214, 250, 186, 255),  # goo highlight
     "l": (148, 226, 112, 255),  # goo light
     "m": (56, 183, 100, 255),   # goo mid
     "n": (37, 113, 121, 255),   # goo dark
+    "D": (22, 66, 82, 255),     # goo deep shadow
+    "G": (12, 38, 48, 255),     # goo outline
+    "_": (0, 0, 0, 80),         # soft ground shadow under the slime
     "x": (194, 210, 222, 255),  # stone highlight
     "w": (148, 176, 194, 255),  # stone light
     "W": (86, 108, 134, 255),   # stone dark
@@ -303,14 +307,21 @@ def floor_tile(kind: str, seed: int) -> list[str]:
 
 # ---------------------------------------------------------------- slime
 
-GOO = {"light": "l", "mid": "m", "dark": "n", "spec": "e"}
-HALF_DRY = {"light": "l", "mid": "w", "dark": "n", "spec": "x"}
-DRY = {"light": "x", "mid": "w", "dark": "W", "spec": "x"}
+# Goo shades (the skin shader swaps H/l/m/n/D/G for the skin's own shades).
+GOO = {"high": "H", "light": "l", "mid": "m", "dark": "n", "deep": "D", "spec": "e", "outline": "G", "eye": "k"}
+HALF_DRY = {"high": "x", "light": "l", "mid": "w", "dark": "n", "deep": "W", "spec": "x", "outline": "G", "eye": "k"}
+DRY = {"high": "x", "light": "x", "mid": "w", "dark": "W", "deep": "z", "spec": "x", "outline": "k", "eye": "k"}
 
 DIR_NAMES = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 DIR_VECS = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
 CARDINALS = {"e": (1, 0), "s": (0, 1), "w": (-1, 0), "n": (0, -1)}
 FRAME = 20
+## Light comes from the top-left, a little in front.
+LIGHT = (-0.45, -0.65, 0.62)
+## Brightness bands (dot of the dome's normal with LIGHT), brightest first.
+BANDS = [(0.78, "light"), (0.3, "mid"), (-0.1, "dark")]
+## Bubbles suspended in the goo, in body coordinates (they squash and stretch with it).
+BUBBLES = [(0.32, 0.18), (0.05, 0.42), (-0.4, 0.3)]
 
 
 def unit(v) -> tuple[float, float]:
@@ -319,13 +330,15 @@ def unit(v) -> tuple[float, float]:
 
 
 def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=(0, 1),
-          eyes="open", colors=GOO, extras=()) -> list[str]:
+          eyes="open", colors=GOO, extras=(), ground=True) -> list[str]:
     """Top-down slime blob centered in a FRAME x FRAME frame.
 
     The base body is an ellipse with 7x6 px radii, scaled by sx/sy, then stretched by
-    `along` in direction d and `perp` across it. `look` is where the face points
-    (eyes are hidden when it points up, away from the viewer). `extras` are (x, y, color)
-    pixels drawn on empty space afterwards: droplets, sparkles.
+    `along` in direction d and `perp` across it. It's shaded as a lit dome (BANDS), with a deep
+    shadow where it sits on the floor, a reflected rim light, a shine, bubbles, and a tinted
+    outline. `look` is where the face points (eyes are hidden when it points up, away from the
+    viewer). `ground` adds a soft shadow on the floor under it (off for mid-air frames).
+    `extras` are (x, y, color) pixels drawn on empty space afterwards: droplets, sparkles.
     """
     g = blank(".", FRAME)
     dx, dy = unit(d)
@@ -339,46 +352,90 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
             if nx * nx + ny * ny <= 1.0:
                 inside[(x, y)] = (nx, ny)
 
+    lx, ly, lz = LIGHT
     for (x, y), (nx, ny) in inside.items():
-        if ny > 0.45:
-            g[y][x] = colors["dark"]
-        elif nx < -0.2 and ny < -0.1 and nx * nx + ny * ny > 0.35:
-            g[y][x] = colors["light"]
-        else:
-            g[y][x] = colors["mid"]
+        r2 = nx * nx + ny * ny
+        nz = math.sqrt(max(1.0 - r2, 0.0)) * 1.1
+        length = math.sqrt(nx * nx + ny * ny + nz * nz)
+        lit = (nx * lx + ny * ly + nz * lz) / length
+        shade = "deep"
+        for limit, name in BANDS:
+            if lit > limit:
+                shade = name
+                break
+        if ny > 0.8:  # where the goo meets the floor
+            shade = "deep"
+        elif r2 > 0.7 and nx > 0.25 and ny > 0.1 and shade == "deep":
+            shade = "dark"  # light bouncing back up from the floor onto the lower right edge
+        g[y][x] = colors[shade]
+
     if inside:
-        sx_, sy_ = min(inside, key=lambda p: (inside[p][0] + 0.4) ** 2 + (inside[p][1] + 0.45) ** 2)
+        # Shine: a small bright patch up and to the left, with one pure white pixel.
+        for (x, y), (nx, ny) in inside.items():
+            if (nx + 0.38) ** 2 * 1.4 + (ny + 0.5) ** 2 < 0.05:
+                g[y][x] = colors["high"]
+        sx_, sy_ = min(inside, key=lambda p: (inside[p][0] + 0.42) ** 2 + (inside[p][1] + 0.55) ** 2)
         g[sy_][sx_] = colors["spec"]
+        # A second, smaller glint on the right.
+        gx, gy = min(inside, key=lambda p: (inside[p][0] - 0.45) ** 2 + (inside[p][1] + 0.35) ** 2)
+        if g[gy][gx] in (colors["mid"], colors["light"]):
+            g[gy][gx] = colors["light"]
+        for bx, by in BUBBLES:
+            px_, py_ = min(inside, key=lambda p: (inside[p][0] - bx) ** 2 + (inside[p][1] - by) ** 2)
+            if (inside[(px_, py_)][0] - bx) ** 2 + (inside[(px_, py_)][1] - by) ** 2 < 0.03:
+                g[py_][px_] = colors["high"] if g[py_][px_] in (colors["mid"], colors["light"]) else colors["mid"]
+
+    outline = set()
     for y in range(FRAME):
         for x in range(FRAME):
             if (x, y) not in inside and any((x + ox, y + oy) in inside for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-                g[y][x] = "k"
+                g[y][x] = colors["outline"]
+                outline.add((x, y))
+
+    if ground and inside:
+        # Soft shadow on the floor: the two rows under the body's bottom edge, a little narrower.
+        xs = [x for x, _ in inside]
+        left, right = min(xs) + 1, max(xs) - 1
+        for x in range(left, right + 1):
+            column = [y for (px, y) in outline if px == x]
+            if column:
+                bottom = max(column)
+                for y in (bottom + 1, bottom + 2):
+                    if y < FRAME and g[y][x] == "." and not (y == bottom + 2 and x in (left, right)):
+                        g[y][x] = "_"
 
     if look is not None and eyes != "none":
-        lx, ly = unit(look)
-        ax, ay = cx + lx * 2.2, cy - 0.5 + ly * 2.0
-        if ly < -0.8:
-            spots = []                               # facing away: back of the head
-        elif ly < -0.3:
-            spots = [ax + (1.5 if lx > 0 else -1.5)]  # turned away: one eye peeks out
+        lx2, ly2 = unit(look)
+        ax, ay = cx + lx2 * 2.2, cy - 0.5 + ly2 * 2.0
+        if ly2 < -0.8:
+            spots = []                                 # facing away: back of the head
+        elif ly2 < -0.3:
+            spots = [ax + (2.0 if lx2 > 0 else -3.0)]  # turned away: one eye peeks out
         else:
-            gap = 2.0 if eyes in ("happy", "x") else 1.5
-            spots = [ax - gap, ax + gap]
+            gap = 3.0 if eyes in ("happy", "x") else 2.5
+            spots = [ax - gap, ax + gap - 1.0]
         ey = int(math.floor(ay))
+        shapes = {
+            # (dx, dy, part): "e" = eye, "w" = glint
+            "open": [(0, -1, "w"), (1, -1, "e"), (0, 0, "e"), (1, 0, "e"), (0, 1, "e"), (1, 1, "e")],
+            "closed": [(0, 1, "e"), (1, 1, "e")],
+            "happy": [(0, 0, "e"), (1, 0, "e"), (-1, 1, "e"), (2, 1, "e")],
+            "x": [(-1, -1, "e"), (1, -1, "e"), (0, 0, "e"), (-1, 1, "e"), (1, 1, "e")],
+        }[eyes]
         for spot in spots:
             ex = int(math.floor(spot))
-            pixels = {
-                "open": [(0, 0), (0, 1)],
-                "closed": [(0, 1)],
-                "happy": [(0, 0), (-1, 1), (1, 1)],
-                "x": [(-1, -1), (1, -1), (0, 0), (-1, 1), (1, 1)],
-            }[eyes]
-            for ox, oy in pixels:
+            for ox, oy, part in shapes:
                 if (ex + ox, ey + oy) in inside:
-                    g[ey + oy][ex + ox] = "k"
+                    g[ey + oy][ex + ox] = colors["spec"] if part == "w" else colors["eye"]
+        if len(spots) == 2 and ly2 > 0.3 and eyes in ("open", "happy"):
+            mx, my = int(math.floor(ax - 0.5)), ey + 3
+            mouth = [(0, 0), (1, 0)] if eyes == "open" else [(-1, 0), (0, 1), (1, 1), (2, 0)]
+            for ox, oy in mouth:
+                if (mx + ox, my + oy) in inside:
+                    g[my + oy][mx + ox] = colors["outline"]
 
     for x, y, c in extras:
-        if 0 <= x < FRAME and 0 <= y < FRAME and g[y][x] == ".":
+        if 0 <= x < FRAME and 0 <= y < FRAME and g[y][x] in ".":
             g[y][x] = c
     return ["".join(r) for r in g]
 
@@ -409,10 +466,10 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
             for i in range(4)
         ], 0, False)
         anims[f"launch_{name}"] = ([
-            slime(along=0.8, perp=1.1, d=vec, look=u), slime(along=1.25, perp=0.8, d=vec, look=u),
+            slime(along=0.8, perp=1.1, d=vec, look=u), slime(along=1.25, perp=0.8, d=vec, look=u, ground=False),
         ], 0, False)
         anims[f"air_{name}"] = ([
-            slime(along=a, perp=p, d=vec, look=u) for a, p in [(1.25, 0.8), (1.15, 0.86), (1.06, 0.92), (0.96, 1.0)]
+            slime(along=a, perp=p, d=vec, look=u, ground=False) for a, p in [(1.25, 0.8), (1.15, 0.86), (1.06, 0.92), (0.96, 1.0)]
         ], 0, False)
         anims[f"land_{name}"] = ([
             slime(sx=a, sy=b, shift=(0, s), look=u, eyes=e)
@@ -433,7 +490,7 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
     ], 6, False)
     sparkles = [[(3, 4, "Y"), (16, 3, "y")], [(2, 8, "y"), (17, 6, "Y"), (9, 1, "Y")], [(4, 2, "Y"), (15, 2, "y")], [(1, 5, "Y"), (18, 8, "Y")]]
     anims["celebrate"] = ([
-        slime(sx=a, sy=b, shift=(0, s), eyes="happy", extras=sparkles[i])
+        slime(sx=a, sy=b, shift=(0, s), eyes="happy", extras=sparkles[i], ground=s > -1)
         for i, (a, b, s) in enumerate([(1.1, 0.9, 1), (0.92, 1.1, -1.5), (1, 1, -2.5), (1.05, 0.95, -0.5)])
     ], 8, True)
     return anims
@@ -458,10 +515,16 @@ def app_icon() -> list[str]:
     """64x64 app/window icon: the idle slime in Ember orange (same shade math as Skins.shades)."""
     import colorsys
     h, s, v = colorsys.rgb_to_hsv(239 / 255, 125 / 255, 47 / 255)
-    for key, (hh, ss, vv) in {"q": ((h + 0.03) % 1, s * 0.7, min(v * 1.2 + 0.12, 1)), "r": (h, s, v),
-                               "t": ((h - 0.05) % 1, min(s * 1.1, 1), v * 0.55)}.items():
+    for key, (hh, ss, vv) in {
+        "1": ((h + 0.05) % 1, s * 0.35, min(v * 1.25 + 0.3, 1)),
+        "q": ((h + 0.03) % 1, s * 0.7, min(v * 1.2 + 0.12, 1)),
+        "r": (h, s, v),
+        "t": ((h - 0.05) % 1, min(s * 1.1, 1), v * 0.55),
+        "2": ((h - 0.08) % 1, min(s * 1.15, 1), v * 0.33),
+        "3": ((h - 0.1) % 1, min(s * 1.2, 1), v * 0.17),
+    }.items():
         PAL[key] = tuple(round(c * 255) for c in colorsys.hsv_to_rgb(hh, ss, vv)) + (255,)
-    frame = [row.translate(str.maketrans("lmn", "qrt")) for row in slime()]
+    frame = [row.translate(str.maketrans("HlmnDG", "1qrt23")) for row in slime()]
     scaled = ["".join(c * 3 for c in row) for row in frame for _ in range(3)]
     pad = (64 - len(scaled)) // 2
     blank_row = "." * 64
