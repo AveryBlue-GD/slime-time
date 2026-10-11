@@ -28,8 +28,8 @@ func _ready() -> void:
 	var ids: Array[String] = []
 	for preset: Dictionary in Skins.PRESETS:
 		ids.append(preset.id)
-	ids.append(Skins.RAINBOW)
 	ids.append(Skins.CUSTOM)
+	ids.append(Skins.RAINBOW)
 	for id in ids:
 		grid.add_child(_make_tile(id))
 

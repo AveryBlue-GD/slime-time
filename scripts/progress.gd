@@ -170,6 +170,11 @@ func new_random_maze() -> void:
 
 # ---------------------------------------------------------------- skins
 
+## Randomizer mode opens once all the story levels are beaten.
+func is_randomizer_unlocked() -> bool:
+	return levels_cleared >= Levels.COUNT
+
+
 func is_skin_unlocked(id: String) -> bool:
 	return Skins.is_unlocked(id, levels_cleared, randoms_won)
 

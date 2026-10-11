@@ -1,7 +1,7 @@
 extends Control
 
 ## Start page: the big gooey logo (tinted to the equipped skin), then continue, level select,
-## randomizer, skins, controls, quit.
+## randomizer (locked, with a lock icon, until all story levels are beaten), skins, controls, quit.
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
@@ -43,6 +43,13 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
+	if not Progress.is_randomizer_unlocked():
+		var random_button := buttons[2]
+		random_button.disabled = true
+		random_button.icon = load(UIKit.UI_DIR + "icon_lock.png")
+		random_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		random_button.tooltip_text = "BEAT ALL %d LEVELS TO UNLOCK" % Levels.COUNT
+		random_button.add_theme_color_override("icon_disabled_color", UIKit.TEXT_OFF)
 	buttons[0].grab_focus()
 
 	var hint := UIKit.make_label("%d/%d LEVELS CLEARED" % [Progress.levels_cleared, Levels.COUNT], 8, UIKit.TEXT_DIM)

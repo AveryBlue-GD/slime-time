@@ -138,7 +138,13 @@ func _initialize() -> void:
 	progress.levels_cleared = 2
 	var screen: Control = await _open("res://scenes/title.tscn")
 	_check(screen.buttons.size() == 6 and screen.buttons[2].text == "RANDOMIZER", "title has 6 menu buttons incl. RANDOMIZER")
+	_check(screen.buttons[2].disabled and screen.buttons[2].icon != null, "the randomizer shows a lock until all levels are beaten")
 	screen.free()
+	progress.levels_cleared = Levels.COUNT
+	screen = await _open("res://scenes/title.tscn")
+	_check(not screen.buttons[2].disabled and screen.buttons[2].icon == null, "beating level 10 unlocks the randomizer")
+	screen.free()
+	progress.levels_cleared = 2
 	screen = await _open("res://scenes/level_select.tscn")
 	var enabled: int = screen.level_buttons.filter(func(b: Button) -> bool: return not b.disabled).size()
 	_check(enabled == 3, "level select: levels 1-3 open, the rest locked (%d open)" % enabled)
