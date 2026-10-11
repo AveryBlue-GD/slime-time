@@ -7,7 +7,8 @@ extends Control
 ## hats page: a tile per hat (plus no hat), each shown on a slime in your skin.
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
-## custom color panel, and a bottom row of BACK | JELLY | HATS.
+## custom color panel or the preview stage (the clicked skin acting out a little routine, see
+## SkinShowcase), and a bottom row of BACK | JELLY | HATS.
 
 const TILE_SIZE := Vector2(40, 30)
 const GRID_COLUMNS := 7
@@ -30,6 +31,8 @@ var custom_panel: Control
 var wheel: ColorWheel
 var glow_slider: HSlider
 var big_preview: AnimatedSprite2D
+## The animated preview of the clicked skin (where the custom panel goes when that's not shown).
+var showcase: SkinShowcase
 var skin_text: SkinText
 ## "skins" or "hats".
 var page := "skins"
@@ -62,6 +65,9 @@ func _ready() -> void:
 	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
 	_rule = _centered_label(SKINS_RULE, UIKit.TEXT_DIM, RULE_TOP)
 	_build_custom_panel()
+	showcase = SkinShowcase.new()
+	add_child(showcase)
+	showcase.position = Vector2(roundf((320 - SkinShowcase.STAGE_SIZE.x) / 2.0), CUSTOM_TOP)
 
 	# Bottom row: BACK and HATS the same width at the same distance from each edge, the jelly
 	# switch centered between them.
@@ -138,10 +144,12 @@ func show_page(which: String) -> void:
 	if hats:
 		_rule.text = HATS_RULE if Hats.available else HATS_SOON_RULE
 		custom_panel.visible = false
+		showcase.visible = false
 		_refresh_hats()
 		hat_tiles[Progress.selected_hat].grab_focus()
 	else:
 		_refresh()
+		_preview(Progress.selected_skin)
 		tiles[Progress.selected_skin].grab_focus()
 
 
@@ -151,6 +159,7 @@ func _toggle_jelly() -> void:
 	_fill_skin_grid()
 	_refresh()
 	jelly_button.grab_focus()
+	_preview(Progress.selected_skin)
 
 
 func _make_tile(id: String) -> Button:
@@ -230,6 +239,14 @@ func _on_tile(id: String) -> void:
 		skin_text.recolor()
 		(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
 	_refresh(id)
+	_preview(id)
+
+
+## Plays skin `id` (in the version on view) on the preview stage.
+func _preview(id: String) -> void:
+	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
+	var glow: float = Progress.glow if id == Skins.CUSTOM else 0.0
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, glow, not Progress.is_skin_unlocked(id, view_jelly))
 
 
 func _on_hat_tile(id: String) -> void:
@@ -267,7 +284,9 @@ func _refresh(focus_id := "") -> void:
 	jelly_button.text = "JELLY: ON" if view_jelly else "JELLY: OFF"
 	_rule.text = SKINS_RULE if view_jelly else SOLID_RULE
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
-	custom_panel.visible = custom_ready and page == "skins"
+	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
+	custom_panel.visible = custom_ready and page == "skins" and (focus_id == "" or focus_id == Skins.CUSTOM)
+	showcase.visible = page == "skins" and not custom_panel.visible
 	if custom_ready:
 		wheel.value = 1.0
 

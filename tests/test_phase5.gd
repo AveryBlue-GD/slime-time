@@ -159,6 +159,15 @@ func _initialize() -> void:
 	_check(screen.tiles.size() == 12 and not screen.custom_panel.visible, "skins screen: 12 tiles, color wheel hidden until unlocked")
 	screen._refresh(Skins.RAINBOW)
 	_check("ALL 10 LEVELS" in screen.status.text, "the rainbow skin says to beat all 10 levels (%s)" % screen.status.text)
+	screen._on_tile("mint")
+	var actor: AnimatedSprite2D = screen.showcase.slime
+	var actor_start := actor.position
+	for i in 90:
+		await process_frame
+	_check(screen.showcase.visible and actor.position != actor_start and actor.animation != "idle",
+		"clicking a skin plays it on the preview stage (now %s at %s)" % [actor.animation, actor.position])
+	screen._on_tile(Skins.RAINBOW)
+	_check(screen.showcase.slime != actor and screen.showcase.slime.modulate.r == 0.0, "...a locked one as a silhouette")
 	screen.free()
 	progress.levels_cleared = 10
 	progress.selected_skin = Skins.CUSTOM
