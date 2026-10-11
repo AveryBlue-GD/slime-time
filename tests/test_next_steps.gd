@@ -62,7 +62,7 @@ func _initialize() -> void:
 	_check(newer.random_seed != 4242, "NEW MAZE plays a different maze")
 	_drop(newer)
 
-	# Dry-up: no buttons, it retries by itself.
+	# Dry-up: RESTART or go spend coins on UPGRADES.
 	game = await _spawn_story(1)
 	game.slime_remaining = 0.2
 	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
@@ -71,8 +71,9 @@ func _initialize() -> void:
 	Input.action_release("move_right")
 	Input.action_release("move_down")
 	await _frames(int(game.CHOICE_DELAY * 60) + 5)
-	_check(game.finished and game.hud.choice_buttons.is_empty(), "drying up shows no buttons (it retries on its own)")
-	await _drop_running(game)
+	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES"], "drying up offers %s" % [_texts(game)])
+	_check(not game.won, "...and it's not a win")
+	_drop(game)
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))

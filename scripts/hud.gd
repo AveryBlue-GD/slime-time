@@ -241,8 +241,9 @@ func show_record(seconds: float) -> void:
 	record_banner.visible = true
 
 
-## Shows a row of buttons, each [text, Callable]; the last one gets keyboard focus.
-func show_choices(options: Array) -> void:
+## Shows a row of buttons, each [text, Callable]; button `focus` (default: the last) gets
+## keyboard focus.
+func show_choices(options: Array, focus := -1) -> void:
 	var row: HBoxContainer = _choice_root.get_child(0).get_child(0)
 	for child in row.get_children():
 		child.queue_free()
@@ -253,7 +254,7 @@ func show_choices(options: Array) -> void:
 		choice_buttons.append(button)
 	_choice_root.visible = true
 	_skin_text.recolor()
-	choice_buttons[-1].grab_focus()
+	choice_buttons[focus].grab_focus()
 
 
 func _build_choice_row() -> void:

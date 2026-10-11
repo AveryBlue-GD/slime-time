@@ -32,6 +32,9 @@ var selected_hat := Hats.NONE
 var coins_found := {}
 ## Upgrade levels bought with coins: id -> level (see Upgrades).
 var upgrades := {}
+## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
+## returns to the level (not saved).
+var return_to_game := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 const DEV_COINS := 999

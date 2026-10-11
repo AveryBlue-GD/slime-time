@@ -4,22 +4,25 @@ extends RefCounted
 ## The 10 levels. Tune difficulty here.
 ## - cells:     maze size in cells (each cell is one open tile; corridors are 1 tile wide)
 ## - branching: 0 = long winding corridors, higher = more side branches and dead ends
-## - target:    fraction of the slime meter a perfect glide to the chalice uses
-## Seeds were picked so the path to the chalice grows steadily: 22, 26, 30 ... 66 cells.
+## - target:    fraction of the slime meter a perfect glide to the chalice uses, with no upgrades
+## Seeds were picked so the path to the chalice grows steadily: 22, 30, 38 ... 100 cells.
+## Balanced around the upgrades (More Slime doubles the range at level 10): the first levels
+## are easy with no upgrades at all, while level 10 can only be beaten without upgrades by an
+## essentially perfect run (a perfect glide uses 99% of the meter).
 
 const COUNT := 10
 
 const DATA := [
-	{cells = Vector2i(10, 6), seed = 1078, branching = 0.05, target = 0.60},
-	{cells = Vector2i(11, 7), seed = 2016, branching = 0.10, target = 0.63},
-	{cells = Vector2i(12, 7), seed = 3007, branching = 0.15, target = 0.66},
-	{cells = Vector2i(13, 8), seed = 4003, branching = 0.20, target = 0.70},
-	{cells = Vector2i(14, 8), seed = 5006, branching = 0.25, target = 0.73},
-	{cells = Vector2i(16, 9), seed = 6012, branching = 0.30, target = 0.77},
-	{cells = Vector2i(17, 10), seed = 7038, branching = 0.35, target = 0.80},
-	{cells = Vector2i(18, 10), seed = 8042, branching = 0.40, target = 0.83},
-	{cells = Vector2i(20, 11), seed = 9005, branching = 0.45, target = 0.87},
-	{cells = Vector2i(22, 12), seed = 10012, branching = 0.50, target = 0.90},
+	{cells = Vector2i(10, 6), seed = 1078, branching = 0.05, target = 0.45},
+	{cells = Vector2i(12, 7), seed = 2019, branching = 0.10, target = 0.52},
+	{cells = Vector2i(13, 8), seed = 3071, branching = 0.15, target = 0.58},
+	{cells = Vector2i(15, 8), seed = 4003, branching = 0.20, target = 0.64},
+	{cells = Vector2i(16, 9), seed = 5018, branching = 0.25, target = 0.70},
+	{cells = Vector2i(18, 10), seed = 6041, branching = 0.30, target = 0.76},
+	{cells = Vector2i(20, 11), seed = 7057, branching = 0.35, target = 0.82},
+	{cells = Vector2i(22, 12), seed = 8070, branching = 0.40, target = 0.88},
+	{cells = Vector2i(24, 13), seed = 9256, branching = 0.45, target = 0.94},
+	{cells = Vector2i(26, 14), seed = 10366, branching = 0.50, target = 0.99},
 ]
 
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
@@ -39,8 +42,9 @@ const FLOOR_FIRST := [60.0, 10.0, 10.0, 6.0, 8.0, 2.0, 4.0]
 const FLOOR_LAST := [30.0, 18.0, 12.0, 12.0, 10.0, 10.0, 8.0]
 
 
-## Randomizer: a mid-sized noise maze with a mid-level slime budget and tile wear.
-const RANDOM_TARGET := 0.75
+## Randomizer (opens after the story, so players have upgrades): a large noise maze with a
+## late-level slime budget and tile wear.
+const RANDOM_TARGET := 0.85
 const RANDOM_TILE_LEVEL := 6
 
 
@@ -52,7 +56,7 @@ static func random_config(maze_seed: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
 	return {
-		cells = Vector2i(rng.randi_range(14, 18), rng.randi_range(8, 10)),
+		cells = Vector2i(rng.randi_range(18, 24), rng.randi_range(10, 13)),
 		seed = maze_seed,
 		target = RANDOM_TARGET,
 		tile_level = RANDOM_TILE_LEVEL,

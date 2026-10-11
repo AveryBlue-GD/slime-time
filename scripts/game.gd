@@ -54,6 +54,7 @@ const TITLE_SCENE := "res://scenes/title.tscn"
 ## Seconds the "first run: playing as ..." notice stays up.
 const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
+const UPGRADES_SCENE := "res://scenes/upgrades.tscn"
 ## After a win, the replay / next buttons appear after this long (so a held key can't press one).
 const CHOICE_DELAY := 0.6
 ## The chalice fanfare plays about a third quieter than other sounds (-3.5 dB = 67% amplitude).
@@ -742,7 +743,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 
 func _dry_up() -> void:
 	slime.play_dry_up()
-	_finish(false, "DRIED UP\nSHUFFLING THE MAZE..." if is_random() else "DRIED UP", END_DELAY)
+	_finish(false, "DRIED UP\nTHE MAZE WILL SHUFFLE" if is_random() else "DRIED UP", END_DELAY)
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
@@ -760,11 +761,11 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 	if not did_win:
 		if progress and is_random():
 			progress.new_random_maze()
-		# The countdown pauses with the game (false = not while paused), and it's dropped if the
-		# player has left for the menu meanwhile.
-		await get_tree().create_timer(delay, false).timeout
+		# The delay pauses with the game (false = not while paused), and the buttons are skipped
+		# if the player has left for the menu meanwhile.
+		await get_tree().create_timer(CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
-			get_tree().reload_current_scene()
+			_offer_retry()
 		return
 	if progress:
 		if is_random():
@@ -775,6 +776,23 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
 	if _is_running_scene() and not _leaving():
 		_offer_next_steps()
+
+
+## The buttons shown after drying up: try again, or go spend coins on upgrades first (the
+## upgrades screen's PLAY button comes back here).
+func _offer_retry() -> void:
+	hud.show_choices([["NEW MAZE" if is_random() else "RESTART", retry], ["UPGRADES", go_to_upgrades]], 0)
+
+
+## Tries again: the same story level, or (the seed was already changed) a new random maze.
+func retry() -> void:
+	get_tree().reload_current_scene()
+
+
+func go_to_upgrades() -> void:
+	if progress:
+		progress.return_to_game = true
+	UIKit.go(get_tree(), UPGRADES_SCENE)
 
 
 ## The buttons shown after a win.

@@ -40,7 +40,11 @@ func _ready() -> void:
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	hint.offset_top = 143
 	hint.offset_bottom = 161
-	UIKit.add_back_button(self)
+	var back := UIKit.add_back_button(self)
+	if Progress.return_to_game:  # came here from a dry-up: go straight back into the level
+		back.text = "PLAY"
+		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
+		back.pressed.connect(_leave)
 	_refresh()
 	rows[Upgrades.LIST[0].id].plus.grab_focus()
 
@@ -96,6 +100,13 @@ func _refresh() -> void:
 		row.minus.disabled = level <= 0
 
 
+## Leaves: back into the level after a dry-up, otherwise to the title.
+func _leave() -> void:
+	var to_game: bool = Progress.return_to_game
+	Progress.return_to_game = false
+	UIKit.go(get_tree(), UIKit.GAME_SCENE if to_game else UIKit.TITLE_SCENE)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
-		UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+		_leave()

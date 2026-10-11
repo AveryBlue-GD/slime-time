@@ -49,7 +49,7 @@ func _initialize() -> void:
 	await _frames(30)
 	Input.action_release(action)
 	_check(game.finished and progress.random_seed != 777, "drying up in the randomizer shuffles to a new maze")
-	_check("SHUFFLING" in game.hud.message.text, "the dry-up message says the maze is shuffling")
+	_check("SHUFFLE" in game.hud.message.text, "the dry-up message says the maze will shuffle")
 	_check(progress.randoms_won == 5, "a dry-up doesn't count as a win")
 	await _stop_running(game)
 
