@@ -320,8 +320,6 @@ FRAME = 20
 LIGHT = (-0.45, -0.65, 0.62)
 ## Brightness bands (dot of the dome's normal with LIGHT), brightest first.
 BANDS = [(0.78, "light"), (0.3, "mid"), (-0.1, "dark")]
-## Bubbles suspended in the goo, in body coordinates (they squash and stretch with it).
-BUBBLES = [(0.32, 0.18), (0.05, 0.42), (-0.4, 0.3)]
 
 
 def unit(v) -> tuple[float, float]:
@@ -335,7 +333,7 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
 
     The base body is an ellipse with 7x6 px radii, scaled by sx/sy, then stretched by
     `along` in direction d and `perp` across it. It's shaded as a lit dome (BANDS), with a deep
-    shadow where it sits on the floor, a reflected rim light, a shine, bubbles, and a tinted
+    shadow where it sits on the floor, a reflected rim light, a shine and a tinted
     outline. `look` is where the face points (eyes are hidden when it points up, away from the
     viewer). `ground` adds a soft shadow on the floor under it (off for mid-air frames).
     `extras` are (x, y, color) pixels drawn on empty space afterwards: droplets, sparkles.
@@ -376,14 +374,6 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
                 g[y][x] = colors["high"]
         sx_, sy_ = min(inside, key=lambda p: (inside[p][0] + 0.42) ** 2 + (inside[p][1] + 0.55) ** 2)
         g[sy_][sx_] = colors["spec"]
-        # A second, smaller glint on the right.
-        gx, gy = min(inside, key=lambda p: (inside[p][0] - 0.45) ** 2 + (inside[p][1] + 0.35) ** 2)
-        if g[gy][gx] in (colors["mid"], colors["light"]):
-            g[gy][gx] = colors["light"]
-        for bx, by in BUBBLES:
-            px_, py_ = min(inside, key=lambda p: (inside[p][0] - bx) ** 2 + (inside[p][1] - by) ** 2)
-            if (inside[(px_, py_)][0] - bx) ** 2 + (inside[(px_, py_)][1] - by) ** 2 < 0.03:
-                g[py_][px_] = colors["high"] if g[py_][px_] in (colors["mid"], colors["light"]) else colors["mid"]
 
     outline = set()
     for y in range(FRAME):

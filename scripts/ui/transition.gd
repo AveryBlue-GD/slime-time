@@ -8,6 +8,7 @@ const COVER_TIME := 0.22
 const UNCOVER_TIME := 0.32
 ## A little past 1 so the longest drips clear the bottom of the screen.
 const OFF_SCREEN := 1.3
+const SCREEN_HEIGHT := 180.0
 
 var busy := false
 var _sheet: ColorRect
@@ -68,15 +69,24 @@ func _uncover() -> void:
 func _set_edges(bottom: float, top: float) -> void:
 	_material.set_shader_parameter("bottom", bottom)
 	_material.set_shader_parameter("top", top)
+	# The sheet's texture slides with it: down with the bottom edge, then on down with the top.
+	_material.set_shader_parameter("slide", (bottom + top) * SCREEN_HEIGHT)
 
 
-## Goo in the equipped skin's shades (the rainbow skin uses its base color).
+## Goo in the equipped skin's shades; with the rainbow skin, a random rainbow color each time.
 func _paint() -> void:
 	var progress := get_node_or_null("/root/Progress")
 	var color: Color = Skins.get_preset(Skins.DEFAULT).color
 	if progress:
-		color = Skins.RAINBOW_BASE if progress.is_rainbow() else progress.skin_color()
+		color = random_rainbow_color() if progress.is_rainbow() else progress.skin_color()
 	var shades := Skins.shades(color)
 	_material.set_shader_parameter("goo", shades.mid)
 	_material.set_shader_parameter("goo_dark", shades.dark)
 	_material.set_shader_parameter("goo_light", shades.light)
+	_material.set_shader_parameter("goo_deep", shades.deep)
+	_material.set_shader_parameter("goo_highlight", shades.highlight)
+
+
+## A random color from the rainbow (red through violet).
+static func random_rainbow_color() -> Color:
+	return Color.from_hsv(randf() * 0.83, 0.78, 0.95)
