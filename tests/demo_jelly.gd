@@ -12,7 +12,7 @@ var game: Node2D
 
 
 func _ready() -> void:
-	Progress.jelly = true
+	Progress.set_jelly(true)
 	Progress.saving_enabled = false
 	game = preload("res://scenes/main.tscn").instantiate()
 	game.level = LEVEL

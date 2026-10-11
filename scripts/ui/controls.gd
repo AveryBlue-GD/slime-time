@@ -14,6 +14,8 @@ var waiting_for := ""
 var sound_button: Button
 var fullscreen_button: Button
 var reset_button: Button
+## Dev mode only: turns the see-through jelly slime on and off.
+var jelly_button: Button
 var reset_confirm: Control
 var confirm_button: Button
 var cancel_button: Button
@@ -59,6 +61,11 @@ func _ready() -> void:
 	volume_row.position = Vector2(95, 130)
 	add_child(volume_row)
 	UIKit.add_back_button(self)
+	if Progress.dev_tools:  # dev-only experiments
+		jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(112, 13))
+		jelly_button.position = Vector2(56, 164)
+		add_child(jelly_button)
+		_refresh_jelly()
 	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(96, 13))
 	reset_button.position = Vector2(220, 164)
 	add_child(reset_button)
@@ -93,6 +100,15 @@ func _centered_label(label: Label, top: int, bottom: int) -> void:
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	label.offset_top = top
 	label.offset_bottom = bottom
+
+
+func _toggle_jelly() -> void:
+	Progress.set_jelly(not Progress.jelly)
+	_refresh_jelly()
+
+
+func _refresh_jelly() -> void:
+	jelly_button.text = "JELLY SLIME: " + ("ON" if Progress.jelly else "OFF")
 
 
 func _ask_reset() -> void:

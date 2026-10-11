@@ -194,8 +194,7 @@ func _ready() -> void:
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
 	slime.apply_skin(skin_color, rainbow)
-	if progress and progress.jelly:
-		slime.set_translucency(1.0)
+	slime.set_translucency(1.0 if progress and progress.jelly else 0.0)
 	hud.set_skin_color(skin_color, rainbow)
 
 	if equipped != "":

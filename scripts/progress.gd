@@ -35,7 +35,8 @@ var upgrades := {}
 ## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
 ## returns to the level (not saved).
 var return_to_game := false
-## Jelly test (--jelly, not saved): a see-through slime; collected coins sink in and dissolve.
+## Jelly test (dev toggle on the settings screen, or --jelly; not saved): every slime is
+## see-through, and collected coins sink in and dissolve.
 var jelly := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
@@ -113,7 +114,7 @@ func _ready() -> void:
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
 		elif arg == "--jelly":
-			jelly = true
+			set_jelly(true)
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 
@@ -315,6 +316,11 @@ func refund_upgrade(id: String) -> bool:
 		upgrades[id] = level - 1
 	save_progress()
 	return true
+
+
+func set_jelly(on: bool) -> void:
+	jelly = on
+	Skins.jelly = on
 
 
 ## Randomizer mode opens once all the story levels are beaten.

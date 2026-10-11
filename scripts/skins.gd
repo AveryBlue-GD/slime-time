@@ -15,6 +15,9 @@ const CUSTOM := "custom"
 const CUSTOM_NAME := "ANY SKIN"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
+## Jelly test (dev toggle, see Progress.set_jelly): every slime made from now on is see-through.
+static var jelly := false
+
 const GOLD := "gold"
 const GOLD_NAME := "GOLD"
 const GOLD_COLOR := Color8(236, 184, 52)
@@ -110,6 +113,7 @@ static func shades(base: Color) -> Dictionary:
 static func make_material(base: Color, rainbow := false) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://assets/shaders/slime_skin.gdshader")
+	material.set_shader_parameter("translucency", 1.0 if jelly else 0.0)
 	apply_to(material, base, rainbow)
 	return material
 

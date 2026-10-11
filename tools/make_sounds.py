@@ -92,6 +92,22 @@ def sizzle(seconds: float, volume=0.3, seed=1) -> list[float]:
     return samples
 
 
+def metal_ring(freqs, seconds: float, volume=0.15, droop=0.2) -> list[float]:
+    """A struck bit of metal (inharmonic partials) whose pitch sags by `droop` as it rings out,
+    like it's being eaten away."""
+    count = int(seconds * RATE)
+    phases = [0.0] * len(freqs)
+    samples = []
+    for i in range(count):
+        t = i / count
+        value = 0.0
+        for k, f in enumerate(freqs):
+            phases[k] += f * (1.0 - droop * t) / RATE
+            value += math.sin(2 * math.pi * phases[k]) / (k + 1)
+        samples.append(value * volume * math.exp(-t * 5.0) * min(1.0, i / 40))
+    return samples
+
+
 def crunch(seconds: float, volume=0.4, seed=1) -> list[float]:
     """A dry crust cracking: a cluster of short, sharp clicks."""
     rng = random.Random(seed)
@@ -166,12 +182,11 @@ SOUNDS = {
                        bloop(520, 140, 1.0, 0.3, wobble=0.07, wobble_rate=5, attack=0.03, release=0.4),
                        gurgle(0.9, 9, 160, 520, 0.24, seed=11, falling=True),
                        [0.0] * int(0.95 * RATE) + crunch(0.35, 0.45, seed=22)),
-    # Coin: the coin sinking into the slime and dissolving: a soft low gulp, then a muffled fizz
-    # of tiny bubbles drifting down as it melts away, with just a dull hint of metal.
-    "coin": lambda: mix(bloop(260, 110, 0.12, 0.42, wobble=0.05, release=0.07),
-                        [0.0] * int(0.05 * RATE) + gurgle(0.55, 12, 140, 420, 0.16, seed=41, falling=True),
-                        [0.0] * int(0.04 * RATE) + wet_thud(0.5, 0.18, seed=42, release=0.4),
-                        chime_tone(392, 0.25, 0.08)),
+    # Coin: acid eating into soluble metal: a sharp crackling hiss that eats away, a faint metallic
+    # ring that warps down and dies as the coin dissolves, and a fizz of tiny bubbles.
+    "coin": lambda: mix(sizzle(0.8, 0.42, seed=51),
+                        metal_ring((540, 1310, 2090), 0.55, 0.12, droop=0.25),
+                        [0.0] * int(0.06 * RATE) + gurgle(0.6, 22, 700, 1500, 0.06, seed=52)),
     # Gold skin, gliding: a little jingle of coins.
     "jingle": lambda: mix(chime_tone(784, 0.12, 0.3), [0.0] * int(0.03 * RATE) + chime_tone(1047, 0.12, 0.22),
                           [0.0] * int(0.06 * RATE) + chime_tone(880, 0.14, 0.18)),

@@ -75,6 +75,28 @@ func _initialize() -> void:
 	_check(game.gold and game.skin_color == Skins.GOLD_COLOR, "the gold skin switches on its gold sparks")
 	game.free()
 
+	# --- Jelly slime: a dev-only toggle that makes every slime see-through
+	var settings_screen: Control = load("res://scenes/controls.tscn").instantiate()
+	root.add_child(settings_screen)
+	await process_frame
+	_check(settings_screen.jelly_button == null, "the jelly toggle is hidden outside dev mode")
+	settings_screen.free()
+	progress.dev_tools = true
+	settings_screen = load("res://scenes/controls.tscn").instantiate()
+	root.add_child(settings_screen)
+	await process_frame
+	settings_screen.jelly_button.pressed.emit()
+	var preview := UIKit.make_slime_preview(Color.RED)
+	_check(progress.jelly and settings_screen.jelly_button.text == "JELLY SLIME: ON"
+		and (preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0,
+		"in dev mode the toggle turns every slime see-through")
+	settings_screen.jelly_button.pressed.emit()
+	_check(not progress.jelly and (UIKit.make_slime_preview(Color.RED).material as ShaderMaterial).get_shader_parameter("translucency") == 0.0,
+		"...and back")
+	preview.free()
+	settings_screen.free()
+	progress.dev_tools = false
+
 	# --- RESET PROGRESS needs CONFIRM
 	progress.select_skin("mint")
 	progress.upgrades = {"slime": 3}

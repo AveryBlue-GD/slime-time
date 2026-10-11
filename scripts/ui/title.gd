@@ -16,6 +16,7 @@ func _ready() -> void:
 	logo.texture = preload("res://assets/sprites/title.png")
 	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
 	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
+	(logo.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)  # the logo stays solid
 	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 2)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
