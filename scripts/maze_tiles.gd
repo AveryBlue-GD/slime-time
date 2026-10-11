@@ -6,10 +6,11 @@ extends RefCounted
 ## every tile, plus (optionally) a fillet layer that rounds the inner corners where walls meet.
 ## Seeded, so a maze always looks the same. Used by the game and the menu backdrop.
 ##
-## Tile atlases from tools/make_placeholder_art.py (the original Dungeon look) or, per theme,
-## tools/make_theme_art.py (same layouts; paths from Themes.atlas_path).
-## walls.png: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
-##            row = damage * 3 + style. floors.png: column = floor type, row = variant.
+## Tile atlases per theme from tools/make_theme_art.py (paths from Themes.atlas_path).
+## walls: column = neighbor mask (N=1 E=2 S=4 W=8 set when that neighbor is wall),
+##        row = construction * 12 + damage * 3 + style. floors: column = floor type, row = variant.
+## Each theme has CONSTRUCTIONS kinds of wall (e.g. brick, cut blocks, cobbles); a smooth noise
+## map picks one per tile, so the material changes in patches across the maze.
 ## fillets.png: column = the same neighbor mask, for a floor tile (one row).
 
 const TILE := 16
@@ -17,7 +18,11 @@ const WALL_SOURCE := 0
 const FLOOR_SOURCE := 1
 const FILLET_SOURCE := 2
 const WALL_MASKS := 16
-const WALL_ROWS := 12
+const CONSTRUCTIONS := 3
+const WALL_ROWS := CONSTRUCTIONS * 12
+## Noise scale for the construction patches, and the cut-offs (about 50% / 30% / 20%).
+const CONSTRUCTION_FREQUENCY := 0.11
+const CONSTRUCTION_CUTS: Array[float] = [0.0, 0.3]
 const FLOOR_TYPES := 8
 const FLOOR_VARIANTS := 4
 const FLOOR_RUBBLE := 7
@@ -39,6 +44,9 @@ static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dict
 	var style_weights := PackedFloat32Array(Levels.WALL_STYLE)
 	var floor_weights := Levels.floor_weights(tile_level)
 	var wall_damage := {}
+	var patches := FastNoiseLite.new()
+	patches.seed = tile_seed
+	patches.frequency = CONSTRUCTION_FREQUENCY
 
 	for y in maze.size.y:
 		for x in maze.size.x:
@@ -49,7 +57,8 @@ static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dict
 			var damage := rng.rand_weighted(damage_weights)
 			var style := rng.rand_weighted(style_weights)
 			wall_damage[tile] = damage
-			wall_layer.set_cell(tile, WALL_SOURCE, Vector2i(mask, damage * 3 + style))
+			var construction := construction_at(patches, tile)
+			wall_layer.set_cell(tile, WALL_SOURCE, Vector2i(mask, construction * 12 + damage * 3 + style))
 
 	# Floor goes under walls too, so broken-off chunks of wall show floor through them.
 	for y in maze.size.y:
@@ -66,6 +75,15 @@ static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dict
 				if _has_corner(mask):
 					fillet_layer.set_cell(tile, FILLET_SOURCE, Vector2i(mask, 0))
 	return wall_damage
+
+
+## Which of the theme's wall constructions a tile uses (0 = the main one).
+static func construction_at(patches: FastNoiseLite, tile: Vector2i) -> int:
+	var n := patches.get_noise_2d(tile.x, tile.y)
+	for i in CONSTRUCTION_CUTS.size():
+		if n < CONSTRUCTION_CUTS[i]:
+			return i
+	return CONSTRUCTION_CUTS.size()
 
 
 ## Neighbor mask: N=1 E=2 S=4 W=8 set where that neighbor is a wall.

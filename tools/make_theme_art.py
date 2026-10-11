@@ -1,12 +1,12 @@
-"""Generates the themed tile art for levels 2-10 and random mazes (no dependencies).
+"""Generates the tile art for every level theme (no dependencies).
 
 Run from the project root:  python tools/make_theme_art.py
-(Level 1, "Dank Dungeon", uses the original walls.png / floors.png / fillets.png from
-make_placeholder_art.py.)
 
-Each theme has its own palette, its own stone layout and its own decorations, and writes three
-atlases with the same layout as the originals, so the game can swap them in:
-- assets/sprites/themes/<id>_walls.png   : 16 neighbor masks x (4 damage * 3 styles)
+Each theme has its own palette, three different wall constructions (e.g. brick, cut blocks and
+cobbles; the game mixes them in patches so a level's walls really vary), two decorations and its
+own floors, and writes three atlases:
+- assets/sprites/themes/<id>_walls.png   : 16 neighbor masks x (3 constructions * 4 damage * 3 styles)
+                                           row = construction * 12 + damage * 3 + style;
                                            style 0 = plain, 1 and 2 = the theme's two decorations
 - assets/sprites/themes/<id>_floors.png  : 8 floor kinds (same columns as FLOOR_TYPES) x 4 variants
 - assets/sprites/themes/<id>_fillets.png : 16 inner-corner fillets
@@ -35,9 +35,15 @@ def rgb(*c):
 # Base letters every theme recolors: k outline, x/w/W stone highlight/light/dark, z stain,
 # f/F/h floor / floor dark / floor worn, v/V growth, d/B liquid + glint, u bone.
 THEMES = {
+    "dungeon": {
+        "name": "DANK DUNGEON",
+        "layouts": ("bricks", "ashlar", "cobble"), "decos": ("moss", "stain"), "floor": "flagstone",
+        "kinds": {},
+        "pal": {},  # the original palette
+    },
     "mossy": {
         "name": "MOSSY MINES",
-        "layout": "rocks", "decos": ("moss", "vines"), "floor": "dirt",
+        "layouts": ("rocks", "rubble", "cobble"), "decos": ("moss", "vines"), "floor": "dirt",
         "kinds": {"worn": "moss"},
         "pal": {"k": (16, 24, 18), "x": (150, 172, 128), "w": (104, 126, 90), "W": (64, 80, 56), "z": (44, 58, 40),
                 "f": (38, 46, 30), "F": (26, 32, 22), "h": (50, 62, 38), "v": (98, 164, 62), "V": (52, 104, 46),
@@ -45,7 +51,7 @@ THEMES = {
     },
     "sandstone": {
         "name": "SANDSTONE SANCTUM",
-        "layout": "blocks", "decos": ("glyphs", "sand"), "floor": "sand",
+        "layouts": ("blocks", "ashlar", "soldier"), "decos": ("glyphs", "sand"), "floor": "sand",
         "kinds": {"moss": "ripples", "puddle": "ripples"},
         "pal": {"k": (48, 28, 22), "x": (248, 224, 166), "w": (216, 174, 112), "W": (164, 118, 72), "z": (126, 86, 54),
                 "f": (112, 84, 58), "F": (90, 66, 46), "h": (134, 102, 68), "v": (152, 140, 72), "V": (112, 100, 52),
@@ -53,7 +59,7 @@ THEMES = {
     },
     "sunken": {
         "name": "SUNKEN SHRINE",
-        "layout": "bricks", "decos": ("barnacles", "seaweed"), "floor": "tiles",
+        "layouts": ("bricks", "slabs", "rocks"), "decos": ("barnacles", "seaweed"), "floor": "tiles",
         "kinds": {"moss": "puddle", "worn": "puddle"},
         "pal": {"k": (10, 26, 32), "x": (152, 216, 198), "w": (88, 162, 150), "W": (48, 110, 106), "z": (30, 72, 78),
                 "f": (24, 48, 68), "F": (16, 34, 52), "h": (34, 62, 84), "v": (62, 152, 112), "V": (30, 98, 82),
@@ -61,7 +67,7 @@ THEMES = {
     },
     "sewers": {
         "name": "TOXIC TUNNELS",
-        "layout": "bricks", "decos": ("slime_drip", "pipe"), "floor": "bricks",
+        "layouts": ("bricks", "soldier", "cobble"), "decos": ("slime_drip", "pipe"), "floor": "bricks",
         "kinds": {"moss": "sludge", "puddle": "sludge_puddle", "worn": "grate"},
         "pal": {"k": (22, 18, 16), "x": (152, 138, 112), "w": (114, 100, 80), "W": (76, 66, 52), "z": (54, 46, 36),
                 "f": (46, 40, 34), "F": (32, 28, 24), "h": (58, 52, 42), "v": (150, 232, 40), "V": (82, 142, 22),
@@ -70,7 +76,7 @@ THEMES = {
     },
     "catacombs": {
         "name": "CREEPY CATACOMBS",
-        "layout": "bricks", "decos": ("skull", "bonepile"), "floor": "flagstone",
+        "layouts": ("bricks", "ashlar", "rubble"), "decos": ("skull", "bonepile"), "floor": "flagstone",
         "kinds": {"moss": "bones", "worn": "bones"},
         "pal": {"k": (28, 22, 20), "x": (208, 198, 178), "w": (158, 148, 132), "W": (108, 100, 90), "z": (78, 70, 62),
                 "f": (46, 38, 34), "F": (34, 28, 26), "h": (58, 50, 44), "v": (112, 120, 82), "V": (72, 80, 58),
@@ -78,7 +84,7 @@ THEMES = {
     },
     "frozen": {
         "name": "FROZEN FORTRESS",
-        "layout": "blocks", "decos": ("icicles", "frost"), "floor": "ice",
+        "layouts": ("blocks", "slabs", "rocks"), "decos": ("icicles", "frost"), "floor": "ice",
         "kinds": {"moss": "snow", "puddle": "ice_sheet", "worn": "snow"},
         "pal": {"k": (16, 24, 50), "x": (236, 248, 255), "w": (172, 208, 238), "W": (112, 152, 202), "z": (80, 114, 172),
                 "f": (40, 56, 94), "F": (30, 42, 74), "h": (56, 76, 116), "v": (196, 224, 244), "V": (142, 182, 222),
@@ -86,7 +92,7 @@ THEMES = {
     },
     "obsidian": {
         "name": "OBSIDIAN OUBLIETTE",
-        "layout": "slabs", "decos": ("gloss", "vein"), "floor": "tiles",
+        "layouts": ("slabs", "ashlar", "blocks"), "decos": ("gloss", "vein"), "floor": "tiles",
         "kinds": {"moss": "plain", "worn": "plain"},
         "pal": {"k": (6, 6, 10), "x": (154, 144, 214), "w": (72, 68, 104), "W": (42, 40, 62), "z": (28, 26, 44),
                 "f": (24, 22, 34), "F": (14, 12, 22), "h": (32, 30, 46), "v": (124, 72, 176), "V": (82, 42, 124),
@@ -94,7 +100,7 @@ THEMES = {
     },
     "crystal": {
         "name": "CRYSTAL CAVERNS",
-        "layout": "rocks", "decos": ("crystal", "sparkle"), "floor": "dirt",
+        "layouts": ("rocks", "rubble", "cobble"), "decos": ("crystal", "sparkle"), "floor": "dirt",
         "kinds": {"moss": "shards", "worn": "shards"},
         "pal": {"k": (22, 10, 32), "x": (198, 162, 232), "w": (142, 102, 182), "W": (94, 62, 132), "z": (66, 42, 94),
                 "f": (38, 28, 56), "F": (26, 18, 40), "h": (50, 38, 72), "v": (122, 222, 232), "V": (72, 152, 182),
@@ -103,7 +109,7 @@ THEMES = {
     },
     "volcanic": {
         "name": "VOLCANIC VAULT",
-        "layout": "rocks", "decos": ("lava", "embers"), "floor": "dirt",
+        "layouts": ("rocks", "cobble", "rubble"), "decos": ("lava", "embers"), "floor": "dirt",
         "kinds": {"cracked": "lava_crack", "puddle": "lava_pool", "moss": "ash"},
         "pal": {"k": (14, 8, 8), "x": (132, 98, 92), "w": (92, 66, 64), "W": (62, 42, 42), "z": (44, 30, 30),
                 "f": (38, 24, 22), "F": (24, 14, 12), "h": (52, 32, 28), "v": (90, 84, 82), "V": (60, 56, 54),
@@ -174,7 +180,81 @@ def layout_slabs(g, rng):
                 g[y][x] = "w" if ly < 3 else "W"
 
 
-LAYOUTS = {"bricks": layout_bricks, "blocks": layout_blocks, "rocks": layout_rocks, "slabs": layout_slabs}
+def _stone(g, rng, x0, y0, x1, y1):
+    """One stone filling [x0, x1) x [y0, y1): mortar on its right and bottom edges (the tile's
+    left/top edges get theirs from the neighboring tile), a lit top-left, a random shade."""
+    shade = rng.choice("wwwW")
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if x == x1 - 1 or y == y1 - 1:
+                g[y][x] = "W" if shade == "w" else "z"
+            elif y == y0 or x == x0:
+                g[y][x] = "x" if shade == "w" else "w"
+            else:
+                g[y][x] = shade if rng.random() > 0.08 else ("W" if shade == "w" else "z")
+
+
+def layout_cobble(g, rng):
+    """Cobbles of mixed sizes: the tile is split again and again into smaller stones."""
+    def split(x0, y0, x1, y1):
+        w, h = x1 - x0, y1 - y0
+        if (w <= 6 and h <= 6) or (w <= 8 and h <= 8 and rng.random() < 0.35):
+            _stone(g, rng, x0, y0, x1, y1)
+            return
+        if w >= h:
+            cut = rng.randint(x0 + 3, x1 - 3)
+            split(x0, y0, cut, y1)
+            split(cut, y0, x1, y1)
+        else:
+            cut = rng.randint(y0 + 3, y1 - 3)
+            split(x0, y0, x1, cut)
+            split(x0, cut, x1, y1)
+    split(0, 0, 16, 16)
+
+
+def layout_ashlar(g, rng):
+    """Dressed stone in courses of different heights, each course cut into blocks of random length."""
+    y = 0
+    for height in rng.choice(((5, 6, 5), (6, 4, 6), (4, 7, 5), (7, 5, 4))):
+        x = 0
+        while x < 16:
+            length = min(rng.choice((4, 5, 6, 7, 8)), 16 - x)
+            if 16 - (x + length) < 3:
+                length = 16 - x
+            _stone(g, rng, x, y, x + length, y + height)
+            x += length
+        y += height
+
+
+def layout_soldier(g, rng):
+    """Upright bricks (4 wide, 8 tall), every other course shifted by 2."""
+    for row in range(2):
+        shift = 2 * row
+        for x0 in range(-shift, 16, 4):
+            _stone(g, rng, max(x0, 0), row * 8, min(x0 + 4, 16), row * 8 + 8)
+
+
+def layout_rubble(g, rng):
+    """A rough rubble wall: odd-shaped lumps of stone packed in dark mortar."""
+    for y in range(16):
+        for x in range(16):
+            g[y][x] = "z"
+    for _ in range(rng.randint(9, 12)):
+        cx, cy = rng.uniform(0, 16), rng.uniform(0, 16)
+        rx, ry = rng.uniform(2.0, 4.0), rng.uniform(1.6, 3.0)
+        shade = rng.choice("wwW")
+        for y in range(16):
+            for x in range(16):
+                d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2
+                if d <= 1.0:
+                    top = ((x + 0.5 - cx) / rx) ** 2 + ((y - 0.5 - cy) / ry) ** 2 > 1.0
+                    g[y][x] = ("x" if shade == "w" else "w") if top else shade
+                elif d <= 1.35 and g[y][x] == "z":
+                    g[y][x] = "W"
+
+
+LAYOUTS = {"bricks": layout_bricks, "blocks": layout_blocks, "rocks": layout_rocks, "slabs": layout_slabs,
+           "cobble": layout_cobble, "ashlar": layout_ashlar, "soldier": layout_soldier, "rubble": layout_rubble}
 
 
 # ---------------------------------------------------------------- wall decorations
@@ -354,12 +434,13 @@ def deco_embers(g, rng, open_sides):
 DECOS = {name[5:]: fn for name, fn in globals().items() if name.startswith("deco_")}
 
 
-def themed_wall(theme: dict, mask: int, damage: int, style: int, seed: int) -> list[str]:
-    """Same steps as make_placeholder_art.wall_tile, with the theme's layout and decorations."""
+def themed_wall(theme: dict, layout: str, mask: int, damage: int, style: int, seed: int) -> list[str]:
+    """Same steps as make_placeholder_art.wall_tile, with the given construction and the theme's
+    decorations."""
     rng = random.Random(seed)
     open_sides = [s for s in (N, E, S, W) if not mask & s]
     g = blank("w")
-    LAYOUTS[theme["layout"]](g, rng)
+    LAYOUTS[layout](g, rng)
 
     if S in open_sides:  # the south-facing front face: darker band
         for y in (12, 13, 14):
@@ -602,8 +683,9 @@ if __name__ == "__main__":
     for i, (theme_id, theme) in enumerate(THEMES.items()):
         base = 20000 + i * 1000
         write_themed(OUT / f"{theme_id}_walls.png", atlas([
-            [themed_wall(theme, mask, damage, style, seed=base + damage * 300 + style * 50 + mask) for mask in range(16)]
-            for damage in range(4) for style in range(3)
+            [themed_wall(theme, layout, mask, damage, style,
+                         seed=base + v * 5000 + damage * 300 + style * 50 + mask) for mask in range(16)]
+            for v, layout in enumerate(theme["layouts"]) for damage in range(4) for style in range(3)
         ]), theme["pal"])
         write_themed(OUT / f"{theme_id}_floors.png", atlas([
             [themed_floor(theme, kind, seed=base + 500 + variant * 20 + k) for k, kind in enumerate(FLOOR_TYPES)]

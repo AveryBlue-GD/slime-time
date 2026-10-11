@@ -28,7 +28,11 @@ func _initialize() -> void:
 	_check(random_ids.size() >= 6, "random mazes pick from many themes (%d seen)" % random_ids.size())
 
 	var game := await _spawn({level = 1})
-	_check(_wall_texture(game).resource_path == "res://assets/sprites/walls.png", "level 1 uses the original dungeon art")
+	_check("dungeon_walls" in _wall_texture(game).resource_path, "level 1 uses the dungeon art")
+	var constructions := {}
+	for tile: Vector2i in game.wall_layer.get_used_cells():
+		constructions[game.wall_layer.get_cell_atlas_coords(tile).y / 12] = true
+	_check(constructions.size() == MazeTiles.CONSTRUCTIONS, "a level mixes all %d wall constructions (%d used)" % [MazeTiles.CONSTRUCTIONS, constructions.size()])
 	_check(game.fillet_layer.get_used_cells().size() > 0, "inner corners get rounded fillets (%d)" % game.fillet_layer.get_used_cells().size())
 	var fillets_on_floor := true
 	for tile: Vector2i in game.fillet_layer.get_used_cells():
