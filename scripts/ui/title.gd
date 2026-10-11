@@ -5,6 +5,14 @@ extends Control
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
+## The menu panel: buttons 13 px tall, 2 px apart, inside the goo frame's padding, centered in
+## the 101 px between the logo and the tagline.
+const BUTTON_HEIGHT := 13
+const MENU_GAP := 2
+const PANEL_PAD_TOP := 6
+const PANEL_PAD_BOTTOM := 7
+const MENU_AREA_TOP := 68
+const MENU_AREA_HEIGHT := 101
 
 var buttons: Array[Button] = []
 
@@ -30,11 +38,10 @@ func _ready() -> void:
 			add_child(hat)
 			hat.setup(Progress.selected_hat, preview)
 
-	UIKit.add_panel(self, Rect2(92, 68, 136, 101))
+	var panel := UIKit.add_panel(self, Rect2(92, 68, 136, 101))  # fitted to the rows below
 	var menu := VBoxContainer.new()
-	menu.position = Vector2(100, 74)  # below the panel's goo band
 	menu.custom_minimum_size = Vector2(120, 0)
-	menu.add_theme_constant_override("separation", 2)  # room for each button's goo drops
+	menu.add_theme_constant_override("separation", MENU_GAP)  # room for each button's goo drops
 	add_child(menu)
 
 	var fresh: bool = Progress.levels_cleared == 0 and Progress.current_level == 1
@@ -59,8 +66,10 @@ func _ready() -> void:
 				menu.add_child(pair)
 		else:
 			menu.add_child(button)
-	if OS.has_feature("web"):  # in a browser QUIT would just leave a dead page
+	# In a browser (phones included) QUIT would just leave a dead page; --web-ui previews that.
+	if OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args():
 		buttons[-1].hide()
+	_fit_menu(panel, menu)
 	if not Progress.is_randomizer_unlocked():
 		var random_button := buttons[2]
 		random_button.disabled = true
@@ -76,6 +85,20 @@ func _ready() -> void:
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)  # centered under the menu
 	hint.offset_top = 172
 	hint.offset_bottom = 180
+
+
+## Sizes the panel to the rows actually shown (5 without QUIT on the web, else 6) and centers it
+## in the space between the logo and the tagline, so there's no empty gap at the bottom.
+func _fit_menu(panel: Panel, menu: VBoxContainer) -> void:
+	var rows := 0
+	for row in menu.get_children():
+		if row.visible:
+			rows += 1
+	var menu_height := rows * BUTTON_HEIGHT + (rows - 1) * MENU_GAP
+	var panel_height := menu_height + PANEL_PAD_TOP + PANEL_PAD_BOTTOM
+	panel.size.y = panel_height
+	panel.position.y = MENU_AREA_TOP + roundi((MENU_AREA_HEIGHT - panel_height) / 2.0)
+	menu.position = Vector2(100, panel.position.y + PANEL_PAD_TOP)
 
 
 func _on_play() -> void:
