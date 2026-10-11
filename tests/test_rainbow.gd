@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by beating level 10 (its solid
+## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by finding every coin (its solid
 ## version by beating it on hard mode), drying up in the randomizer shuffles to a new maze, and
 ## the rainbow skin colors the slime, trail and meter. Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_rainbow.gd
@@ -20,8 +20,10 @@ func _initialize() -> void:
 	progress.selected_skin = Skins.DEFAULT
 	progress.randoms_won = 0
 
-	# --- Unlocking: the rainbow comes with beating level 10 (like the custom color)
+	# --- Unlocking: the rainbow comes with finding every coin in the story; its solid version
+	# (like the custom color's) with level 10 beaten on hard mode.
 	progress.hard_cleared.clear()
+	progress.coins_found = {}
 	progress.dev_tools = false
 	progress.set_hard_mode(false)
 	progress.select_skin(Skins.RAINBOW)
@@ -30,9 +32,26 @@ func _initialize() -> void:
 	var game := await _spawn_story_running(Levels.COUNT)
 	game.slime.position = game.chalice.position
 	await _frames(5)
-	_check(progress.is_skin_unlocked(Skins.RAINBOW), "beating level 10 unlocks the rainbow skin")
-	_check("RAINBOW" in game.hud.message.text, "...and says so")
-	_check(not progress.is_skin_unlocked(Skins.RAINBOW, false), "its solid version needs level 10 on hard mode")
+	_check(progress.is_skin_unlocked(Skins.CUSTOM) and not progress.is_skin_unlocked(Skins.RAINBOW),
+		"beating level 10 unlocks the color wheel, not the rainbow")
+	await _stop_running(game)
+	game = await _spawn_story_running(3)
+	var last: Coin = game.coins[0]
+	for level in range(1, Levels.COUNT + 1):  # every other coin already found
+		progress.coins_found[level] = []
+		for i in Levels.COINS[level - 1]:
+			progress.coins_found[level].append("found%d" % i)
+	progress.coins_found[3].pop_back()
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW), "one coin short: still locked")
+	game.slime.position = last.position
+	await _frames(3)
+	_check(progress.is_skin_unlocked(Skins.RAINBOW), "the very last coin unlocks the rainbow skin")
+	_check("RAINBOW" in game.hud.message.text, "...and says so (%s)" % game.hud.message.text.replace("\n", " / "))
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW, false), "its solid version still needs level 10 on hard mode")
+	progress.hard_cleared.assign([Levels.COUNT])
+	_check(progress.is_skin_unlocked(Skins.RAINBOW, false) and progress.is_skin_unlocked(Skins.CUSTOM, false),
+		"...which unlocks it, like the solid color wheel")
+	progress.hard_cleared.clear()
 	await _stop_running(game)
 
 	# --- Drying up in the randomizer shuffles the maze.

@@ -621,8 +621,8 @@ func _pick_up_coins(pos: Vector2) -> void:
 			Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
 			coin.queue_free()
 		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
-		if progress.coins_earned() == Upgrades.full_tree_cost():  # the very last coin
-			hud.flash_message("EVERY COIN FOUND!", 3.0)
+		if progress.coins_earned() == Levels.total_coins():  # the very last coin: the rainbow skin
+			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
 
 
@@ -743,7 +743,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	elif progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: ANY SKIN YOU WANT + RAINBOW!"
+			text += "\nUNLOCKED: ANY SKIN YOU WANT!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))

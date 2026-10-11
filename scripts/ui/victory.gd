@@ -7,7 +7,7 @@ var buttons: Array[Button] = []
 
 func _ready() -> void:
 	UIKit.setup_screen(self, "YOU ESCAPED!")
-	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: ANY SKIN YOU WANT + RAINBOW" % Levels.COUNT, 8, UIKit.TEXT)
+	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: ANY SKIN YOU WANT" % Levels.COUNT, 8, UIKit.TEXT)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(lines)
 	lines.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)

@@ -4,8 +4,9 @@ extends RefCounted
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
 ## start, then one per level 1-9). A level's first run is played in the skin the level before it
 ## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel) unlocks after the final level.
-## "rainbow" unlocks with level 10, like the custom color: rainbow bands flow across the slime
-## like a wave, and its trail cycles through the rainbow.
+## "rainbow" unlocks by finding every coin in the story (its solid version, like the custom
+## color's, by beating level 10 on hard): rainbow bands flow across the slime like a wave, and its
+## trail cycles through the rainbow.
 ## Jelly: slimes are see-through jelly by default. Every skin also comes in a solid version
 ## ("JELLY OFF" on the skins screen), unlocked by beating its level on hard mode instead
 ## (see solid_level).
@@ -48,7 +49,8 @@ static func get_preset(id: String) -> Dictionary:
 	return {}
 
 
-## Levels that must be cleared before this skin can be used.
+## Levels that must be cleared before this skin can be used (the rainbow also needs every coin;
+## its solid version needs this level on hard, see solid_level).
 static func unlock_level(id: String) -> int:
 	return Levels.COUNT if id == CUSTOM or id == RAINBOW else int(get_preset(id).get("unlock", 0))
 
@@ -59,11 +61,14 @@ static func solid_level(id: String) -> int:
 	return maxi(unlock_level(id), 1)
 
 
-## Jelly skins unlock with the story levels; solid ones (`jelly` false) with the same level beaten
-## on hard mode (`hard_cleared` = those levels).
-static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true) -> bool:
+## Jelly skins unlock with the story levels (the rainbow with every story coin found:
+## `coins_found`); solid ones (`jelly` false) with the same level beaten on hard mode
+## (`hard_cleared` = those levels).
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true, coins_found := 0) -> bool:
 	if id != RAINBOW and id != CUSTOM and get_preset(id).is_empty():
 		return false
+	if jelly_version and id == RAINBOW:
+		return coins_found >= Levels.total_coins()
 	if jelly_version:
 		return levels_cleared >= unlock_level(id)
 	return solid_level(id) in hard_cleared

@@ -53,7 +53,7 @@ var hard_mode := false
 var best_times := {}
 ## Levels whose "first run: playing as ..." notice has already been shown.
 var skin_notices_seen: Array[int] = []
-## Levels beaten on hard mode (all ten unlock the rainbow skin).
+## Levels beaten on hard mode (each unlocks the solid version of that level's skin).
 var hard_cleared: Array[int] = []
 ## action -> physical keycode of its primary key.
 var bindings := DEFAULT_KEYS.duplicate()
@@ -62,7 +62,7 @@ var bindings := DEFAULT_KEYS.duplicate()
 var mode := MODE_STORY
 var random_seed := 1
 var randoms_cleared := 0
-## Randomizer mazes beaten in total (saved); unlocks the rainbow skin.
+## Randomizer mazes beaten in total (saved; unlocks hats).
 var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
@@ -146,12 +146,6 @@ func load_progress() -> void:
 	highest_unlocked = clampi(file.get_value("progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
 	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
-	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
-	set_jelly(file.get_value("skin", "jelly", true))
-	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a solid one no longer earned
-		set_jelly(true)
-		if not is_skin_unlocked(selected_skin):
-			selected_skin = Skins.DEFAULT
 	custom_color = file.get_value("skin", "custom_color", custom_color)
 	selected_hat = file.get_value("skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
@@ -180,6 +174,13 @@ func load_progress() -> void:
 		upgrades.erase(upgrades.keys()[0])
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
+	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
+	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
+	set_jelly(file.get_value("skin", "jelly", true))
+	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a solid one no longer earned
+		set_jelly(true)
+		if not is_skin_unlocked(selected_skin):
+			selected_skin = Skins.DEFAULT
 
 
 func save_progress() -> void:
@@ -211,7 +212,7 @@ func save_progress() -> void:
 
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
-## mode it also counts toward the rainbow skin.
+## mode it also unlocks that level's solid skin.
 func complete_level(level: int) -> void:
 	if hard_mode and not level in hard_cleared:
 		hard_cleared.append(level)
@@ -343,7 +344,7 @@ func select_hat(id: String) -> void:
 func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
 	if dev_tools:
 		return true
-	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version)
+	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned())
 
 
 ## The skin in use right now: a level's forced first-run skin, else the selected one.

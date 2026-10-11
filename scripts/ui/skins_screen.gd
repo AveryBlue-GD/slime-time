@@ -252,7 +252,9 @@ func _refresh(focus_id := "") -> void:
 	if not Progress.is_skin_unlocked(id, view_jelly):
 		if not view_jelly:
 			status.text = "LOCKED - BEAT LEVEL %d ON HARD" % Skins.solid_level(id)
-		elif id == Skins.CUSTOM or id == Skins.RAINBOW:
+		elif id == Skins.RAINBOW:
+			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Levels.total_coins()]
+		elif id == Skins.CUSTOM:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
 		else:
 			status.text = "LOCKED - CLEAR LEVEL %d" % Skins.unlock_level(id)

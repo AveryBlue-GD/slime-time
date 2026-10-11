@@ -37,6 +37,14 @@ const RANDOM_HARD_TARGET := 0.9
 ## has at least this many dead ends.
 const COINS: Array[int] = [6, 9, 7, 12, 14, 17, 20, 22, 27, 31]
 
+
+## Coins hidden across the whole story (finding them all unlocks the rainbow skin).
+static func total_coins() -> int:
+	var total := 0
+	for n in COINS:
+		total += n
+	return total
+
 ## Wall damage weights (intact, cracked, crumbling, broken) for level 1 and level 10;
 ## levels in between blend from one to the other.
 const DAMAGE_FIRST := [60.0, 30.0, 8.0, 2.0]

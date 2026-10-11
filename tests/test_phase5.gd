@@ -148,7 +148,7 @@ func _initialize() -> void:
 	screen = await _open("res://scenes/skins.tscn")
 	_check(screen.tiles.size() == 12 and not screen.custom_panel.visible, "skins screen: 12 tiles, color wheel hidden until unlocked")
 	screen._refresh(Skins.RAINBOW)
-	_check("ALL 10 LEVELS" in screen.status.text, "the rainbow skin says to beat all 10 levels (%s)" % screen.status.text)
+	_check("FIND EVERY COIN" in screen.status.text, "the rainbow skin says to find every coin (%s)" % screen.status.text)
 	screen._on_tile("mint")
 	var actor: AnimatedSprite2D = screen.showcase.slime
 	var actor_start := actor.position
@@ -164,7 +164,7 @@ func _initialize() -> void:
 	screen = await _open("res://scenes/skins.tscn")
 	_check(screen.custom_panel.visible, "after beating the game the color wheel shows")
 	screen._refresh(Skins.RAINBOW)
-	_check(screen.status.text.begins_with("RAINBOW"), "...and after level 10 it's unlocked (%s)" % screen.status.text)
+	_check("FIND EVERY COIN" in screen.status.text, "...even after level 10 it still wants every coin (%s)" % screen.status.text)
 	screen.free()
 	screen = await _open("res://scenes/controls.tscn")
 	_check(screen.key_buttons.size() == 6 and screen.key_buttons.jump.text == "SPACE", "controls screen lists 6 actions (jump = %s)" % screen.key_buttons.jump.text)
