@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls.
+## `--unlock-all` unlocks every level and skin, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--right-screen` opens the window on the right-most monitor.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -77,6 +77,21 @@ func _ready() -> void:
 		elif arg.begins_with("--skin="):
 			saving_enabled = false
 			selected_skin = arg.trim_prefix("--skin=")
+		elif arg == "--right-screen":
+			_move_to_right_screen.call_deferred()
+
+
+## Debug (--right-screen): opens the window centered on the right-most monitor (for playtesting
+## on a second screen). Picks by position, so it keeps working if screens are renumbered.
+func _move_to_right_screen() -> void:
+	var right := DisplayServer.get_primary_screen()
+	for i in DisplayServer.get_screen_count():
+		if DisplayServer.screen_get_position(i).x > DisplayServer.screen_get_position(right).x:
+			right = i
+	var area := DisplayServer.screen_get_usable_rect(right)
+	var window := get_window()
+	window.current_screen = right
+	window.position = area.position + (area.size - window.size) / 2
 
 
 ## F11 toggles fullscreen anywhere in the game (desktop and browser).
