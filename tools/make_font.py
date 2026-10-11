@@ -159,3 +159,23 @@ if __name__ == "__main__":
     ]
     (OUT / "pixel.fnt").write_text("\n".join(fnt) + "\n")
     print(f"wrote assets/fonts/pixel.fnt ({len(chars)} characters)")
+
+    # The same font at 2x for 16 px text (titles). Doubled, the 2 px letter gap can be split 1 px
+    # on each side of a glyph, so big centered text sits exactly on center (the 8 px font can only
+    # get within half a pixel).
+    write_png(OUT / "pixel_big.png", ["".join(c * 2 for c in row) for row in image for _ in range(2)])
+    big_chars = [f"char id=32 x=0 y=0 width=0 height=0 xoffset=0 yoffset=0 xadvance={SPACE_ADVANCE * 2} page=0 chnl=15"]
+    for ch, (gx, gw) in placed.items():
+        for code in [ord(ch)] + ([ord(ch.lower())] if ch.isalpha() else []):
+            big_chars.append(f"char id={code} x={gx * 2} y=0 width={gw * 2} height={LINE_HEIGHT * 2} xoffset=1 "
+                             f"yoffset=0 xadvance={gw * 2 + 2} page=0 chnl=15")
+    big = [
+        'info face="SlimePixelBig" size=16 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=0 aa=1 '
+        'padding=0,0,0,0 spacing=1,1 outline=0',
+        f"common lineHeight={HEIGHT * 2} base={HEIGHT * 2} scaleW={width * 2} scaleH={LINE_HEIGHT * 2} pages=1 packed=0",
+        'page id=0 file="pixel_big.png"',
+        f"chars count={len(big_chars)}",
+        *big_chars,
+    ]
+    (OUT / "pixel_big.fnt").write_text("\n".join(big) + "\n")
+    print(f"wrote assets/fonts/pixel_big.fnt ({len(big_chars)} characters)")

@@ -36,7 +36,7 @@ func _ready() -> void:
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
 		_fill_grid())  # show that mode's record times
-	hard_mode_box.position = Vector2(26, 136)
+	hard_mode_box.position = Vector2(25, 136)  # 270 wide, centered
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
 

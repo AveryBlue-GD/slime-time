@@ -41,7 +41,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
-	volume_row = UIKit.make_volume_slider(60.0)
+	volume_row = UIKit.make_volume_slider(58.0)  # VOLUME + slider = the 100 px button column
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	_refresh_sound()

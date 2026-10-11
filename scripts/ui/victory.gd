@@ -7,11 +7,12 @@ var buttons: Array[Button] = []
 
 func _ready() -> void:
 	UIKit.setup_screen(self, "YOU ESCAPED!")
-	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: ANY SKIN YOU WANT + GLOW" % Levels.COUNT, 8, UIKit.TEXT)
+	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: ANY SKIN YOU WANT + GLOW + RAINBOW" % Levels.COUNT, 8, UIKit.TEXT)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lines.position = Vector2(0, 26)
-	lines.size = Vector2(320, 30)
 	add_child(lines)
+	lines.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	lines.offset_top = 26
+	lines.offset_bottom = 56
 
 	# Every skin hops along, with the new custom color in the middle, glowing.
 	var colors: Array[Color] = []

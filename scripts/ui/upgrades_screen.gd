@@ -17,8 +17,13 @@ func _ready() -> void:
 	skin_text = UIKit.setup_screen(self, "UPGRADES")
 	var coin_pod := PanelContainer.new()
 	coin_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
-	coin_pod.position = Vector2(262, 4)
 	add_child(coin_pod)
+	# Top-right corner, as far from the edges as BACK is in its corner.
+	coin_pod.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	coin_pod.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	coin_pod.offset_left = -4
+	coin_pod.offset_right = -4
+	coin_pod.offset_top = 4
 	var coin_row := HBoxContainer.new()
 	coin_row.add_theme_constant_override("separation", 3)
 	coin_pod.add_child(coin_row)
@@ -38,8 +43,12 @@ func _ready() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	hint.offset_top = 143
-	hint.offset_bottom = 161
+	# Centered in the space between the last row's panel and the bottom buttons (its two lines of
+	# letters are 7 + LINE_SPACING + 7 px tall).
+	var rows_bottom := y - 5
+	var hint_height := 14 + UIKit.LINE_SPACING
+	hint.offset_top = rows_bottom + floori((164 - rows_bottom - hint_height) / 2.0)
+	hint.offset_bottom = hint.offset_top + hint_height + 2
 	var back := UIKit.add_back_button(self)
 	if Progress.return_to_game:  # came here from a dry-up: go straight back into the level
 		back.text = "PLAY"

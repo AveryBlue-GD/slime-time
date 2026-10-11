@@ -37,8 +37,8 @@ var page := "skins"
 var view_jelly := true
 var page_button: Button
 var jelly_button: Button
-var _skin_grid: GridContainer
-var _hat_grid: GridContainer
+var _skin_grid: VBoxContainer
+var _hat_grid: VBoxContainer
 var _title: Label
 var _rule: Label
 
@@ -57,7 +57,7 @@ func _ready() -> void:
 	for hat: Dictionary in Hats.LIST:
 		hat_ids.append(hat.id)
 	for id in hat_ids:
-		_hat_grid.add_child(_make_hat_tile(id))
+		_add_to_grid(_hat_grid, _make_hat_tile(id))
 
 	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
 	_rule = _centered_label(SKINS_RULE, UIKit.TEXT_DIM, RULE_TOP)
@@ -86,16 +86,29 @@ func _centered_label(text: String, color: Color, top: int) -> Label:
 	return label
 
 
-## A tile grid centered across the screen.
-func _make_grid() -> GridContainer:
-	var grid := GridContainer.new()
-	grid.columns = GRID_COLUMNS
-	var width := GRID_COLUMNS * TILE_SIZE.x + (GRID_COLUMNS - 1) * GRID_GAP
-	grid.position = Vector2(roundf((320 - width) / 2.0), GRID_TOP)
-	grid.add_theme_constant_override("h_separation", GRID_GAP)
-	grid.add_theme_constant_override("v_separation", GRID_GAP)
+## A tile grid centered across the screen: rows of GRID_COLUMNS tiles, a shorter last row
+## centered under the others (see _add_to_grid).
+func _make_grid() -> VBoxContainer:
+	var grid := VBoxContainer.new()
+	grid.position = Vector2(roundf((320 - _grid_width()) / 2.0), GRID_TOP)
+	grid.add_theme_constant_override("separation", GRID_GAP)
 	add_child(grid)
 	return grid
+
+
+func _grid_width() -> float:
+	return GRID_COLUMNS * TILE_SIZE.x + (GRID_COLUMNS - 1) * GRID_GAP
+
+
+func _add_to_grid(grid: VBoxContainer, tile: Control) -> void:
+	var row: HBoxContainer = grid.get_child(-1) if grid.get_child_count() > 0 else null
+	if row == null or row.get_child_count() >= GRID_COLUMNS:
+		row = HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.custom_minimum_size.x = _grid_width()
+		row.add_theme_constant_override("separation", GRID_GAP)
+		grid.add_child(row)
+	row.add_child(tile)
 
 
 ## (Re)builds the skin tiles for the version on view (jelly or solid).
@@ -110,7 +123,7 @@ func _fill_skin_grid() -> void:
 	ids.append(Skins.CUSTOM)
 	ids.append(Skins.RAINBOW)
 	for id in ids:
-		_skin_grid.add_child(_make_tile(id))
+		_add_to_grid(_skin_grid, _make_tile(id))
 
 
 ## Switches between the skins page and the hats page.

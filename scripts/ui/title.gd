@@ -50,7 +50,7 @@ func _ready() -> void:
 	]
 	# SKINS and UPGRADES share a row, so the menu stays the same height.
 	var pair := HBoxContainer.new()
-	pair.add_theme_constant_override("separation", 1)
+	pair.add_theme_constant_override("separation", 2)  # two equal halves of the menu's width
 	for button in buttons:
 		if button == buttons[3] or button == buttons[4]:
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -71,8 +71,11 @@ func _ready() -> void:
 	buttons[0].grab_focus()
 
 	var hint := UIKit.make_label("%d/%d LEVELS CLEARED" % [Progress.levels_cleared, Levels.COUNT], 8, UIKit.TEXT_DIM)
-	hint.position = Vector2(4, 168)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)  # centered under the menu
+	hint.offset_top = 168
+	hint.offset_bottom = 178
 
 
 func _on_play() -> void:

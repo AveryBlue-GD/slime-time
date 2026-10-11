@@ -9,8 +9,6 @@ const BAR_SIZE := Vector2(51, 6)
 const SEGMENTS := 4
 const CHUNK := 12
 const POD_MARGIN := 3
-## The timer pod sits this far right of center, leaving room for the meter and coins.
-const TIMER_SHIFT := 8
 ## Below this percent the meter turns red and pulses.
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
@@ -64,10 +62,10 @@ func _ready() -> void:
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(vignette)
 
-	# The top bar: the meter and coins in hand on the left, the timer in the middle, the level on
-	# the right with the coins left to find here just under it.
+	# The top bar, mirrored: the meter on the left with the coins in hand under it, the timer in
+	# the middle, the level on the right with the coins left to find here under it.
 	var left_bar := _make_bar(Control.PRESET_TOP_LEFT)
-	var right_bar := _make_bar(Control.PRESET_TOP_RIGHT, true)
+	var right_bar := _make_bar(Control.PRESET_TOP_RIGHT)
 
 	# Left pod: goo drop, segmented meter, percent.
 	var meter_row := _make_pod(left_bar)
@@ -89,8 +87,7 @@ func _ready() -> void:
 	var time_row := _make_pod(null)
 	time_row.add_child(UIKit.make_icon("clock", UIKit.TEXT))
 	time_label = _make_label()
-	time_label.custom_minimum_size = Vector2(32, 0)
-	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	time_label.custom_minimum_size = Vector2(37, 0)  # "0:00.0" + 1: an even-width pod sits exactly on center
 	time_row.add_child(time_label)
 
 	# The level name, and under it the coins still hidden in this level (a dim coin).
@@ -149,10 +146,10 @@ func set_slime(percent: float) -> void:
 	label.text = "%d%%" % ceili(percent)
 
 
-## Pods anchored to a top corner, side by side (or `stacked`, right-aligned); the right one grows
+## A column of pods anchored to a top corner, each hugging that side; the right one grows
 ## leftward.
-func _make_bar(preset: Control.LayoutPreset, stacked := false) -> BoxContainer:
-	var bar: BoxContainer = VBoxContainer.new() if stacked else HBoxContainer.new()
+func _make_bar(preset: Control.LayoutPreset) -> BoxContainer:
+	var bar := VBoxContainer.new()
 	bar.alignment = BoxContainer.ALIGNMENT_BEGIN
 	bar.add_theme_constant_override("separation", 2)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -169,22 +166,23 @@ func _make_bar(preset: Control.LayoutPreset, stacked := false) -> BoxContainer:
 	return bar
 
 
-## A framed pod: in `bar`, or (null) on its own at the top, a little right of center (clear of
-## the meter and coins). Returns its row to fill.
+## A framed pod: in `bar`, or (null) on its own centered at the top. Returns its row to fill.
 func _make_pod(bar: BoxContainer) -> HBoxContainer:
 	var pod := PanelContainer.new()
 	pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if bar:
 		bar.add_child(pod)
-		pod.size_flags_horizontal = Control.SIZE_SHRINK_END
+		var right := bar.grow_horizontal == Control.GROW_DIRECTION_BEGIN
+		pod.size_flags_horizontal = Control.SIZE_SHRINK_END if right else Control.SIZE_SHRINK_BEGIN
 	else:
-		add_child(pod)
-		pod.set_anchors_preset(Control.PRESET_CENTER_TOP)
-		pod.offset_top = POD_MARGIN
-		pod.grow_horizontal = Control.GROW_DIRECTION_BOTH
-		pod.offset_left = TIMER_SHIFT
-		pod.offset_right = TIMER_SHIFT
+		# A CenterContainer keeps it on whole pixels as the time's width changes.
+		var center := CenterContainer.new()
+		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(center)
+		center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		center.offset_top = POD_MARGIN
+		center.add_child(pod)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -318,6 +316,7 @@ func _gold_label(text: String, size: int) -> Label:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", GOLD)
+	UIKit.use_big_font(l, size)
 	return l
 
 

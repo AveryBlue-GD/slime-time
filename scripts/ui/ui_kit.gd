@@ -75,8 +75,9 @@ static func button_style(state: String) -> StyleBoxTexture:
 	box.content_margin_left = 4
 	box.content_margin_right = 4
 	var lift: int = {"hover": -1, "pressed": 1}.get(state, 0)
-	box.content_margin_top = 2 + lift
-	box.content_margin_bottom = 2 - lift
+	# The face is the button minus its 3 px bottom bevel: center the letters on the face.
+	box.content_margin_top = 1 + lift
+	box.content_margin_bottom = 3 - lift
 	return box
 
 
@@ -150,12 +151,20 @@ static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	use_big_font(label, font_size)
 	# The standard UI colors stand for roles that SkinText recolors from the equipped skin.
 	var role: String = {GOLD: SkinText.ROLE_TITLE, TEXT: SkinText.ROLE_TEXT, TEXT_DIM: SkinText.ROLE_DIM}.get(color, "")
 	if role != "":
 		label.set_meta("role", role)
 		label.add_to_group(SkinText.GROUP)
 	return label
+
+
+## 16 px text uses the 2x font, whose letter gaps are split evenly so centered titles sit exactly
+## on center (the 8 px font, scaled up, would put them a pixel right).
+static func use_big_font(control: Control, font_size: int) -> void:
+	if font_size == 16:
+		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))
 
 
 static func make_button(text: String, on_press: Callable, min_size := Vector2(0, 13)) -> Button:
