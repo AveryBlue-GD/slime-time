@@ -53,14 +53,22 @@ func _initialize() -> void:
 	_check(fog.get_shader_parameter("fog_mist") == Themes.ALL.frozen.fog[1], "...and its fog is tinted to match")
 	game.free()
 
-	var all_beds := true
+	var all_have_sounds := true
 	for id: String in Themes.ALL:
-		all_beds = all_beds and ResourceLoader.exists("res://assets/sounds/ambient_%s.wav" % id)
-	_check(all_beds, "every theme has an ambient sound bed")
+		all_have_sounds = all_have_sounds and ResourceLoader.exists("res://assets/sounds/ambient_%s_0.wav" % id)
+	_check(all_have_sounds, "every theme has its own ambient sounds")
 	game = await _spawn({level = 10})
+	_check(game.ambient == null and game.ambient_events.size() >= 3, "the Volcanic Vault has no constant hum, just %d occasional sounds" % game.ambient_events.size())
+	var heard := false
+	for i in 60 * 13:
+		await process_frame
+		heard = heard or game.ambient_event_player.playing
+	_check(heard, "an occasional sound plays within a few seconds")
+	game.free()
+	game = await _spawn({level = 4})
 	var bed := game.ambient.stream as AudioStreamWAV
-	_check(game.ambient.playing and "ambient_volcanic" in bed.resource_path and bed.loop_mode == AudioStreamWAV.LOOP_FORWARD,
-		"the Volcanic Vault plays its own looping ambience")
+	_check(game.ambient.playing and "ambient_sunken" in bed.resource_path and bed.loop_mode == AudioStreamWAV.LOOP_FORWARD,
+		"the Sunken Shrine loops its waves")
 	var settings: Node = root.get_node("Progress")
 	settings.sound_on = false
 	await process_frame

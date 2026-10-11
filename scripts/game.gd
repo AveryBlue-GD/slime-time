@@ -69,10 +69,16 @@ const LOOK_AHEAD_TIME := 0.3
 const LOOK_AHEAD_MAX := 24.0
 const LOOK_AHEAD_SPEED := 3.0
 const CHALICE_GOLD := Color8(255, 205, 117)
-## The theme's ambient loop (assets/sounds/ambient_<theme>.wav, from tools/make_ambience.py):
-## how loud under the effects, and how long it takes to fade in.
+## Ambience (tools/make_ambience.py). Most themes are quiet apart from distant one-off sounds
+## (assets/sounds/ambient_<theme>_<n>.wav) played at random every AMBIENT_EVENT_GAP seconds, at a
+## random level within AMBIENT_EVENT_DB. Themes with a continuous bed (ambient_<theme>.wav: the
+## Sunken Shrine's waves, the Sandstone Sanctum's sandstorm) loop it at AMBIENT_VOLUME_DB.
 const AMBIENT_VOLUME_DB := -9.0
 const AMBIENT_FADE := 2.0
+const AMBIENT_EVENT_GAP := Vector2(4.0, 11.0)
+const AMBIENT_EVENT_DB := Vector2(-19.0, -11.0)
+## Extra quietness for some themes' events (the catacombs' scream is meant to be barely there).
+const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
 
 signal level_finished(won: bool)
 
@@ -114,8 +120,12 @@ var slime_light: Sprite2D
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
-## Plays the theme's ambient loop (follows the sound on/off setting).
+## Plays the theme's continuous ambient loop, if it has one (follows the sound on/off setting).
 var ambient: AudioStreamPlayer
+## The theme's one-off ambient sounds, and the player and countdown for the next one.
+var ambient_events: Array[AudioStream] = []
+var ambient_event_player: AudioStreamPlayer
+var _next_ambient_event := 0.0
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -240,36 +250,53 @@ func _process(_delta: float) -> void:
 	if rainbow:
 		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
 	_lead_camera(_delta)
-	_update_ambience()
+	_update_ambience(_delta)
 	_shake_camera(_delta)
 	_flush_textures()
 
 
-## Starts the theme's ambient bed looping, fading in from silence.
+## Loads the theme's ambience: its continuous bed (looping, fading in) if it has one, and its
+## one-off sounds.
 func _start_ambience() -> void:
-	var stream := load("res://assets/sounds/ambient_%s.wav" % theme) as AudioStreamWAV
-	if stream == null:
-		return
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = int(stream.get_length() * stream.mix_rate)
-	ambient = AudioStreamPlayer.new()
-	ambient.stream = stream
-	ambient.volume_db = -60.0
-	add_child(ambient)
-	create_tween().tween_property(ambient, "volume_db", AMBIENT_VOLUME_DB, AMBIENT_FADE)
-	_update_ambience()
+	var bed_path := "res://assets/sounds/ambient_%s.wav" % theme
+	if ResourceLoader.exists(bed_path):
+		var stream := load(bed_path) as AudioStreamWAV
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin = 0
+		stream.loop_end = int(stream.get_length() * stream.mix_rate)
+		ambient = AudioStreamPlayer.new()
+		ambient.stream = stream
+		ambient.volume_db = -60.0
+		add_child(ambient)
+		create_tween().tween_property(ambient, "volume_db", AMBIENT_VOLUME_DB, AMBIENT_FADE)
+	var k := 0
+	while ResourceLoader.exists("res://assets/sounds/ambient_%s_%d.wav" % [theme, k]):
+		ambient_events.append(load("res://assets/sounds/ambient_%s_%d.wav" % [theme, k]))
+		k += 1
+	ambient_event_player = AudioStreamPlayer.new()
+	add_child(ambient_event_player)
+	_next_ambient_event = randf_range(1.5, AMBIENT_EVENT_GAP.x)
+	_update_ambience(0.0)
 
 
-## Keeps the ambience in step with the sound on/off setting.
-func _update_ambience() -> void:
-	if ambient == null:
-		return
+## Keeps the bed in step with the sound on/off setting and plays a one-off sound now and then.
+func _update_ambience(delta: float) -> void:
 	var sound_on: bool = progress == null or progress.sound_on
-	if sound_on and not ambient.playing:
-		ambient.play()
-	elif not sound_on and ambient.playing:
-		ambient.stop()
+	if ambient:
+		if sound_on and not ambient.playing:
+			ambient.play()
+		elif not sound_on and ambient.playing:
+			ambient.stop()
+	if ambient_events.is_empty() or not sound_on:
+		return
+	_next_ambient_event -= delta
+	if _next_ambient_event > 0.0:
+		return
+	_next_ambient_event = randf_range(AMBIENT_EVENT_GAP.x, AMBIENT_EVENT_GAP.y)
+	ambient_event_player.stream = ambient_events.pick_random()
+	ambient_event_player.volume_db = randf_range(AMBIENT_EVENT_DB.x, AMBIENT_EVENT_DB.y) + AMBIENT_EVENT_TRIM.get(theme, 0.0)
+	ambient_event_player.pitch_scale = randf_range(0.9, 1.08)
+	ambient_event_player.play()
 
 
 ## Eases the camera ahead of the slime in the direction it's gliding.
