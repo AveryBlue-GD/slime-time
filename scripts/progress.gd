@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -38,6 +38,8 @@ var return_to_game := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 const DEV_COINS := 999
+## Spending coins dev mode adds (0 when --coins sets an exact amount).
+var dev_coins := DEV_COINS
 var custom_color := Color8(239, 125, 47)
 ## Glow strength for the custom skin, 0-1.
 var glow := 0.6
@@ -91,6 +93,17 @@ func _ready() -> void:
 		elif arg.begins_with("--skin="):
 			saving_enabled = false
 			selected_skin = arg.trim_prefix("--skin=")
+		elif arg.begins_with("--upgrades="):  # e.g. --upgrades=6,4,7: slime, speed, brightness
+			saving_enabled = false
+			var levels := arg.trim_prefix("--upgrades=").split(",")
+			for i in mini(levels.size(), 3):
+				upgrades[Upgrades.LIST[i].id] = clampi(levels[i].to_int(), 0, Upgrades.MAX_LEVEL)
+		elif arg.begins_with("--coins="):  # exactly this many coins in hand (no dev bonus)
+			saving_enabled = false
+			dev_coins = 0
+			coins_found = {0: []}
+			for i in arg.trim_prefix("--coins=").to_int() + coins_spent():
+				coins_found[0].append("debug%d" % i)
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
@@ -259,7 +272,7 @@ func coins_spent() -> int:
 
 ## Coins in hand (found minus what's in the upgrade tree).
 func coins() -> int:
-	return coins_earned() - coins_spent() + (DEV_COINS if dev_tools else 0)
+	return coins_earned() - coins_spent() + (dev_coins if dev_tools else 0)
 
 
 func upgrade_level(id: String) -> int:
@@ -297,6 +310,8 @@ func is_randomizer_unlocked() -> bool:
 
 
 func is_hat_unlocked(id: String) -> bool:
+	if dev_tools and not Hats.get_hat(id).is_empty():
+		return true  # dev mode can try on every hat, even before they're released
 	return Hats.is_unlocked(id, randoms_won)
 
 

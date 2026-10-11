@@ -8,6 +8,7 @@ extends Control
 const TILE_SIZE := Vector2(44, 32)
 const SKINS_RULE := "NEW LEVELS START IN YOUR NEWEST SKIN"
 const HATS_RULE := "WIN RANDOM MAZES TO UNLOCK HATS"
+const HATS_SOON_RULE := "HATS ARE COMING SOON"
 
 var tiles := {}
 var hat_tiles := {}
@@ -81,7 +82,7 @@ func show_page(which: String) -> void:
 	_skin_grid.visible = not hats
 	_hat_grid.visible = hats
 	_title.text = "HATS" if hats else "SKINS"
-	_rule.text = HATS_RULE if hats else SKINS_RULE
+	_rule.text = (HATS_RULE if Hats.available else HATS_SOON_RULE) if hats else SKINS_RULE
 	_rule.position.x = roundf((320 - _rule.get_minimum_size().x) / 2.0)
 	page_button.text = "SKINS" if hats else "HATS"
 	if hats:
@@ -218,6 +219,8 @@ func _refresh_hats(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_hat
 	if Progress.is_hat_unlocked(id):
 		status.text = Hats.display_name(id) + ("  (WEARING)" if id == Progress.selected_hat else "")
+	elif not Hats.available:
+		status.text = Hats.display_name(id) + " - COMING SOON"
 	elif not Progress.is_randomizer_unlocked():
 		status.text = "LOCKED - BEAT ALL %d LEVELS TO FIND OUT HOW" % Levels.COUNT
 	else:

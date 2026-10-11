@@ -3,21 +3,30 @@ extends Node
 ## Renders the itch.io cover: a level being played by the autopilot, with the logo on top and a
 ## tagline at the bottom, drawn into its own 315x250 SubViewport and saved as a PNG after
 ## CAPTURE_FRAME frames (tools/promo/make_promo.ps1 upscales it 2x to 630x500).
-## Pass `-- --out=<file.png>` (plus any skin debug flags) when running it.
+## Pass `-- --out=<file.png>` (plus any skin debug flags, and optionally --cover-level=N) when
+## running it.
 
 const SIZE := Vector2i(315, 250)
-const LEVEL := 4  # tall enough (272 px) to fill the 250 px cover
+## Any level from 3 up is tall enough (272+ px) to fill the 250 px cover.
+const DEFAULT_LEVEL := 7
+## Frames of autopilot play before the picture is taken (--cover-frame=N to change).
 const CAPTURE_FRAME := 420
 
 var view: SubViewport
 var frame := 0
 var out_path := "user://cover.png"
+var level := DEFAULT_LEVEL
+var capture_frame := CAPTURE_FRAME
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			out_path = arg.trim_prefix("--out=")
+		elif arg.begins_with("--cover-level="):
+			level = arg.trim_prefix("--cover-level=").to_int()
+		elif arg.begins_with("--cover-frame="):
+			capture_frame = arg.trim_prefix("--cover-frame=").to_int()
 	view = SubViewport.new()
 	view.size = SIZE
 	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -26,7 +35,7 @@ func _ready() -> void:
 	add_child(view)
 
 	var game: Node2D = preload("res://scenes/main.tscn").instantiate()
-	game.level = LEVEL
+	game.level = level
 	view.add_child(game)
 	game.hud.visible = false
 	game.add_child(preload("res://tests/autopilot.gd").new())
@@ -58,7 +67,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	frame += 1
-	if frame == CAPTURE_FRAME:
+	if frame == capture_frame:
 		await RenderingServer.frame_post_draw
 		view.get_texture().get_image().save_png(out_path)
 		print("saved cover to ", out_path)

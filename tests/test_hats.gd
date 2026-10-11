@@ -19,6 +19,10 @@ func _initialize() -> void:
 	progress.levels_cleared = 10
 	progress.randoms_won = 0
 	progress.selected_hat = Hats.NONE
+	progress.randoms_won = 99
+	_check(not progress.is_hat_unlocked(Hats.LIST[0].id), "while hats are 'coming soon' they can't be unlocked")
+	progress.randoms_won = 0
+	Hats.available = true  # the rest checks how they work once released
 
 	# --- Unlocking and saving
 	var first: String = Hats.LIST[0].id

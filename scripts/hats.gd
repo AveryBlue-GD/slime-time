@@ -9,6 +9,10 @@ extends RefCounted
 ## These ten are placeholders until the real hats are decided; each needs more randomizer wins
 ## than the last, so there's always another one to chase.
 
+## Hats are still placeholders, so for now they show "COMING SOON" and can't be worn (except in
+## dev mode). Set to true once the real hats are in.
+static var available := false
+
 const NONE := "none"
 const NONE_NAME := "NO HAT"
 const FRAME := Vector2i(16, 12)
@@ -44,7 +48,7 @@ static func wins_needed(id: String) -> int:
 
 
 static func is_unlocked(id: String, randoms_won: int) -> bool:
-	return id == NONE or (not get_hat(id).is_empty() and randoms_won >= wins_needed(id))
+	return id == NONE or (available and not get_hat(id).is_empty() and randoms_won >= wins_needed(id))
 
 
 ## The hat's frame within hats.png.
