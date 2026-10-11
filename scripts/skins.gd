@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
 ## start, then one per level 1-9). A level's first run is played in the skin the level before it
-## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel + glow) unlocks after the final level.
+## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel) unlocks after the final level.
 ## "rainbow" unlocks with level 10, like the custom color: rainbow bands flow across the slime
 ## like a wave, and its trail cycles through the rainbow.
 ## Jelly: slimes are see-through jelly by default. Every skin also comes in a solid version

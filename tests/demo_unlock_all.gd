@@ -36,7 +36,6 @@ func _fresh_save() -> void:
 	Progress.current_level = 1
 	Progress.selected_skin = Skins.DEFAULT
 	Progress.custom_color = Color8(239, 125, 47)
-	Progress.glow = 0.6
 	Progress.hard_mode = false
 	Progress.best_times = {}
 	Progress.skin_notices_seen.clear()

@@ -8,8 +8,7 @@ shader_type canvas_item;
 // Unexplored cells are fully covered by mist. A newly reached cell clears over `reveal_time`;
 // once the slime moves away, lit cells fade back toward mist in steps. Walls use the same steps
 // at the same moments, just `wall_shade` thicker. Fog edges are softened by blending
-// neighboring cells and dithered so they stay pixel-crisp. A glowing slime (custom skin, after
-// beating the game) also lights rings of colored light around itself.
+// neighboring cells and dithered so they stay pixel-crisp.
 
 uniform float now;
 uniform float wall_shade = 0.3;
@@ -26,9 +25,6 @@ uniform vec2 map_size;
 uniform vec4 fog_deep = vec4(0.078, 0.078, 0.133, 1.0);
 uniform vec4 fog_mist = vec4(0.247, 0.239, 0.341, 1.0);
 
-uniform vec2 glow_pos;
-uniform float glow_radius = 0.0;
-uniform vec4 glow_color = vec4(1.0);
 
 const float BAYER[16] = {0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0};
 const float DITHER_LEVELS = 8.0;
@@ -99,16 +95,5 @@ void fragment() {
 	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
 	vec3 rgb = mix(fog_deep.rgb, fog_mist.rgb, clamp(band, 0.0, 1.0));
 
-	if (glow_radius > 0.0) {
-		vec2 here = floor(UV * map_size / 2.0) * 2.0 + 1.0;
-		float d = distance(here, glow_pos) / glow_radius;
-		if (d < 1.0) {
-			float ring = d < 0.4 ? 0.1 : (d < 0.7 ? 0.35 : 0.65);
-			alpha = min(alpha, ring);
-			// Tint: the mist takes on the slime's color, and lit ground gets a faint wash.
-			rgb = mix(rgb, glow_color.rgb * 0.5, 0.6);
-			alpha = max(alpha, 0.14 * (1.0 - d));
-		}
-	}
 	COLOR = vec4(rgb, alpha);
 }

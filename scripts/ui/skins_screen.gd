@@ -3,7 +3,7 @@ extends Control
 ## Skin select. Slimes are see-through jelly by default; the JELLY ON / OFF switch shows the same
 ## skins in solid form instead, each unlocked by beating its level on hard mode (the jelly ones
 ## unlock with the story levels). A tile per skin (locked ones are silhouettes); for the custom
-## skin, once the game is beaten, a color wheel and a glow slider. The HATS button flips to the
+## skin, once the game is beaten, a color wheel. The HATS button flips to the
 ## hats page: a tile per hat (plus no hat), each shown on a slime in your skin.
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
@@ -18,7 +18,7 @@ const STATUS_TOP := 89
 const RULE_TOP := 100
 const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
-const SLIDER_WIDTH := 90
+const WHEEL_GAP := 40
 const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 const SOLID_RULE := "SOLID SKINS UNLOCK ON HARD MODE"
 const HATS_RULE := "WIN RANDOM MAZES TO UNLOCK HATS"
@@ -29,7 +29,6 @@ var hat_tiles := {}
 var status: Label
 var custom_panel: Control
 var wheel: ColorWheel
-var glow_slider: HSlider
 var big_preview: AnimatedSprite2D
 ## The animated preview of the clicked skin (where the custom panel goes when that's not shown).
 var showcase: SkinShowcase
@@ -197,13 +196,13 @@ func _make_hat_tile(id: String) -> Button:
 	return tile
 
 
-## The custom color panel, mirrored about the center: the wheel on the left, the glow slider in
-## the middle, the big preview on the right.
+## The custom color panel, mirrored about the center: the wheel on the left, the big preview
+## on the right.
 func _build_custom_panel() -> void:
 	custom_panel = Control.new()
 	custom_panel.position = Vector2(0, CUSTOM_TOP)
 	add_child(custom_panel)
-	var span := WHEEL_SIZE + 16 + SLIDER_WIDTH + 16 + WHEEL_SIZE  # wheel, gap, slider, gap, preview
+	var span := WHEEL_SIZE + WHEEL_GAP + WHEEL_SIZE  # wheel, gap, preview
 	var left := roundf((320 - span) / 2.0)
 	wheel = ColorWheel.new()
 	wheel.position = Vector2(left, 0)
@@ -211,22 +210,6 @@ func _build_custom_panel() -> void:
 	custom_panel.add_child(wheel)
 	wheel.set_color(Progress.custom_color)
 	wheel.color_changed.connect(func(_c: Color) -> void: _on_custom_changed())
-
-	var slider_x := left + WHEEL_SIZE + 16
-	var label := UIKit.make_label("GLOW", 8, UIKit.TEXT_DIM)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.position = Vector2(slider_x, 12)
-	label.size = Vector2(SLIDER_WIDTH, 10)
-	custom_panel.add_child(label)
-	glow_slider = HSlider.new()
-	glow_slider.position = Vector2(slider_x, 26)
-	glow_slider.size = Vector2(SLIDER_WIDTH, 10)
-	glow_slider.min_value = 0.0
-	glow_slider.max_value = 1.0
-	glow_slider.step = 0.05
-	glow_slider.value = Progress.glow
-	glow_slider.value_changed.connect(func(_v: float) -> void: _on_custom_changed())
-	custom_panel.add_child(glow_slider)
 
 	big_preview = UIKit.make_slime_preview(Progress.custom_color, 2)
 	big_preview.position = Vector2(left + span - WHEEL_SIZE / 2.0, WHEEL_SIZE / 2.0)
@@ -245,8 +228,7 @@ func _on_tile(id: String) -> void:
 ## Plays skin `id` (in the version on view) on the preview stage.
 func _preview(id: String) -> void:
 	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
-	var glow: float = Progress.glow if id == Skins.CUSTOM else 0.0
-	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, glow, not Progress.is_skin_unlocked(id, view_jelly))
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly))
 
 
 func _on_hat_tile(id: String) -> void:
@@ -257,11 +239,9 @@ func _on_hat_tile(id: String) -> void:
 func _on_custom_changed() -> void:
 	wheel.value = 1.0
 	Progress.custom_color = wheel.get_color()
-	Progress.glow = glow_slider.value
 	Progress.save_progress()
 	Skins.apply_to(big_preview.material, Progress.custom_color)
 	Skins.apply_to(tiles[Skins.CUSTOM].get_meta("preview").material, Progress.custom_color)
-	big_preview.modulate = Color(1, 1, 1).lerp(Color(1.6, 1.6, 1.6), Progress.glow * 0.5)
 	skin_text.recolor()
 
 

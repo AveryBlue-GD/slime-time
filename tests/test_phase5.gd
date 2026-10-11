@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Phase 5 checks: skins unlock and recolor slime/trail/HUD, the custom skin glows only after the
+## Phase 5 checks: skins unlock and recolor slime/trail/HUD, the custom color unlocks after the
 ## game is beaten, key remapping works and saves, walls and floor dim together, randomizer mazes
 ## are always completable (and beatable), and the menu screens build correctly.
 ## Uses a throwaway save file; your real save is never written.
@@ -40,13 +40,12 @@ func _initialize() -> void:
 	progress.select_skin("ocean")
 	_check(progress.skin_color() == Skins.get_preset("ocean").color, "clearing level 3 unlocks Ocean")
 	progress.selected_skin = Skins.CUSTOM
-	_check(progress.skin_color() == starter and progress.glow_amount() == 0.0, "custom skin and glow stay locked before beating the game")
+	_check(progress.skin_color() == starter, "the custom skin stays locked before beating the game")
 	progress.levels_cleared = 10
 	progress.custom_color = Color(0.2, 0.4, 1.0)
-	progress.glow = 0.5
-	_check(progress.skin_color() == Color(0.2, 0.4, 1.0) and progress.glow_amount() == 0.5, "after level 10 the custom color and glow apply")
+	_check(progress.skin_color() == Color(0.2, 0.4, 1.0), "after level 10 the custom color applies")
 
-	# --- Skin in game: slime, trail and HUD all use it; glow only with the custom skin.
+	# --- Skin in game: slime, trail and HUD all use it.
 	_reset_progress()
 	progress.levels_cleared = 3  # Ocean unlocks with level 3
 	progress.select_skin("ocean")
@@ -59,7 +58,6 @@ func _initialize() -> void:
 	_check(_close(trail, ocean_mid) or _close(trail, Skins.shades(Skins.get_preset("ocean").color).dark),
 		"goo trail is the skin's color")
 	_check(game.hud.fill.color == Skins.get_preset("ocean").color, "slime meter is the skin's color")
-	_check(game.glow_radius == 0.0, "preset skins don't glow")
 
 	# --- Walls and floor dim in lockstep.
 	var wall_point := Vector2(start.x, 8.0)
@@ -78,14 +76,6 @@ func _initialize() -> void:
 		lockstep = lockstep and absf(w - (f + (1.0 - f) * game.WALL_FOG_ALPHA)) < 0.01
 		steps.append("%.2f/%.2f" % [f, w])
 	_check(lockstep, "wall next to the trail dims at the same moments as the floor (floor/wall: %s)" % ", ".join(steps))
-	game.free()
-
-	progress.levels_cleared = 10
-	progress.selected_skin = Skins.CUSTOM
-	progress.glow = 0.5
-	game = await _spawn({level = 1})
-	_check(game.glow_radius == 32.0 and (game.fog_sprite.material as ShaderMaterial).get_shader_parameter("glow_radius") == 32.0,
-		"custom skin with half glow lights a 32 px radius")
 	game.free()
 
 	# --- Key remapping
@@ -172,7 +162,7 @@ func _initialize() -> void:
 	progress.levels_cleared = 10
 	progress.selected_skin = Skins.CUSTOM
 	screen = await _open("res://scenes/skins.tscn")
-	_check(screen.custom_panel.visible, "after beating the game the color wheel + glow panel shows")
+	_check(screen.custom_panel.visible, "after beating the game the color wheel shows")
 	screen._refresh(Skins.RAINBOW)
 	_check(screen.status.text.begins_with("RAINBOW"), "...and after level 10 it's unlocked (%s)" % screen.status.text)
 	screen.free()
@@ -190,7 +180,6 @@ func _reset_progress() -> void:
 	progress.highest_unlocked = 1
 	progress.current_level = 1
 	progress.selected_skin = Skins.DEFAULT
-	progress.glow = 0.6
 	progress.mode = progress.MODE_STORY
 	progress.reset_bindings()
 

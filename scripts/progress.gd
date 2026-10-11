@@ -44,8 +44,6 @@ const DEV_COINS := 999
 ## Spending coins dev mode adds (0 when --coins sets an exact amount).
 var dev_coins := DEV_COINS
 var custom_color := Color8(239, 125, 47)
-## Glow strength for the custom skin, 0-1.
-var glow := 0.6
 var sound_on := true
 ## Master volume, 0-1 (applied to the Master audio bus).
 var volume := 0.8
@@ -158,7 +156,6 @@ func load_progress() -> void:
 	selected_hat = file.get_value("skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
 		selected_hat = Hats.NONE
-	glow = clampf(file.get_value("skin", "glow", glow), 0.0, 1.0)
 	sound_on = file.get_value("settings", "sound_on", true)
 	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
 	hard_mode = file.get_value("settings", "hard_mode", false)
@@ -197,7 +194,6 @@ func save_progress() -> void:
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
 	file.set_value("skin", "hat", selected_hat)
-	file.set_value("skin", "glow", glow)
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
@@ -427,7 +423,6 @@ func reset_progress() -> void:
 	set_jelly(true)
 	selected_hat = Hats.NONE
 	custom_color = Color8(239, 125, 47)
-	glow = 0.6
 	hard_mode = false
 	best_times = {}
 	skin_notices_seen.clear()
@@ -452,13 +447,6 @@ func skin_color() -> Color:
 	if id == Skins.CUSTOM:
 		return custom_color
 	return Skins.get_preset(id).color
-
-
-## Glow strength in play: only the custom skin glows, and only once the game is beaten.
-func glow_amount() -> float:
-	if active_skin() == Skins.CUSTOM and is_skin_unlocked(Skins.CUSTOM):
-		return glow
-	return 0.0
 
 
 ## Wears skin `id` as jelly or (`jelly_version` false) solid, if that version is unlocked.

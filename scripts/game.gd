@@ -43,8 +43,6 @@ const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
 const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
 const FOG_TICKS := 16.0
-## Light radius of a fully glowing slime (custom skin, after beating the game).
-const GLOW_MAX_RADIUS := 64.0
 
 const GOO_ALPHA := 120
 ## Rainbow skin: the trail's hue advances this many full rainbows per second of play.
@@ -108,7 +106,6 @@ var last_jump_cost := 0.0
 var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
-var glow_radius := 0.0
 var rainbow := false
 ## Hard mode: fully dimmed areas turn back into unexplored fog.
 var hard_mode := false
@@ -186,7 +183,6 @@ func _ready() -> void:
 		if not is_random() and not hard_mode:
 			equipped = progress.equip_first_run_skin(level)
 		skin_color = progress.skin_color()
-		glow_radius = progress.glow_amount() * GLOW_MAX_RADIUS
 		rainbow = progress.is_rainbow()
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
@@ -263,7 +259,7 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
-	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE + glow_radius * 0.5:
+	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
 		chalice.visible = true
 	hud.set_slime(slime_remaining)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
@@ -273,7 +269,6 @@ func _physics_process(delta: float) -> void:
 func _process(_delta: float) -> void:
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
-	fog_material.set_shader_parameter("glow_pos", slime.position + slime.sprite.position)
 	slime_light.position = (slime.position + slime.sprite.position).round()
 	if rainbow:
 		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
@@ -355,7 +350,7 @@ func is_wall_tile(tile: Vector2i) -> bool:
 
 
 ## Fog opacity (0 = fully lit, 1 = covered) at a pixel position right now; matches fog.gdshader's
-## per-cell value, without its cosmetic extras (soft edges, clearing fade-in, glow).
+## per-cell value, without its cosmetic extras (soft edges, clearing fade-in).
 func fog_alpha_at(pos: Vector2) -> float:
 	var cell := _fog_decode(fog_image.get_pixelv(Vector2i((pos / FOG_CELL).floor())))
 	if not cell.revealed:
@@ -418,8 +413,6 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("fade_alpha", PackedFloat32Array(FADE_ALPHA))
 	fog_material.set_shader_parameter("wall_shade", WALL_FOG_ALPHA)
 	fog_material.set_shader_parameter("map_size", Vector2(maze.size * TILE))
-	fog_material.set_shader_parameter("glow_radius", glow_radius)
-	fog_material.set_shader_parameter("glow_color", skin_color)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
 	var fog_colors := Themes.fog_colors(theme)
 	if not fog_colors.is_empty():
@@ -750,7 +743,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	elif progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: ANY SKIN YOU WANT + GLOW + RAINBOW!"
+			text += "\nUNLOCKED: ANY SKIN YOU WANT + RAINBOW!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))

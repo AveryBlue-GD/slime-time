@@ -74,17 +74,15 @@ func _lay_floor() -> void:
 			floor_root.add_child(tile)
 
 
-## Shows skin `color` (`rainbow`, `jelly` = see-through, `glow` 0-1, `locked` = silhouette) and
+## Shows skin `color` (`rainbow`, `jelly` = see-through, `locked` = silhouette) and
 ## starts the routine from the top.
-func show_skin(color: Color, rainbow: bool, jelly: bool, glow := 0.0, locked := false) -> void:
+func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false) -> void:
 	if slime:
 		slime.queue_free()
 	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly)
 	add_child(slime)
 	if locked:
 		slime.modulate = Color(0, 0, 0, 0.85)
-	else:
-		slime.modulate = Color(1, 1, 1).lerp(Color(1.6, 1.6, 1.6), glow * 0.5)
 	_time = 0.0
 	_pose()
 
