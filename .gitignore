@@ -13,3 +13,6 @@
 
 # Rendered itch.io images (regenerate with tools/promo/make_promo.ps1)
 /itch-images/
+
+# Temporary no-focus window override written by tools/play.ps1 and screenshot.ps1
+/override.cfg
