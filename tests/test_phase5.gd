@@ -142,7 +142,8 @@ func _initialize() -> void:
 	progress.highest_unlocked = 3
 	progress.levels_cleared = 2
 	var screen: Control = await _open("res://scenes/title.tscn")
-	_check(screen.buttons.size() == 6 and screen.buttons[2].text == "RANDOMIZER", "title has 6 menu buttons incl. RANDOMIZER")
+	_check(screen.buttons.size() == 7 and screen.buttons[2].text == "RANDOMIZER" and screen.buttons[4].text == "UPGRADES",
+		"title has 7 menu buttons incl. RANDOMIZER and UPGRADES")
 	_check(screen.buttons[2].disabled and screen.buttons[2].icon != null, "the randomizer shows a lock until all levels are beaten")
 	screen.free()
 	progress.levels_cleared = Levels.COUNT

@@ -27,6 +27,14 @@ var current_level := 1
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none); hats unlock from randomizer wins.
 var selected_hat := Hats.NONE
+## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
+## only be collected once; they're saved the moment they're grabbed.
+var coins_found := {}
+## Upgrade levels bought with coins: id -> level (see Upgrades).
+var upgrades := {}
+## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
+var dev_tools := false
+const DEV_COINS := 999
 var custom_color := Color8(239, 125, 47)
 ## Glow strength for the custom skin, 0-1.
 var glow := 0.6
@@ -66,6 +74,7 @@ func _ready() -> void:
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
 		elif arg == "--unlock-all":
 			saving_enabled = false
+			dev_tools = true
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
 			randoms_won = maxi(randoms_won, maxi(Skins.RAINBOW_RANDOMS, Hats.LIST.map(func(h: Dictionary) -> int: return h.wins).max()))
@@ -133,6 +142,18 @@ func load_progress() -> void:
 	for level in range(1, Levels.COUNT + 1):
 		if file.has_section_key("records", "level_%d" % level):
 			best_times[level] = float(file.get_value("records", "level_%d" % level))
+	coins_found = {}
+	for level in range(1, Levels.COUNT + 1):
+		var found: Array = file.get_value("coins", "level_%d" % level, [])
+		if not found.is_empty():
+			coins_found[level] = found
+	upgrades = {}
+	for upgrade: Dictionary in Upgrades.LIST:
+		var level := clampi(int(file.get_value("upgrades", upgrade.id, 0)), 0, Upgrades.MAX_LEVEL)
+		if level > 0:
+			upgrades[upgrade.id] = level
+	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
+		upgrades.erase(upgrades.keys()[0])
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
 
@@ -155,6 +176,10 @@ func save_progress() -> void:
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
 	for level: int in best_times:
 		file.set_value("records", "level_%d" % level, best_times[level])
+	for level: int in coins_found:
+		file.set_value("coins", "level_%d" % level, coins_found[level])
+	for id: String in upgrades:
+		file.set_value("upgrades", id, upgrades[id])
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.save(save_path)
@@ -190,6 +215,78 @@ func new_random_maze() -> void:
 
 
 # ---------------------------------------------------------------- skins
+
+# ---------------------------------------------------------------- coins and upgrades
+
+static func coin_key(cell: Vector2i) -> String:
+	return "%d,%d" % [cell.x, cell.y]
+
+
+func has_coin(level: int, cell: Vector2i) -> bool:
+	return coin_key(cell) in coins_found.get(level, [])
+
+
+## Picks up a coin (once) and saves right away, so it counts even if the run ends in a dry-up.
+func collect_coin(level: int, cell: Vector2i) -> void:
+	if has_coin(level, cell):
+		return
+	if not coins_found.has(level):
+		coins_found[level] = []
+	coins_found[level].append(coin_key(cell))
+	save_progress()
+
+
+func coins_found_in(level: int) -> int:
+	return coins_found.get(level, []).size()
+
+
+func coins_earned() -> int:
+	var total := 0
+	for level: int in coins_found:
+		total += coins_found[level].size()
+	return total
+
+
+func coins_spent() -> int:
+	var total := 0
+	for id: String in upgrades:
+		total += Upgrades.total_cost(upgrades[id])
+	return total
+
+
+## Coins in hand (found minus what's in the upgrade tree).
+func coins() -> int:
+	return coins_earned() - coins_spent() + (DEV_COINS if dev_tools else 0)
+
+
+func upgrade_level(id: String) -> int:
+	if Upgrades.get_upgrade(id).get("dev", false) and not dev_tools:
+		return 0
+	return int(upgrades.get(id, 0))
+
+
+## Puts coins into an upgrade (one level). Returns false if it's maxed or too expensive.
+func buy_upgrade(id: String) -> bool:
+	var level := upgrade_level(id)
+	if level >= Upgrades.MAX_LEVEL or coins() < Upgrades.cost(level):
+		return false
+	upgrades[id] = level + 1
+	save_progress()
+	return true
+
+
+## Takes one level's coins back out of an upgrade.
+func refund_upgrade(id: String) -> bool:
+	var level := upgrade_level(id)
+	if level <= 0:
+		return false
+	if level == 1:
+		upgrades.erase(id)
+	else:
+		upgrades[id] = level - 1
+	save_progress()
+	return true
+
 
 ## Randomizer mode opens once all the story levels are beaten.
 func is_randomizer_unlocked() -> bool:

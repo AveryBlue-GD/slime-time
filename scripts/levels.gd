@@ -22,6 +22,11 @@ const DATA := [
 	{cells = Vector2i(22, 12), seed = 10012, branching = 0.50, target = 0.90},
 ]
 
+## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
+## Upgrades.full_tree_cost() (165): finding every coin maxes the whole upgrade tree. Each level
+## has at least this many dead ends.
+const COINS: Array[int] = [6, 9, 7, 12, 14, 17, 20, 22, 27, 31]
+
 ## Wall damage weights (intact, cracked, crumbling, broken) for level 1 and level 10;
 ## levels in between blend from one to the other.
 const DAMAGE_FIRST := [60.0, 30.0, 8.0, 2.0]

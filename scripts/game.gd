@@ -120,6 +120,15 @@ var shake_strength := 0.0
 var slime_light: Sprite2D
 ## The hat the slime is wearing, if any (see Hat).
 var hat: Hat
+## Coins still waiting in this story level (see Coin; never in randomizer mazes).
+var coins: Array[Coin] = []
+## How many coins this level hides in total.
+var coins_here := 0
+## Brightness upgrade: extra reach (px) of the slime's light (see Upgrades.light_reach).
+var light_reach := 0.0
+## Dev wall power (see Upgrades): damage left on walls, by tile (100 = intact).
+var wall_power := 0
+var wall_health := {}
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
@@ -166,6 +175,7 @@ func _ready() -> void:
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	_apply_upgrades()
 
 	var forced := ""
 	if progress:
@@ -188,6 +198,7 @@ func _ready() -> void:
 	hud.show_area_name(Themes.display_name(theme))
 	_start_ambience()
 	_build_overlays()
+	_place_coins(config.seed)
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
@@ -240,6 +251,9 @@ func _physics_process(delta: float) -> void:
 			if not slime.knocked_back:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			_paint_goo(pos, TRAIL_RADIUS)
+			if light_reach > 0.0:
+				_reveal_light(pos)
+	_pick_up_coins(pos)
 	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE + glow_radius * 0.5:
 		chalice.visible = true
 	hud.set_slime(slime_remaining)
@@ -404,7 +418,7 @@ func _build_overlays() -> void:
 		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
 	fog_sprite.material = fog_material
 
-	slime_light = Fx.make_light(SLIME_LIGHT_SIZE, Color(skin_color, SLIME_LIGHT_STRENGTH))
+	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 5
 	add_child(slime_light)
 
@@ -452,20 +466,40 @@ func _goo_color(dark: bool) -> Color:
 	return Color.from_hsv(hue, 0.85, 0.5 if dark else 0.9, GOO_ALPHA / 255.0)
 
 
-## Keeps already-revealed cells around the slime fully lit (restarts their fade).
+## Keeps already-revealed cells around the slime fully lit (restarts their fade). The
+## Brightness upgrade widens it.
 func _relight(pos: Vector2) -> void:
-	var r := Vector2(LIGHT_RADIUS, LIGHT_RADIUS)
+	var radius := LIGHT_RADIUS + light_reach
+	var r := Vector2(radius, radius)
 	var first := Vector2i(((pos - r) / FOG_CELL).floor()).max(Vector2i.ZERO)
 	var last := Vector2i(((pos + r) / FOG_CELL).floor()).min(fog_image.get_size() - Vector2i.ONE)
 	for cy in range(first.y, last.y + 1):
 		for cx in range(first.x, last.x + 1):
 			var cell := Vector2i(cx, cy)
-			if ((Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL).distance_to(pos) > LIGHT_RADIUS:
+			if ((Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL).distance_to(pos) > radius:
 				continue
 			var value := _fog_decode(fog_image.get_pixelv(cell))
 			if value.revealed and int(value.lit * FOG_TICKS) < int(elapsed * FOG_TICKS):
 				fog_image.set_pixelv(cell, _fog_color(elapsed, value.first_revealed, value.wall))
 				textures_dirty = true
+
+
+## Brightness upgrade: the slime's own light reveals unexplored floor (and the walls beside it)
+## a little beyond its goo trail, without laying goo there.
+func _reveal_light(pos: Vector2) -> void:
+	var radius := TRAIL_RADIUS + light_reach
+	var first := Vector2i(((pos - Vector2(radius, radius)) / FOG_CELL).floor()).max(Vector2i.ZERO)
+	var last := Vector2i(((pos + Vector2(radius, radius)) / FOG_CELL).floor()).min(fog_image.get_size() - Vector2i.ONE)
+	for cy in range(first.y, last.y + 1):
+		for cx in range(first.x, last.x + 1):
+			var cell := Vector2i(cx, cy)
+			var center := (Vector2(cell) + Vector2(0.5, 0.5)) * FOG_CELL
+			if center.distance_to(pos) > radius or is_wall_tile(Vector2i((center / TILE).floor())):
+				continue
+			if not _fog_decode(fog_image.get_pixelv(cell)).revealed:
+				fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
+				textures_dirty = true
+	_reveal_walls_near(pos, radius)
 
 
 func _reveal_walls_near(pos: Vector2, radius: float) -> void:
@@ -509,11 +543,140 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 		shake_left = SHAKE_TIME
 		shake_strength = lerpf(1.0, SHAKE_MAX, inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
 		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, 18, 70.0, wall_normal, 70.0, rainbow)
+		_damage_wall(slime.position, wall_normal,
+			inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
 	else:
 		Fx.burst(self, slime.position, skin_color, 10, 35.0, Vector2.UP, 180.0, rainbow)
 	last_slime_pos = slime.position
 	slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
 	hud.set_slime(slime_remaining)
+
+
+## Applies the bought upgrades (see Upgrades): more slime to spend, faster gliding, a wider
+## light, and (dev only) wall power.
+func _apply_upgrades() -> void:
+	if progress == null:
+		return
+	slime_cost_per_tile /= Upgrades.slime_factor(progress.upgrade_level("slime"))
+	var speed := Upgrades.speed_factor(progress.upgrade_level("speed"))
+	slime.max_speed *= speed
+	slime.acceleration *= speed
+	light_reach = Upgrades.light_reach(progress.upgrade_level("brightness"))
+	wall_power = progress.upgrade_level("power")
+
+
+# ---------------------------------------------------------------- coins
+
+## The cells holding this level's coins: Levels.COINS[level] of its dead ends (never the start or
+## the chalice's cell), picked with the level's seed so they're always in the same places.
+func coin_cells(maze_seed: int) -> Array[Vector2i]:
+	var dead_ends: Array[Vector2i] = []
+	for y in maze.cells.y:
+		for x in maze.cells.x:
+			var cell := Vector2i(x, y)
+			if cell != maze.start and cell != maze.goal and MazeGenerator.open_neighbors(maze, cell).size() == 1:
+				dead_ends.append(cell)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = maze_seed * 13 + 5
+	for i in range(dead_ends.size() - 1, 0, -1):  # a seeded shuffle
+		var j := rng.randi_range(0, i)
+		var swap := dead_ends[i]
+		dead_ends[i] = dead_ends[j]
+		dead_ends[j] = swap
+	return dead_ends.slice(0, Levels.COINS[level - 1])
+
+
+## Puts out the coins of a story level that haven't been collected yet.
+func _place_coins(maze_seed: int) -> void:
+	if is_random() or progress == null:
+		hud.set_coins(progress.coins() if progress else 0, 0, 0)
+		return
+	var theme_index := Themes.BY_LEVEL.find(theme)
+	var cells := coin_cells(maze_seed)
+	coins_here = cells.size()
+	for cell in cells:
+		if progress.has_coin(level, cell):
+			continue
+		var coin := Coin.new()
+		coin.z_index = 6  # under the fog: found by exploring
+		coin.position = MazeGenerator.cell_center(cell, TILE)
+		add_child(coin)
+		coin.setup(theme_index, cell)
+		coins.append(coin)
+	hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here)
+
+
+func _pick_up_coins(pos: Vector2) -> void:
+	for coin in coins.duplicate():
+		if pos.distance_to(coin.position) > Coin.REACH:
+			continue
+		coins.erase(coin)
+		progress.collect_coin(level, coin.cell)
+		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
+		_sfx("coin", -4.0)
+		coin.queue_free()
+		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
+
+
+# ---------------------------------------------------------------- dev: wall power
+
+## Wall power (dev only): a splat chips away at the wall it hits, harder the stronger the leap.
+## Walls crack through the art's damage stages as they weaken and crumble away at zero. The
+## maze's outer edge can't be broken.
+func _damage_wall(pos: Vector2, wall_normal: Vector2, charge: float) -> void:
+	if wall_power <= 0:
+		return
+	var tile := Vector2i(((pos - wall_normal * (Slime.RADIUS + 2.0)) / TILE).floor())
+	if not is_wall_tile(tile) or _is_edge(tile):
+		return
+	var health: float = wall_health.get(tile, 100.0 - 25.0 * wall_damage.get(tile, 0))
+	health -= Upgrades.wall_damage(wall_power, charge)
+	if health <= 0.0:
+		_break_wall(tile)
+		return
+	wall_health[tile] = health
+	var stage := clampi(3 - int(health / 25.0), 0, 3)
+	if stage > wall_damage.get(tile, 0):
+		wall_damage[tile] = stage
+		var row := wall_layer.get_cell_atlas_coords(tile).y
+		wall_layer.set_cell(tile, MazeTiles.WALL_SOURCE,
+			Vector2i(wall_layer.get_cell_atlas_coords(tile).x, (row / 12) * 12 + stage * 3 + row % 3))
+
+
+func _is_edge(tile: Vector2i) -> bool:
+	return tile.x <= 0 or tile.y <= 0 or tile.x >= maze.size.x - 1 or tile.y >= maze.size.y - 1
+
+
+## Knocks a wall out: it becomes rubble-strewn floor, and the walls and corner fillets around it
+## re-fit their edges to the new opening.
+func _break_wall(tile: Vector2i) -> void:
+	maze.walls[tile.y * maze.size.x + tile.x] = 0
+	wall_layer.erase_cell(tile)
+	wall_damage.erase(tile)
+	wall_health.erase(tile)
+	revealed_walls.erase(tile)
+	floor_layer.set_cell(tile, MazeTiles.FLOOR_SOURCE, Vector2i(MazeTiles.FLOOR_RUBBLE, 0))
+	fog_image.fill_rect(Rect2i(tile * TILE / FOG_CELL, Vector2i.ONE * (TILE / FOG_CELL)), _fog_color(elapsed, elapsed, false))
+	textures_dirty = true
+	for offset: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT,
+			Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+		var near := tile + offset
+		if near.x < 0 or near.y < 0 or near.x >= maze.size.x or near.y >= maze.size.y:
+			continue
+		if is_wall_tile(near):
+			var row := wall_layer.get_cell_atlas_coords(near).y
+			wall_layer.set_cell(near, MazeTiles.WALL_SOURCE, Vector2i(MazeTiles.wall_mask(maze, near), row))
+		else:
+			var mask := MazeTiles.wall_mask(maze, near)
+			if MazeTiles.has_corner(mask):
+				fillet_layer.set_cell(near, MazeTiles.FILLET_SOURCE, Vector2i(mask, 0))
+			else:
+				fillet_layer.erase_cell(near)
+	var center := (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
+	Fx.burst(self, center, Color8(148, 140, 150), 24, 60.0)
+	shake_left = SHAKE_TIME
+	shake_strength = SHAKE_MAX
+	_sfx("crumble")
 
 
 ## Puts the selected hat on the slime: it pops off on every leap and comes back down on its head.

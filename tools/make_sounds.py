@@ -105,6 +105,13 @@ def crunch(seconds: float, volume=0.4, seed=1) -> list[float]:
     return samples
 
 
+def chime_tone(freq: float, seconds: float, volume=0.4) -> list[float]:
+    """A small bell tone: a pure tone plus a quieter octave, ringing out fast."""
+    count = int(seconds * RATE)
+    return [(math.sin(2 * math.pi * freq * i / RATE) + 0.35 * math.sin(4 * math.pi * freq * i / RATE))
+            * volume * math.exp(-i / RATE * 9) * min(1.0, i / 30) for i in range(count)]
+
+
 def mix(*tracks: list[float]) -> list[float]:
     length = max(len(t) for t in tracks)
     return [sum(t[i] for t in tracks if i < len(t)) for i in range(length)]
@@ -159,6 +166,12 @@ SOUNDS = {
                        bloop(520, 140, 1.0, 0.3, wobble=0.07, wobble_rate=5, attack=0.03, release=0.4),
                        gurgle(0.9, 9, 160, 520, 0.24, seed=11, falling=True),
                        [0.0] * int(0.95 * RATE) + crunch(0.35, 0.45, seed=22)),
+    # Coin: a clean little metallic clink (two quick bell tones) as the slime gulps it up.
+    "coin": lambda: mix(seq(chime_tone(988, 0.07, 0.35), chime_tone(1319, 0.32, 0.4)),
+                        bubble(300, 0.06, 0.18)),
+    # A wall giving way (dev wall power): stone crunching apart and rubble pattering down.
+    "crumble": lambda: mix(wet_thud(0.35, 0.5, seed=31, release=0.25), crunch(0.5, 0.5, seed=32),
+                           bloop(160, 50, 0.3, 0.3, release=0.2)),
     # Menu click: a single low bubble pop.
     "click": lambda: bubble(420, 0.05, 0.45, rise=1.7),
     # Pause: two soft bloops, down then lower.

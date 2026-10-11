@@ -1,7 +1,7 @@
 extends Control
 
 ## Start page: the big gooey logo (tinted to the equipped skin), then continue, level select,
-## randomizer (locked, with a lock icon, until all story levels are beaten), skins, controls, quit.
+## randomizer, skins + upgrades, (locked, with a lock icon, until all story levels are beaten), skins, controls, quit.
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
@@ -43,11 +43,21 @@ func _ready() -> void:
 		UIKit.make_button("LEVEL SELECT", func() -> void: UIKit.go(get_tree(), "res://scenes/level_select.tscn")),
 		UIKit.make_button("RANDOMIZER", _on_randomizer),
 		UIKit.make_button("SKINS", func() -> void: UIKit.go(get_tree(), "res://scenes/skins.tscn")),
+		UIKit.make_button("UPGRADES", func() -> void: UIKit.go(get_tree(), "res://scenes/upgrades.tscn")),
 		UIKit.make_button("CONTROLS", func() -> void: UIKit.go(get_tree(), "res://scenes/controls.tscn")),
 		UIKit.make_button("QUIT", func() -> void: get_tree().quit()),
 	]
+	# SKINS and UPGRADES share a row, so the menu stays the same height.
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 1)
 	for button in buttons:
-		menu.add_child(button)
+		if button == buttons[3] or button == buttons[4]:
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			pair.add_child(button)
+			if button == buttons[3]:
+				menu.add_child(pair)
+		else:
+			menu.add_child(button)
 	if not Progress.is_randomizer_unlocked():
 		var random_button := buttons[2]
 		random_button.disabled = true

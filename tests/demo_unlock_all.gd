@@ -45,6 +45,9 @@ func _fresh_save() -> void:
 	Progress.randoms_cleared = 0
 	Progress.randoms_won = 0
 	Progress.skin_override = ""
+	Progress.selected_hat = Hats.NONE
+	Progress.coins_found = {}
+	Progress.upgrades = {}
 	Progress.save_progress()
 
 

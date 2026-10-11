@@ -1,7 +1,7 @@
 extends Control
 
 ## Skin select: a tile per skin (locked ones are silhouettes), and for the custom skin, once the
-## game is beaten, a color wheel with brightness and glow sliders. The rainbow skin unlocks from
+## game is beaten, a color wheel and a glow slider (brightness is an upgrade now). The rainbow skin unlocks from
 ## randomizer wins. A HATS button flips to the hats page: a tile per hat (plus no hat), each
 ## shown on a slime in your skin; hats unlock from randomizer wins too.
 
@@ -14,7 +14,6 @@ var hat_tiles := {}
 var status: Label
 var custom_panel: Control
 var wheel: ColorWheel
-var brightness: HSlider
 var glow_slider: HSlider
 var big_preview: AnimatedSprite2D
 var skin_text: SkinText
@@ -140,15 +139,11 @@ func _build_custom_panel() -> void:
 	wheel.set_color(Progress.custom_color)
 	wheel.color_changed.connect(func(_c: Color) -> void: _on_custom_changed())
 
-	var label := UIKit.make_label("BRIGHTNESS", 8, UIKit.TEXT_DIM)
-	label.position = Vector2(128, 2)
+	# (Brightness is an upgrade now, not a color setting: the wheel's colors are full strength.)
+	var label := UIKit.make_label("GLOW", 8, UIKit.TEXT_DIM)
+	label.position = Vector2(128, 16)
 	custom_panel.add_child(label)
-	brightness = _make_slider(Vector2(128, 14), Progress.custom_color.v)
-	brightness.min_value = 0.25
-	label = UIKit.make_label("GLOW", 8, UIKit.TEXT_DIM)
-	label.position = Vector2(128, 30)
-	custom_panel.add_child(label)
-	glow_slider = _make_slider(Vector2(128, 42), Progress.glow)
+	glow_slider = _make_slider(Vector2(128, 28), Progress.glow)
 
 	big_preview = UIKit.make_slime_preview(Progress.custom_color, 2)
 	big_preview.position = Vector2(258, 28)
@@ -181,7 +176,7 @@ func _on_hat_tile(id: String) -> void:
 
 
 func _on_custom_changed() -> void:
-	wheel.value = brightness.value
+	wheel.value = 1.0
 	Progress.custom_color = wheel.get_color()
 	Progress.glow = glow_slider.value
 	Progress.save_progress()
@@ -215,7 +210,7 @@ func _refresh(focus_id := "") -> void:
 	var custom_ready: bool = Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	custom_panel.visible = custom_ready and page == "skins"
 	if custom_ready:
-		wheel.value = brightness.value
+		wheel.value = 1.0
 
 
 ## The hats page's status line (for `focus_id`, or the worn hat) and tile highlights.

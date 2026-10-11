@@ -53,7 +53,7 @@ static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dict
 			var tile := Vector2i(x, y)
 			if not MazeGenerator.is_wall(maze, tile):
 				continue
-			var mask := _wall_mask(maze, tile)
+			var mask := wall_mask(maze, tile)
 			var damage := rng.rand_weighted(damage_weights)
 			var style := rng.rand_weighted(style_weights)
 			wall_damage[tile] = damage
@@ -71,8 +71,8 @@ static func fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dict
 					type = FLOOR_RUBBLE
 			floor_layer.set_cell(tile, FLOOR_SOURCE, Vector2i(type, rng.randi_range(0, FLOOR_VARIANTS - 1)))
 			if fillet_layer and not MazeGenerator.is_wall(maze, tile):
-				var mask := _wall_mask(maze, tile)
-				if _has_corner(mask):
+				var mask := wall_mask(maze, tile)
+				if has_corner(mask):
 					fillet_layer.set_cell(tile, FILLET_SOURCE, Vector2i(mask, 0))
 	return wall_damage
 
@@ -87,7 +87,7 @@ static func construction_at(patches: FastNoiseLite, tile: Vector2i) -> int:
 
 
 ## Neighbor mask: N=1 E=2 S=4 W=8 set where that neighbor is a wall.
-static func _wall_mask(maze: Dictionary, tile: Vector2i) -> int:
+static func wall_mask(maze: Dictionary, tile: Vector2i) -> int:
 	var mask := 0
 	for bit_dir: Array in [[1, Vector2i.UP], [2, Vector2i.RIGHT], [4, Vector2i.DOWN], [8, Vector2i.LEFT]]:
 		if MazeGenerator.is_wall(maze, tile + bit_dir[1]):
@@ -96,7 +96,7 @@ static func _wall_mask(maze: Dictionary, tile: Vector2i) -> int:
 
 
 ## True if two touching sides (N+E, E+S, S+W, W+N) are both walls.
-static func _has_corner(mask: int) -> bool:
+static func has_corner(mask: int) -> bool:
 	return (mask & 3) == 3 or (mask & 6) == 6 or (mask & 12) == 12 or (mask & 9) == 9
 
 

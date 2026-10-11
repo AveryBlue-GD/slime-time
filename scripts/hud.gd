@@ -35,6 +35,10 @@ var message: Label
 var area_label: Label
 var _message_panel: PanelContainer
 var time_label: Label
+## Coin counter (under the slime meter): coins in hand, and in a story level how many of its
+## coins have been found.
+var coin_label: Label
+var coin_found_label: Label
 ## Shown only when a level is beaten faster than its saved record.
 var record_banner: CenterContainer
 var record_time_label: Label
@@ -66,6 +70,15 @@ func _ready() -> void:
 	label.custom_minimum_size = Vector2(22, 0)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meter_row.add_child(label)
+
+	# Coin pod, under the meter: coins in hand and (in a story level) found / hidden here.
+	var coin_row := _make_pod(Control.PRESET_TOP_LEFT)
+	coin_row.get_parent().offset_top = POD_MARGIN + 16
+	coin_row.add_child(UIKit.make_icon("coin", Color.WHITE))
+	coin_label = _make_label()
+	coin_row.add_child(coin_label)
+	coin_found_label = _make_label(SkinText.ROLE_DIM)
+	coin_row.add_child(coin_found_label)
 
 	# Center pod: clock + run time.
 	var time_row := _make_pod(Control.PRESET_CENTER_TOP)
@@ -176,6 +189,19 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(rect)
 	return rect
+
+
+## Updates the coin pod; `here` = 0 hides the found count (randomizer mazes have no coins).
+## `pop` flashes the count gold (a coin was just picked up).
+func set_coins(total: int, found: int, here: int, pop := false) -> void:
+	coin_label.text = str(total)
+	coin_found_label.text = "%d/%d" % [found, here] if here > 0 else ""
+	coin_found_label.visible = here > 0
+	if pop:
+		coin_label.add_theme_color_override("font_color", GOLD)
+		var tween := create_tween()
+		tween.tween_interval(0.4)
+		tween.tween_callback(func() -> void: _skin_text.recolor())
 
 
 func set_time(seconds: float) -> void:

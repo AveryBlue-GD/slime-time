@@ -8,7 +8,8 @@ Run from the project root:  python tools/make_ui_art.py
 - panel.png : 12x12 nine-slice framed panel (outline, inner rim, soft top light), 4 px margins.
 - hud_pod.png : 8x8 nine-slice, a lighter-weight translucent panel for the HUD, 3 px margins.
 - icon_drop / icon_clock / icon_lock / icon_check.png : 8x8 icons in white/grey shades so the
-  game can tint them (the drop takes the skin color, the rest the text color).
+  game can tint them (the drop takes the skin color, the rest the text color); icon_coin.png is
+  drawn in gold.
 - check_off / check_on.png (9x9) and grabber / grabber_hover.png (5x9): checkbox and slider knob.
 """
 from pathlib import Path
@@ -142,6 +143,16 @@ ICONS = {
         "e11kk11e",
         "e112211e",
         "eeeeeeee",
+    ],
+    "coin": [  # drawn in gold (not tinted): shown with a white modulate
+        "..kkkk..",
+        ".kYyyyk.",
+        "kYyyyyok",
+        "kyyoyyok",
+        "kyyoyyok",
+        "kyyyyook",
+        ".kyoook.",
+        "..kkkk..",
     ],
     "check": [
         "........",
