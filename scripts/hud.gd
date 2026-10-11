@@ -316,6 +316,7 @@ func _gold_label(text: String, size: int) -> Label:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", GOLD)
+	l.material = UIKit.text_material()
 	UIKit.use_big_font(l, size)
 	return l
 
@@ -377,6 +378,7 @@ func show_message(text: String) -> void:
 
 func _make_label(role := SkinText.ROLE_TEXT) -> Label:
 	var l := Label.new()
+	l.material = UIKit.text_material()
 	l.set_meta("role", role)
 	l.add_to_group(SkinText.GROUP)
 	l.add_theme_font_size_override("font_size", 8)

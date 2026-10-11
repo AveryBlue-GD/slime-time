@@ -20,6 +20,8 @@ const LINE_SPACING := 5
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
 
+static var _text_material: ShaderMaterial
+
 
 static func make_theme() -> Theme:
 	var theme := Theme.new()
@@ -145,6 +147,7 @@ static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.material = text_material()
 	use_big_font(label, font_size)
 	# The standard UI colors stand for roles that SkinText recolors from the equipped skin.
 	var role: String = {GOLD: SkinText.ROLE_TITLE, TEXT: SkinText.ROLE_TEXT, TEXT_DIM: SkinText.ROLE_DIM}.get(color, "")
@@ -161,9 +164,18 @@ static func use_big_font(control: Control, font_size: int) -> void:
 		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))
 
 
+## Shared material for text: every letter gets its own random goo drips (text_drips.gdshader).
+static func text_material() -> ShaderMaterial:
+	if _text_material == null:
+		_text_material = ShaderMaterial.new()
+		_text_material.shader = load("res://assets/shaders/text_drips.gdshader")
+	return _text_material
+
+
 static func make_button(text: String, on_press: Callable, min_size := Vector2(0, 13)) -> Button:
 	var button := Button.new()
 	button.text = text
+	button.material = text_material()
 	button.custom_minimum_size = min_size
 	button.pressed.connect(func() -> void:
 		var sfx := button.get_node_or_null("/root/Sfx")

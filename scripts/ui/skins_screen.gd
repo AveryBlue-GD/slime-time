@@ -51,6 +51,9 @@ func _ready() -> void:
 		if child is Label and child.text == "SKINS":
 			_title = child
 	view_jelly = Progress.jelly
+	# A fresh random color on the wheel every visit (any hue, never washed out).
+	Progress.custom_color = Color.from_hsv(randf(), randf_range(0.55, 1.0), 1.0)
+	Progress.save_progress()
 	_skin_grid = _make_grid()
 	_fill_skin_grid()
 

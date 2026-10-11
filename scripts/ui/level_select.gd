@@ -31,6 +31,7 @@ func _ready() -> void:
 	info.offset_bottom = 133
 
 	hard_mode_box = CheckBox.new()
+	hard_mode_box.material = UIKit.text_material()
 	hard_mode_box.text = "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 	hard_mode_box.button_pressed = Progress.hard_mode
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
