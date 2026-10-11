@@ -1,13 +1,25 @@
 extends Control
 
-## Skin select: a tile per skin (locked ones are silhouettes), and for the custom skin, once the
-## game is beaten, a color wheel and a glow slider (brightness is an upgrade now). The rainbow
-## skin unlocks from beating every level on hard mode, the gold skin from finding every coin.
-## A HATS button flips to the hats page: a tile per hat (plus no hat), each shown on a slime in
-## your skin; hats will unlock from randomizer wins.
+## Skin select. Slimes are see-through jelly by default; the JELLY ON / OFF switch shows the same
+## skins in solid form instead, each unlocked by beating its level on hard mode (the jelly ones
+## unlock with the story levels). A tile per skin (locked ones are silhouettes); for the custom
+## skin, once the game is beaten, a color wheel and a glow slider. The HATS button flips to the
+## hats page: a tile per hat (plus no hat), each shown on a slime in your skin.
+##
+## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
+## custom color panel, and a bottom row of BACK | JELLY | HATS.
 
 const TILE_SIZE := Vector2(40, 30)
+const GRID_COLUMNS := 7
+const GRID_GAP := 3
+const GRID_TOP := 23
+const STATUS_TOP := 89
+const RULE_TOP := 100
+const CUSTOM_TOP := 112
+const WHEEL_SIZE := 48
+const SLIDER_WIDTH := 90
 const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
+const SOLID_RULE := "SOLID SKINS UNLOCK ON HARD MODE"
 const HATS_RULE := "WIN RANDOM MAZES TO UNLOCK HATS"
 const HATS_SOON_RULE := "HATS ARE COMING SOON"
 
@@ -21,7 +33,10 @@ var big_preview: AnimatedSprite2D
 var skin_text: SkinText
 ## "skins" or "hats".
 var page := "skins"
+## Which version of the skins the grid shows: jelly (true) or solid.
+var view_jelly := true
 var page_button: Button
+var jelly_button: Button
 var _skin_grid: GridContainer
 var _hat_grid: GridContainer
 var _title: Label
@@ -33,15 +48,9 @@ func _ready() -> void:
 	for child in get_children():
 		if child is Label and child.text == "SKINS":
 			_title = child
+	view_jelly = Progress.jelly
 	_skin_grid = _make_grid()
-	var ids: Array[String] = []
-	for preset: Dictionary in Skins.PRESETS:
-		ids.append(preset.id)
-	ids.append(Skins.CUSTOM)
-	ids.append(Skins.RAINBOW)
-	ids.append(Skins.GOLD)
-	for id in ids:
-		_skin_grid.add_child(_make_tile(id))
+	_fill_skin_grid()
 
 	_hat_grid = _make_grid()
 	var hat_ids: Array[String] = [Hats.NONE]
@@ -50,31 +59,58 @@ func _ready() -> void:
 	for id in hat_ids:
 		_hat_grid.add_child(_make_hat_tile(id))
 
-	status = UIKit.make_label("")
-	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status.position = Vector2(0, 92)
-	status.size = Vector2(320, 12)
-	add_child(status)
-
+	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
+	_rule = _centered_label(SKINS_RULE, UIKit.TEXT_DIM, RULE_TOP)
 	_build_custom_panel()
-	_rule = UIKit.make_label(SKINS_RULE, 8, UIKit.TEXT_DIM)
-	_rule.position = Vector2(50, 167)
-	add_child(_rule)
-	UIKit.add_back_button(self)
-	page_button = UIKit.make_button("HATS", func() -> void: show_page("skins" if page == "hats" else "hats"), Vector2(40, 13))
-	page_button.position = Vector2(276, 164)
+
+	# Bottom row: BACK and HATS the same width at the same distance from each edge, the jelly
+	# switch centered between them.
+	var back := UIKit.add_back_button(self)
+	page_button = UIKit.make_button("HATS", func() -> void: show_page("skins" if page == "hats" else "hats"), back.custom_minimum_size)
+	page_button.position = Vector2(320 - back.position.x - back.custom_minimum_size.x, back.position.y)
 	add_child(page_button)
+	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, 13))
+	jelly_button.position = Vector2((320 - 80) / 2, back.position.y)
+	add_child(jelly_button)
 	show_page("skins")
 
 
+## A label centered across the screen, `top` = its top edge.
+func _centered_label(text: String, color: Color, top: int) -> Label:
+	var label := UIKit.make_label(text, 8, color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(label)
+	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	label.offset_top = top
+	label.offset_bottom = top + 10
+	return label
+
+
+## A tile grid centered across the screen.
 func _make_grid() -> GridContainer:
 	var grid := GridContainer.new()
-	grid.columns = 7
-	grid.position = Vector2(11, 23)
-	grid.add_theme_constant_override("h_separation", 3)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.columns = GRID_COLUMNS
+	var width := GRID_COLUMNS * TILE_SIZE.x + (GRID_COLUMNS - 1) * GRID_GAP
+	grid.position = Vector2(roundf((320 - width) / 2.0), GRID_TOP)
+	grid.add_theme_constant_override("h_separation", GRID_GAP)
+	grid.add_theme_constant_override("v_separation", GRID_GAP)
 	add_child(grid)
 	return grid
+
+
+## (Re)builds the skin tiles for the version on view (jelly or solid).
+func _fill_skin_grid() -> void:
+	for child in _skin_grid.get_children():
+		_skin_grid.remove_child(child)
+		child.queue_free()
+	tiles.clear()
+	var ids: Array[String] = []
+	for preset: Dictionary in Skins.PRESETS:
+		ids.append(preset.id)
+	ids.append(Skins.CUSTOM)
+	ids.append(Skins.RAINBOW)
+	for id in ids:
+		_skin_grid.add_child(_make_tile(id))
 
 
 ## Switches between the skins page and the hats page.
@@ -83,11 +119,11 @@ func show_page(which: String) -> void:
 	var hats := page == "hats"
 	_skin_grid.visible = not hats
 	_hat_grid.visible = hats
+	jelly_button.visible = not hats
 	_title.text = "HATS" if hats else "SKINS"
-	_rule.text = (HATS_RULE if Hats.available else HATS_SOON_RULE) if hats else SKINS_RULE
-	_rule.position.x = roundf((320 - _rule.get_minimum_size().x) / 2.0)
 	page_button.text = "SKINS" if hats else "HATS"
 	if hats:
+		_rule.text = HATS_RULE if Hats.available else HATS_SOON_RULE
 		custom_panel.visible = false
 		_refresh_hats()
 		hat_tiles[Progress.selected_hat].grab_focus()
@@ -96,11 +132,19 @@ func show_page(which: String) -> void:
 		tiles[Progress.selected_skin].grab_focus()
 
 
+## JELLY ON / OFF: shows the other version of every skin.
+func _toggle_jelly() -> void:
+	view_jelly = not view_jelly
+	_fill_skin_grid()
+	_refresh()
+	jelly_button.grab_focus()
+
+
 func _make_tile(id: String) -> Button:
-	var unlocked: bool = Progress.is_skin_unlocked(id)
+	var unlocked: bool = Progress.is_skin_unlocked(id, view_jelly)
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE_SIZE)
-	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else (Skins.GOLD_COLOR if id == Skins.GOLD else Skins.get_preset(id).color))
-	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW)
+	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
+	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
 		preview.modulate = Color(0, 0, 0, 0.85)
@@ -131,45 +175,47 @@ func _make_hat_tile(id: String) -> Button:
 	return tile
 
 
+## The custom color panel, mirrored about the center: the wheel on the left, the glow slider in
+## the middle, the big preview on the right.
 func _build_custom_panel() -> void:
 	custom_panel = Control.new()
-	custom_panel.position = Vector2(0, 104)
+	custom_panel.position = Vector2(0, CUSTOM_TOP)
 	add_child(custom_panel)
+	var span := WHEEL_SIZE + 16 + SLIDER_WIDTH + 16 + WHEEL_SIZE  # wheel, gap, slider, gap, preview
+	var left := roundf((320 - span) / 2.0)
 	wheel = ColorWheel.new()
-	wheel.position = Vector2(60, 0)
-	wheel.size = Vector2(58, 58)
+	wheel.position = Vector2(left, 0)
+	wheel.size = Vector2(WHEEL_SIZE, WHEEL_SIZE)
 	custom_panel.add_child(wheel)
 	wheel.set_color(Progress.custom_color)
 	wheel.color_changed.connect(func(_c: Color) -> void: _on_custom_changed())
 
-	# (Brightness is an upgrade now, not a color setting: the wheel's colors are full strength.)
+	var slider_x := left + WHEEL_SIZE + 16
 	var label := UIKit.make_label("GLOW", 8, UIKit.TEXT_DIM)
-	label.position = Vector2(128, 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.position = Vector2(slider_x, 12)
+	label.size = Vector2(SLIDER_WIDTH, 10)
 	custom_panel.add_child(label)
-	glow_slider = _make_slider(Vector2(128, 28), Progress.glow)
+	glow_slider = HSlider.new()
+	glow_slider.position = Vector2(slider_x, 26)
+	glow_slider.size = Vector2(SLIDER_WIDTH, 10)
+	glow_slider.min_value = 0.0
+	glow_slider.max_value = 1.0
+	glow_slider.step = 0.05
+	glow_slider.value = Progress.glow
+	glow_slider.value_changed.connect(func(_v: float) -> void: _on_custom_changed())
+	custom_panel.add_child(glow_slider)
 
 	big_preview = UIKit.make_slime_preview(Progress.custom_color, 2)
-	big_preview.position = Vector2(258, 28)
+	big_preview.position = Vector2(left + span - WHEEL_SIZE / 2.0, WHEEL_SIZE / 2.0)
 	custom_panel.add_child(big_preview)
 
 
-func _make_slider(at: Vector2, start: float) -> HSlider:
-	var slider := HSlider.new()
-	slider.position = at
-	slider.size = Vector2(90, 10)
-	slider.min_value = 0.0
-	slider.max_value = 1.0
-	slider.step = 0.05
-	slider.value = start
-	slider.value_changed.connect(func(_v: float) -> void: _on_custom_changed())
-	custom_panel.add_child(slider)
-	return slider
-
-
 func _on_tile(id: String) -> void:
-	if Progress.is_skin_unlocked(id):
-		Progress.select_skin(id)
+	if Progress.is_skin_unlocked(id, view_jelly):
+		Progress.select_skin(id, view_jelly)
 		skin_text.recolor()
+		(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
 	_refresh(id)
 
 
@@ -189,27 +235,25 @@ func _on_custom_changed() -> void:
 	skin_text.recolor()
 
 
-## Updates the status line (for `focus_id`, or the selected skin) and the custom panel.
+## Updates the status line (for `focus_id`, or the worn skin), the highlights and the custom panel.
 func _refresh(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_skin
-	var unlocked: bool = Progress.is_skin_unlocked(id)
-	var skin_name := Skins.display_name(id)
-	if not unlocked:
-		if id == Skins.CUSTOM:
+	var worn_here: bool = view_jelly == Progress.jelly
+	if not Progress.is_skin_unlocked(id, view_jelly):
+		if not view_jelly:
+			status.text = "LOCKED - BEAT LEVEL %d ON HARD" % Skins.solid_level(id)
+		elif id == Skins.CUSTOM or id == Skins.RAINBOW:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
-		elif id == Skins.RAINBOW:
-			status.text = "LOCKED - BEAT EVERY LEVEL ON HARD (%d/%d)" % [Progress.hard_cleared.size(), Levels.COUNT]
-		elif id == Skins.GOLD:
-			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Upgrades.full_tree_cost()]
 		else:
 			status.text = "LOCKED - CLEAR LEVEL %d" % Skins.unlock_level(id)
 	else:
-		status.text = skin_name + ("  (SELECTED)" if id == Progress.selected_skin else "")
+		status.text = Skins.display_name(id) + ("  (SELECTED)" if worn_here and id == Progress.selected_skin else "")
 	for tile_id: String in tiles:
-		var tile: Button = tiles[tile_id]
-		var selected: bool = tile_id == Progress.selected_skin
-		tile.add_theme_stylebox_override("normal", UIKit.button_style("hover" if selected else "normal"))
-	var custom_ready: bool = Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
+		var selected: bool = worn_here and tile_id == Progress.selected_skin
+		(tiles[tile_id] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if selected else "normal"))
+	jelly_button.text = "JELLY: ON" if view_jelly else "JELLY: OFF"
+	_rule.text = SKINS_RULE if view_jelly else SOLID_RULE
+	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	custom_panel.visible = custom_ready and page == "skins"
 	if custom_ready:
 		wheel.value = 1.0

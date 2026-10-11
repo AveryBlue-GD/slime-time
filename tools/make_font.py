@@ -141,12 +141,18 @@ if __name__ == "__main__":
     for ch, (gx, gw) in placed.items():
         codes = [ord(ch)] + ([ord(ch.lower())] if ch.isalpha() else [])
         for code in codes:
-            chars.append(f"char id={code} x={gx} y=0 width={gw} height={LINE_HEIGHT} xoffset=0 yoffset=0 "
+            # The 1 px gap between letters sits on each glyph's LEFT (xoffset=1), not its right: a
+            # string's measured width then has its spare pixel on the left, so centered text lines
+            # up on its actual letter pixels instead of sitting a pixel to the left.
+            chars.append(f"char id={code} x={gx} y=0 width={gw} height={LINE_HEIGHT} xoffset=1 yoffset=0 "
                          f"xadvance={gw + 1} page=0 chnl=15")
     fnt = [
         'info face="SlimePixel" size=8 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=0 aa=1 '
         'padding=0,0,0,0 spacing=1,1 outline=0',
-        f"common lineHeight={LINE_HEIGHT} base={HEIGHT} scaleW={width} scaleH={LINE_HEIGHT} pages=1 packed=0",
+        # The line box is the 7 px letter body: the drips hang below it, outside the box, so text is
+        # centered (vertically too) on the letters themselves, not on the drips. Labels add the
+        # drips' 2 px back as line spacing (UIKit theme / HUD), keeping multi-line text as before.
+        f"common lineHeight={HEIGHT} base={HEIGHT} scaleW={width} scaleH={LINE_HEIGHT} pages=1 packed=0",
         'page id=0 file="pixel.png"',
         f"chars count={len(chars)}",
         *chars,

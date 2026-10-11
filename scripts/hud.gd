@@ -381,6 +381,7 @@ func _make_label(role := SkinText.ROLE_TEXT) -> Label:
 	l.set_meta("role", role)
 	l.add_to_group(SkinText.GROUP)
 	l.add_theme_font_size_override("font_size", 8)
+	l.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING)
 	l.add_theme_color_override("font_shadow_color", Color(FRAME_COLOR, 0.9))
 	l.add_theme_constant_override("shadow_offset_x", 1)
 	l.add_theme_constant_override("shadow_offset_y", 1)

@@ -1,8 +1,8 @@
 extends SceneTree
 
-## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by beating every level on hard
-## mode (saved; the last one announces it), drying up in the randomizer shuffles to a new maze,
-## and the rainbow skin colors the slime, trail and meter. Uses a throwaway save file.
+## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by beating level 10 (its solid
+## version by beating it on hard mode), drying up in the randomizer shuffles to a new maze, and
+## the rainbow skin colors the slime, trail and meter. Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_rainbow.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -20,29 +20,20 @@ func _initialize() -> void:
 	progress.selected_skin = Skins.DEFAULT
 	progress.randoms_won = 0
 
-	# --- Unlocking
+	# --- Unlocking: the rainbow comes with beating level 10 (like the custom color)
 	progress.hard_cleared.clear()
 	progress.dev_tools = false
+	progress.set_hard_mode(false)
 	progress.select_skin(Skins.RAINBOW)
 	_check(progress.selected_skin == Skins.DEFAULT, "rainbow is locked at first")
-	progress.hard_cleared.assign(range(1, Levels.COUNT))
-	_check(not progress.is_skin_unlocked(Skins.RAINBOW), "still locked with 9 of 10 levels beaten on hard")
-
-	# The last hard level, played as the running scene so the real win flow runs.
-	progress.set_hard_mode(true)
-	progress.levels_cleared = Levels.COUNT
+	progress.levels_cleared = Levels.COUNT - 1
 	var game := await _spawn_story_running(Levels.COUNT)
 	game.slime.position = game.chalice.position
 	await _frames(5)
-	_check(progress.is_skin_unlocked(Skins.RAINBOW), "beating every level on hard unlocks the rainbow skin")
-	_check("NEW SKIN: RAINBOW" in game.hud.message.text, "the last hard level announces it")
-	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
-	reloaded.load_progress()
-	_check(reloaded.hard_cleared.size() == Levels.COUNT, "hard-mode clears are saved")
-	reloaded.free()
+	_check(progress.is_skin_unlocked(Skins.RAINBOW), "beating level 10 unlocks the rainbow skin")
+	_check("RAINBOW" in game.hud.message.text, "...and says so")
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW, false), "its solid version needs level 10 on hard mode")
 	await _stop_running(game)
-	progress.set_hard_mode(false)
 
 	# --- Drying up in the randomizer shuffles the maze.
 	game = await _spawn_running(777)
@@ -58,7 +49,7 @@ func _initialize() -> void:
 	await _stop_running(game)
 
 	# --- Rainbow look
-	progress.levels_cleared = 1  # level 1 already cleared, so its skin isn't forced
+	progress.levels_cleared = Levels.COUNT  # the rainbow comes with level 10; no first-run skin either
 	progress.select_skin(Skins.RAINBOW)
 	_check(progress.is_rainbow(), "rainbow can be selected once unlocked")
 	game = MAIN.instantiate()
@@ -78,7 +69,7 @@ func _initialize() -> void:
 	var screen: Control = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.has(Skins.GOLD) and screen.tiles.size() == 13, "skins screen has rainbow and gold tiles")
+	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.size() == 12, "skins screen has a rainbow tile")
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))

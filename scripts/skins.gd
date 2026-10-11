@@ -4,9 +4,11 @@ extends RefCounted
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
 ## start, then one per level 1-9). A level's first run is played in the skin the level before it
 ## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel + glow) unlocks after the final level.
-## "rainbow" unlocks by beating every level on hard mode: rainbow bands flow across the slime
-## like a wave, and its trail cycles through the rainbow. "gold" unlocks by finding every coin in
-## the story: jumps and landings throw off gold sparks.
+## "rainbow" unlocks with level 10, like the custom color: rainbow bands flow across the slime
+## like a wave, and its trail cycles through the rainbow.
+## Jelly: slimes are see-through jelly by default. Every skin also comes in a solid version
+## ("JELLY OFF" on the skins screen), unlocked by beating its level on hard mode instead
+## (see solid_level).
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 
@@ -15,12 +17,8 @@ const CUSTOM := "custom"
 const CUSTOM_NAME := "ANY SKIN"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
-## Jelly test (dev toggle, see Progress.set_jelly): every slime made from now on is see-through.
-static var jelly := false
-
-const GOLD := "gold"
-const GOLD_NAME := "GOLD"
-const GOLD_COLOR := Color8(236, 184, 52)
+## Whether new slime materials are see-through jelly (kept in step with Progress.jelly).
+static var jelly := true
 ## Stand-in base color for the rainbow skin wherever one color is needed.
 const RAINBOW_BASE := Color8(230, 60, 60)
 
@@ -52,16 +50,23 @@ static func get_preset(id: String) -> Dictionary:
 
 ## Levels that must be cleared before this skin can be used.
 static func unlock_level(id: String) -> int:
-	return Levels.COUNT if id == CUSTOM else int(get_preset(id).get("unlock", 0))
+	return Levels.COUNT if id == CUSTOM or id == RAINBOW else int(get_preset(id).get("unlock", 0))
 
 
-## `hard_cleared` = levels beaten on hard mode, `coins` = coins found in the story.
-static func is_unlocked(id: String, levels_cleared: int, hard_cleared := 0, coins := 0) -> bool:
-	if id == RAINBOW:
-		return hard_cleared >= Levels.COUNT
-	if id == GOLD:
-		return coins >= Upgrades.full_tree_cost()
-	return levels_cleared >= unlock_level(id)
+## The hard-mode level that unlocks a skin's solid (jelly off) version: the same level that
+## unlocks it normally (the starter Lime needs hard level 1).
+static func solid_level(id: String) -> int:
+	return maxi(unlock_level(id), 1)
+
+
+## Jelly skins unlock with the story levels; solid ones (`jelly` false) with the same level beaten
+## on hard mode (`hard_cleared` = those levels).
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true) -> bool:
+	if id != RAINBOW and id != CUSTOM and get_preset(id).is_empty():
+		return false
+	if jelly_version:
+		return levels_cleared >= unlock_level(id)
+	return solid_level(id) in hard_cleared
 
 
 static func display_name(id: String) -> String:
@@ -69,8 +74,6 @@ static func display_name(id: String) -> String:
 		return CUSTOM_NAME
 	if id == RAINBOW:
 		return RAINBOW_NAME
-	if id == GOLD:
-		return GOLD_NAME
 	return get_preset(id).get("name", "")
 
 

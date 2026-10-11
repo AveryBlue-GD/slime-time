@@ -35,9 +35,9 @@ var upgrades := {}
 ## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
 ## returns to the level (not saved).
 var return_to_game := false
-## Jelly test (dev toggle on the settings screen, or --jelly; not saved): every slime is
-## see-through, and collected coins sink in and dissolve.
-var jelly := false
+## Jelly (the default): every slime is see-through and collected coins sink in and dissolve.
+## Off = the solid versions of the skins, which unlock on hard mode (saved; skins screen toggle).
+var jelly := true
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 const DEV_COINS := 999
@@ -113,8 +113,6 @@ func _ready() -> void:
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
-		elif arg == "--jelly":
-			set_jelly(true)
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 
@@ -151,8 +149,11 @@ func load_progress() -> void:
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
 	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
 	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
-	if not is_skin_unlocked(selected_skin):  # e.g. a skin that has moved to a later level
-		selected_skin = Skins.DEFAULT
+	set_jelly(file.get_value("skin", "jelly", true))
+	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a solid one no longer earned
+		set_jelly(true)
+		if not is_skin_unlocked(selected_skin):
+			selected_skin = Skins.DEFAULT
 	custom_color = file.get_value("skin", "custom_color", custom_color)
 	selected_hat = file.get_value("skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
@@ -194,6 +195,7 @@ func save_progress() -> void:
 	file.set_value("progress", "randoms_won", randoms_won)
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
+	file.set_value("skin", "jelly", jelly)
 	file.set_value("skin", "hat", selected_hat)
 	file.set_value("skin", "glow", glow)
 	file.set_value("settings", "sound_on", sound_on)
@@ -341,10 +343,11 @@ func select_hat(id: String) -> void:
 		save_progress()
 
 
-func is_skin_unlocked(id: String) -> bool:
+## Whether skin `id` can be worn: as jelly, or (`jelly_version` false) in its solid version.
+func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
 	if dev_tools:
 		return true
-	return Skins.is_unlocked(id, levels_cleared, hard_cleared.size(), coins_earned())
+	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version)
 
 
 ## The skin in use right now: a level's forced first-run skin, else the selected one.
@@ -404,8 +407,9 @@ func equip_first_run_skin(level: int) -> String:
 	if skin == "" or level in skin_notices_seen or not is_skin_unlocked(skin):
 		return ""
 	skin_notices_seen.append(level)
-	var changed := selected_skin != skin
+	var changed := selected_skin != skin or not jelly
 	selected_skin = skin
+	set_jelly(true)
 	save_progress()
 	return skin if changed else ""
 
@@ -420,6 +424,7 @@ func reset_progress() -> void:
 	randoms_cleared = 0
 	randoms_won = 0
 	selected_skin = Skins.DEFAULT
+	set_jelly(true)
 	selected_hat = Hats.NONE
 	custom_color = Color8(239, 125, 47)
 	glow = 0.6
@@ -433,11 +438,6 @@ func reset_progress() -> void:
 	save_progress()
 
 
-## True when the gold skin is in use (and unlocked): money sounds and gold sparks.
-func is_gold() -> bool:
-	return active_skin() == Skins.GOLD and is_skin_unlocked(Skins.GOLD)
-
-
 ## True when the rainbow skin is in use (and unlocked).
 func is_rainbow() -> bool:
 	return active_skin() == Skins.RAINBOW and is_skin_unlocked(Skins.RAINBOW)
@@ -449,8 +449,6 @@ func skin_color() -> Color:
 		return Skins.get_preset(Skins.DEFAULT).color
 	if id == Skins.RAINBOW:
 		return Skins.RAINBOW_BASE
-	if id == Skins.GOLD:
-		return Skins.GOLD_COLOR
 	if id == Skins.CUSTOM:
 		return custom_color
 	return Skins.get_preset(id).color
@@ -463,9 +461,12 @@ func glow_amount() -> float:
 	return 0.0
 
 
-func select_skin(id: String) -> void:
-	if is_skin_unlocked(id):
+## Wears skin `id` as jelly or (`jelly_version` false) solid, if that version is unlocked.
+func select_skin(id: String, jelly_version: Variant = null) -> void:
+	var as_jelly: bool = jelly if jelly_version == null else jelly_version
+	if is_skin_unlocked(id, as_jelly):
 		selected_skin = id
+		set_jelly(as_jelly)
 		save_progress()
 
 

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Playtest feedback round: R mid-run asks RESTART / UPGRADES / CANCEL (and pauses); a straight
 ## leap that only clips a wall by a pixel or two slips past instead of splatting (a real hit still
-## splats); the gold skin unlocks from finding every coin and switches on its money effects;
+## splats); slimes are jelly by default and JELLY OFF shows solid skins unlocked on hard mode;
 ## RESET PROGRESS waits for CONFIRM, then wipes progress but keeps the settings.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_feedback.gd
 
@@ -64,38 +64,37 @@ func _initialize() -> void:
 	_check(hit.wall, "a leap square into a wall still splats")
 	game.free()
 
-	# --- Gold skin
-	progress.select_skin(Skins.GOLD)
-	_check(progress.selected_skin != Skins.GOLD, "gold is locked at first")
-	progress.coins_found = {0: range(Upgrades.full_tree_cost()).map(func(i: int) -> String: return "c%d" % i)}
-	progress.select_skin(Skins.GOLD)
-	_check(progress.selected_skin == Skins.GOLD, "finding every coin unlocks the gold skin")
+	# --- Jelly by default; JELLY OFF shows the solid skins, which unlock on hard mode
+	progress.levels_cleared = 2
+	progress.hard_cleared.clear()
+	progress.selected_skin = Skins.DEFAULT
+	progress.set_jelly(true)
+	_check(not progress.is_skin_unlocked("rainbow") and Skins.get_preset("gold").is_empty(), "no gold skin; rainbow locked")
+	var preview := UIKit.make_slime_preview(Color.RED)
+	_check((preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0, "slimes are see-through jelly by default")
+	preview.free()
+	var skins: Control = load("res://scenes/skins.tscn").instantiate()
+	root.add_child(skins)
+	await process_frame
+	_check(skins.jelly_button.text == "JELLY: ON" and skins.tiles.size() == 12, "the skins screen has a JELLY switch (12 skins)")
+	skins.jelly_button.pressed.emit()
+	_check(skins.jelly_button.text == "JELLY: OFF" and not progress.is_skin_unlocked("mint", false),
+		"JELLY OFF shows the solid skins: locked until their level is beaten on hard")
+	skins._on_tile("mint")
+	_check("BEAT LEVEL 1 ON HARD" in skins.status.text and progress.jelly, "...it says which hard level unlocks it (%s)" % skins.status.text)
+	progress.hard_cleared.assign([1, 2])
+	skins._on_tile("mint")
+	_check(progress.selected_skin == "mint" and not progress.jelly, "beating the level on hard unlocks it, and picking it wears it solid")
+	var solid := UIKit.make_slime_preview(Color.RED)
+	_check((solid.material as ShaderMaterial).get_shader_parameter("translucency") == 0.0, "...and every slime is solid now")
+	solid.free()
+	skins.free()
 	game = await _play(2)
 	current_scene = null
-	_check(game.gold and game.skin_color == Skins.GOLD_COLOR, "the gold skin switches on its gold sparks")
+	_check((game.slime.sprite.material as ShaderMaterial).get_shader_parameter("translucency") == 0.0, "the level's slime is solid too")
 	game.free()
-
-	# --- Jelly slime: a dev-only toggle that makes every slime see-through
-	var settings_screen: Control = load("res://scenes/controls.tscn").instantiate()
-	root.add_child(settings_screen)
-	await process_frame
-	_check(settings_screen.jelly_button == null, "the jelly toggle is hidden outside dev mode")
-	settings_screen.free()
-	progress.dev_tools = true
-	settings_screen = load("res://scenes/controls.tscn").instantiate()
-	root.add_child(settings_screen)
-	await process_frame
-	settings_screen.jelly_button.pressed.emit()
-	var preview := UIKit.make_slime_preview(Color.RED)
-	_check(progress.jelly and settings_screen.jelly_button.text == "JELLY SLIME: ON"
-		and (preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0,
-		"in dev mode the toggle turns every slime see-through")
-	settings_screen.jelly_button.pressed.emit()
-	_check(not progress.jelly and (UIKit.make_slime_preview(Color.RED).material as ShaderMaterial).get_shader_parameter("translucency") == 0.0,
-		"...and back")
-	preview.free()
-	settings_screen.free()
-	progress.dev_tools = false
+	progress.set_jelly(true)
+	progress.hard_cleared.clear()
 
 	# --- RESET PROGRESS needs CONFIRM
 	progress.select_skin("mint")

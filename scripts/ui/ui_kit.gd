@@ -15,6 +15,8 @@ const TEXT := Color8(244, 244, 244)
 const TEXT_DIM := Color8(148, 176, 194)
 const TEXT_OFF := Color8(86, 108, 134)
 const GOLD := Color8(255, 205, 117)
+## Space between lines of text (the 2 px drips below each line + a 3 px gap).
+const LINE_SPACING := 5
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
 
@@ -41,6 +43,9 @@ static func make_theme() -> Theme:
 	theme.set_icon("checked", "CheckBox", load(UI_DIR + "check_on.png"))
 	theme.set_constant("h_separation", "CheckBox", 4)
 	theme.set_color("font_color", "Label", TEXT)
+	# The font's line box is only the 7 px letter body (the drips hang below it), so lines are
+	# spaced by the drips' 2 px plus the usual gap.
+	theme.set_constant("line_spacing", "Label", LINE_SPACING)
 	# A 1 px drop shadow keeps text readable over the drifting backdrop.
 	theme.set_color("font_shadow_color", "Label", Color(BG, 0.9))
 	theme.set_constant("shadow_offset_x", "Label", 1)
@@ -200,10 +205,12 @@ static func make_volume_slider(width := 90.0) -> HBoxContainer:
 
 
 ## Idle slime preview in the given color (2 = double size).
-static func make_slime_preview(color: Color, scale := 1, rainbow := false) -> AnimatedSprite2D:
+static func make_slime_preview(color: Color, scale := 1, rainbow := false, jelly: Variant = null) -> AnimatedSprite2D:
 	var preview := AnimatedSprite2D.new()
 	preview.sprite_frames = Slime.load_sprite_frames()
 	preview.material = Skins.make_material(color, rainbow)
+	if jelly != null:
+		(preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if jelly else 0.0)
 	preview.scale = Vector2(scale, scale)
 	preview.play("idle")
 	return preview

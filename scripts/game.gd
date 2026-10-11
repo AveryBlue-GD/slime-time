@@ -125,8 +125,6 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
-## Gold skin: jumps and landings throw off gold sparks.
-var gold := false
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
 ## Brightness upgrade: extra reach (px) of the slime's light (see Upgrades.light_reach).
@@ -199,7 +197,7 @@ func _ready() -> void:
 
 	if equipped != "":
 		hud.flash_message("NEW SKIN EQUIPPED: %s" % Skins.display_name(equipped), FORCED_SKIN_NOTICE)
-	gold = progress != null and progress.is_gold()
+
 
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
@@ -215,8 +213,6 @@ func _ready() -> void:
 	chalice.body_entered.connect(_on_chalice_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
-	if gold:
-		slime.launched.connect(func(_v: Vector2, _t: float) -> void: _gold_flourish(slime.position, 12))
 	restart_prompt = RestartPrompt.new()
 	restart_prompt.game = self
 	add_child(restart_prompt)
@@ -550,8 +546,6 @@ func _flush_textures() -> void:
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
 	_paint_goo(slime.position, LANDING_RADIUS)
-	if gold:
-		_gold_flourish(slime.position, 22)
 	if hit_wall:
 		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
@@ -635,7 +629,7 @@ func _pick_up_coins(pos: Vector2) -> void:
 			coin.queue_free()
 		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
 		if progress.coins_earned() == Upgrades.full_tree_cost():  # the very last coin
-			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.GOLD_NAME, 3.0)
+			hud.flash_message("EVERY COIN FOUND!", 3.0)
 			_sfx("unlock")
 
 
@@ -700,11 +694,6 @@ func _break_wall(tile: Vector2i) -> void:
 	_sfx("crumble")
 
 
-## Gold skin: a gold spark burst (bigger for landings).
-func _gold_flourish(at: Vector2, sparks: int) -> void:
-	Fx.burst(self, at, Color8(255, 214, 90), sparks, 55.0)
-
-
 ## Puts the selected hat on the slime: it pops off on every leap and comes back down on its head.
 func _put_on_hat() -> void:
 	if progress == null or progress.selected_hat == Hats.NONE:
@@ -753,17 +742,29 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if level >= Levels.COUNT:
 		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
 		delay = WIN_FINAL_DELAY
-	if progress and hard_mode and not level in progress.hard_cleared and progress.hard_cleared.size() == Levels.COUNT - 1:
-		text += "\nEVERY LEVEL BEATEN ON HARD!\nNEW SKIN: " + Skins.RAINBOW_NAME
-		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
+	if progress and hard_mode and not level in progress.hard_cleared:
+		var solid := ", ".join(_skins_unlocked_solid_by(level))
+		if solid != "":
+			text += "\nNEW SOLID SKIN: " + solid
+			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	elif progress and progress.levels_cleared < level:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: ANY SKIN YOU WANT + GLOW!"
+			text += "\nUNLOCKED: ANY SKIN YOU WANT + GLOW + RAINBOW!"
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	_finish(true, text, delay)
+
+
+## Skins whose solid (jelly off) version beating `level` on hard mode unlocks.
+func _skins_unlocked_solid_by(level: int) -> Array[String]:
+	var names: Array[String] = []
+	var ids: Array = Skins.PRESETS.map(func(p: Dictionary) -> String: return p.id) + [Skins.CUSTOM, Skins.RAINBOW]
+	for id: String in ids:
+		if Skins.solid_level(id) == level:
+			names.append(Skins.display_name(id))
+	return names
 
 
 func _dry_up() -> void:
