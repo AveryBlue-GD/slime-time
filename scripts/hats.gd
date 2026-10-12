@@ -4,10 +4,10 @@ extends RefCounted
 ## Hats: won on the hat wheel in the hub (a spin lands on a random hat you don't have yet, and
 ## won hats come off the wheel; Progress.hats_owned), then picked on the Skins screen's hats page
 ## (Progress.selected_hat). Spins will cost a currency later; for now only dev mode can spin.
-## Sprites are 16x12 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
+## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
 ## frame. The Hat node (scripts/hat.gd) puts the chosen one on the slime and handles its physics.
 ##
-## These ten are placeholders until the real hats are decided.
+## These are placeholders until the real hats are decided.
 
 ## Hats are still placeholders, so for now they show "COMING SOON" and can't be worn (except in
 ## dev mode). Set to true once the real hats are in.
@@ -33,7 +33,23 @@ const LIST := [
 	{id = "viking", name = "VIKING HELMET", column = 7},
 	{id = "propeller", name = "PROPELLER CAP", column = 8},
 	{id = "crown", name = "CROWN", column = 9},
+	# The rare one: a thin wedge on the wheel, and its colors flow (assets/shaders/rainbow_hat.gdshader).
+	{id = "rainbow", name = "RAINBOW HAT", column = 10, weight = 0.3, flows = true},
 ]
+
+
+## How likely the hat wheel is to land on a hat, next to an ordinary hat's 1 (its wedge's share).
+static func weight(id: String) -> float:
+	return float(get_hat(id).get("weight", 1.0))
+
+
+## The material a hat sprite wears: the flowing-rainbow shader for the rainbow hat, else none.
+static func material_for(id: String) -> Material:
+	if not get_hat(id).get("flows", false):
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://assets/shaders/rainbow_hat.gdshader")
+	return mat
 
 
 static func get_hat(id: String) -> Dictionary:

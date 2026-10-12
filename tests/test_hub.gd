@@ -215,6 +215,20 @@ func _initialize() -> void:
 	for id in won:
 		unique[id] = true
 	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() - 3, "three spins, three different hats")
+	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.
+	var wheel = hub.hat_wheel
+	var saved_hats: Array[String] = wheel.hats.duplicate()
+	wheel.hats = Hats.ids()
+	var rare: int = wheel.hats.find("rainbow")
+	_check(rare >= 0 and wheel.sizes[rare] < wheel.sizes[0] * 0.5, "the rainbow hat's wedge is a thin sliver (%.2f vs %.2f)" % [wheel.sizes[rare], wheel.sizes[0]])
+	var rainbow_picks := 0
+	var top_hat_picks := 0
+	for i in 4000:
+		var pick: int = wheel._pick()
+		rainbow_picks += int(pick == rare)
+		top_hat_picks += int(pick == 0)
+	_check(rainbow_picks > 0 and rainbow_picks < top_hat_picks * 0.5, "the rainbow hat comes up far less often (%d vs %d for the top hat)" % [rainbow_picks, top_hat_picks])
+	wheel.hats = saved_hats
 	progress.hats_owned.assign(Hats.ids())
 	hub.hat_wheel._won = ""
 	hub.hat_wheel.refresh("F")

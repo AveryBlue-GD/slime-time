@@ -2,7 +2,8 @@ class_name HatWheel
 extends Control
 
 ## The hat wheel, opened at the prize wheel in the hub: a big wheel with a wedge for every hat
-## you don't have yet, each showing its hat. A spin whirls it round (the flapper ticking on each
+## you don't have yet, each showing its hat; a wedge's size is its odds (Hats.weight), so the rare
+## rainbow hat gets a thin rainbow-striped sliver. A spin whirls it round (the flapper ticking on each
 ## wedge it passes), slows down and lands on a random hat: that hat is won (Progress.win_hat; the
 ## slime puts it on) and comes off the wheel, so the next spin is only between the hats still
 ## missing. Spins will cost a currency later; for now only dev mode can spin (Progress.can_spin_hats).
@@ -22,10 +23,21 @@ const RIM_DARK := Color8(88, 54, 34)
 const DIVIDER := Color8(240, 236, 226)
 const PEG := Color8(255, 240, 180)
 const FLAPPER := Color8(176, 40, 54)
+const RAINBOW_RINGS: Array[Color] = [
+	Color8(236, 64, 76), Color8(246, 142, 52), Color8(252, 222, 74),
+	Color8(92, 204, 96), Color8(70, 140, 236), Color8(150, 92, 220),
+]
 
 ## The hats on the wheel right now (the ones not won yet), in wheel order.
-var hats: Array[String] = []
-## How far the wheel has turned (radians); wedge i starts at turn + i * span (0 = pointing right).
+var hats: Array[String] = []:
+	set(value):
+		hats = value
+		_layout()
+## Where each wedge starts (radians from the wheel's zero) and how wide it is: shares of the
+## circle by Hats.weight.
+var starts: Array[float] = []
+var sizes: Array[float] = []
+## How far the wheel has turned (radians); wedge i starts at turn + starts[i] (0 = pointing right).
 var turn := 0.0
 var spinning := false
 var _from := 0.0
@@ -75,8 +87,18 @@ func refresh(spin_key: String) -> void:
 	queue_redraw()
 
 
-func span() -> float:
-	return TAU / maxf(hats.size(), 1.0)
+## Sizes the wedges by each hat's odds.
+func _layout() -> void:
+	starts.clear()
+	sizes.clear()
+	var total := 0.0
+	for id in hats:
+		total += Hats.weight(id)
+	var at := 0.0
+	for id in hats:
+		starts.append(at)
+		sizes.append(TAU * Hats.weight(id) / total)
+		at += sizes[-1]
 
 
 ## Which wedge is under the pointer (at the top) for a given turn.
@@ -84,7 +106,19 @@ func wedge_at(at_turn: float) -> int:
 	if hats.is_empty():
 		return -1
 	var a := fposmod(-PI / 2.0 - at_turn, TAU)
-	return int(a / span()) % hats.size()
+	for i in hats.size():
+		if a < starts[i] + sizes[i]:
+			return i
+	return hats.size() - 1
+
+
+## A random wedge, each as likely as its size (its hat's odds).
+func _pick() -> int:
+	var r := randf() * TAU
+	for i in hats.size():
+		if r < starts[i] + sizes[i]:
+			return i
+	return hats.size() - 1
 
 
 ## Spins to a random hat still on the wheel. False if it can't spin.
@@ -94,10 +128,10 @@ func spin() -> bool:
 	hats = Progress.hats_left()  # the last hat won comes off the wheel now
 	if hats.is_empty():
 		return false
-	var pick := randi() % hats.size()
+	var pick := _pick()
 	# Land with the pointer somewhere inside the picked wedge (not on its edge), after a few turns.
 	var inside := randf_range(0.2, 0.8)
-	var target := -PI / 2.0 - (pick + inside) * span()
+	var target := -PI / 2.0 - (starts[pick] + inside * sizes[pick])
 	var turns := randi_range(4, 6)
 	_from = turn
 	_to = target - TAU * turns
@@ -145,21 +179,28 @@ func _draw() -> void:
 	var n := hats.size()
 	if n == 0:
 		draw_circle(CENTER, RADIUS, Color8(52, 30, 24))
+	var plain := 0  # ordinary wedges so far, for alternating their colors
+	var plain_count := 0
+	for id in hats:
+		if not Hats.get_hat(id).get("flows", false):
+			plain_count += 1
 	for i in n:
-		var a0 := turn + i * span()
-		var points := PackedVector2Array([CENTER])
-		var steps := maxi(4, int(48.0 / n))
-		for s in steps + 1:
-			var a := a0 + span() * s / steps
-			points.append(CENTER + Vector2(cos(a), sin(a)) * RADIUS)
-		var color := WEDGE_COLORS[i % WEDGE_COLORS.size()]
-		if n % WEDGE_COLORS.size() == 1 and i == n - 1 and n > 1:
+		var a0 := turn + starts[i]
+		var lit := _won != "" and hats[i] == _won  # the winner, lit up under the pointer
+		if Hats.get_hat(hats[i]).get("flows", false):
+			# The rare hat's sliver: rainbow rings, red on the outside.
+			for k in RAINBOW_RINGS.size():
+				var outer := RADIUS * (1.0 - k / float(RAINBOW_RINGS.size()))
+				var color := RAINBOW_RINGS[k].lightened(0.4) if lit else RAINBOW_RINGS[k]
+				draw_colored_polygon(_wedge(a0, sizes[i], outer), color)
+			continue
+		var color := WEDGE_COLORS[plain % WEDGE_COLORS.size()]
+		if plain_count % WEDGE_COLORS.size() == 1 and plain == plain_count - 1 and plain_count > 1:
 			color = WEDGE_COLORS[2]  # keep the last wedge from matching the first
-		if _won != "" and hats[i] == _won:
-			color = color.lightened(0.45)  # the winner, lit up under the pointer
-		draw_colored_polygon(points, color)
+		plain += 1
+		draw_colored_polygon(_wedge(a0, sizes[i], RADIUS), color.lightened(0.45) if lit else color)
 	for i in n:
-		var a := turn + i * span()
+		var a := turn + starts[i]
 		draw_line(CENTER, CENTER + Vector2(cos(a), sin(a)) * RADIUS, DIVIDER, 1.0)
 		var peg := (CENTER + Vector2(cos(a), sin(a)) * (RADIUS + 1.5)).round()
 		draw_rect(Rect2(peg - Vector2(1, 1), Vector2(2, 2)), PEG)
@@ -167,8 +208,10 @@ func _draw() -> void:
 	draw_circle(CENTER, 4.0, Color8(255, 205, 117))
 	var atlas: Texture2D = preload("res://assets/sprites/hats.png")
 	for i in n:
-		var a := turn + (i + 0.5) * span()
-		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * 0.7).round()
+		var a := turn + starts[i] + sizes[i] / 2.0
+		# Out toward the rim in a thin wedge, where it has the most room.
+		var reach := 0.7 if sizes[i] > 0.4 else 0.8
+		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * reach).round()
 		# The narrow version, so neighbors don't touch.
 		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.NARROW))
 	# The flapper at the top, kicked aside as it ticks past each wedge.
@@ -176,3 +219,13 @@ func _draw() -> void:
 	var base_y := CENTER.y - RADIUS - 7.0
 	draw_colored_polygon(PackedVector2Array([Vector2(CENTER.x - 4, base_y), Vector2(CENTER.x + 4, base_y), tip]), FLAPPER)
 	draw_rect(Rect2(CENTER.x - 5, base_y - 3, 10, 3), Color8(132, 138, 162))
+
+
+## A wedge of the wheel from angle a0, `size` radians wide, out to `radius`.
+func _wedge(a0: float, size: float, radius: float) -> PackedVector2Array:
+	var points := PackedVector2Array([CENTER])
+	var steps := maxi(3, int(size * 12.0))
+	for s in steps + 1:
+		var a := a0 + size * s / steps
+		points.append(CENTER + Vector2(cos(a), sin(a)) * radius)
+	return points

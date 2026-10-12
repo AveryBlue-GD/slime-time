@@ -12,7 +12,11 @@ Frames are 32x16, one column per hat (its `column` in scripts/hats.gd). The top 
 head goes on pixel (16, 11) of the frame (HEAD below), so a hat reaches about 4 px down the dome.
 Hats are lit from the top-left like everything else, with a dark warm outline.
 
-These ten are placeholders until the real hat list is decided: change a hat's drawing below and
+Hats stay compact: brims stick out only 2-3 px past the head and nothing towers more than about
+7 px above it, so the slime still reads as the star. The rainbow hat (a rainbow arching over the
+head from two little clouds) is the rare one on the hat wheel; the game flows its colors.
+
+These are placeholders until the real hat list is decided: change a hat's drawing below and
 keep HATS in the same order as Hats.LIST.
 """
 import math
@@ -106,7 +110,7 @@ class Hat:
     def ellipse(self, cx, cy, rx, ry, ramp, **kw):
         return self.shape(lambda x, y: ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0, ramp, **kw)
 
-    def band(self, y0: float, y1: float, ramp, extra: float = 1.0):
+    def band(self, y0: float, y1: float, ramp, extra: float = 0.7):
         """A band hugging the dome between rows y0 and y1, `extra` px wider than it on each side:
         what makes a hat sit around the head instead of on it."""
         def inside(x, y):
@@ -127,24 +131,24 @@ class Hat:
 # ---------------------------------------------------------------- the hats
 
 def top_hat(h: Hat):
-    h.ellipse(h.cx, h.Y(1.6), h.rx + 3.5, 2.0 * h.sy, FELT)                       # brim ringing the head
-    h.shape(lambda x, y: abs(x - h.cx) <= h.rx * 0.78 and h.Y(-8) <= y <= h.Y(1.2), FELT)  # crown
+    h.ellipse(h.cx, h.Y(1.6), h.rx + 2.0, 1.8 * h.sy, FELT)                       # brim ringing the head
+    h.shape(lambda x, y: abs(x - h.cx) <= h.rx * 0.72 and h.Y(-6.5) <= y <= h.Y(1.2), FELT)  # crown
     for x in range(W):                                                          # red band
         for y in range(H):
-            if h.get(x, y) in FELT and h.Y(-1.4) <= y + 0.5 <= h.Y(0.6) and abs(x + 0.5 - h.cx) <= h.rx * 0.78:
+            if h.get(x, y) in FELT and h.Y(-1.4) <= y + 0.5 <= h.Y(0.6) and abs(x + 0.5 - h.cx) <= h.rx * 0.72:
                 h.put(x, y, RIBBON[0] if x + 0.5 < h.cx else RIBBON[1])
     bx = round(h.cx + h.rx * 0.35)                                              # gold buckle
     by = round(h.Y(-0.5))
     h.put(bx, by, GOLD[1])
     h.put(bx + 1, by, GOLD[2])
-    for y in range(round(h.Y(-7)), round(h.Y(-2))):                             # sheen down the crown
+    for y in range(round(h.Y(-5.6)), round(h.Y(-2))):                           # sheen down the crown
         h.put(round(h.cx - h.rx * 0.5), y, FELT[0])
     h.outline()
 
 
 def beanie(h: Hat):
-    h.band(h.Y(-4.2), h.Y(1.5), KNIT, extra=1.2)                                # knit dome hugging the head
-    h.ellipse(h.cx, h.Y(-1.0), h.rx + 1.0, 5.2 * h.sy, KNIT)
+    h.band(h.Y(-3.6), h.Y(1.5), KNIT, extra=0.8)                                # knit dome hugging the head
+    h.ellipse(h.cx, h.Y(-0.8), h.rx + 0.6, 4.5 * h.sy, KNIT)
     for x in range(W):                                                          # ribbed cuff
         for y in range(H):
             if h.get(x, y) in KNIT and h.Y(0.4) <= y + 0.5 <= h.Y(3.2):
@@ -153,14 +157,14 @@ def beanie(h: Hat):
         for y in range(H):
             if h.get(x, y) in KNIT and y + 0.5 < h.Y(0.4) and (x + y) % 3 == 0:
                 h.put(x, y, KNIT[2])
-    h.ellipse(h.cx, h.Y(-6.5), 2.4, 2.2, WHITE)                                 # pompom
-    h.put(round(h.cx) - 1, round(h.Y(-7.4)), WHITE[0])
+    h.ellipse(h.cx, h.Y(-5.6), 2.0, 1.8, WHITE)                                 # pompom
+    h.put(round(h.cx) - 1, round(h.Y(-6.3)), WHITE[0])
     h.outline()
 
 
 def party_hat(h: Hat):
-    tip = (h.cx + 1, h.Y(-10.5))
-    base_y, half = h.Y(1.3), h.rx * 0.9
+    tip = (h.cx + 1, h.Y(-8.0))
+    base_y, half = h.Y(1.3), h.rx * 0.8
 
     def cone(x, y):
         if not (tip[1] <= y <= base_y):
@@ -174,68 +178,68 @@ def party_hat(h: Hat):
     for x, y in pts:                                                            # polka dots
         if (x * 7 + y * 5) % 11 == 0:
             h.put(x, y, RED[0])
-    h.band(h.Y(0.4), h.Y(1.8), [WHITE[1], WHITE[2], WHITE[3]], extra=0.8)       # elastic rim round the head
-    h.ellipse(tip[0], tip[1] - 1.0, 1.9, 1.7, [RED[0], RED[0], RED[1], RED[1]])  # pompom
+    h.band(h.Y(0.4), h.Y(1.8), [WHITE[1], WHITE[2], WHITE[3]], extra=0.5)       # elastic rim round the head
+    h.ellipse(tip[0], tip[1] - 0.8, 1.6, 1.4, [RED[0], RED[0], RED[1], RED[1]])  # pompom
     h.outline()
 
 
 def baseball_cap(h: Hat):
-    h.band(h.Y(-3.6), h.Y(1.4), BLUE, extra=1.0)                                # crown hugging the head
-    h.ellipse(h.cx, h.Y(-0.6), h.rx + 1.0, 4.4 * h.sy, BLUE)
+    h.band(h.Y(-3.0), h.Y(1.4), BLUE, extra=0.6)                                # crown hugging the head
+    h.ellipse(h.cx, h.Y(-0.4), h.rx + 0.5, 3.8 * h.sy, BLUE)
     for x in range(W):                                                          # panel seams
         for y in range(H):
             if h.get(x, y) in BLUE and abs(x + 0.5 - h.cx) < 0.6 and y + 0.5 < h.Y(1.0):
                 h.put(x, y, BLUE[3])
-    h.ellipse(h.cx + h.rx + 1.5, h.Y(1.0), 4.2 * h.sx, 1.6, BLUE)               # brim out to the side
+    h.ellipse(h.cx + h.rx + 0.5, h.Y(1.0), 2.8, 1.3, BLUE)                      # short brim out to the side
     for x in range(W):                                                          # stitching on the brim
         y = round(h.Y(1.0))
         if h.get(x, y) in BLUE and x + 0.5 > h.cx + h.rx - 0.5 and x % 2:
             h.put(x, y, WHITE[1])
-    h.put(round(h.cx), round(h.Y(-4.6)), RED[0])                                # top button
+    h.put(round(h.cx), round(h.Y(-4.0)), RED[0])                                # top button
     h.outline()
 
 
 def cowboy_hat(h: Hat):
-    brim = h.ellipse(h.cx, h.Y(1.4), h.rx + 6.0, 2.4 * h.sy, LEATHER)          # wide brim round the head
+    brim = h.ellipse(h.cx, h.Y(1.4), h.rx + 3.0, 2.0 * h.sy, LEATHER)          # brim round the head
     for x, y in brim:                                                           # curled-up edges
-        if abs(x + 0.5 - h.cx) > h.rx + 4.2:
+        if abs(x + 0.5 - h.cx) > h.rx + 1.8:
             h.put(x, y - 1, LEATHER[1])
 
     def crown(x, y):
-        if not (h.Y(-6.5) <= y <= h.Y(1.0)):
+        if not (h.Y(-5.2) <= y <= h.Y(1.0)):
             return False
-        hw = h.rx * 0.8 + (y - h.Y(-6.5)) * 0.12
-        dent = abs(x - h.cx) < 1.2 and y < h.Y(-5.2)                            # the crease on top
+        hw = h.rx * 0.72 + (y - h.Y(-5.2)) * 0.1
+        dent = abs(x - h.cx) < 1.2 and y < h.Y(-4.0)                            # the crease on top
         return abs(x - h.cx) <= hw and not dent
     h.shape(crown, LEATHER)
     for x in range(W):                                                          # band with a silver concho
         for y in range(H):
-            if h.get(x, y) in LEATHER and h.Y(-1.2) <= y + 0.5 <= h.Y(0.4) and abs(x + 0.5 - h.cx) <= h.rx * 0.95:
+            if h.get(x, y) in LEATHER and h.Y(-1.2) <= y + 0.5 <= h.Y(0.4) and abs(x + 0.5 - h.cx) <= h.rx * 0.85:
                 h.put(x, y, LEATHER[3])
     h.put(round(h.cx - h.rx * 0.3), round(h.Y(-0.5)), METAL[1])
     h.outline()
 
 
 def chef_hat(h: Hat):
-    h.band(h.Y(-2.5), h.Y(1.8), WHITE, extra=1.0)                               # pleated band round the head
+    h.band(h.Y(-2.2), h.Y(1.8), WHITE, extra=0.6)                               # pleated band round the head
     for x in range(W):
         for y in range(H):
             if h.get(x, y) in WHITE and x % 2 == 0 and y + 0.5 > h.Y(-2.0):
                 h.put(x, y, WHITE[2])
-    for dx, dy, r in ((-3.6, -5.6, 3.3), (3.6, -5.6, 3.3), (0.0, -7.0, 3.8)):   # puffs on top
-        h.ellipse(h.X(dx), h.Y(dy), r * min(h.sx, 1.15), r * 0.95, WHITE)
+    for dx, dy, r in ((-3.0, -4.4, 2.7), (3.0, -4.4, 2.7), (0.0, -5.6, 3.1)):   # puffs on top
+        h.ellipse(h.X(dx), h.Y(dy), r * min(h.sx, 1.1), r * 0.9, WHITE)
     h.outline()
 
 
 def wizard_hat(h: Hat):
-    h.ellipse(h.cx, h.Y(1.5), h.rx + 4.0, 2.0 * h.sy, PURPLE)                   # brim round the head
-    base_y, half = h.Y(1.0), h.rx * 0.85
+    h.ellipse(h.cx, h.Y(1.5), h.rx + 2.2, 1.8 * h.sy, PURPLE)                   # brim round the head
+    base_y, half = h.Y(1.0), h.rx * 0.78
 
     def cone(x, y):
-        if not (h.Y(-10.5) <= y <= base_y):
+        if not (h.Y(-8.5) <= y <= base_y):
             return False
-        t = (y - h.Y(-10.5)) / (base_y - h.Y(-10.5))
-        lean = (1 - t) ** 2 * 4.5                                               # the tip flops over
+        t = (y - h.Y(-8.5)) / (base_y - h.Y(-8.5))
+        lean = (1 - t) ** 2 * 3.5                                               # the tip flops over
         return abs(x - (h.cx + lean)) <= half * t + 0.5
     pts = h.shape(cone, PURPLE)
     for (x, y) in pts:                                                          # stars
@@ -249,41 +253,42 @@ def wizard_hat(h: Hat):
 
 
 def viking_helmet(h: Hat):
-    h.band(h.Y(-4.0), h.Y(1.8), METAL, extra=1.0)                               # dome helmet over the head
-    h.ellipse(h.cx, h.Y(-0.8), h.rx + 1.0, 4.6 * h.sy, METAL)
+    h.band(h.Y(-3.4), h.Y(1.8), METAL, extra=0.6)                               # dome helmet over the head
+    h.ellipse(h.cx, h.Y(-0.6), h.rx + 0.5, 4.0 * h.sy, METAL)
     for x in range(W):                                                          # rivet band
         y = round(h.Y(0.8))
         if h.get(x, y) in METAL:
             h.put(x, y, METAL[2] if x % 2 else METAL[0])
-    for y in range(round(h.Y(-4.0)), round(h.Y(2.6))):                          # nose guard down the front
+    for y in range(round(h.Y(-3.4)), round(h.Y(2.6))):                          # nose guard down the front
         h.put(round(h.cx), y, METAL[3] if y > round(h.Y(1.0)) else METAL[2])
     for side in (-1, 1):                                                        # horns curving up and out
-        for i in range(7):
-            t = i / 6
-            x = h.cx + side * (h.rx + 0.5 + t * 3.0)
-            y = h.Y(-1.0) - t * t * 6.0
-            col = BONE[0] if i < 3 else BONE[1] if i < 5 else BONE[2]
+        for i in range(6):
+            t = i / 5
+            x = h.cx + side * (h.rx + 0.2 + t * 2.2)
+            y = h.Y(-1.0) - t * t * 4.5
+            col = BONE[0] if i < 2 else BONE[1] if i < 4 else BONE[2]
             h.put(round(x), round(y), col)
-            h.put(round(x), round(y) + 1, BONE[1] if i < 5 else BONE[2])
+            if i < 4:
+                h.put(round(x), round(y) + 1, BONE[1] if i < 3 else BONE[2])
     h.outline()
 
 
 def propeller_cap(h: Hat):
-    h.band(h.Y(-3.6), h.Y(1.4), METAL, extra=1.0)
-    pts = h.ellipse(h.cx, h.Y(-0.6), h.rx + 1.0, 4.4 * h.sy, METAL)
+    h.band(h.Y(-3.0), h.Y(1.4), METAL, extra=0.6)
+    pts = h.ellipse(h.cx, h.Y(-0.4), h.rx + 0.5, 3.8 * h.sy, METAL)
     panels = [RED, YELLOW, BLUE, GREEN]
     for x in range(W):                                                          # colored panels
         for y in range(H):
             if h.get(x, y) in METAL:
-                k = int(((x + 0.5 - h.cx) / (h.rx + 1.0) + 1) * 2)
+                k = int(((x + 0.5 - h.cx) / (h.rx + 0.5) + 1) * 2)
                 ramp = panels[max(0, min(3, k))]
                 h.put(x, y, ramp[0] if y + 0.5 < h.Y(-2.0) else ramp[1])
-    h.ellipse(h.cx - h.rx - 1.0, h.Y(1.0), 2.8 * h.sx, 1.3, BLUE)               # little brim
-    px, py = round(h.cx), round(h.Y(-5.4))                                      # the propeller
+    h.ellipse(h.cx - h.rx - 0.3, h.Y(1.0), 2.2, 1.2, BLUE)                      # little brim
+    px, py = round(h.cx), round(h.Y(-4.6))                                      # the propeller
     h.put(px, py + 1, METAL[2])
-    for dx in range(1, 5):
-        h.put(px - dx, py - (1 if dx > 2 else 0), RED[0] if dx < 3 else RED[1])
-        h.put(px + dx, py + (1 if dx > 2 else 0) - 1, YELLOW[0] if dx < 3 else YELLOW[1])
+    for dx in range(1, 4):
+        h.put(px - dx, py - (1 if dx > 2 else 0), RED[0] if dx < 2 else RED[1])
+        h.put(px + dx, py + (1 if dx > 2 else 0) - 1, YELLOW[0] if dx < 2 else YELLOW[1])
     h.put(px, py, METAL[1])
     h.outline()
 
@@ -291,9 +296,9 @@ def propeller_cap(h: Hat):
 def crown(h: Hat):
     h.band(h.Y(-1.0), h.Y(1.0), VELVET, extra=0.5)                              # velvet inside, showing on top
     def ring(x, y):
-        if not (h.Y(-4.6) <= y <= h.Y(1.6)):
+        if not (h.Y(-4.0) <= y <= h.Y(1.6)):
             return False
-        hw = max(h.dome_width(y), h.rx * 0.7) + 1.2
+        hw = max(h.dome_width(y), h.rx * 0.7) + 0.8
         if abs(x - h.cx) > hw:
             return False
         if y < h.Y(-1.4):                                                       # five points
@@ -313,8 +318,40 @@ def crown(h: Hat):
     h.outline()
 
 
+# The rainbow's bands, outside in; the game turns their hues round so the rainbow flows.
+RAINBOW = [rgb(236, 64, 76), rgb(246, 142, 52), rgb(252, 222, 74), rgb(92, 204, 96), rgb(70, 140, 236),
+           rgb(150, 92, 220)]
+CLOUD = [rgb(255, 255, 255), rgb(240, 242, 250), rgb(214, 218, 234), rgb(176, 182, 206)]
+
+
+def rainbow_hat(h: Hat):
+    # A rainbow arching over the head, its feet in two little clouds resting on the dome's sides.
+    cx, cy = h.cx, h.Y(1.4)
+    ox, oy = h.rx + 0.4, 7.4 * h.sy                                             # outer edge of the arch
+    for x in range(W):
+        for y in range(H):
+            if y + 0.5 > cy:
+                continue
+            u, v = (x + 0.5 - cx) / ox, (y + 0.5 - cy) / oy
+            d = math.sqrt(u * u + v * v)                                       # 1 at the outer edge
+            k = int((1 - d) * oy / 1.0)                                        # 1 px bands
+            if d <= 1.0 and k < len(RAINBOW):
+                h.put(x, y, RAINBOW[k])
+    for side in (-1, 1):                                                        # the clouds
+        fx = cx + side * (ox - 2.4)
+        h.ellipse(fx, h.Y(1.0), 2.6, 1.6, CLOUD)
+        h.ellipse(fx - side * 1.6, h.Y(0.0), 1.6, 1.3, CLOUD)
+    sx, sy = round(cx + ox * 0.45), round(cy - oy - 0.5)                      # a twinkle by the arch
+    for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+        h.put(sx + dx, sy + dy, CLOUD[0] if (dx, dy) == (0, 0) else YELLOW[0])
+    h.outline()
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):                         # the twinkle floats free
+        if h.get(sx + dx, sy + dy) == OUTLINE:
+            h.put(sx + dx, sy + dy, CLEAR)
+
+
 HATS = [top_hat, beanie, party_hat, baseball_cap, cowboy_hat, chef_hat, wizard_hat, viking_helmet,
-        propeller_cap, crown]
+        propeller_cap, crown, rainbow_hat]
 
 
 if __name__ == "__main__":

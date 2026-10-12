@@ -48,6 +48,7 @@ func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null
 	texture = preload("res://assets/sprites/hats.png")
 	region_enabled = true
 	region_rect = Hats.region(hat_id)
+	material = Hats.material_for(hat_id)
 	centered = false
 	offset = -Hats.HEAD  # the frame's head point goes on the top of the slime's head
 	_follow()
