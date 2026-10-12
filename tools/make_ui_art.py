@@ -30,7 +30,9 @@ PAL.update({
     "P": (44, 44, 68, 240),     # panel top light
     "r": (62, 74, 96, 255),     # panel rim (stone stain)
     "q": (26, 28, 44, 190),     # HUD pod body (translucent)
-    "Q": (62, 74, 96, 220),     # HUD pod rim
+    "Q": (62, 74, 96, 235),     # HUD pod rim
+    "O": (10, 10, 20, 235),     # HUD pod dark outline
+    "H": (112, 130, 158, 235),  # HUD pod top highlight
     # Icon shades (tinted in game).
     "1": (215, 215, 215, 255),
     "2": (150, 150, 150, 255),
@@ -102,15 +104,16 @@ PANEL = [
     "..kkkkkkkk..",
 ]
 
+# Dark outline, light rim with a brighter top edge (the same two-step frame the goo boxes have).
 HUD_POD = [
-    ".QQQQQQ.",
-    "QqqqqqqQ",
-    "QqqqqqqQ",
-    "QqqqqqqQ",
-    "QqqqqqqQ",
-    "QqqqqqqQ",
-    "QqqqqqqQ",
-    ".QQQQQQ.",
+    ".OOOOOO.",
+    "OHHHHHHO",
+    "OQqqqqQO",
+    "OQqqqqQO",
+    "OQqqqqQO",
+    "OQqqqqQO",
+    "OQQQQQQO",
+    ".OOOOOO.",
 ]
 
 ICONS = {

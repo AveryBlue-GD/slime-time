@@ -104,10 +104,10 @@ static func panel_style(hud := false) -> StyleBox:
 	box.texture_margin_right = margin
 	box.texture_margin_top = margin
 	box.texture_margin_bottom = margin
-	box.content_margin_left = 3
-	box.content_margin_right = 3
-	box.content_margin_top = 2
-	box.content_margin_bottom = 2
+	box.content_margin_left = 4  # the frame is two px thick: dark outline + light rim (+ highlight on top)
+	box.content_margin_right = 4
+	box.content_margin_top = 3
+	box.content_margin_bottom = 3
 	return box
 
 

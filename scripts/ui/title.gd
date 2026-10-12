@@ -34,8 +34,11 @@ func _ready() -> void:
 
 	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
 	var fresh: bool = Progress.is_fresh_save()
-	enter_button = UIKit.make_button("PLAY" if fresh else "ENTER THE HUB", _play if fresh else _enter, Vector2(120, 13))
-	enter_button.position = Vector2(100, 96)
+	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
+	enter_button = UIKit.make_button("PLAY" if fresh else "ENTER THE HUB", _play if fresh else _enter, Vector2(176, 25))
+	enter_button.add_theme_font_size_override("font_size", 16)
+	UIKit.use_big_font(enter_button, 16)
+	enter_button.position = Vector2(72, 84)
 	add_child(enter_button)
 	enter_button.grab_focus()
 
@@ -44,8 +47,8 @@ func _ready() -> void:
 	tagline.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING * 2)
 	add_child(tagline)
 	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	tagline.offset_top = 120
-	tagline.offset_bottom = 172
+	tagline.offset_top = 124
+	tagline.offset_bottom = 176
 
 
 func _enter() -> void:
