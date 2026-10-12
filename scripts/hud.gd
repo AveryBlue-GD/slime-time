@@ -49,6 +49,15 @@ var _chalice_clock := 0.0
 var choice_buttons: Array[Button] = []
 var _choice_root: Control
 var _skin_text: SkinText
+## Under the result text: globs earned and the level's medals (see show_rewards).
+var rewards_row: HBoxContainer
+var rewards_texts: Array[String] = []
+## Shown on the left while an attempt is played with the slime reserve (ASSIST).
+var assist_pod: Control
+const MEDAL_GOLD := Color8(255, 205, 117)
+const MEDAL_OWNED := Color8(150, 134, 100)
+const MEDAL_OFF := Color8(70, 74, 96)
+const GLOB_TINT := Color8(110, 236, 214)
 
 
 func _ready() -> void:
@@ -86,6 +95,13 @@ func _ready() -> void:
 	coin_label = _make_label()
 	coin_row.add_child(coin_label)
 
+	# The slime reserve tag (hidden unless this attempt is assisted).
+	var assist_row := _make_pod(left_bar)
+	assist_pod = assist_row.get_parent()
+	assist_row.add_child(UIKit.make_icon("drop", GLOB_TINT))
+	assist_row.add_child(UIKit.make_label("ASSIST +%d%%" % roundi(Progress.ASSIST_BONUS * 100.0), 8, GOLD))
+	assist_pod.visible = false
+
 	# Center pod: clock + run time.
 	var time_row := _make_pod(null)
 	time_row.add_child(UIKit.make_icon("clock", UIKit.TEXT))
@@ -121,10 +137,20 @@ func _ready() -> void:
 	_message_panel.add_theme_stylebox_override("panel", UIKit.panel_style())
 	_message_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	message_center.add_child(_message_panel)
+	var message_box := VBoxContainer.new()
+	message_box.add_theme_constant_override("separation", 4)
+	message_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_message_panel.add_child(message_box)
 	message = _make_label(SkinText.ROLE_TITLE)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_message_panel.add_child(message)
+	message_box.add_child(message)
+	rewards_row = HBoxContainer.new()
+	rewards_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	rewards_row.add_theme_constant_override("separation", 6)
+	rewards_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rewards_row.visible = false
+	message_box.add_child(rewards_row)
 	# The panel shows whenever the message does.
 	message.visibility_changed.connect(func() -> void: _message_panel.visible = message.visible)
 	message.visible = false
@@ -234,6 +260,45 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 
 func set_time(seconds: float) -> void:
 	time_label.text = UIKit.format_time(seconds)
+
+
+## The assist tag in the top bar.
+func set_assist(on: bool) -> void:
+	assist_pod.visible = on
+
+
+## Under the result text: the globs this clear paid (when any) and the level's medals, gold for
+## the ones won this run, dim gold for ones won before, dark for the rest. `info` is
+## Progress.record_clear's result plus `owned` (the level's medals in the save) and `coins`
+## (false hides the COINS medal: hard mode). An assisted run says so instead.
+func show_rewards(info: Dictionary) -> void:
+	for child in rewards_row.get_children():
+		child.queue_free()
+	rewards_texts.clear()
+	if info.get("offer", false):
+		_reward_label("ASSIST: +%d%% SLIME, NO MEDALS/GLOBS" % roundi(Progress.ASSIST_BONUS * 100.0), MEDAL_OWNED)
+	elif info.get("assisted", false):
+		_reward_label("ASSIST: NO MEDALS, RECORDS OR GLOBS", MEDAL_OWNED)
+	else:
+		if info.globs > 0:
+			var icon := UIKit.make_icon("glob", GLOB_TINT)
+			rewards_row.add_child(icon)
+			_reward_label("+%d" % info.globs, GLOB_TINT)
+		var names := ["PAR", "CLEAN", "COINS"]
+		for i in (names.size() if info.get("medals_on", true) else 0):
+			if i == 2 and not info.get("coins", true):
+				continue
+			var bit := 1 << i
+			var color := MEDAL_GOLD if info.medals & bit != 0 else (MEDAL_OWNED if info.owned & bit != 0 else MEDAL_OFF)
+			rewards_row.add_child(UIKit.make_icon("medal", color))
+			_reward_label(names[i], color)
+	rewards_row.visible = true
+
+
+func _reward_label(text: String, color: Color) -> void:
+	var l := UIKit.make_label(text, 8, color)
+	rewards_row.add_child(l)
+	rewards_texts.append(text)
 
 
 ## The gold NEW RECORD! banner (big text + the new time) between two sparkling chalices.

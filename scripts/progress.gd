@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--globs=N` sets the glob balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -31,6 +31,49 @@ var tutorial_seen := 0
 var dry_ups := {}
 ## Story level the game scene loads next.
 var current_level := 1
+
+## Save layout version, written to [meta] (a save without it is from before globs and medals).
+const SAVE_VERSION := 2
+## GLOBS: the renewable, cosmetic-only currency (never converted to or from coins). Faucets:
+## a level's first clear, its medals, hard clears and (capped per day) randomizer wins. The only
+## sink so far is the hat wheel.
+const GLOBS_MAX := 99999
+const GLOBS_FIRST_CLEAR := 4
+const GLOBS_MEDAL := 2
+const GLOBS_HARD_CLEAR := 8
+const GLOBS_RANDOM_WIN := 2
+## Randomizer wins that pay globs per UTC day.
+const RANDOM_PAID_PER_DAY := 5
+const SPIN_COST := 12
+const RAINBOW_PITY_MAX := 40
+## Level medals (a bitmask per level and mode): PAR (finish within the level's par time), CLEAN
+## (not one wall splat) and COINS (every coin in the level; story only).
+const MEDAL_PAR := 1
+const MEDAL_CLEAN := 2
+const MEDAL_COINS := 4
+const MEDAL_ALL := 7
+## Slime reserve (ASSIST): after this many dry-ups on one level in a session, the next attempt
+## can be played with a bit more slime (never on hard mode; no medals, records or globs).
+const ASSIST_AFTER := 3
+const ASSIST_BONUS := 0.10
+var globs := 0
+var globs_lifetime := 0
+## Which levels' first-clear globs have been paid (bit n-1 = level n), per mode: a clear played
+## with the assist doesn't pay, so the +4/+8 waits for an unassisted one.
+var clears_paid := 0
+var hard_clears_paid := 0
+## Medals per level (hard mode's under level + HARD_RECORDS): level -> bitmask.
+var medals := {}
+## Hat wheel: spins made in all, and spins since the rainbow hat was last rolled (pity).
+var spins := 0
+var rainbow_pity := 0
+## UTC day number and how many randomizer wins were paid on it.
+var random_pay_day := 0
+var random_paid := 0
+## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
+var assist_level := 0
+## Tests set a day number here instead of reading the clock (-1 = use the clock).
+var day_override := -1
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -143,6 +186,9 @@ func _ready() -> void:
 				coins_found[level] = []
 				for i in Levels.COINS[level - 1]:
 					coins_found[level].append("debug%d" % i)
+		elif arg.begins_with("--globs="):  # this many globs in hand (not saved)
+			saving_enabled = false
+			globs = clampi(arg.trim_prefix("--globs=").to_int(), 0, GLOBS_MAX)
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
@@ -232,6 +278,7 @@ func _read(file: ConfigFile) -> void:
 		upgrades.erase(upgrades.keys()[0])
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = _int(file, "controls", action, DEFAULT_KEYS[action])
+	_read_wallet(file)
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
 	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
 	set_jelly(_bool(file, "skin", "jelly", true))
@@ -239,6 +286,34 @@ func _read(file: ConfigFile) -> void:
 		set_jelly(true)
 		if not is_skin_unlocked(selected_skin):
 			selected_skin = Skins.DEFAULT
+
+
+## Globs, medals and hat-wheel counters. Every key is optional: a save from before them gets
+## zeros (plus a one-time grant of the first-clear globs the player already earned).
+func _read_wallet(file: ConfigFile) -> void:
+	var has_wallet := file.has_section_key("wallet", "globs")
+	globs = clampi(_int(file, "wallet", "globs", 0), 0, GLOBS_MAX)
+	globs_lifetime = clampi(_int(file, "wallet", "globs_lifetime", globs), 0, 100 * GLOBS_MAX)
+	clears_paid = clampi(_int(file, "wallet", "clears_paid", 0), 0, (1 << Levels.COUNT) - 1)
+	hard_clears_paid = clampi(_int(file, "wallet", "hard_clears_paid", 0), 0, (1 << Levels.COUNT) - 1)
+	random_pay_day = maxi(_int(file, "wallet", "random_day", 0), 0)
+	random_paid = clampi(_int(file, "wallet", "random_paid", 0), 0, RANDOM_PAID_PER_DAY)
+	spins = maxi(_int(file, "hats", "spins", 0), 0)
+	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
+	medals = {}
+	for level in range(1, Levels.COUNT + 1):
+		for key in [level, level + HARD_RECORDS]:
+			var mask := clampi(_int(file, "medals", "level_%d" % key, 0), 0, MEDAL_ALL)
+			if mask != 0:
+				medals[key] = mask
+	if not has_wallet and _int(file, "meta", "version", 1) < SAVE_VERSION:
+		# A save from before globs: pay what it already earned, once (the next save writes the
+		# wallet, so this can't happen twice).
+		clears_paid = (1 << levels_cleared) - 1
+		for level in hard_cleared:
+			hard_clears_paid |= 1 << (level - 1)
+		globs = mini(GLOBS_FIRST_CLEAR * levels_cleared + GLOBS_HARD_CLEAR * hard_cleared.size(), GLOBS_MAX)
+		globs_lifetime = globs
 
 
 ## Type-safe save readers: a wrong-typed value (hand-edited or hostile save) gives the default.
@@ -295,6 +370,7 @@ func save_progress() -> void:
 ## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
 func _write() -> ConfigFile:
 	var file := ConfigFile.new()
+	file.set_value("meta", "version", SAVE_VERSION)
 	file.set_value("progress", "levels_cleared", levels_cleared)
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
 	file.set_value("progress", "current_level", current_level)
@@ -320,6 +396,16 @@ func _write() -> ConfigFile:
 		file.set_value("upgrades", id, upgrades[id])
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
+	file.set_value("wallet", "globs", globs)
+	file.set_value("wallet", "globs_lifetime", globs_lifetime)
+	file.set_value("wallet", "clears_paid", clears_paid)
+	file.set_value("wallet", "hard_clears_paid", hard_clears_paid)
+	file.set_value("wallet", "random_day", random_pay_day)
+	file.set_value("wallet", "random_paid", random_paid)
+	file.set_value("hats", "spins", spins)
+	file.set_value("hats", "rainbow_pity", rainbow_pity)
+	for key: int in medals:
+		file.set_value("medals", "level_%d" % key, medals[key])
 	return file
 
 
@@ -394,11 +480,135 @@ func start_story(level: int) -> void:
 	current_level = clampi(level, 1, highest_unlocked)
 
 
-## Records a randomizer win (saved). The maze stays the same until the player picks NEW MAZE.
-func complete_random() -> void:
+## Records a randomizer win (saved) and pays its globs (capped per UTC day; none while the
+## assist was on). Returns the globs paid. The maze stays the same until the player picks NEW MAZE.
+func complete_random(assisted := false) -> int:
 	randoms_cleared += 1
 	randoms_won += 1
+	var paid := 0
+	if not assisted:
+		paid = random_globs_due()
+		if utc_day() != random_pay_day:  # a new day: the cap starts over
+			random_pay_day = utc_day()
+			random_paid = 0
+		if paid > 0:
+			random_paid += 1
+		add_globs(paid, false)
 	save_progress()
+	return paid
+
+
+# ---------------------------------------------------------------- globs and medals
+
+## Today as a UTC day number (days since 1970).
+func utc_day() -> int:
+	return day_override if day_override >= 0 else int(Time.get_unix_time_from_system() / 86400.0)
+
+
+## What a randomizer win would pay right now (0 once today's cap of paid wins is used).
+func random_globs_due() -> int:
+	if utc_day() != random_pay_day:
+		return GLOBS_RANDOM_WIN
+	return GLOBS_RANDOM_WIN if random_paid < RANDOM_PAID_PER_DAY else 0
+
+
+## Adds globs (kept within 0-99,999; the amount actually added is returned). Saves unless told not to.
+func add_globs(amount: int, save := true) -> int:
+	var before := globs
+	globs = clampi(globs + amount, 0, GLOBS_MAX)
+	var added := globs - before
+	if added > 0:
+		globs_lifetime += added
+	if save and added != 0:
+		save_progress()
+	return added
+
+
+func medal_key(level: int) -> int:
+	return _record_key(level)
+
+
+## The medals won on `level` in the current mode (a MEDAL_* bit set).
+func medals_for(level: int) -> int:
+	return int(medals.get(medal_key(level), 0))
+
+
+static func medal_count(mask: int) -> int:
+	return int(mask & MEDAL_PAR != 0) + int(mask & MEDAL_CLEAN != 0) + int(mask & MEDAL_COINS != 0)
+
+
+## Which medals a run earned (not saved anywhere): within `par` seconds, no wall splat, and (story
+## only) every coin of the level.
+func medals_earned(run_time: float, par: float, splats: int, all_coins: bool) -> int:
+	var mask := 0
+	if run_time <= par:
+		mask |= MEDAL_PAR
+	if splats == 0:
+		mask |= MEDAL_CLEAN
+	if all_coins and not hard_mode:
+		mask |= MEDAL_COINS
+	return mask
+
+
+## Pays a cleared story level: its first-clear globs (+4, or +8 on hard mode) and +2 per medal won
+## for the first time, then saves. A clear played with the slime reserve pays nothing and keeps
+## the first-clear bonus waiting for an unassisted clear. Returns {globs, first, medals (earned
+## this run), new_medals, assisted}.
+func record_clear(level: int, run_time: float, par: float, splats: int, all_coins: bool, assisted := false) -> Dictionary:
+	var result := {globs = 0, first = false, medals = 0, new_medals = 0, assisted = assisted}
+	if assisted:
+		return result
+	var bit := 1 << (level - 1)
+	var paid: int = hard_clears_paid if hard_mode else clears_paid
+	if paid & bit == 0:
+		result.first = true
+		result.globs += GLOBS_HARD_CLEAR if hard_mode else GLOBS_FIRST_CLEAR
+		if hard_mode:
+			hard_clears_paid |= bit
+		else:
+			clears_paid |= bit
+	var earned := medals_earned(run_time, par, splats, all_coins)
+	var fresh := earned & ~medals_for(level)
+	result.medals = earned
+	result.new_medals = fresh
+	result.globs += GLOBS_MEDAL * medal_count(fresh)
+	if fresh != 0:
+		medals[medal_key(level)] = medals_for(level) | fresh
+	add_globs(result.globs, false)
+	save_progress()
+	return result
+
+
+## Medals won across the story in the current mode (for the hub / level select).
+func medals_total() -> int:
+	var total := 0
+	for level in range(1, Levels.COUNT + 1):
+		total += medal_count(medals_for(level))
+	return total
+
+
+# ---------------------------------------------------------------- slime reserve (assist)
+
+## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups on this story level since
+## it was last cleared (this session), and never on hard mode.
+func assist_offered(for_level: int) -> bool:
+	return not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
+			and int(dry_ups.get(for_level, 0)) >= ASSIST_AFTER
+
+
+## Chooses to play `for_level`'s next attempt with the reserve. False if it isn't on offer.
+func accept_assist(for_level: int) -> bool:
+	if not assist_offered(for_level):
+		return false
+	assist_level = for_level
+	return true
+
+
+## True (once) if the attempt now starting was chosen to be an assisted one.
+func take_assist(for_level: int) -> bool:
+	var on := assist_level == for_level and assist_offered(for_level)
+	assist_level = 0
+	return on
 
 
 func start_random() -> void:
@@ -512,10 +722,35 @@ func hats_left() -> Array[String]:
 	return left
 
 
-## Whether the hat wheel can be spun right now. Spins will cost a currency later; until then
-## only dev mode can spin (as often as it likes).
+## Whether the hat wheel can be spun right now: dev mode always (free); otherwise only once hats
+## are out (Hats.available), with a hat left to win and the first spin or 12 globs to pay for it.
 func can_spin_hats() -> bool:
-	return dev_tools and not hats_left().is_empty()
+	if hats_left().is_empty():
+		return false
+	if dev_tools:
+		return true
+	return Hats.available and spin_cost() <= globs
+
+
+## What the next spin costs: nothing in dev mode and for the very first spin, else SPIN_COST.
+func spin_cost() -> int:
+	return 0 if dev_tools or spins == 0 else SPIN_COST
+
+
+## One whole spin, done before the wheel starts turning: picks the hat (the rare rainbow hat gets
+## more likely with every spin that misses it), takes the globs, wins the hat and saves, all
+## together, so closing the game mid-spin can't lose a payment or a prize. `roll` (0-1) picks
+## the hat; leave it -1 for a random one. Returns the hat's id, or "" if it can't spin.
+func spin_hat(roll := -1.0) -> String:
+	if not can_spin_hats():
+		return ""
+	var left := hats_left()
+	var pick := Hats.pick(left, rainbow_pity, randf() if roll < 0.0 else roll)
+	globs -= spin_cost()
+	spins += 1
+	rainbow_pity = 0 if Hats.get_hat(pick).get("flows", false) else mini(rainbow_pity + 1, RAINBOW_PITY_MAX)
+	win_hat(pick)  # saves everything above too
+	return pick
 
 
 ## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
@@ -628,6 +863,16 @@ func reset_progress() -> void:
 	skin_override = ""
 	tutorial_seen = 0
 	dry_ups = {}
+	globs = 0
+	globs_lifetime = 0
+	clears_paid = 0
+	hard_clears_paid = 0
+	medals = {}
+	spins = 0
+	rainbow_pity = 0
+	random_pay_day = 0
+	random_paid = 0
+	assist_level = 0
 	save_progress()
 
 

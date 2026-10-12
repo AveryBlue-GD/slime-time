@@ -4,9 +4,11 @@ extends Control
 ## The hat wheel, opened at the prize wheel in the hub: a big wheel with a wedge for every hat
 ## you don't have yet, each showing its hat; a wedge's size is its odds (Hats.weight), so the rare
 ## rainbow hat gets a thin rainbow-striped sliver. A spin whirls it round (the flapper ticking on each
-## wedge it passes), slows down and lands on a random hat: that hat is won (Progress.win_hat; the
-## slime puts it on) and comes off the wheel, so the next spin is only between the hats still
-## missing. Spins will cost a currency later; for now only dev mode can spin (Progress.can_spin_hats).
+## wedge it passes), slows down and lands on a random hat. The spin is settled before the wheel
+## turns (Progress.spin_hat picks the hat, charges 12 globs - the first spin is free, dev mode
+## never pays - and wins it, all saved at once); the wheel just plays out where it lands. A won
+## hat comes off the wheel, so the next spin is only between the hats still missing.
+## The wheel needs Hats.available or dev mode (Progress.can_spin_hats).
 ## The hub opens and closes it, and passes on the spin key (`spin`).
 
 signal landed(hat_id: String)
@@ -44,11 +46,14 @@ var _from := 0.0
 var _to := 0.0
 var _t := 0.0
 var _won := ""
+var _target := ""
 var _last_wedge := -1
 var _kick := 0.0
 var title: Label
 var result: Label
 var hint: Label
+var balance: Label
+var _balance_icon: TextureRect
 
 
 func _ready() -> void:
@@ -59,6 +64,15 @@ func _ready() -> void:
 	title = _label("HAT WHEEL", 8, UIKit.GOLD, 12)
 	result = _label("", 8, UIKit.TEXT, 146)
 	hint = _label("", 8, UIKit.TEXT_DIM, 157)
+	# The glob balance, top right of the panel.
+	balance = UIKit.make_label("", 8, Color8(110, 236, 214))
+	balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	balance.position = Vector2(76 + 168 - 44, 12)
+	balance.size = Vector2(32, 10)
+	add_child(balance)
+	_balance_icon = UIKit.make_icon("glob", Color8(110, 236, 214))
+	_balance_icon.position = Vector2(76 + 168 - 11, 12)
+	add_child(_balance_icon)
 
 
 func _label(text: String, size: int, color: Color, top: int) -> Label:
@@ -75,16 +89,31 @@ func _label(text: String, size: int, color: Color, top: int) -> Label:
 func refresh(spin_key: String) -> void:
 	if _won == "":
 		hats = Progress.hats_left()
+	balance.text = str(Progress.globs)
 	if Progress.hats_left().is_empty() and _won == "":
 		result.text = "EVERY HAT WON!"
 		hint.text = "%s TO CLOSE" % spin_key
 	elif _won != "":
 		result.text = "YOU WON THE %s!" % Hats.display_name(_won)
-		hint.text = "%s SPIN AGAIN - ESC CLOSE" % spin_key if Progress.can_spin_hats() else "ESC TO CLOSE"
+		hint.text = "%s SPIN AGAIN%s - ESC" % [spin_key, _price()] if Progress.can_spin_hats() else _cant_spin(spin_key)
 	else:
 		result.text = "%d HAT%s TO WIN" % [hats.size(), "" if hats.size() == 1 else "S"]
-		hint.text = "%s TO SPIN - ESC CLOSE" % spin_key if Progress.can_spin_hats() else "SPINS COMING SOON"
+		hint.text = "%s TO SPIN%s - ESC" % [spin_key, _price()] if Progress.can_spin_hats() else _cant_spin(spin_key)
 	queue_redraw()
+
+
+## " (FREE)" or " (12 GLOBS)" for the hint line.
+func _price() -> String:
+	var cost: int = Progress.spin_cost()
+	return " (FREE)" if cost == 0 else " (%d GLOBS)" % cost
+
+
+func _cant_spin(spin_key: String) -> String:
+	if Progress.hats_left().is_empty():
+		return "ESC TO CLOSE"
+	if not Hats.available and not Progress.dev_tools:
+		return "SPINS COMING SOON"
+	return "NEED %d GLOBS - ESC" % Progress.spin_cost()
 
 
 ## Sizes the wedges by each hat's odds.
@@ -93,11 +122,11 @@ func _layout() -> void:
 	sizes.clear()
 	var total := 0.0
 	for id in hats:
-		total += Hats.weight(id)
+		total += Hats.weight(id, Progress.rainbow_pity)
 	var at := 0.0
 	for id in hats:
 		starts.append(at)
-		sizes.append(TAU * Hats.weight(id) / total)
+		sizes.append(TAU * Hats.weight(id, Progress.rainbow_pity) / total)
 		at += sizes[-1]
 
 
@@ -112,23 +141,19 @@ func wedge_at(at_turn: float) -> int:
 	return hats.size() - 1
 
 
-## A random wedge, each as likely as its size (its hat's odds).
-func _pick() -> int:
-	var r := randf() * TAU
-	for i in hats.size():
-		if r < starts[i] + sizes[i]:
-			return i
-	return hats.size() - 1
-
-
 ## Spins to a random hat still on the wheel. False if it can't spin.
 func spin() -> bool:
 	if spinning or not Progress.can_spin_hats():
 		return false
-	hats = Progress.hats_left()  # the last hat won comes off the wheel now
+	hats = Progress.hats_left()  # the last hat won comes off the wheel now (wedges sized by today's odds)
 	if hats.is_empty():
 		return false
-	var pick := _pick()
+	# Settle it all first: the hat is picked, paid for, won and saved before anything turns.
+	_target = Progress.spin_hat()
+	if _target == "":
+		return false
+	var pick := hats.find(_target)
+	balance.text = str(Progress.globs)
 	# Land with the pointer somewhere inside the picked wedge (not on its edge), after a few turns.
 	var inside := randf_range(0.2, 0.8)
 	var target := -PI / 2.0 - (starts[pick] + inside * sizes[pick])
@@ -163,8 +188,7 @@ func _process(delta: float) -> void:
 	if _t >= 1.0:
 		spinning = false
 		turn = fposmod(turn, TAU)
-		_won = hats[wedge_at(turn)]
-		Progress.win_hat(_won)
+		_won = _target
 		var sfx := get_node_or_null("/root/Sfx")
 		if sfx:
 			sfx.play("unlock", -4.0)

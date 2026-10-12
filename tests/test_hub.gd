@@ -233,6 +233,7 @@ func _initialize() -> void:
 		"the hat is y-sorted with the slime (behind the wheel when the slime is)")
 	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.
 	var wheel = hub.hat_wheel
+	progress.rainbow_pity = 0  # (the three spins above missed it: pity would fatten its wedge)
 	var saved_hats: Array[String] = wheel.hats.duplicate()
 	wheel.hats = Hats.ids()
 	var rare: int = wheel.hats.find("rainbow")
@@ -240,7 +241,7 @@ func _initialize() -> void:
 	var rainbow_picks := 0
 	var top_hat_picks := 0
 	for i in 4000:
-		var pick: int = wheel._pick()
+		var pick: int = wheel.hats.find(Hats.pick(wheel.hats, 0, randf()))
 		rainbow_picks += int(pick == rare)
 		top_hat_picks += int(pick == 0)
 	_check(rainbow_picks > 0 and rainbow_picks < top_hat_picks * 0.5, "the rainbow hat comes up far less often (%d vs %d for the top hat)" % [rainbow_picks, top_hat_picks])

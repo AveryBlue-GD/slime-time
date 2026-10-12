@@ -9,7 +9,8 @@ extends Node2D
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
 ## - prize wheel: HAT WHEEL: spin for a random hat you don't have yet (won hats come off the
-##   wheel); spins will cost a currency later, so for now only dev mode can spin
+##   wheel); a spin costs 12 globs (the first is free), but while Hats.available is false only
+##   dev mode can use it. The top-left pod shows the glob balance and medals won.
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
 ## In the middle stands a wheel on a stick. Hit it (the interact key, F, next to it, or leap into
@@ -109,6 +110,10 @@ var board_total: Label
 var board_hint: Label
 ## The hat wheel panel (dev mode for now).
 var hat_wheel: HatWheel
+## Top-left pod: glob balance and medal count.
+var glob_pod: PanelContainer
+var glob_label: Label
+var medal_label: Label
 var _touch_controls: CanvasLayer
 var _time := 0.0
 
@@ -327,15 +332,42 @@ func _build_ui() -> void:
 	row.add_child(prompt_key)
 	prompt.visible = false
 	_build_coin_board(root)
+	_build_glob_pod(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
 	hat_wheel.landed.connect(func(_id: String) -> void:
 		_put_on_hat()
+		_refresh_globs()
 		hat_wheel.refresh(_use_key()))
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
+
+
+## A small framed pod at the top left with the glob balance (the cosmetic currency; the hat
+## wheel spends it) and the medals won so far.
+func _build_glob_pod(root: Control) -> void:
+	glob_pod = PanelContainer.new()
+	glob_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
+	glob_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(glob_pod)
+	glob_pod.position = Vector2(3, 3)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	glob_pod.add_child(row)
+	row.add_child(UIKit.make_icon("glob", Color8(110, 236, 214)))
+	glob_label = UIKit.make_label("", 8, Color8(110, 236, 214))
+	row.add_child(glob_label)
+	row.add_child(UIKit.make_icon("medal", UIKit.GOLD))
+	medal_label = UIKit.make_label("", 8, UIKit.GOLD)
+	row.add_child(medal_label)
+	_refresh_globs()
+
+
+func _refresh_globs() -> void:
+	glob_label.text = str(Progress.globs)
+	medal_label.text = "%d/%d" % [Progress.medals_total(), Levels.COUNT * 3]
 
 
 ## The coin bag's board: every story level's coins found out of its total (a gold check once it's
@@ -669,7 +701,7 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
-	elif near.id == "wheel" and not Progress.dev_tools:
+	elif near.id == "wheel" and not (Progress.dev_tools or Hats.available):
 		prompt_key.text = "COMING SOON"
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
@@ -706,7 +738,7 @@ func _use(station: Dictionary) -> void:
 			else:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":
-			if Progress.dev_tools:  # spins will cost a currency later; for now, dev mode only
+			if Progress.dev_tools or Hats.available:  # hats are placeholders: dev mode only until released
 				open_hat_wheel()
 			else:
 				_deny("COMING SOON")

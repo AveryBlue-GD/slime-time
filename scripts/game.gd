@@ -123,6 +123,10 @@ signal level_finished(won: bool)
 ## Non-zero: play a randomizer maze from this seed instead of a story level.
 @export var random_seed := 0
 
+## Par = the solution path at the slime's base speed x PAR_SLACK, plus PAR_EXTRA seconds.
+const PAR_SLACK := 1.35
+const PAR_EXTRA := 1.0
+
 ## Percent of slime used per tile glided; set per maze so a perfect run uses its target.
 var slime_cost_per_tile := 1.0
 var slime_remaining := 100.0
@@ -162,6 +166,14 @@ var rainbow := false
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
+## Wall splats this run (the CLEAN medal needs none), the par time for the PAR medal (seconds;
+## the solution path at the base gliding speed plus slack, so speed upgrades don't move it),
+## whether this attempt is played with the slime reserve (ASSIST: no medals, records or globs),
+## and what the win paid (Progress.record_clear's result).
+var splats := 0
+var par_time := 0.0
+var assisted := false
+var reward := {}
 ## True once this maze has been won (R then replays it rather than moving on).
 var won := false
 var shake_left := 0.0
@@ -231,7 +243,13 @@ func _ready() -> void:
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	par_time = path_tiles * TILE / slime.max_speed * PAR_SLACK + PAR_EXTRA  # before upgrades change the speed
 	_apply_upgrades()
+	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
+	if progress and not is_random() and progress.take_assist(level):
+		assisted = true
+		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
+		hud.set_assist(true)
 
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
@@ -845,6 +863,7 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall:
+		splats += 1
 		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
 		shake_left = SHAKE_TIME
@@ -1026,14 +1045,29 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
-		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time)
+		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED %d" % random_seed
+		if progress and _is_running_scene():
+			var paid: int = progress.complete_random()
+			if paid > 0:
+				reward = {globs = paid, medals = 0, owned = 0, medals_on = false}
+				hud.show_rewards(reward)
 		_finish(true, random_text, END_DELAY)
 		return
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
 	# Records: a first clear just sets the record; only beating an existing one celebrates.
 	var best: float = progress.best_time(level) if progress else -1.0
 	text += "\nTIME " + UIKit.format_time(run_time)
-	if best >= 0.0 and run_time < best:
+	if progress and _is_running_scene():
+		var all_coins: bool = coins_here > 0 and progress.coins_found_in(level) >= coins_here
+		reward = progress.record_clear(level, run_time, par_time, splats, all_coins, assisted)
+		reward.owned = progress.medals_for(level)
+		reward.coins = not hard_mode
+		hud.show_rewards(reward)
+		if reward.globs > 0:
+			get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
+	if assisted:
+		pass  # no record to beat or show
+	elif best >= 0.0 and run_time < best:
 		hud.show_record(run_time)
 		get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx("unlock"))
 	elif best >= 0.0:
@@ -1094,10 +1128,9 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if is_random():
-			progress.complete_random()
-		else:
-			progress.record_time(level, run_time)
+		if not is_random():
+			if not assisted:
+				progress.record_time(level, run_time)
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
 	if _is_running_scene() and not _leaving():
@@ -1110,6 +1143,10 @@ func _offer_retry() -> void:
 	# RESTART has the focus: one press of SPACE / Enter / R tries the same maze again.
 	if is_random():
 		hud.show_choices([["RESTART", retry], ["NEW MAZE", play_next], ["UPGRADES", go_to_upgrades]], 0)
+	elif progress and progress.assist_offered(level):
+		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
+		hud.show_choices([["RESTART", retry], ["ASSIST", retry_assisted], ["UPGRADES", go_to_upgrades]], 0)
+		hud.show_rewards({assisted = false, offer = true})
 	else:
 		hud.show_choices([["RESTART", retry], ["UPGRADES", go_to_upgrades]], 0)
 
@@ -1117,6 +1154,14 @@ func _offer_retry() -> void:
 ## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).
 func retry() -> void:
 	get_tree().reload_current_scene()
+
+
+## Tries again with the slime reserve: a bit more slime, but no medals, records or globs.
+func retry_assisted() -> void:
+	if progress and progress.accept_assist(level):
+		get_tree().reload_current_scene()
+	else:
+		retry()
 
 
 func go_to_upgrades() -> void:
