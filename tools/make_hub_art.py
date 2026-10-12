@@ -1,17 +1,23 @@
-"""Generates the hub room's station sprites (no dependencies): assets/sprites/hub/*.png.
+"""Generates the hub's art (no dependencies): assets/sprites/hub/*.png.
 
 Run from the project root:  python tools/make_hub_art.py
 
-The hub is the slime's room (the title screen): each station is an object you glide up to.
-Frames sit side by side in each PNG. Goo is drawn in the slime sheet's goo shades (H/l/m/n/D/G
-in make_placeholder_art.PAL), so the skin shader recolors it to the equipped skin.
-- door.png      26x36, 1 frame : stone archway into the dark, goo dripping over it (STORY)
-- portal.png    28x36, 6 frames: a stone ring with a swirling vortex inside (RANDOMIZER)
-- wardrobe.png  26x36, 1 frame : a wooden wardrobe with a mirror, a top hat on top (SKINS & HATS)
-- cauldron.png  26x24, 4 frames: an iron cauldron of bubbling goo, coins glinting (UPGRADES)
-- wheel.png     30x36, 1 frame : a prize wheel on a stand with hat wedges (HAT WHEEL, coming soon)
-- signpost.png  20x30, 1 frame : a wooden post with a gear on it (SETTINGS)
-- hatch.png     26x16, 1 frame : a trapdoor in the floor with a ladder going down (QUIT)
+The hub is the slime's room (the title screen): a slime-shaped room with stations evenly spaced
+around its rim, all facing the center, and a wheel on a stick in the middle that turns the room
+(like turning the camera in Don't Starve). So every station has three views, one per row of its
+sheet: front (seen from across the room: the station at the top), side (drawn facing right; the
+game mirrors it for the other side) and back (the stations nearest you). Frames run left to right.
+Goo is drawn in the slime sheet's goo shades (H/l/m/n/D/G in make_placeholder_art.PAL), so the
+skin shader recolors it to the equipped skin; stone stays off the dried-crust greys.
+- door.png      26x36 x1 : STORY: an open archway into the dark / a stone pillar / a planked door
+- portal.png    28x36 x6 : RANDOMIZER: a swirling vortex in a stone ring / the ring edge-on / its dim back
+- wardrobe.png  26x36 x1 : SKINS & HATS: a wardrobe with a mirror and a top hat / its side / its back
+- cauldron.png  26x24 x4 : UPGRADES: a cauldron of bubbling goo (round: the same from every side)
+- wheel.png     30x36 x1 : HAT WHEEL (coming soon): a prize wheel / edge-on / its wooden back
+- signpost.png  20x30 x1 : SETTINGS: a gear on a post / edge-on / from behind
+- hatch.png     26x16 x1 : QUIT: a trapdoor in the floor (flat: the same from every side)
+- rotor.png     24x34 x4 : the wheel on a stick in the middle, spinning
+- room.png     320x180   : the room: a slime-shaped blob with a glossy goo rim, drips, jelly floor tiles
 """
 import math
 import random
@@ -271,14 +277,303 @@ def hatch() -> list:
     return [cv.px]
 
 
-def save(name: str, frames: list) -> None:
-    rows = [[px for frame in frames for px in frame[y]] for y in range(len(frames[0]))]
+def door_side() -> list:
+    cv = Canvas(26, 36)
+    for y in range(4, 36):  # a stone pillar seen edge-on, rounded top
+        for x in range(9, 17):
+            cv.put(x, y, STONE[2] if x < 12 else STONE[1])
+            if y % 4 == 0:
+                cv.put(x, y, STONE[0])
+    cv.rect(10, 2, 6, 2, STONE[2])
+    drips(cv, 9, 16, 4, random.Random(5), 3)
+    cv.outline()
+    return [cv.px]
+
+
+def door_back() -> list:
+    cv = Canvas(26, 36)
+    front = door()[0]
+    for y in range(36):
+        for x in range(26):
+            cv.put(x, y, front[y][x])
+    for y in range(36):  # the opening, seen from behind: a closed plank door
+        for x in range(26):
+            u = (x + 0.5 - 13) / 9
+            top = 15 - 9 * math.sqrt(max(0.0, 1 - u * u))
+            if abs(u) <= 1 and y >= top and y < 35:
+                cv.put(x, y, WOOD[2] if (x - 4) % 4 else WOOD[0])
+                if y in (20, 29):
+                    cv.put(x, y, IRON[1])
+    cv.outline()
+    return [cv.px]
+
+
+def portal_side() -> list:
+    frames = []
+    for f in range(6):
+        cv = Canvas(28, 36)
+        cv.ellipse(14, 17, 4, 16.5, lambda x, y, u, v: STONE[2] if u < 0 else STONE[1])
+        glow = [rgb(84, 40, 150), rgb(140, 84, 220), rgb(214, 180, 255)]
+        for y in range(3, 31):  # a sliver of the vortex on the side facing the center
+            cv.put(18, y, glow[(y + f) % 3])
+        cv.rect(10, 33, 8, 3, STONE[0])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
+
+
+def portal_back() -> list:
+    frames = []
+    dim = [rgb(22, 12, 36), rgb(40, 22, 66), rgb(60, 36, 96)]
+    for f in range(6):
+        cv = Canvas(28, 36)
+        cv.ellipse(14, 17, 13, 16.5, lambda x, y, u, v: STONE[1] if (u * -0.6 + v * -0.8) > 0.2 else STONE[0])
+
+        def back(x, y, u, v):
+            a = math.atan2(v, u) - f * (math.pi / 3) * 0.5
+            return dim[int((math.sin(a * 3) + 1) / 2 * 2.99)]
+        cv.ellipse(14, 17, 9.5, 13, back)
+        cv.rect(4, 33, 20, 3, STONE[0])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
+
+
+def wardrobe_side() -> list:
+    cv = Canvas(26, 36)
+    cv.rect(7, 8, 12, 27, WOOD[1])
+    cv.rect(7, 8, 12, 2, WOOD[3])
+    cv.rect(7, 33, 12, 2, WOOD[0])
+    cv.rect(9, 12, 8, 19, WOOD[2])  # side panel
+    cv.rect(18, 8, 1, 27, WOOD[0])   # the front edge (facing the center)
+    cv.put(19, 22, GOLD[2])          # a knob peeking round the front
+    cv.rect(8, 35, 2, 1, WOOD[0])
+    cv.rect(16, 35, 2, 1, WOOD[0])
+    cv.rect(9, 6, 9, 2, IRON[1])     # the top hat, side on
+    cv.rect(11, 0, 5, 6, IRON[1])
+    cv.rect(11, 4, 5, 1, rgb(168, 36, 52))
+    cv.outline()
+    return [cv.px]
+
+
+def wardrobe_back() -> list:
+    cv = Canvas(26, 36)
+    cv.rect(1, 8, 24, 27, WOOD[1])
+    cv.rect(1, 8, 24, 2, WOOD[2])
+    for x in range(4, 24, 5):        # back planks
+        cv.rect(x, 10, 1, 23, WOOD[0])
+    cv.rect(1, 33, 24, 2, WOOD[0])
+    cv.rect(2, 35, 2, 1, WOOD[0])
+    cv.rect(22, 35, 2, 1, WOOD[0])
+    cv.rect(2, 6, 9, 2, IRON[1])     # the hat from behind
+    cv.rect(4, 0, 5, 6, IRON[1])
+    cv.rect(4, 4, 5, 1, rgb(168, 36, 52))
+    cv.outline()
+    return [cv.px]
+
+
+def wheel_side() -> list:
+    cv = Canvas(30, 36)
+    cv.rect(13, 26, 4, 9, WOOD[1])
+    cv.rect(11, 33, 8, 3, WOOD[0])
+    stripes = [rgb(200, 60, 70), rgb(236, 200, 80), rgb(60, 170, 170), rgb(140, 80, 190), rgb(230, 130, 50), rgb(70, 110, 200)]
+    for y in range(2, 27):           # the wheel edge-on: a thin colored rim
+        cv.put(14, y, WOOD[2])
+        cv.put(15, y, stripes[(y // 4) % 6])
+    cv.rect(14, 0, 3, 2, GOLD[2])
+    cv.outline()
+    return [cv.px]
+
+
+def wheel_back() -> list:
+    cv = Canvas(30, 36)
+    cv.rect(13, 26, 4, 9, WOOD[1])
+    cv.rect(8, 33, 14, 3, WOOD[0])
+    cv.ellipse(15, 14, 13, 13, lambda x, y, u, v: WOOD[1] if math.hypot(u, v) < 0.86 else WOOD[2])
+    cv.rect(14, 2, 2, 24, WOOD[0])   # cross braces
+    cv.rect(3, 13, 24, 2, WOOD[0])
+    cv.ellipse(15, 14, 2.5, 2.5, IRON[2])
+    cv.outline()
+    return [cv.px]
+
+
+def signpost_side() -> list:
+    cv = Canvas(20, 30)
+    cv.rect(9, 12, 3, 17, WOOD[1])
+    cv.rect(7, 28, 7, 2, STONE[1])
+    for y in range(1, 15):           # the gear edge-on, teeth sticking out
+        cv.put(12, y, IRON[2])
+        cv.put(13, y, IRON[1])
+        if y % 3 == 0:
+            cv.put(14, y, IRON[1])
+    cv.outline()
+    return [cv.px]
+
+
+def signpost_back() -> list:
+    frames = signpost()
+    cv = Canvas(20, 30)
+    for y in range(30):
+        for x in range(20):
+            p = frames[0][y][x]
+            # the gear from behind: no highlight, darker
+            cv.put(x, y, IRON[1] if p in (IRON[2], IRON[3]) else p)
+    return [cv.px]
+
+
+def rotor() -> list:
+    """The wheel on a stick in the middle of the room: a ship's wheel on a post, spinning."""
+    frames = []
+    for f in range(4):
+        cv = Canvas(24, 34)
+        cv.rect(11, 18, 3, 14, WOOD[1])   # post
+        cv.rect(11, 18, 1, 14, WOOD[2])
+        cv.rect(7, 31, 11, 3, GOO[2])     # goo pooled at its foot
+        cv.rect(8, 31, 9, 1, GOO[4])
+        base = f * (math.pi / 4) / 4
+        cx, cy = 12, 11
+        for s in range(8):                # spokes with handles
+            a = base + s * math.pi / 4
+            for r in range(3, 11):
+                cv.put(round(cx + math.cos(a) * r), round(cy + math.sin(a) * r), WOOD[2] if r < 9 else WOOD[3])
+        for a10 in range(0, 360, 6):      # the rim
+            a = math.radians(a10)
+            cv.put(round(cx + math.cos(a) * 7), round(cy + math.sin(a) * 7), WOOD[1])
+        cv.ellipse(cx + 0.5, cy + 0.5, 2.2, 2.2, GOLD[1])
+        cv.put(cx, cy, GOLD[2])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
+
+
+def room() -> list:
+    """The room, seen at a slant, shaped like a giant slime: a dome-backed blob whose thick rim is
+    glossy goo (lit on the back-left like the slime's shine, a wavy inner edge, drips running off
+    the front), the slime's two big eyes on the back rim, and a floor of glossy jelly-cube tiles.
+    All in goo shades, so it takes the skin's color."""
+    W, H = 320, 180
+    cx, cy = 160.0, 98.0
+    RIM = 11.0
+    cv = Canvas(W, H)
+    rng = random.Random(11)
+
+    def radii(a):
+        top = math.sin(a) < 0
+        return 154.0, (84.0 if top else 72.0)  # a taller dome at the back, flatter at the front
+
+    def dist(x, y):
+        """0 at the center, 1 on the outer edge (in the room's slanted ellipse)."""
+        a = math.atan2((y + 0.5 - cy) * 2.0, x + 0.5 - cx)
+        rx, ry = radii(a)
+        return math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry), a
+
+    def rim_inner(a):
+        # The rim's inner edge wobbles like a goo bank.
+        return 1.0 - (RIM + 2.5 * math.sin(a * 9) + 1.5 * math.sin(a * 23 + 1)) / 150.0
+
+    # Floor: glossy jelly cubes, 14 x 9 with rounded corners, lit along the top, glint up-left.
+    for y in range(H):
+        for x in range(W):
+            d, a = dist(x, y)
+            if d > rim_inner(a):
+                continue
+            tx, ty = (x - 3) % 14, (y - 2) % 9
+            corner = (tx in (0, 13)) and (ty in (0, 8))
+            if tx == 0 or ty == 0 or corner:
+                col = GOO[0]
+            elif ty == 1:
+                col = GOO[2]
+            elif ty == 8 or tx == 13:
+                col = GOO[0] if corner else GOO[1]
+            else:
+                col = GOO[1]
+            if (tx, ty) in ((2, 2), (3, 2), (2, 3)):
+                col = GOO[3]
+            cv.put(x, y, col)
+    # Bubbles in a few cubes.
+    for _ in range(26):
+        bx, by = rng.randint(30, 290), rng.randint(30, 165)
+        d, a = dist(bx, by)
+        if d < rim_inner(a) - 0.06:
+            cv.put(bx, by, GOO[3])
+            cv.put(bx + 1, by, GOO[2])
+            cv.put(bx, by + 1, GOO[2])
+    # Shadow the back rim casts across the floor.
+    for y in range(H):
+        for x in range(W):
+            d, a = dist(x, y)
+            if rim_inner(a) - 0.05 < d <= rim_inner(a) and y < cy and cv.get(x, y) != GOO[0]:
+                cv.put(x, y, GOO[0] if (x + y) % 2 else cv.get(x, y))
+    # The rim: thick goo, lit on the back-left, darker toward its inner edge, outlined.
+    for y in range(H):
+        for x in range(W):
+            d, a = dist(x, y)
+            inner = rim_inner(a)
+            if inner < d <= 1.0:
+                depth = (d - inner) / (1.0 - inner)  # 0 inner edge .. 1 outer edge
+                lit = -math.cos(a) * 0.55 - math.sin(a) * 0.85  # facing up-left
+                if d > 0.985:
+                    col = GOO[0]
+                elif depth < 0.18:
+                    col = GOO[1]
+                elif lit > 0.55 and depth > 0.55:
+                    col = GOO[4]
+                elif lit > 0.1:
+                    col = GOO[3]
+                else:
+                    col = GOO[2]
+                cv.put(x, y, col)
+    # The shine: a bright streak along the back-left rim, like the slime's own highlight.
+    for i in range(60):
+        a = math.radians(200 + i * 1.0)
+        rx, ry = radii(a)
+        x, y = cx + math.cos(a) * (rx - 4), cy + math.sin(a) * (ry - 3)
+        cv.put(round(x), round(y), GOO[5])
+        if i % 3 == 0:
+            cv.put(round(x), round(y) + 1, GOO[4])
+    # The slime's eyes on the back rim: dark ovals with a white glint.
+    for ex in (112, 208):
+        a = math.atan2(-1.0, (ex - cx) / 154.0)
+        ey = round(cy - 84.0 * math.sqrt(max(0.0, 1 - ((ex - cx) / 154.0) ** 2))) + 9
+        cv.ellipse(ex, ey, 6, 8, OUTLINE)
+        cv.rect(ex - 4, ey - 5, 3, 3, c("e"))
+        cv.put(ex + 2, ey + 3, c("e"))
+    # Drips running off the front of the rim.
+    for x in range(14, 306):
+        if rng.random() < 0.07:
+            y0 = next((y for y in range(H - 1, 0, -1) if dist(x, y)[0] <= 1.0), None)
+            if y0 is None or y0 < cy:
+                continue
+            n = rng.randint(2, 9)
+            for dd in range(1, n + 1):
+                cv.put(x, y0 + dd, GOO[2] if dd < n else GOO[3])
+                cv.put(x + 1, y0 + dd, GOO[1] if dd < n - 1 else CLEAR)
+            cv.put(x, y0 + n + 1, GOO[0])
+    return [cv.px]
+
+
+def save(name: str, rows_of_frames: list) -> None:
+    """Writes a sheet: one row per view, its frames side by side."""
+    rows = []
+    for frames in rows_of_frames:
+        for y in range(len(frames[0])):
+            rows.append([px for frame in frames for px in frame[y]])
     write_png(str(OUT / f"{name}.png"), rows)
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, make in [("door", door), ("portal", portal), ("wardrobe", wardrobe), ("cauldron", cauldron),
-                       ("wheel", wheel), ("signpost", signpost), ("hatch", hatch)]:
-        save(name, make())
+    sheets = {
+        "door": [door(), door_side(), door_back()],
+        "portal": [portal(), portal_side(), portal_back()],
+        "wardrobe": [wardrobe(), wardrobe_side(), wardrobe_back()],
+        "cauldron": [cauldron()] * 3,
+        "wheel": [wheel(), wheel_side(), wheel_back()],
+        "signpost": [signpost(), signpost_side(), signpost_back()],
+        "hatch": [hatch()] * 3,
+        "rotor": [rotor()],
+        "room": [room()],
+    }
+    for name, rows in sheets.items():
+        save(name, rows)
         print(f"wrote assets/sprites/hub/{name}.png")

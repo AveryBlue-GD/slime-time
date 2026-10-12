@@ -1,162 +1,215 @@
 extends Node2D
 
-## The hub, which is also the title screen: the slime's room under the big gooey logo. You glide
-## (and leap) around it as your slime, in your skin and hat; gliding up to a station shows its
-## name, and the jump key (SPACE, or JUMP on touch) uses it:
-## - the archway: STORY (level select, with the hard mode switch)
-## - the portal: RANDOMIZER (locked until the story is beaten)
-## - the wardrobe: SKINS & HATS
-## - the cauldron: UPGRADES
-## - the prize wheel: HAT WHEEL (coming soon)
-## - the gear signpost: SETTINGS
-## - the trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
-## Away from stations the jump key leaps as usual. Coming back from a station puts the slime in
-## front of it again.
+## The hub, which is also the title screen: the slime's room. It's shaped like a giant slime
+## (glossy goo rim, the slime's eyes on the back, jelly-cube floor; all in your skin's colors) and
+## seen at a slant. The stations stand evenly spaced around the rim, all facing the center:
+## - archway: STORY (level select, with the hard mode switch)
+## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
+## - wardrobe: SKINS & HATS
+## - cauldron: UPGRADES
+## - prize wheel: HAT WHEEL (coming soon)
+## - gear signpost: SETTINGS
+## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
+## In the middle stands a wheel on a stick. Hit it (the jump key next to it, or leap into it) and
+## the whole room turns one station round, like turning the camera in Don't Starve: the next
+## station swings to the back of the room, facing you. Each station shows the view for where it
+## stands: its front at the back of the room, its side at the sides, its back up close (holding
+## left while hitting the wheel turns the other way). You glide and leap around as your slime,
+## in your skin and hat; next to a station the prompt names it and the jump key uses it.
+## The logo shows over the room when the game starts and fades once you move. Coming back from a
+## station turns the room so that station faces you again, with the slime in front of it.
 
-const ROOM := Vector2i(20, 12)  # tiles; 320 x 192 px, the camera shows the top 180
-const FLOOR_TOP := 5            # rows above this are the back wall (under the logo)
-## Standing stations touch the floor at this y; their "use" spot is just in front of them.
-const STAND_Y := 104.0
-const USE_OFFSET := 9.0
-const USE_REACH := 16.0
-const START := Vector2(160, 136)
-const LOGO_RAINBOW_WIDTH := 90.0
+const CENTER := Vector2(160, 98)
+## The ring the stations stand on, and the ring of spots in front of them (radii, x and y).
+const RING := Vector2(124, 58)
+const USE_RING := Vector2(100, 44)
+const USE_REACH := 15.0
+## The room's walkable floor (radii of the ellipse the slime stays inside; back and front differ,
+## the back of the room is a taller dome).
+const FLOOR_BACK := Vector2(136, 70)
+const FLOOR_FRONT := Vector2(136, 59)
+const ROTOR_REACH := 17.0
+const TURN_TIME := 0.55
+const START := CENTER + Vector2(0, 40)
 const ART := "res://assets/sprites/hub/"
 const FPS := 6.0
-## Top of the prompt bar ("UPGRADES  SPACE").
-const PROMPT_Y := 156.0
+const PROMPT_Y := 166.0
+const LOGO_RAINBOW_WIDTH := 90.0
+enum View { FRONT, SIDE, BACK }
 
-## The station used last; the slime comes back in front of it.
+## The station used last: coming back turns the room to face it, with the slime in front of it.
 static var return_to := ""
 
 var slime: Slime
 var hat: Hat
-## Each: {id, name, sprite, base (bottom-center), use (spot), standing, frames, size}.
+## Each: {id, name, sprite, body, size, frames, flat, view, flipped}; index = place in the ring.
 var stations: Array[Dictionary] = []
-## The station the slime is next to ({} = none).
+## How far the room has turned (radians); station i stands at -PI/2 + turn + i * step.
+var turn := 0.0
+var step := 0.0
+var turning := false
+var _turn_from := 0.0
+var _turn_to := 0.0
+var _turn_t := 0.0
+var rotor: Sprite2D
+## The station (or {id = "rotor"}) the slime is next to ({} = none).
 var near: Dictionary = {}
+var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
 var prompt_key: Label
-var floor_layer: TileMapLayer
-var wall_layer: TileMapLayer
-var fillet_layer: TileMapLayer
+var logo_layer: CanvasLayer
+var _decals: Node2D
 var _time := 0.0
-var _deny_left := 0.0
 
 
 func _ready() -> void:
 	_build_room()
 	_build_stations()
-	_build_logo()
 	_spawn_slime()
 	_build_ui()
+	_place_all()
 	_update_near()
 
 
-## The room: a wall all around (a deep back wall under the logo), dungeon floor inside.
+## The room picture, its walls (an ellipse the slime can't leave), floor bubbles that turn with
+## the room, the y-sorted world for the stations and the slime, and the wheel in the middle.
 func _build_room() -> void:
-	floor_layer = TileMapLayer.new()
-	wall_layer = TileMapLayer.new()
-	fillet_layer = TileMapLayer.new()
-	fillet_layer.z_index = 2
-	for layer in [floor_layer, wall_layer, fillet_layer]:
-		add_child(layer)
-	var walls := PackedByteArray()
-	walls.resize(ROOM.x * ROOM.y)
-	for y in ROOM.y:
-		for x in ROOM.x:
-			var wall := x == 0 or x == ROOM.x - 1 or y < FLOOR_TOP or y == ROOM.y - 1
-			walls[y * ROOM.x + x] = 1 if wall else 0
-	var room := {size = ROOM, walls = walls}
-	MazeTiles.fill(floor_layer, wall_layer, room, 7, 1, fillet_layer, Themes.DUNGEON)
+	var dark := ColorRect.new()
+	dark.color = UIKit.BG
+	dark.size = Vector2(320, 180)
+	dark.z_index = -3
+	add_child(dark)
+	var room := Sprite2D.new()
+	room.texture = load(ART + "room.png")
+	room.centered = false
+	room.material = _skin_material()
+	room.z_index = -2
+	add_child(room)
+	_decals = Node2D.new()
+	_decals.z_index = -1
+	_decals.draw.connect(_draw_decals)
+	add_child(_decals)
+
+	var walls := StaticBody2D.new()
+	var outline := CollisionPolygon2D.new()
+	outline.build_mode = CollisionPolygon2D.BUILD_SEGMENTS
+	var points := PackedVector2Array()
+	for i in 49:
+		var a := TAU * i / 48.0
+		var radii := FLOOR_BACK if sin(a) < 0.0 else FLOOR_FRONT
+		points.append(CENTER + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	outline.polygon = points
+	walls.add_child(outline)
+	add_child(walls)
+
+	world = Node2D.new()
+	world.y_sort_enabled = true
+	add_child(world)
+	rotor = _make_sprite("rotor", Vector2i(24, 34))
+	rotor.position = CENTER + Vector2(0, 6)
+	rotor.material = _skin_material()
+	world.add_child(rotor)
+	_add_body(rotor.position + Vector2(0, -2), 5.0, false)
 
 
 func _build_stations() -> void:
 	var web := OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args()
-	var level := Progress.current_level
-	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(26, 36), 1, Vector2(40, STAND_Y), true)
-	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(30, 36), 1, Vector2(90, STAND_Y), true)
-	_add_station("story", "STORY - LEVEL %d" % level, "door", Vector2i(26, 36), 1, Vector2(160, STAND_Y), false)
-	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(26, 24), 4, Vector2(230, STAND_Y), true)
-	_add_station("random", "RANDOMIZER", "portal", Vector2i(28, 36), 6, Vector2(280, STAND_Y), true)
-	_add_station("settings", "SETTINGS", "signpost", Vector2i(20, 30), 1, Vector2(30, 166), true)
+	# Clockwise round the room from the back.
+	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(26, 36), 1)
+	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(26, 24), 4)
+	_add_station("random", "RANDOMIZER", "portal", Vector2i(28, 36), 6)
+	_add_station("settings", "SETTINGS", "signpost", Vector2i(20, 30), 1)
 	if not web:
-		_add_station("quit", "QUIT", "hatch", Vector2i(26, 16), 1, Vector2(290, 164), false)
+		_add_station("quit", "QUIT", "hatch", Vector2i(26, 16), 1, true)
+	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(30, 36), 1)
+	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(26, 36), 1)
+	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
-		var lock := UIKit.make_icon("lock", UIKit.TEXT_OFF)
-		lock.position = Vector2(-4, -22)
-		_station("random").sprite.add_child(lock)
+	var back := _station(return_to)
+	if not back.is_empty():
+		turn = -stations.find(back) * step  # that station back at the back of the room
 
 
-func _add_station(id: String, title: String, art: String, size: Vector2i, frames: int, base: Vector2, standing: bool) -> void:
+func _add_station(id: String, title: String, art: String, size: Vector2i, frames: int, flat := false) -> void:
+	var sprite := _make_sprite(art, size)
+	sprite.material = _skin_material()  # its goo in your skin
+	if flat:  # lies on the floor, under everything
+		sprite.z_index = -1
+		sprite.offset = Vector2(-size.x / 2, -size.y / 2)
+		add_child(sprite)
+	else:
+		world.add_child(sprite)
+	var body: AnimatableBody2D = null if flat else _add_body(Vector2.ZERO, size.x / 2.0 - 4.0, true)
+	stations.append({id = id, name = title, sprite = sprite, body = body, size = size, frames = frames,
+		flat = flat, view = View.FRONT, flipped = false})
+
+
+func _make_sprite(art: String, size: Vector2i) -> Sprite2D:
 	var sprite := Sprite2D.new()
 	sprite.texture = load(ART + art + ".png")
 	sprite.region_enabled = true
 	sprite.region_rect = Rect2(0, 0, size.x, size.y)
 	sprite.centered = false
-	sprite.offset = Vector2(-size.x / 2, -size.y)
-	sprite.position = base
-	sprite.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())  # goo in your skin
-	(sprite.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)
-	sprite.z_index = 10
-	add_child(sprite)
-	if standing:  # something to bump into: the station's footprint on the floor
-		var body := StaticBody2D.new()
-		var shape := CollisionShape2D.new()
-		var rect := RectangleShape2D.new()
-		rect.size = Vector2(size.x - 4, 6)
-		shape.shape = rect
-		body.position = base + Vector2(0, -3)
+	sprite.offset = Vector2(-size.x / 2, -size.y)  # its position is where it stands
+	return sprite
+
+
+## A round footprint to bump into (stations move with the room, so theirs are animatable).
+func _add_body(at: Vector2, radius: float, moving: bool) -> AnimatableBody2D:
+	var shape := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = radius
+	shape.shape = circle
+	shape.scale = Vector2(1.0, 0.5)  # flat on the slanted floor
+	if moving:
+		var body := AnimatableBody2D.new()
+		body.sync_to_physics = true
+		body.position = at
 		body.add_child(shape)
 		add_child(body)
-	var use := base + Vector2(0, USE_OFFSET) if standing else base + Vector2(0, -size.y / 2.0 + (4.0 if id == "quit" else 10.0))
-	stations.append({id = id, name = title, sprite = sprite, base = base, use = use, standing = standing, frames = frames, size = size})
+		return body
+	var still := StaticBody2D.new()
+	still.position = at
+	still.add_child(shape)
+	add_child(still)
+	return null
 
 
-func _station(id: String) -> Dictionary:
-	for station in stations:
-		if station.id == id:
-			return station
-	return {}
+func _skin_material() -> ShaderMaterial:
+	var material := Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+	material.set_shader_parameter("translucency", 0.0)
+	return material
 
 
-## The gooey logo over the back wall, in the skin's colors.
-func _build_logo() -> void:
-	var logo := Sprite2D.new()
-	logo.texture = preload("res://assets/sprites/title.png")
-	logo.centered = false
-	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 2)
-	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
-	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
-	(logo.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)
-	logo.z_index = 20
-	add_child(logo)
-
-
-## Your slime, in your skin (jelly or solid) and hat, with the camera held on the room.
+## Your slime, in your skin (jelly or solid) and hat, with the camera held still on the room.
 func _spawn_slime() -> void:
 	slime = preload("res://scenes/slime.tscn").instantiate()
-	add_child(slime)
-	var back := _station(return_to)
-	slime.position = back.use + Vector2(0, 4) if not back.is_empty() else START
+	slime.z_index = 0  # y-sorted with the stations
+	world.add_child(slime)
+	slime.position = USE_RING * Vector2(0, -1) + CENTER + Vector2(0, 4) if not _station(return_to).is_empty() else START
 	slime.apply_skin(Progress.skin_color(), Progress.is_rainbow())
 	slime.set_translucency(1.0 if Progress.jelly else 0.0)
+	slime.jump_landed.connect(_on_jump_landed)
 	var camera: Camera2D = slime.get_node("Camera2D")
-	camera.limit_right = 320
-	camera.limit_bottom = 180
-	camera.position_smoothing_enabled = false
+	camera.enabled = false
 	if Progress.selected_hat != Hats.NONE:
 		hat = Hat.new()
-		hat.z_index = slime.z_index + 1
+		hat.z_index = 1
 		add_child(hat)
 		hat.setup(Progress.selected_hat, slime.sprite, slime)
-		hat.is_wall = func(at: Vector2) -> bool: return wall_layer.get_cell_source_id(Vector2i((at / 16.0).floor())) != -1
+		hat.is_wall = func(at: Vector2) -> bool: return not _on_floor(at)
 		slime.launched.connect(hat.pop)
 
 
-## The prompt over the station you're at, the tagline, a soft vignette and touch controls.
+func _on_floor(at: Vector2) -> bool:
+	var radii := FLOOR_BACK if at.y < CENTER.y else FLOOR_FRONT
+	var d := (at - CENTER) / radii
+	return d.length() <= 1.0
+
+
+## The prompt bar, the title logo (on a fresh start), a soft vignette and touch controls.
 func _build_ui() -> void:
 	var shade := CanvasLayer.new()
 	shade.layer = 1
@@ -165,7 +218,7 @@ func _build_ui() -> void:
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://assets/shaders/atmosphere.gdshader")
 	material.set_shader_parameter("mist_strength", 0.0)
-	material.set_shader_parameter("vignette_strength", 0.45)
+	material.set_shader_parameter("vignette_strength", 0.4)
 	vignette.material = material
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.add_child(vignette)
@@ -191,50 +244,162 @@ func _build_ui() -> void:
 	row.add_child(prompt_name)
 	row.add_child(prompt_key)
 	prompt.visible = false
+	if return_to == "":
+		_build_logo(root)
+	UIKit.add_skin_text(root)
+	add_child(preload("res://scripts/ui/touch_controls.gd").new())
+
+
+## The gooey logo and the tagline over the room, as the title; they fade once you move.
+func _build_logo(root: Control) -> void:
+	logo_layer = CanvasLayer.new()
+	logo_layer.layer = 3
+	add_child(logo_layer)
+	var logo := TextureRect.new()
+	logo.texture = preload("res://assets/sprites/title.png")
+	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 2)
+	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
+	(logo.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	logo_layer.add_child(logo)
 	var tagline := UIKit.make_label("ESCAPE THE FOG OR DRY TRYING!", 8, UIKit.TEXT_DIM)
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(tagline)
 	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	tagline.offset_top = 171
 	tagline.offset_bottom = 180
-	UIKit.add_skin_text(root)
-	add_child(preload("res://scripts/ui/touch_controls.gd").new())
+	tagline.set_meta("fades_with_logo", true)
+	logo_layer.set_meta("tagline", tagline)
 
 
-func _physics_process(_delta: float) -> void:
+func _fade_logo() -> void:
+	if logo_layer == null or logo_layer.has_meta("fading"):
+		return
+	logo_layer.set_meta("fading", true)
+	var tagline: Label = logo_layer.get_meta("tagline")
+	var tween := create_tween().set_parallel()
+	tween.tween_property(logo_layer.get_child(0), "modulate:a", 0.0, 0.6)
+	tween.tween_property(tagline, "modulate:a", 0.0, 0.6)
+	tween.chain().tween_callback(func() -> void:
+		tagline.queue_free()
+		logo_layer.queue_free()
+		logo_layer = null)
+
+
+func _physics_process(delta: float) -> void:
+	if turning:
+		_turn_t = minf(_turn_t + delta / TURN_TIME, 1.0)
+		var eased := _turn_t * _turn_t * (3.0 - 2.0 * _turn_t)
+		turn = lerpf(_turn_from, _turn_to, eased)
+		_place_all()
+		if _turn_t >= 1.0:
+			turning = false
+			turn = wrapf(_turn_to, -PI, PI)
+			_place_all()
+	if logo_layer and (slime.velocity.length() > 4.0 or slime.state != Slime.State.GLIDE):
+		_fade_logo()
 	_update_near()
-	# Next to a station the jump key uses it instead of leaping.
+	# Next to a station or the wheel, the jump key uses it instead of leaping.
 	slime.can_charge = near.is_empty()
 	if not near.is_empty() and Input.is_action_just_pressed("jump") and slime.state == Slime.State.GLIDE:
-		_use(near)
+		_fade_logo()
+		if near.id == "rotor":
+			turn_room(-1 if Input.is_action_pressed("move_left") else 1)
+		else:
+			_use(near)
 
 
 func _process(delta: float) -> void:
 	_time += delta
-	_deny_left = maxf(_deny_left - delta, 0.0)
 	for station in stations:
-		var sprite: Sprite2D = station.sprite
 		if station.frames > 1:
-			sprite.region_rect.position.x = (int(_time * FPS) % station.frames) * station.size.x
-		# Standing stations hide the slime when it's behind them.
-		if station.standing:
-			sprite.z_index = 12 if slime.position.y < station.base.y - 2.0 else 10
+			_set_frame(station, int(_time * FPS) % station.frames)
 		var lit: bool = station == near
-		sprite.position = station.base + Vector2(0, -1 if lit and fmod(_time, 0.8) < 0.4 else 0)
 		if station.id != "random" or Progress.is_randomizer_unlocked():
-			sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
+			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
+	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 24
+	rotor.self_modulate = Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	if hat:
-		hat.z_index = slime.z_index + 1
+		hat.z_index = 1
+
+
+## Turns the room one station round (1 = the next station clockwise comes to the back).
+func turn_room(direction: int) -> void:
+	if turning:
+		return
+	turning = true
+	_turn_from = turn
+	_turn_to = turn - step * direction
+	_turn_t = 0.0
+	near = {}
+	prompt.visible = false
+	_sfx("squish", 0.7)
+	_sfx("click", 0.8)
+
+
+## Leaping into the wheel turns the room too (the side you hit it from picks the way).
+func _on_jump_landed(_intended: float, hit_wall: bool, wall_normal: Vector2) -> void:
+	if hit_wall and slime.position.distance_to(rotor.position) < ROTOR_REACH + 4.0:
+		turn_room(-1 if wall_normal.x > 0.0 else 1)
+
+
+## Puts every station on the ring for the current turn, with the view for where it stands.
+func _place_all() -> void:
+	for i in stations.size():
+		var station := stations[i]
+		var a := -PI / 2.0 + turn + i * step
+		var base := CENTER + Vector2(cos(a) * RING.x, sin(a) * RING.y)
+		station.sprite.position = base.round()
+		if station.body:
+			station.body.position = base + Vector2(0, -2)
+		var deg := rad_to_deg(wrapf(a, -PI, PI))
+		var view := View.SIDE
+		if deg > -135.0 and deg < -45.0:
+			view = View.FRONT
+		elif deg > 45.0 and deg < 135.0:
+			view = View.BACK
+		station.view = view
+		station.flipped = view == View.SIDE and absf(deg) < 90.0  # right-hand side faces left
+		if not station.flat:
+			station.sprite.flip_h = station.flipped
+			_set_frame(station, int(_time * FPS) % station.frames)
+	_decals.queue_redraw()
+
+
+func _set_frame(station: Dictionary, frame: int) -> void:
+	var row: int = 0 if station.flat else station.view
+	station.sprite.region_rect = Rect2(frame * station.size.x, row * station.size.y, station.size.x, station.size.y)
+
+
+## Little bubbles on the floor that turn with the room, so you can see it turn.
+func _draw_decals() -> void:
+	var shades := Skins.shades(Progress.skin_color())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 22:
+		var a := rng.randf() * TAU + turn
+		var r := sqrt(rng.randf()) * 0.82
+		var at := (CENTER + Vector2(cos(a) * FLOOR_FRONT.x * r, sin(a) * FLOOR_FRONT.y * r)).round()
+		var big := rng.randf() < 0.3
+		_decals.draw_rect(Rect2(at, Vector2(2, 1) if big else Vector2.ONE), Color(shades.light, 0.55))
+		if big:
+			_decals.draw_rect(Rect2(at + Vector2(0, -1), Vector2.ONE), Color(shades.highlight, 0.55))
 
 
 func _update_near() -> void:
 	var best := {}
 	var best_distance := USE_REACH
-	for station in stations:
-		var distance: float = slime.position.distance_to(station.use)
-		if distance < best_distance:
-			best_distance = distance
-			best = station
+	if not turning:
+		for i in stations.size():
+			var a := -PI / 2.0 + turn + i * step
+			var spot := CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y)
+			var distance := slime.position.distance_to(spot)
+			if distance < best_distance:
+				best_distance = distance
+				best = stations[i]
+		if slime.position.distance_to(rotor.position + Vector2(0, 8)) < ROTOR_REACH and best.is_empty():
+			best = {id = "rotor", name = "TURN THE ROOM"}
 	if best == near:
 		return
 	near = best
@@ -256,10 +421,16 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = "COMING SOON"
 	else:
 		prompt_key.text = key
-	# A bar at the bottom center, just above the tagline (clear of the logo and the stations).
 	prompt.reset_size()
 	var size := prompt.get_combined_minimum_size()
 	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), PROMPT_Y)
+
+
+func _station(id: String) -> Dictionary:
+	for station in stations:
+		if station.id == id:
+			return station
+	return {}
 
 
 ## Uses a station: opens its screen, or says why it can't.
