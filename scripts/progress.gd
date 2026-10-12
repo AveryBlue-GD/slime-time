@@ -12,7 +12,7 @@ const MODE_RANDOM := "random"
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
 const DEFAULT_KEYS := {
 	move_up = KEY_W, move_down = KEY_S, move_left = KEY_A, move_right = KEY_D,
-	jump = KEY_SPACE, restart = KEY_R,
+	jump = KEY_SPACE, restart = KEY_R, interact = KEY_F,
 }
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
 
@@ -76,6 +76,9 @@ var skin_override := ""
 
 
 func _ready() -> void:
+	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
+	if not InputMap.has_action("interact"):
+		InputMap.add_action("interact")
 	if not _is_test_or_tool_run():
 		load_progress()
 	apply_bindings()

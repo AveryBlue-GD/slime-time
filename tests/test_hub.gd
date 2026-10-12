@@ -3,10 +3,10 @@ extends SceneTree
 ## The hub (the title screen): a slime-shaped room with the stations evenly round its rim facing
 ## the center and a wheel in the middle. Checks: every station is there, evenly spaced; each
 ## shows the right view for where it stands (front at the back of the room, sides mirrored, backs
-## up close); hitting the wheel (jump key beside it, or leaping into it) turns the room one station
-## round; next to a station the prompt names it and the jump key uses it instead of leaping (and
-## leaps as usual elsewhere); the randomizer portal stays locked until the story is beaten; coming
-## back from a station turns the room to face it; the title logo fades once you move.
+## up close); hitting the wheel (interact key beside it) turns the whole room one station round,
+## the floor drawn for the new turn; next to a station the prompt names it and the interact key (F)
+## uses it while SPACE still leaps; the randomizer portal stays locked until the story is beaten;
+## coming back from a station turns the room to face it; the title logo fades once you move.
 ## Starts from a fresh state (tests never read the real save).
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hub.gd
 
@@ -58,13 +58,15 @@ func _initialize() -> void:
 	hub.slime.position = hub.rotor.position + Vector2(0, 8)
 	await _frames(2)
 	_check(hub.near.get("id", "") == "rotor" and hub.prompt_name.text == "TURN THE ROOM", "the wheel offers to turn the room")
-	Input.action_press("jump")
+	Input.action_press("interact")
 	await _frames(2)
-	Input.action_release("jump")
-	_check(hub.turning and hub.slime.state == Slime.State.GLIDE, "hitting it starts the room turning (no leap)")
+	Input.action_release("interact")
+	_check(hub.turning and hub.slime.state == Slime.State.GLIDE, "hitting it (F) starts the room turning (no leap)")
 	await _frames(int(HubScript.TURN_TIME * 60) + 4)
 	_check(not hub.turning and hub._station("upgrades").view == HubScript.View.FRONT and hub._station("story").view == HubScript.View.SIDE,
 		"...one station round: the next one comes to the back, facing you")
+	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
+	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)
 	hub.free()
 
 	# --- Next to a station: the prompt, and the jump key uses it
@@ -72,16 +74,20 @@ func _initialize() -> void:
 	hub = await _open()
 	_check(hub._station("upgrades").view == HubScript.View.FRONT and hub.logo_layer == null,
 		"coming back from a station turns the room to face it (no logo)")
-	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and not hub.slime.can_charge,
-		"standing at it, the prompt names it and the jump key won't leap (%s)" % hub.prompt_name.text)
+	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and hub.prompt_key.text == "F",
+		"standing at it, the prompt names it and its key (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
+	Input.action_press("jump")
+	await _frames(3)
+	_check(hub.slime.state == Slime.State.CHARGING and not hub.slime.frozen, "...SPACE still leaps there (F is the use key)")
+	Input.action_release("jump")
 	hub.free()
 
 	# --- The randomizer portal is locked until the story is beaten
 	HubScript.return_to = "random"
 	hub = await _open()
-	Input.action_press("jump")
+	Input.action_press("interact")
 	await _frames(2)
-	Input.action_release("jump")
+	Input.action_release("interact")
 	_check(hub.prompt_key.text.begins_with("BEAT ALL") and not hub.slime.frozen,
 		"the locked portal says what unlocks it and you stay in the room (%s)" % hub.prompt_key.text)
 	_check(hub._station("random").sprite.modulate != Color.WHITE, "...and it looks dimmed")
@@ -95,9 +101,9 @@ func _initialize() -> void:
 	# --- Using a station leaves for its screen
 	HubScript.return_to = "settings"
 	hub = await _open()
-	Input.action_press("jump")
+	Input.action_press("interact")
 	await _frames(2)
-	Input.action_release("jump")
+	Input.action_release("interact")
 	_check(hub.slime.frozen and HubScript.return_to == "settings", "the signpost opens the settings (and remembers it)")
 	hub.free()
 	HubScript.return_to = ""

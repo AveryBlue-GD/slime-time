@@ -158,7 +158,8 @@ func _initialize() -> void:
 	_check("FIND EVERY COIN" in screen.status.text, "...even after level 10 it still wants every coin (%s)" % screen.status.text)
 	screen.free()
 	screen = await _open("res://scenes/controls.tscn")
-	_check(screen.key_buttons.size() == 6 and screen.key_buttons.jump.text == "SPACE", "controls screen lists 6 actions (jump = %s)" % screen.key_buttons.jump.text)
+	_check(screen.key_buttons.size() == 7 and screen.key_buttons.jump.text == "SPACE" and screen.key_buttons.interact.text == "F",
+		"controls screen lists 7 actions (jump = %s, interact = %s)" % [screen.key_buttons.jump.text, screen.key_buttons.interact.text])
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))

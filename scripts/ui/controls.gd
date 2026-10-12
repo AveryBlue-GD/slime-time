@@ -6,7 +6,7 @@ extends Control
 
 const ACTION_NAMES := {
 	move_up = "MOVE UP", move_down = "MOVE DOWN", move_left = "MOVE LEFT", move_right = "MOVE RIGHT",
-	jump = "JUMP (HOLD)", restart = "RESTART LEVEL",
+	jump = "JUMP (HOLD)", restart = "RESTART LEVEL", interact = "INTERACT (HUB)",
 }
 
 var key_buttons := {}
@@ -23,9 +23,9 @@ func _ready() -> void:
 	UIKit.setup_screen(self, "SETTINGS")
 	var rows := GridContainer.new()
 	rows.columns = 2
-	rows.position = Vector2(71, 24)  # 80 + 8 + 90 wide, centered
+	rows.position = Vector2(71, 22)  # 80 + 8 + 90 wide, centered
 	rows.add_theme_constant_override("h_separation", 8)
-	rows.add_theme_constant_override("v_separation", 2)
+	rows.add_theme_constant_override("v_separation", 1)
 	add_child(rows)
 	for action: String in ACTION_NAMES:
 		var label := UIKit.make_label(ACTION_NAMES[action])
@@ -43,21 +43,21 @@ func _ready() -> void:
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	note.offset_top = 117
-	note.offset_bottom = 127
+	note.offset_top = 121
+	note.offset_bottom = 131
 	var reset := UIKit.make_button("RESET KEYS", _on_reset, Vector2(76, 13))
-	reset.position = Vector2(20, 146)  # the three buttons span 20..300, 6 px apart
+	reset.position = Vector2(20, 148)  # the three buttons span 20..300, 6 px apart
 	sound_button = UIKit.make_button("", _toggle_sound, Vector2(84, 13))
-	sound_button.position = Vector2(102, 146)
+	sound_button.position = Vector2(102, 148)
 	add_child(sound_button)
 	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(108, 13))
-	fullscreen_button.position = Vector2(192, 146)
+	fullscreen_button.position = Vector2(192, 148)
 	add_child(fullscreen_button)
 	_refresh_sound()
 	add_child(reset)
 	var volume_row := UIKit.make_volume_slider(110.0)
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
-	volume_row.position = Vector2(roundf((320 - volume_row.get_combined_minimum_size().x) / 2.0), 130)
+	volume_row.position = Vector2(roundf((320 - volume_row.get_combined_minimum_size().x) / 2.0), 133)
 	UIKit.add_back_button(self)
 	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(96, 13))
 	reset_button.position = Vector2(220, 164)

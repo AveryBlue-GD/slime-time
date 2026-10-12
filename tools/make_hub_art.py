@@ -17,7 +17,7 @@ skin shader recolors it to the equipped skin; stone stays off the dried-crust gr
 - signpost.png  20x30 x1 : SETTINGS: a gear on a post / edge-on / from behind
 - hatch.png     26x16 x1 : QUIT: a trapdoor in the floor (flat: the same from every side)
 - rotor.png     24x34 x4 : the wheel on a stick in the middle, spinning
-- room.png     320x180   : the room: a slime-shaped blob with a glossy goo rim, drips, jelly floor tiles
+(The room itself is drawn live by assets/shaders/hub_room.gdshader, so it can turn.)
 """
 import math
 import random
@@ -446,112 +446,6 @@ def rotor() -> list:
     return frames
 
 
-def room() -> list:
-    """The room, seen at a slant, shaped like a giant slime: a dome-backed blob whose thick rim is
-    glossy goo (lit on the back-left like the slime's shine, a wavy inner edge, drips running off
-    the front), the slime's two big eyes on the back rim, and a floor of glossy jelly-cube tiles.
-    All in goo shades, so it takes the skin's color."""
-    W, H = 320, 180
-    cx, cy = 160.0, 98.0
-    RIM = 11.0
-    cv = Canvas(W, H)
-    rng = random.Random(11)
-
-    def radii(a):
-        top = math.sin(a) < 0
-        return 154.0, (84.0 if top else 72.0)  # a taller dome at the back, flatter at the front
-
-    def dist(x, y):
-        """0 at the center, 1 on the outer edge (in the room's slanted ellipse)."""
-        a = math.atan2((y + 0.5 - cy) * 2.0, x + 0.5 - cx)
-        rx, ry = radii(a)
-        return math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry), a
-
-    def rim_inner(a):
-        # The rim's inner edge wobbles like a goo bank.
-        return 1.0 - (RIM + 2.5 * math.sin(a * 9) + 1.5 * math.sin(a * 23 + 1)) / 150.0
-
-    # Floor: glossy jelly cubes, 14 x 9 with rounded corners, lit along the top, glint up-left.
-    for y in range(H):
-        for x in range(W):
-            d, a = dist(x, y)
-            if d > rim_inner(a):
-                continue
-            tx, ty = (x - 3) % 14, (y - 2) % 9
-            corner = (tx in (0, 13)) and (ty in (0, 8))
-            if tx == 0 or ty == 0 or corner:
-                col = GOO[0]
-            elif ty == 1:
-                col = GOO[2]
-            elif ty == 8 or tx == 13:
-                col = GOO[0] if corner else GOO[1]
-            else:
-                col = GOO[1]
-            if (tx, ty) in ((2, 2), (3, 2), (2, 3)):
-                col = GOO[3]
-            cv.put(x, y, col)
-    # Bubbles in a few cubes.
-    for _ in range(26):
-        bx, by = rng.randint(30, 290), rng.randint(30, 165)
-        d, a = dist(bx, by)
-        if d < rim_inner(a) - 0.06:
-            cv.put(bx, by, GOO[3])
-            cv.put(bx + 1, by, GOO[2])
-            cv.put(bx, by + 1, GOO[2])
-    # Shadow the back rim casts across the floor.
-    for y in range(H):
-        for x in range(W):
-            d, a = dist(x, y)
-            if rim_inner(a) - 0.05 < d <= rim_inner(a) and y < cy and cv.get(x, y) != GOO[0]:
-                cv.put(x, y, GOO[0] if (x + y) % 2 else cv.get(x, y))
-    # The rim: thick goo, lit on the back-left, darker toward its inner edge, outlined.
-    for y in range(H):
-        for x in range(W):
-            d, a = dist(x, y)
-            inner = rim_inner(a)
-            if inner < d <= 1.0:
-                depth = (d - inner) / (1.0 - inner)  # 0 inner edge .. 1 outer edge
-                lit = -math.cos(a) * 0.55 - math.sin(a) * 0.85  # facing up-left
-                if d > 0.985:
-                    col = GOO[0]
-                elif depth < 0.18:
-                    col = GOO[1]
-                elif lit > 0.55 and depth > 0.55:
-                    col = GOO[4]
-                elif lit > 0.1:
-                    col = GOO[3]
-                else:
-                    col = GOO[2]
-                cv.put(x, y, col)
-    # The shine: a bright streak along the back-left rim, like the slime's own highlight.
-    for i in range(60):
-        a = math.radians(200 + i * 1.0)
-        rx, ry = radii(a)
-        x, y = cx + math.cos(a) * (rx - 4), cy + math.sin(a) * (ry - 3)
-        cv.put(round(x), round(y), GOO[5])
-        if i % 3 == 0:
-            cv.put(round(x), round(y) + 1, GOO[4])
-    # The slime's eyes on the back rim: dark ovals with a white glint.
-    for ex in (112, 208):
-        a = math.atan2(-1.0, (ex - cx) / 154.0)
-        ey = round(cy - 84.0 * math.sqrt(max(0.0, 1 - ((ex - cx) / 154.0) ** 2))) + 9
-        cv.ellipse(ex, ey, 6, 8, OUTLINE)
-        cv.rect(ex - 4, ey - 5, 3, 3, c("e"))
-        cv.put(ex + 2, ey + 3, c("e"))
-    # Drips running off the front of the rim.
-    for x in range(14, 306):
-        if rng.random() < 0.07:
-            y0 = next((y for y in range(H - 1, 0, -1) if dist(x, y)[0] <= 1.0), None)
-            if y0 is None or y0 < cy:
-                continue
-            n = rng.randint(2, 9)
-            for dd in range(1, n + 1):
-                cv.put(x, y0 + dd, GOO[2] if dd < n else GOO[3])
-                cv.put(x + 1, y0 + dd, GOO[1] if dd < n - 1 else CLEAR)
-            cv.put(x, y0 + n + 1, GOO[0])
-    return [cv.px]
-
-
 def save(name: str, rows_of_frames: list) -> None:
     """Writes a sheet: one row per view, its frames side by side."""
     rows = []
@@ -572,7 +466,6 @@ if __name__ == "__main__":
         "signpost": [signpost(), signpost_side(), signpost_back()],
         "hatch": [hatch()] * 3,
         "rotor": [rotor()],
-        "room": [room()],
     }
     for name, rows in sheets.items():
         save(name, rows)

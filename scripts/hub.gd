@@ -10,24 +10,26 @@ extends Node2D
 ## - prize wheel: HAT WHEEL (coming soon)
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
-## In the middle stands a wheel on a stick. Hit it (the jump key next to it, or leap into it) and
-## the whole room turns one station round, like turning the camera in Don't Starve: the next
-## station swings to the back of the room, facing you. Each station shows the view for where it
-## stands: its front at the back of the room, its side at the sides, its back up close (holding
-## left while hitting the wheel turns the other way). You glide and leap around as your slime,
-## in your skin and hat; next to a station the prompt names it and the jump key uses it.
+## In the middle stands a wheel on a stick. Hit it (the interact key, F, next to it, or leap into
+## it) and the whole building turns one station round, like turning the camera in Don't Starve:
+## floor, rim and stations swing round together (hub_room.gdshader draws the room for the current
+## turn) and the next station comes to the back of the room, facing you. Each station shows the
+## view for where it stands: its front at the back of the room, its side at the sides, its back up
+## close (holding left while hitting the wheel turns the other way). You glide and leap around as
+## your slime, in your skin and hat; next to a station the prompt names it and the interact key
+## uses it (on a touchscreen, JUMP does, right next to one).
 ## The logo shows over the room when the game starts and fades once you move. Coming back from a
 ## station turns the room so that station faces you again, with the slime in front of it.
 
 const CENTER := Vector2(160, 98)
+## The room on screen (an ellipse: a round room seen at a slant).
+const ROOM_RADII := Vector2(154, 78)
 ## The ring the stations stand on, and the ring of spots in front of them (radii, x and y).
-const RING := Vector2(124, 58)
-const USE_RING := Vector2(100, 44)
+const RING := Vector2(124, 62)
+const USE_RING := Vector2(100, 49)
 const USE_REACH := 15.0
-## The room's walkable floor (radii of the ellipse the slime stays inside; back and front differ,
-## the back of the room is a taller dome).
-const FLOOR_BACK := Vector2(136, 70)
-const FLOOR_FRONT := Vector2(136, 59)
+## The walkable floor: the ellipse the slime's center stays inside (inside the rim, less its size).
+const FLOOR := Vector2(134, 64)
 const ROTOR_REACH := 17.0
 const TURN_TIME := 0.55
 const START := CENTER + Vector2(0, 40)
@@ -59,7 +61,8 @@ var prompt: PanelContainer
 var prompt_name: Label
 var prompt_key: Label
 var logo_layer: CanvasLayer
-var _decals: Node2D
+var room: ColorRect
+var _touch_controls: CanvasLayer
 var _time := 0.0
 
 
@@ -72,24 +75,22 @@ func _ready() -> void:
 	_update_near()
 
 
-## The room picture, its walls (an ellipse the slime can't leave), floor bubbles that turn with
-## the room, the y-sorted world for the stations and the slime, and the wheel in the middle.
+## The room (drawn by hub_room.gdshader for the current turn), its walls (an ellipse the slime
+## can't leave), the y-sorted world for the stations and the slime, and the wheel in the middle.
 func _build_room() -> void:
-	var dark := ColorRect.new()
-	dark.color = UIKit.BG
-	dark.size = Vector2(320, 180)
-	dark.z_index = -3
-	add_child(dark)
-	var room := Sprite2D.new()
-	room.texture = load(ART + "room.png")
-	room.centered = false
-	room.material = _skin_material()
+	room = ColorRect.new()
+	room.size = Vector2(320, 180)
 	room.z_index = -2
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://assets/shaders/hub_room.gdshader")
+	material.set_shader_parameter("center", CENTER)
+	material.set_shader_parameter("radii", ROOM_RADII)
+	material.set_shader_parameter("background", UIKit.BG)
+	var shades := Skins.shades(Skins.RAINBOW_BASE if Progress.is_rainbow() else Progress.skin_color())
+	for shade: String in shades:
+		material.set_shader_parameter("outline" if shade == "outline" else shade, shades[shade])
+	room.material = material
 	add_child(room)
-	_decals = Node2D.new()
-	_decals.z_index = -1
-	_decals.draw.connect(_draw_decals)
-	add_child(_decals)
 
 	var walls := StaticBody2D.new()
 	var outline := CollisionPolygon2D.new()
@@ -97,8 +98,7 @@ func _build_room() -> void:
 	var points := PackedVector2Array()
 	for i in 49:
 		var a := TAU * i / 48.0
-		var radii := FLOOR_BACK if sin(a) < 0.0 else FLOOR_FRONT
-		points.append(CENTER + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+		points.append(CENTER + Vector2(cos(a) * FLOOR.x, sin(a) * FLOOR.y))
 	outline.polygon = points
 	walls.add_child(outline)
 	add_child(walls)
@@ -204,9 +204,7 @@ func _spawn_slime() -> void:
 
 
 func _on_floor(at: Vector2) -> bool:
-	var radii := FLOOR_BACK if at.y < CENTER.y else FLOOR_FRONT
-	var d := (at - CENTER) / radii
-	return d.length() <= 1.0
+	return ((at - CENTER) / FLOOR).length() <= 1.0
 
 
 ## The prompt bar, the title logo (on a fresh start), a soft vignette and touch controls.
@@ -247,7 +245,8 @@ func _build_ui() -> void:
 	if return_to == "":
 		_build_logo(root)
 	UIKit.add_skin_text(root)
-	add_child(preload("res://scripts/ui/touch_controls.gd").new())
+	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
+	add_child(_touch_controls)
 
 
 ## The gooey logo and the tagline over the room, as the title; they fade once you move.
@@ -300,9 +299,12 @@ func _physics_process(delta: float) -> void:
 	if logo_layer and (slime.velocity.length() > 4.0 or slime.state != Slime.State.GLIDE):
 		_fade_logo()
 	_update_near()
-	# Next to a station or the wheel, the jump key uses it instead of leaping.
-	slime.can_charge = near.is_empty()
-	if not near.is_empty() and Input.is_action_just_pressed("jump") and slime.state == Slime.State.GLIDE:
+	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
+	# such key, so right next to one JUMP uses it instead of leaping.
+	var touch := _touch_controls != null and _touch_controls.visible
+	slime.can_charge = near.is_empty() or not touch
+	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
+	if not near.is_empty() and used and slime.state == Slime.State.GLIDE:
 		_fade_logo()
 		if near.id == "rotor":
 			turn_room(-1 if Input.is_action_pressed("move_left") else 1)
@@ -364,27 +366,12 @@ func _place_all() -> void:
 		if not station.flat:
 			station.sprite.flip_h = station.flipped
 			_set_frame(station, int(_time * FPS) % station.frames)
-	_decals.queue_redraw()
+	(room.material as ShaderMaterial).set_shader_parameter("turn", turn)
 
 
 func _set_frame(station: Dictionary, frame: int) -> void:
 	var row: int = 0 if station.flat else station.view
 	station.sprite.region_rect = Rect2(frame * station.size.x, row * station.size.y, station.size.x, station.size.y)
-
-
-## Little bubbles on the floor that turn with the room, so you can see it turn.
-func _draw_decals() -> void:
-	var shades := Skins.shades(Progress.skin_color())
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	for i in 22:
-		var a := rng.randf() * TAU + turn
-		var r := sqrt(rng.randf()) * 0.82
-		var at := (CENTER + Vector2(cos(a) * FLOOR_FRONT.x * r, sin(a) * FLOOR_FRONT.y * r)).round()
-		var big := rng.randf() < 0.3
-		_decals.draw_rect(Rect2(at, Vector2(2, 1) if big else Vector2.ONE), Color(shades.light, 0.55))
-		if big:
-			_decals.draw_rect(Rect2(at + Vector2(0, -1), Vector2.ONE), Color(shades.highlight, 0.55))
 
 
 func _update_near() -> void:
@@ -411,8 +398,8 @@ func _show_prompt(note := "") -> void:
 	if near.is_empty():
 		return
 	prompt_name.text = near.name
-	var touch := DisplayServer.is_touchscreen_available() or Progress.force_touch
-	var key: String = "TAP JUMP" if touch else Progress.key_name(Progress.bindings.jump)
+	var touch := _touch_controls != null and _touch_controls.visible
+	var key: String = "TAP JUMP" if touch else Progress.key_name(Progress.bindings.interact)
 	if note != "":
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
