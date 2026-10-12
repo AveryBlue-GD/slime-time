@@ -40,6 +40,15 @@ const LIGHT_RADIUS := 20.0
 ## Hard mode: a cell older than the last step is covered by fog again.
 const FADE_AFTER: Array[float] = [1.5, 3.5, 6.0, 9.0]
 const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
+## Fog brightness setting (Progress.fog_brightness: Dark, Normal, Bright). Normal is the game's
+## standard look (FADE_ALPHA / WALL_FOG_ALPHA above). Bright follows docs/advisor/graphics-shading.md
+## (lighter memory and unexplored mist); Dark is a bit heavier than Normal. `fade`/`wall` feed both
+## the shader and fog_alpha_at, so they always agree.
+const FOG_LOOKS: Array[Dictionary] = [
+	{fade = [0.0, 0.33, 0.55, 0.72, 0.86], wall = 0.36, deep_gain = 0.4, mist_gain = 0.34, far_dim = 0.3, vig_max = 0.45, light_outer = 110.0},
+	{fade = FADE_ALPHA, wall = WALL_FOG_ALPHA, deep_gain = 0.55, mist_gain = 0.45, far_dim = 0.22, vig_max = 0.35, light_outer = 115.0},
+	{fade = [0.0, 0.25, 0.42, 0.54, 0.64], wall = 0.2, deep_gain = 0.75, mist_gain = 0.55, far_dim = 0.14, vig_max = 0.25, light_outer = 125.0},
+]
 const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
 const FOG_TICKS := 16.0
@@ -66,7 +75,13 @@ const SHAKE_MAX := 3.0
 ## Strength of the additive halo over the goo trail.
 const TRAIL_GLOW := 0.3
 const SLIME_LIGHT_SIZE := 112
-const SLIME_LIGHT_STRENGTH := 0.22
+## Drawn above the fog (z 11), so it lights the unexplored ground around the slime a little.
+const SLIME_LIGHT_STRENGTH := 0.14
+## Camera kick on a splat: px pushed toward the wall at full power (decays with the shake).
+const KICK_MAX := 3.0
+## The low-slime warning: a heartbeat every HEARTBEAT_SLOW s at LOW_PERCENT, speeding to HEARTBEAT_FAST at 0.
+const HEARTBEAT_SLOW := 1.3
+const HEARTBEAT_FAST := 0.55
 ## Camera look-ahead: leads the slime by its velocity * LOOK_AHEAD_TIME, up to LOOK_AHEAD_MAX px.
 const LOOK_AHEAD_TIME := 0.3
 const LOOK_AHEAD_MAX := 24.0
@@ -145,6 +160,10 @@ var run_time := 0.0
 var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
+## Camera kick toward a wall that was just hit (px), fading with the shake.
+var kick := Vector2.ZERO
+var _heartbeat_left := 0.0
+var _was_low := false
 var slime_light: Sprite2D
 ## The hat the slime is wearing, if any (see Hat).
 var hat: Hat
@@ -303,8 +322,27 @@ func _physics_process(delta: float) -> void:
 	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
 		chalice.visible = true
 	hud.set_slime(slime_remaining)
+	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
 		_dry_up()
+
+
+## Audible low-slime warning: a falling bloop when the meter drops under the red mark, then a
+## quiet heartbeat that speeds up as it empties (the HUD pulse alone is easy to miss in the dark).
+func _low_slime_warning(delta: float) -> void:
+	var low: bool = slime_remaining < hud.LOW_PERCENT and slime_remaining > 0.0
+	if not low:
+		_was_low = false
+		_heartbeat_left = 0.0
+		return
+	if not _was_low:
+		_was_low = true
+		_sfx("lowwarn", -6.0)
+		_heartbeat_left = HEARTBEAT_SLOW
+	_heartbeat_left -= delta
+	if _heartbeat_left <= 0.0:
+		_sfx("heartbeat", -9.0)
+		_heartbeat_left = lerpf(HEARTBEAT_FAST, HEARTBEAT_SLOW, slime_remaining / hud.LOW_PERCENT)
 
 
 func _process(_delta: float) -> void:
@@ -385,12 +423,15 @@ func _lead_camera(delta: float) -> void:
 
 
 func _shake_camera(delta: float) -> void:
-	if shake_left <= 0.0:
+	if shake_left <= 0.0 or motion_scale() <= 0.0:
+		shake_left = 0.0
+		kick = Vector2.ZERO
 		camera.offset = Vector2.ZERO
 		return
 	shake_left = maxf(shake_left - delta, 0.0)
-	var strength := ceilf(shake_strength * shake_left / SHAKE_TIME)
-	camera.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength)).round()
+	var fade := shake_left / SHAKE_TIME
+	var strength := ceilf(shake_strength * fade)
+	camera.offset = (Vector2(randf_range(-strength, strength), randf_range(-strength, strength)) + kick * fade).round()
 
 
 ## Adds the distance moved since last frame; past the next mark, a glimmer appears.
@@ -473,9 +514,10 @@ func fog_alpha_at(pos: Vector2) -> float:
 	var age: float = elapsed - _fog_lit_ticks(px) / FOG_TICKS
 	if hard_mode and age >= FADE_AFTER[-1]:
 		return 1.0
-	var alpha := fade_alpha(age)
+	var look := fog_look()
+	var alpha := fade_alpha(age, look.fade)
 	if packed % 2 == 1:
-		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
+		alpha += (1.0 - alpha) * look.wall
 	return alpha
 
 
@@ -519,11 +561,22 @@ static func splat_penalty(intended_distance: float) -> float:
 
 
 ## Darkness of a revealed floor cell last lit `age` seconds ago.
-static func fade_alpha(age: float) -> float:
+static func fade_alpha(age: float, table: Array = FADE_ALPHA) -> float:
 	for i in FADE_AFTER.size():
 		if age < FADE_AFTER[i]:
-			return FADE_ALPHA[i]
-	return FADE_ALPHA[-1]
+			return table[i]
+	return table[-1]
+
+
+## The fog look chosen in Settings (an entry of FOG_LOOKS).
+func fog_look() -> Dictionary:
+	var level_index: int = progress.fog_brightness if progress else Progress.FOG_NORMAL
+	return FOG_LOOKS[clampi(level_index, 0, FOG_LOOKS.size() - 1)]
+
+
+## 0 with Reduce Motion on, else 1: scales screen shake, the camera kick and hit-stop.
+func motion_scale() -> float:
+	return 0.0 if progress and progress.reduce_motion else 1.0
 
 
 ## The fog/trail image cell at a world position, and a cell's center back in the world: the
@@ -558,9 +611,16 @@ func _build_overlays() -> void:
 
 	var fog_material := ShaderMaterial.new()
 	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
-	fog_material.set_shader_parameter("fade_after", PackedFloat32Array(FADE_AFTER))
-	fog_material.set_shader_parameter("fade_alpha", PackedFloat32Array(FADE_ALPHA))
-	fog_material.set_shader_parameter("wall_shade", WALL_FOG_ALPHA)
+	var look := fog_look()
+	fog_material.set_shader_parameter("fade_after", Vector4(FADE_AFTER[0], FADE_AFTER[1], FADE_AFTER[2], FADE_AFTER[3]))
+	fog_material.set_shader_parameter("fade_alpha", Vector4(look.fade[0], look.fade[1], look.fade[2], look.fade[3]))
+	fog_material.set_shader_parameter("fade_alpha_last", look.fade[4])
+	fog_material.set_shader_parameter("wall_shade", look.wall)
+	fog_material.set_shader_parameter("deep_gain", look.deep_gain)
+	fog_material.set_shader_parameter("mist_gain", look.mist_gain)
+	fog_material.set_shader_parameter("far_dim", look.far_dim)
+	fog_material.set_shader_parameter("vig_max", look.vig_max)
+	fog_material.set_shader_parameter("light_outer", look.light_outer)
 	fog_material.set_shader_parameter("map_size", Vector2(cells * FOG_CELL))
 	fog_material.set_shader_parameter("origin", -BORDER_PX)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
@@ -572,7 +632,7 @@ func _build_overlays() -> void:
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
-	slime_light.z_index = 5
+	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
 
 
@@ -609,7 +669,8 @@ func _build_outer_fog(inner: ShaderMaterial, inner_rect: Rect2) -> void:
 	# both copies, in this Godot version).
 	var material := ShaderMaterial.new()
 	material.shader = inner.shader
-	for param in ["fade_after", "fade_alpha", "wall_shade", "hard_mode", "fog_deep", "fog_mist"]:
+	for param in ["fade_after", "fade_alpha", "fade_alpha_last", "wall_shade", "hard_mode", "fog_deep", "fog_mist",
+			"deep_gain", "mist_gain", "far_dim", "vig_max", "light_outer"]:
 		var value: Variant = inner.get_shader_parameter(param)
 		if value != null:
 			material.set_shader_parameter(param, value)
@@ -747,7 +808,9 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 		last_jump_cost += splat_penalty(intended_distance)
 		_stain_wall(slime.position, wall_normal)
 		shake_left = SHAKE_TIME
-		shake_strength = lerpf(1.0, SHAKE_MAX, inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
+		var hit_power := inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance)
+		shake_strength = lerpf(1.0, SHAKE_MAX, hit_power)
+		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX, hit_power))  # a shove into the wall that was hit
 		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, 18, 70.0, wall_normal, 70.0, rainbow)
 		_damage_wall(slime.position, wall_normal,
 			inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
@@ -910,6 +973,7 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 	if power > 0.3:
 		shake_left = SHAKE_TIME * 0.6
 		shake_strength = lerpf(1.0, SHAKE_MAX - 1.0, power)
+		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power))
 
 
 func _on_chalice_body_entered(body: Node2D) -> void:

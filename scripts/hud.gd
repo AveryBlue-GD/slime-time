@@ -56,7 +56,10 @@ func _ready() -> void:
 	var vignette_material := ShaderMaterial.new()
 	vignette_material.shader = preload("res://assets/shaders/atmosphere.gdshader")
 	vignette_material.set_shader_parameter("mist_strength", 0.0)
-	vignette_material.set_shader_parameter("vignette_strength", 0.55)
+	# Corners only and light: it must not darken the lit trail (the fog shader has its own edge fall-off).
+	vignette_material.set_shader_parameter("vignette_strength", 0.3)
+	vignette_material.set_shader_parameter("vignette_start", 0.6)
+	vignette_material.set_shader_parameter("vignette_end", 1.15)
 	vignette.material = vignette_material
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE

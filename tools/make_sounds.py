@@ -204,6 +204,13 @@ SOUNDS = {
                            bloop(160, 50, 0.3, 0.3, release=0.2)),
     # Menu click: a single low bubble pop.
     "click": lambda: bubble(420, 0.05, 0.45, rise=1.7),
+    # Low slime heartbeat: two dull, muffled thumps ("lub-dub"), quiet and low.
+    "heartbeat": lambda: seq(mix(bloop(78, 46, 0.11, 0.55, release=0.07), wet_thud(0.08, 0.25, seed=71, release=0.06)),
+                             [0.0] * int(0.09 * RATE),
+                             mix(bloop(66, 40, 0.1, 0.4, release=0.07), wet_thud(0.07, 0.18, seed=72, release=0.06))),
+    # Crossing into low slime: a sagging, sad bloop with a couple of dying bubbles.
+    "lowwarn": lambda: mix(bloop(340, 120, 0.4, 0.4, wobble=0.05, wobble_rate=6, release=0.2),
+                           gurgle(0.4, 4, 200, 420, 0.14, seed=73, falling=True)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }

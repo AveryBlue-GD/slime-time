@@ -21,6 +21,9 @@ var key_buttons := {}
 var waiting_for := ""
 var sound_button: Button
 var fullscreen_button: Button
+## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
+var motion_button: Button
+var fog_button: Button
 var reset_button: Button
 var reset_confirm: Control
 var confirm_button: Button
@@ -82,7 +85,16 @@ func _ready() -> void:
 	add_child(reset)
 	var volume_row := UIKit.make_volume_slider(110.0)
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
-	volume_row.position = Vector2(roundf((320 - volume_row.get_combined_minimum_size().x) / 2.0), 133)
+	volume_row.position = Vector2(14, 133)
+	volume_row.get_child(0).get_child(1).custom_minimum_size.x = 50.0  # the slider, narrower to make room
+	volume_row.size = Vector2.ZERO
+	motion_button = UIKit.make_button("", _toggle_motion, Vector2(82, 13))
+	motion_button.position = Vector2(14 + volume_row.get_combined_minimum_size().x + 4, 133)
+	add_child(motion_button)
+	fog_button = UIKit.make_button("", _cycle_fog, Vector2(82, 13))
+	fog_button.position = Vector2(motion_button.position.x + 86, 133)
+	add_child(fog_button)
+	_refresh_display_options()
 	var back := UIKit.add_back_button(self)
 	back.custom_minimum_size = Vector2(BUTTON_W, 13)
 	back.size = back.custom_minimum_size
@@ -307,6 +319,23 @@ func _toggle_sound() -> void:
 	Progress.sound_on = not Progress.sound_on
 	Progress.save_progress()
 	_refresh_sound()
+
+
+func _toggle_motion() -> void:
+	Progress.reduce_motion = not Progress.reduce_motion
+	Progress.save_progress()
+	_refresh_display_options()
+
+
+func _cycle_fog() -> void:
+	Progress.fog_brightness = (Progress.fog_brightness + 1) % 3
+	Progress.save_progress()
+	_refresh_display_options()
+
+
+func _refresh_display_options() -> void:
+	motion_button.text = "MOTION: " + ("LESS" if Progress.reduce_motion else "FULL")
+	fog_button.text = "FOG: " + ["DARK", "NORMAL", "BRIGHT"][Progress.fog_brightness]
 
 
 func _refresh_sound() -> void:

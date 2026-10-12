@@ -13,11 +13,12 @@ shader_type canvas_item;
 uniform float now;
 uniform float wall_shade = 0.3;
 uniform float reveal_time = 0.35;
-// A cell lit `age` seconds ago is fogged to fade_alpha[i] for the first fade_after[i]
-// it is younger than, or to fade_alpha[LAYERS - 1] past the last one.
-const int LAYERS = 5;
-uniform float fade_after[4];
-uniform float fade_alpha[5];
+// A cell lit `age` seconds ago is fogged to fade_alpha.x/.y/.z/.w for the first fade_after.x/.y/
+// .z/.w it is younger than, or to fade_alpha_last past the last one. (Plain vec4s checked one by
+// one, not arrays indexed in a loop: run-time-indexed arrays are a risk on Android WebGL.)
+uniform vec4 fade_after = vec4(1.5, 3.5, 6.0, 9.0);
+uniform vec4 fade_alpha = vec4(0.0, 0.3, 0.5, 0.65);
+uniform float fade_alpha_last = 0.78;
 // Hard mode: once a cell has fully dimmed it is covered again like unexplored ground.
 uniform bool hard_mode = false;
 
@@ -62,15 +63,18 @@ float cell_alpha(vec4 texel) {
 	float wall = mod(packed, 2.0);
 	float first_revealed = (floor(packed / 2.0) - 1.0) / TICKS;
 	float age = now - (bytes.r * 256.0 + bytes.g) / TICKS;
-	if (hard_mode && age >= fade_after[LAYERS - 2]) {
+	if (hard_mode && age >= fade_after.w) {
 		return 1.0;
 	}
-	float alpha = fade_alpha[LAYERS - 1];
-	for (int i = 0; i < LAYERS - 1; i++) {
-		if (age < fade_after[i]) {
-			alpha = fade_alpha[i];
-			break;
-		}
+	float alpha = fade_alpha_last;
+	if (age < fade_after.x) {
+		alpha = fade_alpha.x;
+	} else if (age < fade_after.y) {
+		alpha = fade_alpha.y;
+	} else if (age < fade_after.z) {
+		alpha = fade_alpha.z;
+	} else if (age < fade_after.w) {
+		alpha = fade_alpha.w;
 	}
 	if (wall > 0.5) {
 		alpha += (1.0 - alpha) * wall_shade;

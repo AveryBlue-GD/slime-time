@@ -8,6 +8,9 @@ uniform vec2 screen_size = vec2(320.0, 180.0);
 uniform float mist_strength = 1.0;
 // How dark the corners get (0-1).
 uniform float vignette_strength = 0.7;
+// Where the vignette starts and ends, as a distance from the center (corners are about 1.15).
+uniform float vignette_start = 0.45;
+uniform float vignette_end = 1.05;
 uniform vec4 deep : source_color = vec4(0.078, 0.078, 0.133, 1.0);
 uniform vec4 mist : source_color = vec4(0.247, 0.239, 0.341, 1.0);
 
@@ -37,7 +40,7 @@ void fragment() {
 
 	// Vignette: distance from the center (wider than tall), stepped into dithered bands.
 	vec2 c = (UV - 0.5) * vec2(1.0, screen_size.y / screen_size.x) * 2.0;
-	float v = smoothstep(0.45, 1.05, length(c)) * vignette_strength;
+	float v = smoothstep(vignette_start, vignette_end, length(c)) * vignette_strength;
 	v = floor(v * 6.0 + threshold) / 6.0;
 
 	// Mist: two slow noise layers, banded.

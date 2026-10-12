@@ -23,6 +23,13 @@ const MIN_JUMP_TILES := 1.0
 const MAX_JUMP_TILES := 8.0
 const JUMP_SPEED := 220.0
 const SPLAT_STUN := 0.3
+## A jump press made while the slime can't leap yet (stunned, airborne) is remembered for this
+## long and, if the key is still down when it can charge again, starts the charge at once.
+## A mere tap never auto-fires a leap.
+const JUMP_BUFFER := 0.5
+## Hit-stop: the slime's picture holds for up to this long on a hard splat (seconds, scaled by
+## power; none with Reduce Motion). Only the sprite stops: movement, timers and the run clock go on.
+const HIT_STOP_MAX := 0.06
 ## Splat knockback, pinball style. The jump distance still left when the slime hits a wall is
 ## its momentum: as a speed, sqrt(2 * friction * leftover) (the speed that would glide that far).
 ## Each wall hit splits the velocity into the part going into the wall, which bounces back
@@ -81,6 +88,8 @@ var last_jump_traveled := 0.0
 ## True while sliding from a splat's knockback (that slide costs no slime).
 var knocked_back := false
 var _stun_left := 0.0
+var _jump_buffer_left := 0.0
+var _hit_stop_left := 0.0
 var _bounce_fx_left := 0.0
 ## Wall ricochets since the last launch (after the splat itself).
 var ricochets := 0
@@ -259,7 +268,14 @@ func _physics_process(delta: float) -> void:
 	if input != Vector2.ZERO and (state == State.GLIDE or state == State.CHARGING):
 		facing = input.normalized()
 
-	if state == State.GLIDE and not frozen and can_charge and Input.is_action_just_pressed("jump"):
+	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
+	if frozen or not can_charge or not Input.is_action_pressed("jump"):
+		_jump_buffer_left = 0.0  # let go (or can't charge): the remembered press is void
+	elif Input.is_action_just_pressed("jump") and state != State.GLIDE and state != State.CHARGING:
+		_jump_buffer_left = JUMP_BUFFER  # pressed too early (stun, leap): remember it
+	if state == State.GLIDE and not frozen and can_charge \
+			and (Input.is_action_just_pressed("jump") or _jump_buffer_left > 0.0):
+		_jump_buffer_left = 0.0
 		state = State.CHARGING
 		charge = 0.0
 		_sfx("charge", -8.0)
@@ -306,6 +322,11 @@ func _animate() -> void:
 	shadow.visible = state == State.AIRBORNE
 	if _special_anim != "":
 		return
+	if _hit_stop_left > 0.0:
+		_hit_stop_left -= get_physics_process_delta_time()
+		if state == State.STUNNED:
+			_show_frame("splat_" + _splat_side, 0.0)  # the first squashed frame, held
+		return  # hit-stop: the picture holds on the moment of impact
 	var facing_name := dir_name(facing)
 	match state:
 		State.GLIDE:
@@ -376,6 +397,7 @@ func _ricochet(delta: float) -> void:
 				_bounce_fx_left = BOUNCE_FX_GAP
 				_splat_side = splat_side(normal)
 				_sfx("splat", lerpf(-14.0, -3.0, clampf(impact / 200.0, 0.0, 1.0)), randf_range(1.0, 1.2))
+				_hit_stop(clampf(impact / 200.0, 0.0, 1.0) * 0.5)
 				bounced.emit(normal, impact)
 		else:
 			velocity = velocity.slide(normal)
@@ -455,6 +477,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		_stun_left = SPLAT_STUN
 		_splat_side = splat_side(wall_normal)
 		_knock_back(wall_normal)
+		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))
 		_sfx("splat")
 		Input.vibrate_handheld(60)  # phones buzz on a splat (no effect elsewhere)
 	else:
@@ -471,6 +494,14 @@ func _knock_back(wall_normal: Vector2) -> void:
 	velocity = wall_bounce(_jump_dir * sqrt(2.0 * friction * leftover), wall_normal)
 	knocked_back = velocity.length() > KNOCKBACK_END_SPEED
 	_bounce_fx_left = BOUNCE_FX_GAP
+
+
+## Holds the sprite for a moment on impact (`power` 0-1), unless Reduce Motion is on.
+func _hit_stop(power: float) -> void:
+	var progress := get_node_or_null("/root/Progress")
+	if progress and progress.reduce_motion:
+		return
+	_hit_stop_left = maxf(_hit_stop_left, HIT_STOP_MAX * power)
 
 
 func _sfx(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:

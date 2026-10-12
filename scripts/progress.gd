@@ -59,6 +59,13 @@ var custom_color := Color8(239, 125, 47)
 var sound_on := true
 ## Master volume, 0-1 (applied to the Master audio bus).
 var volume := 0.8
+## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
+var reduce_motion := false
+## Fog brightness: FOG_DARK, FOG_NORMAL (the default look) or FOG_BRIGHT (see Game.fog_look).
+const FOG_DARK := 0
+const FOG_NORMAL := 1
+const FOG_BRIGHT := 2
+var fog_brightness := FOG_NORMAL
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
 ## Record (fastest) clear time per story level, in seconds.
@@ -199,6 +206,8 @@ func _read(file: ConfigFile) -> void:
 	sound_on = _bool(file, "settings", "sound_on", true)
 	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
 	hard_mode = _bool(file, "settings", "hard_mode", false)
+	reduce_motion = _bool(file, "settings", "reduce_motion", false)
+	fog_brightness = clampi(_int(file, "settings", "fog_brightness", FOG_NORMAL), FOG_DARK, FOG_BRIGHT)
 	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
 	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
 	best_times = {}
@@ -297,6 +306,8 @@ func _write() -> ConfigFile:
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
+	file.set_value("settings", "reduce_motion", reduce_motion)
+	file.set_value("settings", "fog_brightness", fog_brightness)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
 	file.set_value("progress", "hard_cleared", hard_cleared)
 	for level: int in best_times:
@@ -593,7 +604,7 @@ func equip_first_run_skin(level: int) -> String:
 
 
 ## Wipes all progress: levels, records, coins, upgrades, skins, hats and randomizer wins. Sound,
-## volume and key bindings are kept.
+## volume, reduce motion, fog brightness and key bindings are kept (they are preferences).
 func reset_progress() -> void:
 	levels_cleared = 0
 	highest_unlocked = 1
