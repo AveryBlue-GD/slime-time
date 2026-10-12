@@ -1,6 +1,2 @@
-# Normalize line endings so Godot files diff cleanly
-* text=auto eol=lf
-*.png binary
-*.wav binary
-*.ogg binary
-*.ttf binary
+# Shell scripts must keep Unix line endings to run on macOS/Linux.
+*.sh text eol=lf
