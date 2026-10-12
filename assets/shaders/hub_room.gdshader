@@ -8,7 +8,9 @@ shader_type canvas_item;
 // - rim: a thick band of glossy goo whose lumpy inner edge, speckles and the drips running off the
 //   front all turn with the room, while its shading and the shine streak stay put (the light
 //   doesn't move);
-// - everything in the skin's six goo shades.
+// - everything in the skin's six goo shades; with the rainbow skin (`rainbow`), each pixel keeps its
+//   brightness but takes a hue from rainbow bands laid across the floor plan, flowing slowly and
+//   turning with the room, like the rainbow slime.
 // Drawn on a 320x180 rect; each screen pixel is worked out at its center so it stays crisp.
 
 uniform vec2 center = vec2(160.0, 98.0);
@@ -22,6 +24,21 @@ uniform vec4 dark : source_color = vec4(0.145, 0.443, 0.475, 1.0);
 uniform vec4 deep : source_color = vec4(0.086, 0.259, 0.322, 1.0);
 uniform vec4 outline : source_color = vec4(0.047, 0.149, 0.188, 1.0);
 uniform vec4 background : source_color = vec4(0.07, 0.06, 0.1, 1.0);
+uniform bool rainbow = false;
+uniform float rainbow_speed = 0.05;
+const float HUE_STEPS = 12.0;
+
+vec3 hsv_to_rgb(float h, float s, float v) {
+	vec3 p = abs(fract(vec3(h) + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+	return v * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), s);
+}
+
+// The rainbow skin's version of a shaded color: same brightness, the band's hue (red to violet).
+vec3 rainbow_of(vec3 col, vec2 plan) {
+	float hue = fract(floor((plan.x * 0.6 + plan.y * 0.35 - TIME * rainbow_speed) * HUE_STEPS) / HUE_STEPS) * 0.83;
+	float v = max(col.r, max(col.g, col.b));
+	return hsv_to_rgb(hue, mix(0.9, 0.25, v * v), v);
+}
 
 
 float hash(vec2 p) {
@@ -118,6 +135,9 @@ void fragment() {
 		if (h < 0.16 && below < drip_length) {
 			col = below > drip_length - 1.0 ? outline.rgb : (below > drip_length - 2.0 ? mid.rgb : dark.rgb);
 		}
+	}
+	if (rainbow && (d <= 1.0 || col != background.rgb)) {
+		col = rainbow_of(col, plan);
 	}
 	COLOR = vec4(col, 1.0);
 }

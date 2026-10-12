@@ -3,8 +3,9 @@ extends RefCounted
 
 ## Shared look and helpers for the menu screens (320x180 base resolution, 8 px text).
 
-## The hub room is the title screen; every BACK leads there.
-const TITLE_SCENE := "res://scenes/hub.tscn"
+## The title screen (the main scene), and the hub every BACK leads to.
+const TITLE_SCENE := "res://scenes/title.tscn"
+const HUB_SCENE := "res://scenes/hub.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 const BG := Color8(26, 28, 44)
@@ -188,7 +189,7 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 
 ## Bottom-left BACK button that returns to the title.
 static func add_back_button(root: Control) -> Button:
-	var button := make_button("BACK", func() -> void: go(root.get_tree(), TITLE_SCENE), Vector2(40, 13))
+	var button := make_button("BACK", func() -> void: go(root.get_tree(), HUB_SCENE), Vector2(40, 13))
 	button.position = Vector2(4, 164)
 	root.add_child(button)
 	return button

@@ -295,4 +295,4 @@ func _refresh_hats(focus_id := "") -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
-		UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+		UIKit.go(get_tree(), UIKit.HUB_SCENE)

@@ -48,7 +48,7 @@ const GOO_ALPHA := 120
 ## Rainbow skin: the trail's hue advances this many full rainbows per second of play.
 const RAINBOW_TRAIL_SPEED := 0.08
 const CLEAR := Color(0, 0, 0, 0)
-const TITLE_SCENE := "res://scenes/hub.tscn"
+const HUB_SCENE := "res://scenes/hub.tscn"
 ## Seconds the "first run: playing as ..." notice stays up.
 const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"

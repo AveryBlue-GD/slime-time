@@ -1,6 +1,6 @@
 extends Node2D
 
-## The hub, which is also the title screen: the slime's room. It's shaped like a giant slime
+## The hub: the slime's room, where every menu lives (the title screen leads here). It's shaped like a giant slime
 ## (glossy goo rim, the slime's eyes on the back, jelly-cube floor; all in your skin's colors) and
 ## seen at a slant. The stations stand evenly spaced around the rim, all facing the center:
 ## - archway: STORY (level select, with the hard mode switch)
@@ -18,8 +18,8 @@ extends Node2D
 ## close (holding left while hitting the wheel turns the other way). You glide and leap around as
 ## your slime, in your skin and hat; next to a station the prompt names it and the interact key
 ## uses it (on a touchscreen, JUMP does, right next to one).
-## The logo shows over the room when the game starts and fades once you move. Coming back from a
-## station turns the room so that station faces you again, with the slime in front of it.
+## The title screen (title.tscn) leads here. Coming back from a station turns the room so that
+## station faces you again, with the slime in front of it.
 
 const CENTER := Vector2(160, 98)
 ## The room on screen (an ellipse: a round room seen at a slant).
@@ -36,7 +36,6 @@ const START := CENTER + Vector2(0, 40)
 const ART := "res://assets/sprites/hub/"
 const FPS := 6.0
 const PROMPT_Y := 166.0
-const LOGO_RAINBOW_WIDTH := 90.0
 enum View { FRONT, SIDE, BACK }
 
 ## The station used last: coming back turns the room to face it, with the slime in front of it.
@@ -60,7 +59,6 @@ var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
 var prompt_key: Label
-var logo_layer: CanvasLayer
 var room: ColorRect
 var _touch_controls: CanvasLayer
 var _time := 0.0
@@ -86,6 +84,7 @@ func _build_room() -> void:
 	material.set_shader_parameter("center", CENTER)
 	material.set_shader_parameter("radii", ROOM_RADII)
 	material.set_shader_parameter("background", UIKit.BG)
+	material.set_shader_parameter("rainbow", Progress.is_rainbow())
 	var shades := Skins.shades(Skins.RAINBOW_BASE if Progress.is_rainbow() else Progress.skin_color())
 	for shade: String in shades:
 		material.set_shader_parameter("outline" if shade == "outline" else shade, shades[shade])
@@ -211,7 +210,7 @@ func _on_floor(at: Vector2) -> bool:
 	return ((at - CENTER) / FLOOR).length() <= 1.0
 
 
-## The prompt bar, the title logo (on a fresh start), a soft vignette and touch controls.
+## The prompt bar, a soft vignette and touch controls.
 func _build_ui() -> void:
 	var shade := CanvasLayer.new()
 	shade.layer = 1
@@ -246,48 +245,9 @@ func _build_ui() -> void:
 	row.add_child(prompt_name)
 	row.add_child(prompt_key)
 	prompt.visible = false
-	if return_to == "":
-		_build_logo(root)
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
-
-
-## The gooey logo and the tagline over the room, as the title; they fade once you move.
-func _build_logo(root: Control) -> void:
-	logo_layer = CanvasLayer.new()
-	logo_layer.layer = 3
-	add_child(logo_layer)
-	var logo := TextureRect.new()
-	logo.texture = preload("res://assets/sprites/title.png")
-	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 2)
-	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
-	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
-	(logo.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)
-	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	logo_layer.add_child(logo)
-	var tagline := UIKit.make_label("ESCAPE THE FOG OR DRY TRYING!", 8, UIKit.TEXT_DIM)
-	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(tagline)
-	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	tagline.offset_top = 171
-	tagline.offset_bottom = 180
-	tagline.set_meta("fades_with_logo", true)
-	logo_layer.set_meta("tagline", tagline)
-
-
-func _fade_logo() -> void:
-	if logo_layer == null or logo_layer.has_meta("fading"):
-		return
-	logo_layer.set_meta("fading", true)
-	var tagline: Label = logo_layer.get_meta("tagline")
-	var tween := create_tween().set_parallel()
-	tween.tween_property(logo_layer.get_child(0), "modulate:a", 0.0, 0.6)
-	tween.tween_property(tagline, "modulate:a", 0.0, 0.6)
-	tween.chain().tween_callback(func() -> void:
-		tagline.queue_free()
-		logo_layer.queue_free()
-		logo_layer = null)
 
 
 func _physics_process(delta: float) -> void:
@@ -300,8 +260,6 @@ func _physics_process(delta: float) -> void:
 			turning = false
 			turn = wrapf(_turn_to, -PI, PI)
 			_place_all()
-	if logo_layer and (slime.velocity.length() > 4.0 or slime.state != Slime.State.GLIDE):
-		_fade_logo()
 	_update_near()
 	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
 	# such key, so right next to one JUMP uses it instead of leaping.
@@ -309,7 +267,6 @@ func _physics_process(delta: float) -> void:
 	slime.can_charge = near.is_empty() or not touch
 	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
 	if not near.is_empty() and used and slime.state == Slime.State.GLIDE:
-		_fade_logo()
 		if near.id == "rotor":
 			turn_room(-1 if Input.is_action_pressed("move_left") else 1)
 		else:

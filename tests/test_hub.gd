@@ -6,7 +6,7 @@ extends SceneTree
 ## up close); hitting the wheel (interact key beside it) turns the whole room one station round,
 ## the floor drawn for the new turn; next to a station the prompt names it and the interact key (F)
 ## uses it while SPACE still leaps; the randomizer portal stays locked until the story is beaten;
-## coming back from a station turns the room to face it; the title logo fades once you move.
+## coming back from a station turns the room to face it.
 ## Starts from a fresh state (tests never read the real save).
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hub.gd
 
@@ -25,6 +25,17 @@ func _initialize() -> void:
 	hub_scene = load("res://scenes/hub.tscn")
 	progress.levels_cleared = 0
 
+	# --- The title screen leads into the hub
+	var title: Control = load("res://scenes/title.tscn").instantiate()
+	root.add_child(title)
+	await _frames(2)
+	var texts: Array = []
+	for node in title.find_children("*", "Label", true, false):
+		texts.append(node.text)
+	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG OR DRY TRYING" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
+		"the game opens on the title: ENTER THE HUB, then the tagline (no !)")
+	title.free()
+
 	# --- The room, its stations and their views
 	HubScript.return_to = ""
 	var hub: Node2D = await _open()
@@ -40,16 +51,14 @@ func _initialize() -> void:
 	_check(right.view == HubScript.View.SIDE and right.sprite.flip_h and left.view == HubScript.View.SIDE and not left.sprite.flip_h,
 		"stations at the sides show their side, facing the center (mirrored on the right)")
 	_check(hub._station("settings").view == HubScript.View.BACK, "stations up close show their back")
-	_check(hub.logo_layer != null and hub.near.is_empty() and not hub.prompt.visible,
-		"a fresh start shows the logo; the slime starts with nothing to use")
+	_check(hub.near.is_empty() and not hub.prompt.visible, "the slime starts in the room with nothing to use")
 
-	# --- Away from stations the jump key leaps as usual, and moving fades the logo
+	# --- Away from stations the jump key leaps as usual
 	Input.action_press("jump")
 	await _frames(3)
 	_check(hub.slime.state == Slime.State.CHARGING, "away from stations, the jump key charges a leap")
 	Input.action_release("jump")
 	await _frames(70)
-	_check(hub.logo_layer == null or hub.logo_layer.has_meta("fading"), "moving fades the logo")
 	hub.free()
 
 	# --- The wheel turns the room one station round
@@ -72,7 +81,6 @@ func _initialize() -> void:
 	# --- Bumping into things is smooth: no lane tugging, no clipping or jumps
 	HubScript.return_to = ""
 	hub = await _open()
-	hub._fade_logo()
 	var slime: Slime = hub.slime
 	slime.position = hub.rotor.position + Vector2(-3, 30)  # below the wheel, a little off-center
 	var start_y := slime.position.y
@@ -98,8 +106,7 @@ func _initialize() -> void:
 	# --- Next to a station: the prompt, and the jump key uses it
 	HubScript.return_to = "upgrades"
 	hub = await _open()
-	_check(hub._station("upgrades").view == HubScript.View.FRONT and hub.logo_layer == null,
-		"coming back from a station turns the room to face it (no logo)")
+	_check(hub._station("upgrades").view == HubScript.View.FRONT, "coming back from a station turns the room to face it")
 	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and hub.prompt_key.text == "F",
 		"standing at it, the prompt names it and its key (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	Input.action_press("jump")

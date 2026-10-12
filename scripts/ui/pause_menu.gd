@@ -68,7 +68,7 @@ func _restart() -> void:
 
 func _quit() -> void:
 	resume()
-	UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
 func _toggle_sound() -> void:

@@ -113,7 +113,7 @@ func _refresh() -> void:
 func _leave() -> void:
 	var to_game: bool = Progress.return_to_game
 	Progress.return_to_game = false
-	UIKit.go(get_tree(), UIKit.GAME_SCENE if to_game else UIKit.TITLE_SCENE)
+	UIKit.go(get_tree(), UIKit.GAME_SCENE if to_game else UIKit.HUB_SCENE)
 
 
 func _unhandled_input(event: InputEvent) -> void:

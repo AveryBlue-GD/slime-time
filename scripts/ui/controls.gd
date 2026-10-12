@@ -107,7 +107,7 @@ func _cancel_reset() -> void:
 
 func _reset() -> void:
 	Progress.reset_progress()
-	UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
 func _refresh() -> void:
@@ -161,4 +161,4 @@ func _unhandled_input(event: InputEvent) -> void:
 		if reset_confirm.visible:
 			_cancel_reset()
 		else:
-			UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+			UIKit.go(get_tree(), UIKit.HUB_SCENE)
