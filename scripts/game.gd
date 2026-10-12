@@ -608,6 +608,10 @@ func _build_overlays() -> void:
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	fog_sprite.position = -BORDER_PX
 	trail_sprite.position = -BORDER_PX
+	var trail_material := ShaderMaterial.new()
+	trail_material.shader = preload("res://assets/shaders/trail.gdshader")
+	trail_material.set_shader_parameter("animate", motion_scale())
+	trail_sprite.material = trail_material
 	_build_trail_glow()
 
 	var fog_material := ShaderMaterial.new()
