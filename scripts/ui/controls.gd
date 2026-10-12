@@ -7,15 +7,19 @@ extends Control
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 
-## Layout: two columns of buttons (options on the left, CONTROLS + SAVE CODE on the right), with
-## RESET PROGRESS set apart at the bottom right and BACK at the bottom left.
+## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
+## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
 const COL_W := 120
 const COL_L := 36
 const COL_R := 164
-const FIRST_ROW := 34
-const ROW_STEP := 19
+const FIRST_ROW := 38
+const ROW_STEP := 20
+const BOTTOM_ROW := 154
+## The VOLUME box is 6 + "VOLUME" + 6 + slider + 6 wide, which must equal COL_W (as in the pause menu).
+const SLIDER_W := COL_W - 54
 
 var sound_button: Button
+var volume_slider: HSlider
 var fullscreen_button: Button
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
@@ -46,45 +50,42 @@ func _ready() -> void:
 	UIKit.setup_screen(self, "SETTINGS")
 	_section("OPTIONS", COL_L, FIRST_ROW - 11)
 	_section("MORE", COL_R, FIRST_ROW - 11)
-	sound_button = UIKit.make_button("", _toggle_sound, Vector2(COL_W, 13))
-	sound_button.position = Vector2(COL_L, _row(0))
-	add_child(sound_button)
-	var volume_row := UIKit.make_volume_slider(COL_W)
+	sound_button = _column_button(_cell(0, 0), _toggle_sound)
+	var volume_row := UIKit.make_volume_slider(SLIDER_W)
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
-	volume_row.position = Vector2(COL_L, _row(1))
-	motion_button = UIKit.make_button("", _toggle_motion, Vector2(COL_W, 13))
-	motion_button.position = Vector2(COL_L, _row(2))
-	add_child(motion_button)
-	fog_button = UIKit.make_button("", _cycle_fog, Vector2(COL_W, 13))
-	fog_button.position = Vector2(COL_L, _row(3))
-	add_child(fog_button)
-	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(COL_W, 13))
-	fullscreen_button.position = Vector2(COL_L, _row(4))
-	add_child(fullscreen_button)
+	volume_row.position = _cell(0, 1)
+	volume_row.custom_minimum_size = Vector2(COL_W, 13)
+	volume_row.size = Vector2(COL_W, 13)
+	volume_slider = volume_row.get_meta("slider")
+	motion_button = _column_button(_cell(0, 2), _toggle_motion)
+	fog_button = _column_button(_cell(0, 3), _cycle_fog)
+	fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
 	_refresh_sound()
 	_refresh_display_options()
 
-	controls_button = UIKit.make_button("CONTROLS", _open_controls, Vector2(COL_W, 13))
-	controls_button.position = Vector2(COL_R, _row(0))
-	add_child(controls_button)
-	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(COL_W, 13))
-	save_code_button.position = Vector2(COL_R, _row(1))
-	add_child(save_code_button)
+	controls_button = _column_button(_cell(1, 1), _open_controls, "CONTROLS")
+	save_code_button = _column_button(_cell(1, 2), _open_codes, "SAVE CODE")
 	var back := UIKit.add_back_button(self)
 	back.custom_minimum_size = Vector2(COL_W, 13)
 	back.size = back.custom_minimum_size
-	back.position = Vector2(COL_L, 160)
+	back.position = Vector2(COL_L, BOTTOM_ROW)
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
-	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(COL_W, 13))
-	reset_button.position = Vector2(COL_R, 160)
-	add_child(reset_button)
+	reset_button = _column_button(Vector2(COL_R, BOTTOM_ROW), _ask_reset, "RESET PROGRESS")
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
 
 
-func _row(i: int) -> int:
-	return FIRST_ROW + i * ROW_STEP
+## Top-left corner of a grid cell (column 0 = left, 1 = right).
+func _cell(column: int, row: int) -> Vector2:
+	return Vector2(COL_R if column == 1 else COL_L, FIRST_ROW + row * ROW_STEP)
+
+
+func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
+	var button := UIKit.make_button(text, on_press, Vector2(COL_W, 13))
+	button.position = at
+	add_child(button)
+	return button
 
 
 ## A small dim heading over a column.
