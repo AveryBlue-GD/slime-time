@@ -157,7 +157,7 @@ func _initialize() -> void:
 	screen._refresh(Skins.RAINBOW)
 	_check("FIND EVERY COIN" in screen.status.text, "...even after level 10 it still wants every coin (%s)" % screen.status.text)
 	screen.free()
-	screen = await _open("res://scenes/controls.tscn")
+	screen = await _open("res://scenes/key_controls.tscn")
 	_check(screen.key_buttons.size() == 7 and screen.key_buttons.jump.text == "SPACE" and screen.key_buttons.interact.text == "F",
 		"controls screen lists 7 actions (jump = %s, interact = %s)" % [screen.key_buttons.jump.text, screen.key_buttons.interact.text])
 	screen.free()

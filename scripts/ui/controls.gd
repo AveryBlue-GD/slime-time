@@ -1,29 +1,26 @@
 extends Control
 
-## Settings: key remapping (click an action's key, then press the new key; Esc cancels; if the
-## key was already used by another action, the two swap), sound on/off, volume, fullscreen,
-## SAVE CODE (copy your whole save as a code to back it up, or paste one to load it: the way to
+## Settings: sound on/off, volume, motion, fog, fullscreen, a CONTROLS button (the key-remapping
+## page, scripts/ui/key_controls.gd), SAVE CODE (copy your whole save as a code to back it up, or paste one to load it: the way to
 ## keep browser progress safe or move it to another browser or the Windows version), and
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
-const ACTION_NAMES := {
-	move_up = "MOVE UP", move_down = "MOVE DOWN", move_left = "MOVE LEFT", move_right = "MOVE RIGHT",
-	jump = "JUMP (HOLD)", restart = "RESTART LEVEL", interact = "INTERACT (HUB)",
-}
+const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 
-## The bottom button grid: width of each button, gap between columns, and the two rows.
-const BUTTON_W := 98
-const BUTTON_GAP := 6
-const ROW_1 := 148
-const ROW_2 := 164
+## Layout: two columns of buttons (options on the left, CONTROLS + SAVE CODE on the right), with
+## RESET PROGRESS set apart at the bottom right and BACK at the bottom left.
+const COL_W := 120
+const COL_L := 36
+const COL_R := 164
+const FIRST_ROW := 34
+const ROW_STEP := 19
 
-var key_buttons := {}
-var waiting_for := ""
 var sound_button: Button
 var fullscreen_button: Button
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
+var controls_button: Button
 var reset_button: Button
 var reset_confirm: Control
 var confirm_button: Button
@@ -47,66 +44,58 @@ var load_armed := false
 
 func _ready() -> void:
 	UIKit.setup_screen(self, "SETTINGS")
-	var rows := GridContainer.new()
-	rows.columns = 2
-	rows.position = Vector2(71, 22)  # 80 + 8 + 90 wide, centered
-	rows.add_theme_constant_override("h_separation", 8)
-	rows.add_theme_constant_override("v_separation", 1)
-	add_child(rows)
-	for action: String in ACTION_NAMES:
-		var label := UIKit.make_label(ACTION_NAMES[action])
-		label.custom_minimum_size = Vector2(80, 13)
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rows.add_child(label)
-		var button := UIKit.make_button("", func() -> void: _start_rebind(action), Vector2(90, 13))
-		rows.add_child(button)
-		key_buttons[action] = button
-	_refresh()
-	key_buttons.move_up.grab_focus()
-
-	var pause_keys := "P PAUSES" if OS.has_feature("web") else "ESC OR P PAUSES"  # browsers keep Esc for themselves
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys, 8, UIKit.TEXT_DIM)
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(note)
-	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	note.offset_top = 121
-	note.offset_bottom = 131
-	# The six buttons at the bottom form a grid: two rows of three, all BUTTON_W wide, in columns
-	# centered on the screen.
-	var reset := UIKit.make_button("RESET KEYS", _on_reset, Vector2(BUTTON_W, 13))
-	reset.position = Vector2(_column(0), ROW_1)
-	sound_button = UIKit.make_button("", _toggle_sound, Vector2(BUTTON_W, 13))
-	sound_button.position = Vector2(_column(1), ROW_1)
+	_section("OPTIONS", COL_L, FIRST_ROW - 11)
+	_section("MORE", COL_R, FIRST_ROW - 11)
+	sound_button = UIKit.make_button("", _toggle_sound, Vector2(COL_W, 13))
+	sound_button.position = Vector2(COL_L, _row(0))
 	add_child(sound_button)
-	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(BUTTON_W, 13))
-	fullscreen_button.position = Vector2(_column(2), ROW_1)
+	var volume_row := UIKit.make_volume_slider(COL_W)
+	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
+	volume_row.position = Vector2(COL_L, _row(1))
+	motion_button = UIKit.make_button("", _toggle_motion, Vector2(COL_W, 13))
+	motion_button.position = Vector2(COL_L, _row(2))
+	add_child(motion_button)
+	fog_button = UIKit.make_button("", _cycle_fog, Vector2(COL_W, 13))
+	fog_button.position = Vector2(COL_L, _row(3))
+	add_child(fog_button)
+	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(COL_W, 13))
+	fullscreen_button.position = Vector2(COL_L, _row(4))
 	add_child(fullscreen_button)
 	_refresh_sound()
-	add_child(reset)
-	var volume_row := UIKit.make_volume_slider(110.0)
-	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
-	volume_row.position = Vector2(14, 133)
-	volume_row.get_child(0).get_child(1).custom_minimum_size.x = 50.0  # the slider, narrower to make room
-	volume_row.size = Vector2.ZERO
-	motion_button = UIKit.make_button("", _toggle_motion, Vector2(82, 13))
-	motion_button.position = Vector2(14 + volume_row.get_combined_minimum_size().x + 4, 133)
-	add_child(motion_button)
-	fog_button = UIKit.make_button("", _cycle_fog, Vector2(82, 13))
-	fog_button.position = Vector2(motion_button.position.x + 86, 133)
-	add_child(fog_button)
 	_refresh_display_options()
-	var back := UIKit.add_back_button(self)
-	back.custom_minimum_size = Vector2(BUTTON_W, 13)
-	back.size = back.custom_minimum_size
-	back.position = Vector2(_column(0), ROW_2)
-	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(BUTTON_W, 13))
-	reset_button.position = Vector2(_column(2), ROW_2)
-	add_child(reset_button)
-	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(BUTTON_W, 13))
-	save_code_button.position = Vector2(_column(1), ROW_2)
+
+	controls_button = UIKit.make_button("CONTROLS", _open_controls, Vector2(COL_W, 13))
+	controls_button.position = Vector2(COL_R, _row(0))
+	add_child(controls_button)
+	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(COL_W, 13))
+	save_code_button.position = Vector2(COL_R, _row(1))
 	add_child(save_code_button)
+	var back := UIKit.add_back_button(self)
+	back.custom_minimum_size = Vector2(COL_W, 13)
+	back.size = back.custom_minimum_size
+	back.position = Vector2(COL_L, 160)
+	# The destructive one, alone at the bottom right, away from the everyday buttons.
+	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(COL_W, 13))
+	reset_button.position = Vector2(COL_R, 160)
+	add_child(reset_button)
+	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
+
+
+func _row(i: int) -> int:
+	return FIRST_ROW + i * ROW_STEP
+
+
+## A small dim heading over a column.
+func _section(text: String, x: int, y: int) -> void:
+	var label := UIKit.make_label(text, 8, UIKit.TEXT_DIM)
+	label.position = Vector2(x, y)
+	add_child(label)
+
+
+func _open_controls() -> void:
+	UIKit.go(get_tree(), KEY_CONTROLS_SCENE)
 
 
 ## The SAVE CODE panel: your progress as a code to copy, and a box to paste a code into and load.
@@ -254,12 +243,6 @@ func _load_code() -> void:
 	UIKit.go(get_tree(), UIKit.TITLE_SCENE)  # start fresh with the loaded save
 
 
-## Left edge of bottom-grid column `i` (0-2), the three columns centered on the screen.
-func _column(i: int) -> int:
-	var span := BUTTON_W * 3 + BUTTON_GAP * 2
-	return (320 - span) / 2 + i * (BUTTON_W + BUTTON_GAP)
-
-
 ## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
 func _build_reset_confirm() -> void:
 	reset_confirm = Control.new()
@@ -305,11 +288,6 @@ func _reset() -> void:
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
-func _refresh() -> void:
-	for action: String in key_buttons:
-		key_buttons[action].text = Progress.key_name(Progress.bindings[action])
-
-
 ## Keeps the fullscreen label right whether it was toggled here or with F11.
 func _process(_delta: float) -> void:
 	fullscreen_button.text = "FULLSCREEN: " + ("ON" if Progress.is_fullscreen() else "OFF")
@@ -342,34 +320,8 @@ func _refresh_sound() -> void:
 	sound_button.text = "SOUND: " + ("ON" if Progress.sound_on else "OFF")
 
 
-func _start_rebind(action: String) -> void:
-	waiting_for = action
-	_refresh()
-	key_buttons[action].text = "PRESS A KEY..."
-
-
-func _on_reset() -> void:
-	waiting_for = ""
-	Progress.reset_bindings()
-	_refresh()
-
-
-func _input(event: InputEvent) -> void:
-	if waiting_for == "" or not (event is InputEventKey) or not event.pressed or event.echo:
-		return
-	get_viewport().set_input_as_handled()
-	var key := event as InputEventKey
-	# Esc and P are reserved for pausing (P because browsers keep Esc in fullscreen).
-	if key.physical_keycode not in [KEY_ESCAPE, KEY_P, 0]:
-		Progress.set_binding(waiting_for, key.physical_keycode)
-	var action := waiting_for
-	waiting_for = ""
-	_refresh()
-	key_buttons[action].grab_focus()
-
-
 func _unhandled_input(event: InputEvent) -> void:
-	if waiting_for == "" and (event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel")):
+	if (event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel")):
 		if code_panel.visible:
 			_close_codes()
 		elif reset_confirm.visible:
