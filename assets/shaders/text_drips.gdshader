@@ -3,9 +3,14 @@ shader_type canvas_item;
 // Gives every letter on screen its own goo drips. The pixel font (assets/fonts/pixel.fnt and its
 // 2x copy pixel_big.fnt) has drips baked under each glyph, so repeated letters dripped the same
 // way; this ignores the baked ones and grows new drips under the letter's bottom row, picked by
-// a hash of the letter's place on screen (and its column within the letter). Text that stays put
-// keeps its drips; the same letter somewhere else drips differently.
+// a hash of the letter's place on screen (and its column within the letter) and `seed`. Text that
+// stays put keeps its drips; the same letter somewhere else drips differently, and UIKit gives
+// `seed` a new value every time a screen opens, so coming back to a screen drips anew.
+// A letter whose bottom is a single pixel (4, 1, i, l, T, 7...) rarely drips: a drip there just
+// looks like the stroke is too long.
 // Anything drawn with another texture (button frames, icons) passes through untouched.
+
+uniform float seed = 0.0;
 
 varying vec2 world;
 varying vec4 tint;
@@ -38,8 +43,12 @@ void fragment() {
 			}
 			float column = floor(px.x / unit);
 			float bottom = texture(TEXTURE, vec2(px.x, (6.5 * unit)) / atlas).a;
-			float r = hash(vec2(column, origin));
-			float drip_len = r < 0.08 ? 2.0 : (r < 0.3 ? 1.0 : 0.0);
+			// A lone bottom pixel: nothing beside it on the letter's bottom row.
+			bool lone = texture(TEXTURE, vec2(px.x - unit, 6.5 * unit) / atlas).a < 0.5
+				&& texture(TEXTURE, vec2(px.x + unit, 6.5 * unit) / atlas).a < 0.5;
+			float r = hash(vec2(column + fract(seed * 0.618) * 97.0, origin + seed));
+			float drip_len = lone ? (r < 0.015 ? 2.0 : (r < 0.06 ? 1.0 : 0.0))
+				: (r < 0.08 ? 2.0 : (r < 0.3 ? 1.0 : 0.0));
 			if (bottom > 0.5 && row - 7.0 < drip_len) {
 				COLOR = vec4(vec3(160.0 / 255.0) * tint.rgb, tint.a);
 			} else {

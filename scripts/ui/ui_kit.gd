@@ -23,6 +23,7 @@ const LINE_SPACING := 5
 const UI_DIR := "res://assets/ui/"
 
 static var _text_material: ShaderMaterial
+static var _drip_scene := -1
 
 
 static func make_theme() -> Theme:
@@ -186,6 +187,12 @@ static func text_material() -> ShaderMaterial:
 	if _text_material == null:
 		_text_material = ShaderMaterial.new()
 		_text_material.shader = load("res://assets/shaders/text_drips.gdshader")
+	# New drips every time a screen opens: a fresh seed the first time text is made in each scene.
+	var tree := Engine.get_main_loop() as SceneTree
+	var scene_id := tree.current_scene.get_instance_id() if tree and tree.current_scene else 0
+	if scene_id != _drip_scene:
+		_drip_scene = scene_id
+		_text_material.set_shader_parameter("seed", float(randi() % 10000))
 	return _text_material
 
 
