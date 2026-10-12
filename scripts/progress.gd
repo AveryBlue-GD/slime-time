@@ -192,11 +192,13 @@ func load_progress() -> void:
 
 ## Takes everything from a save (the save file or a loaded save code).
 func _read(file: ConfigFile) -> void:
-	tutorial_seen = maxi(_int(file, "progress", "tutorial_seen", 0), 0)
 	levels_cleared = clampi(_int(file, "progress", "levels_cleared", 0), 0, Levels.COUNT)
 	highest_unlocked = clampi(_int(file, "progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(_int(file, "progress", "current_level", 1), 1, highest_unlocked)
 	randoms_won = maxi(_int(file, "progress", "randoms_won", 0), 0)
+	# Saves from before the cues existed have no key: a returning player has seen it all.
+	var returning := levels_cleared > 0 or randoms_won > 0
+	tutorial_seen = maxi(_int(file, "progress", "tutorial_seen", TUTORIAL_MOVE | TUTORIAL_LEAP if returning else 0), 0)
 	var color: Variant = file.get_value("skin", "custom_color", custom_color)
 	custom_color = color if typeof(color) == TYPE_COLOR else custom_color
 	hats_owned.assign(_strings(file.get_value("hats", "owned", [])))
@@ -206,8 +208,8 @@ func _read(file: ConfigFile) -> void:
 	sound_on = _bool(file, "settings", "sound_on", true)
 	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
 	hard_mode = _bool(file, "settings", "hard_mode", false)
-	reduce_motion = _bool(file, "settings", "reduce_motion", false)
-	fog_brightness = clampi(_int(file, "settings", "fog_brightness", FOG_NORMAL), FOG_DARK, FOG_BRIGHT)
+	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
+	fog_brightness = clampi(_int(file, "settings", "fog_brightness", fog_brightness), FOG_DARK, FOG_BRIGHT)
 	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
 	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
 	best_times = {}
@@ -624,6 +626,8 @@ func reset_progress() -> void:
 	coins_found = {}
 	upgrades = {}
 	skin_override = ""
+	tutorial_seen = 0
+	dry_ups = {}
 	save_progress()
 
 

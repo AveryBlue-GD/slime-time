@@ -265,7 +265,8 @@ func _ready() -> void:
 	restart_prompt.game = self
 	add_child(restart_prompt)
 	_put_on_hat()
-	if progress and not is_random() and not hard_mode and level <= TutorialCues.MAX_LEVEL:
+	if progress and not is_random() and not hard_mode and level <= TutorialCues.MAX_LEVEL \
+			and level > progress.levels_cleared and progress.randoms_won == 0:
 		var cues := TutorialCues.new()
 		cues.setup(self, slime, progress)
 		slime.add_child(cues)

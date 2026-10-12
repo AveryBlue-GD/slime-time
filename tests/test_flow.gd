@@ -59,6 +59,7 @@ func _initialize() -> void:
 	game.free()
 
 	# --- Wordless teaching on level 1
+	progress.levels_cleared = 0
 	progress.tutorial_seen = 0
 	progress.dry_ups = {}
 	progress.start_story(1)

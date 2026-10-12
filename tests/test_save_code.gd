@@ -76,6 +76,26 @@ func _initialize() -> void:
 	_check(progress.levels_cleared == 6, "the second LOAD loads it")
 	screen.free()
 
+	# --- Legacy saves (no tutorial_seen key), settings keys and reset
+	var old := ConfigFile.new()
+	old.set_value("progress", "levels_cleared", 3)
+	progress.reset_progress()
+	progress._read(old)
+	_check(progress.has_seen_tutorial(Progress.TUTORIAL_MOVE) and progress.has_seen_tutorial(Progress.TUTORIAL_LEAP), "a returning save without the key has seen the cues")
+	var fresh := ConfigFile.new()
+	fresh.set_value("progress", "levels_cleared", 0)
+	progress._read(fresh)
+	_check(progress.tutorial_seen == 0, "a fresh save without the key still gets the cues")
+	progress.reduce_motion = true
+	progress.fog_brightness = Progress.FOG_BRIGHT
+	progress._read(old)
+	_check(progress.reduce_motion and progress.fog_brightness == Progress.FOG_BRIGHT, "a load without settings keys keeps the current settings")
+	progress.tutorial_seen = 3
+	progress.dry_ups = {1: 2}
+	progress.reset_progress()
+	_check(progress.tutorial_seen == 0 and progress.dry_ups.is_empty(), "reset clears tutorial_seen and dry_ups")
+	progress.reduce_motion = false
+	progress.fog_brightness = Progress.FOG_NORMAL
 	progress.reset_bindings()
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
