@@ -16,3 +16,8 @@
 
 # Temporary no-focus window override written by tools/play.ps1 and screenshot.ps1
 /override.cfg
+
+# Local recordings and macOS cruft
+.DS_Store
+docs/polish-shots/*.avi
+docs/polish-shots/*.mp4
