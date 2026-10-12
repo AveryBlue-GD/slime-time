@@ -405,7 +405,7 @@ func coins_found_in(level: int) -> int:
 func coins_earned() -> int:
 	var total := 0
 	for level: int in coins_found:
-		total += coins_found[level].size()
+		total += coins_found_in(level)
 	return total
 
 

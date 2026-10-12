@@ -531,6 +531,7 @@ func _build_overlays() -> void:
 	var cells: Vector2i = (maze.size + Vector2i.ONE * BORDER * 2) * TILE / FOG_CELL
 	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	fog_image.fill(UNREVEALED)
+	_relit_tick = -1
 	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
 	trail_image.fill(CLEAR)
 	fog_sprite.texture = ImageTexture.create_from_image(fog_image)
