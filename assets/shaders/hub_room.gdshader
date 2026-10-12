@@ -64,7 +64,7 @@ vec3 mist(vec2 pixel) {
 		+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
 	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
 	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
-	return mix(fog_deep.rgb, fog_mist.rgb, clamp(band, 0.0, 1.0));
+	return mix(fog_deep.rgb * 0.35, fog_mist.rgb * 0.25, clamp(band, 0.0, 1.0));
 }
 
 float rim_inner(float plan_angle) {
@@ -162,6 +162,9 @@ void fragment() {
 	}
 	if (d > 1.0 && col == background.rgb) {
 		col = mist(floor(px));  // outside the room (and its drips): fog
+	} else if (d <= 1.0) {
+		// Darker floor, a bit more toward the rim, so the stations pop.
+		col *= 0.8 - 0.12 * smoothstep(0.5, 1.0, d);
 	}
 	COLOR = vec4(col, 1.0);
 }

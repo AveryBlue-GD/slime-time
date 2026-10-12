@@ -61,6 +61,8 @@ const CHALICE_VOLUME_DB := -3.5
 const SHAKE_TIME := 0.25
 const SHAKE_MAX := 3.0
 ## The slime's own soft light on the floor and walls around it (diameter px, strength 0-1).
+## Strength of the additive halo over the goo trail.
+const TRAIL_GLOW := 0.3
 const SLIME_LIGHT_SIZE := 112
 const SLIME_LIGHT_STRENGTH := 0.22
 ## Camera look-ahead: leads the slime by its velocity * LOOK_AHEAD_TIME, up to LOOK_AHEAD_MAX px.
@@ -304,6 +306,12 @@ func _process(_delta: float) -> void:
 	fog_material.set_shader_parameter("now", elapsed)
 	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
 	slime_light.position = (slime.position + slime.sprite.position).round()
+	fog_material.set_shader_parameter("slime_px", slime_light.position)
+	var view_center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size * 0.5)
+	fog_material.set_shader_parameter("view_center", view_center.round())
+	var outer_material := outer_fog.material as ShaderMaterial
+	outer_material.set_shader_parameter("slime_px", slime_light.position)
+	outer_material.set_shader_parameter("view_center", view_center.round())
 	if rainbow:
 		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
 	_lead_camera(_delta)
@@ -540,6 +548,7 @@ func _build_overlays() -> void:
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	fog_sprite.position = -BORDER_PX
 	trail_sprite.position = -BORDER_PX
+	_build_trail_glow()
 
 	var fog_material := ShaderMaterial.new()
 	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
@@ -559,6 +568,22 @@ func _build_overlays() -> void:
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 5
 	add_child(slime_light)
+
+
+## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same
+## texture, so it updates with it): the 2 px cells blur into a faint halo and the goo glows.
+func _build_trail_glow() -> void:
+	for old in trail_sprite.get_children():
+		old.queue_free()
+	var glow := Sprite2D.new()
+	glow.texture = trail_sprite.texture
+	glow.centered = false
+	glow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	var material := CanvasItemMaterial.new()
+	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	glow.material = material
+	glow.modulate = Color(1, 1, 1, TRAIL_GLOW)
+	trail_sprite.add_child(glow)
 
 
 ## Fog beyond the maze and its border ring: one unrevealed cell stretched over a wide area,
