@@ -23,7 +23,7 @@ func _initialize() -> void:
 	progress.saving_enabled = false
 	HubScript = load("res://scripts/hub.gd")
 	hub_scene = load("res://scenes/hub.tscn")
-	progress.levels_cleared = 0
+	progress.levels_cleared = 1  # an existing save (a fresh one plays level 1; see test_flow)
 
 	# --- The title screen leads into the hub
 	var title: Control = load("res://scenes/title.tscn").instantiate()

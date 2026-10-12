@@ -7,6 +7,8 @@ extends Node
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
+const TUTORIAL_MOVE := 1
+const TUTORIAL_LEAP := 2
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
@@ -23,6 +25,10 @@ const SAVE_CODE_PREFIX := "SLIME1-"
 var highest_unlocked := 1
 ## Number of story levels beaten so far (0-10). Also decides which skins are unlocked.
 var levels_cleared := 0
+## Bit set of wordless hints already used (TUTORIAL_MOVE / TUTORIAL_LEAP); saved, optional key.
+var tutorial_seen := 0
+## Dry-ups per story level since it was last cleared (not saved); drives the chalice beacon.
+var dry_ups := {}
 ## Story level the game scene loads next.
 var current_level := 1
 
@@ -179,6 +185,7 @@ func load_progress() -> void:
 
 ## Takes everything from a save (the save file or a loaded save code).
 func _read(file: ConfigFile) -> void:
+	tutorial_seen = maxi(_int(file, "progress", "tutorial_seen", 0), 0)
 	levels_cleared = clampi(_int(file, "progress", "levels_cleared", 0), 0, Levels.COUNT)
 	highest_unlocked = clampi(_int(file, "progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(_int(file, "progress", "current_level", 1), 1, highest_unlocked)
@@ -281,6 +288,7 @@ func _write() -> ConfigFile:
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
 	file.set_value("progress", "current_level", current_level)
 	file.set_value("progress", "randoms_won", randoms_won)
+	file.set_value("progress", "tutorial_seen", tutorial_seen)
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
@@ -347,9 +355,25 @@ func complete_level(level: int) -> void:
 	if hard_mode and not level in hard_cleared:
 		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
+	dry_ups.erase(level)
 	highest_unlocked = maxi(highest_unlocked, mini(level + 1, Levels.COUNT))
 	current_level = level + 1 if level < Levels.COUNT else 1
 	save_progress()
+
+
+## True until the first chalice: the title goes straight into level 1 and the hub waits.
+func is_fresh_save() -> bool:
+	return levels_cleared == 0 and randoms_won == 0 and hard_cleared.is_empty()
+
+
+func has_seen_tutorial(bit: int) -> bool:
+	return tutorial_seen & bit != 0
+
+
+func mark_tutorial_seen(bit: int) -> void:
+	if not has_seen_tutorial(bit):
+		tutorial_seen |= bit
+		save_progress()
 
 
 func start_story(level: int) -> void:

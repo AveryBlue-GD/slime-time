@@ -32,7 +32,9 @@ func _ready() -> void:
 			add_child(hat)
 			hat.setup(Progress.selected_hat, preview)
 
-	enter_button = UIKit.make_button("ENTER THE HUB", _enter, Vector2(120, 13))
+	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
+	var fresh: bool = Progress.is_fresh_save()
+	enter_button = UIKit.make_button("PLAY" if fresh else "ENTER THE HUB", _play if fresh else _enter, Vector2(120, 13))
 	enter_button.position = Vector2(100, 96)
 	add_child(enter_button)
 	enter_button.grab_focus()
@@ -48,3 +50,9 @@ func _ready() -> void:
 
 func _enter() -> void:
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
+
+
+## First launch: straight into level 1.
+func _play() -> void:
+	Progress.start_story(1)
+	UIKit.go(get_tree(), UIKit.GAME_SCENE)

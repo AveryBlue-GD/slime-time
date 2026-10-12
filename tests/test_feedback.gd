@@ -20,8 +20,16 @@ func _initialize() -> void:
 	progress.dev_tools = false
 	progress.levels_cleared = 2
 
-	# --- R mid-run: a prompt, not an instant restart
+	# --- R mid-run with no coins to spend restarts at once; with coins it asks first
 	var game := await _play(1)
+	_press("restart")
+	await _frames(40)
+	_check(current_scene != null and (not is_instance_valid(game) or game.is_queued_for_deletion() or current_scene != game) and not paused, "R mid-run with no coins restarts at once")
+	if current_scene != null and current_scene != game:
+		current_scene.free()
+	current_scene = null
+	progress.coins_found = {1: ["0,0"]}
+	game = await _play(1)
 	_press("restart")
 	await _frames(3)
 	_check(game.restart_prompt.visible and paused and current_scene == game, "R mid-run opens RESTART / UPGRADES / CANCEL and pauses")

@@ -55,6 +55,8 @@ const VICTORY_SCENE := "res://scenes/victory.tscn"
 const UPGRADES_SCENE := "res://scenes/upgrades.tscn"
 ## After a win, the replay / next buttons appear after this long (so a held key can't press one).
 const CHOICE_DELAY := 0.6
+## A dry-up offers its retry buttons sooner: failing should cost a moment, not a pause.
+const DRY_CHOICE_DELAY := 0.25
 ## The chalice fanfare plays about a third quieter than other sounds (-3.5 dB = 67% amplitude).
 const CHALICE_VOLUME_DB := -3.5
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
@@ -244,6 +246,10 @@ func _ready() -> void:
 	restart_prompt.game = self
 	add_child(restart_prompt)
 	_put_on_hat()
+	if progress and not is_random() and not hard_mode and level <= TutorialCues.MAX_LEVEL:
+		var cues := TutorialCues.new()
+		cues.setup(self, slime, progress)
+		slime.add_child(cues)
 
 	var edge := (BORDER + EDGE_FOG) * TILE
 	camera.limit_left = -edge
@@ -959,7 +965,9 @@ func _skins_unlocked_solid_by(level: int) -> Array[String]:
 
 func _dry_up() -> void:
 	slime.play_dry_up()
-	_finish(false, "DRIED UP\nTHE MAZE WILL SHUFFLE" if is_random() else "DRIED UP", END_DELAY)
+	if progress and not is_random():
+		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
+	_finish(false, "DRIED UP", END_DELAY)
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
@@ -975,11 +983,9 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 	if not _is_running_scene():
 		return
 	if not did_win:
-		if progress and is_random():
-			progress.new_random_maze()
 		# The delay pauses with the game (false = not while paused), and the buttons are skipped
 		# if the player has left for the menu meanwhile.
-		await get_tree().create_timer(CHOICE_DELAY, false).timeout
+		await get_tree().create_timer(DRY_CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
 			_offer_retry()
 		return
@@ -997,10 +1003,14 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 ## The buttons shown after drying up: try again, or go spend coins on upgrades first (the
 ## upgrades screen's PLAY button comes back here).
 func _offer_retry() -> void:
-	hud.show_choices([["NEW MAZE" if is_random() else "RESTART", retry], ["UPGRADES", go_to_upgrades]], 0)
+	# RESTART has the focus: one press of SPACE / Enter / R tries the same maze again.
+	if is_random():
+		hud.show_choices([["RESTART", retry], ["NEW MAZE", play_next], ["UPGRADES", go_to_upgrades]], 0)
+	else:
+		hud.show_choices([["RESTART", retry], ["UPGRADES", go_to_upgrades]], 0)
 
 
-## Tries again: the same story level, or (the seed was already changed) a new random maze.
+## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).
 func retry() -> void:
 	get_tree().reload_current_scene()
 
@@ -1071,8 +1081,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			replay()
 		elif finished:
 			retry()  # the dry-up buttons already offer the upgrades
+		elif progress and not hard_mode and progress.coins() > 0:
+			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
 		else:
-			restart_prompt.open()  # mid-run: restart, or spend coins on upgrades first
+			retry()  # nothing to spend (and no upgrades on hard mode): restart at once
 
 
 func _sfx(sound_name: String, volume_db := 0.0) -> void:

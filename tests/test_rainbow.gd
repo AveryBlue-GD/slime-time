@@ -54,7 +54,7 @@ func _initialize() -> void:
 	progress.hard_cleared.clear()
 	await _stop_running(game)
 
-	# --- Drying up in the randomizer shuffles the maze.
+	# --- Drying up in the randomizer retries the same maze.
 	game = await _spawn_running(777)
 	game.slime_remaining = 0.2
 	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
@@ -62,8 +62,8 @@ func _initialize() -> void:
 	Input.action_press(action)
 	await _frames(30)
 	Input.action_release(action)
-	_check(game.finished and progress.random_seed != 777, "drying up in the randomizer shuffles to a new maze")
-	_check("SHUFFLE" in game.hud.message.text, "the dry-up message says the maze will shuffle")
+	_check(game.finished and progress.random_seed == 777, "drying up in the randomizer keeps the same maze")
+	_check("SHUFFLE" not in game.hud.message.text, "the dry-up message no longer promises a shuffle")
 	_check(progress.randoms_won == 0, "a dry-up doesn't count as a win")
 	await _stop_running(game)
 
