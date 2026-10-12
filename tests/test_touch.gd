@@ -64,12 +64,12 @@ func _initialize() -> void:
 	await _frames(60)
 
 	# Pause button.
-	_touch(2, Vector2(309, 19), true)
+	_touch(2, Vector2(309, 41), true)
 	await process_frame
 	await process_frame
 	_check(paused and game.pause_menu.visible, "the pause button opens the pause menu")
 	game.pause_menu.resume()
-	_touch(2, Vector2(309, 19), false)
+	_touch(2, Vector2(309, 41), false)
 
 	# A keyboard hides the touch controls.
 	var key := InputEventKey.new()

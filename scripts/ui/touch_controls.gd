@@ -16,7 +16,7 @@ const DEADZONE := 0.35
 const JOY_HOME := Vector2(40, 140)
 const JUMP_CENTER := Vector2(282, 142)
 const JUMP_RADIUS := 19.0
-const PAUSE_RECT := Rect2(302, 13, 15, 13)
+const PAUSE_RECT := Rect2(302, 35, 15, 13)
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 

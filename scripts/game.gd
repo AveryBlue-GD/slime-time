@@ -474,6 +474,7 @@ func _spawn_glimmer() -> void:
 	var glimmer := Glimmer.new()
 	glimmer.position = coin.position.round()
 	glimmer.color = Coin.GLOW[maxi(Themes.BY_LEVEL.find(theme), 0) % Coin.GLOW.size()].lightened(0.35)
+	glimmer.still = motion_scale() <= 0.0
 	glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
 	glimmer.add_to_group("glimmer")
 	add_child(glimmer)
@@ -484,6 +485,7 @@ func _spawn_chalice_glimmer() -> void:
 	var glimmer := Glimmer.new()
 	glimmer.position = (chalice.position + Vector2(randi_range(-3, 3), randi_range(-5, 1))).round()
 	glimmer.color = CHALICE_GLIMMER_COLOR
+	glimmer.still = motion_scale() <= 0.0
 	glimmer.z_index = fog_sprite.z_index + 1
 	glimmer.add_to_group("glimmer")
 	add_child(glimmer)
@@ -493,6 +495,8 @@ func _spawn_chalice_glimmer() -> void:
 class Glimmer extends Node2D:
 	const LIFE := 0.9
 	var color := Color.WHITE
+	## Reduce Motion: a steady dot for its life instead of the swell and fade.
+	var still := false
 	var _age := 0.0
 	var _light: Sprite2D
 
@@ -508,13 +512,16 @@ class Glimmer extends Node2D:
 		if _age >= LIFE:
 			queue_free()
 			return
+		if still:
+			_light.modulate.a = 0.15
+			return
 		_light.modulate.a = 0.3 * sin(_age / LIFE * PI)
 		queue_redraw()
 
 	func _draw() -> void:
 		# A bright center pixel with arms (up to 3 px) that grow and shrink with the twinkle.
-		var strength := sin(_age / LIFE * PI)
-		var arm := roundi(strength * 3.0)
+		var strength := 0.8 if still else sin(_age / LIFE * PI)
+		var arm := 1 if still else roundi(strength * 3.0)
 		draw_rect(Rect2(0, 0, 1, 1), Color(color, 0.7 * strength))
 		for i in range(1, arm + 1):
 			var c := Color(color, (0.5 if i == 1 else 0.25) * strength)
@@ -666,6 +673,7 @@ func _build_overlays() -> void:
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion)
 	if motes:
 		add_child(motes)
+		move_child(motes, $Walls.get_index() + 1)  # on the floor: under trail, chalice and slime
 
 
 ## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same

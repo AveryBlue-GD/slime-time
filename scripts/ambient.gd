@@ -3,14 +3,16 @@ extends Node2D
 
 ## Cheap ambient motes for each level theme (dust, spores, sand, bubbles, snow, embers, glints):
 ## one CPUParticles2D of 1-2 px squares per theme, kept in the world around the camera and drawn
-## below the fog, so the fog hides them exactly like the floor. Counts are capped (MAX_AMOUNT)
+## on the floor (under the trail, chalice, slime and coins) and under the fog, so the fog hides
+## them exactly like the floor. Counts are capped (MAX_AMOUNT)
 ## and nothing is made with Reduce Motion on.
 
 const MAX_AMOUNT := 28
 ## Half the emission area: a little more than half the 320x180 screen so nothing pops in.
 const REACH := Vector2(176.0, 100.0)
 ## Draw order: above the floor, goo trail and fillets (z 1-2), under coins and the fog (z 10).
-const Z := 11
+const PREPROCESS_MAX := 2.0
+const Z := 9
 
 ## Per theme: amount, life (s), dir, spread (deg), speed [min, max] px/s, gravity (px/s^2),
 ## color (+ alpha), end (color at the end of its life, optional), size (px, max), add (additive).
@@ -65,7 +67,7 @@ static func create(theme: String, reduce_motion: bool) -> Ambient:
 	var p := CPUParticles2D.new()
 	p.amount = amount
 	p.lifetime = cfg.life
-	p.preprocess = cfg.life  # already full when the level opens
+	p.preprocess = minf(cfg.life, PREPROCESS_MAX)  # mostly filled when the level opens (capped: it simulates up front)
 	p.local_coords = false
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	p.emission_rect_extents = REACH

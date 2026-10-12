@@ -197,7 +197,7 @@ func _add_station(id: String, title: String, art: String, size: Vector2i, frames
 	var pool: Sprite2D = null
 	if POOLS.has(id):
 		pool = Fx.make_pool(POOL_SIZE, POOLS[id])
-		pool.z_index = -1
+		pool.z_index = -2  # above the room (added after it), under every station sprite incl. rotor_base
 		add_child(pool)
 	if flat:  # lies on the floor, under everything
 		sprite.z_index = -1
