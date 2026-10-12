@@ -11,6 +11,12 @@ const ACTION_NAMES := {
 	jump = "JUMP (HOLD)", restart = "RESTART LEVEL", interact = "INTERACT (HUB)",
 }
 
+## The bottom button grid: width of each button, gap between columns, and the two rows.
+const BUTTON_W := 98
+const BUTTON_GAP := 6
+const ROW_1 := 148
+const ROW_2 := 164
+
 var key_buttons := {}
 var waiting_for := ""
 var sound_button: Button
@@ -57,25 +63,30 @@ func _ready() -> void:
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	note.offset_top = 121
 	note.offset_bottom = 131
-	var reset := UIKit.make_button("RESET KEYS", _on_reset, Vector2(76, 13))
-	reset.position = Vector2(20, 148)  # the three buttons span 20..300, 6 px apart
-	sound_button = UIKit.make_button("", _toggle_sound, Vector2(84, 13))
-	sound_button.position = Vector2(102, 148)
+	# The six buttons at the bottom form a grid: two rows of three, all BUTTON_W wide, in columns
+	# centered on the screen.
+	var reset := UIKit.make_button("RESET KEYS", _on_reset, Vector2(BUTTON_W, 13))
+	reset.position = Vector2(_column(0), ROW_1)
+	sound_button = UIKit.make_button("", _toggle_sound, Vector2(BUTTON_W, 13))
+	sound_button.position = Vector2(_column(1), ROW_1)
 	add_child(sound_button)
-	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(108, 13))
-	fullscreen_button.position = Vector2(192, 148)
+	fullscreen_button = UIKit.make_button("", func() -> void: Progress.toggle_fullscreen(), Vector2(BUTTON_W, 13))
+	fullscreen_button.position = Vector2(_column(2), ROW_1)
 	add_child(fullscreen_button)
 	_refresh_sound()
 	add_child(reset)
 	var volume_row := UIKit.make_volume_slider(110.0)
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
 	volume_row.position = Vector2(roundf((320 - volume_row.get_combined_minimum_size().x) / 2.0), 133)
-	UIKit.add_back_button(self)
-	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(96, 13))
-	reset_button.position = Vector2(220, 164)
+	var back := UIKit.add_back_button(self)
+	back.custom_minimum_size = Vector2(BUTTON_W, 13)
+	back.size = back.custom_minimum_size
+	back.position = Vector2(_column(0), ROW_2)
+	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(BUTTON_W, 13))
+	reset_button.position = Vector2(_column(2), ROW_2)
 	add_child(reset_button)
-	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(76, 13))
-	save_code_button.position = Vector2(122, 164)
+	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(BUTTON_W, 13))
+	save_code_button.position = Vector2(_column(1), ROW_2)
 	add_child(save_code_button)
 	_build_reset_confirm()
 	_build_code_panel()
@@ -169,6 +180,12 @@ func _load_code() -> void:
 		return
 	Progress.load_code(code_in.text)
 	UIKit.go(get_tree(), UIKit.TITLE_SCENE)  # start fresh with the loaded save
+
+
+## Left edge of bottom-grid column `i` (0-2), the three columns centered on the screen.
+func _column(i: int) -> int:
+	var span := BUTTON_W * 3 + BUTTON_GAP * 2
+	return (320 - span) / 2 + i * (BUTTON_W + BUTTON_GAP)
 
 
 ## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
