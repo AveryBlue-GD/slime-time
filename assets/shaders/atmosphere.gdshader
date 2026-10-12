@@ -11,7 +11,13 @@ uniform float vignette_strength = 0.7;
 uniform vec4 deep : source_color = vec4(0.078, 0.078, 0.133, 1.0);
 uniform vec4 mist : source_color = vec4(0.247, 0.239, 0.341, 1.0);
 
-const float BAYER[16] = {0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0};
+// The 4x4 Bayer dither matrix (0, 8, 2, 10 / 12, 4, 14, 6 / 3, 11, 1, 9 / 15, 7, 13, 5) worked
+// out instead of looked up: arrays indexed at run time fail to compile on many Android GPUs.
+float bayer4(vec2 pixel) {
+	vec2 a = mod(pixel, 2.0);
+	vec2 b = mod(floor(pixel / 2.0), 2.0);
+	return 4.0 * mod(2.0 * a.x + 3.0 * a.y, 4.0) + mod(2.0 * b.x + 3.0 * b.y, 4.0);
+}
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -27,9 +33,7 @@ float value_noise(vec2 p) {
 
 void fragment() {
 	vec2 pixel = floor(UV * screen_size);
-	int bx = int(mod(pixel.x, 4.0));
-	int by = int(mod(pixel.y, 4.0));
-	float threshold = (BAYER[by * 4 + bx] + 0.5) / 16.0;
+	float threshold = (bayer4(pixel) + 0.5) / 16.0;
 
 	// Vignette: distance from the center (wider than tall), stepped into dithered bands.
 	vec2 c = (UV - 0.5) * vec2(1.0, screen_size.y / screen_size.x) * 2.0;
