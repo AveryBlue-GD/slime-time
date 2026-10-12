@@ -17,7 +17,23 @@
       "Bash(git diff *)",
       "Bash(git log *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(./tools/godot.sh *)",
+      "Bash(./tools/screenshot.sh *)",
+      "Bash(./tools/test_all.sh)",
+      "Bash(./tools/test_all.sh *)",
+      "Bash(./tools/play.sh *)",
+      "Bash(./tools/play.sh)",
+      "Bash(python3 tools/*)",
+      "Bash(python3 -I tools/*)",
+      "Bash(git branch *)",
+      "Bash(git show *)",
+      "Bash(git stash *)"
+    ],
+    "deny": [
+      "Read(./.godot/**)",
+      "Read(./.screens/*.wav)",
+      "Read(./build/**)"
     ]
   }
 }
