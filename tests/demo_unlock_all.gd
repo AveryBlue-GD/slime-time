@@ -84,7 +84,7 @@ class Driver:
 			pilot.name = "Autopilot"
 			game.add_child(pilot)
 			return
-		if not game.won or game.hud.choice_buttons.is_empty() or not game.hud.choice_buttons[-1].is_visible_in_tree():
+		if not game.won or game.hud.choice_buttons.size() < 2 or not game.hud.choice_buttons[1].is_visible_in_tree():
 			return
 		if game == _handled:
 			return
@@ -93,7 +93,7 @@ class Driver:
 		await get_tree().create_timer(WIN_PAUSE).timeout
 		if not is_instance_valid(game):
 			return
-		_press(game.hud.choice_buttons[-1])  # NEXT LEVEL / CONTINUE
+		_press(game.hud.choice_buttons[1])  # NEXT LEVEL / CONTINUE
 
 	## Runs `action` once per screen, after `pause` seconds on it.
 	func _once(scene: Node, pause: float, action: Callable) -> void:

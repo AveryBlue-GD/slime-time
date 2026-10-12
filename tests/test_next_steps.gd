@@ -1,8 +1,8 @@
 extends SceneTree
 
-## After-win choices: story wins offer REPLAY / NEXT LEVEL (CONTINUE after level 10), random wins
-## offer REPLAY MAZE / NEW MAZE; each button loads the right thing. Dry-ups still retry on their
-## own. Uses a throwaway save file.
+## After-win choices: story wins offer REPLAY / NEXT LEVEL (CONTINUE after level 10) / HUB, random
+## wins offer REPLAY MAZE / NEW MAZE / HUB; each button loads the right thing (HUB lands in front of
+## the station the run came from). Dry-ups offer RESTART / UPGRADES. Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_next_steps.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -24,8 +24,8 @@ func _initialize() -> void:
 	# Story win -> NEXT LEVEL loads level 2.
 	var game := await _spawn_story(1)
 	await _win(game)
-	_check(_texts(game) == ["REPLAY", "NEXT LEVEL"], "a story win offers REPLAY and NEXT LEVEL (%s)" % [_texts(game)])
-	_check(game.hud.choice_buttons[-1].has_focus(), "NEXT LEVEL is focused for keyboard players")
+	_check(_texts(game) == ["REPLAY", "NEXT LEVEL", "HUB"], "a story win offers REPLAY, NEXT LEVEL and HUB (%s)" % [_texts(game)])
+	_check(game.hud.choice_buttons[1].has_focus(), "NEXT LEVEL is focused for keyboard players")
 	_check(not game.touch_controls.visible, "touch controls get out of the way of the buttons")
 	game.hud.choice_buttons[1].pressed.emit()
 	var next := await _new_scene(game)
@@ -40,19 +40,37 @@ func _initialize() -> void:
 	_check(next.level == 1, "REPLAY loads the same level again (got %d)" % next.level)
 	_drop(next)
 
+	# Story win -> HUB goes back to the hub, in front of the archway.
+	game = await _spawn_story(1)
+	await _win(game)
+	game.hud.choice_buttons[2].pressed.emit()
+	for i in 180:
+		await process_frame
+		if current_scene != game and current_scene != null:
+			break
+	var hub_script: GDScript = load("res://scripts/hub.gd")
+	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/hub.tscn" and hub_script.get("return_to") == "story",
+		"HUB goes back to the hub, facing the story archway")
+	if current_scene and current_scene != game:
+		var hub := current_scene
+		current_scene = null
+		hub.free()
+	if is_instance_valid(game):
+		game.free()
+
 	# Last level -> REPLAY / CONTINUE.
 	progress.levels_cleared = 9
 	progress.highest_unlocked = 10
 	game = await _spawn_story(10)
 	await _win(game)
-	_check(_texts(game) == ["REPLAY", "CONTINUE"], "after level 10: REPLAY and CONTINUE (to the victory screen)")
+	_check(_texts(game) == ["REPLAY", "CONTINUE", "HUB"], "after level 10: REPLAY, CONTINUE (to the victory screen) and HUB")
 	_check("TIME" in game.hud.message.text, "the level 10 message still shows your time")
 	await _drop_running(game)
 
 	# Random win -> REPLAY MAZE keeps the seed, NEW MAZE changes it.
 	game = await _spawn_random(4242)
 	await _win(game)
-	_check(_texts(game) == ["REPLAY MAZE", "NEW MAZE"], "a random win offers REPLAY MAZE and NEW MAZE")
+	_check(_texts(game) == ["REPLAY MAZE", "NEW MAZE", "HUB"], "a random win offers REPLAY MAZE, NEW MAZE and HUB")
 	game.hud.choice_buttons[0].pressed.emit()
 	next = await _new_scene(game)
 	_check(next.random_seed == 4242, "REPLAY MAZE plays the same maze")

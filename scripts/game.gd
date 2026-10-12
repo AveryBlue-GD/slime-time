@@ -957,12 +957,19 @@ func go_to_upgrades() -> void:
 
 ## The buttons shown after a win.
 func _offer_next_steps() -> void:
+	# The middle button (carry on) has the focus, so SPACE / Enter just keeps going.
 	if is_random():
-		hud.show_choices([["REPLAY MAZE", replay], ["NEW MAZE", play_next]])
+		hud.show_choices([["REPLAY MAZE", replay], ["NEW MAZE", play_next], ["HUB", go_to_hub]], 1)
 	elif level >= Levels.COUNT:
-		hud.show_choices([["REPLAY", replay], ["CONTINUE", play_next]])
+		hud.show_choices([["REPLAY", replay], ["CONTINUE", play_next], ["HUB", go_to_hub]], 1)
 	else:
-		hud.show_choices([["REPLAY", replay], ["NEXT LEVEL", play_next]])
+		hud.show_choices([["REPLAY", replay], ["NEXT LEVEL", play_next], ["HUB", go_to_hub]], 1)
+
+
+## Back to the hub, in front of the station this run came from (the archway or the portal).
+func go_to_hub() -> void:
+	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if is_random() else "story")
+	UIKit.go(get_tree(), HUB_SCENE)
 
 
 ## Plays this same maze again (for a random maze, the same seed).

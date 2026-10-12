@@ -22,8 +22,8 @@ the skin shader recolors it to the equipped skin; stone stays off the dried-crus
                            out and glinting / its side / its back
 - wheel.png     32x40 x24: HAT WHEEL (coming soon): a pegged prize wheel with hat wedges and a
                            flapper on a braced stand / edge-on / its back; a full turn in 24 steps
-- signpost.png  24x34 x1 : SETTINGS: two meshed gears on a post with a wrench hanging off it /
-                           edge-on / from behind
+- signpost.png  24x34 x6 : SETTINGS: two meshed gears on a post with a wrench hanging off it /
+                           edge-on / from behind; the gears turning (a looping tooth's worth)
 - hatch.png     28x18 x4 : QUIT: an iron-braced trapdoor over a ladder into the dark (flat: the
                            same from every side); frames: shut, lifting, blown open with a puff, open
 - rotor.png     26x36 x4 : the wheel on a stick in the middle: a ship's wheel with handles and a
@@ -705,40 +705,57 @@ def _post(cv: Canvas, x: int, top: int) -> None:
     cv.hline(x - 4, x + 6, 31, STONE[3])
 
 
+## The gears turn in GEAR_FRAMES steps that loop: the big gear (8 teeth) a tooth's worth, the
+## small one (6 teeth) the other way, as fast as meshed gears would.
+GEAR_FRAMES = 6
+BIG_STEP = (math.tau / 8) / GEAR_FRAMES
+SMALL_STEP = (math.tau / 6) / GEAR_FRAMES
+
+
 def signpost() -> list:
-    cv = Canvas(24, 34)
-    _post(cv, 10, 12)
-    _gear(cv, 11, 8, 7.5, 8, 0.0)
-    _gear(cv, 18.5, 14.5, 4.0, 6, 0.3)
-    cv.vline(13, 19, 26, IRON[3])  # a wrench hanging off the post
-    cv.put(12, 26, IRON[3])
-    cv.put(14, 26, IRON[3])
-    cv.put(13, 18, IRON[2])
-    cv.outline()
-    return [cv.px]
+    frames = []
+    for k in range(GEAR_FRAMES):
+        cv = Canvas(24, 34)
+        _post(cv, 10, 12)
+        _gear(cv, 11, 8, 7.5, 8, k * BIG_STEP)
+        _gear(cv, 18.5, 14.5, 4.0, 6, 0.3 - k * SMALL_STEP)
+        cv.vline(13, 19, 26, IRON[3])  # a wrench hanging off the post
+        cv.put(12, 26, IRON[3])
+        cv.put(14, 26, IRON[3])
+        cv.put(13, 18, IRON[2])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
 
 
 def signpost_side() -> list:
-    cv = Canvas(24, 34)
-    _post(cv, 10, 12)
-    for y in range(1, 16):  # the big gear edge-on, teeth sticking out
-        cv.put(13, y, IRON[3])
-        cv.put(14, y, IRON[2])
-        if y % 3 == 0:
-            cv.put(15, y, IRON[2])
-    cv.vline(15, 11, 18, IRON[3])  # the small one
-    cv.vline(9, 19, 26, IRON[2])   # the wrench, side on
-    cv.outline()
-    return [cv.px]
+    frames = []
+    for k in range(GEAR_FRAMES):
+        cv = Canvas(24, 34)
+        _post(cv, 10, 12)
+        for y in range(1, 16):  # the big gear edge-on, its teeth rolling past
+            cv.put(13, y, IRON[3])
+            cv.put(14, y, IRON[2])
+            if (y + k) % 3 == 0:
+                cv.put(15, y, IRON[2])
+        for y in range(11, 19):  # the small one, rolling the other way
+            cv.put(15, y, IRON[3] if (y - k) % 2 else IRON[2])
+        cv.vline(9, 19, 26, IRON[2])   # the wrench, side on
+        cv.outline()
+        frames.append(cv.px)
+    return frames
 
 
 def signpost_back() -> list:
-    cv = Canvas(24, 34)
-    _post(cv, 10, 12)
-    _gear(cv, 11, 8, 7.5, 8, 0.2, back=True)
-    _gear(cv, 3.5, 14.5, 4.0, 6, 0.0, back=True)
-    cv.outline()
-    return [cv.px]
+    frames = []
+    for k in range(GEAR_FRAMES):
+        cv = Canvas(24, 34)
+        _post(cv, 10, 12)
+        _gear(cv, 11, 8, 7.5, 8, 0.2 - k * BIG_STEP, back=True)  # seen from behind: mirrored turning
+        _gear(cv, 3.5, 14.5, 4.0, 6, k * SMALL_STEP, back=True)
+        cv.outline()
+        frames.append(cv.px)
+    return frames
 
 
 # ----------------------------------------------------------------- QUIT: the trapdoor

@@ -45,7 +45,8 @@ enum View { FRONT, SIDE, BACK }
 ## [frame, seconds] every `every` seconds (random in that range), then rests on its last frame.
 ## - the trapdoor blows open with a puff of dust and slams shut;
 ## - the wardrobe's mirror sparkles, and now and then its door swings open and shut;
-## - the prize wheel spins, slowing down (built by _spin: it stops wherever it stops).
+## - the prize wheel spins, slowing down (built by _spin: it stops wherever it stops);
+## - the settings gears whirr round for a moment.
 const IDLE_ANIMS := {
 	"quit": [{every = Vector2(5.0, 9.0), seq = [[1, 0.07], [2, 0.2], [3, 0.35], [1, 0.07], [0, 0.0]], sound = "puff"}],
 	"wardrobe": [
@@ -53,6 +54,7 @@ const IDLE_ANIMS := {
 		{every = Vector2(9.0, 15.0), seq = [[3, 0.15], [4, 1.4], [3, 0.15], [0, 0.0]], sound = "creak"},
 	],
 	"wheel": [{every = Vector2(8.0, 14.0), spin = true}],
+	"settings": [{every = Vector2(3.0, 7.0), spin = true, steps = Vector2i(12, 24)}],
 }
 
 ## The station used last: coming back turns the room to face it, with the slime in front of it.
@@ -141,7 +143,7 @@ func _build_stations() -> void:
 	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
 	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
 	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
-	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 1)
+	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 6)
 	if not web:
 		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
 	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 24)
@@ -455,7 +457,7 @@ func _play_idle_anims(station: Dictionary, delta: float) -> void:
 	if station.seq.is_empty():
 		for anim: Dictionary in station.anims:
 			if _time >= anim.next:
-				station.seq = _spin(station) if anim.get("spin", false) else anim.seq.duplicate(true)
+				station.seq = _spin(station, anim.get("steps", Vector2i(26, 44))) if anim.get("spin", false) else anim.seq.duplicate(true)
 				station.seq_t = 0.0
 				station.frame = station.seq[0][0]
 				var length := 0.0
@@ -477,10 +479,11 @@ func _play_idle_anims(station: Dictionary, delta: float) -> void:
 				_sfx_quiet("land", 0.7, -16.0)  # the lid slamming shut
 
 
-## A prize wheel spin from wherever it rests: quick at first, slowing to a stop.
-func _spin(station: Dictionary) -> Array:
+## A spin from wherever it rests (the prize wheel, the gears): quick at first, slowing to a stop,
+## `steps` frames long (random in the range).
+func _spin(station: Dictionary, steps_range: Vector2i) -> Array:
 	var seq: Array = []
-	var steps := randi_range(26, 44)
+	var steps := randi_range(steps_range.x, steps_range.y)
 	var frame: int = station.frame
 	for i in steps:
 		frame = (frame + 1) % station.frames

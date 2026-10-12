@@ -135,14 +135,15 @@ func _initialize() -> void:
 	HubScript.return_to = ""
 	hub = await _open()
 	var seen := {}
-	for id in ["wardrobe", "quit", "wheel"]:
+	for id in ["wardrobe", "quit", "wheel", "settings"]:
 		var station: Dictionary = hub._station(id)
 		for anim: Dictionary in station.anims:
 			anim.next = 1e9  # hold them all...
 		seen[id] = [station.frame]
 	hub._station("wardrobe").anims[1].next = 0.0  # ...then fire the wardrobe door,
 	hub._station("quit").anims[0].next = 0.0      # the trapdoor,
-	hub._station("wheel").anims[0].next = 0.0     # and a wheel spin
+	hub._station("wheel").anims[0].next = 0.0     # a wheel spin
+	hub._station("settings").anims[0].next = 0.0  # and the gears turning
 	for i in 360:
 		await process_frame
 		for id in seen:
@@ -153,6 +154,7 @@ func _initialize() -> void:
 	var puffed: int = seen.quit.find(2)
 	_check(puffed > 0 and seen.quit.find(0, puffed) > puffed, "the trapdoor blows open with a puff and slams shut (frames %s)" % [seen.quit])
 	_check(seen.wheel.size() > 20, "the prize wheel spins round (%d steps)" % (seen.wheel.size() - 1))
+	_check(seen.settings.size() > 10, "the settings gears turn (%d steps)" % (seen.settings.size() - 1))
 	var rest: int = hub._station("wheel").frame
 	for i in 60:
 		await process_frame
