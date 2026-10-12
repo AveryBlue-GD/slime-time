@@ -8,7 +8,8 @@ extends Node2D
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
-## - prize wheel: HAT WHEEL (coming soon)
+## - prize wheel: HAT WHEEL: spin for a random hat you don't have yet (won hats come off the
+##   wheel); spins will cost a currency later, so for now only dev mode can spin
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
 ## In the middle stands a wheel on a stick. Hit it (the interact key, F, next to it, or leap into
@@ -19,7 +20,7 @@ extends Node2D
 ## close (holding left while hitting the wheel turns the other way). You glide and leap around as
 ## your slime, in your skin and hat; next to a station the prompt names it and the interact key
 ## uses it (on a touchscreen, JUMP does, right next to one).
-## The title screen (title.tscn) leads here. Coming back from a station turns the room so that
+## The title screen (title.tscn) leads here, and Esc goes back to it. Coming back from a station turns the room so that
 ## station faces you again, with the slime in front of it.
 
 const CENTER := Vector2(160, 98)
@@ -84,6 +85,8 @@ var coin_board: Control
 var board_rows: Array[Label] = []
 var board_total: Label
 var board_hint: Label
+## The hat wheel panel (dev mode for now).
+var hat_wheel: HatWheel
 var _touch_controls: CanvasLayer
 var _time := 0.0
 
@@ -139,7 +142,7 @@ func _build_room() -> void:
 func _build_stations() -> void:
 	var web := OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args()
 	# Clockwise round the room from the back.
-	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 1)
+	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 4)  # torches flickering
 	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
 	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
 	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
@@ -228,6 +231,16 @@ func _spawn_slime() -> void:
 	slime.jump_landed.connect(_on_jump_landed)
 	var camera: Camera2D = slime.get_node("Camera2D")
 	camera.enabled = false
+	_put_on_hat()
+
+
+## The slime's hat (again, after winning one on the hat wheel).
+func _put_on_hat() -> void:
+	if hat:
+		if slime.launched.is_connected(hat.pop):
+			slime.launched.disconnect(hat.pop)
+		hat.queue_free()
+		hat = null
 	if Progress.selected_hat != Hats.NONE:
 		hat = Hat.new()
 		hat.z_index = 1
@@ -277,6 +290,12 @@ func _build_ui() -> void:
 	row.add_child(prompt_key)
 	prompt.visible = false
 	_build_coin_board(root)
+	hat_wheel = HatWheel.new()
+	hat_wheel.visible = false
+	root.add_child(hat_wheel)
+	hat_wheel.landed.connect(func(_id: String) -> void:
+		_put_on_hat()
+		hat_wheel.refresh(_use_key()))
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
@@ -356,11 +375,47 @@ func close_coin_board() -> void:
 	_show_prompt()
 
 
+## The key that uses things here, as shown in hints (TAP JUMP on a touchscreen).
+func _use_key() -> String:
+	var touch := _touch_controls != null and _touch_controls.visible
+	return "TAP JUMP" if touch else Progress.key_name(Progress.bindings.interact)
+
+
+func open_hat_wheel() -> void:
+	hat_wheel.refresh(_use_key())
+	hat_wheel.visible = true
+	prompt.visible = false
+	slime.frozen = true
+
+
+func close_hat_wheel() -> void:
+	hat_wheel.visible = false
+	slime.frozen = false
+	_show_prompt()
+
+
 func _physics_process(delta: float) -> void:
+	if hat_wheel.visible:
+		var touch := _touch_controls != null and _touch_controls.visible
+		var pressed := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
+		if hat_wheel.spinning:
+			return
+		if Input.is_action_just_pressed("menu") or (pressed and not Progress.can_spin_hats()):
+			close_hat_wheel()
+		elif pressed and hat_wheel.spin():
+			var wheel: Dictionary = _station("wheel")
+			wheel.seq = _spin(wheel, Vector2i(30, 44))  # the wheel in the room whirls along
+			wheel.seq_t = 0.0
+		return
 	if coin_board.visible:
 		var touch := _touch_controls != null and _touch_controls.visible
 		if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("menu") or (touch and Input.is_action_just_pressed("jump")):
 			close_coin_board()
+		return
+	if Input.is_action_just_pressed("menu") and not slime.frozen:
+		_sfx("click")
+		slime.frozen = true
+		UIKit.go(get_tree(), UIKit.TITLE_SCENE)
 		return
 	if turning:
 		_turn_t = minf(_turn_t + delta / TURN_TIME, 1.0)
@@ -549,8 +604,10 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
-	elif near.id == "wheel":
+	elif near.id == "wheel" and not Progress.dev_tools:
 		prompt_key.text = "COMING SOON"
+	elif near.id == "story":
+		prompt_key.text = ""  # just "STORY - LEVEL N"
 	else:
 		prompt_key.text = key
 	prompt.reset_size()
@@ -583,7 +640,10 @@ func _use(station: Dictionary) -> void:
 			else:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":
-			_deny("COMING SOON")
+			if Progress.dev_tools:  # spins will cost a currency later; for now, dev mode only
+				open_hat_wheel()
+			else:
+				_deny("COMING SOON")
 		"coins":
 			open_coin_board()
 		"quit":

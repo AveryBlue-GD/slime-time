@@ -6,7 +6,7 @@ extends Control
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
-const TAGLINE := "ESCAPE THE FOG OR DRY TRYING"
+const TAGLINE := "ESCAPE THE FOG\nOR DRY TRYING"
 
 var enter_button: Button
 
@@ -24,7 +24,7 @@ func _ready() -> void:
 	add_child(logo)
 	for x in [52, 268]:
 		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow())
-		preview.position = Vector2(x, 124)
+		preview.position = Vector2(x, 112)
 		add_child(preview)
 		if Progress.selected_hat != Hats.NONE:  # the hat you're wearing, at the same 2x size
 			var hat := Hat.new()
@@ -33,16 +33,17 @@ func _ready() -> void:
 			hat.setup(Progress.selected_hat, preview)
 
 	enter_button = UIKit.make_button("ENTER THE HUB", _enter, Vector2(120, 13))
-	enter_button.position = Vector2(100, 112)
+	enter_button.position = Vector2(100, 96)
 	add_child(enter_button)
 	enter_button.grab_focus()
 
-	var tagline := UIKit.make_label(TAGLINE, 8, UIKit.TEXT_DIM)
+	var tagline := UIKit.make_label(TAGLINE, 16, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tagline.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING * 2)
 	add_child(tagline)
 	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	tagline.offset_top = 134
-	tagline.offset_bottom = 144
+	tagline.offset_top = 120
+	tagline.offset_bottom = 172
 
 
 func _enter() -> void:

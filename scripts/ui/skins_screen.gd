@@ -283,11 +283,8 @@ func _refresh_hats(focus_id := "") -> void:
 		status.text = Hats.display_name(id) + ("  (WEARING)" if id == Progress.selected_hat else "")
 	elif not Hats.available:
 		status.text = Hats.display_name(id) + " - COMING SOON"
-	elif not Progress.is_randomizer_unlocked():
-		status.text = "LOCKED - BEAT ALL %d LEVELS TO FIND OUT HOW" % Levels.COUNT
 	else:
-		var needed := Hats.wins_needed(id)
-		status.text = "LOCKED - WIN %d RANDOM MAZE%s (%d/%d)" % [needed, "" if needed == 1 else "S", Progress.randoms_won, needed]
+		status.text = "LOCKED - WIN IT ON THE HAT WHEEL" 
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		tile.add_theme_stylebox_override("normal", UIKit.button_style("hover" if tile_id == Progress.selected_hat else "normal"))

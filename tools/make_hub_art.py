@@ -9,8 +9,9 @@ at the back), side (drawn facing right; the game mirrors it for the other side) 
 stations nearest you). Frames run left to right. Light comes from the top-left, like everywhere
 else. Goo is drawn in the slime sheet's goo shades (H/l/m/n/D/G in make_placeholder_art.PAL), so
 the skin shader recolors it to the equipped skin; stone stays off the dried-crust greys.
-- door.png      30x40 x1 : STORY: a mortared stone archway with moss, wall torches, a skull
-                           keystone and steps going down into the dark / a pillar / a studded door
+- door.png      30x40 x4 : STORY: a mortared stone archway with moss, wall torches, a skull
+                           keystone and steps going down into the dark / a pillar / a studded door;
+                           frames: the torches flickering
 - portal.png    30x40 x6 : RANDOMIZER: a swirling vortex in a rune-carved stone ring on a stepped
                            plinth / the ring edge-on / its dim back
 - wardrobe.png  28x40 x5 : SKINS & HATS: a carved wardrobe with paneled doors, a gilt mirror, a
@@ -178,16 +179,23 @@ def moss(cv: Canvas, spots, rng: random.Random) -> None:
                 cv.put(mx, my, MOSS[rng.randint(0, 1)])
 
 
-def torch(cv: Canvas, x: int, y: int) -> None:
-    """A wall torch: an iron bracket and a little flame."""
+## The torch flame in each of TORCH_FRAMES frames: (dx, dy, fire shade) pixels above the bracket.
+TORCH_FRAMES = 4
+FLAMES = [
+    [(0, 2, 1), (1, 2, 2), (0, 1, 2), (1, 1, 3), (0, 0, 1)],
+    [(0, 2, 2), (1, 2, 1), (0, 1, 3), (1, 1, 2), (1, 0, 2), (1, -1, 1)],
+    [(0, 2, 1), (1, 2, 2), (0, 1, 3), (1, 1, 2), (0, 0, 2), (-1, 0, 1)],
+    [(0, 2, 2), (1, 2, 2), (0, 1, 1), (1, 1, 3), (1, -1, 0)],
+]
+
+
+def torch(cv: Canvas, x: int, y: int, f: int = 0) -> None:
+    """A wall torch: an iron bracket and a little flame (flickering through its frames)."""
     cv.rect(x, y + 3, 2, 4, IRON[2])
     cv.put(x, y + 3, IRON[3])
     cv.put(x - 1, y + 6, IRON[1])
-    cv.put(x, y + 2, FIRE[1])
-    cv.put(x + 1, y + 2, FIRE[2])
-    cv.put(x, y + 1, FIRE[2])
-    cv.put(x + 1, y + 1, FIRE[3])
-    cv.put(x, y, FIRE[1])
+    for dx, dy, shade in FLAMES[f % TORCH_FRAMES]:
+        cv.put(x + dx, y + dy, FIRE[shade])
 
 
 # ----------------------------------------------------------------- STORY: the archway
@@ -205,6 +213,10 @@ def _arch(x, y):
 
 
 def door() -> list:
+    return [_door(f) for f in range(TORCH_FRAMES)]
+
+
+def _door(f: int) -> list:
     cv = Canvas(30, 40)
     rng = random.Random(3)
     stone_blocks(cv, _arch)
@@ -224,25 +236,29 @@ def door() -> list:
     cv.put(15, 5, BONE)
     drips(cv, 6, 23, 7, random.Random(4), 4)
     moss(cv, [(3, 36), (2, 25), (26, 31), (27, 19)], rng)
-    torch(cv, 2, 13)
-    torch(cv, 26, 13)
+    torch(cv, 2, 13, f)
+    torch(cv, 26, 13, f + 2)  # out of step with the other one
     cv.hline(11, 18, 39, GOO[2])  # a goo trail leading in
     cv.hline(13, 16, 38, GOO[3])
     cv.outline()
-    return [cv.px]
+    return cv.px
 
 
 def door_side() -> list:
+    return [_door_side(f) for f in range(TORCH_FRAMES)]
+
+
+def _door_side(f: int) -> list:
     cv = Canvas(30, 40)
     rng = random.Random(5)
     stone_blocks(cv, lambda x, y: 11 <= x <= 18 and y >= 4, 4, 4)
     cv.rect(12, 2, 6, 2, STONE[3])
     cv.vline(18, 4, 39, STONE[1])  # the inner face, toward the center
     drips(cv, 11, 18, 5, random.Random(6), 3)
-    torch(cv, 19, 13)
+    torch(cv, 19, 13, f)
     moss(cv, [(12, 35), (16, 22)], rng)
     cv.outline()
-    return [cv.px]
+    return cv.px
 
 
 def door_back() -> list:
@@ -264,7 +280,7 @@ def door_back() -> list:
     cv.put(19, 24, WOOD[1])
     moss(cv, [(3, 36), (27, 19)], rng)
     cv.outline()
-    return [cv.px]
+    return [cv.px] * TORCH_FRAMES
 
 
 # ----------------------------------------------------------------- RANDOMIZER: the portal

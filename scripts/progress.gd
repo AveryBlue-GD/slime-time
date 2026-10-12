@@ -27,8 +27,10 @@ var levels_cleared := 0
 var current_level := 1
 
 var selected_skin := Skins.DEFAULT
-## The hat the slime wears (Hats.NONE for none); hats unlock from randomizer wins.
+## The hat the slime wears (Hats.NONE for none).
 var selected_hat := Hats.NONE
+## Hats won on the hat wheel (saved): they're off the wheel and can be worn.
+var hats_owned: Array[String] = []
 ## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
 ## only be collected once; they're saved the moment they're grabbed.
 var coins_found := {}
@@ -66,7 +68,7 @@ var bindings := DEFAULT_KEYS.duplicate()
 var mode := MODE_STORY
 var random_seed := 1
 var randoms_cleared := 0
-## Randomizer mazes beaten in total (saved; unlocks hats).
+## Randomizer mazes beaten in total (saved).
 var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
@@ -97,7 +99,6 @@ func _ready() -> void:
 			dev_tools = true
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
-			randoms_won = maxi(randoms_won, Hats.LIST.map(func(h: Dictionary) -> int: return h.wins).max())
 			hard_cleared.assign(range(1, Levels.COUNT + 1))
 		elif arg == "--touch":
 			force_touch = true
@@ -183,6 +184,7 @@ func _read(file: ConfigFile) -> void:
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
 	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
 	custom_color = file.get_value("skin", "custom_color", custom_color)
+	hats_owned.assign(file.get_value("hats", "owned", []))
 	selected_hat = file.get_value("skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
 		selected_hat = Hats.NONE
@@ -236,6 +238,7 @@ func _write() -> ConfigFile:
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
 	file.set_value("skin", "hat", selected_hat)
+	file.set_value("hats", "owned", hats_owned)
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
@@ -406,7 +409,31 @@ func is_randomizer_unlocked() -> bool:
 func is_hat_unlocked(id: String) -> bool:
 	if dev_tools and not Hats.get_hat(id).is_empty():
 		return true  # dev mode can try on every hat, even before they're released
-	return Hats.is_unlocked(id, randoms_won)
+	return Hats.is_unlocked(id, hats_owned)
+
+
+## The hats still on the hat wheel: the ones not won yet.
+func hats_left() -> Array[String]:
+	var left: Array[String] = []
+	for id in Hats.ids():
+		if not id in hats_owned:
+			left.append(id)
+	return left
+
+
+## Whether the hat wheel can be spun right now. Spins will cost a currency later; until then
+## only dev mode can spin (as often as it likes).
+func can_spin_hats() -> bool:
+	return dev_tools and not hats_left().is_empty()
+
+
+## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
+func win_hat(id: String) -> void:
+	if id in hats_owned or Hats.get_hat(id).is_empty():
+		return
+	hats_owned.append(id)
+	selected_hat = id
+	save_progress()
 
 
 ## Wears hat `id` (if unlocked) and saves.
@@ -499,6 +526,7 @@ func reset_progress() -> void:
 	selected_skin = Skins.DEFAULT
 	set_jelly(true)
 	selected_hat = Hats.NONE
+	hats_owned.clear()
 	custom_color = Color8(239, 125, 47)
 	hard_mode = false
 	best_times = {}

@@ -32,7 +32,7 @@ func _initialize() -> void:
 	var texts: Array = []
 	for node in title.find_children("*", "Label", true, false):
 		texts.append(node.text)
-	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG OR DRY TRYING" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
+	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG\nOR DRY TRYING" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
 		"the game opens on the title: ENTER THE HUB, then the tagline (no !)")
 	title.free()
 
@@ -103,6 +103,27 @@ func _initialize() -> void:
 	_check(slime.position.y > hub.rotor.position.y - 2.0, "...and the slime doesn't pass through it")
 	hub.free()
 
+	# --- The story prompt is just its name and level; Esc goes back to the title
+	HubScript.return_to = "story"
+	hub = await _open()
+	_check(hub.prompt_name.text.begins_with("STORY - LEVEL") and hub.prompt_key.text == "", "the story prompt has no key after it (%s)" % hub.prompt_name.text)
+	current_scene = hub
+	Input.action_press("menu")
+	await _frames(2)
+	Input.action_release("menu")
+	_check(hub.slime.frozen, "Esc in the hub heads back to the title")
+	for i in 120:
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == "res://scenes/title.tscn":
+			break
+	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/title.tscn", "...and lands on it")
+	if current_scene and current_scene.scene_file_path == "res://scenes/title.tscn":
+		var title_scene := current_scene
+		current_scene = null
+		title_scene.free()
+	if is_instance_valid(hub):
+		hub.free()
+
 	# --- Next to a station: the prompt, and the jump key uses it
 	HubScript.return_to = "upgrades"
 	hub = await _open()
@@ -160,6 +181,48 @@ func _initialize() -> void:
 		await process_frame
 	_check(hub._station("wheel").frame == rest, "...and stops where it stops")
 	hub.free()
+
+	# --- The hat wheel (dev mode for now): spins land on a hat you don't have, which comes off it
+	progress.hats_owned.clear()
+	progress.selected_hat = Hats.NONE
+	HubScript.return_to = "wheel"
+	hub = await _open()
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(not hub.hat_wheel.visible and "COMING SOON" in hub.prompt_key.text, "outside dev mode the hat wheel is still coming soon")
+	hub.free()
+	progress.dev_tools = true
+	hub = await _open()
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(hub.hat_wheel.visible and hub.hat_wheel.hats.size() == Hats.LIST.size(), "in dev mode it opens with every hat on the wheel (%d)" % hub.hat_wheel.hats.size())
+	var won: Array[String] = []
+	for spin_number in 3:
+		Input.action_press("interact")
+		await _frames(2)
+		Input.action_release("interact")
+		_check(hub.hat_wheel.spinning, "spin %d starts the wheel" % (spin_number + 1))
+		for i in int(hub.hat_wheel.SPIN_TIME * 60) + 10:
+			await physics_frame
+		var hat_id: String = progress.selected_hat
+		won.append(hat_id)
+		var under: String = hub.hat_wheel.hats[hub.hat_wheel.wedge_at(hub.hat_wheel.turn)]
+		_check(not hub.hat_wheel.spinning and under == hat_id and hat_id in progress.hats_owned and not hat_id in progress.hats_left() and hub.hat != null,
+			"...lands on %s (the wedge under the pointer): won, worn, and off the wheel (%d left)" % [hat_id, progress.hats_left().size()])
+	var unique := {}
+	for id in won:
+		unique[id] = true
+	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() - 3, "three spins, three different hats")
+	progress.hats_owned.assign(Hats.ids())
+	hub.hat_wheel._won = ""
+	hub.hat_wheel.refresh("F")
+	_check(hub.hat_wheel.hats.is_empty() and "EVERY HAT" in hub.hat_wheel.result.text and not hub.hat_wheel.spin(), "once every hat is won, the wheel says so and won't spin")
+	hub.free()
+	progress.dev_tools = false
+	progress.hats_owned.clear()
+	progress.selected_hat = Hats.NONE
 
 	# --- The coin bag's board: coins found per level
 	progress.coins_found = {2: ["a", "b", "c"]}

@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Hat checks: hats unlock from randomizer wins and are saved; a worn hat sits on the slime's
+## Hat checks: hats are won on the hat wheel and saved; a worn hat sits on the slime's
 ## head, pops off when it leaps, keeps its momentum and lands back on its head; after a splat it
 ## flies on, comes down and hops back on. Uses a throwaway save.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hats.gd
@@ -17,24 +17,24 @@ func _initialize() -> void:
 	progress = root.get_node("Progress")
 	progress.save_path = TEST_SAVE
 	progress.levels_cleared = 10
-	progress.randoms_won = 0
 	progress.selected_hat = Hats.NONE
-	progress.randoms_won = 99
-	_check(not progress.is_hat_unlocked(Hats.LIST[0].id), "while hats are 'coming soon' they can't be unlocked")
-	progress.randoms_won = 0
+	progress.hats_owned.clear()
+	progress.hats_owned.append(Hats.LIST[0].id)
+	_check(not progress.is_hat_unlocked(Hats.LIST[0].id), "while hats are 'coming soon' they can't be worn, even won ones")
+	progress.hats_owned.clear()
 	Hats.available = true  # the rest checks how they work once released
 
-	# --- Unlocking and saving
+	# --- Won on the hat wheel, and saved
 	var first: String = Hats.LIST[0].id
 	_check(progress.is_hat_unlocked(Hats.NONE) and not progress.is_hat_unlocked(first), "no hat at first; hats are locked")
 	progress.select_hat(first)
 	_check(progress.selected_hat == Hats.NONE, "a locked hat can't be worn")
-	progress.randoms_won = Hats.wins_needed(first)
-	progress.select_hat(first)
+	progress.win_hat(first)
+	_check(progress.selected_hat == first and not first in progress.hats_left(), "winning a hat puts it on and takes it off the wheel")
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
 	reloaded.load_progress()
-	_check(reloaded.selected_hat == first, "winning random mazes unlocks a hat, and wearing it is saved")
+	_check(reloaded.selected_hat == first and first in reloaded.hats_owned, "won hats and the one you wear are saved")
 	reloaded.free()
 
 	# --- On the head
