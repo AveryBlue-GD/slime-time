@@ -64,6 +64,9 @@ const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 var frozen := false
 ## False while the jump key means something else (the hub: next to a station it opens it).
 var can_charge := true
+## Maze helpers: lining up with the 16 px corridor lanes and slipping past corners a leap only
+## clips. Off in the hub, a round room with no lanes (they'd tug the slime at invisible lines).
+var maze_assist := true
 var state := State.GLIDE
 ## 0-100 while charging.
 var charge := 0.0
@@ -315,7 +318,8 @@ func _show_frame(anim: String, progress: float) -> void:
 func _glide(input: Vector2, delta: float) -> void:
 	if input != Vector2.ZERO:
 		velocity = velocity.move_toward(input * max_speed, acceleration * delta)
-		_center_in_lane(input)
+		if maze_assist:
+			_center_in_lane(input)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
 	if knocked_back and input == Vector2.ZERO:
@@ -374,7 +378,7 @@ func _fly(delta: float) -> void:
 	var step := minf(JUMP_SPEED * delta, _jump_distance - _jump_traveled)
 	var collision := move_and_collide(_jump_dir * step)
 	var moved := _moved_along(collision, step)
-	if collision and _slip_past_corner(collision):
+	if collision and maze_assist and _slip_past_corner(collision):
 		collision = move_and_collide(_jump_dir * (step - moved))
 		moved += _moved_along(collision, step - moved)
 	_jump_traveled += moved

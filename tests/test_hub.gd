@@ -69,6 +69,32 @@ func _initialize() -> void:
 	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)
 	hub.free()
 
+	# --- Bumping into things is smooth: no lane tugging, no clipping or jumps
+	HubScript.return_to = ""
+	hub = await _open()
+	hub._fade_logo()
+	var slime: Slime = hub.slime
+	slime.position = hub.rotor.position + Vector2(-3, 30)  # below the wheel, a little off-center
+	var start_y := slime.position.y
+	Input.action_press("move_right")
+	await _frames(20)
+	Input.action_release("move_right")
+	_check(absf(slime.position.y - start_y) < 0.5, "gliding sideways doesn't tug toward grid lanes (y moved %.2f)" % (slime.position.y - start_y))
+	await _frames(30)
+	slime.position = hub.rotor.position + Vector2(-3, 30)
+	var largest := 0.0
+	var last := slime.position
+	Input.action_press("move_up")
+	for i in 90:  # glide up into the wheel's post and keep pushing
+		await physics_frame
+		largest = maxf(largest, slime.position.distance_to(last))
+		last = slime.position
+	Input.action_release("move_up")
+	var limit: float = slime.max_speed / 60.0 + 0.5
+	_check(largest <= limit, "pushing into the wheel never jumps (largest step %.2f px, a frame's glide is %.2f)" % [largest, limit])
+	_check(slime.position.y > hub.rotor.position.y - 2.0, "...and the slime doesn't pass through it")
+	hub.free()
+
 	# --- Next to a station: the prompt, and the jump key uses it
 	HubScript.return_to = "upgrades"
 	hub = await _open()

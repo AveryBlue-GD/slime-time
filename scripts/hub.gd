@@ -156,13 +156,16 @@ func _make_sprite(art: String, size: Vector2i) -> Sprite2D:
 	return sprite
 
 
-## A round footprint to bump into (stations move with the room, so theirs are animatable).
+## A footprint to bump into: a flat oval on the slanted floor, `radius` wide and half as deep
+## (stations move with the room, so theirs are animatable). It's a real polygon rather than a
+## squashed circle: physics shapes don't take uneven scaling, which made the slime clip and jump.
 func _add_body(at: Vector2, radius: float, moving: bool) -> AnimatableBody2D:
-	var shape := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = radius
-	shape.shape = circle
-	shape.scale = Vector2(1.0, 0.5)  # flat on the slanted floor
+	var shape := CollisionPolygon2D.new()
+	var points := PackedVector2Array()
+	for i in 16:
+		var a := TAU * i / 16.0
+		points.append(Vector2(cos(a) * radius, sin(a) * radius * 0.5))
+	shape.polygon = points
 	if moving:
 		var body := AnimatableBody2D.new()
 		body.sync_to_physics = true
@@ -187,6 +190,7 @@ func _skin_material() -> ShaderMaterial:
 func _spawn_slime() -> void:
 	slime = preload("res://scenes/slime.tscn").instantiate()
 	slime.z_index = 0  # y-sorted with the stations
+	slime.maze_assist = false  # no corridor lanes in a round room
 	world.add_child(slime)
 	slime.position = USE_RING * Vector2(0, -1) + CENTER + Vector2(0, 4) if not _station(return_to).is_empty() else START
 	slime.apply_skin(Progress.skin_color(), Progress.is_rainbow())
