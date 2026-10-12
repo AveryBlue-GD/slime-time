@@ -151,6 +151,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			resume()
 
 
+## Touch / web: tapping or clicking anywhere outside the seed box closes it (like Esc).
+func _input(event: InputEvent) -> void:
+	if not (visible and seed_edit.visible):
+		return
+	var pressed: bool = (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed
+	if pressed and not seed_edit.get_global_rect().has_point(event.position):
+		get_viewport().set_input_as_handled()
+		_submit_seed("")
+
+
 func _sfx(sound_name: String) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:

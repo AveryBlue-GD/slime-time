@@ -62,6 +62,17 @@ func _initialize() -> void:
 	progress.day_override = 20001
 	_check(progress.random_globs_due() == 2 and progress.complete_random() == 2, "the next UTC day pays again")
 	_check(progress.complete_random(true) == 0 and progress.globs == 12, "an assisted win never pays")
+	# the clock moving backwards never reopens the cap; moving forwards does
+	progress.reset_progress()
+	progress.day_override = 20010
+	for i in 5:
+		progress.complete_random()
+	_check(progress.random_globs_due() == 0 and progress.random_pay_day == 20010, "five paid wins use up the day's cap")
+	progress.day_override = 20005  # clock set back
+	_check(progress.random_globs_due() == 0 and progress.complete_random() == 0, "an earlier day (clock moved back) keeps the cap")
+	_check(progress.random_pay_day == 20010 and progress.random_paid == 5, "...and keeps the stored day and count")
+	progress.day_override = 20011
+	_check(progress.random_globs_due() == 2 and progress.complete_random() == 2 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
 	progress.day_override = -1
 	progress.reset_progress()
 
@@ -213,6 +224,20 @@ func _initialize() -> void:
 	_check(replay.globs == 0 and not replay.first, "replaying an already cleared level doesn't pay the first-clear bonus again")
 	veteran.free()
 	veteran2.free()
+
+	# --- A hostile old save: junk, duplicate, negative and huge entries can't overflow the paid flags
+	var junk := ConfigFile.new()
+	junk.set_value("progress", "levels_cleared", 999999)
+	junk.set_value("progress", "hard_cleared", [3, 3, 3, -5, 0, 64, 1000000, 63, Levels.COUNT, Levels.COUNT + 1, 2])
+	var hostile: Node = preload("res://scripts/progress.gd").new()
+	hostile._read(junk)
+	var all_paid := (1 << Levels.COUNT) - 1
+	_check(hostile.clears_paid >= 0 and hostile.clears_paid <= all_paid and hostile.hard_clears_paid >= 0 and hostile.hard_clears_paid <= all_paid,
+		"junk entries keep the paid flags within the real levels (%d, %d)" % [hostile.clears_paid, hostile.hard_clears_paid])
+	var expected_hard := (1 << 2) | (1 << 1) | (1 << (Levels.COUNT - 1))
+	_check(hostile.hard_clears_paid == expected_hard and hostile.globs <= Progress.GLOBS_MAX and hostile.globs >= 0,
+		"...only levels 1..%d count, each once (globs %d)" % [Levels.COUNT, hostile.globs])
+	hostile.free()
 
 	# --- Save codes (and the size cap)
 	progress.reset_progress()

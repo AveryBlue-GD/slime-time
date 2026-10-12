@@ -50,6 +50,17 @@ func _initialize() -> void:
 	_check(game.pause_menu.seed_button.visible and game.pause_menu.seed_button.text == "SEED 424242", "a random maze's pause menu shows SEED 424242")
 	game.pause_menu._edit_seed()
 	_check(game.pause_menu.seed_edit.visible and game.pause_menu.seed_edit.text == "424242", "pressing it opens the box with the seed in it (to copy or type over)")
+	var tap := InputEventMouseButton.new()
+	tap.button_index = MOUSE_BUTTON_LEFT
+	tap.pressed = true
+	tap.position = game.pause_menu.seed_edit.get_global_rect().get_center()
+	game.pause_menu._input(tap)
+	_check(game.pause_menu.seed_edit.visible, "tapping inside the box keeps it open")
+	tap.position = Vector2(2, 2)
+	game.pause_menu._input(tap)
+	_check(not game.pause_menu.seed_edit.visible and game.pause_menu.seed_button.visible and paused and progress.random_seed == 424242,
+		"tapping outside the box closes it without changing the seed")
+	game.pause_menu._edit_seed()
 	game.pause_menu._submit_seed("nonsense")
 	_check(not game.pause_menu.seed_edit.visible and paused and progress.random_seed == 424242, "a bad entry just closes the box")
 	game.pause_menu._edit_seed()

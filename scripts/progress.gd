@@ -309,10 +309,17 @@ func _read_wallet(file: ConfigFile) -> void:
 	if not has_wallet and _int(file, "meta", "version", 1) < SAVE_VERSION:
 		# A save from before globs: pay what it already earned, once (the next save writes the
 		# wallet, so this can't happen twice).
-		clears_paid = (1 << levels_cleared) - 1
+		var all_paid := (1 << Levels.COUNT) - 1
+		var cleared := clampi(levels_cleared, 0, Levels.COUNT)
+		var hard_levels: Array[int] = []
 		for level in hard_cleared:
+			if level >= 1 and level <= Levels.COUNT and not level in hard_levels:
+				hard_levels.append(level)
+		clears_paid = ((1 << cleared) - 1) & all_paid
+		for level in hard_levels:
 			hard_clears_paid |= 1 << (level - 1)
-		globs = mini(GLOBS_FIRST_CLEAR * levels_cleared + GLOBS_HARD_CLEAR * hard_cleared.size(), GLOBS_MAX)
+		hard_clears_paid &= all_paid
+		globs = mini(GLOBS_FIRST_CLEAR * cleared + GLOBS_HARD_CLEAR * hard_levels.size(), GLOBS_MAX)
 		globs_lifetime = globs
 
 
@@ -450,14 +457,15 @@ func load_code(code: String) -> bool:
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
 ## mode it also unlocks that level's solid skin.
-func complete_level(level: int) -> void:
+func complete_level(level: int, save := true) -> void:
 	if hard_mode and not level in hard_cleared:
 		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
 	dry_ups.erase(level)
 	highest_unlocked = maxi(highest_unlocked, mini(level + 1, Levels.COUNT))
 	current_level = level + 1 if level < Levels.COUNT else 1
-	save_progress()
+	if save:
+		save_progress()
 
 
 ## True until the first chalice: the title goes straight into level 1 and the hub waits.
@@ -488,7 +496,7 @@ func complete_random(assisted := false) -> int:
 	var paid := 0
 	if not assisted:
 		paid = random_globs_due()
-		if utc_day() != random_pay_day:  # a new day: the cap starts over
+		if utc_day() > random_pay_day:  # a new day: the cap starts over (never when the clock went back)
 			random_pay_day = utc_day()
 			random_paid = 0
 		if paid > 0:
@@ -507,7 +515,7 @@ func utc_day() -> int:
 
 ## What a randomizer win would pay right now (0 once today's cap of paid wins is used).
 func random_globs_due() -> int:
-	if utc_day() != random_pay_day:
+	if utc_day() > random_pay_day:
 		return GLOBS_RANDOM_WIN
 	return GLOBS_RANDOM_WIN if random_paid < RANDOM_PAID_PER_DAY else 0
 
@@ -553,8 +561,9 @@ func medals_earned(run_time: float, par: float, splats: int, all_coins: bool) ->
 ## Pays a cleared story level: its first-clear globs (+4, or +8 on hard mode) and +2 per medal won
 ## for the first time, then saves. A clear played with the slime reserve pays nothing and keeps
 ## the first-clear bonus waiting for an unassisted clear. Returns {globs, first, medals (earned
-## this run), new_medals, assisted}.
-func record_clear(level: int, run_time: float, par: float, splats: int, all_coins: bool, assisted := false) -> Dictionary:
+## this run), new_medals, assisted}. With `finish`, the best time and the level's cleared mark
+## (record_time + complete_level) are written in that same save.
+func record_clear(level: int, run_time: float, par: float, splats: int, all_coins: bool, assisted := false, finish := false) -> Dictionary:
 	var result := {globs = 0, first = false, medals = 0, new_medals = 0, assisted = assisted}
 	if assisted:
 		return result
@@ -575,6 +584,9 @@ func record_clear(level: int, run_time: float, par: float, splats: int, all_coin
 	if fresh != 0:
 		medals[medal_key(level)] = medals_for(level) | fresh
 	add_globs(result.globs, false)
+	if finish:  # the record and the level's cleared mark land in the same save as the payment
+		record_time(level, run_time, false)
+		complete_level(level, false)
 	save_progress()
 	return result
 
@@ -633,8 +645,9 @@ func has_coin(level: int, cell: Vector2i) -> bool:
 
 
 ## Picks up a coin (once) and saves right away, so it counts even if the run ends in a dry-up.
-func collect_coin(level: int, cell: Vector2i) -> void:
-	if has_coin(level, cell):
+## While `assisted` (the slime reserve is on) nothing is stored: those coins don't count later.
+func collect_coin(level: int, cell: Vector2i, assisted := false) -> void:
+	if assisted or has_coin(level, cell):
 		return
 	if not coins_found.has(level):
 		coins_found[level] = []
@@ -796,12 +809,13 @@ func best_time(level: int) -> float:
 
 ## Saves `seconds` as the level's record if it's the first time or faster. Returns true only when
 ## an existing record was beaten (a first clear just sets the record).
-func record_time(level: int, seconds: float) -> bool:
+func record_time(level: int, seconds: float, save := true) -> bool:
 	var previous := best_time(level)
 	if previous >= 0.0 and seconds >= previous:
 		return false
 	best_times[_record_key(level)] = seconds
-	save_progress()
+	if save:
+		save_progress()
 	return previous >= 0.0
 
 

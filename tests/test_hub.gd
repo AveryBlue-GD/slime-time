@@ -39,6 +39,13 @@ func _initialize() -> void:
 	# --- The room, its stations and their views
 	HubScript.return_to = ""
 	var hub: Node2D = await _open()
+	progress.hard_mode = false
+	hub._refresh_globs()
+	_check(hub.medal_label.text.ends_with("/%d" % (Levels.COUNT * 3)), "the hub's medal count is out of 3 per level")
+	progress.hard_mode = true
+	hub._refresh_globs()
+	_check(hub.medal_label.text.ends_with("/%d" % (Levels.COUNT * 2)), "...and out of 2 per level on hard mode")
+	progress.hard_mode = false
 	var ids: Array = hub.stations.map(func(s: Dictionary) -> String: return s.id)
 	_check(ids == ["story", "upgrades", "coins", "random", "settings", "quit", "wheel", "wardrobe"],
 		"the room has every station: %s" % ", ".join(ids))

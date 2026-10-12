@@ -190,6 +190,8 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
+## Coins picked up this run while assisted: shown on screen, but never saved.
+var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
 ## Brightness upgrade: extra reach (px) of the slime's light (see Upgrades.light_reach).
@@ -939,14 +941,16 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if pos.distance_to(coin.position) > Coin.REACH:
 			continue
 		coins.erase(coin)
-		progress.collect_coin(level, coin.cell)
+		progress.collect_coin(level, coin.cell, assisted)
+		if assisted:
+			assisted_coins += 1
 		_sfx("coin", -4.0)
 		if progress.jelly:
 			coin.dissolve_into(slime, Skins.shades(skin_color).light)  # seen sinking into the body
 		else:
 			Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
 			coin.queue_free()
-		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
+		hud.set_coins(progress.coins(), progress.coins_found_in(level) + assisted_coins, coins_here, true)
 		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
@@ -1054,12 +1058,15 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		_finish(true, random_text, END_DELAY)
 		return
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
+	# Read before the clear is recorded: these name what this win unlocks for the first time.
+	var first_hard_clear: bool = progress != null and hard_mode and not level in progress.hard_cleared
+	var first_story_clear: bool = progress != null and progress.levels_cleared < level
 	# Records: a first clear just sets the record; only beating an existing one celebrates.
 	var best: float = progress.best_time(level) if progress else -1.0
 	text += "\nTIME " + UIKit.format_time(run_time)
 	if progress and _is_running_scene():
 		var all_coins: bool = coins_here > 0 and progress.coins_found_in(level) >= coins_here
-		reward = progress.record_clear(level, run_time, par_time, splats, all_coins, assisted)
+		reward = progress.record_clear(level, run_time, par_time, splats, all_coins, assisted, true)
 		reward.owned = progress.medals_for(level)
 		reward.coins = not hard_mode
 		hud.show_rewards(reward)
@@ -1076,12 +1083,12 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if level >= Levels.COUNT:
 		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
 		delay = WIN_FINAL_DELAY
-	if progress and hard_mode and not level in progress.hard_cleared:
+	if first_hard_clear:
 		var solid := ", ".join(_skins_unlocked_solid_by(level))
 		if solid != "":
 			text += "\nNEW SOLID SKIN: " + solid
 			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
-	elif progress and progress.levels_cleared < level:
+	elif first_story_clear:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
 			text += "\nUNLOCKED: " + Skins.CUSTOM_NAME + " (ANY COLOR YOU LIKE)!"
@@ -1128,9 +1135,8 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if not is_random():
-			if not assisted:
-				progress.record_time(level, run_time)
+		if not is_random() and assisted:
+			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
 	if _is_running_scene() and not _leaving():

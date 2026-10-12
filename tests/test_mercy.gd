@@ -77,6 +77,19 @@ func _initialize() -> void:
 	_check(not game.assisted and is_equal_approx(game.slime_cost_per_tile, plain_cost) and not game.hud.assist_pod.visible, "the next attempt is unassisted again")
 	game.free()
 
+	# --- Coins picked up in an assisted run show on screen but are never saved
+	progress.dry_ups[1] = 3
+	progress.accept_assist(1)
+	game = await _spawn(1, false)
+	var coin: Coin = game.coins[0]
+	game.slime.position = coin.position
+	await physics_frame
+	await physics_frame
+	_check(game.assisted and not progress.has_coin(1, coin.cell) and progress.coins_found_in(1) == 0 and game.assisted_coins == 1,
+		"an assisted run's coin isn't saved")
+	_check(game.hud.coins_left_label.text == "%d LEFT" % (game.coins_here - 1), "...but the HUD still counts it (%s)" % game.hud.coins_left_label.text)
+	game.free()
+
 	# --- An assisted win: clears the level, but no globs, medals or record
 	progress.best_times = {}
 	progress.accept_assist(1)
@@ -97,6 +110,13 @@ func _initialize() -> void:
 	_check(not game.assisted and game.reward.first and progress.globs >= 4 and progress.best_times.has(1), "the next, unassisted clear still pays the first-clear bonus and sets the record")
 	await _stop(game)
 
+	# --- A finishing clear is one save: the payment, the record and the cleared mark together
+	progress.reset_progress()
+	var done: Dictionary = progress.record_clear(1, 5.0, 10.0, 0, false, false, true)
+	var saved := ConfigFile.new()
+	saved.load(progress.save_path)
+	_check(done.globs > 0 and saved.get_value("wallet", "globs", 0) == progress.globs and saved.get_value("progress", "levels_cleared", 0) == 1
+		and saved.get_value("records", "level_1", -1.0) == 5.0, "record_clear(finish) saves globs, record and cleared mark together")
 	progress.reset_progress()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))

@@ -367,7 +367,7 @@ func _build_glob_pod(root: Control) -> void:
 
 func _refresh_globs() -> void:
 	glob_label.text = str(Progress.globs)
-	medal_label.text = "%d/%d" % [Progress.medals_total(), Levels.COUNT * 3]
+	medal_label.text = "%d/%d" % [Progress.medals_total(), Levels.COUNT * (2 if Progress.hard_mode else 3)]
 
 
 ## The coin bag's board: every story level's coins found out of its total (a gold check once it's
