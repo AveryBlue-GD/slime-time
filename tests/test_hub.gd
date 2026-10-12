@@ -131,6 +131,34 @@ func _initialize() -> void:
 		"beating the story opens the portal")
 	hub.free()
 
+	# --- Stations come to life now and then
+	HubScript.return_to = ""
+	hub = await _open()
+	var seen := {}
+	for id in ["wardrobe", "quit", "wheel"]:
+		var station: Dictionary = hub._station(id)
+		for anim: Dictionary in station.anims:
+			anim.next = 1e9  # hold them all...
+		seen[id] = [station.frame]
+	hub._station("wardrobe").anims[1].next = 0.0  # ...then fire the wardrobe door,
+	hub._station("quit").anims[0].next = 0.0      # the trapdoor,
+	hub._station("wheel").anims[0].next = 0.0     # and a wheel spin
+	for i in 360:
+		await process_frame
+		for id in seen:
+			var frame: int = hub._station(id).frame
+			if frame != seen[id][-1]:
+				seen[id].append(frame)
+	_check(4 in seen.wardrobe and seen.wardrobe[-1] == 0, "the wardrobe door swings open and shut again (frames %s)" % [seen.wardrobe])
+	var puffed: int = seen.quit.find(2)
+	_check(puffed > 0 and seen.quit.find(0, puffed) > puffed, "the trapdoor blows open with a puff and slams shut (frames %s)" % [seen.quit])
+	_check(seen.wheel.size() > 20, "the prize wheel spins round (%d steps)" % (seen.wheel.size() - 1))
+	var rest: int = hub._station("wheel").frame
+	for i in 60:
+		await process_frame
+	_check(hub._station("wheel").frame == rest, "...and stops where it stops")
+	hub.free()
+
 	# --- The coin bag's board: coins found per level
 	progress.coins_found = {2: ["a", "b", "c"]}
 	for i in Levels.COINS[0]:

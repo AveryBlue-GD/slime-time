@@ -41,6 +41,20 @@ const PROMPT_Y := 166.0
 const BOARD := Rect2(52, 8, 216, 164)
 enum View { FRONT, SIDE, BACK }
 
+## Stations that come to life now and then instead of looping: each entry plays a sequence of
+## [frame, seconds] every `every` seconds (random in that range), then rests on its last frame.
+## - the trapdoor blows open with a puff of dust and slams shut;
+## - the wardrobe's mirror sparkles, and now and then its door swings open and shut;
+## - the prize wheel spins, slowing down (built by _spin: it stops wherever it stops).
+const IDLE_ANIMS := {
+	"quit": [{every = Vector2(5.0, 9.0), seq = [[1, 0.07], [2, 0.2], [3, 0.35], [1, 0.07], [0, 0.0]], sound = "puff"}],
+	"wardrobe": [
+		{every = Vector2(2.5, 5.0), seq = [[1, 0.08], [2, 0.14], [1, 0.08], [0, 0.0]]},
+		{every = Vector2(9.0, 15.0), seq = [[3, 0.15], [4, 1.4], [3, 0.15], [0, 0.0]], sound = "creak"},
+	],
+	"wheel": [{every = Vector2(8.0, 14.0), spin = true}],
+}
+
 ## The station used last: coming back turns the room to face it, with the slime in front of it.
 static var return_to := ""
 
@@ -129,9 +143,9 @@ func _build_stations() -> void:
 	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
 	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 1)
 	if not web:
-		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 1, true)
-	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 1)
-	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(28, 40), 1)
+		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
+	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 24)
+	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(28, 40), 5)
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
@@ -150,7 +164,13 @@ func _add_station(id: String, title: String, art: String, size: Vector2i, frames
 	else:
 		world.add_child(sprite)
 	var body: AnimatableBody2D = null if flat else _add_body(Vector2.ZERO, size.x / 2.0 - 4.0, true)
+	var anims: Array = []
+	for anim: Dictionary in IDLE_ANIMS.get(id, []):
+		var copy := anim.duplicate(true)
+		copy.next = randf_range(1.0, copy.every.y)  # each starts at its own moment
+		anims.append(copy)
 	stations.append({id = id, name = title, sprite = sprite, body = body, size = size, frames = frames,
+		anims = anims, frame = 0, seq = [], seq_t = 0.0,
 		flat = flat, view = View.FRONT, flipped = false})
 
 
@@ -365,8 +385,10 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	for station in stations:
+		if not station.anims.is_empty():
+			_play_idle_anims(station, delta)
 		if station.frames > 1:
-			_set_frame(station, int(_time * FPS) % station.frames)
+			_set_frame(station, _frame_of(station))
 		var lit: bool = station == near
 		if station.id != "random" or Progress.is_randomizer_unlocked():
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
@@ -417,8 +439,76 @@ func _place_all() -> void:
 		station.flipped = view == View.SIDE and absf(deg) < 90.0  # right-hand side faces left
 		if not station.flat:
 			station.sprite.flip_h = station.flipped
-			_set_frame(station, int(_time * FPS) % station.frames)
+			_set_frame(station, _frame_of(station))
 	(room.material as ShaderMaterial).set_shader_parameter("turn", turn)
+
+
+## The frame a station shows now: its idle animation's, or (portal, cauldron, coin bag) a loop.
+func _frame_of(station: Dictionary) -> int:
+	if not station.anims.is_empty():
+		return station.frame
+	return int(_time * FPS) % station.frames
+
+
+## Steps a station's current sequence, or starts the next one that's due.
+func _play_idle_anims(station: Dictionary, delta: float) -> void:
+	if station.seq.is_empty():
+		for anim: Dictionary in station.anims:
+			if _time >= anim.next:
+				station.seq = _spin(station) if anim.get("spin", false) else anim.seq.duplicate(true)
+				station.seq_t = 0.0
+				station.frame = station.seq[0][0]
+				var length := 0.0
+				for step_: Array in station.seq:
+					length += step_[1]
+				anim.next = _time + length + randf_range(anim.every.x, anim.every.y)
+				_idle_sound(anim.get("sound", ""), station)
+				break
+		return
+	station.seq_t += delta
+	while not station.seq.is_empty() and station.seq_t >= station.seq[0][1]:
+		station.seq_t -= station.seq[0][1]
+		station.seq.pop_front()
+		if not station.seq.is_empty():
+			station.frame = station.seq[0][0]
+			if station.id == "wheel" and station.frame % 2 == 1:
+				_sfx_quiet("click", 1.5, -22.0)  # the flapper ticking on a peg
+			elif station.id == "quit" and station.frame == 0:
+				_sfx_quiet("land", 0.7, -16.0)  # the lid slamming shut
+
+
+## A prize wheel spin from wherever it rests: quick at first, slowing to a stop.
+func _spin(station: Dictionary) -> Array:
+	var seq: Array = []
+	var steps := randi_range(26, 44)
+	var frame: int = station.frame
+	for i in steps:
+		frame = (frame + 1) % station.frames
+		var slowing := float(i) / steps
+		seq.append([frame, lerpf(0.035, 0.22, slowing * slowing)])
+	seq.append([frame, 0.0])
+	return seq
+
+
+func _idle_sound(sound: String, _station: Dictionary) -> void:
+	match sound:
+		"puff":
+			_sfx_quiet("squish", 0.55, -16.0)  # a gust of air
+		"creak":
+			_sfx_quiet("charge", 0.6, -24.0)  # the door creaking open
+			get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx_stop("charge"))
+
+
+func _sfx_quiet(sound: String, pitch: float, volume_db: float) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play(sound, volume_db, pitch)
+
+
+func _sfx_stop(sound: String) -> void:
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.stop(sound)
 
 
 func _set_frame(station: Dictionary, frame: int) -> void:

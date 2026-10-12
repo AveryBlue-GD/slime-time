@@ -13,18 +13,19 @@ the skin shader recolors it to the equipped skin; stone stays off the dried-crus
                            keystone and steps going down into the dark / a pillar / a studded door
 - portal.png    30x40 x6 : RANDOMIZER: a swirling vortex in a rune-carved stone ring on a stepped
                            plinth / the ring edge-on / its dim back
-- wardrobe.png  28x40 x1 : SKINS & HATS: a carved wardrobe with paneled doors, a gilt mirror, a
-                           scarf caught in the door and a top hat on top / its side / its back
+- wardrobe.png  28x40 x5 : SKINS & HATS: a carved wardrobe with paneled doors, a gilt mirror, a
+                           scarf caught in the door and a top hat on top / its side / its back;
+                           frames: shut, mirror sparkle (2), right door ajar, wide open
 - cauldron.png  30x28 x4 : UPGRADES: a riveted iron cauldron with handles, bubbling goo, coins on
                            the rim, a crackling fire under it (round: the same from every side)
 - coinbag.png   24x26 x4 : COIN BAG: a burlap sack tied with rope, a coin emblem, coins spilling
                            out and glinting / its side / its back
-- wheel.png     32x40 x1 : HAT WHEEL (coming soon): a pegged prize wheel with hat wedges and a
-                           flapper on a braced stand / edge-on / its back
+- wheel.png     32x40 x24: HAT WHEEL (coming soon): a pegged prize wheel with hat wedges and a
+                           flapper on a braced stand / edge-on / its back; a full turn in 24 steps
 - signpost.png  24x34 x1 : SETTINGS: two meshed gears on a post with a wrench hanging off it /
                            edge-on / from behind
-- hatch.png     28x18 x1 : QUIT: an open, iron-braced trapdoor, a ladder going down into the dark
-                           (flat: the same from every side)
+- hatch.png     28x18 x4 : QUIT: an iron-braced trapdoor over a ladder into the dark (flat: the
+                           same from every side); frames: shut, lifting, blown open with a puff, open
 - rotor.png     26x36 x4 : the wheel on a stick in the middle: a ship's wheel with handles and a
                            brass hub on a rope-wrapped post, spinning
 (The room itself is drawn live by assets/shaders/hub_room.gdshader, so it can turn.)
@@ -358,7 +359,40 @@ def _top_hat(cv: Canvas, x: int, y: int) -> None:
     cv.put(x + 1, y + 5, RED[2])
 
 
-def wardrobe() -> list:
+## Wardrobe frames: 0 closed, 1-2 a sparkle on the mirror (small, big), 3 right door ajar,
+## 4 right door wide open (hats and a coat hanging inside). The same five in every view.
+WARDROBE_FRAMES = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0)]  # (door: 0 shut 1 ajar 2 open, sparkle)
+SPARKLE = rgb(255, 255, 255)
+
+
+def _wardrobe_inside(cv: Canvas, x0: int, x1: int) -> None:
+    """The inside of the right half: dark, a rail, a red coat, a hat and a striped scarf."""
+    cv.rect(x0, 11, x1 - x0 + 1, 24, VOID[1])
+    cv.hline(x0, x1, 13, IRON[2])
+    coat = [(15, 14, 4, 13)]
+    for cx, cy, w, h in coat:
+        if cx + w - 1 <= x1 and cx >= x0:
+            cv.rect(cx, cy, w, h, RED[1])
+            cv.vline(cx, cy, cy + h - 1, RED[2])
+            cv.put(cx + 1, cy, IRON[2])
+    if x1 >= 23:
+        cv.rect(20, 15, 4, 3, IRON[1])    # a little top hat on a hook
+        cv.hline(19, 24, 18, IRON[1])
+        cv.hline(20, 23, 17, RED[1])
+        for y in range(20, 30):           # a striped scarf
+            cv.put(22, y, GOLD[2] if y % 2 else c("v"))
+
+
+def _sparkle(cv: Canvas, x: int, y: int, size: int) -> None:
+    if size <= 0:
+        return
+    cv.put(x, y, SPARKLE)
+    for d in range(1, size + 1):
+        for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d)):
+            cv.put(x + dx, y + dy, SPARKLE if d == 1 else rgb(206, 232, 246))
+
+
+def _wardrobe_front(door: int, sparkle: int) -> list:
     cv = Canvas(28, 40)
     rng = random.Random(9)
     cv.rect(1, 10, 26, 27, WOOD[1])
@@ -367,29 +401,48 @@ def wardrobe() -> list:
     cv.hline(0, 27, 10, WOOD[1])
     for x in (4, 9, 18, 23):
         cv.put(x, 9, WOOD[2])
-    for x0 in (2, 14):                      # two paneled doors
-        plank(cv, x0, 11, 12, 24, rng, vertical=True, tone=2)
+    plank(cv, 2, 11, 12, 24, rng, vertical=True, tone=2)  # left door (with the mirror)
+    for py in (13, 24):
+        cv.rect(4, py, 8, 9, WOOD[1])
+        cv.rect(5, py + 1, 6, 7, WOOD[2])
+        cv.hline(5, 10, py + 1, WOOD[3])
+    if door == 0:                            # right door shut
+        plank(cv, 14, 11, 12, 24, rng, vertical=True, tone=2)
         for py in (13, 24):
-            cv.rect(x0 + 2, py, 8, 9, WOOD[1])
-            cv.rect(x0 + 3, py + 1, 6, 7, WOOD[2])
-            cv.hline(x0 + 3, x0 + 8, py + 1, WOOD[3])
+            cv.rect(16, py, 8, 9, WOOD[1])
+            cv.rect(17, py + 1, 6, 7, WOOD[2])
+            cv.hline(17, 22, py + 1, WOOD[3])
+        cv.put(15, 22, GOLD[3])
+        for i, y in enumerate(range(26, 34)):  # a scarf caught in the door
+            cv.put(13 + (i % 2), y, RED[1] if i % 3 else RED[2])
+    elif door == 1:                          # ajar: the door swung part way, the inside showing
+        _wardrobe_inside(cv, 14, 25)
+        plank(cv, 14, 11, 7, 24, random.Random(19), vertical=True, tone=3)
+        cv.vline(20, 11, 34, WOOD[1])
+        cv.put(19, 22, GOLD[3])
+    else:                                    # wide open: the door edge-on sticking out at the side
+        _wardrobe_inside(cv, 14, 25)
+        cv.rect(26, 10, 2, 26, WOOD[3])
+        cv.vline(27, 10, 35, WOOD[2])
     cv.vline(13, 11, 34, WOOD[0])
-    # A gilt oval mirror on the left door.
+    # A gilt oval mirror on the left door, and the odd sparkle on it.
     cv.ellipse(7.5, 20, 4.2, 7.5, lambda x, y, u, v: GOLD[3] if u + v < -0.6 else GOLD[2] if u + v < 0.4 else GOLD[1])
     cv.ellipse(7.5, 20, 3.2, 6.5, lambda x, y, u, v: rgb(206, 232, 246) if u + v < -0.7 else rgb(140, 180, 214) if u + v < 0.4 else rgb(98, 136, 178))
-    cv.put(12, 22, GOLD[3])                 # knobs
-    cv.put(15, 22, GOLD[3])
-    for i, y in enumerate(range(26, 34)):    # a scarf caught in the door
-        cv.put(13 + (i % 2), y, RED[1] if i % 3 else RED[2])
+    cv.put(12, 22, GOLD[3])                 # left knob
     cv.rect(1, 35, 26, 2, WOOD[0])          # base and feet
     cv.rect(2, 37, 3, 2, WOOD[1])
     cv.rect(23, 37, 3, 2, WOOD[1])
     _top_hat(cv, 17, 0)
     cv.outline()
-    return [cv.px]
+    _sparkle(cv, 6, 17, sparkle)            # over the outline pass, so it isn't outlined
+    return cv.px
 
 
-def wardrobe_side() -> list:
+def wardrobe() -> list:
+    return [_wardrobe_front(door, sparkle) for door, sparkle in WARDROBE_FRAMES]
+
+
+def _wardrobe_side(door: int) -> list:
     cv = Canvas(28, 40)
     rng = random.Random(10)
     cv.rect(8, 10, 12, 27, WOOD[1])
@@ -398,16 +451,26 @@ def wardrobe_side() -> list:
     plank(cv, 9, 11, 9, 24, rng, vertical=True, tone=2)
     cv.rect(10, 14, 6, 18, WOOD[1])
     cv.rect(11, 15, 4, 16, WOOD[2])
-    cv.vline(19, 10, 36, WOOD[0])           # the door edge facing the center
-    cv.put(20, 22, GOLD[3])                 # a knob peeking round
-    for y in range(26, 34):
-        cv.put(20, y, RED[1])               # the scarf, from the side
+    cv.vline(19, 10, 36, WOOD[0])           # the front edge, toward the center
+    if door == 0:
+        cv.put(20, 22, GOLD[3])             # a knob peeking round
+        for y in range(26, 34):
+            cv.put(20, y, RED[1])           # the scarf
+    else:                                   # the door swinging out toward the center
+        w = 3 if door == 1 else 7
+        cv.rect(20, 11, w, 24, WOOD[2])
+        cv.vline(20, 11, 34, WOOD[3])
+        cv.put(20 + w - 1, 22, GOLD[3])
     cv.rect(8, 35, 12, 2, WOOD[0])
     cv.rect(9, 37, 2, 2, WOOD[1])
     cv.rect(17, 37, 2, 2, WOOD[1])
     _top_hat(cv, 11, 0)
     cv.outline()
-    return [cv.px]
+    return cv.px
+
+
+def wardrobe_side() -> list:
+    return [_wardrobe_side(door) for door, _ in WARDROBE_FRAMES]
 
 
 def wardrobe_back() -> list:
@@ -423,7 +486,7 @@ def wardrobe_back() -> list:
     cv.rect(23, 37, 3, 2, WOOD[1])
     _top_hat(cv, 5, 0)
     cv.outline()
-    return [cv.px]
+    return [cv.px] * len(WARDROBE_FRAMES)
 
 
 # ----------------------------------------------------------------- UPGRADES: the cauldron
@@ -538,9 +601,15 @@ def _wheel_stand(cv: Canvas, cx: int) -> None:
         cv.put(cx + dx, dy, WOOD[1])
 
 
-def wheel() -> list:
+## The prize wheel turns a full circle in WHEEL_FRAMES steps (it can stop on any of them); the
+## flapper kicks over as each peg passes.
+WHEEL_FRAMES = 24
+
+
+def _wheel_front(k: int) -> list:
     cv = Canvas(32, 40)
     _wheel_stand(cv, 16)
+    turn = k / WHEEL_FRAMES * math.tau
 
     def face(x, y, u, v):
         r = math.hypot(u, v)
@@ -548,53 +617,70 @@ def wheel() -> list:
             return WOOD[3] if (u + v) < 0 else WOOD[2]
         if r < 0.2:
             return GOLD[2] if u + v < 0 else GOLD[1]
-        a = (math.atan2(v, u) + math.pi) / (2 * math.pi)
+        a = ((math.atan2(v, u) + math.pi - turn) / (2 * math.pi)) % 1.0
         if (a * 6) % 1 < 0.07:
             return rgb(240, 236, 226)  # divider lines
         return WEDGES[int(a * 6) % 6]
     cv.ellipse(16, 15, 13.5, 13.5, face)
     for i in range(12):  # pegs round the rim
-        a = i / 12 * math.tau
+        a = i / 12 * math.tau + turn
         cv.put(round(16 + math.cos(a) * 12.4), round(15 + math.sin(a) * 12.4), GOLD[3])
     for a6 in range(0, 6, 2):  # little hats on alternate wedges
-        ang = (a6 + 0.5) / 6 * math.tau - math.pi
+        ang = (a6 + 0.5) / 6 * math.tau - math.pi + turn
         hx, hy = round(16 + math.cos(ang) * 7.5), round(15 + math.sin(ang) * 7.5)
         cv.rect(hx - 1, hy, 3, 1, OUTLINE)
         cv.rect(hx, hy - 2, 1, 2, OUTLINE)
-    cv.rect(15, 0, 3, 2, IRON[3])  # the flapper
-    cv.put(16, 2, RED[2])
-    cv.put(16, 3, RED[1])
+    cv.rect(15, 0, 3, 2, IRON[3])  # the flapper, kicked over when a peg is passing
+    kick = 1 if k % 2 else 0
+    cv.put(16 + kick, 2, RED[2])
+    cv.put(16 + kick, 3, RED[1])
     cv.outline()
-    return [cv.px]
+    return cv.px
+
+
+def wheel() -> list:
+    return [_wheel_front(k) for k in range(WHEEL_FRAMES)]
 
 
 def wheel_side() -> list:
-    cv = Canvas(32, 40)
-    _wheel_stand(cv, 16)
-    for y in range(2, 29):  # edge-on: a thin rim showing its colors, pegs sticking out
-        cv.put(15, y, WOOD[3])
-        cv.put(16, y, WEDGES[(y // 4) % 6])
-        if y % 4 == 1:
-            cv.put(17, y, GOLD[3])
-    cv.rect(15, 0, 3, 2, IRON[3])
-    cv.outline()
-    return [cv.px]
+    frames = []
+    for k in range(WHEEL_FRAMES):
+        cv = Canvas(32, 40)
+        _wheel_stand(cv, 16)
+        for y in range(2, 29):  # edge-on: a thin rim, its colors and pegs rolling past
+            cv.put(15, y, WOOD[3])
+            cv.put(16, y, WEDGES[((y + k) // 4) % 6])
+            if (y + k) % 4 == 1:
+                cv.put(17, y, GOLD[3])
+        cv.rect(15, 0, 3, 2, IRON[3])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
 
 
 def wheel_back() -> list:
-    cv = Canvas(32, 40)
-    rng = random.Random(12)
-    _wheel_stand(cv, 16)
-    cv.ellipse(16, 15, 13.5, 13.5, lambda x, y, u, v: WOOD[2] if math.hypot(u, v) < 0.86 else WOOD[3])
-    for y in range(3, 28):
-        if rng.random() < 0.35:
-            cv.put(rng.randint(8, 24), y, WOOD[1])  # grain
-    cv.rect(15, 2, 2, 26, WOOD[1])  # cross braces
-    cv.rect(3, 14, 26, 2, WOOD[1])
-    cv.ellipse(16, 15, 2.6, 2.6, IRON[2])
-    cv.put(15, 14, IRON[4])
-    cv.outline()
-    return [cv.px]
+    frames = []
+    for k in range(WHEEL_FRAMES):
+        cv = Canvas(32, 40)
+        rng = random.Random(12)
+        _wheel_stand(cv, 16)
+        cv.ellipse(16, 15, 13.5, 13.5, lambda x, y, u, v: WOOD[2] if math.hypot(u, v) < 0.86 else WOOD[3])
+        for y in range(3, 28):
+            if rng.random() < 0.35:
+                cv.put(rng.randint(8, 24), y, WOOD[1])  # grain
+        turn = -k / WHEEL_FRAMES * math.tau  # turning the other way, seen from behind
+        for brace in (0.0, math.pi / 2):  # cross braces, turning with the wheel
+            a = turn + brace
+            for r10 in range(-118, 119):
+                r = r10 / 10
+                x, y = 16 + math.cos(a) * r, 15 + math.sin(a) * r
+                cv.put(round(x), round(y), WOOD[1])
+                cv.put(round(x + math.sin(a) * 0.9), round(y - math.cos(a) * 0.9), WOOD[1])
+        cv.ellipse(16, 15, 2.6, 2.6, IRON[2])
+        cv.put(15, 14, IRON[4])
+        cv.outline()
+        frames.append(cv.px)
+    return frames
 
 
 # ----------------------------------------------------------------- SETTINGS: the gear post
@@ -657,7 +743,8 @@ def signpost_back() -> list:
 
 # ----------------------------------------------------------------- QUIT: the trapdoor
 
-def hatch() -> list:
+## Trapdoor frames: 0 shut, 1 the lid lifting, 2 blown open with a puff of dust, 3 open.
+def _hatch(lid: int, puff: bool) -> list:
     cv = Canvas(28, 18)
     rng = random.Random(14)
     cv.rect(1, 3, 26, 14, WOOD[1])          # frame
@@ -671,11 +758,33 @@ def hatch() -> list:
     cv.vline(18, 6, 14, WOOD[2])
     for (x, y) in ((1, 3), (25, 3), (1, 15), (25, 15)):  # iron corner brackets
         cv.rect(x, y, 2, 2, IRON[3])
-    for px in range(4, 24, 5):               # the open lid, flipped back
-        plank(cv, px, 0, 5, 3, rng, vertical=False, tone=2)
-    cv.hline(4, 23, 1, IRON[2])
+    if lid == 0:                             # shut: planks over the hole, banded, a ring pull
+        for py in range(5, 15, 3):
+            plank(cv, 4, py, 20, 3, random.Random(py), vertical=False, tone=2)
+        cv.vline(8, 5, 14, IRON[2])
+        cv.vline(19, 5, 14, IRON[2])
+        cv.ellipse(14, 11, 1.6, 1.3, IRON[3])
+        cv.put(14, 11, WOOD[1])
+    elif lid == 1:                           # lifting: the lid tilted up, a dark gap under it
+        for py in range(1, 8, 3):
+            plank(cv, 4, py, 20, 3, random.Random(py + 3), vertical=False, tone=3)
+        cv.vline(8, 1, 7, IRON[2])
+        cv.vline(19, 1, 7, IRON[2])
+    else:                                    # open: the lid flipped back against the frame
+        for px in range(4, 24, 5):
+            plank(cv, px, 0, 5, 3, rng, vertical=False, tone=2)
+        cv.hline(4, 23, 1, IRON[2])
     cv.outline()
-    return [cv.px]
+    if puff:                                 # a puff of dust blown out of the hole
+        dust = [rgb(196, 190, 200), rgb(160, 156, 170)]
+        for x, y in ((3, 4), (5, 3), (2, 6), (24, 4), (25, 6), (22, 3), (12, 2), (15, 2), (0, 9), (27, 9)):
+            cv.put(x, y, dust[(x + y) % 2])
+            cv.put(x + 1, y, dust[1])
+    return cv.px
+
+
+def hatch() -> list:
+    return [_hatch(0, False), _hatch(1, False), _hatch(2, True), _hatch(2, False)]
 
 
 # ----------------------------------------------------------------- the wheel on a stick
