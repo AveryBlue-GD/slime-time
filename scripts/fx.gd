@@ -31,6 +31,15 @@ static func make_light(diameter: int, color: Color) -> Sprite2D:
 	return light
 
 
+## A flat, oval pool of light (`size` px wide and deep) for the slanted hub floor: same banded
+## falloff as make_light, added on top of the floor.
+static func make_pool(size: Vector2i, color: Color) -> Sprite2D:
+	var pool := make_light(size.x, color)
+	var texture := pool.texture as GradientTexture2D
+	texture.height = size.y
+	return pool
+
+
 ## Goo droplets flicked off the slime while it glides (emitting is switched on/off by the slime).
 static func make_drips() -> CPUParticles2D:
 	var drips := CPUParticles2D.new()

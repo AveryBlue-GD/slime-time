@@ -164,7 +164,8 @@ void fragment() {
 		col = mist(floor(px));  // outside the room (and its drips): fog
 	} else if (d <= 1.0) {
 		// Darker floor, a bit more toward the rim, so the stations pop.
-		col *= 0.8 - 0.12 * smoothstep(0.5, 1.0, d);
+		// The floor itself is darker still, so the light pools under the stations can show.
+		col *= (d <= inner ? 0.64 : 0.8) - 0.12 * smoothstep(0.5, 1.0, d);
 	}
 	COLOR = vec4(col, 1.0);
 }

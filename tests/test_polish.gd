@@ -53,6 +53,31 @@ func _initialize() -> void:
 	calm.queue_free()
 	await _frames(2)
 
+	# --- a gold twinkle shows over the hidden chalice once the slime is a few tiles away
+	var close: Node2D = MAIN.instantiate()
+	close.level = 1
+	root.add_child(close)
+	await _frames(5)
+	var slime: Node2D = close.get_node("Slime")
+	_check(get_nodes_in_group("glimmer").is_empty(), "no glimmers at the start")
+	slime.position = close.chalice.position + Vector2(40, 0)
+	close.chalice.visible = false
+	await _frames(20)
+	_check(not get_nodes_in_group("glimmer").is_empty(), "the chalice glimmers when the slime is near")
+	close.queue_free()
+	await _frames(2)
+
+	# --- the hub: light pools under the stations
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	await _frames(5)
+	for station: Dictionary in hub.stations:
+		_check((station.pool != null) == hub.POOLS.has(station.id), "station %s has a light pool iff it is listed" % station.id)
+		if station.pool:
+			_check(station.pool.position.distance_to(station.sprite.position) < 4.0, "the %s pool lies under its station" % station.id)
+	hub.queue_free()
+	await _frames(2)
+
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL")
 	quit(failures)
 

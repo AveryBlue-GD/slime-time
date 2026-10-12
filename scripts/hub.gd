@@ -44,6 +44,19 @@ const ROTOR_RADIUS := 5.0
 const TURN_TIME := 0.55
 const START := CENTER + Vector2(-20, 27)  # clear of the wheel and the station straight ahead
 const ART := "res://assets/sprites/hub/"
+## Warm (or cool) pools of light on the floor under each station: id -> color (alpha = strength).
+## The door's torches and the cauldron flicker. Skipped for the flat hatch.
+const POOLS := {
+	"story": Color(1.0, 0.62, 0.25, 0.48),
+	"upgrades": Color(0.55, 1.0, 0.45, 0.45),
+	"coins": Color(1.0, 0.82, 0.3, 0.42),
+	"random": Color(0.7, 0.45, 1.0, 0.48),
+	"settings": Color(0.55, 0.8, 1.0, 0.35),
+	"wheel": Color(1.0, 0.55, 0.8, 0.42),
+	"wardrobe": Color(1.0, 0.78, 0.35, 0.42),
+}
+const POOL_SIZE := Vector2i(68, 32)
+const FLICKER := ["story", "upgrades"]
 const FPS := 6.0
 const PROMPT_Y := 156.0
 ## Where the coin bag's board sits on screen.
@@ -181,6 +194,11 @@ func _build_stations() -> void:
 func _add_station(id: String, title: String, art: String, size: Vector2i, frames: int, flat := false) -> void:
 	var sprite := _make_sprite(art, size)
 	sprite.material = _skin_material()  # its goo in your skin
+	var pool: Sprite2D = null
+	if POOLS.has(id):
+		pool = Fx.make_pool(POOL_SIZE, POOLS[id])
+		pool.z_index = -1
+		add_child(pool)
 	if flat:  # lies on the floor, under everything
 		sprite.z_index = -1
 		sprite.offset = Vector2(-size.x / 2, -size.y / 2)
@@ -194,7 +212,7 @@ func _add_station(id: String, title: String, art: String, size: Vector2i, frames
 		copy.next = randf_range(1.0, copy.every.y)  # each starts at its own moment
 		anims.append(copy)
 	stations.append({id = id, name = title, sprite = sprite, body = body, size = size, frames = frames,
-		anims = anims, frame = 0, seq = [], seq_t = 0.0,
+		anims = anims, frame = 0, seq = [], seq_t = 0.0, pool = pool,
 		flat = flat, view = View.FRONT, flipped = false})
 
 
@@ -466,6 +484,11 @@ func _process(delta: float) -> void:
 		if station.frames > 1:
 			_set_frame(station, _frame_of(station))
 		var lit: bool = station == near
+		if station.pool:
+			var flicker := 1.0
+			if station.id in FLICKER and not Progress.reduce_motion:
+				flicker = 0.88 + 0.08 * sin(_time * 7.3 + station.sprite.position.x) + 0.04 * sin(_time * 17.0)
+			station.pool.modulate.a = POOLS[station.id].a * flicker * (1.4 if lit else 1.0)
 		if station.id != "random" or Progress.is_randomizer_unlocked():
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
@@ -501,6 +524,8 @@ func _place_all() -> void:
 		var a := -PI / 2.0 + turn + i * step
 		var base := CENTER + Vector2(cos(a) * RING.x, sin(a) * RING.y)
 		station.sprite.position = base.round()
+		if station.pool:
+			station.pool.position = (base + Vector2(0, -2)).round()
 		if station.body:
 			station.body.position = base + Vector2(0, -2)
 		var deg := rad_to_deg(wrapf(a, -PI, PI))
