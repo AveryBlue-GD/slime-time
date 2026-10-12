@@ -34,6 +34,25 @@ func _initialize() -> void:
 	await _frames(20)
 	_check(is_equal_approx(skin.get_shader_parameter("charge"), 0.0), "tension relaxes after the leap")
 
+	# --- ambient motes: every theme has some, capped, none with Reduce Motion
+	for id: String in Themes.BY_LEVEL:
+		var n := Ambient.amount_for(id, false)
+		_check(n > 0 and n <= Ambient.MAX_AMOUNT, "theme %s has a capped ambient effect (%d)" % [id, n])
+		_check(Ambient.amount_for(id, true) == 0 and Ambient.create(id, true) == null, "theme %s makes no motes with Reduce Motion" % id)
+	_check(game.motes != null and game.motes.particles.amount == Ambient.amount_for("dungeon", false), "the level builds its theme's motes")
+	game.queue_free()
+	await _frames(2)
+	progress.reduce_motion = true
+	var calm: Node2D = MAIN.instantiate()
+	calm.level = 10
+	root.add_child(calm)
+	await _frames(5)
+	_check(calm.motes == null, "no motes in a level with Reduce Motion")
+	_check(is_equal_approx(float((calm.trail_sprite.material as ShaderMaterial).get_shader_parameter("animate")), 0.0), "trail twinkle is off with Reduce Motion")
+	progress.reduce_motion = false
+	calm.queue_free()
+	await _frames(2)
+
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL")
 	quit(failures)
 

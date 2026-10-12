@@ -165,6 +165,7 @@ var kick := Vector2.ZERO
 var _heartbeat_left := 0.0
 var _was_low := false
 var slime_light: Sprite2D
+var motes: Ambient
 ## The hat the slime is wearing, if any (see Hat).
 var hat: Hat
 ## Coins still waiting in this story level (see Coin; never in randomizer mazes).
@@ -354,6 +355,8 @@ func _process(_delta: float) -> void:
 	fog_material.set_shader_parameter("slime_px", slime_light.position)
 	var view_center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size * 0.5)
 	fog_material.set_shader_parameter("view_center", view_center.round())
+	if motes:
+		motes.follow(view_center)
 	var outer_material := outer_fog.material as ShaderMaterial
 	outer_material.set_shader_parameter("slime_px", slime_light.position)
 	outer_material.set_shader_parameter("view_center", view_center.round())
@@ -639,6 +642,9 @@ func _build_overlays() -> void:
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
+	motes = Ambient.create(theme, progress != null and progress.reduce_motion)
+	if motes:
+		add_child(motes)
 
 
 ## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same
