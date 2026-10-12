@@ -40,9 +40,9 @@ func _initialize() -> void:
 	HubScript.return_to = ""
 	var hub: Node2D = await _open()
 	var ids: Array = hub.stations.map(func(s: Dictionary) -> String: return s.id)
-	_check(ids == ["story", "upgrades", "random", "settings", "quit", "wheel", "wardrobe"],
+	_check(ids == ["story", "upgrades", "coins", "random", "settings", "quit", "wheel", "wardrobe"],
 		"the room has every station: %s" % ", ".join(ids))
-	_check(is_equal_approx(hub.step, TAU / 7.0), "...evenly spaced round the rim")
+	_check(is_equal_approx(hub.step, TAU / 8.0), "...evenly spaced round the rim")
 	var story: Dictionary = hub._station("story")
 	_check(story.view == HubScript.View.FRONT and story.sprite.region_rect.position.y == 0.0,
 		"the station at the back of the room shows its front")
@@ -130,6 +130,27 @@ func _initialize() -> void:
 	_check(hub._station("random").sprite.modulate == Color.WHITE and hub.prompt_key.text != "LOCKED",
 		"beating the story opens the portal")
 	hub.free()
+
+	# --- The coin bag's board: coins found per level
+	progress.coins_found = {2: ["a", "b", "c"]}
+	for i in Levels.COINS[0]:
+		progress.coins_found[1] = progress.coins_found.get(1, []) + ["c%d" % i]
+	HubScript.return_to = "coins"
+	hub = await _open()
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(hub.coin_board.visible and hub.slime.frozen, "F at the coin bag opens the coin board (and holds the slime still)")
+	_check(hub.board_rows[0].text == "%d/%d" % [Levels.COINS[0], Levels.COINS[0]] and hub.board_rows[1].text == "3/%d" % Levels.COINS[1]
+		and hub.board_rows[9].text == "0/%d" % Levels.COINS[9], "...showing each level's coins found (%s, %s, %s)" % [hub.board_rows[0].text, hub.board_rows[1].text, hub.board_rows[9].text])
+	_check(hub.board_rows[0].get_theme_color("font_color") == UIKit.GOLD, "...a level with every coin found shows in gold")
+	_check(("%d/%d" % [Levels.COINS[0] + 3, Levels.total_coins()]) in hub.board_total.text, "...and the story total (%s)" % hub.board_total.text)
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(not hub.coin_board.visible and not hub.slime.frozen, "F again closes it")
+	hub.free()
+	progress.coins_found = {}
 
 	# --- Using a station leaves for its screen
 	HubScript.return_to = "settings"

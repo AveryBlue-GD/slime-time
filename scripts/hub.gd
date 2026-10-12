@@ -4,6 +4,7 @@ extends Node2D
 ## (glossy goo rim, the slime's eyes on the back, jelly-cube floor; all in your skin's colors) and
 ## seen at a slant. The stations stand evenly spaced around the rim, all facing the center:
 ## - archway: STORY (level select, with the hard mode switch)
+## - coin bag: a board of the coins found in each story level (no screen change)
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
@@ -32,10 +33,12 @@ const USE_REACH := 15.0
 const FLOOR := Vector2(134, 64)
 const ROTOR_REACH := 17.0
 const TURN_TIME := 0.55
-const START := CENTER + Vector2(0, 40)
+const START := CENTER + Vector2(-20, 27)  # clear of the wheel and the station straight ahead
 const ART := "res://assets/sprites/hub/"
 const FPS := 6.0
 const PROMPT_Y := 166.0
+## Where the coin bag's board sits on screen.
+const BOARD := Rect2(52, 8, 216, 164)
 enum View { FRONT, SIDE, BACK }
 
 ## The station used last: coming back turns the room to face it, with the slime in front of it.
@@ -60,6 +63,11 @@ var prompt: PanelContainer
 var prompt_name: Label
 var prompt_key: Label
 var room: ColorRect
+## The coin bag's board, its per-level counts, its totals line and its close hint.
+var coin_board: Control
+var board_rows: Array[Label] = []
+var board_total: Label
+var board_hint: Label
 var _touch_controls: CanvasLayer
 var _time := 0.0
 
@@ -105,7 +113,7 @@ func _build_room() -> void:
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
-	rotor = _make_sprite("rotor", Vector2i(24, 34))
+	rotor = _make_sprite("rotor", Vector2i(26, 36))
 	rotor.position = CENTER + Vector2(0, 6)
 	rotor.material = _skin_material()
 	world.add_child(rotor)
@@ -115,14 +123,15 @@ func _build_room() -> void:
 func _build_stations() -> void:
 	var web := OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args()
 	# Clockwise round the room from the back.
-	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(26, 36), 1)
-	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(26, 24), 4)
-	_add_station("random", "RANDOMIZER", "portal", Vector2i(28, 36), 6)
-	_add_station("settings", "SETTINGS", "signpost", Vector2i(20, 30), 1)
+	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 1)
+	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
+	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
+	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
+	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 1)
 	if not web:
-		_add_station("quit", "QUIT", "hatch", Vector2i(26, 16), 1, true)
-	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(30, 36), 1)
-	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(26, 36), 1)
+		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 1, true)
+	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 1)
+	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(28, 40), 1)
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
@@ -245,12 +254,92 @@ func _build_ui() -> void:
 	row.add_child(prompt_name)
 	row.add_child(prompt_key)
 	prompt.visible = false
+	_build_coin_board(root)
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
 
 
+## The coin bag's board: every story level's coins found out of its total (a gold check once it's
+## all found), the story total and the coins in hand. Opened at the coin bag; F, Esc or JUMP closes.
+func _build_coin_board(root: Control) -> void:
+	coin_board = Control.new()
+	coin_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coin_board.visible = false
+	root.add_child(coin_board)
+	coin_board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(coin_board, Rect2(BOARD.position, BOARD.size))
+	var title := UIKit.make_label("COIN BAG", 8, UIKit.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.position = Vector2(BOARD.position.x, BOARD.position.y + 7)
+	title.size = Vector2(BOARD.size.x, 10)
+	coin_board.add_child(title)
+	for i in Levels.COUNT:
+		var y := BOARD.position.y + 21 + i * 11
+		var number := UIKit.make_label(str(i + 1), 8, UIKit.TEXT_DIM)
+		number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		coin_board.add_child(number)
+		number.position = Vector2(BOARD.position.x + 8, y)
+		number.size = Vector2(16, 10)
+		var name_label := UIKit.make_label(Themes.display_name(Themes.BY_LEVEL[i]), 8, UIKit.TEXT)
+		name_label.position = Vector2(BOARD.position.x + 30, y)
+		coin_board.add_child(name_label)
+		var count := UIKit.make_label("", 8, UIKit.TEXT)
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		count.position = Vector2(BOARD.end.x - 66, y)
+		count.size = Vector2(42, 10)
+		coin_board.add_child(count)
+		var icon := UIKit.make_icon("coin", Color.WHITE)
+		icon.position = Vector2(BOARD.end.x - 20, y)
+		coin_board.add_child(icon)
+		board_rows.append(count)
+	board_total = UIKit.make_label("", 8, UIKit.TEXT)
+	board_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board_total.position = Vector2(BOARD.position.x, BOARD.position.y + 133)
+	board_total.size = Vector2(BOARD.size.x, 10)
+	coin_board.add_child(board_total)
+	var hint := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.position = Vector2(BOARD.position.x, BOARD.position.y + 145)
+	hint.size = Vector2(BOARD.size.x, 10)
+	coin_board.add_child(hint)
+	board_hint = hint
+
+
+func open_coin_board() -> void:
+	for i in Levels.COUNT:
+		var found: int = Progress.coins_found_in(i + 1)
+		var total: int = Levels.COINS[i]
+		var count: Label = board_rows[i]
+		count.text = "%d/%d" % [found, total]
+		count.add_theme_color_override("font_color", UIKit.GOLD if found >= total else UIKit.TEXT)
+		count.remove_from_group(SkinText.GROUP)  # keep the gold for finished levels
+		if found < total:
+			count.add_to_group(SkinText.GROUP)
+	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), Progress.coins()]
+	var touch := _touch_controls != null and _touch_controls.visible
+	board_hint.text = "TAP JUMP TO CLOSE" if touch else "%s TO CLOSE" % Progress.key_name(Progress.bindings.interact)
+	coin_board.visible = true
+	prompt.visible = false
+	slime.frozen = true
+	_sfx("coin", 0.8)
+	for child in coin_board.get_parent().get_children():
+		if child is SkinText:
+			child.recolor()
+
+
+func close_coin_board() -> void:
+	coin_board.visible = false
+	slime.frozen = false
+	_show_prompt()
+
+
 func _physics_process(delta: float) -> void:
+	if coin_board.visible:
+		var touch := _touch_controls != null and _touch_controls.visible
+		if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("menu") or (touch and Input.is_action_just_pressed("jump")):
+			close_coin_board()
+		return
 	if turning:
 		_turn_t = minf(_turn_t + delta / TURN_TIME, 1.0)
 		var eased := _turn_t * _turn_t * (3.0 - 2.0 * _turn_t)
@@ -281,7 +370,7 @@ func _process(delta: float) -> void:
 		var lit: bool = station == near
 		if station.id != "random" or Progress.is_randomizer_unlocked():
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
-	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 24
+	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	rotor.self_modulate = Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	if hat:
 		hat.z_index = 1
@@ -318,9 +407,11 @@ func _place_all() -> void:
 			station.body.position = base + Vector2(0, -2)
 		var deg := rad_to_deg(wrapf(a, -PI, PI))
 		var view := View.SIDE
-		if deg > -135.0 and deg < -45.0:
+		# Front and back within 40 degrees of straight across / straight ahead, side views otherwise
+		# (so stations on the diagonals settle on their side view instead of flickering).
+		if deg > -130.0 and deg < -50.0:
 			view = View.FRONT
-		elif deg > 45.0 and deg < 135.0:
+		elif deg > 50.0 and deg < 130.0:
 			view = View.BACK
 		station.view = view
 		station.flipped = view == View.SIDE and absf(deg) < 90.0  # right-hand side faces left
@@ -400,6 +491,8 @@ func _use(station: Dictionary) -> void:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":
 			_deny("COMING SOON")
+		"coins":
+			open_coin_board()
 		"quit":
 			get_tree().quit()
 
