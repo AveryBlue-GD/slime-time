@@ -34,10 +34,12 @@ uniform vec4 fog_mist = vec4(0.247, 0.239, 0.341, 1.0);
 // the screen edges fall off into a vignette. One vec2, no arrays.
 uniform vec2 slime_px = vec2(0.0);
 uniform vec2 view_center = vec2(0.0);
-uniform float mist_gain = 0.22;
+uniform float mist_gain = 0.45;
 uniform float far_dim = 0.22;
-uniform float light_inner = 26.0;
-uniform float light_outer = 90.0;
+uniform float deep_gain = 0.55;
+uniform float vig_max = 0.35;
+uniform float light_inner = 32.0;
+uniform float light_outer = 115.0;
 
 
 // The 4x4 Bayer dither matrix (0, 8, 2, 10 / 12, 4, 14, 6 / 3, 11, 1, 9 / 15, 7, 13, 5) worked
@@ -116,7 +118,7 @@ void fragment() {
 	// A third, much larger and slower layer swells the mist in broad patches for depth.
 	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
 	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
-	vec3 rgb = mix(fog_deep.rgb * 0.35, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
+	vec3 rgb = mix(fog_deep.rgb * deep_gain, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
 
 	// Light falloff: lit ground far from the slime dims toward the fog (never fully), and a
 	// soft vignette darkens everything toward the edges of the view.
@@ -124,7 +126,7 @@ void fragment() {
 	float falloff = smoothstep(light_inner, light_outer, d);
 	alpha = max(alpha, far_dim * falloff * step(alpha, 0.999));
 	float vd = length((world_px - view_center) / vec2(176.0, 100.0));
-	float vig = smoothstep(0.55, 1.15, vd) * 0.5;
+	float vig = smoothstep(0.55, 1.15, vd) * vig_max;
 	alpha = max(alpha, vig * step(alpha, 0.999));
 	rgb = mix(rgb, vec3(0.0), vig * step(0.999, alpha));
 
