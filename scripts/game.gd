@@ -836,7 +836,6 @@ func _put_on_hat() -> void:
 	hat.z_index = slime.z_index + 1
 	add_child(hat)
 	hat.setup(progress.selected_hat, slime.sprite, slime)
-	hat.is_wall = func(at: Vector2) -> bool: return is_wall_tile(Vector2i((at / TILE).floor()))
 	slime.launched.connect(hat.pop)
 
 

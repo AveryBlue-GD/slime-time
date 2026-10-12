@@ -25,6 +25,9 @@ uniform vec4 deep : source_color = vec4(0.086, 0.259, 0.322, 1.0);
 uniform vec4 outline : source_color = vec4(0.047, 0.149, 0.188, 1.0);
 uniform vec4 background : source_color = vec4(0.07, 0.06, 0.1, 1.0);
 uniform bool rainbow = false;
+// The fog the room floats in (the dungeon's, as in the mazes): drifting banded mist all round it.
+uniform vec4 fog_deep : source_color = vec4(0.078, 0.078, 0.133, 1.0);
+uniform vec4 fog_mist : source_color = vec4(0.247, 0.239, 0.341, 1.0);
 uniform float rainbow_speed = 0.05;
 const float HUE_STEPS = 12.0;
 
@@ -46,6 +49,24 @@ float hash(vec2 p) {
 }
 
 // Where the rim starts (0..1 of the room's radius) at a given floor-plan angle: a lumpy goo bank.
+float value_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// The maze fog's mist (fog.gdshader): two drifting noise layers and a slow swell, banded.
+vec3 mist(vec2 pixel) {
+	float now = TIME;
+	float n = value_noise(pixel / 30.0 + vec2(now * 0.12, now * 0.04)) * 0.65
+		+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
+	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
+	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
+	return mix(fog_deep.rgb, fog_mist.rgb, clamp(band, 0.0, 1.0));
+}
+
 float rim_inner(float plan_angle) {
 	return 0.925 + 0.012 * sin(plan_angle * 9.0) + 0.007 * sin(plan_angle * 23.0 + 1.0);
 }
@@ -138,6 +159,9 @@ void fragment() {
 	}
 	if (rainbow && (d <= 1.0 || col != background.rgb)) {
 		col = rainbow_of(col, plan);
+	}
+	if (d > 1.0 && col == background.rgb) {
+		col = mist(floor(px));  // outside the room (and its drips): fog
 	}
 	COLOR = vec4(col, 1.0);
 }

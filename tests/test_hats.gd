@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Hat checks: hats are won on the hat wheel and saved; a worn hat sits on the slime's
 ## head, pops off when it leaps, keeps its momentum and lands back on its head; after a splat it
-## flies on, comes down and hops back on. Uses a throwaway save.
+## stays in line over the slime (a small jolt on), comes down and lands back on. Uses a throwaway save.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hats.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -76,7 +76,7 @@ func _initialize() -> void:
 	_check(game.hat.state == Hat.State.ON, "...and lands back on its head")
 	game.free()
 
-	# --- A splat: the hat flies on, comes down, hops back on
+	# --- A splat: the hat stays over the slime (just jolted on a little) and comes back down on it
 	game = await _spawn()
 	var end := _dead_end(game, 3)
 	var near := MazeGenerator.cell_center(end.cell, 16)
@@ -86,16 +86,21 @@ func _initialize() -> void:
 	await physics_frame
 	game.slime.launch(100.0)
 	var overshoot := 0.0
+	var off_line := 0.0
+	var splat_flew := false
 	var back_on := false
 	for i in 60 * 4:
 		await process_frame
 		if game.hat.state != Hat.State.ON:
+			splat_flew = true
 			overshoot = maxf(overshoot, (game.hat.ground - game.slime.position).dot(Vector2(end.dir)))
-		elif overshoot > 0.0 and i > 30:
+			off_line = maxf(off_line, game.hat.ground.distance_to(game.slime.position))
+		elif splat_flew:
 			back_on = true
 			break
-	_check(overshoot > 3.0, "after a splat the hat keeps going past where the slime stopped (%.0f px)" % overshoot)
-	_check(back_on, "...then comes back down onto the slime")
+	# (+3: this reads the slime after its physics step but before the hat follows that frame)
+	_check(overshoot > 0.5 and off_line <= Hat.MAX_JOLT + 3.0, "a splat jolts the hat on a little but keeps it in line over the slime (%.1f px on, %.1f px off at most)" % [overshoot, off_line])
+	_check(back_on, "...then it comes straight back down onto the slime")
 	game.free()
 
 	progress.selected_hat = Hats.NONE

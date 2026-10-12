@@ -66,7 +66,21 @@ func _initialize() -> void:
 	hub = await _open()
 	hub.slime.position = hub.rotor.position + Vector2(0, 8)
 	await _frames(2)
-	_check(hub.near.get("id", "") == "rotor" and hub.prompt_name.text == "TURN THE ROOM", "the wheel offers to turn the room")
+	_check(hub.near.get("id", "") == "rotor" and hub.prompt_name.text == "ROTATE", "the wheel offers to rotate the room")
+	for side: Vector2 in [Vector2(0, -9), Vector2(13, -2), Vector2(-13, -2)]:
+		hub.slime.position = hub.rotor.position + side
+		await _frames(2)
+		_check(hub.near.get("id", "") == "rotor", "...from any side of it too (%s)" % side)
+	_check(hub.rotor_base.z_index < 0 and hub.rotor.get_parent() == hub.world and hub.rotor_base.region_rect.position.y == HubScript.ROTOR_SPLIT,
+		"the goo at the wheel's foot lies under the slime; the post and wheel are y-sorted with it")
+	var far_station: Dictionary = hub._station("story")
+	var near_volume: float = hub.station_volume(far_station)
+	hub.slime.position = far_station.sprite.position + Vector2(18, 10)
+	await _frames(2)
+	_check(hub.near.get("id", "") == "story", "a station can be used from beside it, not just in front")
+	_check(hub.station_volume(far_station) > near_volume + 8.0, "a station sounds much louder up close than from across the room (%.0f vs %.0f dB)" % [hub.station_volume(far_station), near_volume])
+	hub.slime.position = hub.rotor.position + Vector2(0, 8)
+	await _frames(2)
 	Input.action_press("interact")
 	await _frames(2)
 	Input.action_release("interact")
@@ -128,8 +142,8 @@ func _initialize() -> void:
 	HubScript.return_to = "upgrades"
 	hub = await _open()
 	_check(hub._station("upgrades").view == HubScript.View.FRONT, "coming back from a station turns the room to face it")
-	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and hub.prompt_key.text == "F",
-		"standing at it, the prompt names it and its key (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
+	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and hub.prompt_key.text == "",
+		"standing at it, the prompt names it, with no key after it (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	Input.action_press("jump")
 	await _frames(3)
 	_check(hub.slime.state == Slime.State.CHARGING and not hub.slime.frozen, "...SPACE still leaps there (F is the use key)")

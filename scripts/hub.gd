@@ -29,15 +29,23 @@ const ROOM_RADII := Vector2(154, 78)
 ## The ring the stations stand on, and the ring of spots in front of them (radii, x and y).
 const RING := Vector2(124, 62)
 const USE_RING := Vector2(100, 49)
-const USE_REACH := 15.0
+## How close (px, between the slime's edge and a footprint's) the slime must be to use a station
+## or the wheel, from any side.
+const USE_GAP := 9.0
+## Station sounds get this much softer (dB) when the slime is far across the room from them.
+const FAR_QUIET_DB := 14.0
+const NEAR_LOUDER_DB := 3.0
 ## The walkable floor: the ellipse the slime's center stays inside (inside the rim, less its size).
 const FLOOR := Vector2(134, 64)
-const ROTOR_REACH := 17.0
+## Rows of the rotor sheet above this are the post and wheel; below, the goo pool at its foot.
+const ROTOR_SPLIT := 31
+## Footprint of the rotor's post (the same oval as its collision body).
+const ROTOR_RADIUS := 5.0
 const TURN_TIME := 0.55
 const START := CENTER + Vector2(-20, 27)  # clear of the wheel and the station straight ahead
 const ART := "res://assets/sprites/hub/"
 const FPS := 6.0
-const PROMPT_Y := 166.0
+const PROMPT_Y := 156.0
 ## Where the coin bag's board sits on screen.
 const BOARD := Rect2(52, 8, 216, 164)
 enum View { FRONT, SIDE, BACK }
@@ -73,6 +81,7 @@ var _turn_from := 0.0
 var _turn_to := 0.0
 var _turn_t := 0.0
 var rotor: Sprite2D
+var rotor_base: Sprite2D
 ## The station (or {id = "rotor"}) the slime is next to ({} = none).
 var near: Dictionary = {}
 var world: Node2D
@@ -132,10 +141,20 @@ func _build_room() -> void:
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
-	rotor = _make_sprite("rotor", Vector2i(26, 36))
+	rotor = _make_sprite("rotor", Vector2i(26, ROTOR_SPLIT))  # the post and wheel, y-sorted
 	rotor.position = CENTER + Vector2(0, 6)
+	rotor.offset = Vector2(-13, -36)
 	rotor.material = _skin_material()
 	world.add_child(rotor)
+	# The goo pooled at its foot lies on the floor, under the slime, so the slime can stand on it
+	# while the post and wheel still hide it from behind.
+	rotor_base = _make_sprite("rotor", Vector2i(26, 36 - ROTOR_SPLIT))
+	rotor_base.region_rect.position.y = ROTOR_SPLIT
+	rotor_base.position = rotor.position
+	rotor_base.offset = Vector2(-13, ROTOR_SPLIT - 36)
+	rotor_base.material = rotor.material
+	rotor_base.z_index = -1
+	add_child(rotor_base)
 	_add_body(rotor.position + Vector2(0, -2), 5.0, false)
 
 
@@ -247,7 +266,6 @@ func _put_on_hat() -> void:
 		# slime is, in front when it's in front (the hat still places itself, even when knocked off).
 		slime.add_child(hat)
 		hat.setup(Progress.selected_hat, slime.sprite, slime)
-		hat.is_wall = func(at: Vector2) -> bool: return not _on_floor(at)
 		slime.launched.connect(hat.pop)
 
 
@@ -279,7 +297,7 @@ func _build_ui() -> void:
 	layer.add_child(root)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prompt = PanelContainer.new()
-	prompt.add_theme_stylebox_override("panel", UIKit.panel_style(true))
+	prompt.add_theme_stylebox_override("panel", UIKit.panel_style())  # goo-framed, like the menus
 	prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(prompt)
 	var row := HBoxContainer.new()
@@ -451,7 +469,9 @@ func _process(delta: float) -> void:
 		if station.id != "random" or Progress.is_randomizer_unlocked():
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
-	rotor.self_modulate = Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
+	var lit_rotor := Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
+	rotor.self_modulate = lit_rotor
+	rotor_base.self_modulate = lit_rotor
 
 
 ## Turns the room one station round (1 = the next station clockwise comes to the back).
@@ -470,7 +490,7 @@ func turn_room(direction: int) -> void:
 
 ## Leaping into the wheel turns the room too (the side you hit it from picks the way).
 func _on_jump_landed(_intended: float, hit_wall: bool, wall_normal: Vector2) -> void:
-	if hit_wall and slime.position.distance_to(rotor.position) < ROTOR_REACH + 4.0:
+	if hit_wall and _gap_to(rotor.position + Vector2(0, -2), ROTOR_RADIUS) < 4.0:
 		turn_room(-1 if wall_normal.x > 0.0 else 1)
 
 
@@ -528,9 +548,9 @@ func _play_idle_anims(station: Dictionary, delta: float) -> void:
 		if not station.seq.is_empty():
 			station.frame = station.seq[0][0]
 			if station.id == "wheel" and station.frame % 2 == 1:
-				_sfx_quiet("click", 1.5, -22.0)  # the flapper ticking on a peg
+				_sfx_quiet("click", 1.5, -22.0, station)  # the flapper ticking on a peg
 			elif station.id == "quit" and station.frame == 0:
-				_sfx_quiet("land", 0.7, -16.0)  # the lid slamming shut
+				_sfx_quiet("land", 0.7, -16.0, station)  # the lid slamming shut
 
 
 ## A spin from wherever it rests (the prize wheel, the gears): quick at first, slowing to a stop,
@@ -547,19 +567,28 @@ func _spin(station: Dictionary, steps_range: Vector2i) -> Array:
 	return seq
 
 
-func _idle_sound(sound: String, _station: Dictionary) -> void:
+func _idle_sound(sound: String, station: Dictionary) -> void:
 	match sound:
 		"puff":
-			_sfx_quiet("squish", 0.55, -16.0)  # a gust of air
+			_sfx_quiet("squish", 0.55, -16.0, station)  # a gust of air
 		"creak":
-			_sfx_quiet("charge", 0.6, -24.0)  # the door creaking open
+			_sfx_quiet("charge", 0.6, -24.0, station)  # the door creaking open
 			get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx_stop("charge"))
 
 
-func _sfx_quiet(sound: String, pitch: float, volume_db: float) -> void:
+## A station's own sound: a little louder when the slime stands next to it, much softer from
+## across the room.
+func _sfx_quiet(sound: String, pitch: float, volume_db: float, station: Dictionary) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		sfx.play(sound, volume_db, pitch)
+		sfx.play(sound, volume_db + station_volume(station), pitch)
+
+
+## How much louder (dB, negative = softer) a station sounds from where the slime is.
+func station_volume(station: Dictionary) -> float:
+	var gap := _gap_to(station.sprite.position, _footprint(station))
+	var far := clampf((gap - USE_GAP) / 90.0, 0.0, 1.0)
+	return lerpf(NEAR_LOUDER_DB, -FAR_QUIET_DB, far)
 
 
 func _sfx_stop(sound: String) -> void:
@@ -575,21 +604,35 @@ func _set_frame(station: Dictionary, frame: int) -> void:
 
 func _update_near() -> void:
 	var best := {}
-	var best_distance := USE_REACH
+	var best_gap := USE_GAP
 	if not turning:
-		for i in stations.size():
-			var a := -PI / 2.0 + turn + i * step
-			var spot := CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y)
-			var distance := slime.position.distance_to(spot)
-			if distance < best_distance:
-				best_distance = distance
-				best = stations[i]
-		if slime.position.distance_to(rotor.position + Vector2(0, 8)) < ROTOR_REACH and best.is_empty():
-			best = {id = "rotor", name = "TURN THE ROOM"}
+		for station in stations:
+			var gap := _gap_to(station.sprite.position + (Vector2.ZERO if station.flat else Vector2(0, -2)), _footprint(station))
+			if gap < best_gap:
+				best_gap = gap
+				best = station
+		if best.is_empty() and _gap_to(rotor.position + Vector2(0, -2), ROTOR_RADIUS) < USE_GAP:
+			best = {id = "rotor", name = "ROTATE"}
 	if best == near:
 		return
 	near = best
 	_show_prompt()
+
+
+## A station's footprint radius (its collision oval's; a flat one's lies on the floor).
+func _footprint(station: Dictionary) -> float:
+	return station.size.x / 2.0 - 4.0
+
+
+## How far the slime's edge is from a footprint oval (`radius` wide, half as deep, as the
+## collision bodies) at `at`, measured from any side. Negative = standing on or in it.
+func _gap_to(at: Vector2, radius: float) -> float:
+	var v := slime.position - at
+	if v.is_zero_approx():
+		return -radius
+	var dir := v.normalized()
+	var edge := 1.0 / sqrt(pow(dir.x / radius, 2.0) + pow(dir.y / (radius * 0.5), 2.0))
+	return v.length() - edge - Slime.RADIUS
 
 
 func _show_prompt(note := "") -> void:
@@ -597,20 +640,19 @@ func _show_prompt(note := "") -> void:
 	if near.is_empty():
 		return
 	prompt_name.text = near.name
-	var touch := _touch_controls != null and _touch_controls.visible
-	var key: String = "TAP JUMP" if touch else Progress.key_name(Progress.bindings.interact)
 	if note != "":
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
 	elif near.id == "wheel" and not Progress.dev_tools:
 		prompt_key.text = "COMING SOON"
-	elif near.id == "story":
-		prompt_key.text = ""  # just "STORY - LEVEL N"
 	else:
-		prompt_key.text = key
+		prompt_key.text = ""  # just its name: the interact key uses it
+	prompt_key.visible = prompt_key.text != ""
 	prompt.reset_size()
 	var size := prompt.get_combined_minimum_size()
+	prompt.size = size
+	# Centered at the bottom, its goo drops clear of the screen edge.
 	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), PROMPT_Y)
 
 
