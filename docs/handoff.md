@@ -44,8 +44,9 @@ which describes the whole project and the commands for both machines.
 - **Confirm the Android fix:** upload the new web zip to itch and have the friend retest the hub and a level.
   If it still fails, get the phone model; next step would be a debug build that reports which shader fails.
 - **Confirm the browser paste fix** on itch (PASTE button and Ctrl+V in the SAVE CODE panel).
-- **Mac setup:** run the setup prompt, check the tests pass there and fix anything macOS-specific
-  (case-sensitive paths, `python3`), then commit and push.
+- **Mac setup:** under way. The Mac has already cloned the repo and pushed one fix (e69e447, a re-import of
+  `pixel_big.png.import`). Check that all the tests pass there and that the save came over; fix anything
+  macOS-specific (case-sensitive paths, `python3`), then commit and push.
 - **Hats are placeholders.** `Hats.available = false` (COMING SOON outside dev mode) until the user decides the
   real hat list.
 - **Hat wheel currency:** spins are dev-mode only "until we add a currency later". Not designed yet.
