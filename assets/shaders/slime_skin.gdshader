@@ -21,6 +21,13 @@ uniform float translucency = 0.0;
 // Rainbow cycles per second passing any point, and how wide one full rainbow is (px).
 uniform float rainbow_speed = 0.45;
 uniform float rainbow_width = 16.0;
+// Gloss (0 = off, for logos and menu props): a specular shine that sweeps over the dome every
+// few seconds and a dithered backlit crescent along the underside, like light coming through
+// the jelly. Both just move a pixel's goo shade up one step, so every skin (rainbow and the
+// color wheel too) gets them. `charge` (0-1) tenses the colors while charging a leap.
+uniform float gloss = 0.0;
+uniform float shine_motion = 1.0;
+uniform float charge = 0.0;
 
 // No arrays here on purpose: constant and local arrays indexed at run time fail to compile on
 // many Android GPUs in the browser (the slime, stations and hats just vanished), so every lookup
@@ -106,6 +113,12 @@ vec3 hsv_to_rgb(float h, float s, float v) {
 	return v * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), s);
 }
 
+// 2x2 ordered dither, 0..0.75, without arrays.
+float bayer2(vec2 p) {
+	vec2 m = mod(p, 2.0);
+	return mod(m.x * 2.0 + m.y * 3.0, 4.0) * 0.25;
+}
+
 void fragment() {
 	vec4 texel = texture(TEXTURE, UV);
 	vec3 rgb = texel.rgb;
@@ -113,6 +126,21 @@ void fragment() {
 	int crust_from = shade < 0 ? crust_source(rgb) : -1;
 	// Dried crust: the goo shade it came from, then dulled and darkened below.
 	int source = shade >= 0 ? shade : crust_from;
+	if (gloss > 0.0 && shade >= 0) {
+		vec2 gp = floor(local_pos);
+		// Backlit crescent: the dark underside lets light through on a dithered edge.
+		float under = clamp((gp.y - 1.0) / 5.0, 0.0, 1.0) * 0.8;
+		if ((shade == 3 || shade == 4) && bayer2(gp) + 0.125 < under) {
+			source = shade - 1;
+		}
+		// Shine: a thin diagonal band sweeps over the top of the body, then rests a while.
+		float t = shine_motion > 0.5 ? TIME : 1.7;
+		float sweep = mix(-16.0, 30.0, fract(t * 0.3) * 1.5);
+		float band = abs(gp.x + gp.y * 0.8 - sweep);
+		if (band < 1.6 && (shade == 1 || shade == 2)) {
+			source = shade - 1;
+		}
+	}
 	if (source >= 0 && rainbow) {
 		vec2 p = floor(local_pos);
 		float wave = p.x + sin(p.y * 0.6 + TIME * 4.0) * 1.5;
@@ -124,6 +152,11 @@ void fragment() {
 		rgb = hsv_to_rgb(hue, sv.x, sv.y);
 	} else if (source >= 0) {
 		rgb = skin_shade(source);
+	}
+	if (charge > 0.0 && crust_from < 0) {
+		float luma = dot(rgb, vec3(0.3, 0.59, 0.11));
+		rgb = mix(vec3(luma), rgb, 1.0 + 0.4 * charge);
+		rgb += (shine_motion > 0.5 ? 0.05 * sin(TIME * 16.0) : 0.0) * charge * step(0.0, float(source));
 	}
 	if (crust_from >= 0) {
 		float grey = dot(rgb, vec3(0.3, 0.59, 0.11));

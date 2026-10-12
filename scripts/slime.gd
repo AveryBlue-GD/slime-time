@@ -81,6 +81,7 @@ var charge := 0.0
 var facing := Vector2.RIGHT
 
 var _jump_dir := Vector2.ZERO
+var _tension := -1.0  # last charge tension sent to the skin shader
 var _jump_distance := 0.0
 var _jump_traveled := 0.0
 ## Distance actually flown by the latest jump (shorter than planned when it hits a wall).
@@ -212,6 +213,10 @@ func _ready() -> void:
 	sprite.sprite_frames = load_sprite_frames()
 	sprite.material = Skins.make_material(Skins.get_preset(Skins.DEFAULT).color)
 	sprite.play("idle")
+	var skin := sprite.material as ShaderMaterial
+	skin.set_shader_parameter("gloss", 1.0)
+	var progress := get_node_or_null("/root/Progress")
+	skin.set_shader_parameter("shine_motion", 0.0 if progress and progress.reduce_motion else 1.0)
 	_drips = Fx.make_drips()
 	_drips.show_behind_parent = true
 	_drips.color = Skins.get_preset(Skins.DEFAULT).color
@@ -309,6 +314,10 @@ func _physics_process(delta: float) -> void:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
 		_sfx("squish", -12.0, randf_range(0.85, 1.15))
 	_land_anim_left = maxf(_land_anim_left - delta, 0.0)
+	var tension := charge / 100.0 if state == State.CHARGING else 0.0
+	if not is_equal_approx(tension, _tension):
+		_tension = tension
+		(sprite.material as ShaderMaterial).set_shader_parameter("charge", tension)
 	_bounce_fx_left = maxf(_bounce_fx_left - delta, 0.0)
 	_recover_anim_left = maxf(_recover_anim_left - delta, 0.0)
 	_drips.emitting = state == State.GLIDE and not frozen and velocity.length() > DRIP_SPEED
