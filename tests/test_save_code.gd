@@ -61,8 +61,14 @@ func _initialize() -> void:
 	screen._load_code()
 	_check("DOESN'T WORK" in screen.code_status.text, "a bad code says so (%s)" % screen.code_status.text)
 	progress.levels_cleared = 2  # pretend the progress moved on since the code was made
-	screen.code_in.text = code
-	screen.code_in.text_changed.emit(code)
+	var box_right: float = screen.code_in.position.x + screen.code_in.size.x
+	_check(screen.paste_button.visible and screen.paste_button.position.x >= box_right and screen.paste_button.position.x + screen.paste_button.size.x <= screen.load_button.position.x,
+		"a PASTE button sits between the box and LOAD")
+	screen._set_pasted("  " + code + "\n")  # what PASTE (or a paste into the page) hands over
+	_check(screen.code_in.text == code and "PASTED" in screen.code_status.text and not screen.load_armed,
+		"pasting fills the box with the code, trimmed, and says to press LOAD (%s)" % screen.code_status.text)
+	screen._set_pasted("")
+	_check("NOTHING TO PASTE" in screen.code_status.text and screen.code_in.text == code, "an empty clipboard says so and keeps the box as it was")
 	screen._load_code()
 	_check(screen.load_armed and "PRESS LOAD AGAIN" in screen.code_status.text and progress.levels_cleared == 2,
 		"a good code asks first: it would replace your progress")

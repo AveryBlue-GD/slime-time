@@ -31,6 +31,11 @@ var code_panel: Control
 var code_out: LineEdit
 var code_in: LineEdit
 var code_status: Label
+var paste_button: Button
+## In the browser: the page's paste event and the clipboard read, kept alive while they're in use.
+var _web_paste_event: JavaScriptObject
+var _web_read_done: JavaScriptObject
+var _web_read_failed: JavaScriptObject
 var copy_button: Button
 var load_button: Button
 ## LOAD has been pressed once on a working code: the next press replaces the progress.
@@ -115,6 +120,11 @@ func _build_code_panel() -> void:
 	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", 8, UIKit.TEXT_DIM), 80, 90)
 	code_in = _code_box(false)
 	code_in.position = Vector2(24, 93)
+	code_in.custom_minimum_size = Vector2(136, 13)  # (before size: a size under the old minimum won't stick)
+	code_in.size = Vector2(136, 13)
+	paste_button = UIKit.make_button("PASTE", _paste_code, Vector2(64, 13))
+	paste_button.position = Vector2(164, 93)
+	code_panel.add_child(paste_button)
 	code_in.placeholder_text = "SLIME1-..."
 	code_in.text_changed.connect(func(_text: String) -> void:
 		load_armed = false
@@ -155,7 +165,57 @@ func _open_codes() -> void:
 	code_status.text = ""
 	load_armed = false
 	code_panel.visible = true
+	_listen_for_web_paste()
 	copy_button.grab_focus()
+
+
+## Fills the load box from the clipboard. In a browser Godot only sees text pasted into the page,
+## and a Ctrl+V reaches the box before that text arrives, so there the clipboard is read through
+## the browser instead (it may ask for permission).
+func _paste_code() -> void:
+	if not OS.has_feature("web"):
+		_set_pasted(DisplayServer.clipboard_get())
+		return
+	var clipboard = JavaScriptBridge.get_interface("navigator").clipboard
+	if clipboard == null or not clipboard.readText:
+		code_status.text = "CLICK THE BOX AND PRESS CTRL+V"
+		return
+	_web_read_done = JavaScriptBridge.create_callback(func(args: Array) -> void: _set_pasted(str(args[0])))
+	_web_read_failed = JavaScriptBridge.create_callback(func(_args: Array) -> void:
+		code_status.text = "CLICK THE BOX AND PRESS CTRL+V")
+	clipboard.readText().then(_web_read_done).catch(_web_read_failed)
+
+
+func _set_pasted(text: String) -> void:
+	text = text.strip_edges()
+	if text == "":
+		code_status.text = "NOTHING TO PASTE - COPY A CODE FIRST"
+		return
+	code_in.text = text
+	code_in.caret_column = text.length()
+	load_armed = false
+	code_status.text = "PASTED - PRESS LOAD" if Progress.read_code(text) != null else "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
+	load_button.grab_focus()
+
+
+## In the browser, text pasted into the page (Ctrl+V, or paste from a phone's menu) goes straight
+## into the load box while the SAVE CODE panel is open.
+func _listen_for_web_paste() -> void:
+	if not OS.has_feature("web") or _web_paste_event != null:
+		return
+	_web_paste_event = JavaScriptBridge.create_callback(func(args: Array) -> void:
+		if not code_panel.visible:
+			return
+		var data = args[0].clipboardData
+		if data:
+			_set_pasted.call_deferred(str(data.getData("text"))))
+	JavaScriptBridge.get_interface("window").addEventListener("paste", _web_paste_event)
+
+
+func _exit_tree() -> void:
+	if _web_paste_event != null:
+		JavaScriptBridge.get_interface("window").removeEventListener("paste", _web_paste_event)
+		_web_paste_event = null
 
 
 func _close_codes() -> void:
