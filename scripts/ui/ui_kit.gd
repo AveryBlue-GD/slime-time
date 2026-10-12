@@ -241,9 +241,15 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	slider.step = 0.05
 	var progress: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Progress")
 	slider.value = progress.volume if progress else 0.8
+	var dragging := [false]  # applied live while dragging, saved once on release
+	slider.drag_started.connect(func() -> void: dragging[0] = true)
+	slider.drag_ended.connect(func(_changed: bool) -> void:
+		dragging[0] = false
+		if progress:
+			progress.set_volume(slider.value))
 	slider.value_changed.connect(func(value: float) -> void:
 		if progress:
-			progress.set_volume(value)
+			progress.set_volume(value, not dragging[0])
 		var sfx := slider.get_node_or_null("/root/Sfx")
 		if sfx:
 			sfx.play("click"))

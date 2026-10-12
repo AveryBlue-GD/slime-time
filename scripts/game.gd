@@ -111,7 +111,12 @@ var fog_image: Image
 var outer_fog: Sprite2D
 var trail_image: Image
 var revealed_walls := {}
-var textures_dirty := false
+var fog_dirty := false
+var trail_dirty := false
+## Last 1/FOG_TICKS tick, slime cell and light radius _relight ran for (it only has work when one changes).
+var _relit_tick := -1
+var _relit_cell := Vector2i(-99999, -99999)
+var _relit_radius := -1.0
 var last_slime_pos: Vector2
 ## Distance traveled since the last glimmer, the distance the next one comes at, and where the
 ## slime was last frame (for measuring).
@@ -447,14 +452,15 @@ func fog_alpha_at(pos: Vector2) -> float:
 	var at := _cell_at(pos)
 	if not Rect2i(Vector2i.ZERO, fog_image.get_size()).has_point(at):
 		return 1.0  # the outer fog
-	var cell := _fog_decode(fog_image.get_pixelv(at))
-	if not cell.revealed:
+	var px := fog_image.get_pixelv(at)
+	var packed := _fog_packed(px)
+	if packed == 0:
 		return 1.0
-	var age: float = elapsed - cell.lit
+	var age: float = elapsed - _fog_lit_ticks(px) / FOG_TICKS
 	if hard_mode and age >= FADE_AFTER[-1]:
 		return 1.0
 	var alpha := fade_alpha(age)
-	if cell.wall:
+	if packed % 2 == 1:
 		alpha += (1.0 - alpha) * WALL_FOG_ALPHA
 	return alpha
 
@@ -464,6 +470,21 @@ func fog_alpha_at(pos: Vector2) -> float:
 static func _fog_color(lit: float, revealed: float, wall: bool) -> Color:
 	var lit_ticks := clampi(int(lit * FOG_TICKS), 0, 65535)
 	var packed := (clampi(int(revealed * FOG_TICKS), 0, 32766) + 1) * 2 + (1 if wall else 0)
+	return Color8(lit_ticks >> 8, lit_ticks & 255, packed >> 8, packed & 255)
+
+
+## Allocation-free field readers for per-cell loops (same packing as _fog_decode).
+static func _fog_packed(color: Color) -> int:
+	return color.b8 * 256 + color.a8
+
+
+static func _fog_lit_ticks(color: Color) -> int:
+	return color.r8 * 256 + color.g8
+
+
+static func _fog_color_ticks(lit_ticks: int, revealed_ticks: int, wall: bool) -> Color:
+	lit_ticks = clampi(lit_ticks, 0, 65535)
+	var packed := (clampi(revealed_ticks, 0, 32766) + 1) * 2 + (1 if wall else 0)
 	return Color8(lit_ticks >> 8, lit_ticks & 255, packed >> 8, packed & 255)
 
 
@@ -598,7 +619,8 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 				continue
 			trail_image.set_pixelv(cell, _goo_color(posmod(hash(cell), 5) == 0))
 			fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
-			textures_dirty = true
+			fog_dirty = true
+			trail_dirty = true
 
 
 ## Trail color for a newly painted cell: the skin's goo, or for the rainbow skin a hue that
@@ -614,18 +636,26 @@ func _goo_color(dark: bool) -> Color:
 ## Brightness upgrade widens it.
 func _relight(pos: Vector2) -> void:
 	var radius := LIGHT_RADIUS + light_reach
+	var tick := int(elapsed * FOG_TICKS)
+	var slime_cell := _cell_at(pos)
+	if tick == _relit_tick and slime_cell == _relit_cell and radius == _relit_radius:
+		return  # nothing new can be lit: same fog tick, same cell, same reach
+	_relit_tick = tick
+	_relit_cell = slime_cell
+	_relit_radius = radius
 	var r := Vector2(radius, radius)
 	var first := _cell_at(pos - r).max(Vector2i.ZERO)
 	var last := _cell_at(pos + r).min(fog_image.get_size() - Vector2i.ONE)
+	var radius_sq := radius * radius
 	for cy in range(first.y, last.y + 1):
 		for cx in range(first.x, last.x + 1):
 			var cell := Vector2i(cx, cy)
-			if _cell_pos(cell).distance_to(pos) > radius:
+			if _cell_pos(cell).distance_squared_to(pos) > radius_sq:
 				continue
-			var value := _fog_decode(fog_image.get_pixelv(cell))
-			if value.revealed and int(value.lit * FOG_TICKS) < int(elapsed * FOG_TICKS):
-				fog_image.set_pixelv(cell, _fog_color(elapsed, value.first_revealed, value.wall))
-				textures_dirty = true
+			var packed := _fog_packed(fog_image.get_pixelv(cell))
+			if packed > 0 and _fog_lit_ticks(fog_image.get_pixelv(cell)) < tick:
+				fog_image.set_pixelv(cell, _fog_color_ticks(tick, (packed >> 1) - 1, packed % 2 == 1))
+				fog_dirty = true
 
 
 ## Brightness upgrade: the slime's own light reveals unexplored floor (and the walls beside it)
@@ -640,9 +670,9 @@ func _reveal_light(pos: Vector2) -> void:
 			var center := _cell_pos(cell)
 			if center.distance_to(pos) > radius or is_wall_tile(Vector2i((center / TILE).floor())):
 				continue
-			if not _fog_decode(fog_image.get_pixelv(cell)).revealed:
+			if _fog_packed(fog_image.get_pixelv(cell)) == 0:
 				fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
-				textures_dirty = true
+				fog_dirty = true
 	_reveal_walls_near(pos, radius)
 
 
@@ -666,15 +696,16 @@ func _reveal_wall(tile: Vector2i) -> void:
 		return
 	revealed_walls[tile] = true
 	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
-	textures_dirty = true
+	fog_dirty = true
 
 
 func _flush_textures() -> void:
-	if not textures_dirty:
-		return
-	(fog_sprite.texture as ImageTexture).update(fog_image)
-	(trail_sprite.texture as ImageTexture).update(trail_image)
-	textures_dirty = false
+	if fog_dirty:
+		(fog_sprite.texture as ImageTexture).update(fog_image)
+		fog_dirty = false
+	if trail_dirty:
+		(trail_sprite.texture as ImageTexture).update(trail_image)
+		trail_dirty = false
 
 
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
@@ -762,7 +793,7 @@ func _pick_up_coins(pos: Vector2) -> void:
 			Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
 			coin.queue_free()
 		hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here, true)
-		if progress.coins_earned() == Levels.total_coins():  # the very last coin: the rainbow skin
+		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
 
@@ -806,7 +837,7 @@ func _break_wall(tile: Vector2i) -> void:
 	revealed_walls.erase(tile)
 	floor_layer.set_cell(tile, MazeTiles.FLOOR_SOURCE, Vector2i(MazeTiles.FLOOR_RUBBLE, 0))
 	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, false))
-	textures_dirty = true
+	fog_dirty = true
 	for offset: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT,
 			Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
 		var near := tile + offset

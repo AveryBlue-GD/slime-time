@@ -179,46 +179,93 @@ func load_progress() -> void:
 
 ## Takes everything from a save (the save file or a loaded save code).
 func _read(file: ConfigFile) -> void:
-	levels_cleared = clampi(file.get_value("progress", "levels_cleared", 0), 0, Levels.COUNT)
-	highest_unlocked = clampi(file.get_value("progress", "highest_unlocked", 1), 1, Levels.COUNT)
-	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
-	randoms_won = maxi(file.get_value("progress", "randoms_won", 0), 0)
-	custom_color = file.get_value("skin", "custom_color", custom_color)
-	hats_owned.assign(file.get_value("hats", "owned", []))
-	selected_hat = file.get_value("skin", "hat", Hats.NONE)
+	levels_cleared = clampi(_int(file, "progress", "levels_cleared", 0), 0, Levels.COUNT)
+	highest_unlocked = clampi(_int(file, "progress", "highest_unlocked", 1), 1, Levels.COUNT)
+	current_level = clampi(_int(file, "progress", "current_level", 1), 1, highest_unlocked)
+	randoms_won = maxi(_int(file, "progress", "randoms_won", 0), 0)
+	var color: Variant = file.get_value("skin", "custom_color", custom_color)
+	custom_color = color if typeof(color) == TYPE_COLOR else custom_color
+	hats_owned.assign(_strings(file.get_value("hats", "owned", [])))
+	selected_hat = _string(file, "skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
 		selected_hat = Hats.NONE
-	sound_on = file.get_value("settings", "sound_on", true)
-	volume = clampf(file.get_value("settings", "volume", volume), 0.0, 1.0)
-	hard_mode = file.get_value("settings", "hard_mode", false)
-	skin_notices_seen.assign(file.get_value("progress", "skin_notices_seen", []))
-	hard_cleared.assign(file.get_value("progress", "hard_cleared", []))
+	sound_on = _bool(file, "settings", "sound_on", true)
+	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
+	hard_mode = _bool(file, "settings", "hard_mode", false)
+	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
+	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
 	best_times = {}
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
 			if file.has_section_key("records", "level_%d" % key):
-				best_times[key] = float(file.get_value("records", "level_%d" % key))
+				best_times[key] = _float(file, "records", "level_%d" % key, 0.0)
 	coins_found = {}
 	for level in range(1, Levels.COUNT + 1):
-		var found: Array = file.get_value("coins", "level_%d" % level, [])
+		var found: Array = []
+		found.assign(_strings(file.get_value("coins", "level_%d" % level, [])))
 		if not found.is_empty():
 			coins_found[level] = found
 	upgrades = {}
 	for upgrade: Dictionary in Upgrades.LIST:
-		var level := clampi(int(file.get_value("upgrades", upgrade.id, 0)), 0, Upgrades.MAX_LEVEL)
+		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, Upgrades.MAX_LEVEL)
 		if level > 0:
 			upgrades[upgrade.id] = level
 	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
 	for action: String in DEFAULT_KEYS:
-		bindings[action] = int(file.get_value("controls", action, DEFAULT_KEYS[action]))
+		bindings[action] = _int(file, "controls", action, DEFAULT_KEYS[action])
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
-	selected_skin = file.get_value("skin", "selected", Skins.DEFAULT)
-	set_jelly(file.get_value("skin", "jelly", true))
+	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
+	set_jelly(_bool(file, "skin", "jelly", true))
 	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a solid one no longer earned
 		set_jelly(true)
 		if not is_skin_unlocked(selected_skin):
 			selected_skin = Skins.DEFAULT
+
+
+## Type-safe save readers: a wrong-typed value (hand-edited or hostile save) gives the default.
+static func _int(file: ConfigFile, section: String, key: String, default: int) -> int:
+	var v: Variant = file.get_value(section, key, default)
+	if typeof(v) == TYPE_INT:
+		return v
+	if typeof(v) == TYPE_FLOAT and is_finite(v):
+		return int(v)
+	return default
+
+
+static func _float(file: ConfigFile, section: String, key: String, default: float) -> float:
+	var v: Variant = file.get_value(section, key, default)
+	if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and is_finite(float(v)):
+		return float(v)
+	return default
+
+
+static func _bool(file: ConfigFile, section: String, key: String, default: bool) -> bool:
+	var v: Variant = file.get_value(section, key, default)
+	return v if typeof(v) == TYPE_BOOL else default
+
+
+static func _string(file: ConfigFile, section: String, key: String, default: String) -> String:
+	var v: Variant = file.get_value(section, key, default)
+	return v if typeof(v) == TYPE_STRING else default
+
+
+static func _strings(v: Variant) -> Array[String]:
+	var out: Array[String] = []
+	if typeof(v) == TYPE_ARRAY:
+		for item: Variant in v:
+			if typeof(item) == TYPE_STRING:
+				out.append(item)
+	return out
+
+
+static func _ints(v: Variant) -> Array[int]:
+	var out: Array[int] = []
+	if typeof(v) == TYPE_ARRAY:
+		for item: Variant in v:
+			if typeof(item) == TYPE_INT:
+				out.append(item)
+	return out
 
 
 func save_progress() -> void:
@@ -264,9 +311,13 @@ func save_code() -> String:
 
 
 ## The save inside a code, or null if it isn't a working Slime Time save code.
+## Longest save code read (base64 characters); real ones are a few KB.
+const MAX_SAVE_CODE_LENGTH := 65536
+
+
 static func read_code(code: String) -> ConfigFile:
-	code = code.strip_edges().replace(" ", "").replace("\n", "")
-	if not code.begins_with(SAVE_CODE_PREFIX):
+	code = code.strip_edges().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+	if not code.begins_with(SAVE_CODE_PREFIX) or code.length() > MAX_SAVE_CODE_LENGTH:
 		return null
 	var packed := Marshalls.base64_to_raw(code.trim_prefix(SAVE_CODE_PREFIX))
 	if packed.is_empty():
@@ -345,7 +396,10 @@ func collect_coin(level: int, cell: Vector2i) -> void:
 
 
 func coins_found_in(level: int) -> int:
-	return coins_found.get(level, []).size()
+	var level_coins: Array = coins_found.get(level, [])
+	if level >= 1 and level <= Levels.COINS.size():
+		return mini(level_coins.size(), Levels.COINS[level - 1])
+	return level_coins.size()
 
 
 func coins_earned() -> int:
@@ -565,10 +619,11 @@ func select_skin(id: String, jelly_version: Variant = null) -> void:
 
 # ---------------------------------------------------------------- sound
 
-func set_volume(value: float) -> void:
+func set_volume(value: float, save := true) -> void:
 	volume = clampf(value, 0.0, 1.0)
 	apply_volume()
-	save_progress()
+	if save:
+		save_progress()
 
 
 func apply_volume() -> void:
