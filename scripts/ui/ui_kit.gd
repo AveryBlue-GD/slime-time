@@ -65,6 +65,21 @@ static func make_theme() -> Theme:
 	theme.set_icon("grabber_highlight", "HSlider", load(UI_DIR + "grabber_hover.png"))
 	theme.set_stylebox("panel", "Panel", panel_style())
 	theme.set_stylebox("panel", "PanelContainer", panel_style())
+	# Text boxes (the save code): a dark inset well, outlined brighter while you type in it.
+	var well := _box(Color8(14, 14, 24), Color8(62, 74, 96))
+	well.draw_center = true
+	well.content_margin_top = 2
+	well.content_margin_bottom = 1
+	theme.set_stylebox("normal", "LineEdit", well)
+	theme.set_stylebox("read_only", "LineEdit", well)
+	var focused := well.duplicate() as StyleBoxFlat
+	focused.border_color = TEXT_DIM
+	theme.set_stylebox("focus", "LineEdit", focused)
+	theme.set_color("font_color", "LineEdit", TEXT)
+	theme.set_color("font_uneditable_color", "LineEdit", TEXT_DIM)
+	theme.set_color("font_placeholder_color", "LineEdit", TEXT_OFF)
+	theme.set_color("caret_color", "LineEdit", TEXT)
+	theme.set_color("selection_color", "LineEdit", Color8(62, 74, 96))
 	return theme
 
 

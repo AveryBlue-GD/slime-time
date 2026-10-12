@@ -1,7 +1,9 @@
 extends Control
 
 ## Settings: key remapping (click an action's key, then press the new key; Esc cancels; if the
-## key was already used by another action, the two swap), sound on/off, volume, fullscreen, and
+## key was already used by another action, the two swap), sound on/off, volume, fullscreen,
+## SAVE CODE (copy your whole save as a code to back it up, or paste one to load it: the way to
+## keep browser progress safe or move it to another browser or the Windows version), and
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const ACTION_NAMES := {
@@ -17,6 +19,16 @@ var reset_button: Button
 var reset_confirm: Control
 var confirm_button: Button
 var cancel_button: Button
+var save_code_button: Button
+var code_panel: Control
+## The save code of your progress (read-only, to copy) and the box to paste a code into.
+var code_out: LineEdit
+var code_in: LineEdit
+var code_status: Label
+var copy_button: Button
+var load_button: Button
+## LOAD has been pressed once on a working code: the next press replaces the progress.
+var load_armed := false
 
 
 func _ready() -> void:
@@ -62,7 +74,101 @@ func _ready() -> void:
 	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, Vector2(96, 13))
 	reset_button.position = Vector2(220, 164)
 	add_child(reset_button)
+	save_code_button = UIKit.make_button("SAVE CODE", _open_codes, Vector2(76, 13))
+	save_code_button.position = Vector2(122, 164)
+	add_child(save_code_button)
 	_build_reset_confirm()
+	_build_code_panel()
+
+
+## The SAVE CODE panel: your progress as a code to copy, and a box to paste a code into and load.
+## Loading asks for a second press, since it replaces the progress you have.
+func _build_code_panel() -> void:
+	code_panel = Control.new()
+	code_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(code_panel)
+	code_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	code_panel.visible = false
+	var dim := ColorRect.new()
+	dim.color = Color(UIKit.BG, 0.85)
+	code_panel.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(code_panel, Rect2(12, 14, 296, 150))
+	_panel_label(code_panel, UIKit.make_label("SAVE CODE", 16, UIKit.GOLD), 20, 40)
+	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", 8, UIKit.TEXT_DIM), 45, 55)
+	code_out = _code_box(true)
+	code_out.position = Vector2(24, 58)
+	copy_button = UIKit.make_button("COPY", _copy_code, Vector2(64, 13))
+	copy_button.position = Vector2(232, 58)
+	code_panel.add_child(copy_button)
+	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", 8, UIKit.TEXT_DIM), 80, 90)
+	code_in = _code_box(false)
+	code_in.position = Vector2(24, 93)
+	code_in.placeholder_text = "SLIME1-..."
+	code_in.text_changed.connect(func(_text: String) -> void:
+		load_armed = false
+		code_status.text = "")
+	load_button = UIKit.make_button("LOAD", _load_code, Vector2(64, 13))
+	load_button.position = Vector2(232, 93)
+	code_panel.add_child(load_button)
+	code_status = UIKit.make_label("", 8, UIKit.TEXT)
+	_panel_label(code_panel, code_status, 114, 124)
+	var close := UIKit.make_button("CLOSE", _close_codes, Vector2(64, 13))
+	close.position = Vector2(128, 140)
+	code_panel.add_child(close)
+
+
+func _code_box(read_only: bool) -> LineEdit:
+	var box := LineEdit.new()
+	box.size = Vector2(204, 13)
+	box.custom_minimum_size = Vector2(204, 13)
+	box.editable = not read_only
+	box.select_all_on_focus = read_only
+	box.add_theme_font_size_override("font_size", 8)
+	box.material = UIKit.text_material()
+	code_panel.add_child(box)
+	return box
+
+
+func _panel_label(parent: Control, label: Label, top: int, bottom: int) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(label)
+	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	label.offset_top = top
+	label.offset_bottom = bottom
+
+
+func _open_codes() -> void:
+	code_out.text = Progress.save_code()
+	code_in.text = ""
+	code_status.text = ""
+	load_armed = false
+	code_panel.visible = true
+	copy_button.grab_focus()
+
+
+func _close_codes() -> void:
+	code_panel.visible = false
+	save_code_button.grab_focus()
+
+
+func _copy_code() -> void:
+	DisplayServer.clipboard_set(code_out.text)
+	code_out.select_all()
+	code_status.text = "COPIED! KEEP IT SOMEWHERE SAFE"
+
+
+func _load_code() -> void:
+	if Progress.read_code(code_in.text) == null:
+		load_armed = false
+		code_status.text = "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
+		return
+	if not load_armed:
+		load_armed = true
+		code_status.text = "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"
+		return
+	Progress.load_code(code_in.text)
+	UIKit.go(get_tree(), UIKit.TITLE_SCENE)  # start fresh with the loaded save
 
 
 ## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
@@ -158,7 +264,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if waiting_for == "" and (event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel")):
-		if reset_confirm.visible:
+		if code_panel.visible:
+			_close_codes()
+		elif reset_confirm.visible:
 			_cancel_reset()
 		else:
 			UIKit.go(get_tree(), UIKit.HUB_SCENE)

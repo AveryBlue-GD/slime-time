@@ -17,6 +17,8 @@ const DEFAULT_KEYS := {
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
 
 var save_path := "user://save.cfg"
+## Save codes start with this (the 1 is the format, in case it ever changes).
+const SAVE_CODE_PREFIX := "SLIME1-"
 ## Highest level the player may start (1-10).
 var highest_unlocked := 1
 ## Number of story levels beaten so far (0-10). Also decides which skins are unlocked.
@@ -76,6 +78,10 @@ var skin_override := ""
 
 
 func _ready() -> void:
+	# In a browser the save lives in the site's storage; asking for it to be kept as persistent
+	# stops the browser from evicting it when space runs low (Chrome/Edge usually just agree).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("if (navigator.storage && navigator.storage.persist) { navigator.storage.persist(); }", true)
 	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
 	if not InputMap.has_action("interact"):
 		InputMap.add_action("interact")
@@ -167,6 +173,11 @@ func load_progress() -> void:
 	var file := ConfigFile.new()
 	if file.load(save_path) != OK:
 		return
+	_read(file)
+
+
+## Takes everything from a save (the save file or a loaded save code).
+func _read(file: ConfigFile) -> void:
 	levels_cleared = clampi(file.get_value("progress", "levels_cleared", 0), 0, Levels.COUNT)
 	highest_unlocked = clampi(file.get_value("progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(file.get_value("progress", "current_level", 1), 1, highest_unlocked)
@@ -211,6 +222,11 @@ func load_progress() -> void:
 func save_progress() -> void:
 	if not saving_enabled:
 		return
+	_write().save(save_path)
+
+
+## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
+func _write() -> ConfigFile:
 	var file := ConfigFile.new()
 	file.set_value("progress", "levels_cleared", levels_cleared)
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
@@ -233,7 +249,42 @@ func save_progress() -> void:
 		file.set_value("upgrades", id, upgrades[id])
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
-	file.save(save_path)
+	return file
+
+
+## The whole save as a code to copy somewhere safe: "SLIME1-" and the save file, gzipped, in
+## base64. Pasting it back with load_code restores the progress (in a browser whose storage was
+## cleared, on another browser, or in the Windows version).
+func save_code() -> String:
+	var packed := _write().encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	return SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)
+
+
+## The save inside a code, or null if it isn't a working Slime Time save code.
+static func read_code(code: String) -> ConfigFile:
+	code = code.strip_edges().replace(" ", "").replace("\n", "")
+	if not code.begins_with(SAVE_CODE_PREFIX):
+		return null
+	var packed := Marshalls.base64_to_raw(code.trim_prefix(SAVE_CODE_PREFIX))
+	if packed.is_empty():
+		return null
+	var text := packed.decompress_dynamic(1 << 20, FileAccess.COMPRESSION_GZIP).get_string_from_utf8()
+	var file := ConfigFile.new()
+	if text == "" or file.parse(text) != OK or not file.has_section("progress"):
+		return null
+	return file
+
+
+## Replaces the progress with the save in `code` (and saves it). False if the code doesn't work.
+func load_code(code: String) -> bool:
+	var file := read_code(code)
+	if file == null:
+		return false
+	_read(file)
+	apply_bindings()
+	apply_volume()
+	save_progress()
+	return true
 
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
