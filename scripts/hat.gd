@@ -1,8 +1,9 @@
 class_name Hat
 extends Sprite2D
 
-## A hat on a slime. It rides the top of the body as the slime squashes and stretches. When the
-## slime leaps, the hat pops off: it keeps the slime's momentum, arcs through the air and drops
+## A hat on a slime. It's drawn to fit round the slime's dome (not just perched on it), and as the
+## slime squashes and stretches it swaps to the matching width (Hats.width_for(Slime.head_width)).
+## When the slime leaps, the hat pops off: it keeps the slime's momentum, arcs through the air and drops
 ## back onto its head as the slime comes down. If the slime stops short (a splat), the hat flies
 ## on, bounces off the wall, lands on the floor and hops back on.
 ##
@@ -14,8 +15,6 @@ enum State { ON, FLYING, GROUNDED }
 
 ## Strong enough that even a short hop flicks the hat up visibly and a full leap sends it high.
 const GRAVITY := 1000.0
-## The hat sits this far down into the goo.
-const SINK := 2.0
 ## How close (px, on the floor plan) the hat must come down to the slime to land on it.
 const CATCH_RADIUS := 8.0
 ## Share of speed kept when bouncing off a wall.
@@ -38,17 +37,19 @@ var height := 0.0
 var velocity := Vector2.ZERO
 var lift := 0.0
 var _hop_wait := 0.0
+var hat_id := Hats.NONE
 
 
 ## Puts hat `hat_id` on the given slime sprite.
-func setup(hat_id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null) -> void:
+func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null) -> void:
+	hat_id = id
 	body = slime_body
 	anchor = slime_anchor if slime_anchor else slime_body
 	texture = preload("res://assets/sprites/hats.png")
 	region_enabled = true
 	region_rect = Hats.region(hat_id)
 	centered = false
-	offset = Vector2(-Hats.FRAME.x / 2.0, -Hats.FRAME.y + SINK)
+	offset = -Hats.HEAD  # the frame's head point goes on the top of the slime's head
 	_follow()
 
 
@@ -57,6 +58,7 @@ func setup(hat_id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = 
 func pop(slime_velocity: Vector2, flight_time: float) -> void:
 	ground = _floor_point()
 	height = _head_height()
+	region_rect = Hats.region(hat_id)  # off the head it keeps its own shape
 	velocity = slime_velocity
 	var time := maxf(flight_time * 0.95, MIN_FLIGHT)
 	lift = GRAVITY * time / 2.0
@@ -78,6 +80,8 @@ func _process(delta: float) -> void:
 
 func _follow() -> void:
 	global_position = _head().round()
+	# Squashed slime, wider hat; stretched slime, narrower and taller.
+	region_rect = Hats.region(hat_id, Hats.width_for(Slime.head_width(body.animation, body.frame)))
 
 
 func _fly(delta: float) -> void:

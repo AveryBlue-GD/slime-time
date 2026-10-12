@@ -163,6 +163,37 @@ static func head_point(anim: String, frame: int) -> Vector2:
 	return point
 
 
+## How wide the slime's head is in a frame: its width 3 px below the top of the body (14 when
+## idle, narrower when stretched into a leap, wider when squashed). Hats pick their width by it.
+static func head_width(anim: String, frame: int) -> int:
+	var key := "w%s:%d" % [anim, frame]
+	if _heads.has(key):
+		return _heads[key]
+	var frames := load_sprite_frames()
+	var width := 14
+	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
+		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
+		if _sheet_image == null:
+			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
+			if _sheet_image.is_compressed():
+				_sheet_image.decompress()
+		var top := -1
+		for y in int(region.size.y):
+			var xs: Array[int] = []
+			for x in int(region.size.x):
+				if _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + y).a > 0.5:
+					xs.append(x)
+			if xs.is_empty():
+				continue
+			if top < 0:
+				top = y
+			if y == top + 3:
+				width = xs[-1] - xs[0] + 1
+				break
+	_heads[key] = width
+	return width
+
+
 ## Name suffix ("e", "se", ...) for the 45-degree direction closest to v.
 static func dir_name(v: Vector2) -> String:
 	return DIR_NAMES[wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)]

@@ -40,6 +40,13 @@ func _initialize() -> void:
 	# --- On the head
 	var game := await _spawn()
 	_check(game.hat != null and game.hat.state == Hat.State.ON, "the slime wears its hat into the level")
+	await _frames(5)
+	_check(game.hat.region_rect.position.y == Hats.Width.NORMAL * Hats.FRAME.y, "at rest it's the normal-width hat")
+	Input.action_press("jump")
+	await _frames(70)
+	_check(game.hat.region_rect.position.y == Hats.Width.WIDE * Hats.FRAME.y, "squashed down to charge, the slime wears it wider")
+	Input.action_release("jump")
+	await _frames(90)
 	var spot := _straight(game, 4)
 	_check(not spot.is_empty(), "found a straight corridor to jump along")
 	var start := MazeGenerator.cell_center(spot.cell, 16)
@@ -142,3 +149,8 @@ func _check(ok: bool, label: String) -> void:
 	print(("  ok   " if ok else "  FAIL ") + label)
 	if not ok:
 		failures += 1
+
+
+func _frames(count: int) -> void:
+	for i in count:
+		await physics_frame

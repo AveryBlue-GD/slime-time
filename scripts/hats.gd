@@ -15,7 +15,12 @@ static var available := false
 
 const NONE := "none"
 const NONE_NAME := "NO HAT"
-const FRAME := Vector2i(16, 12)
+## Each hat is drawn at three widths (rows of hats.png) to fit the slime as it squashes and
+## stretches: NARROW (stretched into a leap), NORMAL, WIDE (squashed to charge or land).
+const FRAME := Vector2i(32, 16)
+## Where the top of the slime's head goes in a frame: the hats reach down round the dome below it.
+const HEAD := Vector2(16, 11)
+enum Width { NARROW, NORMAL, WIDE }
 
 const LIST := [
 	{id = "tophat", name = "TOP HAT", column = 0},
@@ -55,6 +60,15 @@ static func ids() -> Array[String]:
 	return out
 
 
-## The hat's frame within hats.png.
-static func region(id: String) -> Rect2:
-	return Rect2(Vector2(int(get_hat(id).get("column", 0)) * FRAME.x, 0), Vector2(FRAME))
+## The hat's frame within hats.png, at one of its widths.
+static func region(id: String, width := Width.NORMAL) -> Rect2:
+	return Rect2(Vector2(int(get_hat(id).get("column", 0)) * FRAME.x, width * FRAME.y), Vector2(FRAME))
+
+
+## Which width of hat fits a slime head `head_width` px across (Slime.head_width).
+static func width_for(head_width: int) -> int:
+	if head_width <= 12:
+		return Width.NARROW
+	if head_width >= 16:
+		return Width.WIDE
+	return Width.NORMAL

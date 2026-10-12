@@ -168,8 +168,9 @@ func _draw() -> void:
 	var atlas: Texture2D = preload("res://assets/sprites/hats.png")
 	for i in n:
 		var a := turn + (i + 0.5) * span()
-		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * 0.66).round()
-		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i]))
+		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * 0.7).round()
+		# The narrow version, so neighbors don't touch.
+		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.NARROW))
 	# The flapper at the top, kicked aside as it ticks past each wedge.
 	var tip := Vector2(CENTER.x + roundf(_kick * 2.0), CENTER.y - RADIUS + 6.0)
 	var base_y := CENTER.y - RADIUS - 7.0
