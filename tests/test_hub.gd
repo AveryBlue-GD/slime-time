@@ -215,6 +215,8 @@ func _initialize() -> void:
 	for id in won:
 		unique[id] = true
 	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() - 3, "three spins, three different hats")
+	_check(hub.hat.get_parent() == hub.slime and hub.hat.z_index == 0 and hub.slime.get_parent() == hub.world,
+		"the hat is y-sorted with the slime (behind the wheel when the slime is)")
 	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.
 	var wheel = hub.hat_wheel
 	var saved_hats: Array[String] = wheel.hats.duplicate()

@@ -243,8 +243,9 @@ func _put_on_hat() -> void:
 		hat = null
 	if Progress.selected_hat != Hats.NONE:
 		hat = Hat.new()
-		hat.z_index = 1
-		add_child(hat)
+		# A child of the slime, so it's y-sorted with it: behind the wheel and stations when the
+		# slime is, in front when it's in front (the hat still places itself, even when knocked off).
+		slime.add_child(hat)
 		hat.setup(Progress.selected_hat, slime.sprite, slime)
 		hat.is_wall = func(at: Vector2) -> bool: return not _on_floor(at)
 		slime.launched.connect(hat.pop)
@@ -451,8 +452,6 @@ func _process(delta: float) -> void:
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	rotor.self_modulate = Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
-	if hat:
-		hat.z_index = 1
 
 
 ## Turns the room one station round (1 = the next station clockwise comes to the back).
