@@ -63,6 +63,8 @@ const SPIN_COST := 12
 const SPIN_STEP := 2
 const SPIN_COST_MAX := 40
 const RAINBOW_PITY_MAX := 40
+## Spins kept when a save is read (a hostile save can't push the price math anywhere odd).
+const SPINS_MAX := 100000
 ## Level medals: the best clear-time tier per level and mode (a small int, saved under [medals]).
 ## Gold (3) = at or under the level's par time, silver (2) = within SILVER_FACTOR x par, bronze (1)
 ## = any unassisted clear. Hard mode keeps its own tiers (same thresholds) that don't count toward
@@ -146,6 +148,9 @@ var bindings := DEFAULT_KEYS.duplicate()
 ## Not saved: what "play" means right now.
 var mode := MODE_STORY
 var random_seed := 1
+## Not saved: the MORE SLIME level the current seed's maze is built for (part of its seed code),
+## or -1 until the maze is built, which then takes the player's own level.
+var random_level := -1
 var randoms_cleared := 0
 ## Randomizer mazes beaten in total (saved).
 var randoms_won := 0
@@ -333,7 +338,7 @@ func _read_wallet(file: ConfigFile) -> void:
 	random_pay_day = maxi(_int(file, "wallet", "random_day", 0), 0)
 	random_paid = clampi(_int(file, "wallet", "random_paid", 0), 0, RANDOM_PAID_PER_DAY)
 	random_paid_seeds.assign(_ints(file.get_value("wallet", "paid_seeds", [])).slice(-PAID_SEEDS_MAX))
-	spins = maxi(_int(file, "hats", "spins", 0), 0)
+	spins = clampi(_int(file, "hats", "spins", 0), 0, SPINS_MAX)
 	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
 	medals = {}
 	# Older saves, and a version 3 save with best times but no [medals] section at all, get tiers from
@@ -538,7 +543,7 @@ func start_story(level: int) -> void:
 
 ## Records a randomizer win (saved) and pays its tickets: 1, +2 when `ticket_found` (the maze's pickup
 ## was collected), +1 when `under_par` (the win beat that maze's par time), capped at 1 with no MORE
-## SLIME upgrade bought; the under-par bonus counts on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
+## SLIME upgrade bought (the player's own); the pickup and under-par bonuses count on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
 ## UTC day (none after that, none while the assist was on, none for a seed that already paid today).
 ## Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
 func complete_random(assisted := false, under_par := false, seed_value := 0, ticket_found := false) -> int:
@@ -550,7 +555,7 @@ func complete_random(assisted := false, under_par := false, seed_value := 0, tic
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(under_par and random_seed_fresh, seed_value, ticket_found)
+		paid = random_tickets_due(under_par and random_seed_fresh, seed_value, ticket_found and random_seed_fresh)
 		if paid > 0:
 			random_paid += 1
 			if seed_value != 0:
@@ -688,6 +693,7 @@ func start_random() -> void:
 
 func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
+	random_level = -1
 	random_seed_fresh = true
 
 
@@ -812,7 +818,10 @@ func spin_cost() -> int:
 
 ## The price of the spin that follows `taken` spins (0 = the free first one).
 static func spin_cost_after(taken: int) -> int:
-	return 0 if taken <= 0 else mini(SPIN_COST + SPIN_STEP * (taken - 1), SPIN_COST_MAX)
+	if taken <= 0:
+		return 0
+	# The step count is clamped first, so no input (not even one near 2^62) can overflow into a negative price.
+	return clampi(SPIN_COST + SPIN_STEP * mini(taken - 1, 20), SPIN_COST, SPIN_COST_MAX)
 
 
 ## One whole spin, done before the wheel starts turning: picks the hat (the rare rainbow hat gets

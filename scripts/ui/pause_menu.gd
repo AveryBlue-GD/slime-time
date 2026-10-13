@@ -54,7 +54,7 @@ func _ready() -> void:
 	menu.add_child(seed_button)
 	seed_edit = LineEdit.new()
 	seed_edit.custom_minimum_size = Vector2(100, 13)
-	seed_edit.max_length = 10
+	seed_edit.max_length = 13
 	seed_edit.placeholder_text = "NEW SEED"
 	seed_edit.add_theme_font_size_override("font_size", 8)
 	seed_edit.material = UIKit.text_material()
@@ -73,7 +73,7 @@ func open() -> void:
 	seed_edit.visible = false
 	_panel.size.y = 88 + (16 if random else 0)
 	if random:
-		seed_button.text = "SEED %d" % game.random_seed
+		seed_button.text = "SEED " + Levels.seed_code(game.random_seed, game.seed_level)
 	get_tree().paused = true
 	_refresh_sound()
 	buttons[0].grab_focus()
@@ -87,7 +87,7 @@ func resume() -> void:
 
 ## The seed button: swaps to a box holding the seed (selected, so it can be copied) to type over.
 func _edit_seed() -> void:
-	seed_edit.text = str(get_parent().random_seed)
+	seed_edit.text = Levels.seed_code(get_parent().random_seed, get_parent().seed_level)
 	seed_button.visible = false
 	seed_edit.visible = true
 	seed_edit.grab_focus()
@@ -97,7 +97,8 @@ func _edit_seed() -> void:
 ## A seed typed in: rebuilds that maze (the same one for everybody with that number). Anything
 ## that isn't a seed (empty, letters, 0) just closes the box.
 func _submit_seed(text: String) -> void:
-	var value := parse_seed(text)
+	var code := Levels.parse_seed_code(text)
+	var value := code.x
 	if value == 0:
 		seed_edit.visible = false
 		seed_button.visible = true
@@ -106,18 +107,16 @@ func _submit_seed(text: String) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.random_seed = value
+		progress.random_level = code.y  # -1 (a plain number): the game uses the player's own level
 		progress.random_seed_fresh = false  # a typed seed pays no under-par bonus
 	resume()
 	get_tree().reload_current_scene()
 
 
-## A seed number from text: 1 to 2,000,000,000 (what the randomizer picks from), else 0.
+## The seed number from text (a plain number or a "12345-2" code): 1 to 2,000,000,000 (what the
+## randomizer picks from), else 0. A typed code keeps its MORE SLIME level (see Levels.parse_seed_code).
 static func parse_seed(text: String) -> int:
-	var clean := text.strip_edges()
-	if clean == "" or not clean.is_valid_int():
-		return 0
-	var value := clean.to_int()
-	return value if value >= 1 and value <= 2_000_000_000 else 0
+	return Levels.parse_seed_code(text).x
 
 
 func _restart() -> void:

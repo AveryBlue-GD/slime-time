@@ -34,6 +34,13 @@ func _initialize() -> void:
 	var screen := await _open("intro")
 	_check(screen.cards.size() >= 3 and screen.cards.size() <= 5, "intro has 3-5 cards (%d)" % screen.cards.size())
 	await _frames(20)
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	screen._unhandled_input(wheel)
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	screen._unhandled_input(wheel)
+	_check(screen.index == 0, "mouse wheel / trackpad scrolling doesn't advance the story")
 	screen._unhandled_input(_key(KEY_SPACE))
 	_check(screen.index == 1, "any key goes to the next card")
 	screen._unhandled_input(_key(KEY_SPACE))  # too soon after the last one: ignored

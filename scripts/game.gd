@@ -200,6 +200,8 @@ var coins_here := 0
 ## The randomizer maze's ticket pickup (null once collected, and in story mazes) and whether it was.
 var ticket: TicketPickup
 var ticket_found := false
+## The MORE SLIME level this randomizer maze was built for (the second half of its seed code).
+var seed_level := 0
 var _ticket_glimmer_left := 0.0
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
@@ -245,9 +247,18 @@ func _ready() -> void:
 	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
 	if is_random():
-		config = Levels.random_config(random_seed, hard_mode, progress.upgrade_level("slime") if progress else 0)
+		var own_level: int = progress.upgrade_level("slime") if progress else 0
+		seed_level = own_level
+		if progress and progress.mode == progress.MODE_RANDOM and progress.random_seed == random_seed:
+			if progress.random_level < 0:
+				progress.random_level = own_level  # a replay of this maze keeps its size even after an upgrade
+			seed_level = progress.random_level
+		if hard_mode:
+			seed_level = 0
+		config = Levels.random_config(random_seed, hard_mode, seed_level)
 		maze = MazeGenerator.generate_random(config.cells, config.seed)
-		hud.set_level_text("RANDOM MAZE #%d%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag])
+		var level_note := "" if seed_level == own_level or hard_mode else "  CODE LV%d (YOU %d)" % [seed_level, own_level]
+		hud.set_level_text("RANDOM MAZE #%d%s%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag, level_note])
 	else:
 		config = Levels.get_config(level, hard_mode)
 		maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
@@ -900,12 +911,17 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	hud.set_slime(slime_remaining)
 
 
+## The MORE SLIME factor applied to this run (1 in hard mode, which has no upgrades).
+func _applied_slime_factor() -> float:
+	return 1.0 if progress == null or hard_mode else Upgrades.slime_factor(progress.upgrade_level("slime"))
+
+
 ## Applies the bought upgrades (see Upgrades): more slime to spend, faster gliding, a wider
 ## light, and (dev only) wall power.
 func _apply_upgrades() -> void:
 	if progress == null or hard_mode:  # hard mode is played without upgrades
 		return
-	slime_cost_per_tile /= Upgrades.slime_factor(progress.upgrade_level("slime"))
+	slime_cost_per_tile /= _applied_slime_factor()
 	var speed := Upgrades.speed_factor(progress.upgrade_level("speed"))
 	slime.max_speed *= speed
 	slime.acceleration *= speed
@@ -980,7 +996,9 @@ func _pick_up_coins(pos: Vector2) -> void:
 func _place_ticket() -> void:
 	if not is_random():
 		return
-	var cell := TicketSpawn.pick(maze, random_seed, slime_cost_per_tile)
+	# The cell follows the seed code's MORE SLIME level, not the player's, so a seed puts it in the same place for everyone.
+	var cost := slime_cost_per_tile * _applied_slime_factor() / Upgrades.slime_factor(seed_level)
+	var cell := TicketSpawn.pick(maze, random_seed, cost)
 	ticket = TicketPickup.new()
 	ticket.z_index = fog_sprite.z_index + 1  # above the fog, but hidden until the slime is close
 	ticket.visible = false
@@ -1108,14 +1126,15 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
-		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED %d" % random_seed
+		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
 			var under_par: bool = run_time <= par_time and progress.random_seed_fresh
 			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
 			var no_slime: bool = progress.upgrade_level("slime") <= 0  # pays 1 whatever else happened
+			var bonus_pickup: bool = ticket_found and progress.random_seed_fresh  # a replayed seed pays no pickup bonus
 			var paid: int = progress.complete_random(assisted, under_par, random_seed, ticket_found)
 			if paid > 0:
-				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, slime_cap = no_slime}
+				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, slime_cap = no_slime and (bonus_pickup or under_par)}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif repeat:

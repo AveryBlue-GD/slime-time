@@ -17,6 +17,9 @@ func _initialize() -> void:
 	_check(_hue_gap(grape[1], Skins.get_preset("grape").color) < _hue_gap(plain[1], Skins.get_preset("grape").color), "...and nearer the skin's hue")
 	_check(Themes.fog_colors("dungeon").is_empty() and Themes.fog_colors("dungeon", Color.RED).size() == 2, "dungeon (default fog) can be tinted too")
 	_check(Themes.fog_colors("mossy", Color(0, 0, 0, 0)) == Themes.fog_colors("mossy"), "no tint = the theme's own fog")
+	for grey: Color in [Color.WHITE, Color.BLACK, Color(0.5, 0.5, 0.5), Color(0.05, 0.05, 0.05, 1.0)]:
+		_check(Skins.atmosphere_color(Skins.CUSTOM, grey) == Skins.ATMOSPHERE_NEUTRAL, "a grey/white/black custom skin gets the neutral atmosphere")
+	_check(Skins.tinted(Color(0.2, 0.1, 0.1), Color.WHITE, 0.5) == Color(0.2, 0.1, 0.1), "a colorless tint leaves the fog alone")
 	var neutral := Skins.atmosphere_color(Skins.RAINBOW, Skins.RAINBOW_BASE)
 	_check(neutral == Skins.ATMOSPHERE_NEUTRAL and Skins.atmosphere_color(Skins.STOPWATCH, Skins.STOPWATCH_BASE) == neutral, "rainbow and stopwatch use neutral gold")
 	var a: Ambient = Ambient.create("volcanic", false, Color.BLUE)

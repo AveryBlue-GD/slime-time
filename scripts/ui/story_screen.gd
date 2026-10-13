@@ -108,7 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		finish()
 		return
 	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) \
-		or (event is InputEventMouseButton and event.pressed) \
+		or (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]) \
 		or (event is InputEventScreenTouch and event.pressed) \
 		or (event is InputEventJoypadButton and event.pressed)
 	if pressed and _age >= GRACE:

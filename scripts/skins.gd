@@ -100,7 +100,7 @@ const ATMOSPHERE_MOTE_MIX := 0.4
 
 
 static func atmosphere_color(id: String, base: Color) -> Color:
-	if id == RAINBOW or id == STOPWATCH:
+	if id == RAINBOW or id == STOPWATCH or base.s < 0.1:  # (no hue to lend: grey, white, black)
 		return ATMOSPHERE_NEUTRAL
 	return base
 
@@ -109,6 +109,8 @@ static func atmosphere_color(id: String, base: Color) -> Color:
 ## brightness (value) and alpha, so a tint can never brighten the fog or hide a theme's identity.
 static func tinted(color: Color, tint: Color, amount: float) -> Color:
 	if tint.a <= 0.0:
+		return color
+	if tint.s < 0.1:  # grey / white / black has no hue to lend (forcing saturation would turn the fog red)
 		return color
 	var target := Color.from_hsv(tint.h, clampf(tint.s, 0.35, 0.8), color.v, color.a)
 	var mixed := color.lerp(target, amount)

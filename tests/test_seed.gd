@@ -26,6 +26,14 @@ func _initialize() -> void:
 	_check(pause_script.parse_seed("") == 0 and pause_script.parse_seed("abc") == 0 and pause_script.parse_seed("0") == 0 and pause_script.parse_seed("-4") == 0
 		and pause_script.parse_seed("2000000001") == 0 and pause_script.parse_seed("1.5") == 0, "empty, letters, zero, negative and too-big seeds are refused")
 
+	var code: Vector2i = Levels.parse_seed_code("12345-2")
+	_check(code == Vector2i(12345, 2) and Levels.parse_seed_code("12345") == Vector2i(12345, -1) and Levels.parse_seed_code(" 7-0 ") == Vector2i(7, 0)
+		and pause_script.parse_seed("12345-2") == 12345, "seed codes read as N-L; a plain number keeps level -1")
+	_check(Levels.parse_seed_code("5-11") == Vector2i.ZERO and Levels.parse_seed_code("5--1") == Vector2i.ZERO and Levels.parse_seed_code("5-x") == Vector2i.ZERO
+		and Levels.parse_seed_code("5-2-3") == Vector2i.ZERO and Levels.parse_seed_code("-2") == Vector2i.ZERO and Levels.parse_seed_code("0-2") == Vector2i.ZERO,
+		"bad level parts are refused")
+	_check(Levels.seed_code(12345, 2) == "12345-2" and Levels.seed_code(2000000000, 10).length() <= 13, "codes are compact (at most 13 characters)")
+
 	# --- A story level shows no seed
 	progress.mode = progress.MODE_STORY
 	progress.current_level = 1
@@ -47,9 +55,9 @@ func _initialize() -> void:
 	await physics_frame
 	var walls_a: Dictionary = game.maze.duplicate(true)
 	game.pause_menu.open()
-	_check(game.pause_menu.seed_button.visible and game.pause_menu.seed_button.text == "SEED 424242", "a random maze's pause menu shows SEED 424242")
+	_check(game.pause_menu.seed_button.visible and game.pause_menu.seed_button.text == "SEED 424242-0", "a random maze's pause menu shows SEED 424242")
 	game.pause_menu._edit_seed()
-	_check(game.pause_menu.seed_edit.visible and game.pause_menu.seed_edit.text == "424242", "pressing it opens the box with the seed in it (to copy or type over)")
+	_check(game.pause_menu.seed_edit.visible and game.pause_menu.seed_edit.text == "424242-0", "pressing it opens the box with the seed in it (to copy or type over)")
 	var tap := InputEventMouseButton.new()
 	tap.button_index = MOUSE_BUTTON_LEFT
 	tap.pressed = true
@@ -81,6 +89,35 @@ func _initialize() -> void:
 	other.free()
 	again.free()
 
+	# --- A typed code replays that maze size and ticket cell whatever the player's level is
+	progress.upgrades = {"slime": 5}
+	progress.random_seed = 31337
+	progress.random_level = -1
+	var mine: Node2D = MAIN.instantiate()
+	root.add_child(mine)
+	await physics_frame
+	_check(mine.seed_level == 5 and progress.random_level == 5, "a plain seed uses the player's level (5) and remembers it")
+	mine.pause_menu.open()
+	_check(mine.pause_menu.seed_button.text == "SEED 31337-5", "the pause menu shows SEED 31337-5")
+	mine.pause_menu.resume()
+	progress.upgrades = {"slime": 0}
+	progress.random_level = 5  # as a typed 31337-5 would
+	var zero: Node2D = MAIN.instantiate()
+	root.add_child(zero)
+	await physics_frame
+	_check(_same_maze(mine.maze, zero.maze) and zero.seed_level == 5 and mine.ticket.cell == zero.ticket.cell,
+		"31337-5 gives the same maze and ticket cell to a player with no upgrades")
+	_check("CODE LV5 (YOU 0)" in zero.hud.level_label.text, "...with a visible note that it differs from their level (%s)" % zero.hud.level_label.text)
+	_check(not ("CODE" in mine.hud.level_label.text), "no note when the code matches")
+	zero.pause_menu.open()
+	zero.pause_menu._edit_seed()
+	_check(zero.pause_menu.seed_edit.text == "31337-5", "the box shows the full code")
+	zero.pause_menu.resume()
+	zero.free()
+	mine.free()
+	progress.upgrades = {}
+	progress.random_level = -1
+
 	# --- The win text names it
 	progress.random_seed = 5150
 	current_scene = null
@@ -90,6 +127,7 @@ func _initialize() -> void:
 	await physics_frame
 	win.slime.position = win.chalice.position
 	await _frames(10)
+	_check(win.hud.message.text.contains("SEED 5150-"), "(code in win text)")
 	_check("SEED 5150" in win.hud.message.text, "winning a randomizer maze shows its seed (%s)" % win.hud.message.text.replace("\n", " / "))
 	current_scene = null
 	await _frames(150)

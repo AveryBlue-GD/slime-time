@@ -113,6 +113,11 @@ func _initialize() -> void:
 	_check(game.reward.tickets == 4 and progress.tickets == 4 and "TICKET FOUND! +4" in game.hud.rewards_texts, "ticket found + under par pays 4 and the screen says TICKET FOUND! +4")
 	await _stop(game)
 	progress.add_tickets(-progress.tickets, false)
+	# A replayed / typed seed pays no pickup bonus (the pickup stays collectible) and no under-par bonus
+	progress.random_seed_fresh = false
+	_check(progress.complete_random(false, true, 0, true) == 1 and progress.tickets == 1, "a replayed seed pays the base 1 even with the pickup and under par")
+	progress.add_tickets(-progress.tickets, false)
+	progress.random_seed_fresh = true
 	progress.reset_progress()
 	progress.day_override = 30000
 	game = await _spawn_random(777)
@@ -124,6 +129,16 @@ func _initialize() -> void:
 		await physics_frame
 	_check(game.reward.tickets == 1 and "TICKET FOUND! +1" in game.hud.rewards_texts and "MORE SLIME = MORE" in game.hud.rewards_texts,
 		"no slime upgrade: even with the ticket the win pays 1, and the screen says why")
+	await _stop(game)
+	progress.reset_progress()
+	progress.day_override = 30000
+	game = await _spawn_random(779)
+	game.run_time = game.par_time + 5.0
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(game.reward.tickets == 1 and not game.reward.slime_cap and not ("MORE SLIME = MORE" in game.hud.rewards_texts),
+		"no slime upgrade, no pickup, over par: nothing was capped, so no MORE SLIME hint")
 	await _stop(game)
 	progress.reset_progress()
 	progress.day_override = 30000
@@ -176,6 +191,22 @@ func _initialize() -> void:
 	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 14 is enough")
 	_check(progress.spin_cost_after(0) == 0 and progress.spin_cost_after(1) == 12 and progress.spin_cost_after(2) == 14 and progress.spin_cost_after(5) == 20
 		and progress.spin_cost_after(15) == 40 and progress.spin_cost_after(500) == progress.SPIN_COST_MAX, "price progression 0, 12, 14, ... capped at 40")
+	var hostile_spins := [1 << 62, (1 << 62) - 1, 1 << 61, 9_223_372_036_854_775_807, 3_000_000_000, 100000, 21, 22]
+	var safe := true
+	for n in hostile_spins:
+		var price: int = progress.spin_cost_after(n)
+		safe = safe and price >= progress.SPIN_COST and price <= progress.SPIN_COST_MAX
+	_check(safe and progress.spin_cost_after(1 << 62) == progress.SPIN_COST_MAX, "a huge spin count never gives a negative or free price")
+	var evil := ConfigFile.new()
+	evil.set_value("meta", "version", 3)
+	evil.set_value("progress", "levels_cleared", 3)
+	evil.set_value("hats", "spins", 1 << 62)
+	var evil_progress: Node = preload("res://scripts/progress.gd").new()
+	evil_progress._read(evil)
+	_check(evil_progress.spins == evil_progress.SPINS_MAX and evil_progress.spin_cost() == evil_progress.SPIN_COST_MAX, "a hostile save's spins are clamped on load")
+	var evil_code: String = evil_progress.save_code()
+	evil_progress.free()
+	_check(progress.read_code(evil_code) != null, "(the hostile save still round-trips as a save code)")
 	var last_cost := 0
 	var rising := true
 	for n in range(1, 41):

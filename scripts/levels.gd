@@ -117,6 +117,30 @@ static func random_cells(maze_seed: int, slime_level := 0) -> Vector2i:
 	return Vector2i(mini(roundi(base.x * grow), RANDOM_MAX_CELLS.x), mini(roundi(base.y * grow), RANDOM_MAX_CELLS.y))
 
 
+## A seed code as shown and typed: "12345-2" = seed 12345 built for MORE SLIME level 2.
+static func seed_code(maze_seed: int, slime_level: int) -> String:
+	return "%d-%d" % [maze_seed, clampi(slime_level, 0, Upgrades.MAX_LEVEL)]
+
+
+## Reads a typed seed code: Vector2i(seed, level). A plain number gives level -1 (the player's own
+## level); anything that isn't a code gives Vector2i.ZERO.
+static func parse_seed_code(text: String) -> Vector2i:
+	var parts := text.strip_edges().split("-")
+	if parts.size() < 1 or parts.size() > 2 or not parts[0].is_valid_int():
+		return Vector2i.ZERO
+	var value := parts[0].to_int()
+	if value < 1 or value > 2_000_000_000:
+		return Vector2i.ZERO
+	var level := -1
+	if parts.size() == 2:
+		if not parts[1].is_valid_int() or parts[1].begins_with("+"):
+			return Vector2i.ZERO
+		level = parts[1].to_int()
+		if level < 0 or level > Upgrades.MAX_LEVEL:
+			return Vector2i.ZERO
+	return Vector2i(value, level)
+
+
 static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Dictionary:
 	return {
 		cells = random_cells(maze_seed, 0 if hard else slime_level),
