@@ -9,6 +9,9 @@ extends RefCounted
 ## fog: [deep, mist] (none = the fog shader's defaults).
 
 const DUNGEON := "dungeon"
+## The fog shader's own default colors (the dungeon).
+const DEFAULT_FOG_DEEP := Color(0.078, 0.078, 0.133, 1.0)
+const DEFAULT_FOG_MIST := Color(0.247, 0.239, 0.341, 1.0)
 
 const ALL := {
 	"dungeon": {name = "DANK DUNGEON"},
@@ -51,5 +54,11 @@ static func atlas_path(id: String, kind: String) -> String:
 
 
 ## The fog's [deep, mist] colors, or an empty array to keep the default.
-static func fog_colors(id: String) -> Array:
-	return ALL.get(id, ALL[DUNGEON]).get("fog", [])
+## With `tint` (see Skins.atmosphere_color) the colors lean toward the skin's hue, same brightness.
+static func fog_colors(id: String, tint := Color(0, 0, 0, 0)) -> Array:
+	var colors: Array = ALL.get(id, ALL[DUNGEON]).get("fog", [])
+	if tint.a <= 0.0:
+		return colors
+	if colors.is_empty():
+		colors = [DEFAULT_FOG_DEEP, DEFAULT_FOG_MIST]
+	return [Skins.tinted(colors[0], tint, Skins.ATMOSPHERE_FOG_MIX), Skins.tinted(colors[1], tint, Skins.ATMOSPHERE_FOG_MIX)]

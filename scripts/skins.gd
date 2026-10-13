@@ -91,6 +91,30 @@ static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [
 	return solid_level(id) in hard_cleared
 
 
+## The color a level's atmosphere (fog, ambient motes) borrows from a skin: its base color, except
+## the rainbow and the stopwatch (and anything unknown), which use a neutral warm gold/cream so the
+## level's own look stays readable. Alpha 0 = no tint.
+const ATMOSPHERE_NEUTRAL := Color8(255, 222, 150)
+const ATMOSPHERE_FOG_MIX := 0.32
+const ATMOSPHERE_MOTE_MIX := 0.4
+
+
+static func atmosphere_color(id: String, base: Color) -> Color:
+	if id == RAINBOW or id == STOPWATCH:
+		return ATMOSPHERE_NEUTRAL
+	return base
+
+
+## `color` (dark fog / bright mote) with `tint`'s hue blended in by `amount`, keeping its own
+## brightness (value) and alpha, so a tint can never brighten the fog or hide a theme's identity.
+static func tinted(color: Color, tint: Color, amount: float) -> Color:
+	if tint.a <= 0.0:
+		return color
+	var target := Color.from_hsv(tint.h, clampf(tint.s, 0.35, 0.8), color.v, color.a)
+	var mixed := color.lerp(target, amount)
+	return Color.from_hsv(mixed.h, mixed.s, color.v, color.a)
+
+
 static func display_name(id: String) -> String:
 	if id == CUSTOM:
 		return CUSTOM_NAME

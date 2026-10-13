@@ -165,6 +165,8 @@ var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
 var rainbow := false
+## The skin's hue the fog and ambient motes lean toward (Skins.atmosphere_color).
+var atmosphere_tint := Color(0, 0, 0, 0)
 ## The stopwatch skin is on (a clock inside the slime).
 var stopwatch := false
 ## Hard mode: fully dimmed areas turn back into unexplored fog.
@@ -273,6 +275,7 @@ func _ready() -> void:
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
 		stopwatch = progress.is_stopwatch()
+	atmosphere_tint = Skins.atmosphere_color(progress.active_skin(), skin_color) if progress else Color(0, 0, 0, 0)
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
@@ -695,7 +698,7 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("map_size", Vector2(cells * FOG_CELL))
 	fog_material.set_shader_parameter("origin", -BORDER_PX)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
-	var fog_colors := Themes.fog_colors(theme)
+	var fog_colors := Themes.fog_colors(theme, atmosphere_tint)
 	if not fog_colors.is_empty():
 		fog_material.set_shader_parameter("fog_deep", fog_colors[0])
 		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
@@ -705,7 +708,7 @@ func _build_overlays() -> void:
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
-	motes = Ambient.create(theme, progress != null and progress.reduce_motion)
+	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
 	if motes:
 		add_child(motes)
 		move_child(motes, $Walls.get_index() + 1)  # on the floor: under trail, chalice and slime

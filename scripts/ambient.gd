@@ -55,8 +55,8 @@ static func amount_for(theme: String, reduce_motion: bool) -> int:
 	return mini(int(look(theme).get("amount", 0)), MAX_AMOUNT)
 
 
-## Builds the emitter for `theme`; with nothing to show, no node is made and this returns null.
-static func create(theme: String, reduce_motion: bool) -> Ambient:
+## Builds the emitter for `theme` (leaning toward the skin `tint`, see Skins.atmosphere_color); with nothing to show, no node is made and this returns null.
+static func create(theme: String, reduce_motion: bool, tint := Color(0, 0, 0, 0)) -> Ambient:
 	var amount := amount_for(theme, reduce_motion)
 	if amount <= 0:
 		return null
@@ -78,7 +78,9 @@ static func create(theme: String, reduce_motion: bool) -> Ambient:
 	p.initial_velocity_max = cfg.speed[1]
 	p.scale_amount_min = 1.0
 	p.scale_amount_max = cfg.size
-	p.color_ramp = _ramp(cfg.color, cfg.get("end", cfg.color))
+	var color: Color = Skins.tinted(cfg.color, tint, Skins.ATMOSPHERE_MOTE_MIX)
+	var end_color: Color = Skins.tinted(cfg.get("end", cfg.color), tint, Skins.ATMOSPHERE_MOTE_MIX)
+	p.color_ramp = _ramp(color, end_color)
 	if cfg.get("add", false):
 		var material := CanvasItemMaterial.new()
 		material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
