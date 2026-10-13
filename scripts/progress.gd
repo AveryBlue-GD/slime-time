@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start.
+## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -18,7 +18,13 @@ const DEFAULT_KEYS := {
 }
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
 
-var save_path := "user://save.cfg"
+const REAL_SAVE_PATH := "user://save.cfg"
+## Throwaway saves are this + the process id + ".cfg" (deleted on start and on quit).
+const THROWAWAY_PREFIX := "user://test_save_run_"
+## Where progress is saved. Only a normal launch uses the real save; tests, demo scenes, headless,
+## movie/screenshot and dev runs get a per-process throwaway file (see _default_save_path), and
+## `--save-path=user://x.cfg` picks one explicitly.
+var save_path := _default_save_path()
 ## Save codes start with this (the 1 is the format, in case it ever changes).
 const SAVE_CODE_PREFIX := "SLIME1-"
 ## The stopwatch skin's "notice seen" mark in skin_notices_seen (level numbers are 1-10).
@@ -175,8 +181,12 @@ func _ready() -> void:
 	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
 	if not InputMap.has_action("interact"):
 		InputMap.add_action("interact")
+	if save_path == _throwaway_save_path():
+		_clear_throwaway_saves()  # fresh every run
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
+	elif save_path == _throwaway_save_path():
+		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
 	else:
 		load_progress()
 	apply_bindings()
@@ -259,6 +269,74 @@ func toggle_fullscreen() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if is_fullscreen() else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
+## Removes this run's throwaway save when the game quits (only the autoload owns it).
+func _exit_tree() -> void:
+	if _owns_throwaway_save():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+
+
+func _owns_throwaway_save() -> bool:
+	return save_path == _throwaway_save_path() and get_parent() != null and get_parent() == get_tree().root
+
+
+## A per-process scratch save, so concurrent test runs never share (and corrupt) one file.
+static func _throwaway_save_path() -> String:
+	return "%s%d.cfg" % [THROWAWAY_PREFIX, OS.get_process_id()]
+
+
+## Deletes this run's throwaway save (fresh, deterministic start) and any left behind by runs that
+## crashed more than a few hours ago (another run's live file is never that old... and is not ours).
+func _clear_throwaway_saves() -> void:
+	var own := ProjectSettings.globalize_path(save_path)
+	DirAccess.remove_absolute(own)
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		return
+	var prefix := THROWAWAY_PREFIX.trim_prefix("user://")
+	var now := Time.get_unix_time_from_system()
+	for file in dir.get_files():
+		if file.begins_with(prefix) and file.ends_with(".cfg"):
+			var path := "user://" + file
+			if now - FileAccess.get_modified_time(path) > 6 * 3600:
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+## True for anything that is not the player just playing: a script (tests), a scene under
+## res://tests/ or res://tools/, headless, movie/screenshot capture, editor/CLI tool modes, and
+## any debug flag after `--` (dev mode, --level=, --skin=...). Only `--quiet-window` (tools/play.ps1's
+## normal launch) and `--save-path=` are allowed on a player launch.
+static func _is_non_player_run() -> bool:
+	const TOOL_FLAGS := ["-s", "--script", "--headless", "--write-movie", "--quit", "--quit-after",
+		"--fixed-fps", "--import", "--check-only", "--doctor", "--dev", "--unlock-all", "--editor", "-e"]
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg in TOOL_FLAGS or arg.begins_with("--write-movie=") or arg.begins_with("--script=") \
+				or arg.begins_with("--export") or arg.begins_with("res://tests/") \
+				or arg.begins_with("res://tools/") or arg.ends_with(".gd"):
+			return true
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("-") and arg != "--quiet-window" and not arg.begins_with("--save-path="):
+			return true
+	return DisplayServer.get_name() == "headless"
+
+
+## The real save for a normal launch, otherwise a throwaway per process. `--save-path=user://x.cfg`
+## (before or after `--`) picks a file explicitly; the real save is refused outside a normal launch.
+static func _default_save_path() -> String:
+	var explicit := ""
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--save-path="):
+			explicit = arg.trim_prefix("--save-path=")
+	var non_player := _is_non_player_run()
+	if explicit != "" and not (non_player and _is_real_save(explicit)):
+		return explicit
+	return _throwaway_save_path() if non_player else REAL_SAVE_PATH
+
+
+## True if `path` is the player's real save file (however it's spelled).
+static func _is_real_save(path: String) -> bool:
+	return ProjectSettings.globalize_path(path).simplify_path() == ProjectSettings.globalize_path(REAL_SAVE_PATH).simplify_path()
+
+
 ## Tests, screenshots and promo renders (scripts and scenes under res://tests/ or res://tools/)
 ## start from a fresh default state instead of the player's save, so whatever the player last
 ## did (hard mode on, jelly off...) can't change what they check or show.
@@ -269,9 +347,10 @@ static func _is_test_or_tool_run() -> bool:
 	return false
 
 
-func load_progress() -> void:
+## Loads `path` (default: save_path). Saving still only ever goes to save_path.
+func load_progress(path := "") -> void:
 	var file := ConfigFile.new()
-	if file.load(save_path) != OK:
+	if file.load(save_path if path == "" else path) != OK:
 		return
 	_read(file)
 	# An older save was migrated in memory; write it back once so the migration (which builds
