@@ -1250,21 +1250,6 @@ class StageArt extends Node2D:
 				Vector2(147, slab_y + 4)]), pal.k)
 			draw_rect(Rect2(141, slab_y - 1, 3, 1), pal.x)
 			draw_rect(Rect2(176, slab_y - 1, 2, 1), pal.x)
-		# A diagram label out on the rock, alternating sides: floor number and name, with a leader line.
-		var words: PackedStringArray = layer.name.split(" ")
-		var lines := ["FLOOR %d" % (10 - i), words[0], " ".join(words.slice(1))]
-		var right := i % 2 == 0
-		var label_w := 0.0
-		for line in lines:
-			label_w = maxf(label_w, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
-		var mid_y := roundf(y0 + (slab_y - y0) * 0.5)
-		var lx := left + width + 9 if right else left - 9 - label_w
-		draw_rect(Rect2(left + width + 1 if right else left - 8, mid_y - 9, 7, 1), Color(pal.x, 0.6))
-		for k in lines.size():
-			var c: Color = Color(pal.x, 0.55) if k == 0 else pal.x
-			var p := Vector2(roundf(lx), mid_y - 12 + k * 10)
-			draw_string(font, p + Vector2(1, 1), lines[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, INK)
-			draw_string(font, p, lines[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, c)
 
 	func _draw_dressing(id: String, pal: Dictionary, r: Rect2) -> void:
 		var floor_y := r.end.y
