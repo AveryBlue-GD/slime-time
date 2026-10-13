@@ -23,9 +23,18 @@ func _ready() -> void:
 	_cover.add_child(text)
 	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	# Re-checked when the window changes size (turning the phone resizes it) or a finger touches
+	# the screen, rather than every frame.
+	get_window().size_changed.connect(_update)
+	_update.call_deferred()
 
 
-func _process(_delta: float) -> void:
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		_update()
+
+
+func _update() -> void:
 	visible = should_show(DisplayServer.window_get_size(), DisplayServer.is_touchscreen_available())
 
 

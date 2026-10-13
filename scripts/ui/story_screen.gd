@@ -433,15 +433,23 @@ class StageArt extends Node2D:
 
 	## Continuous emitters: torch sparks, trail goo, dust, falling grit.
 	func _emit(prev: float, now: float) -> void:
+		# The heroes and torches depend only on the shot and t, which hold for this whole step:
+		# work them out once (no RNG involved, so the sparks come out exactly the same).
+		var heroes: Array[Dictionary] = []
+		if shot in ["run", "chase", "search"]:
+			heroes = _heroes()
+		var torches: Array[Vector2] = []
+		if shot in ["run", "chase", "crack"]:
+			torches = _wall_torches()
 		match shot:
 			"run", "chase":
 				for i in _every(prev, now, 0.05):
-					var hero: Dictionary = _heroes()[rng.randi_range(0, 1)]
+					var hero: Dictionary = heroes[rng.randi_range(0, 1)]
 					_spark(hero.tip, Vector2(-40 + rng.randf_range(-20, 10), rng.randf_range(-40, -10)))
 				for i in _every(prev, now, 0.07):
 					_trail_drop()
 				for i in _every(prev, now, 0.12):
-					for torch in _wall_torches():
+					for torch in torches:
 						_spark(torch + Vector2(0, -5), Vector2(rng.randf_range(-6, 6), rng.randf_range(-28, -12)))
 			"crack":
 				for i in _every(prev, now, 0.05, 0.75, 2.6):
@@ -452,7 +460,7 @@ class StageArt extends Node2D:
 					_part({p = Vector2(rng.randf_range(70, 230), 52.0), v = Vector2(0, rng.randf_range(10, 40)), g = 300.0,
 						life = 1.0, c = Color8(70, 62, 84), s = 1.0 if rng.randf() < 0.6 else 2.0})
 				for i in _every(prev, now, 0.18):
-					for torch in _wall_torches():
+					for torch in torches:
 						_spark(torch + Vector2(0, -5), Vector2(rng.randf_range(-6, 6), rng.randf_range(-28, -12)))
 			"splat":
 				for i in _every(prev, now, 0.15, 0.0, 1.4):
@@ -467,7 +475,7 @@ class StageArt extends Node2D:
 						g = 0.0, life = 2.4, c = Color(Color8(120, 100, 120), 0.5), s = 2.0, fade = true})
 			"search":
 				for i in _every(prev, now, 0.06, 0.0, 3.9):
-					var hero: Dictionary = _heroes()[rng.randi_range(0, 1)]
+					var hero: Dictionary = heroes[rng.randi_range(0, 1)]
 					_spark(hero.tip, Vector2(rng.randf_range(-6, 6), rng.randf_range(-30, -12)))
 
 	func _part(d: Dictionary) -> void:

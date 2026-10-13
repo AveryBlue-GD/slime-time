@@ -6,38 +6,49 @@ extends RefCounted
 const RAINBOW_STOPS := 7
 
 
+## Light textures by size, and the one additive material every light shares: a light's tint and
+## strength live in its modulate, so lights of one size are identical and can share (and batch).
+static var _light_textures := {}
+static var _additive: CanvasItemMaterial
+
+
 ## A radial light sprite: `diameter` px, stepped into a few hard-edged bands (pixel look) and
 ## added on top of what's under it. Tint and brightness come from `color` (alpha = strength).
+## Its texture and material are shared: change only its modulate (or transform).
 static func make_light(diameter: int, color: Color) -> Sprite2D:
-	var gradient := Gradient.new()
-	gradient.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
-	gradient.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.8, 1.0])
-	gradient.colors = PackedColorArray([
-		Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.6), Color(1, 1, 1, 0.32), Color(1, 1, 1, 0.12), Color(1, 1, 1, 0.0),
-	])
-	var texture := GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.width = diameter
-	texture.height = diameter
-	texture.fill = GradientTexture2D.FILL_RADIAL
-	texture.fill_from = Vector2(0.5, 0.5)
-	texture.fill_to = Vector2(1.0, 0.5)
-	var light := Sprite2D.new()
-	light.texture = texture
-	var material := CanvasItemMaterial.new()
-	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	light.material = material
-	light.modulate = color
-	return light
+	return _light_sprite(Vector2i(diameter, diameter), color)
 
 
 ## A flat, oval pool of light (`size` px wide and deep) for the slanted hub floor: same banded
 ## falloff as make_light, added on top of the floor.
 static func make_pool(size: Vector2i, color: Color) -> Sprite2D:
-	var pool := make_light(size.x, color)
-	var texture := pool.texture as GradientTexture2D
-	texture.height = size.y
-	return pool
+	return _light_sprite(size, color)
+
+
+static func _light_sprite(size: Vector2i, color: Color) -> Sprite2D:
+	if not _light_textures.has(size):
+		var gradient := Gradient.new()
+		gradient.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+		gradient.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.8, 1.0])
+		gradient.colors = PackedColorArray([
+			Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.6), Color(1, 1, 1, 0.32), Color(1, 1, 1, 0.12), Color(1, 1, 1, 0.0),
+		])
+		var texture := GradientTexture2D.new()
+		texture.gradient = gradient
+		texture.width = size.x
+		texture.height = size.y
+		texture.fill = GradientTexture2D.FILL_RADIAL
+		texture.fill_from = Vector2(0.5, 0.5)
+		texture.fill_to = Vector2(1.0, 0.5)
+		_light_textures[size] = texture
+	if _additive == null:
+		_additive = CanvasItemMaterial.new()
+		_additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var light := Sprite2D.new()
+	light.texture = _light_textures[size]
+	light.material = _additive
+	light.modulate = color
+	return light
 
 
 ## Goo droplets flicked off the slime while it glides (emitting is switched on/off by the slime).

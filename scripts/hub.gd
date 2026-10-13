@@ -255,10 +255,16 @@ func _add_body(at: Vector2, radius: float, moving: bool) -> AnimatableBody2D:
 	return null
 
 
+## The stations and the rotor share one skin material (all the same parameters, never changed
+## per station).
+var _station_material: ShaderMaterial
+
+
 func _skin_material() -> ShaderMaterial:
-	var material := Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
-	material.set_shader_parameter("translucency", 0.0)
-	return material
+	if _station_material == null:
+		_station_material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+		_station_material.set_shader_parameter("translucency", 0.0)
+	return _station_material
 
 
 ## Your slime, in your skin (jelly or solid) and hat, with the camera held still on the room.

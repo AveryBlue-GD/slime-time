@@ -22,7 +22,7 @@ static var _cached_travel := Vector2.ZERO
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	clip_contents = true
+	# No clipping: the backdrop always fills the screen, which clips it anyway.
 
 	var bg := ColorRect.new()
 	bg.color = UIKit.BG
