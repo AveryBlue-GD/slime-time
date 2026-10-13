@@ -113,7 +113,23 @@ static func has_corner(mask: int) -> bool:
 	return (mask & 3) == 3 or (mask & 6) == 6 or (mask & 12) == 12 or (mask & 9) == 9
 
 
+## Built tile sets by theme (never changed once built; layers only change their cells): the menu
+## backdrop's dungeon set, plus the last level theme so a restart reuses it.
+static var _tile_sets := {}
+
+
 static func make_tile_set(theme := Themes.DUNGEON) -> TileSet:
+	if _tile_sets.has(theme):
+		return _tile_sets[theme]
+	for kept: String in _tile_sets.keys():
+		if kept != Themes.DUNGEON:
+			_tile_sets.erase(kept)
+	var tile_set := _build_tile_set(theme)
+	_tile_sets[theme] = tile_set
+	return tile_set
+
+
+static func _build_tile_set(theme: String) -> TileSet:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(TILE, TILE)
 	tile_set.add_physics_layer()

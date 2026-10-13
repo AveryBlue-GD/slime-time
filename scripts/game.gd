@@ -263,12 +263,12 @@ func _ready() -> void:
 		if hard_mode:
 			seed_level = 0
 		config = Levels.random_config(random_seed, hard_mode, seed_level)
-		maze = MazeGenerator.generate_random(config)
+		maze = _random_maze(config)
 		var level_note := "" if seed_level == own_level or hard_mode else "  CODE LV%d (YOU %d)" % [seed_level, own_level]
 		hud.set_level_text("RANDOM MAZE #%d%s%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag, level_note])
 	else:
 		config = Levels.get_config(level, hard_mode)
-		maze = MazeGenerator.generate_level(config)
+		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
@@ -950,7 +950,21 @@ func _apply_upgrades() -> void:
 ## The cells holding this level's coins (Levels.coin_cells: deep dead ends first, never the start
 ## or the chalice's cell), picked with the level's seed so they're always in the same places.
 func coin_cells(maze_seed: int) -> Array[Vector2i]:
+	if not is_random() and not hard_mode and maze_seed == Levels.get_config(level).seed:
+		return Levels.story_coin_cells(level)  # this level's own maze, before any wall broke
 	return Levels.coin_cells(maze, level, maze_seed)
+
+
+## The last randomizer maze built, by its config, so RESTART / REPLAY of the same maze skips the
+## build; the game gets a deep copy (walls can break in it).
+static var _random_cache := {}
+
+
+static func _random_maze(config: Dictionary) -> Dictionary:
+	var key := var_to_str(config)
+	if not _random_cache.has(key):
+		_random_cache = {key: MazeGenerator.generate_random(config)}
+	return _random_cache[key].duplicate(true)
 
 
 ## Puts out the coins of a story level that haven't been collected yet.

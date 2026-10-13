@@ -13,6 +13,10 @@ const DIM := Color(0.3, 0.3, 0.38)
 
 var _maze_root: Node2D
 var _travel := Vector2.ZERO
+## The backdrop maze never changes (fixed seed and size): its tile cells are built once and every
+## menu screen copies them in.
+static var _cells: Array[PackedByteArray] = []
+static var _cached_travel := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -37,9 +41,19 @@ func _ready() -> void:
 	_maze_root.add_child(floor_layer)
 	_maze_root.add_child(fillet_layer)
 	_maze_root.add_child(wall_layer)
-	var maze := MazeGenerator.generate(MAZE_CELLS, MAZE_SEED, 0.3)
-	MazeTiles.fill(floor_layer, wall_layer, maze, MAZE_SEED, 6, fillet_layer)
-	_travel = Vector2(maze.size * MazeTiles.TILE) - Vector2(320, 180)
+	var layers: Array[TileMapLayer] = [floor_layer, wall_layer, fillet_layer]
+	if _cells.is_empty():
+		var maze := MazeGenerator.generate(MAZE_CELLS, MAZE_SEED, 0.3)
+		MazeTiles.fill(floor_layer, wall_layer, maze, MAZE_SEED, 6, fillet_layer)
+		_cached_travel = Vector2(maze.size * MazeTiles.TILE) - Vector2(320, 180)
+		for layer in layers:
+			_cells.append(layer.tile_map_data)
+	else:
+		var tile_set := MazeTiles.make_tile_set()
+		for i in layers.size():
+			layers[i].tile_set = tile_set
+			layers[i].tile_map_data = _cells[i]
+	_travel = _cached_travel
 
 	var mist := ColorRect.new()
 	var material := ShaderMaterial.new()

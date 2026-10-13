@@ -119,9 +119,26 @@ static func legacy_par(level: int, hard := false) -> float:
 	return par_for_path(steps[clampi(level, 1, COUNT) - 1] * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE)
 
 
-## A story level's maze, freshly built (the game may break walls in its own copy).
+## A story level's maze: a fresh deep copy of the cached build (the game may break walls in its own).
 static func story_maze(level: int, hard := false) -> Dictionary:
-	return MazeGenerator.generate_level(get_config(level, hard))
+	var key := clampi(level, 1, COUNT) + (100 if hard else 0)
+	if not _maze_cache.has(key):
+		_maze_cache[key] = MazeGenerator.generate_level(get_config(level, hard))
+	return _maze_cache[key].duplicate(true)
+
+
+## Story mazes are built from constants only, so each is built once (`story_maze` hands out deep
+## copies: the game breaks walls in its own).
+static var _maze_cache := {}
+static var _coin_cell_cache := {}
+
+
+## `coin_cells` of a normal-mode story level's own maze (cached; a copy).
+static func story_coin_cells(level: int) -> Array[Vector2i]:
+	level = clampi(level, 1, COUNT)
+	if not _coin_cell_cache.has(level):
+		_coin_cell_cache[level] = coin_cells(story_maze(level), level, get_config(level).seed)
+	return _coin_cell_cache[level].duplicate()
 
 
 ## Coins sit in dead ends this deep or deeper first (see coin_cells).
