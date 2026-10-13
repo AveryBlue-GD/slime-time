@@ -76,8 +76,6 @@ static func set_goo_color(color: Color) -> void:
 		theme.emit_changed()
 
 
-
-
 static func make_button(button_state: String) -> GooBox:
 	var box := GooBox.new()
 	box.state = button_state
@@ -118,19 +116,65 @@ func _shades() -> Dictionary:
 	return shades
 
 
+## Shade keys, in the order `_layout` stores them as indices.
+const KEYS := ["H", "L", "M", "N", "D", "O"]
+const MAX_LAYOUTS := 256
+
+## Per box: the goo layout for each (canvas item, size), built once (see `_layout`). The lumps,
+## drops and glints come from an RNG seeded by those, never from the color, so a recolor or a
+## redraw only replays the cached runs with the current shades.
+var _layouts := {}
+
+
 func _draw(item: RID, rect: Rect2) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([item.get_id(), int(rect.size.x), int(rect.size.y)])
-	var sh := _shades()
 	var x := int(rect.position.x)
 	var y := int(rect.position.y)
 	var w := int(rect.size.x)
 	var h := int(rect.size.y)
 	if w < 6 or h < 6:
 		return
-	var put := func(px: int, py: int, color: Color) -> void:
-		RenderingServer.canvas_item_add_rect(item, Rect2(px, py, 1, 1), color)
+	var key := Vector3i(item.get_id(), w, h)
+	var layout: Array = _layouts.get(key, [])
+	if layout.is_empty():
+		if _layouts.size() >= MAX_LAYOUTS:
+			_layouts.clear()
+		layout = _layout(item.get_id(), w, h)
+		_layouts[key] = layout
+	var sh := _shades()
+	var colors: Array[Color] = []
+	var opaque := true
+	for k: String in KEYS:
+		colors.append(sh[k])
+		opaque = opaque and sh[k].a >= 1.0
 	RenderingServer.canvas_item_add_rect(item, Rect2(x + 1, y + 1, w - 2, h - 1), face)
+	if opaque:
+		# Opaque goo: the last write to a pixel is what shows, so same-shade runs of the resolved
+		# grid paint exactly the same pixels as the single-pixel writes.
+		var runs: PackedInt32Array = layout[0]
+		for i in range(0, runs.size(), 4):
+			RenderingServer.canvas_item_add_rect(item, Rect2(x + runs[i], y + runs[i + 1], runs[i + 2], 1), colors[runs[i + 3]])
+	else:
+		var pixels: PackedInt32Array = layout[1]  # every write in its original order
+		for i in range(0, pixels.size(), 3):
+			RenderingServer.canvas_item_add_rect(item, Rect2(x + pixels[i], y + pixels[i + 1], 1, 1), colors[pixels[i + 2]])
+
+
+## The goo of a `w` x `h` box drawn on canvas item `item_id`: [runs, pixels]. `pixels` lists every
+## 1 px write (dx, dy, shade index) in drawing order; `runs` (dx, dy, length, shade index) merges
+## the final grid into horizontal runs of one shade. Offsets are from the box's top-left corner.
+func _layout(item_id: int, w: int, h: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([item_id, w, h])
+	var pixels := PackedInt32Array()
+	var put := func(px: int, py: int, shade: int) -> void:
+		pixels.append(px)
+		pixels.append(py)
+		pixels.append(shade)
+	const H := 0
+	const L := 1
+	const M := 2
+	const N := 3
+	const O := 5
 
 	var top := _lumps(rng, w, band.x, lump.x, 16)
 	var bottom := _lumps(rng, w, band.z, lump.z, 16)
@@ -148,39 +192,60 @@ func _draw(item: RID, rect: Rect2) -> void:
 
 	# Sides (glossy on the upper left), then the top and bottom bands over them.
 	for j in range(1, h):
-		put.call(x, y + j, sh.O)
-		put.call(x + w - 1, y + j, sh.O)
+		put.call(0, j, O)
+		put.call(w - 1, j, O)
 		for d in left[j]:
-			put.call(x + 1 + d, y + j, sh.L if d == 0 else (sh.N if d == left[j] - 1 else sh.M))
+			put.call(1 + d, j, L if d == 0 else (N if d == left[j] - 1 else M))
 		for d in right[j]:
-			put.call(x + w - 2 - d, y + j, sh.N if d == 0 else sh.M)
+			put.call(w - 2 - d, j, N if d == 0 else M)
 	for i in range(1, w - 1):
-		put.call(x + i, y, sh.O)
+		put.call(i, 0, O)
 		for d in top[i]:
-			var color: Color = sh.M
+			var shade := M
 			if d == 0:
-				color = sh.H if rng.randf() < 0.15 else sh.L
+				shade = H if rng.randf() < 0.15 else L
 			elif d == top[i] - 1:
-				color = sh.N
-			put.call(x + i, y + 1 + d, color)
+				shade = N
+			put.call(i, 1 + d, shade)
 		for d in bottom[i]:
-			put.call(x + i, y + h - 1 - d, sh.N if d == 0 else sh.M)
-		put.call(x + i, y + h, sh.O)  # the bottom outline sits just under the box
+			put.call(i, h - 1 - d, N if d == 0 else M)
+		put.call(i, h, O)  # the bottom outline sits just under the box
 
 	# Drops hanging under the box: round nubs and thin strings.
 	var at := drop_edge + rng.randi_range(0, drop_every / 2)
 	while at < w - drop_edge - 2:
 		if rng.randf() < 0.55:
-			var nub: Array = [[-2, sh.O], [-1, sh.M], [0, sh.L], [1, sh.N], [2, sh.O]]
+			var nub: Array = [[-2, O], [-1, M], [0, L], [1, N], [2, O]]
 			for p: Array in nub:
-				put.call(x + at + p[0], y + h, p[1])
-			put.call(x + at - 1, y + h + 1, sh.O)
-			put.call(x + at, y + h + 1, sh.N)
-			put.call(x + at + 1, y + h + 1, sh.O)
+				put.call(at + p[0], h, p[1])
+			put.call(at - 1, h + 1, O)
+			put.call(at, h + 1, N)
+			put.call(at + 1, h + 1, O)
 		else:
-			put.call(x + at, y + h, sh.N)
-			put.call(x + at, y + h + 1, sh.O)
+			put.call(at, h, N)
+			put.call(at, h + 1, O)
 		at += rng.randi_range(drop_every - drop_every / 3, drop_every + drop_every / 3)
+
+	# Resolve the writes into a grid (last write wins) and merge each row into same-shade runs.
+	var gw := w + 2
+	var gh := h + 2
+	var grid := PackedInt32Array()
+	grid.resize(gw * gh)
+	grid.fill(-1)
+	for i in range(0, pixels.size(), 3):
+		grid[pixels[i + 1] * gw + pixels[i] + 1] = pixels[i + 2]
+	var runs := PackedInt32Array()
+	for gy in gh:
+		var gx := 0
+		while gx < gw:
+			var shade := grid[gy * gw + gx]
+			var run := 1
+			while gx + run < gw and grid[gy * gw + gx + run] == shade:
+				run += 1
+			if shade >= 0:
+				runs.append_array([gx - 1, gy, run, shade])
+			gx += run
+	return [runs, pixels]
 
 
 ## Goo thickness along an edge of `n` px: `base` everywhere, swelling into a few long tapered
