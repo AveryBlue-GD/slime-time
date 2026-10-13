@@ -1,10 +1,11 @@
 extends SceneTree
 
 ## The story: the intro shows only on a fresh save (any key advances, Esc skips, seen is saved and
-## reset by RESET PROGRESS), old saves count as seen, every line (and title card) fits the 320 px
-## screen in the pixel font, the animated shots play through by themselves in time (drawing every
-## shot), Reduce Motion holds stills with no shake or zoom, level banners carry their line, and
-## starting a level directly is never blocked.
+## reset by RESET PROGRESS), old saves count as seen, every level banner line fits the 320 px
+## screen in the pixel font, the story itself is wordless (no text drawn by any shot, no labels on
+## the screen), the animated shots play through by themselves in time (drawing every shot), Reduce
+## Motion holds stills with no shake or zoom, level banners carry their line, and starting a level
+## directly is never blocked.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_story.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -21,7 +22,20 @@ func _initialize() -> void:
 
 	# --- Text: ten level lines, everything uppercase and narrow enough
 	_check(Story.LEVEL_LINES.size() == Levels.COUNT, "a story line for each of the %d levels" % Levels.COUNT)
-	_check(Story.widest_line() <= Story.MAX_WIDTH and Story.MAX_WIDTH < 320.0, "every line fits 320 px (widest %d px)" % int(Story.widest_line()))
+	_check(Story.widest_line() <= Story.MAX_WIDTH and Story.MAX_WIDTH < 320.0, "every level line fits 320 px (widest %d px)" % int(Story.widest_line()))
+
+	# --- Wordless: the cinematics carry no text at all, only pictures
+	var no_words := true
+	for card in Story.INTRO + Story.FINALE:
+		for key in ["lines", "title", "subtitle", "text"]:
+			no_words = no_words and not card.has(key)
+	_check(no_words, "no intro / finale shot has lines, a title or a subtitle")
+	var source := FileAccess.get_file_as_string("res://scripts/ui/story_screen.gd")
+	var text_calls := []
+	for call in ["draw_string", "draw_char", "draw_multiline_string", "draw_string_outline", "Font", ".fnt", "Label", "make_label", "RichText"]:
+		if source.contains(call):
+			text_calls.append(call)
+	_check(source.length() > 1000 and text_calls.is_empty(), "the story screen's drawing makes no text calls and loads no font (%s)" % ", ".join(text_calls))
 	var upper := true
 	for line in Story.LEVEL_LINES:
 		upper = upper and line == line.to_upper()
@@ -128,12 +142,16 @@ func _initialize() -> void:
 		var shots_seen := {}
 		var frames := 0
 		var shook := false
+		var text_nodes := 0
 		while not screen.finished and frames < 60 * 40:
 			await process_frame
 			frames += 1
 			shots_seen[screen.art.shot] = true
 			shook = shook or screen.art.shake > 0.0
+			if frames % 30 == 0:
+				text_nodes += _text_nodes(screen)
 		_check(screen.finished and shots_seen.size() == screen.cards.size(), "%s: plays through all %d shots by itself (%d shown)" % [which, screen.cards.size(), shots_seen.size()])
+		_check(text_nodes == 0, "%s: no label, button or rich text on screen in any shot" % which)
 		_check(absf(frames / 60.0 - Story.length(which)) < 1.0, "%s: ...in about %.1f s (%.1f s)" % [which, Story.length(which), frames / 60.0])
 		if which == "intro":
 			_check(shook, "intro: the crack and the splat shake the screen")
@@ -151,7 +169,6 @@ func _initialize() -> void:
 	await _frames(30)
 	_check(screen.art.t == frozen_t and screen.art.t == Story.INTRO[4].still, "Reduce Motion: the shot holds its still (t %.2f)" % screen.art.t)
 	_check(screen.art.shake == 0.0 and screen.art.zoom == 1.0 and screen.art.bounce == 0.0, "Reduce Motion: no shake, bounce or zoom")
-	_check(screen.text_label.visible_characters == -1, "Reduce Motion: the text fades in whole, not typed")
 	screen.show_card(0)
 	await _frames(int(60 * (screen.CALM_HOLD - 0.5)))
 	_check(screen.index == 0, "Reduce Motion: a still stays up at least %.1f s" % screen.CALM_HOLD)
@@ -199,6 +216,16 @@ func _open(which: String, leave := true) -> Control:
 	root.add_child(screen)
 	await process_frame
 	return screen
+
+
+## Text-showing nodes under `node` (the story must have none).
+func _text_nodes(node: Node) -> int:
+	var count := 0
+	for child in node.get_children():
+		if child is Label or child is Button or child is RichTextLabel or child is LineEdit or child is TextEdit:
+			count += 1
+		count += _text_nodes(child)
+	return count
 
 
 func _key(code: Key) -> InputEventKey:

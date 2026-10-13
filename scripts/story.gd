@@ -4,8 +4,9 @@ extends RefCounted
 ## The light plot (see docs/story.md): a slime fleeing adventurers fell through the floor of a
 ## mountain-sized dungeon and splatted on its bottom level, the Dark Dungeon (level 1). Each
 ## level is a floor of the climb up; the Volcanic Vault (10) is the summit, and its crater is the
-## way out to daylight. The text here is the single source for the intro, the level banners and
-## the finale. Lines are uppercase (the pixel font) and at most MAX_WIDTH px wide at 8 px.
+## way out to daylight. The intro and the finale are wordless (told in pictures by StoryScreen);
+## the only story text is the level banners' lines, uppercase (the pixel font) and at most
+## MAX_WIDTH px wide at 8 px.
 
 const MAX_WIDTH := 296.0
 
@@ -15,20 +16,19 @@ static var mode := "intro"
 static var next_scene := ""
 
 ## Intro shots: art id (a short animated scene drawn by StoryScreen), how long it plays (s) before
-## moving on by itself, the moment a Reduce Motion still freezes on (s), up to two lines of text,
-## and an optional big title card.
+## moving on by itself, and the moment a Reduce Motion still freezes on (s). No text: every beat
+## is told by staging, light and pictograms.
 const INTRO: Array[Dictionary] = [
-	{art = "run", time = 4.6, still = 1.9, lines = ["A SLIME. SOME ADVENTURERS.", "A LOT OF TORCHES."]},
-	{art = "chase", time = 4.0, still = 1.6, lines = ["THEY WANTED EXPERIENCE POINTS.", "IT WANTED A NAP."]},
-	{art = "crack", time = 3.9, still = 2.3, lines = ["THEN THE FLOOR", "GAVE UP."]},
-	{art = "fall", time = 4.8, still = 2.6, lines = ["DOWN. AND DOWN.", "AND A BIT MORE DOWN."]},
-	{art = "splat", time = 6.4, still = 5.0, lines = ["SPLAT. THE EXIT IS UP.", "ESCAPE THE FOG OR DRY TRYING."],
-		title = "DARK DUNGEON", subtitle = "FLOOR 1 OF 10", title_at = 3.0},
+	{art = "run", time = 4.6, still = 1.9},
+	{art = "chase", time = 4.0, still = 1.9},
+	{art = "crack", time = 3.9, still = 2.3},
+	{art = "fall", time = 4.8, still = 0.9},
+	{art = "splat", time = 6.4, still = 5.0},
 ]
 
 const FINALE: Array[Dictionary] = [
-	{art = "daylight", time = 6.6, still = 5.4, lines = ["THE CRATER SPITS YOU OUT", "INTO DAYLIGHT. A LITTLE DRY. FREE."]},
-	{art = "search", time = 6.2, still = 2.6, lines = ["FAR BELOW, THE ADVENTURERS STILL SEARCH.", "THEY FIND A PUDDLE. IT COUNTS AS LOOT."]},
+	{art = "daylight", time = 6.6, still = 5.4},
+	{art = "search", time = 6.2, still = 2.6},
 ]
 
 ## One line under the area name when a level starts (story levels 1-10, bottom to top).
@@ -90,20 +90,10 @@ static func length(which: String) -> float:
 	return total
 
 
-## Width in px of the widest line in the story (at the 8 px pixel font), for the fit test.
+## Width in px of the widest level line (at the 8 px pixel font), for the fit test.
 static func widest_line() -> float:
 	var font: Font = load("res://assets/fonts/pixel.fnt")
 	var widest := 0.0
-	var all: Array[String] = LEVEL_LINES.duplicate()
-	for card_list in [INTRO, FINALE]:
-		for card: Dictionary in card_list:
-			all.append_array(card.lines)
-	for line in all:
+	for line in LEVEL_LINES:
 		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
-	# Title cards are 16 px (the 2x font).
-	var big: Font = load("res://assets/fonts/pixel_big.fnt")
-	for card_list in [INTRO, FINALE]:
-		for card: Dictionary in card_list:
-			if card.has("title"):
-				widest = maxf(widest, big.get_string_size(card.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
 	return widest

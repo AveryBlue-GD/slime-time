@@ -2,25 +2,24 @@ extends Control
 
 ## The story (see Story and docs/story.md): the intro (a fresh save's first PLAY, or the title's
 ## STORY button) and the finale (after level 10), each a run of short animated shots drawn in code
-## at 320x180 behind letterbox bars, with the shot's lines typed on in the bottom bar.
+## at 320x180 behind letterbox bars. The story is wordless: no text is drawn anywhere on this
+## screen (tests/test_story.gd checks it); beats are told by staging, light and pixel pictograms.
 ## A shot moves on by itself after its time; any key, click or tap moves on early; Esc skips the
 ## lot. Reduce Motion freezes each shot on a still (its `still` moment, particles and all) with no
-## shake or zoom, fades the text in, and holds each still at least CALM_HOLD seconds.
+## shake or zoom, and holds each still at least CALM_HOLD seconds.
 ##
 ## Drawing: StageArt (a Node2D moved and scaled as the camera: zooms, bounces, shakes) draws the
 ## shot behind the slime sprite; its `front` layer draws foreground pillars, particles, speed lines,
-## pop-ups and the darkness; Cover draws the letterbox bars and fades in screen space.
+## pictogram bubbles and the darkness; Cover draws the letterbox bars, fades, the depth gauge and
+## the shot pips in screen space.
 
 signal done
 
 const SCREEN := Vector2(320, 180)
 const BAR_TOP := 14.0
 const BAR_BOTTOM := 36.0
-const TEXT_TOP := 150
 ## Input is ignored for this long after a shot starts, so a held key can't skip it.
 const GRACE := 0.25
-const TYPE_DELAY := 0.3
-const TYPE_RATE := 42.0
 ## A Reduce Motion still stays up at least this long, to read it.
 const CALM_HOLD := 4.5
 const INK := Color8(9, 8, 16)
@@ -36,10 +35,6 @@ var leave_on_finish := true
 
 var art: StageArt
 var cover: Cover
-var text_label: Label
-var hint_label: Label
-var title_label: Label
-var subtitle_label: Label
 var slime: AnimatedSprite2D
 var _age := 0.0
 var _bars := 0.0
@@ -52,7 +47,6 @@ func _ready() -> void:
 	Story.next_scene = ""
 	calm = Progress.reduce_motion
 	cards = Story.cards(mode)
-	theme = UIKit.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # clicks reach _unhandled_input
 	art = StageArt.new()
@@ -67,46 +61,19 @@ func _ready() -> void:
 	cover = Cover.new()
 	cover.screen = self
 	add_child(cover)
-	title_label = _label("", 16, Color8(232, 236, 250), 30)  # not skin-tinted: pale on the dark
-	title_label.add_theme_color_override("font_shadow_color", Color(INK, 0.9))
-	title_label.add_theme_constant_override("shadow_offset_x", 0)
-	title_label.add_theme_constant_override("shadow_offset_y", 2)
-	subtitle_label = _label("", 8, Color8(150, 160, 196), 50)
-	subtitle_label.add_theme_color_override("font_shadow_color", Color(INK, 0.9))
-	subtitle_label.add_theme_constant_override("shadow_offset_x", 1)
-	subtitle_label.add_theme_constant_override("shadow_offset_y", 1)
-	text_label = _label("", 8, UIKit.TEXT, TEXT_TOP, 28)
-	hint_label = _label("", 8, UIKit.TEXT_OFF, 4)
-	UIKit.add_skin_text(self)
 	show_card(0)
-
-
-func _label(text: String, font_size: int, color: Color, top: int, height := 18) -> Label:
-	var label := UIKit.make_label(text, font_size, color)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(label)
-	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	label.offset_top = top
-	label.offset_bottom = top + height
-	return label
 
 
 func show_card(i: int) -> void:
 	index = i
 	_age = 0.0
 	var card: Dictionary = cards[i]
-	text_label.text = "\n".join(card.lines)
-	text_label.visible_characters = -1 if calm else 0
-	title_label.text = card.get("title", "")
-	subtitle_label.text = card.get("subtitle", "")
-	var last := i == cards.size() - 1
-	hint_label.text = "%d/%d   ANY KEY: %s   ESC: SKIP" % [i + 1, cards.size(), "DONE" if last else "NEXT"]
 	if calm or i > 0:
 		_bars = 1.0
 	art.start(card.art)
 	if calm:
 		art.simulate_to(card.still)
-	_apply_fades()
+	cover.queue_redraw()
 
 
 ## How long the current shot stays up before moving on by itself.
@@ -150,20 +117,9 @@ func _process(delta: float) -> void:
 	if not calm:
 		_bars = minf(_bars + delta / 0.5, 1.0)
 		art.step(prev, _age, delta)
-		text_label.visible_characters = int(maxf(_age - TYPE_DELAY, 0.0) * TYPE_RATE)
-	_apply_fades()
+	cover.queue_redraw()
 	if _age >= card_length():
 		advance()
-
-
-func _apply_fades() -> void:
-	var card: Dictionary = cards[index]
-	text_label.modulate.a = clampf(_age / 0.8, 0.0, 1.0) if calm else 1.0
-	var title_t := 1.0 + _age if calm else _age - float(card.get("title_at", 0.0))
-	title_label.modulate.a = clampf(title_t / 0.8, 0.0, 1.0)
-	subtitle_label.modulate.a = clampf((title_t - 0.5) / 0.6, 0.0, 1.0)
-	hint_label.modulate.a = clampf((_age - 0.8) / 0.5, 0.0, 0.8) if index == 0 else 0.8
-	cover.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -190,7 +146,8 @@ class Layer extends Node2D:
 		draw_fn.call(self)
 
 
-## Screen-space overlay: letterbox bars, the fade at each shot's start and the finale's gold.
+## Screen-space overlay: letterbox bars, the fade at each shot's start and the finale's gold, the
+## depth gauge (fall, splat) and the shot pips with a fast-forward mark (skip) in the bars.
 class Cover extends Control:
 	var screen: Control
 
@@ -202,6 +159,7 @@ class Cover extends Control:
 		var fade: Color = screen.art.fade_color()
 		if fade.a > 0.0:
 			draw_rect(Rect2(Vector2.ZERO, SCREEN), fade)
+		screen.art.draw_gauge(self)
 		var e: float = 1.0 - pow(1.0 - screen._bars, 3.0)
 		var top := roundf(BAR_TOP * e)
 		var bottom := roundf(BAR_BOTTOM * e)
@@ -210,6 +168,26 @@ class Cover extends Control:
 		if e > 0.99:
 			draw_rect(Rect2(0, top, SCREEN.x, 1), Color8(30, 26, 44))
 			draw_rect(Rect2(0, SCREEN.y - bottom - 1, SCREEN.x, 1), Color8(30, 26, 44))
+		_draw_pips(clampf((screen._age - 0.8) / 0.5, 0.0, 1.0) if screen.index == 0 and not screen.calm else 1.0)
+
+	## One pip per shot (past ones dim goo, the current one bright), and a fast-forward mark.
+	func _draw_pips(alpha: float) -> void:
+		if alpha <= 0.0:
+			return
+		var goo: Dictionary = screen.art.goo
+		var n: int = screen.cards.size()
+		var x0 := roundf(160.0 - (n * 6.0 - 2.0) * 0.5)
+		var y := SCREEN.y - 20.0
+		for i in n:
+			var c: Color = goo.light if i == screen.index else (goo.dark if i < screen.index else Color8(44, 40, 62))
+			draw_rect(Rect2(x0 + i * 6.0, y, 4, 4 if i == screen.index else 3), Color(c, alpha))
+		var ff := Color(Color8(84, 78, 110), alpha * 0.9)
+		for k in 2:
+			var fx := SCREEN.x - 22.0 + k * 5.0
+			for row in 5:
+				var w := 3 - absi(row - 2)
+				draw_rect(Rect2(fx, SCREEN.y - 21.0 + row, w, 1), ff)
+		draw_rect(Rect2(SCREEN.x - 12.0, SCREEN.y - 21.0, 1, 5), ff)
 
 
 ## The stage: every shot drawn from code, plus a small particle system and the camera.
@@ -261,18 +239,16 @@ class StageArt extends Node2D:
 	var focus := Vector2(160, 90)
 	var anchor := Vector2(160, 90)
 	var silent := false
-	var font: Font
 	var checker: Texture2D
 	var lights: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
 	var goo: Dictionary
-	var pops: Array[Dictionary] = []  # "!" / "?" / "XP!" pop-ups: {text, who, at, life}
+	var pops: Array[Dictionary] = []  # pictogram bubbles: {icon, who, at, life, think}
 	var cracks: Array[Dictionary] = []
 	var chunks: Array[Dictionary] = []
 	var layers: Array[Dictionary] = []
 
 	func _ready() -> void:
-		font = load("res://assets/fonts/pixel.fnt")
 		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 		var image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 		image.set_pixel(0, 0, Color.WHITE)
@@ -376,34 +352,106 @@ class StageArt extends Node2D:
 					c = Color(Color8(255, 214, 140), clampf((t - 4.7) / 1.3, 0.0, 1.0))
 		return c
 
+	## Screen-space depth gauge (drawn by Cover): the mountain's ten floors as a stack of colored
+	## slices widening toward the base, a little sun above the summit, and the slime's marker sliding
+	## down it during the fall. After the splat the marker sits at the very bottom and a dotted arrow
+	## climbs from it to the sun: the way out is up.
+	func draw_gauge(canvas: CanvasItem) -> void:
+		var alpha := 0.0
+		var depth := 0.0
+		var origin := Vector2(298, 34)
+		var sc := 1.0
+		match shot:
+			"fall":
+				alpha = 1.0 if screen.calm else clampf((t - 0.2) / 0.4, 0.0, 1.0)
+				depth = clampf(screen.slime.position.y / (LAYER_H * layers.size() - 16.0), 0.0, 1.0)
+			"splat":
+				# Big, in the dark beside the slime: this is where the climb starts.
+				alpha = 1.0 if screen.calm else clampf((t - 2.6) / 0.6, 0.0, 1.0)
+				depth = 1.0
+				origin = Vector2(272, 52)
+				sc = 2.0
+		if alpha <= 0.0:
+			return
+		canvas.draw_set_transform(origin, 0.0, Vector2(sc, sc))
+		var n := layers.size()
+		var slice_h := 3.0
+		var stack_h := n * (slice_h + 1.0) - 1.0
+		canvas.draw_rect(Rect2(-16, -17, 30, stack_h + 23), Color(INK, 0.6 * alpha))
+		# The sun over the summit.
+		var sun := Vector2(0, -9)
+		canvas.draw_rect(Rect2(sun + Vector2(-2, -2), Vector2(5, 5)), Color(FLAME, alpha))
+		canvas.draw_rect(Rect2(sun + Vector2(-1, -3), Vector2(3, 7)), Color(FLAME, alpha))
+		canvas.draw_rect(Rect2(sun + Vector2(-3, -1), Vector2(7, 3)), Color(FLAME, alpha))
+		canvas.draw_rect(Rect2(sun + Vector2(-1, -1), Vector2(2, 2)), Color(FLAME_TIP, alpha))
+		for ray in [Vector2(0, -5), Vector2(0, 5), Vector2(-5, 0), Vector2(5, 0), Vector2(-4, -4), Vector2(4, -4), Vector2(-4, 4), Vector2(4, 4)]:
+			canvas.draw_rect(Rect2(sun + ray, Vector2.ONE), Color(FLAME_HOT, alpha))
+		var current := clampi(int(depth * n), 0, n - 1)
+		for i in n:
+			var w := 6.0 + i * 1.2
+			var y := i * (slice_h + 1.0)
+			var c: Color = _sig_color(layers[i])
+			if i != current:
+				c = c.lerp(INK, 0.45)
+			canvas.draw_rect(Rect2(roundf(-w * 0.5), y, roundf(w), slice_h), Color(c, alpha))
+			canvas.draw_rect(Rect2(roundf(-w * 0.5), y, roundf(w), 1), Color(c.lightened(0.3), alpha))
+		# The slime's marker: a little goo blob with a pointer, beside the current depth.
+		var my := roundf(depth * (stack_h - 3.0)) - 1.0
+		var mx := -14.0
+		canvas.draw_rect(Rect2(mx, my + 1, 5, 3), Color(goo.mid, alpha))
+		canvas.draw_rect(Rect2(mx + 1, my, 3, 1), Color(goo.light, alpha))
+		canvas.draw_rect(Rect2(mx + 1, my + 1, 1, 1), Color(goo.highlight, alpha))
+		canvas.draw_rect(Rect2(mx + 5, my + 2, 1, 1), Color(goo.light, alpha))
+		if shot == "splat":
+			# A dotted arrow climbing from the marker to the sun: the way out is up.
+			var x := mx + 2.0
+			var y1 := sun.y - 1.0
+			var run := 0.0 if screen.calm else fposmod(t * 6.0, 3.0)
+			var y := my - 3.0 - run
+			while y > y1 + 4:
+				canvas.draw_rect(Rect2(x, roundf(y), 1, 2), Color(goo.light, alpha * 0.9))
+				y -= 3.0
+			canvas.draw_rect(Rect2(x, y1 + 1, 1, 1), Color(goo.light, alpha))
+			canvas.draw_rect(Rect2(x - 1, y1 + 2, 3, 1), Color(goo.light, alpha))
+			canvas.draw_rect(Rect2(x - 2, y1 + 3, 5, 1), Color(goo.light, alpha))
+		canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 	func _cues(prev: float, now: float) -> void:
 		match shot:
 			"run":
+				# Each adventurer brandishes its weapon (crossed swords), the slime panics (!).
 				for i in 3:
-					if _at(prev, now, 0.5 + i * 1.1):
-						_pop("!", 2 - i, 0.9)
+					if _at(prev, now, 0.4 + i * 0.6):
+						_pop("swords", i, 2.4 - i * 0.3)
 						_sfx("clank", -15.0, 1.0 - i * 0.08)
+				if _at(prev, now, 0.9):
+					_pop("alarm", -1, 1.6)
+				if _at(prev, now, 0.15):
+					_pop("sweat", -1, 4.4)
 			"chase":
+				# They dream of gold; it dreams of a nap.
 				for i in 3:
-					if _at(prev, now, 0.35 + i * 0.9):
-						_pop("XP!", i, 1.0)
+					if _at(prev, now, 0.3 + i * 0.35):
+						_pop("coin", i, 3.4 - i * 0.35, true)
+				if _at(prev, now, 1.3):
+					_pop("moon", -1, 9.0, true)
 				if _at(prev, now, 1.2):
 					_sfx("clank", -16.0, 0.9)
 			"crack":
 				if _at(prev, now, 0.55):
-					_pop("?", -1, 1.0)
+					_pop("sweat", -1, 1.4)
 				if _at(prev, now, 0.75):
 					_sfx("crack", -9.0)
 					_kick(1.0)
 				if _at(prev, now, 1.6):
 					_sfx("crack", -8.0, 0.85)
 					_kick(1.5)
+					_pop("alarm", -1, 0.9)
 				if _at(prev, now, 2.35):
 					_sfx("crumble", -6.0, 0.8)
 					_kick(3.0)
-					_pop("!", -1, 0.6)
 					for i in 3:
-						_pop("!", i, 1.2)
+						_pop("alarm", i, 1.2)
 					_break_floor()
 			"fall":
 				if _at(prev, now, 0.0):
@@ -426,7 +474,7 @@ class StageArt extends Node2D:
 					_sfx("sunrise", -8.0)
 			"search":
 				if _at(prev, now, 1.9):
-					_pop("+1 LOOT", 0, 1.6)
+					_pop("loot", 0, 1.9)
 					_sfx("coin", -14.0, 0.8)
 				if _at(prev, now, 3.9):
 					_sfx("sunrise", -11.0, 1.12)
@@ -571,42 +619,95 @@ class StageArt extends Node2D:
 			else:
 				canvas.draw_rect(Rect2(pos, Vector2(s, s)), c)
 
-	# --- Pop-ups ("!", "?", "XP!") -------------------------------------------------------------
+	# --- Pictogram bubbles (no text anywhere: icons drawn pixel by pixel) -----------------------
 
-	## who: hero index 0-2, or -1 for the slime.
-	func _pop(text: String, who: int, life: float) -> void:
-		pops.append({text = text, who = who, at = t, life = life})
+	## Icon bitmaps, one character per pixel (see ICON_INK).
+	const ICONS := {
+		alarm = ["rr", "rr", "rr", "rr", "..", "rr", "rr"],
+		coin = ["..GGG..", ".GgggG.", "GgyggGG", "GgyggGG", "GggggGG", ".GGGGG.", "..GGG.."],
+		loot = ["....w..", "..GGw..", ".GgwwwG", "GgyGwGG", "GgyggGG", ".GGGGG.", "..GGG.."],
+		moon = ["..mmm....", ".mmm...w.", "mmm......", "mmm...w..", "mmm......", ".mmm.....", "..mmm...."],
+		swords = ["s.......s", "Ss.....sS", ".SS...SS.", "..SS.SS..", "...SSS...", "..gSSSg..", ".g.g.g.g.", ".ng...gn.", "nn.....nn"],
+		sweat = [".b.", ".b.", "bbb", "bwb", ".b."],
+		sparkle = ["..y..", "..y..", "yywyy", "..y..", "..y.."],
+	}
+	const ICON_INK := {
+		r = Color8(214, 52, 44), G = Color8(150, 82, 22), g = Color8(255, 196, 70), y = Color8(255, 244, 180),
+		w = Color8(255, 255, 255), m = Color8(250, 226, 130), s = Color8(150, 164, 190), S = Color8(64, 76, 104),
+		b = Color8(110, 170, 240), n = Color8(110, 64, 36),
+	}
+	const BUBBLE := Color8(240, 236, 224)
+
+	## who: hero index 0-2, or -1 for the slime. think: a thought cloud (dots, no tail).
+	func _pop(icon: String, who: int, life: float, think := false) -> void:
+		pops.append({icon = icon, who = who, at = t, life = life, think = think})
 
 	func _draw_pops(canvas: CanvasItem) -> void:
 		var heroes := _heroes()
+		var sc := 2.0 if zoom < 1.5 else 1.0  # same size on screen at 1x and 2x
 		for pop in pops:
 			var age: float = t - pop.at
 			if age < 0.0 or age > pop.life:
 				continue
 			var base: Vector2
 			if pop.who < 0:
-				base = screen.slime.position + Vector2(0, -16)
+				base = screen.slime.position + Vector2(0, -12)
 			elif pop.who < heroes.size():
-				base = heroes[pop.who].foot + Vector2(0, -35)
+				base = heroes[pop.who].foot + Vector2(0, -36 if zoom < 1.5 else -28)
 			else:
 				continue
-			var lift := minf(age * 30.0, 4.0)
-			var sc := 2 if pop.text.length() == 1 and zoom < 1.5 else 1  # a lone "!" reads better big
-			if age < 0.08 and not screen.calm:
-				sc += 1  # pops in big for a frame or two
-			_outlined_text(canvas, pop.text, base + Vector2(0, -lift - 4 * (sc - 1)), GOLD, sc)
+			var alpha := clampf((pop.life - age) / 0.2, 0.0, 1.0)
+			# Pops up with a little overshoot, then hangs, bobbing a pixel.
+			var lift := 0.0
+			if not screen.calm:
+				lift = (1.0 - minf(age / 0.14, 1.0)) * -4.0 + (1.0 if age > 0.14 and age < 0.24 else 0.0)
+				lift += roundf(sin(age * 3.0 + pop.who) * 0.6)
+			if pop.icon == "sweat":
+				var drip := 0.0 if screen.calm else fposmod(age * 10.0, 6.0)
+				_icon(canvas, ICONS.sweat, base + Vector2(9, 3 + drip), 1.0, alpha)
+				continue
+			_bubble(canvas, pop.icon, base + Vector2(-6 if pop.think and pop.who < 0 else 0, lift), sc, pop.think, alpha)
 
-	## Pixel text with a dark outline, centered on `center`; scale in whole pixels.
-	func _outlined_text(canvas: CanvasItem, text: String, center: Vector2, color: Color, scale_px := 1) -> void:
-		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x * scale_px
-		var origin := (center - Vector2(width * 0.5, -3.0 * scale_px)).round()
-		canvas.draw_set_transform(origin, 0.0, Vector2(scale_px, scale_px))
-		var edge := GOLD_DARK if color == GOLD else INK
-		edge.a = color.a
-		for o in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1), Vector2(1, 1)]:
-			canvas.draw_string(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, edge)
-		canvas.draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, color)
-		canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	## A pixel speech bubble (tail) or thought cloud (trailing dots) with an icon in it; its bottom
+	## edge sits just above `base`.
+	func _bubble(canvas: CanvasItem, icon: String, base: Vector2, sc: float, think: bool, alpha: float) -> void:
+		var rows: Array = ICONS[icon]
+		var px := sc
+		var size := Vector2(rows[0].length() + 4, rows.size() + 4) * px
+		var box := Rect2((base - Vector2(size.x * 0.5, size.y + 3 * px)).round(), size)
+		var edge := Color(INK, alpha)
+		var fill := Color(BUBBLE, alpha)
+		# Outline without its corner pixels, then the fill with dark corners: a rounded box.
+		canvas.draw_rect(Rect2(box.position + Vector2(0, -px), Vector2(box.size.x, px)), edge)
+		canvas.draw_rect(Rect2(box.position + Vector2(0, box.size.y), Vector2(box.size.x, px)), edge)
+		canvas.draw_rect(Rect2(box.position + Vector2(-px, 0), Vector2(px, box.size.y)), edge)
+		canvas.draw_rect(Rect2(box.position + Vector2(box.size.x, 0), Vector2(px, box.size.y)), edge)
+		canvas.draw_rect(box, fill)
+		for corner in [box.position, Vector2(box.end.x - px, box.position.y), Vector2(box.position.x, box.end.y - px), box.end - Vector2(px, px)]:
+			canvas.draw_rect(Rect2(corner, Vector2(px, px)), edge)
+		if think:
+			canvas.draw_rect(Rect2((Vector2(box.position.x + 2 * px, box.end.y + px)).round(), Vector2(2, 2) * px), edge)
+			canvas.draw_rect(Rect2((Vector2(box.position.x + 2.5 * px, box.end.y + 1.5 * px)).round(), Vector2(px, px)), fill)
+			canvas.draw_rect(Rect2((Vector2(box.position.x + px, box.end.y + 3.5 * px)).round(), Vector2(px, px)), edge)
+		else:
+			var tip := Vector2(roundf(box.position.x + box.size.x * 0.5) - px, box.end.y)
+			canvas.draw_rect(Rect2(tip + Vector2(-px, 0), Vector2(4, 1) * px), edge)
+			canvas.draw_rect(Rect2(tip, Vector2(2, 1) * px), fill)
+			canvas.draw_rect(Rect2(tip + Vector2(0, px), Vector2(2, 1) * px), edge)
+			canvas.draw_rect(Rect2(tip + Vector2(0, px), Vector2(1, 1) * px), fill)
+			canvas.draw_rect(Rect2(tip + Vector2(0, 2 * px), Vector2(1, 1) * px), edge)
+		_icon(canvas, rows, box.get_center(), px, alpha)
+
+	## Draws an icon bitmap centered on `center`, `px` stage pixels per icon pixel.
+	func _icon(canvas: CanvasItem, rows: Array, center: Vector2, px: float, alpha := 1.0) -> void:
+		px = maxf(px, 1.0)
+		var origin := (center - Vector2(rows[0].length(), rows.size()) * px * 0.5).round()
+		for y in rows.size():
+			var row: String = rows[y]
+			for x in row.length():
+				var key := row[x]
+				if key != ".":
+					canvas.draw_rect(Rect2(origin + Vector2(x, y) * px, Vector2(px, px)), Color(ICON_INK[key], alpha))
 
 	# --- Camera ------------------------------------------------------------------------------
 
@@ -622,7 +723,7 @@ class StageArt extends Node2D:
 			"crack":
 				zoom = 2.0
 				focus = Vector2(148, 104)
-				anchor = Vector2(160, 84)
+				anchor = Vector2(160, 90)
 			"fall":
 				focus = Vector2(160, _fall_cam() + 90.0)
 			"splat":
@@ -763,7 +864,6 @@ class StageArt extends Node2D:
 				_draw_motion_lines(canvas)
 			"chase":
 				_draw_motion_lines(canvas)
-				_draw_zzz(canvas)
 			"fall":
 				_draw_fall_front(canvas)
 			"splat":
@@ -993,13 +1093,6 @@ class StageArt extends Node2D:
 			var y := base.y - 5.0 + (i * 3) % 12
 			canvas.draw_rect(Rect2(roundf(x - length), y, length, 1), Color(goo.highlight, 0.55 * (1.0 - phase)))
 
-	func _draw_zzz(canvas: CanvasItem) -> void:
-		var base: Vector2 = screen.slime.position
-		for i in 3:
-			var age := fposmod(t * 0.9 + i / 3.0, 1.0)
-			var p := base + Vector2(-6.0 - age * 26.0, -12.0 - age * 18.0 + sin(age * 9.0) * 2.0)
-			_outlined_text(canvas, "Z" if i == 1 else "z", p, Color(Color8(196, 210, 238), 1.0 - age * age))
-
 	## An adventurer's silhouette, foot at `foot`, facing right; sc scales whole pixels.
 	## kind: 0 knight (helmet, plume, shield, torch), 1 rogue (hood, cape, torch), 2 wizard (hat, staff).
 	func _hero(canvas: CanvasItem, foot: Vector2, kind: int, run: float, torch_a: float, sc: float, col: Color,
@@ -1097,6 +1190,45 @@ class StageArt extends Node2D:
 			pts.append(b)
 			cracks.append({pts = pts, t0 = spec[2], dur = spec[3]})
 
+	## The corridor ends in a solid wall right of the slime (cornered): big torch-lit blocks, a
+	## perspective edge where it meets the floor, and a heap of rubble at its foot.
+	func _draw_dead_end() -> void:
+		var x0 := 204.0
+		var floor_x := 160.0 + (x0 - 160.0) * 1.8
+		var sconce := Vector2(220, 80)
+		lights.append(Vector3(sconce.x, sconce.y, 56.0 * _flicker(sconce.x)))
+		draw_colored_polygon(PackedVector2Array([Vector2(x0, 0), Vector2(340, 0), Vector2(340, 190), Vector2(floor_x + (190 - STAGE_BOTTOM) * 1.2, 190),
+			Vector2(x0, FLOOR_Y)]), WARM[1])
+		var row := 0
+		var y := 14.0
+		while y < FLOOR_Y:
+			var x := x0 + (0.0 if row % 2 else -8.0)
+			var col := 0
+			while x < 330:
+				var bx := maxf(x, x0 + 1)
+				var band := _light_band(Vector2(bx + 8, y + 5), _bayer(col, row) - 0.25)
+				var c: Color = WARM[clampi(band, 2, 4)]
+				draw_rect(Rect2(bx, y + 1, x + 15 - bx, 9), c)
+				if band >= 2:
+					draw_rect(Rect2(bx, y + 1, x + 15 - bx, 1), WARM[mini(band + 1, 5)])
+				x += 16
+				col += 1
+			y += 10
+			row += 1
+		# The wall's lit edge and its foot meeting the floor in perspective.
+		draw_rect(Rect2(x0, 14, 1, FLOOR_Y - 14), WARM[5])
+		draw_rect(Rect2(x0 + 1, 14, 2, FLOOR_Y - 14), Color(INK, 0.35))
+		draw_line(Vector2(x0, FLOOR_Y), Vector2(floor_x + (190 - STAGE_BOTTOM) * 1.2, 190), WARM[4], 1.0)
+		_draw_wall_torch(sconce)
+		# Rubble heaped at the foot.
+		var rocks := [Rect2(x0 - 9, FLOOR_Y - 3, 6, 4), Rect2(x0 - 4, FLOOR_Y - 6, 7, 7), Rect2(x0 + 2, FLOOR_Y - 2, 6, 5),
+			Rect2(x0 - 14, FLOOR_Y, 4, 3), Rect2(x0 + 6, FLOOR_Y + 4, 5, 4)]
+		for rock: Rect2 in rocks:
+			draw_rect(rock, WARM[2])
+			draw_rect(Rect2(rock.position + Vector2(1, 0), Vector2(rock.size.x - 2, 1)), WARM[4])
+			draw_rect(Rect2(rock.position + Vector2(0, rock.size.y - 1), Vector2(rock.size.x, 1)), WARM[1])
+			draw_rect(Rect2(rock.end.x - 1, rock.position.y + 1, 1, rock.size.y - 1), WARM[1])
+
 	## Where a crack's growing tip is now (x < 0 when it hasn't started).
 	func _crack_reach(crack: Dictionary) -> Vector2:
 		if t < crack.t0:
@@ -1125,6 +1257,7 @@ class StageArt extends Node2D:
 
 	func _draw_crack() -> void:
 		_draw_corridor(_crack_scroll(), _heroes())
+		_draw_dead_end()
 		if t >= 2.35:
 			# The floor is gone: the void below, faintly lit by lava far, far down.
 			draw_colored_polygon(PackedVector2Array([Vector2(124, FLOOR_Y), Vector2(198, FLOOR_Y + 1), Vector2(196, FLOOR_Y + 18),
@@ -1765,6 +1898,17 @@ class StageArt extends Node2D:
 		draw_rect(Rect2(156, 119, 18, 2), goo.dark)
 		draw_rect(Rect2(158, 118, 13, 2), goo.mid)
 		draw_rect(Rect2(161, 118, 3, 1), goo.highlight)
+		# The puddle glints in their torchlight: loot!
+		if t > 0.9:
+			var spots := [Vector2(160, 115), Vector2(169, 113), Vector2(165, 110), Vector2(156, 112)]
+			for k in spots.size():
+				var phase := 0.3 if screen.calm else fposmod(t * 1.6 + k * 0.29, 1.0)
+				if phase < 0.55:
+					var r := 1.0 if phase < 0.12 or phase > 0.42 else 2.0
+					var p: Vector2 = spots[k]
+					draw_rect(Rect2(p.x - r, p.y, r * 2 + 1, 1), FLAME_TIP)
+					draw_rect(Rect2(p.x, p.y - r, 1, r * 2 + 1), FLAME_TIP)
+					draw_rect(Rect2(p, Vector2.ONE), Color.WHITE)
 		for hero in heroes:
 			var f: Vector2 = hero.foot
 			draw_colored_polygon(PackedVector2Array([f + Vector2(-4, 1), f + Vector2(4, 1), f + Vector2(-30, 8), f + Vector2(-46, 8)]), Color(INK, 0.4))
