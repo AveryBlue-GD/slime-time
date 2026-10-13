@@ -21,3 +21,4 @@
 .DS_Store
 docs/polish-shots/*.avi
 docs/polish-shots/*.mp4
+__pycache__/
