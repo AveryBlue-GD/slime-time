@@ -12,7 +12,8 @@ extends Node2D
 ##   wheel); a spin costs 12 tickets, then 2 more for each spin taken (up to 40; the first is free), but while Hats.available is false only
 ##   dev mode can use it. The top-left pod shows the ticket balance and medals won.
 ## - gear signpost: SETTINGS
-## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
+## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page); asks first with a
+##   small LEAVE THE HUB? panel: QUIT or BACK (focus starts on BACK; Esc / menu = BACK)
 ## In the middle stands a wheel on a stick. Hit it (the interact key, F, next to it, or leap into
 ## it) and the whole building turns one station round, like turning the camera in Don't Starve:
 ## floor, rim and stations swing round together (hub_room.gdshader draws the room for the current
@@ -62,6 +63,8 @@ const FPS := 6.0
 const PROMPT_Y := 156.0
 ## Where the coin bag's board sits on screen.
 const BOARD := Rect2(52, 8, 216, 164)
+## The trapdoor's confirm panel.
+const QUIT_PANEL := Rect2(80, 54, 160, 72)
 enum View { FRONT, SIDE, BACK }
 
 ## Stations that come to life now and then instead of looping: each entry plays a sequence of
@@ -110,6 +113,10 @@ var board_total: Label
 var board_hint: Label
 ## The hat wheel panel (dev mode for now).
 var hat_wheel: HatWheel
+## The trapdoor's confirm panel (a dim layer, the panel, QUIT and BACK).
+var quit_menu: Control
+var quit_button: Button
+var back_button: Button
 ## Top-left pod: ticket balance and medal count.
 var ticket_pod: PanelContainer
 var ticket_label: Label
@@ -339,6 +346,7 @@ func _build_ui() -> void:
 	prompt.visible = false
 	_build_coin_board(root)
 	_build_ticket_pod(root)
+	_build_quit_menu(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
@@ -349,6 +357,60 @@ func _build_ui() -> void:
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
+
+
+## The trapdoor's confirm panel: LEAVE THE HUB? with QUIT and BACK (BACK has the focus, so a
+## stray press doesn't quit). Static, so Reduce Motion needs nothing extra.
+func _build_quit_menu(root: Control) -> void:
+	quit_menu = Control.new()
+	quit_menu.visible = false
+	root.add_child(quit_menu)
+	quit_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()  # swallows clicks on the room behind
+	dim.color = Color(0, 0, 0, 0.45)
+	quit_menu.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(quit_menu, QUIT_PANEL)
+	var title := UIKit.make_label("LEAVE THE HUB?", 8, UIKit.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.position = Vector2(QUIT_PANEL.position.x, QUIT_PANEL.position.y + 11)
+	title.size = Vector2(QUIT_PANEL.size.x, 10)
+	quit_menu.add_child(title)
+	var note := UIKit.make_label("THE GAME CLOSES", 8, UIKit.TEXT_DIM)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.position = Vector2(QUIT_PANEL.position.x, QUIT_PANEL.position.y + 24)
+	note.size = Vector2(QUIT_PANEL.size.x, 10)
+	quit_menu.add_child(note)
+	quit_button = UIKit.make_button("QUIT", _confirm_quit, Vector2(56, 15))
+	quit_button.position = Vector2(QUIT_PANEL.position.x + 16, QUIT_PANEL.position.y + 43)
+	quit_menu.add_child(quit_button)
+	back_button = UIKit.make_button("BACK", close_quit_menu, Vector2(56, 15))
+	back_button.position = Vector2(QUIT_PANEL.end.x - 16 - 56, QUIT_PANEL.position.y + 43)
+	quit_menu.add_child(back_button)
+	quit_button.focus_next = quit_button.get_path_to(back_button)
+	back_button.focus_next = back_button.get_path_to(quit_button)
+
+
+func open_quit_menu() -> void:
+	quit_menu.visible = true
+	prompt.visible = false
+	slime.frozen = true
+	if _touch_controls != null:
+		_touch_controls.menu_open = true  # taps go to the buttons, not the joystick
+	_sfx("click")
+	back_button.grab_focus()
+
+
+func close_quit_menu() -> void:
+	quit_menu.visible = false
+	slime.frozen = false
+	if _touch_controls != null:
+		_touch_controls.menu_open = false
+	_show_prompt()
+
+
+func _confirm_quit() -> void:
+	get_tree().quit()
 
 
 ## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
@@ -470,6 +532,11 @@ func close_hat_wheel() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if quit_menu.visible:
+		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
+			_sfx("click", 0.8)
+			close_quit_menu()
+		return
 	if hat_wheel.visible:
 		var touch := _touch_controls != null and _touch_controls.visible
 		var pressed := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
@@ -753,7 +820,7 @@ func _use(station: Dictionary) -> void:
 		"coins":
 			open_coin_board()
 		"quit":
-			get_tree().quit()
+			open_quit_menu()
 
 
 func _leave(station: Dictionary, scene: String) -> void:

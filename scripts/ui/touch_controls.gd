@@ -38,7 +38,17 @@ func _ready() -> void:
 	visible = DisplayServer.is_touchscreen_available() or (progress != null and progress.force_touch)
 
 
+## True while a hub panel with buttons is open: touches pass through to it.
+var menu_open := false:
+	set(value):
+		menu_open = value
+		if value:
+			_release_all()  # a finger still down when the panel opens must not stick
+
+
 func _input(event: InputEvent) -> void:
+	if menu_open:
+		return
 	if event is InputEventKey and event.pressed and visible:
 		_release_all()
 		visible = false  # someone is using a keyboard

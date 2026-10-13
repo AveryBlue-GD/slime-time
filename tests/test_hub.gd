@@ -295,6 +295,44 @@ func _initialize() -> void:
 	hub.free()
 	HubScript.return_to = ""
 
+	# --- The trapdoor asks first: LEAVE THE HUB? with QUIT and BACK
+	HubScript.return_to = "quit"
+	hub = await _open()
+	_check(not hub.quit_menu.visible, "the confirm panel starts closed")
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(hub.quit_menu.visible and hub.slime.frozen and not hub.prompt.visible, "F at the trapdoor opens the confirm panel instead of quitting (slime held, prompt hidden)")
+	_check(hub.back_button.has_focus() and not hub.quit_button.has_focus(), "...with the focus on BACK, so a stray press doesn't quit")
+	var panel_ok := true
+	for button: Button in [hub.quit_button, hub.back_button]:
+		var rect := Rect2(button.global_position, button.size)
+		panel_ok = panel_ok and Rect2(hub.QUIT_PANEL).encloses(rect) and button.size.x >= 40
+	_check(panel_ok and Rect2(0, 0, 320, 180).encloses(hub.QUIT_PANEL) and not hub.QUIT_PANEL.intersects(Rect2(hub.ticket_pod.global_position, hub.ticket_pod.size)),
+		"...buttons sit inside the panel, which fits 320x180 and clears the ticket pod")
+	_check(hub._touch_controls.menu_open, "...touch controls step aside so taps reach the buttons")
+	var ui_right := InputEventAction.new()
+	ui_right.action = "ui_left"
+	ui_right.pressed = true
+	Input.parse_input_event(ui_right)
+	await _frames(3)
+	_check(hub.quit_button.has_focus(), "...a controller / arrow key moves the focus to QUIT")
+	hub.back_button.grab_focus()
+	Input.action_press("menu")
+	await _frames(2)
+	Input.action_release("menu")
+	_check(not hub.quit_menu.visible and not hub.slime.frozen, "Esc / menu closes it")
+	_check(not hub.quit_menu.visible and not hub.slime.frozen and not hub._touch_controls.menu_open, "...BACK in effect: control returns to the slime")
+	Input.action_press("interact")
+	await _frames(2)
+	Input.action_release("interact")
+	_check(hub.quit_menu.visible, "it opens again at the trapdoor")
+	hub.back_button.pressed.emit()
+	await _frames(2)
+	_check(not hub.quit_menu.visible and not hub.slime.frozen and hub.quit_button.pressed.get_connections().size() >= 2, "BACK button closes it; QUIT is wired up (not pressed here)")
+	hub.free()
+	HubScript.return_to = ""
+
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
 
