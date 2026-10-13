@@ -5,7 +5,8 @@ extends SceneTree
 ## the reference (ref_*: copied from game.gd as of 194d2cc). Replays glides along the real maze
 ## routes (sub-pixel jitter, standing still, Brightness changes, landings, wall stains, a broken
 ## wall, the rainbow trail, the 16-bit time clamp) on levels 1 and 10 and randomizer seed 5, and
-## compares both images after every physics step.
+## compares both images after every physics step. Also checks the lazy fog upload: the uploaded
+## fog always looks the same as the current one (same fade band and refog for every cell).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_fog_bytes.gd
 
 var failures := 0
@@ -136,7 +137,7 @@ func _step(p: Vector2, last: Vector2) -> void:
 ## A frame: the upload decision, and every cell the uploaded fog shows must look as the current one.
 func _frame() -> void:
 	frames += 1
-	if game.fog_dirty:
+	if game._fog_upload_due():
 		uploads += 1
 		game._flush_textures()
 		gpu = game._fog_bytes.duplicate()

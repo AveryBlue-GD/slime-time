@@ -161,6 +161,13 @@ var outer_fog: Sprite2D
 var revealed_walls := {}
 var fog_dirty := false
 var trail_dirty := false
+## Relight writes that only restart cells lit at most LAZY_RELIGHT_TICKS ago don't need an upload
+## at once: the fog shader draws a cell the same (the first fade band) until it is FADE_AFTER[0] old,
+## so the texture's older time still looks identical. The upload waits until _fog_lazy_due (the
+## oldest such old time + LAZY_RELIGHT_TICKS, 0.25 s before it could show) or the next real change.
+const LAZY_RELIGHT_TICKS := 20
+var _fog_lazy := false
+var _fog_lazy_due := INF
 ## Last 1/FOG_TICKS tick, slime cell and light radius _relight ran for (it only has work when one changes).
 var _relit_tick := -1
 var _relit_cell := Vector2i(-99999, -99999)
@@ -732,6 +739,8 @@ func _build_overlays() -> void:
 	_painted_spans.clear()
 	_painted_radius = -1.0
 	fog_dirty = false
+	_fog_lazy = false
+	_fog_lazy_due = INF
 	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	fog_sprite.position = -BORDER_PX
@@ -898,6 +907,7 @@ func _relight(pos: Vector2) -> void:
 	# Same bytes as _fog_color_ticks(tick, revealed, wall): only the lit time (r, g) changes.
 	var lit := clampi(tick, 0, 65535)
 	var lit_bytes := (lit >> 8) | ((lit & 255) << 8)
+	var oldest := -1
 	for k in range(0, runs.size(), 3):
 		var i := (runs[k] * _cells.x + runs[k + 1]) * 4
 		for cx in range(runs[k + 1], runs[k + 2] + 1):
@@ -906,8 +916,12 @@ func _relight(pos: Vector2) -> void:
 				var was := (v & 255) * 256 + ((v >> 8) & 255)
 				if was < tick:
 					_fog_bytes.encode_u32(i, (v & 0xFFFF0000) | lit_bytes)
-					fog_dirty = true
+					if oldest < 0 or was < oldest:
+						oldest = was
 			i += 4
+	if oldest >= 0:
+		_fog_lazy = true
+		_fog_lazy_due = minf(_fog_lazy_due, (oldest + LAZY_RELIGHT_TICKS) / FOG_TICKS)
 
 
 ## Brightness upgrade: the slime's own light reveals unexplored floor (and the walls beside it)
@@ -1043,12 +1057,20 @@ func _fill_fog(rect: Rect2i, color: Color) -> void:
 	fog_dirty = true
 
 
+## True when the fog texture must be uploaded this frame: a visible change, or a lazy relight
+## (see LAZY_RELIGHT_TICKS) whose old time is about to leave the first fade band.
+func _fog_upload_due() -> bool:
+	return fog_dirty or (_fog_lazy and elapsed >= _fog_lazy_due)
+
+
 ## Uploads the changed textures from the bytes (a short-lived Image shares the bytes, so nothing
 ## is copied here and the next write doesn't copy either).
 func _flush_textures() -> void:
-	if fog_dirty:
+	if _fog_upload_due():
 		(fog_sprite.texture as ImageTexture).update(Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _fog_bytes))
 		fog_dirty = false
+		_fog_lazy = false
+		_fog_lazy_due = INF
 	if trail_dirty:
 		(trail_sprite.texture as ImageTexture).update(Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _trail_bytes))
 		trail_dirty = false
