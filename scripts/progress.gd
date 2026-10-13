@@ -274,6 +274,10 @@ func load_progress() -> void:
 	if file.load(save_path) != OK:
 		return
 	_read(file)
+	# An older save was migrated in memory; write it back once so the migration (which builds
+	# every story maze) doesn't rerun on each launch.
+	if _int(file, "meta", "version", 0) < SAVE_VERSION:
+		save_progress()
 
 
 ## Takes everything from a save (the save file or a loaded save code).
