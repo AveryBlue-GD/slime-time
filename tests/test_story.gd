@@ -1,8 +1,10 @@
 extends SceneTree
 
 ## The story: the intro shows only on a fresh save (any key advances, Esc skips, seen is saved and
-## reset by RESET PROGRESS), old saves count as seen, every line fits the 320 px screen in the
-## pixel font, level banners carry their line, and starting a level directly is never blocked.
+## reset by RESET PROGRESS), old saves count as seen, every line (and title card) fits the 320 px
+## screen in the pixel font, the animated shots play through by themselves in time (drawing every
+## shot), Reduce Motion holds stills with no shake or zoom, level banners carry their line, and
+## starting a level directly is never blocked.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_story.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -33,6 +35,11 @@ func _initialize() -> void:
 	progress.dev_tools = false
 	var screen := await _open("intro")
 	_check(screen.cards.size() >= 3 and screen.cards.size() <= 5, "intro has 3-5 cards (%d)" % screen.cards.size())
+	_check(Story.length("intro") >= 18.0 and Story.length("intro") <= 25.0, "the intro plays in 18-25 s (%.1f s)" % Story.length("intro"))
+	var stills_ok := true
+	for card in Story.INTRO + Story.FINALE:
+		stills_ok = stills_ok and card.has("time") and card.has("still") and card.still < card.time
+	_check(stills_ok, "every shot has a play time and a Reduce Motion still inside it")
 	await _frames(20)
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
@@ -75,10 +82,42 @@ func _initialize() -> void:
 	progress.reset_progress()
 	_check(progress.story_seen == 0, "RESET PROGRESS clears the flag")
 
-	# --- Reduce Motion: cards still show, as stills
+	# --- Left alone, every shot plays and moves on by itself (runs every shot's drawing)
+	progress.story_seen = 0
+	for which in ["intro", "finale"]:
+		screen = await _open(which, false)
+		var shots_seen := {}
+		var frames := 0
+		var shook := false
+		while not screen.finished and frames < 60 * 40:
+			await process_frame
+			frames += 1
+			shots_seen[screen.art.shot] = true
+			shook = shook or screen.art.shake > 0.0
+		_check(screen.finished and shots_seen.size() == screen.cards.size(), "%s: plays through all %d shots by itself (%d shown)" % [which, screen.cards.size(), shots_seen.size()])
+		_check(absf(frames / 60.0 - Story.length(which)) < 1.0, "%s: ...in about %.1f s (%.1f s)" % [which, Story.length(which), frames / 60.0])
+		if which == "intro":
+			_check(shook, "intro: the crack and the splat shake the screen")
+		screen.free()
+	_check(progress.has_seen_story(progress.STORY_INTRO) and progress.has_seen_story(progress.STORY_FINALE), "...and both count as seen")
+
+	# --- Reduce Motion: stills, no shake or zoom, held long enough to read, then on by themselves
 	progress.reduce_motion = true
 	screen = await _open("finale")
 	_check(screen.calm and screen.cards.size() == Story.FINALE.size() and screen.slime != null, "Reduce Motion: finale shows stills")
+	screen.free()
+	screen = await _open("intro", false)
+	screen.show_card(4)  # the splat: shakes, bounces and zooms with motion on
+	var frozen_t: float = screen.art.t
+	await _frames(30)
+	_check(screen.art.t == frozen_t and screen.art.t == Story.INTRO[4].still, "Reduce Motion: the shot holds its still (t %.2f)" % screen.art.t)
+	_check(screen.art.shake == 0.0 and screen.art.zoom == 1.0 and screen.art.bounce == 0.0, "Reduce Motion: no shake, bounce or zoom")
+	_check(screen.text_label.visible_characters == -1, "Reduce Motion: the text fades in whole, not typed")
+	screen.show_card(0)
+	await _frames(int(60 * (screen.CALM_HOLD - 0.5)))
+	_check(screen.index == 0, "Reduce Motion: a still stays up at least %.1f s" % screen.CALM_HOLD)
+	await _frames(60)
+	_check(screen.index == 1, "...then moves on by itself")
 	screen.free()
 	progress.reduce_motion = false
 
@@ -106,10 +145,11 @@ func _initialize() -> void:
 	quit(1 if failures else 0)
 
 
-func _open(which: String) -> Control:
+func _open(which: String, leave := true) -> Control:
 	Story.mode = which
 	Story.next_scene = ""
 	var screen: Control = load("res://scenes/story.tscn").instantiate()
+	screen.leave_on_finish = leave
 	root.add_child(screen)
 	await process_frame
 	return screen
