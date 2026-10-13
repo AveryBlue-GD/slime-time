@@ -130,6 +130,7 @@ func _fill_skin_grid() -> void:
 		ids.append(preset.id)
 	ids.append(Skins.CUSTOM)
 	ids.append(Skins.RAINBOW)
+	ids.append(Skins.STOPWATCH)
 	for id in ids:
 		_add_to_grid(_skin_grid, _make_tile(id))
 
@@ -167,8 +168,8 @@ func _toggle_jelly() -> void:
 func _make_tile(id: String) -> Button:
 	var unlocked: bool = Progress.is_skin_unlocked(id, view_jelly)
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE_SIZE)
-	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
-	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly)
+	var color: Color = _base_color(id)
+	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly, id == Skins.STOPWATCH)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
 		preview.modulate = Color(0, 0, 0, 0.85)
@@ -183,7 +184,7 @@ func _make_tile(id: String) -> Button:
 func _make_hat_tile(id: String) -> Button:
 	var unlocked: bool = Progress.is_hat_unlocked(id)
 	var tile := UIKit.make_button("", func() -> void: _on_hat_tile(id), TILE_SIZE)
-	var preview := UIKit.make_slime_preview(Progress.skin_color(), 1, Progress.is_rainbow())
+	var preview := UIKit.make_slime_preview(Progress.skin_color(), 1, Progress.is_rainbow(), null, Progress.is_stopwatch())
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, 2)
 	tile.add_child(preview)
 	if id != Hats.NONE:
@@ -219,6 +220,17 @@ func _build_custom_panel() -> void:
 	custom_panel.add_child(big_preview)
 
 
+## The color a skin's tile and preview are made from.
+func _base_color(id: String) -> Color:
+	if id == Skins.RAINBOW:
+		return Skins.RAINBOW_BASE
+	if id == Skins.STOPWATCH:
+		return Skins.STOPWATCH_BASE
+	if id == Skins.CUSTOM:
+		return Progress.custom_color
+	return Skins.get_preset(id).color
+
+
 func _on_tile(id: String) -> void:
 	if Progress.is_skin_unlocked(id, view_jelly):
 		Progress.select_skin(id, view_jelly)
@@ -230,8 +242,8 @@ func _on_tile(id: String) -> void:
 
 ## Plays skin `id` (in the version on view) on the preview stage.
 func _preview(id: String) -> void:
-	var color: Color = Skins.RAINBOW_BASE if id == Skins.RAINBOW else (Progress.custom_color if id == Skins.CUSTOM else Skins.get_preset(id).color)
-	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly))
+	var color: Color = _base_color(id)
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly), id == Skins.STOPWATCH)
 
 
 func _on_hat_tile(id: String) -> void:
@@ -257,6 +269,8 @@ func _refresh(focus_id := "") -> void:
 			status.text = "LOCKED - BEAT LEVEL %d ON HARD" % Skins.solid_level(id)
 		elif id == Skins.RAINBOW:
 			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Levels.total_coins()]
+		elif id == Skins.STOPWATCH:
+			status.text = "LOCKED - EARN ALL %d MEDALS (%d/%d)" % [Progress.medals_max(), Progress.medals_total(false), Progress.medals_max()]
 		elif id == Skins.CUSTOM:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
 		else:

@@ -173,6 +173,33 @@ static func head_point(anim: String, frame: int) -> Vector2:
 	return point
 
 
+## The opaque pixels' bounding box in a frame, relative to the sprite's center (the stopwatch skin
+## fits its clock face inside it, so the clock squashes and stretches with the body).
+static func body_box(anim: String, frame: int) -> Rect2:
+	var key := "b%s:%d" % [anim, frame]
+	if _heads.has(key):
+		return _heads[key]
+	var frames := load_sprite_frames()
+	var box := Rect2(-7, -7, 14, 14)
+	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
+		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
+		if _sheet_image == null:
+			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
+			if _sheet_image.is_compressed():
+				_sheet_image.decompress()
+		var found := Rect2()
+		var any := false
+		for y in int(region.size.y):
+			for x in int(region.size.x):
+				if _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + y).a > 0.5:
+					found = found.expand(Vector2(x, y)) if any else Rect2(x, y, 0, 0)
+					any = true
+		if any:
+			box = Rect2(found.position - region.size / 2.0, found.size + Vector2.ONE)
+	_heads[key] = box
+	return box
+
+
 ## How wide the slime's head is in a frame: its width 3 px below the top of the body (14 when
 ## idle, narrower when stretched into a leap, wider when squashed). Hats pick their width by it.
 static func head_width(anim: String, frame: int) -> int:
@@ -229,10 +256,17 @@ func set_translucency(amount: float) -> void:
 
 
 ## Recolors the slime (palette swap of its goo shades) and its droplets.
-func apply_skin(color: Color, rainbow := false) -> void:
-	Skins.apply_to(sprite.material, color, rainbow)
+func apply_skin(color: Color, rainbow := false, clock := false) -> void:
+	Skins.apply_to(sprite.material, color, rainbow, clock)
+	Stopwatch.attach(sprite, clock)
 	_drips.color = color
 	_drips.color_initial_ramp = Fx.rainbow_gradient() if rainbow else null
+
+
+## The stopwatch skin's clock speeds up and down with what the slime is doing.
+func _process(_delta: float) -> void:
+	if sprite.has_node("StopwatchFace"):
+		Stopwatch.request(Stopwatch.mode_for(state, velocity.length()))
 
 
 func is_airborne() -> bool:

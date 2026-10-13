@@ -160,6 +160,8 @@ var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
 var rainbow := false
+## The stopwatch skin is on (a clock inside the slime).
+var stopwatch := false
 ## Hard mode: fully dimmed areas turn back into unexplored fog.
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
@@ -258,10 +260,11 @@ func _ready() -> void:
 			equipped = progress.equip_first_run_skin(level)
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
+		stopwatch = progress.is_stopwatch()
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
-	slime.apply_skin(skin_color, rainbow)
+	slime.apply_skin(skin_color, rainbow, stopwatch)
 	slime.set_translucency(1.0 if progress and progress.jelly else 0.0)
 	hud.set_skin_color(skin_color, rainbow)
 
@@ -1097,6 +1100,10 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
+	# The last gold medal: the stopwatch skin (once, saved like the other skin notices).
+	if reward.get("new_best", false) and progress.all_medals() and progress.take_skin_notice(Progress.STOPWATCH_NOTICE):
+		text += "\nALL MEDALS! NEW SKIN: " + Skins.STOPWATCH_NAME
+		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
 	_finish(true, text, delay)
 
 

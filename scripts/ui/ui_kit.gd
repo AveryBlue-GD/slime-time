@@ -259,14 +259,16 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 
 
 ## Idle slime preview in the given color (2 = double size).
-static func make_slime_preview(color: Color, scale := 1, rainbow := false, jelly: Variant = null) -> AnimatedSprite2D:
+static func make_slime_preview(color: Color, scale := 1, rainbow := false, jelly: Variant = null, clock := false) -> AnimatedSprite2D:
 	var preview := AnimatedSprite2D.new()
 	preview.sprite_frames = Slime.load_sprite_frames()
-	preview.material = Skins.make_material(color, rainbow)
+	preview.material = Skins.make_material(color, rainbow, clock)
 	if jelly != null:
 		(preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if jelly else 0.0)
 	preview.scale = Vector2(scale, scale)
 	preview.play("idle")
+	if clock:
+		Stopwatch.attach(preview, true)
 	return preview
 
 

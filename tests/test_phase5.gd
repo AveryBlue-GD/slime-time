@@ -137,7 +137,7 @@ func _initialize() -> void:
 	_check(enabled == 3, "level select: levels 1-3 open, the rest locked (%d open)" % enabled)
 	screen.free()
 	screen = await _open("res://scenes/skins.tscn")
-	_check(screen.tiles.size() == 12 and not screen.custom_panel.visible, "skins screen: 12 tiles, color wheel hidden until unlocked")
+	_check(screen.tiles.size() == 13 and not screen.custom_panel.visible, "skins screen: 13 tiles, color wheel hidden until unlocked")
 	screen._refresh(Skins.RAINBOW)
 	_check("FIND EVERY COIN" in screen.status.text, "the rainbow skin says to find every coin (%s)" % screen.status.text)
 	screen._on_tile("mint")

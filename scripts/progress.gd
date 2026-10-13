@@ -21,6 +21,8 @@ const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY
 var save_path := "user://save.cfg"
 ## Save codes start with this (the 1 is the format, in case it ever changes).
 const SAVE_CODE_PREFIX := "SLIME1-"
+## The stopwatch skin's "notice seen" mark in skin_notices_seen (level numbers are 1-10).
+const STOPWATCH_NOTICE := 200
 ## Highest level the player may start (1-10).
 var highest_unlocked := 1
 ## Number of story levels beaten so far (0-10). Also decides which skins are unlocked.
@@ -618,7 +620,7 @@ static func medals_max() -> int:
 
 
 ## True when every normal-mode level has a gold (tier 3). Hard-mode tiers don't count. (A future
-## special skin is meant to unlock on this; nothing uses it yet.)
+## STOPWATCH skin unlocks on this.)
 func all_medals() -> bool:
 	return medals_total(false) == medals_max()
 
@@ -811,7 +813,7 @@ func select_hat(id: String) -> void:
 func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
 	if dev_tools:
 		return true
-	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned())
+	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned(), all_medals())
 
 
 ## The skin in use right now: a level's forced first-run skin, else the selected one.
@@ -920,10 +922,17 @@ func is_rainbow() -> bool:
 	return active_skin() == Skins.RAINBOW and is_skin_unlocked(Skins.RAINBOW)
 
 
+## True when the stopwatch skin is in use (and unlocked).
+func is_stopwatch() -> bool:
+	return active_skin() == Skins.STOPWATCH and is_skin_unlocked(Skins.STOPWATCH)
+
+
 func skin_color() -> Color:
 	var id := active_skin()
 	if skin_override == "" and not is_skin_unlocked(id):
 		return Skins.get_preset(Skins.DEFAULT).color
+	if id == Skins.STOPWATCH:
+		return Skins.STOPWATCH_BASE
 	if id == Skins.RAINBOW:
 		return Skins.RAINBOW_BASE
 	if id == Skins.CUSTOM:

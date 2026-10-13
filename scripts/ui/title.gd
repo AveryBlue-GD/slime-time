@@ -23,7 +23,7 @@ func _ready() -> void:
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
 	for x in [52, 268]:
-		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow())
+		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow(), null, Progress.is_stopwatch())
 		preview.position = Vector2(x, 112)
 		add_child(preview)
 		if Progress.selected_hat != Hats.NONE:  # the hat you're wearing, at the same 2x size

@@ -76,10 +76,10 @@ func _lay_floor() -> void:
 
 ## Shows skin `color` (`rainbow`, `jelly` = see-through, `locked` = silhouette) and
 ## starts the routine from the top.
-func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false) -> void:
+func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock := false) -> void:
 	if slime:
 		slime.queue_free()
-	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly)
+	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly, clock)
 	add_child(slime)
 	if locked:
 		slime.modulate = Color(0, 0, 0, 0.85)
@@ -95,6 +95,8 @@ func _process(delta: float) -> void:
 
 func _pose() -> void:
 	var t := _time
+	if slime.has_node("StopwatchFace"):  # the stopwatch's clock follows the routine
+		Stopwatch.request(_clock_mode(_time))
 	for step: Array in ROUTINE:
 		if t < step[1] or step == ROUTINE[-1]:
 			var progress := clampf(t / step[1], 0.0, 1.0)
@@ -104,6 +106,21 @@ func _pose() -> void:
 			slime.position = Vector2(roundf(x), roundf(FLOOR_Y - lift))
 			return
 		t -= step[1]
+
+
+## What the stopwatch's clock does at routine time `t`: runs while gliding, whirls while charging
+## and flying, idles otherwise.
+func _clock_mode(t: float) -> int:
+	for step: Array in ROUTINE:
+		if t < step[1]:
+			var anim: String = step[0]
+			if anim.begins_with("glide"):
+				return Stopwatch.Mode.MOVE
+			if anim.begins_with("charge") or anim.begins_with("launch") or anim.begins_with("air"):
+				return Stopwatch.Mode.LEAP
+			return Stopwatch.Mode.IDLE
+		t -= step[1]
+	return Stopwatch.Mode.IDLE
 
 
 func _show(anim: String, progress: float) -> void:

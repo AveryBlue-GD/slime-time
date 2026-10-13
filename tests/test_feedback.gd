@@ -84,7 +84,7 @@ func _initialize() -> void:
 	var skins: Control = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(skins)
 	await process_frame
-	_check(skins.jelly_button.text == "JELLY: ON" and skins.tiles.size() == 12, "the skins screen has a JELLY switch (12 skins)")
+	_check(skins.jelly_button.text == "JELLY: ON" and skins.tiles.size() == 13, "the skins screen has a JELLY switch (13 skins)")
 	skins.jelly_button.pressed.emit()
 	_check(skins.jelly_button.text == "JELLY: OFF" and not progress.is_skin_unlocked("mint", false),
 		"JELLY OFF shows the solid skins: locked until their level is beaten on hard")

@@ -18,6 +18,21 @@ const CUSTOM := "custom"
 const CUSTOM_NAME := "CHAMELEON"
 const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
+## "stopwatch" unlocks with all 30 normal-mode medals (gold on every level): a pale gold-trimmed
+## clock-face jelly with a working clock inside (see Stopwatch). Its look is fixed (STOPWATCH_SHADES),
+## so it has no solid/jelly unlock of its own: both versions open together.
+const STOPWATCH := "stopwatch"
+const STOPWATCH_NAME := "STOPWATCH"
+## Stand-in base color (gold) wherever one color is needed (trail, meter, menu text).
+const STOPWATCH_BASE := Color8(240, 190, 60)
+const STOPWATCH_SHADES := {
+	highlight = Color8(255, 253, 240),
+	light = Color8(252, 247, 226),
+	mid = Color8(244, 236, 208),
+	dark = Color8(222, 204, 150),
+	deep = Color8(226, 164, 40),
+	outline = Color8(122, 74, 16),
+}
 ## Whether new slime materials are see-through jelly (kept in step with Progress.jelly).
 static var jelly := true
 ## Stand-in base color for the rainbow skin wherever one color is needed.
@@ -52,7 +67,7 @@ static func get_preset(id: String) -> Dictionary:
 ## Levels that must be cleared before this skin can be used (the rainbow also needs every coin;
 ## its solid version needs this level on hard, see solid_level).
 static func unlock_level(id: String) -> int:
-	return Levels.COUNT if id == CUSTOM or id == RAINBOW else int(get_preset(id).get("unlock", 0))
+	return Levels.COUNT if id == CUSTOM or id == RAINBOW or id == STOPWATCH else int(get_preset(id).get("unlock", 0))
 
 
 ## The hard-mode level that unlocks a skin's solid (jelly off) version: the same level that
@@ -64,9 +79,11 @@ static func solid_level(id: String) -> int:
 ## Jelly skins unlock with the story levels (the rainbow with every story coin found:
 ## `coins_found`); solid ones (`jelly` false) with the same level beaten on hard mode
 ## (`hard_cleared` = those levels).
-static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true, coins_found := 0) -> bool:
-	if id != RAINBOW and id != CUSTOM and get_preset(id).is_empty():
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true, coins_found := 0, all_medals := false) -> bool:
+	if id != RAINBOW and id != CUSTOM and id != STOPWATCH and get_preset(id).is_empty():
 		return false
+	if id == STOPWATCH:
+		return all_medals
 	if jelly_version and id == RAINBOW:
 		return coins_found >= Levels.total_coins()
 	if jelly_version:
@@ -79,6 +96,8 @@ static func display_name(id: String) -> String:
 		return CUSTOM_NAME
 	if id == RAINBOW:
 		return RAINBOW_NAME
+	if id == STOPWATCH:
+		return STOPWATCH_NAME
 	return get_preset(id).get("name", "")
 
 
@@ -118,16 +137,17 @@ static func shades(base: Color) -> Dictionary:
 
 
 ## Palette-swap material for a slime sprite in this color (or the flowing rainbow).
-static func make_material(base: Color, rainbow := false) -> ShaderMaterial:
+static func make_material(base: Color, rainbow := false, clock := false) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://assets/shaders/slime_skin.gdshader")
 	material.set_shader_parameter("translucency", 1.0 if jelly else 0.0)
-	apply_to(material, base, rainbow)
+	apply_to(material, base, rainbow, clock)
 	return material
 
 
-static func apply_to(material: ShaderMaterial, base: Color, rainbow := false) -> void:
+static func apply_to(material: ShaderMaterial, base: Color, rainbow := false, clock := false) -> void:
 	material.set_shader_parameter("rainbow", rainbow)
-	var colors := shades(base)
+	material.set_shader_parameter("clock_on", 1.0 if clock else 0.0)
+	var colors := STOPWATCH_SHADES if clock else shades(base)
 	for shade: String in colors:
 		material.set_shader_parameter(shade, colors[shade])

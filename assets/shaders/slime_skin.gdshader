@@ -28,6 +28,14 @@ uniform float rainbow_width = 16.0;
 uniform float gloss = 0.0;
 uniform float shine_motion = 1.0;
 uniform float charge = 0.0;
+// Stopwatch skin (0 = off): a clock face inside the body. `clock_face` = center x, center y and the
+// two radii (px, in the sprite's local space; the script refits it to every squashed or stretched
+// frame, so the clock squashes and stretches with the slime) and `clock_hands` = the hour, minute
+// and second hand angles (radians, clockwise from 12), all driven by one clock value in
+// scripts/stopwatch.gd, so the gearing is exact. Dark hands, a red second hand and a gold pin.
+uniform float clock_on = 0.0;
+uniform vec4 clock_face = vec4(0.0, 0.0, 5.5, 5.5);
+uniform vec3 clock_hands = vec3(0.0, 0.0, 0.0);
 
 // No arrays here on purpose: constant and local arrays indexed at run time fail to compile on
 // many Android GPUs in the browser (the slime, stations and hats just vanished), so every lookup
@@ -103,6 +111,29 @@ varying vec4 tint;
 // Pixel position within the sprite, so the rainbow moves with the slime.
 varying vec2 local_pos;
 
+const float TAU_F = 6.2831853;
+const vec3 HAND_DARK = vec3(0.16, 0.09, 0.07);
+const vec3 HAND_HOUR = vec3(0.36, 0.17, 0.04);
+const vec3 HAND_SECOND = vec3(0.93, 0.13, 0.1);
+const vec3 TICK_GOLD = vec3(0.86, 0.6, 0.14);
+const vec3 TICK_QUARTER = vec3(0.5, 0.3, 0.07);
+// The slime's eyes (dark navy on the sheet) turn soft tan on the clock face, so the dark hands stay legible.
+const vec3 SRC_EYE = vec3(26.0, 28.0, 44.0) / 255.0;
+const vec3 EYE_TAN = vec3(0.68, 0.52, 0.28);
+const vec3 PIN_GOLD = vec3(1.0, 0.8, 0.25);
+
+// Distance from point p to the segment a-b.
+float seg_dist(vec2 p, vec2 a, vec2 b) {
+	vec2 ab = b - a;
+	float h = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0);
+	return length(p - a - ab * h);
+}
+
+// Unit vector for a clock angle (0 = 12 o'clock, clockwise; y points down).
+vec2 hand_dir(float a) {
+	return vec2(sin(a), -cos(a));
+}
+
 void vertex() {
 	tint = COLOR;
 	local_pos = VERTEX;
@@ -162,9 +193,43 @@ void fragment() {
 		float grey = dot(rgb, vec3(0.3, 0.59, 0.11));
 		rgb = mix(vec3(grey), rgb, 0.55) * 0.8;
 	}
+	bool inked = false;
+	if (clock_on > 0.5 && texel.a > 0.5 && crust_from < 0 && shade != 5) {
+		if (shade < 0 && distance(texel.rgb, SRC_EYE) < MATCH) {
+			rgb = EYE_TAN;
+		}
+		// Normalized to the face: 1.0 is the rim. Hands are measured in px via the smaller radius.
+		vec2 p = floor(local_pos) + 0.5 - clock_face.xy;
+		vec2 radii = max(clock_face.zw, vec2(1.0));
+		float scale = min(radii.x, radii.y);
+		vec2 q = p / radii;
+		float r = length(q);
+		// Tick marks: 12 around the rim, the quarter hours longer and darker.
+		if (shade >= 0 && r > 0.62 && r < 1.12) {
+			float ang = atan(q.x, -q.y);
+			float step_a = TAU_F / 12.0;
+			float nearest = abs(ang - round(ang / step_a) * step_a);
+			float arc = nearest * r * scale;
+			float idx = mod(round(ang / step_a) + 12.0, 12.0);
+			bool quarter = mod(idx, 3.0) < 0.5;
+			if (arc < 0.62 && (quarter || r > 0.8)) {
+				rgb = quarter ? TICK_QUARTER : TICK_GOLD;
+				inked = true;
+			}
+		}
+		float hour_d = seg_dist(q, vec2(0.0), hand_dir(clock_hands.x) * 0.48) * scale;
+		float minute_d = seg_dist(q, vec2(0.0), hand_dir(clock_hands.y) * 0.82) * scale;
+		float sec_a = clock_hands.z;
+		float second_d = seg_dist(q, hand_dir(sec_a + 3.14159) * 0.2, hand_dir(sec_a) * 0.92) * scale;
+		if (hour_d < 0.85) { rgb = HAND_HOUR; inked = true; }
+		if (minute_d < 0.62) { rgb = HAND_DARK; inked = true; }
+		if (second_d < 0.5) { rgb = HAND_SECOND; inked = true; }
+		if (length(p) < 0.85) { rgb = PIN_GOLD; inked = true; }
+	}
 	float alpha = texel.a;
-	if (shade >= 0) {
-		alpha *= mix(1.0, jelly_alpha(shade), translucency);
+	if (shade >= 0 && !inked) {
+		float jelly_amount = translucency * mix(1.0, 0.28, clock_on);
+		alpha *= mix(1.0, jelly_alpha(shade), jelly_amount);
 	}
 	COLOR = vec4(rgb, alpha) * tint;
 }

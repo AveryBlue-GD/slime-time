@@ -88,7 +88,7 @@ func _initialize() -> void:
 	var screen: Control = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.size() == 12, "skins screen has a rainbow tile")
+	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.size() == 13, "skins screen has a rainbow tile")
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
