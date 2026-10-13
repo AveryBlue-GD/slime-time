@@ -5,7 +5,7 @@ extends Control
 ## you don't have yet, each showing its hat; a wedge's size is its odds (Hats.weight), so the rare
 ## rainbow hat gets a thin rainbow-striped sliver. A spin whirls it round (the flapper ticking on each
 ## wedge it passes), slows down and lands on a random hat. The spin is settled before the wheel
-## turns (Progress.spin_hat picks the hat, charges 12 tickets - the first spin is free, dev mode
+## turns (Progress.spin_hat picks the hat, charges its price (12, +2 per spin taken, max 40) - the first spin is free, dev mode
 ## never pays - and wins it, all saved at once); the wheel just plays out where it lands. A won
 ## hat comes off the wheel, so the next spin is only between the hats still missing.
 ## The wheel needs Hats.available or dev mode (Progress.can_spin_hats).
@@ -102,7 +102,7 @@ func refresh(spin_key: String) -> void:
 	queue_redraw()
 
 
-## " (FREE)" or " (12 TIX)" for the hint line.
+## " (FREE)" or " (14 TIX)" etc. for the hint line.
 func _price() -> String:
 	var cost: int = Progress.spin_cost()
 	return " (FREE)" if cost == 0 else " (%d TIX)" % cost

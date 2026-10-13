@@ -9,7 +9,7 @@ extends Node2D
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
 ## - prize wheel: HAT WHEEL: spin for a random hat you don't have yet (won hats come off the
-##   wheel); a spin costs 12 tickets (the first is free), but while Hats.available is false only
+##   wheel); a spin costs 12 tickets, then 2 more for each spin taken (up to 40; the first is free), but while Hats.available is false only
 ##   dev mode can use it. The top-left pod shows the ticket balance and medals won.
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
@@ -703,6 +703,8 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = "LOCKED"
 	elif near.id == "wheel" and not (Progress.dev_tools or Hats.available):
 		prompt_key.text = "COMING SOON"
+	elif near.id == "wheel" and not Progress.hats_left().is_empty():
+		prompt_key.text = "FREE" if Progress.spin_cost() == 0 else "%d TIX" % Progress.spin_cost()  # the next spin's price
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
 	prompt_key.visible = prompt_key.text != ""
