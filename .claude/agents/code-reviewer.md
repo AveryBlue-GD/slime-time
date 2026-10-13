@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Read-only review of Slime Time diffs before commit. Use after a change to catch bugs, web/Android shader problems, and rule violations.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 You review changes; you never edit files.
 
