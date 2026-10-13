@@ -54,6 +54,34 @@ func _ready() -> void:
 	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	tagline.offset_top = 124
 	tagline.offset_bottom = 176
+	_warm_up_shaders()
+
+
+## Shaders compile the first time something draws with them, which on the web (no shader cache)
+## is a hitch the first time a level or the hub opens. Draw a pixel with each of the game's other
+## shaders for a couple of frames under the title's opaque backdrop (nothing shows), then drop it.
+func _warm_up_shaders() -> void:
+	var warm := Control.new()
+	warm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var materials: Array[Material] = []
+	for path in ["fog", "trail", "hub_room", "rainbow_hat", "color_wheel"]:
+		var material := ShaderMaterial.new()
+		material.shader = load("res://assets/shaders/%s.gdshader" % path)
+		materials.append(material)
+	var additive := CanvasItemMaterial.new()  # lights, glows, trail glow
+	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	materials.append(additive)
+	for material in materials:
+		var dot := ColorRect.new()
+		dot.size = Vector2.ONE
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.material = material
+		warm.add_child(dot)
+	add_child(warm)
+	move_child(warm, 0)  # under the backdrop, whose background covers the whole screen
+	for i in 3:
+		await get_tree().process_frame
+	warm.queue_free()
 
 
 func _enter() -> void:
