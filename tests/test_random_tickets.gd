@@ -115,6 +115,17 @@ func _initialize() -> void:
 	var want: float = Levels.random_usage(4242) * 100.0
 	_check(absf(used - want) < 1.5, "a perfect run uses the seed's usage of the (fixed) meter: %.1f%% (u %.1f%%)" % [used, want])
 	_check(game.ticket != null and game.ticket.cell == TicketSpawn.pick(game.maze, 4242, cfg.tile_cost), "the ticket pickup sits in the seeded cell")
+	# A ticket cell chosen for a higher MORE SLIME level can be out of reach on the player's smaller meter
+	var cost: float = game.slime_cost_per_tile
+	var fits_all := true
+	var detour := Vector2i(-1, -1)
+	for option in TicketSpawn.candidates(game.maze, cost):
+		fits_all = fits_all and TicketSpawn.trip_fits(game.maze, option.cell, cost)
+		if option.trip > MazeGenerator.distances_from(game.maze, game.maze.start)[game.maze.goal] * MazeGenerator.CELL_SPAN * cost / 100.0 + 0.02:
+			detour = option.cell
+	_check(fits_all, "every candidate cell fits the meter it was chosen for")
+	if detour != Vector2i(-1, -1):
+		_check(not TicketSpawn.trip_fits(game.maze, detour, cost * 3.0), "a side-branch ticket is dropped when the player's meter is far smaller (3x cost per tile)")
 	game.queue_free()
 	await process_frame
 

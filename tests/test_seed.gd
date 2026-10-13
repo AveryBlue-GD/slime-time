@@ -105,8 +105,8 @@ func _initialize() -> void:
 	var zero: Node2D = MAIN.instantiate()
 	root.add_child(zero)
 	await physics_frame
-	_check(_same_maze(mine.maze, zero.maze) and zero.seed_level == 5 and mine.ticket.cell == zero.ticket.cell,
-		"31337-5 gives the same maze and ticket cell to a player with no upgrades")
+	_check(_same_maze(mine.maze, zero.maze) and zero.seed_level == 5 and (zero.ticket == null or mine.ticket.cell == zero.ticket.cell),
+		"31337-5 gives the same maze (and the same ticket cell, unless out of reach of the smaller meter) to a player with no upgrades")
 	_check("CODE LV5 (YOU 0)" in zero.hud.level_label.text, "...with a visible note that it differs from their level (%s)" % zero.hud.level_label.text)
 	_check(not ("CODE" in mine.hud.level_label.text), "no note when the code matches")
 	zero.pause_menu.open()

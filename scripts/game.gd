@@ -1001,6 +1001,10 @@ func _place_ticket() -> void:
 		return
 	# The cell follows the seed code's MORE SLIME level, not the player's, so a seed puts it in the same place for everyone.
 	var cell := TicketSpawn.pick(maze, random_seed, ticket_cost_per_tile)
+	# The cell is the code's, but the trip must also fit the PLAYER's meter (a code from a higher MORE
+	# SLIME level played on a lower one could otherwise hide it beyond reach): then it is hidden.
+	if cell != TicketSpawn.NONE and not TicketSpawn.trip_fits(maze, cell, slime_cost_per_tile):
+		cell = TicketSpawn.NONE
 	if cell == TicketSpawn.NONE:  # no cell fits the ticket rules: this maze simply has none
 		no_ticket = true
 		hud.set_ticket(false, true)

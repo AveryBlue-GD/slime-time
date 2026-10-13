@@ -141,6 +141,13 @@ func _initialize() -> void:
 	maze.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_story.cfg"))
+	# --- A huge first frame delta (web scene load) keeps the stage bounce bounded
+	var big := await _open("intro", false)
+	big.art.start("splat")
+	big.art.step(0.0, 1.0, 1.0)
+	_check(absf(big.art.bounce) < 20.0 and absf(big.art.bounce_v) < 400.0, "a 1 s first frame keeps the bounce bounded (%.1f)" % big.art.bounce)
+	big.finish()
+	big.free()
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
 

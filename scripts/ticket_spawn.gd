@@ -22,7 +22,8 @@ const NONE := Vector2i(-1, -1)
 
 
 static func weight(fraction: float) -> float:
-	return WEIGHT_FLOOR + pow(fraction / MAX_FRACTION, 3.0)
+	var x := fraction / MAX_FRACTION
+	return WEIGHT_FLOOR + x * x * x
 
 
 ## Cells that may hold the ticket, with their fraction of the meter from the start: {cell, f, trip}.
@@ -43,6 +44,17 @@ static func candidates(maze: Dictionary, cost_per_tile: float) -> Array[Dictiona
 			if f >= MIN_FRACTION and f <= MAX_FRACTION and trip <= limit:
 				out.append({cell = cell, f = f, trip = trip})
 	return out
+
+
+## True when start -> `cell` -> chalice fits the meter at `cost_per_tile` (the same limit as candidates()).
+static func trip_fits(maze: Dictionary, cell: Vector2i, cost_per_tile: float) -> bool:
+	var from_start := MazeGenerator.distances_from(maze, maze.start)
+	var from_goal := MazeGenerator.distances_from(maze, maze.goal)
+	if not from_start.has(cell):
+		return false
+	var unit := MazeGenerator.CELL_SPAN * cost_per_tile / 100.0
+	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal] * unit + 0.000001)
+	return (from_start[cell] + from_goal[cell]) * unit <= limit
 
 
 ## The ticket's cell for this maze and seed, or NONE when no cell fits the rules above.

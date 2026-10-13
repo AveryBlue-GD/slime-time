@@ -130,6 +130,10 @@ func finish() -> void:
 	if finished:
 		return
 	finished = true
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		for long_sound in ["sunrise", "whoosh", "crumble", "crack", "splat"]:
+			sfx.stop(long_sound)
 	Progress.mark_story_seen(Progress.STORY_FINALE if mode == "finale" else Progress.STORY_INTRO)
 	done.emit()
 	if not leave_on_finish:
@@ -250,6 +254,7 @@ class StageArt extends Node2D:
 	var t := 0.0
 	var parts: Array[Dictionary] = []
 	var shake := 0.0
+	const MAX_PHYSICS := 0.25
 	var bounce := 0.0
 	var bounce_v := 0.0
 	var zoom := 1.0
@@ -318,10 +323,16 @@ class StageArt extends Node2D:
 		t = now
 		_cues(prev, now)
 		_emit(prev, now)
-		_update_parts(delta)
-		shake = maxf(shake - delta * 14.0, 0.0)
-		bounce_v += (-bounce * 260.0 - bounce_v * 12.0) * delta
-		bounce += bounce_v * delta
+		# Physics runs in steps of at most 1/30 s and no more than a quarter second in all, so a long
+		# frame (the first one after a web scene load) can't fling the stage off-screen.
+		var left := minf(delta, MAX_PHYSICS)
+		while left > 0.0:
+			var dt := minf(left, 1.0 / 30.0)
+			left -= dt
+			_update_parts(dt)
+			shake = maxf(shake - dt * 14.0, 0.0)
+			bounce_v += (-bounce * 260.0 - bounce_v * 12.0) * dt
+			bounce += bounce_v * dt
 		_update_camera()
 		_place_slime()
 		queue_redraw()

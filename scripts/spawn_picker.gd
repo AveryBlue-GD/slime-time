@@ -32,6 +32,8 @@ const KIND_NAMES: Array[String] = ["EDGE", "NEAR", "ANY"]
 ## Roll thresholds out of 100: EDGE below 33, NEAR below 63, ANY the rest (37).
 const EDGE_PCT := 33
 const NEAR_PCT := 30
+## Route mode: BFS-scanned starts per class before the full scan.
+const SCAN_LIMIT := 24
 const NEAR_DEPTH := 2
 ## The start-to-chalice route must be at least this share (percent) of the longest route.
 const MIN_ROUTE_PCT := 60
@@ -107,21 +109,26 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> D
 	var roll := rng.randi_range(0, 99)  # always drawn, so a forced class leaves the shuffle the same
 	var rolled := kind if kind >= 0 and kind <= Kind.ANY else _kind_for_roll(roll)
 	var longest := diameter(maze)
-	for i in 3:
-		var k := (rolled + i) % 3
-		var options := cells_of(k, maze.cells)
-		for j in range(options.size() - 1, 0, -1):  # seeded Fisher-Yates, integer draws only
-			var swap := rng.randi_range(0, j)
-			var tmp := options[j]
-			options[j] = options[swap]
-			options[swap] = tmp
-		for cell in options:
-			var far: Dictionary = farthest(maze, cell)
-			if route > 0:
-				if far.steps >= route:
-					return {start = cell, goal = cell_at_distance(maze, cell, route, rng), steps = route, kind = k, rolled = rolled, diameter = longest}
-			elif far.steps * 100 >= MIN_ROUTE_PCT * longest:
-				return {start = cell, goal = far.cell, steps = far.steps, kind = k, rolled = rolled, diameter = longest}
+	# Route mode scans only the first SCAN_LIMIT shuffled starts of each class (each costs a BFS);
+	# only if none of them has a long enough route does a second pass scan them all, as before.
+	for pass_no in (2 if route > 0 else 1):
+		var limit: int = SCAN_LIMIT if route > 0 and pass_no == 0 else 1 << 30
+		for i in 3:
+			var k := (rolled + i) % 3
+			var options := cells_of(k, maze.cells)
+			for j in range(options.size() - 1, 0, -1):  # seeded Fisher-Yates, integer draws only
+				var swap := rng.randi_range(0, j)
+				var tmp := options[j]
+				options[j] = options[swap]
+				options[swap] = tmp
+			for n in mini(options.size(), limit):
+				var cell := options[n]
+				var far: Dictionary = farthest(maze, cell)
+				if route > 0:
+					if far.steps >= route:
+						return {start = cell, goal = cell_at_distance(maze, cell, route, rng), steps = route, kind = k, rolled = rolled, diameter = longest}
+				elif far.steps * 100 >= MIN_ROUTE_PCT * longest:
+					return {start = cell, goal = far.cell, steps = far.steps, kind = k, rolled = rolled, diameter = longest}
 	# Unreachable (an end of the longest route always qualifies); keep a sane answer anyway.
 	var end: Dictionary = farthest(maze, Vector2i.ZERO)
 	var back: Dictionary = farthest(maze, end.cell)

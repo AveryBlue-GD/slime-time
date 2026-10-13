@@ -120,7 +120,10 @@ func _initialize() -> void:
 	var poorer: Node2D = await _game(code_seed, 3, 0)
 	var same: bool = mine.maze.walls == richer.maze.walls and mine.maze.start == richer.maze.start and mine.maze.goal == richer.maze.goal \
 		and mine.maze.walls == poorer.maze.walls and mine.maze.goal == poorer.maze.goal
-	same = same and mine.ticket != null and richer.ticket != null and poorer.ticket != null and mine.ticket.cell == richer.ticket.cell and mine.ticket.cell == poorer.ticket.cell
+	# the ticket cell is the code's; a smaller meter may hide it (NONE HERE) if the trip no longer fits
+	same = same and mine.ticket != null and richer.ticket != null
+	same = same and mine.ticket.cell == richer.ticket.cell and (poorer.ticket == null or mine.ticket.cell == poorer.ticket.cell)
+	same = same and (poorer.ticket != null or poorer.no_ticket)
 	_check(same, "code %s: same maze, start, chalice and ticket at MORE SLIME 0, 3 and 8" % Levels.seed_code(code_seed, 3))
 	var u := Levels.random_usage(code_seed)
 	_check(absf(mine.perfect_usage - u) < 0.02, "the code's own level: a perfect run uses u (%.3f vs %.3f)" % [mine.perfect_usage, u])
