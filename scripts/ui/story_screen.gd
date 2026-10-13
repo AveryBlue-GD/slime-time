@@ -462,6 +462,17 @@ class StageArt extends Node2D:
 				for i in _every(prev, now, 0.18):
 					for torch in torches:
 						_spark(torch + Vector2(0, -5), Vector2(rng.randf_range(-6, 6), rng.randf_range(-28, -12)))
+			"fall":
+				# Embers and sparks rising off the lava pools and the hot crust round the hole.
+				for i in _every(prev, now, 0.035, 0.0, 2.2):
+					var vault: float = LAYER_H - 16.0
+					var side := -1.0 if rng.randf() < 0.5 else 1.0
+					var x := 160.0 + side * rng.randf_range(26.0, 64.0)
+					var from := Vector2(x, vault - 8.0)
+					if rng.randf() < 0.25:
+						from = Vector2(160.0 + side * rng.randf_range(15.0, 20.0), vault - 2.0)
+					_part({p = from, v = Vector2(rng.randf_range(-6, 6), rng.randf_range(-70, -30)), g = -12.0,
+						drag = 0.6, life = rng.randf_range(0.6, 1.3), c = [FLAME, FLAME_HOT, FLAME_TIP][rng.randi_range(0, 2)], s = 1.0})
 			"splat":
 				for i in _every(prev, now, 0.15, 0.0, 1.4):
 					_part({p = Vector2(rng.randf_range(150, 170), 16.0), v = Vector2(rng.randf_range(-6, 6), 30), g = 260.0,
@@ -649,6 +660,7 @@ class StageArt extends Node2D:
 		if s == null:
 			return
 		s.visible = true
+		s.modulate = Color.WHITE
 		match shot:
 			"run", "chase":
 				_set_anim("glide_e", int(t * 16.0) % 4)
@@ -674,7 +686,8 @@ class StageArt extends Node2D:
 				s.visible = y < 200
 			"fall":
 				_set_anim("air_s", 0 if int(t * 10.0) % 3 else 1)
-				s.position = Vector2(160 + roundf(sin(t * 2.6) * 5.0), _fall_cam() + 72.0)
+				s.position = Vector2(160 + roundf(sin(t * 2.6) * 3.0), _fall_cam() + 72.0)
+				s.modulate = _fall_tint(s.position.y)
 			"splat":
 				if t < 0.45:
 					_set_anim("splat_s", 0)
@@ -739,6 +752,8 @@ class StageArt extends Node2D:
 		var s: AnimatedSprite2D = screen.slime
 		if s.visible and shot != "splat":
 			_halo(self, s.position + Vector2(0, 2), 18.0, goo.light, 0.045)
+			if shot == "fall" and s.modulate.g < 0.97:  # hot light from the lava on the slime
+				_halo(self, s.position + Vector2(0, 4), 14.0, FLAME_HOT, 0.08 * (1.0 - s.modulate.b))
 		_draw_parts(self, true)
 
 	func draw_front(canvas: CanvasItem) -> void:
@@ -1152,7 +1167,8 @@ class StageArt extends Node2D:
 		return FALL_TOP + (end - FALL_TOP) * (0.18 * u + 0.82 * u * u)
 
 	func _mountain_half(y: float) -> float:
-		return 58.0 + maxf(y, 0.0) * 0.32
+		return 84.0 + maxf(y, 0.0) * 0.28
+
 
 	func _draw_fall() -> void:
 		var top := _view().position.y
@@ -1199,8 +1215,42 @@ class StageArt extends Node2D:
 		draw_polyline(rows, Color8(80, 62, 100), 1.0)
 		draw_polyline(rows_r, Color8(80, 62, 100), 1.0)
 
-	## One floor of the dungeon in the cut: back wall, its theme's set dressing, and the slab under
-	## it (holed in the middle, except the bottom floor, where the slime lands).
+	## The hole the slime drops through in every floor (and the corridor above), and the column it
+	## falls down: no prop, liquid or rock is ever drawn inside SHAFT_L..SHAFT_R.
+	const HOLE_L := 146.0
+	const HOLE_R := 174.0
+	const SHAFT_L := 141.0
+	const SHAFT_R := 179.0
+
+	## The layer (0 = Volcanic Vault at the top) a stage y falls in, and how far down it (0-1).
+	func _layer_at(y: float) -> Vector2:
+		var i := clampi(int(floor(y / LAYER_H)), 0, layers.size() - 1)
+		return Vector2(i, clampf((y - i * LAYER_H) / LAYER_H, 0.0, 1.0))
+
+	## The light a floor throws on the slime falling through it (multiplied into its colors).
+	func _fall_tint(y: float) -> Color:
+		var at := _layer_at(y)
+		var layer: Dictionary = layers[int(at.x)]
+		if y < 0.0:
+			return Color.WHITE
+		if layer.id == "volcanic":
+			var heat := clampf((at.y - 0.05) / 0.6, 0.0, 1.0)
+			var flick := 0.0 if screen.calm else 0.06 * sin(t * 31.0)
+			return Color.WHITE.lerp(Color(1.6 + flick, 0.95, 0.5), heat)
+		var light: Color = layer.pal.B if layer.id in ["crystal", "sunken", "sewers", "frozen"] else layer.pal.x
+		return Color.WHITE.lerp(Color(light.r * 1.3, light.g * 1.3, light.b * 1.3), 0.22)
+
+	func _sig_color(layer: Dictionary) -> Color:
+		match layer.id:
+			"volcanic":
+				return layer.pal.d
+			"sewers":
+				return layer.pal.v
+		return layer.pal.w
+
+	## One floor of the dungeon in the cut: back wall, its theme's set dressing (kept out of the
+	## shaft), and the slab under it, opened by a themed hole (except the bottom floor, where the
+	## slime lands).
 	func _draw_chamber(i: int, y0: float) -> void:
 		var layer: Dictionary = layers[i]
 		var pal: Dictionary = layer.pal
@@ -1210,15 +1260,24 @@ class StageArt extends Node2D:
 		var width := hw * 2.0
 		var ramp: Array = [pal.k.lerp(pal.z, 0.25), pal.k.lerp(pal.z, 0.6), pal.z, pal.z.lerp(pal.W, 0.55)]
 		draw_rect(Rect2(left, y0, width, slab_y - y0), pal.k)
-		# Blocks in a pool of the floor's own light, dithered between steps.
-		var glow := Vector2(160, y0 + (slab_y - y0) * 0.62)
+		# Blocks in pools of the floor's own light, dithered between steps. The Volcanic Vault is lit
+		# from below by its two lava pools; the others by a glow in the middle.
+		var glows: Array[Vector2] = [Vector2(160, y0 + (slab_y - y0) * 0.62)]
+		var reach := hw * 0.95
+		if layer.id == "volcanic":
+			# Basalt lit red-hot from below by the two lava pools.
+			glows = [Vector2(left + 26, slab_y - 4), Vector2(left + width - 26, slab_y - 4)]
+			reach = hw * 1.05
+			ramp = [Color8(30, 14, 16), Color8(58, 24, 22), Color8(98, 38, 26), Color8(150, 62, 32)]
 		var row := 0
 		var by := y0 + 2.0
 		while by < slab_y - 4:
 			var bx := left + 2 - (9.0 if row % 2 else 0.0)
 			var col := 0
 			while bx < left + width - 2:
-				var d := Vector2(bx + 9, by + 3).distance_to(glow) / (hw * 0.95)
+				var d := 9.0
+				for g in glows:
+					d = minf(d, Vector2(bx + 9, by + 3).distance_to(g) / reach)
 				var level := clampi(int((1.0 - d) * 4.0 + _bayer(col, row) - 0.25), 0, 3)
 				var c: Color = ramp[level]
 				var x0 := maxf(bx, left + 2)
@@ -1231,7 +1290,8 @@ class StageArt extends Node2D:
 				col += 1
 			by += 7
 			row += 1
-		_draw_dressing(layer.id, pal, Rect2(left, y0, width, slab_y - y0))
+		var room := Rect2(left, y0, width, slab_y - y0)
+		_draw_dressing(layer.id, pal, room)
 		# Darker toward the sides: the mountain's shadow.
 		draw_texture_rect(checker, Rect2(left, y0, 8, slab_y - y0), true, pal.k)
 		draw_texture_rect(checker, Rect2(left + width - 8, y0, 8, slab_y - y0), true, pal.k)
@@ -1244,95 +1304,270 @@ class StageArt extends Node2D:
 		draw_rect(Rect2(160 - slab_half, slab_y + 2, slab_half * 2, 1), pal.w)
 		draw_texture_rect(checker, Rect2(160 - slab_half, slab_y + 10, slab_half * 2, 4), true, pal.z)
 		draw_rect(Rect2(160 - slab_half, slab_y + 14, slab_half * 2, 2), pal.k)
+		if layer.id == "volcanic":
+			_draw_lava_front(pal, room)
 		if i < layers.size() - 1:
-			draw_colored_polygon(PackedVector2Array([Vector2(145, slab_y), Vector2(175, slab_y), Vector2(172, slab_y + 5),
-				Vector2(176, slab_y + 10), Vector2(173, slab_y + 16), Vector2(147, slab_y + 16), Vector2(143, slab_y + 9),
-				Vector2(147, slab_y + 4)]), pal.k)
-			draw_rect(Rect2(141, slab_y - 1, 3, 1), pal.x)
-			draw_rect(Rect2(176, slab_y - 1, 2, 1), pal.x)
+			_draw_hole(layer.id, pal, slab_y)
+
+	## The opening in a floor slab: a dark broken-edged gap through the slab's cut, then the
+	## theme's own lip (glowing crust, crystals, an open grate, ice, a mine collar, sand, water...).
+	func _draw_hole(id: String, pal: Dictionary, slab_y: float) -> void:
+		var tt := 0.0 if screen.calm else t
+		var gap := PackedVector2Array([Vector2(HOLE_L - 1, slab_y), Vector2(HOLE_R + 1, slab_y), Vector2(HOLE_R - 1, slab_y + 5),
+			Vector2(HOLE_R + 2, slab_y + 10), Vector2(HOLE_R - 1, slab_y + 16), Vector2(HOLE_L + 1, slab_y + 16), Vector2(HOLE_L - 3, slab_y + 9),
+			Vector2(HOLE_L + 1, slab_y + 4)])
+		draw_colored_polygon(gap, pal.k)
+		# The broken faces of the cut, lit from above.
+		draw_rect(Rect2(HOLE_L - 3, slab_y - 1, 3, 1), pal.x)
+		draw_rect(Rect2(HOLE_R + 1, slab_y - 1, 2, 1), pal.x)
+		draw_line(Vector2(HOLE_L - 1, slab_y + 1), Vector2(HOLE_L + 1, slab_y + 4), pal.w, 1.0)
+		draw_line(Vector2(HOLE_R, slab_y + 1), Vector2(HOLE_R - 1, slab_y + 5), pal.W.lerp(pal.k, 0.5), 1.0)
+		match id:
+			"volcanic":
+				# Crust split open: red-hot edges and cracks glowing out from them.
+				_halo(self, Vector2(160, slab_y + 2), 22.0, pal.d, 0.05)
+				draw_line(Vector2(HOLE_L - 1, slab_y), Vector2(HOLE_L + 1, slab_y + 4), pal.B, 1.0)
+				draw_line(Vector2(HOLE_L + 1, slab_y + 4), Vector2(HOLE_L - 3, slab_y + 9), pal.d, 1.0)
+				draw_line(Vector2(HOLE_R + 1, slab_y), Vector2(HOLE_R - 1, slab_y + 5), pal.B, 1.0)
+				draw_line(Vector2(HOLE_R - 1, slab_y + 5), Vector2(HOLE_R + 2, slab_y + 10), pal.d, 1.0)
+				var pulse := 0.5 + 0.5 * sin(tt * 5.0)
+				draw_rect(Rect2(HOLE_L - 2, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
+				draw_rect(Rect2(HOLE_R + 1, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
+			"crystal":
+				for x in [HOLE_L - 4.0, HOLE_L - 8.0, HOLE_R + 4.0, HOLE_R + 8.0]:
+					var h := 7.0 if absf(x - 160) < 18 else 4.0
+					var lean := -2.0 if x < 160 else 2.0
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y), Vector2(x + 2, slab_y), Vector2(x + lean, slab_y - h)]), pal.v)
+					draw_rect(Rect2(x, slab_y - h + 2, 1, 2), Color8(230, 250, 255))
+				_halo(self, Vector2(160, slab_y), 18.0, pal.v, 0.04)
+			"obsidian":
+				# The oubliette's grate hangs open from its hinge.
+				var hx := HOLE_L - 2.0
+				draw_rect(Rect2(hx, slab_y - 1, 3, 2), Color8(90, 86, 110))
+				for k in 4:
+					draw_rect(Rect2(hx - 1 + (k % 2), slab_y + 1 + k * 5, 2, 4), Color8(60, 56, 80))
+				draw_rect(Rect2(hx - 1, slab_y + 1, 1, 20), Color8(104, 98, 128))
+			"frozen":
+				for x in [HOLE_L - 2.0, HOLE_L - 6.0, HOLE_L - 10.0, HOLE_R + 2.0, HOLE_R + 6.0, HOLE_R + 10.0]:
+					var h := 3.0 + int(absf(x - 160)) % 4
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y + 16), Vector2(x + 2, slab_y + 16), Vector2(x, slab_y + 16 + h)]), pal.x)
+				for x in [HOLE_L - 3.0, HOLE_R + 2.0]:
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y), Vector2(x + 2, slab_y), Vector2(x, slab_y - 4)]), pal.x)
+			"catacombs":
+				draw_rect(Rect2(HOLE_L - 9, slab_y - 3, 6, 3), pal.w)
+				draw_rect(Rect2(HOLE_L - 9, slab_y - 3, 6, 1), pal.x)
+				draw_colored_polygon(PackedVector2Array([Vector2(HOLE_R + 2, slab_y), Vector2(HOLE_R + 11, slab_y - 4), Vector2(HOLE_R + 12, slab_y - 2), Vector2(HOLE_R + 4, slab_y + 1)]), pal.w)
+			"sewers", "sunken", "sandstone":
+				# Whatever lies on the floor spills over both lips and pours down the shaft's walls.
+				var stuff: Color = pal.d if id != "sandstone" else pal.w
+				var shine: Color = pal.B if id != "sandstone" else pal.x
+				for side in [HOLE_L - 1.0, HOLE_R]:
+					draw_rect(Rect2(side, slab_y - 1, 2, 22), stuff)
+					for k in 3:
+						var yy := fposmod(k * 7.0 + tt * 40.0, 20.0)
+						draw_rect(Rect2(side, slab_y + roundf(yy), 1, 2), shine)
+					draw_rect(Rect2(side - 1, slab_y + 21, 1, 1), shine)
+					draw_rect(Rect2(side + 2, slab_y + 22, 1, 1), shine)
+			"mossy":
+				# A mine shaft's timber collar and a ladder down its wall.
+				for x in [HOLE_L - 4.0, HOLE_R + 1.0]:
+					draw_rect(Rect2(x, slab_y - 6, 3, 22), Color8(92, 64, 40))
+					draw_rect(Rect2(x, slab_y - 6, 1, 22), Color8(140, 100, 60))
+				draw_rect(Rect2(HOLE_L - 8, slab_y - 7, 9, 2), Color8(110, 78, 46))
+				draw_rect(Rect2(HOLE_R, slab_y - 7, 9, 2), Color8(110, 78, 46))
 
 	func _draw_dressing(id: String, pal: Dictionary, r: Rect2) -> void:
 		var floor_y := r.end.y
-		var mid := r.position.x + r.size.x * 0.5
+		var top := r.position.y
 		var tt := 0.0 if screen.calm else t
 		match id:
 			"volcanic":
-				_halo(self, Vector2(mid, floor_y - 6), r.size.x * 0.45, pal.d, 0.07)
-				draw_rect(Rect2(r.position.x, floor_y - 10, r.size.x, 10), pal.d)
-				draw_rect(Rect2(r.position.x, floor_y - 10, r.size.x, 2), pal.B)
-				for k in 10:
-					var x := r.position.x + fposmod(k * 31.0 + tt * 20.0, r.size.x - 4)
-					draw_rect(Rect2(roundf(x), floor_y - 11 - (k % 3), 3, 1), pal.B)
+				_draw_lava_back(pal, r)
 			"crystal":
-				_halo(self, Vector2(mid, floor_y - 10), 44, pal.v, 0.05)
-				for k in 7:
-					var x := r.position.x + 12 + k * (r.size.x - 24) / 6.0
+				_halo(self, Vector2(r.position.x + 30, floor_y - 10), 40, pal.v, 0.05)
+				_halo(self, Vector2(r.end.x - 30, floor_y - 10), 40, pal.v, 0.05)
+				for k in 9:
+					var x := r.position.x + 10 + k * (r.size.x - 20) / 8.0
+					if x > SHAFT_L - 6 and x < SHAFT_R + 6:
+						continue
 					var h := 10.0 + (k * 7) % 12
 					draw_colored_polygon(PackedVector2Array([Vector2(x - 4, floor_y), Vector2(x + 4, floor_y), Vector2(x, floor_y - h)]), pal.v)
 					draw_line(Vector2(x, floor_y - h + 2), Vector2(x - 2, floor_y - 1), Color8(230, 250, 255), 1.0)
-					draw_colored_polygon(PackedVector2Array([Vector2(x - 3, r.position.y), Vector2(x + 3, r.position.y), Vector2(x + 1, r.position.y + h * 0.6)]), pal.B)
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 3, top), Vector2(x + 3, top), Vector2(x + 1, top + h * 0.6)]), pal.B)
 			"obsidian":
-				for k in 5:
-					var x := roundf(r.position.x + 20 + k * (r.size.x - 40) / 4.0)
-					var h := 20.0 + (k * 9) % 18
-					draw_rect(Rect2(x, r.position.y, 1, h), Color8(60, 56, 80))
-					draw_rect(Rect2(x - 1, r.position.y + h, 3, 3), Color8(80, 76, 104))
-				draw_colored_polygon(PackedVector2Array([Vector2(r.position.x + 20, floor_y), Vector2(r.position.x + 30, floor_y - 14), Vector2(r.position.x + 34, floor_y)]), pal.v)
-				draw_colored_polygon(PackedVector2Array([Vector2(r.end.x - 34, floor_y), Vector2(r.end.x - 26, floor_y - 18), Vector2(r.end.x - 20, floor_y)]), pal.v)
+				for x in [r.position.x + 22, r.position.x + 44, r.end.x - 44, r.end.x - 22]:
+					var h := 20.0 + int(x) % 18
+					for k in int(h / 3.0):
+						draw_rect(Rect2(roundf(x) - (k % 2), top + k * 3, 1 + (k % 2), 2), Color8(60, 56, 80))
+					draw_rect(Rect2(roundf(x) - 1, top + h, 3, 3), Color8(80, 76, 104))
+				draw_colored_polygon(PackedVector2Array([Vector2(r.position.x + 12, floor_y), Vector2(r.position.x + 22, floor_y - 14), Vector2(r.position.x + 28, floor_y)]), pal.v)
+				draw_colored_polygon(PackedVector2Array([Vector2(r.end.x - 30, floor_y), Vector2(r.end.x - 22, floor_y - 18), Vector2(r.end.x - 14, floor_y)]), pal.v)
 			"frozen":
-				for k in 14:
-					var x := r.position.x + 6 + k * (r.size.x - 12) / 13.0
+				for k in 16:
+					var x := r.position.x + 6 + k * (r.size.x - 12) / 15.0
+					if x > SHAFT_L - 2 and x < SHAFT_R + 2:
+						continue
 					var h := 4.0 + (k * 5) % 9
-					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, r.position.y), Vector2(x + 2, r.position.y), Vector2(x, r.position.y + h)]), pal.x)
-				draw_rect(Rect2(r.position.x, floor_y - 3, r.size.x, 3), pal.x)
-				draw_rect(Rect2(r.position.x, floor_y - 4, r.size.x, 1), pal.w)
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, top), Vector2(x + 2, top), Vector2(x, top + h)]), pal.x)
+				# Ice sheets on the floor, cracked away around the hole.
+				for span in [[r.position.x, HOLE_L - 2.0], [HOLE_R + 2.0, r.end.x]]:
+					draw_rect(Rect2(span[0], floor_y - 3, span[1] - span[0], 3), pal.x)
+					draw_rect(Rect2(span[0], floor_y - 4, span[1] - span[0], 1), pal.w)
 			"catacombs":
-				for k in 6:
-					var x := roundf(r.position.x + 14 + k * (r.size.x - 28) / 5.0)
-					var y := r.position.y + 30 + (k % 2) * 16
-					draw_rect(Rect2(x - 5, y - 2, 10, 9), pal.k)
-					draw_rect(Rect2(x - 3, y, 6, 5), pal.x)
-					draw_rect(Rect2(x - 2, y + 2, 1, 1), pal.k)
-					draw_rect(Rect2(x + 1, y + 2, 1, 1), pal.k)
-				for k in 4:
-					draw_rect(Rect2(roundf(r.position.x + 20 + k * (r.size.x - 40) / 3.0), floor_y - 2, 7, 2), pal.x)
+				for x in [r.position.x + 18, r.position.x + 40, r.position.x + 62, r.end.x - 62, r.end.x - 40, r.end.x - 18]:
+					if x > SHAFT_L - 6 and x < SHAFT_R + 6:
+						continue
+					var y := top + 30 + (int(x) % 2) * 16
+					draw_rect(Rect2(roundf(x) - 5, y - 2, 10, 9), pal.k)
+					draw_rect(Rect2(roundf(x) - 3, y, 6, 5), pal.x)
+					draw_rect(Rect2(roundf(x) - 2, y + 2, 1, 1), pal.k)
+					draw_rect(Rect2(roundf(x) + 1, y + 2, 1, 1), pal.k)
+				for x in [r.position.x + 20, r.position.x + 48, r.end.x - 52, r.end.x - 26]:
+					draw_rect(Rect2(roundf(x), floor_y - 2, 7, 2), pal.x)
 			"sewers":
-				draw_rect(Rect2(r.position.x, floor_y - 8, r.size.x, 8), pal.d)
-				draw_rect(Rect2(r.position.x, floor_y - 8, r.size.x, 1), pal.B)
+				for span in [[r.position.x, HOLE_L - 1.0], [HOLE_R + 1.0, r.end.x]]:
+					draw_rect(Rect2(span[0], floor_y - 6, span[1] - span[0], 6), pal.d)
+					draw_rect(Rect2(span[0], floor_y - 6, span[1] - span[0], 1), pal.B)
 				for k in 6:
 					var x := r.position.x + fposmod(k * 47.0 + tt * 30.0, r.size.x - 2)
-					draw_rect(Rect2(roundf(x), floor_y - 10 - (int(tt * 4.0 + k) % 3), 2, 2), pal.B)
-				draw_rect(Rect2(r.position.x, r.position.y + 24, 30, 6), pal.z)
-				draw_rect(Rect2(r.position.x + 28, r.position.y + 22, 4, 10), pal.W)
+					if x > HOLE_L - 4 and x < HOLE_R + 2:
+						continue
+					draw_rect(Rect2(roundf(x), floor_y - 8 - (int(tt * 4.0 + k) % 3), 2, 2), pal.B)
+				draw_rect(Rect2(r.position.x, top + 24, 30, 6), pal.z)
+				draw_rect(Rect2(r.position.x + 28, top + 22, 4, 10), pal.W)
+				draw_rect(Rect2(r.end.x - 30, top + 40, 30, 6), pal.z)
+				draw_rect(Rect2(r.end.x - 32, top + 38, 4, 10), pal.W)
 			"sunken":
-				var water := roundf(floor_y - r.size.y * 0.45)
-				draw_rect(Rect2(r.position.x, water, r.size.x, floor_y - water), Color(pal.d, 0.75))
-				for k in 10:
-					var x := r.position.x + k * r.size.x / 10.0 + roundf(sin(tt * 3.0 + k) * 2.0)
-					draw_rect(Rect2(roundf(x), water, 8, 1), pal.B)
-				for k in 4:
-					var x := roundf(r.position.x + 16 + k * (r.size.x - 32) / 3.0)
-					draw_line(Vector2(x, floor_y), Vector2(x + roundf(sin(tt * 2.0 + k) * 2.0), floor_y - 18), pal.v, 1.0)
+				# Two flooded basins either side of the hole, walled off from it.
+				for span in [[r.position.x, HOLE_L - 6.0], [HOLE_R + 6.0, r.end.x]]:
+					var water := floor_y - 12.0
+					draw_rect(Rect2(span[0], water, span[1] - span[0], 12), Color(pal.d, 0.85))
+					var x: float = span[0]
+					while x < span[1] - 6:
+						draw_rect(Rect2(roundf(x + sin(tt * 3.0 + x) * 1.5), water, 5, 1), pal.B)
+						x += 10
+				for x in [HOLE_L - 6.0, HOLE_R + 2.0]:
+					draw_rect(Rect2(x, floor_y - 14, 4, 14), pal.W)
+					draw_rect(Rect2(x, floor_y - 14, 4, 1), pal.x)
+				for x in [r.position.x + 16, r.position.x + 40, r.end.x - 40, r.end.x - 16]:
+					draw_line(Vector2(x, floor_y - 12), Vector2(x + roundf(sin(tt * 2.0 + x) * 2.0), floor_y - 30), pal.v, 1.0)
 			"sandstone":
-				for k in 3:
-					var x := roundf(r.position.x + 24 + k * (r.size.x - 48) / 2.0)
-					draw_rect(Rect2(x - 4, r.position.y + 6, 8, r.size.y - 14), pal.W.lerp(pal.w, 0.4))
-					draw_rect(Rect2(x - 4, r.position.y + 6, 2, r.size.y - 14), pal.x)
-				draw_colored_polygon(PackedVector2Array([Vector2(r.position.x, floor_y), Vector2(r.position.x, floor_y - 10),
-					Vector2(r.position.x + r.size.x * 0.3, floor_y - 4), Vector2(r.position.x + r.size.x * 0.6, floor_y - 9),
-					Vector2(r.end.x, floor_y - 3), Vector2(r.end.x, floor_y)]), pal.w)
+				for x in [r.position.x + 26, r.end.x - 26]:
+					draw_rect(Rect2(x - 4, top + 6, 8, r.size.y - 14), pal.W.lerp(pal.w, 0.4))
+					draw_rect(Rect2(x - 4, top + 6, 2, r.size.y - 14), pal.x)
+				# Dunes slumping toward the hole from both walls.
+				draw_colored_polygon(PackedVector2Array([Vector2(r.position.x, floor_y), Vector2(r.position.x, floor_y - 12),
+					Vector2(r.position.x + 40, floor_y - 7), Vector2(HOLE_L - 1, floor_y - 1), Vector2(HOLE_L - 1, floor_y)]), pal.w)
+				draw_colored_polygon(PackedVector2Array([Vector2(r.end.x, floor_y), Vector2(r.end.x, floor_y - 9),
+					Vector2(r.end.x - 34, floor_y - 6), Vector2(HOLE_R + 1, floor_y - 1), Vector2(HOLE_R + 1, floor_y)]), pal.w)
 			"mossy":
-				for k in 3:
-					var x := roundf(r.position.x + 30 + k * (r.size.x - 60) / 2.0)
-					draw_rect(Rect2(x, r.position.y + 10, 3, r.size.y - 10), Color8(92, 64, 40))
-					draw_rect(Rect2(x - 8, r.position.y + 10, 19, 3), Color8(110, 78, 46))
-				for k in 10:
-					var x := roundf(r.position.x + 8 + k * (r.size.x - 16) / 9.0)
-					draw_rect(Rect2(x, r.position.y, 3, 6 + (k * 7) % 14), pal.v)
-					draw_rect(Rect2(x + 1, r.position.y, 1, 9 + (k * 7) % 14), Color8(52, 104, 46))
+				for x in [r.position.x + 30, r.end.x - 32]:
+					draw_rect(Rect2(x, top + 10, 3, r.size.y - 10), Color8(92, 64, 40))
+					draw_rect(Rect2(x - 8, top + 10, 19, 3), Color8(110, 78, 46))
+				for k in 12:
+					var x := roundf(r.position.x + 8 + k * (r.size.x - 16) / 11.0)
+					if x > SHAFT_L - 4 and x < SHAFT_R + 2:
+						continue
+					draw_rect(Rect2(x, top, 3, 6 + (k * 7) % 14), pal.v)
+					draw_rect(Rect2(x + 1, top, 1, 9 + (k * 7) % 14), Color8(52, 104, 46))
+				# A minecart on its rail, off to the side.
+				draw_rect(Rect2(r.position.x + 10, floor_y - 1, 50, 1), Color8(120, 110, 100))
+				draw_rect(Rect2(r.position.x + 22, floor_y - 9, 16, 7), Color8(84, 70, 60))
+				draw_rect(Rect2(r.position.x + 22, floor_y - 9, 16, 1), Color8(130, 112, 92))
+				draw_rect(Rect2(r.position.x + 24, floor_y - 3, 3, 3), INK)
+				draw_rect(Rect2(r.position.x + 33, floor_y - 3, 3, 3), INK)
 			"dungeon":
 				for x in [r.position.x + 30, r.end.x - 30]:
-					_draw_wall_torch(Vector2(roundf(x), r.position.y + 50))
+					_draw_wall_torch(Vector2(roundf(x), top + 50))
+
+	## The Volcanic Vault behind the slime: lava pouring from vents in both walls into two pools held
+	## off from the hole by rock lips, glowing cracks, basalt teeth and heat haze over the pools.
+	func _draw_lava_back(pal: Dictionary, r: Rect2) -> void:
+		var tt := 0.0 if screen.calm else t
+		var floor_y := r.end.y
+		var top := r.position.y
+		var surface := floor_y - 9.0
+		var pools := [[r.position.x + 3.0, SHAFT_L - 5.0], [SHAFT_R + 5.0, r.end.x - 3.0]]
+		for pool in pools:
+			var mid: float = (pool[0] + pool[1]) * 0.5
+			_halo(self, Vector2(mid, surface), 46.0, FLAME_HOT, 0.06)
+		# Basalt teeth from the ceiling, near the walls.
+		for x in [r.position.x + 12, r.position.x + 24, r.end.x - 24, r.end.x - 12]:
+			var h := 8.0 + int(x) % 7
+			draw_colored_polygon(PackedVector2Array([Vector2(x - 3, top), Vector2(x + 3, top), Vector2(x, top + h)]), pal.W)
+			draw_rect(Rect2(x - 1, top, 1, h - 3), pal.w)
+		# Glowing seams in the back wall, just above the pools.
+		for k in 4:
+			var x: float = [r.position.x + 24, r.position.x + 40, r.end.x - 40, r.end.x - 24][k]
+			var pts := PackedVector2Array([Vector2(x, surface - 1), Vector2(x + 2, surface - 7), Vector2(x - 1, surface - 13 - k * 2)])
+			draw_polyline(pts, Color(pal.d, 0.7), 1.0)
+		# Vents in the side walls and the lavafalls pouring out of them.
+		for side in [0, 1]:
+			var x := r.position.x + 9.0 if side == 0 else r.end.x - 13.0
+			var vent_y: float = top + 22.0 + side * 8.0
+			draw_rect(Rect2(x - 2, vent_y - 3, 7, 5), pal.k)
+			draw_rect(Rect2(x - 2, vent_y - 4, 7, 1), pal.d)
+			var fall_h: float = surface - vent_y
+			draw_rect(Rect2(x - 1, vent_y, 5, fall_h), Color8(200, 70, 24))
+			draw_rect(Rect2(x, vent_y, 3, fall_h), pal.d)
+			draw_rect(Rect2(x + 1, vent_y, 1, fall_h), pal.B.lerp(pal.d, 0.4))
+			for k in 6:
+				var yy := fposmod(k * fall_h / 6.0 + tt * 70.0, fall_h)
+				draw_rect(Rect2(x + (k % 2) * 2, vent_y + roundf(yy), 1, 3), pal.B)
+			_halo(self, Vector2(x + 1, vent_y + fall_h * 0.5), 18.0, FLAME_HOT, 0.06)
+			# The splash where it hits the pool.
+			var splash := 0.0 if screen.calm else float(int(tt * 12.0) % 3)
+			draw_rect(Rect2(x - 2 - splash, surface - 2, 7 + splash * 2, 2), pal.B)
+		# Heat haze: thin wavering bands over the pools.
+		for pool in pools:
+			for k in 5:
+				var yy := surface - 5.0 - k * 6.0
+				var wave := 0.0 if screen.calm else roundf(sin(tt * 7.0 + k * 1.3) * 2.0)
+				var x0: float = pool[0] + 4 + wave + (k % 2) * 6
+				var span: float = pool[1] - pool[0] - 16
+				draw_rect(Rect2(x0, yy, span * 0.5, 1), Color(pal.B, 0.14 + 0.05 * (k % 2)))
+				draw_rect(Rect2(x0 + span * 0.5 + 3, yy + 1, span * 0.4, 1), Color(pal.B, 0.12))
+
+	## The pools themselves, the lips holding them and the crust around the hole, drawn over the slab.
+	func _draw_lava_front(pal: Dictionary, r: Rect2) -> void:
+		var tt := 0.0 if screen.calm else t
+		var floor_y := r.end.y
+		var surface := floor_y - 9.0
+		var pools := [[r.position.x + 3.0, SHAFT_L - 5.0], [SHAFT_R + 5.0, r.end.x - 3.0]]
+		for pool in pools:
+			var x0: float = pool[0]
+			var x1: float = pool[1]
+			draw_rect(Rect2(x0, surface, x1 - x0, floor_y + 7 - surface), pal.d)
+			draw_rect(Rect2(x0, surface + 5, x1 - x0, floor_y + 2 - surface - 5), Color8(200, 70, 24))
+			draw_texture_rect(checker, Rect2(x0, surface + 4, x1 - x0, 2), true, Color8(200, 70, 24))
+			draw_rect(Rect2(x0, floor_y + 7, x1 - x0, 1), pal.k)
+			draw_rect(Rect2(x0, surface, x1 - x0, 1), pal.B)
+			# Rolling bright ripples and dark crust skins drifting on top.
+			for k in 4:
+				var x := x0 + fposmod(k * 11.0 + tt * (8.0 + k * 3.0), x1 - x0 - 4)
+				draw_rect(Rect2(roundf(x), surface + 1 + (k % 2), 4, 1), FLAME_TIP)
+			for k in 2:
+				var x := x0 + fposmod(k * 17.0 - tt * 5.0, x1 - x0 - 6)
+				draw_rect(Rect2(roundf(x), surface + 2, 5, 1), Color8(120, 40, 20))
+			# A bubble swelling and popping now and then.
+			var b := fposmod(tt * 1.4 + x0 * 0.1, 1.0)
+			if b > 0.6:
+				var bx := roundf(x0 + (x1 - x0) * fposmod(x0 * 0.37 + floorf(tt * 1.4) * 0.61, 0.8) + 2)
+				draw_rect(Rect2(bx, surface - 1, 3 if b < 0.9 else 1, 1), FLAME)
+		# Rock lips walling the pools off from the hole: the slime drops between them. Each is a
+		# stack of basalt blocks, glowing on the side facing its pool.
+		for side in [-1.0, 1.0]:
+			var inner := HOLE_L - 1.0 if side < 0 else HOLE_R + 1.0
+			var x0 := inner - 9.0 if side < 0 else inner
+			draw_rect(Rect2(x0, floor_y - 10, 9, 12), pal.W)
+			draw_rect(Rect2(x0 + 1, floor_y - 12, 7, 2), pal.W)
+			draw_rect(Rect2(x0 + 1, floor_y - 12, 7, 1), pal.w)
+			draw_rect(Rect2(x0 + 2, floor_y - 6, 6, 1), pal.z)
+			var hot_x := x0 if side < 0 else x0 + 8.0
+			draw_rect(Rect2(hot_x, floor_y - 10, 1, 12), FLAME_HOT)
+			draw_rect(Rect2(hot_x + (1.0 if side < 0 else -1.0), floor_y - 10, 1, 12), Color(FLAME_HOT, 0.35))
+			var cool_x := x0 + 8.0 if side < 0 else x0
+			draw_rect(Rect2(cool_x, floor_y - 10, 1, 12), pal.k)
 
 	func _draw_fall_front(canvas: CanvasItem) -> void:
 		if screen.calm:
