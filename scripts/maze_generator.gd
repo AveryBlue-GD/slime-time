@@ -49,7 +49,7 @@ static func generate(cells: Vector2i, maze_seed: int, branching := 0.0) -> Dicti
 		active.append(chosen)
 
 	var maze := {size = size, cells = cells, walls = walls, start = start}
-	var distances := _distances_from(maze, start)
+	var distances := distances_from(maze, start)
 	var goal := start
 	for cell: Vector2i in distances:
 		if distances[cell] > distances[goal]:
@@ -120,7 +120,7 @@ static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
 					_open_between(walls, size, cell, next)
 
 	var maze := {size = size, cells = cells, walls = walls, start = start}
-	var distances := _distances_from(maze, start)
+	var distances := distances_from(maze, start)
 	var goal := start
 	for cell: Vector2i in distances:
 		if distances[cell] > distances[goal]:
@@ -131,9 +131,51 @@ static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
 	return maze
 
 
+## How much of the maze's longest route (its diameter) the start-to-chalice route must be at least.
+const SPAWN_MIN_ROUTE := 0.75
+## Seeded tries at a start cell before settling for the best one found.
+const SPAWN_TRIES := 24
+
+
+## Randomizer maze with a random start: the noise maze above, then a start cell picked from the
+## seed among the cells whose farthest cell is at least SPAWN_MIN_ROUTE of the longest route in the
+## maze (so the slime starts in an outer area, never next to the chalice), and the chalice is the
+## cell farthest from it. Same seed, same maze, same start. Adds `ref_steps` (cells): the longest
+## route, which the slime budget is calibrated on, so a shorter route here only leaves slack.
+static func generate_random(cells: Vector2i, maze_seed: int) -> Dictionary:
+	var maze := generate_noise(cells, maze_seed)
+	var far := distances_from(maze, maze.goal)  # maze.goal is the cell farthest from the corner
+	var diameter := 0
+	for cell: Vector2i in far:
+		diameter = maxi(diameter, far[cell])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = maze_seed ^ 0x2545f491
+	var best_start := Vector2i.ZERO
+	var best_goal: Vector2i = maze.goal
+	var best_steps := 0
+	for i in SPAWN_TRIES:
+		var start := Vector2i(rng.randi_range(0, cells.x - 1), rng.randi_range(0, cells.y - 1))
+		var reach := distances_from(maze, start)
+		var goal := start
+		for cell: Vector2i in reach:
+			if reach[cell] > reach[goal]:
+				goal = cell
+		if reach[goal] > best_steps:
+			best_steps = reach[goal]
+			best_start = start
+			best_goal = goal
+		if reach[goal] >= SPAWN_MIN_ROUTE * diameter:
+			break
+	maze.start = best_start
+	maze.goal = best_goal
+	maze.goal_steps = best_steps
+	maze.ref_steps = maxi(diameter, best_steps)
+	return maze
+
+
 ## True when every cell (and so the goal) can be reached from the start.
 static func is_completable(maze: Dictionary) -> bool:
-	var reached := _distances_from(maze, maze.start)
+	var reached := distances_from(maze, maze.start)
 	return reached.size() == maze.cells.x * maze.cells.y and reached.has(maze.get("goal", maze.start))
 
 
@@ -177,7 +219,7 @@ static func dead_end_count(maze: Dictionary) -> int:
 	return count
 
 
-static func _distances_from(maze: Dictionary, from: Vector2i) -> Dictionary:
+static func distances_from(maze: Dictionary, from: Vector2i) -> Dictionary:
 	var distances := {from: 0}
 	var queue: Array[Vector2i] = [from]
 	while not queue.is_empty():

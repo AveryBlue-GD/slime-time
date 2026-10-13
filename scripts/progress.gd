@@ -39,16 +39,25 @@ var current_level := 1
 ## Anything older than 3 gets its medals converted when it is read (see _migrate_medals).
 const SAVE_VERSION := 3
 ## TICKET VOUCHERS: the renewable, cosmetic-only currency (never converted to or from coins). The
-## ONLY faucet is the randomizer: 2 per win, +1 when the win beats that maze's par time, and at most
-## 5 paying wins per UTC day (so at most 15 a day). The only sink so far is the hat wheel (12).
+## ONLY faucet is the randomizer: 1 per win, +2 when the maze's ticket pickup was collected, +1 when
+## the win beats that maze's par time (4 at most), and at most 5 paying wins per UTC day (so at most
+## 20 a day). A player with no MORE SLIME upgrade bought gets 1 per win whatever else they did.
+## The only sink so far is the hat wheel (12, then +2 for each spin already taken, up to 40).
 ## (Saved under the old [wallet] keys "globs" and "globs_lifetime" so existing saves still load.)
 const TICKETS_MAX := 99999
-const TICKETS_RANDOM_WIN := 2
+const TICKETS_RANDOM_WIN := 1
+const TICKETS_PICKUP := 2
 const TICKETS_UNDER_PAR := 1
+## Payout cap for a player who has bought no MORE SLIME upgrade ("excess slime").
+const TICKETS_NO_SLIME_CAP := 1
 ## Randomizer wins that pay tickets per UTC day.
 const RANDOM_PAID_PER_DAY := 5
 const PAID_SEEDS_MAX := 10
+## Hat wheel price: the first spin is free, the second costs SPIN_COST, each later one SPIN_STEP more
+## (spins already taken beyond the second), never above SPIN_COST_MAX.
 const SPIN_COST := 12
+const SPIN_STEP := 2
+const SPIN_COST_MAX := 40
 const RAINBOW_PITY_MAX := 40
 ## Level medals: the best clear-time tier per level and mode (a small int, saved under [medals]).
 ## Gold (3) = at or under the level's par time, silver (2) = within SILVER_FACTOR x par, bronze (1)
@@ -506,11 +515,12 @@ func start_story(level: int) -> void:
 	current_level = clampi(level, 1, highest_unlocked)
 
 
-## Records a randomizer win (saved) and pays its tickets: 2, +1 when `under_par` (the win beat that
-## maze's par time) on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
+## Records a randomizer win (saved) and pays its tickets: 1, +2 when `ticket_found` (the maze's pickup
+## was collected), +1 when `under_par` (the win beat that maze's par time), capped at 1 with no MORE
+## SLIME upgrade bought; the under-par bonus counts on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
 ## UTC day (none after that, none while the assist was on, none for a seed that already paid today).
 ## Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, under_par := false, seed_value := 0) -> int:
+func complete_random(assisted := false, under_par := false, seed_value := 0, ticket_found := false) -> int:
 	randoms_cleared += 1
 	randoms_won += 1
 	var paid := 0
@@ -519,7 +529,7 @@ func complete_random(assisted := false, under_par := false, seed_value := 0) -> 
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(under_par and random_seed_fresh, seed_value)
+		paid = random_tickets_due(under_par and random_seed_fresh, seed_value, ticket_found)
 		if paid > 0:
 			random_paid += 1
 			if seed_value != 0:
@@ -541,11 +551,12 @@ func utc_day() -> int:
 
 
 ## What a randomizer win would pay right now (0 once today's cap of paid wins is used).
-func random_tickets_due(under_par := false, seed_value := 0) -> int:
+func random_tickets_due(under_par := false, seed_value := 0, ticket_found := false) -> int:
 	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
 	if not open or seed_paid_today(seed_value):
 		return 0
-	return TICKETS_RANDOM_WIN + (TICKETS_UNDER_PAR if under_par else 0)
+	var due := TICKETS_RANDOM_WIN + (TICKETS_PICKUP if ticket_found else 0) + (TICKETS_UNDER_PAR if under_par else 0)
+	return mini(due, TICKETS_NO_SLIME_CAP) if int(upgrades.get("slime", 0)) <= 0 else due
 
 
 ## True when `seed_value` already paid a win on the current UTC day.
@@ -772,9 +783,15 @@ func can_spin_hats() -> bool:
 	return Hats.available and spin_cost() <= tickets
 
 
-## What the next spin costs: nothing in dev mode and for the very first spin, else SPIN_COST.
+## What the next spin costs: nothing in dev mode and for the very first spin, then SPIN_COST plus
+## SPIN_STEP for every spin already taken after the second, up to SPIN_COST_MAX.
 func spin_cost() -> int:
-	return 0 if dev_tools or spins == 0 else SPIN_COST
+	return 0 if dev_tools or spins == 0 else spin_cost_after(spins)
+
+
+## The price of the spin that follows `taken` spins (0 = the free first one).
+static func spin_cost_after(taken: int) -> int:
+	return 0 if taken <= 0 else mini(SPIN_COST + SPIN_STEP * (taken - 1), SPIN_COST_MAX)
 
 
 ## One whole spin, done before the wheel starts turning: picks the hat (the rare rainbow hat gets

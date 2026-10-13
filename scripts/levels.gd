@@ -100,11 +100,26 @@ static func level_par(level: int, hard := false) -> float:
 	return _par_cache[key]
 
 
-static func random_config(maze_seed: int, hard := false) -> Dictionary:
+## Randomizer mazes grow with the slime the player can spend: the base size (18-24 x 10-13 cells)
+## is multiplied by sqrt(Upgrades.slime_factor), so the area, and about the path, grows with the
+## meter (x1.0 with no MORE SLIME, x1.41 per side at level 10), up to RANDOM_MAX_CELLS (that is
+## 1040x560 px of maze, about 1.5x story level 10's area, which the web build handles).
+const RANDOM_MAX_CELLS := Vector2i(30, 16)
+
+
+## Randomizer maze size for a seed and a MORE SLIME level. The two dice are rolled first, whatever
+## the level, so one seed keeps its character at every level.
+static func random_cells(maze_seed: int, slime_level := 0) -> Vector2i:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
+	var base := Vector2i(rng.randi_range(18, 24), rng.randi_range(10, 13))
+	var grow := sqrt(Upgrades.slime_factor(clampi(slime_level, 0, Upgrades.MAX_LEVEL)))
+	return Vector2i(mini(roundi(base.x * grow), RANDOM_MAX_CELLS.x), mini(roundi(base.y * grow), RANDOM_MAX_CELLS.y))
+
+
+static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Dictionary:
 	return {
-		cells = Vector2i(rng.randi_range(18, 24), rng.randi_range(10, 13)),
+		cells = random_cells(maze_seed, 0 if hard else slime_level),
 		seed = maze_seed,
 		target = RANDOM_HARD_TARGET if hard else RANDOM_TARGET,
 		tile_level = RANDOM_TILE_LEVEL,

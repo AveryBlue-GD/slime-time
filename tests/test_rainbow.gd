@@ -57,8 +57,8 @@ func _initialize() -> void:
 	# --- Drying up in the randomizer retries the same maze.
 	game = await _spawn_running(777)
 	game.slime_remaining = 0.2
-	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
-	var action := "move_right" if open_right else "move_down"
+	var open_dir: Vector2i = MazeGenerator.open_neighbors(game.maze, game.maze.start)[0] - game.maze.start  # (the start is random)
+	var action: String = {Vector2i.RIGHT: "move_right", Vector2i.LEFT: "move_left", Vector2i.DOWN: "move_down", Vector2i.UP: "move_up"}[open_dir]
 	Input.action_press(action)
 	await _frames(30)
 	Input.action_release(action)

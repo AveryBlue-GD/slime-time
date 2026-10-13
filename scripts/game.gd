@@ -29,6 +29,11 @@ const CHALICE_REVEAL_DISTANCE := 24.0
 const CHALICE_GLIMMER_REACH := 64.0
 const CHALICE_GLIMMER_GAP := 1.4
 const CHALICE_GLIMMER_COLOR := Color(1.0, 0.82, 0.4)
+## The ticket pickup shows itself within TICKET_REVEAL_DISTANCE px of the slime (like the chalice), and
+## glints through the fog the same way (every TICKET_GLIMMER_GAP s) once the slime is within the other.
+const TICKET_REVEAL_DISTANCE := 26.0
+const TICKET_GLIMMER_REACH := 80.0
+const TICKET_GLIMMER_GAP := 1.8
 const END_DELAY := 2.0
 const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
@@ -190,6 +195,10 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
+## The randomizer maze's ticket pickup (null once collected, and in story mazes) and whether it was.
+var ticket: TicketPickup
+var ticket_found := false
+var _ticket_glimmer_left := 0.0
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
@@ -234,8 +243,8 @@ func _ready() -> void:
 	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
 	if is_random():
-		config = Levels.random_config(random_seed, hard_mode)
-		maze = MazeGenerator.generate_noise(config.cells, config.seed)
+		config = Levels.random_config(random_seed, hard_mode, progress.upgrade_level("slime") if progress else 0)
+		maze = MazeGenerator.generate_random(config.cells, config.seed)
 		hud.set_level_text("RANDOM MAZE #%d%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag])
 	else:
 		config = Levels.get_config(level, hard_mode)
@@ -244,7 +253,10 @@ func _ready() -> void:
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
-	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	# A randomizer maze with a random start is calibrated on its longest route (maze.ref_steps), so a
+	# start nearer the chalice only leaves slack; story mazes have no ref_steps and are unchanged.
+	var ref_tiles: float = maze.get("ref_steps", maze.goal_steps) * MazeGenerator.CELL_SPAN - grab_reach / TILE
+	slime_cost_per_tile = config.target * 100.0 / ref_tiles
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
 	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
@@ -279,6 +291,7 @@ func _ready() -> void:
 	_start_ambience()
 	_build_overlays()
 	_place_coins(config.seed)
+	_place_ticket()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
@@ -347,6 +360,7 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	_pick_up_ticket(pos, delta)
 	_count_glimmer_travel(pos)
 	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
 		chalice.visible = true
@@ -957,6 +971,47 @@ func _pick_up_coins(pos: Vector2) -> void:
 			_sfx("unlock")
 
 
+# ---------------------------------------------------------------- ticket pickup
+
+## The randomizer maze's ticket voucher (see TicketSpawn): in the same cell for the same seed.
+func _place_ticket() -> void:
+	if not is_random():
+		return
+	var cell := TicketSpawn.pick(maze, random_seed, slime_cost_per_tile)
+	ticket = TicketPickup.new()
+	ticket.z_index = fog_sprite.z_index + 1  # above the fog, but hidden until the slime is close
+	ticket.visible = false
+	ticket.still = motion_scale() <= 0.0
+	add_child(ticket)
+	ticket.setup(cell, MazeGenerator.cell_center(cell, TILE))
+	hud.set_ticket(false)
+
+
+func _pick_up_ticket(pos: Vector2, delta: float) -> void:
+	if ticket == null:
+		return
+	if not ticket.visible and pos.distance_to(ticket.position) <= TICKET_REVEAL_DISTANCE:
+		ticket.visible = true  # seen like the chalice, a couple of tiles away
+	if pos.distance_to(ticket.position) <= TicketPickup.REACH:
+		ticket.collect(self)
+		ticket = null
+		ticket_found = true
+		_sfx("unlock", -5.0)
+		hud.set_ticket(true)
+		hud.flash_message("TICKET FOUND!", 1.2)
+	elif not ticket.visible and pos.distance_to(ticket.position) <= TICKET_GLIMMER_REACH:
+		_ticket_glimmer_left -= delta
+		if _ticket_glimmer_left <= 0.0:
+			_ticket_glimmer_left = TICKET_GLIMMER_GAP
+			var glimmer := Glimmer.new()
+			glimmer.position = (ticket.position + Vector2(randi_range(-3, 3), randi_range(-3, 3))).round()
+			glimmer.color = TicketPickup.GLOW.lightened(0.3)
+			glimmer.still = motion_scale() <= 0.0
+			glimmer.z_index = fog_sprite.z_index + 1
+			glimmer.add_to_group("glimmer")
+			add_child(glimmer)
+
+
 # ---------------------------------------------------------------- dev: wall power
 
 ## Wall power (dev only): a splat chips away at the wall it hits, harder the stronger the leap.
@@ -1052,11 +1107,12 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	if is_random():
 		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED %d" % random_seed
 		if progress and _is_running_scene():
-			var under_par := run_time <= par_time
+			var under_par: bool = run_time <= par_time and progress.random_seed_fresh
 			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
-			var paid: int = progress.complete_random(assisted, under_par, random_seed)
+			var no_slime: bool = progress.upgrade_level("slime") <= 0  # pays 1 whatever else happened
+			var paid: int = progress.complete_random(assisted, under_par, random_seed, ticket_found)
 			if paid > 0:
-				reward = {tickets = paid, under_par = paid > progress.TICKETS_RANDOM_WIN}
+				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, slime_cap = no_slime}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif repeat:

@@ -3,7 +3,7 @@ extends Node
 ## Screenshot scenario: a real win (the slime is dropped on the chalice early). A story win shows
 ## the medal tier (`--slow` = a silver-time run instead of gold, `--best=N` = a tier already held
 ## on this level, so a better run says NEW BEST); `--random` plays a randomizer maze and shows the
-## tickets paid (`--slow` = over par, so no under-par bonus).
+## tickets paid (`--slow` = over par, so no under-par bonus; `--ticket` collects the pickup first).
 ## ./tools/screenshot.sh --frames 200 --scene res://tests/demo_rewards.tscn --unlock-all --skin=lemon --random
 const LEVEL := 3
 
@@ -33,5 +33,9 @@ func _drive() -> void:
 	await get_tree().create_timer(1.0).timeout
 	if "--slow" in OS.get_cmdline_user_args():
 		game.run_time = game.par_time * (1.1 if "--random" not in OS.get_cmdline_user_args() else 1.5)
+	if "--ticket" in OS.get_cmdline_user_args():  # grab the maze's ticket pickup first
+		game.slime.position = game.ticket.position
+		await get_tree().physics_frame
+		await get_tree().physics_frame
 	game.slime.position = game.chalice.position
 	queue_free()

@@ -1,7 +1,8 @@
 extends SceneTree
 
-## Ticket vouchers (the renewable cosmetic currency): the ONLY faucet is the randomizer (2 per win,
-## +1 under par, 5 paying wins per UTC day, so 15 a day at most), nothing else pays (first clears,
+## Ticket vouchers (the renewable cosmetic currency): the ONLY faucet is the randomizer (1 per win,
+## +2 for the maze's ticket pickup, +1 under par, 5 paying wins per UTC day, so 20 a day at most; 1 per
+## win with no MORE SLIME upgrade bought), nothing else pays (first clears,
 ## hard clears, medals); the per-day cap goes forwards and backwards in time; the hat wheel's atomic
 ## spin (free first spin, 12 tickets after, picked + paid + won + saved before the wheel turns,
 ## rainbow pity) and its lock outside dev mode while hats are placeholders; the save (kept under the
@@ -42,24 +43,28 @@ func _initialize() -> void:
 	_check(progress.tickets == progress.TICKETS_MAX, "the balance is capped at 99,999")
 	progress.reset_progress()
 
-	# --- Randomizer wins: 2 each, 3 under par, 5 paying wins per UTC day
+	# --- Randomizer wins: 1 each, +2 with the pickup, +1 under par, 5 paying wins per UTC day
 	progress.day_override = 20000
-	_check(progress.random_tickets_due() == 2 and progress.random_tickets_due(true) == 3, "a win is due 2 tickets, 3 under par")
+	progress.upgrades = {"slime": 1}
+	_check(progress.random_tickets_due() == 1 and progress.random_tickets_due(true) == 2 and progress.random_tickets_due(false, 0, true) == 3
+		and progress.random_tickets_due(true, 0, true) == 4, "a win is due 1 ticket, +2 for the pickup, +1 under par (4 at most)")
 	var paid := 0
 	for i in 8:
 		paid += progress.complete_random()
-	_check(progress.tickets == 10 and paid == 10 and progress.randoms_won == 8, "plain wins pay 2 each, 5 per day (%d tickets from 8 wins)" % paid)
+	_check(progress.tickets == 5 and paid == 5 and progress.randoms_won == 8, "plain wins pay 1 each, 5 per day (%d tickets from 8 wins)" % paid)
 	progress.day_override = 20001
-	_check(progress.complete_random(false, true) == 3 and progress.tickets == 13, "the next UTC day pays again; under par adds 1")
-	_check(progress.complete_random(true) == 0 and progress.tickets == 13, "an assisted win never pays")
+	_check(progress.complete_random(false, true) == 2 and progress.tickets == 7, "the next UTC day pays again; under par adds 1")
+	_check(progress.complete_random(true) == 0 and progress.tickets == 7, "an assisted win never pays")
 	progress.reset_progress()
 	progress.day_override = 20003
+	progress.upgrades = {"slime": 1}
 	for i in 5:
-		paid = progress.complete_random(false, true)
-	_check(progress.tickets == 15 and paid == 3, "5 under-par wins in a day pay the 15-ticket maximum")
-	_check(progress.complete_random(false, true) == 0 and progress.tickets == 15 and progress.random_tickets_due(true) == 0, "...and the sixth pays nothing")
+		paid = progress.complete_random(false, true, 0, true)
+	_check(progress.tickets == 20 and paid == 4, "5 wins with pickup and under par in a day pay the 20-ticket maximum")
+	_check(progress.complete_random(false, true, 0, true) == 0 and progress.tickets == 20 and progress.random_tickets_due(true, 0, true) == 0, "...and the sixth pays nothing")
 	# the clock moving backwards never reopens the cap; moving forwards does
 	progress.reset_progress()
+	progress.upgrades = {"slime": 1}
 	progress.day_override = 20010
 	for i in 5:
 		progress.complete_random()
@@ -68,34 +73,74 @@ func _initialize() -> void:
 	_check(progress.random_tickets_due() == 0 and progress.complete_random() == 0, "an earlier day (clock moved back) keeps the cap")
 	_check(progress.random_pay_day == 20010 and progress.random_paid == 5, "...and keeps the stored day and count")
 	progress.day_override = 20011
-	_check(progress.random_tickets_due() == 2 and progress.complete_random() == 2 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
+	_check(progress.random_tickets_due() == 1 and progress.complete_random() == 1 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
 	progress.day_override = 20012
-	_check(progress.random_tickets_due() == 2, "(the day after, again)")
+	_check(progress.random_tickets_due() == 1, "(the day after, again)")
+	progress.day_override = -1
+	progress.reset_progress()
+
+	# --- No MORE SLIME bought: whatever the win earned, it pays 1 in all
+	progress.upgrades = {"speed": 5}
+	_check(progress.random_tickets_due(true, 0, true) == 1 and progress.random_tickets_due(false, 0, true) == 1 and progress.random_tickets_due() == 1,
+		"zero slime upgrades: pickup and under par together still pay only 1")
+	progress.day_override = 20020
+	_check(progress.complete_random(false, true, 0, true) == 1 and progress.tickets == 1, "...and a real payout is 1")
+	progress.upgrades = {"slime": 1}
+	_check(progress.random_tickets_due(true, 0, true) == 4, "one MORE SLIME level lifts the cap")
 	progress.day_override = -1
 	progress.reset_progress()
 
 	# --- A real randomizer win through the game: the result shows the tickets, a slow one pays less
 	progress.day_override = 30000
+	progress.upgrades = {"slime": 1}
 	var game := await _spawn_random(777)
 	game.slime.position = game.chalice.position
 	for i in 10:
 		await physics_frame
-	_check(game.won and game.run_time < game.par_time and game.reward.tickets == 3 and progress.tickets == 3, "a quick randomizer win pays 3 tickets (got %d)" % progress.tickets)
-	_check("+3 TICKETS" in game.hud.rewards_texts and "UNDER PAR" in game.hud.rewards_texts and game.hud.rewards_row.visible, "...and the result screen shows them")
+	_check(game.won and game.run_time < game.par_time and game.reward.tickets == 2 and progress.tickets == 2, "a quick randomizer win without the pickup pays 2 tickets (got %d)" % progress.tickets)
+	_check("NO TICKET FOUND +2" in game.hud.rewards_texts and "UNDER PAR" in game.hud.rewards_texts and game.hud.rewards_row.visible, "...and the result screen shows them")
 	await _stop(game)
+	progress.add_tickets(-progress.tickets, false)
+	progress.random_seed_fresh = true
+	game = await _spawn_random(780)
+	game.slime.position = game.ticket.position
+	await physics_frame
+	await physics_frame
+	_check(game.ticket_found and game.ticket == null, "touching the ticket picks it up")
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(game.reward.tickets == 4 and progress.tickets == 4 and "TICKET FOUND! +4" in game.hud.rewards_texts, "ticket found + under par pays 4 and the screen says TICKET FOUND! +4")
+	await _stop(game)
+	progress.add_tickets(-progress.tickets, false)
+	progress.reset_progress()
+	progress.day_override = 30000
+	game = await _spawn_random(777)
+	game.slime.position = game.ticket.position
+	await physics_frame
+	await physics_frame
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(game.reward.tickets == 1 and "TICKET FOUND! +1" in game.hud.rewards_texts and "MORE SLIME = MORE" in game.hud.rewards_texts,
+		"no slime upgrade: even with the ticket the win pays 1, and the screen says why")
+	await _stop(game)
+	progress.reset_progress()
+	progress.day_override = 30000
+	progress.upgrades = {"slime": 1}
 	game = await _spawn_random(778)
 	game.run_time = game.par_time + 5.0
 	game.slime.position = game.chalice.position
 	for i in 10:
 		await physics_frame
-	_check(game.reward.tickets == 2 and progress.tickets == 5 and not game.hud.rewards_texts.has("UNDER PAR"), "a slow one pays the base 2")
+	_check(game.reward.tickets == 1 and progress.tickets == 1 and not game.hud.rewards_texts.has("UNDER PAR"), "a slow one with no pickup pays the base 1")
 	await _stop(game)
 	progress.random_paid = 5
 	game = await _spawn_random(779)
 	game.slime.position = game.chalice.position
 	for i in 10:
 		await physics_frame
-	_check(progress.tickets == 5 and "DAILY TICKET LIMIT REACHED" in game.hud.rewards_texts, "past the daily cap nothing is paid, and the screen says so")
+	_check(progress.tickets == 1 and "DAILY TICKET LIMIT REACHED" in game.hud.rewards_texts, "past the daily cap nothing is paid, and the screen says so")
 	await _stop(game)
 	progress.day_override = -1
 	progress.reset_progress()
@@ -124,8 +169,19 @@ func _initialize() -> void:
 	progress.tickets = 5
 	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 5 and progress.hats_owned.size() == 2,
 		"too few tickets: no spin, nothing changes")
-	progress.tickets = 12
-	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 12 is enough")
+	_check(progress.spin_cost() == 14, "spin 3 costs 14 (12 + 2 per spin taken after the second)")
+	progress.tickets = 13
+	_check(not progress.can_spin_hats(), "13 is not enough for 14")
+	progress.tickets = 14
+	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 14 is enough")
+	_check(progress.spin_cost_after(0) == 0 and progress.spin_cost_after(1) == 12 and progress.spin_cost_after(2) == 14 and progress.spin_cost_after(5) == 20
+		and progress.spin_cost_after(15) == 40 and progress.spin_cost_after(500) == progress.SPIN_COST_MAX, "price progression 0, 12, 14, ... capped at 40")
+	var last_cost := 0
+	var rising := true
+	for n in range(1, 41):
+		rising = rising and progress.spin_cost_after(n) >= last_cost
+		last_cost = progress.spin_cost_after(n)
+	_check(rising, "each spin costs at least as much as the last")
 	progress.dev_tools = true
 	progress.tickets = 0
 	_check(progress.can_spin_hats() and progress.spin_cost() == 0 and progress.spin_hat() != "" and progress.tickets == 0, "dev mode spins free")
@@ -225,13 +281,14 @@ func _initialize() -> void:
 	progress.reset_progress()
 	progress.day_override = 30000
 	progress.new_random_maze()
-	_check(progress.random_seed_fresh and progress.complete_random(false, true, 111) == 3, "a fresh seed under par pays 3")
+	progress.upgrades = {"slime": 1}
+	_check(progress.random_seed_fresh and progress.complete_random(false, true, 111) == 2, "a fresh seed under par pays 2")
 	_check(not progress.random_seed_fresh and progress.seed_paid_today(111), "...then it counts as replayed and paid today")
 	_check(progress.complete_random(false, true, 111) == 0 and progress.random_paid == 1, "replaying a paid seed pays nothing and doesn't use the daily cap")
 	progress.random_seed_fresh = false  # typed in
-	_check(progress.complete_random(false, true, 222) == 2 and progress.random_paid == 2, "a typed seed pays the base 2 but no under-par bonus")
+	_check(progress.complete_random(false, true, 222) == 1 and progress.random_paid == 2, "a typed seed pays the base 1 but no under-par bonus")
 	progress.new_random_maze()
-	_check(progress.complete_random(false, true, 333) == 3, "NEW MAZE makes the next seed fresh again")
+	_check(progress.complete_random(false, true, 333) == 2, "NEW MAZE makes the next seed fresh again")
 	for i in 14:
 		progress.random_paid = 0
 		progress.complete_random(false, false, 1000 + i)
@@ -242,7 +299,7 @@ func _initialize() -> void:
 	progress.complete_random(false, false, 1013)
 	_check(progress.random_paid_seeds.size() == 10 and progress.seed_paid_today(1013), "a day going backwards keeps the list")
 	progress.day_override = 30001
-	_check(not progress.seed_paid_today(1013) and progress.complete_random(false, false, 1013) == 2 and progress.random_paid_seeds == [1013], "a new day clears the list and the seed pays again")
+	_check(not progress.seed_paid_today(1013) and progress.complete_random(false, false, 1013) == 1 and progress.random_paid_seeds == [1013], "a new day clears the list and the seed pays again")
 	var game_seed: Node2D = await _spawn_random(5150)
 	progress.random_paid_seeds.assign([5150])
 	progress.random_pay_day = 30001
