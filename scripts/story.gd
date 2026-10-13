@@ -56,7 +56,18 @@ static func play(tree: SceneTree, which: String, next := "") -> void:
 	UIKit.go(tree, SCENE)
 
 
-## Whether the intro should play before level 1: only for a save that hasn't seen it.
+## True once the game's boot title has been reached (so the launch trailer is only ever offered once per run).
+static var launched := false
+
+
+## The launch trailer: the first time the game opens the title (the current scene, i.e. a real
+## launch, not a test instancing it) on a save that hasn't seen the intro.
+static func launch_due(title: Node, progress: Node) -> bool:
+	return not launched and title.is_inside_tree() and title.get_tree().current_scene == title \
+		and intro_due(progress)
+
+
+## Whether the intro should play automatically: only for a save that hasn't seen it.
 static func intro_due(progress: Node) -> bool:
 	return progress != null and not progress.dev_tools and not progress.has_seen_story(progress.STORY_INTRO)
 

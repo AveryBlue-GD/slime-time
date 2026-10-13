@@ -13,6 +13,16 @@ var story_button: Button
 
 
 func _ready() -> void:
+	# The very first launch of a fresh save opens with the animated intro (the launch trailer),
+	# which then wipes into this screen. Only the title the game boots into counts.
+	if Story.launch_due(self, Progress):
+		Story.launched = true
+		Story.mode = "intro"
+		Story.next_scene = UIKit.TITLE_SCENE
+		get_tree().change_scene_to_file.call_deferred(Story.SCENE)
+		return
+	if get_tree().current_scene == self:
+		Story.launched = true  # the booted title: no trailer later this run
 	UIKit.setup_screen(self, "")
 	# The logo is drawn in the slime sheet's goo shades, so the skin shader recolors it too.
 	var logo := TextureRect.new()
@@ -88,13 +98,10 @@ func _enter() -> void:
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
-## First launch: straight into level 1.
+## First launch: straight into level 1 (the intro already played when the game opened).
 func _play() -> void:
 	Progress.start_story(1)
-	if Story.intro_due(Progress):
-		Story.play(get_tree(), "intro", UIKit.GAME_SCENE)
-	else:
-		UIKit.go(get_tree(), UIKit.GAME_SCENE)
+	UIKit.go(get_tree(), UIKit.GAME_SCENE)
 
 
 ## The intro again (and then back to the title).

@@ -21,6 +21,7 @@ func _initialize() -> void:
 	# --- Title: fresh save -> PLAY -> level 1; existing save -> ENTER THE HUB
 	progress.levels_cleared = 0
 	progress.tutorial_seen = 0
+	progress.story_seen = 0  # even with the intro unseen, PLAY no longer replays it (it plays at launch)
 	_check(progress.is_fresh_save(), "a save with nothing cleared is fresh")
 	var title: Control = load("res://scenes/title.tscn").instantiate()
 	root.add_child(title)
@@ -29,7 +30,7 @@ func _initialize() -> void:
 	title.enter_button.pressed.emit()
 	await _frames(90)
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/main.tscn" and current_scene.level == 1,
-		"PLAY goes straight into level 1")
+		"PLAY goes straight into level 1 (no intro)")
 	if current_scene:
 		current_scene.free()
 	current_scene = null

@@ -82,6 +82,45 @@ func _initialize() -> void:
 	progress.reset_progress()
 	_check(progress.story_seen == 0, "RESET PROGRESS clears the flag")
 
+	# --- Launch trailer: the boot title hands a fresh save to the intro, which wipes back into the title
+	progress.reset_progress()
+	Story.launched = false
+	await _frames(60)  # let the wipes the checks above started land (they change scenes)
+	if current_scene:
+		current_scene.free()
+		current_scene = null
+	var packed: PackedScene = load("res://scenes/title.tscn")
+	Story.launched = false
+	var boot: Control = packed.instantiate()
+	root.add_child(boot)  # not the current scene: a test instancing the title is never hijacked
+	await _frames(2)
+	_check(boot.enter_button != null and current_scene != boot and not Story.launched, "a title that isn't the booted scene doesn't start the trailer or use up the launch")
+	boot.free()
+	progress.dev_tools = true
+	change_scene_to_packed(packed)  # like the real boot: the title is the current scene before it is ready
+	await _frames(3)
+	_check(current_scene != null and current_scene.scene_file_path == UIKit.TITLE_SCENE and Story.launched, "dev mode: the booted title just builds (never the trailer)")
+	progress.dev_tools = false
+	current_scene.free()
+	current_scene = null
+	Story.launched = false
+	change_scene_to_packed(packed)
+	await _frames(5)
+	_check(current_scene != null and current_scene.scene_file_path == Story.SCENE and Story.launched, "booting a fresh save opens the intro first")
+	var trailer := current_scene
+	await _frames(20)
+	trailer._unhandled_input(_key(KEY_ESCAPE))
+	await _frames(90)
+	_check(progress.has_seen_story(progress.STORY_INTRO), "skipping the trailer marks it seen")
+	_check(current_scene != null and current_scene.scene_file_path == UIKit.TITLE_SCENE and current_scene.enter_button.text == "PLAY",
+		"...and lands on the title (PLAY, fresh save)")
+	Story.launched = false
+	_check(not Story.launch_due(current_scene, progress), "second launch: straight to the title, no trailer")
+	current_scene.free()
+	current_scene = null
+	Story.launched = true
+	progress.reset_progress()
+
 	# --- Left alone, every shot plays and moves on by itself (runs every shot's drawing)
 	progress.story_seen = 0
 	for which in ["intro", "finale"]:
