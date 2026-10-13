@@ -8,7 +8,7 @@ Run from the project root:  python tools/make_ui_art.py
 - panel.png : 12x12 nine-slice framed panel (outline, inner rim, soft top light), 4 px margins.
 - hud_pod.png : 8x8 nine-slice, a lighter-weight translucent panel for the HUD, 3 px margins.
 - icon_drop / icon_clock / icon_lock / icon_check.png : 8x8 icons in white/grey shades so the
-  game can tint them (the drop takes the skin color, the rest the text color); icon_coin.png is
+  game can tint them (the drop takes the skin color, the rest the text color); icon_coin.png and icon_ticket.png (a notched voucher) are
   drawn in gold.
 - check_off / check_on.png (9x9) and grabber / grabber_hover.png (5x9): checkbox and slider knob.
 """
@@ -157,15 +157,15 @@ ICONS = {
         ".kyoook.",
         "..kkkk..",
     ],
-    "glob": [  # tinted teal in game: a bead of crystallized goo (the cosmetic currency)
-        "..eeee..",
-        ".e1122e.",
-        "e112222e",
-        "e122222e",
-        "e222222e",
-        "e222222e",
-        ".e2222e.",
-        "..eeee..",
+    "ticket": [  # drawn in gold (not tinted): a voucher with a notch bitten out of each side
+        "........",
+        "yyyyyyyy",
+        "yYYYYYYy",
+        ".YYooYY.",
+        ".YYooYY.",
+        "yYYYYYYy",
+        "oooooooo",
+        "........",
     ],
     "medal": [  # a ribbon and a disc: gold when earned, dim when not
         ".e....e.",
