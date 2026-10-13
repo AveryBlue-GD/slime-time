@@ -131,3 +131,11 @@ classes unchanged; the chalice sits exactly at the target route; tickets adapt (
 cell fits). Win text shows USED N% SLIME (+ EFFICIENT! under 25%). Story levels untouched. See
 [level-design.md](level-design.md) section 5; test `tests/test_random_usage.gd`. CLAUDE.md's line on
 `Levels` (randomizer 18-24 x 10-13, 85%) is now out of date (not edited: off limits for the agent).
+
+## Hat audit (2026-10-14)
+Full Mad Hatter pass (findings, changes and what's still imperfect: `docs/hats-audit.md`; shots
+`docs/polish-shots/hats_before_*` / `hats_after_*`). Hats are fitted to the slime's measured head in five widths
+(NARROW / NORMAL / WIDE / SQUEEZED for sideways splats / BROAD) plus LOOSE (off the head: flying, hat wheel);
+`Hats.lift` raises a hat 1-3 px in the few frames where it would cover the eyes; head_point ignores sparkles.
+Diagnostic contact sheets: `tests/demo_hat_audit.tscn` (`-- --unlock-all --out=/abs/dir`); checks:
+`tests/test_hat_fit.gd` (also runs `python3 tools/make_hats.py --check`).

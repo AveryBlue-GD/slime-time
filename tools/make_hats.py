@@ -1,72 +1,184 @@
 """Generates the hat sprites (no dependencies): assets/sprites/hats.png.
 
-Run from the project root:  python tools/make_hats.py
+Run from the project root:  python tools/make_hats.py   (--check: only compare with hats.png)
 
 Hats fit the slime instead of sitting on it: each one's underside is shaped to the slime's dome,
-so brims ring the head and caps, helmets and crowns hug down over its top and sides. And because
-the slime squashes and stretches, every hat comes in three widths (one row each): 0 narrow and
-tall (the slime stretched into a leap), 1 normal, 2 wide and flat (squashed to charge or land).
-The game picks the row that matches the slime's frame (Slime.head_width).
+so brims ring the head and caps, helmets and crowns hug down over its top and sides. The dome is
+measured off the slime's own sheet (assets/sprites/slime_sheet.png, the same way the game finds
+Slime.head_point / head_width), so a hat fits whatever the head looks like.
+
+Because the slime squashes and stretches, every hat comes in five fitted widths plus a loose one,
+one row each (the order matches Hats.Width):
+  0 NARROW    stretched into a leap, or a little squeezed (head 12 px across)
+  1 NORMAL    at rest (13-14 px)
+  2 WIDE      squashed flat to charge or land (17+ px)
+  3 SQUEEZED  squeezed sideways against a wall in a splat (11 px or less)
+  4 BROAD     a little squashed (15-16 px)
+  5 LOOSE     off the head (popped off by a leap, or on the hat wheel): its own shape, with the
+              dark inside showing where the head would be
+Hats.width_for(Slime.head_width) picks the row; WIDTH_CLASSES below must agree with it.
 
 Frames are 32x16, one column per hat (its `column` in scripts/hats.gd). The top of the slime's
-head goes on pixel (16, 11) of the frame (HEAD below), so a hat reaches about 4 px down the dome.
-Hats are lit from the top-left like everything else, with a dark warm outline.
+head goes on pixel (16, 11) of the frame (HEAD below; x 16 is the line between the two middle
+pixels, like the slime's own center), so a hat reaches about 3 px down the dome.
 
-Hats stay compact: brims stick out only 2-3 px past the head and nothing towers more than about
-7 px above it, so the slime still reads as the star. The rainbow hat (a rainbow arching over the
-head from two little clouds) is the rare one on the hat wheel; the game flows its colors.
+Craft rules (the slime's own): lit from the top-left; every material is a hue-shifted ramp (lights
+warmer, shadows cooler, see ramp()); each hat has one dark outline in its main material's hue,
+shifted cool like the slime's (never black); no dithering or scattered noise; a few deliberate
+details that read at 1x. Hats stay compact: brims 2-3 px past the head at most and nothing much
+taller than 7 px above it, so the slime still reads as the star. The rainbow hat (a rainbow
+arching over the head from two little clouds) is the rare one on the hat wheel; the game flows its
+colors (assets/shaders/rainbow_hat.gdshader).
 
-These are placeholders until the real hat list is decided: change a hat's drawing below and
-keep HATS in the same order as Hats.LIST.
+The output is a pure function of this file and the slime sheet (deterministic). Keep HATS in the
+same order as Hats.LIST.
 """
+import colorsys
+import json
 import math
 from pathlib import Path
 
-from upscale_png import write_png
+from upscale_png import read_png, write_png
 
-OUT = Path(__file__).resolve().parent.parent / "assets" / "sprites"
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "assets" / "sprites"
 W, H = 32, 16
 HEAD = (16, 11)  # where the top of the slime's head sits in a frame
 CLEAR = (0, 0, 0, 0)
-OUTLINE = (30, 20, 22, 255)
-# Widths: (horizontal scale, vertical scale) of the dome the hat fits: stretched, normal, squashed.
-WIDTHS = [(0.85, 1.15), (1.0, 1.0), (1.22, 0.82)]
-# The slime's dome at normal size, measured off its idle frame: about 16 px wide with a flattish
-# top (half-widths 5, 6, 7, 8 px on the four rows under the top of its head).
-DOME = (8.0, 5.5)
+NARROW, NORMAL, WIDE, SQUEEZED, BROAD, LOOSE = range(6)
+ROWS = 6
+# Head widths (Slime.head_width: 3 px below the top of the body) each fitted row is for.
+WIDTH_CLASSES = {SQUEEZED: (0, 11), NARROW: (12, 12), NORMAL: (13, 14), BROAD: (15, 16), WIDE: (17, 99)}
+# How tall each width draws its hats (crowns, cones, horns) next to normal: squashed flatter,
+# stretched taller.
+HEIGHT = {NARROW: 1.08, NORMAL: 1.0, WIDE: 0.84, SQUEEZED: 1.0, BROAD: 0.93, LOOSE: 1.0}
+# Animations a hat is worn through (it's popped off for launch and air).
+WORN = ("idle", "glide_", "charge_", "land_", "splat_", "recover", "celebrate")
 
+
+# ---------------------------------------------------------------- the slime's measured head
+
+def body_rows(px, x0, y0, size):
+    """The slime body's rows in one sheet frame: [(y, left, right)], from its largest 4-connected
+    blob of opaque pixels (so loose sparkles and goo flecks don't count). Matches Slime.gd."""
+    solid = {(x, y) for y in range(size) for x in range(size) if px[y0 + y][x0 + x][3] > 127}
+    best, seen = set(), set()
+    for start in sorted(solid, key=lambda p: (p[1], p[0])):
+        if start in seen:
+            continue
+        blob, todo = set(), [start]
+        seen.add(start)
+        while todo:
+            x, y = todo.pop()
+            blob.add((x, y))
+            for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if n in solid and n not in seen:
+                    seen.add(n)
+                    todo.append(n)
+        if len(blob) > len(best):
+            best = blob
+    rows = {}
+    for x, y in best:
+        lo, hi = rows.get(y, (x, x))
+        rows[y] = (min(lo, x), max(hi, x))
+    return [(y, *rows[y]) for y in sorted(rows)]
+
+
+def measure_domes():
+    """The slime's head per width class, measured over the worn frames of that class:
+    `dome`  half-widths on each row down from its top (the median, so the rest pose, by far the
+            most seen, fits snugly),
+    `span`  its half-width at its widest (in the slimmest frame: brims reach a little past this),
+    (Where a frame's eyes sit high, the game lifts the hat just enough to clear them: Hats.lift.)"""
+    _, _, px = read_png(str(OUT / "slime_sheet.png"))
+    manifest = json.loads((OUT / "slime_sheet.json").read_text())
+    size = int(manifest["frame_size"])
+    samples = {k: [[] for _ in range(8)] for k in WIDTH_CLASSES}
+    spans = {k: [] for k in WIDTH_CLASSES}
+    for name, info in manifest["anims"].items():
+        if not name.startswith(WORN):
+            continue
+        for f in range(int(info["frames"])):
+            x0, y0 = f * size, int(info["row"]) * size
+            rows = body_rows(px, x0, y0, size)
+            if len(rows) < 4:
+                continue
+            head_w = rows[3][2] - rows[3][1] + 1
+            cls = next(k for k, (lo, hi) in WIDTH_CLASSES.items() if lo <= head_w <= hi)
+            for i in range(8):
+                r = rows[min(i, len(rows) - 1)]
+                samples[cls][i].append((r[2] - r[1] + 1) / 2.0)
+            spans[cls].append(max((r[2] - r[1] + 1) / 2.0 for r in rows))
+    heads = {}
+    for cls, per_row in samples.items():
+        d = [sorted(v)[len(v) // 2] for v in per_row]
+        for i in range(1, len(d)):  # a dome never gets narrower going down
+            d[i] = max(d[i], d[i - 1])
+        heads[cls] = {"dome": d, "span": min(spans[cls])}
+    heads[LOOSE] = heads[NARROW]
+    return heads
+
+
+# ---------------------------------------------------------------- colors
 
 def rgb(r, g, b):
     return (r, g, b, 255)
 
 
-# Material ramps, lit (left/top) to shadow (right/bottom).
-FELT = [rgb(110, 100, 132), rgb(70, 62, 88), rgb(44, 38, 58), rgb(28, 24, 38)]
-RIBBON = [rgb(232, 96, 104), rgb(176, 40, 58), rgb(120, 24, 40)]
-KNIT = [rgb(244, 112, 100), rgb(208, 64, 66), rgb(160, 40, 52), rgb(110, 28, 42)]
-WHITE = [rgb(255, 255, 255), rgb(236, 236, 242), rgb(206, 208, 220), rgb(160, 164, 182)]
-GOLD = [rgb(255, 244, 180), rgb(250, 204, 96), rgb(206, 142, 50), rgb(140, 86, 30)]
-LEATHER = [rgb(204, 150, 96), rgb(164, 108, 62), rgb(120, 76, 44), rgb(82, 50, 30)]
-PURPLE = [rgb(176, 126, 236), rgb(128, 80, 200), rgb(90, 52, 152), rgb(58, 32, 104)]
-BLUE = [rgb(120, 178, 244), rgb(68, 120, 216), rgb(44, 84, 170), rgb(28, 52, 116)]
-METAL = [rgb(226, 232, 242), rgb(176, 184, 200), rgb(122, 130, 150), rgb(80, 86, 106)]
-BONE = [rgb(250, 242, 220), rgb(214, 198, 164), rgb(170, 152, 118)]
-RED = [rgb(232, 72, 84), rgb(178, 36, 52)]
-YELLOW = [rgb(255, 228, 110), rgb(232, 180, 50)]
-GREEN = [rgb(130, 220, 120), rgb(70, 160, 80)]
-VELVET = [rgb(196, 40, 70), rgb(132, 22, 48)]
-RUBY, SAPPHIRE, EMERALD = rgb(236, 50, 80), rgb(70, 140, 240), rgb(70, 200, 110)
+def _hsv(r, g, b, dh, ds, dv, add=0.0):
+    hh, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+    r2, g2, b2 = colorsys.hsv_to_rgb((hh + dh) % 1.0, max(0.0, min(1.0, s * ds)), max(0.0, min(1.0, v * dv + add)))
+    return rgb(round(r2 * 255), round(g2 * 255), round(b2 * 255))
+
+
+def ramp(r, g, b):
+    """A material's four shades, lit to shadow: [light, mid, dark, deep]. Lights drift warmer and
+    paler, shadows cooler and richer (Skins.shades' recipe, toned down for cloth and metal)."""
+    return [_hsv(r, g, b, 0.025, 0.75, 1.12, 0.08), rgb(r, g, b), _hsv(r, g, b, -0.03, 1.08, 0.72),
+            _hsv(r, g, b, -0.06, 1.12, 0.5)]
+
+
+def ink(r, g, b):
+    """A hat's outline: its main material taken very dark and shifted cool, like the slime's
+    outline (Skins.shades outline); greys and whites get a cool blue-violet."""
+    hh, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+    if s < 0.15:
+        hh, s = 0.68, 0.45
+    r2, g2, b2 = colorsys.hsv_to_rgb((hh - 0.06) % 1.0, min(1.0, max(0.5, s * 1.2)), max(0.13, v * 0.2))
+    return rgb(round(r2 * 255), round(g2 * 255), round(b2 * 255))
+
+
+FELT = ramp(66, 58, 86)
+RIBBON = ramp(200, 52, 66)
+KNIT = ramp(206, 64, 70)
+CREAM = [rgb(255, 254, 246), rgb(236, 236, 244), rgb(204, 208, 228), rgb(164, 168, 198)]
+GOLD = [rgb(255, 242, 170), rgb(246, 196, 82), rgb(204, 132, 46), rgb(142, 78, 34)]
+LEATHER = ramp(164, 106, 62)
+PURPLE = ramp(124, 78, 196)
+BLUE = ramp(62, 116, 214)
+METAL = [rgb(214, 222, 236), rgb(150, 160, 186), rgb(106, 114, 146), rgb(70, 74, 104)]
+BONE = [rgb(252, 244, 222), rgb(222, 204, 166), rgb(176, 152, 116)]
+RED = ramp(220, 60, 72)
+YELLOW = ramp(244, 200, 64)
+GREEN = ramp(76, 176, 92)
+VELVET = ramp(150, 30, 60)
+RUBY, SAPPHIRE, EMERALD = rgb(236, 56, 84), rgb(84, 150, 246), rgb(74, 206, 120)
 
 
 class Hat:
-    """One hat at one width: a 20x16 grid, the dome it fits, and helpers to paint shaded shapes."""
+    """One hat at one width: a 32x16 grid, the dome it fits, and helpers to paint shaded shapes."""
 
-    def __init__(self, sx: float, sy: float):
+    def __init__(self, width: int, head: dict):
+        self.width = width
         self.px = [[CLEAR] * W for _ in range(H)]
-        self.sx, self.sy = sx, sy
-        self.rx = DOME[0] * sx       # the dome's half-width at this size
-        self.ry = DOME[1] * sy
+        self.dome = head["dome"]
+        self.rx = max(self.dome[:5])              # the head's half-width near its top
+        self.span = head["span"]                  # ...and at its widest: brims reach past this
+        self.sx = self.rx / NORMAL_RX             # how much wider than normal
+        self.sy = HEIGHT[width]
         self.cx, self.top = HEAD
+        self.ink = rgb(30, 20, 30)
+        self.lining = rgb(24, 18, 30)
 
     def put(self, x, y, col):
         if 0 <= x < W and 0 <= y < H and col is not None:
@@ -75,294 +187,378 @@ class Hat:
     def get(self, x, y):
         return self.px[y][x] if 0 <= x < W and 0 <= y < H else CLEAR
 
-    def X(self, dx: float) -> float:
-        """A horizontal offset from the hat's center, scaled to this width."""
-        return self.cx + dx * self.sx
+    def filled(self, x, y):
+        return self.get(x, y)[3] > 0
 
     def Y(self, dy: float) -> float:
         """A vertical offset from the top of the head, scaled to this height."""
         return self.top + dy * self.sy
 
     def dome_width(self, y: float) -> float:
-        """Half-width of the slime's dome at row y (0 above its top)."""
-        d = y + 0.5 - self.top
-        if d <= 0:
+        """Half-width of the slime's head at row y (pixel center y; 0 above its top)."""
+        i = math.floor(y - self.top)
+        if i < 0:
             return 0.0
-        return self.rx * math.sqrt(max(0.0, 1 - ((self.ry - d) / self.ry) ** 2))
+        return self.dome[min(i, len(self.dome) - 1)]
 
-    def shape(self, test, ramp, light_dir=(-0.7, -0.5)):
-        """Paints every pixel where test(x, y) is true, shaded across the shape by `ramp`."""
+    def on_head(self, x: float, y: float) -> bool:
+        return abs(x - self.cx) < self.dome_width(y)
+
+    def shape(self, test, ramp_, light="dome"):
+        """Paints every pixel where test(x, y) is true, shaded across the shape by `ramp_`, lit
+        from the top-left: 'dome' (round), 'cyl' (an upright cylinder: lit down its left side) or
+        'flat' (a brim: its top edge lit, its underside dark)."""
         pts = [(x, y) for y in range(H) for x in range(W) if test(x + 0.5, y + 0.5)]
         if not pts:
             return []
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+        n = len(ramp_)
         for x, y in pts:
             u = (x - x0 + 0.5) / (x1 - x0 + 1) * 2 - 1
             v = (y - y0 + 0.5) / (y1 - y0 + 1) * 2 - 1
-            lit = u * light_dir[0] + v * light_dir[1]
-            n = len(ramp)
-            idx = 0 if lit > 0.55 else 1 if lit > 0.0 else 2 if lit > -0.55 else 3
-            self.put(x, y, ramp[min(idx, n - 1)])
+            if light == "cyl":
+                lit = -u * 0.9 - v * 0.2
+                idx = 0 if lit > 0.5 else 1 if lit > -0.25 else 2 if lit > -0.7 else 3
+            elif light == "flat":
+                top = (x, y - 1) not in pts
+                idx = 0 if top and u < 0.2 else 1 if top or y < y1 else 2
+                if idx == 1 and u > 0.75:
+                    idx = 2
+            else:
+                lit = -u * 0.62 - v * 0.62
+                idx = 0 if lit > 0.42 else 1 if lit > -0.15 else 2 if lit > -0.6 else 3
+            self.put(x, y, ramp_[min(idx, n - 1)])
         return pts
 
-    def ellipse(self, cx, cy, rx, ry, ramp, **kw):
-        return self.shape(lambda x, y: ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0, ramp, **kw)
+    def ellipse(self, cx, cy, rx, ry, ramp_, **kw):
+        return self.shape(lambda x, y: ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0, ramp_, **kw)
 
-    def band(self, y0: float, y1: float, ramp, extra: float = 0.7):
-        """A band hugging the dome between rows y0 and y1, `extra` px wider than it on each side:
-        what makes a hat sit around the head instead of on it."""
+    def cap(self, rise: float, down: float, ramp_, extra=0.6, light="dome", thick=1.5):
+        """A cap hugging the head: its crown is the dome raised `rise` px (rounded like the head),
+        and lower down it stays within `thick` px of the head (plus `extra` on each side), down to
+        `down` px below the top of the head. So it wraps round the head instead of mushrooming."""
+        lift = rise * self.sy
+        y_bot = self.Y(down)
+
         def inside(x, y):
-            if not (y0 <= y <= y1):
+            if y > y_bot:
                 return False
-            hw = max(self.dome_width(y), self.rx * 0.55) + extra
-            return abs(x - self.cx) <= hw
-        return self.shape(inside, ramp)
+            crown = self.dome_width(y + lift)
+            if crown > 0:  # never a pointy top, even on a narrow squeezed head
+                crown = max(crown, self.rx * 0.6)
+            if crown > 0 and self.dome_width(y + lift - 1) == 0:  # round off the very top row
+                crown = max(1.5, crown - 1.5)
+            hug = max(self.dome_width(y + thick), self.rx * 0.6)
+            return crown > 0 and abs(x - self.cx) <= min(crown, hug) + extra
+        return self.shape(inside, ramp_, light=light)
 
-    def outline(self):
-        filled = {(x, y) for y in range(H) for x in range(W) if self.px[y][x][3] > 0}
+    def recolor(self, test, col):
+        """Repaints already-painted pixels where test(x, y, old_color) holds (pixel coords)."""
+        for y in range(H):
+            for x in range(W):
+                if self.filled(x, y) and test(x, y, self.px[y][x]):
+                    self.px[y][x] = col(x, y, self.px[y][x]) if callable(col) else col
+
+    def finish(self):
+        """The loose version shows its dark inside where the head would be; then the outline."""
+        if self.width == LOOSE:
+            for y in range(self.top, H):
+                xs = [x for x in range(W) if self.filled(x, y)]
+                if not xs:
+                    continue
+                for x in range(xs[0], xs[-1] + 1):
+                    if not self.filled(x, y) and self.on_head(x + 0.5, y + 0.5):
+                        self.put(x, y, self.lining)
+        filled = {(x, y) for y in range(H) for x in range(W) if self.filled(x, y)}
         for y in range(H):
             for x in range(W):
                 if (x, y) not in filled and any((x + dx, y + dy) in filled for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-                    self.px[y][x] = OUTLINE
+                    self.px[y][x] = self.ink
+
+
+def fx(v: float) -> int:
+    return math.floor(v)
 
 
 # ---------------------------------------------------------------- the hats
 
 def top_hat(h: Hat):
-    h.ellipse(h.cx, h.Y(1.6), h.rx + 2.0, 1.8 * h.sy, FELT)                       # brim ringing the head
-    h.shape(lambda x, y: abs(x - h.cx) <= h.rx * 0.72 and h.Y(-6.5) <= y <= h.Y(1.2), FELT)  # crown
-    for x in range(W):                                                          # red band
-        for y in range(H):
-            if h.get(x, y) in FELT and h.Y(-1.4) <= y + 0.5 <= h.Y(0.6) and abs(x + 0.5 - h.cx) <= h.rx * 0.72:
-                h.put(x, y, RIBBON[0] if x + 0.5 < h.cx else RIBBON[1])
-    bx = round(h.cx + h.rx * 0.35)                                              # gold buckle
-    by = round(h.Y(-0.5))
-    h.put(bx, by, GOLD[1])
-    h.put(bx + 1, by, GOLD[2])
-    for y in range(round(h.Y(-5.6)), round(h.Y(-2))):                           # sheen down the crown
-        h.put(round(h.cx - h.rx * 0.5), y, FELT[0])
-    h.outline()
+    h.ink, h.lining = ink(*FELT[1][:3]), FELT[3]
+    brim_y = h.Y(1.3)
+    h.ellipse(h.cx, brim_y, h.span + 1.6, 1.3, FELT, light="flat")              # brim ringing the head
+    half = max(2.5, round(h.rx * 0.7 * 2) / 2)                               # crown: an upright cylinder
+    h.shape(lambda x, y: abs(x - h.cx) <= half and h.Y(-6.0) <= y <= brim_y - 0.5, FELT, light="cyl")
+    h.recolor(lambda x, y, c: abs(x + 0.5 - h.cx) <= half and h.Y(-1.7) <= y + 0.5 <= h.Y(-0.2),   # band
+              lambda x, y, c: RIBBON[0] if x + 0.5 < h.cx - half + 2 else RIBBON[1] if x + 0.5 < h.cx + half - 1.5 else RIBBON[2])
+    if half >= 4:                                                             # gold buckle on the band
+        bx, by = fx(h.cx + half * 0.35), fx(h.Y(-1.0))
+        h.put(bx, by, GOLD[0])
+        h.put(bx + 1, by, GOLD[2])
+    for y in range(fx(h.Y(-5.5)), fx(h.Y(-2.0))):                             # sheen down the crown
+        h.put(fx(h.cx - half + 1.5), y, FELT[0])
+    h.finish()
 
 
 def beanie(h: Hat):
-    h.band(h.Y(-3.6), h.Y(1.5), KNIT, extra=0.8)                                # knit dome hugging the head
-    h.ellipse(h.cx, h.Y(-0.8), h.rx + 0.6, 4.5 * h.sy, KNIT)
-    for x in range(W):                                                          # ribbed cuff
-        for y in range(H):
-            if h.get(x, y) in KNIT and h.Y(0.4) <= y + 0.5 <= h.Y(3.2):
-                h.put(x, y, KNIT[1] if x % 2 == 0 else KNIT[2])
-    for x in range(W):                                                          # knit rows
-        for y in range(H):
-            if h.get(x, y) in KNIT and y + 0.5 < h.Y(0.4) and (x + y) % 3 == 0:
-                h.put(x, y, KNIT[2])
-    h.ellipse(h.cx, h.Y(-5.6), 2.0, 1.8, WHITE)                                 # pompom
-    h.put(round(h.cx) - 1, round(h.Y(-6.3)), WHITE[0])
-    h.outline()
+    h.ink, h.lining = ink(*KNIT[1][:3]), KNIT[3]
+    h.cap(4.0, 3.4, KNIT, extra=0.6)                                         # knit dome hugging the head
+    cuff_y = fx(h.Y(0.6))
+    h.recolor(lambda x, y, c: y >= cuff_y,                                    # ribbed cuff, folded up
+              lambda x, y, c: KNIT[2] if (x - fx(h.cx)) % 2 == 1 else KNIT[0] if x + 0.5 < h.cx - h.rx * 0.3 else KNIT[1])
+    h.recolor(lambda x, y, c: y == cuff_y - 1 and h.get(x, y + 1) in KNIT, KNIT[3])   # the fold's shadow
+    h.ellipse(h.cx, h.Y(-3.6) - 0.6, 1.6 if h.width != SQUEEZED else 1.2, 1.4, CREAM)  # pompom
+    h.finish()
 
 
 def party_hat(h: Hat):
-    tip = (h.cx + 1, h.Y(-8.0))
-    base_y, half = h.Y(1.3), h.rx * 0.8
+    h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
+    tip = (h.cx + 0.5, h.Y(-6.8))
+    base_y, half = h.Y(1.2), max(2.5, h.rx * 0.78)
 
     def cone(x, y):
         if not (tip[1] <= y <= base_y):
             return False
         t = (y - tip[1]) / (base_y - tip[1])
-        return abs(x - (tip[0] + (h.cx - tip[0]) * t)) <= half * t + 0.4
-    pts = h.shape(cone, [YELLOW[0], YELLOW[0], YELLOW[1], YELLOW[1]])
-    for x, y in pts:                                                            # diagonal stripes
-        if (x + y * 2) % 6 < 2:
-            h.put(x, y, BLUE[1] if x + 0.5 < h.cx else BLUE[2])
-    for x, y in pts:                                                            # polka dots
-        if (x * 7 + y * 5) % 11 == 0:
-            h.put(x, y, RED[0])
-    h.band(h.Y(0.4), h.Y(1.8), [WHITE[1], WHITE[2], WHITE[3]], extra=0.5)       # elastic rim round the head
-    h.ellipse(tip[0], tip[1] - 0.8, 1.6, 1.4, [RED[0], RED[0], RED[1], RED[1]])  # pompom
-    h.outline()
+        return abs(x - (tip[0] + (h.cx - tip[0]) * t)) <= half * t + 0.5
+    pts = h.shape(cone, YELLOW, light="cyl")
+    bottom = max(y for x, y in pts)
+    stripes = {fx(tip[1] + (base_y - tip[1]) * t) for t in (0.42, 0.74)}
+    for x, y in pts:
+        if y == bottom:                                                       # red rim
+            h.put(x, y, RED[1] if x + 0.5 < h.cx + half * 0.4 else RED[2])
+        elif y in stripes:                                                    # two bands round the cone
+            h.put(x, y, BLUE[0] if x + 0.5 < h.cx - 1 else BLUE[1] if x + 0.5 < h.cx + half * 0.5 else BLUE[2])
+    h.ellipse(tip[0], tip[1] - 0.6, 1.4, 1.3, RED)                            # pompom
+    h.finish()
 
 
 def baseball_cap(h: Hat):
-    h.band(h.Y(-3.0), h.Y(1.4), BLUE, extra=0.6)                                # crown hugging the head
-    h.ellipse(h.cx, h.Y(-0.4), h.rx + 0.5, 3.8 * h.sy, BLUE)
-    for x in range(W):                                                          # panel seams
-        for y in range(H):
-            if h.get(x, y) in BLUE and abs(x + 0.5 - h.cx) < 0.6 and y + 0.5 < h.Y(1.0):
-                h.put(x, y, BLUE[3])
-    h.ellipse(h.cx + h.rx + 0.5, h.Y(1.0), 2.8, 1.3, BLUE)                      # short brim out to the side
-    for x in range(W):                                                          # stitching on the brim
-        y = round(h.Y(1.0))
-        if h.get(x, y) in BLUE and x + 0.5 > h.cx + h.rx - 0.5 and x % 2:
-            h.put(x, y, WHITE[1])
-    h.put(round(h.cx), round(h.Y(-4.0)), RED[0])                                # top button
-    h.outline()
+    h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
+    h.cap(3.4, 3.0, BLUE, extra=0.5)                                          # crown hugging the head
+    h.recolor(lambda x, y, c: x == fx(h.cx) and y + 0.5 < h.Y(1.0) and c in BLUE[:2], BLUE[2])  # front seam
+    h.put(fx(h.cx) - 1, fx(h.Y(-3.0)), BLUE[0])                              # top button
+    h.put(fx(h.cx), fx(h.Y(-3.0)), BLUE[1])
+    vy, vw = h.Y(2.0), max(2.5, h.rx)                                      # the bill, out over the brow
+    h.recolor(lambda x, y, c: y == fx(vy) - 1, lambda x, y, c: BLUE[2] if c != BLUE[3] else c)  # seam above it
+
+    def bill(x, y):
+        d = (y - vy) / 1.9
+        return 0 <= d <= 1 and abs(x - h.cx) <= vw * math.sqrt(max(0.0, 1 - d * d)) + 0.3
+    pts = h.shape(bill, BLUE, light="flat")
+    if pts:
+        last = max(y for x, y in pts)
+        for x, y in pts:                                                      # lit top, dark underside
+            h.put(x, y, BLUE[3] if y == last else BLUE[0] if y == fx(vy) and x + 0.5 < h.cx + vw * 0.5 else BLUE[1])
+    h.finish()
 
 
 def cowboy_hat(h: Hat):
-    brim = h.ellipse(h.cx, h.Y(1.4), h.rx + 3.0, 2.0 * h.sy, LEATHER)          # brim round the head
-    for x, y in brim:                                                           # curled-up edges
-        if abs(x + 0.5 - h.cx) > h.rx + 1.8:
-            h.put(x, y - 1, LEATHER[1])
+    h.ink, h.lining = ink(*LEATHER[1][:3]), LEATHER[3]
+    brim_y = h.Y(1.4)
+    reach = h.span + 1.9
+    brim = h.ellipse(h.cx, brim_y, reach, 1.4, LEATHER, light="flat")         # brim round the head
+    for x, y in brim:                                                         # its tips curl up
+        if abs(x + 0.5 - h.cx) > reach - 1.2 and y == min(yy for xx, yy in brim if xx == x):
+            h.put(x, y - 1, LEATHER[0] if x + 0.5 < h.cx else LEATHER[1])
+    crown_half = max(2.5, h.rx * 0.66)
 
     def crown(x, y):
-        if not (h.Y(-5.2) <= y <= h.Y(1.0)):
+        if not (h.Y(-4.6) <= y <= brim_y - 0.5):
             return False
-        hw = h.rx * 0.72 + (y - h.Y(-5.2)) * 0.1
-        dent = abs(x - h.cx) < 1.2 and y < h.Y(-4.0)                            # the crease on top
-        return abs(x - h.cx) <= hw and not dent
-    h.shape(crown, LEATHER)
-    for x in range(W):                                                          # band with a silver concho
-        for y in range(H):
-            if h.get(x, y) in LEATHER and h.Y(-1.2) <= y + 0.5 <= h.Y(0.4) and abs(x + 0.5 - h.cx) <= h.rx * 0.85:
-                h.put(x, y, LEATHER[3])
-    h.put(round(h.cx - h.rx * 0.3), round(h.Y(-0.5)), METAL[1])
-    h.outline()
+        hw = crown_half + (y - h.Y(-4.6)) * 0.12
+        pinch = abs(x - h.cx) < 1.0 and y < h.Y(-3.6)                         # the crease on top
+        return abs(x - h.cx) <= hw and not pinch
+    h.shape(crown, LEATHER, light="cyl")
+    h.recolor(lambda x, y, c: c in LEATHER and h.Y(-1.0) <= y + 0.5 <= h.Y(0.2) and abs(x + 0.5 - h.cx) <= crown_half + 1,
+              lambda x, y, c: LEATHER[3] if x + 0.5 > h.cx + 1 else LEATHER[2])  # hat band
+    h.put(fx(h.cx - crown_half * 0.4), fx(h.Y(-0.4)), METAL[0])              # silver concho
+    h.finish()
 
 
 def chef_hat(h: Hat):
-    h.band(h.Y(-2.2), h.Y(1.8), WHITE, extra=0.6)                               # pleated band round the head
-    for x in range(W):
-        for y in range(H):
-            if h.get(x, y) in WHITE and x % 2 == 0 and y + 0.5 > h.Y(-2.0):
-                h.put(x, y, WHITE[2])
-    for dx, dy, r in ((-3.0, -4.4, 2.7), (3.0, -4.4, 2.7), (0.0, -5.6, 3.1)):   # puffs on top
-        h.ellipse(h.X(dx), h.Y(dy), r * min(h.sx, 1.1), r * 0.9, WHITE)
-    h.outline()
+    h.ink, h.lining = ink(*CREAM[2][:3]), CREAM[3]
+    band = h.cap(0.6, 2.0, CREAM, extra=0.5, light="cyl")                     # band round the head
+    for x, y in band:                                                         # pleats
+        if (x - fx(h.cx)) % 3 == 1 and h.Y(0.4) <= y + 0.5:
+            h.put(x, y, CREAM[2])
+    puff = max(2.2, h.rx * 0.42)                                              # three puffs on top
+    sides = set()
+    for dx in (-1, 1):
+        sides |= set(h.ellipse(h.cx + dx * puff * 1.1, h.Y(-2.2), puff + 0.4, 2.2 * h.sy, CREAM))
+    middle = set(h.ellipse(h.cx, h.Y(-3.4), puff + 0.3, 2.3 * h.sy, CREAM))
+    for x, y in middle:                                                       # creases where the puffs meet
+        if any((x + dx, y + dy) in sides - middle for dx, dy in ((1, 0), (-1, 0), (0, 1))) and y < fx(h.Y(-0.4)):
+            h.put(x, y, CREAM[2])
+    h.finish()
 
 
 def wizard_hat(h: Hat):
-    h.ellipse(h.cx, h.Y(1.5), h.rx + 2.2, 1.8 * h.sy, PURPLE)                   # brim round the head
-    base_y, half = h.Y(1.0), h.rx * 0.78
+    h.ink, h.lining = ink(*PURPLE[1][:3]), PURPLE[3]
+    h.ellipse(h.cx, h.Y(1.4), h.span + 1.8, 1.3, PURPLE, light="flat")         # brim round the head
+    base_y, half = h.Y(0.9), max(2.5, h.rx * 0.74)
+    tip_y = h.Y(-8.0)
 
     def cone(x, y):
-        if not (h.Y(-8.5) <= y <= base_y):
+        if not (tip_y <= y <= base_y):
             return False
-        t = (y - h.Y(-8.5)) / (base_y - h.Y(-8.5))
-        lean = (1 - t) ** 2 * 3.5                                               # the tip flops over
+        t = (y - tip_y) / (base_y - tip_y)
+        lean = (1 - t) ** 2 * 3.2 * min(1.0, h.sx)                            # the tip flops over
         return abs(x - (h.cx + lean)) <= half * t + 0.5
-    pts = h.shape(cone, PURPLE)
-    for (x, y) in pts:                                                          # stars
-        if (x * 5 + y * 3) % 13 == 0:
-            h.put(x, y, YELLOW[0])
-    mx, my = round(h.cx - 1), round(h.Y(-3.5))                                  # a crescent moon
-    h.put(mx, my, YELLOW[0])
-    h.put(mx, my + 1, YELLOW[0])
-    h.put(mx + 1, my + 2, YELLOW[1])
-    h.outline()
+    h.shape(cone, PURPLE, light="cyl")
+    h.recolor(lambda x, y, c: y == fx(h.Y(0.2)) and c in PURPLE[:3] and abs(x + 0.5 - h.cx) < half,  # gold band
+              lambda x, y, c: YELLOW[0] if x + 0.5 < h.cx else YELLOW[1])
+    if h.width != SQUEEZED:                                                   # a star
+        sx, sy = fx(h.cx + half * 0.3), fx(h.Y(-3.4))
+        h.put(sx, sy, YELLOW[0])
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if h.get(sx + dx, sy + dy) in PURPLE:
+                h.put(sx + dx, sy + dy, YELLOW[1])
+    h.finish()
 
 
 def viking_helmet(h: Hat):
-    h.band(h.Y(-3.4), h.Y(1.8), METAL, extra=0.6)                               # dome helmet over the head
-    h.ellipse(h.cx, h.Y(-0.6), h.rx + 0.5, 4.0 * h.sy, METAL)
-    for x in range(W):                                                          # rivet band
-        y = round(h.Y(0.8))
-        if h.get(x, y) in METAL:
-            h.put(x, y, METAL[2] if x % 2 else METAL[0])
-    for y in range(round(h.Y(-3.4)), round(h.Y(2.6))):                          # nose guard down the front
-        h.put(round(h.cx), y, METAL[3] if y > round(h.Y(1.0)) else METAL[2])
-    for side in (-1, 1):                                                        # horns curving up and out
-        for i in range(6):
-            t = i / 5
-            x = h.cx + side * (h.rx + 0.2 + t * 2.2)
-            y = h.Y(-1.0) - t * t * 4.5
-            col = BONE[0] if i < 2 else BONE[1] if i < 4 else BONE[2]
-            h.put(round(x), round(y), col)
-            if i < 4:
-                h.put(round(x), round(y) + 1, BONE[1] if i < 3 else BONE[2])
-    h.outline()
+    h.ink, h.lining = ink(*METAL[2][:3]), METAL[3]
+    h.cap(3.6, 3.4, METAL, extra=0.5)                                         # dome helmet over the head
+    rim_y = fx(h.Y(1.0))
+    h.recolor(lambda x, y, c: y >= rim_y,                                     # riveted brass rim
+              lambda x, y, c: GOLD[0] if y == rim_y and (x - fx(h.cx)) % 3 == 1 else GOLD[1] if x + 0.5 < h.cx + 2 else GOLD[2])
+    h.recolor(lambda x, y, c: x == fx(h.cx) and y < rim_y and c in METAL[1:], METAL[0])  # crest ridge
+    if h.width != SQUEEZED:                                                   # horns sweeping out and up
+        for side in (-1, 1):
+            root = (h.cx + side * (h.span - 1.0), h.Y(0.8))
+            path = []
+            for i in range(13):
+                t = i / 12
+                path.append((root[0] + side * 2.4 * math.sin(t * 1.7) * min(1.0, h.sx),
+                             root[1] - 4.4 * h.sy * t ** 1.7, 1.2 * (1 - t) + 0.35))
+
+            def horn(x, y, path=path):
+                return any((x - px_) ** 2 + (y - py_) ** 2 <= r * r for px_, py_, r in path) and not h.filled(int(x), int(y))
+            h.shape(horn, BONE if side < 0 else BONE[1:], light="dome")
+    h.finish()
 
 
 def propeller_cap(h: Hat):
-    h.band(h.Y(-3.0), h.Y(1.4), METAL, extra=0.6)
-    pts = h.ellipse(h.cx, h.Y(-0.4), h.rx + 0.5, 3.8 * h.sy, METAL)
+    h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
+    pts = h.cap(3.4, 3.0, BLUE, extra=0.5)
     panels = [RED, YELLOW, BLUE, GREEN]
-    for x in range(W):                                                          # colored panels
-        for y in range(H):
-            if h.get(x, y) in METAL:
-                k = int(((x + 0.5 - h.cx) / (h.rx + 0.5) + 1) * 2)
-                ramp = panels[max(0, min(3, k))]
-                h.put(x, y, ramp[0] if y + 0.5 < h.Y(-2.0) else ramp[1])
-    h.ellipse(h.cx - h.rx - 0.3, h.Y(1.0), 2.2, 1.2, BLUE)                      # little brim
-    px, py = round(h.cx), round(h.Y(-4.6))                                      # the propeller
-    h.put(px, py + 1, METAL[2])
-    for dx in range(1, 4):
-        h.put(px - dx, py - (1 if dx > 2 else 0), RED[0] if dx < 2 else RED[1])
-        h.put(px + dx, py + (1 if dx > 2 else 0) - 1, YELLOW[0] if dx < 2 else YELLOW[1])
-    h.put(px, py, METAL[1])
-    h.outline()
+    left, right = min(x for x, y in pts), max(x for x, y in pts)
+    tops = {}
+    for x, y in pts:
+        tops[x] = min(tops.get(x, y), y)
+    for x, y in pts:                                                          # four colored panels
+        k = int((x - left) / (right - left + 1) * 4)
+        r = panels[max(0, min(3, k))]
+        u = (x - left + 0.5) / (right - left + 1) * 2 - 1
+        h.put(x, y, r[0] if y == tops[x] and u < 0.3 else r[1] if u < 0.45 else r[2])
+    bill_x = h.cx - h.dome_width(h.Y(2.2)) - 0.5                              # little bill
+    h.ellipse(bill_x - 0.4, h.Y(2.2), 2.0 * min(1.0, h.sx + 0.1), 1.0, BLUE, light="flat")
+    px, py = fx(h.cx), fx(h.Y(-3.0)) - 1                                     # the propeller on a stem
+    span = 3 if h.width != SQUEEZED else 2
+    h.put(px - 1, py, METAL[1])
+    h.put(px, py, METAL[2])
+    for dx in range(1, span + 1):
+        h.put(px - 1 - dx, py - 1, RED[0] if dx < span else RED[1])
+        h.put(px + dx, py - 1, YELLOW[0] if dx < span else YELLOW[2])
+    h.put(px - 1, py - 1, METAL[0])
+    h.put(px, py - 1, METAL[1])
+    h.finish()
 
 
 def crown(h: Hat):
-    h.band(h.Y(-1.0), h.Y(1.0), VELVET, extra=0.5)                              # velvet inside, showing on top
+    h.ink, h.lining = ink(*GOLD[2][:3]), VELVET[3]
+    h.cap(2.8, -0.6, VELVET, extra=-0.5)                                        # velvet cap inside
+    points = 3                                                                # (more would just read as noise at 1x)
+    y_tip, y_base = h.Y(-4.0), h.Y(-1.2)
+
     def ring(x, y):
-        if not (h.Y(-4.0) <= y <= h.Y(1.6)):
+        if not (y_tip <= y <= h.Y(1.6)):
             return False
-        hw = max(h.dome_width(y), h.rx * 0.7) + 0.8
+        hw = max(h.dome_width(y), h.rx * 0.7) + 0.6
         if abs(x - h.cx) > hw:
             return False
-        if y < h.Y(-1.4):                                                       # five points
-            phase = (x - (h.cx - hw)) / (2 * hw) * 4
-            return abs(phase - round(phase)) < 0.28
+        if y < y_base:                                                        # three points, the middle one tallest
+            for c, tip in ((0.0, y_tip), (-(hw - 1.1), y_tip + 0.6), (hw - 1.1, y_tip + 0.6)):
+                if y >= tip:
+                    t = (y_base - y) / (y_base - tip)                         # 0 at the base, 1 at the tip
+                    if abs(x - (h.cx + c)) <= (0.9 + hw * 0.1) * (1 - t) + 0.5:
+                        return True
+            return False
         return True
-    pts = h.shape(ring, GOLD)
-    for x in range(W):                                                          # a bright lower rim
-        y = round(h.Y(1.2))
-        if h.get(x, y) in GOLD:
-            h.put(x, y, GOLD[1])
-    for (dx, col) in ((-0.5, RUBY), (0.15, SAPPHIRE), (0.55, EMERALD)):          # jewels
-        x = round(h.cx + dx * h.rx)
-        y = round(h.Y(-0.4))
-        if h.get(x, y) in GOLD:
-            h.put(x, y, col)
-    h.outline()
+    h.shape(ring, GOLD, light="cyl")
+    jy = fx(h.Y(0.0))                                                         # jewels on the band
+    gems = ((0.0, RUBY),) if h.width == SQUEEZED else ((-0.55, SAPPHIRE), (0.0, RUBY), (0.55, EMERALD))
+    for dx, col in gems:
+        xs = [fx(h.cx) - 1, fx(h.cx)] if dx == 0 else [fx(h.cx + dx * h.rx - 0.5) + (1 if dx > 0 else 0)]
+        for x in xs:                                                          # (the middle one 2 px, so it's centered)
+            if h.get(x, jy) in GOLD:
+                h.put(x, jy, col)
+    h.finish()
 
 
 # The rainbow's bands, outside in; the game turns their hues round so the rainbow flows.
 RAINBOW = [rgb(236, 64, 76), rgb(246, 142, 52), rgb(252, 222, 74), rgb(92, 204, 96), rgb(70, 140, 236),
            rgb(150, 92, 220)]
-CLOUD = [rgb(255, 255, 255), rgb(240, 242, 250), rgb(214, 218, 234), rgb(176, 182, 206)]
+CLOUD = CREAM
 
 
 def rainbow_hat(h: Hat):
     # A rainbow arching over the head, its feet in two little clouds resting on the dome's sides.
+    h.ink, h.lining = ink(110, 70, 160), rgb(40, 30, 60)
     cx, cy = h.cx, h.Y(1.4)
-    ox, oy = h.rx + 0.4, 7.4 * h.sy                                             # outer edge of the arch
+    ox, oy = h.rx + 0.6, 6.6 * h.sy                                          # outer edge of the arch
+    bands = min(len(RAINBOW), max(3, fx(min(ox, oy) - 1.5)))
     for x in range(W):
         for y in range(H):
             if y + 0.5 > cy:
                 continue
             u, v = (x + 0.5 - cx) / ox, (y + 0.5 - cy) / oy
-            d = math.sqrt(u * u + v * v)                                       # 1 at the outer edge
-            k = int((1 - d) * oy / 1.0)                                        # 1 px bands
-            if d <= 1.0 and k < len(RAINBOW):
+            d = math.sqrt(u * u + v * v)                                      # 1 at the outer edge
+            k = int((1 - d) * min(ox, oy))                                    # ~1 px bands
+            if d <= 1.0 and k < bands:
                 h.put(x, y, RAINBOW[k])
-    for side in (-1, 1):                                                        # the clouds
-        fx = cx + side * (ox - 2.4)
-        h.ellipse(fx, h.Y(1.0), 2.6, 1.6, CLOUD)
-        h.ellipse(fx - side * 1.6, h.Y(0.0), 1.6, 1.3, CLOUD)
-    sx, sy = round(cx + ox * 0.45), round(cy - oy - 0.5)                      # a twinkle by the arch
-    for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
-        h.put(sx + dx, sy + dy, CLOUD[0] if (dx, dy) == (0, 0) else YELLOW[0])
-    h.outline()
-    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):                         # the twinkle floats free
-        if h.get(sx + dx, sy + dy) == OUTLINE:
-            h.put(sx + dx, sy + dy, CLEAR)
+    for side in (-1, 1):                                                      # the clouds
+        cloud_x = cx + side * (ox - 1.8)
+        h.ellipse(cloud_x, h.Y(1.0), 2.4 * min(1.0, h.sx + 0.15), 1.5, CLOUD)
+        h.ellipse(cloud_x - side * 1.2, h.Y(0.0), 1.5, 1.2, CLOUD)
+    h.finish()
+    if h.width != SQUEEZED:                                                   # a twinkle by the arch
+        sx, sy = fx(cx + ox * 0.55), fx(cy - oy - 0.3)
+        for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+            if not h.filled(sx + dx, sy + dy) or h.get(sx + dx, sy + dy) == h.ink:
+                h.put(sx + dx, sy + dy, CLOUD[0] if (dx, dy) == (0, 0) else YELLOW[0])
 
 
 HATS = [top_hat, beanie, party_hat, baseball_cap, cowboy_hat, chef_hat, wizard_hat, viking_helmet,
         propeller_cap, crown, rainbow_hat]
 
+HEADS = measure_domes()
+NORMAL_RX = max(HEADS[NORMAL]["dome"][:5])
 
-if __name__ == "__main__":
+
+def build():
+    """Every hat at every width: rows of RGBA pixels for the whole sheet."""
     rows = []
-    for sx, sy in WIDTHS:
+    for width in range(ROWS):
         frames = []
         for make in HATS:
-            hat = Hat(sx, sy)
+            hat = Hat(width, HEADS[width])
             make(hat)
             frames.append(hat.px)
         for y in range(H):
             rows.append([p for frame in frames for p in frame[y]])
+    return rows
+
+
+if __name__ == "__main__":
+    import sys
+    rows = build()
+    if "--check" in sys.argv:  # tests: is the checked-in sheet exactly what this file draws (twice over)?
+        _, _, current = read_png(str(OUT / "hats.png"))
+        same = [list(map(tuple, r)) for r in current] == rows and build() == rows
+        print("hats.png is up to date" if same else "hats.png differs from tools/make_hats.py")
+        sys.exit(0 if same else 1)
     write_png(str(OUT / "hats.png"), rows)
-    print(f"wrote assets/sprites/hats.png ({len(HATS)} hats x {len(WIDTHS)} widths, {W}x{H} each)")
+    print(f"wrote assets/sprites/hats.png ({len(HATS)} hats x {ROWS} widths, {W}x{H} each)")

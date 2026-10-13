@@ -18,12 +18,19 @@ static var available := false
 const PITY_STEP := 0.15
 const NONE := "none"
 const NONE_NAME := "NO HAT"
-## Each hat is drawn at three widths (rows of hats.png) to fit the slime as it squashes and
-## stretches: NARROW (stretched into a leap), NORMAL, WIDE (squashed to charge or land).
+## Each hat is drawn at five fitted widths (rows of hats.png) to fit the slime as it squashes and
+## stretches (NARROW: stretched into a leap; NORMAL; BROAD: a little squashed; WIDE: squashed flat
+## to charge or land; SQUEEZED: pressed sideways against a wall in a splat), plus LOOSE, its own
+## shape off the head (popped off by a leap, or on the hat wheel). tools/make_hats.py fits them to
+## the head widths width_for maps them from.
 const FRAME := Vector2i(32, 16)
 ## Where the top of the slime's head goes in a frame: the hats reach down round the dome below it.
 const HEAD := Vector2(16, 11)
-enum Width { NARROW, NORMAL, WIDE }
+enum Width { NARROW, NORMAL, WIDE, SQUEEZED, BROAD, LOOSE }
+## Most a hat is ever lifted off the head to clear the eyes (lift).
+const MAX_LIFT := 3
+static var _lifts := {}
+static var _image: Image
 
 const LIST := [
 	{id = "tophat", name = "TOP HAT", column = 0},
@@ -105,10 +112,45 @@ static func region(id: String, width := Width.NORMAL) -> Rect2:
 	return Rect2(Vector2(int(get_hat(id).get("column", 0)) * FRAME.x, width * FRAME.y), Vector2(FRAME))
 
 
+## How many px to lift hat `id` (at `width`) off the head in slime frame anim:frame so it doesn't
+## cover the eyes: 0 almost always; 1-3 in the few frames whose eyes sit high (charging, and
+## facing away diagonally). Worked out from the sprite sheets once per hat and frame.
+static func lift(id: String, width: int, anim: String, frame: int) -> int:
+	var key := "%s:%d:%s:%d" % [id, width, anim, frame]
+	if _lifts.has(key):
+		return _lifts[key]
+	var eyes := Slime.eye_points(anim, frame)
+	var lifted := 0
+	if not eyes.is_empty():
+		if _image == null:
+			_image = preload("res://assets/sprites/hats.png").get_image()
+			if _image.is_compressed():
+				_image.decompress()
+		var r := region(id, width)
+		for k in MAX_LIFT + 1:
+			lifted = k
+			var clear := true
+			for e: Vector2i in eyes:
+				# The hat pixel that would land on this eye, with the hat raised k px.
+				var at := Vector2i(r.position) + Vector2i(HEAD) + e + Vector2i(0, k)
+				if at.y < int(r.position.y) + FRAME.y and _image.get_pixelv(at).a > 0.5:
+					clear = false
+					break
+			if clear:
+				break
+	_lifts[key] = lifted
+	return lifted
+
+
 ## Which width of hat fits a slime head `head_width` px across (Slime.head_width).
+## (tools/make_hats.py WIDTH_CLASSES uses the same bands.)
 static func width_for(head_width: int) -> int:
+	if head_width <= 11:
+		return Width.SQUEEZED
 	if head_width <= 12:
 		return Width.NARROW
-	if head_width >= 16:
-		return Width.WIDE
-	return Width.NORMAL
+	if head_width <= 14:
+		return Width.NORMAL
+	if head_width <= 16:
+		return Width.BROAD
+	return Width.WIDE

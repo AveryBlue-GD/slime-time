@@ -58,7 +58,7 @@ func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null
 func pop(slime_velocity: Vector2, flight_time: float) -> void:
 	ground = _floor_point()
 	height = _head_height()
-	region_rect = Hats.region(hat_id)  # off the head it keeps its own shape
+	region_rect = Hats.region(hat_id, Hats.Width.LOOSE)  # off the head it keeps its own shape
 	_slime_last = ground
 	_slime_velocity = slime_velocity
 	jolt = Vector2.ZERO
@@ -76,9 +76,12 @@ func _process(delta: float) -> void:
 
 
 func _follow() -> void:
-	global_position = _head().round()
-	# Squashed slime, wider hat; stretched slime, narrower and taller.
-	region_rect = Hats.region(hat_id, Hats.width_for(Slime.head_width(body.animation, body.frame)))
+	# Squashed slime, wider hat; stretched slime, narrower and taller. Lifted a px or two in the
+	# few frames whose eyes sit high, so it never covers them.
+	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
+	region_rect = Hats.region(hat_id, width)
+	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
+	global_position = _snap(_head() - Vector2(0, lift_px) * body.global_scale)
 
 
 func _fly(delta: float) -> void:
@@ -99,7 +102,13 @@ func _fly(delta: float) -> void:
 		state = State.ON  # back on the slime's head
 		_follow()
 		return
-	global_position = (ground - Vector2(0.0, height)).round()
+	global_position = _snap(ground - Vector2(0.0, height))
+
+
+## Whole pixels, rounded the way the renderer snaps the slime's sprite (half up), so the hat never
+## lands a pixel off it.
+static func _snap(at: Vector2) -> Vector2:
+	return (at + Vector2(0.5, 0.5)).floor()
 
 
 ## Top-center of the slime's body right now (follows its squash, stretch and jump arc).

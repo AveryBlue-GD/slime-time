@@ -16,6 +16,10 @@ signal launched(floor_velocity: Vector2, flight_time: float)
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED }
 
 const TILE := 16
+## Slime sheet frames are this many px square (slime_sheet.json frame_size).
+const FRAME_SIZE := 20
+## The eyes' dark color in the sheet (tools/make_placeholder_art.py; not a goo shade, so no skin swaps it).
+const EYE_COLOR := Color8(26, 28, 44)
 ## Collision radius: the body is 14 px across in a 16 px corridor, a snug fit.
 const RADIUS := 7.0
 const CHARGE_TIME := 1.5
@@ -146,31 +150,93 @@ static func splat_side(wall_normal: Vector2) -> String:
 
 
 ## Top-center of the slime's body in a frame, relative to the sprite's center: where a hat sits.
-## Found from the sheet's pixels (the topmost row of the outline), so it follows every squash,
-## stretch and bounce of the animation.
+## Found from the sheet's pixels (the topmost row of the body), so it follows every squash,
+## stretch and bounce of the animation. Whole pixels: a body that's an odd pixel off center (a
+## half-pixel center) keeps the hat where it was rather than flicking it a pixel each frame.
 static func head_point(anim: String, frame: int) -> Vector2:
 	var key := "%s:%d" % [anim, frame]
 	if _heads.has(key):
 		return _heads[key]
-	var frames := load_sprite_frames()
 	var point := Vector2(0, -7)
+	var rows := _body_rows(anim, frame)
+	if not rows.is_empty():
+		var top: Vector3i = rows[0]
+		var center := (top.y + top.z + 1) / 2.0 - FRAME_SIZE / 2.0
+		point = Vector2(float(int(center)), top.x - FRAME_SIZE / 2.0)  # int() rounds +-0.5 to 0
+	_heads[key] = point
+	return point
+
+
+## The eyes' dark pixels in a frame, relative to its head point (hats keep off them: Hats.lift).
+static func eye_points(anim: String, frame: int) -> Array[Vector2i]:
+	var key := "e%s:%d" % [anim, frame]
+	if _heads.has(key):
+		return _heads[key]
+	var out: Array[Vector2i] = []
+	var rows := _body_rows(anim, frame)
+	if not rows.is_empty() and anim != "dry":  # (drying up, that color is the crust's cracks)
+		var region := (load_sprite_frames().get_frame_texture(anim, frame) as AtlasTexture).region
+		var head := Vector2i(head_point(anim, frame)) + Vector2i(FRAME_SIZE / 2, FRAME_SIZE / 2)
+		for r: Vector3i in rows:
+			for x in range(r.y, r.z + 1):
+				var c := _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + r.x)
+				if c.a > 0.5 and c.is_equal_approx(EYE_COLOR):
+					out.append(Vector2i(x, r.x) - head)
+	_heads[key] = out
+	return out
+
+
+## The body's rows in a frame, top down, as (y, left x, right x): only its largest 4-connected
+## blob of solid pixels, so loose sparkles (celebrate) and goo flecks (splats) don't count.
+## (tools/make_hats.py measures the head the same way.)
+static func _body_rows(anim: String, frame: int) -> Array[Vector3i]:
+	var key := "r%s:%d" % [anim, frame]
+	if _heads.has(key):
+		return _heads[key]
+	var rows: Array[Vector3i] = []
+	var frames := load_sprite_frames()
 	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
 		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
 		if _sheet_image == null:
 			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
 			if _sheet_image.is_compressed():
 				_sheet_image.decompress()
-		for y in int(region.size.y):
-			var xs: Array[int] = []
-			for x in int(region.size.x):
+		var w := int(region.size.x)
+		var h := int(region.size.y)
+		var solid := {}
+		for y in h:
+			for x in w:
 				if _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + y).a > 0.5:
-					xs.append(x)
-			if not xs.is_empty():
-				var center := (xs[0] + xs[-1] + 1) / 2.0
-				point = Vector2(center, y) - region.size / 2.0
-				break
-	_heads[key] = point
-	return point
+					solid[Vector2i(x, y)] = true
+		var seen := {}
+		var best: Array[Vector2i] = []
+		for y in h:
+			for x in w:
+				var start := Vector2i(x, y)
+				if not solid.has(start) or seen.has(start):
+					continue
+				var blob: Array[Vector2i] = []
+				var todo: Array[Vector2i] = [start]
+				seen[start] = true
+				while not todo.is_empty():
+					var p: Vector2i = todo.pop_back()
+					blob.append(p)
+					for n: Vector2i in [p + Vector2i.RIGHT, p + Vector2i.LEFT, p + Vector2i.DOWN, p + Vector2i.UP]:
+						if solid.has(n) and not seen.has(n):
+							seen[n] = true
+							todo.append(n)
+				if blob.size() > best.size():
+					best = blob
+		var spans := {}
+		for p in best:
+			var span: Vector2i = spans.get(p.y, Vector2i(p.x, p.x))
+			spans[p.y] = Vector2i(mini(span.x, p.x), maxi(span.y, p.x))
+		var ys := spans.keys()
+		ys.sort()
+		for y: int in ys:
+			rows.append(Vector3i(y, spans[y].x, spans[y].y))
+	_heads[key] = rows
+	return rows
 
 
 ## The opaque pixels' bounding box in a frame, relative to the sprite's center (the stopwatch skin
@@ -200,35 +266,14 @@ static func body_box(anim: String, frame: int) -> Rect2:
 	return box
 
 
-## How wide the slime's head is in a frame: its width 3 px below the top of the body (14 when
-## idle, narrower when stretched into a leap, wider when squashed). Hats pick their width by it.
+## How wide the slime's head is in a frame: its body's width 3 px below its top (14 when idle,
+## narrower when stretched into a leap or squeezed sideways in a splat, wider when squashed).
+## Hats pick their width by it (Hats.width_for).
 static func head_width(anim: String, frame: int) -> int:
-	var key := "w%s:%d" % [anim, frame]
-	if _heads.has(key):
-		return _heads[key]
-	var frames := load_sprite_frames()
-	var width := 14
-	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
-		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
-		if _sheet_image == null:
-			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
-			if _sheet_image.is_compressed():
-				_sheet_image.decompress()
-		var top := -1
-		for y in int(region.size.y):
-			var xs: Array[int] = []
-			for x in int(region.size.x):
-				if _sheet_image.get_pixel(int(region.position.x) + x, int(region.position.y) + y).a > 0.5:
-					xs.append(x)
-			if xs.is_empty():
-				continue
-			if top < 0:
-				top = y
-			if y == top + 3:
-				width = xs[-1] - xs[0] + 1
-				break
-	_heads[key] = width
-	return width
+	var rows := _body_rows(anim, frame)
+	if rows.size() < 4:
+		return 14
+	return rows[3].z - rows[3].y + 1
 
 
 ## Name suffix ("e", "se", ...) for the 45-degree direction closest to v.

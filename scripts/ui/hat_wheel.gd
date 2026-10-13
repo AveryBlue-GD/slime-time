@@ -236,8 +236,8 @@ func _draw() -> void:
 		# Out toward the rim in a thin wedge, where it has the most room.
 		var reach := 0.7 if sizes[i] > 0.4 else 0.8
 		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * reach).round()
-		# The narrow version, so neighbors don't touch.
-		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.NARROW))
+		# The loose version (its own shape, inside showing; narrow, so neighbors don't touch).
+		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.LOOSE))
 	# The flapper at the top, kicked aside as it ticks past each wedge.
 	var tip := Vector2(CENTER.x + roundf(_kick * 2.0), CENTER.y - RADIUS + 6.0)
 	var base_y := CENTER.y - RADIUS - 7.0
