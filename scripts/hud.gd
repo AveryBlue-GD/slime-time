@@ -33,6 +33,8 @@ var level_label: Label
 var message: Label
 ## The area's name (the level theme), shown under the top bar as a maze starts, then fading.
 var area_label: Label
+## A story line under the area name (see Story.level_line).
+var story_label: Label
 var _message_panel: PanelContainer
 var time_label: Label
 ## Coins in hand (top bar, beside the slime meter), and coins still to find in this story level
@@ -142,6 +144,13 @@ func _ready() -> void:
 	area_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	area_label.visible = false
 	add_child(area_label)
+	story_label = _make_label(SkinText.ROLE_DIM)
+	story_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	story_label.offset_top = 31
+	story_label.offset_bottom = 41
+	story_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	story_label.visible = false
+	add_child(story_label)
 
 	var message_center := CenterContainer.new()
 	message_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -431,14 +440,20 @@ func _gold_label(text: String, size: int) -> Label:
 
 
 ## Shows the area name for a moment, then fades it out.
-func show_area_name(text: String) -> void:
+func show_area_name(text: String, story_line := "") -> void:
 	area_label.text = "- %s -" % text
 	area_label.visible = true
 	area_label.modulate.a = 1.0
+	story_label.text = story_line
+	story_label.visible = story_line != ""
+	story_label.modulate.a = 1.0
 	var tween := create_tween()
-	tween.tween_interval(AREA_NAME_TIME)
+	tween.tween_interval(AREA_NAME_TIME + (1.0 if story_line != "" else 0.0))
 	tween.tween_property(area_label, "modulate:a", 0.0, 0.8)
-	tween.tween_callback(func() -> void: area_label.visible = false)
+	tween.parallel().tween_property(story_label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(func() -> void:
+		area_label.visible = false
+		story_label.visible = false)
 
 
 func set_level_text(text: String) -> void:

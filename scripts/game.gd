@@ -290,7 +290,7 @@ func _ready() -> void:
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER)
-	hud.show_area_name(Themes.display_name(theme))
+	hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
 	_start_ambience()
 	_build_overlays()
 	_place_coins(config.seed)
@@ -1275,7 +1275,10 @@ func play_next() -> void:
 			progress.new_random_maze()
 		get_tree().reload_current_scene()
 	elif level >= Levels.COUNT:
-		get_tree().change_scene_to_file(VICTORY_SCENE)
+		if progress and not progress.dev_tools and not progress.has_seen_story(progress.STORY_FINALE):
+			Story.play(get_tree(), "finale", VICTORY_SCENE)
+		else:
+			get_tree().change_scene_to_file(VICTORY_SCENE)
 	else:
 		if progress:
 			progress.start_story(level + 1)

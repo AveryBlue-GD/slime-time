@@ -9,6 +9,7 @@ const LOGO_RAINBOW_WIDTH := 90.0
 const TAGLINE := "ESCAPE THE FOG\nOR DRY TRYING"
 
 var enter_button: Button
+var story_button: Button
 
 
 func _ready() -> void:
@@ -41,6 +42,10 @@ func _ready() -> void:
 	enter_button.position = Vector2(72, 84)
 	add_child(enter_button)
 	enter_button.grab_focus()
+	# The story intro again: a small button in the bottom-left corner, beside the tagline.
+	story_button = UIKit.make_button("STORY", _replay_story, Vector2(40, 13))
+	story_button.position = Vector2(4, 163)
+	add_child(story_button)
 
 	var tagline := UIKit.make_label(TAGLINE, 16, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -58,4 +63,12 @@ func _enter() -> void:
 ## First launch: straight into level 1.
 func _play() -> void:
 	Progress.start_story(1)
-	UIKit.go(get_tree(), UIKit.GAME_SCENE)
+	if Story.intro_due(Progress):
+		Story.play(get_tree(), "intro", UIKit.GAME_SCENE)
+	else:
+		UIKit.go(get_tree(), UIKit.GAME_SCENE)
+
+
+## The intro again (and then back to the title).
+func _replay_story() -> void:
+	Story.play(get_tree(), "intro", UIKit.TITLE_SCENE)

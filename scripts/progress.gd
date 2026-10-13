@@ -29,6 +29,10 @@ var highest_unlocked := 1
 var levels_cleared := 0
 ## Bit set of wordless hints already used (TUTORIAL_MOVE / TUTORIAL_LEAP); saved, optional key.
 var tutorial_seen := 0
+## Story beats shown (bits STORY_INTRO / STORY_FINALE). Optional in saves; RESET PROGRESS clears it.
+var story_seen := 0
+const STORY_INTRO := 1
+const STORY_FINALE := 2
 ## Dry-ups per story level since it was last cleared (not saved); drives the chalice beacon.
 var dry_ups := {}
 ## Story level the game scene loads next.
@@ -162,7 +166,9 @@ func _ready() -> void:
 	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
 	if not InputMap.has_action("interact"):
 		InputMap.add_action("interact")
-	if not _is_test_or_tool_run():
+	if _is_test_or_tool_run():
+		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
+	else:
 		load_progress()
 	apply_bindings()
 	apply_volume()
@@ -171,6 +177,7 @@ func _ready() -> void:
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
 		elif arg == "--unlock-all":
 			saving_enabled = false
+			story_seen = STORY_INTRO | STORY_FINALE
 			dev_tools = true
 			levels_cleared = Levels.COUNT
 			highest_unlocked = Levels.COUNT
@@ -269,6 +276,9 @@ func _read(file: ConfigFile) -> void:
 	# Saves from before the cues existed have no key: a returning player has seen it all.
 	var returning := levels_cleared > 0 or randoms_won > 0
 	tutorial_seen = maxi(_int(file, "progress", "tutorial_seen", TUTORIAL_MOVE | TUTORIAL_LEAP if returning else 0), 0)
+	# Saves from before the story: a returning player has already played past the intro (and a
+	# beaten game past the finale).
+	story_seen = maxi(_int(file, "progress", "story_seen", (STORY_INTRO if returning else 0) | (STORY_FINALE if levels_cleared >= Levels.COUNT else 0)), 0)
 	var color: Variant = file.get_value("skin", "custom_color", custom_color)
 	custom_color = color if typeof(color) == TYPE_COLOR else custom_color
 	hats_owned.assign(_strings(file.get_value("hats", "owned", [])))
@@ -411,6 +421,7 @@ func _write() -> ConfigFile:
 	file.set_value("progress", "current_level", current_level)
 	file.set_value("progress", "randoms_won", randoms_won)
 	file.set_value("progress", "tutorial_seen", tutorial_seen)
+	file.set_value("progress", "story_seen", story_seen)
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
@@ -502,6 +513,16 @@ func is_fresh_save() -> bool:
 
 func has_seen_tutorial(bit: int) -> bool:
 	return tutorial_seen & bit != 0
+
+
+func has_seen_story(bit: int) -> bool:
+	return story_seen & bit != 0
+
+
+func mark_story_seen(bit: int) -> void:
+	if not has_seen_story(bit):
+		story_seen |= bit
+		save_progress()
 
 
 func mark_tutorial_seen(bit: int) -> void:
@@ -920,6 +941,7 @@ func reset_progress() -> void:
 	upgrades = {}
 	skin_override = ""
 	tutorial_seen = 0
+	story_seen = 0
 	dry_ups = {}
 	tickets = 0
 	tickets_lifetime = 0
