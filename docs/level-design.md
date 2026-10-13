@@ -34,6 +34,8 @@ over 10,000 seeds (40 real randomizer mazes): EDGE 33.0%, NEAR 29.9%, ANY 37.1%;
 
 **Randomizer:** `MazeGenerator.generate_random` = noise maze + `SpawnPicker.apply(maze, seed)`.
 This replaces the old "random cell whose farthest cell is >= 75% of the longest route" rule.
+Since the usage rework (section 5) the randomizer passes a target `route` instead: a start qualifies
+when its farthest cell is >= the route, and the chalice sits exactly `route` cells from it.
 
 ## 2. Story levels v4 (`Levels.DATA`, `MazeGenerator.generate_level`)
 
@@ -80,7 +82,7 @@ dots = route; see its header for the command).
   slime starts. Because routes stay within ~5% of the old ones, absolute slack is also near the old.
   Par = `Levels.par_for_path(route)` as before (now from the new route). The autopilot clears every
   level within 4% of its target and under par (`tests/test_phase3.gd`).
-- **Randomizer:** now calibrated on the real route too (`target` 85%, hard 90%), instead of on the
+- **Randomizer (superseded by section 5):** now calibrated on the real route too (`target` 85%, hard 90%), instead of on the
   maze's longest route. With the old rule, a 60% route would have used only ~51% of the meter; now
   every perfect run uses 85% whatever the spawn class. This is a little tighter than before on
   average (old routes were 75-100% of the longest, so a perfect run used 64-85%).
@@ -115,3 +117,96 @@ solvable / chalice / ticket / coins reachable), `tests/test_layout_migration.gd`
 level, spent upgrades, medals, hard data, idempotence, v2 times, old save codes, hostile values,
 deep coins), plus updated `test_phase3` (autopilot under par), `test_random_tickets`,
 `test_tickets` (version 4, legacy par) and the tests that assumed a corner start.
+
+## 5. Randomizer slime usage (2026-10-13)
+
+Owner request: lots of variation in how much of the meter a perfect randomizer run needs, rare
+extremes both ways, while each maze stays scaled to the slime the player can spend.
+Code: `Levels.random_usage_permille / random_route_cells / random_cells / random_config`,
+`MazeGenerator.generate_random(config)`, `SpawnPicker.pick(..., route)`, `TicketSpawn`, `game.gd`
+(`perfect_usage`, `usage_text`). Test: `tests/test_random_usage.gd`.
+
+**The meter is fixed per player.** A full meter glides `RANDOM_METER_TILES` = 136 tiles with no
+MORE SLIME (x `Upgrades.slime_factor`: 272 at level 10). 136 is the old randomizer's median maze
+(58-cell route at 85%), so a tile costs what it used to at level 0. (Before, the cost per tile was
+re-fitted to every maze, so upgraded players had a perfect run of only 85% / slime factor.)
+
+**Usage u per seed.** One integer roll 0..9999 of a seeded `RandomNumberGenerator`
+(`seed ^ USAGE_SALT`) is looked up in `USAGE_QUANTILES`: 101 permille knots (every 1% of the roll,
+integer interpolation between) of a Beta(2.1, 1.7) bell stretched over [0.10, 0.95]. u depends on
+the seed only; the MORE SLIME level of the code scales the route, not u. Measured over 10,000
+seeds (1 + 7919 i):
+
+| | target | measured |
+|---|---|---|
+| median | 0.55-0.60 | 0.582 |
+| middle 50% | ~0.42-0.72 | 0.420-0.725 |
+| P(u <= 0.20) | ~2-3% | 2.56% |
+| P(u >= 0.90) | ~2-3% | 2.18% |
+| P(u <= 0.12) / P(u >= 0.93) | very rare | 0.39% / 0.55% |
+| range | [0.10, 0.95] | 0.100-0.948 (0.10 exactly = roll 0) |
+
+```
+u range    seeds
+0.10-0.15   83 ####
+0.15-0.20  164 ########
+0.20-0.25  335 #################
+0.25-0.30  454 #######################
+0.30-0.35  561 ############################
+0.35-0.40  643 ################################
+0.40-0.45  663 #################################
+0.45-0.50  771 #######################################
+0.50-0.55  788 #######################################
+0.55-0.60  861 ###########################################
+0.60-0.65  878 ############################################
+0.65-0.70  884 ############################################
+0.70-0.75  825 #########################################
+0.75-0.80  754 ######################################
+0.80-0.85  642 ################################
+0.85-0.90  476 ########################
+0.90-0.95  218 ###########
+```
+
+**Route.** `route = max(6, round((u x 136 x (1 + 0.1 L) + 13/16) / 2))` cells (integer maths), L =
+the seed code's MORE SLIME level; so a perfect glide uses u of that player's meter (+-1 cell of
+rounding, under 1% at level 0). Minimum 6 cells (a 10% run at level 0 is 7 cells).
+
+**Size.** Start size aims at a longest route of about `1.25 x route + 12` cells (noise mazes'
+longest route ~ 4.6 x sqrt(cells)), shaped by the seed's old 18-24 x 10-13 dice, clamped to
+10x6 .. 36x20 (`RANDOM_MIN_CELLS` = story level 1; `RANDOM_MAX_CELLS` = 1.5x the old 30x16 max's
+area, fog texture <= 584x328 on the web). If the generated maze's longest route is under 115% of
+the route, it grows (+1/8 per side) with the same seed; at the max size up to 4 re-seeded noise
+fields are tried (`noise_seed`). Over 1,200 mazes (400 seeds x MORE SLIME 0/5/10): average area
+178 / 353 / 535 cells (the old sizes were ~236 / 352 / 438), 3-5% needed growth, none came out
+short of the route, generation 7 / 13 / 22 ms average (worst 229 ms, desktop).
+
+**Spawn + chalice.** The 33/30/37 EDGE/NEAR/ANY roll and the class fallback are unchanged; the
+minimum-route rule is now "farthest cell >= route" (relative to the target, not the diameter). The
+chalice is a seeded pick among the cells exactly `route` cells from the start (always exists). If
+no cell reached the route at all, the longest route would be used (never seen). Measured: 0 class
+fallbacks in 1,200 mazes; EDGE 30.7 / NEAR 31.0 / ANY 38.3% over 600 (test tolerance +-5%).
+
+**Ticket.** Same rules (10-60% of the meter from the start, weight floor + (f / 0.6)^3, now cubed:
+small low-u mazes have few far cells, and the square let 10-20% picks reach ~13%; now ~10%), the
+fraction measured at the code's level. Start -> ticket -> chalice <= 92%, or, for a route longer
+than 92% (u 0.93-0.95), on-route cells only (no detour). Short routes put it off the route, well
+past the chalice. With no fitting cell there is no ticket: the HUD pod says NONE HERE and the win
+says NO TICKET IN THIS MAZE +N (0 of 600 sampled mazes). Payout, daily cap (5 paid wins), seed
+repeat rules and the no-MORE-SLIME 1-ticket cap are unchanged: a 10% maze pays exactly what a 90%
+one does, so rerolling NEW MAZE for short ones only reaches the same daily cap faster.
+
+**Par** uses the real route as before. **Hard mode** keeps a fixed u = 0.90, no upgrades (route
+~62 cells), calibrated on the real route.
+
+**Seed codes.** "N-L" builds the maze for level L: same u, route, size, start, chalice and ticket
+for everyone. The player's own meter is used: a lower-level code leaves more slack; a higher-level
+code needs more of the meter, capped at 95% (`RANDOM_MAX_USAGE`) so a borrowed code is always
+winnable.
+
+**HUD.** The randomizer win line reads `TIME 0:41.2   USED 23% SLIME` (what the run really used,
+splats included), plus `EFFICIENT!` under 25% (`game.EFFICIENT_USAGE`).
+
+Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`; magenta ring =
+ticket): `docs/polish-shots/usage_100_ms0` (u 0.10: 10x6, route 7), `usage_250_ms0`,
+`usage_550_ms0` (18x9, route 38), `usage_750_ms0`, `usage_950_ms0` (27x15, route 65),
+`usage_550_ms10`, `usage_950_ms10` (36x20, route 129), and the result screen `usage_result`.
