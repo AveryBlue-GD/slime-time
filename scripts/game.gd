@@ -1050,11 +1050,14 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED %d" % random_seed
 		if progress and _is_running_scene():
 			var under_par := run_time <= par_time
-			var paid: int = progress.complete_random(assisted, under_par)
+			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
+			var paid: int = progress.complete_random(assisted, under_par, random_seed)
 			if paid > 0:
-				reward = {tickets = paid, under_par = under_par}
+				reward = {tickets = paid, under_par = paid > progress.TICKETS_RANDOM_WIN}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
+			elif repeat:
+				hud.show_rewards({repeat = true})
 			elif not assisted:
 				hud.show_rewards({capped = true})
 		_finish(true, random_text, END_DELAY)

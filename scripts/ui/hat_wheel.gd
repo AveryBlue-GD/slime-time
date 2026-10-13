@@ -102,10 +102,10 @@ func refresh(spin_key: String) -> void:
 	queue_redraw()
 
 
-## " (FREE)" or " (12 TICKETS)" for the hint line.
+## " (FREE)" or " (12 TIX)" for the hint line.
 func _price() -> String:
 	var cost: int = Progress.spin_cost()
-	return " (FREE)" if cost == 0 else " (%d TICKETS)" % cost
+	return " (FREE)" if cost == 0 else " (%d TIX)" % cost
 
 
 func _cant_spin(spin_key: String) -> String:

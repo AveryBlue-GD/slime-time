@@ -106,6 +106,7 @@ func _submit_seed(text: String) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.random_seed = value
+		progress.random_seed_fresh = false  # a typed seed pays no under-par bonus
 	resume()
 	get_tree().reload_current_scene()
 

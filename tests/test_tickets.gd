@@ -217,9 +217,66 @@ func _initialize() -> void:
 	odd.set_value("hats", "rainbow_pity", -5)
 	var tough: Node = preload("res://scripts/progress.gd").new()
 	tough._read(odd)
-	_check(tough.tickets == progress.TICKETS_MAX and tough.random_paid == 0 and tough.medals_for(2) == 3 and tough.medals_for(4) == 0 and tough.medals_for(5) == 0 and tough.rainbow_pity == 0,
+	_check(tough.tickets == progress.TICKETS_MAX and tough.random_paid == 0 and tough.medals_for(2) == 0 and tough.medals_for(4) == 0 and tough.medals_for(5) == 0 and tough.rainbow_pity == 0,
 		"out-of-range or wrong-typed wallet and medal values are clamped")
 	tough.free()
+
+	# --- Seed farming: a repeated seed pays nothing, a typed or replayed one no par bonus
+	progress.reset_progress()
+	progress.day_override = 30000
+	progress.new_random_maze()
+	_check(progress.random_seed_fresh and progress.complete_random(false, true, 111) == 3, "a fresh seed under par pays 3")
+	_check(not progress.random_seed_fresh and progress.seed_paid_today(111), "...then it counts as replayed and paid today")
+	_check(progress.complete_random(false, true, 111) == 0 and progress.random_paid == 1, "replaying a paid seed pays nothing and doesn't use the daily cap")
+	progress.random_seed_fresh = false  # typed in
+	_check(progress.complete_random(false, true, 222) == 2 and progress.random_paid == 2, "a typed seed pays the base 2 but no under-par bonus")
+	progress.new_random_maze()
+	_check(progress.complete_random(false, true, 333) == 3, "NEW MAZE makes the next seed fresh again")
+	for i in 14:
+		progress.random_paid = 0
+		progress.complete_random(false, false, 1000 + i)
+	_check(progress.random_paid_seeds.size() == progress.PAID_SEEDS_MAX and progress.random_paid_seeds[-1] == 1013 and not 111 in progress.random_paid_seeds, "the paid-seed list keeps the newest 10")
+	progress.random_paid = 1
+	progress.random_pay_day = 30000
+	progress.day_override = 29999  # clock moved back: nothing clears
+	progress.complete_random(false, false, 1013)
+	_check(progress.random_paid_seeds.size() == 10 and progress.seed_paid_today(1013), "a day going backwards keeps the list")
+	progress.day_override = 30001
+	_check(not progress.seed_paid_today(1013) and progress.complete_random(false, false, 1013) == 2 and progress.random_paid_seeds == [1013], "a new day clears the list and the seed pays again")
+	var game_seed: Node2D = await _spawn_random(5150)
+	progress.random_paid_seeds.assign([5150])
+	progress.random_pay_day = 30001
+	game_seed.run_time = 1.0
+	game_seed._on_chalice_body_entered(game_seed.slime)
+	_check("SEED ALREADY PAID TODAY - TRY NEW MAZE" in game_seed.hud.rewards_texts, "the result screen explains a repeated seed pays no tickets")
+	await _stop(game_seed)
+
+	# --- Medals on a version 3 save: tiers outside 1-3 are 0; best times without [medals] migrate
+	var vth := ConfigFile.new()
+	vth.set_value("meta", "version", 3)
+	vth.set_value("progress", "levels_cleared", 3)
+	vth.set_value("records", "level_1", Levels.level_par(1) * 0.5)
+	vth.set_value("medals", "level_1", 7)
+	vth.set_value("medals", "level_2", 2)
+	vth.set_value("medals", "level_3", 0)
+	var vthp: Node = preload("res://scripts/progress.gd").new()
+	vthp._read(vth)
+	_check(vthp.medals_for(1) == 0 and vthp.medals_for(2) == 2 and vthp.medals_for(3) == 0, "a version 3 save's out-of-range tiers (7) are 0, valid ones kept")
+	var vthb := ConfigFile.new()
+	vthb.set_value("meta", "version", 3)
+	vthb.set_value("progress", "levels_cleared", 3)
+	vthb.set_value("records", "level_1", Levels.level_par(1) * 0.5)
+	vthp._read(vthb)
+	_check(vthp.medals_for(1) == 3, "a version 3 save with best times and no [medals] gets tiers from the times")
+	vthp.free()
+	var par_start := Time.get_ticks_usec()
+	for lv in range(1, Levels.COUNT + 1):
+		Levels._par_cache.erase(lv)
+		Levels._par_cache.erase(lv + 100)
+		Levels.level_par(lv)
+		Levels.level_par(lv, true)
+	var par_ms := (Time.get_ticks_usec() - par_start) / 1000.0
+	_check(par_ms < 100.0, "computing par for all 20 levels takes %.0f ms (< 100)" % par_ms)
 
 	# --- A version-2 save (globs, bitmask medals, clears_paid): balance kept, medals become tiers
 	var par1: float = Levels.level_par(1)

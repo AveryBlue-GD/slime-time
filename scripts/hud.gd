@@ -295,6 +295,8 @@ func show_rewards(info: Dictionary) -> void:
 			_reward_label("NEW BEST!", NEW_BEST_COLOR)
 		elif best > tier:
 			_reward_label("BEST " + names[best], MEDAL_OWNED)
+	elif info.get("repeat", false):
+		_reward_label("SEED ALREADY PAID TODAY - TRY NEW MAZE", MEDAL_OWNED)
 	elif info.get("capped", false):
 		_reward_label("DAILY TICKET LIMIT REACHED", MEDAL_OWNED)
 	else:

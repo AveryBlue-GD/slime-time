@@ -45,6 +45,7 @@ const TICKETS_RANDOM_WIN := 2
 const TICKETS_UNDER_PAR := 1
 ## Randomizer wins that pay tickets per UTC day.
 const RANDOM_PAID_PER_DAY := 5
+const PAID_SEEDS_MAX := 10
 const SPIN_COST := 12
 const RAINBOW_PITY_MAX := 40
 ## Level medals: the best clear-time tier per level and mode (a small int, saved under [medals]).
@@ -71,6 +72,12 @@ var rainbow_pity := 0
 ## UTC day number and how many randomizer wins were paid on it.
 var random_pay_day := 0
 var random_paid := 0
+## Seeds that paid a randomizer win on random_pay_day (newest last, at most PAID_SEEDS_MAX): the
+## same seed pays nothing again that day.
+var random_paid_seeds: Array[int] = []
+## Not saved: false once the current seed was typed in or already won (replayed), which pays no
+## under-par bonus. NEW MAZE makes it true again.
+var random_seed_fresh := true
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -304,14 +311,17 @@ func _read_wallet(file: ConfigFile) -> void:
 	tickets_lifetime = clampi(_int(file, "wallet", "globs_lifetime", tickets), 0, 100 * TICKETS_MAX)
 	random_pay_day = maxi(_int(file, "wallet", "random_day", 0), 0)
 	random_paid = clampi(_int(file, "wallet", "random_paid", 0), 0, RANDOM_PAID_PER_DAY)
+	random_paid_seeds.assign(_ints(file.get_value("wallet", "paid_seeds", [])).slice(-PAID_SEEDS_MAX))
 	spins = maxi(_int(file, "hats", "spins", 0), 0)
 	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
 	medals = {}
-	var old_format := _int(file, "meta", "version", 1) < SAVE_VERSION
+	# Older saves, and a version 3 save with best times but no [medals] section at all, get tiers from
+	# their best times; otherwise stored tiers count when 1-3 (anything else is 0).
+	var migrate := _int(file, "meta", "version", 1) < SAVE_VERSION or (not file.has_section("medals") and not best_times.is_empty())
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
-			var stored := clampi(_int(file, "medals", "level_%d" % key, 0), 0, 7)
-			var tier := _migrate_medals(key) if old_format else clampi(stored, 0, TIER_GOLD)
+			var stored := _int(file, "medals", "level_%d" % key, 0)
+			var tier := _migrate_medals(key) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
 			if tier > 0:
 				medals[key] = tier
 
@@ -414,6 +424,7 @@ func _write() -> ConfigFile:
 	file.set_value("wallet", "globs_lifetime", tickets_lifetime)
 	file.set_value("wallet", "random_day", random_pay_day)
 	file.set_value("wallet", "random_paid", random_paid)
+	file.set_value("wallet", "paid_seeds", random_paid_seeds)
 	file.set_value("hats", "spins", spins)
 	file.set_value("hats", "rainbow_pity", rainbow_pity)
 	for key: int in medals:
@@ -494,20 +505,28 @@ func start_story(level: int) -> void:
 
 
 ## Records a randomizer win (saved) and pays its tickets: 2, +1 when `under_par` (the win beat that
-## maze's par time), for the first 5 wins of the UTC day (none after that, none while the assist
-## was on). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, under_par := false) -> int:
+## maze's par time) on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
+## UTC day (none after that, none while the assist was on, none for a seed that already paid today).
+## Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
+func complete_random(assisted := false, under_par := false, seed_value := 0) -> int:
 	randoms_cleared += 1
 	randoms_won += 1
 	var paid := 0
 	if not assisted:
-		paid = random_tickets_due(under_par)
 		if utc_day() > random_pay_day:  # a new day: the cap starts over (never when the clock went back)
 			random_pay_day = utc_day()
 			random_paid = 0
+			random_paid_seeds.clear()
+		paid = random_tickets_due(under_par and random_seed_fresh, seed_value)
 		if paid > 0:
 			random_paid += 1
+			if seed_value != 0:
+				random_paid_seeds.append(seed_value)
+				while random_paid_seeds.size() > PAID_SEEDS_MAX:
+					random_paid_seeds.remove_at(0)
 		add_tickets(paid, false)
+	if seed_value != 0:
+		random_seed_fresh = false  # winning it again is a replay
 	save_progress()
 	return paid
 
@@ -520,11 +539,16 @@ func utc_day() -> int:
 
 
 ## What a randomizer win would pay right now (0 once today's cap of paid wins is used).
-func random_tickets_due(under_par := false) -> int:
+func random_tickets_due(under_par := false, seed_value := 0) -> int:
 	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
-	if not open:
+	if not open or seed_paid_today(seed_value):
 		return 0
 	return TICKETS_RANDOM_WIN + (TICKETS_UNDER_PAR if under_par else 0)
+
+
+## True when `seed_value` already paid a win on the current UTC day.
+func seed_paid_today(seed_value: int) -> bool:
+	return seed_value != 0 and utc_day() <= random_pay_day and seed_value in random_paid_seeds
 
 
 ## Adds tickets (kept within 0-99,999; the amount actually added is returned). Saves unless told not to.
@@ -630,6 +654,7 @@ func start_random() -> void:
 
 func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
+	random_seed_fresh = true
 
 
 # ---------------------------------------------------------------- skins
@@ -884,6 +909,8 @@ func reset_progress() -> void:
 	rainbow_pity = 0
 	random_pay_day = 0
 	random_paid = 0
+	random_paid_seeds.clear()
+	random_seed_fresh = true
 	assist_level = 0
 	save_progress()
 
