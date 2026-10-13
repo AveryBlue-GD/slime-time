@@ -24,5 +24,7 @@ func _ready() -> void:
 	screen.leave_on_finish = false
 	screen.done.connect(func() -> void: get_tree().quit())
 	add_child(screen)
+	if Engine.get_write_movie_path() != "":
+		screen.set_process_unhandled_input(false)  # a recording ignores stray keys and clicks
 	if card > 0:
 		screen.show_card(card)
