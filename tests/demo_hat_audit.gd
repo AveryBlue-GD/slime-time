@@ -1,0 +1,203 @@
+extends Node2D
+
+## Hat audit (a throwaway diagnostic, not a test): renders contact sheets of every hat on every
+## skin that matters, in every pose and animation frame, and saves each page as a 320x180 PNG.
+## Pages: `lineup` (every hat x 7 poses, lime), `skins_<hat>` (10 skins x 7 poses),
+## `frames_<hat>` (every frame of idle/glide/charge/launch/air/land/splat/celebrate/recover, lime),
+## `big` (2x, as on the title and skins screens), `rainbow_<n>` (the rainbow hat's flow over time),
+## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors).
+## ./tools/godot.sh --path . res://tests/demo_hat_audit.tscn -- --unlock-all --out=/abs/dir [--only=lineup,...]
+## then: python3 -I tools/upscale_png.py OUT/lineup.png OUT/lineup_x4.png 4
+
+const POSES := [
+	["idle", 1, "IDLE"], ["glide_e", 0, "GLIDE"], ["charge_e", 3, "CHARGE"], ["launch_e", 0, "LAUNCH"],
+	["air_e", 3, "AIR"], ["land_e", 0, "LAND"], ["splat_w", 0, "SPLAT"],
+]
+const FRAME_ANIMS := ["idle", "glide_e", "charge_e", "launch_e", "air_e", "land_e", "splat_e", "splat_w",
+	"splat_n", "splat_s", "celebrate", "recover", "glide_n", "glide_s"]
+const BG := Color8(34, 40, 58)
+const BG_ALT := Color8(62, 58, 56)
+
+var _out := "user://hat_audit"
+var _only: Array[String] = []
+
+
+func _skins() -> Array:
+	# [label, color, rainbow, jelly, clock]
+	return [
+		["LIME", Skins.get_preset("lime").color, false, true, false],
+		["OCEAN", Skins.get_preset("ocean").color, false, true, false],
+		["GRAPE", Skins.get_preset("grape").color, false, true, false],
+		["INKKY", Skins.get_preset("shadow").color, false, true, false],
+		["FROST", Skins.get_preset("frost").color, false, true, false],
+		["EMBER", Skins.get_preset("ember").color, false, true, false],
+		["RAINB", Color8(236, 64, 76), true, true, false],
+		["CUSTM", Color8(20, 170, 170), false, true, false],
+		["SOLID", Skins.get_preset("lime").color, false, false, false],
+		["CLOCK", Skins.STOPWATCH_BASE, false, true, true],
+	]
+
+
+func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--out="):
+			_out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--only="):
+			for p in arg.trim_prefix("--only=").split(","):
+				_only.append(p)
+	Hats.available = true
+	DirAccess.make_dir_recursive_absolute(_out)
+	_run.call_deferred()
+
+
+func _run() -> void:
+	await _page("lineup", _lineup)
+	for id in Hats.ids():
+		await _page("skins_" + id, _skins_page.bind(id))
+		await _page("frames_" + id, _frames_page.bind(id))
+	await _page("big", _big)
+	await _page("wheel", _wheel)
+	if _only.is_empty() or "rainbow" in _only:
+		_clear()
+		_rainbow()
+		for n in 6:
+			await _settle(9)
+			_save("rainbow_%d" % n)
+	get_tree().quit()
+
+
+func _page(page_name: String, build: Callable) -> void:
+	if not _only.is_empty() and not page_name in _only and not page_name.get_slice("_", 0) in _only:
+		return
+	_clear()
+	build.call()
+	await _settle(4)
+	_save(page_name)
+
+
+func _clear() -> void:
+	for child in get_children():
+		child.free()
+
+
+func _settle(count: int) -> void:
+	for i in count:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+
+
+func _save(page_name: String) -> void:
+	var image := get_viewport().get_texture().get_image()
+	image.save_png(_out.path_join(page_name + ".png"))
+	print("saved ", page_name)
+
+
+func _rect(pos: Vector2, size: Vector2, color: Color) -> void:
+	var r := ColorRect.new()
+	r.position = pos
+	r.size = size
+	r.color = color
+	add_child(r)
+
+
+func _label(text: String, pos: Vector2, width := 32.0) -> void:
+	var l := Label.new()
+	l.text = text
+	l.position = pos
+	l.size = Vector2(width, 8)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 8)
+	l.modulate = Color(1, 1, 1, 0.55)
+	add_child(l)
+
+
+## One slime (frame pinned) wearing hat `id`, with its sprite's center at `pos`.
+func _slime(pos: Vector2, id: String, anim: String, frame: int, skin: Array = [], scale := 1) -> void:
+	if skin.is_empty():
+		skin = _skins()[0]
+	var preview := UIKit.make_slime_preview(skin[1], scale, skin[2], skin[3], skin[4])
+	preview.position = pos
+	add_child(preview)
+	preview.animation = anim
+	preview.frame = frame
+	preview.pause()
+	if id != Hats.NONE:
+		var hat := Hat.new()
+		hat.scale = Vector2(scale, scale)
+		add_child(hat)
+		hat.setup(id, preview)
+
+
+func _lineup() -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var ids := Hats.ids()
+	for r in POSES.size():
+		if r % 2:
+			_rect(Vector2(0, 4 + r * 25), Vector2(320, 25), BG_ALT)
+		for c in ids.size():
+			_slime(Vector2(15 + c * 29, 20 + r * 25), ids[c], POSES[r][0], POSES[r][1])
+
+
+func _skins_page(id: String) -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var skins := _skins()
+	for r in POSES.size():
+		if r % 2:
+			_rect(Vector2(0, 2 + r * 24), Vector2(320, 24), BG_ALT)
+		for c in skins.size():
+			_slime(Vector2(16 + c * 32, 17 + r * 24), id, POSES[r][0], POSES[r][1], skins[c])
+	_label(id.to_upper(), Vector2(0, 170), 320)
+
+
+func _frames_page(id: String) -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var frames := Slime.load_sprite_frames()
+	var cells: Array = []
+	for anim: String in FRAME_ANIMS:
+		for f in frames.get_frame_count(anim):
+			cells.append([anim, f])
+	# 4 frames of an animation side by side; two animations per row (8 cells of 40 px).
+	var col := 0
+	var row := 0
+	for cell: Array in cells:
+		if col >= 8:
+			col = 0
+			row += 1
+		if row % 2:
+			_rect(Vector2(col * 40, 2 + row * 22), Vector2(40, 22), BG_ALT)
+		_slime(Vector2(20 + col * 40, 16 + row * 22), id, cell[0], cell[1])
+		col += 1
+	_label(id.to_upper(), Vector2(0, 170), 320)
+
+
+func _big() -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var ids := Hats.ids()
+	for i in ids.size():
+		var c := i % 6
+		var r := i / 6
+		_slime(Vector2(28 + c * 53, 52 + r * 80), ids[i], "idle", 1, _skins()[i % 8], 2)
+
+
+func _wheel() -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var atlas: Texture2D = preload("res://assets/sprites/hats.png")
+	var ids := Hats.ids()
+	for i in ids.size():
+		for k in HatWheel.WEDGE_COLORS.size():
+			var at := Vector2(4 + i * 28, 4 + k * 28)
+			_rect(at, Vector2(28, 28), HatWheel.WEDGE_COLORS[k])
+			var s := Sprite2D.new()
+			s.texture = atlas
+			s.region_enabled = true
+			s.region_rect = Hats.region(ids[i], Hats.Width.NARROW)
+			s.centered = false
+			s.position = at + Vector2(14, 14) - Vector2(Hats.FRAME) / 2.0
+			add_child(s)
+
+
+func _rainbow() -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	_slime(Vector2(60, 100), "rainbow", "idle", 1, _skins()[0], 4)
+	_slime(Vector2(160, 100), "rainbow", "idle", 1, _skins()[3], 4)
+	_slime(Vector2(260, 100), "rainbow", "idle", 1, _skins()[6], 4)
