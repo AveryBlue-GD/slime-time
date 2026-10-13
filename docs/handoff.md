@@ -110,3 +110,15 @@ Reworked after the first Phase 3 pass: globs became TICKET VOUCHERS and medals b
 - **JELLY toggle** (`skins_screen.gd _toggle_jelly`): switching also wears the worn skin's other version when it is unlocked (`Progress.select_skin(id, view_jelly)`); otherwise the worn skin stays and the status line says `SOLID LOCKED - HARD CLEAR L#` (or the existing jelly lock text). Test `test_jelly_swap`.
 - **Skin atmosphere** (`Skins.atmosphere_color/tinted`, `Themes.fog_colors(theme, tint)`, `Ambient.create(theme, reduce, tint)`, `Game.atmosphere_tint`): fog colors lean 32% and motes 40% toward the worn skin's hue at the theme color's own brightness (so fog stays as dark as before; Dark/Normal/Bright untouched); rainbow and stopwatch use neutral warm gold. Trail, light halo and splat bursts were already skin-colored. Shots `docs/polish-shots/skinfx_*.png`; test `test_atmosphere`.
 - **Story** (see `docs/story.md`): `scripts/story.gd` (all text), `scenes/story.tscn` + `scripts/ui/story_screen.gd` (intro/finale cards), `Progress.story_seen` (bits, optional key, reset by RESET PROGRESS; tests and `--unlock-all` start with both seen). Intro: title PLAY on a fresh save, replay via the title's STORY button. Finale: `Game.play_next` after level 10 (once). Level banners: `Hud.show_area_name(name, line)`. Demo `tests/demo_story.tscn`; test `test_story`; shots `docs/polish-shots/story_*.png`.
+
+## Story layouts v4 + spawn picker (2026-10-13)
+See [level-design.md](level-design.md). `scripts/spawn_picker.gd` places the start for the randomizer
+(per seed: 33% outer edge ring, 30% within 2 cells of it, 37% anywhere; route >= 60% of the longest)
+and for the 10 story levels (a fixed class per level in `Levels.DATA.spawn`, cell drawn from the level
+seed: 4 edge, 3 near, 3 interior). Story mazes were rebuilt (`MazeGenerator.generate_level`: straighter
+runs, shortcut loops on L6-10, coins in deep dead ends first) on searched seeds whose routes stay within
+~5% of the old ones. Both modes calibrate the meter on the real start-to-chalice route (the randomizer
+no longer uses the longest route, `ref_steps` is gone). `[meta] version` 4: old saves keep each level's
+coin COUNT (re-mapped to the new coin cells), tiers, records and hard data (`Progress._migrate_coins`).
+The "Story levels are untouched" note in the randomizer section above is superseded. Overview shots:
+`tests/demo_overview.tscn` -> `docs/polish-shots/spawn_*.png`.
