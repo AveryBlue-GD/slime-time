@@ -156,3 +156,33 @@ Dev mode only (`--unlock-all`, i.e. `./tools/play.sh --dev`; `Progress.dev_tools
   used is marked like an assisted run: no medal, record or tickets (the result says DEV TOGGLES: ...); the win
   flow is otherwise unchanged. Code: `game.gd` "dev toggles" section, `hud.set_dev_badge`, `pause_menu.gd`
   `_build_dev_panel`. Test: `tests/test_dev_toggles.gd`.
+
+## Maze border art (2026-10-14)
+The unbreakable edge outside the maze used to be one ring of identical plain bricks. Now
+`MazeTiles.add_border` lays the ring (collides exactly as before: full wall square, `BORDER_SOURCE`) plus
+`EDGE_FOG` more tiles of bedrock (no collision, `BORDER_DEEP_SOURCE`; the same art) from each theme's
+`assets/sprites/themes/<id>_border.png` (16x8 tiles, `tools/make_theme_art.py`, section "the border"):
+- **Corner terrain:** each tile corner is rim stone or bedrock (`MazeTiles._corner_stone`: corners on the maze
+  edge always stone; one tile out about 45%, two out about 12%, by a smooth integer value noise along the edge plus
+  jitter), so the darker, heavier rim (the theme's own wall constructions, in patches) ends in a wobbly outlined
+  edge of varying depth; corners round off naturally. Atlas column = corner mask, rows 0-3 variants.
+- **Bedrock** (hue-shifted dark rock: shadows lean violet, lights warm) with sparser "deep" variants further out,
+  themed props (row 4: roots + moss in Mossy Mines, sand strata + fossils in Sandstone Sanctum, ice cracks in
+  Frozen Fortress, faint lava seams in Volcanic Vault, crystals in Crystal Caverns, bones/skulls, pipes + toxic
+  drips, barnacles + seaweed, obsidian glass ...), decorated rim stone (row 5) and eight themed 2x2 boulders
+  (rows 6-7) spaced apart.
+- Picked by `MazeTiles.border_cells(size, ring, depth, salt)`: pure 64-bit integer hashing of the tile and the
+  level's tile seed (`border_hash`), so it is the same every build and on web/desktop; story maze layouts, coin
+  keys and the maze's own wall/floor tiles are untouched (art only). No floor under the border (opaque art).
+- The border sources are added to a theme's tile set the first time a level needs them (the menu backdrop never
+  does; that keeps menus pixel-identical). Static tiles, no shaders, no per-frame work.
+- In normal play only the ring shows (when revealed, e.g. by the Brightness light); everything else is under
+  the outer fog. F1 (dev FULL BRIGHT) or `tests/demo_overview.tscn` show it all.
+- Shots: `docs/polish-shots/border_before_<level>.png` / `border_after_<level>.png` (overview),
+  `border_before_edge_*` / `border_after_edge_*` (in-game frame at the top-left corner, Brightness 10,
+  `tests/demo_edge.tscn`), `border_after_bright_*` (same with FULL BRIGHT). Test: `tests/test_border.gd`
+  (collision, determinism, no overlap with the maze, reveal, `make_theme_art.py --check`).
+- `python3 tools/make_theme_art.py` now rewrites only atlases whose pixels changed; `--check` compares.
+- Verified: non-border pixels identical to before in 51 frames (title, hub, levels 1-10, hard, randomizer,
+  brightness 10, pause) with the border region erased in both trees. CLAUDE.md's "Maze edge" line (a ring of plain
+  `BORDER` wall tiles) is now out of date (not edited: off limits for the agent).

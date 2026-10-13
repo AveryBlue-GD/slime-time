@@ -68,7 +68,9 @@ func _overview() -> void:
 	var world := Vector2(maze.size * game.TILE)
 	var camera := Camera2D.new()
 	camera.position = world / 2.0
-	var fit := minf(SIZE.x / (world.x + 64.0), (SIZE.y - 40.0) / (world.y + 64.0))
+	# Room for everything the camera can ever show past the maze: the border ring and EDGE_FOG beyond.
+	var margin: float = 2.0 * (game.BORDER + game.EDGE_FOG) * game.TILE
+	var fit := minf(SIZE.x / (world.x + margin), (SIZE.y - 40.0) / (world.y + margin))
 	camera.zoom = Vector2.ONE * fit
 	camera.offset = Vector2(0, -20.0 / fit)
 	game.add_child(camera)

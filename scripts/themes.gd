@@ -48,7 +48,7 @@ static func display_name(id: String) -> String:
 	return ALL.get(id, ALL[DUNGEON]).name
 
 
-## Path of a theme's tile atlas: `kind` is "walls", "floors" or "fillets".
+## Path of a theme's tile atlas: `kind` is "walls", "floors", "fillets" or "border".
 static func atlas_path(id: String, kind: String) -> String:
 	return "res://assets/sprites/themes/%s_%s.png" % [id if ALL.has(id) else DUNGEON, kind]
 

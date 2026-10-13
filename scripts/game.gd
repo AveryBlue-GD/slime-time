@@ -354,7 +354,7 @@ func _ready() -> void:
 
 	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
-	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER)
+	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
 	hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
 	_start_ambience()
 	_build_overlays()

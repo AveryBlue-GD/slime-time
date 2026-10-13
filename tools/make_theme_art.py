@@ -1,6 +1,6 @@
 """Generates the tile art for every level theme (no dependencies).
 
-Run from the project root:  python tools/make_theme_art.py
+Run from the project root:  python tools/make_theme_art.py   (--check: only compare)
 
 Each theme has its own palette, three different wall constructions (e.g. brick, cut blocks and
 cobbles; the game mixes them in patches so a level's walls really vary), two decorations and its
@@ -10,10 +10,19 @@ own floors, and writes three atlases:
                                            style 0 = plain, 1 and 2 = the theme's two decorations
 - assets/sprites/themes/<id>_floors.png  : 8 floor kinds (same columns as FLOOR_TYPES) x 4 variants
 - assets/sprites/themes/<id>_fillets.png : 16 inner-corner fillets
+- assets/sprites/themes/<id>_border.png  : the unbreakable border outside the maze (see BORDER below)
+
+Only atlases whose pixels changed are rewritten. `--check` redraws everything twice and compares it
+with the files (exit 1 if anything differs).
 
 Stone layouts tile seamlessly (every pattern repeats in 16 px).
 """
+import colorsys
+import math
 import random
+import struct
+import sys
+import zlib
 from pathlib import Path
 
 import make_placeholder_art as art
@@ -664,31 +673,681 @@ def themed_floor(theme: dict, kind: str, seed: int) -> list[str]:
     return ["".join(r) for r in g]
 
 
+# ---------------------------------------------------------------- the border (outside the maze)
+#
+# assets/sprites/themes/<id>_border.png, 16 x 8 tiles (MazeTiles.add_border picks them):
+# rows 0-3: corner terrain. column = which corners are rim stone (NW=1, NE=2, SW=4, SE=8; the rest
+#           are bedrock), row = variant. Mask 15 = all rim stone (the theme's own wall construction,
+#           darker and heavier), mask 0 = all bedrock (rows 0-1 denser texture, rows 2-3 the sparser,
+#           darker deep rock). Between them the stone ends in a wobbly outlined edge that always
+#           crosses a tile side at its middle, so any two neighbors join up.
+# row 4:    bedrock with a themed prop (roots, strata, ice cracks, lava seams, crystals, bones ...).
+# row 5:    rim stone with the theme's decorations, cracks or drips.
+# rows 6-7: eight 2x2 boulders (32x32 px) sitting on bedrock (column = boulder * 2 + x).
+# Shading is hue-shifted: shadows lean cool (violet), highlights warm. Every tile is fully opaque.
+
+BORDER_COLUMNS = 16
+BORDER_ROWS = 8
+BORDER_PROP_ROW = 4
+BORDER_RIM_ROW = 5
+BORDER_BOULDER_ROW = 6
+BOULDERS = 8
+
+
+def hue_shift(c, amount: float, turn: float = 0.45):
+    """Darker (amount < 0) and cooler toward violet, or lighter (> 0) and warmer toward gold; `turn`
+    scales how far the hue moves."""
+    r, g, b = (v / 255.0 for v in c[:3])
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    target = 0.70 if amount < 0 else 0.13
+    a = abs(amount)
+    if s < 0.06:
+        h = target
+    dh = ((target - h + 0.5) % 1.0) - 0.5
+    h = (h + dh * min(1.0, a * turn)) % 1.0
+    if amount < 0:
+        v *= 1.0 - a
+        s = min(1.0, s * (1.0 + a * 0.35) + 0.04 * a)
+    else:
+        v += (1.0 - v) * a * 0.55
+        s *= 1.0 - a * 0.25
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return (round(r * 255), round(g * 255), round(b * 255), 255)
+
+
+def mix(a, b, t: float):
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+
+
+def _theme_rgb(theme: dict, letter: str):
+    if letter in theme["pal"]:
+        return (*theme["pal"][letter], 255)
+    return art.PAL[letter]
+
+
+# Per theme: the bedrock's own colors (rock namespace letters, see _rock_palette) and its props.
+# rock: base color of the bedrock; extra: prop colors; props: row-4 prop drawers; boulders: looks.
+BORDER = {
+    "dungeon": {"rock": (52, 54, 74), "props": ("pebbles", "fissure", "bones", "drip", "chain"),
+                "extra": {"u": (176, 166, 150), "n": (88, 120, 168), "p": (96, 98, 116)},
+                "boulder": "granite"},
+    "mossy": {"rock": (40, 50, 36), "props": ("roots", "moss", "roots", "pebbles", "drip"),
+              "extra": {"r": (84, 66, 46), "v": (86, 146, 58), "n": (64, 112, 120)},
+              "boulder": "mossy"},
+    "sandstone": {"rock": (110, 76, 52), "props": ("strata_fossil", "pebbles", "fissure", "shell"),
+                  "extra": {"S": (184, 140, 92), "u": (226, 214, 186)}, "strata": True,
+                  "boulder": "strata"},
+    "sunken": {"rock": (26, 54, 62), "props": ("barnacles", "seaweed", "drip", "pebbles"),
+               "extra": {"u": (200, 196, 172), "v": (52, 132, 98), "n": (96, 170, 210)},
+               "boulder": "barnacled"},
+    "sewers": {"rock": (48, 44, 34), "props": ("pipe", "toxic_drip", "pebbles", "fissure"),
+               "extra": {"p": (104, 112, 118), "t": (138, 70, 36), "T": (150, 226, 46)},
+               "boulder": "pipe"},
+    "catacombs": {"rock": (56, 46, 42), "props": ("bones", "skull", "pebbles", "fissure"),
+                  "extra": {"u": (214, 204, 180)}, "boulder": "bones"},
+    "frozen": {"rock": (38, 54, 98), "props": ("ice_crack", "frost", "ice_crack", "pebbles"),
+               "extra": {"i": (176, 214, 246), "I": (240, 250, 255)}, "boulder": "ice"},
+    "obsidian": {"rock": (20, 18, 30), "props": ("glass", "vein", "pebbles", "glass"),
+                 "extra": {"g": (176, 166, 226), "v": (112, 64, 162)}, "boulder": "obsidian"},
+    "crystal": {"rock": (40, 26, 60), "props": ("crystals", "sparkle", "crystals", "pebbles"),
+                "extra": {"c": (204, 118, 244), "C": (244, 214, 255), "q": (112, 52, 164)},
+                "boulder": "crystal"},
+    "volcanic": {"rock": (40, 26, 24), "props": ("lava_seam", "embers", "lava_seam", "pebbles"),
+                 "extra": {"l": (230, 150, 70), "O": (170, 74, 32), "R": (104, 36, 22)},
+                 "boulder": "lava"},
+}
+
+
+def _rock_palette(theme_id: str) -> dict:
+    """Rock-namespace letters: D deep, K dark, M base, L light, H highlight, o outline; boulder
+    tones a (outline) e E m h j; plus the theme's prop colors (each with a darker partner letter
+    made by upper/lower casing where listed)."""
+    cfg = BORDER[theme_id]
+    base = (*cfg["rock"], 255)
+    pal = {"D": hue_shift(base, -0.5), "K": hue_shift(base, -0.25), "M": base,
+           "L": hue_shift(base, 0.16), "H": hue_shift(base, 0.32), "o": hue_shift(base, -0.68)}
+    for k, v in cfg.get("extra", {}).items():
+        pal[k] = (*v, 255)
+    shades = {"u": "U", "r": "Q", "v": "V", "n": "N", "p": "P", "S": "s", "i": "Y", "g": "G", "c": "Z",
+              "t": "X", "T": "W", "l": "A", "O": "B"}
+    for k, dark in shades.items():
+        if k in pal:
+            pal[dark] = hue_shift(pal[k], -0.35)
+    return pal
+
+
+def _rim_color(theme: dict, letter: str):
+    """Rim stone: the theme's wall colors, darker and heavier (glowing bits stay brighter)."""
+    c = _theme_rgb(theme, letter)
+    if letter in "LO":  # lava keeps a faint glow
+        return hue_shift(c, -0.3, 0.05)
+    if letter in "TBCI":
+        return hue_shift(c, -0.12, 0.1)
+    return hue_shift(c, -0.34 if letter in "xwW" else -0.4, 0.12)
+
+
+def _boulder_palette(theme: dict, theme_id: str) -> dict:
+    look = BORDER[theme_id]["boulder"]
+    w = _theme_rgb(theme, "w")
+    W = _theme_rgb(theme, "W")
+    if look == "ice":
+        w, W = (150, 196, 236, 255), (96, 140, 200, 255)
+    elif look == "obsidian":
+        w, W = (64, 58, 96, 255), (34, 30, 52, 255)
+    mid = hue_shift(mix(w, W, 0.55), -0.3)
+    return {"a": hue_shift(mid, -0.7), "e": hue_shift(mid, -0.42), "E": hue_shift(mid, -0.2), "m": mid,
+            "h": hue_shift(mid, 0.2), "j": hue_shift(mid, 0.42)}
+
+
+def _bedrock(theme_id: str, rng, deep: bool) -> list[list[str]]:
+    """Plain bedrock (fully seamless: only single pixels and pebbles kept inside the tile)."""
+    g = blank("M")
+    for _ in range(rng.randint(2, 4)):  # soft darker patches: texture bigger than single pixels
+        cx, cy = rng.uniform(2, 14), rng.uniform(2, 14)
+        radius = rng.uniform(1.5, 2.8)
+        for y in range(16):
+            for x in range(16):
+                if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= radius * radius and rng.random() < 0.7:
+                    g[y][x] = "K"
+    for y in range(16):
+        for x in range(16):
+            r = rng.random()
+            if r < (0.08 if deep else 0.05):
+                g[y][x] = "K"
+            elif r < (0.115 if deep else 0.07):
+                g[y][x] = "D"
+            elif r < (0.125 if deep else 0.095):
+                g[y][x] = "L"
+    if BORDER[theme_id].get("strata"):
+        for row in (2, 7, 12):  # sediment bands at the same heights at every tile side, so they run on;
+            hump = rng.choice((-1.6, -1.0, 0.0, 1.0, 1.6))  # each tile bends them its own way between
+            k = rng.choice((1, 2))
+            for x in range(16):
+                y = row + round(hump * math.sin(math.pi * k * x / 16.0))
+                g[y][x] = "S" if rng.random() < 0.9 else "L"
+                g[y + 1][x] = "s" if rng.random() < 0.8 else "K"
+    for _ in range(rng.randint(1, 2) if deep else rng.randint(3, 5)):
+        _pebble(g, rng)
+    if not deep and rng.random() < 0.5:
+        _fissure(g, rng, rng.randint(3, 6))
+    return g
+
+
+def _pebble(g, rng, x=None, y=None):
+    x = rng.randrange(1, 13) if x is None else x
+    y = rng.randrange(1, 13) if y is None else y
+    w, h = rng.randint(2, 3), rng.randint(2, 3)
+    for dy in range(h):
+        for dx in range(w):
+            g[y + dy][x + dx] = "L" if dx + dy == 0 else ("K" if dx == w - 1 or dy == h - 1 else "M")
+    g[y][x] = "H" if rng.random() < 0.5 else "L"
+    if y + h < 16 and x + 1 < 16:
+        g[y + h][x + 1] = "D"
+
+
+def _fissure(g, rng, length, color="D", light=None):
+    x, y = rng.randrange(2, 14), rng.randrange(2, 14)
+    main = rng.choice(art.DIRS8)
+    for _ in range(length):
+        if 0 <= x < 16 and 0 <= y < 16:
+            g[y][x] = color
+            if light and 0 <= y - 1 < 16 and g[y - 1][x] not in (color,):
+                g[y - 1][x] = light
+        dx, dy = main if rng.random() < 0.65 else rng.choice(art.DIRS8)
+        x, y = x + dx, y + dy
+
+
+def _rput(g, x, y, c):
+    if 1 <= x < 15 and 1 <= y < 15:
+        g[y][x] = c
+
+
+def prop_pebbles(g, rng):
+    for _ in range(rng.randint(3, 4)):
+        _pebble(g, rng)
+
+
+def prop_fissure(g, rng):
+    _fissure(g, rng, rng.randint(7, 11), "D", "L")
+
+
+def prop_bones(g, rng):
+    x, y = rng.randrange(2, 7), rng.randrange(4, 12)
+    dx, dy = rng.choice([(1, 0), (1, 1), (1, -1)])
+    for i in range(6):
+        _rput(g, x + dx * i, y + dy * i, "u")
+        _rput(g, x + dx * i, y + dy * i + 1, "U")
+    for ex, ey in ((x, y), (x + dx * 5, y + dy * 5)):
+        _rput(g, ex - dy, ey + dx, "u")
+        _rput(g, ex + dy, ey - dx, "u")
+    if rng.random() < 0.6:
+        _rput(g, rng.randrange(3, 13), rng.randrange(3, 13), "u")
+
+
+def prop_skull(g, rng):
+    x0, y0 = rng.randrange(3, 8), rng.randrange(3, 8)
+    for dy, row in enumerate(["ouuuo", "uuuuu", "uDuDu", "uuuuu", "oUuUo", ".U.U."]):
+        for dx, c in enumerate(row):
+            if c != ".":
+                _rput(g, x0 + dx, y0 + dy, c)
+    _rput(g, x0 + 5, y0 + 5, "D")
+
+
+def prop_chain(g, rng):
+    x = rng.randrange(4, 12)
+    for y in range(1, rng.randrange(9, 15)):
+        _rput(g, x, y, "p" if y % 3 else "P")
+        if y % 3 == 0:
+            _rput(g, x - 1, y, "P")
+            _rput(g, x + 1, y, "P")
+    _rput(g, x, y + 1, "o")
+
+
+def prop_drip(g, rng):
+    for _ in range(rng.randint(1, 2)):
+        x = rng.randrange(2, 14)
+        top = rng.randrange(1, 5)
+        for y in range(top, top + rng.randint(4, 8)):
+            _rput(g, x, y, "N" if y % 2 else "K")
+        _rput(g, x, y + 1, "n")
+
+
+def prop_toxic_drip(g, rng):
+    for _ in range(rng.randint(1, 3)):
+        x = rng.randrange(2, 14)
+        length = rng.randint(3, 9)
+        for y in range(1, length):
+            _rput(g, x, y, "W" if y < length - 1 else "T")
+        _rput(g, x, length, "T")
+
+
+def prop_roots(g, rng):
+    """A root pushing down through the rock: a 2 px trunk that wanders and thins, with rootlets."""
+    x, y = rng.randrange(4, 11), 1
+    length = rng.randint(10, 13)
+    for i in range(length):
+        _rput(g, x, y, "r")
+        if i < length * 0.6:
+            _rput(g, x + 1, y, "Q")
+        if rng.random() < 0.22:  # a rootlet curling off sideways
+            side = rng.choice((-1, 1))
+            bx, by = x + side, y
+            for _ in range(rng.randint(2, 4)):
+                _rput(g, bx, by, "Q")
+                bx += side
+                by += 1 if rng.random() < 0.6 else 0
+        y += 1
+        if rng.random() < 0.35:
+            x += rng.choice((-1, 1))
+
+
+def prop_moss(g, rng):
+    for _ in range(rng.randint(2, 4)):
+        cx, cy = rng.randrange(3, 13), rng.randrange(3, 13)
+        for y in range(16):
+            for x in range(16):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= rng.uniform(2.0, 6.5):
+                    _rput(g, x, y, "v" if y < cy else "V")
+
+
+def prop_strata_fossil(g, rng):
+    x0, y0 = rng.randrange(3, 10), rng.randrange(4, 10)
+    for i, (dx, dy) in enumerate(((0, 0), (1, 0), (2, 1), (2, 2), (1, 3), (0, 2), (1, 1))):
+        _rput(g, x0 + dx, y0 + dy, "u" if i % 2 == 0 else "U")
+
+
+def prop_shell(g, rng):
+    for _ in range(rng.randint(2, 3)):
+        x, y = rng.randrange(2, 13), rng.randrange(2, 13)
+        _rput(g, x, y, "u")
+        _rput(g, x + 1, y, "U")
+        _rput(g, x, y + 1, "U")
+
+
+def prop_barnacles(g, rng):
+    for _ in range(rng.randint(3, 5)):
+        x, y = rng.randrange(2, 13), rng.randrange(2, 13)
+        _rput(g, x, y, "u")
+        _rput(g, x + 1, y, "U")
+        _rput(g, x, y + 1, "U")
+        _rput(g, x + 1, y + 1, "o")
+
+
+def prop_seaweed(g, rng):
+    for _ in range(rng.randint(2, 3)):
+        x = rng.randrange(2, 14)
+        for y in range(14, rng.randrange(3, 8), -1):
+            _rput(g, x, y, "v" if y % 2 else "V")
+            if rng.random() < 0.3:
+                x += rng.choice((-1, 1))
+
+
+def prop_pipe(g, rng):
+    y = rng.randrange(4, 10)
+    for x in range(1, 15):
+        g[y - 1][x] = "o"
+        g[y][x] = "p"
+        g[y + 1][x] = "P" if x % 5 else "o"
+        g[y + 2][x] = "o"
+    for _ in range(rng.randint(1, 2)):
+        x = rng.randrange(2, 14)
+        for yy in range(y + 2, min(15, y + 2 + rng.randint(2, 4))):
+            g[yy][x] = "t"
+
+
+def prop_ice_crack(g, rng):
+    _fissure(g, rng, rng.randint(8, 13), "i", None)
+    _fissure(g, rng, rng.randint(3, 6), "Y", None)
+    _rput(g, rng.randrange(3, 13), rng.randrange(3, 13), "I")
+
+
+def prop_frost(g, rng):
+    for _ in range(rng.randint(5, 8)):
+        x, y = rng.randrange(2, 14), rng.randrange(2, 14)
+        _rput(g, x, y, "i")
+        if rng.random() < 0.5:
+            _rput(g, x + 1, y, "Y")
+    _rput(g, rng.randrange(3, 13), rng.randrange(3, 13), "I")
+
+
+def prop_glass(g, rng):
+    x0 = rng.randrange(-4, 8)
+    for i in range(14):
+        _rput(g, x0 + i, 1 + i, "g")
+        _rput(g, x0 + i + 1, 1 + i, "G")
+
+
+def prop_vein(g, rng):
+    _fissure(g, rng, rng.randint(8, 12), "v", None)
+    _fissure(g, rng, rng.randint(4, 7), "V", None)
+
+
+def prop_crystals(g, rng):
+    bx, by = rng.randrange(4, 11), rng.randrange(9, 14)
+    for height, dx in ((rng.randint(5, 7), 0), (rng.randint(3, 5), -2), (rng.randint(2, 4), 2)):
+        for i in range(height):
+            _rput(g, bx + dx, by - i, "C" if i >= height - 2 else "c")
+            _rput(g, bx + dx + 1, by - i, "Z" if i < height - 1 else "c")
+    _rput(g, bx - 1, by + 1, "o")
+    _rput(g, bx + 3, by + 1, "o")
+
+
+def prop_sparkle(g, rng):
+    for _ in range(rng.randint(3, 5)):
+        x, y = rng.randrange(2, 14), rng.randrange(2, 14)
+        _rput(g, x, y, "C")
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if rng.random() < 0.5:
+                _rput(g, x + dx, y + dy, "Z")
+
+
+def prop_lava_seam(g, rng):
+    x, y = rng.randrange(3, 13), rng.randrange(3, 13)
+    main = rng.choice(art.DIRS8)
+    for _ in range(rng.randint(8, 12)):
+        _rput(g, x, y, "l" if rng.random() < 0.35 else "O")
+        for nx, ny in ((x + 1, y), (x, y + 1)):
+            if 1 <= nx < 15 and 1 <= ny < 15 and g[ny][nx] not in ("l", "O"):
+                g[ny][nx] = "R"
+        dx, dy = main if rng.random() < 0.6 else rng.choice(art.DIRS8)
+        x, y = max(1, min(14, x + dx)), max(1, min(14, y + dy))
+
+
+def prop_embers(g, rng):
+    for _ in range(rng.randint(4, 7)):
+        _rput(g, rng.randrange(1, 15), rng.randrange(1, 15), rng.choice("ORR"))
+
+
+BORDER_PROPS = {name[5:]: fn for name, fn in globals().items() if name.startswith("prop_")}
+
+
+def _stone_grid(theme: dict, rng, deco=None, cracks=0, layout=0) -> list[list[str]]:
+    """Rim stone: one of the theme's wall constructions as a solid (all-neighbors) wall tile."""
+    g = blank("w")
+    LAYOUTS[theme["layouts"][layout]](g, rng)
+    if deco:
+        DECOS[deco](g, rng, [])
+    for _ in range(cracks):
+        crack(g, rng, rng.randint(5, 9))
+    return g
+
+
+def _field(mask: int, rng):
+    """Stone amount (> 0.5 = stone) for pixel centers -1..16 of a corner-terrain tile: the corner
+    values blended bilinearly, plus a wobble that fades down toward the tile's sides."""
+    corners = [(mask >> i) & 1 for i in range(4)]  # NW, NE, SW, SE
+    waves = [(rng.uniform(0.18, 0.42), rng.uniform(0.18, 0.42), rng.uniform(0, math.tau)) for _ in range(3)]
+    f = {}
+    for y in range(-1, 17):
+        for x in range(-1, 17):
+            u, v = (x + 0.5) / 16.0, (y + 0.5) / 16.0
+            base = (corners[0] * (1 - u) * (1 - v) + corners[1] * u * (1 - v)
+                    + corners[2] * (1 - u) * v + corners[3] * u * v)
+            wobble = sum(math.sin(a * x + b * y + p) for a, b, p in waves) / 3.0
+            # Mostly faded out toward the sides (so neighbors still meet within a pixel or so), but not
+            # fully, or every straight run of rim would bulge in the same place on every tile.
+            fade = 0.35 + 0.65 * max(0.0, math.sin(math.pi * u)) * max(0.0, math.sin(math.pi * v))
+            f[(x, y)] = base + 0.22 * wobble * fade
+    return f
+
+
+def border_terrain(theme: dict, theme_id: str, mask: int, variant: int, seed: int) -> list[list[tuple]]:
+    rng = random.Random(seed)
+    rock = _bedrock(theme_id, rng, deep=mask == 0 and variant >= 2)
+    # Variants 0-1 are the theme's main construction, 2 and 3 its other two (the game lays them in
+    # patches, like the maze's own walls).
+    stone = _stone_grid(theme, rng, cracks=1 if variant == 1 else 0, layout=max(0, variant - 1))
+    field = _field(mask, rng)
+    return _composite(theme, theme_id, stone, rock, lambda x, y: field[(x, y)] > 0.5)
+
+
+def _composite(theme, theme_id, stone, rock, is_stone):
+    rpal = _rock_palette(theme_id)
+    out = []
+    for y in range(16):
+        row = []
+        for x in range(16):
+            if is_stone(x, y):
+                edge = any(not is_stone(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                letter = "k" if edge else stone[y][x]
+                row.append(hue_shift(_theme_rgb(theme, "k"), -0.3) if edge else _rim_color(theme, letter))
+            else:
+                shadow = is_stone(x - 1, y - 1) or is_stone(x, y - 1)
+                row.append(rpal["D"] if shadow else rpal[rock[y][x]])
+        out.append(row)
+    return out
+
+
+def border_prop(theme: dict, theme_id: str, index: int, seed: int):
+    rng = random.Random(seed)
+    rock = _bedrock(theme_id, rng, deep=index % 3 == 2)
+    names = BORDER[theme_id]["props"]
+    BORDER_PROPS[names[index % len(names)]](rock, rng)
+    return _composite(theme, theme_id, None, rock, lambda x, y: False)
+
+
+def border_rim(theme: dict, theme_id: str, index: int, seed: int):
+    rng = random.Random(seed)
+    decos = theme["decos"]
+    deco = decos[index % 2] if index % 4 != 3 else None
+    stone = _stone_grid(theme, rng, deco=deco, cracks=1 + (index % 4 == 3) * 2 if index >= 8 else 0)
+    return _composite(theme, theme_id, stone, None, lambda x, y: True)
+
+
+def boulder(theme: dict, theme_id: str, index: int, seed: int):
+    """A 32x32 boulder on bedrock (the four tiles it covers, as one pixel grid)."""
+    rng = random.Random(seed)
+    look = BORDER[theme_id]["boulder"]
+    rpal = _rock_palette(theme_id)
+    bpal = _boulder_palette(theme, theme_id)
+    base = [[None] * 32 for _ in range(32)]
+    for ty in range(2):
+        for tx in range(2):
+            rock = _bedrock(theme_id, rng, deep=True)
+            for y in range(16):
+                for x in range(16):
+                    base[ty * 16 + y][tx * 16 + x] = rpal[rock[y][x]]
+    cx, cy = rng.uniform(14.0, 18.0), rng.uniform(13.5, 18.5)
+    rx, ry = rng.uniform(9.5, 13.0), rng.uniform(8.5, 11.5)
+    waves = [(k, rng.uniform(0.04, 0.11), rng.uniform(0, math.tau)) for k in (2, 3, 5)]
+
+    def inside(x, y):
+        dx, dy = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+        ang = math.atan2(dy, dx)
+        edge = 1.0 + sum(a * math.sin(k * ang + p) for k, a, p in waves)
+        return dx * dx + dy * dy <= edge * edge
+
+    lx, ly, lz = -0.55, -0.65, 0.52
+    for y in range(32):
+        for x in range(32):
+            if inside(x, y):
+                if not all(inside(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                    base[y][x] = bpal["a"]
+                    continue
+                nx, ny = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+                nz = math.sqrt(max(0.0, 1.0 - min(1.0, nx * nx + ny * ny)))
+                light = nx * lx + ny * ly + nz * lz + rng.uniform(-0.12, 0.12)
+                tone = "j" if light > 0.78 else "h" if light > 0.5 else "m" if light > 0.18 else "E" if light > -0.15 else "e"
+                base[y][x] = bpal[tone]
+            elif inside(x - 2, y - 2) or inside(x - 1, y - 2):
+                base[y][x] = rpal["o"] if inside(x - 1, y - 1) else rpal["D"]
+    _boulder_detail(base, look, rng, inside, rpal, bpal, cx, cy, rx, ry)
+    return base
+
+
+def _boulder_detail(px, look, rng, inside, rpal, bpal, cx, cy, rx, ry):
+    def put_in(x, y, c):
+        if 0 <= x < 32 and 0 <= y < 32 and inside(x, y) and px[y][x] != bpal["a"]:
+            px[y][x] = c
+
+    def seam(color, glow=None, length=14):
+        x, y = cx + rng.uniform(-rx * 0.5, rx * 0.5), cy - ry * 0.6
+        for _ in range(length):
+            put_in(int(x), int(y), color)
+            if glow:
+                put_in(int(x) + 1, int(y), glow)
+            x += rng.uniform(-1.2, 1.2)
+            y += 1
+
+    if look in ("granite", "bones", "pipe", "barnacled"):
+        seam(bpal["e"], length=rng.randint(5, 9))
+    if look == "mossy":
+        for y in range(32):
+            for x in range(32):
+                if inside(x, y) and not inside(x, y - 3) and rng.random() < 0.85:
+                    put_in(x, y, rpal["v"] if rng.random() < 0.7 else rpal["V"])
+    elif look == "strata":
+        for y in range(int(cy - ry), int(cy + ry), 4):
+            for x in range(32):
+                put_in(x, y + (1 if (x // 5) % 2 else 0), rpal["S"])
+    elif look == "barnacled":
+        for _ in range(7):
+            x, y = int(cx + rng.uniform(-rx, rx) * 0.7), int(cy + rng.uniform(-ry, ry) * 0.7)
+            put_in(x, y, rpal["u"])
+            put_in(x + 1, y + 1, rpal["U"])
+    elif look == "ice":
+        seam(rpal["I"], length=rng.randint(6, 10))
+        for _ in range(4):
+            put_in(int(cx - rx * 0.4) + rng.randint(-2, 2), int(cy - ry * 0.45) + rng.randint(-2, 2), rpal["I"])
+    elif look == "obsidian":
+        x0 = int(cx - rx * 0.6)
+        for i in range(int(ry * 1.2)):
+            put_in(x0 + i, int(cy - ry * 0.6) + i, rpal["g"])
+    elif look == "lava":
+        seam(rpal["O"], rpal["R"], length=rng.randint(10, 16))
+        seam(rpal["l"], None, length=rng.randint(3, 6))
+    elif look == "crystal":
+        bx, by = int(cx), int(cy + ry * 0.3)
+        for height, dx in ((rng.randint(9, 13), 0), (rng.randint(6, 9), -3), (rng.randint(5, 8), 3)):
+            for i in range(height):
+                for w_ in range(2):
+                    put_in(bx + dx + w_, by - i, rpal["C"] if i >= height - 2 else (rpal["c"] if w_ == 0 else rpal["Z"]))
+    elif look == "bones":
+        x0, y0 = int(cx) - 2, int(cy) - 2
+        for dy, row in enumerate(["uuuu", "uDuD", "uuuu", "U.U."]):
+            for dx, c in enumerate(row):
+                if c != ".":
+                    put_in(x0 + dx, y0 + dy, rpal[c])
+    elif look == "pipe":
+        y = int(cy)
+        for x in range(int(cx - rx) - 1, int(cx)):
+            for dy, c in ((-1, "o"), (0, "p"), (1, "P"), (2, "o")):
+                put_in(x, y + dy, rpal[c])
+        put_in(int(cx), y, rpal["o"])
+        put_in(int(cx), y + 1, rpal["o"])
+        for yy in range(y + 2, y + 6):
+            put_in(int(cx) - 1, yy, rpal["T"])
+
+
+def border_atlas(theme_id: str, theme: dict) -> list[list[tuple]]:
+    """The whole 256x128 border atlas as rows of RGBA pixels."""
+    base = 90000 + list(THEMES).index(theme_id) * 1000
+    tiles = {}
+    for variant in range(4):
+        for mask in range(16):
+            tiles[(mask, variant)] = border_terrain(theme, theme_id, mask, variant, base + variant * 40 + mask)
+    for i in range(BORDER_COLUMNS):
+        tiles[(i, BORDER_PROP_ROW)] = border_prop(theme, theme_id, i, base + 300 + i)
+        tiles[(i, BORDER_RIM_ROW)] = border_rim(theme, theme_id, i, base + 400 + i)
+    for b in range(BOULDERS):
+        big = boulder(theme, theme_id, b, base + 500 + b)
+        for ty in range(2):
+            for tx in range(2):
+                tiles[(b * 2 + tx, BORDER_BOULDER_ROW + ty)] = [row[tx * 16:tx * 16 + 16] for row in big[ty * 16:ty * 16 + 16]]
+    return [[px for column in range(BORDER_COLUMNS) for px in tiles[(column, row)][y]]
+            for row in range(BORDER_ROWS) for y in range(16)]
+
+
 # ---------------------------------------------------------------- output
 
-def write_themed(path: Path, rows: list[str], pal: dict) -> None:
-    saved = dict(art.PAL)
-    art.PAL.update({c: rgb(*v) for c, v in pal.items()})
-    try:
-        art.write_png(path, rows)
-    finally:
-        art.PAL.clear()
-        art.PAL.update(saved)
+def png_bytes(pixels: list[list[tuple]]) -> bytes:
+    h, w = len(pixels), len(pixels[0])
+    raw = b"".join(b"\x00" + b"".join(bytes(p) for p in row) for row in pixels)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
-if __name__ == "__main__":
-    OUT.mkdir(parents=True, exist_ok=True)
+def read_png_pixels(path: Path):
+    """Decodes an 8-bit RGBA PNG (as written here) to rows of RGBA tuples; None if unreadable."""
+    if not path.exists():
+        return None
+    data = path.read_bytes()
+    pos, idat, w, h = 8, b"", 0, 0
+    while pos < len(data):
+        length = struct.unpack(">I", data[pos:pos + 4])[0]
+        tag, body = data[pos + 4:pos + 8], data[pos + 8:pos + 8 + length]
+        if tag == b"IHDR":
+            w, h, depth, ctype = struct.unpack(">IIBB", body[:10])
+            if depth != 8 or ctype != 6:
+                return None
+        elif tag == b"IDAT":
+            idat += body
+        pos += 12 + length
+    raw = zlib.decompress(idat)
+    stride, rows, prev = w * 4, [], bytearray(w * 4)
+    for y in range(h):
+        kind = raw[y * (stride + 1)]
+        line = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride):
+            a = line[i - 4] if i >= 4 else 0
+            b = prev[i]
+            c = prev[i - 4] if i >= 4 else 0
+            if kind == 1:
+                line[i] = (line[i] + a) & 255
+            elif kind == 2:
+                line[i] = (line[i] + b) & 255
+            elif kind == 3:
+                line[i] = (line[i] + (a + b) // 2) & 255
+            elif kind == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append([tuple(line[i:i + 4]) for i in range(0, stride, 4)])
+        prev = line
+    return rows
+
+
+def themed_pixels(rows: list[str], pal: dict) -> list[list[tuple]]:
+    full = dict(art.PAL)
+    full.update({c: rgb(*v) for c, v in pal.items()})
+    return [[tuple(full[c]) for c in row] for row in rows]
+
+
+def all_atlases() -> dict:
+    """Every themed atlas, by output path: rows of RGBA pixels."""
     for c in EXTRA:  # defaults so every letter is printable (themes override the ones they use)
         art.PAL.setdefault(c, (255, 0, 255, 255))
+    out = {}
     for i, (theme_id, theme) in enumerate(THEMES.items()):
         base = 20000 + i * 1000
-        write_themed(OUT / f"{theme_id}_walls.png", atlas([
+        out[OUT / f"{theme_id}_walls.png"] = themed_pixels(atlas([
             [themed_wall(theme, layout, mask, damage, style,
                          seed=base + v * 5000 + damage * 300 + style * 50 + mask) for mask in range(16)]
             for v, layout in enumerate(theme["layouts"]) for damage in range(4) for style in range(3)
         ]), theme["pal"])
-        write_themed(OUT / f"{theme_id}_floors.png", atlas([
+        out[OUT / f"{theme_id}_floors.png"] = themed_pixels(atlas([
             [themed_floor(theme, kind, seed=base + 500 + variant * 20 + k) for k, kind in enumerate(FLOOR_TYPES)]
             for variant in range(4)
         ]), theme["pal"])
-        write_themed(OUT / f"{theme_id}_fillets.png", atlas([[fillet_tile(mask) for mask in range(16)]]), theme["pal"])
+        out[OUT / f"{theme_id}_fillets.png"] = themed_pixels(atlas([[fillet_tile(mask) for mask in range(16)]]), theme["pal"])
+        out[OUT / f"{theme_id}_border.png"] = border_atlas(theme_id, theme)
+    return out
+
+
+if __name__ == "__main__":
+    OUT.mkdir(parents=True, exist_ok=True)
+    first = all_atlases()
+    if "--check" in sys.argv:  # tests: are the checked-in atlases exactly what this file draws (twice over)?
+        second = all_atlases()
+        bad = [p.name for p, px in first.items() if px != second[p] or read_png_pixels(p) != px]
+        print("theme art check: %d atlases, %s" % (len(first), "OK" if not bad else "DIFFER: " + ", ".join(bad)))
+        sys.exit(1 if bad else 0)
+    for path, pixels in first.items():
+        if read_png_pixels(path) == pixels:
+            continue  # unchanged: leave the file (and its import) alone
+        path.write_bytes(png_bytes(pixels))
+        print(f"wrote {path.relative_to(OUT.parent.parent.parent)} ({len(pixels[0])}x{len(pixels)})")
