@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Hats: won on the hat wheel in the hub (a spin lands on a random hat you don't have yet, and
 ## won hats come off the wheel; Progress.hats_owned), then picked on the Skins screen's hats page
-## (Progress.selected_hat). A spin costs 12 globs (the first is free; Progress.spin_hat), but the wheel stays dev-only
+## (Progress.selected_hat). A spin costs 12 tickets (the first is free; Progress.spin_hat), but the wheel stays dev-only
 ## while Hats.available is false.
 ## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
 ## frame. The Hat node (scripts/hat.gd) puts the chosen one on the slime and handles its physics.

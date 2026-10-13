@@ -78,15 +78,14 @@ func _make_tile(level: int) -> Button:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status.add_child(row)
 	if not locked:
-		# Medal pips (PAR, CLEAN, COINS) stacked at the tile's top right: gold once won.
-		var won := Progress.medals_for(level)
+		# Medal pips stacked at the tile's top right: one gold pip per tier won (bronze 1, silver 2,
+		# gold 3) on this mode's best clear, dark for the rest.
+		var tier := Progress.medals_for(level)
 		for i in 3:
-			if i == 2 and Progress.hard_mode:
-				continue  # no coins on hard mode
 			var pip := ColorRect.new()
 			pip.position = Vector2(36, 5 + i * 5)
 			pip.size = Vector2(3, 3)
-			pip.color = UIKit.GOLD if won & (1 << i) != 0 else UIKit.TEXT_OFF
+			pip.color = UIKit.GOLD if i < tier else UIKit.TEXT_OFF
 			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			button.add_child(pip)
 	if locked:

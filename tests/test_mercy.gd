@@ -3,8 +3,7 @@ extends SceneTree
 ## Mercy assist ("slime reserve"): after 3 dry-ups on the same story level in a session, the dry-up
 ## screen offers an optional ASSIST attempt with a bit more slime. It's never offered on hard
 ## mode or in randomizer mazes, applies to one attempt only, is labelled in the HUD, and an
-## assisted win pays no globs or medals and sets no record (but does clear the level, and the
-## first-clear globs stay waiting for an unassisted clear). Throwaway save.
+## assisted win earns no medal tier and sets no record (but does clear the level). Throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_mercy.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -40,7 +39,7 @@ func _initialize() -> void:
 	var game := await _spawn(1, false)
 	game._offer_retry()
 	_check(_buttons(game) == ["RESTART", "ASSIST", "UPGRADES"] and game.hud.choice_buttons[0].has_focus(), "after 3 dry-ups: RESTART (the default), ASSIST, UPGRADES")
-	_check("ASSIST" in game.hud.rewards_texts[0] and "NO MEDALS" in game.hud.rewards_texts[0], "...clearly labelled: no medals or globs (%s)" % game.hud.rewards_texts[0])
+	_check("ASSIST" in game.hud.rewards_texts[0] and "NO MEDALS" in game.hud.rewards_texts[0], "...clearly labelled: no medals or tickets (%s)" % game.hud.rewards_texts[0])
 	game.free()
 	progress.dry_ups[1] = 2
 	game = await _spawn(1, false)
@@ -90,14 +89,14 @@ func _initialize() -> void:
 	_check(game.hud.coins_left_label.text == "%d LEFT" % (game.coins_here - 1), "...but the HUD still counts it (%s)" % game.hud.coins_left_label.text)
 	game.free()
 
-	# --- An assisted win: clears the level, but no globs, medals or record
+	# --- An assisted win: clears the level, but no tickets, medals or record
 	progress.best_times = {}
 	progress.accept_assist(1)
 	game = await _spawn(1, true)
 	game.slime.position = game.chalice.position
 	for i in 10:
 		await physics_frame
-	_check(game.won and game.assisted and game.reward.assisted and game.reward.globs == 0 and progress.globs == 0, "an assisted win pays no globs")
+	_check(game.won and game.assisted and game.reward.assisted and game.reward.tier == 0 and progress.tickets == 0, "an assisted win earns no tier or tickets")
 	_check(progress.medals_for(1) == 0 and not progress.best_times.has(1), "...no medals and no record")
 	_check(progress.levels_cleared == 1 and not progress.dry_ups.has(1), "...but the level is cleared and the dry-ups reset")
 	_check("NO MEDALS" in game.hud.rewards_texts[0], "...and the result says so")
@@ -107,16 +106,16 @@ func _initialize() -> void:
 	game.slime.position = game.chalice.position
 	for i in 10:
 		await physics_frame
-	_check(not game.assisted and game.reward.first and progress.globs >= 4 and progress.best_times.has(1), "the next, unassisted clear still pays the first-clear bonus and sets the record")
+	_check(not game.assisted and game.reward.new_best and progress.medals_for(1) >= 1 and progress.best_times.has(1), "the next, unassisted clear earns its medal and sets the record")
 	await _stop(game)
 
 	# --- A finishing clear is one save: the payment, the record and the cleared mark together
 	progress.reset_progress()
-	var done: Dictionary = progress.record_clear(1, 5.0, 10.0, 0, false, false, true)
+	var done: Dictionary = progress.record_clear(1, 5.0, 10.0, false, true)
 	var saved := ConfigFile.new()
 	saved.load(progress.save_path)
-	_check(done.globs > 0 and saved.get_value("wallet", "globs", 0) == progress.globs and saved.get_value("progress", "levels_cleared", 0) == 1
-		and saved.get_value("records", "level_1", -1.0) == 5.0, "record_clear(finish) saves globs, record and cleared mark together")
+	_check(done.tier == 3 and saved.get_value("medals", "level_1", 0) == 3 and saved.get_value("progress", "levels_cleared", 0) == 1
+		and saved.get_value("records", "level_1", -1.0) == 5.0, "record_clear(finish) saves the medal tier, record and cleared mark together")
 	progress.reset_progress()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))

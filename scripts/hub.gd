@@ -9,8 +9,8 @@ extends Node2D
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
 ## - prize wheel: HAT WHEEL: spin for a random hat you don't have yet (won hats come off the
-##   wheel); a spin costs 12 globs (the first is free), but while Hats.available is false only
-##   dev mode can use it. The top-left pod shows the glob balance and medals won.
+##   wheel); a spin costs 12 tickets (the first is free), but while Hats.available is false only
+##   dev mode can use it. The top-left pod shows the ticket balance and medals won.
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page)
 ## In the middle stands a wheel on a stick. Hit it (the interact key, F, next to it, or leap into
@@ -110,9 +110,9 @@ var board_total: Label
 var board_hint: Label
 ## The hat wheel panel (dev mode for now).
 var hat_wheel: HatWheel
-## Top-left pod: glob balance and medal count.
-var glob_pod: PanelContainer
-var glob_label: Label
+## Top-left pod: ticket balance and medal count.
+var ticket_pod: PanelContainer
+var ticket_label: Label
 var medal_label: Label
 var _touch_controls: CanvasLayer
 var _time := 0.0
@@ -332,42 +332,42 @@ func _build_ui() -> void:
 	row.add_child(prompt_key)
 	prompt.visible = false
 	_build_coin_board(root)
-	_build_glob_pod(root)
+	_build_ticket_pod(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
 	hat_wheel.landed.connect(func(_id: String) -> void:
 		_put_on_hat()
-		_refresh_globs()
+		_refresh_tickets()
 		hat_wheel.refresh(_use_key()))
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
 
 
-## A small framed pod at the top left with the glob balance (the cosmetic currency; the hat
+## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
 ## wheel spends it) and the medals won so far.
-func _build_glob_pod(root: Control) -> void:
-	glob_pod = PanelContainer.new()
-	glob_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
-	glob_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(glob_pod)
-	glob_pod.position = Vector2(3, 3)
+func _build_ticket_pod(root: Control) -> void:
+	ticket_pod = PanelContainer.new()
+	ticket_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
+	ticket_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(ticket_pod)
+	ticket_pod.position = Vector2(3, 3)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
-	glob_pod.add_child(row)
-	row.add_child(UIKit.make_icon("glob", Color8(110, 236, 214)))
-	glob_label = UIKit.make_label("", 8, Color8(110, 236, 214))
-	row.add_child(glob_label)
+	ticket_pod.add_child(row)
+	row.add_child(UIKit.make_icon("ticket", Color.WHITE))
+	ticket_label = UIKit.make_label("", 8, Color8(255, 226, 150))
+	row.add_child(ticket_label)
 	row.add_child(UIKit.make_icon("medal", UIKit.GOLD))
 	medal_label = UIKit.make_label("", 8, UIKit.GOLD)
 	row.add_child(medal_label)
-	_refresh_globs()
+	_refresh_tickets()
 
 
-func _refresh_globs() -> void:
-	glob_label.text = str(Progress.globs)
-	medal_label.text = "%d/%d" % [Progress.medals_total(), Levels.COUNT * (2 if Progress.hard_mode else 3)]
+func _refresh_tickets() -> void:
+	ticket_label.text = str(Progress.tickets)
+	medal_label.text = "%d/%d" % [Progress.medals_total(false), Progress.medals_max()]
 
 
 ## The coin bag's board: every story level's coins found out of its total (a gold check once it's

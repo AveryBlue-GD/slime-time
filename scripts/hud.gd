@@ -49,7 +49,7 @@ var _chalice_clock := 0.0
 var choice_buttons: Array[Button] = []
 var _choice_root: Control
 var _skin_text: SkinText
-## Under the result text: globs earned and the level's medals (see show_rewards).
+## Under the result text: the level's medal tier or the tickets earned (see show_rewards).
 var rewards_row: HBoxContainer
 var rewards_texts: Array[String] = []
 ## Shown on the left while an attempt is played with the slime reserve (ASSIST).
@@ -57,7 +57,10 @@ var assist_pod: Control
 const MEDAL_GOLD := Color8(255, 205, 117)
 const MEDAL_OWNED := Color8(150, 134, 100)
 const MEDAL_OFF := Color8(70, 74, 96)
-const GLOB_TINT := Color8(110, 236, 214)
+const TIER_COLORS: Array[Color] = [Color8(70, 74, 96), Color8(214, 140, 84), Color8(206, 214, 232), Color8(255, 205, 117)]
+const TICKET_TINT := Color8(255, 226, 150)
+const NEW_BEST_COLOR := Color8(255, 245, 190)
+const ASSIST_TINT := Color8(110, 236, 214)
 
 
 func _ready() -> void:
@@ -98,7 +101,7 @@ func _ready() -> void:
 	# The slime reserve tag (hidden unless this attempt is assisted).
 	var assist_row := _make_pod(left_bar)
 	assist_pod = assist_row.get_parent()
-	assist_row.add_child(UIKit.make_icon("drop", GLOB_TINT))
+	assist_row.add_child(UIKit.make_icon("drop", ASSIST_TINT))
 	assist_row.add_child(UIKit.make_label("ASSIST +%d%%" % roundi(Progress.ASSIST_BONUS * 100.0), 8, GOLD))
 	assist_pod.visible = false
 
@@ -267,31 +270,38 @@ func set_assist(on: bool) -> void:
 	assist_pod.visible = on
 
 
-## Under the result text: the globs this clear paid (when any) and the level's medals, gold for
-## the ones won this run, dim gold for ones won before, dark for the rest. `info` is
-## Progress.record_clear's result plus `owned` (the level's medals in the save) and `coins`
-## (false hides the COINS medal: hard mode). An assisted run says so instead.
+## Under the result text. A story clear shows its medal tier as three icons (gold up to the tier
+## won this run, dim gold up to an older better tier, dark for the rest), the tier name and NEW BEST
+## when it raised the saved one. `info` is Progress.record_clear's result. A randomizer win shows
+## the ticket vouchers it paid ({tickets, under_par}; `capped` says the day's limit is used up).
+## An assisted run says it earns nothing instead.
 func show_rewards(info: Dictionary) -> void:
 	for child in rewards_row.get_children():
 		child.queue_free()
 	rewards_texts.clear()
 	if info.get("offer", false):
-		_reward_label("ASSIST: +%d%% SLIME, NO MEDALS/GLOBS" % roundi(Progress.ASSIST_BONUS * 100.0), MEDAL_OWNED)
+		_reward_label("ASSIST: +%d%% SLIME, NO MEDALS/TICKETS" % roundi(Progress.ASSIST_BONUS * 100.0), MEDAL_OWNED)
 	elif info.get("assisted", false):
-		_reward_label("ASSIST: NO MEDALS, RECORDS OR GLOBS", MEDAL_OWNED)
-	else:
-		if info.globs > 0:
-			var icon := UIKit.make_icon("glob", GLOB_TINT)
-			rewards_row.add_child(icon)
-			_reward_label("+%d" % info.globs, GLOB_TINT)
-		var names := ["PAR", "CLEAN", "COINS"]
-		for i in (names.size() if info.get("medals_on", true) else 0):
-			if i == 2 and not info.get("coins", true):
-				continue
-			var bit := 1 << i
-			var color := MEDAL_GOLD if info.medals & bit != 0 else (MEDAL_OWNED if info.owned & bit != 0 else MEDAL_OFF)
+		_reward_label("ASSIST: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
+	elif info.has("tier"):
+		var tier: int = info.tier
+		var best: int = info.best
+		var names := ["", "BRONZE", "SILVER", "GOLD"]
+		for i in range(1, 4):
+			var color: Color = TIER_COLORS[tier] if tier >= i else (MEDAL_OWNED if best >= i else MEDAL_OFF)
 			rewards_row.add_child(UIKit.make_icon("medal", color))
-			_reward_label(names[i], color)
+		_reward_label(names[tier], TIER_COLORS[tier])
+		if info.new_best:
+			_reward_label("NEW BEST!", NEW_BEST_COLOR)
+		elif best > tier:
+			_reward_label("BEST " + names[best], MEDAL_OWNED)
+	elif info.get("capped", false):
+		_reward_label("DAILY TICKET LIMIT REACHED", MEDAL_OWNED)
+	else:
+		rewards_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
+		_reward_label("+%d TICKETS" % info.tickets, TICKET_TINT)
+		if info.get("under_par", false):
+			_reward_label("UNDER PAR", MEDAL_GOLD)
 	rewards_row.visible = true
 
 

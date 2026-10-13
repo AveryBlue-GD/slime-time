@@ -72,6 +72,34 @@ static func get_config(level: int, hard := false) -> Dictionary:
 	return config
 
 
+## Par time (seconds) for a maze whose solution is `path_tiles` tiles: the path at the slime's BASE
+## gliding speed (PAR_SPEED; upgrades don't move it) x PAR_SLACK plus PAR_EXTRA. Medal tiers and
+## the randomizer's under-par ticket bonus are measured against it (game.gd passes its own speed).
+const PAR_SPEED := 72.0
+const PAR_SLACK := 1.35
+const PAR_EXTRA := 1.0
+## How far short of the chalice's center the slime grabs it (chalice radius 6 + slime radius 7), px.
+const GRAB_REACH := 13.0
+const TILE := 16
+
+static var _par_cache := {}
+
+
+static func par_for_path(path_tiles: float, speed := PAR_SPEED) -> float:
+	return path_tiles * TILE / speed * PAR_SLACK + PAR_EXTRA
+
+
+## Par for a story level (cached; builds its maze once). Used to turn an old save's best times
+## into medal tiers without playing the level.
+static func level_par(level: int, hard := false) -> float:
+	var key := level + (100 if hard else 0)
+	if not _par_cache.has(key):
+		var config := get_config(level, hard)
+		var maze := MazeGenerator.generate(config.cells, config.seed, config.branching)
+		_par_cache[key] = par_for_path(maze.goal_steps * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE)
+	return _par_cache[key]
+
+
 static func random_config(maze_seed: int, hard := false) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed

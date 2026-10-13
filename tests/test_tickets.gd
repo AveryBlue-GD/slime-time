@@ -1,14 +1,17 @@
 extends SceneTree
 
-## Globs (the renewable cosmetic currency): wallet math for every faucet (first clears, medals, hard
-## clears, randomizer wins capped per UTC day), no double payment, the hat wheel's atomic spin
-## (free first spin, 12 globs after, picked + paid + won + saved before the wheel turns, rainbow
-## pity), the wheel staying locked outside dev mode while hats are placeholders, and the save:
-## round trip, an old save (no wallet) getting its earned first-clear globs once, the save code,
-## RESET PROGRESS. Uses a throwaway save.
-## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_globs.gd
+## Ticket vouchers (the renewable cosmetic currency): the ONLY faucet is the randomizer (2 per win,
+## +1 under par, 5 paying wins per UTC day, so 15 a day at most), nothing else pays (first clears,
+## hard clears, medals); the per-day cap goes forwards and backwards in time; the hat wheel's atomic
+## spin (free first spin, 12 tickets after, picked + paid + won + saved before the wheel turns,
+## rainbow pity) and its lock outside dev mode while hats are placeholders; the save (kept under the
+## old [wallet] "globs" keys, version 3); migration of version 1/2 saves and their save codes (an
+## existing balance kept as it is, no retro grant, medal bitmasks turned into tiers by best time vs
+## par, idempotent, hostile values); RESET PROGRESS. Uses a throwaway save.
+## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_tickets.gd
 
 const TEST_SAVE := "user://test_save.cfg"
+const MAIN := preload("res://scenes/main.tscn")
 
 var failures := 0
 var progress: Node
@@ -22,99 +25,120 @@ func _initialize() -> void:
 	progress.hard_mode = false
 	progress.reset_progress()
 
-	# --- Faucets
-	var win: Dictionary = progress.record_clear(1, 99.0, 10.0, 3, false)
-	_check(win.first and win.globs == 4 and progress.globs == 4, "first clear of a level pays 4 (no medals: slow, splatted, coins missing)")
-	win = progress.record_clear(1, 99.0, 10.0, 3, false)
-	_check(win.globs == 0 and progress.globs == 4, "...and only once")
-	win = progress.record_clear(1, 5.0, 10.0, 0, true)
-	_check(win.globs == 6 and win.new_medals == Progress.MEDAL_ALL and progress.globs == 10, "all three medals pay 2 each, once they're won (+6)")
-	win = progress.record_clear(1, 5.0, 10.0, 0, true)
-	_check(win.globs == 0 and win.medals == Progress.MEDAL_ALL, "a medal pays only the first time it's won")
-	win = progress.record_clear(2, 8.0, 10.0, 1, false)
-	_check(win.globs == 6 and progress.medals_for(2) == Progress.MEDAL_PAR and win.new_medals == Progress.MEDAL_PAR, "level 2: first clear 4 + PAR medal 2")
-	_check(progress.globs_lifetime == progress.globs, "lifetime globs count what was earned (%d)" % progress.globs_lifetime)
+	# --- Story clears, hard clears and medals pay nothing
+	var win: Dictionary = progress.record_clear(1, 5.0, 10.0, false, true)
+	_check(win.tier == 3 and progress.tickets == 0 and progress.tickets_lifetime == 0, "a first clear with a gold medal pays no tickets")
 	progress.hard_mode = true
-	win = progress.record_clear(1, 99.0, 10.0, 5, true)
-	_check(win.first and win.globs == 8 and progress.medals_for(1) == 0, "first HARD clear pays 8, and hard medals are kept apart from the normal ones")
-	win = progress.record_clear(1, 4.0, 10.0, 0, true)
-	_check(win.medals == (Progress.MEDAL_PAR | Progress.MEDAL_CLEAN) and win.globs == 4, "no COINS medal on hard mode (par + clean = +4)")
+	progress.record_clear(1, 5.0, 10.0, false, true)
 	progress.hard_mode = false
-	_check(progress.medals_for(1) == Progress.MEDAL_ALL, "...the normal medals are untouched")
-	var before: int = progress.globs
-	progress.coins_found = {1: ["1,1", "2,2"]}
-	progress.upgrades = {"slime": 1}
+	_check(progress.tickets == 0 and "tickets" not in win, "...nor does a hard clear or a result carry tickets")
+	progress.add_tickets(30)
 	var coins_before: int = progress.coins()
-	progress.add_globs(50)
-	_check(progress.coins() == coins_before and progress.globs == before + 50, "globs and coins never mix")
-	progress.add_globs(-progress.globs)
-	_check(progress.globs == 0, "(spent down to zero)")
-	progress.add_globs(1_000_000)
-	_check(progress.globs == Progress.GLOBS_MAX, "the balance is capped at 99,999")
+	progress.coins_found = {1: ["1,1", "2,2"]}
+	_check(progress.coins() == coins_before + 2 and progress.tickets == 30, "tickets and coins never mix")
+	progress.add_tickets(-progress.tickets)
+	_check(progress.tickets == 0, "(spent down to zero)")
+	progress.add_tickets(1_000_000)
+	_check(progress.tickets == progress.TICKETS_MAX, "the balance is capped at 99,999")
 	progress.reset_progress()
 
-	# --- Randomizer wins: capped per UTC day
+	# --- Randomizer wins: 2 each, 3 under par, 5 paying wins per UTC day
 	progress.day_override = 20000
+	_check(progress.random_tickets_due() == 2 and progress.random_tickets_due(true) == 3, "a win is due 2 tickets, 3 under par")
 	var paid := 0
 	for i in 8:
 		paid += progress.complete_random()
-	_check(progress.globs == 10 and paid == 10 and progress.randoms_won == 8, "randomizer wins pay 2 each, 5 per day (%d globs from 8 wins)" % paid)
+	_check(progress.tickets == 10 and paid == 10 and progress.randoms_won == 8, "plain wins pay 2 each, 5 per day (%d tickets from 8 wins)" % paid)
 	progress.day_override = 20001
-	_check(progress.random_globs_due() == 2 and progress.complete_random() == 2, "the next UTC day pays again")
-	_check(progress.complete_random(true) == 0 and progress.globs == 12, "an assisted win never pays")
+	_check(progress.complete_random(false, true) == 3 and progress.tickets == 13, "the next UTC day pays again; under par adds 1")
+	_check(progress.complete_random(true) == 0 and progress.tickets == 13, "an assisted win never pays")
+	progress.reset_progress()
+	progress.day_override = 20003
+	for i in 5:
+		paid = progress.complete_random(false, true)
+	_check(progress.tickets == 15 and paid == 3, "5 under-par wins in a day pay the 15-ticket maximum")
+	_check(progress.complete_random(false, true) == 0 and progress.tickets == 15 and progress.random_tickets_due(true) == 0, "...and the sixth pays nothing")
 	# the clock moving backwards never reopens the cap; moving forwards does
 	progress.reset_progress()
 	progress.day_override = 20010
 	for i in 5:
 		progress.complete_random()
-	_check(progress.random_globs_due() == 0 and progress.random_pay_day == 20010, "five paid wins use up the day's cap")
+	_check(progress.random_tickets_due() == 0 and progress.random_pay_day == 20010, "five paid wins use up the day's cap")
 	progress.day_override = 20005  # clock set back
-	_check(progress.random_globs_due() == 0 and progress.complete_random() == 0, "an earlier day (clock moved back) keeps the cap")
+	_check(progress.random_tickets_due() == 0 and progress.complete_random() == 0, "an earlier day (clock moved back) keeps the cap")
 	_check(progress.random_pay_day == 20010 and progress.random_paid == 5, "...and keeps the stored day and count")
 	progress.day_override = 20011
-	_check(progress.random_globs_due() == 2 and progress.complete_random() == 2 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
+	_check(progress.random_tickets_due() == 2 and progress.complete_random() == 2 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
+	progress.day_override = 20012
+	_check(progress.random_tickets_due() == 2, "(the day after, again)")
+	progress.day_override = -1
+	progress.reset_progress()
+
+	# --- A real randomizer win through the game: the result shows the tickets, a slow one pays less
+	progress.day_override = 30000
+	var game := await _spawn_random(777)
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(game.won and game.run_time < game.par_time and game.reward.tickets == 3 and progress.tickets == 3, "a quick randomizer win pays 3 tickets (got %d)" % progress.tickets)
+	_check("+3 TICKETS" in game.hud.rewards_texts and "UNDER PAR" in game.hud.rewards_texts and game.hud.rewards_row.visible, "...and the result screen shows them")
+	await _stop(game)
+	game = await _spawn_random(778)
+	game.run_time = game.par_time + 5.0
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(game.reward.tickets == 2 and progress.tickets == 5 and not game.hud.rewards_texts.has("UNDER PAR"), "a slow one pays the base 2")
+	await _stop(game)
+	progress.random_paid = 5
+	game = await _spawn_random(779)
+	game.slime.position = game.chalice.position
+	for i in 10:
+		await physics_frame
+	_check(progress.tickets == 5 and "DAILY TICKET LIMIT REACHED" in game.hud.rewards_texts, "past the daily cap nothing is paid, and the screen says so")
+	await _stop(game)
 	progress.day_override = -1
 	progress.reset_progress()
 
 	# --- The hat wheel: locked outside dev mode while hats are placeholders
-	progress.globs = 100
-	_check(not Hats.available and not progress.can_spin_hats() and progress.spin_hat() == "" and progress.globs == 100,
-		"hats not released: no spin outside dev mode, even with globs (nothing is taken)")
+	progress.tickets = 100
+	_check(not Hats.available and not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 100,
+		"hats not released: no spin outside dev mode, even with tickets (nothing is taken)")
 	Hats.available = true  # what follows is how it works once hats are real
 
 	# --- Atomic spin
-	progress.globs = 100
+	progress.tickets = 100
 	var cost: int = progress.spin_cost()
 	_check(cost == 0, "the first spin is free")
 	var first: String = progress.spin_hat(0.0)
-	_check(first != "" and first in progress.hats_owned and progress.globs == 100 and progress.spins == 1, "free spin: hat won, nothing paid (%s)" % first)
+	_check(first != "" and first in progress.hats_owned and progress.tickets == 100 and progress.spins == 1, "free spin: hat won, nothing paid (%s)" % first)
 	_check(progress.spin_cost() == 12, "the next one costs 12")
 	var second: String = progress.spin_hat(0.0)
-	_check(second != "" and second != first and progress.globs == 88 and progress.hats_owned.size() == 2, "spin 2: pays 12, never a hat you own (%s)" % second)
+	_check(second != "" and second != first and progress.tickets == 88 and progress.hats_owned.size() == 2, "spin 2: pays 12, never a hat you own (%s)" % second)
 	# The whole spin is saved at once: a fresh load sees the payment AND the prize.
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = TEST_SAVE
 	reloaded.load_progress()
-	_check(reloaded.globs == 88 and second in reloaded.hats_owned and reloaded.spins == 2, "payment and prize are saved together, before any animation")
+	_check(reloaded.tickets == 88 and second in reloaded.hats_owned and reloaded.spins == 2, "payment and prize are saved together, before any animation")
 	reloaded.free()
-	progress.globs = 5
-	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.globs == 5 and progress.hats_owned.size() == 2,
-		"too few globs: no spin, nothing changes")
-	progress.globs = 12
-	_check(progress.spin_hat() != "" and progress.globs == 0, "exactly 12 is enough")
+	progress.tickets = 5
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 5 and progress.hats_owned.size() == 2,
+		"too few tickets: no spin, nothing changes")
+	progress.tickets = 12
+	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 12 is enough")
 	progress.dev_tools = true
-	progress.globs = 0
-	_check(progress.can_spin_hats() and progress.spin_cost() == 0 and progress.spin_hat() != "" and progress.globs == 0, "dev mode spins free")
+	progress.tickets = 0
+	_check(progress.can_spin_hats() and progress.spin_cost() == 0 and progress.spin_hat() != "" and progress.tickets == 0, "dev mode spins free")
 	progress.dev_tools = false
 
 	# The wheel node asks Progress first: paid and won the moment spin() returns, before it turns.
 	progress.reset_progress()
-	progress.globs = 30
+	progress.tickets = 30
 	progress.spins = 1
 	var wheel: Control = load("res://scripts/ui/hat_wheel.gd").new()  # (loaded late: it names the Progress autoload)
 	root.add_child(wheel)
 	await process_frame
-	_check(wheel.spin() and wheel.spinning and progress.globs == 18 and progress.hats_owned.size() == 1,
+	_check(wheel.spin() and wheel.spinning and progress.tickets == 18 and progress.hats_owned.size() == 1,
 		"the wheel's spin is already paid and won while it's still turning")
 	var landed_ids: Array[String] = []
 	wheel.landed.connect(func(id: String) -> void: landed_ids.append(id))
@@ -125,7 +149,7 @@ func _initialize() -> void:
 	var landed: String = landed_ids[0] if not landed_ids.is_empty() else ""
 	_check(landed == progress.hats_owned[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed,
 		"...and the wheel lands on exactly the hat it already won (%s)" % landed)
-	_check(progress.globs == 18, "landing charges nothing more")
+	_check(progress.tickets == 18, "landing charges nothing more")
 	wheel.free()
 
 	# --- Rainbow pity
@@ -142,7 +166,7 @@ func _initialize() -> void:
 		odds.append(hits)
 	_check(odds[0] < odds[1] and odds[1] < odds[2], "rainbow odds grow with pity: %s in 1000" % [odds])
 	progress.reset_progress()
-	progress.globs = 1000
+	progress.tickets = 1000
 	progress.spins = 1
 	var miss := 0
 	for i in 3:
@@ -154,26 +178,25 @@ func _initialize() -> void:
 	_check(progress.hats_left().is_empty() and not progress.can_spin_hats(), "an empty wheel can't spin")
 	Hats.available = false
 
-	# --- The save: round trip
+	# --- The save: round trip (tickets under the old [wallet] "globs" keys, medals as tier ints)
 	progress.reset_progress()
 	progress.levels_cleared = 4
 	progress.hard_cleared.assign([1])
-	progress.globs = 37
-	progress.globs_lifetime = 120
-	progress.clears_paid = 0b1011
-	progress.hard_clears_paid = 1
-	progress.medals = {1: 7, 3: 5, 101: 3}
+	progress.tickets = 37
+	progress.tickets_lifetime = 120
+	progress.medals = {1: 3, 3: 2, 101: 1}
 	progress.spins = 4
 	progress.rainbow_pity = 3
 	progress.random_pay_day = 20000
 	progress.random_paid = 2
 	var text: String = progress._write().encode_to_text()
-	_check("[meta]" in text and "version=2" in text and "[wallet]" in text and "[medals]" in text, "the save has [meta] version, [wallet] and [medals]")
+	_check("[meta]" in text and "version=3" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 3, [wallet] globs and [medals]")
+	_check("clears_paid" not in text and "hard_clears_paid" not in text, "...and no clears_paid keys any more")
 	var file := ConfigFile.new()
 	file.parse(text)
 	var copy: Node = preload("res://scripts/progress.gd").new()
 	copy._read(file)
-	_check(copy.globs == 37 and copy.globs_lifetime == 120 and copy.clears_paid == 0b1011 and copy.hard_clears_paid == 1 and copy.medals == {1: 7, 3: 5, 101: 3}
+	_check(copy.tickets == 37 and copy.tickets_lifetime == 120 and copy.medals == {1: 3, 3: 2, 101: 1}
 		and copy.spins == 4 and copy.rainbow_pity == 3 and copy.random_pay_day == 20000 and copy.random_paid == 2, "everything survives a save and a load")
 	var same := true
 	var again_file: ConfigFile = copy._write()
@@ -189,79 +212,171 @@ func _initialize() -> void:
 	odd.set_value("wallet", "globs", 9_999_999)
 	odd.set_value("wallet", "random_paid", "many")
 	odd.set_value("medals", "level_2", 99)
+	odd.set_value("medals", "level_4", -3)
+	odd.set_value("medals", "level_5", "gold")
 	odd.set_value("hats", "rainbow_pity", -5)
 	var tough: Node = preload("res://scripts/progress.gd").new()
 	tough._read(odd)
-	_check(tough.globs == Progress.GLOBS_MAX and tough.random_paid == 0 and tough.medals_for(2) == Progress.MEDAL_ALL and tough.rainbow_pity == 0,
-		"out-of-range or wrong-typed wallet values are clamped")
+	_check(tough.tickets == progress.TICKETS_MAX and tough.random_paid == 0 and tough.medals_for(2) == 3 and tough.medals_for(4) == 0 and tough.medals_for(5) == 0 and tough.rainbow_pity == 0,
+		"out-of-range or wrong-typed wallet and medal values are clamped")
 	tough.free()
 
-	# --- An old save (no [meta], no [wallet], no [medals]): loads, and is paid what it already earned, once
-	var old := ConfigFile.new()
-	old.set_value("progress", "levels_cleared", 6)
-	old.set_value("progress", "highest_unlocked", 7)
-	old.set_value("progress", "hard_cleared", [1, 2])
-	old.set_value("coins", "level_1", ["2,3", "5,1"])
-	old.set_value("records", "level_1", 12.5)
-	old.set_value("hats", "owned", ["tophat"])
+	# --- A version-2 save (globs, bitmask medals, clears_paid): balance kept, medals become tiers
+	var par1: float = Levels.level_par(1)
+	var par2: float = Levels.level_par(2)
+	var par3: float = Levels.level_par(3)
+	var old := _old_save(par1, par2, par3)
 	var veteran: Node = preload("res://scripts/progress.gd").new()
 	veteran._read(old)
-	_check(veteran.levels_cleared == 6 and veteran.coins_earned() == 2 and veteran.best_times[1] == 12.5 and veteran.hats_owned == ["tophat"],
-		"an old save still loads as before")
-	_check(veteran.globs == 6 * 4 + 2 * 8 and veteran.clears_paid == 0b111111 and veteran.hard_clears_paid == 0b11 and veteran.medals.is_empty() and veteran.spins == 0,
-		"...with the first-clear globs it already earned (%d) and no medals" % veteran.globs)
+	_check(veteran.levels_cleared == 6 and veteran.coins_earned() == 2 and veteran.best_times[1] == par1 * 0.8 and veteran.hats_owned == ["tophat"], "an old save still loads as before")
+	_check(veteran.tickets == 37 and veteran.tickets_lifetime == 90, "the old balance is kept as it is (%d, lifetime %d), no retro grant" % [veteran.tickets, veteran.tickets_lifetime])
+	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 2 and veteran.medals_for(3) == 1, "best times become tiers: under par gold, within 1.3 x silver, slower bronze (%s)" % [veteran.medals])
+	_check(veteran.medals_for(4) == 1 and veteran.medals_for(5) == 1 and veteran.medals_for(6) == 1, "cleared levels with no best time (even with a stray mask bit) get bronze (%s)" % [veteran.medals])
+	_check(veteran.medals_for(7) == 0 and veteran.medals_for(10) == 0, "uncleared levels get nothing, whatever stale bits they carried")
+	veteran.hard_mode = true
+	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 1 and veteran.medals_for(3) == 0, "hard tiers: best time vs par, else bronze when hard-cleared, else none (%s)" % [veteran.medals])
+	veteran.hard_mode = false
+	_check(veteran.medals_total() == 3 + 2 + 1 + 1 + 1 + 1 and not veteran.all_medals(), "the total is the tier sum")
+	var written: ConfigFile = veteran._write()
+	_check(written.get_value("meta", "version") == 3 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 3 without the paid masks")
 	var again := ConfigFile.new()
-	again.parse(veteran._write().encode_to_text())
+	again.parse(written.encode_to_text())
 	var veteran2: Node = preload("res://scripts/progress.gd").new()
 	veteran2._read(again)
-	_check(veteran2.globs == veteran.globs and veteran2.clears_paid == veteran.clears_paid, "...once: loading its next save doesn't pay again")
-	veteran.globs = 0
+	_check(veteran2.medals == veteran.medals and veteran2.tickets == 37, "migrating is idempotent: loading the new save changes nothing")
+	var veteran3: Node = preload("res://scripts/progress.gd").new()
+	veteran3._read(old)
+	_check(veteran3.medals == veteran.medals, "...and reading the old save again gives the same tiers")
+	# bitmask 1-3 in a version 3 save is a tier, not a mask: the version tells them apart
+	var v3 := ConfigFile.new()
+	v3.parse(written.encode_to_text())
+	v3.set_value("medals", "level_8", 2)
+	veteran2._read(v3)
+	_check(veteran2.medals_for(8) == 2, "a version 3 save's small ints are read as tiers as they are")
+	# losing the balance then re-reading does not re-pay anything
+	veteran.tickets = 0
 	var spent := ConfigFile.new()
 	spent.parse(veteran._write().encode_to_text())
 	veteran2._read(spent)
-	_check(veteran2.globs == 0, "...even after the globs are spent")
-	var replay: Dictionary = veteran.record_clear(3, 99.0, 1.0, 9, false)
-	_check(replay.globs == 0 and not replay.first, "replaying an already cleared level doesn't pay the first-clear bonus again")
+	_check(veteran2.tickets == 0, "an old save's spent balance doesn't come back")
 	veteran.free()
 	veteran2.free()
+	veteran3.free()
 
-	# --- A hostile old save: junk, duplicate, negative and huge entries can't overflow the paid flags
+	# --- A version-1 save (before globs): no tickets, no retro grant
+	var v1 := ConfigFile.new()
+	v1.set_value("progress", "levels_cleared", 6)
+	v1.set_value("progress", "highest_unlocked", 7)
+	v1.set_value("progress", "hard_cleared", [1, 2])
+	v1.set_value("records", "level_2", par2 * 0.5)
+	var ancient: Node = preload("res://scripts/progress.gd").new()
+	ancient._read(v1)
+	_check(ancient.tickets == 0 and ancient.tickets_lifetime == 0 and ancient.levels_cleared == 6, "a save from before tickets gets no grant")
+	_check(ancient.medals_for(2) == 3 and ancient.medals_for(1) == 1 and ancient.medals_for(7) == 0, "...but its clears and times still become tiers (%s)" % [ancient.medals])
+	ancient.free()
+
+	# --- A hostile old save: junk, huge, NaN-ish and wrong-typed entries
 	var junk := ConfigFile.new()
 	junk.set_value("progress", "levels_cleared", 999999)
 	junk.set_value("progress", "hard_cleared", [3, 3, 3, -5, 0, 64, 1000000, 63, Levels.COUNT, Levels.COUNT + 1, 2])
+	junk.set_value("records", "level_1", -4.0)
+	junk.set_value("records", "level_2", INF)
+	junk.set_value("records", "level_3", NAN)
+	junk.set_value("records", "level_4", 0.0)
+	junk.set_value("records", "level_5", "fast")
+	junk.set_value("medals", "level_6", 123456789)
+	junk.set_value("medals", "level_7", "x")
+	junk.set_value("wallet", "clears_paid", -1)
+	junk.set_value("wallet", "globs", "lots")
 	var hostile: Node = preload("res://scripts/progress.gd").new()
 	hostile._read(junk)
-	var all_paid := (1 << Levels.COUNT) - 1
-	_check(hostile.clears_paid >= 0 and hostile.clears_paid <= all_paid and hostile.hard_clears_paid >= 0 and hostile.hard_clears_paid <= all_paid,
-		"junk entries keep the paid flags within the real levels (%d, %d)" % [hostile.clears_paid, hostile.hard_clears_paid])
-	var expected_hard := (1 << 2) | (1 << 1) | (1 << (Levels.COUNT - 1))
-	_check(hostile.hard_clears_paid == expected_hard and hostile.globs <= Progress.GLOBS_MAX and hostile.globs >= 0,
-		"...only levels 1..%d count, each once (globs %d)" % [Levels.COUNT, hostile.globs])
+	var ok := true
+	for key: int in hostile.medals:
+		ok = ok and hostile.medals[key] >= 1 and hostile.medals[key] <= 3 and (key % 100) >= 1 and (key % 100) <= Levels.COUNT
+	_check(ok and hostile.tickets == 0 and hostile.levels_cleared == Levels.COUNT, "junk entries give only valid tiers (1-3) for real levels (%s)" % [hostile.medals])
+	_check(hostile.medals_for(1) == 1 and hostile.medals_for(2) == 1 and hostile.medals_for(3) == 1 and hostile.medals_for(5) == 1, "...a bad best time falls back to bronze for a cleared level")
+	hostile.hard_mode = true
+	_check(hostile.medals.size() == 10 + 3 and hostile.medals_for(3) == 1 and hostile.medals_for(Levels.COUNT) == 1 and hostile.medals_for(4) == 0, "...hard tiers only for real hard-cleared levels")
 	hostile.free()
 
-	# --- Save codes (and the size cap)
+	# --- Save codes: from an old build and from this one
+	progress.reset_progress()
+	progress.load_progress()
+	var old_code := _code(old)
+	_check(progress.load_code(old_code) and progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
+		"a SLIME1- code from an older build loads: balance kept, medals as tiers")
+	var snapshot: String = progress._write().encode_to_text()
+	_check("version=3" in snapshot, "...and re-saves as version 3")
+	var new_code: String = progress.save_code()
+	progress.reset_progress()
+	_check(progress.tickets == 0 and progress.medals.is_empty() and progress.spins == 0 and progress.rainbow_pity == 0 and progress.random_paid == 0,
+		"RESET PROGRESS empties the tickets, medals and wheel counters")
+	_check(progress.load_code(new_code) and progress._write().encode_to_text() == snapshot, "a code from this build restores everything exactly, and loading it twice changes nothing")
+	_check(progress.load_code(new_code) and progress._write().encode_to_text() == snapshot, "(twice)")
+	# a code with every level at gold in both modes stays small
 	progress.reset_progress()
 	progress.levels_cleared = 10
 	progress.highest_unlocked = 10
 	progress.hard_cleared.assign(range(1, 11))
 	for level in range(1, 11):
-		progress.medals[level] = 7
+		progress.medals[level] = 3
 		progress.medals[level + 100] = 3
-	progress.globs = 99999
-	progress.globs_lifetime = 5000
-	progress.clears_paid = 1023
-	progress.hard_clears_paid = 1023
-	var code: String = progress.save_code()
-	_check(code.length() < Progress.MAX_SAVE_CODE_LENGTH / 8, "even with every medal the save code stays small (%d of %d characters)" % [code.length(), Progress.MAX_SAVE_CODE_LENGTH])
-	var snapshot: String = progress._write().encode_to_text()
-	progress.reset_progress()
-	_check(progress.globs == 0 and progress.medals.is_empty(), "RESET PROGRESS empties the wallet, medals and wheel counters")
-	_check(progress.spins == 0 and progress.rainbow_pity == 0 and progress.clears_paid == 0 and progress.random_paid == 0, "...and the paid-clear flags and counters")
-	_check(progress.load_code(code) and progress._write().encode_to_text() == snapshot, "a save code restores globs and medals exactly")
+	progress.tickets = 99999
+	var big: String = progress.save_code()
+	_check(big.length() < progress.MAX_SAVE_CODE_LENGTH / 8, "even with every medal the save code stays small (%d of %d characters)" % [big.length(), progress.MAX_SAVE_CODE_LENGTH])
 	progress.reset_progress()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
+
+
+## What a version 2 build wrote: globs + clears_paid masks + PAR/CLEAN/COINS bitmask medals.
+func _old_save(par1: float, par2: float, par3: float) -> ConfigFile:
+	var old := ConfigFile.new()
+	old.set_value("meta", "version", 2)
+	old.set_value("progress", "levels_cleared", 6)
+	old.set_value("progress", "highest_unlocked", 7)
+	old.set_value("progress", "hard_cleared", [1, 2])
+	old.set_value("coins", "level_1", ["2,3", "5,1"])
+	old.set_value("hats", "owned", ["tophat"])
+	old.set_value("records", "level_1", par1 * 0.8)
+	old.set_value("records", "level_2", par2 * 1.2)
+	old.set_value("records", "level_3", par3 * 2.0)
+	old.set_value("records", "level_101", Levels.level_par(1, true) * 0.9)
+	old.set_value("wallet", "globs", 37)
+	old.set_value("wallet", "globs_lifetime", 90)
+	old.set_value("wallet", "clears_paid", 0b111111)
+	old.set_value("wallet", "hard_clears_paid", 0b11)
+	old.set_value("medals", "level_1", 7)
+	old.set_value("medals", "level_2", 1)
+	old.set_value("medals", "level_5", 2)
+	old.set_value("medals", "level_7", 5)  # stray bits on a level that was never cleared
+	old.set_value("medals", "level_101", 3)
+	return old
+
+
+## The "SLIME1-" code of a save, the way Progress.save_code makes it.
+func _code(file: ConfigFile) -> String:
+	var packed := file.encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	return progress.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)
+
+
+func _spawn_random(seed_value: int) -> Node2D:
+	progress.mode = progress.MODE_RANDOM
+	var game: Node2D = MAIN.instantiate()
+	game.random_seed = seed_value
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	return game
+
+
+## Detaches the game before its end-of-level timer fires (so it doesn't reload), then frees it.
+func _stop(game: Node2D) -> void:
+	current_scene = null
+	for i in int(game.END_DELAY * 60) + 10:
+		await physics_frame
+	game.free()
 
 
 func _check(ok: bool, label: String) -> void:

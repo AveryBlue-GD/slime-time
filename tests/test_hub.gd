@@ -40,11 +40,13 @@ func _initialize() -> void:
 	HubScript.return_to = ""
 	var hub: Node2D = await _open()
 	progress.hard_mode = false
-	hub._refresh_globs()
-	_check(hub.medal_label.text.ends_with("/%d" % (Levels.COUNT * 3)), "the hub's medal count is out of 3 per level")
+	hub._refresh_tickets()
+	_check(hub.medal_label.text == "0/%d" % (Levels.COUNT * 3), "the hub's medal count is out of 3 per level (%s)" % hub.medal_label.text)
+	progress.medals = {1: 3, 2: 2, 101: 3}
 	progress.hard_mode = true
-	hub._refresh_globs()
-	_check(hub.medal_label.text.ends_with("/%d" % (Levels.COUNT * 2)), "...and out of 2 per level on hard mode")
+	hub._refresh_tickets()
+	_check(hub.medal_label.text == "5/%d" % (Levels.COUNT * 3), "...and always counts the normal mode's tiers, hard mode or not (%s)" % hub.medal_label.text)
+	progress.medals = {}
 	progress.hard_mode = false
 	var ids: Array = hub.stations.map(func(s: Dictionary) -> String: return s.id)
 	_check(ids == ["story", "upgrades", "coins", "random", "settings", "quit", "wheel", "wardrobe"],
