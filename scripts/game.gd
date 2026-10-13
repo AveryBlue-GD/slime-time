@@ -823,6 +823,7 @@ func _build_outer_fog(inner: ShaderMaterial, inner_rect: Rect2) -> void:
 	material.set_shader_parameter("map_size", area.size)
 	material.set_shader_parameter("origin", area.position)
 	material.set_shader_parameter("hole", Vector4(inner_rect.position.x, inner_rect.position.y, inner_rect.size.x, inner_rect.size.y))
+	material.set_shader_parameter("solid", true)  # one unrevealed cell: the soft edge is always 1.0
 	outer_fog.material = material
 	add_child(outer_fog)
 

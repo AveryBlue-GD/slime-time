@@ -28,6 +28,9 @@ uniform vec2 map_size;
 uniform vec2 origin = vec2(0.0);
 // A world rect (x, y, w, h; px) left uncovered: the outer fog's hole where the maze's own fog is.
 uniform vec4 hole = vec4(0.0);
+// The outer fog: its texture is one unrevealed cell, so every tap of the soft edge reads 1.0 and
+// the blend is exactly 1.0; skip the taps.
+uniform bool solid = false;
 uniform vec4 fog_deep = vec4(0.078, 0.078, 0.133, 1.0);
 uniform vec4 fog_mist = vec4(0.247, 0.239, 0.341, 1.0);
 // The slime's world position (px) and light: the mist is crushed toward black (only a faint tint
@@ -100,29 +103,24 @@ void fragment() {
 			&& world_px.x < hole.x + hole.z && world_px.y < hole.y + hole.w) {
 		discard;
 	}
-	vec2 t = TEXTURE_PIXEL_SIZE;
-	// Soft edge: weighted blend of this cell and its neighbors (13 taps, ~3 cells wide).
-	float alpha = cell_alpha(texture(TEXTURE, UV)) * 4.0;
-	alpha += 2.0 * (cell_alpha(texture(TEXTURE, UV + vec2(t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(t.x, 0.0)))
-		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, t.y))));
-	alpha += cell_alpha(texture(TEXTURE, UV + t)) + cell_alpha(texture(TEXTURE, UV - t))
-		+ cell_alpha(texture(TEXTURE, UV + vec2(t.x, -t.y))) + cell_alpha(texture(TEXTURE, UV + vec2(-t.x, t.y)));
-	alpha += cell_alpha(texture(TEXTURE, UV + vec2(2.0 * t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(2.0 * t.x, 0.0)))
-		+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, 2.0 * t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, 2.0 * t.y)));
-	alpha /= 20.0;
+	float alpha = 1.0;
+	if (!solid) {
+		vec2 t = TEXTURE_PIXEL_SIZE;
+		// Soft edge: weighted blend of this cell and its neighbors (13 taps, ~3 cells wide).
+		alpha = cell_alpha(texture(TEXTURE, UV)) * 4.0;
+		alpha += 2.0 * (cell_alpha(texture(TEXTURE, UV + vec2(t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(t.x, 0.0)))
+			+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, t.y))));
+		alpha += cell_alpha(texture(TEXTURE, UV + t)) + cell_alpha(texture(TEXTURE, UV - t))
+			+ cell_alpha(texture(TEXTURE, UV + vec2(t.x, -t.y))) + cell_alpha(texture(TEXTURE, UV + vec2(-t.x, t.y)));
+		alpha += cell_alpha(texture(TEXTURE, UV + vec2(2.0 * t.x, 0.0))) + cell_alpha(texture(TEXTURE, UV - vec2(2.0 * t.x, 0.0)))
+			+ cell_alpha(texture(TEXTURE, UV + vec2(0.0, 2.0 * t.y))) + cell_alpha(texture(TEXTURE, UV - vec2(0.0, 2.0 * t.y)));
+		alpha /= 20.0;
+	}
 
 	// Dither in world pixels so the pattern stays put as the camera moves.
 	vec2 pixel = floor(world_px);
 	float threshold = (bayer4(pixel) + 0.5) / 16.0;
 	alpha = clamp(floor(alpha * DITHER_LEVELS + threshold) / DITHER_LEVELS, 0.0, 1.0);
-
-	// Drifting mist: two layers of noise moving at different speeds, banded for a pixel look.
-	float n = value_noise(pixel / 30.0 + vec2(now * 0.12, now * 0.04)) * 0.65
-		+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
-	// A third, much larger and slower layer swells the mist in broad patches for depth.
-	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
-	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
-	vec3 rgb = mix(fog_deep.rgb * deep_gain, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
 
 	// Light falloff: lit ground far from the slime dims toward the fog (never fully), and a
 	// soft vignette darkens everything toward the edges of the view.
@@ -132,7 +130,19 @@ void fragment() {
 	float vd = length((world_px - view_center) / vec2(176.0, 100.0));
 	float vig = smoothstep(0.55, 1.15, vd) * vig_max;
 	alpha = max(alpha, vig * step(alpha, 0.999));
-	rgb = mix(rgb, vec3(0.0), vig * step(0.999, alpha));
 
-	COLOR = vec4(rgb, alpha);
+	if (alpha <= 0.0) {
+		// Fully clear: blending leaves what is underneath whatever the color, so skip the mist.
+		COLOR = vec4(0.0);
+	} else {
+		// Drifting mist: two layers of noise moving at different speeds, banded for a pixel look.
+		float n = value_noise(pixel / 30.0 + vec2(now * 0.12, now * 0.04)) * 0.65
+			+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
+		// A third, much larger and slower layer swells the mist in broad patches for depth.
+		float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
+		float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
+		vec3 rgb = mix(fog_deep.rgb * deep_gain, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
+		rgb = mix(rgb, vec3(0.0), vig * step(0.999, alpha));
+		COLOR = vec4(rgb, alpha);
+	}
 }

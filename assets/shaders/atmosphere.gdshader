@@ -43,11 +43,14 @@ void fragment() {
 	float v = smoothstep(vignette_start, vignette_end, length(c)) * vignette_strength;
 	v = floor(v * 6.0 + threshold) / 6.0;
 
-	// Mist: two slow noise layers, banded.
-	float n = value_noise(pixel / 34.0 + vec2(TIME * 0.10, TIME * 0.03)) * 0.6
-		+ value_noise(pixel / 14.0 - vec2(TIME * 0.17, TIME * 0.05)) * 0.4;
-	float band = floor(n * n * 5.0 + threshold * 0.5) / 4.0;
-	float mist_alpha = clamp(band, 0.0, 1.0) * 0.45 * mist_strength;
+	// Mist: two slow noise layers, banded (none at all when mist_strength is 0: vignette only).
+	float mist_alpha = 0.0;
+	if (mist_strength > 0.0) {
+		float n = value_noise(pixel / 34.0 + vec2(TIME * 0.10, TIME * 0.03)) * 0.6
+			+ value_noise(pixel / 14.0 - vec2(TIME * 0.17, TIME * 0.05)) * 0.4;
+		float band = floor(n * n * 5.0 + threshold * 0.5) / 4.0;
+		mist_alpha = clamp(band, 0.0, 1.0) * 0.45 * mist_strength;
+	}
 
 	vec3 rgb = mix(mist.rgb, deep.rgb, v / max(v + mist_alpha, 0.001));
 	COLOR = vec4(rgb, clamp(max(v, mist_alpha), 0.0, 1.0));
