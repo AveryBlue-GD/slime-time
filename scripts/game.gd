@@ -7,7 +7,8 @@ extends Node2D
 ## of gliding the distance flown; hitting a wall adds a penalty (SPLAT_PENALTY_MIN for a tiny hop
 ## up to SPLAT_PENALTY_MAX for a full-power leap), shakes the screen and stains the wall.
 ##
-## Reveal works on a fine grid (FOG_CELL px). Two images cover the map:
+## Reveal works on a fine grid (FOG_CELL px). Two RGBA8 images cover the map (kept as raw bytes,
+## _trail_bytes / _fog_bytes, and uploaded from them):
 ## - trail_image: goo (in the skin's colors) where the slime has been
 ## - fog_image:   per cell, when it was last lit, when it was first revealed, and floor vs wall,
 ##   packed into a plain RGBA8 image (see _fog_color) so every device can use it -- many phone
@@ -142,10 +143,21 @@ var finished := false
 var maze: Dictionary
 ## Damage level (0-3) of each wall tile, by tile coordinate.
 var wall_damage := {}
-var fog_image: Image
+## The fog and trail images as they are now (fresh snapshots of _fog_bytes / _trail_bytes).
+var fog_image: Image:
+	get:
+		return Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _fog_bytes)
+var trail_image: Image:
+	get:
+		return Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _trail_bytes)
+## The fog and trail cells as raw RGBA8 bytes, row-major ((cy * width + cx) * 4): the per-tick fog
+## work reads and writes these directly, and the textures are uploaded from them.
+var _fog_bytes := PackedByteArray()
+var _trail_bytes := PackedByteArray()
+## Width and height of the fog/trail images in cells.
+var _cells := Vector2i.ZERO
 ## Plain fog filling everything outside the maze and its border ring.
 var outer_fog: Sprite2D
-var trail_image: Image
 var revealed_walls := {}
 var fog_dirty := false
 var trail_dirty := false
@@ -153,6 +165,17 @@ var trail_dirty := false
 var _relit_tick := -1
 var _relit_cell := Vector2i(-99999, -99999)
 var _relit_radius := -1.0
+## The row spans (first, last cell per row from _span_row0) the last _relight / _reveal_light /
+## gliding _paint_cells covered, and its radius: the next call with the same radius (same tick for
+## _relight) only needs the cells outside them (see _disc_runs).
+var _relit_spans := PackedInt32Array()
+var _relit_row0 := 0
+var _revealed_spans := PackedInt32Array()
+var _revealed_row0 := 0
+var _revealed_radius := -1.0
+var _painted_spans := PackedInt32Array()
+var _painted_row0 := 0
+var _painted_radius := -1.0
 var last_slime_pos: Vector2
 ## Distance traveled since the last glimmer, the distance the next one comes at, and where the
 ## slime was last frame (for measuring).
@@ -602,13 +625,13 @@ func is_wall_tile(tile: Vector2i) -> bool:
 ## per-cell value, without its cosmetic extras (soft edges, clearing fade-in).
 func fog_alpha_at(pos: Vector2) -> float:
 	var at := _cell_at(pos)
-	if not Rect2i(Vector2i.ZERO, fog_image.get_size()).has_point(at):
+	if not Rect2i(Vector2i.ZERO, _cells).has_point(at):
 		return 1.0  # the outer fog
-	var px := fog_image.get_pixelv(at)
-	var packed := _fog_packed(px)
+	var v := _fog_bytes.decode_u32((at.y * _cells.x + at.x) * 4)
+	var packed := ((v >> 16) & 255) * 256 + ((v >> 24) & 255)
 	if packed == 0:
 		return 1.0
-	var age: float = elapsed - _fog_lit_ticks(px) / FOG_TICKS
+	var age: float = elapsed - ((v & 255) * 256 + ((v >> 8) & 255)) / FOG_TICKS
 	if hard_mode and age >= FADE_AFTER[-1]:
 		return 1.0
 	var look := fog_look()
@@ -693,13 +716,22 @@ func _tile_cells(tile: Vector2i) -> Rect2i:
 
 func _build_overlays() -> void:
 	var cells: Vector2i = (maze.size + Vector2i.ONE * BORDER * 2) * TILE / FOG_CELL
-	fog_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
-	fog_image.fill(UNREVEALED)
+	_cells = cells
+	var fog := Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
+	fog.fill(UNREVEALED)
+	var trail := Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
+	trail.fill(CLEAR)
+	fog_sprite.texture = ImageTexture.create_from_image(fog)
+	trail_sprite.texture = ImageTexture.create_from_image(trail)
+	_fog_bytes = fog.get_data()
+	_trail_bytes = trail.get_data()
 	_relit_tick = -1
-	trail_image = Image.create_empty(cells.x, cells.y, false, Image.FORMAT_RGBA8)
-	trail_image.fill(CLEAR)
-	fog_sprite.texture = ImageTexture.create_from_image(fog_image)
-	trail_sprite.texture = ImageTexture.create_from_image(trail_image)
+	_relit_spans.clear()
+	_revealed_spans.clear()
+	_revealed_radius = -1.0
+	_painted_spans.clear()
+	_painted_radius = -1.0
+	fog_dirty = false
 	fog_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	trail_sprite.scale = Vector2(FOG_CELL, FOG_CELL)
 	fog_sprite.position = -BORDER_PX
@@ -798,27 +830,40 @@ func _stain_wall(pos: Vector2, wall_normal: Vector2) -> void:
 
 
 ## Sets goo + lights fog cells within radius of pos, on floor cells or wall cells only.
+## Cells are visited row by row over exact disc spans (_disc_runs); a floor paint with the same
+## radius as the last one only visits the cells outside the last disc (those inside are all painted
+## already, or walls). Same cells, same order, same bytes as testing every cell of the square.
 func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
-	var first := _cell_at(pos - Vector2(radius, radius))
-	var last := _cell_at(pos + Vector2(radius, radius))
-	var bounds := Rect2i(Vector2i.ZERO, trail_image.get_size())
-	for cy in range(first.y, last.y + 1):
-		for cx in range(first.x, last.x + 1):
-			var cell := Vector2i(cx, cy)
-			var center := _cell_pos(cell)
-			if not bounds.has_point(cell) or center.distance_to(pos) > radius:
-				continue
-			var tile := Vector2i((center / TILE).floor())
-			if is_wall_tile(tile) != on_walls:
-				continue
-			if on_walls:
-				_reveal_wall(tile)
-			elif trail_image.get_pixelv(cell).a > 0.0:
-				continue
-			trail_image.set_pixelv(cell, _goo_color(posmod(hash(cell), 5) == 0))
-			fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
-			fog_dirty = true
-			trail_dirty = true
+	var first := _cell_at(pos - Vector2(radius, radius)).max(Vector2i.ZERO)
+	var last := _cell_at(pos + Vector2(radius, radius)).min(_cells - Vector2i.ONE)
+	var fog := _rgba8(_fog_color(elapsed, elapsed, false))
+	var goo_light := _rgba8(_goo_color(false))
+	var goo_deep := _rgba8(_goo_color(true))
+	var walls: PackedByteArray = maze.walls
+	var size: Vector2i = maze.size
+	var runs: PackedInt32Array
+	if on_walls:
+		runs = _disc_runs(pos, radius, false, first, last, PackedInt32Array(), 0)
+	else:
+		runs = _disc_runs(pos, radius, false, first, last, _painted_spans if radius == _painted_radius else PackedInt32Array(), _painted_row0)
+		_painted_spans = _last_spans
+		_painted_row0 = first.y
+		_painted_radius = radius
+	for r in range(0, runs.size(), 3):
+		var cy := runs[r]
+		var ty := floori(((cy + 0.5) * FOG_CELL - BORDER_PX.y) / TILE)
+		var i := (cy * _cells.x + runs[r + 1]) * 4
+		for cx in range(runs[r + 1], runs[r + 2] + 1):
+			var tx := floori(((cx + 0.5) * FOG_CELL - BORDER_PX.x) / TILE)
+			var wall := tx < 0 or ty < 0 or tx >= size.x or ty >= size.y or walls[ty * size.x + tx] == 1
+			if wall == on_walls and (on_walls or _trail_bytes[i + 3] == 0):
+				if on_walls:
+					_reveal_wall(Vector2i(tx, ty))
+				_trail_bytes.encode_u32(i, goo_deep if posmod(hash(Vector2i(cx, cy)), 5) == 0 else goo_light)
+				_fog_bytes.encode_u32(i, fog)
+				fog_dirty = true
+				trail_dirty = true
+			i += 4
 
 
 ## Trail color for a newly painted cell: the skin's goo, or for the rainbow skin a hue that
@@ -838,40 +883,130 @@ func _relight(pos: Vector2) -> void:
 	var slime_cell := _cell_at(pos)
 	if tick == _relit_tick and slime_cell == _relit_cell and radius == _relit_radius:
 		return  # nothing new can be lit: same fog tick, same cell, same reach
+	# Within one tick (same radius) only cells new to the disc can need it: the rest were relit
+	# already, or were unrevealed then (anything revealed since was lit this tick).
+	var same_tick := tick == _relit_tick and radius == _relit_radius
 	_relit_tick = tick
 	_relit_cell = slime_cell
 	_relit_radius = radius
 	var r := Vector2(radius, radius)
 	var first := _cell_at(pos - r).max(Vector2i.ZERO)
-	var last := _cell_at(pos + r).min(fog_image.get_size() - Vector2i.ONE)
-	var radius_sq := radius * radius
-	for cy in range(first.y, last.y + 1):
-		for cx in range(first.x, last.x + 1):
-			var cell := Vector2i(cx, cy)
-			if _cell_pos(cell).distance_squared_to(pos) > radius_sq:
-				continue
-			var packed := _fog_packed(fog_image.get_pixelv(cell))
-			if packed > 0 and _fog_lit_ticks(fog_image.get_pixelv(cell)) < tick:
-				fog_image.set_pixelv(cell, _fog_color_ticks(tick, (packed >> 1) - 1, packed % 2 == 1))
-				fog_dirty = true
+	var last := _cell_at(pos + r).min(_cells - Vector2i.ONE)
+	var runs := _disc_runs(pos, radius, true, first, last, _relit_spans if same_tick else PackedInt32Array(), _relit_row0)
+	_relit_spans = _last_spans
+	_relit_row0 = first.y
+	# Same bytes as _fog_color_ticks(tick, revealed, wall): only the lit time (r, g) changes.
+	var lit := clampi(tick, 0, 65535)
+	var lit_bytes := (lit >> 8) | ((lit & 255) << 8)
+	for k in range(0, runs.size(), 3):
+		var i := (runs[k] * _cells.x + runs[k + 1]) * 4
+		for cx in range(runs[k + 1], runs[k + 2] + 1):
+			var v := _fog_bytes.decode_u32(i)
+			if v >= 0x10000:  # revealed (b, a not both 0)
+				var was := (v & 255) * 256 + ((v >> 8) & 255)
+				if was < tick:
+					_fog_bytes.encode_u32(i, (v & 0xFFFF0000) | lit_bytes)
+					fog_dirty = true
+			i += 4
 
 
 ## Brightness upgrade: the slime's own light reveals unexplored floor (and the walls beside it)
-## a little beyond its goo trail, without laying goo there.
+## a little beyond its goo trail, without laying goo there. With the same radius as last time only
+## the cells outside the last disc are visited (those inside are revealed already, or walls).
 func _reveal_light(pos: Vector2) -> void:
 	var radius := TRAIL_RADIUS + light_reach
 	var first := _cell_at(pos - Vector2(radius, radius)).max(Vector2i.ZERO)
-	var last := _cell_at(pos + Vector2(radius, radius)).min(fog_image.get_size() - Vector2i.ONE)
-	for cy in range(first.y, last.y + 1):
-		for cx in range(first.x, last.x + 1):
-			var cell := Vector2i(cx, cy)
-			var center := _cell_pos(cell)
-			if center.distance_to(pos) > radius or is_wall_tile(Vector2i((center / TILE).floor())):
-				continue
-			if _fog_packed(fog_image.get_pixelv(cell)) == 0:
-				fog_image.set_pixelv(cell, _fog_color(elapsed, elapsed, false))
+	var last := _cell_at(pos + Vector2(radius, radius)).min(_cells - Vector2i.ONE)
+	var runs := _disc_runs(pos, radius, false, first, last, _revealed_spans if radius == _revealed_radius else PackedInt32Array(), _revealed_row0)
+	_revealed_spans = _last_spans
+	_revealed_row0 = first.y
+	_revealed_radius = radius
+	var fog := _rgba8(_fog_color(elapsed, elapsed, false))
+	var walls: PackedByteArray = maze.walls
+	var size: Vector2i = maze.size
+	for k in range(0, runs.size(), 3):
+		var cy := runs[k]
+		var ty := floori(((cy + 0.5) * FOG_CELL - BORDER_PX.y) / TILE)
+		if ty < 0 or ty >= size.y:
+			continue  # the border ring: all wall
+		var i := (cy * _cells.x + runs[k + 1]) * 4
+		for cx in range(runs[k + 1], runs[k + 2] + 1):
+			var tx := floori(((cx + 0.5) * FOG_CELL - BORDER_PX.x) / TILE)
+			if tx >= 0 and tx < size.x and walls[ty * size.x + tx] != 1 and _fog_bytes.decode_u32(i) < 0x10000:
+				_fog_bytes.encode_u32(i, fog)
 				fog_dirty = true
+			i += 4
 	_reveal_walls_near(pos, radius)
+
+
+## The span of each row of the disc (cells whose centers pass the original per-cell test:
+## distance_squared_to <= radius^2 when `squared`, else distance_to <= radius) inside first..last.
+## Returns the cells to visit as (row, from, to) triples, leaving out each row's `old` span (the
+## previous disc's, rows from old_row0; empty = none); this disc's spans are left in _last_spans.
+## A row's inside cells are always one unbroken run, because the rounded distance only grows away
+## from pos, so testing the ends finds it exactly.
+var _last_spans := PackedInt32Array()
+
+
+func _disc_runs(pos: Vector2, radius: float, squared: bool, first: Vector2i, last: Vector2i,
+		old: PackedInt32Array, old_row0: int) -> PackedInt32Array:
+	var runs := PackedInt32Array()
+	var spans := PackedInt32Array()
+	if first.x > last.x or first.y > last.y:
+		_last_spans = spans
+		return runs
+	spans.resize((last.y - first.y + 1) * 2)
+	var mid0 := clampi(floori((pos.x + BORDER_PX.x) / FOG_CELL), first.x, last.x)  # nearest column
+	var radius_sq := radius * radius
+	for cy in range(first.y, last.y + 1):
+		var row_y := (cy + 0.5) * FOG_CELL - BORDER_PX.y
+		var lo := 1
+		var hi := 0
+		if _in_disc(mid0, row_y, pos, radius, radius_sq, squared):
+			var dy := row_y - pos.y
+			var half := sqrt(maxf(radius_sq - dy * dy, 0.0))
+			lo = clampi(floori((pos.x - half + BORDER_PX.x) / FOG_CELL), first.x, mid0)
+			while lo > first.x and _in_disc(lo - 1, row_y, pos, radius, radius_sq, squared):
+				lo -= 1
+			while not _in_disc(lo, row_y, pos, radius, radius_sq, squared):
+				lo += 1
+			hi = clampi(floori((pos.x + half + BORDER_PX.x) / FOG_CELL), mid0, last.x)
+			while hi < last.x and _in_disc(hi + 1, row_y, pos, radius, radius_sq, squared):
+				hi += 1
+			while not _in_disc(hi, row_y, pos, radius, radius_sq, squared):
+				hi -= 1
+		var s := (cy - first.y) * 2
+		spans[s] = lo
+		spans[s + 1] = hi
+		if lo > hi:
+			continue
+		var o := (cy - old_row0) * 2
+		if o < 0 or o >= old.size() or old[o] > old[o + 1]:
+			runs.append_array([cy, lo, hi])
+			continue
+		if lo < old[o]:
+			runs.append_array([cy, lo, mini(hi, old[o] - 1)])
+		if hi > old[o + 1]:
+			runs.append_array([cy, maxi(lo, old[o + 1] + 1), hi])
+	_last_spans = spans
+	return runs
+
+
+## The original per-cell disc test for the cell in column cx of the row whose centers are at row_y.
+static func _in_disc(cx: int, row_y: float, pos: Vector2, radius: float, radius_sq: float, squared: bool) -> bool:
+	var center := Vector2((cx + 0.5) * FOG_CELL - BORDER_PX.x, row_y)
+	if squared:
+		return center.distance_squared_to(pos) <= radius_sq
+	return center.distance_to(pos) <= radius
+
+
+## The bytes Image.set_pixel stores for a color in an RGBA8 image, as one little-endian u32.
+static var _pixel := Image.create_empty(1, 1, false, Image.FORMAT_RGBA8)
+
+
+static func _rgba8(color: Color) -> int:
+	_pixel.set_pixel(0, 0, color)
+	return _pixel.get_data().decode_u32(0)
 
 
 func _reveal_walls_near(pos: Vector2, radius: float) -> void:
@@ -893,16 +1028,29 @@ func _reveal_wall(tile: Vector2i) -> void:
 	if revealed_walls.has(tile):
 		return
 	revealed_walls[tile] = true
-	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
+	_fill_fog(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
+
+
+## Image.fill_rect on the fog bytes (clipped to the image).
+func _fill_fog(rect: Rect2i, color: Color) -> void:
+	rect = rect.intersection(Rect2i(Vector2i.ZERO, _cells))
+	var value := _rgba8(color)
+	for cy in range(rect.position.y, rect.end.y):
+		var i := (cy * _cells.x + rect.position.x) * 4
+		for cx in rect.size.x:
+			_fog_bytes.encode_u32(i, value)
+			i += 4
 	fog_dirty = true
 
 
+## Uploads the changed textures from the bytes (a short-lived Image shares the bytes, so nothing
+## is copied here and the next write doesn't copy either).
 func _flush_textures() -> void:
 	if fog_dirty:
-		(fog_sprite.texture as ImageTexture).update(fog_image)
+		(fog_sprite.texture as ImageTexture).update(Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _fog_bytes))
 		fog_dirty = false
 	if trail_dirty:
-		(trail_sprite.texture as ImageTexture).update(trail_image)
+		(trail_sprite.texture as ImageTexture).update(Image.create_from_data(_cells.x, _cells.y, false, Image.FORMAT_RGBA8, _trail_bytes))
 		trail_dirty = false
 
 
@@ -1095,8 +1243,10 @@ func _break_wall(tile: Vector2i) -> void:
 	wall_health.erase(tile)
 	revealed_walls.erase(tile)
 	floor_layer.set_cell(tile, MazeTiles.FLOOR_SOURCE, Vector2i(MazeTiles.FLOOR_RUBBLE, 0))
-	fog_image.fill_rect(_tile_cells(tile), _fog_color(elapsed, elapsed, false))
-	fog_dirty = true
+	_fill_fog(_tile_cells(tile), _fog_color(elapsed, elapsed, false))
+	# The tile is floor now: cells of the last painted / revealed discs may need painting after all.
+	_painted_radius = -1.0
+	_revealed_radius = -1.0
 	for offset: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT,
 			Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
 		var near := tile + offset
