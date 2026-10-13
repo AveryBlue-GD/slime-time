@@ -81,6 +81,7 @@ static func make_theme() -> Theme:
 	theme.set_color("font_placeholder_color", "LineEdit", TEXT_OFF)
 	theme.set_color("caret_color", "LineEdit", TEXT)
 	theme.set_color("selection_color", "LineEdit", Color8(62, 74, 96))
+	GooBox.track_theme(theme)
 	return theme
 
 

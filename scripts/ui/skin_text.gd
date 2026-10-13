@@ -25,16 +25,43 @@ func _ready() -> void:
 	recolor.call_deferred()
 
 
+## The frame and rainbow time the shared part of `recolor` (group labels, goo color) last ran
+## with: another SkinText processing in the same frame at the same time would only repeat it.
+static var _shared_frame := -1
+static var _shared_time := 0.0
+
+
 func _process(delta: float) -> void:
 	if _is_rainbow():
 		_time += delta
-		recolor()
+		var frame := Engine.get_process_frames()
+		var shared := not (frame == _shared_frame and _time == _shared_time)
+		_shared_frame = frame
+		_shared_time = _time
+		recolor(shared)
 
 
-## Re-applies colors (call after the skin changes).
-func recolor() -> void:
+## Re-applies colors (call after the skin changes). `shared` = also recolor the group labels and
+## the goo (global; skipped when another SkinText already did it this frame with the same time).
+func recolor(shared := true) -> void:
 	var rainbow := _is_rainbow()
 	var base := _skin_color()
+	var theme: Theme = theme_owner.theme if theme_owner else null
+	# Hold the theme's change signal while its colors and goo boxes change, then emit it once:
+	# the same final colors, re-themed once instead of once per edit.
+	var hold := theme != null and not theme.is_blocking_signals()
+	if hold:
+		theme.set_block_signals(true)
+	if shared:
+		_recolor_shared(rainbow, base)
+	if theme:
+		_recolor_theme(theme, rainbow, base)
+	if hold:
+		theme.set_block_signals(false)
+		theme.emit_changed()
+
+
+func _recolor_shared(rainbow: bool, base: Color) -> void:
 	for node in get_tree().get_nodes_in_group(GROUP):
 		var label := node as Label
 		if label == null:
@@ -45,21 +72,23 @@ func recolor() -> void:
 		label.add_theme_color_override("font_color", color_for(label.get_meta("role", ROLE_TEXT), color_base))
 	# Button and panel frames are goo in the skin's color.
 	GooBox.set_goo_color(rainbow_color(_time, 160.0) if rainbow else base)
-	if theme_owner and theme_owner.theme:
-		var button_base := rainbow_color(_time, 160.0) if rainbow else base
-		# Slider fills are goo too.
-		for area in ["grabber_area", "grabber_area_highlight"]:
-			var fill := theme_owner.theme.get_stylebox(area, "HSlider") as StyleBoxFlat
-			if fill:
-				fill.bg_color = button_base if area == "grabber_area" else Skins.shades(button_base).light
-		for color_name: String in BUTTON_COLORS:
-			theme_owner.theme.set_color(color_name, "Button", color_for(ROLE_TEXT, button_base))
-			theme_owner.theme.set_color(color_name, "CheckBox", color_for(ROLE_TEXT, button_base))
-		# The outline around the selected (focused) button glows in the skin's title color.
-		for type in ["Button", "CheckBox"]:
-			var focus := theme_owner.theme.get_stylebox("focus", type) as StyleBoxFlat
-			if focus:
-				focus.border_color = color_for(ROLE_TITLE, button_base)
+
+
+func _recolor_theme(theme: Theme, rainbow: bool, base: Color) -> void:
+	var button_base := rainbow_color(_time, 160.0) if rainbow else base
+	# Slider fills are goo too.
+	for area in ["grabber_area", "grabber_area_highlight"]:
+		var fill := theme.get_stylebox(area, "HSlider") as StyleBoxFlat
+		if fill:
+			fill.bg_color = button_base if area == "grabber_area" else Skins.shades(button_base).light
+	for color_name: String in BUTTON_COLORS:
+		theme.set_color(color_name, "Button", color_for(ROLE_TEXT, button_base))
+		theme.set_color(color_name, "CheckBox", color_for(ROLE_TEXT, button_base))
+	# The outline around the selected (focused) button glows in the skin's title color.
+	for type in ["Button", "CheckBox"]:
+		var focus := theme.get_stylebox("focus", type) as StyleBoxFlat
+		if focus:
+			focus.border_color = color_for(ROLE_TITLE, button_base)
 
 
 ## Text color for a role, built from a skin color (kept bright enough to read on dark).

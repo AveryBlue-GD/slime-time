@@ -14,6 +14,9 @@ enum Kind { BUTTON, PANEL }
 ## The skin color every goo box uses (shades derived like the slime's).
 static var goo_color := Color8(56, 183, 100)
 static var _boxes: Array[WeakRef] = []
+## Themes that hold goo boxes (UIKit.make_theme registers them): a recolor makes each emit one
+## change instead of one per box it holds.
+static var _themes: Array[WeakRef] = []
 
 ## Dried-up goo for disabled buttons.
 const DRIED := {
@@ -39,11 +42,28 @@ func _init() -> void:
 	_boxes.append(weakref(self))
 
 
-## Recolors every goo box (redraws them).
+## Registers a theme holding goo boxes, so `set_goo_color` batches its change signals.
+static func track_theme(theme: Theme) -> void:
+	_themes.append(weakref(theme))
+
+
+## Recolors every goo box (redraws them). Each tracked theme's signals are held while its boxes
+## change and it then emits once (a theme already held by the caller is left to it), so its
+## controls are re-themed once rather than once per box; the final state is the same.
 static func set_goo_color(color: Color) -> void:
 	if color.is_equal_approx(goo_color):
 		return
 	goo_color = color
+	var held: Array[Theme] = []
+	var live_themes: Array[WeakRef] = []
+	for ref in _themes:
+		var theme := ref.get_ref() as Theme
+		if theme:
+			live_themes.append(ref)
+			if not theme.is_blocking_signals():
+				theme.set_block_signals(true)
+				held.append(theme)
+	_themes = live_themes
 	var alive: Array[WeakRef] = []
 	for ref in _boxes:
 		var box := ref.get_ref() as GooBox
@@ -51,6 +71,11 @@ static func set_goo_color(color: Color) -> void:
 			alive.append(ref)
 			box.emit_changed()
 	_boxes = alive
+	for theme in held:
+		theme.set_block_signals(false)
+		theme.emit_changed()
+
+
 
 
 static func make_button(button_state: String) -> GooBox:
