@@ -89,7 +89,7 @@ func _initialize() -> void:
 	_check(skins.jelly_button.text == "JELLY: OFF" and not progress.is_skin_unlocked("mint", false),
 		"JELLY OFF shows the solid skins: locked until their level is beaten on hard")
 	skins._on_tile("mint")
-	_check("BEAT LEVEL 1 ON HARD" in skins.status.text and progress.jelly, "...it says which hard level unlocks it (%s)" % skins.status.text)
+	_check("HARD CLEAR L1" in skins.status.text and progress.jelly, "...it says which hard level unlocks it (%s)" % skins.status.text)
 	progress.hard_cleared.assign([1, 2])
 	skins._on_tile("mint")
 	_check(progress.selected_skin == "mint" and not progress.jelly, "beating the level on hard unlocks it, and picking it wears it solid")

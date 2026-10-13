@@ -159,6 +159,13 @@ func show_page(which: String) -> void:
 ## JELLY ON / OFF: shows the other version of every skin.
 func _toggle_jelly() -> void:
 	view_jelly = not view_jelly
+	# The worn skin follows the switch when its other version is unlocked; otherwise it stays
+	# as it is and the status line says the other version is still locked (_refresh).
+	var worn: String = Progress.selected_skin
+	if view_jelly != Progress.jelly and Progress.is_skin_unlocked(worn, view_jelly):
+		Progress.select_skin(worn, view_jelly)
+		skin_text.recolor()
+		(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
 	_fill_skin_grid()
 	_refresh()
 	jelly_button.grab_focus()
@@ -266,7 +273,7 @@ func _refresh(focus_id := "") -> void:
 	var worn_here: bool = view_jelly == Progress.jelly
 	if not Progress.is_skin_unlocked(id, view_jelly):
 		if not view_jelly:
-			status.text = "LOCKED - BEAT LEVEL %d ON HARD" % Skins.solid_level(id)
+			status.text = "SOLID LOCKED - HARD CLEAR L%d" % Skins.solid_level(id)
 		elif id == Skins.RAINBOW:
 			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Levels.total_coins()]
 		elif id == Skins.STOPWATCH:
