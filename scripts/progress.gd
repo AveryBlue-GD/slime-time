@@ -41,7 +41,11 @@ var current_level := 1
 ## Save layout version, written to [meta]. 2 = globs + per-level medal bitmasks (PAR/CLEAN/COINS);
 ## 3 = TICKET VOUCHERS (randomizer-only, kept under the old [wallet] globs keys) + medal TIERS.
 ## Anything older than 3 gets its medals converted when it is read (see _migrate_medals).
-const SAVE_VERSION := 3
+## 4 = the redesigned story layouts (random-class spawns, docs/level-design.md): coin keys from an
+## older save are re-mapped by COUNT to the new layout's coins (see _migrate_coins).
+const SAVE_VERSION := 4
+## The first save version whose story coin keys / best times belong to the current layouts.
+const LAYOUT_VERSION := 4
 ## TICKET VOUCHERS: the renewable, cosmetic-only currency (never converted to or from coins). The
 ## ONLY faucet is the randomizer: 1 per win, +2 when the maze's ticket pickup was collected, +1 when
 ## the win beats that maze's par time (4 at most), and at most 5 paying wins per UTC day (so at most
@@ -308,6 +312,8 @@ func _read(file: ConfigFile) -> void:
 		found.assign(_strings(file.get_value("coins", "level_%d" % level, [])))
 		if not found.is_empty():
 			coins_found[level] = found
+	if _int(file, "meta", "version", 1) < LAYOUT_VERSION:
+		_migrate_coins()
 	upgrades = {}
 	for upgrade: Dictionary in Upgrades.LIST:
 		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, Upgrades.MAX_LEVEL)
@@ -327,6 +333,23 @@ func _read(file: ConfigFile) -> void:
 			selected_skin = Skins.DEFAULT
 
 
+## Story coins from a save made on the pre-v4 layouts: their keys name cells of the old mazes. Each
+## level keeps its COUNT of found coins (as counted before, capped at Levels.COINS), now as the first
+## N coins of the new layout (Levels.coin_keys order), so coins_earned, and with it the coins spent
+## on upgrades, stays exactly the same and nobody's balance can go negative. A pure function of
+## the old data: reading the same old save or SLIME1- code again gives the same result, and the
+## next save is version 4, which is never migrated again.
+func _migrate_coins() -> void:
+	for level: int in coins_found.keys():
+		var count := coins_found_in(level)
+		if level < 1 or level > Levels.COUNT or count <= 0:
+			coins_found.erase(level)
+			continue
+		var keys: Array = []
+		keys.assign(Levels.coin_keys(level).slice(0, count))
+		coins_found[level] = keys
+
+
 ## Tickets, medals and hat-wheel counters. Every key is optional: a save from before them gets
 ## zeros. The ticket balance sits under the old [wallet] keys "globs" / "globs_lifetime" (the old
 ## clears_paid / hard_clears_paid / retro-grant keys are ignored: tickets now come only from the
@@ -343,11 +366,12 @@ func _read_wallet(file: ConfigFile) -> void:
 	medals = {}
 	# Older saves, and a version 3 save with best times but no [medals] section at all, get tiers from
 	# their best times; otherwise stored tiers count when 1-3 (anything else is 0).
-	var migrate := _int(file, "meta", "version", 1) < SAVE_VERSION or (not file.has_section("medals") and not best_times.is_empty())
+	var version := _int(file, "meta", "version", 1)
+	var migrate := version < 3 or (not file.has_section("medals") and not best_times.is_empty())
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
 			var stored := _int(file, "medals", "level_%d" % key, 0)
-			var tier := _migrate_medals(key) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
+			var tier := _migrate_medals(key, version < LAYOUT_VERSION) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
 			if tier > 0:
 				medals[key] = tier
 
@@ -356,12 +380,14 @@ func _read_wallet(file: ConfigFile) -> void:
 ## has one (so nobody loses a medal they would have earned), else bronze when the level was cleared,
 ## else none (the old bitmask bits themselves are dropped). Needs best_times / levels_cleared / hard_cleared read first.
 ## A pure function of the old data, so reading the same old save twice gives the same result.
-func _migrate_medals(key: int) -> int:
+## `legacy`: the times were set on the pre-v4 layouts, so they are measured against those pars
+## (Levels.legacy_par), giving exactly the tiers this migration gave before the redesign.
+func _migrate_medals(key: int, legacy := true) -> int:
 	var hard := key > HARD_RECORDS
 	var level := key - HARD_RECORDS if hard else key
 	var best: float = best_times.get(key, -1.0)
 	if is_finite(best) and best > 0.0:
-		return tier_for(best, Levels.level_par(level, hard))
+		return tier_for(best, Levels.legacy_par(level, hard) if legacy else Levels.level_par(level, hard))
 	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
 	return TIER_BRONZE if cleared else TIER_NONE
 

@@ -277,7 +277,7 @@ func _initialize() -> void:
 	progress.random_pay_day = 20000
 	progress.random_paid = 2
 	var text: String = progress._write().encode_to_text()
-	_check("[meta]" in text and "version=3" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 3, [wallet] globs and [medals]")
+	_check("[meta]" in text and "version=4" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 4, [wallet] globs and [medals]")
 	_check("clears_paid" not in text and "hard_clears_paid" not in text, "...and no clears_paid keys any more")
 	var file := ConfigFile.new()
 	file.parse(text)
@@ -343,7 +343,7 @@ func _initialize() -> void:
 	var vth := ConfigFile.new()
 	vth.set_value("meta", "version", 3)
 	vth.set_value("progress", "levels_cleared", 3)
-	vth.set_value("records", "level_1", Levels.level_par(1) * 0.5)
+	vth.set_value("records", "level_1", Levels.legacy_par(1) * 0.5)
 	vth.set_value("medals", "level_1", 7)
 	vth.set_value("medals", "level_2", 2)
 	vth.set_value("medals", "level_3", 0)
@@ -353,7 +353,7 @@ func _initialize() -> void:
 	var vthb := ConfigFile.new()
 	vthb.set_value("meta", "version", 3)
 	vthb.set_value("progress", "levels_cleared", 3)
-	vthb.set_value("records", "level_1", Levels.level_par(1) * 0.5)
+	vthb.set_value("records", "level_1", Levels.legacy_par(1) * 0.5)
 	vthp._read(vthb)
 	_check(vthp.medals_for(1) == 3, "a version 3 save with best times and no [medals] gets tiers from the times")
 	vthp.free()
@@ -367,9 +367,9 @@ func _initialize() -> void:
 	_check(par_ms < 100.0, "computing par for all 20 levels takes %.0f ms (< 100)" % par_ms)
 
 	# --- A version-2 save (globs, bitmask medals, clears_paid): balance kept, medals become tiers
-	var par1: float = Levels.level_par(1)
-	var par2: float = Levels.level_par(2)
-	var par3: float = Levels.level_par(3)
+	var par1: float = Levels.legacy_par(1)
+	var par2: float = Levels.legacy_par(2)
+	var par3: float = Levels.legacy_par(3)
 	var old := _old_save(par1, par2, par3)
 	var veteran: Node = preload("res://scripts/progress.gd").new()
 	veteran._read(old)
@@ -383,7 +383,7 @@ func _initialize() -> void:
 	veteran.hard_mode = false
 	_check(veteran.medals_total() == 3 + 2 + 1 + 1 + 1 + 1 and not veteran.all_medals(), "the total is the tier sum")
 	var written: ConfigFile = veteran._write()
-	_check(written.get_value("meta", "version") == 3 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 3 without the paid masks")
+	_check(written.get_value("meta", "version") == 4 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 4 without the paid masks")
 	var again := ConfigFile.new()
 	again.parse(written.encode_to_text())
 	var veteran2: Node = preload("res://scripts/progress.gd").new()
@@ -392,7 +392,7 @@ func _initialize() -> void:
 	var veteran3: Node = preload("res://scripts/progress.gd").new()
 	veteran3._read(old)
 	_check(veteran3.medals == veteran.medals, "...and reading the old save again gives the same tiers")
-	# bitmask 1-3 in a version 3 save is a tier, not a mask: the version tells them apart
+	# bitmask 1-3 in a version 3+ save is a tier, not a mask: the version tells them apart
 	var v3 := ConfigFile.new()
 	v3.parse(written.encode_to_text())
 	v3.set_value("medals", "level_8", 2)
@@ -451,7 +451,7 @@ func _initialize() -> void:
 	_check(progress.load_code(old_code) and progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
 		"a SLIME1- code from an older build loads: balance kept, medals as tiers")
 	var snapshot: String = progress._write().encode_to_text()
-	_check("version=3" in snapshot, "...and re-saves as version 3")
+	_check("version=4" in snapshot, "...and re-saves as version 4")
 	var new_code: String = progress.save_code()
 	progress.reset_progress()
 	_check(progress.tickets == 0 and progress.medals.is_empty() and progress.spins == 0 and progress.rainbow_pity == 0 and progress.random_paid == 0,
@@ -487,7 +487,7 @@ func _old_save(par1: float, par2: float, par3: float) -> ConfigFile:
 	old.set_value("records", "level_1", par1 * 0.8)
 	old.set_value("records", "level_2", par2 * 1.2)
 	old.set_value("records", "level_3", par3 * 2.0)
-	old.set_value("records", "level_101", Levels.level_par(1, true) * 0.9)
+	old.set_value("records", "level_101", Levels.legacy_par(1, true) * 0.9)
 	old.set_value("wallet", "globs", 37)
 	old.set_value("wallet", "globs_lifetime", 90)
 	old.set_value("wallet", "clears_paid", 0b111111)
