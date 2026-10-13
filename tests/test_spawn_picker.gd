@@ -67,11 +67,11 @@ func _initialize() -> void:
 	for i in 150:
 		var s := 50000 + i * 31
 		var cfg := Levels.random_config(s)
-		var maze := MazeGenerator.generate_random(cfg.cells, s)
+		var maze := MazeGenerator.generate_random(cfg)
 		var reach := MazeGenerator.distances_from(maze, maze.start)
-		var cost: float = cfg.target * 100.0 / (maze.goal_steps * MazeGenerator.CELL_SPAN - Levels.GRAB_REACH / Levels.TILE)
-		var ticket := TicketSpawn.pick(maze, s, cost)
-		if not MazeGenerator.is_completable(maze) or maze.start == maze.goal or not reach.has(maze.goal) or not reach.has(ticket) or ticket == maze.start:
+		var ticket := TicketSpawn.pick(maze, s, cfg.tile_cost)
+		var ticket_ok: bool = ticket == TicketSpawn.NONE or (reach.has(ticket) and ticket != maze.start)  # none = no ticket in that maze
+		if not MazeGenerator.is_completable(maze) or maze.start == maze.goal or not reach.has(maze.goal) or not ticket_ok:
 			bad += 1
 	_check(bad == 0, "150 randomizer seeds: always solvable, chalice and ticket reachable (%d bad)" % bad)
 

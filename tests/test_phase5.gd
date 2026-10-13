@@ -104,7 +104,7 @@ func _initialize() -> void:
 	for i in 300:
 		var seed_value := 1000 + i * 7919
 		var config := Levels.random_config(seed_value)
-		var maze := MazeGenerator.generate_noise(config.cells, seed_value)
+		var maze := MazeGenerator.generate_random(config)
 		all_ok = all_ok and MazeGenerator.is_completable(maze)
 		shortest = mini(shortest, maze.goal_steps)
 		seen[maze.walls] = true
@@ -116,7 +116,8 @@ func _initialize() -> void:
 			with_loops += 1
 	_check(all_ok, "300 random mazes: every cell reachable, chalice always reachable")
 	_check(seen.size() == 300, "every seed gives a different maze")
-	_check(shortest >= 15, "random mazes always have a real route (shortest: %d cells)" % shortest)
+	# Routes are sized by the seed's slime usage (Levels.random_route_cells); even a rare 10% maze has a real one.
+	_check(shortest >= Levels.RANDOM_MIN_ROUTE, "random mazes always have a real route (shortest: %d cells)" % shortest)
 	_check(with_loops > 200, "noise adds loops to most random mazes (%d/300)" % with_loops)
 	for seed_value in [11, 22222, 987654321]:
 		game = await _spawn({random_seed = seed_value})

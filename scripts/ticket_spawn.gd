@@ -6,18 +6,23 @@ extends RefCounted
 ## costs to get there from the start along the shortest route (tiles x the slime cost per tile, which
 ## already includes MORE SLIME upgrades):
 ## - nearer than MIN_FRACTION (10%) or farther than MAX_FRACTION (60%) never gets one;
-## - weight(f) = WEIGHT_FLOOR + (f / MAX_FRACTION)^2: 10% weighs 0.07, 30% 0.29, 60% 1.04, so the
-##   close spots are rare (and have few cells) and the far ones the most common;
+## - weight(f) = WEIGHT_FLOOR + (f / MAX_FRACTION)^3: 10% weighs 0.045, 30% 0.17, 60% 1.04, so the
+##   close spots are rare (and have few cells) and the far ones the most common (cubed since the
+##   usage rework: small low-usage mazes have few far cells, and squared let near picks reach ~13%);
 ## - the whole trip start -> ticket -> chalice must fit in ROUTE_LIMIT (92%) of the meter, so
 ##   collecting it never makes winning impossible (picks lie on the route or on short side branches).
+##   On a short route (a low-usage maze) that leaves room for cells well off the route; on a route
+##   longer than 92% (usage 0.93-0.95) only cells ON the route qualify (no detour at all).
+## - with no fitting cell the maze has no ticket (pick returns NONE); the HUD and result say so.
 const MIN_FRACTION := 0.10
 const MAX_FRACTION := 0.60
 const ROUTE_LIMIT := 0.92
 const WEIGHT_FLOOR := 0.04
+const NONE := Vector2i(-1, -1)
 
 
 static func weight(fraction: float) -> float:
-	return WEIGHT_FLOOR + pow(fraction / MAX_FRACTION, 2.0)
+	return WEIGHT_FLOOR + pow(fraction / MAX_FRACTION, 3.0)
 
 
 ## Cells that may hold the ticket, with their fraction of the meter from the start: {cell, f, trip}.
@@ -26,23 +31,25 @@ static func candidates(maze: Dictionary, cost_per_tile: float) -> Array[Dictiona
 	var from_start := MazeGenerator.distances_from(maze, maze.start)
 	var from_goal := MazeGenerator.distances_from(maze, maze.goal)
 	var unit := MazeGenerator.CELL_SPAN * cost_per_tile / 100.0
+	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal] * unit + 0.000001)  # a 93-95% route: on-route cells only
 	var out: Array[Dictionary] = []
-	for cell: Vector2i in from_start:
-		if cell == maze.start or cell == maze.goal:
-			continue
-		var f: float = from_start[cell] * unit
-		var trip: float = (from_start[cell] + from_goal[cell]) * unit
-		if f >= MIN_FRACTION and f <= MAX_FRACTION and trip <= ROUTE_LIMIT:
-			out.append({cell = cell, f = f, trip = trip})
+	for y in maze.cells.y:  # row-major, so the pick never depends on dictionary order
+		for x in maze.cells.x:
+			var cell := Vector2i(x, y)
+			if cell == maze.start or cell == maze.goal or not from_start.has(cell):
+				continue
+			var f: float = from_start[cell] * unit
+			var trip: float = (from_start[cell] + from_goal[cell]) * unit
+			if f >= MIN_FRACTION and f <= MAX_FRACTION and trip <= limit:
+				out.append({cell = cell, f = f, trip = trip})
 	return out
 
 
-## The ticket's cell for this maze and seed (always one: with no fitting cell, a spot on the route).
+## The ticket's cell for this maze and seed, or NONE when no cell fits the rules above.
 static func pick(maze: Dictionary, maze_seed: int, cost_per_tile: float) -> Vector2i:
 	var options := candidates(maze, cost_per_tile)
 	if options.is_empty():
-		var route := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
-		return route[clampi(route.size() / 3, 1, maxi(route.size() - 2, 1))]
+		return NONE
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed ^ 0x7ad3c1
 	var total := 0.0

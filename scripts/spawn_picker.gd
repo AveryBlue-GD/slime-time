@@ -17,6 +17,14 @@ extends RefCounted
 ## (EDGE -> NEAR -> ANY -> EDGE); ANY always has one (an end of the longest route).
 ## Only integer RNG calls (randi_range) and integer comparisons are used, so the web build and the
 ## desktop build pick exactly the same cell for the same seed.
+##
+## Randomizer mazes ask for a ROUTE length instead (Levels.random_route_cells: the seed's usage x
+## the player's meter). Then a start qualifies when its farthest cell is at least `route` cells away
+## (the minimum-route rule is relative to the target, not the maze's longest route), and the
+## chalice is a seeded pick among the cells exactly `route` cells from it (BFS distances are
+## contiguous, so one always exists). Class order and fallbacks are as above; if no cell at all
+## reaches `route` (the maze is too small: MazeGenerator.generate_random grows it first, so this is
+## rare), the longest route is used instead.
 
 enum Kind { EDGE, NEAR, ANY }
 
@@ -92,8 +100,9 @@ static func diameter(maze: Dictionary) -> int:
 
 
 ## Picks the start. `kind` -1 rolls the class from the seed; 0-2 forces it (story levels).
+## `route` > 0 asks for a chalice exactly that many cells from the start (randomizer).
 ## Returns {start, goal, steps, kind (the class used), rolled (the class asked for), diameter}.
-static func pick(maze: Dictionary, pick_seed: int, kind := -1) -> Dictionary:
+static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> Dictionary:
 	var rng := _rng(pick_seed)
 	var roll := rng.randi_range(0, 99)  # always drawn, so a forced class leaves the shuffle the same
 	var rolled := kind if kind >= 0 and kind <= Kind.ANY else _kind_for_roll(roll)
@@ -108,7 +117,10 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1) -> Dictionary:
 			options[swap] = tmp
 		for cell in options:
 			var far: Dictionary = farthest(maze, cell)
-			if far.steps * 100 >= MIN_ROUTE_PCT * longest:
+			if route > 0:
+				if far.steps >= route:
+					return {start = cell, goal = cell_at_distance(maze, cell, route, rng), steps = route, kind = k, rolled = rolled, diameter = longest}
+			elif far.steps * 100 >= MIN_ROUTE_PCT * longest:
 				return {start = cell, goal = far.cell, steps = far.steps, kind = k, rolled = rolled, diameter = longest}
 	# Unreachable (an end of the longest route always qualifies); keep a sane answer anyway.
 	var end: Dictionary = farthest(maze, Vector2i.ZERO)
@@ -116,13 +128,25 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1) -> Dictionary:
 	return {start = end.cell, goal = back.cell, steps = back.steps, kind = Kind.ANY, rolled = rolled, diameter = longest}
 
 
-## Puts a pick into the maze dictionary (start, goal, goal_steps, spawn_kind, diameter).
-static func apply(maze: Dictionary, pick_seed: int, kind := -1) -> Dictionary:
-	var result := pick(maze, pick_seed, kind)
+## A seeded pick among the cells exactly `steps` cells from `from` (row-major order, one integer draw).
+static func cell_at_distance(maze: Dictionary, from: Vector2i, steps: int, rng: RandomNumberGenerator) -> Vector2i:
+	var dist := MazeGenerator.distances_from(maze, from)
+	var ring: Array[Vector2i] = []
+	for y in maze.cells.y:
+		for x in maze.cells.x:
+			if dist.get(Vector2i(x, y), -1) == steps:
+				ring.append(Vector2i(x, y))
+	return ring[rng.randi_range(0, ring.size() - 1)]
+
+
+## Puts a pick into the maze dictionary (start, goal, goal_steps, spawn_kind, spawn_rolled, diameter).
+static func apply(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> Dictionary:
+	var result := pick(maze, pick_seed, kind, route)
 	maze.start = result.start
 	maze.goal = result.goal
 	maze.goal_steps = result.steps
 	maze.spawn_kind = result.kind
+	maze.spawn_rolled = result.rolled
 	maze.diameter = result.diameter
 	return maze
 
