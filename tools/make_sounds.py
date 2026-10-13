@@ -128,6 +128,21 @@ def chime_tone(freq: float, seconds: float, volume=0.4) -> list[float]:
             * volume * math.exp(-i / RATE * 9) * min(1.0, i / 30) for i in range(count)]
 
 
+def wind(seconds: float, volume=0.4, seed=1, low=0.03, high=0.22) -> list[float]:
+    """Air rushing past: noise through a one-pole low-pass whose cutoff swells from `low` to
+    `high` and back, so it rises into a whoosh and falls away."""
+    rng = random.Random(seed)
+    samples, a, b = [], 0.0, 0.0
+    count = int(seconds * RATE)
+    for i in range(count):
+        t = i / count
+        cut = low + (high - low) * math.sin(math.pi * t) ** 2
+        a = a * (1 - cut) + rng.uniform(-1, 1) * cut
+        b = b * (1 - cut) + a * cut
+        samples.append(b * 6.0 * volume * math.sin(math.pi * t) ** 1.5)
+    return samples
+
+
 def mix(*tracks: list[float]) -> list[float]:
     length = max(len(t) for t in tracks)
     return [sum(t[i] for t in tracks if i < len(t)) for i in range(length)]
@@ -211,6 +226,19 @@ SOUNDS = {
     # Crossing into low slime: a sagging, sad bloop with a couple of dying bubbles.
     "lowwarn": lambda: mix(bloop(340, 120, 0.4, 0.4, wobble=0.05, wobble_rate=6, release=0.2),
                            gurgle(0.4, 4, 200, 420, 0.14, seed=73, falling=True)),
+    # Story intro: a long dark whoosh of air as the slime falls through the mountain.
+    "whoosh": lambda: mix(wind(1.6, 0.6, seed=81), bloop(150, 55, 1.6, 0.18, wobble=0.03, wobble_rate=3,
+                                                         attack=0.4, release=0.8)),
+    # Story intro: the floor splitting: a deep thud and stone cracking apart in a ragged run.
+    "crack": lambda: mix(wet_thud(0.3, 0.45, seed=82, release=0.22), crunch(0.45, 0.5, seed=83),
+                         [0.0] * int(0.12 * RATE) + crunch(0.4, 0.35, seed=84), bloop(110, 40, 0.4, 0.3, release=0.3)),
+    # Story intro: an adventurer's armor clanking as they run (dull, low metal).
+    "clank": lambda: mix(metal_ring((260, 618, 990), 0.22, 0.2, droop=0.04), crunch(0.08, 0.25, seed=85)),
+    # Story finale: the sun comes up: a soft low swell under three slow, mellow bell notes.
+    "sunrise": lambda: mix(bloop(98, 99, 2.2, 0.16, wobble=0.01, wobble_rate=3, attack=0.7, release=1.2, shape="tri"),
+                           bloop(147, 148, 2.2, 0.1, attack=0.9, release=1.2, shape="tri"),
+                           chime_tone(392, 1.2, 0.2), [0.0] * int(0.35 * RATE) + chime_tone(494, 1.2, 0.17),
+                           [0.0] * int(0.7 * RATE) + chime_tone(587, 1.4, 0.15)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }
