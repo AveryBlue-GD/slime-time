@@ -2,7 +2,7 @@ class_name Story
 extends RefCounted
 
 ## The light plot (see docs/story.md): a slime fleeing adventurers fell through the floor of a
-## mountain-sized dungeon and splatted on its bottom level, the Dank Dungeon (level 1). Each
+## mountain-sized dungeon and splatted on its bottom level, the Dark Dungeon (level 1). Each
 ## level is a floor of the climb up; the Volcanic Vault (10) is the summit, and its crater is the
 ## way out to daylight. The text here is the single source for the intro, the level banners and
 ## the finale. Lines are uppercase (the pixel font) and at most MAX_WIDTH px wide at 8 px.

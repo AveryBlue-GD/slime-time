@@ -3,7 +3,7 @@
 A light plot told in one-liners. All text lives in `scripts/story.gd` (uppercase, at most 296 px wide in the 8 px pixel font; `tests/test_story.gd` checks this). The scene is `scenes/story.tscn` (`scripts/ui/story_screen.gd`).
 
 ## Plot
-A slime was running from a party of adventurers (they wanted experience points, it wanted a nap) when the floor gave up and it fell through the ceiling of a mountain-sized dungeon, down through every floor, and splatted on the bottom one, the Dank Dungeon. The way out is up: each of the 10 levels is a floor of the climb (a golden chalice marks the way up), and the Volcanic Vault at the summit ends in the crater, which spits the slime out into daylight. Far below, the adventurers still search and find only a puddle, which they count as loot.
+A slime was running from a party of adventurers (they wanted experience points, it wanted a nap) when the floor gave up and it fell through the ceiling of a mountain-sized dungeon, down through every floor, and splatted on the bottom one, the Dark Dungeon. The way out is up: each of the 10 levels is a floor of the climb (a golden chalice marks the way up), and the Volcanic Vault at the summit ends in the crater, which spits the slime out into daylight. Far below, the adventurers still search and find only a puddle, which they count as loot.
 
 The climb order is the level order: level 1 is the bottom, level 10 the top. The "fog" the tagline warns about is the dungeon's; "dry trying" is the slime meter.
 
@@ -18,7 +18,7 @@ Shown once, on a fresh save, when PLAY is pressed on the title (before level 1).
 ## Level banners
 Shown under the area name for a few seconds when a story level starts (not in the randomizer).
 
-1. Dank Dungeon: SPLAT. IT IS DAMP. UP IS THAT WAY.
+1. Dark Dungeon: SPLAT. IT IS DAMP. UP IS THAT WAY.
 2. Mossy Mines: THE MINERS LEFT IN A HURRY. SO WOULD YOU.
 3. Sandstone Sanctum: SOMEONE SWEPT THE SAND. NOT RECENTLY.
 4. Sunken Shrine: NOT TECHNICALLY SWIMMING. STILL NOT DRY.

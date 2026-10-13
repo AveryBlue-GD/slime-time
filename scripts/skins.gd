@@ -39,7 +39,7 @@ static var jelly := true
 const RAINBOW_BASE := Color8(230, 60, 60)
 
 const PRESETS := [
-	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},           # 1 Dank Dungeon
+	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},           # 1 Dark Dungeon
 	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 1},           # 2 Mossy Mines: lichen
 	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 2},         # 3 Sandstone Sanctum: sun
 	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 3},         # 4 Sunken Shrine

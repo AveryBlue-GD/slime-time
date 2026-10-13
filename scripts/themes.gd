@@ -14,7 +14,7 @@ const DEFAULT_FOG_DEEP := Color(0.078, 0.078, 0.133, 1.0)
 const DEFAULT_FOG_MIST := Color(0.247, 0.239, 0.341, 1.0)
 
 const ALL := {
-	"dungeon": {name = "DANK DUNGEON"},
+	"dungeon": {name = "DARK DUNGEON"},
 	"mossy": {name = "MOSSY MINES", fog = [Color8(12, 24, 18), Color8(42, 66, 50)]},
 	"sandstone": {name = "SANDSTONE SANCTUM", fog = [Color8(30, 22, 20), Color8(90, 72, 58)]},
 	"sunken": {name = "SUNKEN SHRINE", fog = [Color8(8, 20, 30), Color8(36, 70, 84)]},

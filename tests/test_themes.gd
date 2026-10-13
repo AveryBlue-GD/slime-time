@@ -38,7 +38,7 @@ func _initialize() -> void:
 	for tile: Vector2i in game.fillet_layer.get_used_cells():
 		fillets_on_floor = fillets_on_floor and not game.is_wall_tile(tile)
 	_check(fillets_on_floor, "fillets only sit on floor tiles")
-	_check(game.hud.area_label.visible and "DANK DUNGEON" in game.hud.area_label.text, "the HUD names the area (%s)" % game.hud.area_label.text)
+	_check(game.hud.area_label.visible and "DARK DUNGEON" in game.hud.area_label.text, "the HUD names the area (%s)" % game.hud.area_label.text)
 	var alliterative := true
 	for id: String in Themes.ALL:
 		var words: PackedStringArray = Themes.display_name(id).split(" ")

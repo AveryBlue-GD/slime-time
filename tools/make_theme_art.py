@@ -36,7 +36,7 @@ def rgb(*c):
 # f/F/h floor / floor dark / floor worn, v/V growth, d/B liquid + glint, u bone.
 THEMES = {
     "dungeon": {
-        "name": "DANK DUNGEON",
+        "name": "DARK DUNGEON",
         "layouts": ("bricks", "ashlar", "cobble"), "decos": ("moss", "stain"), "floor": "flagstone",
         "kinds": {},
         "pal": {},  # the original palette
