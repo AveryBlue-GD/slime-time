@@ -131,46 +131,117 @@ static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
 	return maze
 
 
-## How much of the maze's longest route (its diameter) the start-to-chalice route must be at least.
-const SPAWN_MIN_ROUTE := 0.75
-## Seeded tries at a start cell before settling for the best one found.
-const SPAWN_TRIES := 24
-
-
-## Randomizer maze with a random start: the noise maze above, then a start cell picked from the
-## seed among the cells whose farthest cell is at least SPAWN_MIN_ROUTE of the longest route in the
-## maze (so the slime starts in an outer area, never next to the chalice), and the chalice is the
-## cell farthest from it. Same seed, same maze, same start. Adds `ref_steps` (cells): the longest
-## route, which the slime budget is calibrated on, so a shorter route here only leaves slack.
+## Randomizer maze with a random start: the noise maze above, then SpawnPicker picks the start
+## from the seed (33% on the outer edge, 30% near it, 37% anywhere; the route to the chalice at
+## least SpawnPicker.MIN_ROUTE_PCT of the longest route) and the chalice is the cell farthest from
+## it. Same seed, same maze, same start. Adds `spawn_kind` and `diameter` (the longest route).
 static func generate_random(cells: Vector2i, maze_seed: int) -> Dictionary:
-	var maze := generate_noise(cells, maze_seed)
-	var far := distances_from(maze, maze.goal)  # maze.goal is the cell farthest from the corner
-	var diameter := 0
-	for cell: Vector2i in far:
-		diameter = maxi(diameter, far[cell])
+	return SpawnPicker.apply(generate_noise(cells, maze_seed), maze_seed)
+
+
+## A story level's maze (see Levels.DATA and docs/level-design.md): a growing tree like `generate`
+## that keeps going straight with chance `run` (longer corridors for the 8-tile leap), plus
+## `loops` extra openings that join two far-apart parts of the maze (shortcuts, never next to a
+## dead end so the coin dead ends survive), then a fixed spawn from SpawnPicker with the level's
+## class (`spawn`) and seed, the chalice the farthest cell from it.
+static func generate_level(config: Dictionary) -> Dictionary:
+	var cells: Vector2i = config.cells
+	var maze_seed: int = config.seed
+	var branching: float = config.get("branching", 0.0)
+	var run: float = config.get("run", 0.0)
+	var size := cells * CELL_SPAN + Vector2i.ONE
+	var walls := PackedByteArray()
+	walls.resize(size.x * size.y)
+	walls.fill(1)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = maze_seed ^ 0x2545f491
-	var best_start := Vector2i.ZERO
-	var best_goal: Vector2i = maze.goal
-	var best_steps := 0
-	for i in SPAWN_TRIES:
-		var start := Vector2i(rng.randi_range(0, cells.x - 1), rng.randi_range(0, cells.y - 1))
-		var reach := distances_from(maze, start)
-		var goal := start
-		for cell: Vector2i in reach:
-			if reach[cell] > reach[goal]:
-				goal = cell
-		if reach[goal] > best_steps:
-			best_steps = reach[goal]
-			best_start = start
-			best_goal = goal
-		if reach[goal] >= SPAWN_MIN_ROUTE * diameter:
+	rng.seed = maze_seed
+	var root := Vector2i(cells.x / 2, cells.y / 2)
+	var heading := {root: Vector2i.ZERO}
+	var active: Array[Vector2i] = [root]
+	_open_cell(walls, size, root)
+	while not active.is_empty():
+		var index := active.size() - 1
+		if rng.randf() < branching:
+			index = rng.randi_range(0, active.size() - 1)
+		var cell := active[index]
+		var options: Array[Vector2i] = []
+		for dir in DIRS:
+			var next := cell + dir
+			if _inside(next, cells) and not heading.has(next):
+				options.append(next)
+		if options.is_empty():
+			active.remove_at(index)
+			continue
+		var chosen := options[rng.randi_range(0, options.size() - 1)]
+		var ahead: Vector2i = cell + heading[cell]
+		if heading[cell] != Vector2i.ZERO and ahead in options and rng.randf() < run:
+			chosen = ahead
+		heading[chosen] = chosen - cell
+		_open_cell(walls, size, chosen)
+		_open_between(walls, size, cell, chosen)
+		active.append(chosen)
+	var maze := {size = size, cells = cells, walls = walls, start = Vector2i.ZERO}
+	_add_loops(maze, rng, int(config.get("loops", 0)))
+	return SpawnPicker.apply(maze, maze_seed, int(config.get("spawn", -1)))
+
+
+## Shortcut gaps must join cells at least this far apart along the passages.
+const LOOP_MIN_SPAN := 10
+
+
+static func _add_loops(maze: Dictionary, rng: RandomNumberGenerator, count: int) -> void:
+	if count <= 0:
+		return
+	var options: Array[Vector2i] = []  # (cell index, 0 = right / 1 = down) packed as x = index, y = dir
+	for y in maze.cells.y:
+		for x in maze.cells.x:
+			for d in 2:
+				var next := Vector2i(x, y) + (Vector2i.RIGHT if d == 0 else Vector2i.DOWN)
+				if _inside(next, maze.cells):
+					options.append(Vector2i(y * maze.cells.x + x, d))
+	for i in range(options.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp := options[i]
+		options[i] = options[j]
+		options[j] = tmp
+	var added := 0
+	for option in options:
+		if added >= count:
 			break
-	maze.start = best_start
-	maze.goal = best_goal
-	maze.goal_steps = best_steps
-	maze.ref_steps = maxi(diameter, best_steps)
-	return maze
+		var a := Vector2i(option.x % maze.cells.x, option.x / maze.cells.x)
+		var b := a + (Vector2i.RIGHT if option.y == 0 else Vector2i.DOWN)
+		if b in open_neighbors(maze, a):
+			continue
+		if open_neighbors(maze, a).size() < 2 or open_neighbors(maze, b).size() < 2:
+			continue  # keep dead ends (the coins live there)
+		if distances_from(maze, a).get(b, 0) < LOOP_MIN_SPAN:
+			continue
+		_open_between(maze.walls, maze.size, a, b)
+		added += 1
+
+
+## How deep each dead end is: cells from it back to the nearest junction (3+ openings) or the
+## start, counting the dead end itself. {cell: depth}
+static func dead_end_depths(maze: Dictionary) -> Dictionary:
+	var out := {}
+	for y in maze.cells.y:
+		for x in maze.cells.x:
+			var cell := Vector2i(x, y)
+			if cell == maze.start or open_neighbors(maze, cell).size() != 1:
+				continue
+			var depth := 1
+			var prev := cell
+			var at: Vector2i = open_neighbors(maze, cell)[0]
+			while at != maze.start:
+				var around := open_neighbors(maze, at)
+				if around.size() != 2:
+					break
+				depth += 1
+				var next: Vector2i = around[0] if around[1] == prev else around[1]
+				prev = at
+				at = next
+			out[cell] = depth
+	return out
 
 
 ## True when every cell (and so the goal) can be reached from the start.

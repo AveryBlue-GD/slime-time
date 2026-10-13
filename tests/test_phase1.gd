@@ -5,6 +5,7 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 -s res://tests/test_phase1.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const StartDirs := preload("res://tests/start_dirs.gd")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
 
 var failures := 0
@@ -16,10 +17,11 @@ func _initialize() -> void:
 	var start: Vector2 = game.slime.position
 	_check(game.fog_alpha_at(start) == 0.0, "floor under the slime is revealed at start")
 	_check(game.fog_alpha_at(Vector2(game.maze.size * 16) - Vector2(8, 8)) == 1.0, "far corner starts black")
-	_check(absf(game.fog_alpha_at(start + Vector2(0, -24)) - game.WALL_FOG_ALPHA) < 0.01,
+	var wall := StartDirs.wall_dir(game.maze, game.maze.start)
+	_check(absf(game.fog_alpha_at(start + Vector2(wall) * 16.0) - game.WALL_FOG_ALPHA) < 0.01,
 		"wall next to the trail is revealed (dimmed)")
 
-	var open_dir := "move_right" if Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start) else "move_down"
+	var open_dir := StartDirs.action(StartDirs.open_dir(game.maze, game.maze.start))
 	await _hold(open_dir, 0.6)
 	await _wait(1.0)
 	var traveled: float = game.slime.position.distance_to(start)
@@ -32,8 +34,11 @@ func _initialize() -> void:
 	await _wait(1.0)
 	_check(game.slime_remaining == before, "standing still costs nothing")
 
-	await _hold("move_up", 2.0)
-	_check(game.slime.position.y > 20.0, "top wall stops the slime (y = %.1f)" % game.slime.position.y)
+	game.slime.position = start  # back on the start, then push into the wall beside it
+	await physics_frame
+	await _hold(StartDirs.action(wall), 2.0)
+	var pushed: float = (game.slime.position - start).dot(Vector2(wall))
+	_check(pushed < 2.0, "the wall beside the start stops the slime (%.1f px into it)" % pushed)
 	game.free()
 
 	game = await _spawn()

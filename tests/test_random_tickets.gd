@@ -44,7 +44,7 @@ func _initialize() -> void:
 			corner += 1
 		all_connected = all_connected and MazeGenerator.is_completable(maze)
 		var cost := _cost(maze)
-		min_route = minf(min_route, maze.goal_steps * 1.0 / maze.ref_steps)
+		min_route = minf(min_route, maze.goal_steps * 1.0 / maze.diameter)
 		var cell := TicketSpawn.pick(maze, s, cost)
 		var dist_start := MazeGenerator.distances_from(maze, maze.start)
 		var dist_goal := MazeGenerator.distances_from(maze, maze.goal)
@@ -60,7 +60,7 @@ func _initialize() -> void:
 	_check(all_connected, "every random-start maze is fully connected")
 	_check(starts.size() >= SEEDS * 0.5, "spawn varies across seeds (%d distinct starts in %d)" % [starts.size(), SEEDS])
 	_check(corner < SEEDS * 0.2, "the old top-left corner is no longer the usual start (%d/%d)" % [corner, SEEDS])
-	_check(min_route >= MazeGenerator.SPAWN_MIN_ROUTE - 0.001 or min_route > 0.6, "the start-chalice route is at least ~75%% of the longest route (min %.2f)" % min_route)
+	_check(min_route >= SpawnPicker.MIN_ROUTE_PCT / 100.0 - 0.001, "the start-chalice route is at least %d%% of the longest route (min %.2f)" % [SpawnPicker.MIN_ROUTE_PCT, min_route])
 	_check(unreachable == 0 and worst_trip <= TicketSpawn.ROUTE_LIMIT + 0.0001, "the ticket is always within budget: start -> ticket -> chalice <= %d%% of the meter (worst %.0f%%)" % [TicketSpawn.ROUTE_LIMIT * 100, worst_trip * 100])
 	_check(min_f >= TicketSpawn.MIN_FRACTION - 0.0001 and max_f <= TicketSpawn.MAX_FRACTION + 0.0001, "the ticket is %d%%-%d%% of the meter from the start (saw %.0f%%-%.0f%%)" % [TicketSpawn.MIN_FRACTION * 100, TicketSpawn.MAX_FRACTION * 100, min_f * 100, max_f * 100])
 	print("ticket distance bands (<20, 20-30, 30-40, 40-50, 50+ pct of meter): ", bands, " of ", total)
@@ -89,14 +89,13 @@ func _initialize() -> void:
 	_check(small == Levels.random_config(777).cells and big.x * big.y > small.x * small.y * 1.5, "level 0 keeps the old size; level 10 is ~2x the area (%s -> %s)" % [small, big])
 	_check(Levels.random_config(777, true, 10).cells == small, "hard mode has no upgrades, so no growth")
 
-	# --- Story levels are untouched
+	# --- Story levels: a fixed spawn per level (the level's class, drawn from its own seed); par from the real route
 	for level in range(1, Levels.COUNT + 1):
 		var c := Levels.get_config(level)
-		var m := MazeGenerator.generate(c.cells, c.seed, c.branching)
-		if m.start != Vector2i.ZERO or m.has("ref_steps"):
-			_check(false, "story level %d keeps its corner start" % level)
-	_check(MazeGenerator.generate(Levels.get_config(5).cells, Levels.get_config(5).seed, Levels.get_config(5).branching).start == Vector2i.ZERO, "story levels still start in their corner")
-	_check(is_equal_approx(Levels.level_par(1), Levels.par_for_path(MazeGenerator.generate(Levels.DATA[0].cells, Levels.DATA[0].seed, Levels.DATA[0].branching).goal_steps * 2 - 13.0 / 16.0)), "story par uses the real path as before")
+		var m := Levels.story_maze(level)
+		var again := Levels.story_maze(level)
+		_check(m.start == again.start and m.goal == again.goal and m.spawn_kind == c.spawn, "story level %d: always the same %s start %s" % [level, SpawnPicker.KIND_NAMES[c.spawn], m.start])
+	_check(is_equal_approx(Levels.level_par(1), Levels.par_for_path(Levels.story_maze(1).goal_steps * 2 - 13.0 / 16.0)), "story par uses the real start-to-chalice route")
 
 	# --- Real game: the slime starts on the maze's start, the budget and par use the real start
 	progress.mode = progress.MODE_RANDOM
@@ -108,7 +107,7 @@ func _initialize() -> void:
 	var real_tiles: float = game.maze.goal_steps * 2 - 13.0 / 16.0
 	_check(is_equal_approx(game.par_time, Levels.par_for_path(real_tiles, game.slime.max_speed)), "par is measured along the real start-to-chalice route")
 	var used: float = real_tiles * game.slime_cost_per_tile
-	_check(used <= TARGET * 100.0 + 0.01, "a perfect run from the real start uses at most %d%% of the meter (%.1f%%)" % [TARGET * 100, used])
+	_check(absf(used - TARGET * 100.0) < 0.01, "the meter is calibrated on the real route: a perfect run uses %d%% (%.1f%%)" % [TARGET * 100, used])
 	_check(game.ticket != null and game.ticket.cell == TicketSpawn.pick(game.maze, 4242, game.slime_cost_per_tile), "the ticket pickup sits in the seeded cell")
 	game.queue_free()
 	await process_frame
@@ -132,9 +131,9 @@ func _initialize() -> void:
 	quit(0 if failures == 0 else 1)
 
 
-## Slime cost per tile as game.gd computes it (no upgrades; grab reach 13 px).
+## Slime cost per tile as game.gd computes it (no upgrades; grab reach 13 px): on the real route.
 func _cost(maze: Dictionary) -> float:
-	var ref: float = maze.ref_steps * MazeGenerator.CELL_SPAN - Levels.GRAB_REACH / Levels.TILE
+	var ref: float = maze.goal_steps * MazeGenerator.CELL_SPAN - Levels.GRAB_REACH / Levels.TILE
 	return TARGET * 100.0 / ref
 
 

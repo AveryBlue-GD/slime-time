@@ -261,15 +261,15 @@ func _ready() -> void:
 		hud.set_level_text("RANDOM MAZE #%d%s%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag, level_note])
 	else:
 		config = Levels.get_config(level, hard_mode)
-		maze = MazeGenerator.generate(config.cells, config.seed, config.branching)
+		maze = MazeGenerator.generate_level(config)
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
 	# The slime grabs the chalice when their shapes touch, a little short of its center.
 	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
-	# A randomizer maze with a random start is calibrated on its longest route (maze.ref_steps), so a
-	# start nearer the chalice only leaves slack; story mazes have no ref_steps and are unchanged.
-	var ref_tiles: float = maze.get("ref_steps", maze.goal_steps) * MazeGenerator.CELL_SPAN - grab_reach / TILE
-	slime_cost_per_tile = config.target * 100.0 / ref_tiles
+	# Story and randomizer alike are calibrated on the real start-to-chalice route (SpawnPicker), so a
+	# perfect glide always uses `target` of the meter and the exploration allowance (meter / route =
+	# 1 / target) is the level's own, wherever the slime starts.
+	slime_cost_per_tile = config.target * 100.0 / path_tiles
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
 	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
@@ -931,23 +931,10 @@ func _apply_upgrades() -> void:
 
 # ---------------------------------------------------------------- coins
 
-## The cells holding this level's coins: Levels.COINS[level] of its dead ends (never the start or
-## the chalice's cell), picked with the level's seed so they're always in the same places.
+## The cells holding this level's coins (Levels.coin_cells: deep dead ends first, never the start
+## or the chalice's cell), picked with the level's seed so they're always in the same places.
 func coin_cells(maze_seed: int) -> Array[Vector2i]:
-	var dead_ends: Array[Vector2i] = []
-	for y in maze.cells.y:
-		for x in maze.cells.x:
-			var cell := Vector2i(x, y)
-			if cell != maze.start and cell != maze.goal and MazeGenerator.open_neighbors(maze, cell).size() == 1:
-				dead_ends.append(cell)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = maze_seed * 13 + 5
-	for i in range(dead_ends.size() - 1, 0, -1):  # a seeded shuffle
-		var j := rng.randi_range(0, i)
-		var swap := dead_ends[i]
-		dead_ends[i] = dead_ends[j]
-		dead_ends[j] = swap
-	return dead_ends.slice(0, Levels.COINS[level - 1])
+	return Levels.coin_cells(maze, level, maze_seed)
 
 
 ## Puts out the coins of a story level that haven't been collected yet.

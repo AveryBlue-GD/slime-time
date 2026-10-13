@@ -86,6 +86,9 @@ func _initialize() -> void:
 
 	progress.set_hard_mode(false)
 	game = await _spawn()
+	start = game.slime.position  # normal level 1 has its own maze and start
+	path = MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
+	far = MazeGenerator.cell_center(path[path.size() / 2], 16)
 	game.slime.position = far
 	game.last_slime_pos = far
 	await _wait(10.0)

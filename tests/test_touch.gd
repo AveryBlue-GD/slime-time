@@ -6,6 +6,7 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_touch.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const StartDirs := preload("res://tests/start_dirs.gd")
 const RotateHint := preload("res://scripts/ui/rotate_hint.gd")
 
 var failures := 0
@@ -29,9 +30,9 @@ func _initialize() -> void:
 	_check(touch.visible, "touch controls show (forced on for the test)")
 
 	# Joystick: put a thumb down on the left, drag toward an open corridor.
-	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
-	var drag := Vector2(16, 0) if open_right else Vector2(0, 16)
-	var action := "move_right" if open_right else "move_down"
+	var open_dir := StartDirs.open_dir(game.maze, game.maze.start)
+	var drag := Vector2(open_dir) * 16.0
+	var action := StartDirs.action(open_dir)
 	var start: Vector2 = game.slime.position
 	_touch(0, Vector2(50, 130), true)
 	_drag(0, Vector2(50, 130) + drag)

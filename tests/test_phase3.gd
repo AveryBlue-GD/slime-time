@@ -41,6 +41,8 @@ func _initialize() -> void:
 			"level %2d: %dx%d cells, path %2d cells, %2d dead ends, perfect run uses %.1f%% (target %.0f%%)"
 			% [level, game.maze.cells.x, game.maze.cells.y, info.steps, info.dead_ends, used, target])
 		_check(absf(used - target) < 4.0, "level %2d: slime used is within 4%% of the target" % level)
+		_check(game.won and game.run_time <= game.par_time, "level %2d: the autopilot beats par from the %s start (%.1f s, par %.1f s)"
+			% [level, SpawnPicker.KIND_NAMES[game.maze.spawn_kind], game.run_time, game.par_time])
 		_check(damage_kinds.size() >= 3 and floor_kinds.size() >= 4,
 			"level %2d: varied tiles (%d wall damage levels, %d floor types, %.0f%% broken walls)"
 			% [level, damage_kinds.size(), floor_kinds.size(), info.broken * 100.0])

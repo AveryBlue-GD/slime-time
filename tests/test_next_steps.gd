@@ -6,6 +6,7 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_next_steps.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const StartDirs := preload("res://tests/start_dirs.gd")
 const TEST_SAVE := "user://test_save.cfg"
 
 var failures := 0
@@ -83,11 +84,10 @@ func _initialize() -> void:
 	# Dry-up: RESTART or go spend coins on UPGRADES.
 	game = await _spawn_story(1)
 	game.slime_remaining = 0.2
-	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
-	Input.action_press("move_right" if open_right else "move_down")
+	var open_action := StartDirs.action(StartDirs.open_dir(game.maze, game.maze.start))
+	Input.action_press(open_action)
 	await _frames(20)
-	Input.action_release("move_right")
-	Input.action_release("move_down")
+	Input.action_release(open_action)
 	await _frames(int(game.CHOICE_DELAY * 60) + 5)
 	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES"], "drying up offers %s" % [_texts(game)])
 	_check(not game.won, "...and it's not a win")

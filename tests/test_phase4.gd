@@ -5,6 +5,7 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_phase4.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const StartDirs := preload("res://tests/start_dirs.gd")
 
 var failures := 0
 
@@ -26,9 +27,9 @@ func _initialize() -> void:
 
 	var game := await _spawn()
 	var slime: Slime = game.slime
-	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
-	var action := "move_right" if open_right else "move_down"
-	var glide_anim := "glide_e" if open_right else "glide_s"
+	var open_dir := StartDirs.open_dir(game.maze, game.maze.start)
+	var action := StartDirs.action(open_dir)
+	var glide_anim: String = "glide_" + StartDirs.ANIMS[open_dir]
 	_check(slime.sprite.animation == "idle", "standing still shows idle")
 	Input.action_press(action)
 	await _wait(0.3)
@@ -38,27 +39,34 @@ func _initialize() -> void:
 	await _wait(1.0)
 	_check(slime.sprite.animation == "idle", "stopping returns to idle")
 
+	# Leap from a cell whose corridor ends in a wall one cell on (the start is random since v4).
+	var hop := _short_hop(game.maze)
+	slime.position = MazeGenerator.cell_center(hop.cell, 16)
+	slime.velocity = Vector2.ZERO
+	game.last_slime_pos = slime.position
+	await _wait(0.2)
 	Input.action_press("jump")
 	await _wait(0.8)
 	_check(slime.sprite.animation.begins_with("charge_") and slime.sprite.frame == 2,
 		"charging shows charge frames that follow the meter (frame %d at %.0f%%)" % [slime.sprite.frame, slime.charge])
-	slime.facing = Vector2.UP
+	slime.facing = Vector2(hop.dir)
+	var splat_anim: String = "splat_" + StartDirs.ANIMS[hop.dir]
 	Input.action_release("jump")
 	await physics_frame
 	await physics_frame
-	_check(slime.sprite.animation == "launch_n", "jumping starts with launch frames (got %s)" % slime.sprite.animation)
+	_check(slime.sprite.animation == "launch_" + StartDirs.ANIMS[hop.dir], "jumping starts with launch frames (got %s)" % slime.sprite.animation)
 	_check(slime.shadow.visible, "a shadow shows under the slime in the air")
 	for i in 60:
 		if slime.state == Slime.State.STUNNED:
 			break
 		await physics_frame
-	_check(slime.sprite.animation == "splat_n", "hitting the wall above shows splat_n (got %s)" % slime.sprite.animation)
+	_check(slime.sprite.animation == splat_anim, "hitting the wall ahead shows %s (got %s)" % [splat_anim, slime.sprite.animation])
 	_check(not slime.shadow.visible, "shadow hides on landing")
 	await _wait(0.35)
 	_check(slime.sprite.animation == "recover", "after the stun the slime wobbles back (got %s)" % slime.sprite.animation)
 
 	# Fading: the start is lit, then left alone it steps down toward darkness.
-	var start: Vector2 = MazeGenerator.cell_center(game.maze.start, 16)
+	var start: Vector2 = MazeGenerator.cell_center(hop.cell, 16)
 	_check(game.fog_alpha_at(start) == 0.0, "the area around the slime is fully lit")
 	var path := MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
 	var far := MazeGenerator.cell_center(path[path.size() / 2], 16)  # well away from the start and the chalice
@@ -116,3 +124,17 @@ func _check(ok: bool, label: String) -> void:
 	print(("  ok   " if ok else "  FAIL ") + label)
 	if not ok:
 		failures += 1
+
+
+## The cell nearest the start with an open neighbor in some direction and a wall right after it.
+func _short_hop(maze: Dictionary) -> Dictionary:
+	var dist := MazeGenerator.distances_from(maze, maze.start)
+	var best := {}
+	for cell: Vector2i in dist:
+		for dir: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+			var next := cell + dir
+			if next in MazeGenerator.open_neighbors(maze, cell) and not next + dir in MazeGenerator.open_neighbors(maze, next):
+				if best.is_empty() or dist[cell] < best.d:
+					best = {cell = cell, dir = dir, d = dist[cell]}
+				break
+	return best

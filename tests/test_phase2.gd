@@ -5,6 +5,7 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 -s res://tests/test_phase2.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const StartDirs := preload("res://tests/start_dirs.gd")
 
 var failures := 0
 var landed_hit := -1  # -1 = not landed yet, 0 = clean, 1 = wall
@@ -16,9 +17,9 @@ func _initialize() -> void:
 
 	# Charging with real input: holds still, aims, fills to ~50% in 0.75 s, launches on release.
 	var game := await _spawn()
-	var open_right: bool = Vector2i.RIGHT in MazeGenerator.open_neighbors(game.maze, game.maze.start)
-	var open_action := "move_right" if open_right else "move_down"
-	var open_dir := Vector2.RIGHT if open_right else Vector2.DOWN
+	var open_cell_dir := StartDirs.open_dir(game.maze, game.maze.start)
+	var open_action := StartDirs.action(open_cell_dir)
+	var open_dir := Vector2(open_cell_dir)
 	var start: Vector2 = game.slime.position
 	Input.action_press("jump")
 	Input.action_press(open_action)
@@ -53,21 +54,23 @@ func _initialize() -> void:
 	_check(game.fog_alpha_at(game.slime.position) == 0.0, "landing leaves a goo splat")
 	game.free()
 
-	# Full-power jump straight into the wall above the start.
+	# Full-power jump straight into the wall beside the start.
 	game = await _spawn()
 	start = game.slime.position
-	game.slime.facing = Vector2.UP
+	var wall := Vector2(StartDirs.wall_dir(game.maze, game.maze.start))
+	game.slime.facing = wall
 	game.slime.launch(100.0)
 	await _wait_for_landing()
 	var glide_cost: float = start.distance_to(game.slime.position) / 16.0 * game.slime_cost_per_tile
 	_check(landed_hit == 1, "jumping into a wall splats")
-	_check(absf(game.slime.position.y - (16.0 + Slime.RADIUS)) < 0.5, "slime stops against the wall (y = %.1f)" % game.slime.position.y)
+	var into: float = (game.slime.position - start).dot(wall)
+	_check(absf(into - (8.0 - Slime.RADIUS)) < 0.5, "slime stops against the wall (%.1f px from the cell center)" % into)
 	var flown: float = start.distance_to(game.slime.position)
 	_check(absf(game.last_jump_cost - (flown / 16.0 * game.slime_cost_per_tile * 0.5 + game.SPLAT_PENALTY_MAX)) < 0.01,
 		"full-power splat costs the distance flown plus the %d%% max penalty (%.2f%%)" % [game.SPLAT_PENALTY_MAX, game.last_jump_cost])
 	_check(game.splat_penalty(16.0) == game.SPLAT_PENALTY_MIN, "a tiny hop into a wall only adds the %d%% min penalty" % game.SPLAT_PENALTY_MIN)
 	_check(game.last_jump_cost > glide_cost, "splat costs more than gliding there (%.2f%% vs %.2f%%)" % [game.last_jump_cost, glide_cost])
-	_check(game.fog_alpha_at(Vector2(start.x, 14.0)) == 0.0, "splat stains the wall with goo")
+	_check(game.fog_alpha_at(start + wall * 10.0) == 0.0, "splat stains the wall with goo")
 	_check(game.slime.state == Slime.State.STUNNED, "splat stuns the slime")
 	await _wait(0.5)
 	_check(game.slime.state == Slime.State.GLIDE, "slime recovers after the stun")

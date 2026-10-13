@@ -1,5 +1,7 @@
 extends SceneTree
 
+const StartDirs := preload("res://tests/start_dirs.gd")
+
 ## Phase 5 checks: skins unlock and recolor slime/trail/HUD, the custom color unlocks after the
 ## game is beaten, key remapping works and saves, walls and floor dim together, randomizer mazes
 ## are always completable (and beatable), and the menu screens build correctly.
@@ -60,7 +62,7 @@ func _initialize() -> void:
 	_check(game.hud.fill.color == Skins.get_preset("ocean").color, "slime meter is the skin's color")
 
 	# --- Walls and floor dim in lockstep.
-	var wall_point := Vector2(start.x, 8.0)
+	var wall_point := start + Vector2(StartDirs.wall_dir(game.maze, game.maze.start)) * 16.0  # inside the wall beside the start
 	var floor_now: float = game.fog_alpha_at(start)
 	var wall_now: float = game.fog_alpha_at(wall_point)
 	var path := MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
