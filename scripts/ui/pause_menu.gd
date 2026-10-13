@@ -11,6 +11,11 @@ var volume_row: PanelContainer
 var seed_button: Button
 var seed_edit: LineEdit
 var _panel: Panel
+## Dev mode only (built only then): FULL BRIGHT and NO DRAIN switches (Game.set_dev_bright /
+## set_dev_no_drain, also F1 / F2 in the level), on their own panel to the right.
+var dev_panel: Control
+var bright_button: Button
+var drain_button: Button
 
 
 func _ready() -> void:
@@ -62,7 +67,44 @@ func _ready() -> void:
 	seed_edit.text_submitted.connect(_submit_seed)
 	menu.add_child(seed_edit)
 	_refresh_sound()
+	var progress := get_node_or_null("/root/Progress")
+	if progress and progress.dev_tools:
+		_build_dev_panel(root)
 	UIKit.add_skin_text(root)
+
+
+func _build_dev_panel(root: Control) -> void:
+	dev_panel = UIKit.add_panel(root, Rect2(226, 55, 88, 50))
+	var column := VBoxContainer.new()
+	column.position = Vector2(232, 60)
+	column.custom_minimum_size = Vector2(76, 0)
+	column.add_theme_constant_override("separation", 3)
+	root.add_child(column)
+	var title := UIKit.make_label("DEV (F1 / F2)", 8, UIKit.TEXT_DIM)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	bright_button = UIKit.make_button("", func() -> void: _dev_toggle("set_dev_bright", "dev_bright"))
+	drain_button = UIKit.make_button("", func() -> void: _dev_toggle("set_dev_no_drain", "dev_no_drain"))
+	column.add_child(bright_button)
+	column.add_child(drain_button)
+	_refresh_dev()
+
+
+func _dev_toggle(setter: String, flag: String) -> void:
+	var game := get_parent()
+	if game.has_method(setter):
+		game.call(setter, not game.get(flag))
+	_refresh_dev()
+
+
+func _refresh_dev() -> void:
+	if dev_panel == null:
+		return
+	var game := get_parent()
+	var bright: bool = game.get("dev_bright") == true
+	var no_drain: bool = game.get("dev_no_drain") == true
+	bright_button.text = "BRIGHT: " + ("ON" if bright else "OFF")
+	drain_button.text = "DRAIN: " + ("OFF" if no_drain else "ON")
 
 
 func open() -> void:
@@ -76,6 +118,7 @@ func open() -> void:
 		seed_button.text = "SEED " + Levels.seed_code(game.random_seed, game.seed_level)
 	get_tree().paused = true
 	_refresh_sound()
+	_refresh_dev()
 	buttons[0].grab_focus()
 	_sfx("pause")
 

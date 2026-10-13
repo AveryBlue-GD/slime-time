@@ -139,3 +139,20 @@ Full Mad Hatter pass (findings, changes and what's still imperfect: `docs/hats-a
 `Hats.lift` raises a hat 1-3 px in the few frames where it would cover the eyes; head_point ignores sparkles.
 Diagnostic contact sheets: `tests/demo_hat_audit.tscn` (`-- --unlock-all --out=/abs/dir`); checks:
 `tests/test_hat_fit.gd` (also runs `python3 tools/make_hats.py --check`).
+
+## Dev toggles (2026-10-14)
+Dev mode only (`--unlock-all`, i.e. `./tools/play.sh --dev`; `Progress.dev_tools`). In a level:
+- **F1 = FULL BRIGHT**: hides the fog layers (maze fog + outer fog) and the HUD vignette and shows the chalice
+  and ticket, so the whole maze, its border, coins, chalice and ticket are seen at full brightness. The fog/trail
+  bytes and reveal/fade logic keep running untouched underneath; F1 again restores exactly the normal fog (the
+  chalice/ticket go back to whether they were really reached meanwhile).
+- **F2 = NO DRAIN**: gliding and leaping cost no slime (never dries up); F2 again and the meter drains on from
+  where it is.
+- On a Mac keyboard press **fn+F1 / fn+F2** (or turn on "Use F1, F2, etc. keys as standard function keys").
+  The pause menu (Esc / P) also has a DEV panel with BRIGHT / DRAIN switches. A key a control was remapped
+  onto is left to that control.
+- A pink `DEV BRIGHT NO DRAIN` tag shows under the meter while either is on (never built in normal play).
+- Kept for the session across restarts (`Progress.dev_bright` / `dev_no_drain`), never saved. A run with either
+  used is marked like an assisted run: no medal, record or tickets (the result says DEV TOGGLES: ...); the win
+  flow is otherwise unchanged. Code: `game.gd` "dev toggles" section, `hud.set_dev_badge`, `pause_menu.gd`
+  `_build_dev_panel`. Test: `tests/test_dev_toggles.gd`.

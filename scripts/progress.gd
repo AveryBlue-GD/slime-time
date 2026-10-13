@@ -128,6 +128,10 @@ var return_to_game := false
 var jelly := true
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
+## Dev toggles (Game.set_dev_bright / set_dev_no_drain; F1 / F2 in a level): kept for the session so
+## they survive restarts, never saved.
+var dev_bright := false
+var dev_no_drain := false
 const DEV_COINS := 999
 ## Spending coins dev mode adds (0 when --coins sets an exact amount).
 var dev_coins := DEV_COINS

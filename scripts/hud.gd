@@ -59,6 +59,13 @@ var rewards_row: HBoxContainer
 var rewards_texts: Array[String] = []
 ## Shown on the left while an attempt is played with the slime reserve (ASSIST).
 var assist_pod: Control
+## Dev mode only: a tag naming the dev toggles that are on (made on first use, so it never exists
+## in normal play; see set_dev_badge).
+var dev_badge: Control
+var _dev_label: Label
+var _left_bar: BoxContainer
+var _vignette: ColorRect
+const DEV_TINT := Color8(255, 120, 220)
 const MEDAL_GOLD := Color8(255, 205, 117)
 const MEDAL_OWNED := Color8(150, 134, 100)
 const MEDAL_OFF := Color8(70, 74, 96)
@@ -82,10 +89,12 @@ func _ready() -> void:
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(vignette)
+	_vignette = vignette
 
 	# The top bar, mirrored: the meter on the left with the coins in hand under it, the timer in
 	# the middle, the level on the right with the coins left to find here under it.
 	var left_bar := _make_bar(Control.PRESET_TOP_LEFT)
+	_left_bar = left_bar
 	var right_bar := _make_bar(Control.PRESET_TOP_RIGHT)
 
 	# Left pod: goo drop, segmented meter, percent.
@@ -301,6 +310,25 @@ func set_assist(on: bool) -> void:
 	assist_pod.visible = on
 
 
+## Dev mode: a DEV tag under the meter naming the toggles that are on ("" hides it). Only ever
+## called by the dev toggles, so normal play never builds it.
+func set_dev_badge(text: String) -> void:
+	if text == "" and dev_badge == null:
+		return
+	if dev_badge == null:
+		var row := _make_pod(_left_bar)
+		dev_badge = row.get_parent()
+		_dev_label = UIKit.make_label("", 8, DEV_TINT)
+		row.add_child(_dev_label)
+	_dev_label.text = "DEV " + text
+	dev_badge.visible = text != ""
+
+
+## The corner vignette (off while the dev FULL BRIGHT toggle is on).
+func set_vignette(on: bool) -> void:
+	_vignette.visible = on
+
+
 ## Under the result text. A story clear shows its medal tier as three icons (gold up to the tier
 ## won this run, dim gold up to an older better tier, dark for the rest), the tier name and NEW BEST
 ## when it raised the saved one. `info` is Progress.record_clear's result. A randomizer win shows
@@ -310,7 +338,9 @@ func show_rewards(info: Dictionary) -> void:
 	for child in rewards_row.get_children():
 		child.queue_free()
 	rewards_texts.clear()
-	if info.get("offer", false):
+	if info.get("dev", false):
+		_reward_label("DEV TOGGLES: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
+	elif info.get("offer", false):
 		_reward_label("ASSIST: +%d%% SLIME, NO MEDALS/TICKETS" % roundi(Progress.ASSIST_BONUS * 100.0), MEDAL_OWNED)
 	elif info.get("assisted", false):
 		_reward_label("ASSIST: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)

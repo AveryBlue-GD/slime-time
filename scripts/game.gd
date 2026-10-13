@@ -259,6 +259,14 @@ var ambient_events: Array[AudioStream] = []
 var ambient_event_player: AudioStreamPlayer
 var _next_ambient_event := 0.0
 var _last_ambient_event := -1
+## Dev toggles (dev mode only, see set_dev_bright / set_dev_no_drain): FULL BRIGHT hides the fog
+## layers (the fog bytes and reveal logic carry on untouched underneath), NO DRAIN stops the meter
+## draining. `dev_toggled` = one was on at some point this run, so the run sets no medal, record or
+## ticket. `_bright_shown`: nodes FULL BRIGHT shows (chalice, ticket) -> their real visibility.
+var dev_bright := false
+var dev_no_drain := false
+var dev_toggled := false
+var _bright_shown := {}
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -381,6 +389,9 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
+	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
+		set_dev_bright(progress.dev_bright)
+		set_dev_no_drain(progress.dev_no_drain)
 	_ease_in.call_deferred()
 
 
@@ -414,7 +425,7 @@ func _physics_process(delta: float) -> void:
 		var moved := pos.distance_to(last_slime_pos)
 		if moved > 0.0:
 			last_slime_pos = pos
-			if not slime.knocked_back:  # a splat's knockback slide is already paid for
+			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			_paint_goo(pos, TRAIL_RADIUS)
 			if light_reach > 0.0:
@@ -422,9 +433,9 @@ func _physics_process(delta: float) -> void:
 	_pick_up_coins(pos)
 	_pick_up_ticket(pos, delta)
 	_count_glimmer_travel(pos)
-	if not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
-		chalice.visible = true
-	elif not chalice.visible and pos.distance_to(chalice.position) <= CHALICE_GLIMMER_REACH:
+	if not _shown(chalice) and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
+		_show(chalice)
+	elif not _shown(chalice) and pos.distance_to(chalice.position) <= CHALICE_GLIMMER_REACH:
 		_chalice_glimmer_left -= delta
 		if _chalice_glimmer_left <= 0.0:
 			_chalice_glimmer_left = CHALICE_GLIMMER_GAP
@@ -1094,7 +1105,8 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	else:
 		Fx.burst(self, slime.position, skin_color, 10, 35.0, Vector2.UP, 180.0, rainbow)
 	last_slime_pos = slime.position
-	slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
+	if not dev_no_drain:
+		slime_remaining = maxf(slime_remaining - last_jump_cost, 0.0)
 	hud.set_slime(slime_remaining)
 
 
@@ -1206,8 +1218,8 @@ func _place_ticket() -> void:
 func _pick_up_ticket(pos: Vector2, delta: float) -> void:
 	if ticket == null:
 		return
-	if not ticket.visible and pos.distance_to(ticket.position) <= TICKET_REVEAL_DISTANCE:
-		ticket.visible = true  # seen like the chalice, a couple of tiles away
+	if not _shown(ticket) and pos.distance_to(ticket.position) <= TICKET_REVEAL_DISTANCE:
+		_show(ticket)  # seen like the chalice, a couple of tiles away
 	if pos.distance_to(ticket.position) <= TicketPickup.REACH:
 		ticket.collect(self)
 		ticket = null
@@ -1215,7 +1227,7 @@ func _pick_up_ticket(pos: Vector2, delta: float) -> void:
 		_sfx("unlock", -5.0)
 		hud.set_ticket(true)
 		hud.flash_message("TICKET FOUND!", 1.2)
-	elif not ticket.visible and pos.distance_to(ticket.position) <= TICKET_GLIMMER_REACH:
+	elif not _shown(ticket) and pos.distance_to(ticket.position) <= TICKET_GLIMMER_REACH:
 		_ticket_glimmer_left -= delta
 		if _ticket_glimmer_left <= 0.0:
 			_ticket_glimmer_left = TICKET_GLIMMER_GAP
@@ -1327,7 +1339,8 @@ func usage_text() -> String:
 func _on_chalice_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
-	chalice.visible = true
+	_show(chalice)
+	var no_record := assisted or dev_toggled
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
@@ -1340,11 +1353,13 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
 			var no_slime: bool = progress.upgrade_level("slime") <= 0  # pays 1 whatever else happened
 			var bonus_pickup: bool = ticket_found and progress.random_seed_fresh  # a replayed seed pays no pickup bonus
-			var paid: int = progress.complete_random(assisted, under_par, random_seed, ticket_found)
+			var paid: int = progress.complete_random(no_record, under_par, random_seed, ticket_found)
 			if paid > 0:
 				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, no_ticket = no_ticket, slime_cap = no_slime and (bonus_pickup or under_par)}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
+			elif dev_toggled:
+				hud.show_rewards({dev = true})
 			elif repeat:
 				hud.show_rewards({repeat = true})
 			elif not assisted:
@@ -1359,11 +1374,11 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	var best: float = progress.best_time(level) if progress else -1.0
 	text += "\nTIME " + UIKit.format_time(run_time)
 	if progress and _is_running_scene():
-		reward = progress.record_clear(level, run_time, par_time, assisted, true)
-		hud.show_rewards(reward)
+		reward = progress.record_clear(level, run_time, par_time, no_record, true)
+		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else reward)
 		if reward.get("new_best", false):
 			get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
-	if assisted:
+	if no_record:
 		pass  # no record to beat or show
 	elif best >= 0.0 and run_time < best:
 		hud.show_record(run_time)
@@ -1430,7 +1445,7 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if not is_random() and assisted:
+		if not is_random() and (assisted or dev_toggled):
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
@@ -1525,6 +1540,9 @@ func _leaving() -> bool:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _is_running_scene() or _leaving():
 		return
+	if dev_key_pressed(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("menu"):
 		get_viewport().set_input_as_handled()
 		pause_menu.open()
@@ -1538,6 +1556,96 @@ func _unhandled_input(event: InputEvent) -> void:
 			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
 		else:
 			retry()  # nothing to spend (and no upgrades on hard mode): restart at once
+
+
+# ---------------------------------------------------------------- dev toggles
+
+## Dev mode only (--unlock-all): F1 = FULL BRIGHT, F2 = NO DRAIN (also buttons in the pause menu).
+## Function keys: never one of the default controls, F11 (fullscreen) or Esc / P (pause).
+const DEV_BRIGHT_KEY := KEY_F1
+const DEV_DRAIN_KEY := KEY_F2
+
+
+## True in dev mode (Progress.dev_tools, from --unlock-all): only then do the dev toggles exist.
+func dev_enabled() -> bool:
+	return progress != null and progress.dev_tools
+
+
+## Handles F1 / F2 in dev mode (true if the event was one of them). A key that is also bound to a
+## control (someone remapped one onto it) is left to that control.
+func dev_key_pressed(event: InputEvent) -> bool:
+	if not dev_enabled() or not (event is InputEventKey) or not event.pressed or event.echo:
+		return false
+	var key: Key = (event as InputEventKey).keycode
+	if key != DEV_BRIGHT_KEY and key != DEV_DRAIN_KEY:
+		return false
+	for action in InputMap.get_actions():
+		if not String(action).begins_with("ui_") and event.is_action(action, true):
+			return false
+	if key == DEV_BRIGHT_KEY:
+		set_dev_bright(not dev_bright)
+	else:
+		set_dev_no_drain(not dev_no_drain)
+	return true
+
+
+## FULL BRIGHT (dev only): hides the fog layers and the HUD vignette and shows the chalice and the
+## ticket, so the whole maze is seen at full brightness. Nothing underneath changes: the fog bytes,
+## reveal and fade carry on as usual, and switching it off shows exactly the normal fog again (the
+## chalice and ticket go back to whether they had really been seen meanwhile).
+func set_dev_bright(on: bool) -> void:
+	if not dev_enabled() or on == dev_bright:
+		return
+	dev_bright = on
+	progress.dev_bright = on
+	if on:
+		dev_toggled = true
+		for node: CanvasItem in [chalice, ticket]:
+			if node:
+				_bright_shown[node] = node.visible
+				node.visible = true
+	else:
+		for node: Variant in _bright_shown:
+			if is_instance_valid(node):
+				(node as CanvasItem).visible = _bright_shown[node]
+		_bright_shown.clear()
+	fog_sprite.visible = not on
+	if outer_fog:
+		outer_fog.visible = not on
+	hud.set_vignette(not on)
+	_refresh_dev_badge()
+
+
+## NO DRAIN (dev only): gliding and leaping cost no slime while it is on (so the slime never dries
+## up); switched off, the meter drains on from where it is.
+func set_dev_no_drain(on: bool) -> void:
+	if not dev_enabled() or on == dev_no_drain:
+		return
+	dev_no_drain = on
+	progress.dev_no_drain = on
+	if on:
+		dev_toggled = true
+	_refresh_dev_badge()
+
+
+func _refresh_dev_badge() -> void:
+	var tags: Array[String] = []
+	if dev_bright:
+		tags.append("BRIGHT")
+	if dev_no_drain:
+		tags.append("NO DRAIN")
+	hud.set_dev_badge(" ".join(tags))
+
+
+## Whether the chalice / ticket has really been seen (FULL BRIGHT only shows it for the moment).
+func _shown(node: CanvasItem) -> bool:
+	return _bright_shown.get(node, node.visible)
+
+
+func _show(node: CanvasItem) -> void:
+	if _bright_shown.has(node):
+		_bright_shown[node] = true
+	node.visible = true
 
 
 func _sfx(sound_name: String, volume_db := 0.0) -> void:
