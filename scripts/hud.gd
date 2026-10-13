@@ -284,10 +284,10 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 
 
 ## The ticket pod (randomizer mazes only): FIND IT, then FOUND in gold once it is collected.
-func set_ticket(found: bool) -> void:
+func set_ticket(found: bool, none := false) -> void:
 	_ticket_pod.visible = true
 	_ticket_icon.modulate = Color.WHITE if found else TICKET_DIM
-	_ticket_label.text = "FOUND" if found else "FIND IT"
+	_ticket_label.text = "FOUND" if found else ("NONE HERE" if none else "FIND IT")
 	if found:
 		_ticket_label.add_theme_color_override("font_color", TICKET_TINT)
 
@@ -336,6 +336,8 @@ func show_rewards(info: Dictionary) -> void:
 			_reward_label("+%d TICKETS" % info.tickets, TICKET_TINT)
 		elif info.ticket_found:
 			_reward_label("TICKET FOUND! +%d" % info.tickets, TICKET_TINT)
+		elif info.get("no_ticket", false):
+			_reward_label("NO TICKET IN THIS MAZE +%d" % info.tickets, MEDAL_OWNED)
 		else:
 			_reward_label("NO TICKET FOUND +%d" % info.tickets, MEDAL_OWNED)
 		if info.get("under_par", false):

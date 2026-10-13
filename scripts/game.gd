@@ -130,8 +130,13 @@ signal level_finished(won: bool)
 
 ## (Par time: Levels.par_for_path.)
 
-## Percent of slime used per tile glided; set per maze so a perfect run uses its target.
+## Percent of slime used per tile glided; set per maze so a perfect run uses its target (story), or
+## fixed per player (randomizer: 100 / Levels.RANDOM_METER_TILES / the MORE SLIME factor).
 var slime_cost_per_tile := 1.0
+## Randomizer: the share of the meter (0-1) a perfect glide to the chalice uses in this maze, and
+## the per-tile cost at the seed code's MORE SLIME level that places the ticket (same for everyone).
+var perfect_usage := 0.0
+var ticket_cost_per_tile := 1.0
 var slime_remaining := 100.0
 var finished := false
 var maze: Dictionary
@@ -200,6 +205,8 @@ var coins_here := 0
 ## The randomizer maze's ticket pickup (null once collected, and in story mazes) and whether it was.
 var ticket: TicketPickup
 var ticket_found := false
+## True when this randomizer maze has no ticket at all (TicketSpawn found no fitting cell).
+var no_ticket := false
 ## The MORE SLIME level this randomizer maze was built for (the second half of its seed code).
 var seed_level := 0
 var _ticket_glimmer_left := 0.0
@@ -256,7 +263,7 @@ func _ready() -> void:
 		if hard_mode:
 			seed_level = 0
 		config = Levels.random_config(random_seed, hard_mode, seed_level)
-		maze = MazeGenerator.generate_random(config.cells, config.seed)
+		maze = MazeGenerator.generate_random(config)
 		var level_note := "" if seed_level == own_level or hard_mode else "  CODE LV%d (YOU %d)" % [seed_level, own_level]
 		hud.set_level_text("RANDOM MAZE #%d%s%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag, level_note])
 	else:
@@ -270,8 +277,17 @@ func _ready() -> void:
 	# perfect glide always uses `target` of the meter and the exploration allowance (meter / route =
 	# 1 / target) is the level's own, wherever the slime starts.
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	if is_random() and not hard_mode:
+		# The randomizer is the other way round: the player's meter is fixed (RANDOM_METER_TILES tiles,
+		# x MORE SLIME below) and the route was built to the seed's usage x that meter (Levels.random_config).
+		slime_cost_per_tile = 100.0 / Levels.RANDOM_METER_TILES
+	ticket_cost_per_tile = config.get("tile_cost", slime_cost_per_tile) if not hard_mode else slime_cost_per_tile
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
+	if is_random() and path_tiles * slime_cost_per_tile > Levels.RANDOM_MAX_USAGE * 100.0:
+		# A code built for a higher MORE SLIME level than the player's: never more than 95% (always winnable).
+		slime_cost_per_tile = Levels.RANDOM_MAX_USAGE * 100.0 / path_tiles
+	perfect_usage = path_tiles * slime_cost_per_tile / 100.0
 	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
 	if progress and not is_random() and progress.take_assist(level):
 		assisted = true
@@ -984,8 +1000,11 @@ func _place_ticket() -> void:
 	if not is_random():
 		return
 	# The cell follows the seed code's MORE SLIME level, not the player's, so a seed puts it in the same place for everyone.
-	var cost := slime_cost_per_tile * _applied_slime_factor() / Upgrades.slime_factor(seed_level)
-	var cell := TicketSpawn.pick(maze, random_seed, cost)
+	var cell := TicketSpawn.pick(maze, random_seed, ticket_cost_per_tile)
+	if cell == TicketSpawn.NONE:  # no cell fits the ticket rules: this maze simply has none
+		no_ticket = true
+		hud.set_ticket(false, true)
+		return
 	ticket = TicketPickup.new()
 	ticket.z_index = fog_sprite.z_index + 1  # above the fog, but hidden until the slime is close
 	ticket.visible = false
@@ -1103,6 +1122,17 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power))
 
 
+## Below this share of the meter used, a randomizer win says EFFICIENT!
+const EFFICIENT_USAGE := 25.0
+
+
+## The randomizer win's slime line: what this run really used (splats included), e.g.
+## "USED 23% SLIME", plus "EFFICIENT!" under EFFICIENT_USAGE percent.
+func usage_text() -> String:
+	var used := clampi(roundi(100.0 - slime_remaining), 0, 100)
+	return "USED %d%% SLIME%s" % [used, " EFFICIENT!" if used < EFFICIENT_USAGE else ""]
+
+
 func _on_chalice_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
@@ -1113,7 +1143,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
-		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED " + Levels.seed_code(random_seed, seed_level)
+		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "   " + usage_text() + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
 			var under_par: bool = run_time <= par_time and progress.random_seed_fresh
 			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
@@ -1121,7 +1151,7 @@ func _on_chalice_body_entered(body: Node2D) -> void:
 			var bonus_pickup: bool = ticket_found and progress.random_seed_fresh  # a replayed seed pays no pickup bonus
 			var paid: int = progress.complete_random(assisted, under_par, random_seed, ticket_found)
 			if paid > 0:
-				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, slime_cap = no_slime and (bonus_pickup or under_par)}
+				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, no_ticket = no_ticket, slime_cap = no_slime and (bonus_pickup or under_par)}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif repeat:

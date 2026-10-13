@@ -6,6 +6,9 @@ extends Node
 ## (default .screens/overview.png), then quits. Needs a window (not --headless):
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --level=5 [--hard] [--out=/abs/path.png]
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --seed=4242   (randomizer)
+## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --usage=550 [--upgrades=10,0,0]
+##   (randomizer: the first seed 1, 7920, 15839 ... whose usage roll is within 10 permille of 550;
+##   the ticket's cell gets a magenta ring and the second line shows u and the perfect run's usage)
 
 const SIZE := Vector2i(1280, 720)
 
@@ -32,6 +35,13 @@ func _ready() -> void:
 		if arg.begins_with("--seed="):
 			progress.mode = progress.MODE_RANDOM
 			game.random_seed = arg.trim_prefix("--seed=").to_int()
+		if arg.begins_with("--usage="):
+			var want := arg.trim_prefix("--usage=").to_int()
+			var s := 1
+			while absi(Levels.random_usage_permille(s) - want) > 10:
+				s += 7919
+			progress.mode = progress.MODE_RANDOM
+			game.random_seed = s
 	view.add_child(game)
 	_overview.call_deferred()
 
@@ -74,7 +84,9 @@ func _overview() -> void:
 		var s := MazeGenerator.cell_center(maze.start, game.TILE)
 		var g := MazeGenerator.cell_center(maze.goal, game.TILE)
 		marks.draw_arc(s, 11.0, 0, TAU, 24, Color(0.3, 1.0, 0.4), 3.0)
-		marks.draw_arc(g, 11.0, 0, TAU, 24, Color(1.0, 0.8, 0.2), 3.0))
+		marks.draw_arc(g, 11.0, 0, TAU, 24, Color(1.0, 0.8, 0.2), 3.0)
+		if game.ticket:
+			marks.draw_arc(game.ticket.position, 9.0, 0, TAU, 24, Color(1.0, 0.3, 0.9), 3.0))
 	marks.queue_redraw()
 
 	var layer := CanvasLayer.new()
@@ -88,4 +100,9 @@ func _overview() -> void:
 	label.text = "%s   %dx%d   START %s %s (EDGE DEPTH %d)   ROUTE %d / LONGEST %d   COINS %d" % [
 		title, maze.cells.x, maze.cells.y, SpawnPicker.KIND_NAMES[maze.spawn_kind], maze.start, d,
 		maze.goal_steps, maze.diameter, game.coins.size()]
+	if game.is_random():
+		label.text += "\nU %.2f   PERFECT RUN USES %d%% OF THE METER   MORE SLIME %d   CODE %s   TICKET %s" % [
+			Levels.random_usage(game.random_seed, game.hard_mode), roundi(game.perfect_usage * 100.0), get_node("/root/Progress").upgrade_level("slime"),
+			Levels.seed_code(game.random_seed, game.seed_level),
+			("%d%% IN" % roundi(TicketSpawn.fraction_to(maze, game.ticket.cell, game.ticket_cost_per_tile) * 100.0)) if game.ticket else "NONE"]
 	layer.add_child(label)
