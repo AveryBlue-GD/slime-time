@@ -49,13 +49,7 @@ static func generate(cells: Vector2i, maze_seed: int, branching := 0.0) -> Dicti
 		active.append(chosen)
 
 	var maze := {size = size, cells = cells, walls = walls, start = start}
-	var distances := distances_from(maze, start)
-	var goal := start
-	for cell: Vector2i in distances:
-		if distances[cell] > distances[goal]:
-			goal = cell
-	maze.goal = goal
-	maze.goal_steps = distances[goal]
+	_set_goal_farthest(maze, start)
 	return maze
 
 
@@ -120,13 +114,7 @@ static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
 					_open_between(walls, size, cell, next)
 
 	var maze := {size = size, cells = cells, walls = walls, start = start}
-	var distances := distances_from(maze, start)
-	var goal := start
-	for cell: Vector2i in distances:
-		if distances[cell] > distances[goal]:
-			goal = cell
-	maze.goal = goal
-	maze.goal_steps = distances[goal]
+	_set_goal_farthest(maze, start)
 	assert(is_completable(maze), "noise maze %d is not fully connected" % maze_seed)
 	return maze
 
@@ -252,7 +240,7 @@ static func _add_loops(maze: Dictionary, rng: RandomNumberGenerator, count: int)
 			continue
 		if open_neighbors(maze, a).size() < 2 or open_neighbors(maze, b).size() < 2:
 			continue  # keep dead ends (the coins live there)
-		if distances_from(maze, a).get(b, 0) < LOOP_MIN_SPAN:
+		if _within_steps(maze, a, b, LOOP_MIN_SPAN):
 			continue
 		_open_between(maze.walls, maze.size, a, b)
 		added += 1
@@ -284,8 +272,10 @@ static func dead_end_depths(maze: Dictionary) -> Dictionary:
 
 ## True when every cell (and so the goal) can be reached from the start.
 static func is_completable(maze: Dictionary) -> bool:
-	var reached := distances_from(maze, maze.start)
-	return reached.size() == maze.cells.x * maze.cells.y and reached.has(maze.get("goal", maze.start))
+	var goal: Vector2i = maze.get("goal", maze.start)
+	if not _inside(maze.start, maze.cells):  # (only the start itself is reached)
+		return maze.cells.x * maze.cells.y == 1 and goal == maze.start
+	return not distance_grid(maze, maze.start).has(-1) and _inside(goal, maze.cells)
 
 
 ## Pixel position of the middle of a cell's open area.
@@ -328,16 +318,120 @@ static func dead_end_count(maze: Dictionary) -> int:
 	return count
 
 
+## {cell: steps} for every cell reachable from `from`, in the order the breadth-first search
+## reached them (see distance_grid, which is faster when a flat array will do).
 static func distances_from(maze: Dictionary, from: Vector2i) -> Dictionary:
-	var distances := {from: 0}
-	var queue: Array[Vector2i] = [from]
-	while not queue.is_empty():
-		var cell: Vector2i = queue.pop_front()
-		for next in open_neighbors(maze, cell):
-			if not distances.has(next):
-				distances[next] = distances[cell] + 1
-				queue.append(next)
+	if not _inside(from, maze.cells):
+		return {from: 0}  # (outside cells have no open neighbors)
+	var dist := _bfs(maze, from)
+	var width: int = maze.cells.x
+	var distances := {}
+	for i in _visited:
+		var index := _order[i]
+		distances[Vector2i(index % width, index / width)] = dist[index]
 	return distances
+
+
+## Steps from `from` to every cell along the passages, indexed y * cells.x + x (-1 = unreachable).
+static func distance_grid(maze: Dictionary, from: Vector2i) -> PackedInt32Array:
+	return _bfs(maze, from)
+
+
+## The cells the last _bfs reached, in visit order (the first _visited entries of _order).
+static var _order := PackedInt32Array()
+static var _visited := 0
+
+
+## Breadth-first search over the cells, neighbors in DIRS order (right, left, down, up) like
+## open_neighbors, on flat arrays; leaves the visit order in _order / _visited.
+static func _bfs(maze: Dictionary, from: Vector2i) -> PackedInt32Array:
+	var width: int = maze.cells.x
+	var height: int = maze.cells.y
+	var size_x: int = maze.size.x
+	var walls: PackedByteArray = maze.walls
+	var dist := PackedInt32Array()
+	dist.resize(width * height)
+	dist.fill(-1)
+	if _order.size() < width * height:
+		_order.resize(width * height)
+	var queue := _order
+	var start := from.y * width + from.x
+	dist[start] = 0
+	queue[0] = start
+	var head := 0
+	var tail := 1
+	while head < tail:
+		var cell := queue[head]
+		head += 1
+		var x := cell % width
+		var y := cell / width
+		var steps := dist[cell] + 1
+		var tile := (y * CELL_SPAN + 1) * size_x + x * CELL_SPAN + 1  # the cell's open tile
+		if x + 1 < width and walls[tile + OPEN] != 1 and dist[cell + 1] < 0:
+			dist[cell + 1] = steps
+			queue[tail] = cell + 1
+			tail += 1
+		if x > 0 and walls[tile - 1] != 1 and dist[cell - 1] < 0:
+			dist[cell - 1] = steps
+			queue[tail] = cell - 1
+			tail += 1
+		if y + 1 < height and walls[tile + OPEN * size_x] != 1 and dist[cell + width] < 0:
+			dist[cell + width] = steps
+			queue[tail] = cell + width
+			tail += 1
+		if y > 0 and walls[tile - size_x] != 1 and dist[cell - width] < 0:
+			dist[cell - width] = steps
+			queue[tail] = cell - width
+			tail += 1
+	_visited = tail
+	return dist
+
+
+## Sets goal / goal_steps: the first cell, in search order, of those farthest from `from`.
+static func _set_goal_farthest(maze: Dictionary, from: Vector2i) -> void:
+	var dist := _bfs(maze, from)
+	var goal := _order[0]
+	for i in _visited:
+		if dist[_order[i]] > dist[goal]:
+			goal = _order[i]
+	maze.goal = Vector2i(goal % maze.cells.x, goal / maze.cells.x)
+	maze.goal_steps = dist[goal]
+
+
+## True when b is fewer than `limit` steps from a along the passages: the same answer as
+## distances_from(maze, a).get(b, 0) < limit on a connected maze (every maze is: the growing tree
+## reaches every cell and loops only open walls), searching only that far.
+static func _within_steps(maze: Dictionary, a: Vector2i, b: Vector2i, limit: int) -> bool:
+	var width: int = maze.cells.x
+	var height: int = maze.cells.y
+	var size_x: int = maze.size.x
+	var walls: PackedByteArray = maze.walls
+	var target := b.y * width + b.x
+	var first := a.y * width + a.x
+	if first == target:
+		return 0 < limit
+	var dist := {first: 0}
+	var queue := PackedInt32Array([first])
+	var head := 0
+	while head < queue.size():
+		var cell := queue[head]
+		head += 1
+		var steps: int = dist[cell] + 1
+		if steps >= limit:
+			break  # BFS order: everything nearer has been seen
+		var x := cell % width
+		var y := cell / width
+		var tile := (y * CELL_SPAN + 1) * size_x + x * CELL_SPAN + 1
+		for next: int in [cell + 1 if x + 1 < width and walls[tile + OPEN] != 1 else -1,
+				cell - 1 if x > 0 and walls[tile - 1] != 1 else -1,
+				cell + width if y + 1 < height and walls[tile + OPEN * size_x] != 1 else -1,
+				cell - width if y > 0 and walls[tile - size_x] != 1 else -1]:
+			if next >= 0 and not dist.has(next):
+				if next == target:
+					return true
+				dist[next] = steps
+				queue.append(next)
+	return false
 
 
 static func open_neighbors(maze: Dictionary, cell: Vector2i) -> Array[Vector2i]:

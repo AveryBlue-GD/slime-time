@@ -29,18 +29,20 @@ static func weight(fraction: float) -> float:
 ## Cells that may hold the ticket, with their fraction of the meter from the start: {cell, f, trip}.
 ## `cost_per_tile` is the percent of the meter one tile costs (game.slime_cost_per_tile).
 static func candidates(maze: Dictionary, cost_per_tile: float) -> Array[Dictionary]:
-	var from_start := MazeGenerator.distances_from(maze, maze.start)
-	var from_goal := MazeGenerator.distances_from(maze, maze.goal)
+	var from_start := MazeGenerator.distance_grid(maze, maze.start)
+	var from_goal := MazeGenerator.distance_grid(maze, maze.goal)
+	var width: int = maze.cells.x
 	var unit := MazeGenerator.CELL_SPAN * cost_per_tile / 100.0
-	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal] * unit + 0.000001)  # a 93-95% route: on-route cells only
+	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal.y * width + maze.goal.x] * unit + 0.000001)  # a 93-95% route: on-route cells only
 	var out: Array[Dictionary] = []
 	for y in maze.cells.y:  # row-major, so the pick never depends on dictionary order
 		for x in maze.cells.x:
 			var cell := Vector2i(x, y)
-			if cell == maze.start or cell == maze.goal or not from_start.has(cell):
+			var i: int = y * width + x
+			if cell == maze.start or cell == maze.goal or from_start[i] < 0:
 				continue
-			var f: float = from_start[cell] * unit
-			var trip: float = (from_start[cell] + from_goal[cell]) * unit
+			var f: float = from_start[i] * unit
+			var trip: float = (from_start[i] + from_goal[i]) * unit
 			if f >= MIN_FRACTION and f <= MAX_FRACTION and trip <= limit:
 				out.append({cell = cell, f = f, trip = trip})
 	return out
@@ -48,13 +50,16 @@ static func candidates(maze: Dictionary, cost_per_tile: float) -> Array[Dictiona
 
 ## True when start -> `cell` -> chalice fits the meter at `cost_per_tile` (the same limit as candidates()).
 static func trip_fits(maze: Dictionary, cell: Vector2i, cost_per_tile: float) -> bool:
-	var from_start := MazeGenerator.distances_from(maze, maze.start)
-	var from_goal := MazeGenerator.distances_from(maze, maze.goal)
-	if not from_start.has(cell):
+	if not MazeGenerator._inside(cell, maze.cells):
+		return false
+	var from_start := MazeGenerator.distance_grid(maze, maze.start)
+	var from_goal := MazeGenerator.distance_grid(maze, maze.goal)
+	var width: int = maze.cells.x
+	if from_start[cell.y * width + cell.x] < 0:
 		return false
 	var unit := MazeGenerator.CELL_SPAN * cost_per_tile / 100.0
-	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal] * unit + 0.000001)
-	return (from_start[cell] + from_goal[cell]) * unit <= limit
+	var limit := maxf(ROUTE_LIMIT, from_start[maze.goal.y * width + maze.goal.x] * unit + 0.000001)
+	return (from_start[cell.y * width + cell.x] + from_goal[cell.y * width + cell.x]) * unit <= limit
 
 
 ## The ticket's cell for this maze and seed, or NONE when no cell fits the rules above.

@@ -81,17 +81,18 @@ static func cells_of(kind: int, cells: Vector2i) -> Array[Vector2i]:
 ## The cell farthest from `from` along the passages, and how far: {cell, steps}. Ties go to the
 ## first cell in row-major order, so it never depends on dictionary order.
 static func farthest(maze: Dictionary, from: Vector2i) -> Dictionary:
-	var dist := MazeGenerator.distances_from(maze, from)
-	var best := from
+	return _farthest_in(MazeGenerator.distance_grid(maze, from), maze.cells, from)
+
+
+## farthest() from an already computed MazeGenerator.distance_grid.
+static func _farthest_in(dist: PackedInt32Array, cells: Vector2i, from: Vector2i) -> Dictionary:
+	var best := -1
 	var steps := 0
-	for y in maze.cells.y:
-		for x in maze.cells.x:
-			var cell := Vector2i(x, y)
-			var d: int = dist.get(cell, -1)
-			if d > steps:
-				steps = d
-				best = cell
-	return {cell = best, steps = steps}
+	for i in dist.size():
+		if dist[i] > steps:
+			steps = dist[i]
+			best = i
+	return {cell = from if best < 0 else Vector2i(best % cells.x, best / cells.x), steps = steps}
 
 
 ## The maze's longest route in cells (double-sweep BFS: exact on the loop-free story mazes, a
@@ -108,7 +109,8 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> D
 	var rng := _rng(pick_seed)
 	var roll := rng.randi_range(0, 99)  # always drawn, so a forced class leaves the shuffle the same
 	var rolled := kind if kind >= 0 and kind <= Kind.ANY else _kind_for_roll(roll)
-	var longest := diameter(maze)
+	var reach := _Reach.new(maze)
+	var longest := reach.longest
 	# Route mode scans only the first SCAN_LIMIT shuffled starts of each class (each costs a BFS);
 	# only if none of them has a long enough route does a second pass scan them all, as before.
 	for pass_no in (2 if route > 0 else 1):
@@ -123,11 +125,11 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> D
 				options[swap] = tmp
 			for n in mini(options.size(), limit):
 				var cell := options[n]
-				var far: Dictionary = farthest(maze, cell)
 				if route > 0:
-					if far.steps >= route:
+					if reach.at_least(cell, route):
 						return {start = cell, goal = cell_at_distance(maze, cell, route, rng), steps = route, kind = k, rolled = rolled, diameter = longest}
-				elif far.steps * 100 >= MIN_ROUTE_PCT * longest:
+				elif reach.at_least(cell, (MIN_ROUTE_PCT * longest + 99) / 100):  # steps * 100 >= PCT * longest
+					var far: Dictionary = farthest(maze, cell)
 					return {start = cell, goal = far.cell, steps = far.steps, kind = k, rolled = rolled, diameter = longest}
 	# Unreachable (an end of the longest route always qualifies); keep a sane answer anyway.
 	var end: Dictionary = farthest(maze, Vector2i.ZERO)
@@ -135,14 +137,76 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> D
 	return {start = end.cell, goal = back.cell, steps = back.steps, kind = Kind.ANY, rolled = rolled, diameter = longest}
 
 
+## How far each start's farthest cell is (its eccentricity), answered without a search per start
+## where possible. Every search from a cell v (the double-sweep ends a and b, a central cell, then
+## each start that had to be searched) bounds every other cell c by the triangle inequality on
+## passage distances: d(v, c) <= ecc(c) <= d(v, c) + ecc(v). A start is searched only while its
+## bounds straddle the asked length. Exactly the answers farthest(maze, c).steps gives.
+class _Reach:
+	var maze: Dictionary
+	var longest := 0
+	var bounded := false
+	var low := PackedInt32Array()
+	var high := PackedInt32Array()
+
+	func _init(m: Dictionary) -> void:
+		maze = m
+		var a: Dictionary = SpawnPicker.farthest(maze, Vector2i.ZERO)
+		var from_a := MazeGenerator.distance_grid(maze, a.cell)
+		var b: Dictionary = SpawnPicker._farthest_in(from_a, maze.cells, a.cell)
+		longest = b.steps  # = diameter(maze)
+		bounded = not from_a.has(-1)  # the bounds need every cell connected
+		var count := from_a.size()
+		low.resize(count)
+		low.fill(0)
+		high.resize(count)
+		high.fill(1 << 30)
+		if not bounded:
+			return
+		_learn(from_a, longest)
+		var from_b := MazeGenerator.distance_grid(maze, b.cell)
+		_learn(from_b, SpawnPicker._farthest_in(from_b, maze.cells, b.cell).steps)
+		var center := 0  # the cell nearest the middle of the a-b route
+		for i in count:
+			if maxi(from_a[i], from_b[i]) < maxi(from_a[center], from_b[center]):
+				center = i
+		_search(center)
+
+	## True when farthest(maze, cell).steps >= steps.
+	func at_least(cell: Vector2i, steps: int) -> bool:
+		var i: int = cell.y * maze.cells.x + cell.x
+		if low[i] >= steps:
+			return true
+		if high[i] < steps:
+			return false
+		return _search(i) >= steps
+
+	func _search(i: int) -> int:
+		var width: int = maze.cells.x
+		var dist := MazeGenerator.distance_grid(maze, Vector2i(i % width, i / width))
+		var ecc: int = SpawnPicker._farthest_in(dist, maze.cells, Vector2i.ZERO).steps
+		if bounded:
+			_learn(dist, ecc)
+		low[i] = ecc
+		high[i] = ecc
+		return ecc
+
+	func _learn(dist: PackedInt32Array, ecc: int) -> void:
+		for c in dist.size():
+			var d := dist[c]
+			if d > low[c]:
+				low[c] = d
+			if d + ecc < high[c]:
+				high[c] = d + ecc
+
+
 ## A seeded pick among the cells exactly `steps` cells from `from` (row-major order, one integer draw).
 static func cell_at_distance(maze: Dictionary, from: Vector2i, steps: int, rng: RandomNumberGenerator) -> Vector2i:
-	var dist := MazeGenerator.distances_from(maze, from)
+	var dist := MazeGenerator.distance_grid(maze, from)
 	var ring: Array[Vector2i] = []
-	for y in maze.cells.y:
-		for x in maze.cells.x:
-			if dist.get(Vector2i(x, y), -1) == steps:
-				ring.append(Vector2i(x, y))
+	for i in dist.size():
+		if dist[i] == steps:
+			ring.append(Vector2i(i % maze.cells.x, i / maze.cells.x))
 	return ring[rng.randi_range(0, ring.size() - 1)]
 
 
