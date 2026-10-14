@@ -259,6 +259,17 @@ var dev_bright := false
 var dev_no_drain := false
 var dev_toggled := false
 var _bright_shown := {}
+## Trail map survey of this run (story levels only, see Survey / Progress.record_survey): one byte
+## per maze tile, 1 once revealed (set where the fog is revealed, so it costs a byte write per newly
+## revealed fog cell); the maze cells walked as move codes; the cell the slime was last in; whether
+## the goal came into view. Recorded once, when the run ends (`_commit_survey`), and only for a real
+## run (the running scene) that is not assisted, dev-toggled, in dev mode or a randomizer maze.
+var survey_tiles := PackedByteArray()
+var survey_moves := PackedByteArray()
+var survey_goal := false
+var _survey_cell := Vector2i.ZERO
+var _survey_live := false
+var _survey_done := false
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
@@ -302,6 +313,8 @@ func _ready() -> void:
 		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
 	_make_goal()
+	survey_tiles.resize(maze.size.x * maze.size.y)
+	_survey_cell = maze.start
 	# The slime grabs the goal when their shapes touch, a little short of its center.
 	var grab_reach: float = goal.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
@@ -390,6 +403,7 @@ func _ready() -> void:
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
 	_ease_in.call_deferred()
+	_arm_survey.call_deferred()
 
 
 ## Restarts and next levels ease in from under a sheet of goo (only when actually playing).
@@ -400,6 +414,7 @@ func _ease_in() -> void:
 
 
 func _exit_tree() -> void:
+	_commit_survey()  # a run left mid-way (restart, quit to hub, upgrades) still adds what it saw
 	if progress:
 		progress.skin_override = ""
 
@@ -414,6 +429,7 @@ func _physics_process(delta: float) -> void:
 	_relight(pos)
 	if finished:
 		return
+	_survey_step(pos)
 	run_time += delta
 	hud.set_time(run_time)
 	if slime.is_airborne():
@@ -431,6 +447,7 @@ func _physics_process(delta: float) -> void:
 	_count_glimmer_travel(pos)
 	if not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_REVEAL_DISTANCE:
 		_show(goal)
+		survey_goal = true
 	hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
@@ -861,6 +878,8 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			if wall == on_walls and (on_walls or _trail_bytes[i + 3] == 0):
 				if on_walls:
 					_reveal_wall(Vector2i(tx, ty))
+				else:
+					survey_tiles[ty * size.x + tx] = 1
 				_trail_bytes.encode_u32(i, goo_deep if posmod(hash(Vector2i(cx, cy)), 5) == 0 else goo_light)
 				_fog_bytes.encode_u32(i, fog)
 				fog_dirty = true
@@ -942,6 +961,7 @@ func _reveal_light(pos: Vector2) -> void:
 			if tx >= 0 and tx < size.x and walls[ty * size.x + tx] != 1 and _fog_bytes.decode_u32(i) < 0x10000:
 				_fog_bytes.encode_u32(i, fog)
 				fog_dirty = true
+				survey_tiles[ty * size.x + tx] = 1
 			i += 4
 	_reveal_walls_near(pos, radius)
 
@@ -1036,6 +1056,8 @@ func _reveal_wall(tile: Vector2i) -> void:
 		return
 	revealed_walls[tile] = true
 	_fill_fog(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
+	if tile.x >= 0 and tile.y >= 0 and tile.x < maze.size.x and tile.y < maze.size.y:
+		survey_tiles[tile.y * maze.size.x + tile.x] = 1
 
 
 ## Image.fill_rect on the fog bytes (clipped to the image).
@@ -1240,6 +1262,53 @@ func _refresh_attempt_pod() -> void:
 		DevLog.log_event(get_tree(), "pod text changed", self)
 
 
+# ---------------------------------------------------------------- trail map survey
+
+## Records this run's survey from here on if it is a real story run (deferred from _ready, once the
+## scene is the running one): never in a randomizer maze (fresh each time), dev mode or a test's
+## loose game node.
+func _arm_survey() -> void:
+	_survey_live = progress != null and not is_random() and not progress.dev_tools and _is_running_scene()
+
+
+## Follows the slime through the maze's cells: each time its center enters a new cell's open tile,
+## the step is added to the route (one byte; no allocation otherwise). Cells only meet through the
+## passage tile between them, so steps are always to a neighbor; anything else (never seen in play)
+## is bridged by the shortest path.
+func _survey_step(pos: Vector2) -> void:
+	var tx := floori(pos.x / TILE)
+	var ty := floori(pos.y / TILE)
+	if (tx & 1) == 0 or (ty & 1) == 0:
+		return  # a passage or wall tile: not inside a cell
+	var cell := Vector2i(tx >> 1, ty >> 1)
+	if cell != _survey_cell and tx >= 0 and ty >= 0:
+		_survey_enter(cell)
+
+
+## Adds the step(s) from the last cell to `cell` to the route.
+func _survey_enter(cell: Vector2i) -> void:
+	if cell == _survey_cell or cell.x >= maze.cells.x or cell.y >= maze.cells.y:
+		return
+	if survey_moves.size() < Survey.MAX_MOVES:
+		var code := MazeGenerator.DIRS.find(cell - _survey_cell)
+		if code >= 0:
+			survey_moves.append(code)
+		else:
+			survey_moves.append_array(Survey.moves_along(MazeGenerator.shortest_path(maze, _survey_cell, cell)))
+	_survey_cell = cell
+
+
+## Adds this run to the level's survey (once: at the win or dry-up, or when the run is left).
+## Assisted and dev-toggled runs (F1 FULL BRIGHT / F2 NO DRAIN) record nothing.
+func _commit_survey() -> void:
+	if _survey_done or not _survey_live:
+		return
+	_survey_done = true
+	if assisted or dev_toggled or progress.dev_tools:
+		return
+	progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal)
+
+
 # ---------------------------------------------------------------- dev: wall power
 
 ## Wall power (dev only): a splat chips away at the wall it hits, harder the stronger the leap.
@@ -1426,6 +1495,11 @@ func _dry_up() -> void:
 func _finish(did_win: bool, text: String, delay: float) -> void:
 	finished = true
 	won = did_win
+	if did_win:
+		survey_goal = true
+		if _survey_live:
+			_survey_enter(maze.goal)  # the goal is grabbed from just short of its cell
+	_commit_survey()
 	slime.frozen = true
 	touch_controls.hide_controls()
 	hud.show_message(text)

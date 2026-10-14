@@ -185,6 +185,14 @@ var randoms_won := 0
 var saving_enabled := true
 ## Debug (--touch): show the on-screen touch controls even without a touchscreen.
 var force_touch := false
+## Trail map surveys (see Survey; shown at the hub's MAP TABLE): story level key (level, + HARD_RECORDS
+## on hard mode) -> survey. Recorded by real, unassisted, non-dev story runs (game.gd); saved under
+## [maps] (optional: older saves have none); RESET PROGRESS clears them.
+var maps := {}
+## The map table's first-time hint was shown (saved as [maps] hint_seen).
+var maps_hint_seen := false
+## Debug flag: every story level (normal + hard) starts fully surveyed (Survey.full; not saved).
+const MAPS_FULL_FLAG := "--maps=full"
 ## Not saved: a skin the current level forces (its first run is played in the newest skin earned).
 ## While set, it replaces the selected skin everywhere (slime, trail, HUD, menus).
 var skin_override := ""
@@ -264,6 +272,9 @@ func _ready() -> void:
 			selected_hat = arg.trim_prefix("--hat=")
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
+	if MAPS_FULL_FLAG in OS.get_cmdline_user_args():  # after the loop: --unlock-all clears the maps
+		saving_enabled = false
+		seed_full_surveys()
 
 
 ## Debug (--quiet-window, used by tools/play.ps1 and screenshot.ps1): the window was opened
@@ -427,6 +438,7 @@ func _read(file: ConfigFile) -> void:
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = _int(file, "controls", action, DEFAULT_KEYS[action])
 	_read_wallet(file)
+	_read_maps(file)
 	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
 		_migrate_hard_times()
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
@@ -512,6 +524,19 @@ func _migrate_medals(key: int, version := 1) -> int:
 		return tier_for(best, par)
 	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
 	return TIER_BRONZE if cleared else TIER_NONE
+
+
+## Trail map surveys ([maps] level_N, optional). Each is checked by Survey.unpack: anything broken,
+## hostile or out of range is dropped (that level just has no survey yet); keys outside the 20 story
+## levels are ignored. A survey for a maze of another size is kept here but ignored where it's used.
+func _read_maps(file: ConfigFile) -> void:
+	maps = {}
+	for level in range(1, Levels.COUNT + 1):
+		for key in [level, level + HARD_RECORDS]:
+			var survey := Survey.unpack(file.get_value("maps", "level_%d" % key, ""))
+			if not survey.is_empty():
+				maps[key] = survey
+	maps_hint_seen = _bool(file, "maps", "hint_seen", false)
 
 
 ## Type-safe save readers: a wrong-typed value (hand-edited or hostile save) gives the default.
@@ -604,6 +629,10 @@ func _write() -> ConfigFile:
 	file.set_value("hats", "rainbow_pity", rainbow_pity)
 	for key: int in medals:
 		file.set_value("medals", "level_%d" % key, medals[key])
+	for key: int in maps:
+		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
+	if maps_hint_seen:
+		file.set_value("maps", "hint_seen", true)
 	return file
 
 
@@ -693,6 +722,7 @@ func enable_dev_mode() -> void:
 	levels_cleared = Levels.COUNT
 	highest_unlocked = Levels.COUNT
 	hard_cleared.assign(range(1, Levels.COUNT + 1))
+	maps = {}  # dev launches read the player's save: its maps aren't shown (--maps=full seeds them)
 
 
 ## Debug `--story-complete` (tools/play.sh --story): a player who has beaten the whole story, on
@@ -736,6 +766,7 @@ func enable_story_complete() -> void:
 			var key: int = level + (HARD_RECORDS if hard else 0)
 			best_times[key] = snappedf(par * pace, 0.01)
 			medals[key] = tier_for(best_times[key], par)
+	seed_full_surveys()
 
 
 ## Debug `--autoplay` (tools/play.sh --autoplay, see scripts/autoplay/autoplay.gd): the game plays
@@ -1210,6 +1241,8 @@ func reset_progress() -> void:
 	random_attempts.clear()
 	random_offer_shown.clear()
 	assist_level = 0
+	maps = {}
+	maps_hint_seen = false
 	save_progress()
 
 
@@ -1297,3 +1330,52 @@ static func _key_event(keycode: int) -> InputEventKey:
 	var event := InputEventKey.new()
 	event.physical_keycode = keycode
 	return event
+
+
+# ---------------------------------------------------------------- trail map surveys
+
+func survey_key(level: int, hard: bool) -> int:
+	return clampi(level, 1, Levels.COUNT) + (HARD_RECORDS if hard else 0)
+
+
+## The survey of a story level ({} = never recorded).
+func survey_for(level: int, hard: bool) -> Dictionary:
+	return maps.get(survey_key(level, hard), {})
+
+
+## Merges one recorded attempt at a story level into its survey and saves (game.gd calls this once
+## per real, unassisted, non-dev run, when it ends). `tiles`: one byte per maze tile, non-zero = seen
+## this attempt; `moves`: the cells walked (Survey move codes) from the maze's start. The tiles seen
+## are added to the ones seen before. The route is replaced by a clear only when it is faster than
+## the stored clear (or there is none); without any clear yet, each attempt that moved replaces the
+## faint last-attempt route. `goal_seen`: the goal came into view (a win counts).
+func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray,
+		won: bool, run_time: float, goal_seen: bool) -> void:
+	var key := survey_key(level, hard)
+	var survey: Dictionary = maps.get(key, {})
+	if not Survey.fits(survey, maze):
+		survey = Survey.blank(maze.size, maze.start)
+	Survey.merge_seen(survey, tiles)
+	survey.goal = survey.goal or goal_seen or won
+	var route := moves.slice(0, Survey.MAX_MOVES)
+	if won and is_finite(run_time) and run_time > 0.0:
+		var ms := clampi(roundi(run_time * 1000.0), 1, Survey.MAX_MS)
+		if not survey.clear or ms < survey.best_ms:
+			survey.clear = true
+			survey.best_ms = ms
+			survey.moves = route
+			survey.start = maze.start
+	elif not survey.clear and not route.is_empty():
+		survey.moves = route
+		survey.start = maze.start
+	maps[key] = survey
+	save_progress()
+
+
+## Every story level, normal and hard, fully surveyed (Survey.full): its best route = the shortest
+## route, in the level's record time if it has one (else par). For --story-complete / --maps=full.
+func seed_full_surveys() -> void:
+	for level in range(1, Levels.COUNT + 1):
+		for hard in [false, true]:
+			var key := survey_key(level, hard)
+			maps[key] = Survey.full(Levels.story_maze(level, hard), best_times.get(key, Levels.level_par(level, hard)))

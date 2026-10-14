@@ -410,7 +410,12 @@ func summary(wall := 0.0) -> Dictionary:
 	var tiers := {}
 	for key: int in progress.medals:
 		tiers[str(key)] = progress.medals[key]
+	var maps := {}  # the trail map surveys its real runs recorded (key -> clear, best ms, moves)
+	for key: int in progress.maps:
+		var survey: Dictionary = progress.maps[key]
+		maps[str(key)] = {clear = survey.clear, best_ms = survey.best_ms, moves = survey.moves.size()}
 	return {
+		maps = maps,
 		coins = progress.coins_earned(), total_coins = Levels.total_coins(),
 		levels_cleared = progress.levels_cleared, hard_cleared = progress.hard_cleared,
 		medals_normal = progress.medals_total(false), medals_hard = progress.medals_total(true),

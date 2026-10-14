@@ -65,6 +65,13 @@ func _initialize() -> void:
 				why += " %s L%d (tier %d, best %.2f, fastest run %.2f, par %.2f)" % ["hard" if hard else "normal",
 					level, tier, best, fastest, Levels.level_par(level, hard)]
 	_check(legit, "medal tiers follow from real run times vs par" + why)
+	# Trail maps: the real runs recorded a survey of all 20 levels, each with its best clear's route.
+	var maps: Dictionary = summary.get("maps", {})
+	var maps_ok := maps.size() == 2 * Levels.COUNT
+	for key: String in maps:
+		var best: float = summary.best_times.get(key, -1.0)
+		maps_ok = maps_ok and maps[key].clear and int(maps[key].moves) > 0 and absi(int(maps[key].best_ms) - roundi(best * 1000.0)) <= 1
+	_check(maps_ok, "the runs recorded trail map surveys of all 20 levels, routes = the best clears (%d)" % maps.size())
 	_check(int(summary.medals_normal) == 30 and int(summary.medals_hard) == 30,
 		"medals: %d/30 normal, %d/30 hard (all gold)" % [summary.medals_normal, summary.medals_hard])
 	var coin_runs := 0
