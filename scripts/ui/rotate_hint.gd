@@ -23,7 +23,7 @@ func _ready() -> void:
 	bg.color = UIKit.BG
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_cover.add_child(bg)
-	var text := UIKit.make_label("ROTATE YOUR PHONE\n\nSLIME TIME IS PLAYED SIDEWAYS", 8, UIKit.GOLD)
+	var text := UIKit.make_label("ROTATE YOUR DEVICE\n\nSLIME TIME IS PLAYED SIDEWAYS", 8, UIKit.GOLD)
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cover.add_child(text)

@@ -336,6 +336,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## False only in a browser without the Fullscreen API for page elements (iPhone Safari): SETTINGS then
+## disables its FULLSCREEN button (it did nothing there; docs/qa-web-report.md O4). Asked once; if the
+## browser can't be asked, the button stays.
+static func fullscreen_available() -> bool:
+	if not OS.has_feature("web"):
+		return true
+	if _fullscreen_ok < 0:
+		var ok: Variant = JavaScriptBridge.eval("!!(document.fullscreenEnabled || document.webkitFullscreenEnabled)", true)
+		_fullscreen_ok = 0 if typeof(ok) == TYPE_BOOL and not ok else 1
+	return _fullscreen_ok == 1
+
+
+static var _fullscreen_ok := -1
+
+
 func is_fullscreen() -> bool:
 	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 

@@ -70,6 +70,7 @@ func _ready() -> void:
 	motion_button = _column_button(_cell(0, 2), _toggle_motion)
 	fog_button = _column_button(_cell(0, 3), _cycle_fog)
 	fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
+	fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
 	_refresh_sound()
 	_refresh_display_options()
 
