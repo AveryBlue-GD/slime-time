@@ -11,6 +11,7 @@
 - [hats-audit.md](hats-audit.md): Mad Hatter audit of hat scale and fit, changes and what is still imperfect.
 - [polish-research.md](polish-research.md): early diagnosis of what looked amateur (hub, fog, themes) and the polish plan.
 - [qa-nav-report.md](qa-nav-report.md): navigation / Esc / menu fuzzer findings B1-B10 and their fixes.
+- [qa-web-report.md](qa-web-report.md): web/itch QA in an itch-like cross-origin iframe and phone emulation: results per scenario, fixes W1-W5 (rotate cover, save code copy/paste on itch, save flush on hide, the custom HTML shell `tools/web_shell.html`), device risks and a 5-minute phone checklist.
 - [review-maps.md](review-maps.md): code review of the trail map trial (5 findings, all fixed).
 - [advisor/](advisor/): game-advisor research reports: [comparables-presentation](advisor/comparables-presentation.md), [flow-level-design](advisor/flow-level-design.md), [graphics-shading](advisor/graphics-shading.md), [juice-audio-ui](advisor/juice-audio-ui.md), [maps](advisor/maps.md) (optional map v1 plan), [roguelike-progression](advisor/roguelike-progression.md).
 - [perf/](perf/): perf-profiler reports: [measurements](perf/measurements.md) (where frame time goes), [cpu](perf/cpu.md), [rendering](perf/rendering.md), [startup-memory-web](perf/startup-memory-web.md), [results-batch-a](perf/results-batch-a.md) and [results-batch-b](perf/results-batch-b.md) (applied optimizations, before/after).

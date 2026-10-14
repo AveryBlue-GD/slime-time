@@ -29,7 +29,10 @@ yourself when the owner may be playing; launch semantics and preferences are in 
 
 **Known limitations.**
 - Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
-- Android and web are unverified on real devices (the Android shader fix and the browser paste fix are unconfirmed).
+- Android and web are unverified on real devices (the Android shader fix is unconfirmed). The web build was QA'd in an
+  itch-like cross-origin iframe with phone emulation ([qa-web-report.md](qa-web-report.md)); the Web preset now uses the
+  custom shell `tools/web_shell.html` (Godot 4.7.2's default + marked additions: save flush on hide, storage-blocked bar,
+  context-lost RELOAD cover, friendly errors). On a Godot upgrade, re-base it on the new default shell.
 - Difficulty numbers are priors, not playtest data ([playtime-estimate.md](playtime-estimate.md): ~45 min median for the
   story on normal, ~2.1 h with hard).
 - Trail maps are a trial (cost/unlock and the trapdoor's spot are undecided). Maps v3 is in: themed maps on
@@ -45,7 +48,7 @@ and code carries `[meta] epoch` = `Progress.RELEASE_EPOCH` (1) and is ignored wi
 wipe bumps the dir name, `RELEASE_EPOCH` and the prefix together (see the doc). Test: `tests/test_fresh_start.gd`.
 
 **Open tasks.**
-1. Android / web device checks: upload the web zip, retest the hub and a level on a real Android phone, retest PASTE and Ctrl+V in SAVE CODE.
+1. Android / web device checks: upload the web zip and run the 5-minute checklist in [qa-web-report.md](qa-web-report.md) section 6 on a real Android phone and an iPhone.
 2. Tuning from playtests (story budgets, hard allowances, randomizer usage curve, ticket payouts, hat wheel price).
 3. Optional map v1 as proposed in [advisor/maps.md](advisor/maps.md) (unlock/cost plan for the trail maps).
 4. Real hats from the owner, then set `Hats.available = true` (nothing else is needed); hat wheel currency is already tickets.
