@@ -106,6 +106,11 @@ func set_state(kind: String) -> void:
 			Hats.available = true
 			progress.tickets = 200
 			progress.seed_full_surveys()
+		"heat":  # story complete, hard mode on, some HEAT picked and some best heats (the HEAT panel walks)
+			progress.enable_story_complete()
+			progress.hard_mode = true
+			progress.heat_mods = Heat.bit("dim") | Heat.bit("race")
+			progress.heat_best = {1: 10, 2: 7, 3: 4}
 		"fresh":
 			pass
 	progress.saving_enabled = false
@@ -278,6 +283,9 @@ func modal() -> Node:
 	match kind():
 		"maps":
 			return cs.view_root if cs.viewing else null
+		"level_select":
+			if cs.heat_panel.visible:
+				return cs.heat_panel  # HEAT: the modifier toggles
 		"controls":
 			if cs.code_panel.visible:
 				return cs.code_panel
@@ -305,6 +313,8 @@ func overlay_count() -> int:
 	var cs := tree.current_scene
 	var n := 0
 	match kind():
+		"level_select":
+			n += int(cs.heat_panel.visible)
 		"controls":
 			n += int(cs.code_panel.visible) + int(cs.reset_confirm.visible)
 		"hub":

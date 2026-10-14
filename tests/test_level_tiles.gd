@@ -29,6 +29,7 @@ func _initialize() -> void:
 			progress.medals = {1: 3, 2: 2, 3: 1, 101: 1, 102: 2, 103: 3}
 			progress.best_times = {1: 12.3, 101: 12.3, 2: 723.1, 102: 723.1}
 			progress.hard_cleared.assign(range(1, unlocked))
+			progress.heat_best = {1: 10, 2: 7, 3: 4, 4: 2, 10: 10}  # flames on hard tiles (10 only once open)
 			var screen: Control = load("res://scenes/level_select.tscn").instantiate()
 			root.add_child(screen)
 			await process_frame
@@ -61,7 +62,15 @@ func _initialize() -> void:
 						if child == number or not (child is Control):
 							continue
 						var rect := Rect2(child.position, child.size)
-						if child is ColorRect:  # medal pips: right of the number's ink, inside the tile
+						if child.name == "Flame":  # HEAT badge (hard only): top left, clear of the number, pips and time
+							_check(hard, tag + ": flame only on hard tiles")
+							_check(rect.size == Vector2(Heat.flame_size()), tag + ": flame is %s" % rect.size)
+							_check(rect.end.x + 2.0 <= ink.position.x, tag + ": flame clear of the number (%s vs %s)" % [rect, ink])
+							_check(rect.position.x >= 3.0 and rect.position.y >= 3.0 and rect.end.y + 3.0 <= ink.position.y + 14.0, tag + ": flame inside the tile")
+							for other in tile.get_children():
+								if other != child and (other is ColorRect or other is Label) and other != number:
+									_check(not rect.intersects(Rect2(other.position, other.size)), tag + ": flame clear of %s" % other.name)
+						elif child is ColorRect:  # medal pips: right of the number's ink, inside the tile
 							_check(rect.position.x >= ink.end.x + 2.0, tag + ": pip clear of the number")
 							_check(rect.end.x <= tile.size.x - 3.0, tag + ": pip inside the tile")
 						elif child is Label:  # record time: its 7 letter rows
@@ -82,6 +91,13 @@ func _initialize() -> void:
 							_check(box.position.y - ink.end.y >= 1.0, tag + ": check clear of the number (%s)" % box)
 							_check(tile.size.y - 1.0 - box.end.y >= 1.0, tag + ": check clear of the frame edge")
 							_check(absf(box.get_center().x - center.x) <= 1.0, tag + ": check centered")
+			if hard and unlocked == 10:
+				var flames := 0
+				for tile in screen.level_buttons:
+					flames += int(tile.get_node_or_null("Flame") != null)
+				_check(flames == 5, "hard: a flame on each tile with a best heat of 2+ (%d)" % flames)
+				_check(Rect2(tile_flame_tier(screen, 1)).size.x > 0.0, "hard: tile 1's flame is the heat-10 flame")
+			_check_bottom_row(screen, hard)
 			screen.free()
 	# The widest realistic record times fit the tile with 4+ px margins.
 	var font: Font = load("res://assets/fonts/pixel.fnt")
@@ -92,6 +108,69 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
+
+
+## Tile `level`'s flame texture rect (for a smoke check that it exists).
+func tile_flame_tier(screen: Control, level: int) -> Rect2:
+	var flame: TextureRect = screen.level_buttons[level - 1].get_node_or_null("Flame")
+	if flame == null or flame.texture != Heat.flame(10):
+		return Rect2()
+	return Rect2(flame.position, flame.size)
+
+
+## The bottom row: BACK left and (hard mode only) HEAT right, mirrored, on screen, not overlapping
+## each other, the info panel or the grid; the HEAT panel's toggles and DONE inside its frame and
+## the 320x180 screen, none overlapping.
+func _check_bottom_row(screen: Control, hard: bool) -> void:
+	var back: Button = null
+	for child in screen.get_children():
+		if child is Button and child.text == "BACK":
+			back = child
+	var heat: Button = screen.heat_button
+	_check(back != null, "BACK exists")
+	_check(heat.visible == hard, "HEAT button only in hard mode")
+	if not hard or back == null:
+		return
+	var b := Rect2(back.position, back.size)
+	var h := Rect2(heat.position, heat.size)
+	_check(not b.intersects(h), "BACK and HEAT don't overlap")
+	_check(Rect2(0, 0, 320, 180).encloses(h), "HEAT on screen (%s)" % h)
+	_check(absf(b.position.x - (320.0 - h.end.x)) <= 0.5 and b.position.y == h.position.y, "HEAT mirrors BACK (%s / %s)" % [b, h])
+	_check(h.position.y >= 111.0 + 48.0, "HEAT under the info panel")
+	var panel: Control = screen.heat_panel
+	var frame: Rect2 = panel.RECT
+	_check(Rect2(0, 0, 320, 180).encloses(frame), "HEAT panel on screen")
+	var rects: Array[Rect2] = []
+	for id in Heat.IDS:
+		var t: Button = panel.toggles[id]
+		rects.append(Rect2(t.position, Vector2(panel.TOGGLE)))
+	rects.append(Rect2(panel.done_button.position, panel.done_button.size))
+	var longest := ""
+	for text: String in Heat.ABOUT.values() + [panel.DEFAULT_ABOUT]:
+		longest = text if text.length() > longest.length() else longest
+	rects.append(_text_rect(panel.about, longest))  # the longest about line, centered
+	rects.append(_text_rect(panel.title, "HEAT 10/10"))
+	rects.append(Rect2(Vector2(_text_rect(panel.title, "HEAT 10/10").position.x - 11, panel.RECT.position.y + 6), Vector2(Heat.flame_size())))
+	for i in rects.size():
+		_check(frame.grow(-3.0).encloses(rects[i]), "HEAT panel part %d inside the frame (%s)" % [i, rects[i]])
+		for j in range(i + 1, rects.size()):
+			_check(not rects[i].intersects(rects[j]), "HEAT panel parts %d and %d don't overlap (%s, %s)" % [i, j, rects[i], rects[j]])
+	for id in Heat.IDS:  # each toggle's icon (2x), name, flame and +N fit inside it with 3+ px margins
+		var t: Button = panel.toggles[id]
+		var inner := Rect2(Vector2(3, 3), Vector2(panel.TOGGLE) - Vector2(6, 6))
+		var icon: TextureRect = t.get_node("Icon")
+		_check(inner.encloses(Rect2(icon.position, icon.size * icon.scale)), id + ": icon inside its toggle")
+		var name_label: Label = t.get_node("Name")
+		var font: Font = name_label.get_theme_font("font")
+		var w := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		_check(name_label.position.x + w <= panel.TOGGLE.x - 4.0, id + ": name fits (%s px)" % (name_label.position.x + w))
+		_check(icon.position.x + icon.size.x * icon.scale.x + 1.0 <= name_label.position.x, id + ": icon clear of the name")
+
+
+## Where a centered label's `text` (8 px font) sits: its advance width centered on the label, 9 rows.
+func _text_rect(label: Label, text: String) -> Rect2:
+	var w := label.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	return Rect2(label.position.x + floorf((label.size.x - w) / 2.0), label.position.y, w, 9)
 
 
 ## The record time's 7 letter rows (the label's line box is 7 px; drips hang 2 px below), its ink
