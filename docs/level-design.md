@@ -107,7 +107,7 @@ Story coin keys are `level + cell`, so a v1-3 save's keys name cells of the old 
 - **Hard mode:** hard clears, hard records and hard tiers are kept the same way (hard has no coins).
 - **Idempotent:** a pure function of the old data; reading the same old save twice gives the same
   result, and the next save is version 4, which is never migrated again.
-- **Save codes:** `SLIME1-` codes go through `_read`, so old codes migrate the same way.
+- **Save codes:** pre-release `SLIME1-` codes are now refused outright (fresh-start policy, docs/itch-release.md).
 - **Hostile values:** wrong-typed version = treated as old (migrated); junk coin lists count 0,
   floods cap at the level's coins; upgrades still clamp to what was earned.
 - A version 4 save loaded in an older build would read the new coin keys against old mazes (not
@@ -351,7 +351,7 @@ The new hard mazes are no bigger than randomizer mazes (36x20 cap), so the fog/t
 already covered by the randomizer's web measurements. Web export verified.
 
 **Save migration (version 5, `Progress._migrate_hard_times`).** Old hard best times were set on the
-shorter v4 mazes, so a save (or `SLIME1-` code) older than version 5 has its hard best times
+shorter v4 mazes, so a save older than version 5 has its hard best times
 (`records` level 101-110) dropped; `hard_cleared` and the stored hard medal tiers are kept (never
 downgraded); normal records/tiers/clears, coins, upgrades, tickets, hats and skins are untouched.
 Order: pre-v3 saves still turn their times into tiers first (against `legacy_par`); a v4 save with

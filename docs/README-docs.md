@@ -5,6 +5,7 @@
 - [game-design.md](game-design.md): the original build brief (6 phases); superseded parts are marked.
 - [handoff.md](handoff.md): current state summary at the top, then the full per-feature history and standing preferences.
 - [level-design.md](level-design.md): spawn picker, story layouts v4, calibration, save migration, randomizer usage and ticket goal, hard-mode rebalance, trail maps.
+- [itch-release.md](itch-release.md): release notes for itch; the fresh-start policy (release user dir, save epoch, `SLIME2-` codes) and how to bump it.
 - [story.md](story.md): plot, the wordless intro and finale shots, level banners, `story_seen` saving.
 - [playtime-estimate.md](playtime-estimate.md): model-based playtime for the story on normal and hard (priors, no playtest data yet).
 - [hats-audit.md](hats-audit.md): Mad Hatter audit of hat scale and fit, changes and what is still imperfect.

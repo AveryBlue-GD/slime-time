@@ -13,14 +13,17 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 `HARD_SLIME_MULT`), the **randomizer** (unlocked after the story; the gold ticket voucher is the goal, no chalice; payout
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
-CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 5. 54 test suites; 6 agents in `.claude/agents/`.
+CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 5 (+ `[meta] epoch` 1). 55 test suites; 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
 res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`. Tests: `./tools/test_all.sh` (prints `suites: N
 failed: 0`); one suite: `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
 
-**Save safety.** Only a plain launch touches `user://save.cfg`. Tests, tools, headless, movie, screenshot and dev runs write
+**Save safety.** Only a plain launch touches `user://save.cfg`, which is now the release dir
+(`~/Library/Application Support/SlimeTime_R1/save.cfg` on macOS; fresh-start policy, below and in
+[itch-release.md](itch-release.md)). The pre-release save at `~/Library/Application Support/Godot/app_userdata/Slime
+Time/save.cfg` stays on disk untouched and is never read. Tests, tools, headless, movie, screenshot and dev runs write
 a throwaway file (and may read the real save); `--story` / `--autoplay` use clean in-memory state. Never run the game
 yourself when the owner may be playing; launch semantics and preferences are in "Decisions and standing preferences".
 
@@ -33,6 +36,13 @@ yourself when the owner may be playing; launch semantics and preferences are in 
   (`map_select.THEMED_MAPS`), a thin red route whatever the skin, and select tiles that show made-up example mazes
   (never the real map) lit by the % uncovered.
 - Windows build zip and itch promo images are out of date (v2.2); only rebuild when the owner asks.
+
+**Fresh-start policy (public release).** Progress from pre-release builds never carries over
+([itch-release.md](itch-release.md)): `user://` is the release dir `SlimeTime_R1` (`project.godot`
+`custom_user_dir_name`; web: `/userfs/SlimeTime_R1` in IndexedDB, which itch shares between all games), every save
+and code carries `[meta] epoch` = `Progress.RELEASE_EPOCH` (1) and is ignored without it, and codes are `SLIME2-`
+(old `SLIME1-` codes say THAT CODE IS FROM AN OLD VERSION). The owner's own local progress starts over too. A future
+wipe bumps the dir name, `RELEASE_EPOCH` and the prefix together (see the doc). Test: `tests/test_fresh_start.gd`.
 
 **Open tasks.**
 1. Android / web device checks: upload the web zip, retest the hub and a level on a real Android phone, retest PASTE and Ctrl+V in SAVE CODE.
@@ -58,7 +68,7 @@ which describes the whole project and the commands for both machines.
 - **Moving to the Mac:** `tools/*.sh` twins of the PowerShell tools were added and tested (pointed at the Windows
   Godot); CLAUDE.md has a "Commands on macOS / Linux" section. The user has a setup prompt to paste into Claude Code
   on the Mac (install Godot 4.7.2 + export templates, clone, `git checkout v2`, import, run tests, copy the save,
-  screenshot, launch). Their save is also on OneDrive: `Desktop/SlimeTime-for-Mac/save.cfg` (plus
+  screenshot, launch). Their (pre-release, so no longer loadable) save is also on OneDrive: `Desktop/SlimeTime-for-Mac/save.cfg` (plus
   `slime-time.bundle`, a full repo backup that's no longer needed now GitHub has it).
 - **Itch:** the newest web build is zipped at `Desktop\SlimeTime-Web-itch.zip` (copy in `Desktop\SlimeTime-v2.3`).
   It includes everything up to the paste fix (ec12f7f). The Windows build zip and the promo images were **not**
@@ -323,7 +333,7 @@ event (ms ticks, event, level/random, seed code, attempt, ticket offer/table/cap
 and which restart route led to a rebuilt maze) to a plain text file, truncated at each launch and capped at ~200 KB.
 Events: maze built, pause opened, R prompt opened, each restart route (R, pause RESTART, dry-up RESTART, prompt RESTART,
 REPLAY MAZE, NEW MAZE, typed seed, ASSIST, UPGRADES return), pod text changes, win (paid), quit to hub. Inert outside dev
-mode and on the web; touches no save. macOS path: `~/Library/Application Support/Godot/app_userdata/<project name>/dev_attempts.log`
+mode and on the web; touches no save. macOS path: `~/Library/Application Support/SlimeTime_R1/dev_attempts.log`
 (only for a hand-played `play.sh --dev`); tests, headless, movie and screenshot runs write `dev_attempts_<pid>.log` instead
 (stale ones are deleted after 6 h). Test: `tests/test_dev_log.gd`.
 
