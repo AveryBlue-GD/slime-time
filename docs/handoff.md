@@ -29,8 +29,9 @@ yourself when the owner may be playing; launch semantics and preferences are in 
 - Android and web are unverified on real devices (the Android shader fix and the browser paste fix are unconfirmed).
 - Difficulty numbers are priors, not playtest data ([playtime-estimate.md](playtime-estimate.md): ~45 min median for the
   story on normal, ~2.1 h with hard).
-- Trail maps are a trial (cost/unlock and the trapdoor's spot are undecided). Maps v2 (decluttered screens, wall-line
-  maze diagram) is in; the themed maps are a mockup, off (`map_select.THEMED_MAPS`), waiting for the owner's call.
+- Trail maps are a trial (cost/unlock and the trapdoor's spot are undecided). Maps v3 is in: themed maps on
+  (`map_select.THEMED_MAPS`), a thin red route whatever the skin, and select tiles that show made-up example mazes
+  (never the real map) lit by the % uncovered.
 - Windows build zip and itch promo images are out of date (v2.2); only rebuild when the owner asks.
 
 **Open tasks.**
@@ -527,3 +528,35 @@ like one wide corridor (the wall between was lost under the route's dark edge).
   select, levels 1/5/10 autopilot, Brightness 10, standing still, hard 3, rainbow 10, randomizer seed 5, story
   intro, pause; 51 frames): 0 differing pixels. Web export (Web preset) to a temp dir: OK.
 - **Open for the owner:** look at the themed sheet and decide; thumbnails of levels 6-10 and hard mazes stay blocks.
+
+## Trail maps v3: red route, example-maze tiles, themed maps on (2026-10-14)
+
+Owner feedback on v2 + the themed mockup:
+- **Route color:** a thin red line (`MapView.ROUTE` = (222, 24, 40)) whatever skin is equipped, on every palette;
+  `route_color`, `ROUTE_CONTRAST`, the goo/edge colors and every skin input to MapView are gone (`palette(theme)`,
+  `render(maze, survey, sizes, coins, theme)`; map_select no longer reads the skin). 1 px through the corridor
+  centers; to center it exactly every map size now has an odd floor (`SIZES`: 21+3 ... 5+2, 5+1; 36x20 cells now
+  5+2 plain / 5+1 themed). The last try is dashed (2 on / 2 off) and 30% faded toward the paper. The goal X is
+  drawn in the ink now (a red X would merge with the route's end).
+- **Select tiles = example mazes, not the real map** (`MapView.preview` / `example`): an 8x4-cell made-up maze per
+  level and mode (growing tree from integer hashing of the level number; 20 distinct, identical for everyone,
+  nothing from the real layout), drawn at 3+1 px in the level's palette with a 1 px frame in its motif (35x19 px).
+  Locked: dim sealed frame + lock. Surveyed: floor(% x 32) cells lit, breadth first from its start, rest dark; the
+  red example route only with a recorded route (faint for a last try); a gold frame (`PREVIEW_GOLD`) at 100%. The
+  tile still shows just name + %. Example mazes and textures are cached (static) by state; nothing per frame.
+- **Map view:** unchanged (the player's real survey, spoiler rules, coins, start/goal, `NN% UNCOVERED`) except the
+  red route and themed rendering, now on: `map_select.THEMED_MAPS = true` (set false to return to the parchment
+  style everywhere, previews included). `tests/demo_maps.tscn` adds `--set=N:P[:best|try]`, `--lock=N`, `--plain`.
+- **Tests** (`tests/test_maps.gd`): odd floors / 1 px route; same red on every palette, contrasting every paper;
+  the opened map identical with lime, lemon, crimson, inkky and frost equipped; palettes for all 10 levels (hard
+  uses its level's); example mazes whole, distinct (20), not a real level's size, deterministic when rebuilt,
+  cached; lit cells = floor(% x 32) (0/5/22/40/60/85/99/100%), none locked; route only when recorded; gold only at
+  100%; two different surveys of level 5 at the same 37% give byte-identical tiles; no `_process` on the screen;
+  the existing no-unseen-leak checks (plain + themed, all sizes) still pass. `./tools/test_all.sh`: 54 suites, 0 failed.
+- **Shots:** `docs/polish-shots/map_v3_select.png` (locked 4/9, 22%, 22% + try, 60% + try/best, 85%, 100%),
+  `map_v3_view_l3_lemon.png` (light), `map_v3_view_l8_inkky.png` (dark), `map_v3_view_l10_ember.png`,
+  `map_v3_view_l5_crimson_uturn.png` (red skin, partial hairpin), `map_v3_view_l7_lime_lasttry.png` (dashed),
+  `map_v3_previews_sheet.png` (10 levels x locked / 22% / 60% try / 100% best / hard 100%, 6x).
+- **Pixel check:** HEAD (d18cc85) worktree vs this tree, batch capture set (51 frames: title, hub, rainbow hub,
+  level select, levels 1/5/10, Brightness 10, standing still, hard 3, rainbow 10, randomizer, story, pause):
+  0 differing pixels. Web export to a temp dir: OK. Real save md5 unchanged.

@@ -399,21 +399,30 @@ clear; without any clear, every attempt that moved replaces the faint last-attem
 `floori`, a parity test and a `Vector2i` compare (a byte appended when a new cell is entered). No per-frame
 allocation; fog/trail bytes, their order and the rendered frames are unchanged (pixel diff, see handoff).
 
-**Showing it** (`MapView`, maps v2 2026-10-14): a maze diagram. Each seen cell is a block of parchment
-floor; thin ink wall lines run between cells wherever the maze has a wall (`MazeGenerator.is_wall` on the tile
-between them), with posts where lines cross, so two corridors side by side (a route's hairpin) always keep a
-wall line between them. Spoilers: a cell's floor only when its tile was seen; a wall line (or the floor of an
-open doorway in it) only when at least one of the two cells it divides was seen (a wall next to seen floor is
-known; a doorway shows as a gap leading into the dark); posts only at a seen cell's corners; unseen cells stay
-the fog color. The route is a band through cell centers, about a third of the floor wide and centered with
-floor on both sides (goo color, edged in the outline shade on big maps; on small maps the goo's dark shade
-when the goo is too close to the parchment in brightness; the last attempt half-faded, no edge); coins as gold
-discs, the start as a ring, the goal as a red X once seen, each only on seen cells. Sizes are whole pixels,
-[floor, wall] = 21+3 for level 1 down to 6+1 for 36x20 cells, picked to fit 316x149 px. Thumbnails use the same
-drawing at 2+1 / 1+1 px when it fits 36x20 px (levels 1-5 normal), else one block per cell. The select tiles
-show only the thumbnail, the name and the % uncovered; the view only the name, the map and "NN% UNCOVERED".
-`MapView.render(..., theme)` can draw a level in its theme's palette with a themed frame: a mockup, off in the
-game (`map_select.THEMED_MAPS`).
+**Showing it** (`MapView`, maps v3 2026-10-14): a maze diagram in the level's themed palette (paper, ink,
+fog from its tile palette) inside a 4 px frame in the theme's motif (`map_select.THEMED_MAPS = true`, the one
+switch back to the plain parchment). Each seen cell is a block of paper floor; thin ink wall lines run between
+cells wherever the maze has a wall (`MazeGenerator.is_wall` on the tile between them), with posts where lines
+cross, so two corridors side by side (a route's hairpin) always keep a wall line between them. Spoilers: a
+cell's floor only when its tile was seen; a wall line (or the floor of an open doorway in it) only when at least
+one of the two cells it divides was seen (a wall next to seen floor is known; a doorway shows as a gap leading
+into the dark); posts only at a seen cell's corners; unseen cells stay the fog color. The route is a 1 px line
+through cell centers in one saturated red (`MapView.ROUTE`) whatever skin the slime wears (the skin is no
+input to the maps at all); the last attempt is dashed (2 on, 2 off) and faded 30% toward the paper. Floors are
+always an odd number of px (`SIZES`, [floor, wall] = 21+3 for level 1 down to 5+2 / 5+1 for 36x20 cells,
+picked to fit 316x149 px with the frame), so the line runs exactly down the middle with floor either side.
+Coins as gold discs, the start as a ring and the goal as an X in the ink, each only on seen cells. The view
+shows only the name, the map and "NN% UNCOVERED".
+
+**Select tiles** (`MapView.preview`): never the real map. Each tile shows a tiny made-up example maze
+(`EXAMPLE_CELLS` 8x4 at 3+1 px with a 1 px frame in the theme's motif, 35x19 px), generated per level (hard
+mode has its own) by a growing-tree maze from pure integer hashing of the level number, so it is the same for
+every player and knows nothing of the real layout. It only shows what the player has: locked = dim sealed
+frame round darkness plus a lock; otherwise floor(% x 32) of its cells lit (spreading breadth first from its
+start, so progress is visible at a glance), the rest dark; its start-to-goal example route in red only when
+the level has a recorded route (faint red for a last try, over lit cells only); a gold frame at 100%. Built
+once per state and cached as textures; the screen has no per-frame work. Two different surveys at the same %
+give identical tiles (`tests/test_maps.gd`).
 
 **Save size** (measured in `tests/test_maps.gd`): save code 543 chars with no maps, 2,543 with all 20 levels
 fully surveyed (full surveys compress to almost nothing), 19,447 in a worst case no player reaches (random
