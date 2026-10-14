@@ -31,6 +31,9 @@ var _jump_touch := -1
 ## The finger on the pause button: its `menu` press is released when it lifts (or the level pauses /
 ## the controls go away), so the action is never left held.
 var _pause_touch := -1
+## The actions these controls are holding down. Only those are ever released here, so a key
+## pressed on a keyboard (which hides the controls) keeps its own press of the same action.
+var _held := {}
 var _canvas: Control
 
 
@@ -93,7 +96,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 			_move_joystick(pos)
 	elif _jump_touch == -1:
 		_jump_touch = index
-		Input.action_press("jump")
+		_press("jump")
 	_canvas.queue_redraw()
 
 
@@ -107,7 +110,7 @@ func _touch_up(index: int) -> void:
 		_steer(Vector2.ZERO)
 	elif index == _jump_touch:
 		_jump_touch = -1
-		Input.action_release("jump")
+		_release("jump")
 	_canvas.queue_redraw()
 
 
@@ -126,9 +129,19 @@ func _steer(dir: Vector2) -> void:
 	var strengths := [dir.x, -dir.x, dir.y, -dir.y]
 	for i in MOVE_ACTIONS.size():
 		if strengths[i] > 0.05:
-			Input.action_press(MOVE_ACTIONS[i], strengths[i])
+			_press(MOVE_ACTIONS[i], strengths[i])
 		else:
-			Input.action_release(MOVE_ACTIONS[i])
+			_release(MOVE_ACTIONS[i])
+
+
+func _press(action: String, strength := 1.0) -> void:
+	_held[action] = true
+	Input.action_press(action, strength)
+
+
+func _release(action: String) -> void:
+	if _held.erase(action):
+		Input.action_release(action)
 
 
 ## Hides the controls (e.g. when a level ends and menu buttons take over).
@@ -155,7 +168,7 @@ func _release_all() -> void:
 	_joy_center = JOY_HOME
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
-	Input.action_release("jump")
+	_release("jump")
 	if _canvas:
 		_canvas.queue_redraw()
 

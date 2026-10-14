@@ -14,6 +14,9 @@ const IDLE_FOR_BEACON := 6.0
 const WANDER_FOR_LEAP := 48.0
 const LEAP_PAUSE := 1.0
 const FADE_SPEED := 3.0
+## Longest frame a fade step may use: a hitch (a phone's browser stalls for a moment on the first
+## glide, as the trail, drips and sounds start) still plays the full fade instead of skipping it.
+const MAX_FADE_STEP := 1.0 / 30.0
 const KEY := 9.0
 const KEY_FILL := Color8(26, 28, 44)
 const KEY_EDGE := Color8(244, 244, 244)
@@ -32,6 +35,9 @@ var _last := Vector2.ZERO
 var _time := 0.0
 var _moved := false
 var _leapt := false
+## The strongest alpha the last _draw() put on screen. The canvas keeps those commands until the
+## next redraw, so one more redraw is due after everything reaches 0 (else the glyph stays stuck).
+var drawn_alpha := 0.0
 
 
 func setup(game_node: Node, slime_node: Slime, progress_node: Node) -> void:
@@ -62,12 +68,13 @@ func _process(delta: float) -> void:
 		_leapt = true
 		progress.mark_tutorial_seen(Progress.TUTORIAL_LEAP)
 	var live: bool = not game.finished
-	move_alpha = move_toward(move_alpha, 1.0 if live and not _moved else 0.0, delta * FADE_SPEED)
+	var fade := minf(delta, MAX_FADE_STEP) * FADE_SPEED
+	move_alpha = move_toward(move_alpha, 1.0 if live and not _moved else 0.0, fade)
 	var want_leap: bool = live and _moved and not _leapt and wandered >= WANDER_FOR_LEAP and idle >= LEAP_PAUSE
-	leap_alpha = move_toward(leap_alpha, 1.0 if want_leap else 0.0, delta * FADE_SPEED)
-	beacon_alpha = move_toward(beacon_alpha, 1.0 if live and _beacon_wanted() else 0.0, delta * FADE_SPEED * 0.5)
-	if move_alpha > 0.0 or leap_alpha > 0.0 or beacon_alpha > 0.0:
-		queue_redraw()
+	leap_alpha = move_toward(leap_alpha, 1.0 if want_leap else 0.0, fade)
+	beacon_alpha = move_toward(beacon_alpha, 1.0 if live and _beacon_wanted() else 0.0, fade * 0.5)
+	if move_alpha > 0.0 or leap_alpha > 0.0 or beacon_alpha > 0.0 or drawn_alpha > 0.0:
+		queue_redraw()  # (including the one clearing redraw after the last fade step)
 
 
 func _beacon_wanted() -> bool:
@@ -81,6 +88,7 @@ func _touch() -> bool:
 
 
 func _draw() -> void:
+	drawn_alpha = maxf(move_alpha, maxf(leap_alpha, beacon_alpha))
 	var bob := -1.0 if fmod(_time, 0.9) < 0.45 else 0.0  # a stepped 1 px pulse
 	if move_alpha > 0.0:
 		var top := Vector2(0, -33 + bob)

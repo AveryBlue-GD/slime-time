@@ -33,7 +33,7 @@ retried on failure, `Progress.save_failed`); an unreadable save is kept as `save
 randomizer pay day counts as today; release exports ignore debug flags (only `--touch` / `--web-ui`); Windows exe has the
 game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS preset exists (universal, ad-hoc,
 `com.slimetime.game` placeholder). Status tables: [qa-release-report.md](qa-release-report.md),
-[qa-web-report.md](qa-web-report.md); builds: [itch-release.md](itch-release.md). 58 test suites.
+[qa-web-report.md](qa-web-report.md); builds: [itch-release.md](itch-release.md). 59 test suites.
 
 **Known limitations.**
 - Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
@@ -593,3 +593,23 @@ DEVICE) and O4 (FULLSCREEN disabled without the Fullscreen API). The QA PoCs in 
 behavior and their inputs run in `test_save_robust.gd` every time. M1 (memory per level start) was checked: no unbounded
 script cache; left open as engine-internal.
 
+
+## Touch: level 1 move hint stuck on screen (2026-10-14)
+
+Reported from a phone on the itch web build (fresh save, level 1): the d-pad glyph stayed after moving with the touch
+joystick; gone after a hub round trip; fine with WASD. **Root cause (not the input device):** `TutorialCues` already
+detects the first move / leap from the slime itself (position displaced; any state but GLIDE/STUNNED = a charge), so
+touch was detected and `tutorial_seen` was saved (hence gone after a restart). But `_process` only called
+`queue_redraw()` while an alpha was > 0, so the frame where the alpha reached 0 was never redrawn and the canvas kept
+the last drawn glyph. At 60 fps that stale frame is ~5% alpha (invisible with WASD on a desktop); a long frame on the
+first glide (a phone browser's stall as the trail, drips and sounds start; `delta * FADE_SPEED >= 1`) took the alpha
+from 1 to 0 in one step and left the full glyph on screen. Same flaw for the SPACE/JUMP key and the chalice beacon.
+**Fix** (`scripts/tutorial_cues.gd`): `drawn_alpha` remembers what the last `_draw()` showed and one more redraw runs
+after everything reaches 0; a fade step uses at most `MAX_FADE_STEP` (1/30 s), so a hitch can't skip the fade. Also
+`scripts/ui/touch_controls.gd` only releases actions it pressed itself (`_held`): with the controls up (`--touch`), the
+first keyboard key hid them via `_release_all()`, which released that key's own move action (the slime didn't move).
+**Test** `tests/test_touch_cues.gd` (real InputEventScreenTouch/ScreenDrag on the joystick, a tap on JUMP, vs keys; normal
+and `--touch` UI; `--web-ui` only changes the hub): move glyph cleared in 22 frames and JUMP key in 21 for keys and
+touch alike, both bits in the saved `tutorial_seen`, beacon cleared after a move by either device, a 0.5 s frame
+mid-fade still fades and clears. The old code fails 16 of its checks. Shots: `tests/demo_touch_hint.tscn` (`--hitch`)
+-> `docs/polish-shots/touchhint_1_before.png`, `_2_fading.png`, `_3_after.png`.
