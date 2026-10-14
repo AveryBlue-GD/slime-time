@@ -264,7 +264,10 @@ func _refresh_trails(focus_id := "") -> void:
 	if Progress.owns_cosmetic(id):
 		status.text = Cosmetics.display_name(id) + ("  (WEARING)" if id == Progress.trail_style else "")
 	else:
-		status.text = "%s - %d TIX IN THE SHOP" % [Cosmetics.display_name(id), Cosmetics.price(id)]
+		if Cosmetics.is_earned(id):
+			status.text = "%s - %s" % [Cosmetics.display_name(id), Cosmetics.earned_how(id)]
+		else:
+			status.text = "%s - %d TIX IN THE SHOP" % [Cosmetics.display_name(id), Cosmetics.price(id)]
 	for tile_id: String in trail_tiles:
 		(trail_tiles[tile_id] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if tile_id == Progress.trail_style else "normal"))
 

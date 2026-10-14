@@ -91,3 +91,65 @@ const COSMETICS := {
 	"ink": 20, "glow": 25, "gold": 30, "candy": 35, "starry": 40,
 	"blueprint": 25, "night": 25, "goldleaf": 40,
 }
+
+## ---------------------------------------------------------------- DESCENT runs (C2)
+## A Descent run chains randomizer-style floors built from one run seed: floor k's maze seed is
+## run seed x DESCENT_FLOOR_SEED + k (no seed codes). Run seeds stay below DESCENT_SEED_MAX so a
+## floor seed fits in 31 bits like the randomizer's.
+const DESCENT_SEED_MAX := 2_000_000
+const DESCENT_FLOOR_SEED := 1000
+## Floor k's usage u (permille of the player's base meter a perfect glide to the exit needs):
+## DESCENT_U_START + DESCENT_U_STEP x (k - 1), at most DESCENT_U_MAX (floor 12+), +- DESCENT_U_JITTER
+## seeded jitter, kept within DESCENT_U_MIN .. DESCENT_U_MAX.
+const DESCENT_U_START := 300
+const DESCENT_U_STEP := 50
+const DESCENT_U_MAX := 850
+const DESCENT_U_JITTER := 50
+const DESCENT_U_MIN := 250
+## The meter carries from floor to floor; entering floor k adds the refill (percent of the meter) of
+## the last row whose floor <= k, capped at a full meter: [from floor, + percent].
+const DESCENT_REFILL := [[1, 60], [4, 50], [7, 40], [10, 35]]
+## Goo drops per floor (deep dead ends, seeded like coins) and the meter each one gives (percent).
+const DESCENT_DROPS := 2
+const DESCENT_DROP_REFILL := 8.0
+## Tickets each cleared floor adds to the run's pot: [from floor, + tickets]; the pot never exceeds
+## DESCENT_POT_MAX. CASH OUT banks the whole pot, a dry-up (or quitting mid-floor) half, rounded down.
+const DESCENT_POT_PER_FLOOR := [[1, 1], [4, 2], [7, 3], [10, 4]]
+const DESCENT_POT_MAX := 30
+## Runs per UTC day that pay (the first ones that bank anything); later runs are PRACTICE (pay 0).
+const DESCENT_PAID_PER_DAY := 2
+## With no MORE SLIME bought a run banks at most this (not in dev mode).
+const DESCENT_NO_SLIME_CAP := 1
+## One-time bonuses for first reaching a floor: {floor: tickets} (10 + 15 + 20 + 25 = 70).
+const DESCENT_MILESTONES := {5: 10, 10: 15, 15: 20, 20: 25}
+## First reaching this floor also unlocks the ABYSS trail (an earned cosmetic, never sold).
+const DESCENT_ABYSS_FLOOR := 10
+
+## Boons: after each cleared floor the player picks 1 of 3 offers (seeded by run seed and floor;
+## distinct; a boon held `max` times is no longer offered, max 0 = no limit). Run-scoped.
+##   gulp     BIG GULP        `value` % of the meter added right away
+##   tank     DEEP TANK       meter capacity + `value` (share) for the run
+##   feather  FEATHER LEAP    leaps cost `value` of gliding the distance (game.JUMP_COST_FACTOR 0.5)
+##   rubber   RUBBER BODY     splats cost no extra slime (the stun stays)
+##   slick    SLICK           glide speed + `value` (share)
+##   blaze    BLAZE           one more brightness step: light reach `value` px past BRIGHTNESS 3
+##   sense    CHALICE SENSE   the exit shows within `value` px (game.CHALICE_REVEAL_DISTANCE 24)
+##   bladder  BACKUP BLADDER  one more refill of `value` % when the meter hits 0 (after SECOND WIND)
+##   thrift   THRIFT          each floor refill + `value` percent
+##   greedy   GREEDY GOO      + `tickets` to the pot per cleared floor, capacity `value` (share)
+##   glass    GLASS SLIME     the banked pot x `pot`, splat penalties x `splat`
+const BOONS := {
+	"gulp": {weight = 1.0, max = 0, value = 30.0},
+	"tank": {weight = 0.8, max = 2, value = 0.15},
+	"feather": {weight = 0.8, max = 1, value = 0.35},
+	"rubber": {weight = 0.8, max = 1, value = 0.0},
+	"slick": {weight = 0.8, max = 2, value = 0.15},
+	"blaze": {weight = 0.6, max = 1, value = 33.0},
+	"sense": {weight = 0.5, max = 1, value = 96.0},
+	"bladder": {weight = 0.5, max = 0, value = 25.0},
+	"thrift": {weight = 0.8, max = 2, value = 15.0},
+	"greedy": {weight = 0.5, max = 2, value = -0.10, tickets = 1},
+	"glass": {weight = 0.4, max = 1, pot = 1.5, splat = 2.0},
+}
+## Boons offered after each floor.
+const BOON_OFFERS := 3

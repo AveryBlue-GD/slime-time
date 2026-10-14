@@ -30,6 +30,8 @@ const LIST := [
 	{id = "blueprint", kind = PAPER, name = "BLUEPRINT PAPER", about = "BLUE PAPER, WHITE INK"},
 	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},
 	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},
+	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
+	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},
 ]
 
 ## Trail looks: the goo alpha (0-255) of a painted cell, and the trail halo strength (game.gd TRAIL_GLOW).
@@ -45,6 +47,11 @@ const GOLD_DEEP := Color8(196, 128, 52)
 const CANDY_STRIPE := 12.0
 const CANDY_WHITE := Color8(250, 246, 240)
 const CANDY_WHITE_DEEP := Color8(214, 206, 214)
+## ABYSS (earned on Descent floor 10): deep violet-black goo, faint halo, starry specks.
+const ABYSS := Color8(52, 30, 92)
+const ABYSS_DEEP := Color8(22, 12, 42)
+const ABYSS_ALPHA := 190
+const ABYSS_GLOW := 0.45
 
 
 static func get_item(id: String) -> Dictionary:
@@ -66,11 +73,21 @@ static func kind_of(id: String) -> String:
 	return get_item(id).get("kind", "")
 
 
-## The sold ids of one kind, in shop order.
+## True for a cosmetic that is earned (e.g. ABYSS: Descent floor 10), never sold.
+static func is_earned(id: String) -> bool:
+	return get_item(id).has("earned")
+
+
+## How an earned cosmetic is earned ("" for a sold one).
+static func earned_how(id: String) -> String:
+	return get_item(id).get("earned", "")
+
+
+## The sold ids of one kind, in shop order (earned ones are left out: they are never sold).
 static func ids(kind := "") -> Array[String]:
 	var out: Array[String] = []
 	for item: Dictionary in LIST:
-		if kind == "" or item.kind == kind:
+		if (kind == "" or item.kind == kind) and not item.has("earned"):
 			out.append(item.id)
 	return out
 
@@ -83,10 +100,13 @@ static func display_name(id: String) -> String:
 	return get_item(id).get("name", "")
 
 
-## Every trail style the player could wear: the default, then the sold ones.
+## Every trail style the player could wear: the default, the sold ones, then the earned ones.
 static func trail_ids() -> Array[String]:
 	var out: Array[String] = [DEFAULT_TRAIL]
 	out.append_array(ids(TRAIL))
+	for item: Dictionary in LIST:
+		if item.kind == TRAIL and item.has("earned"):
+			out.append(item.id)
 	return out
 
 
@@ -121,6 +141,11 @@ static func trail_look(style: String, skin: Color, rainbow := false) -> Dictiona
 			look.candy = true
 		"starry":
 			look.stars = true
+		"abyss":  # whatever the skin: near-black violet goo with the starry specks
+			look.light = Color(ABYSS, ABYSS_ALPHA / 255.0)
+			look.deep = Color(ABYSS_DEEP, ABYSS_ALPHA / 255.0)
+			look.stars = true
+			look.glow = ABYSS_GLOW
 		_:
 			look.rainbow = rainbow  # the default: the rainbow skin lays rainbow bands
 	return look

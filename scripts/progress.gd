@@ -3,10 +3,11 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
+const MODE_DESCENT := "descent"
 const TUTORIAL_MOVE := 1
 const TUTORIAL_LEAP := 2
 
@@ -141,6 +142,18 @@ var random_offer_shown := {}
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
 var day_override := -1
+## DESCENT (upgrades v2 batch 3, Descent): the run being played (Descent.new_run; in memory only,
+## never saved: closing the game mid-run banks nothing), the deepest floor ever reached and the run
+## time it took (saved [descent] best_floor / best_time), runs banked in all, the UTC day and how many
+## runs were paid on it (forward-only like the randomizer's), and the milestone floors already paid
+## (bitmask, Descent.milestone_bit).
+var descent_run := {}
+var descent_best_floor := 0
+var descent_best_time := 0.0
+var descent_runs := 0
+var descent_pay_day := 0
+var descent_paid := 0
+var descent_milestones := 0
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -272,6 +285,8 @@ func _ready() -> void:
 			hard_mode = true
 		elif arg == "--random":
 			start_random()
+		elif arg == "--descent" or arg.begins_with("--descent="):  # a Descent run (--descent=SEED: that run seed)
+			start_descent(arg.trim_prefix("--descent=").to_int() if arg.begins_with("--descent=") else 0)
 		elif arg.begins_with("--skin="):
 			saving_enabled = false
 			selected_skin = arg.trim_prefix("--skin=")
@@ -615,6 +630,7 @@ func _read(file: ConfigFile) -> void:
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
 	_read_bindings(file)
 	_read_wallet(file)
+	_read_descent(file)
 	_read_store(file)
 	_read_maps(file)
 	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
@@ -743,6 +759,17 @@ func _read_wallet(file: ConfigFile) -> void:
 ## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
 ## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
 ## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
+func _read_descent(file: ConfigFile) -> void:
+	descent_best_floor = clampi(_int(file, "descent", "best_floor", 0), 0, DESCENT_FLOOR_MAX)
+	descent_best_time = clampf(_float(file, "descent", "best_time", 0.0), 0.0, 1.0e7)
+	descent_runs = clampi(_int(file, "descent", "runs", 0), 0, 100 * TICKETS_MAX)
+	descent_pay_day = maxi(_int(file, "descent", "paid_day", 0), 0)
+	descent_paid = clampi(_int(file, "descent", "paid_runs", 0), 0, Economy.DESCENT_PAID_PER_DAY)
+	_check_descent_day()
+	descent_milestones = clampi(_int(file, "descent", "milestones", 0), 0, (1 << Economy.DESCENT_MILESTONES.size()) - 1)
+	descent_run = {}
+
+
 func _read_store(file: ConfigFile) -> void:
 	workshop = {}
 	for id in Workshop.ids():
@@ -751,6 +778,8 @@ func _read_store(file: ConfigFile) -> void:
 			workshop[id] = level
 	var owned: Array[String] = []
 	for id in _strings(file.get_value("cosmetics", "owned", [])):
+		if Cosmetics.is_earned(id) and not cosmetic_earned(id):
+			continue  # an earned cosmetic (ABYSS) counts only with its milestone
 		if not Cosmetics.get_item(id).is_empty() and not id in owned:
 			owned.append(id)
 	cosmetics_owned.assign(owned)
@@ -967,6 +996,14 @@ func _write() -> ConfigFile:
 		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
 	if maps_hint_seen:
 		file.set_value("maps", "hint_seen", true)
+	# DESCENT records and its daily counter: written only once a run has been played.
+	if descent_best_floor > 0 or descent_runs > 0 or descent_pay_day > 0 or descent_milestones > 0:
+		file.set_value("descent", "best_floor", descent_best_floor)
+		file.set_value("descent", "best_time", descent_best_time)
+		file.set_value("descent", "runs", descent_runs)
+		file.set_value("descent", "paid_day", descent_pay_day)
+		file.set_value("descent", "paid_runs", descent_paid)
+		file.set_value("descent", "milestones", descent_milestones)
 	return file
 
 
@@ -1358,6 +1395,158 @@ func start_random() -> void:
 	new_random_maze()
 
 
+# ---------------------------------------------------------------- DESCENT runs (batch 3)
+
+## A saved best floor is never above this (a hand-made save can't claim more).
+const DESCENT_FLOOR_MAX := 999
+
+
+## Starts a new DESCENT run (seed 0 = a random run seed) on floor 1 with a full meter. Any run in
+## progress is dropped (it never banked).
+func start_descent(run_seed := 0) -> void:
+	mode = MODE_DESCENT
+	descent_run = Descent.new_run(run_seed if run_seed > 0 else Descent.roll_seed())
+	descent_run.best_before = descent_best_floor
+	_reach_descent_floor()
+
+
+## True while a DESCENT run is being played (started, not banked yet).
+func descent_active() -> bool:
+	return mode == MODE_DESCENT and not descent_run.is_empty() and not descent_run.ended
+
+
+## The current floor was cleared with `left` percent of the meter after `seconds` (`tainted`: a dev
+## toggle was on this floor). Adds the floor's tickets to the pot (Descent.clear_floor) and returns them.
+func clear_descent_floor(left: float, seconds: float, tainted := false) -> int:
+	if not descent_active() or int(descent_run.cleared) >= int(descent_run.floor):
+		return 0
+	descent_run.tainted = descent_run.tainted or tainted
+	return Descent.clear_floor(descent_run, left, seconds)
+
+
+## The boon offers after the current (cleared) floor (Descent.offers: seeded by run and floor).
+func descent_offers() -> Array[String]:
+	if descent_run.is_empty():
+		return []
+	return Descent.offers(descent_run.seed, descent_run.floor, descent_run.boons)
+
+
+## Takes boon `id` (one of descent_offers) and goes down a floor (Descent.descend); reaching the new
+## floor may pay a milestone (saved). False when the floor isn't cleared or `id` wasn't offered.
+func descend(id: String) -> bool:
+	if not descent_active() or int(descent_run.cleared) < int(descent_run.floor) or not id in descent_offers():
+		return false
+	Descent.descend(descent_run, id)
+	_reach_descent_floor()
+	return true
+
+
+## The run reached its current floor: a deeper best floor (or the same, faster) is saved, and a
+## milestone floor reached for the first time pays its bonus once ever (Economy.DESCENT_MILESTONES;
+## floor 10 also unlocks the ABYSS trail). Dev-toggled runs set no record and earn no bonus.
+func _reach_descent_floor() -> void:
+	descent_run.bonus = 0
+	if descent_run.tainted:
+		return
+	var floor_no: int = descent_run.floor
+	var t: float = descent_run.time
+	var changed := false
+	var before := int(descent_run.get("best_before", 0))
+	if floor_no > before and before > 0:
+		descent_run.new_best = true  # deeper than before this run (a first run sets the record without a fanfare)
+	if floor_no > descent_best_floor or (floor_no == descent_best_floor and t < descent_best_time):
+		descent_best_floor = mini(floor_no, DESCENT_FLOOR_MAX)
+		descent_best_time = t
+		changed = true
+	var bit := Descent.milestone_bit(floor_no)
+	if bit >= 0 and descent_milestones & (1 << bit) == 0:
+		descent_milestones |= 1 << bit
+		descent_run.bonus = add_tickets(Descent.milestone(floor_no), false)
+		descent_run.bonuses.append([floor_no, descent_run.bonus])
+		changed = true
+	if floor_no >= Economy.DESCENT_ABYSS_FLOOR and not "abyss" in cosmetics_owned:
+		cosmetics_owned.append("abyss")
+		changed = true
+	if changed and floor_no > 1:
+		save_progress()
+
+
+## True once earned cosmetic `id` has been earned (ABYSS: Descent floor DESCENT_ABYSS_FLOOR reached).
+func cosmetic_earned(id: String) -> bool:
+	if id == "abyss":
+		var bit := Descent.milestone_bit(Economy.DESCENT_ABYSS_FLOOR)
+		return descent_best_floor >= Economy.DESCENT_ABYSS_FLOOR or (bit >= 0 and descent_milestones & (1 << bit) != 0)
+	return false
+
+
+## A stored Descent pay day far in the future counts as today (as the randomizer's, PAY_DAY_AHEAD).
+func _check_descent_day() -> void:
+	if descent_pay_day > utc_day() + PAY_DAY_AHEAD:
+		descent_pay_day = utc_day()
+
+
+## True while today still has a paying Descent run left (the first DESCENT_PAID_PER_DAY runs that
+## bank anything pay; a clock moved back never opens a new day).
+func descent_day_open() -> bool:
+	_check_descent_day()
+	return utc_day() > descent_pay_day or descent_paid < Economy.DESCENT_PAID_PER_DAY
+
+
+## Paying runs left today.
+func descent_paid_left() -> int:
+	_check_descent_day()
+	if utc_day() > descent_pay_day:
+		return Economy.DESCENT_PAID_PER_DAY
+	return maxi(Economy.DESCENT_PAID_PER_DAY - descent_paid, 0)
+
+
+## What ending the current run now would bank: {tickets, base, cap}; base = Descent.bank (whole pot on
+## a cash out, half on a dry-up / quit, GLASS SLIME x1.5, at most the pot cap) and cap "" (paid in full),
+## "practice" (today's paying runs are used up: 0), "dev" (a dev toggle was used: 0) or "slime" (no
+## MORE SLIME bought: at most DESCENT_NO_SLIME_CAP; never in dev mode). `tainted` adds this floor's toggles.
+func descent_payout(cashed: bool, tainted := false) -> Dictionary:
+	if descent_run.is_empty():
+		return {tickets = 0, base = 0, cap = ""}
+	var base := Descent.bank(descent_run.pot, cashed, descent_run.boons)
+	if tainted or descent_run.tainted:
+		return {tickets = 0, base = base, cap = "dev"}
+	if not descent_day_open():
+		return {tickets = 0, base = base, cap = "practice"}
+	if int(upgrades.get("slime", 0)) <= 0 and not dev_tools and base > Economy.DESCENT_NO_SLIME_CAP:
+		return {tickets = Economy.DESCENT_NO_SLIME_CAP, base = base, cap = "slime"}
+	return {tickets = base, base = base, cap = ""}
+
+
+## Ends the run and banks it (once): `cashed` = CASH OUT (the whole pot) else a dry-up / quit (half).
+## A run that pays anything uses one of today's paying runs. Saves. Returns the result (also kept in
+## descent_run.result): {tickets, base, cap, cashed, floor, cleared, pot, best_floor, new_best, time,
+## bonuses}. {} when no run is going.
+func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
+	if not descent_active():
+		return descent_run.get("result", {}) if not descent_run.is_empty() else {}
+	descent_run.tainted = descent_run.tainted or tainted
+	if not cashed:
+		descent_run.time = float(descent_run.time) + maxf(seconds, 0.0)
+	var due := descent_payout(cashed)
+	var paid := 0
+	if due.tickets > 0:
+		_check_descent_day()
+		if utc_day() > descent_pay_day:  # a new day: the count starts over (never when the clock went back)
+			descent_pay_day = utc_day()
+			descent_paid = 0
+		descent_paid += 1
+		paid = add_tickets(due.tickets, false)
+	descent_runs = mini(descent_runs + 1, 100 * TICKETS_MAX)
+	descent_run.ended = true
+	var result := {tickets = paid, base = due.base, cap = due.cap, cashed = cashed, floor = int(descent_run.floor),
+		cleared = int(descent_run.cleared), pot = int(descent_run.pot), best_floor = descent_best_floor,
+		new_best = descent_run.get("new_best", false),
+		time = float(descent_run.time), bonuses = descent_run.bonuses.duplicate(), boons = descent_run.boons.duplicate()}
+	descent_run.result = result
+	save_progress()
+	return result
+
+
 func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
@@ -1593,7 +1782,7 @@ func cosmetic_price(id: String) -> int:
 
 
 func can_buy_cosmetic(id: String) -> bool:
-	return not Cosmetics.get_item(id).is_empty() and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
+	return not Cosmetics.get_item(id).is_empty() and not Cosmetics.is_earned(id) and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
 
 
 ## Buys cosmetic `id` and puts it on (pay + own + wear + save at once). False if it can't.
@@ -1791,6 +1980,13 @@ func reset_progress() -> void:
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false
+	descent_run = {}
+	descent_best_floor = 0
+	descent_best_time = 0.0
+	descent_runs = 0
+	descent_pay_day = 0
+	descent_paid = 0
+	descent_milestones = 0
 	save_progress()
 
 
