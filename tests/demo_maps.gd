@@ -25,7 +25,7 @@ func _ready() -> void:
 ## A walk from the start halfway along the route to the goal and then off into side branches, with
 ## the tiles next to every cell walked seen (as the trail and its light would show them).
 func _partial(maze: Dictionary) -> Dictionary:
-	var survey := Survey.blank(maze.size, maze.start)
+	var survey := Survey.blank(maze)
 	var path := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
 	var walk: Array[Vector2i] = path.slice(0, path.size() / 2)
 	var cell: Vector2i = walk[-1]

@@ -225,6 +225,29 @@ func _test_rules() -> void:
 	_check(progress.survey_for(3, false).moves == slow, "...nor does an attempt that didn't clear")
 	progress.record_survey(3, false, maze, tiles, detour, true, 39.5, false)
 	_check(progress.survey_for(3, false).best_ms == 39500 and progress.survey_for(3, false).moves == detour, "a faster clear does")
+
+	# A stale survey: same size, but of another layout (an update re-laid the maze; here one wall
+	# moved). It no longer fits, is dropped where it's used and never blocks a new route.
+	var relaid := maze.duplicate(true)
+	var relaid_walls: PackedByteArray = relaid.walls
+	for i in relaid_walls.size():  # open one inner wall tile between two cells (a different layout)
+		var t := Vector2i(i % maze.size.x, i / maze.size.x)
+		if relaid_walls[i] == 1 and t.x > 0 and t.y > 0 and t.x < maze.size.x - 1 and t.y < maze.size.y - 1 and (t.x + t.y) & 1 == 1:
+			relaid_walls[i] = 0
+			break
+	relaid.walls = relaid_walls
+	_check(relaid.size == maze.size and Survey.fingerprint(relaid) != Survey.fingerprint(maze), "a re-laid maze of the same size has another fingerprint")
+	var stale := Survey.full(relaid, 1.0)  # every tile seen, a 1 s clear on the old layout
+	_check(not Survey.fits(stale, maze) and Survey.route_cells(stale, maze).is_empty() and Survey.completeness(stale, maze) == 0.0,
+		"a survey of another layout of the same size doesn't fit: no route, no survey %")
+	progress.maps[3] = stale
+	_check(progress.survey_for(3, false).is_empty() and not progress.maps.has(3), "...and is dropped when it is asked for (the level has no survey)")
+	progress.maps[3] = Survey.full(relaid, 1.0)
+	progress.record_survey(3, false, maze, tiles, slow, true, 40.0, true)
+	var fresh: Dictionary = progress.survey_for(3, false)
+	_check(fresh.fp == Survey.fingerprint(maze) and fresh.clear and fresh.best_ms == 40000 and fresh.moves == slow and _seen_count(fresh) <= 2,
+		"a run over a stale survey starts afresh: its slower clear (40 s vs the stale 1 s) sets the best route, with only its own tiles (%d seen)" % _seen_count(fresh))
+	_check(Survey.route_cells(fresh, maze).size() == path.size() and Survey.route_cells(fresh, maze)[-1] == maze.goal, "...and that route reaches the goal")
 	progress.maps = {}
 
 
@@ -236,7 +259,7 @@ func _test_save() -> void:
 	progress.highest_unlocked = 5
 	var maze := Levels.story_maze(2)
 	progress.maps[2] = Survey.full(maze, 21.5)
-	progress.maps[103] = Survey.blank(Levels.story_maze(3, true).size, Levels.story_maze(3, true).start)
+	progress.maps[103] = Survey.blank(Levels.story_maze(3, true))
 	progress.maps_hint_seen = true
 	var text: String = progress._write().encode_to_text()
 	var file := ConfigFile.new()
@@ -277,6 +300,19 @@ func _test_save() -> void:
 	for value: Variant in bad:
 		dropped = dropped and Survey.unpack(value).is_empty()
 	_check(dropped, "hostile survey values are all dropped (%d kinds)" % bad.size())
+	# An old version-1 survey (no fingerprint: can't be checked against the maze) is dropped.
+	var v1 := raw.slice(0, 12) + raw.slice(Survey.HEADER)
+	v1[0] = 1
+	_check(Survey.unpack(Marshalls.raw_to_base64(v1)).is_empty(), "an old version-1 survey (no layout fingerprint) is dropped")
+	var old_file := ConfigFile.new()
+	old_file.set_value("progress", "levels_cleared", 2)
+	old_file.set_value("maps", "level_2", Marshalls.raw_to_base64(v1))
+	progress._read(old_file)
+	_check(progress.maps.is_empty() and progress.survey_for(2, false).is_empty(), "...so a save with one loads with no survey for that level")
+	var foreign := raw.duplicate()
+	foreign.encode_u32(12, foreign.decode_u32(12) ^ 0x5A5A5A5A)
+	var foreign_survey := Survey.unpack(Marshalls.raw_to_base64(foreign))
+	_check(not foreign_survey.is_empty() and not Survey.fits(foreign_survey, maze), "a well-formed survey with a wrong fingerprint loads but never fits the maze")
 	var clamped := Survey.unpack(Marshalls.raw_to_base64(weird))
 	_check(not clamped.is_empty() and clamped.best_ms == Survey.MAX_MS and clamped.start.x == maze.cells.x - 1 and clamped.goal,
 		"odd but well-formed values are clamped (time %d, start %s)" % [clamped.get("best_ms", -1), clamped.get("start", "")])
@@ -380,7 +416,7 @@ func _test_screen() -> void:
 	progress.levels_cleared = 3
 	progress.highest_unlocked = 4
 	var maze := Levels.story_maze(2)
-	var partial := Survey.blank(maze.size, maze.start)
+	var partial := Survey.blank(maze)
 	var tiles := PackedByteArray()
 	tiles.resize(maze.size.x * maze.size.y)
 	for x in 7:  # the first few tiles of the start's row only
@@ -406,6 +442,57 @@ func _test_screen() -> void:
 			if c != MapView.FOG and not (Vector2i(tx, ty) == maze.start * 2 + Vector2i.ONE):
 				leaks += 1
 	_check(leaks == 0, "the map draws nothing on unseen tiles (%d leaks)" % leaks)
+	# The same, with every mark that could leak: a clear route running on over unseen tiles, found
+	# coins on seen and unseen cells, the goal flagged but its tile unseen, the start unseen.
+	var leaky := Survey.blank(maze)
+	var leaky_tiles := PackedByteArray()
+	leaky_tiles.resize(maze.size.x * maze.size.y)
+	var route := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
+	for i in mini(4, route.size() - 1):  # only the first few steps of the route were seen (not the start)
+		leaky_tiles[(route[i + 1].y * 2 + 1) * maze.size.x + route[i + 1].x * 2 + 1] = 1
+		leaky_tiles[(route[i].y + route[i + 1].y + 1) * maze.size.x + route[i].x + route[i + 1].x + 1] = 1
+	var coin_cells: Array[Vector2i] = Levels.story_coin_cells(2)
+	leaky_tiles[(coin_cells[0].y * 2 + 1) * maze.size.x + coin_cells[0].x * 2 + 1] = 1  # one coin's cell seen, the rest not
+	Survey.merge_seen(leaky, leaky_tiles)
+	leaky.moves = Survey.moves_along(route)
+	leaky.clear = true
+	leaky.best_ms = 30000
+	leaky.goal = true
+	var all_sizes: Array[Vector2i] = []
+	for sz: Vector2i in MapView.SIZES:  # every size the view can use (the largest maze gets 4 px+ cells)
+		if sz.x >= 4:
+			all_sizes.append(sz)
+	var unseen_leaks := 0
+	var drawn_seen := 0
+	for sz in all_sizes:
+		var img := MapView.render(maze, leaky, sz, coin_cells, Skins.shades(Color.GREEN))
+		for ty in maze.size.y:
+			for tx in maze.size.x:
+				var c := img.get_pixelv(Vector2i(MapView._tile_px(tx, sz).x + MapView._tile_px(tx, sz).y / 2, MapView._tile_px(ty, sz).x + MapView._tile_px(ty, sz).y / 2))
+				if Survey.is_seen(leaky, Vector2i(tx, ty)):
+					drawn_seen += int(c != MapView.FOG)
+				elif c != MapView.FOG:
+					unseen_leaks += 1
+	_check(unseen_leaks == 0 and drawn_seen > 0,
+		"a survey with a route over unseen tiles, coins on unseen cells and an unseen goal still draws nothing there (%d leaks over %d sizes; %d seen tiles drawn)" % [unseen_leaks, all_sizes.size(), drawn_seen])
+	var thumb := MapView.thumbnail(maze, leaky, Skins.shades(Color.GREEN))
+	var scale: int = thumb.get_width() / maze.cells.x
+	var thumb_leaks := 0
+	for cy in maze.cells.y:
+		for cx in maze.cells.x:
+			if not Survey.is_seen(leaky, Vector2i(cx * 2 + 1, cy * 2 + 1)) and thumb.get_pixel(cx * scale, cy * scale).a > 0.0:
+				thumb_leaks += 1
+	_check(thumb_leaks == 0, "...nor does its thumbnail on unseen cells (%d leaks)" % thumb_leaks)
+	# A survey of another layout of the same size draws nothing at all.
+	var foreign_maze := maze.duplicate(true)
+	foreign_maze.goal = foreign_maze.start
+	var foreign := Survey.full(foreign_maze, 5.0)
+	var blank_img := MapView.render(maze, foreign, sizes, coin_cells, Skins.shades(Color.GREEN))
+	var all_fog := true
+	for y in range(0, blank_img.get_height(), 2):
+		for x in range(0, blank_img.get_width(), 2):
+			all_fog = all_fog and blank_img.get_pixel(x, y) == MapView.FOG
+	_check(all_fog, "a same-size survey of another layout draws nothing on the map")
 	var big := MapView.layout(Vector2i(36, 20), Vector2i(312, 146))
 	_check(MapView.map_size(Vector2i(36, 20), big).x <= 312 and MapView.map_size(Vector2i(36, 20), big).y <= 146 and big.x >= 4,
 		"the largest maze (36x20 cells) fits the view at an integer %d px per cell" % big.x)
@@ -446,6 +533,21 @@ func _test_screen() -> void:
 		"Enter opens that level's map")
 	_check("LEVEL 3" in screen.view_title.text and "BEST ROUTE 0:23.5" in screen.view_line.text and "100%" in screen.view_line.text,
 		"...titled, with its survey %% and best route (%s / %s)" % [screen.view_title.text, screen.view_line.text])
+	# Tab / Shift+Tab (ui_focus_next / prev) and the arrows keep focus on the view's BACK; the hidden
+	# select (tiles, HARD, its BACK) can't be reached, so Enter never acts on it.
+	var escaped := ""
+	for act in ["ui_focus_next", "ui_focus_next", "ui_focus_prev", "ui_down", "ui_right", "ui_focus_next"]:
+		await _action(act)
+		var f := screen.get_viewport().gui_get_focus_owner()
+		if f != screen.view_back and escaped == "":
+			escaped = "%s -> %s" % [act, f]
+	await _action("ui_accept")  # BACK: closes the view
+	_check(escaped == "" and not screen.viewing and screen.hard == false and current_scene == screen,
+		"in the map view Tab / Shift+Tab / arrows keep focus on BACK (%s); Enter then just closes the view" % ("ok" if escaped == "" else escaped))
+	_check(screen.get_viewport().gui_get_focus_owner() == screen.tiles[2] and screen.tiles[2].focus_mode != Control.FOCUS_NONE and screen.hard_box.focus_mode != Control.FOCUS_NONE,
+		"...and closing it gives the select its focus back (tile 3 focused, tiles and HARD focusable again)")
+	await _action("ui_accept")
+	_check(screen.viewing and screen.viewed_level == 3, "(reopened level 3)")
 	var map_rect := Rect2(screen.view_map.position, screen.view_map.size)
 	_check(Rect2(0, 12, 320, 150).encloses(map_rect) and map_rect.position == map_rect.position.floor(), "...fitting the screen at whole pixels (%s)" % map_rect)
 	await _action("menu")
@@ -472,6 +574,29 @@ func _test_screen() -> void:
 	_check("HARD" in screen.view_title.text, "...and their maps say HARD")
 	screen.close_view()
 	screen.hard_box.button_pressed = false
+	await _frames(2)
+
+	# BEST ROUTE never contradicts the level's record: a record faster than the survey's clear (set
+	# before the maps existed) hides the route's time on the tile and says SET A NEW BEST in the view.
+	progress.best_times[3] = 20.0
+	screen._fill_grid()
+	await _frames(1)
+	var tile3 := _texts(screen.tiles[2])
+	_check("ROUTE" in tile3 and not "0:23.5" in tile3 and not "0:20.0" in tile3, "a record faster than the route: the tile shows ROUTE, no time (%s)" % ", ".join(tile3))
+	screen.open_view(3)
+	_check("ROUTE 0:23.5" in screen.view_line.text and "SET A NEW BEST" in screen.view_line.text and not "BEST ROUTE" in screen.view_line.text,
+		"...and the view says ROUTE 0:23.5  SET A NEW BEST (%s)" % screen.view_line.text)
+	screen.close_view()
+	progress.best_times[3] = 23.5
+	screen._fill_grid()
+	await _frames(1)
+	screen.open_view(3)
+	_check("0:23.5" in _texts(screen.tiles[2]) and "BEST ROUTE 0:23.5" in screen.view_line.text,
+		"when the route is the record both show it, the same as the level select (%s)" % screen.view_line.text)
+	screen.close_view()
+	progress.best_times.erase(3)
+	screen._fill_grid()
+	await _frames(1)
 
 	# Esc on the select goes back to the hub, facing the table.
 	await _action("menu")

@@ -218,6 +218,34 @@ static func add_back_button(root: Control) -> Button:
 	return button
 
 
+## Keeps keyboard / controller focus inside `modal`, a panel open over `screen`: every other
+## focusable control under `screen` stops taking focus (arrows, Tab and Shift+Tab skip it) until
+## `unlock_focus` gets the returned map back. Grab the panel's focus before or after; either works.
+static func lock_focus(screen: Node, modal: Node) -> Dictionary:
+	var saved := {}
+	_lock_focus(screen, modal, saved)
+	return saved
+
+
+static func _lock_focus(node: Node, modal: Node, saved: Dictionary) -> void:
+	for child in node.get_children():
+		if child == modal:
+			continue
+		var control := child as Control
+		if control and control.focus_mode != Control.FOCUS_NONE:
+			saved[control] = control.focus_mode
+			control.focus_mode = Control.FOCUS_NONE
+		_lock_focus(child, modal, saved)
+
+
+## Undoes `lock_focus` (controls freed meanwhile are skipped).
+static func unlock_focus(saved: Dictionary) -> void:
+	for control: Variant in saved:
+		if is_instance_valid(control):
+			(control as Control).focus_mode = saved[control]
+	saved.clear()
+
+
 ## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level),
 ## inside a goo-framed box like a button's (the slider is the box's "slider" meta).
 static func make_volume_slider(width := 90.0) -> PanelContainer:

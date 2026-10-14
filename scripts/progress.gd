@@ -528,7 +528,8 @@ func _migrate_medals(key: int, version := 1) -> int:
 
 ## Trail map surveys ([maps] level_N, optional). Each is checked by Survey.unpack: anything broken,
 ## hostile or out of range is dropped (that level just has no survey yet); keys outside the 20 story
-## levels are ignored. A survey for a maze of another size is kept here but ignored where it's used.
+## levels are ignored. Old version-1 surveys (no layout fingerprint) are dropped by unpack; a survey of
+## another layout is dropped when it's first used (survey_for) or replaced by the next run (record_survey).
 func _read_maps(file: ConfigFile) -> void:
 	maps = {}
 	for level in range(1, Levels.COUNT + 1):
@@ -1338,9 +1339,21 @@ func survey_key(level: int, hard: bool) -> int:
 	return clampi(level, 1, Levels.COUNT) + (HARD_RECORDS if hard else 0)
 
 
-## The survey of a story level ({} = never recorded).
+## The survey of a story level ({} = never recorded). A survey of another layout (an update re-laid
+## the maze: its size or fingerprint no longer fits, Survey.fits) is stale: it is dropped here, so the
+## level shows no survey and its next run starts a fresh one (and can set any route time).
 func survey_for(level: int, hard: bool) -> Dictionary:
-	return maps.get(survey_key(level, hard), {})
+	var key := survey_key(level, hard)
+	var survey: Dictionary = maps.get(key, {})
+	if not survey.is_empty() and not Survey.fits(survey, Levels.story_maze(level, hard)):
+		maps.erase(key)
+		return {}
+	return survey
+
+
+## The record time of a story level in a given mode (seconds), or -1 without one.
+func record_for(level: int, hard: bool) -> float:
+	return best_times.get(survey_key(level, hard), -1.0)
 
 
 ## Merges one recorded attempt at a story level into its survey and saves (game.gd calls this once
@@ -1353,9 +1366,11 @@ func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteAr
 		won: bool, run_time: float, goal_seen: bool) -> void:
 	var key := survey_key(level, hard)
 	var survey: Dictionary = maps.get(key, {})
-	if not Survey.fits(survey, maze):
-		survey = Survey.blank(maze.size, maze.start)
+	if not Survey.fits(survey, maze):  # never recorded, or stale (another layout): start afresh
+		survey = Survey.blank(maze)
 	Survey.merge_seen(survey, tiles)
+	if goal_seen or won:  # the chalice was in sight: its tile counts as seen (the map only marks seen tiles)
+		Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
 	survey.goal = survey.goal or goal_seen or won
 	var route := moves.slice(0, Survey.MAX_MOVES)
 	if won and is_finite(run_time) and run_time > 0.0:

@@ -5,8 +5,11 @@ extends Control
 ## which maps are shown here, not the game's mode).
 ## - Select: goo-framed tiles like the level select's, two columns: a thumbnail of the survey, the
 ##   level's name, its number, how much of its floor has been seen and its route marker (a gold drop
-##   and the best clear's time, or a dim drop and LAST TRY). A level never attempted is locked: NO
-##   SURVEY YET. The first time the table is opened a hint line explains it.
+##   and the best clear's time, or a dim drop and LAST TRY). A level never attempted (or whose survey
+##   is of an older layout, Survey.fits) is locked: NO SURVEY YET. The first time the table is opened
+##   a hint line explains it. The route's time is shown only when it is the level's record (`route_text`):
+##   a record set before the maps existed is faster than any route recorded since, so then the
+##   tile just says ROUTE and the view SET A NEW BEST, and the two screens never disagree.
 ## - View: the whole map (MapView: only what was seen, the route, found coins, the start, the goal
 ##   once seen) under the level's title, with its survey % and route below.
 ## BACK / Esc / B (ui_cancel) go from the view back to the select, and from the select to the hub
@@ -37,6 +40,8 @@ var view_map: TextureRect
 var view_line: Label
 var view_back: Button
 var _goo: Dictionary
+## The select's controls kept out of focus while a map is viewed (UIKit.lock_focus).
+var _focus_lock := {}
 
 
 func _ready() -> void:
@@ -131,11 +136,37 @@ func _make_tile(level: int) -> Button:
 	button.set_meta("percent", percent)
 	row.add_child(UIKit.make_label("L%d %d%%" % [level, percent], 8, UIKit.TEXT_DIM))
 	row.add_child(UIKit.make_icon("drop", UIKit.GOLD if survey.clear else UIKit.TEXT_OFF))  # the route marker
-	if survey.clear:
-		row.add_child(UIKit.make_label(UIKit.format_time(survey.best_ms / 1000.0), 8, UIKit.GOLD))
-	else:
+	var best := route_best(level, survey)
+	if not survey.clear:
 		row.add_child(UIKit.make_label("LAST TRY", 8, UIKit.TEXT_DIM))
+	elif best >= 0.0:
+		row.add_child(UIKit.make_label(UIKit.format_time(best), 8, UIKit.GOLD))
+	else:
+		row.add_child(UIKit.make_label("ROUTE", 8, UIKit.TEXT_DIM))
 	return button
+
+
+## The time to show for a survey's clear route: the level's record when the route is that record
+## (the same value the level select shows, so the two screens never disagree), else -1: the record is
+## faster (set before the maps existed, or by a run not recorded on the map).
+func route_best(level: int, survey: Dictionary) -> float:
+	if not survey.get("clear", false):
+		return -1.0
+	var record: float = Progress.record_for(level, hard)
+	if record < 0.0:
+		return survey.best_ms / 1000.0
+	return record if absi(roundi(record * 1000.0) - int(survey.best_ms)) <= 1 else -1.0
+
+
+## The view's route text: BEST ROUTE and the record, the route's own time with SET A NEW BEST when the
+## record is faster (see route_best), or LAST TRY.
+func route_text(level: int, survey: Dictionary) -> String:
+	if not survey.get("clear", false):
+		return "LAST TRY"
+	var best := route_best(level, survey)
+	if best >= 0.0:
+		return "BEST ROUTE " + UIKit.format_time(best)
+	return "ROUTE %s  SET A NEW BEST" % UIKit.format_time(survey.best_ms / 1000.0)
 
 
 func _focus_tile(level: int) -> void:
@@ -182,6 +213,8 @@ func _build_view() -> void:
 	view_root.add_child(view_back)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:  # the select's tiles stay out of reach
 		view_back.set_focus_neighbor(side, view_back.get_path_to(view_back))
+	view_back.focus_next = view_back.get_path_to(view_back)  # Tab / Shift+Tab too
+	view_back.focus_previous = view_back.get_path_to(view_back)
 
 
 ## Shows the map of `level` (current mode). Does nothing for a locked level.
@@ -204,11 +237,13 @@ func open_view(level: int) -> void:
 	view_map.position = Vector2(MAP_AREA.position + (MAP_AREA.size - image.get_size()) / 2)
 	view_title.text = "LEVEL %d  %s%s" % [level, Themes.display_name(Themes.for_level(level)), "  HARD" if hard else ""]
 	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
-	view_line.text = "SURVEY %d%%   %s" % [percent, ("BEST ROUTE " + UIKit.format_time(survey.best_ms / 1000.0)) if survey.clear else "LAST TRY"]
+	view_line.text = "SURVEY %d%%   %s" % [percent, route_text(level, survey)]
 	viewing = true
 	viewed_level = level
 	view_root.visible = true
 	view_back.grab_focus()
+	if _focus_lock.is_empty():  # the hidden select (tiles, HARD, BACK) can't take focus meanwhile
+		_focus_lock = UIKit.lock_focus(self, view_root)
 	skin_text.recolor.call_deferred()
 
 
@@ -218,6 +253,7 @@ func close_view() -> void:
 	viewing = false
 	view_root.visible = false
 	view_map.texture = null
+	UIKit.unlock_focus(_focus_lock)
 	_focus_tile(viewed_level)
 
 

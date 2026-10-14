@@ -6,7 +6,9 @@ extends RefCounted
 ## shows layout that hasn't been surveyed), seen floor is parchment and seen walls ink-brown; on top,
 ## the route (the best clear in the goo color with a dark edge, or the last attempt faint, without
 ## the edge), found coins (gold, only on seen tiles), the start (a white ring) and the goal (a red X)
-## only once it has been seen or reached.
+## only once it has been seen or reached. Every mark is clipped to seen tiles too (a route step is
+## drawn only when both cells and the passage between them were seen; the start, goal and coins only
+## on seen cells), so even a damaged or hostile survey can't draw over the fog.
 ## Cells and walls get integer sizes (`layout`): the largest pair that fits the area, so a 36x20-cell
 ## maze (73x41 tiles) still fits the 320x180 screen with room for the title and BACK.
 
@@ -66,7 +68,7 @@ static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins:
 			var x := _tile_px(tx, sizes)
 			var color := WALL if walls[ty * w + tx] == 1 else (FLOOR if ((tx >> 1) + (ty >> 1)) & 1 == 0 else FLOOR_ALT)
 			image.fill_rect(Rect2i(x.x, y.x, x.y, y.y), color)
-	_draw_route(image, Survey.route_cells(survey, maze), sizes, survey.clear, goo)
+	_draw_route(image, survey, Survey.route_cells(survey, maze), sizes, goo)
 	var dot := maxi(1, sizes.x / 2)
 	for cell in coins:
 		if Survey.is_seen(survey, cell * 2 + Vector2i.ONE):
@@ -74,17 +76,24 @@ static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins:
 			if dot >= 3:
 				image.fill_rect(Rect2i(c - Vector2i.ONE * ((dot + 2) / 2), Vector2i.ONE * (dot + 2)), COIN_EDGE)
 			image.fill_rect(Rect2i(c - Vector2i.ONE * (dot / 2), Vector2i.ONE * dot), COIN)
-	_draw_ring(image, _cell_center(survey.start, sizes), maxi(5, sizes.x - 2), START)
-	if survey.goal:
+	if _cell_seen(survey, survey.start):
+		_draw_ring(image, _cell_center(survey.start, sizes), maxi(5, sizes.x - 2), START)
+	if survey.goal and _cell_seen(survey, maze.goal):
 		_draw_x(image, _cell_center(maze.goal, sizes), maxi(5, sizes.x - 1), GOAL)
 	return image
 
 
+static func _cell_seen(survey: Dictionary, cell: Vector2i) -> bool:
+	return Survey.is_seen(survey, cell * 2 + Vector2i.ONE)
+
+
 ## The route as a line through the cells' centers: a clear in the goo color on a dark edge, the
-## last attempt faint (half blended into the floor) and without the edge.
-static func _draw_route(image: Image, cells: Array[Vector2i], sizes: Vector2i, clear: bool, goo: Dictionary) -> void:
+## last attempt faint (half blended into the floor) and without the edge. Only steps over seen tiles
+## (both cells and the passage tile between them) are drawn.
+static func _draw_route(image: Image, survey: Dictionary, cells: Array[Vector2i], sizes: Vector2i, goo: Dictionary) -> void:
 	if cells.is_empty():
 		return
+	var clear: bool = survey.clear
 	var thick := maxi(1, sizes.x / 4)
 	var line: Color = goo.light if clear else (goo.mid as Color).lerp(FLOOR, 0.5)
 	var passes: Array = [[thick + 2, goo.outline], [thick, line]] if clear else [[thick, line]]
@@ -92,8 +101,12 @@ static func _draw_route(image: Image, cells: Array[Vector2i], sizes: Vector2i, c
 		var width: int = p[0]
 		var color: Color = p[1]
 		for i in cells.size():
-			var a := _cell_center(cells[i], sizes)
-			var b := _cell_center(cells[mini(i + 1, cells.size() - 1)], sizes)
+			var ca := cells[i]
+			var cb := cells[mini(i + 1, cells.size() - 1)]
+			if not (_cell_seen(survey, ca) and _cell_seen(survey, cb) and Survey.is_seen(survey, ca + cb + Vector2i.ONE)):
+				continue
+			var a := _cell_center(ca, sizes)
+			var b := _cell_center(cb, sizes)
 			var from: Vector2i = a.min(b) - Vector2i.ONE * (width / 2)
 			var to: Vector2i = a.max(b) + Vector2i.ONE * ((width - 1) / 2)
 			image.fill_rect(Rect2i(from, to - from + Vector2i.ONE), color)
@@ -121,7 +134,7 @@ static func _draw_x(image: Image, center: Vector2i, size: int, color: Color) -> 
 
 ## The map select tile's thumbnail: one block per maze cell (as big as fits THUMB), seen cells
 ## parchment-dim, the route's cells in the goo color (faint for a last attempt), the start white and
-## the goal red once seen; unseen cells transparent.
+## the goal red once seen; unseen cells transparent (nothing is drawn on them).
 static func thumbnail(maze: Dictionary, survey: Dictionary, goo: Dictionary) -> Image:
 	var cells: Vector2i = maze.cells
 	var scale := maxi(1, mini(THUMB.x / cells.x, THUMB.y / cells.y))
@@ -134,8 +147,10 @@ static func thumbnail(maze: Dictionary, survey: Dictionary, goo: Dictionary) -> 
 				image.fill_rect(Rect2i(cx * scale, cy * scale, scale, scale), THUMB_SEEN)
 	var route: Color = goo.light if survey.clear else (goo.mid as Color).lerp(THUMB_SEEN, 0.5)
 	for cell in Survey.route_cells(survey, maze):
-		image.fill_rect(Rect2i(cell * scale, Vector2i.ONE * scale), route)
-	image.fill_rect(Rect2i(survey.start * scale, Vector2i.ONE * scale), START)
-	if survey.goal:
+		if _cell_seen(survey, cell):
+			image.fill_rect(Rect2i(cell * scale, Vector2i.ONE * scale), route)
+	if _cell_seen(survey, survey.start):
+		image.fill_rect(Rect2i(survey.start * scale, Vector2i.ONE * scale), START)
+	if survey.goal and _cell_seen(survey, maze.goal):
 		image.fill_rect(Rect2i(maze.goal * scale, Vector2i.ONE * scale), GOAL)
 	return image

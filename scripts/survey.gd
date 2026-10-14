@@ -6,7 +6,9 @@ extends RefCounted
 ## plus one route. Shown at the hub's MAP TABLE (scripts/ui/map_select.gd); it never shows
 ## anything the player hasn't seen, so the dark-fog discovery stays.
 ## A survey is a Dictionary:
-##   w, h      the maze's size in tiles (a survey whose size isn't the maze's is ignored)
+##   w, h      the maze's size in tiles
+##   fp        the maze's layout fingerprint (`fingerprint`: walls + start + goal); a survey whose
+##             size or fingerprint isn't the maze's is from another layout and is ignored (`fits`)
 ##   seen      PackedByteArray bitset, one bit per tile (row-major, bit i in byte i >> 3, LSB first):
 ##             every tile EVER revealed (lit by the trail, the Brightness light, or a wall seen),
 ##             merged (OR) over every recorded attempt, across dry-ups, restarts and sessions
@@ -18,12 +20,14 @@ extends RefCounted
 ##   best_ms   the clear's run time in ms (0 without a clear)
 ##   goal      the goal (chalice) was seen or reached on some recorded attempt
 ## Saved under [maps] level_N (N = level, + Progress.HARD_RECORDS on hard) as base64 of `pack`:
-##   0 version (1), 1 flags (1 clear, 2 goal), 2 w, 3 h, 4-7 best_ms (u32 LE), 8 start.x, 9 start.y,
-##   10-11 move count (u16 LE), then the seen bitset (ceil(w*h/8) bytes), then the moves at 2 bits
-##   each, four to a byte (LSB first).
+##   0 version (2), 1 flags (1 clear, 2 goal), 2 w, 3 h, 4-7 best_ms (u32 LE), 8 start.x, 9 start.y,
+##   10-11 move count (u16 LE), 12-15 layout fingerprint (u32 LE), then the seen bitset
+##   (ceil(w*h/8) bytes), then the moves at 2 bits each, four to a byte (LSB first).
+## Version 1 (no fingerprint) can't be checked against the maze, so it is dropped on load: that level
+## just has no survey until its next run (safer than drawing a stale map over a re-laid maze).
 
-const VERSION := 1
-const HEADER := 12
+const VERSION := 2
+const HEADER := 16
 ## Longest route kept (moves); a walk past this stops being recorded (real runs are a few hundred).
 const MAX_MOVES := 2000
 ## Largest maze (tiles) a survey may describe: the 36x20-cell cap (Levels.HARD_MAX_CELLS) = 73x41.
@@ -36,17 +40,37 @@ const FLAG_CLEAR := 1
 const FLAG_GOAL := 2
 
 
-## An empty survey of a maze (`size` in tiles).
-static func blank(size: Vector2i, start: Vector2i) -> Dictionary:
+## An empty survey of `maze`.
+static func blank(maze: Dictionary) -> Dictionary:
+	var size: Vector2i = maze.size
 	var seen := PackedByteArray()
 	seen.resize((size.x * size.y + 7) >> 3)
-	return {w = size.x, h = size.y, seen = seen, start = start, moves = PackedByteArray(),
+	return {w = size.x, h = size.y, fp = fingerprint(maze), seen = seen, start = maze.start, moves = PackedByteArray(),
 		clear = false, best_ms = 0, goal = false}
 
 
-## True when `survey` describes this maze (same size in tiles).
+## True when `survey` describes this maze: same size in tiles and the same layout (fingerprint).
 static func fits(survey: Dictionary, maze: Dictionary) -> bool:
-	return not survey.is_empty() and survey.w == maze.size.x and survey.h == maze.size.y
+	return not survey.is_empty() and survey.w == maze.size.x and survey.h == maze.size.y \
+		and survey.get("fp", -1) == fingerprint(maze)
+
+
+## A 32-bit fingerprint of a maze's layout: its size, walls, start and goal (MD5, so it is the same
+## on every platform and engine version). Any change to the layout gives another one.
+static func fingerprint(maze: Dictionary) -> int:
+	var head := PackedByteArray()
+	head.resize(12)
+	head.encode_u16(0, maze.size.x)
+	head.encode_u16(2, maze.size.y)
+	head.encode_u16(4, maze.start.x)
+	head.encode_u16(6, maze.start.y)
+	head.encode_u16(8, maze.goal.x)
+	head.encode_u16(10, maze.goal.y)
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_MD5)
+	ctx.update(head)
+	ctx.update(maze.walls)
+	return ctx.finish().decode_u32(0)
 
 
 static func is_seen(survey: Dictionary, tile: Vector2i) -> bool:
@@ -54,6 +78,16 @@ static func is_seen(survey: Dictionary, tile: Vector2i) -> bool:
 		return false
 	var i: int = tile.y * survey.w + tile.x
 	return (survey.seen[i >> 3] >> (i & 7)) & 1 == 1
+
+
+## Marks one tile seen (in place; outside the maze does nothing).
+static func mark_seen(survey: Dictionary, tile: Vector2i) -> void:
+	if tile.x < 0 or tile.y < 0 or tile.x >= survey.w or tile.y >= survey.h:
+		return
+	var i: int = tile.y * survey.w + tile.x
+	var seen: PackedByteArray = survey.seen
+	seen[i >> 3] |= 1 << (i & 7)
+	survey.seen = seen
 
 
 ## Merges one attempt into `survey` (in place): `tiles` = one byte per maze tile (non-zero = seen
@@ -115,7 +149,7 @@ static func route_cells(survey: Dictionary, maze: Dictionary) -> Array[Vector2i]
 ## A finished survey for testing the maps (--story-complete, --maps=full): every tile seen, the
 ## goal seen, and the shortest start-to-goal route as the best clear in `seconds`.
 static func full(maze: Dictionary, seconds: float) -> Dictionary:
-	var survey := blank(maze.size, maze.start)
+	var survey := blank(maze)
 	var seen: PackedByteArray = survey.seen
 	seen.fill(255)
 	survey.seen = seen
@@ -149,6 +183,7 @@ static func pack(survey: Dictionary) -> String:
 	bytes[8] = clampi(survey.start.x, 0, 255)
 	bytes[9] = clampi(survey.start.y, 0, 255)
 	bytes.encode_u16(10, count)
+	bytes.encode_u32(12, int(survey.get("fp", 0)) & 0xFFFFFFFF)
 	bytes.append_array(seen.slice(0, (survey.w * survey.h + 7) >> 3))
 	var packed := PackedByteArray()
 	packed.resize((count + 3) >> 2)
@@ -159,8 +194,9 @@ static func pack(survey: Dictionary) -> String:
 
 
 ## A survey from a save string, or {} when it isn't a valid one (wrong type, too long, broken
-## base64, unknown version, a size out of range or a length that doesn't add up). Values are
-## clamped: flags masked, time within a day, start cell inside the maze.
+## base64, unknown version (incl. version 1, which has no fingerprint), a size out of range or a
+## length that doesn't add up). Values are clamped: flags masked, time within a day, start cell
+## inside the maze; the fingerprint is kept as read (a wrong one only makes the survey not fit).
 static func unpack(text: Variant) -> Dictionary:
 	if typeof(text) != TYPE_STRING or (text as String).length() > MAX_TEXT or (text as String).length() % 4 != 0 \
 			or not _base64_chars().search(text):
@@ -187,7 +223,7 @@ static func unpack(text: Variant) -> Dictionary:
 	if not clear or best_ms <= 0:
 		clear = false
 		best_ms = 0
-	return {w = w, h = h, seen = bytes.slice(HEADER, HEADER + seen_len), start = start, moves = moves,
+	return {w = w, h = h, fp = bytes.decode_u32(12), seen = bytes.slice(HEADER, HEADER + seen_len), start = start, moves = moves,
 		clear = clear, best_ms = best_ms, goal = bytes[1] & FLAG_GOAL != 0}
 
 
