@@ -27,6 +27,14 @@ Time/save.cfg` stays on disk untouched and is never read. Tests, tools, headless
 a throwaway file (and may read the real save); `--story` / `--autoplay` use clean in-memory state. Never run the game
 yourself when the owner may be playing; launch semantics and preferences are in "Decisions and standing preferences".
 
+**Release hardening (2026-10-14).** Save codes and save.cfg pass the `scripts/save_text.gd` allow-list before
+`ConfigFile.parse` (no code execution, no parser crash, bounded gzip: QA S1/S10/S11); saves are atomic (`.tmp` + rename,
+retried on failure, `Progress.save_failed`); an unreadable save is kept as `save.corrupt.cfg` (3 rotating); a far-future
+randomizer pay day counts as today; release exports ignore debug flags (only `--touch` / `--web-ui`); Windows exe has the
+game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS preset exists (universal, ad-hoc,
+`com.slimetime.game` placeholder). Status tables: [qa-release-report.md](qa-release-report.md),
+[qa-web-report.md](qa-web-report.md); builds: [itch-release.md](itch-release.md). 58 test suites.
+
 **Known limitations.**
 - Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
 - Android and web are unverified on real devices (the Android shader fix is unconfirmed). The web build was QA'd in an
@@ -573,3 +581,15 @@ Owner feedback on v2 + the themed mockup:
 - **Pixel check:** HEAD (d18cc85) worktree vs this tree, batch capture set (51 frames: title, hub, rainbow hub,
   level select, levels 1/5/10, Brightness 10, standing still, hard 3, rainbow 10, randomizer, story, pause):
   0 differing pixels. Web export to a temp dir: OK. Real save md5 unchanged.
+
+## Release hardening pass (2026-10-14)
+
+Fixes for docs/qa-release-report.md and qa-web-report.md (each item, its fix and test are in the Status table there):
+S1/S11 allow-list validator (`SaveText`), S10 bounded gunzip, S2 corrupt-save backups, S9 atomic writes + retry,
+S3 pay-day clamp (`PAY_DAY_AHEAD`; `test_tickets` updated: a clock 5 days back keeps the cap but the stored day becomes
+today), S4/S6/E1/E2/E3 small validation fixes, mangled-code cleaning, X1 Windows icon/metadata, X2 release flag gating
+(`Progress.game_args`, `user_args`; game code reads flags through `user_args()`), macOS preset, web O3 (ROTATE YOUR
+DEVICE) and O4 (FULLSCREEN disabled without the Fullscreen API). The QA PoCs in `tests/qa_poc_*.gd` now show the fixed
+behavior and their inputs run in `test_save_robust.gd` every time. M1 (memory per level start) was checked: no unbounded
+script cache; left open as engine-internal.
+

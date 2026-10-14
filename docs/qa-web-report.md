@@ -5,6 +5,20 @@ Date: 2026-10-14. Godot 4.7.2 (`web_nothreads_release` template), branch state a
 `./tools/test_all.sh` → `suites: 57 failed: 0`. The real saves were not touched (`SlimeTime_R1/save.cfg` does not exist
 on this Mac; the pre-release save's md5 `6e9f56da…` is unchanged).
 
+## Status (2026-10-14, after the release fix pass)
+
+- **O3 fixed:** the rotate cover now says ROTATE YOUR DEVICE (iPads in portrait). Same layout, one letter longer.
+- **O4 fixed (disabled, not hidden):** where the browser has no Fullscreen API for page elements (iPhone Safari:
+  `document.fullscreenEnabled` / `webkitFullscreenEnabled` false), SETTINGS shows FULLSCREEN as a disabled (dried-goo)
+  button (`Progress.fullscreen_available`, `controls.gd`). Layout and focus order unchanged; desktop and Android unchanged.
+  Not verified on a real iPhone.
+- Release fixes that affect the web build too (see [qa-release-report.md](qa-release-report.md) Status): pasted codes and
+  the save are checked by an allow-list before parsing (no code execution, no crash, no hang), saves are written
+  atomically (temp + rename; checked in the browser: IndexedDB holds `/userfs/SlimeTime_R1/save.cfg` with the new data,
+  no `.tmp` left), an unreadable save is kept as `save.corrupt.cfg`, codes pasted with invisible characters / quotes load.
+- Still open (owner decisions or engine limits): O1 tap targets, O2 loading screen, O5 context loss, O6 download size,
+  O7 Ctrl+C in the code box.
+
 ## 1. Environment and method
 
 - **Build:** `Godot --headless --export-release "Web" /private/tmp/claude-501/webtest/index.html`, re-exported after
@@ -111,12 +125,12 @@ gzip on its CDN, `html-classic.itch.zone` storage partitioning), Firefox and Saf
 
 Upload the new web zip to itch, then on an Android phone (Chrome) and an iPhone (Safari):
 
-1. Open the game page in portrait: the ROTATE YOUR PHONE cover shows. Turn sideways: it goes away at once (no tap). Turn back mid-level: the cover returns and the level is paused under it.
+1. Open the game page in portrait: the ROTATE YOUR DEVICE cover shows. Turn sideways: it goes away at once (no tap). Turn back mid-level: the cover returns and the level is paused under it.
 2. Fresh start: the story plays sideways; a tap advances, sound plays after the first tap.
 3. Play 30 s of level 1 with the joystick and JUMP (hold to charge); the pause button (top right) pauses.
 4. SETTINGS > SAVE CODE > COPY: it says COPIED! (or shows a pop-up with the code to copy). Paste it in a notes app: the whole `SLIME2-…` code is there.
 5. PASTE: a pop-up asks for the code (long-press → Paste) or it fills directly: PASTED - PRESS LOAD.
 6. Change SOUND, then immediately switch to another app for a minute, come back (or reload): the setting kept.
 7. Leave the tab in the background 5+ minutes, return: no jump in the level timer beyond a fraction of a second, and if the graphics were reset a RELOAD button appears (progress kept).
-8. Try itch's fullscreen button (Android) and SETTINGS > FULLSCREEN (Android; does nothing on iPhone).
+8. Try itch's fullscreen button (Android) and SETTINGS > FULLSCREEN (Android; disabled on iPhone).
 9. On a desktop: click the game on the itch page, arrows and Space don't scroll the page; P pauses; Esc pauses (and only exits fullscreen when fullscreen).
