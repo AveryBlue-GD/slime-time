@@ -11,7 +11,7 @@ mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per 
 `SLIME X1.45 -> X1.60`, `LIGHT 9 -> 17 PX  +257% AREA`) instead of "NEXT: ..."; old dev wall power maps by equal damage
 (p -> floor(p / 2.5)); the notice reads UPGRADES REWORKED / COINS RETURNED +N and waits in the save
 (`[upgrades] refund_notice`) until the hub shows it; seed codes accept L 0-10 and clamp 8-10 to 7, 11+ is not a code;
-`--upgrades=` takes new-tree levels. Deferred (cosmetic): the RECOMMENDED tag and the 1 s light-ring preview on buy.
+`--upgrades=` takes new-tree levels. The RECOMMENDED tag and the 1 s light-ring preview on buy were built in the review-fix pass (docs/review-upgrades-b1.md status).
 Measured story check: see [../playtime-estimate.md](../playtime-estimate.md) (upgrades v2 note) and
 [../handoff.md](../handoff.md) (last section). Code is the source of truth for the
 current numbers quoted (`scripts/upgrades.gd`, `scripts/progress.gd`, `scripts/game.gd`, `scripts/slime.gd`,
@@ -230,7 +230,7 @@ par, route, u or seed codes. Autoplay starts from a clean state (workshop 0) so 
 ignores the workshop.
 
 **1. SECOND WIND** (costs 15 / 30 / 50 = 95)
-- Effect: the first time the meter hits 0 in a run (on the ground), it refills to **15 / 25 / 35 %** instead of drying
+- Effect: the first time the meter hits 0 in a run (on the ground), it gains **+15 / +25 / +35 %** of a meter (a fixed amount added over 0.4 s, not a refill target; slime spent meanwhile stays spent) instead of drying
   up; once per run (Descent: once per *run*, not per floor). Big visible moment: a goo gulp sound, a ring burst,
   the meter refills over 0.4 s.
 - Story: only on levels already cleared on normal (coin hunts, medal replays); unavailable on a level's first clear
@@ -258,14 +258,15 @@ ignores the workshop.
 **4. MAGNET** (12 / 25 / 45 = 82)
 - Effect: coin pickup reach `Coin.REACH` 10 px -> **18 / 26 / 34 px**, only for coins on revealed floor with no wall
   tile on the straight line (one tile-raycast on the maze grid); the coin flies into the slime (existing
-  `dissolve_into`). Level 3 grabs a coin in a 1-cell dead end from its mouth (saves ~4 tiles there and back).
+  `dissolve_into`). With jelly off the coin glides into the solid slime and pops. Level 3 grabs a coin in a 1-cell dead end from its mouth (saves ~4 tiles there and back).
   Also pulls Descent goo drops.
 - Meter: indirect (shorter coin detours); story first clears barely affected (coins are optional). Hard: no coins.
 - Save: `[workshop] magnet`. Files: `game.gd` (`_pick_up_coins`), `coin.gd`. Effort S.
 
 **5. GOO NOSE** (12 / 25 / 45 = 82)
-- Effect: fog glimmers (`GLIMMER_EVERY` 180-360 px traveled, reach 160 px) come **x1.5 / x2 / x3 as often** and
-  reach **200 / 240 / 300 px**; they also mark Descent goo drops. Shows only coins/drops, never the route or goal.
+- Effect: fog glimmers (`GLIMMER_EVERY` 180-360 px traveled, reach 160 px) come **x1.4 / x1.8 / x2.3 as often** and
+  reach **200 / 240 / 300 px**, and only ever pick coins that are on screen (the view plus 8 px), so every glimmer
+  can be seen (measured visible glimmers/min, levels 0-3: 1.00 / 1.34 / 1.73 / 2.21x); they also mark Descent goo drops. Shows only coins/drops, never the route or goal.
 - Save: `[workshop] nose`. Files: `game.gd` glimmer section. Effort S.
 
 Workshop total: **423 tickets**.
@@ -477,7 +478,7 @@ GROUNDED + RACE is the tightest: 6% slack, intended as the summit).
 | Batch | Contents | Effort | Gate to ship |
 |---|---|---|---|
 | **1. Core tree rework** (DONE 2026-10-15) | per-track tables in `upgrades.gd`, brightness breakpoints, upgrades screen pips/next-effect line, migration + notice, randomizer size/code changes, golden rewrite, autoplay cost lookup, playtime model re-run | M (2-3 days) | all suites pass; autoplay story run completes; playtime median within +-5% |
-| **2. Hats + store + workshop** (DONE 2026-10-15) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
+| **2. Hats + store + workshop** (DONE 2026-10-15; review fixes applied, see docs/review-upgrades-b2.md) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
 | **3. Descent** | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
 | **4. Heat** | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
 | **QA / balance** | qa-tester pass, web build check, first playtest with logging (tickets/day, workshop buy order, descent depth, heat usage) | ongoing | |
