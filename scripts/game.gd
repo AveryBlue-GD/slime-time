@@ -408,8 +408,10 @@ func _ready() -> void:
 
 ## Restarts and next levels ease in from under a sheet of goo (only when actually playing).
 func _ease_in() -> void:
+	if not _is_running_scene():  # (a reload raced by a scene change: already out of the tree)
+		return
 	var transition := get_node_or_null("/root/Transition")
-	if transition and _is_running_scene():
+	if transition:
 		transition.reveal()
 
 
@@ -1538,12 +1540,16 @@ func _offer_retry() -> void:
 
 ## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).
 func retry(via := "dry-up RESTART") -> void:
+	if _leaving():  # a screen change is already underway (its wipe would race the reload)
+		return
 	DevLog.route(get_tree(), via, self)
 	get_tree().reload_current_scene()
 
 
 ## Tries again with the slime reserve: a bit more slime, but no medals, records or tickets.
 func retry_assisted() -> void:
+	if _leaving():
+		return
 	if progress and progress.accept_assist(level):
 		DevLog.route(get_tree(), "ASSIST", self)
 		get_tree().reload_current_scene()
@@ -1552,6 +1558,8 @@ func retry_assisted() -> void:
 
 
 func go_to_upgrades() -> void:
+	if _leaving():  # e.g. clicked while QUIT TO HUB's wipe runs: the flag would stick
+		return
 	DevLog.log_event(get_tree(), "to UPGRADES", self)
 	if progress:
 		progress.return_to_game = true
@@ -1571,6 +1579,8 @@ func _offer_next_steps() -> void:
 
 ## Back to the hub, in front of the station this run came from (the archway or the portal).
 func go_to_hub() -> void:
+	if _leaving():
+		return
 	DevLog.log_event(get_tree(), "quit to hub (after win/dry-up)", self)
 	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if is_random() else "story")
 	UIKit.go(get_tree(), HUB_SCENE)
@@ -1578,6 +1588,8 @@ func go_to_hub() -> void:
 
 ## Plays this same maze again (for a random maze, the same seed).
 func replay(via := "REPLAY MAZE") -> void:
+	if _leaving():
+		return
 	DevLog.route(get_tree(), via, self)
 	if progress and not is_random():
 		progress.start_story(level)
@@ -1586,6 +1598,8 @@ func replay(via := "REPLAY MAZE") -> void:
 
 ## Moves on: the next story level, a new random maze, or the victory screen after the last level.
 func play_next() -> void:
+	if _leaving():
+		return
 	if is_random():
 		if progress:
 			progress.new_random_maze()
@@ -1595,7 +1609,7 @@ func play_next() -> void:
 		if progress and not progress.dev_tools and not progress.has_seen_story(progress.STORY_FINALE):
 			Story.play(get_tree(), "finale", VICTORY_SCENE)
 		else:
-			get_tree().change_scene_to_file(VICTORY_SCENE)
+			UIKit.go(get_tree(), VICTORY_SCENE)
 	else:
 		if progress:
 			progress.start_story(level + 1)

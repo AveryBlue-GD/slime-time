@@ -16,6 +16,10 @@ var _panel: Panel
 var dev_panel: Control
 var bright_button: Button
 var drain_button: Button
+## What had keyboard focus when the menu opened (e.g. a dry-up / win choice): it gets it back on
+## resume. And the level's controls kept out of focus while the menu is open (UIKit.lock_focus).
+var _return_focus: Control
+var _focus_lock := {}
 
 
 func _ready() -> void:
@@ -65,6 +69,7 @@ func _ready() -> void:
 	seed_edit.material = UIKit.text_material()
 	seed_edit.visible = false
 	seed_edit.text_submitted.connect(_submit_seed)
+	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
 	menu.add_child(seed_edit)
 	_refresh_sound()
 	var progress := get_node_or_null("/root/Progress")
@@ -119,13 +124,28 @@ func open() -> void:
 	get_tree().paused = true
 	_refresh_sound()
 	_refresh_dev()
+	var owner_now := get_viewport().gui_get_focus_owner()
+	_return_focus = owner_now if owner_now and not is_ancestor_of(owner_now) else null
 	buttons[0].grab_focus()
+	if _focus_lock.is_empty():
+		_focus_lock = UIKit.lock_focus(get_parent(), self)
 	_sfx("pause")
 
 
 func resume() -> void:
 	visible = false
 	get_tree().paused = false
+	UIKit.unlock_focus(_focus_lock)
+	if is_instance_valid(_return_focus) and _return_focus.is_visible_in_tree():
+		_return_focus.grab_focus()  # e.g. the dry-up / win choice that had it
+	_return_focus = null
+
+
+## Esc in the seed box only stops editing it (the LineEdit takes the first Esc; the next one closes
+## the box): if that leaves nothing focused, RESUME gets it so keys and the controller still work.
+func _refocus() -> void:
+	if visible and is_inside_tree() and get_viewport().gui_get_focus_owner() == null:
+		buttons[0].grab_focus()
 
 
 ## The seed button: swaps to a box holding the seed (selected, so it can be copied) to type over.
@@ -171,7 +191,15 @@ func _restart() -> void:
 
 func _quit() -> void:
 	DevLog.log_event(get_tree(), "quit to hub (pause)", get_parent())
-	resume()
+	var transition := get_node_or_null("/root/Transition")
+	if transition == null or transition.busy:
+		resume()
+		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+		return
+	# The level stays paused under the wipe (Transition.go unpauses as it swaps the scene): nothing
+	# runs meanwhile, no win or dry-up can happen and the result buttons can't be pressed.
+	visible = false
+	_return_focus = null
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 

@@ -7,6 +7,7 @@ extends CanvasLayer
 
 var buttons: Array[Button] = []
 var game: Node
+var _focus_lock := {}
 
 
 func _ready() -> void:
@@ -46,11 +47,14 @@ func open() -> void:
 	visible = true
 	get_tree().paused = true
 	buttons[0].grab_focus()
+	if _focus_lock.is_empty():  # the level's other controls can't take focus meanwhile
+		_focus_lock = UIKit.lock_focus(get_parent(), self)
 
 
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	UIKit.unlock_focus(_focus_lock)
 
 
 func _restart() -> void:
@@ -59,7 +63,13 @@ func _restart() -> void:
 
 
 func _upgrades() -> void:
-	close()
+	var transition := get_node_or_null("/root/Transition")
+	if transition == null or transition.busy:
+		close()
+		game.go_to_upgrades()
+		return
+	# The level stays paused under the wipe (Transition.go unpauses as it swaps the scene).
+	visible = false
 	game.go_to_upgrades()
 
 

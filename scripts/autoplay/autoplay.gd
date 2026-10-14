@@ -150,7 +150,9 @@ func _process(_delta: float) -> void:
 		_on_scene(scene, _token)
 	# Cleared only once the same scene plays on (a scene change leaves current_scene null for a
 	# frame and drops the wipe's busy flag the frame the new scene arrives).
-	if tree.paused and not _bot_pause:
+	# (A level stays paused under the wipe that leaves it from the R prompt's UPGRADES or the pause
+	# menu's QUIT TO HUB; that pause isn't a new one: the player can't pause while a wipe runs.)
+	if tree.paused and not _bot_pause and not transition.busy:
 		_player_paused = true  # the player opened the pause menu: the bot waits
 	elif not tree.paused and not transition.busy and scene != null and scene == _scene:
 		_player_paused = false

@@ -51,6 +51,13 @@ func _ready() -> void:
 		sfx.play("unlock")
 
 
+## Esc / P / B (menu, ui_cancel) go back to the hub, like every other screen's BACK.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+
+
 func _choose_custom() -> void:
 	Progress.select_skin(Skins.CUSTOM)
 	UIKit.go(get_tree(), "res://scenes/skins.tscn")

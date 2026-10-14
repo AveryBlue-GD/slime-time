@@ -44,6 +44,8 @@ func _process(delta: float) -> void:
 ## Re-applies colors (call after the skin changes). `shared` = also recolor the group labels and
 ## the goo (global; skipped when another SkinText already did it this frame with the same time).
 func recolor(shared := true) -> void:
+	if not is_inside_tree():  # (a deferred call landing after its scene was swapped out)
+		return
 	var rainbow := _is_rainbow()
 	var base := _skin_color()
 	var theme: Theme = theme_owner.theme if theme_owner else null

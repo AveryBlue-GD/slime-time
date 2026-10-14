@@ -44,6 +44,9 @@ var copy_button: Button
 var load_button: Button
 ## LOAD has been pressed once on a working code: the next press replaces the progress.
 var load_armed := false
+## The page's controls kept out of focus while the SAVE CODE or RESET panel is open (UIKit.lock_focus):
+## arrows / Tab stay inside the panel, so a second panel can't be opened on top.
+var _focus_lock := {}
 
 
 func _ready() -> void:
@@ -169,6 +172,7 @@ func _open_codes() -> void:
 	code_panel.visible = true
 	_listen_for_web_paste()
 	copy_button.grab_focus()
+	_lock_page(code_panel)
 
 
 ## Fills the load box from the clipboard. In a browser Godot only sees text pasted into the page,
@@ -222,7 +226,27 @@ func _exit_tree() -> void:
 
 func _close_codes() -> void:
 	code_panel.visible = false
+	UIKit.unlock_focus(_focus_lock)
 	save_code_button.grab_focus()
+
+
+func _lock_page(panel: Control) -> void:
+	UIKit.unlock_focus(_focus_lock)
+	_focus_lock = UIKit.lock_focus(self, panel)
+	for box: LineEdit in [code_out, code_in]:
+		if not box.focus_exited.is_connected(_on_box_focus_exited):
+			box.focus_exited.connect(_on_box_focus_exited)
+
+
+## Esc in a text box only stops editing it (the LineEdit takes the first Esc; a second one closes
+## the panel). If that leaves nothing focused, focus goes to the box's button so keys still work.
+func _on_box_focus_exited() -> void:
+	_refocus_panel.call_deferred()
+
+
+func _refocus_panel() -> void:
+	if code_panel.visible and is_inside_tree() and get_viewport().gui_get_focus_owner() == null:
+		copy_button.grab_focus()
 
 
 func _copy_code() -> void:
@@ -277,10 +301,12 @@ func _centered_label(label: Label, top: int, bottom: int) -> void:
 func _ask_reset() -> void:
 	reset_confirm.visible = true
 	cancel_button.grab_focus()  # the safe choice is the default
+	_lock_page(reset_confirm)
 
 
 func _cancel_reset() -> void:
 	reset_confirm.visible = false
+	UIKit.unlock_focus(_focus_lock)
 	reset_button.grab_focus()
 
 

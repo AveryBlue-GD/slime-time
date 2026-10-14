@@ -17,6 +17,10 @@ static var _boxes: Array[WeakRef] = []
 ## Themes that hold goo boxes (UIKit.make_theme registers them): a recolor makes each emit one
 ## change instead of one per box it holds.
 static var _themes: Array[WeakRef] = []
+## Dead refs (boxes / themes already freed) are pruned every PRUNE_EVERY registrations, so the lists
+## (and their WeakRef objects) stay bounded however many screens are opened.
+const PRUNE_EVERY := 32
+static var _registered := 0
 
 ## Dried-up goo for disabled buttons.
 const DRIED := {
@@ -40,11 +44,34 @@ var drop_edge := 6
 
 func _init() -> void:
 	_boxes.append(weakref(self))
+	_count_registration()
 
 
 ## Registers a theme holding goo boxes, so `set_goo_color` batches its change signals.
 static func track_theme(theme: Theme) -> void:
 	_themes.append(weakref(theme))
+	_count_registration()
+
+
+static func _count_registration() -> void:
+	_registered += 1
+	if _registered >= PRUNE_EVERY:
+		_registered = 0
+		prune()
+
+
+## Drops the refs of freed boxes and themes.
+static func prune() -> void:
+	_boxes = _live(_boxes)
+	_themes = _live(_themes)
+
+
+static func _live(refs: Array[WeakRef]) -> Array[WeakRef]:
+	var out: Array[WeakRef] = []
+	for ref in refs:
+		if ref.get_ref() != null:
+			out.append(ref)
+	return out
 
 
 ## Recolors every goo box (redraws them). Each tracked theme's signals are held while its boxes

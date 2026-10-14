@@ -28,6 +28,9 @@ var joy_vector := Vector2.ZERO
 var _joy_touch := -1
 var _joy_center := JOY_HOME
 var _jump_touch := -1
+## The finger on the pause button: its `menu` press is released when it lifts (or the level pauses /
+## the controls go away), so the action is never left held.
+var _pause_touch := -1
 var _canvas: Control
 
 
@@ -77,6 +80,8 @@ func _notification(what: int) -> void:
 
 func _touch_down(index: int, pos: Vector2) -> void:
 	if pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
+		_release_pause()  # (a second finger on it: the first one's press ends)
+		_pause_touch = index
 		var pause := InputEventAction.new()
 		pause.action = "menu"
 		pause.pressed = true
@@ -93,7 +98,9 @@ func _touch_down(index: int, pos: Vector2) -> void:
 
 
 func _touch_up(index: int) -> void:
-	if index == _joy_touch:
+	if index == _pause_touch:
+		_release_pause()
+	elif index == _joy_touch:
 		_joy_touch = -1
 		_joy_center = JOY_HOME
 		joy_vector = Vector2.ZERO
@@ -130,7 +137,19 @@ func hide_controls() -> void:
 	visible = false
 
 
+## Lets go of the pause button's `menu` press, if it is held.
+func _release_pause() -> void:
+	if _pause_touch == -1:
+		return
+	_pause_touch = -1
+	var release := InputEventAction.new()
+	release.action = "menu"
+	release.pressed = false
+	Input.parse_input_event(release)
+
+
 func _release_all() -> void:
+	_release_pause()
 	_joy_touch = -1
 	_jump_touch = -1
 	_joy_center = JOY_HOME

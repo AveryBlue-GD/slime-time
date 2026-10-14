@@ -1,5 +1,10 @@
 # Navigation / Esc / menu QA report
 
+**Status (2026-10-14): B1-B7, B9, B10 fixed; B8 kept by design (the first Esc in a text box only stops editing;
+focus now stays on a button and the second Esc closes), with N3's `_leaving()` guards. Each has a regression check
+and the fuzzer's `KNOWN` table is empty. Six area walks were added (see the Running section and
+[handoff.md](handoff.md)).** The report below describes the bugs as found.
+
 Driver: `tests/test_nav_fuzz.gd` (+ `tests/nav_fuzz_lib.gd`). It boots the real scenes in a SceneTree script with an in-memory
 save (`--story-complete`-style state via `Progress.enable_story_complete()`, plus fresh / mid-progress / dev / touch states),
 sends real input events (`Input.parse_input_event`: keys, `ui_*` actions, joypad A/B, mouse clicks and touches at the buttons'
@@ -115,5 +120,5 @@ orphans 0; 50 map-table cycles: 5,514 -> 6,272 objects). Harmless for hours of p
 
 ## Running
 `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_nav_fuzz.gd`
-Options after `--`: `--nav-steps=N`, `--nav-seed=N`, `--nav-walk=I` (replay walk I), `--nav-only=walks|scripted`, `--nav-strict`
-(known bugs fail), `--nav-variant=touch`.
+Options after `--`: `--nav-steps=N`, `--nav-seed=N`, `--nav-walk=I` (replay walk I; area walks are 7-12), `--nav-only=walks|scripted`, `--nav-strict`
+(known bugs fail), `--nav-variant=touch`, `--nav-area-steps=N` (inputs per area walk, default 2000; 0 skips them).
