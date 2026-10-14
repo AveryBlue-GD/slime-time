@@ -86,7 +86,7 @@ dots = route; see its header for the command).
   maze's longest route. With the old rule, a 60% route would have used only ~51% of the meter; now
   every perfect run uses 85% whatever the spawn class. This is a little tighter than before on
   average (old routes were 75-100% of the longest, so a perfect run used 64-85%).
-- Tickets (`TicketSpawn`), par, medals, the tutorial cues and beacon, the camera, the hat and the
+- Tickets (`TicketSpawn`, retired in section 6), par, medals, the tutorial cues and beacon, the camera, the hat and the
   fog reveal all read `maze.start` / `maze.goal`, so they follow the real start; nothing assumed
   the corner except some tests (now using `tests/start_dirs.gd`).
 
@@ -123,7 +123,7 @@ deep coins), plus updated `test_phase3` (autopilot under par), `test_random_tick
 Owner request: lots of variation in how much of the meter a perfect randomizer run needs, rare
 extremes both ways, while each maze stays scaled to the slime the player can spend.
 Code: `Levels.random_usage_permille / random_route_cells / random_cells / random_config`,
-`MazeGenerator.generate_random(config)`, `SpawnPicker.pick(..., route)`, `TicketSpawn`, `game.gd`
+`MazeGenerator.generate_random(config)`, `SpawnPicker.pick(..., route)`, `TicketSpawn` (retired, section 6), `game.gd`
 (`perfect_usage`, `usage_text`). Test: `tests/test_random_usage.gd`.
 
 **The meter is fixed per player.** A full meter glides `RANDOM_METER_TILES` = 136 tiles with no
@@ -186,7 +186,7 @@ chalice is a seeded pick among the cells exactly `route` cells from the start (a
 no cell reached the route at all, the longest route would be used (never seen). Measured: 0 class
 fallbacks in 1,200 mazes; EDGE 30.7 / NEAR 31.0 / ANY 38.3% over 600 (test tolerance +-5%).
 
-**Ticket.** Same rules (10-60% of the meter from the start, weight floor + (f / 0.6)^3, now cubed:
+**Ticket (superseded by section 6: the ticket is now the goal, on the chalice's cell).** Same rules (10-60% of the meter from the start, weight floor + (f / 0.6)^3, now cubed:
 small low-u mazes have few far cells, and the square let 10-20% picks reach ~13%; now ~10%), the
 fraction measured at the code's level. Start -> ticket -> chalice <= 92%, or, for a route longer
 than 92% (u 0.93-0.95), on-route cells only (no detour). Short routes put it off the route, well
@@ -198,15 +198,62 @@ one does, so rerolling NEW MAZE for short ones only reaches the same daily cap f
 **Par** uses the real route as before. **Hard mode** keeps a fixed u = 0.90, no upgrades (route
 ~62 cells), calibrated on the real route.
 
-**Seed codes.** "N-L" builds the maze for level L: same u, route, size, start, chalice and ticket
-for everyone. The player's own meter is used: a lower-level code leaves more slack; a higher-level
+**Seed codes.** "N-L" builds the maze for level L: same u, route, size, start and goal (now the
+ticket, section 6) for everyone. The player's own meter is used: a lower-level code leaves more slack; a higher-level
 code needs more of the meter, capped at 95% (`RANDOM_MAX_USAGE`) so a borrowed code is always
 winnable.
 
 **HUD.** The randomizer win line reads `TIME 0:41.2   USED 23% SLIME` (what the run really used,
 splats included), plus `EFFICIENT!` under 25% (`game.EFFICIENT_USAGE`).
 
-Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`; magenta ring =
-ticket): `docs/polish-shots/usage_100_ms0` (u 0.10: 10x6, route 7), `usage_250_ms0`,
+Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`; the magenta
+ring was the old ticket pickup): `docs/polish-shots/usage_100_ms0` (u 0.10: 10x6, route 7), `usage_250_ms0`,
 `usage_550_ms0` (18x9, route 38), `usage_750_ms0`, `usage_950_ms0` (27x15, route 65),
 `usage_550_ms10`, `usage_950_ms10` (36x20, route 129), and the result screen `usage_result`.
+
+## 6. The ticket is the randomizer's goal (2026-10-14)
+
+Owner request: randomizer mazes (every randomizer mode, hard included) have no chalice; the gold
+TICKET voucher is the end objective, and a win pays by how many attempts that maze took. Story
+levels keep the chalice and are untouched. Code: `scripts/ticket_goal.gd` (`TicketGoal`),
+`game.gd` (`goal`, `_make_goal`, `_count_attempt`, `_on_goal_body_entered`), `Progress`
+(`RANDOM_ATTEMPT_PAY`, `random_attempts`, `begin_random_attempt`, `random_payout`,
+`complete_random(assisted, seed, attempt)`), `hud.gd` (`set_attempt`, `show_rewards`).
+
+**Where.** The ticket stands exactly where the chalice did: `maze.goal`, the cell `route` cells from
+the start (section 5). The game frees the scene's Chalice node and puts a `TicketGoal` (Area2D, the
+chalice's 6 px grab circle, so the meter calibration, par and perfect-run usage are unchanged) in
+its place. The maze build (u, route, size, spawn class, start, goal, seed codes) is untouched:
+`tests/test_maze_golden.gd` still matches every story level and 8,000 randomizer builds (its digest
+dropped only the old pickup's fields, rewritten from the build just before this change).
+
+**Look.** The 8x8 `assets/ui/icon_ticket.png` voucher over the fog with the chalice's pulsing 72 px
+glow, a light pixel glinting along its top edge every 1.6 s and a 1 px bob (both off with Reduce
+Motion). Hidden until the slime is within 24 px; gold twinkles through the fog within 64 px
+(`CHALICE_GLIMMER_*`, now for whichever goal). On the win it pops into gold sparks with the ticket
+chime (the chalice fanfare stays in story levels); the message reads TICKET CLAIMED!. F1 FULL BRIGHT
+shows it; the overview's gold ring marks it.
+
+**Attempts.** Each start of the same maze is an attempt: the first start, every dry-up RESTART, R /
+pause-menu restarts, REPLAY MAZE after a win and coming back from UPGRADES. Counted in memory only
+(`Progress.random_attempts`, keyed by the seed code + H for hard mode, never saved); NEW MAZE (and
+the hub portal, which rolls a new maze) clears it, so a new maze starts at 1. The HUD pod under the
+maze name reads `TRY 2  4 TIX`: the attempt and what a win would pay right now (all caps applied;
+dim and 0 when nothing would be paid: daily limit, seed already paid today, dev toggles, assist).
+
+**Payout** (`Progress.random_payout`): attempt 1 = 5 tickets, 2 = 4, 3 = 3, 4 = 2, 5th or later =
+1. Kept safeguards: 5 paying wins per UTC day (forward-only rollover; 25 tickets a day at most); a
+seed that already paid today pays 0; a typed or replayed seed pays at most 1 (REPLAYED SEED); no
+MORE SLIME bought = at most 1 (MORE SLIME = MORE); assisted or dev-toggled runs pay 0; dev mode and
+debug runs never save. The result row: ticket icon + `TICKET! ATTEMPT 2 = +4` (+ the cap reason),
+or DAILY TICKET LIMIT REACHED / SEED ALREADY PAID TODAY / ASSIST / DEV TOGGLES; the TIME / USED nn%
+SLIME (EFFICIENT!) line stays. Removed: the optional ticket pickup (`TicketSpawn`, `TicketPickup`,
+FIND IT / FOUND / NONE HERE pod, TICKET FOUND / NO TICKET IN THIS MAZE text) and the old payout
+(win 1, pickup +2, under par +1).
+
+Tests: `test_tickets` (table incl. 5th+ = 1, dry-up retry / R restart / replay count, NEW MAZE
+resets, daily cap, paid-today, typed seed, zero upgrades, hard mode), `test_random_tickets` (no
+chalice node, ticket on the goal cell, autopilot wins by reaching it, story keeps the chalice),
+`test_dev_toggles`, `test_mercy` (assisted pays 0), `test_random_usage`, `test_maze_golden`.
+Shots: `docs/polish-shots/ticketgoal_goal.png` (ticket + HUD pod), `ticketgoal_bright.png` (F1),
+`ticketgoal_result_try1/3/6.png` (+5 / +3 / +1), `ticketgoal_result_noslime.png` (capped).

@@ -100,8 +100,8 @@ Reworked after the first Phase 3 pass: globs became TICKET VOUCHERS and medals b
 
 ## Randomizer rework (tickets in the maze, random start, size by slime, rising wheel price)
 - **Random start** (`MazeGenerator.generate_random`): the noise maze, then a seeded start cell among cells whose farthest cell is >= 75% of the longest route (24 seeded tries, then the best seen); the chalice is the cell farthest from it. Adds `maze.ref_steps` (the longest route); `game.gd` calibrates the slime cost per tile on `ref_steps` (so a shorter route only leaves slack, a perfect run uses <= 85%) while par, medals and the ticket use the real start. **Story levels are untouched** (`generate`, start always the corner, no `ref_steps`): their coin keys are `level + cell`, the par and best times derive from the corner-start path, and the 165 coins/dead ends/tutorial cues are all tuned to it, so a different spawn would change keys, par and saved records.
-- **Ticket pickup** (`scripts/ticket_spawn.gd` `TicketSpawn`, `scripts/ticket_pickup.gd`): one per randomizer maze, seeded cell. Fraction f = route tiles from the start x slime cost per tile (already includes MORE SLIME) / 100. Eligible 10% <= f <= 60% and start->ticket->chalice <= 92% of the meter; weight = 0.04 + (f/0.6)^2 per cell (now cubed, see below). Over 300 seeds: <20% 6%, 20-30% 12%, 30-40% 17%, 40-50% 28%, 50-60% 38%. Hidden until within 26 px (like the chalice), glints through the fog within 80 px, HUD pod FIND IT / FOUND.
-- **Payout** (`Progress.random_tickets_due`): win 1, +2 pickup, +1 under par (fresh seed), max 4; no MORE SLIME bought -> capped at 1 in all. Daily cap (5 paying wins), seed-repeat rules, assisted = 0 unchanged. Result text: TICKET FOUND! +N / NO TICKET FOUND +N, MORE SLIME = MORE (when capped).
+- **Ticket pickup** (removed: see "Ticket goal" below) (`scripts/ticket_spawn.gd` `TicketSpawn`, `scripts/ticket_pickup.gd`): one per randomizer maze, seeded cell. Fraction f = route tiles from the start x slime cost per tile (already includes MORE SLIME) / 100. Eligible 10% <= f <= 60% and start->ticket->chalice <= 92% of the meter; weight = 0.04 + (f/0.6)^2 per cell (now cubed, see below). Over 300 seeds: <20% 6%, 20-30% 12%, 30-40% 17%, 40-50% 28%, 50-60% 38%. Hidden until within 26 px (like the chalice), glints through the fog within 80 px, HUD pod FIND IT / FOUND.
+- **Payout** (superseded: see "Ticket goal" below) (`Progress.random_tickets_due`): win 1, +2 pickup, +1 under par (fresh seed), max 4; no MORE SLIME bought -> capped at 1 in all. Daily cap (5 paying wins), seed-repeat rules, assisted = 0 unchanged. Result text: TICKET FOUND! +N / NO TICKET FOUND +N, MORE SLIME = MORE (when capped).
 - **Size** (superseded by "Randomizer slime usage" below) (`Levels.random_cells`): base 18-24 x 10-13 times sqrt(1 + 0.1 x slime level), max 30x16 (25x14 average at level 10); hard mode no growth.
 - **Wheel price** (`Progress.spin_cost_after`): first spin free, then 12, 14, 16 ... capped at 40; shown in the wheel hint and the hub prompt. Saved only through the existing `[hats] spins`.
 - Tests: `tests/test_random_tickets.gd` (new), updated `test_tickets`, `test_rainbow`. Shots: `docs/polish-shots/random_*.png`.
@@ -186,3 +186,17 @@ The unbreakable edge outside the maze used to be one ring of identical plain bri
 - Verified: non-border pixels identical to before in 51 frames (title, hub, levels 1-10, hard, randomizer,
   brightness 10, pause) with the border region erased in both trees. CLAUDE.md's "Maze edge" line (a ring of plain
   `BORDER` wall tiles) is now out of date (not edited: off limits for the agent).
+
+## Ticket goal (2026-10-14)
+Randomizer mazes (all modes, hard too) have no chalice any more: the gold ticket voucher is the goal,
+standing on the old chalice cell (`scripts/ticket_goal.gd` `TicketGoal`, made by `game._make_goal`,
+which frees the Chalice node; same 6 px grab circle, so mazes, meter, par and seed codes are unchanged;
+`game.goal` is the chalice or the ticket). A win pays by attempt at that maze: 5, 4, 3, 2, then 1 from
+the 5th (`Progress.RANDOM_ATTEMPT_PAY`, `random_payout`). Attempts = every start of the same maze (dry-up
+RESTART, R / pause restart, REPLAY MAZE, back from UPGRADES), in memory per seed code (`random_attempts`,
+not saved), cleared by NEW MAZE / a new maze from the hub. Caps kept: 5 paying wins per UTC day (25/day max),
+seed already paid today = 0, typed/replayed seed = 1, no MORE SLIME = 1, assist / dev toggles = 0. HUD pod
+`TRY 2  4 TIX`; result `TICKET! ATTEMPT 2 = +4` (+ REPLAYED SEED / MORE SLIME = MORE). The optional pickup
+(`TicketSpawn`, `TicketPickup`, FIND IT pod) and the old payout (1 / +2 pickup / +1 under par) are gone.
+Details: [level-design.md](level-design.md) section 6. Shots `docs/polish-shots/ticketgoal_*.png`.
+CLAUDE.md still says the chalice is the exit everywhere and lists `chalice.gd` only (not edited: off limits).
