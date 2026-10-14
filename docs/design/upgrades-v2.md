@@ -2,7 +2,20 @@
 
 Status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
-batch 4 (Heat) is not. Batch 3 decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md),
+**batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
+open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and
+[../level-design.md](../level-design.md) section 10): DIM's base relight is the code's 20 px (as the spec says) and it
+also shrinks the lantern glow x0.6; FOG BITES halves the last fade step (so with DIM 5.4 -> 2.7 s); BRITTLE's "bounce
+slide no longer free" = the knockback slide drains; GROUNDED switched on drops BRITTLE (BRITTLE is greyed out, not
+selectable, while GROUNDED is on); RACE's countdown replaces the run timer (hourglass) and running out is a dry-up
+(OUT OF TIME!); the HEAT button sits bottom right mirroring BACK (not beside the checkbox: no room) and opens a modal
+panel; heat applies only to hard STORY levels with a plain hard clear (heat on an uncleared level = 0); claimed
+bounties are derived from the best heat (no separate bitmask; `[heat] paid` for stats); heat runs share the hard
+records/medals (no separate heat records); dev-toggled runs earn no bounty or best heat (dev mode pays unsaved); the
+HUD shows a HEAT n pod with the modifier icons under the level name instead of `HARD  HEAT 6` in the level text; the
+title crown is 5 white-hot flames over the logo; save keys as D.1 plus `[heat] paid`; the autoplay bot stays at heat
+0 (no `--autoplay-heat`); the gate "hard autoplay at heat 10 on L1-3" is met by the test autopilot at heat 10 on all
+10 levels (test_heat) and the 480-run sweep (bench_heat). Batch 3 decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md),
 "Upgrades v2, batch 3", and [../level-design.md](../level-design.md) section 9): the portal buttons read RANDOM MAZE /
 DESCENT; floors use the randomizer's size (from the slime capacity; the owner's no-small-mazes rule) instead of
 `1.25 x route + 12` / 14x8; u jitter is clamped to 0.25-0.85; the refill is that of the floor being entered; capacity
@@ -489,7 +502,7 @@ GROUNDED + RACE is the tightest: 6% slack, intended as the summit).
 | **1. Core tree rework** (DONE 2026-10-15) | per-track tables in `upgrades.gd`, brightness breakpoints, upgrades screen pips/next-effect line, migration + notice, randomizer size/code changes, golden rewrite, autoplay cost lookup, playtime model re-run | M (2-3 days) | all suites pass; autoplay story run completes; playtime median within +-5% |
 | **2. Hats + store + workshop** (DONE 2026-10-15; review fixes applied, see docs/review-upgrades-b2.md) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
 | **3. Descent** (DONE 2026-10-15) | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
-| **4. Heat** | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
+| **4. Heat** (DONE 2026-10-15) | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
 | **QA / balance** | qa-tester pass, web build check, first playtest with logging (tickets/day, workshop buy order, descent depth, heat usage) | ongoing | |
 
 ### D.4 Tuning after playtests: one constants table

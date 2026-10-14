@@ -366,6 +366,9 @@ medals/times were earned on the new mazes (not handled, like the earlier version
 Shots (`tests/demo_overview.tscn -- --unlock-all --level=N --hard --skin=...`):
 `docs/polish-shots/hard_before_l1/l5/l10.png` (v4) and `hard_after_l1/l5/l10.png`.
 
+**HEAT (2026-10-15).** Optional hard-mode modifiers on top of these levels (no change to the meter, route, size or
+par above): section 10.
+
 ## 8. Trail maps: the MAP TABLE survey (trial, 2026-10-14)
 
 Maps help a player study a story level they have already explored without spoiling what they haven't: the
@@ -479,3 +482,56 @@ are PRACTICE (0, no slot used); no MORE SLIME bought = at most 1 (not in dev mod
 (F1 / F2) on any floor pays 0. Milestones (once ever, paid on reaching the floor, outside the daily cap, never for a
 dev-toggled run): floor 5 +10, 10 +15 (and the ABYSS trail), 15 +20, 20 +25 = 70. Best floor = the deepest floor
 reached (the one being played when the run ended), with the run time on reaching it.
+
+## 10. Hard-mode HEAT (upgrades v2 batch 4, 2026-10-15)
+
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C3. Code: `scripts/heat.gd` (`Heat`: ids, masks, points,
+bounty, effects, icons), `scripts/economy.gd` (`HEAT_MODS`, `HEAT_MAX`, `HEAT_TIERS`, `HEAT_BOUNTY`, `HEAT_EMBER`),
+`game.gd` `_apply_heat`, `Progress` (`heat_mods`, `heat_best`, `heat_paid`, `heat_for_run`, `complete_heat`),
+`scripts/ui/heat_panel.gd`, `level_select.gd`, `hud.gd`. Tests: `tests/test_heat.gd`, sweep `tests/bench_heat.gd`.
+
+**Rules.** Six optional modifiers, picked globally on the level select's HEAT panel (hard mode), apply to every hard
+STORY level that already has its plain hard clear (heat unlocks with that clear); never normal mode, the randomizer
+or Descent. A run's heat = the sum of its modifiers' heat:
+
+| Modifier | Heat | Effect (Economy.HEAT_MODS) | Meter / time |
+|---|---|---|---|
+| DIM | 1 | keep-lit radius 20 -> 10 px, fade steps x0.6 (1.5/3.5/6/9 -> 0.9/2.1/3.6/5.4 s), lantern x0.6 | none |
+| BRITTLE | 1 | splat penalty x2, the knockback slide costs slime (greyed out with GROUNDED) | only when leaping |
+| FOG BITES | 2 | hard fog returns at 0.5 x the last fade step (9 -> 4.5 s; with DIM 2.7 s) | none |
+| GROUNDED | 2 | no leaps | none (a perfect run walks anyway) |
+| THIRSTY | 2 | drain x1.08 | perfect run 87.5% .. 77.7% -> 94.5% .. 83.9% |
+| RACE | 3 | countdown 1.3 x par (the silver line); 0 = dry-up | perfect walk ~73% of par = ~56% of the countdown |
+
+Max heat 10 (all but BRITTLE); 48 of the 64 masks can be picked. Par, the route, the maze and the meter's size never
+change, so medals and best times stay comparable: heat runs record hard medals and hard best times like any hard run
+(no separate heat records); the new record is the best heat per level (`[heat] level_N`).
+
+**Bounties.** A clear at a new best heat pays every tier it newly crosses, once per level and tier: heat >= 2 +3,
+>= 4 +5, >= 7 +7, = 10 +10 tickets (25 a level, 250 in all; e.g. a first clear at heat 7 pays 15). Paid claims are
+the tiers at or under the best heat (derived, so they can't disagree with it); `[heat] paid` counts the tickets for
+stats. Not for dev-toggled runs (F1/F2); hard mode has no ASSIST and no workshop. Every level at heat 7+ earns the
+EMBER trail; every level at 10 lights the title's flame crown. Badges: the hard tile's flame shows the best tier.
+
+**Winnability.** Only THIRSTY touches the meter and only RACE the time, so the worst case of every mask is THIRSTY +
+RACE (+ GROUNDED, which a walk doesn't feel). By the numbers (`test_heat`, all 48 masks x 10 levels): the perfect
+route x 1.08 is at most 94.5% (L1), the perfect walk at most ~58% of the countdown. Measured with the test autopilot
+(walking the shortest route; `bench_heat.gd`, all 48 masks x 10 levels = 480 runs, 0 lost):
+
+| Level | least slime left (any mask) | slowest walk vs the RACE countdown |
+|---|---|---|
+| 1 | 7.4% | 55% |
+| 2 | 8.6% | 56% |
+| 3 | 9.6% | 57% |
+| 4 | 9.0% | 57% |
+| 5 | 11.1% | 58% |
+| 6 | 12.5% | 57% |
+| 7 | 13.5% | 57% |
+| 8 | 14.8% | 58% |
+| 9 | 17.9% | 58% |
+| 10 | 18.2% | 58% |
+
+Tightest: L1 with THIRSTY (7.4% left after the autopilot's walk, which uses 92.6%); RACE's tightest is L9 at 58% of
+the countdown. Heat 10 on every level and heat 9 (BRITTLE in place of GROUNDED) on L1-3 are also played in
+`test_heat` (the full sweep takes ~2-3 min, so it is a bench, not a suite). Knobs: `Economy.HEAT_MODS`
+(`thirsty.drain` is the one that could break winnability: keep it under 1 / 0.875 = 1.14 for L1's perfect route).

@@ -14,7 +14,7 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
 CONTROLS page and SAVE CODE, 11 placeholder hats (live for players since batch 2), the ticket store (hat wheel + SHOP,
-cauldron TICKETS workshop, trail styles, map papers). Save version 6 (+ `[meta] epoch` 1). 66 test suites; 6 agents in `.claude/agents/`.
+cauldron TICKETS workshop, trail styles, map papers), DESCENT runs and hard-mode HEAT. Save version 6 (+ `[meta] epoch` 1). 67 test suites; 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
@@ -41,7 +41,9 @@ breakpoints: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 (165 coins, same maxima)
 `scripts/economy.gd`. Old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, save version 6, one-time hub
 notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. **Batch 2 (2026-10-15): hats live, ticket store, WORKSHOP,
 cosmetics v1** (section "Upgrades v2, batch 2"). **Batch 3 (2026-10-15): DESCENT runs** from the portal's new RANDOM MAZE /
-DESCENT choice (section "Upgrades v2, batch 3" at the end; rules in level-design.md section 9). Batch 4 (Heat) is not built.
+DESCENT choice (section "Upgrades v2, batch 3"; rules in level-design.md section 9). **Batch 4 (2026-10-15): hard-mode
+HEAT** (six modifiers on the level select's HEAT panel, bounties 3/5/7/10 at heat 2/4/7/10, flame badges, EMBER trail;
+section "Upgrades v2, batch 4" at the end; rules in level-design.md section 10). All four batches of the spec are built.
 
 **Known limitations.**
 - Hats are live (`Hats.available = true`, batch 2) but still the 11 placeholder hats until the owner picks the real ones.
@@ -791,3 +793,61 @@ section 9; every number in `scripts/economy.gd` (`DESCENT_*`, `BOONS`).
 - **Shots** (`tests/demo_descent.tscn`): `docs/polish-shots/descent_portal.png`, `descent_floor.png` (floor 3, Lemon),
   `descent_boons.png`, `descent_cashout.png`, `descent_summary.png`; clip `descent_demo.mp4` (git-ignored, 48 s).
 - Open (owner): playtest depth/tickets per day (knobs `DESCENT_REFILL`, `DESCENT_POT_PER_FLOOR`); real boon art if wanted.
+
+
+## Upgrades v2, batch 4: hard-mode HEAT (2026-10-15, save version 6)
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C3, D.1-D.3. Rules, numbers and the winnability sweep:
+[level-design.md](level-design.md) section 10; every number in `scripts/economy.gd` (`HEAT_MODS`, `HEAT_MAX`,
+`HEAT_TIERS`, `HEAT_BOUNTY`, `HEAT_EMBER`); rules, icons and flames in `scripts/heat.gd` (`Heat`).
+- **Modifiers** (global bitmask `Progress.heat_mods`, saved `[settings] heat_mods`): DIM 1 (keep-lit radius 20 -> 10 px,
+  fade steps x0.6, lantern glow x0.6), BRITTLE 1 (splat penalty x2 and the knockback slide drains), FOG BITES 2 (fog
+  returns after half the last fade step: 9 -> 4.5 s; with DIM 5.4 -> 2.7 s), GROUNDED 2 (no leaps; the touch JUMP is
+  struck out), THIRSTY 2 (drain x1.08: gliding, leaps, splats), RACE 3 (countdown 1.3 x par in the timer pod with an
+  hourglass, red under 10 s; at 0 the slime dries up: OUT OF TIME!). BRITTLE + GROUNDED never go together (GROUNDED
+  drops BRITTLE; BRITTLE is greyed out while GROUNDED is on), so 48 of 64 masks, max heat 10. Par, routes and the meter
+  size never change.
+- **Where they apply**: hard STORY levels already cleared plainly on hard (`Progress.heat_for_run`); never normal mode,
+  the randomizer (hard or not) or Descent. `game.gd` `_apply_heat` (after par, upgrades and workshop; hard mode has
+  neither). The fog shader got a `refog_after` uniform (default 9 = the old `fade_after.w`, so plain hard runs are
+  pixel-identical); the lazy-relight ticks follow the run's first fade step.
+- **Level select**: in hard mode a HEAT n button bottom right (mirrors BACK) opens `HeatPanel`
+  (`scripts/ui/heat_panel.gd`): HEAT n/10 with a flame, 6 toggles (2x code-drawn icon: moon, cracked block, fog with
+  teeth, struck-out leap arrow, half-empty drop, hourglass; name; flame + `+N`; a check when on), a line about the
+  focused one, DONE. Focus-locked; Esc / DONE / a click outside close it (Esc closes only the panel; focus returns to
+  HEAT); each toggle saves at once. The info lines read HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10
+  TICKETS ONCE in hard mode. Hard tiles show a 7x9 flame at the top left (mirrors the medal pips) in the best heat
+  tier's colors (2 red, 4 orange, 7 yellow, 10 white-hot with a blue core); `test_level_tiles` checks it stays clear of
+  the number, pips and time and that the number/lock centering is unchanged.
+- **HUD / result**: a pod under the level name (flame, HEAT n, the active modifiers' icons); RACE's hourglass countdown;
+  the win panel adds a row: flame, HEAT n, then BOUNTY +N (ticket icon), NEW BEST HEAT! or BEST HEAT n (the panel moves
+  up 13 px so it clears the NEW RECORD! banner). The hub pod adds a flame and n/100 (sum of best heats) once any
+  heat clear exists; heat 10 on every level puts a crown of 5 white-hot flames over the title logo.
+- **Rewards**: `Progress.complete_heat(level, heat)` on an unassisted win without dev toggles pays every newly crossed
+  tier once (3/5/7/10 = 25 a level, 250 in all; a clear can cross several), raises `heat_best[level]`. Decisions: the
+  claimed bounties are DERIVED from the best heat (tiers <= best are paid; no separate claimed bitmask can disagree);
+  `[heat] paid` keeps the tickets paid for stats, clamped on load to what the bests could have paid. Heat records are
+  NOT separate: a heat run records hard best times and hard medals exactly like a plain hard run (no modifier makes a
+  run faster); only the best heat per level is new. Dev mode pays (unsaved) like the randomizer; dev-toggled runs
+  (F1/F2) earn no bounty and no best heat; there is no ASSIST in hard mode; the workshop stays off.
+- **EMBER trail** (earned, never sold): every hard level at heat 7+ (`Economy.HEAT_EMBER`); hot orange goo with sparks
+  (the shader's specks) and a strong halo; NEW TRAIL: EMBER TRAIL on the clear that earns it; refused on load without
+  the condition (`cosmetic_earned("ember")`).
+- **Save** (all optional, defaulted, version 6 / epoch 1 unchanged): `[settings] heat_mods` (sanitized: junk bits and
+  BRITTLE+GROUNDED dropped), `[heat] level_N` (0-10, kept only for levels in `hard_cleared`), `[heat] paid`. Nothing
+  written until used. A full HEAT state adds ~90 chars to a save code (a `--story` save with every map: 2711 -> 2799). RESET PROGRESS clears it all (incl.
+  the picked modifiers).
+- **Winnability**: by the numbers for all 48 masks x 10 levels in `test_heat`, the autopilot at heat 10 on all 10 levels
+  and heat 9 (BRITTLE instead of GROUNDED) on L1-3 in `test_heat`, and the full sweep `tests/bench_heat.gd` (480 runs,
+  0 lost). Tightest: THIRSTY on L1 (the walk uses 92.6%, 7.4% left); RACE: the slowest walk takes 58% of the countdown.
+- **Flags**: `--heat=dim,fog,race` (or a mask number), `--heat-best=10,7,4`. Autoplay bot: unchanged (hard mode at heat
+  0; `--autoplay-heat` not built: heat needs a prior hard clear, so the bot would have to replay every level).
+- **Tests**: `test_heat.gd` (tables, masks, bounty maths, Progress rules, saves/codes/hostile values/reset, level select
+  keyboard/mouse/Esc/focus lock, hub pod + title crown, every modifier in a real level, win flow paying once, dev toggles,
+  winnability); `test_level_tiles` (flames + HEAT button/panel layout); `test_trails` (EMBER); nav fuzz: the HEAT panel
+  is a modal and an 11th area walk "heat" (panel, HARD MODE flips, heat runs with wins / dry-ups / RACE time-outs).
+- **Shots**: `docs/polish-shots/heat_level_select.png`, `heat_panel.png`, `heat_dim.png` (L3), `heat_fog.png` (L5),
+  `heat_race.png` (L7, RACE + THIRSTY), `heat_result.png` (BOUNTY +8), `heat_ember.png`; demo `tests/demo_heat.tscn`,
+  `tests/demo_level_select.tscn -- hard heat[-panel]`.
+- Open (owner): playtest which heats people use (knobs: `HEAT_BOUNTY`, the modifier values); real flame/icon art if
+  wanted.
+
