@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg.
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg.
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -195,14 +195,19 @@ func _ready() -> void:
 		InputMap.add_action("interact")
 	if save_path == _throwaway_save_path():
 		_clear_throwaway_saves()  # fresh every run
+	var story_complete := STORY_COMPLETE_FLAG in OS.get_cmdline_user_args()
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
+	elif story_complete:
+		pass  # a clean in-memory state (set up below), never the player's save
 	elif save_path == _throwaway_save_path():
 		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
 	else:
 		load_progress()
 	apply_bindings()
 	apply_volume()
+	if story_complete:  # first, so the other debug flags can still adjust the state it sets
+		enable_story_complete()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
@@ -661,6 +666,49 @@ func enable_dev_mode() -> void:
 	levels_cleared = Levels.COUNT
 	highest_unlocked = Levels.COUNT
 	hard_cleared.assign(range(1, Levels.COUNT + 1))
+
+
+## Debug `--story-complete` (tools/play.sh --story): a player who has beaten the whole story, on
+## normal AND hard mode, and found every coin, for testing the postgame. Unlike dev mode it is a
+## plain player state: no dev tools or dev coins (F1/F2 stay off), every level cleared on both modes
+## (randomizer, level select, every jelly and solid skin incl. rainbow), all Levels.total_coins()
+## coins found and none spent (upgrades left to buy), story intro/finale and tutorial seen. Best
+## times: normal levels 1-5 just under par, 6-10 at STORY_SILVER_PACE x par, hard all at that pace;
+## medals are derived from them (tier_for: gold, silver), so 25/30 normal (the stopwatch skin stays
+## locked) and 20/30 hard. Starts from a clean state (the real save is never read) and saves nothing.
+const STORY_COMPLETE_FLAG := "--story-complete"
+const STORY_GOLD_PACE := 0.95
+const STORY_SILVER_PACE := 1.15
+
+
+func enable_story_complete() -> void:
+	saving_enabled = false
+	dev_tools = false
+	story_seen = STORY_INTRO | STORY_FINALE
+	tutorial_seen = TUTORIAL_MOVE | TUTORIAL_LEAP
+	levels_cleared = Levels.COUNT
+	highest_unlocked = Levels.COUNT
+	current_level = 1
+	mode = MODE_STORY
+	hard_mode = false
+	hard_cleared.assign(range(1, Levels.COUNT + 1))
+	skin_notices_seen.assign(range(1, Levels.COUNT + 1))
+	selected_skin = Skins.skin_for_level(Levels.COUNT - 1)  # the last first-run skin (level 10's)
+	set_jelly(true)
+	upgrades = {}
+	coins_found = {}
+	best_times = {}
+	medals = {}
+	for level in range(1, Levels.COUNT + 1):
+		var keys: Array = []
+		keys.assign(Levels.coin_keys(level))
+		coins_found[level] = keys
+		for hard in [false, true]:
+			var par := Levels.level_par(level, hard)
+			var pace := STORY_GOLD_PACE if not hard and level <= Levels.COUNT / 2 else STORY_SILVER_PACE
+			var key: int = level + (HARD_RECORDS if hard else 0)
+			best_times[key] = snappedf(par * pace, 0.01)
+			medals[key] = tier_for(best_times[key], par)
 
 
 func start_story(level: int) -> void:

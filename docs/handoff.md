@@ -60,6 +60,13 @@ which describes the whole project and the commands for both machines.
 
 - **Launching:** "launch" = the real save, "dev mode" = everything unlocked and nothing saved. On Windows always
   `tools/play.ps1` in the background (right-most monitor, no focus steal); on the Mac `tools/play.sh [--dev]`.
+- **Story-complete launch (postgame testing):** `./tools/play.sh --story` (Windows `tools/play.ps1 -Story`; the game
+  flag `--story-complete`, `Progress.enable_story_complete`) starts as a player who beat all 10 levels on normal
+  AND hard with all 165 coins found and none spent (upgrades left to buy), story intro/finale and tutorial seen,
+  randomizer, level select and every jelly/solid skin (rainbow too) open. Best times: normal 1-5 at 0.95 x par
+  (gold), 6-10 and all hard levels at 1.15 x par (silver); medals derive from them (25/30 normal, 20/30 hard, so
+  the stopwatch skin stays locked). Not dev mode: no dev tools, F1/F2 off. Starts from a clean in-memory state:
+  the real save is never read or written (throwaway path, saving off). Test: `tests/test_story_complete.gd`.
 - **Ask before release work:** don't re-render itch promo images or rebuild release zips unless asked
   ("get this ready for itch"); quick verification screenshots are fine. "Prep only the itch file" = just the
   web zip.
