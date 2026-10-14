@@ -8,6 +8,9 @@ extends Control
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 ## What the SAVE CODE panel says about a code from an older build (it never loads).
 const OLD_CODE_MESSAGE := "THAT CODE IS FROM AN OLD VERSION"
+const COPIED_MESSAGE := "COPIED! KEEP IT SOMEWHERE SAFE"
+## Web only, when the browser refuses to copy: the code is shown in the browser's own prompt.
+const COPY_BY_HAND_MESSAGE := "COPY THE CODE FROM THE POP-UP"
 
 ## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
 ## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
@@ -42,6 +45,8 @@ var paste_button: Button
 var _web_paste_event: JavaScriptObject
 var _web_read_done: JavaScriptObject
 var _web_read_failed: JavaScriptObject
+var _web_copy_done: JavaScriptObject
+var _web_copy_failed: JavaScriptObject
 var copy_button: Button
 var load_button: Button
 ## LOAD has been pressed once on a working code: the next press replaces the progress.
@@ -179,19 +184,28 @@ func _open_codes() -> void:
 
 ## Fills the load box from the clipboard. In a browser Godot only sees text pasted into the page,
 ## and a Ctrl+V reaches the box before that text arrives, so there the clipboard is read through
-## the browser instead (it may ask for permission).
+## the browser instead (it may ask for permission). On itch (a cross-origin iframe without the
+## `clipboard-read` permission) the browser refuses, and a phone has no Ctrl+V, so then the browser's
+## own prompt asks for the code: its text field takes a long-press paste (web QA pass).
 func _paste_code() -> void:
 	if not OS.has_feature("web"):
 		_set_pasted(DisplayServer.clipboard_get())
 		return
 	var clipboard = JavaScriptBridge.get_interface("navigator").clipboard
 	if clipboard == null or not clipboard.readText:
-		code_status.text = "CLICK THE BOX AND PRESS CTRL+V"
+		_web_paste_by_hand()
 		return
 	_web_read_done = JavaScriptBridge.create_callback(func(args: Array) -> void: _set_pasted(str(args[0])))
-	_web_read_failed = JavaScriptBridge.create_callback(func(_args: Array) -> void:
-		code_status.text = "CLICK THE BOX AND PRESS CTRL+V")
+	_web_read_failed = JavaScriptBridge.create_callback(func(_args: Array) -> void: _web_paste_by_hand())
 	clipboard.readText().then(_web_read_done).catch(_web_read_failed)
+
+
+func _web_paste_by_hand() -> void:
+	var text = JavaScriptBridge.get_interface("window").prompt("Paste your Slime Time save code:", "")
+	if text is String and text.strip_edges() != "":
+		_set_pasted(text)
+	else:
+		code_status.text = "CLICK THE BOX AND PRESS CTRL+V"
 
 
 func _set_pasted(text: String) -> void:
@@ -252,9 +266,59 @@ func _refocus_panel() -> void:
 
 
 func _copy_code() -> void:
-	DisplayServer.clipboard_set(code_out.text)
 	code_out.select_all()
-	code_status.text = "COPIED! KEEP IT SOMEWHERE SAFE"
+	if OS.has_feature("web"):
+		_web_copy(code_out.text)
+		return
+	DisplayServer.clipboard_set(code_out.text)
+	code_status.text = COPIED_MESSAGE
+
+
+## Copying in a browser. On itch the game runs in a cross-origin iframe without the
+## `clipboard-write` permission, so `navigator.clipboard.writeText` (what `clipboard_set` uses) is
+## refused there and the code never reached the clipboard (web QA pass). A hidden text box +
+## `execCommand("copy")` works in that iframe on the button's click; `writeText` is the second try
+## (Firefox only allows the old command inside the click handler itself), and if both are refused
+## the browser's own prompt shows the code selected, ready to copy by hand.
+func _web_copy(text: String) -> void:
+	if JavaScriptBridge.eval(web_copy_js(text), true):
+		code_status.text = COPIED_MESSAGE
+		return
+	var clipboard = JavaScriptBridge.get_interface("navigator").clipboard
+	if clipboard == null or not clipboard.writeText:
+		_web_copy_by_hand(text)
+		return
+	_web_copy_done = JavaScriptBridge.create_callback(func(_args: Array) -> void: code_status.text = COPIED_MESSAGE)
+	_web_copy_failed = JavaScriptBridge.create_callback(func(_args: Array) -> void: _web_copy_by_hand(text))
+	clipboard.writeText(text).then(_web_copy_done).catch(_web_copy_failed)
+
+
+func _web_copy_by_hand(text: String) -> void:
+	code_status.text = COPY_BY_HAND_MESSAGE
+	JavaScriptBridge.get_interface("window").prompt("Copy your Slime Time save code:", text)
+
+
+## The script `_web_copy` runs: copies `text` through a hidden, selected text box and gives the
+## keyboard back to the game's canvas. Returns whether the browser copied it.
+static func web_copy_js(text: String) -> String:
+	return """(function (text) {
+	var box = document.createElement('textarea');
+	box.value = text;
+	box.setAttribute('readonly', '');
+	box.style.position = 'fixed';
+	box.style.top = '0';
+	box.style.left = '0';
+	box.style.opacity = '0';
+	document.body.appendChild(box);
+	box.select();
+	box.setSelectionRange(0, text.length);
+	var ok = false;
+	try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+	box.remove();
+	var canvas = document.getElementById('canvas');
+	if (canvas) { canvas.focus(); }
+	return ok === true;
+})(%s)""" % JSON.stringify(text)
 
 
 func _load_code() -> void:
