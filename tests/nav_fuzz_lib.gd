@@ -63,7 +63,8 @@ func _init(t: SceneTree) -> void:
 # ------------------------------------------------------------------ state
 
 ## A start state: "complete" (--story-complete + full maps), "fresh" (new player), "mid" (3 levels
-## cleared, maps of levels 1-3 only), "dev" (--unlock-all, hats available), "touch" (complete + touch).
+## cleared, maps of levels 1-3 only), "dev" (--unlock-all), "touch" (complete + touch), "rich" (complete
+## + 300 tickets, 3 spins taken (the TAILOR open), a trail and two map papers owned, a workshop level).
 func set_state(kind: String) -> void:
 	progress.reset_progress()
 	progress.maps = {}
@@ -74,7 +75,7 @@ func set_state(kind: String) -> void:
 	progress.reduce_motion = false
 	progress.reset_bindings()
 	(load("res://scripts/hub.gd") as GDScript).set("return_to", "")
-	Hats.available = false
+	Hats.available = true
 	progress.saving_enabled = false
 	progress.story_seen = progress.STORY_INTRO | progress.STORY_FINALE
 	progress.tutorial_seen = progress.TUTORIAL_MOVE | progress.TUTORIAL_LEAP
@@ -85,6 +86,13 @@ func set_state(kind: String) -> void:
 		"touch":
 			progress.enable_story_complete()
 			progress.force_touch = true
+		"rich":
+			progress.enable_story_complete()
+			progress.tickets = 300
+			progress.tickets_lifetime = 300
+			progress.spins = 3
+			progress.cosmetics_owned.assign(["gold", "blueprint", "night"])
+			progress.workshop = {charge = 1}
 		"mid":
 			progress.levels_cleared = 3
 			progress.highest_unlocked = 4
@@ -278,6 +286,8 @@ func modal() -> Node:
 		"hub":
 			if cs.quit_menu.visible:
 				return cs.quit_menu
+			if cs.hat_wheel.visible:
+				return cs.hat_wheel.modal()  # the buy confirm while it's open, else the whole overlay
 		"main":
 			if cs.restart_prompt.visible:
 				return cs.restart_prompt

@@ -214,7 +214,8 @@ func _initialize() -> void:
 	Input.action_press("interact")
 	await _frames(2)
 	Input.action_release("interact")
-	_check(not hub.hat_wheel.visible and "COMING SOON" in hub.prompt_key.text, "outside dev mode the hat wheel is still coming soon")
+	_check(hub.hat_wheel.visible and hub.hat_wheel.tab == "wheel" and not hub.hat_wheel.spin_button.disabled and "FREE" in hub.hat_wheel.spin_button.text,
+		"hats are live: a player's first visit opens the wheel with a FREE spin")
 	hub.free()
 	progress.dev_tools = true
 	hub = await _open()

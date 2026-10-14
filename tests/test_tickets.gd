@@ -184,11 +184,13 @@ func _initialize() -> void:
 	progress.day_override = -1
 	progress.reset_progress()
 
-	# --- The hat wheel: locked outside dev mode while hats are placeholders
+	# --- The hat wheel: live for every player; the Hats.available switch can still turn spins off
 	progress.tickets = 100
-	_check(not Hats.available and not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 100,
-		"hats not released: no spin outside dev mode, even with tickets (nothing is taken)")
-	Hats.available = true  # what follows is how it works once hats are real
+	_check(Hats.available and progress.can_spin_hats(), "hats are live: a player can spin (upgrades v2 batch 2)")
+	Hats.available = false
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 100,
+		"with the switch off: no spin outside dev mode, even with tickets (nothing is taken)")
+	Hats.available = true
 
 	# --- Atomic spin
 	progress.tickets = 100

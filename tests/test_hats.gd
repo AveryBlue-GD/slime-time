@@ -20,7 +20,9 @@ func _initialize() -> void:
 	progress.selected_hat = Hats.NONE
 	progress.hats_owned.clear()
 	progress.hats_owned.append(Hats.LIST[0].id)
-	_check(not progress.is_hat_unlocked(Hats.LIST[0].id), "while hats are 'coming soon' they can't be worn, even won ones")
+	_check(Hats.available and progress.is_hat_unlocked(Hats.LIST[0].id), "hats are out for every player (upgrades v2 batch 2): a won hat can be worn")
+	Hats.available = false  # the switch still works: off, even won hats can't be worn
+	_check(not progress.is_hat_unlocked(Hats.LIST[0].id), "with Hats.available off they can't be worn, even won ones")
 	progress.hats_owned.clear()
 	Hats.available = true  # the rest checks how they work once released
 

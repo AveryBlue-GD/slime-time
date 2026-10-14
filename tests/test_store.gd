@@ -1,0 +1,432 @@
+extends SceneTree
+
+## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
+## 210, workshop 423, cosmetics 240), hats live for players (11 spins = 11 different hats, never a
+## duplicate, rainbow pity), the TAILOR's direct buy (45 / rainbow 80 after 3 spins, counts as a spin,
+## rainbow pity reset, atomic + saved), workshop and cosmetic purchases (exact balance, one short,
+## double buy, max level, not refundable, dev mode free), equip / unequip / fallback, save round trips
+## (file and code, size), hostile values, RESET PROGRESS, the release epoch; the UI: the cauldron's
+## TICKETS tab, the prize wheel's SHOP (buy through the confirm, Esc ladder), the wardrobe's TRAILS
+## page and the map view's PAPER button. Every write goes to this run's throwaway save.
+## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_store.gd
+
+var failures := 0
+var progress: Node
+
+
+class ErrLog extends Logger:
+	var count := 0
+	var lines: Array[String] = []
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array) -> void:
+		if error_type == 1:
+			return
+		count += 1
+		if lines.size() < 10:
+			lines.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+
+
+var errlog := ErrLog.new()
+
+
+func _initialize() -> void:
+	await process_frame
+	progress = root.get_node("Progress")
+	OS.add_logger(errlog)
+	_check(progress.save_path != progress.REAL_SAVE_PATH, "tests save to a throwaway file (%s)" % progress.save_path)
+	_totals()
+	_hats()
+	_tailor()
+	_workshop()
+	_cosmetics()
+	_saves()
+	await _ui_upgrades()
+	await _ui_wheel()
+	await _ui_wardrobe()
+	await _ui_maps()
+	progress.reset_progress()
+	_check(errlog.count == 0, "no engine or script errors (%d)%s" % [errlog.count, "" if errlog.lines.is_empty() else ": " + errlog.lines[0]])
+	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	quit(0 if failures == 0 else 1)
+
+
+func _fresh(tickets := 0) -> void:
+	progress.reset_progress()
+	progress.dev_tools = false
+	Hats.available = true
+	progress.tickets = tickets
+	progress.tickets_lifetime = tickets
+
+
+# ---------------------------------------------------------------- totals
+
+func _totals() -> void:
+	var wheel := 0
+	for taken in Hats.LIST.size():
+		wheel += progress.spin_cost_after(taken)
+	_check(wheel == 210, "all 11 hats on the wheel cost 0 + 12 + 14 + ... + 30 = 210 (got %d)" % wheel)
+	_check(Workshop.full_cost() == 423 and Workshop.total_cost("wind", 3) == 95 and Workshop.total_cost("magnet", 3) == 82,
+		"the workshop costs 95 + 4 x 82 = 423 (got %d)" % Workshop.full_cost())
+	var cosmetics := 0
+	for id in Cosmetics.ids():
+		cosmetics += Cosmetics.price(id)
+	_check(cosmetics == 240 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 3,
+		"5 trails + 3 papers cost 240 (got %d)" % cosmetics)
+	_check(wheel + Workshop.full_cost() + cosmetics == 873, "everything in v1 costs 873 tickets")
+	_check(Economy.TAILOR_PRICE == 45 and Economy.TAILOR_RAINBOW_PRICE == 80 and Economy.TAILOR_AFTER_SPINS == 3
+		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
+		"store numbers live in Economy (Progress aliases them)")
+	var values := [Workshop.wind_refill(1), Workshop.wind_refill(3), Workshop.charge_time(0), Workshop.charge_time(3),
+		Workshop.splat_factor(2), Workshop.splat_stun(0), Workshop.splat_stun(3), Workshop.magnet_reach(0), Workshop.magnet_reach(3),
+		Workshop.nose_rate(3), Workshop.nose_reach(0), Workshop.nose_reach(2)]
+	_check(values == [0.15, 0.35, 1.5, 0.7, 0.55, 0.3, 0.06, 10.0, 34.0, 3.0, 160.0, 240.0],
+		"workshop tables: wind 15..35%%, charge 1.5 -> 0.7 s, sticky x0.55 / stun 0.3 -> 0.06, magnet 10 -> 34, nose x3 / 160 -> 240 (%s)" % [values])
+	_check(is_equal_approx(Workshop.charge_time(0), Slime.CHARGE_TIME) and is_equal_approx(Workshop.splat_stun(0), Slime.SPLAT_STUN)
+		and is_equal_approx(Workshop.magnet_reach(0), Coin.REACH) and is_equal_approx(Workshop.nose_reach(0), 160.0),
+		"every workshop base equals the game's own constant (level 0 changes nothing)")
+
+
+# ---------------------------------------------------------------- hats
+
+func _hats() -> void:
+	_fresh(0)
+	_check(progress.can_spin_hats() and progress.spin_cost() == 0, "hats are live: a new player's first spin is free")
+	_fresh(1000)
+	var seen := {}
+	var paid := 0
+	var rainbow_at := -1
+	for i in Hats.LIST.size():
+		var before: int = progress.tickets
+		var hat: String = progress.spin_hat(randf())
+		paid += before - progress.tickets
+		if hat == "rainbow":
+			rainbow_at = i + 1
+		seen[hat] = true
+	_check(seen.size() == Hats.LIST.size() and progress.hats_left().is_empty() and paid == 210 and progress.tickets_spent == 210,
+		"11 spins win 11 different hats (no duplicates) for 210 tickets (paid %d)" % paid)
+	_check(rainbow_at > 0, "the rainbow hat comes by spin 11 at the latest (spin %d)" % rainbow_at)
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 790, "an empty wheel can't spin and takes nothing")
+	# Pity: every miss fattens the rainbow wedge; landing on it resets.
+	_fresh(1000)
+	progress.spin_hat(0.0)  # the top hat (first in wheel order), a miss
+	progress.spin_hat(0.0)
+	_check(progress.rainbow_pity == 2 and Hats.weight("rainbow", 2) > Hats.weight("rainbow", 0), "misses build pity (%d)" % progress.rainbow_pity)
+	progress.spin_hat(0.99999)  # the last wedge: the rainbow hat
+	_check(progress.rainbow_pity == 0 and "rainbow" in progress.hats_owned, "landing on the rainbow hat resets its pity")
+	# Atomic: paid, won and saved before the wheel turns (read back from the file).
+	_fresh(30)
+	progress.spins = 1
+	progress.saving_enabled = true
+	var hat: String = progress.spin_hat(0.5)
+	var file := ConfigFile.new()
+	var ok := file.load(progress.save_path) == OK
+	_check(ok and hat != "" and int(file.get_value("wallet", "globs", -1)) == 18 and hat in file.get_value("hats", "owned", [])
+		and int(file.get_value("hats", "spins", 0)) == 2 and int(file.get_value("wallet", "tickets_spent", 0)) == 12,
+		"a spin is paid, won and saved at once (18 left, %s owned, spent 12 in the file)" % hat)
+	progress.saving_enabled = false
+
+
+func _tailor() -> void:
+	_fresh(200)
+	_check(not progress.tailor_open() and not progress.buy_hat("crown") and progress.tickets == 200, "the TAILOR is shut before 3 spins")
+	progress.spin_hat(0.0)
+	progress.spin_hat(0.0)
+	_check(not progress.tailor_open(), "...still shut after 2")
+	progress.spin_hat(0.0)
+	var spent: int = 200 - progress.tickets
+	_check(progress.tailor_open() and progress.spins == 3, "...open after 3 spins (paid %d so far)" % spent)
+	var left_before: int = progress.hats_left().size()
+	var pity: int = progress.rainbow_pity
+	var price_before: int = progress.spin_cost()
+	var tickets_before: int = progress.tickets
+	_check(progress.buy_hat("crown") and progress.tickets == tickets_before - 45 and "crown" in progress.hats_owned
+		and progress.selected_hat == "crown" and progress.hats_left().size() == left_before - 1,
+		"a hat costs 45, comes off the wheel and is worn")
+	_check(progress.spins == 4 and progress.hats_bought == 1 and progress.spin_cost() == price_before + Economy.SPIN_STEP and progress.rainbow_pity == pity,
+		"a direct buy counts as a spin (next spin %d), pity unchanged" % progress.spin_cost())
+	_check(not progress.buy_hat("crown") and progress.tickets == tickets_before - 45, "no double buy (the crown is off the wheel)")
+	_check(not progress.buy_hat("nothat") and not progress.buy_hat(""), "unknown hats can't be bought")
+	progress.rainbow_pity = 5
+	progress.tickets = 79
+	_check(not progress.buy_hat("rainbow") and progress.tickets == 79 and progress.rainbow_pity == 5, "the rainbow hat at 79 of 80: no buy, nothing taken")
+	progress.tickets = 80
+	_check(progress.buy_hat("rainbow") and progress.tickets == 0 and progress.rainbow_pity == 0, "the rainbow hat at exactly 80: bought, pity reset")
+	progress.dev_tools = true
+	progress.tickets = 0
+	var free_hat: String = progress.hats_left()[0]
+	_check(progress.tailor_price(free_hat) == 0 and progress.buy_hat(free_hat) and progress.tickets == 0, "dev mode buys free")
+	progress.dev_tools = false
+
+
+# ---------------------------------------------------------------- workshop and cosmetics
+
+func _workshop() -> void:
+	_fresh(0)
+	_check(not progress.workshop_open() and not progress.buy_workshop("charge"), "the workshop is shut before the first ticket ever")
+	_fresh(15)
+	_check(progress.workshop_open() and progress.buy_workshop("wind") and progress.tickets == 0 and progress.workshop_level("wind") == 1,
+		"SECOND WIND 1 at exactly 15: bought, 0 left")
+	progress.tickets = 29
+	_check(not progress.buy_workshop("wind") and progress.tickets == 29 and progress.workshop_level("wind") == 1, "level 2 at 29 of 30: nothing")
+	progress.tickets = 1000
+	_check(progress.buy_workshop("wind") and progress.buy_workshop("wind") and progress.workshop_level("wind") == 3 and progress.tickets == 920,
+		"levels 2 and 3 (30 + 50)")
+	_check(not progress.buy_workshop("wind") and progress.tickets == 920 and progress.workshop_cost("wind") == 0, "maxed: no fourth level")
+	_check(not progress.buy_workshop("lantern") and not progress.has_method("refund_workshop"), "unknown tracks can't be bought; no refunds")
+	_check(progress.tickets_spent == 95, "tickets spent counted (%d)" % progress.tickets_spent)
+	progress.dev_tools = true
+	progress.tickets = 0
+	_check(progress.buy_workshop("nose") and progress.tickets == 0, "dev mode buys free")
+	progress.dev_tools = false
+
+
+func _cosmetics() -> void:
+	_fresh(30)
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and progress.map_paper == Cosmetics.DEFAULT_PAPER
+		and progress.owns_cosmetic(Cosmetics.DEFAULT_TRAIL) and not progress.owns_cosmetic("gold"), "defaults are worn and owned; nothing else")
+	_check(not progress.equip_cosmetic("gold") and progress.trail_style == Cosmetics.DEFAULT_TRAIL, "an unowned style can't be worn")
+	_check(progress.buy_cosmetic("gold") and progress.tickets == 0 and progress.trail_style == "gold", "GOLD trail at exactly 30: bought and worn")
+	progress.tickets = 100
+	_check(not progress.buy_cosmetic("gold") and progress.tickets == 100, "no double buy")
+	progress.tickets = 24
+	_check(not progress.buy_cosmetic("night") and progress.tickets == 24 and progress.map_paper == Cosmetics.DEFAULT_PAPER, "a paper one ticket short: nothing")
+	progress.tickets = 25
+	_check(progress.buy_cosmetic("night") and progress.map_paper == "night" and progress.trail_style == "gold", "the NIGHT paper: bought, worn beside the trail")
+	progress.unequip_cosmetic("gold")
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "gold" in progress.cosmetics_owned, "taken off: back to the skin's goo, still owned")
+	_check(progress.equip_cosmetic("gold") and progress.trail_style == "gold", "...and back on")
+	_check(not progress.buy_cosmetic("skin") and not progress.buy_cosmetic("tophat"), "defaults and hats aren't cosmetics for sale")
+	progress.dev_tools = true
+	_check(progress.owns_cosmetic("starry") and progress.cosmetic_price("starry") == 0, "dev mode owns every cosmetic")
+	progress.dev_tools = false
+
+
+# ---------------------------------------------------------------- saves
+
+func _saves() -> void:
+	_fresh(500)
+	progress.spin_hat(0.0)
+	progress.spin_hat(0.0)
+	progress.spin_hat(0.0)
+	progress.buy_hat("chef")
+	progress.buy_workshop("charge")
+	progress.buy_workshop("sticky")
+	progress.buy_workshop("sticky")
+	progress.buy_cosmetic("candy")
+	progress.buy_cosmetic("blueprint")
+	var want := [progress.tickets, progress.tickets_spent, progress.workshop.duplicate(), progress.cosmetics_owned.duplicate(),
+		progress.trail_style, progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned.duplicate()]
+	var file: ConfigFile = progress._write()
+	progress.reset_progress()
+	progress._read(file)
+	var got := [progress.tickets, progress.tickets_spent, progress.workshop, progress.cosmetics_owned, progress.trail_style,
+		progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned]
+	_check(str(got) == str(want), "the store round-trips through the save (%s)" % [got])
+	var code: String = progress.save_code()
+	progress.reset_progress()
+	_check(progress.load_code(code) and progress.workshop_level("sticky") == 2 and progress.trail_style == "candy" and "chef" in progress.hats_owned,
+		"...and through a save code (%d chars)" % code.length())
+	# A full store (every hat, workshop maxed, every cosmetic worn) still makes a short code.
+	progress.hats_owned.assign(Hats.ids())
+	for id in Workshop.ids():
+		progress.workshop[id] = Workshop.max_level(id)
+	progress.cosmetics_owned.assign(Cosmetics.ids())
+	progress.hats_bought = 11
+	progress.tickets_spent = 873
+	var full: String = progress.save_code()
+	_check(full.length() < 2000 and full.length() < progress.MAX_SAVE_CODE_LENGTH, "a full store's save code stays small (%d chars)" % full.length())
+	_check(progress.RELEASE_EPOCH == 1 and progress.SAVE_VERSION == 6 and full.begins_with("SLIME2-"), "epoch 1, save version 6, SLIME2- codes: unchanged")
+	# A save from before the store: every key defaults.
+	var old := ConfigFile.new()
+	old.set_value("meta", "version", 6)
+	old.set_value("meta", "epoch", 1)
+	old.set_value("progress", "levels_cleared", 3)
+	progress._read(old)
+	_check(progress.workshop.is_empty() and progress.cosmetics_owned.is_empty() and progress.trail_style == Cosmetics.DEFAULT_TRAIL
+		and progress.map_paper == Cosmetics.DEFAULT_PAPER and progress.hats_bought == 0 and progress.tickets_spent == 0, "an older save gets store defaults")
+	# Hostile values.
+	var bad := ConfigFile.new()
+	bad.set_value("meta", "version", 6)
+	bad.set_value("meta", "epoch", 1)
+	bad.set_value("progress", "levels_cleared", 10)
+	bad.set_value("workshop", "wind", 99)
+	bad.set_value("workshop", "charge", -5)
+	bad.set_value("workshop", "sticky", "3")
+	bad.set_value("workshop", "magnet", 2.7)
+	bad.set_value("workshop", "lantern", 3)
+	bad.set_value("cosmetics", "owned", ["gold", "gold", "abyss", 7, "tophat", "night"])
+	bad.set_value("cosmetics", "trail", "starry")
+	bad.set_value("cosmetics", "paper", "gold")
+	bad.set_value("hats", "bought", 1 << 40)
+	bad.set_value("wallet", "tickets_spent", -50)
+	progress._read(bad)
+	_check(progress.workshop == {"wind": 3, "magnet": 2}, "workshop levels clamped, wrong types and unknown tracks dropped (%s)" % progress.workshop)
+	_check(str(progress.cosmetics_owned) == str(["gold", "night"]), "owned cosmetics: allow-listed ids once each (%s)" % [progress.cosmetics_owned])
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and progress.map_paper == Cosmetics.DEFAULT_PAPER,
+		"an unowned trail / a trail as paper fall back to the defaults")
+	_check(progress.hats_bought == Hats.LIST.size() and progress.tickets_spent == 0, "bought / spent clamped")
+	# The text validator passes a real store save (string arrays, ints).
+	progress.workshop = {"wind": 2}
+	progress.cosmetics_owned.assign(["ink", "goldleaf"])
+	progress.trail_style = "ink"
+	var text: String = progress._write().encode_to_text()
+	var parsed: ConfigFile = progress.SaveText.parse(text.to_utf8_buffer())
+	_check(parsed != null and parsed.get_value("cosmetics", "owned") == ["ink", "goldleaf"] and parsed.get_value("workshop", "wind") == 2,
+		"the save allow-list reads the new sections")
+	progress.reset_progress()
+	_check(progress.workshop.is_empty() and progress.cosmetics_owned.is_empty() and progress.trail_style == Cosmetics.DEFAULT_TRAIL
+		and progress.map_paper == Cosmetics.DEFAULT_PAPER and progress.hats_bought == 0 and progress.tickets_spent == 0,
+		"RESET PROGRESS clears the store")
+
+
+# ---------------------------------------------------------------- UI
+
+func _ui_upgrades() -> void:
+	_fresh(0)
+	var script: GDScript = load("res://scripts/ui/upgrades_screen.gd")
+	script.set("open_tab", "tickets")
+	var screen: Control = load("res://scenes/upgrades.tscn").instantiate()
+	root.add_child(screen)
+	await process_frame
+	_check(screen.page == "tickets" and screen.ticket_page.visible and not screen.coin_page.visible and screen.ticket_rows.size() == 5,
+		"the cauldron's TICKETS tab: 5 workshop rows")
+	var all_shut := true
+	for id: String in screen.ticket_rows:
+		all_shut = all_shut and screen.ticket_rows[id].plus.disabled
+	_check(all_shut and "EARN TICKETS" in screen.hint.text and screen.tickets_tab.has_focus(), "locked before any ticket: + off, the hint says how, focus on the tab")
+	screen.free()
+	_fresh(20)
+	screen = load("res://scenes/upgrades.tscn").instantiate()
+	root.add_child(screen)
+	await process_frame
+	var rows: Dictionary = screen.ticket_rows
+	_check(screen.page == "coins", "the next opening is COINS again (the tab isn't sticky)")
+	screen.show_page("tickets")
+	_check(rows.wind.cost.text == "15" and rows.wind.icon.visible and not rows.wind.plus.disabled and rows.charge.cost.text == "12"
+		and rows.wind.about.text == "REFILL AT EMPTY NONE -> 15%" and screen.coin_label.text == "20" and rows.wind.plus.has_focus(),
+		"prices with the ticket icon, effects now -> next, the pod shows tickets, focus on the first +")
+	rows.wind.plus.pressed.emit()
+	_check(progress.workshop_level("wind") == 1 and progress.tickets == 5 and screen.coin_label.text == "5" and rows.wind.cost.text == "30"
+		and rows.wind.plus.disabled and rows.charge.plus.disabled, "pressing + buys a level; the rows update (5 left: nothing else affordable)")
+	var boxes: Array[Rect2] = []
+	for id: String in rows:
+		for key in ["plus", "about", "cost"]:
+			var node: Control = rows[id][key]
+			boxes.append(Rect2(node.global_position, node.size.max(node.get_combined_minimum_size())))
+	var overlap := false
+	for i in boxes.size():
+		overlap = overlap or not Rect2(10, 20, 300, 130).encloses(boxes[i])
+		for j in range(i + 1, boxes.size()):
+			overlap = overlap or boxes[i].intersects(boxes[j])
+	_check(not overlap, "workshop rows fit above the bottom buttons without overlaps")
+	screen.coins_tab.pressed.emit()
+	_check(screen.page == "coins" and screen.coin_label.text == str(progress.coins()) and screen.rows.slime.plus.has_focus(), "the COINS tab shows the coin tree again")
+	screen.free()
+
+
+func _ui_wheel() -> void:
+	_fresh(100)
+	progress.spins = 3
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	for i in 5:
+		await process_frame
+	hub.open_hat_wheel()
+	await process_frame
+	var wheel: Control = hub.hat_wheel
+	_check(wheel.visible and wheel.tab == "wheel" and wheel.spin_button.has_focus() and "SPIN  16" in wheel.spin_button.text and wheel.spin_button.icon != null,
+		"the wheel opens on WHEEL, focus on SPIN with its price and the ticket icon (%s)" % wheel.spin_button.text)
+	wheel.shop_tab.pressed.emit()
+	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.size() == Hats.LIST.size(),
+		"SHOP opens on HATS: a tile per hat still on the wheel")
+	var crown: Button = wheel.shop_tiles["crown"]
+	_check(crown.has_focus() or wheel.shop_tiles.values()[0].has_focus(), "focus on the first tile")
+	crown.pressed.emit()
+	_check(wheel.confirm.visible and wheel.confirm_back.has_focus() and "CROWN" in wheel.confirm_label.text and wheel.confirm_price.text == "45",
+		"buying asks once: BUY CROWN? 45, focus on BACK")
+	_check(not wheel.spin() and progress.tickets == 100, "no spin from the SHOP / under the confirm")
+	_check(wheel.back() and not wheel.confirm.visible and progress.tickets == 100, "Esc (back) closes the confirm first, nothing bought")
+	crown.pressed.emit()
+	wheel.confirm_buy.pressed.emit()
+	await process_frame
+	_check(progress.tickets == 55 and "crown" in progress.hats_owned and progress.selected_hat == "crown" and not wheel.shop_tiles.has("crown")
+		and hub.hat != null and not wheel.confirm.visible, "BUY: paid 45, worn on the hub slime, off the list")
+	wheel.section_buttons["trails"].pressed.emit()
+	_check(wheel.section == "trails" and wheel.shop_tiles.size() == 5, "TRAILS: 5 tiles")
+	wheel.shop_tiles["starry"].pressed.emit()
+	wheel.confirm_buy.pressed.emit()
+	_check(progress.tickets == 15 and progress.trail_style == "starry", "a trail bought through the confirm is worn")
+	wheel.shop_tiles["glow"].pressed.emit()
+	_check(not wheel.confirm.visible and progress.tickets == 15 and "NEED 25" in wheel.status_line.text, "one it can't afford: no confirm, the line says why")
+	wheel.shop_tiles["starry"].pressed.emit()
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "starry" in progress.cosmetics_owned, "pressing a worn trail takes it off")
+	_check(not wheel.back(), "Esc with no confirm: the hub closes the overlay")
+	hub.close_hat_wheel()
+	_check(not wheel.visible and not hub.slime.frozen, "closed: the slime moves again")
+	# Every hat owned: the wheel is empty and the overlay opens on the SHOP.
+	progress.hats_owned.assign(Hats.ids())
+	hub.open_hat_wheel()
+	await process_frame
+	_check(wheel.tab == "shop" and wheel.shop_page.visible and wheel.get_viewport().gui_get_focus_owner() != null
+		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every hat won: opens on the SHOP, focus inside")
+	wheel.section_buttons["hats"].pressed.emit()
+	_check(wheel.shop_tiles.is_empty() and wheel.section_buttons["hats"].has_focus() and "EVERY HAT" in wheel.status.text, "...its HATS section is empty")
+	wheel.wheel_tab.pressed.emit()
+	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY HAT" in wheel.result.text and wheel.wheel_tab.has_focus(),
+		"...the WHEEL tab shows an empty wheel that can't spin")
+	hub.close_hat_wheel()
+	current_scene = null
+	hub.free()
+
+
+func _ui_wardrobe() -> void:
+	_fresh(0)
+	progress.cosmetics_owned.assign(["ink"])
+	var screen: Control = load("res://scenes/skins.tscn").instantiate()
+	root.add_child(screen)
+	await process_frame
+	screen.show_page("hats")
+	screen.page_button.pressed.emit()
+	_check(screen.page == "trails" and screen.trail_tiles.size() == 6 and screen.page_button.text == "SKINS" and screen._title.text == "TRAILS",
+		"the wardrobe's page button goes SKINS -> HATS -> TRAILS (6 tiles)")
+	_check(screen.trail_tiles[Cosmetics.DEFAULT_TRAIL].has_focus() and "WEARING" in screen.status.text, "focus on the worn trail")
+	screen.trail_tiles["gold"].pressed.emit()
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "30 TIX" in screen.status.text, "an unowned trail says its price, isn't worn")
+	screen.trail_tiles["ink"].pressed.emit()
+	_check(progress.trail_style == "ink" and "WEARING" in screen.status.text, "an owned trail is worn")
+	screen.page_button.pressed.emit()
+	_check(screen.page == "skins", "...and back round to SKINS")
+	screen.free()
+
+
+func _ui_maps() -> void:
+	_fresh(0)
+	progress.seed_full_surveys()
+	var screen: Control = load("res://scenes/maps.tscn").instantiate()
+	root.add_child(screen)
+	await process_frame
+	screen.open_view(1)
+	_check(screen.viewing and not screen.view_paper.visible, "no paper owned: no PAPER button")
+	screen.close_view()
+	progress.cosmetics_owned.assign(["blueprint", "goldleaf"])
+	screen.open_view(1)
+	var before: Image = (screen.view_map.texture as ImageTexture).get_image()
+	_check(screen.view_paper.visible, "papers owned: PAPER shows")
+	screen.view_paper.pressed.emit()
+	var after: Image = (screen.view_map.texture as ImageTexture).get_image()
+	_check(progress.map_paper == "blueprint" and before.get_data() != after.get_data() and screen.view_paper.has_focus() and "BLUEPRINT" in screen.view_line.text,
+		"PAPER redraws the map on the blueprint paper")
+	screen.view_paper.pressed.emit()
+	screen.view_paper.pressed.emit()
+	_check(progress.map_paper == Cosmetics.DEFAULT_PAPER, "...cycling the owned papers back to the parchment")
+	var pal: Dictionary = MapView.palette("dungeon", "night", Color8(239, 125, 47))
+	_check(pal.route == MapView.ROUTE and pal.floor == Color8(46, 44, 72) and pal.wall.r > pal.wall.b, "NIGHT: dark paper, skin-colored ink, the route still red")
+	screen.free()
+	progress.maps = {}
+
+
+func _check(ok: bool, label: String) -> void:
+	print(("  ok   " if ok else "  FAIL ") + label)
+	if not ok:
+		failures += 1

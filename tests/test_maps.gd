@@ -422,6 +422,7 @@ func _test_seeds() -> void:
 
 func _test_screen() -> void:
 	progress.reset_progress()
+	progress.dev_tools = false  # a player (dev mode would own every map paper: a PAPER button in the view)
 	progress.saving_enabled = false
 	progress.levels_cleared = 3
 	progress.highest_unlocked = 4

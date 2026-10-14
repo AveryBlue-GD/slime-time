@@ -15,9 +15,11 @@ extends SceneTree
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
 ##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
 ##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them).
-## Area walks: six more walks that start inside one area and keep steering back into it (`_area_op`,
-## about a third of the inputs): the map table + map view, the SETTINGS panels, the pause menu, the
-## dry-up choices, the win choices and a touch-driven level (2,000 inputs each by default).
+## Area walks: nine more walks that start inside one area and keep steering back into it (`_area_op`,
+## about a third of the inputs): the map table + map view (with its PAPER button), the SETTINGS panels,
+## the pause menu, the dry-up choices, the win choices, a touch-driven level, the prize wheel's
+## WHEEL | SHOP overlay (sections, tiles, the buy confirm), the cauldron's COINS | TICKETS tabs and
+## the wardrobe's SKINS / HATS / TRAILS pages (2,000 inputs each by default).
 
 const Lib := preload("res://tests/nav_fuzz_lib.gd")
 
@@ -41,9 +43,13 @@ var current_walk := ""
 var area := ""
 var area_steps := 2000
 ## Area walks: [area, state, start scene].
-const AREAS := [["maps", "complete", "res://scenes/maps.tscn"], ["settings", "complete", "res://scenes/controls.tscn"],
+const AREAS := [["maps", "rich", "res://scenes/maps.tscn"], ["settings", "complete", "res://scenes/controls.tscn"],
 	["pause", "complete", "res://scenes/main.tscn"], ["dry", "complete", "res://scenes/main.tscn"],
-	["win", "complete", "res://scenes/main.tscn"], ["touch", "touch", "res://scenes/main.tscn"]]
+	["win", "complete", "res://scenes/main.tscn"], ["touch", "touch", "res://scenes/main.tscn"],
+	["wheel", "rich", "res://scenes/hub.tscn"], ["upgrades", "rich", "res://scenes/upgrades.tscn"],
+	["skins", "rich", "res://scenes/skins.tscn"]]
+## The hub station each area walks back to.
+const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel", "upgrades": "upgrades", "skins": "wardrobe"}
 
 
 func _initialize() -> void:
@@ -623,6 +629,31 @@ func _other_screens() -> void:
 	await L.frames(3)
 	check(not hub.hat_wheel.visible and L.kind() == "hub", "WHEEL-ESC", "Esc closes the wheel after the spin ends")
 	inv("wheel closed")
+	# The SHOP tab: a tile's confirm takes Esc first, then the overlay closes; focus stays inside.
+	L.set_state("rich")
+	hub = await _fresh_scene(L.HUB)
+	hub_to("wheel")
+	await L.tap(KEY_F)
+	await L.frames(3)
+	await L.click(hub.hat_wheel.shop_tab.get_global_rect().get_center(), 1)
+	await L.frames(2)
+	check(hub.hat_wheel.tab == "shop" and hub.hat_wheel.shop_page.visible, "WHEEL-SHOP", "clicking SHOP shows the shop")
+	inv("wheel shop")
+	await L.tap(KEY_ENTER)  # the focused (first) tile: a hat, its confirm
+	await L.frames(2)
+	check(hub.hat_wheel.confirm.visible, "SHOP-CONFIRM", "Enter on a shop tile asks BUY ...?")
+	inv("shop confirm")
+	await esc()
+	await L.frames(2)
+	check(not hub.hat_wheel.confirm.visible and hub.hat_wheel.visible, "SHOP-ESC", "Esc closes the confirm first (the shop stays)")
+	inv("confirm closed")
+	await L.tap(KEY_TAB)
+	await L.frames(1)
+	inv("shop tab key")
+	await esc()
+	await L.frames(3)
+	check(not hub.hat_wheel.visible and L.kind() == "hub" and not hub.slime.frozen, "SHOP-ESC", "...then Esc closes the overlay")
+	inv("shop closed")
 	# Esc in a hub whose wheel is opened -> the opening F must not also spin
 	hub_to("wheel")
 
@@ -1163,6 +1194,14 @@ func _area_setup() -> void:
 			await esc()
 		"dry", "win", "touch":
 			await L.frames(20)
+		"wheel":
+			if hub_to("wheel"):
+				await L.tap(KEY_F)
+		"upgrades":
+			await L.click(cs.tickets_tab.get_global_rect().get_center(), 1)
+		"skins":
+			await L.click(cs.page_button.get_global_rect().get_center(), 1)
+			await L.click(cs.page_button.get_global_rect().get_center(), 1)
 	await L.frames(3)
 
 
@@ -1179,8 +1218,17 @@ func _area_op() -> void:
 		"title":
 			await L.tap(KEY_ENTER)
 		"hub":
-			var station: String = {"maps": "maps", "settings": "settings"}.get(area, "story")
-			if not overlay_closed(cs):
+			var station: String = AREA_STATIONS.get(area, "story")
+			if area == "wheel" and cs.hat_wheel.visible:
+				var w = cs.hat_wheel
+				if w.tab == "wheel" and not w.spinning and rng.randf() < 0.5:
+					await L.click(w.shop_tab.get_global_rect().get_center(), 1)  # mostly the SHOP side
+				elif w.tab == "shop" and not w.confirm.visible and not w.shop_tiles.is_empty() and rng.randf() < 0.5:
+					var tile: Button = w.shop_tiles.values()[rng.randi() % w.shop_tiles.size()]
+					await L.click(tile.get_global_rect().get_center(), 1)
+				else:
+					await _poke_inside(w)
+			elif not overlay_closed(cs):
 				await esc()
 			elif hub_to(station):
 				L.note("(area) tp to %s + F" % station)
@@ -1207,6 +1255,13 @@ func _area_op() -> void:
 				var under: Array = [cs.hard_box, cs.back_button] + cs.tiles
 				var c: Control = under[rng.randi() % under.size()]
 				await L.click(c.get_global_rect().get_center(), 1)
+		"upgrades", "skins":
+			if area != k:
+				await esc()
+			elif k == "skins" and cs.page != "trails" and rng.randf() < 0.5:
+				await L.click(cs.page_button.get_global_rect().get_center(), 1)
+			else:
+				await _poke_inside(cs)
 		"controls":
 			if area != "settings":
 				await esc()
@@ -1239,6 +1294,20 @@ func _area_op() -> void:
 			await esc()
 
 
+## Clicks, touches or keys at a random visible button inside `node` (an area's own controls).
+func _poke_inside(node: Node) -> void:
+	var inside: Array = L.clickables().filter(func(c: Control) -> bool: return node.is_ancestor_of(c) and not L.would_quit(c))
+	var r := rng.randf()
+	if inside.is_empty() or r < 0.25:
+		await L.tap([KEY_ENTER, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_TAB][rng.randi() % 6])
+		return
+	var c: Control = inside[rng.randi() % inside.size()]
+	if r < 0.7:
+		await L.click(c.get_global_rect().get_center(), 1)
+	else:
+		await L.touch(c.get_global_rect().get_center(), 1)
+
+
 ## Counts which screens / overlays the walk has been in (printed per walk, to show what it reached).
 func _cover(cov: Dictionary) -> void:
 	var cs := current_scene
@@ -1260,7 +1329,11 @@ func _cover(cov: Dictionary) -> void:
 			if cs.coin_board.visible:
 				tags.append("hub:coins")
 			if cs.hat_wheel.visible:
-				tags.append("hub:wheel")
+				tags.append("hub:wheel:" + cs.hat_wheel.tab)
+				if cs.hat_wheel.confirm.visible:
+					tags.append("hub:wheel:confirm")
+		"upgrades":
+			tags.append("upgrades:" + cs.page)
 		"main":
 			if cs.pause_menu.visible:
 				tags.append("game:pause")
