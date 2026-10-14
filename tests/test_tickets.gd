@@ -79,7 +79,7 @@ func _initialize() -> void:
 	progress.reset_progress()
 
 	# --- No MORE SLIME bought: at most 1 a win, whatever the attempt
-	progress.upgrades = {"speed": 5}
+	progress.upgrades = {"speed": 4}
 	_check(progress.random_tickets_due(1) == 1 and progress.random_payout(1).cap == "slime" and progress.random_tickets_due(5) == 1 and progress.random_payout(5).cap == "",
 		"zero slime upgrades: a first-try win pays only 1 (capped), the 5th try 1 anyway (not capped)")
 	progress.day_override = 20020

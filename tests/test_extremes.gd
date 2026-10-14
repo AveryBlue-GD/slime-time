@@ -508,7 +508,7 @@ func _seeds() -> void:
 	# edge seeds build completable mazes at every MORE SLIME level; replay is identical
 	var mazes := {}
 	for seed_value in [1, 2, 3, 1999999999, 2000000000, 123456789]:
-		for level in [0, 5, 10]:
+		for level in [0, 4, 7]:
 			progress.upgrades = {"slime": level} if level > 0 else {}
 			var g := await _start_random(seed_value)
 			if g == null:

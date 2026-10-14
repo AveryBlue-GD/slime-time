@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## Randomizer maze size benchmark (not a test suite): over N seeds (the golden test's seed spread)
-## at MORE SLIME 0 / 5 / 10, prints the area distribution (min / p10 / median / p90 / max, mean),
-## the share under the size floor (18x10 scaled by sqrt(1 + 0.1 x level) per side), the build time
+## at MORE SLIME 0 / 4 / 7, prints the area distribution (min / p10 / median / p90 / max, mean),
+## the share under the size floor (Levels.random_floor_cells: 18x10 scaled by sqrt(slime factor) per side), the build time
 ## (mean / p99 / worst) and, by usage band, the average area.
 ##   ./tools/godot.sh --path . --headless -s res://tests/bench_random_size.gd [-- --seeds=2000]
 
@@ -13,9 +13,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--seeds="):
 			seeds = a.trim_prefix("--seeds=").to_int()
-	for level in [0, 5, 10]:
-		var grow := sqrt(1.0 + 0.1 * level)
-		var floor_cells := Vector2i(mini(roundi(18 * grow), Levels.RANDOM_MAX_CELLS.x), mini(roundi(10 * grow), Levels.RANDOM_MAX_CELLS.y))
+	for level in [0, 4, 7]:
+		var floor_cells := Levels.random_floor_cells(level)
 		var floor_area := floor_cells.x * floor_cells.y
 		var areas: Array[int] = []
 		var times: Array[float] = []

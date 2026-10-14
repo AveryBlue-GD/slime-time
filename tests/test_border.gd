@@ -56,7 +56,7 @@ func _initialize() -> void:
 	_check(same, "two builds of level 3 lay identical border tiles")
 
 	# --- The brightness light reveals ring tiles like any wall, never the bedrock past them
-	a.light_reach = Upgrades.light_reach(10)
+	a.light_reach = Upgrades.light_reach(3)
 	for x in range(1, a.maze.size.x - 1):
 		if not a.is_wall_tile(Vector2i(x, 1)):
 			a._reveal_light((Vector2(x, 1) + Vector2(0.5, 0.5)) * a.TILE)

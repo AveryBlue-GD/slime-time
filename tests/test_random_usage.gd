@@ -102,7 +102,7 @@ func _initialize() -> void:
 	_check(too_short == 0, "10k seeds: every route between %d cells and the 95%% route" % Levels.RANDOM_MIN_ROUTE)
 	_check(short_routes >= SEEDS * 0.015 and short_routes <= SEEDS * 0.035, "tickets near the spawn (route <= 20%% of the meter) stay rare: %.2f%%" % (short_routes * 100.0 / SEEDS))
 
-	# --- Real mazes at MORE SLIME 0, 5 and 10
+	# --- Real mazes at MORE SLIME 0, 4 and 7
 	var kinds := [0, 0, 0]
 	var fallbacks := 0
 	var off_route := 0
@@ -113,7 +113,7 @@ func _initialize() -> void:
 	var low_u_area := [0, 0]
 	for i in MAZES:
 		var s := 1 + i * 7919
-		var level: int = [0, 5, 10][i % 3]
+		var level: int = [0, 4, 7][i % 3]
 		var cfg := Levels.random_config(s, false, level)
 		var maze := MazeGenerator.generate_random(cfg)
 		areas[i % 3] += maze.cells.x * maze.cells.y
@@ -137,7 +137,7 @@ func _initialize() -> void:
 			near_spawn += 1
 	_check(not_solvable == 0, "%d mazes: every one solvable, the ticket exactly goal_steps (>= %d) from the start" % [MAZES, Levels.RANDOM_MIN_ROUTE])
 	_check(off_route == 0, "...the ticket at the intended route length +-2, the maze's longest route at least the 95%% route below the max size (%d off)" % off_route)
-	_check(too_big == 0, "...sizes within the level's floor .. %s (avg area L0 %d, L5 %d, L10 %d)" % [Levels.RANDOM_MAX_CELLS, areas[0] / (MAZES / 3), areas[1] / (MAZES / 3), areas[2] / (MAZES / 3)])
+	_check(too_big == 0, "...sizes within the level's floor .. %s (avg area L0 %d, L4 %d, L7 %d)" % [Levels.RANDOM_MAX_CELLS, areas[0] / (MAZES / 3), areas[1] / (MAZES / 3), areas[2] / (MAZES / 3)])
 	_check(areas[0] < areas[1] and areas[1] <= areas[2], "...mazes grow with MORE SLIME")
 	_check(low_u_area[1] > 0 and low_u_area[0] / low_u_area[1] * 100 >= areas[0] / (MAZES / 3) * 95, "...low-u seeds (u < 0.30) get full-size mazes too (avg %d cells)" % (low_u_area[0] / maxi(low_u_area[1], 1)))
 	_check(near_spawn > 0 and near_spawn <= MAZES / 20, "...a ticket within 4 cells of the spawn happens, rarely (%d of %d)" % [near_spawn, MAZES])
@@ -170,8 +170,8 @@ func _initialize() -> void:
 	_check(g2.hud.rewards_texts == ["TICKET! ATTEMPT 2 = +4"], "the result names the attempt and its payout (%s)" % [g2.hud.rewards_texts])
 	g2.free()
 
-	# --- Autopilot perfect runs: slime used within a few % of u (low, middle, high u; MORE SLIME 0 and 10)
-	var runs := [[_seed_with(100, 125), 0], [_seed_with(240, 260), 0], [_seed_with(540, 560), 0], [_seed_with(930, 950), 0], [_seed_with(100, 130), 10], [_seed_with(925, 950), 10]]
+	# --- Autopilot perfect runs: slime used within a few % of u (low, middle, high u; MORE SLIME 0, 4 and 7)
+	var runs := [[_seed_with(100, 125), 0], [_seed_with(240, 260), 0], [_seed_with(540, 560), 0], [_seed_with(930, 950), 0], [_seed_with(100, 130), 4], [_seed_with(540, 560), 4], [_seed_with(100, 130), 7], [_seed_with(925, 950), 7]]
 	for run: Array in runs:
 		var s: int = run[0]
 		var level: int = run[1]
@@ -221,7 +221,7 @@ func _game(maze_seed: int, code_level: int, own_level: int) -> Node2D:
 func _golden() -> bool:
 	var got := []
 	for s in [1, 2, 3, 4242, 123456]:
-		got.append([Levels.random_usage_permille(s), Levels.random_route_cells(s, false, 0), Levels.random_route_cells(s, false, 10)])
+		got.append([Levels.random_usage_permille(s), Levels.random_route_cells(s, false, 0), Levels.random_route_cells(s, false, 7)])
 	var want := [[371, 26, 51], [749, 51, 102], [406, 28, 56], [202, 14, 28], [498, 34, 68]]
 	if str(got) != str(want):
 		print("    golden usage now: ", got)
