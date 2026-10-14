@@ -87,6 +87,35 @@ func _initialize() -> void:
 	_check(RotateHint.should_show(Vector2i(390, 844), true) and not RotateHint.should_show(Vector2i(844, 390), true)
 		and not RotateHint.should_show(Vector2i(390, 844), false), "rotate hint: only for upright touchscreens")
 
+	# The cover pauses the game under it and puts the pause state back (web QA pass).
+	var hint: CanvasLayer = root.get_node("RotateHint")
+	var holder := Node.new()
+	root.add_child(holder)
+	current_scene = holder
+	paused = false
+	hint.set_shown(true)
+	_check(hint.visible and paused, "rotate hint: covering pauses the game")
+	await process_frame
+	paused = false  # e.g. a goo wipe finishing under the cover
+	await process_frame
+	await process_frame
+	_check(paused, "rotate hint: stays paused while covering")
+	hint.set_shown(false)
+	_check(not hint.visible and not paused, "rotate hint: turning sideways resumes a running game")
+	paused = true  # the pause menu was open
+	hint.set_shown(true)
+	hint.set_shown(false)
+	_check(paused, "rotate hint: an open pause menu stays paused")
+	hint.set_shown(true)
+	var other := Node.new()
+	root.add_child(other)
+	current_scene = other
+	hint.set_shown(false)
+	_check(not paused, "rotate hint: a screen that changed under the cover starts unpaused")
+	current_scene = null
+	other.free()
+	holder.free()
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
