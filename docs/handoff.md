@@ -1,4 +1,49 @@
-# Handoff: where Slime Time stands (2026-10-12)
+# Handoff: where Slime Time stands (updated 2026-10-14)
+
+## Current state (2026-10-14)
+
+Read [CLAUDE.md](../CLAUDE.md) for the project facts and [README-docs.md](README-docs.md) for the docs index. The sections
+below this summary are the history (oldest first, newest last); where they disagree with this summary or with CLAUDE.md,
+this summary and CLAUDE.md win.
+
+**What exists.** Godot 4.7.2 pixel-art maze game (320x180). Title (first launch of a fresh save plays the wordless story
+intro first) -> round rotating **hub** with 9 stations (story archway, MAP TABLE, upgrades cauldron, QUIT trapdoor with a
+LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat wheel, wardrobe). 10 themed story levels
+(coins at dead ends, upgrades, medals as 1-3 time tiers, wordless finale), **hard mode** (own bigger mazes, meter x
+`HARD_SLIME_MULT`), the **randomizer** (unlocked after the story; the gold ticket voucher is the goal, no chalice; payout
+5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
+Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
+CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 5. 54 test suites; 6 agents in `.claude/agents/`.
+
+**Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
+fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
+res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`. Tests: `./tools/test_all.sh` (prints `suites: N
+failed: 0`); one suite: `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
+
+**Save safety.** Only a plain launch touches `user://save.cfg`. Tests, tools, headless, movie, screenshot and dev runs write
+a throwaway file (and may read the real save); `--story` / `--autoplay` use clean in-memory state. Never run the game
+yourself when the owner may be playing; launch semantics and preferences are in "Decisions and standing preferences".
+
+**Known limitations.**
+- Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
+- Android and web are unverified on real devices (the Android shader fix and the browser paste fix are unconfirmed).
+- Difficulty numbers are priors, not playtest data ([playtime-estimate.md](playtime-estimate.md): ~45 min median for the
+  story on normal, ~2.1 h with hard).
+- Trail maps are a trial (cost/unlock, % of walls on the select and the trapdoor's spot are undecided).
+- Windows build zip and itch promo images are out of date (v2.2); only rebuild when the owner asks.
+
+**Open tasks.**
+1. Android / web device checks: upload the web zip, retest the hub and a level on a real Android phone, retest PASTE and Ctrl+V in SAVE CODE.
+2. Tuning from playtests (story budgets, hard allowances, randomizer usage curve, ticket payouts, hat wheel price).
+3. Optional map v1 as proposed in [advisor/maps.md](advisor/maps.md) (unlock/cost plan for the trail maps).
+4. Real hats from the owner, then set `Hats.available = true` (nothing else is needed); hat wheel currency is already tickets.
+5. Optional: merge `v2` into `main`; update the itch page tagline when prepping a release.
+
+The "Open tasks" list further down is from 2026-10-12 and is kept as history.
+Notes below saying CLAUDE.md is "out of date (not edited)" were fixed on 2026-10-14; CLAUDE.md now matches the code.
+
+
+## Original handoff (2026-10-12, history)
 
 Written on the Windows PC before moving to the MacBook Pro. Read this with [CLAUDE.md](../CLAUDE.md),
 which describes the whole project and the commands for both machines.

@@ -1,9 +1,11 @@
 # Game: "Slime Time" — build it in this Godot project
 
+> **Status (2026-10-14): this is the original build brief; all 6 phases are done and the game has moved on.** Where a section below was superseded it carries a **[superseded]** note saying what is true now. For the current game read [../CLAUDE.md](../CLAUDE.md) (project facts), [handoff.md](handoff.md) (state and history), [level-design.md](level-design.md), [story.md](story.md) and the index in [README-docs.md](README-docs.md).
+
 Follow the rules in CLAUDE.md (320x180 base resolution, 16x16 tiles, nearest-neighbor, palette in tools/make_placeholder_art.py). Replace the current top-down sandbox with this game. Build it in the phases listed at the bottom, and after each phase run the tests, take a screenshot, check it, and commit.
 
 ## Core concept
-The player is a slime in a maze that starts completely black. The only way to reveal the map is to leave a trail of goo. Each level's exit is a golden chalice. Moving uses up slime; if it hits 0% the level restarts.
+The player is a slime in a maze that starts completely black. The only way to reveal the map is to leave a trail of goo. Each level's exit is a golden chalice. Moving uses up slime; if it hits 0% the level restarts. **[superseded in part]** A dry-up now shows RESTART / UPGRADES buttons (and ASSIST after 3 dry-ups), and in the randomizer the goal is a gold ticket voucher, not a chalice.
 
 ## Movement & trail
 - **Free movement:** the slime glides smoothly in any direction (8-way input, analog-feeling), with acceleration and a bit of slippery deceleration, so it feels gooey rather than snappy.
@@ -33,20 +35,20 @@ The player is a slime in a maze that starts completely black. The only way to re
 - Broken walls are cosmetic only (they still block), unless I decide otherwise later.
 
 ## Levels
-- 10 levels that get harder: larger mazes, more dead ends, and a tighter slime budget.
+- 10 levels that get harder: larger mazes, more dead ends, and a tighter slime budget. **[superseded]** Story layouts are v4 (`Levels.DATA`, `generate_level`, start cells from `SpawnPicker`), themed per level (10 art themes), with coins at dead ends and the budgets below; hard mode has its own bigger mazes (level-design.md sections 2 and 7).
 - Generate mazes procedurally from a fixed seed per level, so each level is the same every time it's played. [default]
-- **Every level must be beatable:** compute the shortest path to the chalice and set the slime budget so a perfect glide uses about 60% (level 1) down to about 90% (level 10). Add a test that checks this for all 10 levels.
-- Touching the chalice → short celebration → next level loads immediately. After level 10 → a victory screen.
+- **Every level must be beatable:** compute the shortest path to the chalice and set the slime budget so a perfect glide uses about 60% (level 1) down to about 90% (level 10). **[superseded]** No-upgrade targets are now 45% (level 1) to 99% (level 10); upgrades (more slime, speed, brightness) bought with coins make the late levels fair. Add a test that checks this for all 10 levels.
+- Touching the chalice → short celebration → next level loads immediately. After level 10 → a victory screen. **[superseded]** A win now shows a result screen with medals and REPLAY / NEXT / HUB buttons; the wordless story intro plays on first launch and the finale after level 10 (story.md).
 - Save progress (highest level reached, unlocked skins, selected skin, custom color, glow) to `user://save.cfg`.
 
 ## Skins
-- The default skin is **Ember (orange)**. Clearing each of levels 1–9 unlocks a new preset color skin.
-- **Beating the game (level 10) unlocks the finale reward:**
+- The default skin is **Ember (orange)**. Clearing each of levels 1–9 unlocks a new preset color skin. **[superseded]** The starter is Lime green, each level 1-9 clear unlocks the next skin (Ember is the level-10 skin), plus rainbow (every coin found), Stopwatch (30 gold medals) and CHAMELEON (after level 10); skins are jelly (see-through) by default with solid versions unlocked by hard-mode clears.
+- **Beating the game (level 10) unlocks the finale reward:** **[superseded: the glow is gone, the Brightness upgrade replaced it; the color wheel (CHAMELEON) stays]**
   - A **custom color wheel** (hue/saturation wheel plus a brightness slider).
   - **Luminescence:** the slime glows and actually lights up the dark maze around it (a PointLight2D with an adjustable intensity/radius slider, tinted to the slime's color). The glow reveals the area around the slime as it moves, on top of the trail.
   - The glow does not exist anywhere before the game is beaten — not on preset skins and not in early levels.
 - Skins are done with a palette-swap shader on one set of grayscale/indexed sprites, not by redrawing sprites for every color.
-- Add a skin select screen reached from the title menu, with locked skins shown as silhouettes and the finale reward shown as "???".
+- Add a skin select screen reached from the title menu, with locked skins shown as silhouettes and the finale reward shown as "???". **[superseded]** It is the wardrobe in the hub (SKINS & HATS).
 
 ## Sprites (generated by an expanded tools/make_placeholder_art.py, 16x16)
 - Gliding: **at least 16 frames** — an 8-direction squish-and-stretch cycle (2+ frames per direction, more for the main 4), plus a 2–4 frame idle wobble.
@@ -56,11 +58,12 @@ The player is a slime in a maze that starts completely black. The only way to re
 - Bundle the frames into sprite sheets and play them with AnimatedSprite2D.
 
 ## Randomizer mode
+**[superseded in part]** Still true: seeded, always completable (spanning tree + BFS check). No longer true: it is unlocked by beating the story, the goal is a gold ticket (payout 5/4/3/2/1 by attempt), a dry-up retries the same maze, mazes are big and fixed-size with a per-seed slime usage and seed codes `N-L` (level-design.md sections 5 and 6).
 - From the title screen. Every win generates a brand-new maze from a fresh seed; dying retries the same maze.
 - Mazes are shaped by noise (corridors follow noise ridges; a second noise layer knocks out walls to add loops) and are **always completable**: built as a spanning tree over every cell, only ever removing walls afterwards, then verified with a breadth-first search. The slime budget comes from the real shortest path.
 
 ## Screens & UI
-Title screen (Continue / Level select / Randomizer / Skins / Controls / Quit) → game → level-complete message (with any skin unlocked) → next level. Controls screen remaps every action (arrow keys always work too). Esc returns to the title. HUD: slime % (in the skin's color), jump charge meter, level number.
+**[superseded]** The title is now ENTER THE HUB plus a STORY (replay intro) button; level select, randomizer, skins, upgrades, map table, settings and quit are stations in the round hub. Original flow: Title screen (Continue / Level select / Randomizer / Skins / Controls / Quit) → game → level-complete message (with any skin unlocked) → next level. Controls screen remaps every action (arrow keys always work too). Esc returns to the title. HUD: slime % (in the skin's color), jump charge meter, level number.
 
 ## Build in phases (stop and show me after each)
 1. Free gliding movement, goo trail, black map that the trail reveals (with walls next to the trail visible), slime meter, one test maze with the chalice.
