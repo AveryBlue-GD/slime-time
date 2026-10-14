@@ -116,7 +116,11 @@ const DESCENT_DROP_REFILL := 8.0
 ## DESCENT_POT_MAX. CASH OUT banks the whole pot, a dry-up (or quitting mid-floor) half, rounded down.
 const DESCENT_POT_PER_FLOOR := [[1, 1], [4, 2], [7, 3], [10, 4]]
 const DESCENT_POT_MAX := 30
-## Runs per UTC day that pay (the first ones that bank anything); later runs are PRACTICE (pay 0).
+## Runs per UTC day that pay; later runs are PRACTICE (pay 0). A run takes one of the day's paid
+## slots (saved at once) when it first clears floor 1, so closing the game mid-run can't keep the
+## slot; it banks into that slot later (even after midnight). A run that dries up or quits on floor 1
+## (pot 0) takes no slot; a run that started with no slot left still pays if a new day has begun by
+## the time it banks.
 const DESCENT_PAID_PER_DAY := 2
 ## With no MORE SLIME bought a run banks at most this (not in dev mode).
 const DESCENT_NO_SLIME_CAP := 1
@@ -126,30 +130,33 @@ const DESCENT_MILESTONES := {5: 10, 10: 15, 15: 20, 20: 25}
 const DESCENT_ABYSS_FLOOR := 10
 
 ## Boons: after each cleared floor the player picks 1 of 3 offers (seeded by run seed and floor;
-## distinct; a boon held `max` times is no longer offered, max 0 = no limit). Run-scoped.
+## distinct; a boon held `max` times is no longer offered, max 0 = no limit; a boon is never offered
+## while the boon named by its `excludes` is held). Run-scoped.
 ##   gulp     BIG GULP        `value` % of the meter added right away
 ##   tank     DEEP TANK       meter capacity + `value` (share) for the run
 ##   feather  FEATHER LEAP    leaps cost `value` of gliding the distance (game.JUMP_COST_FACTOR 0.5)
-##   rubber   RUBBER BODY     splats cost no extra slime (the stun stays)
+##   rubber   RUBBER BODY     splats cost no extra slime (the stun stays); never with GLASS SLIME
+##                            (it would cancel GLASS's double splats: they exclude each other)
 ##   slick    SLICK           glide speed + `value` (share)
 ##   blaze    BLAZE           one more brightness step: light reach `value` px past BRIGHTNESS 3
 ##   sense    CHALICE SENSE   the exit shows within `value` px (game.CHALICE_REVEAL_DISTANCE 24)
 ##   bladder  BACKUP BLADDER  one more refill of `value` % when the meter hits 0 (after SECOND WIND)
 ##   thrift   THRIFT          each floor refill + `value` percent
-##   greedy   GREEDY GOO      + `tickets` to the pot per cleared floor, capacity `value` (share)
-##   glass    GLASS SLIME     the banked pot x `pot`, splat penalties x `splat`
+##   greedy   GREEDY GOO      + `tickets` to the pot per cleared floor, capacity `value` (share); one
+##                            stack only (capacity 0.90 stays above the deepest floors' u 0.85)
+##   glass    GLASS SLIME     the banked pot x `pot`, splat penalties x `splat`; never with RUBBER BODY
 const BOONS := {
 	"gulp": {weight = 1.0, max = 0, value = 30.0},
 	"tank": {weight = 0.8, max = 2, value = 0.15},
 	"feather": {weight = 0.8, max = 1, value = 0.35},
-	"rubber": {weight = 0.8, max = 1, value = 0.0},
+	"rubber": {weight = 0.8, max = 1, value = 0.0, excludes = "glass"},
 	"slick": {weight = 0.8, max = 2, value = 0.15},
 	"blaze": {weight = 0.6, max = 1, value = 33.0},
 	"sense": {weight = 0.5, max = 1, value = 96.0},
 	"bladder": {weight = 0.5, max = 0, value = 25.0},
 	"thrift": {weight = 0.8, max = 2, value = 15.0},
-	"greedy": {weight = 0.5, max = 2, value = -0.10, tickets = 1},
-	"glass": {weight = 0.4, max = 1, pot = 1.5, splat = 2.0},
+	"greedy": {weight = 0.5, max = 1, value = -0.10, tickets = 1},
+	"glass": {weight = 0.4, max = 1, pot = 1.5, splat = 2.0, excludes = "rubber"},
 }
 ## Boons offered after each floor.
 const BOON_OFFERS := 3

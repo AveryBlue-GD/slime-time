@@ -412,13 +412,16 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 
 
 ## DESCENT: the pot pod (in the attempt pod's place): "POT 6" with the ticket icon, and a second
-## line when the run would pay less: PRACTICE (today's paying runs used), NO TICKETS (dev toggles),
-## PAYS 1 (no MORE SLIME). `gain` > 0 adds "+N" (the floor just cleared). Dim when it pays nothing.
-func set_pot(pot: int, cap: String, gain := 0) -> void:
+## line: PAID RUN n/2 (the day's paid slot this run took on floor 1, or will take), or why it pays
+## less: PRACTICE (no paid slot left today), NO TICKETS (dev toggles), PAYS 1 (no MORE SLIME). `gain`
+## > 0 adds "+N" (the floor just cleared). Dim when it pays nothing.
+func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
 	var text := "POT %d" % pot
 	if gain > 0:
 		text += " +%d" % gain
 	var why: String = {"practice": "PRACTICE", "dev": "NO TICKETS", "slime": "PAYS 1"}.get(cap, "")
+	if cap == "" and slot > 0:
+		why = "PAID RUN %d/%d" % [slot, Economy.DESCENT_PAID_PER_DAY]
 	if why != "":
 		text += "\n" + why
 	if text == attempt_label.text and attempt_pod.visible:

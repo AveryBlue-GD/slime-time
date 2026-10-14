@@ -6,7 +6,8 @@ extends CanvasLayer
 ##   pot (+ this floor's tickets), three boon tiles (icon, name, two short lines, how many held) to
 ##   pick one of, then DESCEND (or CASH OUT +N to bank the whole pot and end the run);
 ## - the SUMMARY after the run ends (dry-up, CASH OUT): why it ended, the floor reached, the best
-##   floor, the run time, the tickets banked (and why fewer), milestone bonuses, the boons held,
+##   floor, the run time and the day's paid slot it used (PAID RUN n/2), the tickets banked (and why
+##   fewer), milestone bonuses, the boons held,
 ##   then NEW RUN / HUB.
 ## Keyboard: arrows move between the tiles and buttons, Enter / Space picks; a tile picks the boon
 ## and moves the focus to DESCEND. Touch / mouse: tap a tile, then DESCEND. Esc opens the pause menu
@@ -249,7 +250,10 @@ func show_summary(result: Dictionary) -> void:
 	_line("CLEARED %d FLOORS" % int(result.get("cleared", 0)) if cashed else "DRIED UP ON FLOOR %d" % floor_no, UIKit.TEXT)
 	var best_text := "BEST FLOOR %d" % int(result.get("best_floor", floor_no))
 	_line(best_text + ("   NEW BEST!" if result.get("new_best", false) else ""), UIKit.GOLD if result.get("new_best", false) else UIKit.TEXT_DIM)
-	_line("TIME " + UIKit.format_time(float(result.get("time", 0.0))), UIKit.TEXT_DIM)
+	var time_text := "TIME " + UIKit.format_time(float(result.get("time", 0.0)))
+	if int(result.get("slot", 0)) > 0:  # the day's paid slot the run used (taken on floor 1)
+		time_text += "   PAID RUN %d/%d" % [int(result.slot), Economy.DESCENT_PAID_PER_DAY]
+	_line(time_text, UIKit.TEXT_DIM)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 3)

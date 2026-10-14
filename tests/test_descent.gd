@@ -32,6 +32,9 @@ func _initialize() -> void:
 	await _boon_effects()
 	await _flow()
 	await _portal()
+	_paid_slots()
+	await _story_untouched()
+	await _card_guards()
 	progress.reset_progress()
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(0 if failures == 0 else 1)
@@ -117,7 +120,7 @@ func _offers() -> void:
 	_check(ok, "3 distinct offers every time")
 	_check(seen.size() == 11, "all 11 boons get offered (%d)" % seen.size())
 	_check(int(seen.get("gulp", 0)) > int(seen.get("glass", 0)), "weights: BIG GULP (1.0) is offered more often than GLASS SLIME (0.4) (%d vs %d)" % [seen.get("gulp", 0), seen.get("glass", 0)])
-	var held := {feather = 1, rubber = 1, blaze = 1, sense = 1, glass = 1, tank = 2, slick = 2, thrift = 2, greedy = 2}
+	var held := {feather = 1, rubber = 1, blaze = 1, sense = 1, glass = 1, tank = 2, slick = 2, thrift = 2, greedy = 1}
 	var left_ok := true
 	for s in range(1, 100):
 		for id in Descent.offers(s, 5, held):
@@ -125,6 +128,25 @@ func _offers() -> void:
 	_check(left_ok and Descent.offers(3, 5, held).size() == 2, "held non-stacking boons and maxed stacks are never offered (only BIG GULP / BACKUP BLADDER left)")
 	_check(Descent.can_offer("tank", {tank = 1}) and not Descent.can_offer("tank", {tank = 2}) and Descent.can_offer("gulp", {gulp = 9}) and not Descent.can_offer("feather", {feather = 1}),
 		"stacking: DEEP TANK 2x, BIG GULP no limit, FEATHER LEAP once")
+	# Review b3 #2: RUBBER BODY would cancel GLASS SLIME's double splats, so they exclude each other.
+	var apart := true
+	for s in range(1, 600):
+		var with_rubber := Descent.offers(s, 1 + s % 12, {rubber = 1})
+		var with_glass := Descent.offers(s, 1 + s % 12, {glass = 1})
+		apart = apart and not "glass" in with_rubber and not "rubber" in with_glass
+	_check(apart and not Descent.can_offer("glass", {rubber = 1}) and not Descent.can_offer("rubber", {glass = 1}) and Descent.can_offer("glass", {}) and Descent.can_offer("rubber", {}),
+		"RUBBER BODY and GLASS SLIME are never offered while the other is held")
+	var both := Descent.new_run(SEED)
+	both.boons = {rubber = 1}
+	both.cleared = 1
+	Descent.descend(both, "glass")
+	_check(Descent.held(both.boons, "glass") == 0, "descending with GLASS SLIME while holding RUBBER BODY doesn't add it")
+	# Review b3 #7: GREEDY GOO is one stack, so the run's capacity never drops below the deepest u.
+	var greedy_ok := not Descent.can_offer("greedy", {greedy = 1}) and Economy.BOONS.greedy.max == 1
+	for s in range(1, 300):
+		greedy_ok = greedy_ok and not "greedy" in Descent.offers(s, 1 + s % 15, {greedy = 1})
+	_check(greedy_ok and Descent.capacity({greedy = 1}) >= Economy.DESCENT_U_MAX / 1000.0,
+		"GREEDY GOO stacks once: capacity %.2f stays above the deepest floors' u %.2f" % [Descent.capacity({greedy = 1}), Economy.DESCENT_U_MAX / 1000.0])
 
 
 func _maths() -> void:
@@ -144,12 +166,12 @@ func _maths() -> void:
 	Descent.clear_floor(run, 5.0, 0.0)
 	Descent.descend(run, "tank")
 	_check(is_equal_approx(run.meter, 5.0 / 1.15 + 50.0 + 15.0), "DEEP TANK keeps the slime left (in tiles) and refills floor 4 by +50 (+15): %.2f" % run.meter)
-	run.boons = {greedy = 2, glass = 1}
+	run.boons = {greedy = 1, glass = 1}
 	run.pot = 28
 	run.floor = 10
 	Descent.clear_floor(run, 50.0, 0.0)
 	_check(run.pot == 30, "the pot never exceeds 30")
-	_check(Descent.floor_gain(10, {greedy = 2}) == 6 and Descent.floor_gain(1, {}) == 1, "GREEDY GOO adds +1 per floor per stack")
+	_check(Descent.floor_gain(10, {greedy = 1}) == 5 and Descent.floor_gain(1, {}) == 1, "GREEDY GOO adds +1 per floor")
 	_check(Descent.bank(10, true, {}) == 10 and Descent.bank(11, false, {}) == 5 and Descent.bank(10, true, {glass = 1}) == 15 and Descent.bank(11, false, {glass = 1}) == 7
 		and Descent.bank(30, true, {glass = 1}) == 30, "bank: CASH OUT the whole pot, dry-up half (rounded down), GLASS SLIME x1.5, never above 30")
 	_check(is_equal_approx(Descent.capacity({tank = 2, greedy = 1}), 1.2) and is_equal_approx(Descent.speed({slick = 2}), 1.3)
@@ -528,6 +550,210 @@ func _portal() -> void:
 	hub.free()
 	for i in 3:
 		await process_frame
+
+
+# ---------------------------------------------------------------- review b3 fixes
+
+## Review b3 #3: a run takes one of the day's paid slots when it first clears floor 1 (saved at once),
+## so closing the game mid-run can't keep it; a run that ends on floor 1 takes none.
+func _paid_slots() -> void:
+	_state()
+	var real_path: String = progress.save_path
+	var path := OS.get_temp_dir().path_join("slime_time_descent_slot_%d.cfg" % OS.get_process_id())
+	progress.save_path = path
+	progress.saving_enabled = true
+	_check(not path.begins_with("user://") and path != ProjectSettings.globalize_path(progress.REAL_SAVE_PATH), "(slot saves go to a temp file: %s)" % path)
+	progress.start_descent(SEED)
+	_check(progress.descent_payout(true).slot == 1 and progress.descent_paid_left() == 2, "before floor 1 is cleared, no slot is taken (the run would be PAID RUN 1/2)")
+	progress.clear_descent_floor(60.0, 10.0)
+	var disk := ConfigFile.new()
+	var loaded := disk.load(path)
+	_check(progress.descent_run.slot == 1 and progress.descent_paid_left() == 1 and loaded == OK and int(disk.get_value("descent", "paid_runs", 0)) == 1
+		and int(disk.get_value("descent", "paid_day", 0)) == 20000, "clearing floor 1 takes paid slot 1 and saves it at once")
+	progress.clear_descent_floor(60.0, 10.0)
+	_check(progress.descent_paid == 1, "(a floor cleared again takes nothing more)")
+	progress.descent_run = {}  # the app closed mid-run: the run is gone, its slot stays used
+	_check(progress.descent_paid_left() == 1, "closing the game mid-run after floor 1 keeps the slot used (1 paid run left)")
+	progress.start_descent(SEED + 1)
+	progress.end_descent(false, false, 5.0)
+	_check(progress.descent_paid_left() == 1 and progress.descent_run.result.slot == 0, "a dry-up on floor 1 (nothing cleared) takes no slot")
+	progress.start_descent(SEED + 2)
+	progress.clear_descent_floor(60.0, 10.0)
+	_check(progress.descent_run.slot == 2 and not progress.descent_day_open(), "the next run takes slot 2 on floor 1: no slot left today")
+	progress.descend(_plain(progress.descent_offers()))
+	progress.clear_descent_floor(60.0, 10.0)
+	var due: Dictionary = progress.descent_payout(true)
+	var before: int = progress.tickets
+	var res: Dictionary = progress.end_descent(true)
+	_check(due.cap == "" and due.slot == 2 and res.tickets == 2 and res.slot == 2 and progress.tickets == before + 2 and progress.descent_paid == 2,
+		"it banks into its slot (PAID RUN 2/2, +2) even though the day has no slot left")
+	progress.start_descent(SEED + 3)
+	progress.clear_descent_floor(60.0, 10.0)
+	_check(progress.descent_run.slot == 0 and progress.descent_payout(true).cap == "practice", "a 3rd run is PRACTICE")
+	progress.day_override = 20001
+	res = progress.end_descent(true)
+	_check(res.tickets == 1 and res.slot == 1 and progress.descent_paid_left() == 1, "a PRACTICE run banked after midnight pays from the new day's first slot")
+	progress.start_descent(SEED + 4)
+	progress.clear_descent_floor(60.0, 10.0)
+	progress.day_override = 20002
+	res = progress.end_descent(true)
+	_check(res.tickets == 1 and res.slot == 2 and progress.descent_paid_left() == 2, "a run whose slot was taken yesterday banks into it after midnight (today's slots stay free)")
+	_state()
+	progress.start_descent(SEED)
+	progress.clear_descent_floor(60.0, 10.0, true)
+	_check(progress.descent_run.slot == 0 and progress.descent_paid_left() == 2, "a dev-toggled floor 1 takes no slot")
+	progress.saving_enabled = false
+	progress.save_path = real_path
+	DirAccess.remove_absolute(path)
+
+
+## Everything saved outside [descent] and [wallet] (tickets), one line per key.
+func _story_snapshot() -> String:
+	var file: ConfigFile = progress._write()
+	var out := ""
+	for section in file.get_sections():
+		if section in ["descent", "wallet"]:
+			continue
+		for key in file.get_section_keys(section):
+			out += "%s/%s=%s\n" % [section, key, var_to_str(file.get_value(section, key))]
+	return out
+
+
+func _spawn_running() -> Node2D:
+	var game: Node2D = MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	for i in 3:
+		await process_frame  # _arm_survey runs deferred
+	return game
+
+
+func _until(condition: Callable, max_frames := 600) -> bool:
+	for i in max_frames:
+		if condition.call():
+			return true
+		await physics_frame
+	return condition.call()
+
+
+## Review b3 #1 / #4: a full Descent run played as the running scene (the case the loose-node tests
+## missed) leaves every story record byte-identical: level 1's map survey, records, medals, coins,
+## current level, hard clears, tutorial and story flags; and a dev-toggled floor clear doesn't call
+## complete_level(0) (which reset current_level and added 0 to hard_cleared).
+func _story_untouched() -> void:
+	var transition := root.get_node_or_null("Transition")
+	await _until(func() -> bool: return transition == null or not transition.busy)  # (the portal test's scene change)
+	for i in 3:
+		await process_frame
+	if current_scene != null:
+		var left := current_scene
+		current_scene = null
+		left.free()
+	_state()
+	progress.hard_mode = true
+	progress.seed_full_surveys()
+	progress.record_clear(1, 30.0, 40.0, false, false)
+	progress.record_time(1, 30.0, false)
+	progress.current_level = 4
+	progress.tutorial_seen = 1
+	progress.story_seen = 1
+	var map_before := var_to_str(Survey.pack(progress.maps[1]))
+	var before := _story_snapshot()
+	progress.start_descent(SEED)
+	var game := await _spawn_running()
+	_check(game.descent and not game._survey_live, "a Descent floor (the running scene) records no map survey")
+	game.slime.position += Vector2(16, 0)
+	for i in 20:
+		await physics_frame
+	game._on_goal_body_entered(game.slime)
+	_check(await _until(func() -> bool: return game.descent_card != null and game.descent_card.boons_root.visible), "floor 1 cleared: the boon card opens")
+	game.descent_card._on_tile(0)
+	var old_id := game.get_instance_id()
+	game.descent_card._on_descend()
+	_check(await _until(func() -> bool: return current_scene != null and current_scene.get_instance_id() != old_id and current_scene.get("descent") == true), "DESCEND reloads the running scene")
+	game = current_scene
+	_check(game.descent_run.floor == 2 and game._survey_live == false, "floor 2 is the running scene")
+	game.bladders = 0
+	game.wind_state = ""
+	game.slime_remaining = 0.0
+	_check(await _until(func() -> bool: return game.descent_card != null and game.descent_card.summary_root.visible), "a dry-up on floor 2 ends the run (summary)")
+	_check(var_to_str(Survey.pack(progress.maps[1])) == map_before, "story level 1's map survey is untouched")
+	var after := _story_snapshot()
+	_check(after == before, "the whole story save (records, medals, coins, current level, hard clears, flags, maps) is byte-identical after a Descent run")
+	if after != before:
+		for line in after.split("\n"):
+			if not line in before:
+				print("    changed: ", line.left(160))
+	_check(progress.current_level == 4 and progress.dry_ups.is_empty() and not 0 in progress.hard_cleared, "current level 4 kept, no dry-up counted, no hard clear for level 0")
+	# A dev-toggled floor clear (F1 / F2 in dev mode) must not call complete_level(0).
+	progress.start_descent(SEED + 1)
+	current_scene = null
+	game.free()
+	game = await _spawn_running()
+	game.dev_toggled = true
+	game._on_goal_body_entered(game.slime)
+	_check(await _until(func() -> bool: return game.descent_card != null and game.descent_card.boons_root.visible), "a dev-toggled floor clear opens the card")
+	_check(progress.current_level == 4 and not 0 in progress.hard_cleared and _story_snapshot() == before, "a dev-toggled Descent clear leaves current_level (4) and hard clears alone")
+	current_scene = null
+	game.free()
+	await process_frame
+
+
+## Review b3 #4 (bank time), #5 (one action per card) and #8 (the pod behind the summary).
+func _card_guards() -> void:
+	_state()
+	# F1 / F2 switched on while the boon card is open: CASH OUT pays nothing.
+	progress.start_descent(SEED)
+	var game := await _spawn()
+	game._on_goal_body_entered(game.slime)
+	game.dev_toggled = true
+	game.cash_out()
+	_check(progress.descent_run.ended and progress.descent_run.result.cap == "dev" and progress.descent_run.result.tickets == 0, "a dev toggle switched on over the card: CASH OUT pays nothing")
+	game.free()
+	progress.start_descent(SEED)
+	game = await _spawn()
+	game._on_goal_body_entered(game.slime)
+	game.dev_toggled = true
+	game.quit_descent()
+	_check(progress.descent_run.result.cap == "dev", "and so does QUIT TO HUB over the card")
+	game.free()
+	# DESCEND + CASH OUT in the same frame: only the first counts.
+	_state()
+	progress.start_descent(SEED)
+	game = await _spawn()
+	game._on_goal_body_entered(game.slime)
+	game.descend_with(progress.descent_offers()[0])
+	game.cash_out()
+	_check(progress.descent_active() and progress.descent_run.floor == 2 and progress.descent_paid_left() == 1, "DESCEND then CASH OUT in one frame: the run goes on to floor 2 (not banked)")
+	game.free()
+	progress.start_descent(SEED)
+	game = await _spawn()
+	game._on_goal_body_entered(game.slime)
+	game.cash_out()
+	var res: Dictionary = progress.descent_run.result
+	game.descend_with(progress.descent_offers()[0])
+	_check(progress.descent_run.ended and progress.descent_run.floor == 1 and progress.descent_run.result == res, "CASH OUT then DESCEND: the run stays banked on floor 1")
+	game.free()
+	# A floor built for an already-banked run plays nothing: it shows the summary.
+	game = await _spawn()
+	await process_frame
+	_check(game.finished and game.slime.frozen and game.descent_card != null and game.descent_card.summary_root.visible, "a floor of an ended run isn't played: the summary shows")
+	game.free()
+	# The pot pod behind the summary keeps what the run was paid as (not PRACTICE after the last slot).
+	_state()
+	progress.start_descent(SEED)
+	progress.clear_descent_floor(60.0, 1.0)
+	progress.end_descent(true)
+	progress.start_descent(SEED + 1)
+	game = await _spawn()
+	_check(game.hud.attempt_label.text == "POT 0\nPAID RUN 2/2", "the pod names the run's paid slot (%s)" % game.hud.attempt_label.text.replace("\n", " / "))
+	game._on_goal_body_entered(game.slime)
+	game.cash_out()
+	for i in 3:
+		await process_frame
+	_check(not progress.descent_day_open() and game.hud.attempt_label.text.ends_with("PAID RUN 2/2") and game.descent_card.summary_root.visible,
+		"after the day's last paid run banks, the pod behind the summary still says PAID RUN 2/2 (%s)" % game.hud.attempt_label.text.replace("\n", " / "))
+	game.free()
 
 
 ## An offer that doesn't change the pot or the bank (not GREEDY GOO / GLASS SLIME).

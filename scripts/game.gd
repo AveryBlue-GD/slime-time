@@ -135,6 +135,8 @@ var descent_run := {}
 ## The floor's goo drops still waiting (GooDrop), and the between-floor / end-of-run card.
 var drops: Array[GooDrop] = []
 var descent_card: DescentCard
+## DESCEND or CASH OUT was pressed on this floor's card: any second action is ignored (one per card).
+var _descent_acted := false
 ## BACKUP BLADDER refills left this run, and slime still to be added by one firing.
 var bladders := 0
 var _bladder_left := 0.0
@@ -489,7 +491,14 @@ func _ready() -> void:
 	_ease_in.call_deferred()
 	_arm_survey.call_deferred()
 	if descent:
-		_announce_floor()
+		if progress.descent_active():
+			_announce_floor()
+		else:
+			# The run was already banked (e.g. CASH OUT landed while DESCEND's reload was queued): no
+			# floor to play, only its summary (NEW RUN / HUB).
+			finished = true
+			slime.frozen = true
+			_show_descent_summary.call_deferred()
 
 
 ## Restarts and next levels ease in from under a sheet of goo (only when actually playing).
@@ -1516,10 +1525,10 @@ func _refresh_attempt_pod() -> void:
 # ---------------------------------------------------------------- trail map survey
 
 ## Records this run's survey from here on if it is a real story run (deferred from _ready, once the
-## scene is the running one): never in a randomizer maze (fresh each time), dev mode or a test's
-## loose game node.
+## scene is the running one): never in a randomizer maze (fresh each time), a Descent floor (level 0:
+## it would land on level 1's map), dev mode or a test's loose game node.
 func _arm_survey() -> void:
-	_survey_live = progress != null and not is_random() and not progress.dev_tools and _is_running_scene()
+	_survey_live = progress != null and not is_random() and not descent and not progress.dev_tools and _is_running_scene()
 
 
 ## Follows the slime through the maze's cells: each time its center enters a new cell's open tile,
@@ -1639,8 +1648,13 @@ func _pick_up_drops(pos: Vector2) -> void:
 func _refresh_descent_pod() -> void:
 	if not descent or progress == null:
 		return
+	if descent_run.get("ended", false):
+		# Banked: show what the run was paid as (the summary's), not what today would pay now.
+		var result: Dictionary = descent_run.get("result", {})
+		hud.set_pot(int(descent_run.pot), String(result.get("cap", "")), 0, int(result.get("slot", 0)))
+		return
 	var due: Dictionary = progress.descent_payout(true, dev_toggled)
-	hud.set_pot(int(descent_run.pot), due.cap, int(descent_run.get("gain", 0)) if finished and won else 0)
+	hud.set_pot(int(descent_run.pot), due.cap, int(descent_run.get("gain", 0)) if finished and won else 0, int(due.slot))
 
 
 ## The floor's first frames: a milestone reached for the first time says what it paid.
@@ -1678,8 +1692,9 @@ func _show_descent_summary() -> void:
 
 ## DESCEND with boon `id`: the next floor (the scene is rebuilt from the run).
 func descend_with(id: String) -> void:
-	if _leaving() or progress == null or not progress.descend(id):
+	if _leaving() or _descent_acted or progress == null or not progress.descend(id):
 		return
+	_descent_acted = true  # one action per card: a CASH OUT in the same frame does nothing
 	DevLog.route(get_tree(), "DESCEND " + id, self)
 	if _is_running_scene():
 		get_tree().reload_current_scene()
@@ -1687,9 +1702,10 @@ func descend_with(id: String) -> void:
 
 ## CASH OUT: banks the whole pot and shows the summary.
 func cash_out() -> void:
-	if _leaving() or progress == null:
+	if _leaving() or _descent_acted or progress == null or not progress.descent_active():
 		return
-	progress.end_descent(true)
+	_descent_acted = true
+	progress.end_descent(true, dev_toggled or assisted)  # (F1 / F2 may have been switched on over the card)
 	_show_descent_summary()
 
 
@@ -1709,9 +1725,9 @@ func quit_descent() -> void:
 	if not descent or progress == null or not progress.descent_active():
 		return
 	if finished and won:
-		progress.end_descent(true)
+		progress.end_descent(true, dev_toggled or assisted)
 	else:
-		progress.end_descent(false, dev_toggled, run_time)
+		progress.end_descent(false, dev_toggled or assisted, run_time)
 
 
 # ---------------------------------------------------------------- dev: wall power
@@ -1941,7 +1957,7 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if not is_random() and (assisted or dev_toggled):
+		if not is_random() and not descent and (assisted or dev_toggled):
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout

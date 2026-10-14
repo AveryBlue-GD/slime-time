@@ -1138,6 +1138,8 @@ func load_code(code: String) -> bool:
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
 ## mode it also unlocks that level's solid skin.
 func complete_level(level: int, save := true) -> void:
+	if level < 1 or level > Levels.COUNT:
+		return  # (not a story level: a randomizer maze or a Descent floor has level 0)
 	if hard_mode and not level in hard_cleared:
 		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
@@ -1377,8 +1379,8 @@ static func tier_for(run_time: float, par: float) -> int:
 ## (the saved tier now), new_best (this run raised it, first clear included), assisted}.
 func record_clear(level: int, run_time: float, par: float, assisted := false, finish := false) -> Dictionary:
 	var result := {tier = 0, best = medals_for(level), new_best = false, assisted = assisted}
-	if assisted:
-		return result
+	if assisted or level < 1 or level > Levels.COUNT:
+		return result  # (level 0: not a story level, never a medal or record)
 	var tier := tier_for(run_time, par)
 	result.tier = tier
 	if tier > result.best:
@@ -1467,7 +1469,30 @@ func clear_descent_floor(left: float, seconds: float, tainted := false) -> int:
 	if not descent_active() or int(descent_run.cleared) >= int(descent_run.floor):
 		return 0
 	descent_run.tainted = descent_run.tainted or tainted
-	return Descent.clear_floor(descent_run, left, seconds)
+	var gain := Descent.clear_floor(descent_run, left, seconds)
+	_take_descent_slot()
+	return gain
+
+
+## The run's first cleared floor takes one of today's paid slots (if any are left and the run isn't
+## dev-toggled) and saves at once, so closing the game mid-run can't keep the slot for a later run.
+## The run then banks into that slot whenever it ends (Economy.DESCENT_PAID_PER_DAY).
+func _take_descent_slot() -> void:
+	if int(descent_run.get("slot", 0)) > 0 or descent_run.tainted or not descent_day_open():
+		return
+	descent_run.slot = _use_descent_slot()
+	save_progress()
+
+
+## Uses one of today's paid Descent slots (a new UTC day starts the count over; a clock moved back
+## never does) and returns its number (1 = the day's first paid run).
+func _use_descent_slot() -> int:
+	_check_descent_day()
+	if utc_day() > descent_pay_day:
+		descent_pay_day = utc_day()
+		descent_paid = 0
+	descent_paid = mini(descent_paid + 1, Economy.DESCENT_PAID_PER_DAY)
+	return descent_paid
 
 
 ## The boon offers after the current (cleared) floor (Descent.offers: seeded by run and floor).
@@ -1534,8 +1559,8 @@ func _check_descent_day() -> void:
 		descent_pay_day = utc_day()
 
 
-## True while today still has a paying Descent run left (the first DESCENT_PAID_PER_DAY runs that
-## bank anything pay; a clock moved back never opens a new day).
+## True while today still has a paid Descent slot left (the first DESCENT_PAID_PER_DAY runs that clear
+## floor 1 take one; a clock moved back never opens a new day).
 func descent_day_open() -> bool:
 	_check_descent_day()
 	return utc_day() > descent_pay_day or descent_paid < Economy.DESCENT_PAID_PER_DAY
@@ -1549,27 +1574,33 @@ func descent_paid_left() -> int:
 	return maxi(Economy.DESCENT_PAID_PER_DAY - descent_paid, 0)
 
 
-## What ending the current run now would bank: {tickets, base, cap}; base = Descent.bank (whole pot on
-## a cash out, half on a dry-up / quit, GLASS SLIME x1.5, at most the pot cap) and cap "" (paid in full),
-## "practice" (today's paying runs are used up: 0), "dev" (a dev toggle was used: 0) or "slime" (no
-## MORE SLIME bought: at most DESCENT_NO_SLIME_CAP; never in dev mode). `tainted` adds this floor's toggles.
+## What ending the current run now would bank: {tickets, base, cap, slot}; base = Descent.bank (whole
+## pot on a cash out, half on a dry-up / quit, GLASS SLIME x1.5, at most the pot cap) and cap "" (paid in
+## full), "practice" (no paid slot: today's are used up: 0), "dev" (a dev toggle was used: 0) or "slime"
+## (no MORE SLIME bought: at most DESCENT_NO_SLIME_CAP; never in dev mode). `slot`: the day's paid run
+## this is (the one it took on floor 1, else the one it would take; 0 when it pays nothing). `tainted`
+## adds this floor's toggles.
 func descent_payout(cashed: bool, tainted := false) -> Dictionary:
 	if descent_run.is_empty():
-		return {tickets = 0, base = 0, cap = ""}
+		return {tickets = 0, base = 0, cap = "", slot = 0}
 	var base := Descent.bank(descent_run.pot, cashed, descent_run.boons)
 	if tainted or descent_run.tainted:
-		return {tickets = 0, base = base, cap = "dev"}
-	if not descent_day_open():
-		return {tickets = 0, base = base, cap = "practice"}
+		return {tickets = 0, base = base, cap = "dev", slot = 0}
+	var slot := int(descent_run.get("slot", 0))
+	if slot <= 0:
+		if not descent_day_open():
+			return {tickets = 0, base = base, cap = "practice", slot = 0}
+		slot = Economy.DESCENT_PAID_PER_DAY - descent_paid_left() + 1
 	if int(upgrades.get("slime", 0)) <= 0 and not dev_tools and base > Economy.DESCENT_NO_SLIME_CAP:
-		return {tickets = Economy.DESCENT_NO_SLIME_CAP, base = base, cap = "slime"}
-	return {tickets = base, base = base, cap = ""}
+		return {tickets = Economy.DESCENT_NO_SLIME_CAP, base = base, cap = "slime", slot = slot}
+	return {tickets = base, base = base, cap = "", slot = slot}
 
 
 ## Ends the run and banks it (once): `cashed` = CASH OUT (the whole pot) else a dry-up / quit (half).
-## A run that pays anything uses one of today's paying runs. Saves. Returns the result (also kept in
-## descent_run.result): {tickets, base, cap, cashed, floor, cleared, pot, best_floor, new_best, time,
-## bonuses}. {} when no run is going.
+## It pays into the paid slot it took on floor 1 (_take_descent_slot); a run without one (started
+## with none left) takes one now if a new day has begun and it pays anything. Saves. Returns the
+## result (also kept in descent_run.result): {tickets, base, cap, slot, cashed, floor, cleared, pot,
+## best_floor, new_best, time, bonuses}. {} when no run is going.
 func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 	if not descent_active():
 		return descent_run.get("result", {}) if not descent_run.is_empty() else {}
@@ -1579,15 +1610,12 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 	var due := descent_payout(cashed)
 	var paid := 0
 	if due.tickets > 0:
-		_check_descent_day()
-		if utc_day() > descent_pay_day:  # a new day: the count starts over (never when the clock went back)
-			descent_pay_day = utc_day()
-			descent_paid = 0
-		descent_paid += 1
+		if int(descent_run.get("slot", 0)) <= 0:
+			descent_run.slot = _use_descent_slot()
 		paid = add_tickets(due.tickets, false)
 	descent_runs = mini(descent_runs + 1, 100 * TICKETS_MAX)
 	descent_run.ended = true
-	var result := {tickets = paid, base = due.base, cap = due.cap, cashed = cashed, floor = int(descent_run.floor),
+	var result := {tickets = paid, base = due.base, cap = due.cap, slot = int(descent_run.get("slot", 0)) if due.cap in ["", "slime"] else 0, cashed = cashed, floor = int(descent_run.floor),
 		cleared = int(descent_run.cleared), pot = int(descent_run.pot), best_floor = descent_best_floor,
 		new_best = descent_run.get("new_best", false),
 		time = float(descent_run.time), bonuses = descent_run.bonuses.duplicate(), boons = descent_run.boons.duplicate()}
@@ -2244,6 +2272,8 @@ func record_for(level: int, hard: bool) -> float:
 ## faint last-attempt route. `goal_seen`: the goal came into view (a win counts).
 func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray,
 		won: bool, run_time: float, goal_seen: bool) -> void:
+	if level < 1 or level > Levels.COUNT:
+		return  # (not a story level: survey_key would clamp a Descent floor's 0 onto level 1)
 	var key := survey_key(level, hard)
 	var survey: Dictionary = maps.get(key, {})
 	if not Survey.fits(survey, maze):  # never recorded, or stale (another layout): start afresh

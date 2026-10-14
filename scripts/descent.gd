@@ -6,7 +6,8 @@ extends RefCounted
 ## after every floor and a ticket pot banked by CASH OUT (all) or a dry-up (half). This file is the
 ## pure rules (no nodes, no save): floor recipes, refills, the pot, boon offers and effects. Every
 ## number lives in Economy (DESCENT_*, BOONS). The run itself is a Dictionary kept in memory by
-## Progress (`descent_run`, never saved: closing the game mid-run banks nothing), made by `new_run`:
+## Progress (`descent_run`, never saved: closing the game mid-run banks nothing, and a paid slot it
+## took on floor 1 stays used), made by `new_run`:
 ##   seed     the run seed (1 .. Economy.DESCENT_SEED_MAX)
 ##   floor    the floor being played (1 = first)
 ##   meter    the meter (percent of the run's capacity) the current floor starts with
@@ -16,6 +17,8 @@ extends RefCounted
 ##   time     seconds played on the floors already cleared
 ##   wind_used SECOND WIND fired (once per run)
 ##   tainted  a dev toggle (F1 / F2) was on at some point: the run pays nothing
+##   slot     which of the day's paid runs this is (1..DESCENT_PAID_PER_DAY), taken (and saved) when
+##            floor 1 is first cleared; 0 = none taken (yet)
 ##   cleared  floors cleared; `gain` = what the last cleared floor added to the pot
 ##   ended    the run was banked (cash out / dry-up / quit); `result` = what it paid (Progress)
 ##   bonus    milestone tickets paid on reaching the current floor (shown once, then 0)
@@ -61,7 +64,7 @@ static func about(id: String) -> Array:
 ## A fresh run (floor 1, a full meter, empty pot).
 static func new_run(run_seed: int) -> Dictionary:
 	return {seed = clampi(run_seed, 1, Economy.DESCENT_SEED_MAX), floor = 1, meter = 100.0, boons = {}, bladders = 0,
-		pot = 0, time = 0.0, wind_used = false, tainted = false, cleared = 0, gain = 0, ended = false,
+		pot = 0, time = 0.0, wind_used = false, tainted = false, slot = 0, cleared = 0, gain = 0, ended = false,
 		result = {}, bonus = 0, bonuses = [], new_best = false}
 
 
@@ -148,10 +151,13 @@ static func held(boons: Dictionary, id: String) -> int:
 	return int(boons.get(id, 0))
 
 
-## True when `id` may still be offered: a boon held its `max` times (non-stacking: once) is not.
+## True when `id` may still be offered: a boon held its `max` times (non-stacking: once) is not, nor
+## one whose `excludes` boon is held (RUBBER BODY and GLASS SLIME never go together).
 static func can_offer(id: String, boons: Dictionary) -> bool:
 	var b := boon(id)
 	if b.is_empty():
+		return false
+	if held(boons, String(b.get("excludes", ""))) > 0:
 		return false
 	var top: int = int(b.get("max", 1))
 	return top <= 0 or held(boons, id) < top
@@ -185,7 +191,7 @@ static func offers(run_seed: int, floor_no: int, boons: Dictionary) -> Array[Str
 
 
 ## The run's meter capacity as a share of the player's base meter: DEEP TANK +15% each, GREEDY GOO
-## -10% each (additive).
+## -10% (one stack only; additive).
 static func capacity(boons: Dictionary) -> float:
 	return 1.0 + held(boons, "tank") * float(boon("tank").value) + held(boons, "greedy") * float(boon("greedy").value)
 
@@ -200,7 +206,7 @@ static func jump_cost(boons: Dictionary, base: float) -> float:
 	return float(boon("feather").value) if held(boons, "feather") > 0 else base
 
 
-## Splat penalty factor: RUBBER BODY 0, GLASS SLIME x2.
+## Splat penalty factor: RUBBER BODY 0, GLASS SLIME x2 (never both: they exclude each other).
 static func splat_factor(boons: Dictionary) -> float:
 	if held(boons, "rubber") > 0:
 		return 0.0
