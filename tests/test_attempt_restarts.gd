@@ -91,7 +91,8 @@ func _initialize() -> void:
 		await process_frame
 		_find_button(g.pause_menu, "QUIT TO HUB").pressed.emit()
 		var hub := await _wait_scene("hub")
-		hub._use(hub._station("random"))
+		hub._use(hub._station("random"))  # the portal's choice (Descent batch 3): RANDOM MAZE
+		hub.maze_button.pressed.emit()
 		g = await _wait_game(0)
 		_check(g.random_seed != old_seed and _pod(g) == _text(1, 5), "%squit to the hub, then the portal: a new maze at ATTEMPT 1, 5 (%s)" % [tag, _pod(g)])
 		g = await _restart(g, "pause_keys")

@@ -46,7 +46,7 @@ func _initialize() -> void:
 			runs += 1
 			if why != "":
 				bad.append("%s on %s: %s" % [style, skin, why])
-	_check(bad.is_empty() and runs == 6 * skins.size(), "%d style x skin runs paint their own colors (%s)" % [runs, "ok" if bad.is_empty() else "; ".join(bad.slice(0, 4))])
+	_check(bad.is_empty() and runs == Cosmetics.trail_ids().size() * skins.size() and Cosmetics.trail_ids().size() == 7, "%d style x skin runs paint their own colors (%s)" % [runs, "ok" if bad.is_empty() else "; ".join(bad.slice(0, 4))])
 	# Previews (wardrobe tiles / shop) for every style, locked and owned.
 	var previews_ok := true
 	for style in Cosmetics.trail_ids():
@@ -77,7 +77,7 @@ func _check_style(style: String, skin: String) -> String:
 	var base := Color(game.skin_color)
 	var shades := Skins.shades(base)
 	var painted := _painted(game)
-	var alpha: int = {"ink": 150, "glow": 170, "gold": 185}.get(style, 120)
+	var alpha: int = {"ink": 150, "glow": 170, "gold": 185, "abyss": Cosmetics.ABYSS_ALPHA}.get(style, 120)
 	if painted.is_empty():
 		why = "nothing painted"
 	for c: Color in painted:
@@ -98,6 +98,9 @@ func _check_style(style: String, skin: String) -> String:
 		"starry":
 			if float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("stars")) != 1.0:
 				why = "the shader's stars are off"
+		"abyss":  # (earned on Descent floor 10): violet-black goo with specks, whatever the skin
+			if not _has(painted, Cosmetics.ABYSS) or float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("stars")) != 1.0:
+				why = "not the abyss goo with specks"
 		"candy":
 			game.trail_travel = Cosmetics.CANDY_STRIPE  # the next stripe: white
 			var white: Color = game._goo_color(false)
@@ -112,7 +115,7 @@ func _check_style(style: String, skin: String) -> String:
 				why = "not the skin's goo"
 	if style != "skin" and style != "candy" and look.rainbow:
 		why = "a worn style still paints rainbow bands"
-	if style != "starry" and float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("stars")) != 0.0:
+	if not style in ["starry", "abyss"] and float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("stars")) != 0.0:
 		why = "stars on a non-starry trail"
 	game.free()
 	await process_frame

@@ -286,6 +286,8 @@ func modal() -> Node:
 		"hub":
 			if cs.quit_menu.visible:
 				return cs.quit_menu
+			if cs.portal_menu.visible:
+				return cs.portal_menu
 			if cs.hat_wheel.visible:
 				return cs.hat_wheel.modal()  # the buy confirm while it's open, else the whole overlay
 		"main":
@@ -293,6 +295,8 @@ func modal() -> Node:
 				return cs.restart_prompt
 			if cs.pause_menu.visible:
 				return cs.pause_menu
+			if cs.descent_card != null and cs.descent_card.visible:
+				return cs.descent_card.modal()  # DESCENT: the boon card or the run summary
 	return null
 
 
@@ -304,7 +308,7 @@ func overlay_count() -> int:
 		"controls":
 			n += int(cs.code_panel.visible) + int(cs.reset_confirm.visible)
 		"hub":
-			n += int(cs.quit_menu.visible) + int(cs.coin_board.visible) + int(cs.hat_wheel.visible)
+			n += int(cs.quit_menu.visible) + int(cs.coin_board.visible) + int(cs.hat_wheel.visible) + int(cs.portal_menu.visible)
 		"main":
 			n += int(cs.restart_prompt.visible) + int(cs.pause_menu.visible)
 	return n

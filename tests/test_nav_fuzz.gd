@@ -15,11 +15,13 @@ extends SceneTree
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
 ##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
 ##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them).
-## Area walks: nine more walks that start inside one area and keep steering back into it (`_area_op`,
+## Area walks: ten more walks that start inside one area and keep steering back into it (`_area_op`,
 ## about a third of the inputs): the map table + map view (with its PAPER button), the SETTINGS panels,
 ## the pause menu, the dry-up choices, the win choices, a touch-driven level, the prize wheel's
 ## WHEEL | SHOP overlay (sections, tiles, the buy confirm), the cauldron's COINS | TICKETS tabs and
-## the wardrobe's SKINS / HATS / TRAILS pages (2,000 inputs each by default).
+## the wardrobe's SKINS / HATS / TRAILS pages, and DESCENT (the portal's mode choice, Descent floors with
+## harness wins / dry-ups, the boon card's tiles, CASH OUT / DESCEND, the run summary's NEW RUN / HUB, the
+## pause menu over them) (2,000 inputs each by default).
 
 const Lib := preload("res://tests/nav_fuzz_lib.gd")
 
@@ -47,9 +49,9 @@ const AREAS := [["maps", "rich", "res://scenes/maps.tscn"], ["settings", "comple
 	["pause", "complete", "res://scenes/main.tscn"], ["dry", "complete", "res://scenes/main.tscn"],
 	["win", "complete", "res://scenes/main.tscn"], ["touch", "touch", "res://scenes/main.tscn"],
 	["wheel", "rich", "res://scenes/hub.tscn"], ["upgrades", "rich", "res://scenes/upgrades.tscn"],
-	["skins", "rich", "res://scenes/skins.tscn"]]
+	["skins", "rich", "res://scenes/skins.tscn"], ["descent", "complete", "res://scenes/hub.tscn"]]
 ## The hub station each area walks back to.
-const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel", "upgrades": "upgrades", "skins": "wardrobe"}
+const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel", "upgrades": "upgrades", "skins": "wardrobe", "descent": "random"}
 
 
 func _initialize() -> void:
@@ -328,6 +330,9 @@ func _scripted() -> void:
 	print("-- game: pause / restart prompt / dry-up / win / seed box")
 	await _game()
 
+	print("-- descent: portal choice, floor, boon card, summary (Esc paths)")
+	await _descent()
+
 	print("-- story intro / victory")
 	await _story()
 
@@ -338,8 +343,90 @@ func _scripted() -> void:
 	await _variants()
 
 
+## DESCENT's screens with real input: the portal's choice (Esc = BACK, arrows wrap, Enter starts a
+## run), a floor (Esc pauses, the pause has no RESTART, R does nothing), the boon card (focus on a tile,
+## Esc pauses over it and gives the focus back, a tile then DESCEND goes down a floor), CASH OUT, the
+## summary (NEW RUN focused, HUB returns to the portal), and QUIT TO HUB mid-floor.
+func _descent() -> void:
+	var hub: Node2D = await goto_hub()
+	check(hub_to("random"), "HUB-TP", "slime can reach the portal")
+	await L.tap(KEY_F)
+	await L.frames(3)
+	check(hub.portal_menu.visible and L.focus() == hub.maze_button, "DESC-PORTAL", "F at the portal opens RANDOM MAZE / DESCENT, RANDOM MAZE focused")
+	inv("portal choice")
+	await L.tap(KEY_DOWN)
+	await L.frames(2)
+	check(L.focus() == hub.descent_button, "DESC-PORTAL", "down moves to DESCENT")
+	await L.tap(KEY_UP)
+	await L.tap(KEY_UP)
+	await L.frames(2)
+	check(L.focus() == hub.portal_back, "DESC-PORTAL", "up from the top wraps to BACK")
+	await esc()
+	await L.frames(3)
+	check(not hub.portal_menu.visible and L.kind() == "hub" and not hub.slime.frozen, "DESC-PORTAL", "Esc closes the choice (the slime moves again)")
+	await L.tap(KEY_F)
+	await L.frames(3)
+	await L.tap(KEY_DOWN)
+	await L.tap(KEY_ENTER)
+	await L.settle()
+	var g: Node2D = current_scene
+	check(L.kind() == "main" and g.descent and g.descent_run.floor == 1, "DESC-START", "DESCENT starts a run on floor 1")
+	inv("descent floor")
+	await L.tap(KEY_R)
+	await L.frames(3)
+	check(not g.restart_prompt.visible and not paused and current_scene == g, "DESC-R", "R does nothing on a Descent floor")
+	await esc()
+	await L.frames(3)
+	check(g.pause_menu.visible and not g.pause_menu.restart_button.visible and g.pause_menu.descent_note.visible, "DESC-PAUSE", "Esc pauses; no RESTART; a note says what quitting banks")
+	await esc()
+	await L.frames(3)
+	check(not g.pause_menu.visible and not paused, "DESC-PAUSE", "Esc resumes")
+	L.note("(harness) reach the exit")
+	g._on_goal_body_entered(g.slime)
+	await L.frames(60)
+	var card: DescentCard = g.descent_card
+	check(card != null and card.visible and card.boons_root.visible and L.focus() == card.tiles[0], "DESC-CARD", "the boon card opens with the first tile focused")
+	inv("boon card")
+	await esc()
+	await L.frames(3)
+	check(g.pause_menu.visible, "DESC-CARD", "Esc over the boon card pauses")
+	inv("pause over the boon card")
+	await esc()
+	await L.frames(3)
+	check(not g.pause_menu.visible and L.focus() == card.tiles[0], "DESC-CARD", "resuming gives the focus back to the card")
+	await L.tap(KEY_RIGHT)
+	await L.tap(KEY_ENTER)
+	await L.frames(2)
+	check(L.focus() == card.descend_button and card.picked == card.tile_ids[1], "DESC-CARD", "Enter on a tile picks it and moves to DESCEND")
+	await L.tap(KEY_ENTER)
+	await L.settle()
+	g = current_scene
+	check(L.kind() == "main" and g.descent and g.descent_run.floor == 2, "DESC-DESCEND", "DESCEND rebuilds the scene as floor 2")
+	inv("floor 2")
+	g._on_goal_body_entered(g.slime)
+	await L.frames(60)
+	card = g.descent_card
+	await L.click(card.cash_button.get_global_rect().get_center(), 1)
+	await L.frames(3)
+	check(card.summary_root.visible and L.focus() == card.new_run_button and g.descent_run.ended, "DESC-CASH", "CASH OUT (click) ends the run; the summary has NEW RUN focused")
+	inv("summary")
+	await L.tap(KEY_ENTER)
+	await L.settle()
+	g = current_scene
+	check(L.kind() == "main" and g.descent and g.descent_run.floor == 1 and not g.descent_run.ended, "DESC-NEW", "NEW RUN starts over on floor 1")
+	await esc()
+	await L.frames(3)
+	var qb := button_with(g, "QUIT TO HUB")
+	check(qb != null, "DESC-QUIT", "the pause menu has QUIT TO HUB")
+	if qb:
+		await L.click(qb.get_global_rect().get_center(), 1)
+		await L.settle()
+	check(L.kind() == "hub" and L.progress.descent_run.ended and current_scene.near.get("id", "") == "random", "DESC-QUIT", "QUIT TO HUB mid-floor ends the run and faces the portal")
+	inv("hub after descent")
+
+
 func overlay_closed(hub: Node2D) -> bool:
-	return not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible
+	return not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible
 
 
 func transition_busy() -> bool:
@@ -1197,6 +1284,12 @@ func _area_setup() -> void:
 		"wheel":
 			if hub_to("wheel"):
 				await L.tap(KEY_F)
+		"descent":
+			if hub_to("random"):
+				await L.tap(KEY_F)
+				await L.frames(2)
+				if cs.portal_menu.visible:
+					await L.click(cs.descent_button.get_global_rect().get_center(), 1)
 		"upgrades":
 			await L.click(cs.tickets_tab.get_global_rect().get_center(), 1)
 		"skins":
@@ -1219,7 +1312,12 @@ func _area_op() -> void:
 			await L.tap(KEY_ENTER)
 		"hub":
 			var station: String = AREA_STATIONS.get(area, "story")
-			if area == "wheel" and cs.hat_wheel.visible:
+			if area == "descent" and cs.portal_menu.visible:
+				if rng.randf() < 0.7:
+					await L.click(cs.descent_button.get_global_rect().get_center(), 1)  # mostly into a run
+				else:
+					await _poke_inside(cs.portal_menu)
+			elif area == "wheel" and cs.hat_wheel.visible:
 				var w = cs.hat_wheel
 				if w.tab == "wheel" and not w.spinning and rng.randf() < 0.5:
 					await L.click(w.shop_tab.get_global_rect().get_center(), 1)  # mostly the SHOP side
@@ -1273,7 +1371,20 @@ func _area_op() -> void:
 				var c: Control = under[rng.randi() % under.size()]
 				await L.click(c.get_global_rect().get_center(), 1)
 		"main":
-			if area == "touch":
+			if area == "descent" and cs.descent and cs.descent_card != null and cs.descent_card.visible and not cs.pause_menu.visible:
+				await _poke_inside(cs.descent_card.modal())  # tiles, CASH OUT / DESCEND, NEW RUN / HUB
+			elif area == "descent" and cs.descent and not cs.finished:
+				var r := rng.randf()
+				if r < 0.5:
+					L.note("(harness) reach the exit")
+					cs._on_goal_body_entered(cs.slime)
+				elif r < 0.75:
+					L.note("(harness) dry up the slime")
+					cs.slime_remaining = 0.05
+					cs.slime.position.x += 4.0
+				else:
+					await esc()
+			elif area == "touch":
 				var spots := [cs.touch_controls.pause_rect.get_center(), Vector2(40, 140), Vector2(282, 142), Vector2(rng.randi_range(0, 319), rng.randi_range(0, 179))]
 				await L.touch(spots[rng.randi() % spots.size()], rng.randi_range(1, 6))
 			elif cs.finished:
@@ -1326,6 +1437,8 @@ func _cover(cov: Dictionary) -> void:
 		"hub":
 			if cs.quit_menu.visible:
 				tags.append("hub:quit")
+			if cs.portal_menu.visible:
+				tags.append("hub:portal")
 			if cs.coin_board.visible:
 				tags.append("hub:coins")
 			if cs.hat_wheel.visible:
@@ -1341,6 +1454,10 @@ func _cover(cov: Dictionary) -> void:
 					tags.append("game:seedbox")
 			if cs.restart_prompt.visible:
 				tags.append("game:rprompt")
+			if cs.descent:
+				tags.append("descent:floor")
+				if cs.descent_card != null and cs.descent_card.visible:
+					tags.append("descent:" + ("summary" if cs.descent_card.summary_root.visible else "boons"))
 			if cs.finished and not cs.won:
 				tags.append("game:dry")
 			if cs.won:
@@ -1362,7 +1479,7 @@ func _escape_ladder() -> bool:
 			var hub_ok := true
 			if k == "hub":
 				var hub = current_scene
-				hub_ok = not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible
+				hub_ok = not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible
 			if hub_ok:
 				return true
 		if k == "main":
