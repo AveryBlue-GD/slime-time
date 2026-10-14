@@ -1,9 +1,11 @@
 extends SceneTree
 
 ## Maze determinism guard: every randomizer seed (2,000 seeds x MORE SLIME 0 / 5 / 10 and hard
-## mode) and every story level must build exactly the maze, start, chalice, route and ticket cell
-## it built before the BFS speed-ups. The golden digests in tests/data/maze_golden.txt were written
-## by this script from the code as it was before (commit 194d2cc):
+## mode) and every story level must build exactly the maze, start, goal (chalice / randomizer ticket)
+## and route it built before. The golden digests in tests/data/maze_golden.txt were written by this
+## script from the code as it was before (first the BFS speed-ups, commit 194d2cc; rewritten without
+## the old optional ticket pickup's fields from ec13940, the last build that had it, so the mazes
+## are proven unchanged by the ticket-goal rework):
 ##   ./tools/godot.sh --path . --headless -s res://tests/test_maze_golden.gd -- --write-golden=/abs/path.txt
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maze_golden.gd
 
@@ -38,7 +40,7 @@ func _initialize() -> void:
 			times.append((Time.get_ticks_usec() - t) / 1000.0)
 			lines.append("random %d %d %s" % [s, slime_level, digest])
 	times.sort()
-	print("  randomizer build + ticket: mean %.2f ms, p99 %.1f ms, worst %.1f ms over %d builds" % [
+	print("  randomizer build: mean %.2f ms, p99 %.1f ms, worst %.1f ms over %d builds" % [
 		_mean(times), times[int(times.size() * 0.99)], times[-1], times.size()])
 	if out != "":
 		var f := FileAccess.open(out, FileAccess.WRITE)
@@ -56,7 +58,7 @@ func _initialize() -> void:
 			if bad < 5:
 				print("  differs: now '%s', golden '%s'" % [lines[i], golden[i]])
 			bad += 1
-	_check(bad == 0, "every story level and %d randomizer builds match the golden mazes, starts, chalices and tickets (%d differ)" % [SEEDS * LEVELS.size(), bad])
+	_check(bad == 0, "every story level and %d randomizer builds match the golden mazes, starts, goals and routes (%d differ)" % [SEEDS * LEVELS.size(), bad])
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)
 
@@ -70,13 +72,10 @@ static func _random_digest(s: int, slime_level: int) -> String:
 	var hard := slime_level < 0
 	var config := Levels.random_config(s, hard, maxi(slime_level, 0))
 	var maze := MazeGenerator.generate_random(config)
-	var ticket := TicketSpawn.pick(maze, s, config.tile_cost)
-	var player_cost: float = 100.0 / Levels.RANDOM_METER_TILES
-	var fits := ticket != TicketSpawn.NONE and TicketSpawn.trip_fits(maze, ticket, player_cost)
+	var goal_usage: float = MazeGenerator.distances_from(maze, maze.start)[maze.goal] * MazeGenerator.CELL_SPAN * config.tile_cost / 100.0
 	return _digest([maze.walls.hex_encode(), maze.size, maze.cells, maze.start, maze.goal, maze.goal_steps,
 		maze.spawn_kind, maze.spawn_rolled, maze.diameter, maze.get("noise_seed", -1), maze.route_target,
-		ticket, fits, TicketSpawn.candidates(maze, config.tile_cost).size(),
-		snappedf(TicketSpawn.fraction_to(maze, maze.goal, config.tile_cost), 0.000001)])
+		snappedf(goal_usage, 0.000001)])
 
 
 static func _story_digest(level: int, hard: bool) -> String:
