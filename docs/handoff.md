@@ -390,3 +390,46 @@ Full write-up: [level-design.md section 8](level-design.md). In short:
   (`--story-complete --map=N [--map-hard] [--partial=N]`). Shots `docs/polish-shots/map_*.png`.
 - **Open for the owner:** this is a trial. Decide whether maps should cost something / unlock later, whether
   the select should show the % of walls too, and whether the trapdoor's new spot is fine.
+
+## Map review + navigation QA fixes (2026-10-14)
+
+Fixes for [review-maps.md](review-maps.md) (5 findings) and [qa-nav-report.md](qa-nav-report.md) (B1-B10), each
+with a regression test; the fuzzer's `KNOWN` table is now empty, so any of them coming back fails it.
+- **Survey layout fingerprint** (review 1, 2): the packed survey is now **version 2** with a 16-byte header; bytes
+  12-15 hold `Survey.fingerprint(maze)` (MD5 of size + start + goal + walls, first 32 bits; stable across
+  platforms/engine versions). `Survey.fits` compares size **and** fingerprint. Old version-1 surveys can't be
+  checked, so `unpack` drops them (those levels show NO SURVEY YET until their next run; the real save's trial
+  surveys go this way). A stale survey is dropped by `Progress.survey_for` (tile locked, nothing drawn) and
+  replaced by a blank one in `record_survey`, so a slower clear on a re-laid maze sets the new best route.
+  `Survey.blank(maze)` now takes the maze. Save code: 2,687 chars with all 20 levels fully surveyed (cap 65,536);
+  worst case 19,567.
+- **Map never draws on unseen tiles** (review 4): `MapView` clips the route (a step is drawn only if both cells and
+  the passage tile were seen), start ring, goal X, coins and thumbnail marks to seen tiles. Sighting the chalice
+  marks the goal tile seen (`Survey.mark_seen` in `record_survey`) so its X still shows. Test: a survey with a
+  route over unseen tiles, coins on unseen cells and an unseen goal at every view size + thumbnail, and a same-size
+  survey of another layout (draws nothing).
+- **BEST ROUTE vs record** (review 5): the map shows a route's time only when it is the level's record (same value
+  as the level select, `map_select.route_best`); when the record is faster (set before maps existed) the tile says
+  ROUTE (no time) and the view `ROUTE 1:02.3  SET A NEW BEST`.
+- **Focus locks** (review 3 / B1, B2): `UIKit.lock_focus(screen, modal)` / `unlock_focus` set every focusable
+  control outside an open panel to FOCUS_NONE and back. Used by the map view (plus `view_back.focus_next/previous`
+  to itself), the SETTINGS SAVE CODE and RESET panels, the pause menu and the R prompt.
+- **Pause over result buttons** (B3): the pause menu remembers the focus owner and restores it on resume.
+- **Wipe races** (B4, B5, N3): `retry`, `retry_assisted`, `go_to_upgrades`, `go_to_hub`, `replay`, `play_next`
+  return while `_leaving()`; `SkinText.recolor` and `Game._ease_in` return when out of the tree.
+- **Level frozen under QUIT TO HUB** (B9): the pause menu's QUIT TO HUB and the R prompt's UPGRADES hide the
+  overlay but keep the tree paused; `Transition.go` unpauses as it swaps scenes. Nothing can win, dry up or be
+  clicked during the wipe.
+- **Touch pause** (B6): the `menu` press is released when the finger lifts (or on pause / exit).
+- **Victory** (B7): Esc / P / B go to the hub; level 10's CONTINUE now reaches it through the goo wipe.
+- **GooBox WeakRefs** (B10): dead refs pruned every 32 registrations (50 hub <-> map cycles: objects 5,549 -> 5,537).
+- **Text boxes** (B8, kept by design): the first Esc only stops editing; focus then goes to COPY (SAVE CODE) or
+  RESUME (seed box) instead of nowhere, and the second Esc closes the panel / box.
+- **Found while fixing:** keeping the level paused under the UPGRADES wipe made `--autoplay` think the player had
+  paused and stop (test_autoplay caught it); autoplay now ignores a pause while a wipe is leaving.
+- **Fuzzer:** six area walks added (`AREAS`: map table + view, SETTINGS panels, pause, dry-up choices, win choices,
+  touch level; 2,000 inputs each, about a third steering back into the area; `--nav-area-steps=N`). Default run:
+  7 x 1,200 + 6 x 2,000 = 20,400 random inputs, passes. Eight extra seed runs (about 290,000 more inputs) found
+  no new violations.
+- **Pixel check:** a HEAD (6cf59c9) worktree vs this tree, 37 frames (title, hub, levels 1/5/10, hard 3, rainbow
+  10, randomizer seed 5, pause, dry-up choices, touch level 2): 0 differing pixels.
