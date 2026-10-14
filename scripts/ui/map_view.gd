@@ -10,61 +10,79 @@ extends RefCounted
 ## - a wall line (or the open doorway in it) only when at least one of the two cells it divides was
 ##   seen (a wall next to seen floor is known; between two unseen cells it would be a spoiler); the
 ##   posts where lines cross likewise only at a seen cell's corners;
-## - the route (the best clear in the goo color, edged when there is room; the last attempt faint,
-##   without the edge) only between two seen cells, through the cells' centers, so a U-turn reads as a
-##   hairpin with a wall between its legs; found coins, the start (a ring) and the goal (an X, once it
-##   has been seen or reached) only on seen cells.
+## - the route: a thin (1 px) red line through the cells' centers, whatever skin the slime wears
+##   (ROUTE; the best clear solid, the last attempt dashed and fainter), only between two seen cells,
+##   so a U-turn reads as a hairpin with a wall between its legs; found coins, the start (a ring) and
+##   the goal (an X in the wall ink, once it has been seen or reached) only on seen cells.
 ## So even a damaged or hostile survey can't draw over the fog.
 ## Sizes are whole pixels (`layout`): a [floor px, wall px] pair per cell, the largest that fits, so
-## a 36x20-cell maze still fits the 320x180 screen (6 + 1 px) with room for the title and BACK.
-## `theme` (a Themes id; "" = the default parchment) draws the map in that level's palette with a
-## themed frame round it: a mockup, off in the game (map_select.THEMED_MAPS).
+## a 36x20-cell maze still fits the 320x180 screen (5 + 2 px) with room for the title and BACK. Floors
+## are always an odd number of px, so the 1 px route runs exactly down the middle of a corridor.
+## `theme` (a Themes id; "" = the plain parchment) draws the map in that level's palette with a themed
+## frame round it (on in the game: map_select.THEMED_MAPS).
+## The MAP TABLE's tiles never show the real map: `preview` draws a tiny made-up example maze per
+## level (EXAMPLE_CELLS, fixed for everyone, nothing from the real layout), lit in proportion to the
+## real % uncovered, with an example route only when the level has a recorded route.
 
 const FOG := Color8(13, 12, 21)
 const FLOOR := Color8(216, 182, 126)
 const WALL := Color8(74, 46, 38)
 const START := Color8(244, 244, 244)
-const GOAL := Color8(200, 36, 52)
 const COIN := Color8(255, 205, 117)
 const COIN_EDGE := Color8(120, 70, 24)
-## Thumbnail colors (dimmer, so the tile's text stays the brightest thing on it).
-const THUMB_FLOOR := Color8(132, 108, 80)
-const THUMB_WALL := Color8(58, 40, 36)
-## [floor px, wall px] per cell, largest first (walls 3 px on the biggest maps, 2 on mid, 1 on small).
-const SIZES: Array[Vector2i] = [Vector2i(21, 3), Vector2i(19, 3), Vector2i(17, 3), Vector2i(16, 2),
-	Vector2i(14, 2), Vector2i(12, 2), Vector2i(11, 2), Vector2i(10, 2), Vector2i(9, 1), Vector2i(8, 1),
-	Vector2i(7, 1), Vector2i(6, 1), Vector2i(5, 1), Vector2i(4, 1), Vector2i(3, 1), Vector2i(2, 1), Vector2i(1, 1)]
-## The least brightness difference between the route and the floor (see route_color).
-const ROUTE_CONTRAST := 0.22
+## The route: a saturated red that reads on every palette (pale parchment and the dark-theme papers),
+## never the skin's color.
+const ROUTE := Color8(222, 24, 40)
+## How far the last attempt's dashes fade toward the floor.
+const ROUTE_FAINT := 0.3
+## The last attempt's dash rhythm (px on, px off).
+const DASH := Vector2i(2, 2)
+## [floor px, wall px] per cell, largest first; floors are odd so the 1 px route is centered (walls
+## 3 px on the biggest maps, 2 on mid, 1 on small).
+const SIZES: Array[Vector2i] = [Vector2i(21, 3), Vector2i(19, 3), Vector2i(17, 3), Vector2i(15, 3),
+	Vector2i(15, 2), Vector2i(13, 2), Vector2i(11, 2), Vector2i(9, 2), Vector2i(9, 1), Vector2i(7, 2),
+	Vector2i(7, 1), Vector2i(5, 2), Vector2i(5, 1), Vector2i(3, 1), Vector2i(1, 1)]
 ## The thumbnail's box on a map select tile (px).
 const THUMB := Vector2i(36, 20)
 ## The themed frame's width round the map (px), see `theme`.
 const FRAME := 4
+## The select tiles' example mazes: cells, drawn at 3 px floor + 1 px walls with a 1 px themed frame
+## (35x19 px, inside THUMB).
+const EXAMPLE_CELLS := Vector2i(8, 4)
+const EXAMPLE_SIZES := Vector2i(3, 1)
+## A fully uncovered level's preview frame.
+const PREVIEW_GOLD := Color8(220, 168, 72)
+## The plain (unthemed) frame colors [dark, mid, light, accent].
+const PLAIN_FRAME := [Color8(26, 28, 44), Color8(74, 46, 38), Color8(132, 108, 80), Color8(216, 182, 126)]
 
-## Themed palettes (mockup): paper (seen floor), ink (walls), trail, fog (unseen), and the frame's
-## colors [dark, mid, light, accent], taken from each theme's tile palette (tools/make_theme_art.py).
+## Themed palettes: paper (seen floor), ink (walls), fog (unseen), and the frame's colors [dark, mid,
+## light, accent], taken from each theme's tile palette (tools/make_theme_art.py).
 const THEMED := {
-	"dungeon": {paper = Color8(206, 200, 184), ink = Color8(44, 48, 70), trail = Color8(64, 110, 190),
+	"dungeon": {paper = Color8(206, 200, 184), ink = Color8(44, 48, 70),
 		fog = Color8(20, 20, 34), frame = [Color8(26, 28, 44), Color8(86, 108, 134), Color8(148, 176, 194), Color8(94, 140, 60)]},
-	"mossy": {paper = Color8(214, 214, 170), ink = Color8(40, 58, 36), trail = Color8(56, 132, 52),
+	"mossy": {paper = Color8(214, 214, 170), ink = Color8(40, 58, 36),
 		fog = Color8(12, 24, 18), frame = [Color8(16, 24, 18), Color8(64, 80, 56), Color8(104, 126, 90), Color8(98, 164, 62)]},
-	"sandstone": {paper = Color8(240, 214, 160), ink = Color8(110, 68, 40), trail = Color8(40, 120, 150),
+	"sandstone": {paper = Color8(240, 214, 160), ink = Color8(110, 68, 40),
 		fog = Color8(30, 22, 20), frame = [Color8(48, 28, 22), Color8(164, 118, 72), Color8(216, 174, 112), Color8(248, 224, 166)]},
-	"sunken": {paper = Color8(196, 222, 208), ink = Color8(20, 62, 70), trail = Color8(30, 90, 160),
+	"sunken": {paper = Color8(196, 222, 208), ink = Color8(20, 62, 70),
 		fog = Color8(8, 20, 30), frame = [Color8(10, 26, 32), Color8(48, 110, 106), Color8(88, 162, 150), Color8(112, 172, 222)]},
-	"sewers": {paper = Color8(204, 196, 168), ink = Color8(54, 46, 36), trail = Color8(96, 160, 20),
+	"sewers": {paper = Color8(204, 196, 168), ink = Color8(54, 46, 36),
 		fog = Color8(24, 26, 8), frame = [Color8(22, 18, 16), Color8(76, 66, 52), Color8(120, 128, 134), Color8(150, 232, 40)]},
-	"catacombs": {paper = Color8(222, 212, 190), ink = Color8(62, 52, 46), trail = Color8(120, 60, 140),
+	"catacombs": {paper = Color8(222, 212, 190), ink = Color8(62, 52, 46),
 		fog = Color8(24, 20, 18), frame = [Color8(28, 22, 20), Color8(108, 100, 90), Color8(158, 148, 132), Color8(234, 224, 198)]},
-	"frozen": {paper = Color8(222, 236, 248), ink = Color8(40, 62, 120), trail = Color8(60, 130, 210),
+	"frozen": {paper = Color8(222, 236, 248), ink = Color8(40, 62, 120),
 		fog = Color8(14, 20, 38), frame = [Color8(16, 24, 50), Color8(112, 152, 202), Color8(172, 208, 238), Color8(255, 255, 255)]},
-	"obsidian": {paper = Color8(178, 172, 202), ink = Color8(28, 26, 44), trail = Color8(124, 60, 180),
+	"obsidian": {paper = Color8(178, 172, 202), ink = Color8(28, 26, 44),
 		fog = Color8(6, 6, 12), frame = [Color8(6, 6, 10), Color8(42, 40, 62), Color8(72, 68, 104), Color8(154, 144, 214)]},
-	"crystal": {paper = Color8(226, 212, 240), ink = Color8(66, 42, 94), trail = Color8(30, 150, 170),
+	"crystal": {paper = Color8(226, 212, 240), ink = Color8(66, 42, 94),
 		fog = Color8(20, 10, 34), frame = [Color8(22, 10, 32), Color8(94, 62, 132), Color8(142, 102, 182), Color8(122, 222, 232)]},
-	"volcanic": {paper = Color8(214, 190, 170), ink = Color8(58, 30, 26), trail = Color8(220, 90, 24),
+	"volcanic": {paper = Color8(214, 190, 170), ink = Color8(58, 30, 26),
 		fog = Color8(28, 10, 10), frame = [Color8(14, 8, 8), Color8(62, 42, 42), Color8(152, 40, 20), Color8(255, 200, 80)]},
 }
+
+## Example mazes (per level and mode) and preview textures, built once and kept (see `preview`).
+static var _examples := {}
+static var _previews := {}
 
 
 ## The largest [floor px, wall px] that fits `cells` into `area` px (`framed`: leaving room for the
@@ -100,53 +118,38 @@ static func edge_rect(cell: Vector2i, dir: Vector2i, sizes: Vector2i) -> Rect2i:
 	return Rect2i(r.position.x, r.position.y - sizes.y, sizes.x, sizes.y)
 
 
-## The route's width on a floor of `floor_px`: about a third of it, with the same parity, so it sits
-## exactly in the middle with floor showing on both sides (from 3 px floors up).
-static func route_width(floor_px: int) -> int:
-	var w := maxi(1, floor_px / 3)
-	if (floor_px - w) % 2 == 1:
-		w += 1 if floor_px - w - 1 >= 2 else -1
-	return clampi(w, 1, floor_px)
+## The route's width: a thin 1 px line (whatever the floor).
+static func route_width(_floor_px: int) -> int:
+	return 1
 
 
-## The colors of a map: the default parchment (theme ""), a themed one, or the thumbnail's.
-static func palette(goo: Dictionary, theme := "", thumb := false) -> Dictionary:
-	var pal := {fog = FOG, floor = FLOOR, wall = WALL, route = route_color(goo, FLOOR), goo = goo.mid, edge = goo.outline,
-		start = START, goal = GOAL, coin = COIN, coin_edge = COIN_EDGE}
+## Where the route runs inside a cell's floor (px from its top-left): the middle pixel.
+static func route_inset(floor_px: int) -> int:
+	return (floor_px - 1) / 2
+
+
+## The colors of a map: the plain parchment (theme "") or a themed one. Nothing depends on the skin.
+static func palette(theme := "") -> Dictionary:
+	var pal := {fog = FOG, floor = FLOOR, wall = WALL, route = ROUTE, start = START, goal = WALL,
+		coin = COIN, coin_edge = COIN_EDGE, frame = PLAIN_FRAME}
 	if THEMED.has(theme):
 		var t: Dictionary = THEMED[theme]
-		pal.merge({fog = t.fog, floor = t.paper, wall = t.ink, route = t.trail, goo = t.trail, edge = (t.trail as Color).darkened(0.6),
-			start = t.ink}, true)  # a white start ring would vanish on the pale papers
-	if thumb:
-		pal.fog = Color(0, 0, 0, 0)  # unseen cells stay clear over the tile's dark well
-		if not THEMED.has(theme):
-			pal.floor = THUMB_FLOOR
-			pal.wall = THUMB_WALL
-	pal.faint = (pal.route as Color).lerp(pal.floor, 0.5)
+		# A white start ring would vanish on the pale papers: start and goal marks in the ink.
+		pal.merge({fog = t.fog, floor = t.paper, wall = t.ink, start = t.ink, goal = t.ink, frame = t.frame}, true)
+	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)
 	return pal
 
 
-## The route's color without an edge: the skin's goo, or its darker shade when the goo is too close to
-## the floor in brightness to read on it (a pale lemon or lime on parchment). An edged route (big
-## maps) is always the goo itself.
-static func route_color(goo: Dictionary, floor: Color) -> Color:
-	var mid: Color = goo.mid
-	if absf(mid.get_luminance() - floor.get_luminance()) >= ROUTE_CONTRAST:
-		return mid
-	return goo.dark
-
-
 ## The full map of `survey` on `maze` (which it must fit, Survey.fits), at `sizes` (see layout).
-## `coins`: cells of found coins; `goo`: the skin's goo shades (Skins.shades); `theme`: see above
-## (adds a FRAME px frame round the map).
-static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], goo: Dictionary, theme := "") -> Image:
-	var pal := palette(goo, theme)
+## `coins`: cells of found coins; `theme`: see above (adds a FRAME px frame round the map).
+static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], theme := "") -> Image:
+	var pal := palette(theme)
 	var px := map_size(maze.cells, sizes)
 	var image := Image.create_empty(px.x, px.y, false, Image.FORMAT_RGBA8)
 	image.fill(pal.fog)
 	if Survey.fits(survey, maze):
 		_draw_maze(image, maze, survey, sizes, pal)
-		_draw_route(image, survey, Survey.route_cells(survey, maze), sizes, pal, true)
+		_draw_route(image, survey, Survey.route_cells(survey, maze), sizes, pal)
 		_draw_marks(image, maze, survey, sizes, coins, pal)
 	if not THEMED.has(theme):
 		return image
@@ -185,30 +188,32 @@ static func _cell_seen(survey: Dictionary, cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and Survey.is_seen(survey, cell * 2 + Vector2i.ONE)
 
 
-## The route as a band through the cells' centers (route_width wide, so floor shows on both sides of
-## it and a hairpin's two legs keep the wall line between them): a clear in the goo color, edged in its
-## outline shade when the floor has room (`edged`), the last attempt faint without the edge. A step is
-## drawn only between two seen cells.
-static func _draw_route(image: Image, survey: Dictionary, cells: Array[Vector2i], sizes: Vector2i, pal: Dictionary, edged: bool) -> void:
+## The route as a 1 px red line through the cells' centers (floor shows on both sides of it and a
+## hairpin's two legs keep the wall line between them): solid for the best clear, dashed and fainter
+## for the last attempt. A step is drawn only between two seen cells.
+static func _draw_route(image: Image, survey: Dictionary, cells: Array[Vector2i], sizes: Vector2i, pal: Dictionary) -> void:
 	if cells.is_empty():
 		return
 	var clear: bool = survey.clear
-	var w := route_width(sizes.x)
-	var passes: Array = [[w, pal.route if clear else pal.faint]]
-	if clear and edged and (sizes.x - w) / 2 >= 3:
-		passes = [[w + 2, pal.edge], [w, pal.goo]]
-	for p: Array in passes:
-		var width: int = p[0]
-		var color: Color = p[1]
-		var inset := Vector2i.ONE * ((sizes.x - width) / 2)
-		for i in cells.size():
-			var ca := cells[i]
-			var cb := cells[mini(i + 1, cells.size() - 1)]
-			if not (_cell_seen(survey, ca) and _cell_seen(survey, cb)):
-				continue
-			var a := cell_rect(ca, sizes).position + inset
-			var b := cell_rect(cb, sizes).position + inset
-			image.fill_rect(Rect2i(a.min(b), (a.max(b) - a.min(b)) + Vector2i.ONE * width), color)
+	var color: Color = pal.route if clear else pal.faint
+	var inset := Vector2i.ONE * route_inset(sizes.x)
+	var run := 0  # px along the route, for the dashes
+	if cells.size() == 1 and _cell_seen(survey, cells[0]):
+		image.set_pixelv(cell_rect(cells[0], sizes).position + inset, color)
+	for i in cells.size() - 1:
+		var ca := cells[i]
+		var cb := cells[i + 1]
+		var a := cell_rect(ca, sizes).position + inset
+		var b := cell_rect(cb, sizes).position + inset
+		var length := (b - a).abs().x + (b - a).abs().y
+		var dir := (b - a).sign()
+		var drawn := _cell_seen(survey, ca) and _cell_seen(survey, cb)
+		for k in length + 1:
+			if k == length and i < cells.size() - 2:
+				break  # the next step starts here
+			if drawn and (clear or run % (DASH.x + DASH.y) < DASH.x):
+				image.set_pixelv(a + dir * k, color)
+			run += 1
 
 
 ## Found coins, the start ring and the goal X, each centered in its (seen) cell.
@@ -223,7 +228,7 @@ static func _draw_marks(image: Image, maze: Dictionary, survey: Dictionary, size
 			if dot >= 3 and dot + 2 <= f:
 				_draw_disc(image, _centered(r, dot + 2), pal.coin_edge)
 			_draw_disc(image, _centered(r, dot), pal.coin)
-	var mark := mini(f, route_width(f) + 4)
+	var mark := mini(f, maxi(5, f * 2 / 5 | 1))
 	if _cell_seen(survey, survey.start):
 		_draw_ring(image, _centered(cell_rect(survey.start, sizes), mark), pal.start)
 	if survey.goal and _cell_seen(survey, maze.goal):
@@ -265,45 +270,172 @@ static func _draw_x(image: Image, r: Rect2i, color: Color) -> void:
 			image.set_pixelv(r.position + Vector2i(s - 2 - k, k), color)
 
 
-## The map select tile's thumbnail, as big as fits THUMB: the same wall-line diagram as the map
-## (seen floor dim, walls, the route, start and goal) when the maze fits at 1 px floor + 1 px walls or
-## more; a bigger maze gets one block per cell (seen cells floor, the route's cells in the goo color),
-## too small for wall lines. Unseen cells are transparent (nothing is drawn on them).
-static func thumbnail(maze: Dictionary, survey: Dictionary, goo: Dictionary, theme := "") -> Image:
-	var pal := palette(goo, theme, true)
-	var cells: Vector2i = maze.cells
-	var sizes := layout(cells, THUMB)
-	var px := map_size(cells, sizes)
-	if px.x <= THUMB.x and px.y <= THUMB.y:
-		var lines := Image.create_empty(px.x, px.y, false, Image.FORMAT_RGBA8)
-		if Survey.fits(survey, maze):
-			_draw_maze(lines, maze, survey, sizes, pal)
-			_draw_route(lines, survey, Survey.route_cells(survey, maze), sizes, pal, false)
-			if _cell_seen(survey, survey.start):
-				lines.fill_rect(_centered(cell_rect(survey.start, sizes), route_width(sizes.x)), pal.start)
-			if survey.goal and _cell_seen(survey, maze.goal):
-				lines.fill_rect(cell_rect(maze.goal, sizes), pal.goal)
-		return lines
-	var scale := maxi(1, mini(THUMB.x / cells.x, THUMB.y / cells.y))
-	var image := Image.create_empty(cells.x * scale, cells.y * scale, false, Image.FORMAT_RGBA8)
-	if not Survey.fits(survey, maze):
-		return image
-	for cy in cells.y:
-		for cx in cells.x:
-			if _cell_seen(survey, Vector2i(cx, cy)):
-				image.fill_rect(Rect2i(cx * scale, cy * scale, scale, scale), pal.floor)
-	var route: Color = pal.route if survey.clear else pal.faint
-	for cell in Survey.route_cells(survey, maze):
-		if _cell_seen(survey, cell):
-			image.fill_rect(Rect2i(cell * scale, Vector2i.ONE * scale), route)
-	if _cell_seen(survey, survey.start):
-		image.fill_rect(Rect2i(survey.start * scale, Vector2i.ONE * scale), pal.start)
-	if survey.goal and _cell_seen(survey, maze.goal):
-		image.fill_rect(Rect2i(maze.goal * scale, Vector2i.ONE * scale), pal.goal)
+# ---------------------------------------------------------------- select tile previews
+
+## The MAP TABLE tile's picture of `level` (normal or `hard`): NOT the real map, but a tiny made-up
+## example maze in the level's palette (`theme`) with a 1 px frame in its motif, the same for every
+## player and built from nothing but the level number. It only tells what the player has:
+## - `locked`: a sealed, dim frame round darkness (the select puts a lock on it);
+## - otherwise the first `percent`% of its cells (in a fixed order spreading out from its start)
+##   lit, the rest dark; `route` 0 = none, 1 = a last try (faint), 2 = a best clear (solid): the
+##   example route, only over lit cells; at 100% the frame turns gold.
+## Cached: the same arguments give the same ImageTexture, so the tiles cost nothing after the first.
+static func preview(level: int, hard: bool, percent: int, route: int, locked: bool, theme := "") -> ImageTexture:
+	var ex := example(level, hard)
+	var total: int = ex.order.size()
+	var lit := 0
+	if not locked:
+		lit = total if percent >= 100 else clampi(floori(percent * total / 100.0), 1 if percent > 0 else 0, total - 1)
+	var key := "%d|%d|%d|%d|%d|%s" % [level, int(hard), lit, route if not locked else 0, int(locked), theme]
+	if _previews.has(key):
+		return _previews[key]
+	var texture := ImageTexture.create_from_image(preview_image(ex, lit, route if not locked else 0, locked, theme))
+	_previews[key] = texture
+	return texture
+
+
+## The preview's pixels (see `preview`): `ex` from `example`, `lit` cells lit.
+static func preview_image(ex: Dictionary, lit: int, route: int, locked: bool, theme := "") -> Image:
+	var pal := palette(theme)
+	var px := map_size(EXAMPLE_CELLS, EXAMPLE_SIZES)
+	var image := Image.create_empty(px.x + 2, px.y + 2, false, Image.FORMAT_RGBA8)
+	image.fill(pal.fog)
+	var maze: Dictionary = ex.maze
+	var seen := Survey.blank(maze)
+	for i in lit:
+		Survey.mark_seen(seen, (ex.order[i] as Vector2i) * 2 + Vector2i.ONE)
+	seen.clear = route == 2
+	var inner := Image.create_empty(px.x, px.y, false, Image.FORMAT_RGBA8)
+	inner.fill(pal.fog)
+	_draw_maze(inner, maze, seen, EXAMPLE_SIZES, pal)
+	if route > 0:  # the last try solid but faint here: dashes would be noise at this size
+		seen.clear = true
+		if route == 1:
+			pal.route = pal.faint
+		_draw_route(inner, seen, ex.route, EXAMPLE_SIZES, pal)
+	image.blit_rect(inner, Rect2i(Vector2i.ZERO, px), Vector2i.ONE)
+	_draw_mini_frame(image, pal.frame, theme, locked, lit == ex.order.size() and lit > 0)
 	return image
 
 
-## The themed frame (mockup): a FRAME px border in the theme's colors with a cheap motif of its own
+## The example maze of `level` (cached): {maze (MazeGenerator layout: size, cells, walls, start,
+## goal), order (every cell, spreading out from the start: the order they light up in), route (the
+## start-to-goal path)}. A seeded depth-first maze from pure integer hashing of the level number
+## alone (hard mode has its own), so it is the same everywhere and knows nothing of the real maze.
+static func example(level: int, hard: bool) -> Dictionary:
+	var key := level + (100 if hard else 0)
+	if _examples.has(key):
+		return _examples[key]
+	var cells := EXAMPLE_CELLS
+	var size := cells * 2 + Vector2i.ONE
+	var walls := PackedByteArray()
+	walls.resize(size.x * size.y)
+	walls.fill(1)
+	var salt := 7919 * key + 31
+	var start := Vector2i(0 if _hash(salt, 1) % 2 == 0 else cells.x - 1, _hash(salt, 2) % cells.y)
+	var visited := {start: true}
+	var stack: Array[Vector2i] = [start]
+	walls[(start.y * 2 + 1) * size.x + start.x * 2 + 1] = 0
+	var n := 0
+	while not stack.is_empty():
+		# Growing tree: mostly the newest cell (long corridors), sometimes a random one (branches), so
+		# the start-to-goal route stays short next to the side passages.
+		n += 1
+		var at := stack.size() - 1 if _hash(salt, n) % 3 != 0 else _hash(salt + 1, n) % stack.size()
+		var cell: Vector2i = stack[at]
+		var options: Array[Vector2i] = []
+		for dir: Vector2i in MazeGenerator.DIRS:
+			var next := cell + dir
+			if next.x >= 0 and next.y >= 0 and next.x < cells.x and next.y < cells.y and not visited.has(next):
+				options.append(next)
+		if options.is_empty():
+			stack.remove_at(at)
+			continue
+		var next: Vector2i = options[_hash(salt, n + 10) % options.size()]
+		var t := next * 2 + Vector2i.ONE
+		walls[t.y * size.x + t.x] = 0
+		var between := cell * 2 + Vector2i.ONE + (next - cell)
+		walls[between.y * size.x + between.x] = 0
+		visited[next] = true
+		stack.append(next)
+	var maze := {size = size, cells = cells, walls = walls, start = start, goal = start}
+	# The light spreads from the start, breadth first; the goal is the farthest cell.
+	var order: Array[Vector2i] = [start]
+	var reached := {start: true}
+	var i := 0
+	while i < order.size():
+		for next in MazeGenerator.open_neighbors(maze, order[i]):
+			if not reached.has(next):
+				reached[next] = true
+				order.append(next)
+		i += 1
+	maze.goal = order[-1]
+	var ex := {maze = maze, order = order, route = MazeGenerator.shortest_path(maze, start, maze.goal)}
+	_examples[key] = ex
+	return ex
+
+
+## The preview's 1 px frame in the theme's colors with a small rhythm of its motif (joints, moss,
+## strata, crests, bolts, bones, rime, glints, shards, embers); dim when `locked`; all gold when the
+## level is fully uncovered (`full`).
+static func _draw_mini_frame(image: Image, c: Array, theme: String, locked: bool, full: bool) -> void:
+	var w := image.get_width()
+	var h := image.get_height()
+	var perimeter := 2 * (w + h) - 4
+	for k in perimeter:
+		var p := _perimeter_point(k, w, h)
+		var color: Color = c[1]
+		var n := _hash(p.x, p.y)
+		match theme:
+			"dungeon":
+				color = c[0] if k % 5 == 0 else c[1]
+			"mossy":
+				color = c[3] if n % 3 == 0 else c[1]
+			"sandstone":
+				color = c[3] if k % 4 == 0 else c[2]
+			"sunken":
+				color = c[3] if k % 6 < 2 else c[1]
+			"sewers":
+				color = c[2] if k % 7 == 0 else (c[3] if n % 9 == 0 else c[1])
+			"catacombs":
+				color = c[3] if k % 6 < 3 else c[1]
+			"frozen":
+				color = c[3] if n % 2 == 0 else c[2]
+			"obsidian":
+				color = c[3] if n % 5 == 0 else c[2]
+			"crystal":
+				color = c[3] if n % 3 == 0 else c[2]
+			"volcanic":
+				color = c[3] if n % 3 == 0 else c[2]
+			_:
+				color = c[2] if k % 4 == 0 else c[1]
+		if locked:
+			color = color.darkened(0.6)
+		if full:  # fully uncovered: a plain gold frame
+			color = PREVIEW_GOLD
+		image.set_pixelv(p, color)
+	var corner: Color = COIN if full else c[0]
+	if locked:
+		corner = (c[0] as Color).darkened(0.3)
+	for p: Vector2i in [Vector2i(0, 0), Vector2i(w - 1, 0), Vector2i(0, h - 1), Vector2i(w - 1, h - 1)]:
+		image.set_pixelv(p, corner)
+
+
+## The `k`th pixel round the edge of a w x h image, clockwise from the top-left.
+static func _perimeter_point(k: int, w: int, h: int) -> Vector2i:
+	if k < w:
+		return Vector2i(k, 0)
+	k -= w
+	if k < h - 1:
+		return Vector2i(w - 1, k + 1)
+	k -= h - 1
+	if k < w - 1:
+		return Vector2i(w - 2 - k, h - 1)
+	k -= w - 1
+	return Vector2i(0, h - 2 - k)
+
+
+## The themed frame: a FRAME px border in the theme's colors with a cheap motif of its own
 ## (stone joints, moss tufts, sand strata, wave crests, pipe bolts and drips, bones, frost, glossy
 ## glints, crystals, lava glow) and accent studs in the corners. Pure integer hashing: the same every time.
 static func _draw_frame(image: Image, theme: String) -> void:

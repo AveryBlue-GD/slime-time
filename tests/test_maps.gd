@@ -11,9 +11,14 @@ extends SceneTree
 ## - seeds: --story-complete and --maps=full (child process with --unlock-all) give 20 full surveys
 ##   (every tile seen, the shortest route as a clear, the goal seen); --unlock-all alone gives none;
 ## - drawing (MapView): wall lines between cells, drawn only next to a seen cell; nothing on unseen
-##   cells at any size (also with a route, coins, start and goal over unseen cells) nor on thumbnails;
-##   a hairpin (U-turn) route keeps a wall line between its two legs; every story and hard maze
-##   (up to 36x20 cells) fits the view at whole pixels, themed (mockup) too; a foreign survey draws nothing;
+##   cells at any size (also with a route, coins, start and goal over unseen cells); a hairpin (U-turn)
+##   route keeps a wall line between its two legs; the route is a 1 px red line whatever the skin;
+##   every story and hard maze (up to 36x20 cells) fits the view at whole pixels, themed too; a foreign
+##   survey draws nothing; every level (normal + hard) has a theme palette, themed maps are on;
+## - select previews (MapView.preview): made-up example mazes, deterministic and distinct per level and
+##   mode, unrelated to the real layout, lit in proportion to the %, a route only with a recorded
+##   route, all inside the tile's box, cached (no per-frame cost); two different surveys at the same %
+##   give identical tiles;
 ## - the MAP TABLE screen: tiles locked until surveyed, just thumbnail/name/percent (no times or route
 ##   labels), opening a map (name + "NN% UNCOVERED"), BACK / Esc / ui_cancel at each depth (Esc on the
 ##   select returns to the hub), taps, the first-time hint.
@@ -527,6 +532,57 @@ func _test_screen() -> void:
 	screen._fill_grid()
 	await _frames(1)
 
+	# The tile pictures never read the survey's cells: two completely different surveys of level 5 at
+	# the same % (one lit outward from the start, one from the goal, different routes) look the same.
+	var m5 := Levels.story_maze(5)
+	var from_start := _lit_survey(m5, m5.start, 37)
+	var from_goal := _lit_survey(m5, m5.goal, roundi(Survey.completeness(from_start, m5) * 100.0))
+	from_start.moves = Survey.moves_along(MazeGenerator.shortest_path(m5, m5.start, m5.goal))
+	from_start.clear = true
+	from_goal.moves = Survey.moves_along(MazeGenerator.shortest_path(m5, m5.start, m5.start + MazeGenerator.open_neighbors(m5, m5.start)[0] - m5.start))
+	from_goal.clear = true
+	progress.maps[5] = from_start
+	screen._fill_grid()
+	var pic_a := _tile_picture(screen, 5)
+	var pct_a: int = screen.tiles[4].get_meta("percent")
+	progress.maps[5] = from_goal
+	screen._fill_grid()
+	var pic_b := _tile_picture(screen, 5)
+	var pct_b: int = screen.tiles[4].get_meta("percent")
+	_check(pct_a == pct_b and pic_a != null and pic_b != null and pic_a.get_data() == pic_b.get_data(),
+		"two completely different surveys at the same %% (%d / %d) give identical tile pictures" % [pct_a, pct_b])
+	var no_moves := from_goal.duplicate(true)
+	no_moves.moves = PackedByteArray()
+	progress.maps[5] = no_moves
+	screen._fill_grid()
+	var pic_c := _tile_picture(screen, 5)
+	_check(_count_color(pic_c, MapView.ROUTE) == 0 and _count_color(pic_a, MapView.ROUTE) > 0, "...and the red example route shows only when a route is recorded")
+	progress.maps.erase(5)
+	screen._fill_grid()
+	_check(not screen.has_method("_process") and not screen.has_method("_physics_process"), "the map screen does no per-frame work (no _process)")
+	var cached := true
+	var rects := 0
+	for tile in screen.tiles:
+		for child in tile.get_children():
+			if child is TextureRect:
+				rects += 1
+				cached = cached and Rect2(Vector2.ZERO, tile.size).encloses(Rect2(child.position, child.size))
+	_check(rects == 10 and cached, "every tile has its picture, inside the tile (%d)" % rects)
+
+	# The route in the opened map is the same red whatever skin is equipped.
+	var skin_imgs: Array[Image] = []
+	var old_skin: String = progress.selected_skin
+	for skin in ["lime", "lemon", "crimson", "shadow", "frost"]:
+		progress.selected_skin = skin
+		screen.open_view(3)
+		skin_imgs.append(screen.view_map.texture.get_image())
+		screen.close_view()
+	progress.selected_skin = old_skin
+	var same := true
+	for img in skin_imgs:
+		same = same and img.get_data() == skin_imgs[0].get_data()
+	_check(same and _count_color(skin_imgs[0], MapView.ROUTE) > 20, "the opened map's route is the same red (%d px) with lime, lemon, crimson, inkky and frost" % _count_color(skin_imgs[0], MapView.ROUTE))
+
 	# Esc on the select goes back to the hub, facing the table.
 	await _action("menu")
 	var back: Node = await _until_scene("res://scenes/hub.tscn")
@@ -553,7 +609,6 @@ func _test_screen() -> void:
 # ---------------------------------------------------------------- drawing (MapView)
 
 func _test_drawing() -> void:
-	var goo := Skins.shades(Color.GREEN)
 	var none: Array[Vector2i] = []
 	var maze := Levels.story_maze(2)
 	# A survey that sees only the first few cells of the route (and the tiles next to them), with every
@@ -579,10 +634,10 @@ func _test_drawing() -> void:
 	var walls_bad := 0
 	for sz: Vector2i in MapView.SIZES:
 		for theme: String in ["", "volcanic"]:
-			var img := MapView.render(maze, leaky, sz, coin_cells, goo, theme)
+			var img := MapView.render(maze, leaky, sz, coin_cells, theme)
 			var off := Vector2i.ONE * (MapView.FRAME if theme != "" else 0)
-			var fog: Color = MapView.palette(goo, theme).fog
-			var wall: Color = MapView.palette(goo, theme).wall
+			var fog: Color = MapView.palette(theme).fog
+			var wall: Color = MapView.palette(theme).wall
 			for cy in maze.cells.y:
 				for cx in maze.cells.x:
 					var cell := Vector2i(cx, cy)
@@ -625,8 +680,8 @@ func _test_drawing() -> void:
 			var full := Survey.full(m, 10.0)
 			var path := Survey.route_cells(full, m)
 			var sz := MapView.layout(m.cells, Vector2i(316, 149))
-			var img := MapView.render(m, full, sz, none, goo)
-			var pal := MapView.palette(goo)
+			var img := MapView.render(m, full, sz, none)
+			var pal := MapView.palette()
 			for i in path.size() - 3:
 				var a := path[i]
 				var b := path[i + 3]
@@ -637,12 +692,12 @@ func _test_drawing() -> void:
 				var w := MapView.route_width(sz.x)
 				var ra := MapView.cell_rect(a, sz)
 				var rb := MapView.cell_rect(b, sz)
-				var ca := ra.position + Vector2i.ONE * (sz.x / 2)
-				var cb := rb.position + Vector2i.ONE * (sz.x / 2)
+				var ca := ra.position + Vector2i.ONE * MapView.route_inset(sz.x)
+				var cb := rb.position + Vector2i.ONE * MapView.route_inset(sz.x)
 				# The pixel just inside each leg's cell next to the wall is floor (the route doesn't touch the wall).
 				var a_side := _side_px(ra, b - a)
 				var b_side := _side_px(rb, a - b)
-				var ok: bool = _count_not(img, line, pal.wall) == 0 and img.get_pixelv(ca) != pal.floor and img.get_pixelv(cb) != pal.floor \
+				var ok: bool = _count_not(img, line, pal.wall) == 0 and img.get_pixelv(ca) == MapView.ROUTE and img.get_pixelv(cb) == MapView.ROUTE \
 					and img.get_pixelv(a_side) == pal.floor and img.get_pixelv(b_side) == pal.floor and w < sz.x
 				if not ok and hairpin_bad.size() < 3:
 					hairpin_bad.append("L%d%s %s/%s at %s" % [level, "h" if hard_mode else "", a, b, sz])
@@ -654,7 +709,7 @@ func _test_drawing() -> void:
 	var turn: Dictionary = demo.uturn(m5)
 	var cells := Survey.route_cells(turn, m5)
 	var sz5 := MapView.layout(m5.cells, Vector2i(316, 149))
-	var img5 := MapView.render(m5, turn, sz5, none, goo)
+	var img5 := MapView.render(m5, turn, sz5, none)
 	var found := false
 	for i in cells.size() - 3:
 		if (cells[i + 3] - cells[i]).abs().x + (cells[i + 3] - cells[i]).abs().y == 1:
@@ -678,49 +733,152 @@ func _test_drawing() -> void:
 	var big_px := MapView.map_size(Levels.HARD_MAX_CELLS, big)
 	_check(fit_bad.is_empty() and big_px.x <= 316 and big_px.y <= 149 and big.x >= 5,
 		"every story/hard maze fits the 316x149 view at whole pixels, themed too (smallest floor %d px; 36x20: %d+%d px = %s; %s)" % [smallest, big.x, big.y, big_px, ", ".join(fit_bad)])
-	var rendered := MapView.render({cells = Levels.HARD_MAX_CELLS, size = Levels.HARD_MAX_CELLS * 2 + Vector2i.ONE, walls = PackedByteArray(), start = Vector2i.ZERO, goal = Vector2i.ZERO}, {}, big, none, goo)
+	var rendered := MapView.render({cells = Levels.HARD_MAX_CELLS, size = Levels.HARD_MAX_CELLS * 2 + Vector2i.ONE, walls = PackedByteArray(), start = Vector2i.ZERO, goal = Vector2i.ZERO}, {}, big, none)
 	_check(rendered.get_size() == big_px, "...and the image is exactly that size (%s)" % rendered.get_size())
 
-	# Thumbnails: nothing on unseen cells (wall-line thumbnails for the small mazes, blocks for big ones).
-	var thumb_leaks := 0
-	var line_thumbs := 0
+	# The route: a 1 px line (a hairpin's legs, checked above, are single red pixels with floor beside
+	# them), the same red whatever the skin (the skin isn't an input any more: MapView.palette).
+	var odd := true
+	for sz: Vector2i in MapView.SIZES:
+		odd = odd and sz.x % 2 == 1 and MapView.route_width(sz.x) == 1 and MapView.route_inset(sz.x) * 2 + 1 == sz.x
+	_check(odd, "every map size has an odd floor, so the 1 px route runs exactly down its middle")
+	var reds_ok := true
+	for theme: String in [""] + MapView.THEMED.keys():
+		var pal := MapView.palette(theme)
+		reds_ok = reds_ok and pal.route == MapView.ROUTE and absf((pal.route as Color).get_luminance() - (pal.floor as Color).get_luminance()) >= 0.2 \
+			and (pal.route as Color).r > 0.8 and (pal.route as Color).g < 0.2
+	_check(reds_ok, "the route is the same saturated red on every palette, and stands out from every paper")
+
+	# Themes: every story level (normal and hard maps alike) has a palette.
+	var missing: Array[String] = []
 	for level in range(1, Levels.COUNT + 1):
-		var m := Levels.story_maze(level)
-		var s := Survey.blank(m)
-		var t := PackedByteArray()
-		t.resize(m.size.x * m.size.y)
-		var p := MazeGenerator.shortest_path(m, m.start, m.goal)
-		for i in mini(6, p.size()):
-			t[(p[i].y * 2 + 1) * m.size.x + p[i].x * 2 + 1] = 1
-		Survey.merge_seen(s, t)
-		s.moves = Survey.moves_along(p)
-		s.clear = true
-		s.best_ms = 1000
-		s.goal = true
-		var thumb := MapView.thumbnail(m, s, goo)
-		if thumb.get_width() > MapView.THUMB.x or thumb.get_height() > MapView.THUMB.y:
-			_check(false, "L%d's thumbnail fits its box (%s)" % [level, thumb.get_size()])
-		var sz := MapView.layout(m.cells, MapView.THUMB)
-		var lines := thumb.get_size() == MapView.map_size(m.cells, sz)
-		line_thumbs += int(lines)
-		for cy in m.cells.y:
-			for cx in m.cells.x:
-				if _seen_cell(s, Vector2i(cx, cy)):
-					continue
-				var r := MapView.cell_rect(Vector2i(cx, cy), sz) if lines else Rect2i(Vector2i(cx, cy) * (thumb.get_width() / m.cells.x), Vector2i.ONE * (thumb.get_width() / m.cells.x))
-				thumb_leaks += _count_not(thumb, r, Color(0, 0, 0, 0))
-	_check(thumb_leaks == 0 and line_thumbs >= 1, "thumbnails draw nothing on unseen cells (%d px; %d of 10 with wall lines)" % [thumb_leaks, line_thumbs])
+		if not MapView.THEMED.has(Themes.for_level(level)):
+			missing.append(str(level))
+	_check(missing.is_empty() and MapView.THEMED.size() == Levels.COUNT, "a themed palette for all 10 levels, normal and hard (%s)" % ", ".join(missing))
+
+	_test_previews()
 
 	# A survey of another layout of the same size draws nothing at all.
 	var foreign_maze := maze.duplicate(true)
 	foreign_maze.goal = foreign_maze.start
 	var foreign := Survey.full(foreign_maze, 5.0)
 	var sizes := MapView.layout(maze.cells, Vector2i(316, 149))
-	var blank_img := MapView.render(maze, foreign, sizes, coin_cells, goo)
+	var blank_img := MapView.render(maze, foreign, sizes, coin_cells)
 	_check(_count_not(blank_img, Rect2i(Vector2i.ZERO, blank_img.get_size()), MapView.FOG) == 0, "a same-size survey of another layout draws nothing on the map")
-	# The themed option is a mockup: off in the game.
+	# Themed maps are on (one switch to turn them off).
 	var select: GDScript = load("res://scripts/ui/map_select.gd")
-	_check(select.get_script_constant_map().THEMED_MAPS == false, "themed maps are off by default (map_select.THEMED_MAPS)")
+	_check(select.get_script_constant_map().THEMED_MAPS == true, "themed maps are on (map_select.THEMED_MAPS)")
+
+
+## The select tiles' example mazes (MapView.preview).
+func _test_previews() -> void:
+	var walls_seen := {}
+	var bad: Array[String] = []
+	var unrelated := true
+	for level in range(1, Levels.COUNT + 1):
+		for hard_mode: bool in [false, true]:
+			var ex := MapView.example(level, hard_mode)
+			var m: Dictionary = ex.maze
+			walls_seen[m.walls] = true
+			var real := Levels.story_maze(level, hard_mode)
+			unrelated = unrelated and m.cells != real.cells and m.cells == MapView.EXAMPLE_CELLS
+			# A perfect maze: every cell reached, the route from start to goal along open passages.
+			if ex.order.size() != m.cells.x * m.cells.y or ex.route[0] != m.start or ex.route[-1] != m.goal:
+				bad.append("L%d%s" % [level, "h" if hard_mode else ""])
+			for theme: String in ["", Themes.for_level(level)]:
+				for state in [[0, 0, true], [22, 0, false], [60, 1, false], [100, 2, false]]:
+					var img := MapView.preview(level, hard_mode, state[0], state[1], state[2], theme).get_image()
+					if img.get_width() > MapView.THUMB.x or img.get_height() > MapView.THUMB.y:
+						bad.append("L%d size %s" % [level, img.get_size()])
+	_check(bad.is_empty(), "every example maze is whole, with a start-to-goal route, and every preview fits its %s box (%s)" % [MapView.THUMB, ", ".join(bad)])
+	_check(walls_seen.size() == Levels.COUNT * 2, "the 20 example mazes (10 levels x normal/hard) are all different (%d distinct)" % walls_seen.size())
+	_check(unrelated, "example mazes are tiny made-up ones (%s cells), never a real level's size or layout" % MapView.EXAMPLE_CELLS)
+	# Deterministic: rebuilt from scratch they come out the same (pure integer hashing).
+	var first: PackedByteArray = MapView.example(4, false).maze.walls
+	var first_px := MapView.preview(4, false, 60, 2, false, "sunken").get_image().get_data()
+	MapView._examples.clear()
+	MapView._previews.clear()
+	_check(MapView.example(4, false).maze.walls == first and MapView.preview(4, false, 60, 2, false, "sunken").get_image().get_data() == first_px,
+		"example mazes and previews are deterministic (rebuilt from scratch: identical)")
+	# Cached: the same tile state gives the same texture object (nothing rebuilt).
+	_check(MapView.preview(4, false, 60, 2, false, "sunken") == MapView.preview(4, false, 60, 2, false, "sunken"), "previews are cached textures")
+
+	# Lit in proportion to the %: lit cells = floor(% x cells), all at 100%, none when locked.
+	var total := MapView.EXAMPLE_CELLS.x * MapView.EXAMPLE_CELLS.y
+	var counts: Array[String] = []
+	var proportional := true
+	var last := -1
+	for p in [0, 5, 22, 40, 60, 85, 99, 100]:
+		var lit := _lit_cells(MapView.preview(2, false, p, 0, false, "mossy").get_image(), "mossy")
+		var want: int = total if p == 100 else clampi(floori(p * total / 100.0), 1 if p > 0 else 0, total - 1)
+		proportional = proportional and lit == want and lit >= last
+		last = lit
+		counts.append("%d%%=%d" % [p, lit])
+	var locked_lit := _lit_cells(MapView.preview(2, false, 60, 2, true, "mossy").get_image(), "mossy")
+	_check(proportional and locked_lit == 0, "previews light cells in proportion to the %% (%s of %d; locked: %d)" % [", ".join(counts), total, locked_lit])
+	# The example route only with a recorded route: solid red for a best clear, dashed faint for a try.
+	var pal := MapView.palette("frozen")
+	var no_route := _count_color(MapView.preview(7, false, 100, 0, false, "frozen").get_image(), MapView.ROUTE) + _count_color(MapView.preview(7, false, 100, 0, false, "frozen").get_image(), pal.faint)
+	var best := _count_color(MapView.preview(7, false, 100, 2, false, "frozen").get_image(), MapView.ROUTE)
+	var tried := _count_color(MapView.preview(7, false, 100, 1, false, "frozen").get_image(), pal.faint)
+	var locked_route := _count_color(MapView.preview(7, false, 0, 2, true, "frozen").get_image(), MapView.ROUTE)
+	_check(no_route == 0 and best > 0 and tried == best and locked_route == 0,
+		"the example route shows only with a recorded route (none %d px, best %d px red, last try %d px faint red, locked %d)" % [no_route, best, tried, locked_route])
+	var gold := _count_color(MapView.preview(7, false, 100, 2, false, "frozen").get_image(), MapView.PREVIEW_GOLD)
+	var not_gold := _count_color(MapView.preview(7, false, 99, 2, false, "frozen").get_image(), MapView.PREVIEW_GOLD)
+	_check(gold > 0 and not_gold == 0, "a fully uncovered level's preview gets a gold frame (%d px; 99%%: %d)" % [gold, not_gold])
+
+
+## How many of an example preview's cells are lit (their middle pixel is paper or route).
+func _lit_cells(img: Image, theme: String) -> int:
+	var pal := MapView.palette(theme)
+	var n := 0
+	for cy in MapView.EXAMPLE_CELLS.y:
+		for cx in MapView.EXAMPLE_CELLS.x:
+			var r := MapView.cell_rect(Vector2i(cx, cy), MapView.EXAMPLE_SIZES)
+			var c := img.get_pixelv(r.position + Vector2i.ONE + Vector2i.ONE * MapView.route_inset(r.size.x))
+			n += int(_near(c, pal.floor) or _near(c, MapView.ROUTE) or _near(c, pal.faint))
+	return n
+
+
+func _count_color(img: Image, color: Color) -> int:
+	var n := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			n += int(_near(img.get_pixel(x, y), color))
+	return n
+
+
+func _near(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.003 and absf(a.g - b.g) < 0.003 and absf(a.b - b.b) < 0.003 and absf(a.a - b.a) < 0.003
+
+
+## A survey of `maze` with tiles lit one at a time breadth first from `from` until `percent`% shows.
+func _lit_survey(maze: Dictionary, from: Vector2i, percent: int) -> Dictionary:
+	var survey := Survey.blank(maze)
+	var queue: Array[Vector2i] = [from * 2 + Vector2i.ONE]
+	var reached := {queue[0]: true}
+	var i := 0
+	while i < queue.size() and roundi(Survey.completeness(survey, maze) * 100.0) < percent:
+		var t := queue[i]
+		i += 1
+		Survey.mark_seen(survey, t)
+		for d: Vector2i in MazeGenerator.DIRS:
+			var n := t + d
+			if n.x > 0 and n.y > 0 and n.x < maze.size.x - 1 and n.y < maze.size.y - 1 and not reached.has(n) and not MazeGenerator.is_wall(maze, n):
+				reached[n] = true
+				queue.append(n)
+	return survey
+
+
+## The picture on the select tile of `level`.
+func _tile_picture(screen: Control, level: int) -> Image:
+	for tile: Button in screen.tiles:
+		if tile.get_meta("level") == level:
+			for child in tile.get_children():
+				if child is TextureRect:
+					return child.texture.get_image()
+	return null
 
 
 ## The middle pixel of `r`'s side facing `dir`.

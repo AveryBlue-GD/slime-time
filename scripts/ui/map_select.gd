@@ -3,13 +3,17 @@ extends Control
 ## The MAP TABLE (opened at the hub's map table): the trail maps of the 10 story levels (Survey,
 ## recorded by real runs; see Progress.record_survey), normal or hard (the HARD switch only changes
 ## which maps are shown here, not the game's mode).
-## - Select: goo-framed tiles like the level select's, two columns, each with just a thumbnail of the
-##   survey, the level's name and how much of its floor has been uncovered ("72%", gold at 100%). A
-##   level never attempted (or whose survey is of an older layout, Survey.fits) is locked: a lock in
-##   the thumbnail, dim text, 0%. The first time the table is opened a short hint line explains it.
-## - View: the whole map (MapView: only what was seen, the route (a clear in the goo color, the last
-##   try faint), found coins, the start, the goal once seen) under the level's name, with one line
-##   below: "72% UNCOVERED". No times: the level select has those.
+## - Select: goo-framed tiles like the level select's, two columns, each with a small picture, the
+##   level's name and how much of its floor has been uncovered ("72%", gold at 100%). The picture is
+##   NOT the real map: a tiny made-up example maze in the level's colors (MapView.preview), lit as far
+##   as the real % uncovered, with a red example route once the level has a recorded route, a gold
+##   frame at 100%; it gives nothing of the real layout away. A level never attempted (or whose
+##   survey is of an older layout, Survey.fits) is locked: a sealed dark picture with a lock, dim
+##   text, 0%. The first time the table is opened a short hint line explains it.
+## - View: the player's real map (MapView: only what was seen, the route as a thin red line (the
+##   last try dashed), found coins, the start, the goal once seen) under the level's name, with one
+##   line below: "72% UNCOVERED". No times: the level select has those. The route is red whatever
+##   the skin.
 ## BACK / Esc / B (ui_cancel) go from the view back to the select, and from the select to the hub
 ## (which turns to face the table). Keyboard/controller focus moves over the tiles as in the other
 ## menus; touch taps the tiles and BACK. Nothing moves (Reduce Motion needs nothing) and nothing is
@@ -21,11 +25,11 @@ const THUMB_POS := Vector2(4, 3)
 ## Where the map may be drawn in the view.
 const MAP_AREA := Rect2i(2, 13, 316, 149)
 const HINT := "PLAY TO FILL THEM IN"
-## The themed maps (each level's map in its own palette with a themed frame, MapView's `theme`): a
-## mockup for the owner to look at, off in the game. demo_maps.tscn's --themed turns it on there.
-const THEMED_MAPS := false
+## The themed maps (each level's map and tile picture in its own palette with a themed frame,
+## MapView's `theme`). The one switch: false = the plain parchment style everywhere.
+const THEMED_MAPS := true
 
-## Themed maps on this screen (THEMED_MAPS, or the demo's --themed).
+## Themed maps on this screen (THEMED_MAPS; the demo's --themed / --plain override it).
 var themed := THEMED_MAPS
 
 var hard := false
@@ -44,14 +48,12 @@ var view_title: Label
 var view_map: TextureRect
 var view_line: Label
 var view_back: Button
-var _goo: Dictionary
 ## The select's controls kept out of focus while a map is viewed (UIKit.lock_focus).
 var _focus_lock := {}
 
 
 func _ready() -> void:
 	skin_text = UIKit.setup_screen(self, "MAP TABLE")
-	_goo = Skins.shades(Progress.skin_color())
 	hard = Progress.hard_mode
 	grid = GridContainer.new()
 	grid.columns = 2
@@ -98,8 +100,9 @@ func _fill_grid() -> void:
 		skin_text.recolor.call_deferred()
 
 
-## The tile of `level`: survey thumbnail, name and "NN%"; locked (a lock, 0%) until a run there has
-## been recorded.
+## The tile of `level`: the example picture (MapView.preview), name and "NN%"; locked (sealed, a lock,
+## 0%) until a run there has been recorded. The picture never reads the survey's cells: only its %
+## and whether it holds a route.
 func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: open_view(level), TILE_SIZE)
 	var survey: Dictionary = Progress.survey_for(level, hard)
@@ -107,16 +110,6 @@ func _make_tile(level: int) -> Button:
 	var locked := survey.is_empty() or not Survey.fits(survey, maze)
 	button.disabled = locked
 	button.set_meta("level", level)
-	var thumb_box := Control.new()
-	thumb_box.position = THUMB_POS
-	thumb_box.size = Vector2(MapView.THUMB)
-	thumb_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(thumb_box)
-	var well := ColorRect.new()  # the thumbnail's dark well
-	well.color = MapView.FOG
-	well.size = Vector2(MapView.THUMB)
-	well.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb_box.add_child(well)
 	var name_label := UIKit.make_label(Themes.display_name(Themes.for_level(level)), 8, UIKit.TEXT_OFF if locked else UIKit.TEXT)
 	name_label.position = Vector2(43, 3)
 	button.add_child(name_label)
@@ -125,17 +118,20 @@ func _make_tile(level: int) -> Button:
 	var percent_label := UIKit.make_label("%d%%" % percent, 8, UIKit.TEXT_OFF if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
 	percent_label.position = Vector2(43, 14)
 	button.add_child(percent_label)
+	var route := 0
+	if not locked and not (survey.moves as PackedByteArray).is_empty():
+		route = 2 if survey.clear else 1
+	var texture := MapView.preview(level, hard, percent, route, locked, Themes.for_level(level) if themed else "")
+	var thumb := TextureRect.new()
+	thumb.texture = texture
+	thumb.size = Vector2(texture.get_size())
+	thumb.position = THUMB_POS + ((Vector2(MapView.THUMB) - Vector2(texture.get_size())) / 2.0).floor()
+	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(thumb)
 	if locked:
 		var lock := UIKit.make_icon("lock", UIKit.TEXT_OFF)
-		lock.position = (Vector2(MapView.THUMB) - Vector2(8, 8)) / 2.0
-		thumb_box.add_child(lock)
-		return button
-	var image := MapView.thumbnail(maze, survey, _goo, Themes.for_level(level) if themed else "")
-	var thumb := TextureRect.new()
-	thumb.texture = ImageTexture.create_from_image(image)
-	thumb.position = ((Vector2(MapView.THUMB) - Vector2(image.get_size())) / 2.0).floor()
-	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb_box.add_child(thumb)
+		lock.position = ((thumb.size - Vector2(8, 8)) / 2.0).floor()
+		thumb.add_child(lock)
 	return button
 
 
@@ -202,8 +198,8 @@ func open_view(level: int) -> void:
 				coins.append(cell)
 	var theme := Themes.for_level(level) if themed else ""
 	var sizes := MapView.layout(maze.cells, MAP_AREA.size, themed)
-	var image := MapView.render(maze, survey, sizes, coins, _goo, theme)
-	view_area.color = MapView.palette(_goo, theme).fog
+	var image := MapView.render(maze, survey, sizes, coins, theme)
+	view_area.color = MapView.palette(theme).fog
 	view_map.texture = ImageTexture.create_from_image(image)
 	view_map.size = Vector2(image.get_size())
 	view_map.position = Vector2(MAP_AREA.position + (MAP_AREA.size - image.get_size()) / 2)
