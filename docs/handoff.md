@@ -338,3 +338,55 @@ Full write-up and table: [level-design.md section 7](level-design.md). In short:
 - Tests: `tests/test_hard_rebalance.gd` (tables, ratios, mazes, par, migration, story-complete) + updated
   `test_phase3`, `test_hard_mode`, `test_spawn_picker`, `test_layout_migration`, `test_tickets` (version 5).
 - Shots: `docs/polish-shots/hard_before_l1/l5/l10.png`, `hard_after_l1/l5/l10.png`.
+
+## Trail maps: the MAP TABLE (trial, 2026-10-14)
+
+Owner request: maps that help the player study a story level without taking away the dark-fog discovery.
+Full write-up: [level-design.md section 8](level-design.md). In short:
+- **Survey** (`scripts/survey.gd` `Survey`, `Progress.maps`, saved under a new optional `[maps]` section, no
+  version bump): per story level, normal (key = level) and hard (level + 100) separately: every maze tile
+  EVER revealed (bitset, merged over all attempts, across dry-ups, restarts and sessions), one route (start
+  cell + 2-bit moves: the fastest unassisted clear, replaced only by a faster one; before any clear, the last
+  attempt that moved, flagged and drawn faint as LAST TRY), its time, and whether the goal was seen/reached.
+  Coins come from the existing `coins_found` keys (nothing new stored). Randomizer mazes record nothing (fresh
+  each time); assisted runs, dev mode (`--unlock-all`) and dev-toggled runs (F1/F2) record nothing; only the
+  running scene records (tests' and demos' loose game nodes don't).
+- **Capture** (`game.gd` "trail map survey" section): one byte write per newly revealed fog cell into
+  `survey_tiles` (in `_paint_cells`, `_reveal_light`, `_reveal_wall`, where the fog is revealed anyway), a
+  per-tick tile check that appends a move byte when the slime enters a new cell, and one commit when the run
+  ends (`_finish`) or is left (`_exit_tree`). Fog/trail bytes and order unchanged: gameplay frames
+  pixel-identical to the baseline (HEAD 791ab83 worktree, 50 frames: the game as the running scene (survey
+  live) on levels 1 (through the win screen), 5, 10, 10 with Brightness 10, 7 standing still, hard 3, rainbow,
+  randomizer seed 5, plus demo/title/level select/pause; 0 differing pixels; baseline vs baseline also 0).
+  Cost: `_survey_step` ~0.2 us per physics tick; a fresh full trail disc ~3 us more (~5%) for the byte writes.
+  Autoplay records surveys of all 20 levels (`tests/test_autoplay.gd` checks routes = best clears).
+- **Size:** a full survey is <= 568 base64 chars in save.cfg; the save code with all 20 levels fully surveyed
+  is 2,543 chars (543 without maps; cap 65,536); a pathological worst case (random bits, 2,000-move routes on
+  all 20) is 19,447. RESET PROGRESS clears maps and the first-time hint. Hostile values are dropped or clamped.
+- **Seeds:** `--story-complete` seeds all 20 levels fully surveyed (every tile, shortest route as the clear in
+  the record time, goal seen); dev launches (`--unlock-all`) start with no maps; `--maps=full` seeds them (any
+  launch; not saved).
+- **Hub:** a 9th station, the MAP TABLE (`tools/make_hub_art.py` `maptable.png`, 30x36 x 4 lantern frames,
+  rows front/side/back like the other stations; warm flickering light pool). Ring order is now story, MAP
+  TABLE, upgrades, QUIT trapdoor, coin bag, randomizer, settings, prize wheel, wardrobe (step TAU/9; on the
+  web 8 without the trapdoor): the trapdoor moved between the two short stations because next to the tall
+  signpost/wheel it overlapped them at the 40-degree spacing. The front/back view arcs are now 35 degrees
+  (`Hub.VIEW_ARC`, was 40) so no ring spot rests on a view edge with 7-9 stations; 8-station layouts are
+  unchanged. Other stations' art, the rotor, the room shader and vignette are untouched. Contact sheets of
+  every rotation state: `docs/polish-shots/map_hub_before_sheet.png` (8 states + mid-turn) and
+  `map_hub_after_sheet.png` (9 + mid-turn). CLAUDE.md's hub station order is now out of date (not edited).
+- **Screen** (`scenes/maps.tscn`, `scripts/ui/map_select.gd`, drawing in `scripts/ui/map_view.gd` `MapView`):
+  MAP TABLE select with 10 goo-framed tiles (two columns, 1-5 / 6-10: thumbnail, name, `L# NN%`, route
+  marker = gold drop + best time or dim drop + LAST TRY; NO SURVEY YET and locked until a run there was
+  recorded), a HARD switch (view only; the game's mode is unchanged), a one-time hint line (`[maps] hint_seen`).
+  A tile opens the MAP VIEW: seen floor (parchment) and walls (ink), unseen tiles dark, the route (goo color
+  with a dark edge; faint without it for LAST TRY), found coins on seen tiles, the start ring, the goal X only
+  once seen; integer cell/wall px (`MapView.layout`: 36x20 cells fit at 5+2 px), title, SURVEY % and route
+  below. BACK / Esc / B: view -> select -> hub (facing the table). Static images, nothing per frame.
+- **Tests:** `tests/test_maps.gd` (capture, rules, save/old save/codes/hostile/reset, seeds incl. child
+  launches, the screen and its navigation incl. touch, no unseen tile drawn), `tests/test_hub_maps.gd` (every
+  rotation state, native and web: views, no overlaps by opaque bounding boxes, pools, y-sorting, use from every
+  reachable side), `tests/test_hub.gd` updated for the new ring. Demo `tests/demo_maps.tscn`
+  (`--story-complete --map=N [--map-hard] [--partial=N]`). Shots `docs/polish-shots/map_*.png`.
+- **Open for the owner:** this is a trial. Decide whether maps should cost something / unlock later, whether
+  the select should show the % of walls too, and whether the trapdoor's new spot is fine.

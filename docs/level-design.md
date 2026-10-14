@@ -364,3 +364,47 @@ medals/times were earned on the new mazes (not handled, like the earlier version
 
 Shots (`tests/demo_overview.tscn -- --unlock-all --level=N --hard --skin=...`):
 `docs/polish-shots/hard_before_l1/l5/l10.png` (v4) and `hard_after_l1/l5/l10.png`.
+
+## 8. Trail maps: the MAP TABLE survey (trial, 2026-10-14)
+
+Maps help a player study a story level they have already explored without spoiling what they haven't: the
+map only ever shows what the fog has really revealed to them, so the first time through every level is still
+discovered in the dark.
+
+**What is recorded** (`Survey`, `scripts/survey.gd`; kept in `Progress.maps`, key = level, + 100 on hard):
+
+| field | meaning |
+| --- | --- |
+| `w`, `h` | the maze's size in tiles (cells x 2 + 1); a survey of another size is ignored (shown locked) |
+| `seen` | bitset, one bit per tile: revealed by the trail, the Brightness light or a wall coming into view, on any recorded attempt (OR-merged) |
+| `start`, `moves` | the route: start cell + one 2-bit code per cell stepped (`MazeGenerator.DIRS` order), at most 2,000 |
+| `clear`, `best_ms` | the route is the fastest unassisted clear (time in ms); else the last attempt that moved (LAST TRY) |
+| `goal` | the chalice came within sight (`CHALICE_REVEAL_DISTANCE`) or was reached on a recorded attempt |
+
+Found coins are not stored again: the map draws `coins_found` (only on seen tiles). The maze itself is rebuilt
+from `Levels.story_maze` (cached), so a survey is a few hundred bytes. Packed layout (`Survey.pack`, base64
+in `[maps] level_N`): version, flags, w, h, best_ms u32, start x/y, move count u16, the bitset, the moves 4 to
+a byte. `Survey.unpack` refuses anything malformed (type, length, characters, version, sizes, count) and
+clamps the rest (time <= 1 day, start inside the maze).
+
+**When it is recorded** (`game.gd`): a story run that is the running scene, not in dev mode, records from its
+first frame; it commits once, at its win or dry-up (`_finish`) or when it is left mid-way (`_exit_tree`:
+restart, pause RESTART, QUIT TO HUB, UPGRADES). Assisted (slime reserve) and dev-toggled (F1 FULL BRIGHT /
+F2 NO DRAIN) runs commit nothing; randomizer mazes never record (each seed is a fresh maze, there is nothing
+to study twice). Rules: tiles always add up; a clear replaces the route only if it is faster than the stored
+clear; without any clear, every attempt that moved replaces the faint last-attempt route.
+
+**Cost:** the reveal loops already visit every newly revealed fog cell; each now also writes one byte
+(`survey_tiles[tile] = 1`), and walls one byte the first time each is revealed. Per physics tick: two
+`floori`, a parity test and a `Vector2i` compare (a byte appended when a new cell is entered). No per-frame
+allocation; fog/trail bytes, their order and the rendered frames are unchanged (pixel diff, see handoff).
+
+**Showing it** (`MapView`): unseen tiles stay the dark fog color, so neither walls nor openings beyond the
+seen area show; seen floor is parchment (alternate cells a shade darker), seen walls ink-brown; the route is a
+line through cell centers (goo light shade on the outline shade for a clear; half-faded mid shade without the
+edge for LAST TRY); coins as gold squares; the start as a white ring; a red X on the goal only once seen. Cell
+and wall widths are integers picked to fit 312x146 px: 14+4 for the 10x6 level 1 up to 5+2 for 36x20 cells.
+
+**Save size** (measured in `tests/test_maps.gd`): save code 543 chars with no maps, 2,543 with all 20 levels
+fully surveyed (full surveys compress to almost nothing), 19,447 in a worst case no player reaches (random
+bits and 2,000-move routes everywhere); cap 65,536.
