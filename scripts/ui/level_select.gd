@@ -3,11 +3,17 @@ extends Control
 ## Grid of the 10 story levels (locked ones can't be picked; cleared ones are marked), plus the
 ## hard mode checkbox: hard mode plays its own mazes on a tight slime budget with no upgrades,
 ## and explored areas that fully dim are swallowed by fog again. Tiles show that mode's records.
+## Hard mode adds HEAT (Heat, upgrades v2 batch 4): a HEAT n button bottom right (mirroring BACK)
+## opens the HeatPanel of six modifier toggles, the info lines name the bounties, and each hard
+## tile shows its best heat tier as a flame at its top left (mirroring the medal pips).
 
 var level_buttons: Array[Button] = []
 var grid: GridContainer
 var skin_text: SkinText
 var hard_mode_box: CheckBox
+var info: Label
+var heat_button: Button
+var heat_panel: HeatPanel
 
 ## 48x42: the 14 px digits are centered (rows 14-27), the 7 px record time sits 3 px under them
 ## (rows 31-37) and 3 px above the frame's bottom edge (row 41); both gaps are 1 px more than the
@@ -17,6 +23,11 @@ const GRID_POS := Vector2(30, 22)
 const GRID_GAP := 3
 const STATUS_Y := 31  # top row of the record time / check
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
+## The flame badge's top-left corner on a hard tile (7x9; the medal pips mirror it at the top right).
+const FLAME_POS := Vector2(5, 5)
+const INFO_NORMAL := "CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN"
+const INFO_HARD := "HEAT UP LEVELS BEATEN ON HARD\nHEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
+const HEAT_BUTTON_SIZE := Vector2(52, 13)
 
 
 func _ready() -> void:
@@ -32,7 +43,7 @@ func _ready() -> void:
 	level_buttons[Progress.current_level - 1].grab_focus()
 
 	UIKit.add_panel(self, Rect2(14, 111, 292, 48))  # wide enough that the checkbox text clears the goo
-	var info := UIKit.make_label("CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN", 8, UIKit.TEXT_DIM)
+	info = UIKit.make_label(INFO_HARD if Progress.hard_mode else INFO_NORMAL, 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -45,10 +56,33 @@ func _ready() -> void:
 	hard_mode_box.button_pressed = Progress.hard_mode
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
-		_fill_grid())  # show that mode's record times
+		_fill_grid()  # show that mode's record times
+		_refresh_heat())
 	hard_mode_box.position = Vector2(25, 143)  # 270 wide, centered
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
+	# HEAT (hard mode only): bottom right, mirroring BACK.
+	heat_button = UIKit.make_button("", _open_heat, HEAT_BUTTON_SIZE)
+	heat_button.position = Vector2(320 - 4 - HEAT_BUTTON_SIZE.x, 164)
+	add_child(heat_button)
+	heat_panel = HeatPanel.new()
+	heat_panel.closed.connect(_refresh_heat)
+	add_child(heat_panel)
+	_refresh_heat()
+
+
+## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
+func _refresh_heat() -> void:
+	heat_button.visible = Progress.hard_mode
+	heat_button.text = "HEAT %d" % Heat.points(Progress.heat_mods)
+	info.text = INFO_HARD if Progress.hard_mode else INFO_NORMAL
+	if not Progress.hard_mode and heat_panel.visible:
+		heat_panel.close()
+
+
+func _open_heat() -> void:
+	if Progress.hard_mode and not heat_panel.visible:
+		heat_panel.open(self, heat_button)
 
 
 ## (Re)builds the level tiles.
@@ -84,6 +118,13 @@ func _make_tile(level: int) -> Button:
 	if locked:
 		button.add_child(_make_lock())
 		return button
+	# Hard mode: the best heat tier this level was cleared at, as a flame at the top left.
+	var heat_tier := Heat.tier_of(Progress.best_heat(level)) if Progress.hard_mode else 0
+	if heat_tier > 0:
+		var flame := Heat.make_rect(Heat.flame(heat_tier))
+		flame.name = "Flame"
+		flame.position = FLAME_POS
+		button.add_child(flame)
 	# Medal pips stacked at the tile's top right: one gold pip per tier won (bronze 1, silver 2,
 	# gold 3) on this mode's best clear, dark for the rest.
 	var tier := Progress.medals_for(level)
@@ -138,4 +179,8 @@ func _play(level: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
+		if heat_panel.visible:  # Esc closes the HEAT panel first
+			get_viewport().set_input_as_handled()
+			heat_panel.close()
+			return
 		UIKit.go(get_tree(), UIKit.HUB_SCENE)
