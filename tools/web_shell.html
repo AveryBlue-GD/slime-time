@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<!--
+	Slime Time's web page: Godot 4.7.2's default HTML shell (platform/web/export/godot.html) with a few
+	additions for itch.io, phones and tablets, each marked "Slime Time:" (docs/qa-web-report.md).
+	Used by the Web export preset (html/custom_html_shell). On a new Godot version, start from that
+	version's default shell and carry the marked parts over.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<!-- Slime Time: browser bar color; "Add to Home Screen" opens without browser bars. -->
+		<meta name="theme-color" content="#000000">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		<title>$GODOT_PROJECT_NAME</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: white;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+	/* Slime Time: no pull-to-refresh or scroll chaining, no text selection, long-press callout or
+	   tap flash on phones (a long press is a held JUMP). */
+	overscroll-behavior: none;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
+
+#status {
+	background-color: $GODOT_SPLASH_COLOR;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-splash.show-image--false {
+	display: none;
+}
+
+#status-splash.fullsize--true {
+	height: 100%;
+	width: 100%;
+	object-fit: contain;
+}
+
+#status-splash.use-filter--false {
+	image-rendering: pixelated;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: 10%;
+	width: 50%;
+	margin: 0 auto;
+}
+
+/* Slime Time: a bar for "progress can't be saved here" and a cover for "graphics stopped". */
+#st-banner, #st-lost {
+	display: none;
+	position: fixed;
+	z-index: 2;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	text-align: center;
+}
+
+#st-banner {
+	left: 0;
+	right: 0;
+	top: 0;
+	padding: 0.5rem 1rem;
+	font-size: 14px;
+	background-color: rgba(26, 28, 44, 0.95);
+	border-bottom: 2px solid #3e8948;
+}
+
+#st-lost {
+	inset: 0;
+	padding: 2rem;
+	font-size: 16px;
+	background-color: rgba(0, 0, 0, 0.88);
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#st-banner button, #st-lost button {
+	margin: 0.5rem;
+	padding: 0.5rem 1.25rem;
+	min-height: 44px;
+	font: inherit;
+	color: #1a1c2c;
+	background-color: #63c74d;
+	border: 0;
+	border-radius: 0.25rem;
+}
+
+#status-notice {
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+		<script>
+// Slime Time: save flush when the page is hidden. Godot copies user:// (the save) to IndexedDB at
+// the start of the frame after a write, but a hidden tab gets no more frames (and phones often
+// close background tabs), so a save made just before the tab was hidden or closed could stay in
+// memory only. Every pending animation frame runs at once when the page is hidden, so Godot gets
+// that one more frame and starts the copy. The engine asks for its frames through this wrapper.
+(function () {
+	const raf = window.requestAnimationFrame.bind(window);
+	const caf = window.cancelAnimationFrame.bind(window);
+	const pending = new Map();
+	window.requestAnimationFrame = function (callback) {
+		const id = raf(function (time) {
+			pending.delete(id);
+			callback(time);
+		});
+		pending.set(id, callback);
+		return id;
+	};
+	window.cancelAnimationFrame = function (id) {
+		pending.delete(id);
+		caf(id);
+	};
+	window.slimeTimeFlushFrame = function () {
+		const due = Array.from(pending.entries());
+		pending.clear();
+		due.forEach(function (entry) {
+			caf(entry[0]);
+			try {
+				entry[1](performance.now());
+			} catch (err) {
+				console.error(err);
+			}
+		});
+	};
+	document.addEventListener('visibilitychange', function () {
+		if (document.visibilityState === 'hidden') {
+			window.slimeTimeFlushFrame();
+		}
+	});
+	window.addEventListener('pagehide', window.slimeTimeFlushFrame);
+}());
+		</script>
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<!-- Slime Time: see #st-banner and #st-lost in the style. -->
+		<div id="st-banner">
+			Your browser is blocking storage for this game, so your progress won't be kept when you leave.
+			Allow cookies and site data for this page, or back up with SETTINGS &gt; SAVE CODE.
+			<button type="button" id="st-banner-ok">OK</button>
+		</div>
+		<div id="st-lost">
+			<p>The graphics stopped working (the browser reset WebGL).<br>Your progress is saved.</p>
+			<button type="button" id="st-lost-reload">RELOAD</button>
+		</div>
+
+		<div id="status">
+			<img id="status-splash" class="$GODOT_SPLASH_CLASSES" src="$GODOT_SPLASH" alt="">
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+// Slime Time: a browser too old to even read the engine's script gets a message, not a black page.
+if (typeof Engine === 'undefined') {
+	document.getElementById('status').style.visibility = 'visible';
+	const notice = document.getElementById('status-notice');
+	notice.style.display = 'block';
+	notice.textContent = 'Slime Time can\'t run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer).';
+}
+		</script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('An unknown error occurred.');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	// Slime Time: a friendly word first for players on old devices or browsers.
+	const missingIntro = 'Slime Time can\'t run in this browser.\n'
+		+ 'It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), '
+		+ 'and check that hardware acceleration is turned on.\n\nDetails:\n';
+
+	// Slime Time: once the game runs, say so if the browser blocks the save storage, replace the
+	// engine's "WebGL context lost" alert with a reload button, and hand the keyboard back to the
+	// game when its frame gets the focus back.
+	const canvas = document.getElementById('canvas');
+	function focusCanvas() {
+		if (canvas && document.activeElement !== canvas) {
+			canvas.focus();
+		}
+	}
+	function checkStorage() {
+		const banner = document.getElementById('st-banner');
+		const show = function () {
+			banner.style.display = 'block';
+		};
+		document.getElementById('st-banner-ok').addEventListener('click', function () {
+			banner.style.display = 'none';
+			focusCanvas();
+		});
+		try {
+			const request = indexedDB.open('/userfs');
+			request.onsuccess = function () {
+				request.result.close();
+			};
+			request.onerror = show;
+		} catch (err) {
+			show();
+		}
+	}
+	const nativeAlert = window.alert;
+	window.alert = function (message) {
+		if (String(message).indexOf('WebGL context lost') === 0) {
+			document.getElementById('st-lost').style.display = 'flex';
+			return undefined;
+		}
+		return nativeAlert.apply(window, arguments);
+	};
+	document.getElementById('st-lost-reload').addEventListener('click', function () {
+		window.slimeTimeFlushFrame();
+		setTimeout(function () {
+			window.location.reload();
+		}, 300);
+	});
+	window.addEventListener('focus', function () {
+		if (document.activeElement === document.body) {
+			focusCanvas();
+		}
+	});
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			let serviceWorkerRegistrationPromise;
+			try {
+				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
+			} catch (err) {
+				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
+			}
+			// There's a chance that installing the service worker would fix the issue
+			Promise.race([
+				serviceWorkerRegistrationPromise.then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				// For some reason, `getRegistration()` can stall
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).then(() => {
+				// Reload if there was no error.
+				window.location.reload();
+			}).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			});
+		} else {
+			// Display the message as usual
+			const missingMsg = missingIntro + 'The following features required to run Godot projects on the Web are missing:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+				} else {
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+			checkStorage();
+		}, (err) => {
+			// Slime Time: most start failures (a cut-off download, out of memory) go away on a reload.
+			displayFailureNotice('Slime Time couldn\'t start. Reloading the page usually helps.\n\n'
+				+ (err instanceof Error ? err.message : String(err)));
+		});
+	}
+}());
+		</script>
+	</body>
+</html>
