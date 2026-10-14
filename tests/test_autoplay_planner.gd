@@ -12,11 +12,11 @@ var failures := 0
 
 func _initialize() -> void:
 	var started := Time.get_ticks_msec()
-	# --- Every level, every coin still to find, at MORE SLIME 0 / 5 / 10: one run each.
+	# --- Every level, every coin still to find, at MORE SLIME 0 / 4 / 7: one run each.
 	for level in range(1, Levels.COUNT + 1):
 		var maze := Levels.story_maze(level)
 		var coins := Levels.story_coin_cells(level)
-		for slime_level in [0, 5, 10]:
+		for slime_level in [0, 4, 7]:
 			var meter := AutoplayPlanner.level_meter_tiles(level, false, slime_level)
 			var plan := AutoplayPlanner.plan_coin_run(maze, coins, meter)
 			var problem := _route_problem(maze, plan)
@@ -59,10 +59,11 @@ func _initialize() -> void:
 
 	# --- Upgrade priority: MORE SLIME first, saving up for it; then SPEED, then BRIGHTNESS.
 	_check(AutoplayPlanner.next_purchase({}, 1) == "slime", "1 coin buys MORE SLIME 1")
-	_check(AutoplayPlanner.next_purchase({slime = 3}, 3) == "", "3 coins wait for MORE SLIME 4 (costs 4), no SPEED meanwhile")
-	_check(AutoplayPlanner.next_purchase({slime = 10}, 1) == "speed", "MORE SLIME maxed: SPEED next")
-	_check(AutoplayPlanner.next_purchase({slime = 10, speed = 10}, 5) == "brightness", "then BRIGHTNESS")
-	_check(AutoplayPlanner.next_purchase({slime = 10, speed = 10, brightness = 10}, 99) == "", "all maxed: nothing")
+	_check(AutoplayPlanner.next_purchase({slime = 3}, 8) == "", "8 coins wait for MORE SLIME 4 (costs 9), no SPEED (8) meanwhile")
+	_check(AutoplayPlanner.next_purchase({slime = 3}, 9) == "slime", "9 coins buy MORE SLIME 4")
+	_check(AutoplayPlanner.next_purchase({slime = 7}, 8) == "speed", "MORE SLIME maxed: SPEED next")
+	_check(AutoplayPlanner.next_purchase({slime = 7, speed = 4}, 12) == "brightness", "then BRIGHTNESS")
+	_check(AutoplayPlanner.next_purchase({slime = 7, speed = 4, brightness = 3}, 99) == "", "all maxed: nothing")
 
 	# --- The whole normal campaign on paper: every coin, every upgrade maxed.
 	var campaign := AutoplayPlanner.simulate_campaign()
@@ -78,7 +79,7 @@ func _initialize() -> void:
 		"the campaign on paper finds all %d coins (%d)" % [Levels.total_coins(), campaign.coins])
 	var maxed := true
 	for id in AutoplayPlanner.PURCHASE_ORDER:
-		maxed = maxed and int(campaign.upgrades.get(id, 0)) == Upgrades.MAX_LEVEL
+		maxed = maxed and int(campaign.upgrades.get(id, 0)) == Upgrades.max_level(id)
 	_check(maxed, "and buys every upgrade to the top (%s)" % str(campaign.upgrades))
 	_check(total_runs <= 45, "normal campaign: %d runs in all (coin runs + one clean run per level)" % total_runs)
 

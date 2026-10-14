@@ -1,12 +1,17 @@
 extends Control
 
-## The upgrade tree: a row per upgrade with its level (10 pips), and buttons to put a coin level
-## in (+) or take it back out (-) at any time. Coins in hand show at the top. Dev-only upgrades
-## (wall power) only appear in dev mode.
+## The upgrade tree: a row per upgrade with its level (one fat pip per level: 7 / 4 / 3, so each
+## level reads as a chunk), the effect now and after the next level (BRIGHTNESS as its light radius
+## before -> after and the lit area gained, so the jump is clear), and buttons to put a coin level in
+## (+) or take it back out (-) at any time. Coins in hand show at the top. Dev-only upgrades (wall
+## power) only appear in dev mode. Tracks and costs: Economy.COIN_TRACKS via Upgrades.
 
 const ROW_TOP := 26
 const ROW_HEIGHT := 30
-const PIP := Vector2(6, 6)
+const PIP := Vector2(10, 6)
+const PIP_GAP := 4
+## The pips end here (right-aligned against the - button at 226), whatever the track's length.
+const PIPS_RIGHT := 222
 
 var rows := {}
 var coin_label: Label
@@ -63,13 +68,15 @@ func _make_row(upgrade: Dictionary, y: int) -> void:
 	var name_label := UIKit.make_label(upgrade.name, 8, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
 	name_label.position = Vector2(18, y + 1)
 	add_child(name_label)
-	var about := UIKit.make_label(upgrade.about, 8, UIKit.TEXT_DIM)
+	var about := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	about.position = Vector2(18, y + 12)
 	add_child(about)
 	var pips: Array[ColorRect] = []
-	for i in Upgrades.MAX_LEVEL:
+	var count := Upgrades.max_level(upgrade.id)
+	var left := PIPS_RIGHT - (count * (int(PIP.x) + PIP_GAP) - PIP_GAP)
+	for i in count:
 		var pip := ColorRect.new()
-		pip.position = Vector2(142 + i * 8, y + 3)
+		pip.position = Vector2(left + i * (int(PIP.x) + PIP_GAP), y + 3)
 		pip.size = PIP
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(pip)
@@ -83,7 +90,7 @@ func _make_row(upgrade: Dictionary, y: int) -> void:
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	cost.position = Vector2(264, y + 2)
 	add_child(cost)
-	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost}
+	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, about = about}
 
 
 func _change(id: String, up: bool) -> void:
@@ -91,7 +98,8 @@ func _change(id: String, up: bool) -> void:
 	if changed:
 		var sfx := get_node_or_null("/root/Sfx")
 		if sfx and up:  # a power-up swell, a little higher for each level
-			sfx.play("upgrade", -4.0, 1.0 + 0.03 * (Progress.upgrade_level(id) - 1))
+			var top := maxi(Upgrades.max_level(id) - 1, 1)
+			sfx.play("upgrade", -4.0, 1.0 + 0.3 * (Progress.upgrade_level(id) - 1) / top)
 	_refresh()
 
 
@@ -101,12 +109,36 @@ func _refresh() -> void:
 	for id: String in rows:
 		var row: Dictionary = rows[id]
 		var level: int = Progress.upgrade_level(id)
-		for i in Upgrades.MAX_LEVEL:
+		for i in row.pips.size():
 			(row.pips[i] as ColorRect).color = skin if i < level else Color8(74, 70, 96)
-		var maxed := level >= Upgrades.MAX_LEVEL
-		row.cost.text = "MAX" if maxed else "%d" % Upgrades.cost(level)
-		row.plus.disabled = maxed or Progress.coins() < Upgrades.cost(level)
+		var maxed := level >= Upgrades.max_level(id)
+		row.cost.text = "MAX" if maxed else "%d" % Upgrades.cost(id, level)
+		row.plus.disabled = maxed or Progress.coins() < Upgrades.cost(id, level)
 		row.minus.disabled = level <= 0
+		row.about.text = effect_text(id, level)
+
+
+## The row's second line: the effect at `level` and, unless maxed, after the next level.
+##   MORE SLIME: SLIME x1.30 -> x1.45     SPEED: SPEED x1.12 -> x1.25
+##   BRIGHTNESS: LIGHT 9 -> 17 PX  +257% AREA (the radius the light reveals, and the lit disc gained)
+static func effect_text(id: String, level: int) -> String:
+	var maxed := level >= Upgrades.max_level(id)
+	var now := Upgrades.value(id, level)
+	var next := Upgrades.value(id, level + 1)
+	match id:
+		"slime", "speed":
+			var label := "SLIME" if id == "slime" else "SPEED"
+			return "%s x%.2f" % [label, now] + ("  MAXED" if maxed else " -> x%.2f" % next)
+		"brightness":
+			var r_now := Upgrades.reveal_radius(level)
+			var r_next := Upgrades.reveal_radius(level + 1)
+			if maxed:
+				return "LIGHT %d PX  MAXED" % roundi(r_now)
+			var gain := roundi((r_next * r_next / (r_now * r_now) - 1.0) * 100.0)
+			return "LIGHT %d -> %d PX  +%d%% AREA" % [roundi(r_now), roundi(r_next), gain]
+		"power":
+			return "SPLATS DAMAGE WALLS (DEV ONLY)" if level <= 0 or maxed else "WALL DAMAGE x%.1f -> x%.1f" % [now, next]
+	return ""
 
 
 ## Leaves: back into the level after a dry-up, otherwise to the title.

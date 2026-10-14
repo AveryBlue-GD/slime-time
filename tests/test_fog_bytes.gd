@@ -38,6 +38,8 @@ func _initialize() -> void:
 	await _replay(progress, 1, 0, [0.0, 25.0, 12.5], false)
 	await _replay(progress, 10, 0, [25.0, 0.0, 25.0], true)
 	await _replay(progress, 1, 5, [12.5, 25.0], false)
+	# The upgrades v2 BRIGHTNESS breakpoints (Upgrades.light_reach 0 / 8 / 16 / 25 px).
+	await _replay(progress, 4, 0, [Upgrades.light_reach(0), Upgrades.light_reach(1), Upgrades.light_reach(2), Upgrades.light_reach(3)], false)
 	print("  (%d fog uploads over %d frames)" % [uploads, frames])
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)

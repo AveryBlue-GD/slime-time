@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Maze determinism guard: every randomizer seed (2,000 seeds x MORE SLIME 0 / 5 / 10 and hard
+## Maze determinism guard: every randomizer seed (2,000 seeds x MORE SLIME 0 / 4 / 7 and hard
 ## mode) and every story level must build exactly the maze, start, goal (chalice / randomizer ticket)
 ## and route it built before. The golden digests in tests/data/maze_golden.txt were written by this
 ## script from the code as it was before (first the BFS speed-ups, commit 194d2cc; rewritten without
@@ -12,14 +12,18 @@ extends SceneTree
 ## byte-identical to before. Rewritten on purpose again on 2026-10-14 for the hard-mode rebalance
 ## (Levels.HARD_SLIME_MULT, docs/level-design.md section 7): only the 10 "story N hard" lines changed
 ## (bigger hard mazes, new routes and pars; built via Levels.build_story_maze); every story normal
-## line and all 8,000 randomizer lines (hard randomizer included) are byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
+## line and all 8,000 randomizer lines (hard randomizer included) are byte-identical. Rewritten on purpose on
+## 2026-10-15 for the upgrades v2 coin tree (MORE SLIME 0-7, docs/design/upgrades-v2.md A2.5): the
+## MORE SLIME 5 / 10 lines became 4 / 7. The level 7 lines carry exactly the old level 10 digests (same
+## x2.0 factor, same mazes; only the label changed); the level 4 lines (x1.60, the old level 6 factor,
+## which had no lines) are new; the story, level 0 and hard lines are byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
 ## asked route (>= RANDOM_MIN_ROUTE) from the start, and its size at least the level's floor.
 ##   ./tools/godot.sh --path . --headless -s res://tests/test_maze_golden.gd -- --write-golden=/abs/path.txt
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maze_golden.gd
 
 const GOLDEN := "res://tests/data/maze_golden.txt"
 const SEEDS := 2000
-const LEVELS: Array[int] = [0, 5, 10, -1]  # -1 = hard mode
+const LEVELS: Array[int] = [0, 4, 7, -1]  # -1 = hard mode
 
 var failures := 0
 

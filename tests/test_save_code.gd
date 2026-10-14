@@ -23,7 +23,7 @@ func _initialize() -> void:
 	progress.best_times = {1: 12.5, 3: 31.25, 101: 18.0}
 	progress.medals = {1: 1, 3: 2, 101: 1}  # (a save with best times always has its medals section)
 	progress.coins_found = {1: ["2,3", "5,1", "9,3"], 4: ["7,7", "1,9"]}
-	progress.upgrades = {"slime": 2, "speed": 1}  # 3 + 1 coins spent of the 5 found
+	progress.upgrades = {"slime": 2}  # 1 + 4 coins spent of the 5 found
 	progress.custom_color = Color(0.2, 0.6, 0.9)
 	progress.selected_skin = "mint"  # its solid version needs hard level 1, which is beaten
 	progress.set_jelly(false)

@@ -42,7 +42,7 @@ func _initialize() -> void:
 	var hard_cleared: Array = summary.hard_cleared
 	_check(hard_cleared.size() == Levels.COUNT, "all %d levels cleared on hard (%s)" % [Levels.COUNT, str(hard_cleared)])
 	var upgrades: Dictionary = summary.upgrades
-	_check(int(upgrades.get("slime", 0)) == 10 and int(upgrades.get("speed", 0)) == 10 and int(upgrades.get("brightness", 0)) == 10,
+	_check(int(upgrades.get("slime", 0)) == Upgrades.max_level("slime") and int(upgrades.get("speed", 0)) == Upgrades.max_level("speed") and int(upgrades.get("brightness", 0)) == Upgrades.max_level("brightness"),
 		"every upgrade bought to the top with the coins (%s)" % str(upgrades))
 	_check(int(summary.dry_ups) == 0 and (summary.notes as Array).is_empty(),
 		"no dry-ups and no goals missed (%d, %s)" % [summary.dry_ups, str(summary.notes)])

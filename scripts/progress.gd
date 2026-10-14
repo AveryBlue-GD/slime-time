@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -67,7 +67,10 @@ var current_level := 1
 ## Every save of the public release (RELEASE_EPOCH 1) is version 5 or later, and saves/codes without
 ## the epoch are never loaded, so the version < 5 migrations no longer run for real players; they are
 ## kept (tested through _read) for any hand-made save that claims this epoch.
-const SAVE_VERSION := 5
+## 6 = the upgrades v2 coin tree (docs/design/upgrades-v2.md A2.4): [upgrades] tree = 2 marks levels of
+## the new per-track tables; a save without it holds old 10-level tracks, remapped by coins invested
+## (see _migrate_tree; keyed on the tree mark, not the version, so it is idempotent on its own).
+const SAVE_VERSION := 6
 ## The first save version whose story coin keys / best times belong to the current layouts.
 const LAYOUT_VERSION := 4
 ## The first save version whose hard-mode best times belong to the current hard mazes.
@@ -148,6 +151,9 @@ var hats_owned: Array[String] = []
 var coins_found := {}
 ## Upgrade levels bought with coins: id -> level (see Upgrades).
 var upgrades := {}
+## Coins the upgrades v2 migration put back in hand (Upgrades.migrate_level), until the hub has shown
+## its one-time UPGRADES REWORKED notice (take_tree_refund_notice). Saved as [upgrades] refund_notice.
+var tree_refund_notice := 0
 ## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
 ## returns to the level (not saved).
 var return_to_game := false
@@ -257,11 +263,12 @@ func _ready() -> void:
 		elif arg.begins_with("--skin="):
 			saving_enabled = false
 			selected_skin = arg.trim_prefix("--skin=")
-		elif arg.begins_with("--upgrades="):  # e.g. --upgrades=6,4,7: slime, speed, brightness
+		elif arg.begins_with("--upgrades="):  # e.g. --upgrades=4,2,1: MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3 (the v2 tree; higher clamps)
 			saving_enabled = false
 			var levels := arg.trim_prefix("--upgrades=").split(",")
 			for i in mini(levels.size(), 3):
-				upgrades[Upgrades.LIST[i].id] = clampi(levels[i].to_int(), 0, Upgrades.MAX_LEVEL)
+				var id: String = Upgrades.LIST[i].id  # levels of the current tree (7 / 4 / 3)
+				upgrades[id] = clampi(levels[i].to_int(), 0, Upgrades.max_level(id))
 		elif arg.begins_with("--coins="):  # exactly this many coins in hand (no dev bonus)
 			saving_enabled = false
 			dev_coins = 0
@@ -562,12 +569,18 @@ func _read(file: ConfigFile) -> void:
 	if _int(file, "meta", "version", 1) < LAYOUT_VERSION:
 		_migrate_coins()
 	upgrades = {}
+	var new_tree := _int(file, "upgrades", "tree", 1) >= Economy.TREE_VERSION
 	for upgrade: Dictionary in Upgrades.LIST:
-		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, Upgrades.MAX_LEVEL)
+		var top: int = Upgrades.max_level(upgrade.id) if new_tree else Economy.OLD_TREE_LEVELS
+		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, top)
 		if level > 0:
 			upgrades[upgrade.id] = level
+	tree_refund_notice = clampi(_int(file, "upgrades", "refund_notice", 0), 0, Upgrades.full_tree_cost()) if new_tree else 0
+	if not new_tree:
+		_migrate_tree()
 	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
+	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
 	_read_bindings(file)
 	_read_wallet(file)
 	_read_maps(file)
@@ -597,6 +610,36 @@ func _migrate_coins() -> void:
 		var keys: Array = []
 		keys.assign(Levels.coin_keys(level).slice(0, count))
 		coins_found[level] = keys
+
+
+## Upgrade levels from a save without [upgrades] tree = 2 are levels of the old 3 x 10 tree (level n
+## cost n coins). Each track maps by coins invested, rounded down (Upgrades.migrate_level: SLIME 10 ->
+## 7, SPEED 10 -> 3 with 19 coins back, BRIGHTNESS 10 -> 3 with 5 back, SLIME 5 -> 3 with 3 back); coins
+## in hand are derived (found - spent), so the remainder is back in hand by itself and nobody can go
+## negative. A pure function of the stored levels; the next save writes tree = 2, so it never runs
+## twice. Runs before the "never spend more than found" check. Dev wall power is not counted in the
+## notice (it was never real money). The coins returned are kept for the hub's one-time notice.
+func _migrate_tree() -> void:
+	var returned := 0
+	for id: String in upgrades.keys():
+		var level := Upgrades.migrate_level(id, upgrades[id])
+		if id != "power":
+			returned += Upgrades.old_total_cost(upgrades[id]) - Upgrades.total_cost(id, level)
+		if level > 0:
+			upgrades[id] = level
+		else:
+			upgrades.erase(id)
+	tree_refund_notice = maxi(0, returned)
+
+
+## The coins the tree migration returned, once: the hub shows UPGRADES REWORKED / COINS RETURNED +N
+## and calls this, which clears (and saves) the notice so it never shows again. 0 = nothing to show.
+func take_tree_refund_notice() -> int:
+	var n := tree_refund_notice
+	if n > 0:
+		tree_refund_notice = 0
+		save_progress()
+	return n
 
 
 ## Hard best times from a save older than version 5 were set on the old, shorter hard mazes (before
@@ -833,8 +876,11 @@ func _write() -> ConfigFile:
 		file.set_value("records", "level_%d" % level, best_times[level])
 	for level: int in coins_found:
 		file.set_value("coins", "level_%d" % level, coins_found[level])
+	file.set_value("upgrades", "tree", Economy.TREE_VERSION)
 	for id: String in upgrades:
 		file.set_value("upgrades", id, upgrades[id])
+	if tree_refund_notice > 0:
+		file.set_value("upgrades", "refund_notice", tree_refund_notice)
 	for action: String in bindings:
 		file.set_value("controls", action, bindings[action])
 	file.set_value("wallet", "globs", tickets)  # (the old name; see _read_wallet)
@@ -1289,7 +1335,7 @@ func coins_earned() -> int:
 func coins_spent() -> int:
 	var total := 0
 	for id: String in upgrades:
-		total += Upgrades.total_cost(upgrades[id])
+		total += Upgrades.total_cost(id, upgrades[id])
 	return total
 
 
@@ -1310,7 +1356,7 @@ func buy_upgrade(id: String) -> bool:
 	if upgrade.is_empty() or (upgrade.get("dev", false) and not dev_tools):
 		return false  # unknown, or the dev-only wall power outside dev mode (E3)
 	var level := upgrade_level(id)
-	if level >= Upgrades.MAX_LEVEL or coins() < Upgrades.cost(level):
+	if level >= Upgrades.max_level(id) or coins() < Upgrades.cost(id, level):
 		return false
 	upgrades[id] = level + 1
 	save_progress()
@@ -1505,6 +1551,7 @@ func reset_progress() -> void:
 	hard_cleared.clear()
 	coins_found = {}
 	upgrades = {}
+	tree_refund_notice = 0
 	skin_override = ""
 	tutorial_seen = 0
 	story_seen = 0

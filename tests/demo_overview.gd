@@ -7,7 +7,7 @@ extends Node
 ## (default .screens/overview.png), then quits. Needs a window (not --headless):
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --level=5 [--hard] [--out=/abs/path.png]
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --seed=4242   (randomizer)
-## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --usage=550 [--upgrades=10,0,0]
+## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --usage=550 [--upgrades=7,0,0]
 ##   (randomizer: the first seed 1, 7920, 15839 ... whose usage roll is within 10 permille of 550;
 ##   the second line shows u and the perfect run's usage)
 

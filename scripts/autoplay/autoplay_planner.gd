@@ -52,9 +52,9 @@ static func level_meter_tiles(level: int, hard: bool, slime_level: int) -> float
 static func next_purchase(levels: Dictionary, coins: int) -> String:
 	for id in PURCHASE_ORDER:
 		var level: int = levels.get(id, 0)
-		if level >= Upgrades.MAX_LEVEL:
+		if level >= Upgrades.max_level(id):
 			continue
-		return id if coins >= Upgrades.cost(level) else ""  # save up for this one
+		return id if coins >= Upgrades.cost(id, level) else ""  # save up for this one
 	return ""
 
 
@@ -110,7 +110,7 @@ static func simulate_campaign() -> Dictionary:
 				found += 1
 			var id := next_purchase(upgrades, found - spent)
 			while id != "":
-				spent += Upgrades.cost(upgrades.get(id, 0))
+				spent += Upgrades.cost(id, upgrades.get(id, 0))
 				upgrades[id] = upgrades.get(id, 0) + 1
 				id = next_purchase(upgrades, found - spent)
 		tiles += fastest_run(maze).tiles

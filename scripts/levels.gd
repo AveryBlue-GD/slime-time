@@ -329,37 +329,39 @@ static func random_usage(maze_seed: int, hard := false) -> float:
 
 ## Tiles a full meter glides at a MORE SLIME level (the player's capacity).
 static func random_capacity_tiles(slime_level: int) -> float:
-	return RANDOM_METER_TILES * Upgrades.slime_factor(clampi(slime_level, 0, Upgrades.MAX_LEVEL))
+	return RANDOM_METER_TILES * Upgrades.slime_factor(clampi(slime_level, 0, max_slime_level()))
 
 
 ## The start-to-chalice route (cells) a seed asks for at a MORE SLIME level: u x the capacity, the
 ## grab reach added back (a route of n cells is glided as 2n - 13/16 tiles), at least
 ## RANDOM_MIN_ROUTE. Integer maths only, so every platform gets the same number.
 static func random_route_cells(maze_seed: int, hard := false, slime_level := 0) -> int:
-	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
+	var level := 0 if hard else clampi(slime_level, 0, max_slime_level())
 	var permille := roundi(RANDOM_HARD_TARGET * 1000) if hard else random_usage_permille(maze_seed)
 	return random_route_cells_for(permille, level)
 
 
 ## The route (cells) for a usage of `permille` at MORE SLIME `level` (see random_route_cells).
 static func random_route_cells_for(permille: int, level: int) -> int:
-	# u x 136 x (1 + level / 10) tiles, in 1/10000 tiles; + 0.8125 tiles of grab reach; / 2 tiles per cell, rounded.
-	var tenthousandths := permille * RANDOM_METER_TILES * (10 + clampi(level, 0, Upgrades.MAX_LEVEL))
-	return maxi(RANDOM_MIN_ROUTE, (tenthousandths + 8125 + 10000) / 20000)
+	# u x 136 x slime factor tiles, in 1/100000 tiles (the factor in hundredths); + 0.8125 tiles of
+	# grab reach; / 2 tiles per cell, rounded. (Before the v2 tree this was the same sum in 1/10000
+	# tiles with the factor in tenths, so an equal factor gives exactly the old route.)
+	var hundred_thousandths := permille * RANDOM_METER_TILES * Upgrades.slime_percent(clampi(level, 0, max_slime_level()))
+	return maxi(RANDOM_MIN_ROUTE, (hundred_thousandths + 81250 + 100000) / 200000)
 
 
 ## The longest route (cells) any seed asks for at a MORE SLIME level: u = RANDOM_MAX_USAGE (hard
 ## mode: its fixed u). Randomizer mazes are sized for this route, never for the seed's own u.
 static func random_max_route_cells(slime_level := 0, hard := false) -> int:
-	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
+	var level := 0 if hard else clampi(slime_level, 0, max_slime_level())
 	return random_route_cells_for(roundi((RANDOM_HARD_TARGET if hard else RANDOM_MAX_USAGE) * 1000), level)
 
 
 ## The smallest randomizer maze at a MORE SLIME level: the old base size (18 x 10) grown by
-## sqrt(1 + 0.1 x level) per side, as the pre-usage randomizer did, within RANDOM_MAX_CELLS.
+## sqrt(slime factor) per side, as the pre-usage randomizer did, within RANDOM_MAX_CELLS.
 static func random_floor_cells(slime_level := 0, hard := false) -> Vector2i:
-	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
-	var grow := sqrt(1.0 + 0.1 * level)
+	var level := 0 if hard else clampi(slime_level, 0, max_slime_level())
+	var grow := sqrt(Upgrades.slime_factor(level))
 	return Vector2i(mini(roundi(RANDOM_FLOOR_BASE.x * grow), RANDOM_MAX_CELLS.x),
 		mini(roundi(RANDOM_FLOOR_BASE.y * grow), RANDOM_MAX_CELLS.y))
 
@@ -382,9 +384,20 @@ static func random_cells(maze_seed: int, slime_level := 0, hard := false) -> Vec
 		clampi(roundi(dice.y * scale), low.y, RANDOM_MAX_CELLS.y))
 
 
+## The highest MORE SLIME level a seed code can carry (the current tree's top, 7).
+static func max_slime_level() -> int:
+	return Upgrades.max_level("slime")
+
+
+## Highest level a typed code may carry: codes shared before the v2 tree had MORE SLIME 0-10; an
+## old 8-10 clamps to the new top (x2.0 meter; old 10 = new 7 builds the very same maze), an old
+## 1-7 is read as the new level of that number (a different maze: acceptable, release-noted).
+const SEED_CODE_LEGACY_MAX := 10
+
+
 ## A seed code as shown and typed: "12345-2" = seed 12345 built for MORE SLIME level 2.
 static func seed_code(maze_seed: int, slime_level: int) -> String:
-	return "%d-%d" % [maze_seed, clampi(slime_level, 0, Upgrades.MAX_LEVEL)]
+	return "%d-%d" % [maze_seed, clampi(slime_level, 0, max_slime_level())]
 
 
 ## Reads a typed seed code: Vector2i(seed, level). A plain number gives level -1 (the player's own
@@ -402,8 +415,9 @@ static func parse_seed_code(text: String) -> Vector2i:
 		if parts[1].length() > 3 or not parts[1].is_valid_int() or parts[1].begins_with("+"):
 			return Vector2i.ZERO
 		level = parts[1].to_int()
-		if level < 0 or level > Upgrades.MAX_LEVEL:
+		if level < 0 or level > SEED_CODE_LEGACY_MAX:
 			return Vector2i.ZERO
+		level = mini(level, max_slime_level())
 	return Vector2i(value, level)
 
 
@@ -411,7 +425,7 @@ static func parse_seed_code(text: String) -> Vector2i:
 ## tile in percent of the meter at the code's MORE SLIME level (the player's own cost is that x
 ## the code's slime factor / the player's). `target` = u for older callers.
 static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Dictionary:
-	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
+	var level := 0 if hard else clampi(slime_level, 0, max_slime_level())
 	var u := random_usage(maze_seed, hard)
 	return {
 		cells = random_cells(maze_seed, level, hard),

@@ -113,7 +113,7 @@ func _check_migration() -> void:
 	q._read(_v4_save())
 	_check(q.best_times == p.best_times and q.medals == p.medals and q.hard_cleared == p.hard_cleared, "reading the same old save again gives the same result")
 	var written: ConfigFile = p._write()
-	_check(written.get_value("meta", "version") == PROGRESS.SAVE_VERSION and PROGRESS.SAVE_VERSION == 5, "the next save is version 5")
+	_check(written.get_value("meta", "version") == PROGRESS.SAVE_VERSION and PROGRESS.SAVE_VERSION >= 5, "the next save is the current version (5 or later)")
 	p.best_times[103] = 40.0  # a time set on the new hard maze
 	written = p._write()
 	var r := _fresh()

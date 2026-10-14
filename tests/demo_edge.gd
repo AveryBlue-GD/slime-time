@@ -4,7 +4,7 @@ extends Node
 ## top and left edges explored, so the maze's outer walls and the border ring past them show through
 ## the normal fog (the Brightness upgrade's light reveals the ring). `--bright` (dev mode) switches
 ## on the dev FULL BRIGHT toggle as well, `--no-drain` the NO DRAIN one, and `--hud` keeps the HUD.
-## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_edge.tscn --level 5 --unlock-all --upgrades=0,0,10 [--bright]
+## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_edge.tscn --level 5 --unlock-all --upgrades=0,0,3 [--bright]
 
 var game: Node2D
 var frame := 0

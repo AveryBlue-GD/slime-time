@@ -533,12 +533,12 @@ func _economy() -> void:
 	progress.saving_enabled = false
 	progress.dev_tools = false
 	# upgrades with exactly enough / one short
-	progress.coins_found = {1: ["a", "b"], 2: ["c"]}  # 3 coins (counted up to Levels.COINS per level)
+	progress.coins_found = {1: ["a", "b", "c", "d"], 2: ["e"]}  # 5 coins (counted up to Levels.COINS per level)
 	var have: int = progress.coins()
-	_check(have == 3, "3 coins in hand (%d)" % have)
-	_check(progress.buy_upgrade("slime") and progress.coins() == 2, "level 1 costs 1: bought, 2 left")
-	_check(progress.buy_upgrade("slime") and progress.coins() == 0, "level 2 costs 2: bought with exactly enough")
-	_check(not progress.buy_upgrade("slime") and progress.upgrade_level("slime") == 2 and progress.coins() == 0, "one short (cost 3, have 0): refused, nothing changes")
+	_check(have == 5, "5 coins in hand (%d)" % have)
+	_check(progress.buy_upgrade("slime") and progress.coins() == 4, "MORE SLIME 1 costs 1: bought, 4 left")
+	_check(progress.buy_upgrade("slime") and progress.coins() == 0, "MORE SLIME 2 costs 4: bought with exactly enough")
+	_check(not progress.buy_upgrade("slime") and progress.upgrade_level("slime") == 2 and progress.coins() == 0, "short (MORE SLIME 3 costs 7, have 0): refused, nothing changes")
 	progress.coins_found = {1: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]}
 	var coins_before: int = progress.coins()
 	var bought_power: bool = progress.buy_upgrade("power")
@@ -548,7 +548,7 @@ func _economy() -> void:
 	_check(progress.buy_upgrade("power"), "...the dev-only 'power' is still bought in dev mode")
 	progress.dev_tools = false
 	progress.upgrades.erase("power")
-	progress.coins_found = {1: ["a", "b"], 2: ["c"]}
+	progress.coins_found = {1: ["a", "b", "c", "d"], 2: ["e"]}  # exactly MORE SLIME 2's 5 coins: 0 in hand
 	var spam := 0
 	for i in 50:
 		if progress.buy_upgrade("speed"):
@@ -557,7 +557,7 @@ func _economy() -> void:
 	progress.coins_found = {1: ["a", "b", "c", "d", "e", "f"], 2: ["g"], 3: ["h"]}
 	for i in 100:
 		progress.buy_upgrade("brightness")
-	_check(progress.upgrade_level("brightness") <= Upgrades.MAX_LEVEL and progress.coins() >= 0, "buy spam maxes at level %d without a negative balance" % progress.upgrade_level("brightness"))
+	_check(progress.upgrade_level("brightness") <= Upgrades.max_level("brightness") and progress.coins() >= 0, "buy spam maxes at level %d without a negative balance" % progress.upgrade_level("brightness"))
 	for i in 100:
 		progress.refund_upgrade("brightness")
 		progress.refund_upgrade("slime")

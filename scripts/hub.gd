@@ -130,6 +130,10 @@ var ticket_label: Label
 var medal_label: Label
 var _touch_controls: CanvasLayer
 var _time := 0.0
+## The one-time UPGRADES REWORKED / COINS RETURNED +N panel (null when there is nothing to show).
+var tree_notice: PanelContainer
+## Seconds the tree notice stays up before it fades.
+const TREE_NOTICE_TIME := 5.0
 
 
 func _ready() -> void:
@@ -362,9 +366,39 @@ func _build_ui() -> void:
 		_put_on_hat()
 		_refresh_tickets()
 		hat_wheel.refresh(_use_key()))
+	_show_tree_notice(root)
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
+
+
+## Once after the upgrades v2 migration gave coins back (Progress.take_tree_refund_notice, which
+## clears it for good): a goo panel at the top, UPGRADES REWORKED / COINS RETURNED +N, for
+## TREE_NOTICE_TIME seconds, then it fades out.
+func _show_tree_notice(root: Control) -> void:
+	var returned: int = Progress.take_tree_refund_notice()
+	if returned <= 0:
+		return
+	tree_notice = PanelContainer.new()
+	tree_notice.add_theme_stylebox_override("panel", UIKit.panel_style())
+	tree_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(tree_notice)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", UIKit.LINE_SPACING)
+	tree_notice.add_child(column)
+	for line: Array in [["UPGRADES REWORKED", UIKit.GOLD], ["COINS RETURNED +%d" % returned, UIKit.TEXT]]:
+		var label := UIKit.make_label(line[0], 8, line[1])
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		column.add_child(label)
+	tree_notice.reset_size()
+	var size := tree_notice.get_combined_minimum_size()
+	tree_notice.size = size
+	tree_notice.position = Vector2(roundf((320.0 - size.x) / 2.0), 24.0)
+	_sfx("coin")
+	var fade := tree_notice.create_tween()
+	fade.tween_interval(TREE_NOTICE_TIME)
+	fade.tween_property(tree_notice, "modulate:a", 0.0, 0.5)
+	fade.tween_callback(tree_notice.hide)
 
 
 ## The trapdoor's confirm panel: LEAVE THE HUB? with QUIT and BACK (BACK has the focus, so a

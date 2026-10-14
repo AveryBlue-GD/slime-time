@@ -71,32 +71,33 @@ func _initialize() -> void:
 		for i in Levels.COINS[level - 1]:
 			progress.coins_found[level].append("coin%d" % i)
 	_check(progress.coins() == 165, "all coins found: 165 to spend")
-	for i in Upgrades.MAX_LEVEL:
+	for i in 10:
 		progress.buy_upgrade("slime")
 		progress.buy_upgrade("speed")
-	_check(progress.upgrade_level("slime") == 10 and progress.coins() == 165 - 110, "maxing two upgrades costs 110")
+	_check(progress.upgrade_level("slime") == 7 and progress.upgrade_level("speed") == 4 and progress.coins() == 165 - 115,
+		"maxing MORE SLIME (7 levels, 55) and SPEED (4 levels, 60) costs 115")
 	_check(not progress.buy_upgrade("slime"), "a maxed upgrade can't go higher")
 	progress.refund_upgrade("speed")
-	_check(progress.upgrade_level("speed") == 9 and progress.coins() == 65, "coins can be taken back out (refund 10)")
-	for i in Upgrades.MAX_LEVEL:
+	_check(progress.upgrade_level("speed") == 3 and progress.coins() == 74, "coins can be taken back out (SPEED 4 refunds 24)")
+	for i in 10:
 		progress.buy_upgrade("speed")
 		progress.buy_upgrade("brightness")
-	_check(progress.coins() == 0 and progress.upgrade_level("brightness") == 10, "every coin found maxes all three upgrades exactly")
+	_check(progress.coins() == 0 and progress.upgrade_level("brightness") == 3, "every coin found maxes all three upgrades exactly")
 
 	# --- Upgrade effects
 	game = await _spawn({level = 1})
 	var plain_speed := 72.0
-	_check(absf(game.slime.max_speed - plain_speed * 1.5) < 0.01, "speed 10: the slime glides 50% faster")
-	_check(game.light_reach == 25.0, "brightness 10: a wider light")
+	_check(absf(game.slime.max_speed - plain_speed * 1.5) < 0.01, "speed 4: the slime glides 50% faster")
+	_check(game.light_reach == 25.0, "brightness 3: a wider light (25 px more reach)")
 	var cost: float = game.slime_cost_per_tile
 	game.free()
 	progress.upgrades = {}
 	game = await _spawn({level = 1})
-	_check(absf(game.slime_cost_per_tile / cost - 2.0) < 0.01, "more slime 10: twice as far on a full meter")
+	_check(absf(game.slime_cost_per_tile / cost - 2.0) < 0.01, "more slime 7: twice as far on a full meter")
 	game.free()
 
 	# --- Dev-only wall power
-	progress.upgrades = {"power": 10}
+	progress.upgrades = {"power": 4}
 	_check(progress.upgrade_level("power") == 0, "wall power does nothing outside dev mode")
 	progress.dev_tools = true
 	game = await _spawn({level = 1})

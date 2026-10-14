@@ -952,7 +952,7 @@ func _insane(p: Node) -> String:
 		if p.medals[k] < 1 or p.medals[k] > 3: bad.append("medal %d" % p.medals[k])
 	if p.coins() < 0: bad.append("negative coins %d" % p.coins())
 	for id: String in p.upgrades:
-		if p.upgrades[id] < 1 or p.upgrades[id] > Upgrades.MAX_LEVEL: bad.append("upgrade %s=%d" % [id, p.upgrades[id]])
+		if p.upgrades[id] < 1 or p.upgrades[id] > Upgrades.max_level(id): bad.append("upgrade %s=%d" % [id, p.upgrades[id]])
 	if p.spin_cost() < 0 or p.spin_cost() > p.SPIN_COST_MAX: bad.append("spin_cost %d" % p.spin_cost())
 	if not p.is_skin_unlocked(p.selected_skin): bad.append("locked skin selected %s" % p.selected_skin)
 	if p.selected_hat != Hats.NONE and not p.is_hat_unlocked(p.selected_hat): bad.append("locked hat %s" % p.selected_hat)

@@ -44,7 +44,7 @@ func _initialize() -> void:
 	var normal_walls: PackedByteArray = normal.maze.walls
 	normal.free()
 	progress.set_hard_mode(true)
-	progress.upgrades = {"slime": 10, "speed": 10, "brightness": 10}
+	progress.upgrades = {"slime": 7, "speed": 4, "brightness": 3}
 	var hard := await _spawn(4)
 	_check(hard.maze.walls != normal_walls, "hard mode plays a different maze")
 	_check(hard.perfect_usage >= 0.75 and hard.perfect_usage <= 0.92, "the hard maze is budgeted tight: a perfect run needs %.0f%% of the slime" % (hard.perfect_usage * 100.0))

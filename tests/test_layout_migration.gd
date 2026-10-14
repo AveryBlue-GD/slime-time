@@ -22,9 +22,11 @@ func _initialize() -> void:
 	p._read(old)
 	_check(p.coins_found_in(1) == 2 and p.coins_found_in(4) == 5 and p.coins_found_in(2) == Levels.COINS[1] and p.coins_found_in(3) == 1,
 		"each level keeps its coin COUNT (2, 9 capped, 1 of the valid strings, 5)")
-	_check(p.coins_earned() == 2 + 9 + 1 + 5 and p.coins_spent() == 9 and p.coins() == 8,
-		"coins earned 17, spent 9 on upgrades, 8 in hand: nothing lost, nothing negative")
-	_check(p.upgrade_level("slime") == 3 and p.upgrade_level("speed") == 2, "bought upgrades are kept")
+	# (The old tree's SLIME 3 / SPEED 2 = 6 + 3 coins also go through the upgrades v2 remap, see
+	# test_upgrades_v2.gd: SLIME 2 (5 coins) and SPEED 0, the other 4 coins back in hand.)
+	_check(p.coins_earned() == 2 + 9 + 1 + 5 and p.coins_spent() == 5 and p.coins() == 12,
+		"coins earned 17, spent 5 on upgrades after the tree remap, 12 in hand: nothing lost, nothing negative")
+	_check(p.upgrade_level("slime") == 2 and p.upgrade_level("speed") == 0 and p.tree_refund_notice == 4, "bought upgrades are remapped by coins invested (4 back)")
 	var keys1: Array = p.coins_found[1]
 	_check(keys1 == Levels.coin_keys(1).slice(0, 2) and keys1 != ["2,3", "5,1"], "level 1's coins are now the first 2 coins of the new layout %s" % [keys1])
 	var maze := Levels.story_maze(1)

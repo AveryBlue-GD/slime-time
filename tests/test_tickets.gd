@@ -301,7 +301,7 @@ func _initialize() -> void:
 	progress.random_pay_day = 20000
 	progress.random_paid = 2
 	var text: String = progress._write().encode_to_text()
-	_check("[meta]" in text and "version=5" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 5, [wallet] globs and [medals]")
+	_check("[meta]" in text and "version=6" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 6, [wallet] globs and [medals]")
 	_check("clears_paid" not in text and "hard_clears_paid" not in text, "...and no clears_paid keys any more")
 	var file := ConfigFile.new()
 	file.parse(text)
@@ -407,7 +407,7 @@ func _initialize() -> void:
 	veteran.hard_mode = false
 	_check(veteran.medals_total() == 3 + 2 + 1 + 1 + 1 + 1 and not veteran.all_medals(), "the total is the tier sum")
 	var written: ConfigFile = veteran._write()
-	_check(written.get_value("meta", "version") == 5 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 5 without the paid masks")
+	_check(written.get_value("meta", "version") == 6 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 6 without the paid masks")
 	var again := ConfigFile.new()
 	again.parse(written.encode_to_text())
 	var veteran2: Node = preload("res://scripts/progress.gd").new()
@@ -478,7 +478,7 @@ func _initialize() -> void:
 	_check(progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
 		"an old v2 save read directly: balance kept, medals as tiers")
 	var snapshot: String = progress._write().encode_to_text()
-	_check("version=5" in snapshot, "...and re-saves as version 5")
+	_check("version=6" in snapshot, "...and re-saves as version 6")
 	var new_code: String = progress.save_code()
 	progress.reset_progress()
 	_check(progress.tickets == 0 and progress.medals.is_empty() and progress.spins == 0 and progress.rainbow_pity == 0 and progress.random_paid == 0,

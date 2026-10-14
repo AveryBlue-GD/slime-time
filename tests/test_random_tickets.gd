@@ -45,7 +45,7 @@ func _initialize() -> void:
 	# --- Size scales with MORE SLIME (sized for the 95% route of the meter, which grows), never with u
 	var last_area := 0
 	var rising := true
-	for level in range(0, Upgrades.MAX_LEVEL + 1):
+	for level in range(0, Upgrades.max_level("slime") + 1):
 		var area := 0
 		for i in 40:
 			var cells := Levels.random_cells(5000 + i, level)
@@ -55,9 +55,9 @@ func _initialize() -> void:
 		last_area = area
 	_check(rising, "mazes get bigger with each MORE SLIME level, within %s .. %s" % [Levels.RANDOM_MIN_CELLS, Levels.RANDOM_MAX_CELLS])
 	var small := Levels.random_cells(777, 0)
-	var big := Levels.random_cells(777, 10)
-	_check(big.x * big.y > small.x * small.y * 1.4, "level 10 is a much bigger maze than level 0 (%s -> %s)" % [small, big])
-	_check(Levels.random_config(777, true, 10).cells == Levels.random_cells(777, 0, true), "hard mode has no upgrades, so no growth")
+	var big := Levels.random_cells(777, 7)
+	_check(big.x * big.y > small.x * small.y * 1.4, "MORE SLIME 7 is a much bigger maze than level 0 (%s -> %s)" % [small, big])
+	_check(Levels.random_config(777, true, 7).cells == Levels.random_cells(777, 0, true), "hard mode has no upgrades, so no growth")
 
 	# --- Story levels: a fixed spawn per level (the level's class, drawn from its own seed); par from the real route
 	for level in range(1, Levels.COUNT + 1):
