@@ -1,10 +1,12 @@
 extends SceneTree
 
 ## Randomizer slime usage (docs/level-design.md section 5): each seed rolls a usage u (the share of
-## the player's fixed meter a perfect run needs) from a bell over [0.10, 0.95]; the maze size,
-## spawn and the goal ticket follow it. Checks the distribution over 10k seeds, determinism,
-## routes of exactly the asked length, size bounds, spawn class odds, seed-code portability, the
-## result text, and real autopilot runs (gliding to the ticket) at low, middle and high u.
+## the player's fixed meter a perfect run needs) from a bell over [0.10, 0.95]; only the start-to-
+## ticket route follows it: the maze itself is full size whatever u is (sized for the longest route
+## any seed asks for at the MORE SLIME level). Checks the distribution over 10k seeds, determinism,
+## routes of exactly the asked length, size floor / independence from u / growth with MORE SLIME,
+## tickets near the spawn (rare), spawn class odds, seed-code portability, the result text, and
+## real autopilot runs (gliding to the ticket) at low, middle and high u.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_random_usage.gd
 
 const SEEDS := 10000
@@ -62,33 +64,83 @@ func _initialize() -> void:
 		ratio_ok = ratio_ok and r0 >= Levels.RANDOM_MIN_ROUTE and (r0 <= Levels.RANDOM_MIN_ROUTE or absf(r10 * 1.0 / r0 - 2.0) < 0.2)
 	_check(ratio_ok, "route = u x the meter: level 10's route is ~2x level 0's, never under %d cells" % Levels.RANDOM_MIN_ROUTE)
 
+	# --- Size: never under the floor for the level, the same whatever u, growing with MORE SLIME
+	# (random_cells is the start size; generate_random only ever grows it)
+	var under_floor := 0
+	var u_bound := 0
+	var level_area := []
+	for level in Upgrades.MAX_LEVEL + 1:
+		var floor_cells := Levels.random_floor_cells(level)
+		var room := Levels.random_max_route_cells(level)
+		var area := 0
+		for i in SEEDS:
+			var s := 1 + i * 7919
+			var cells := Levels.random_cells(s, level)
+			area += cells.x * cells.y
+			if cells.x < floor_cells.x or cells.y < floor_cells.y or cells.x > Levels.RANDOM_MAX_CELLS.x or cells.y > Levels.RANDOM_MAX_CELLS.y:
+				under_floor += 1
+			if Levels.random_config(s, false, level).room != room or Levels.random_route_cells(s, false, level) > room:
+				u_bound += 1
+		level_area.append(area / SEEDS)
+	_check(under_floor == 0, "%d seeds x MORE SLIME 0-10: no maze under its level's floor (%s at 0 .. %s at 10) or over %s" % [SEEDS, Levels.random_floor_cells(0), Levels.random_floor_cells(10), Levels.RANDOM_MAX_CELLS])
+	_check(u_bound == 0, "...every maze is sized for the 95% route of its level, so any u fits")
+	var monotonic := true
+	for level in range(1, level_area.size()):
+		monotonic = monotonic and level_area[level] >= level_area[level - 1]
+	_check(monotonic and level_area[10] > level_area[0], "average area grows with MORE SLIME: %s" % [level_area])
+	# Route targets across 10k seeds: never under the minimum, never over the 95% route, and short
+	# (ticket near the spawn: route <= 20% of the meter) only at the rare rate of the u tail.
+	var short_routes := 0
+	var too_short := 0
+	for i in SEEDS:
+		var s := 1 + i * 7919
+		var r := Levels.random_route_cells(s, false, 0)
+		if r < Levels.RANDOM_MIN_ROUTE or r > Levels.random_max_route_cells(0):
+			too_short += 1
+		if r <= Levels.random_route_cells_for(200, 0):
+			short_routes += 1
+	_check(too_short == 0, "10k seeds: every route between %d cells and the 95%% route" % Levels.RANDOM_MIN_ROUTE)
+	_check(short_routes >= SEEDS * 0.015 and short_routes <= SEEDS * 0.035, "tickets near the spawn (route <= 20%% of the meter) stay rare: %.2f%%" % (short_routes * 100.0 / SEEDS))
+
 	# --- Real mazes at MORE SLIME 0, 5 and 10
 	var kinds := [0, 0, 0]
 	var fallbacks := 0
 	var off_route := 0
 	var too_big := 0
 	var not_solvable := 0
+	var near_spawn := 0
 	var areas := [0, 0, 0]
+	var low_u_area := [0, 0]
 	for i in MAZES:
 		var s := 1 + i * 7919
 		var level: int = [0, 5, 10][i % 3]
 		var cfg := Levels.random_config(s, false, level)
 		var maze := MazeGenerator.generate_random(cfg)
 		areas[i % 3] += maze.cells.x * maze.cells.y
+		if level == 0 and cfg.usage < 0.3:
+			low_u_area[0] += maze.cells.x * maze.cells.y
+			low_u_area[1] += 1
 		kinds[maze.spawn_kind] += 1
 		if maze.spawn_kind != maze.spawn_rolled:
 			fallbacks += 1
 		var reach := MazeGenerator.distances_from(maze, maze.start)
-		if not MazeGenerator.is_completable(maze) or reach.get(maze.goal, -1) != maze.goal_steps:
+		if not MazeGenerator.is_completable(maze) or reach.get(maze.goal, -1) != maze.goal_steps or maze.goal_steps < Levels.RANDOM_MIN_ROUTE:
 			not_solvable += 1
 		if absi(maze.goal_steps - cfg.route) > 2:
 			off_route += 1
-		if maze.cells.x < Levels.RANDOM_MIN_CELLS.x or maze.cells.y < Levels.RANDOM_MIN_CELLS.y or maze.cells.x > Levels.RANDOM_MAX_CELLS.x or maze.cells.y > Levels.RANDOM_MAX_CELLS.y:
+		if maze.diameter < cfg.room and maze.cells != Levels.RANDOM_MAX_CELLS:  # only the max size may fall a little short
+			off_route += 1
+		var floor_cells := Levels.random_floor_cells(level)
+		if maze.cells.x < floor_cells.x or maze.cells.y < floor_cells.y or maze.cells.x > Levels.RANDOM_MAX_CELLS.x or maze.cells.y > Levels.RANDOM_MAX_CELLS.y:
 			too_big += 1
-	_check(not_solvable == 0, "%d mazes: every one solvable, the ticket exactly goal_steps from the start" % MAZES)
-	_check(off_route == 0, "...the ticket at the intended route length +-2 (%d off)" % off_route)
-	_check(too_big == 0, "...sizes within %s .. %s (avg area L0 %d, L5 %d, L10 %d)" % [Levels.RANDOM_MIN_CELLS, Levels.RANDOM_MAX_CELLS, areas[0] / (MAZES / 3), areas[1] / (MAZES / 3), areas[2] / (MAZES / 3)])
-	_check(areas[0] < areas[1] and areas[1] < areas[2], "...mazes grow with MORE SLIME")
+		if absi(maze.goal.x - maze.start.x) + absi(maze.goal.y - maze.start.y) <= 4:
+			near_spawn += 1
+	_check(not_solvable == 0, "%d mazes: every one solvable, the ticket exactly goal_steps (>= %d) from the start" % [MAZES, Levels.RANDOM_MIN_ROUTE])
+	_check(off_route == 0, "...the ticket at the intended route length +-2, the maze's longest route at least the 95%% route below the max size (%d off)" % off_route)
+	_check(too_big == 0, "...sizes within the level's floor .. %s (avg area L0 %d, L5 %d, L10 %d)" % [Levels.RANDOM_MAX_CELLS, areas[0] / (MAZES / 3), areas[1] / (MAZES / 3), areas[2] / (MAZES / 3)])
+	_check(areas[0] < areas[1] and areas[1] <= areas[2], "...mazes grow with MORE SLIME")
+	_check(low_u_area[1] > 0 and low_u_area[0] / low_u_area[1] * 100 >= areas[0] / (MAZES / 3) * 95, "...low-u seeds (u < 0.30) get full-size mazes too (avg %d cells)" % (low_u_area[0] / maxi(low_u_area[1], 1)))
+	_check(near_spawn > 0 and near_spawn <= MAZES / 20, "...a ticket within 4 cells of the spawn happens, rarely (%d of %d)" % [near_spawn, MAZES])
 	# 600 picks: +-5% (3.5 sd); the rule rarely needs a fallback (measured 0 in 1,200 mazes).
 	var total := float(MAZES)
 	_check(absf(kinds[0] / total - 0.33) <= 0.05 and absf(kinds[1] / total - 0.30) <= 0.05 and absf(kinds[2] / total - 0.37) <= 0.05,

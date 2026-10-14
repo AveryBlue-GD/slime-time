@@ -120,14 +120,17 @@ static func generate_noise(cells: Vector2i, maze_seed: int) -> Dictionary:
 
 
 ## Randomizer maze (see Levels.random_config and docs/level-design.md section 5): a noise maze big
-## enough that its longest route is at least ROOM_PCT % of the route the seed asks for (growing the
-## seed's start size step by step up to Levels.RANDOM_MAX_CELLS; at the max size a few re-seeded
-## noise fields are tried and the longest kept), then SpawnPicker picks the start from the seed
-## (33% outer edge, 30% near it, 37% anywhere; its farthest cell at least the route away) and puts
-## the chalice exactly `route` cells from it. Same seed and level, same maze, start and chalice.
-## Adds `spawn_kind`, `spawn_rolled`, `diameter` (the longest route), `route_target` (cells asked
-## for; goal_steps is shorter only when even the biggest maze couldn't hold it) and `noise_seed`.
-## A Vector2i `config` (old callers/tests) means {cells = it} with the old 60%-of-longest rule.
+## enough that its longest route is at least ROOM_PCT % of `room`, the LONGEST route any seed asks
+## for at this MORE SLIME level (growing the seed's start size step by step up to
+## Levels.RANDOM_MAX_CELLS; at the max size, until it holds `room` itself, a few re-seeded noise
+## fields are tried and the longest kept). The maze never depends on the seed's own u: only the
+## start and the goal do. SpawnPicker then picks the start from the seed (33% outer edge, 30% near
+## it, 37% anywhere; its farthest cell at least the route away) and puts the goal exactly `route`
+## cells from it (a low-u seed's goal can be close to the start). Same seed and level, same maze,
+## start and goal. Adds `spawn_kind`, `spawn_rolled`, `diameter` (the longest route),
+## `route_target` (cells asked for; goal_steps is shorter only when even the biggest maze couldn't
+## hold it) and `noise_seed`. A Vector2i `config` (old callers/tests) means {cells = it} with the
+## old 60%-of-longest rule.
 const ROOM_PCT := 115
 const MAX_SIZE_TRIES := 4
 
@@ -136,6 +139,7 @@ static func generate_random(config: Variant, maze_seed := 0) -> Dictionary:
 	if config is Vector2i:
 		return SpawnPicker.apply(generate_noise(config, maze_seed), maze_seed)
 	var route: int = config.route
+	var room: int = maxi(int(config.get("room", route)), route)
 	var cells: Vector2i = config.cells
 	var top := Levels.RANDOM_MAX_CELLS
 	var noise_seed: int = config.seed
@@ -149,7 +153,7 @@ static func generate_random(config: Variant, maze_seed := 0) -> Dictionary:
 			maze = attempt
 			longest = d
 			maze.noise_seed = noise_seed
-		if d * 100 >= route * ROOM_PCT or (cells == top and d >= route):
+		if d * 100 >= room * ROOM_PCT or (cells == top and d >= room):
 			maze = attempt
 			maze.noise_seed = noise_seed
 			break

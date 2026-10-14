@@ -126,7 +126,7 @@ The "Story levels are untouched" note in the randomizer section above is superse
 ## Randomizer slime usage (2026-10-13)
 Each randomizer seed rolls a usage u (median 0.58, middle half 0.42-0.72, ~2.5% at or under 0.20,
 ~2.2% at or over 0.90, range 0.10-0.95); the player's meter is fixed (136 tiles x MORE SLIME) and the
-route is built to u of it, so the maze size follows u and the slime level (10x6 .. 36x20). Spawn
+route is built to u of it (the maze size followed u until the size rework below). Spawn
 classes unchanged; the chalice sits exactly at the target route; tickets adapt (NONE HERE when no
 cell fits). Win text shows USED N% SLIME (+ EFFICIENT! under 25%). Story levels untouched. See
 [level-design.md](level-design.md) section 5; test `tests/test_random_usage.gd`. CLAUDE.md's line on
@@ -208,3 +208,15 @@ banner still cycles the sheet), the gold twinkle through the fog within 64 px of
 (`game.gd` `CHALICE_GLIMMER_*`, `_spawn_goal_glimmer`) and the ticket's top-edge glint
 (`ticket_goal.gd` `GLINT_*`). Kept: both goals' pulsing glow, the ticket's 1 px bob (none with
 Reduce Motion), the coin glimmers, and the tutorial beacon on levels 1-2. Test: `tests/test_polish.gd`.
+
+## Randomizer maze size no longer follows u (2026-10-14)
+Short-route seeds used to make small mazes (down to 10x6). Now every randomizer maze is sized for
+the longest route any seed asks for at its MORE SLIME level (`Levels.random_max_route_cells`, u =
+0.95) plus the seed's size dice, never below `Levels.random_floor_cells` (18x10 grown by
+sqrt(1 + 0.1 x level)) and at most 36x20; u only sets how far the ticket is from the spawn (it can
+be close for a rare low-u seed). Average area 189 -> 413 cells at MORE SLIME 0, 367 -> 715 at 5,
+516 -> 720 at 10; under the floor 48% / 34% / 26% -> 0%. u distribution, route targets, 136-tile
+meter, spawn classes, seed codes' format and story/hard mazes unchanged (golden story + hard lines
+byte-identical; MORE SLIME 0/5/10 golden lines rewritten). Build worst case 18 ms (same as batch B),
+mean up (7 ms at level 10). Details: level-design.md section 5; benchmark `tests/bench_random_size.gd`;
+tests `test_random_usage`, `test_maze_golden`; shots `docs/polish-shots/size_*.png`.

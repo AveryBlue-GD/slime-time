@@ -42,7 +42,7 @@ func _initialize() -> void:
 	_check(corner < SEEDS * 0.2, "the old top-left corner is no longer the usual start (%d/%d)" % [corner, SEEDS])
 	_check(wrong_route == 0, "the start-to-ticket route is the length the seed's usage asks for (%d off)" % wrong_route)
 
-	# --- Size scales with MORE SLIME (the route is u x the meter, and the meter grows)
+	# --- Size scales with MORE SLIME (sized for the 95% route of the meter, which grows), never with u
 	var last_area := 0
 	var rising := true
 	for level in range(0, Upgrades.MAX_LEVEL + 1):

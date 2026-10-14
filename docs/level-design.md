@@ -171,14 +171,38 @@ u range    seeds
 the seed code's MORE SLIME level; so a perfect glide uses u of that player's meter (+-1 cell of
 rounding, under 1% at level 0). Minimum 6 cells (a 10% run at level 0 is 7 cells).
 
-**Size.** Start size aims at a longest route of about `1.25 x route + 12` cells (noise mazes'
-longest route ~ 4.6 x sqrt(cells)), shaped by the seed's old 18-24 x 10-13 dice, clamped to
-10x6 .. 36x20 (`RANDOM_MIN_CELLS` = story level 1; `RANDOM_MAX_CELLS` = 1.5x the old 30x16 max's
-area, fog texture <= 584x328 on the web). If the generated maze's longest route is under 115% of
-the route, it grows (+1/8 per side) with the same seed; at the max size up to 4 re-seeded noise
-fields are tried (`noise_seed`). Over 1,200 mazes (400 seeds x MORE SLIME 0/5/10): average area
-178 / 353 / 535 cells (the old sizes were ~236 / 352 / 438), 3-5% needed growth, none came out
-short of the route, generation 7 / 13 / 22 ms average (worst 229 ms, desktop).
+**Size (reworked 2026-10-14: no longer follows u).** The owner did not want short-route seeds to
+make small mazes (they came out as small as 10x6). Now u only moves the goal: the maze is sized for
+the LONGEST route any seed can ask for at the code's MORE SLIME level (`Levels.random_max_route_cells`,
+the u = 0.95 route: 65 cells at level 0, 97 at 5, 130 at 10; hard mode its fixed 0.90 route) and the
+seed's size dice, never for its own u. Start size aims at a longest route of `1.25 x that + 12`
+cells (noise mazes' longest route ~ 4.6 x sqrt(cells)), shaped by the seed's 18-24 x 10-13 dice,
+clamped to the level's floor (`random_floor_cells`: the old base 18 x 10 x sqrt(1 + 0.1 L) per side,
+18x10 / 22x12 / 25x14 at 0 / 5 / 10) .. 36x20 (`RANDOM_MAX_CELLS`, unchanged for the web build).
+`generate_random` grows it (+1/8 per side) until the longest route is >= 115% of that max route
+(`config.room`), and at 36x20 tries up to 4 re-seeded noise fields until it holds the max route
+itself. The goal is then simply the cell `route` cells from the start inside that big maze, so a
+low-u seed's ticket can sit near the spawn. Route, meter (136 tiles x factor), spawn classes and
+the u distribution are untouched. From MORE SLIME 4 on nearly every maze is 36x20.
+
+Before / after over 2,000 seeds (the golden test's seeds; `tests/bench_random_size.gd`), area in
+cells min / p10 / median / p90 / max (mean), share under the floor, build time mean / p99 / worst
+(headless, Mac):
+
+| MORE SLIME | before | after |
+|---|---|---|
+| 0 (floor 180) | 60 / 70 / 180 / 322 / 504 (189), 47.9% under; 1.5 / 3.1 / 5.9 ms | 400 / 405 / 408 / 420 / 532 (413), 0%; 3.2 / 6.1 / 6.5 ms |
+| 5 (floor 264) | 60 / 126 / 351 / 640 / 720 (367), 33.9% under; 2.9 / 8.4 / 12.2 ms | 680 / 700 / 720 / 720 / 720 (715), 0%; 5.7 / 9.4 / 13.1 ms |
+| 10 (floor 350) | 60 / 190 / 578 / 720 / 720 (516), 25.8% under; 4.2 / 9.5 / 16.7 ms | 720 everywhere (720), 0%; 7.3 / 17.2 / 18.1 ms |
+
+Before, the mean area by u band at level 0 was 62 (u < 0.3) / 155 / 305 (u >= 0.7); now 416 / 413 /
+413. Builds cost more on average (every maze is as big as the old u = 0.95 one) but the worst case
+stays at the batch-B level (17.9 ms at MORE SLIME 10, docs/perf/results-batch-b.md): 18.1 ms.
+Every build is solvable with its ticket exactly `route` (>= 6) cells away (8,000 builds checked by
+`test_maze_golden`); the golden MORE SLIME 0/5/10 lines were rewritten (all seeds not already at
+36x20 changed); the story and hard-mode lines are byte-identical. A route <= 20% of the meter (the
+ticket near the spawn) stays rare: 2.95% of 10k seeds; within 4 cells (Manhattan) of the spawn: 4
+of 600 real mazes.
 
 **Spawn + chalice.** The 33/30/37 EDGE/NEAR/ANY roll and the class fallback are unchanged; the
 minimum-route rule is now "farthest cell >= route" (relative to the target, not the diameter). The
@@ -206,10 +230,11 @@ winnable.
 **HUD.** The randomizer win line reads `TIME 0:41.2   USED 23% SLIME` (what the run really used,
 splats included), plus `EFFICIENT!` under 25% (`game.EFFICIENT_USAGE`).
 
-Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`; the magenta
-ring was the old ticket pickup): `docs/polish-shots/usage_100_ms0` (u 0.10: 10x6, route 7), `usage_250_ms0`,
-`usage_550_ms0` (18x9, route 38), `usage_750_ms0`, `usage_950_ms0` (27x15, route 65),
-`usage_550_ms10`, `usage_950_ms10` (36x20, route 129), and the result screen `usage_result`.
+Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`): the old `usage_*`
+shots show the u-sized mazes (u 0.10 was 10x6); since the size rework `docs/polish-shots/size_u100_ms0`
+(u 0.10: 29x14, route 7, ticket a few cells from the spawn), `size_u200_ms0`, `size_u550_ms0`,
+`size_u950_ms0`, `size_u100_ms10`, `size_u950_ms10` (36x20, route 129), and the HUD pod
+`size_hud_attempt1` / `size_hud_attempt3`; the result screen `usage_result`.
 
 ## 6. The ticket is the randomizer's goal (2026-10-14)
 

@@ -210,9 +210,11 @@ static func coin_keys(level: int) -> Array[String]:
 ## See docs/level-design.md section 5. Every randomizer maze rolls a USAGE u from its seed: the
 ## share of the player's slime meter a perfect run needs. The meter itself never changes for a
 ## player: a full meter glides RANDOM_METER_TILES tiles with no MORE SLIME (x Upgrades.slime_factor
-## with it), and the maze's start-to-chalice route is built to u x that capacity. So a typical maze
+## with it), and the maze's start-to-goal route is built to u x that capacity: a typical route
 ## (u ~0.58) grows with the slime the player can spend, a rare one is a 10% hop and a rare one a 95%
-## marathon. Hard mode keeps a fixed tight u (RANDOM_HARD_TARGET) and no upgrades.
+## marathon. The maze itself does not follow u: it is always sized for the 95% route of the level
+## (random_cells), so a low-u seed just has its goal near the start. Hard mode keeps a fixed tight
+## u (RANDOM_HARD_TARGET) and no upgrades.
 
 ## Tiles one full meter glides with no MORE SLIME. 136 = the old randomizer's median maze (route
 ## 58 cells at 85%), so a tile still costs what it used to at level 0.
@@ -232,8 +234,10 @@ const USAGE_SALT := 0x51e3d7
 ## No perfect run ever needs more than this (also caps a borrowed code above the player's level).
 const RANDOM_MAX_USAGE := 0.95
 ## Maze size bounds (cells). The max is 1.5x the old max's area (the web build's fog texture
-## stays under 600x330); the min is story level 1's size.
-const RANDOM_MIN_CELLS := Vector2i(10, 6)
+## stays under 600x330); the floor is the old base size 18 x 10, grown with MORE SLIME
+## (random_floor_cells). RANDOM_MIN_CELLS is that floor at level 0.
+const RANDOM_FLOOR_BASE := Vector2i(18, 10)
+const RANDOM_MIN_CELLS := RANDOM_FLOOR_BASE
 const RANDOM_MAX_CELLS := Vector2i(36, 20)
 
 
@@ -264,25 +268,48 @@ static func random_capacity_tiles(slime_level: int) -> float:
 static func random_route_cells(maze_seed: int, hard := false, slime_level := 0) -> int:
 	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
 	var permille := roundi(RANDOM_HARD_TARGET * 1000) if hard else random_usage_permille(maze_seed)
+	return random_route_cells_for(permille, level)
+
+
+## The route (cells) for a usage of `permille` at MORE SLIME `level` (see random_route_cells).
+static func random_route_cells_for(permille: int, level: int) -> int:
 	# u x 136 x (1 + level / 10) tiles, in 1/10000 tiles; + 0.8125 tiles of grab reach; / 2 tiles per cell, rounded.
-	var tenthousandths := permille * RANDOM_METER_TILES * (10 + level)
+	var tenthousandths := permille * RANDOM_METER_TILES * (10 + clampi(level, 0, Upgrades.MAX_LEVEL))
 	return maxi(RANDOM_MIN_ROUTE, (tenthousandths + 8125 + 10000) / 20000)
 
 
+## The longest route (cells) any seed asks for at a MORE SLIME level: u = RANDOM_MAX_USAGE (hard
+## mode: its fixed u). Randomizer mazes are sized for this route, never for the seed's own u.
+static func random_max_route_cells(slime_level := 0, hard := false) -> int:
+	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
+	return random_route_cells_for(roundi((RANDOM_HARD_TARGET if hard else RANDOM_MAX_USAGE) * 1000), level)
+
+
+## The smallest randomizer maze at a MORE SLIME level: the old base size (18 x 10) grown by
+## sqrt(1 + 0.1 x level) per side, as the pre-usage randomizer did, within RANDOM_MAX_CELLS.
+static func random_floor_cells(slime_level := 0, hard := false) -> Vector2i:
+	var level := 0 if hard else clampi(slime_level, 0, Upgrades.MAX_LEVEL)
+	var grow := sqrt(1.0 + 0.1 * level)
+	return Vector2i(mini(roundi(RANDOM_FLOOR_BASE.x * grow), RANDOM_MAX_CELLS.x),
+		mini(roundi(RANDOM_FLOOR_BASE.y * grow), RANDOM_MAX_CELLS.y))
+
+
 ## The size a randomizer maze starts from (MazeGenerator.generate_random grows it if its longest
-## route falls short): aimed at a longest route of about 1.25 x the target route + 12 cells, so the
-## start has room and there is fog to get lost in; shape from the seed's two dice (18-24 by 10-13,
-## the old base sizes, so a seed keeps its proportions). Short routes get small mazes, long routes
-## and big MORE SLIME levels big ones, within RANDOM_MIN_CELLS .. RANDOM_MAX_CELLS.
+## route falls short of the room it needs): aimed at a longest route of about 1.25 x the LONGEST
+## route any seed asks for at this MORE SLIME level (random_max_route_cells) + 12 cells, so every
+## maze is full size whatever its u; a low-u seed just puts its ticket closer to the start. Shape
+## from the seed's two dice (18-24 by 10-13, the old base sizes, so a seed keeps its proportions),
+## within random_floor_cells .. RANDOM_MAX_CELLS. Depends on the seed's dice and the level only.
 static func random_cells(maze_seed: int, slime_level := 0, hard := false) -> Vector2i:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
 	var dice := Vector2(rng.randi_range(18, 24), rng.randi_range(10, 13))
-	var route := random_route_cells(maze_seed, hard, slime_level)
-	var side := (route * 1.25 + 12.0) / 4.6  # noise mazes' longest route is ~4.6 x sqrt(cells)
+	var room := random_max_route_cells(slime_level, hard)
+	var side := (room * 1.25 + 12.0) / 4.6  # noise mazes' longest route is ~4.6 x sqrt(cells)
 	var scale := side / sqrt(dice.x * dice.y)
-	return Vector2i(clampi(roundi(dice.x * scale), RANDOM_MIN_CELLS.x, RANDOM_MAX_CELLS.x),
-		clampi(roundi(dice.y * scale), RANDOM_MIN_CELLS.y, RANDOM_MAX_CELLS.y))
+	var low := random_floor_cells(slime_level, hard)
+	return Vector2i(clampi(roundi(dice.x * scale), low.x, RANDOM_MAX_CELLS.x),
+		clampi(roundi(dice.y * scale), low.y, RANDOM_MAX_CELLS.y))
 
 
 ## A seed code as shown and typed: "12345-2" = seed 12345 built for MORE SLIME level 2.
@@ -321,6 +348,7 @@ static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Di
 		usage = u,
 		target = u,
 		route = random_route_cells(maze_seed, hard, level),
+		room = random_max_route_cells(level, hard),
 		slime_level = level,
 		tile_cost = 100.0 / random_capacity_tiles(level),
 		tile_level = RANDOM_TILE_LEVEL,
