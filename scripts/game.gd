@@ -27,11 +27,6 @@ const WALL_REVEAL_REACH := 4.0
 const WALL_FOG_ALPHA := 0.3
 ## The goal (chalice or randomizer ticket) shows itself within this many px of the slime.
 const CHALICE_REVEAL_DISTANCE := 24.0
-## Close to a goal you haven't seen yet (a few tiles), a gold twinkle shows through the fog
-## every CHALICE_GLIMMER_GAP seconds: the goal is near. Gameplay-neutral: it is within 4 tiles.
-const CHALICE_GLIMMER_REACH := 64.0
-const CHALICE_GLIMMER_GAP := 1.4
-const CHALICE_GLIMMER_COLOR := Color(1.0, 0.82, 0.4)
 const END_DELAY := 2.0
 const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
@@ -185,7 +180,6 @@ var glimmer_travel := 0.0
 ## How near a hidden coin must be to glimmer (px; GLIMMER_REACH, tests widen it).
 var glimmer_reach := GLIMMER_REACH
 var _next_glimmer := 0.0
-var _goal_glimmer_left := 0.0
 var _glimmer_from := Vector2.ZERO
 ## Seconds since the maze started; the fog's clock.
 var elapsed := 0.0
@@ -430,11 +424,6 @@ func _physics_process(delta: float) -> void:
 	_count_glimmer_travel(pos)
 	if not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_REVEAL_DISTANCE:
 		_show(goal)
-	elif not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_GLIMMER_REACH:
-		_goal_glimmer_left -= delta
-		if _goal_glimmer_left <= 0.0:
-			_goal_glimmer_left = CHALICE_GLIMMER_GAP
-			_spawn_goal_glimmer()
 	hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
@@ -577,18 +566,6 @@ func _spawn_glimmer() -> void:
 	glimmer.color = Coin.GLOW[maxi(Themes.BY_LEVEL.find(theme), 0) % Coin.GLOW.size()].lightened(0.35)
 	glimmer.still = motion_scale() <= 0.0
 	glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
-	glimmer.add_to_group("glimmer")
-	add_child(glimmer)
-
-
-## A gold twinkle on the (still hidden) goal: the chalice, or the randomizer's ticket.
-func _spawn_goal_glimmer() -> void:
-	var glimmer := Glimmer.new()
-	var spread := Vector2(randi_range(-3, 3), randi_range(-3, 3) if is_random() else randi_range(-5, 1))
-	glimmer.position = (goal.position + spread).round()
-	glimmer.color = TicketGoal.GLOW.lightened(0.3) if is_random() else CHALICE_GLIMMER_COLOR
-	glimmer.still = motion_scale() <= 0.0
-	glimmer.z_index = fog_sprite.z_index + 1
 	glimmer.add_to_group("glimmer")
 	add_child(glimmer)
 

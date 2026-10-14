@@ -53,18 +53,36 @@ func _initialize() -> void:
 	calm.queue_free()
 	await _frames(2)
 
-	# --- a gold twinkle shows over the hidden chalice once the slime is a few tiles away
+	# --- no glint or twinkle on the goal (owner request): the hidden chalice never glimmers through
+	# the fog, the chalice holds one frame, the ticket has no glint (it still bobs, not when still)
 	var close: Node2D = MAIN.instantiate()
 	close.level = 1
 	root.add_child(close)
 	await _frames(5)
 	var slime: Node2D = close.get_node("Slime")
-	_check(get_nodes_in_group("glimmer").is_empty(), "no glimmers at the start")
 	slime.position = close.goal.position + Vector2(40, 0)
 	close.goal.visible = false
-	await _frames(20)
-	_check(not get_nodes_in_group("glimmer").is_empty(), "the chalice glimmers when the slime is near")
+	var frames_seen := {}
+	for i in 90:
+		await process_frame
+		frames_seen[close.goal.get_node("Sprite2D").frame] = true
+	_check(get_nodes_in_group("glimmer").is_empty(), "no gold twinkle near the hidden chalice")
+	_check(frames_seen.keys() == [0], "the chalice stands on one frame, no glint sliding along its rim (%s)" % [frames_seen.keys()])
 	close.queue_free()
+	await _frames(2)
+	var ticket := TicketGoal.new()
+	root.add_child(ticket)
+	await _frames(3)
+	_check(ticket.sprite.get_child_count() == 0 and not "_glint" in ticket, "the ticket has no glint")
+	var bobs := {}
+	for i in 60:
+		await process_frame
+		bobs[ticket.sprite.position.y] = true
+	_check(bobs.size() > 1, "...but still bobs")
+	ticket.still = true
+	await _frames(2)
+	_check(ticket.sprite.position == Vector2.ZERO, "...and stands still with Reduce Motion")
+	ticket.queue_free()
 	await _frames(2)
 
 	# --- the hub: light pools under the stations

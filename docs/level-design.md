@@ -228,9 +228,9 @@ its place. The maze build (u, route, size, spawn class, start, goal, seed codes)
 dropped only the old pickup's fields, rewritten from the build just before this change).
 
 **Look.** The 8x8 `assets/ui/icon_ticket.png` voucher over the fog with the chalice's pulsing 72 px
-glow, a light pixel glinting along its top edge every 1.6 s and a 1 px bob (both off with Reduce
-Motion). Hidden until the slime is within 24 px; gold twinkles through the fog within 64 px
-(`CHALICE_GLIMMER_*`, now for whichever goal). On the win it pops into gold sparks with the ticket
+glow and a 1 px bob (off with Reduce Motion). Hidden until the slime is within 24 px. No glint and no
+gold twinkle through the fog (both removed 2026-10-14 at the owner's request, for the chalice too:
+it now stands on one frame of its sheet; the steady glow pulse stays). On the win it pops into gold sparks with the ticket
 chime (the chalice fanfare stays in story levels); the message reads TICKET CLAIMED!. F1 FULL BRIGHT
 shows it; the overview's gold ring marks it.
 

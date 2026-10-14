@@ -200,3 +200,11 @@ seed already paid today = 0, typed/replayed seed = 1, no MORE SLIME = 1, assist 
 (`TicketSpawn`, `TicketPickup`, FIND IT pod) and the old payout (1 / +2 pickup / +1 under par) are gone.
 Details: [level-design.md](level-design.md) section 6. Shots `docs/polish-shots/ticketgoal_*.png`.
 CLAUDE.md still says the chalice is the exit everywhere and lists `chalice.gd` only (not edited: off limits).
+
+## No goal glints (2026-10-14)
+Owner request: the occasional glint on the chalice and the ticket is gone. Removed: the chalice's
+rim glint animation (`chalice.gd` now holds frame 0 of `chalice_sheet.png`; the HUD NEW RECORD
+banner still cycles the sheet), the gold twinkle through the fog within 64 px of an unseen goal
+(`game.gd` `CHALICE_GLIMMER_*`, `_spawn_goal_glimmer`) and the ticket's top-edge glint
+(`ticket_goal.gd` `GLINT_*`). Kept: both goals' pulsing glow, the ticket's 1 px bob (none with
+Reduce Motion), the coin glimmers, and the tutorial beacon on levels 1-2. Test: `tests/test_polish.gd`.
