@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Save migration to version 4 (the redesigned story layouts, docs/level-design.md): story coin
 ## keys from older saves are re-mapped by COUNT to the new layout's first N coins, so coins earned
-## and spent (upgrades) are unchanged; stored medal tiers, best times and hard-mode data are kept;
+## and spent (upgrades) are unchanged; stored medal tiers, normal best times and hard clears are kept
+## (hard best times are dropped since version 5's bigger hard mazes, see test_hard_rebalance.gd);
 ## pre-v3 best times still become tiers against the OLD pars; migrating twice gives the same result;
 ## old SLIME1- codes go through the same path; hostile values clamp; v4 saves are untouched.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_layout_migration.gd
@@ -31,15 +32,15 @@ func _initialize() -> void:
 	_check(p.has_coin(1, cells[0]) and p.has_coin(1, cells[1]) and not p.has_coin(1, cells[2]), "...so those two are found and the rest still wait in the maze")
 	_check(not p.coins_found.has(11) and not p.coins_found.has(5), "unknown levels and empty lists are dropped")
 	_check(p.medals_for(1) == 3 and p.medals_for(2) == 1 and p.medals.get(101, 0) == 2, "stored medal tiers are kept (never downgraded), hard ones too")
-	_check(p.best_times[1] == 12.5 and p.best_times[101] == 30.0 and p.levels_cleared == 4 and p.hard_cleared == [1, 2],
-		"best times, clears and hard clears are kept as they are")
+	_check(p.best_times[1] == 12.5 and not p.best_times.has(101) and p.levels_cleared == 4 and p.hard_cleared == [1, 2],
+		"normal best times, clears and hard clears are kept as they are; the old hard time is cleared (v5)")
 
 	# --- Idempotent: the same old save read again, and the migrated save read back
 	var q := _fresh()
 	q._read(_v3_save())
 	_check(q.coins_found == p.coins_found and q.medals == p.medals, "reading the same old save again gives the same result")
 	var written: ConfigFile = p._write()
-	_check(written.get_value("meta", "version") == 4, "the next save is version 4")
+	_check(written.get_value("meta", "version") == PROGRESS.SAVE_VERSION, "the next save is version %d" % PROGRESS.SAVE_VERSION)
 	var r := _fresh()
 	r._read(written)
 	_check(r.coins_found == p.coins_found and r.medals == p.medals and r.coins() == p.coins() and r.best_times == p.best_times,

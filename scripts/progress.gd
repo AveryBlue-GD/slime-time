@@ -49,9 +49,14 @@ var current_level := 1
 ## Anything older than 3 gets its medals converted when it is read (see _migrate_medals).
 ## 4 = the redesigned story layouts (random-class spawns, docs/level-design.md): coin keys from an
 ## older save are re-mapped by COUNT to the new layout's coins (see _migrate_coins).
-const SAVE_VERSION := 4
+## 5 = the bigger hard-mode mazes (HARD_SLIME_MULT rebalance, docs/level-design.md section 7): hard best
+## times from an older save were set on the old, shorter hard mazes, so they are cleared (hard clears
+## and hard medal tiers are kept; see _migrate_hard_times).
+const SAVE_VERSION := 5
 ## The first save version whose story coin keys / best times belong to the current layouts.
 const LAYOUT_VERSION := 4
+## The first save version whose hard-mode best times belong to the current hard mazes.
+const HARD_LAYOUT_VERSION := 5
 ## TICKET VOUCHERS: the renewable, cosmetic-only currency (never converted to or from coins). The
 ## ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that maze
 ## took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5 paying
@@ -422,6 +427,8 @@ func _read(file: ConfigFile) -> void:
 	for action: String in DEFAULT_KEYS:
 		bindings[action] = _int(file, "controls", action, DEFAULT_KEYS[action])
 	_read_wallet(file)
+	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
+		_migrate_hard_times()
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
 	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
 	set_jelly(_bool(file, "skin", "jelly", true))
@@ -448,6 +455,17 @@ func _migrate_coins() -> void:
 		coins_found[level] = keys
 
 
+## Hard best times from a save older than version 5 were set on the old, shorter hard mazes (before
+## the HARD_SLIME_MULT rebalance) and most would be out of reach on the new ones, so they are dropped:
+## players set real times on the new mazes. Everything else stays: hard_cleared, the stored hard medal
+## tiers (already read, never downgraded; a pre-v3 save's tiers come from these times first, in
+## _read_wallet), and all normal-mode records. A pure function of the old data (idempotent); the next
+## save is version 5, which is never migrated again.
+func _migrate_hard_times() -> void:
+	for level in range(1, Levels.COUNT + 1):
+		best_times.erase(level + HARD_RECORDS)
+
+
 ## Tickets, medals and hat-wheel counters. Every key is optional: a save from before them gets
 ## zeros. The ticket balance sits under the old [wallet] keys "globs" / "globs_lifetime" (the old
 ## clears_paid / hard_clears_paid / retro-grant keys are ignored: tickets now come only from the
@@ -469,7 +487,7 @@ func _read_wallet(file: ConfigFile) -> void:
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
 			var stored := _int(file, "medals", "level_%d" % key, 0)
-			var tier := _migrate_medals(key, version < LAYOUT_VERSION) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
+			var tier := _migrate_medals(key, version) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
 			if tier > 0:
 				medals[key] = tier
 
@@ -478,14 +496,20 @@ func _read_wallet(file: ConfigFile) -> void:
 ## has one (so nobody loses a medal they would have earned), else bronze when the level was cleared,
 ## else none (the old bitmask bits themselves are dropped). Needs best_times / levels_cleared / hard_cleared read first.
 ## A pure function of the old data, so reading the same old save twice gives the same result.
-## `legacy`: the times were set on the pre-v4 layouts, so they are measured against those pars
-## (Levels.legacy_par), giving exactly the tiers this migration gave before the redesign.
-func _migrate_medals(key: int, legacy := true) -> int:
+## `version`: the save's version. Times are measured against the par of the layout they were set on:
+## before version 4 the pre-v4 layouts (Levels.legacy_par, exactly the tiers this migration gave before
+## the redesign); a version 4 hard time the v4 hard maze (Levels.v4_hard_par); else the current par.
+func _migrate_medals(key: int, version := 1) -> int:
 	var hard := key > HARD_RECORDS
 	var level := key - HARD_RECORDS if hard else key
 	var best: float = best_times.get(key, -1.0)
 	if is_finite(best) and best > 0.0:
-		return tier_for(best, Levels.legacy_par(level, hard) if legacy else Levels.level_par(level, hard))
+		var par := Levels.level_par(level, hard)
+		if version < LAYOUT_VERSION:
+			par = Levels.legacy_par(level, hard)
+		elif hard and version < HARD_LAYOUT_VERSION:
+			par = Levels.v4_hard_par(level)
+		return tier_for(best, par)
 	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
 	return TIER_BRONZE if cleared else TIER_NONE
 
