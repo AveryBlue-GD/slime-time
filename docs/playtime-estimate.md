@@ -179,6 +179,29 @@ Log per level and mode (the dev attempts log in `scripts/dev_log.gd` covers part
 - wall-clock time in menus/hub/story screens; total session lengths and where players stop.
 Two or three first-time players through normal + hard would replace most of the guesses above.
 
+### Note: upgrades v2 coin tree (2026-10-15)
+
+The table above was modelled on the old tree (3 x 10 levels, level n costs n coins, MORE SLIME +10% per level).
+Since upgrades v2 batch 1 ([design/upgrades-v2.md](design/upgrades-v2.md) A2) MORE SLIME has 7 levels
+(x1.15, 1.30, 1.45, 1.60, 1.75, 1.90, 2.00 for 1, 4, 7, 9, 10, 12, 12 coins). Mapping the median column
+"MORE SLIME lv at start" (old 0/1/3/3/4/5/6/7/9/10 = coins 0/1/6/6/10/15/21/28/45/55) onto the new tree with
+the same coins gives new levels 0/1/2/2/2/3/4/4/6/7 and these allowances (meter / perfect route, from
+`AutoplayPlanner.level_meter_tiles`):
+
+| Lv | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| old | 2.22 | 2.11 | 2.24 | 2.03 | 2.00 | 1.98 | 1.95 | 1.94 | 2.01 | 2.02 |
+| new | 2.22 | 2.21 | 2.24 | 2.03 | 1.86 | 1.91 | 1.95 | 1.82 | 2.01 | 2.02 |
+| meter | 0 | +4.5% | 0 | 0 | -7.1% | -3.3% | 0 | -5.9% | 0 | 0 |
+
+Every new allowance stays >= 1.82, where the model's attempts are flat (above ~1.8), so the per-level attempts
+and the headline times above are expected to hold within +-5% (*est.*: the Monte Carlo is kept outside the repo
+and was not re-run). With the design's median coins-found list (3, 8, 12, 18, 25, 34, 45, 57, 74 before levels
+2-10) the meter at each level start is within -4.2% .. +3.6% of the old tree. The test autopilot (perfect glide)
+wins every normal level both at those levels and with no upgrades at all, and the `--autoplay` bot still
+collects 165/165 coins and golds all 20 normal + hard levels.
+
+
 ## How this was computed
 
 Headless scripts kept outside the repo (scratch, not shipped): a GDScript that prints the table in

@@ -13,7 +13,7 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 `HARD_SLIME_MULT`), the **randomizer** (unlocked after the story; the gold ticket voucher is the goal, no chalice; payout
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
-CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 5 (+ `[meta] epoch` 1). 55 test suites; 6 agents in `.claude/agents/`.
+CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 6 (+ `[meta] epoch` 1). 61 test suites; 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
@@ -34,6 +34,12 @@ randomizer pay day counts as today; release exports ignore debug flags (only `--
 game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS preset exists (universal, ad-hoc,
 `com.slimetime.game` placeholder). Status tables: [qa-release-report.md](qa-release-report.md),
 [qa-web-report.md](qa-web-report.md); builds: [itch-release.md](itch-release.md). 59 test suites.
+
+**Upgrades v2 (2026-10-15, batch 1 of [design/upgrades-v2.md](design/upgrades-v2.md) done).** Core coin tree with big
+breakpoints: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 (165 coins, same maxima); all economy numbers in
+`scripts/economy.gd`. Old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, save version 6, one-time hub
+notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. Batches 2-4 (hats + store + ticket workshop, Descent, Heat)
+are not built; details in the section at the end.
 
 **Known limitations.**
 - Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
@@ -616,3 +622,45 @@ mid-fade still fades and clears. The old code fails 16 of its checks. Shots: `te
 
 ## Level select: roomier tiles (2026-10-14)
 Tiles are 48x42 (grid at (30,22), 3 px gaps; was 44x38 crammed). The 14 px digits / lock stay ink-centered on the tile, in every state (locked, open, cleared, with time), so the number never jumps. The 7 px record time sits 3 px under the digits and 3 px above the frame's bottom edge (the 2 px letter drips, which the text shader grows under every glyph, fill 2 of each 3, leaving 1 clear). Gotcha fixed: the 8 px time Label's minimum width (52) was wider than the tile, so it grew and the "centered" time sat ~3 px right; it now uses `clip_text` with a 9 px high box. Info panel (14,111) 292x48, HARD toggle y=143, BACK unchanged. `tools/measure_tiles.py --gaps` prints the pixel gaps above/below the time; `tools/zoom_crop.py` makes the 4-8x crops (`docs/polish-shots/levelselect2_*.png`). `tests/test_level_tiles.gd` checks the geometry (gaps 1-3 px, margins, centering, no overlap, widest times).
+
+## Upgrades v2, batch 1: core coin tree rework (2026-10-15, save version 6)
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) A2 (owner rule: few big breakpoints, brightness visible per step).
+- **`scripts/economy.gd` (`Economy`)**: the one tuning table. `COIN_TRACKS` = MORE SLIME costs 1,4,7,9,10,12,12 (x1.15 ...
+  x2.00), SPEED 8,12,16,24 (x1.12, 1.25, 1.37, 1.50), BRIGHTNESS 12,16,22 (light reach +8 / +16 / +25 px), dev WALL POWER
+  4 free levels (x2.5 per level of the old damage formula). 55 + 60 + 50 = 165. `REVEAL_RADIUS` 9 / `RELIGHT_RADIUS` 20
+  (= `game.gd` `TRAIL_RADIUS` / `LIGHT_RADIUS`, test-checked): reveal 9/17/25/34 px, relight 20/28/36/45 px, lit area
+  +257% / +116% / +85% per step. Later batches add their tables here.
+- **`Upgrades`** API is per track: `max_level(id)`, `cost(id, level)`, `total_cost(id, level)`, `value(id, level)`,
+  `slime_factor` / `slime_percent` / `speed_factor` / `light_reach` / `reveal_radius` / `relight_radius`,
+  `migrate_level(id, old_level)`. `MAX_LEVEL` is gone; the `about` strings are gone (the screen prints effects).
+- **Upgrades screen**: one 10x6 pip per level (4 px gap), right-aligned against the -/+ buttons whatever the track
+  length; the second line is the effect now -> next (`SLIME X1.45 -> X1.60`, `LIGHT 9 -> 17 PX  +257% AREA`, `MAXED`);
+  the buy sound rises over the track's length. Shots: `docs/polish-shots/upgrades2_{fresh,mid,bright2,maxed}.png`.
+  Not built (deferred, cosmetic): the RECOMMENDED tag on MORE SLIME and the 1 s light-ring preview on a BRIGHTNESS buy
+  (the screen has no slime preview to draw it on).
+- **Migration** (`Progress._migrate_tree`, run in `_read` before the never-spend-more-than-found check): a save without
+  `[upgrades] tree = 2` (or with a non-int / lower mark) holds old 0-10 levels; each track maps to the highest new level
+  whose cumulative cost fits the coins invested (n(n+1)/2), the rest is back in hand automatically (coins are derived).
+  SLIME 10 -> 7, SPEED 10 -> 3 (+19), BRIGHTNESS 10 -> 3 (+5), SLIME 5 -> 3 (+3). Old dev power p -> floor(p / 2.5)
+  (not counted as coins returned). `tree_refund_notice` (saved as `[upgrades] refund_notice` until shown, clamped to coins
+  in hand) drives the hub panel UPGRADES REWORKED / COINS RETURNED +N (5 s, then fades; `hub.gd` `_show_tree_notice`,
+  `Progress.take_tree_refund_notice` clears and saves it). Save codes migrate through the same `_read`. New-tree levels
+  clamp to each track's top. `SaveText` is a syntax allow-list (no key names), so the new keys needed no change there.
+  RELEASE_EPOCH stays 1; pre-epoch saves are still never read.
+- **Randomizer / seed codes**: meter = 136 tiles x `slime_factor(L)`; the route maths is now in 1/100000 tiles with the
+  factor in hundredths, so an equal factor gives exactly the old route; floor size grows with sqrt(factor). Codes `N-L`
+  carry L 0-7; a typed old L 8-10 clamps to 7 (old 10 = new 7: same maze), old 1-7 builds the new level's maze.
+  Golden data rewritten on purpose: `random s 5` lines became `random s 4` (new mazes, x1.60) and `random s 10` became
+  `random s 7` with byte-identical digests; story, level 0 and hard lines unchanged.
+- **Flags**: `--upgrades=a,b,c` takes new-tree levels (clamped 7/4/3); `--story-complete` keeps 0 upgrades + all coins.
+  `tools/promo/make_promo.ps1` flags re-mapped (0,0,10 -> 0,0,3; 0,0,8 / 0,0,6 -> 0,0,2; 6,4,7 -> 4,1,2), not re-rendered.
+- **Ticket cap** unchanged (no MORE SLIME = 1 ticket); SLIME 1 still costs 1 coin.
+- **Story difficulty check** (playtime-estimate.md note): with the design's median coins before levels 2-10, the meter at
+  each level start is -4.2% .. +3.6% vs the old tree (spec table: worst -7% at L5, -6% at L8; every allowance >= 1.82);
+  the test autopilot wins every normal level at those levels and at SLIME 0; `--autoplay` still gets 165/165 coins, buys
+  7/4/3 and golds all 20 normal + hard levels; the planner campaign on paper takes 33 runs.
+- **Tests**: new `tests/test_upgrades_v2.gd` (table, radii, real-level reveal per level, migration of every old level per
+  track incl. hostile values, file + code paths, idempotence, notice once, seed codes, route equivalence, screen layout
+  in 4 states); `test_fog_bytes` replays the new radii against the reference fog; updated coins/extremes/planner/
+  autoplay/random/tickets/save tests. Shots of the light: `tests/demo_brightness.tscn` ->
+  `docs/polish-shots/brightness2_{0,1,2,3}.png` (level 4, same frame).

@@ -178,8 +178,9 @@ the LONGEST route any seed can ask for at the code's MORE SLIME level (`Levels.r
 the u = 0.95 route: 65 cells at level 0, 97 at 5, 130 at 10; hard mode its fixed 0.90 route) and the
 seed's size dice, never for its own u. Start size aims at a longest route of `1.25 x that + 12`
 cells (noise mazes' longest route ~ 4.6 x sqrt(cells)), shaped by the seed's 18-24 x 10-13 dice,
-clamped to the level's floor (`random_floor_cells`: the old base 18 x 10 x sqrt(1 + 0.1 L) per side,
-18x10 / 22x12 / 25x14 at 0 / 5 / 10) .. 36x20 (`RANDOM_MAX_CELLS`, unchanged for the web build).
+clamped to the level's floor (`random_floor_cells`: the old base 18 x 10 x sqrt(slime factor) per side,
+18x10 / 22x12 / 25x14 at factor 1.0 / 1.5 / 2.0; since upgrades v2 MORE SLIME is 0-7 with factors
+1.0-2.0, so level 7 = the old level 10, and seed codes `N-L` carry 0-7, an old 8-10 clamping to 7) .. 36x20 (`RANDOM_MAX_CELLS`, unchanged for the web build).
 `generate_random` grows it (+1/8 per side) until the longest route is >= 115% of that max route
 (`config.room`), and at 36x20 tries up to 4 re-seeded noise fields until it holds the max route
 itself. The goal is then simply the cell `route` cells from the start inside that big maze, so a
