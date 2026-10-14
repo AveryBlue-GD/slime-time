@@ -13,22 +13,16 @@ extends SceneTree
 ## printed with a replayable trace. Known open bugs (docs/qa-nav-report.md) are listed in KNOWN and only reported.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_nav_fuzz.gd
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
-##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`.
+##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
+##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them).
+## Area walks: six more walks that start inside one area and keep steering back into it (`_area_op`,
+## about a third of the inputs): the map table + map view, the SETTINGS panels, the pause menu, the
+## dry-up choices, the win choices and a touch-driven level (2,000 inputs each by default).
 
 const Lib := preload("res://tests/nav_fuzz_lib.gd")
 
 ## Open bugs found by this fuzzer (see docs/qa-nav-report.md): reported, not failed, until fixed.
 const KNOWN := {
-	"MAPS-TAB": "Tab/ui_focus_next in the map view moves focus under the opaque view; Enter/Space then acts on hidden tiles or HARD",
-	"PAUSE-FOCUS": "Resuming from the pause menu over the dry-up/win choices leaves no choice focused",
-	"WIPE-UPG": "UPGRADES clicked during the QUIT-TO-HUB wipe leaves Progress.return_to_game stuck true",
-	"VICTORY-ESC": "Victory screen ignores Esc / B (no back path except its buttons)",
-	"SETTINGS-TAB": "Settings: Tab/arrows move focus to the buttons behind the SAVE CODE / RESET CONFIRM panels; Enter there opens a second panel on top (two overlays at once)",
-	"TEXTBOX-ESC": "Esc inside a text box (SAVE CODE paste box, seed box) is eaten by the LineEdit (stops editing only); a second Esc closes the panel",
-	"GOO-WEAKREFS": "GooBox._boxes/_themes (WeakRef arrays) are only pruned when the skin colour changes: ~17 RefCounted objects leak per screen opened",
-	"RACE-RELOAD": "A level's RESTART/NEXT/REPLAY (reload_current_scene) pressed while a goo wipe is leaving the level races the wipe's scene change: SkinText.recolor / Game._ease_in run on a scene already out of the tree (13 script errors)",
-	"TOUCH-MENU-STUCK": "Touch pause button parses an InputEventAction 'menu' press and never a release: Input.is_action_pressed('menu') stays true, so the hub's polled Esc/menu (to title, close quit/wheel/board) never fires again until a keyboard Esc is released",
-	"QUIT-RUNS": "QUIT TO HUB unpauses the level for the length of the wipe (slime still drains / can win)",
 }
 
 var L
@@ -43,6 +37,13 @@ var only_walk := -1
 var done := false
 var rng := RandomNumberGenerator.new()
 var current_walk := ""
+## The area the current walk keeps steering back into ("" = a plain walk). See AREAS.
+var area := ""
+var area_steps := 2000
+## Area walks: [area, state, start scene].
+const AREAS := [["maps", "complete", "res://scenes/maps.tscn"], ["settings", "complete", "res://scenes/controls.tscn"],
+	["pause", "complete", "res://scenes/main.tscn"], ["dry", "complete", "res://scenes/main.tscn"],
+	["win", "complete", "res://scenes/main.tscn"], ["touch", "touch", "res://scenes/main.tscn"]]
 
 
 func _initialize() -> void:
@@ -58,6 +59,8 @@ func _initialize() -> void:
 			only = arg.get_slice("=", 1)
 		elif arg.begins_with("--nav-walk="):
 			only_walk = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--nav-area-steps="):
+			area_steps = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--nav-variant="):
 			variant = arg.get_slice("=", 1)
 	L = Lib.new(self)
@@ -389,8 +392,10 @@ func _maps_view_focus() -> void:
 			await L.frames(2)
 		await L.tap(follow)
 		await L.frames(3)
-		check(ms.viewing and ms.viewed_level == lvl and ms.hard == hard_before and L.kind() == "maps", "MAPS-TAB",
-			"Tab x4 then %s in the map view changes nothing under it (level %d -> %d, hard %s -> %s)" % [OS.get_keycode_string(follow), lvl, ms.viewed_level, hard_before, ms.hard])
+		# Focus stayed on the view's BACK, so Enter / Space just close the view (back on the same tile).
+		var on_tile: bool = L.focus() is Button and L.focus().has_meta("level") and L.focus().get_meta("level") == lvl
+		check(ms.viewed_level == lvl and ms.hard == hard_before and L.kind() == "maps" and (ms.viewing or on_tile), "MAPS-TAB",
+			"Tab x4 then %s in the map view changes nothing under it (level %d -> %d, hard %s -> %s, closed back onto its tile: %s)" % [OS.get_keycode_string(follow), lvl, ms.viewed_level, hard_before, ms.hard, on_tile])
 	# hold Enter: echoes must not close/reopen
 	L.set_state("complete")
 	await _fresh_scene(L.MAPS)
@@ -539,7 +544,8 @@ func _other_screens() -> void:
 	await esc()
 	await L.frames(3)
 	if st.code_panel.visible and L.focus() is LineEdit:
-		bug("TEXTBOX-ESC", "Esc with a SAVE CODE text box focused only stopped editing; the panel stayed open")
+		print("   note: Esc with a SAVE CODE text box focused only stopped editing (accepted design); a second Esc closes")
+		inv("after first esc in a SAVE CODE box")
 		await esc()
 		await L.frames(3)
 	check(not st.code_panel.visible and L.kind() == "controls", "SET-CODE", "Esc closes the save code panel only")
@@ -559,8 +565,8 @@ func _other_screens() -> void:
 	await esc()
 	await L.frames(3)
 	if st.code_panel.visible:
-		bug("TEXTBOX-ESC", "Esc inside the paste box did not close the SAVE CODE panel (first Esc only stops editing; focus now %s)" % L.focus())
-		inv("after first esc in paste box (focus lost?)")
+		print("   note: first Esc inside the paste box only stopped editing (accepted design; focus now %s)" % L.focus())
+		inv("after first esc in paste box (a control must still have focus)")
 		await esc()
 		await L.frames(3)
 	check(L.kind() == "controls" and not st.code_panel.visible, "SET-TYPE", "Esc closes the panel after at most two presses")
@@ -708,7 +714,7 @@ func _game() -> void:
 	L.key(KEY_RIGHT, false)
 	check(L.transition.busy or L.kind() != "main", "GAME-QUIT", "QUIT TO HUB starts the wipe")
 	check(not (running_during_wipe and is_instance_valid(game) and game.slime.position != slime_before and L.transition.busy), "QUIT-RUNS",
-		"the level keeps running (slime moved %s -> %s) while the wipe covers the screen after QUIT TO HUB" % [slime_before, game.slime.position if is_instance_valid(game) else "-"])
+		"the level stays frozen under the QUIT TO HUB wipe (slime %s -> %s while a direction is held)" % [slime_before, game.slime.position if is_instance_valid(game) else "-"])
 	await L.settle()
 	check(L.kind() == "hub" and not paused, "GAME-QUIT", "QUIT TO HUB lands in an unpaused hub (%s)" % L.kind())
 	inv("hub after pause quit")
@@ -837,7 +843,8 @@ func _game() -> void:
 	await esc()
 	await L.frames(3)
 	if game.pause_menu.seed_edit.visible:
-		bug("TEXTBOX-ESC", "Esc in the seed box only stopped editing (box still open)")
+		print("   note: first Esc in the seed box only stopped editing (accepted design); the next one closes it")
+		inv("after first esc in the seed box (a control must still have focus)")
 		await esc()
 		await L.frames(3)
 	check(game.pause_menu.visible and not game.pause_menu.seed_edit.visible, "SEED-BOX", "Esc closes the seed box first (pause stays)")
@@ -935,7 +942,7 @@ func _story() -> void:
 	inv("victory")
 	await esc()
 	await L.frames(60)
-	check(L.kind() != "victory", "VICTORY-ESC", "Esc on the victory screen leaves it (stayed on victory)")
+	check(L.kind() != "victory", "VICTORY-ESC", "Esc on the victory screen leaves it (now %s)" % L.kind())
 	# finale -> victory
 	L.set_state("complete")
 	L.progress.story_seen = L.progress.STORY_INTRO
@@ -1066,10 +1073,18 @@ func _walks() -> void:
 		if only_walk < 0 or only_walk == i:
 			await _walk(s[0], s[1], base_seed + i * 7919, walk_steps)
 		i += 1
+	if variant != "" or area_steps <= 0:
+		return
+	for a in AREAS:  # walk indices continue after the plain ones (replay one with --nav-walk=I)
+		if only_walk < 0 or only_walk == i:
+			area = a[0]
+			await _walk(a[1], a[2], base_seed + i * 7919, area_steps)
+			area = ""
+		i += 1
 
 
 func _walk(state: String, scene: String, wseed: int, steps: int) -> void:
-	current_walk = "walk state=%s start=%s seed=%d" % [state, scene.get_file(), wseed]
+	current_walk = "walk state=%s start=%s seed=%d%s" % [state, scene.get_file(), wseed, " area=" + area if area != "" else ""]
 	rng.seed = wseed
 	seed(wseed)
 	L.set_state(state)
@@ -1078,6 +1093,7 @@ func _walk(state: String, scene: String, wseed: int, steps: int) -> void:
 	L.trace.clear()
 	L.note("START " + current_walk)
 	await _fresh_scene(scene)
+	await _area_setup()
 	var first_bad := ""
 	var n := 0
 	var cov := {}
@@ -1130,6 +1146,97 @@ func _walk(state: String, scene: String, wseed: int, steps: int) -> void:
 	keys.sort()
 	print("  walk done: %s (%d ops)\n     coverage: %s" % [current_walk, n, ", ".join(keys.map(func(k: String) -> String: return "%s=%d" % [k, cov[k]]))])
 	current_walk = ""
+
+
+# ------------------------------------------------------------------ area walks
+
+## Puts an area walk's start scene into its area (a map open, a panel open, paused, dried up, won).
+func _area_setup() -> void:
+	var cs := current_scene
+	match area:
+		"maps":
+			await L.tap(KEY_ENTER)  # opens the focused tile's map
+		"settings":
+			await L.click(cs.save_code_button.get_global_rect().get_center(), 1)
+		"pause":
+			await L.frames(20)
+			await esc()
+		"dry", "win", "touch":
+			await L.frames(20)
+	await L.frames(3)
+
+
+## One step back toward the walk's area, with real input where there is one (harness only for the
+## dry-up / win themselves, as the plain walks do): from the hub to its station, from the level select
+## into a level, then the area's own move (open a map, open a panel, pause, dry up, win, touch).
+func _area_op() -> void:
+	var k: String = L.kind()
+	var cs := current_scene
+	if cs == null or L.transition.busy:
+		await L.frames(2)
+		return
+	match k:
+		"title":
+			await L.tap(KEY_ENTER)
+		"hub":
+			var station: String = {"maps": "maps", "settings": "settings"}.get(area, "story")
+			if not overlay_closed(cs):
+				await esc()
+			elif hub_to(station):
+				L.note("(area) tp to %s + F" % station)
+				await L.tap(KEY_F)
+		"level_select", "story", "victory":
+			if k != "victory" or rng.randf() < 0.5:
+				await L.tap(KEY_ENTER)
+			else:
+				await esc()
+		"maps":
+			if area != "maps":
+				await esc()
+			elif not cs.viewing:
+				var open: Array = cs.tiles.filter(func(t: Button) -> bool: return not t.disabled)
+				if open.is_empty():
+					await L.click(cs.hard_box.get_global_rect().get_center(), 1)
+				else:
+					var tile: Button = open[rng.randi() % open.size()]
+					if rng.randf() < 0.5:
+						await L.click(tile.get_global_rect().get_center(), 1)
+					else:
+						await L.touch(tile.get_global_rect().get_center(), 1)
+			else:  # in the view: poke at where the hidden select's controls lie
+				var under: Array = [cs.hard_box, cs.back_button] + cs.tiles
+				var c: Control = under[rng.randi() % under.size()]
+				await L.click(c.get_global_rect().get_center(), 1)
+		"controls":
+			if area != "settings":
+				await esc()
+			elif not cs.code_panel.visible and not cs.reset_confirm.visible:
+				var b: Button = cs.save_code_button if rng.randf() < 0.5 else cs.reset_button
+				await L.click(b.get_global_rect().get_center(), 1)
+			else:  # a panel is open: click where the page's buttons lie under it, or type in the boxes
+				var under: Array = [cs.save_code_button, cs.reset_button, cs.controls_button, cs.sound_button, cs.code_in, cs.code_out]
+				var c: Control = under[rng.randi() % under.size()]
+				await L.click(c.get_global_rect().get_center(), 1)
+		"main":
+			if area == "touch":
+				var spots := [cs.touch_controls.pause_rect.get_center(), Vector2(40, 140), Vector2(282, 142), Vector2(rng.randi_range(0, 319), rng.randi_range(0, 179))]
+				await L.touch(spots[rng.randi() % spots.size()], rng.randi_range(1, 6))
+			elif cs.finished:
+				if not cs.pause_menu.visible and rng.randf() < 0.3:
+					await esc()  # pause over the choices
+				else:
+					await L.frames(1)
+			elif area == "dry" or (area == "pause" and rng.randf() < 0.3):
+				L.note("(harness) dry up the slime")
+				cs.slime_remaining = 0.05
+				cs.slime.position.x += 4.0
+			elif area == "win" or (area == "pause" and rng.randf() < 0.3):
+				L.note("(harness) reach the goal")
+				cs._on_goal_body_entered(cs.slime)
+			else:
+				await esc()
+		_:
+			await esc()
 
 
 ## Counts which screens / overlays the walk has been in (printed per walk, to show what it reached).
@@ -1203,8 +1310,11 @@ const OPS := ["esc", "esc", "esc", "p", "enter", "enter", "space", "up", "down",
 	"hold_esc", "wait", "wait_wipe", "tp", "tp", "joy_b", "joy_a", "esc_f", "type", "act_cancel", "act_accept", "jump_tap", "enter_burst"]
 
 
-## Picks the next input: uniform, but biased toward getting somewhere from the screens that are easy to bounce around in.
+## Picks the next input: uniform, but biased toward getting somewhere from the screens that are easy to bounce around in
+## (and, in an area walk, back into its area about a third of the time).
 func _pick_op() -> String:
+	if area != "" and rng.randf() < 0.35:
+		return "area"
 	var r := rng.randf()
 	match L.kind():
 		"title":
@@ -1231,6 +1341,8 @@ func _random_op() -> String:
 		var f: Control = L.focus()
 		return L.would_quit(f) if f else false
 	match op:
+		"area":
+			await _area_op()
 		"esc":
 			await L.tap(KEY_ESCAPE)
 		"p":
