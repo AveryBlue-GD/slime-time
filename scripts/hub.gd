@@ -9,9 +9,12 @@ extends Node2D
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
 ## - wardrobe: SKINS & HATS
 ## - cauldron: UPGRADES
-## - prize wheel: HAT WHEEL: spin for a random hat you don't have yet (won hats come off the
-##   wheel); a spin costs 12 tickets, then 2 more for each spin taken (up to 40; the first is free), but while Hats.available is false only
-##   dev mode can use it. The top-left pod shows the ticket balance and medals won.
+## - prize wheel: HAT WHEEL: WHEEL | SHOP (HatWheel). Spin for a random hat you don't have yet (won
+##   hats come off the wheel); the first spin is free, then 12 tickets, 2 more for each spin taken
+##   (up to 40). The SHOP sells hats (the TAILOR, after 3 spins), trail styles and map papers. The
+##   prompt shows the next spin's price with the ticket icon (SHOP once every hat is won) and a "!"
+##   when something there is affordable (the cauldron's too, for its TICKETS workshop). The
+##   top-left pod shows the ticket balance and medals won.
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page); asks first with a
 ##   small LEAVE THE HUB? panel: QUIT or BACK (focus starts on BACK; Esc / menu = BACK)
@@ -112,13 +115,17 @@ var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
 var prompt_key: Label
+## The ticket icon after a price in the prompt (the next spin's).
+var prompt_icon: TextureRect
+## "!" when something in that station's ticket store is affordable now (Progress.store_affordable).
+var prompt_bang: Label
 var room: ColorRect
 ## The coin bag's board, its per-level counts, its totals line and its close hint.
 var coin_board: Control
 var board_rows: Array[Label] = []
 var board_total: Label
 var board_hint: Label
-## The hat wheel panel (dev mode for now).
+## The prize wheel overlay (WHEEL | SHOP).
 var hat_wheel: HatWheel
 ## The trapdoor's confirm panel (a dim layer, the panel, QUIT and BACK).
 var quit_menu: Control
@@ -355,6 +362,10 @@ func _build_ui() -> void:
 	prompt_key = UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	row.add_child(prompt_name)
 	row.add_child(prompt_key)
+	prompt_icon = UIKit.make_icon("ticket", Color.WHITE)
+	row.add_child(prompt_icon)
+	prompt_bang = UIKit.make_label("!", 8, UIKit.GOLD)
+	row.add_child(prompt_bang)
 	prompt.visible = false
 	_build_coin_board(root)
 	_build_ticket_pod(root)
@@ -366,6 +377,12 @@ func _build_ui() -> void:
 		_put_on_hat()
 		_refresh_tickets()
 		hat_wheel.refresh(_use_key()))
+	hat_wheel.changed.connect(func(id: String) -> void:
+		if id == "":
+			_spin_room_wheel()  # the SPIN button started a spin
+		elif not Hats.get_hat(id).is_empty():
+			_put_on_hat()  # bought from the TAILOR: worn at once
+		_refresh_tickets())
 	_show_tree_notice(root)
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
@@ -560,17 +577,30 @@ func _use_key() -> String:
 	return "TAP JUMP" if touch else Progress.key_name(Progress.bindings.interact)
 
 
+## Opens the prize wheel's overlay (WHEEL | SHOP, see HatWheel), focus inside it.
 func open_hat_wheel() -> void:
-	hat_wheel.refresh(_use_key())
 	hat_wheel.visible = true
+	hat_wheel.refresh(_use_key(), true)
 	prompt.visible = false
+	ticket_pod.visible = false  # (the overlay shows the balance itself)
 	slime.frozen = true
 
 
 func close_hat_wheel() -> void:
+	hat_wheel.close_confirm()
 	hat_wheel.visible = false
+	get_viewport().gui_release_focus()  # (no hidden button keeps the keyboard)
+	ticket_pod.visible = true
+	_refresh_tickets()
 	slime.frozen = false
 	_show_prompt()
+
+
+## The prize wheel in the room whirls along with a spin of the overlay's wheel.
+func _spin_room_wheel() -> void:
+	var wheel: Dictionary = _station("wheel")
+	wheel.seq = _spin(wheel, Vector2i(30, 44))
+	wheel.seq_t = 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -584,12 +614,16 @@ func _physics_process(delta: float) -> void:
 		var pressed := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
 		if hat_wheel.spinning:
 			return
-		if Input.is_action_just_pressed("menu") or (pressed and not Progress.can_spin_hats()):
-			close_hat_wheel()
-		elif pressed and hat_wheel.spin():
-			var wheel: Dictionary = _station("wheel")
-			wheel.seq = _spin(wheel, Vector2i(30, 44))  # the wheel in the room whirls along
-			wheel.seq_t = 0.0
+		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
+			_sfx("click", 0.8)
+			if not hat_wheel.back():  # Esc / B: the buy confirm first, then the overlay
+				close_hat_wheel()
+		elif pressed and hat_wheel.tab == "wheel" and not hat_wheel.confirm.visible:
+			if hat_wheel.spin():
+				_spin_room_wheel()
+				_refresh_tickets()
+			elif not Progress.can_spin_hats():
+				close_hat_wheel()  # (F on a wheel that can't spin: as before, it closes)
 		return
 	if coin_board.visible:
 		var touch := _touch_controls != null and _touch_controls.visible
@@ -811,17 +845,23 @@ func _show_prompt(note := "") -> void:
 	prompt.visible = not near.is_empty()
 	if near.is_empty():
 		return
+	var price := false
 	prompt_name.text = near.name
 	if note != "":
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
-	elif near.id == "wheel" and not (Progress.dev_tools or Hats.available):
-		prompt_key.text = "COMING SOON"
-	elif near.id == "wheel" and not Progress.hats_left().is_empty():
-		prompt_key.text = "FREE" if Progress.spin_cost() == 0 else "%d TIX" % Progress.spin_cost()  # the next spin's price
+	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
+		prompt_key.text = "SHOP"  # every hat won: the overlay opens on its SHOP
+	elif near.id == "wheel":
+		var cost: int = Progress.spin_cost()  # the next spin's price, with the ticket icon
+		prompt_key.text = "FREE" if cost == 0 else str(cost)
+		price = cost > 0
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
+	# "!" when something in that station's store is affordable (the cheapest unowned item).
+	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id)
+	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
 	prompt.reset_size()
 	var size := prompt.get_combined_minimum_size()
@@ -857,10 +897,7 @@ func _use(station: Dictionary) -> void:
 			else:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":
-			if Progress.dev_tools or Hats.available:  # hats are placeholders: dev mode only until released
-				open_hat_wheel()
-			else:
-				_deny("COMING SOON")
+			open_hat_wheel()
 		"coins":
 			open_coin_board()
 		"quit":

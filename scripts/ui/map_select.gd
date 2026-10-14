@@ -14,6 +14,8 @@ extends Control
 ##   last try dashed), found coins, the start, the goal once seen) under the level's name, with one
 ##   line below: "72% UNCOVERED". No times: the level select has those. The route is red whatever
 ##   the skin.
+## PAPER (bottom right of the view, once a map paper is owned: Cosmetics, bought in the prize wheel's
+## SHOP) cycles the owned papers (parchment first) and redraws the map in it; the choice is saved.
 ## BACK / Esc / B (ui_cancel) go from the view back to the select, and from the select to the hub
 ## (which turns to face the table). Keyboard/controller focus moves over the tiles as in the other
 ## menus; touch taps the tiles and BACK. Nothing moves (Reduce Motion needs nothing) and nothing is
@@ -48,6 +50,7 @@ var view_title: Label
 var view_map: TextureRect
 var view_line: Label
 var view_back: Button
+var view_paper: Button
 ## The select's controls kept out of focus while a map is viewed (UIKit.lock_focus).
 var _focus_lock := {}
 
@@ -181,6 +184,32 @@ func _build_view() -> void:
 		view_back.set_focus_neighbor(side, view_back.get_path_to(view_back))
 	view_back.focus_next = view_back.get_path_to(view_back)  # Tab / Shift+Tab too
 	view_back.focus_previous = view_back.get_path_to(view_back)
+	view_paper = UIKit.make_button("PAPER", cycle_paper, Vector2(44, 13))
+	view_paper.position = Vector2(320 - 4 - 44, 164)
+	view_root.add_child(view_paper)
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		view_paper.set_focus_neighbor(side, view_paper.get_path_to(view_back if side in [SIDE_LEFT, SIDE_RIGHT] else view_paper))
+	view_paper.focus_next = view_paper.get_path_to(view_back)
+	view_paper.focus_previous = view_paper.get_path_to(view_back)
+
+
+## The papers the player can draw maps on (the parchment, then the owned ones).
+func owned_papers() -> Array[String]:
+	var out: Array[String] = []
+	for id in Cosmetics.paper_ids():
+		if Progress.owns_cosmetic(id):
+			out.append(id)
+	return out
+
+
+## PAPER: the next owned map paper (saved) and the map drawn again on it.
+func cycle_paper() -> void:
+	var papers := owned_papers()
+	var next: String = papers[(papers.find(Progress.map_paper) + 1) % papers.size()]
+	Progress.equip_cosmetic(next)
+	if viewing:
+		open_view(viewed_level)
+		view_paper.grab_focus()
 
 
 ## Shows the map of `level` (current mode). Does nothing for a locked level.
@@ -198,13 +227,23 @@ func open_view(level: int) -> void:
 				coins.append(cell)
 	var theme := Themes.for_level(level) if themed else ""
 	var sizes := MapView.layout(maze.cells, MAP_AREA.size, themed)
-	var image := MapView.render(maze, survey, sizes, coins, theme)
-	view_area.color = MapView.palette(theme).fog
+	var paper: String = Progress.map_paper if themed else ""
+	var image := MapView.render(maze, survey, sizes, coins, theme, paper, Progress.skin_color())
+	view_area.color = MapView.palette(theme, paper, Progress.skin_color()).fog
 	view_map.texture = ImageTexture.create_from_image(image)
 	view_map.size = Vector2(image.get_size())
 	view_map.position = Vector2(MAP_AREA.position + (MAP_AREA.size - image.get_size()) / 2)
 	view_title.text = Themes.display_name(Themes.for_level(level)) + ("  HARD" if hard else "")
 	view_line.text = "%d%% UNCOVERED" % roundi(Survey.completeness(survey, maze) * 100.0)
+	if paper != "" and paper != Cosmetics.DEFAULT_PAPER:
+		view_line.text += "  " + Cosmetics.display_name(paper)
+	# PAPER shows once a paper is owned; BACK and PAPER then lead to each other (and nowhere else).
+	view_paper.visible = owned_papers().size() > 1 and themed
+	var to_paper := view_back.get_path_to(view_paper if view_paper.visible else view_back)
+	view_back.set_focus_neighbor(SIDE_RIGHT, to_paper)
+	view_back.set_focus_neighbor(SIDE_LEFT, to_paper)
+	view_back.focus_next = to_paper
+	view_back.focus_previous = to_paper
 	viewing = true
 	viewed_level = level
 	view_root.visible = true

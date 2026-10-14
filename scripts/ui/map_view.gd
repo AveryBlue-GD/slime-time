@@ -19,7 +19,10 @@ extends RefCounted
 ## a 36x20-cell maze still fits the 320x180 screen (5 + 2 px) with room for the title and BACK. Floors
 ## are always an odd number of px, so the 1 px route runs exactly down the middle of a corridor.
 ## `theme` (a Themes id; "" = the plain parchment) draws the map in that level's palette with a themed
-## frame round it (on in the game: map_select.THEMED_MAPS).
+## frame round it (on in the game: map_select.THEMED_MAPS). `paper` (a Cosmetics map paper, bought in
+## the prize wheel's SHOP; "" / "parchment" = none) recolors the paper, ink, fog, marks and frame
+## (Cosmetics.paper_colors; the frame keeps its theme's motif in the paper's colors); the route
+## stays red on every paper.
 ## The MAP TABLE's tiles never show the real map: `preview` draws a tiny made-up example maze per
 ## level (EXAMPLE_CELLS, fixed for everyone, nothing from the real layout), lit in proportion to the
 ## real % uncovered, with an example route only when the level has a recorded route.
@@ -128,22 +131,25 @@ static func route_inset(floor_px: int) -> int:
 	return (floor_px - 1) / 2
 
 
-## The colors of a map: the plain parchment (theme "") or a themed one. Nothing depends on the skin.
-static func palette(theme := "") -> Dictionary:
+## The colors of a map: the plain parchment (theme "") or a themed one, then map paper `paper` over
+## it. Only the NIGHT paper depends on the skin (`ink`: its color).
+static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 	var pal := {fog = FOG, floor = FLOOR, wall = WALL, route = ROUTE, start = START, goal = WALL,
 		coin = COIN, coin_edge = COIN_EDGE, frame = PLAIN_FRAME}
 	if THEMED.has(theme):
 		var t: Dictionary = THEMED[theme]
 		# A white start ring would vanish on the pale papers: start and goal marks in the ink.
 		pal.merge({fog = t.fog, floor = t.paper, wall = t.ink, start = t.ink, goal = t.ink, frame = t.frame}, true)
+	pal.merge(Cosmetics.paper_colors(paper, ink), true)
 	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)
 	return pal
 
 
 ## The full map of `survey` on `maze` (which it must fit, Survey.fits), at `sizes` (see layout).
 ## `coins`: cells of found coins; `theme`: see above (adds a FRAME px frame round the map).
-static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], theme := "") -> Image:
-	var pal := palette(theme)
+static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], theme := "",
+		paper := "", ink := Color.WHITE) -> Image:
+	var pal := palette(theme, paper, ink)
 	var px := map_size(maze.cells, sizes)
 	var image := Image.create_empty(px.x, px.y, false, Image.FORMAT_RGBA8)
 	image.fill(pal.fog)
@@ -156,7 +162,7 @@ static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins:
 	var framed := Image.create_empty(px.x + FRAME * 2, px.y + FRAME * 2, false, Image.FORMAT_RGBA8)
 	framed.fill(pal.fog)
 	framed.blit_rect(image, Rect2i(Vector2i.ZERO, px), Vector2i.ONE * FRAME)
-	_draw_frame(framed, theme)
+	_draw_frame(framed, theme, pal.frame)
 	return framed
 
 
@@ -438,8 +444,8 @@ static func _perimeter_point(k: int, w: int, h: int) -> Vector2i:
 ## The themed frame: a FRAME px border in the theme's colors with a cheap motif of its own
 ## (stone joints, moss tufts, sand strata, wave crests, pipe bolts and drips, bones, frost, glossy
 ## glints, crystals, lava glow) and accent studs in the corners. Pure integer hashing: the same every time.
-static func _draw_frame(image: Image, theme: String) -> void:
-	var c: Array = THEMED[theme].frame
+static func _draw_frame(image: Image, theme: String, colors: Array = []) -> void:
+	var c: Array = colors if colors.size() == 4 else THEMED[theme].frame
 	var w := image.get_width()
 	var h := image.get_height()
 	var f := FRAME
