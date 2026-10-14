@@ -89,9 +89,11 @@ func _warm_up_shaders() -> void:
 		warm.add_child(dot)
 	add_child(warm)
 	move_child(warm, 0)  # under the backdrop, whose background covers the whole screen
-	for i in 3:
-		await get_tree().process_frame
-	warm.queue_free()
+	# The warm-up node drops itself after a few frames; a tween bound to it dies with it, so this
+	# is safe when the title is freed early (e.g. the first-launch trailer takes over).
+	var drop := warm.create_tween()
+	drop.tween_interval(0.05)
+	drop.tween_callback(warm.queue_free)
 
 
 func _enter() -> void:
