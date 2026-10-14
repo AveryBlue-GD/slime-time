@@ -399,11 +399,21 @@ clear; without any clear, every attempt that moved replaces the faint last-attem
 `floori`, a parity test and a `Vector2i` compare (a byte appended when a new cell is entered). No per-frame
 allocation; fog/trail bytes, their order and the rendered frames are unchanged (pixel diff, see handoff).
 
-**Showing it** (`MapView`): unseen tiles stay the dark fog color, so neither walls nor openings beyond the
-seen area show; seen floor is parchment (alternate cells a shade darker), seen walls ink-brown; the route is a
-line through cell centers (goo light shade on the outline shade for a clear; half-faded mid shade without the
-edge for LAST TRY); coins as gold squares; the start as a white ring; a red X on the goal only once seen. Cell
-and wall widths are integers picked to fit 312x146 px: 14+4 for the 10x6 level 1 up to 5+2 for 36x20 cells.
+**Showing it** (`MapView`, maps v2 2026-10-14): a maze diagram. Each seen cell is a block of parchment
+floor; thin ink wall lines run between cells wherever the maze has a wall (`MazeGenerator.is_wall` on the tile
+between them), with posts where lines cross, so two corridors side by side (a route's hairpin) always keep a
+wall line between them. Spoilers: a cell's floor only when its tile was seen; a wall line (or the floor of an
+open doorway in it) only when at least one of the two cells it divides was seen (a wall next to seen floor is
+known; a doorway shows as a gap leading into the dark); posts only at a seen cell's corners; unseen cells stay
+the fog color. The route is a band through cell centers, about a third of the floor wide and centered with
+floor on both sides (goo color, edged in the outline shade on big maps; on small maps the goo's dark shade
+when the goo is too close to the parchment in brightness; the last attempt half-faded, no edge); coins as gold
+discs, the start as a ring, the goal as a red X once seen, each only on seen cells. Sizes are whole pixels,
+[floor, wall] = 21+3 for level 1 down to 6+1 for 36x20 cells, picked to fit 316x149 px. Thumbnails use the same
+drawing at 2+1 / 1+1 px when it fits 36x20 px (levels 1-5 normal), else one block per cell. The select tiles
+show only the thumbnail, the name and the % uncovered; the view only the name, the map and "NN% UNCOVERED".
+`MapView.render(..., theme)` can draw a level in its theme's palette with a themed frame: a mockup, off in the
+game (`map_select.THEMED_MAPS`).
 
 **Save size** (measured in `tests/test_maps.gd`): save code 543 chars with no maps, 2,543 with all 20 levels
 fully surveyed (full surveys compress to almost nothing), 19,447 in a worst case no player reaches (random

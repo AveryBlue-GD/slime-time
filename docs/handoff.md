@@ -29,7 +29,8 @@ yourself when the owner may be playing; launch semantics and preferences are in 
 - Android and web are unverified on real devices (the Android shader fix and the browser paste fix are unconfirmed).
 - Difficulty numbers are priors, not playtest data ([playtime-estimate.md](playtime-estimate.md): ~45 min median for the
   story on normal, ~2.1 h with hard).
-- Trail maps are a trial (cost/unlock, % of walls on the select and the trapdoor's spot are undecided).
+- Trail maps are a trial (cost/unlock and the trapdoor's spot are undecided). Maps v2 (decluttered screens, wall-line
+  maze diagram) is in; the themed maps are a mockup, off (`map_select.THEMED_MAPS`), waiting for the owner's call.
 - Windows build zip and itch promo images are out of date (v2.2); only rebuild when the owner asks.
 
 **Open tasks.**
@@ -478,3 +479,51 @@ with a regression test; the fuzzer's `KNOWN` table is now empty, so any of them 
   no new violations.
 - **Pixel check:** a HEAD (6cf59c9) worktree vs this tree, 37 frames (title, hub, levels 1/5/10, hard 3, rainbow
   10, randomizer seed 5, pause, dry-up choices, touch level 2): 0 differing pixels.
+
+## Trail maps v2: decluttered screens, wall-line maze diagram, themed mockup (2026-10-14)
+
+Owner feedback: the MAP TABLE tiles were cluttered, and a route that U-turns into the corridor next door looked
+like one wide corridor (the wall between was lost under the route's dark edge).
+- **Select tiles** (`scripts/ui/map_select.gd`): just the thumbnail, the level's name and the % of its floor
+  uncovered (`72%`, gold at 100%); no `L#`, best time, route drop, ROUTE / LAST TRY or NO SURVEY YET (a locked tile:
+  lock in the thumbnail, dim name, `0%`). HARD switch and BACK kept; the first-open hint is `PLAY TO FILL THEM IN`.
+- **Map view**: the level's name (+ `HARD`), the map, one line `NN% UNCOVERED`; no times, no SET A NEW BEST
+  (`route_best` / `route_text` removed; the level select shows the records). A last-try route is drawn faint,
+  without text. The map area grew to 316x149 (`MAP_AREA`).
+- **Drawing** (`scripts/ui/map_view.gd`, rewritten): the maze's tile grid (cells on odd tiles, walls between) is
+  drawn as a diagram: per seen cell a floor block, then the line on each of its sides (ink where the tile between
+  is a wall, floor where it is open), posts at its corners. Sizes `[floor px, wall px]` from 21+3 (level 1) down to
+  6+1 (36x20 cells, 253x141 px). Route: a band `route_width` (about 1/3 of the floor, same parity, so it is exactly
+  centered with floor on both sides) through cell centers: a hairpin's legs are separated by floor, the wall line,
+  floor. Goo color, edged in the outline shade when there are 3+ px of floor beside it; otherwise the goo's dark
+  shade when the goo is too close to the parchment in brightness (`route_color`, `ROUTE_CONTRAST` 0.22: lemon,
+  lime). Coins are gold discs, the start a ring, the goal a symmetric X.
+- **Spoilers:** floor only on seen cells; a wall line or doorway only when at least one of its two cells was seen
+  (a doorway into the dark shows as a gap: you saw it from the seen side); posts only at seen cells' corners; route
+  steps only between two seen cells; coins/start/goal only on seen cells; a foreign or stale survey draws nothing.
+  The wall tiles' own seen bits are no longer used for drawing (the cell bits decide).
+- **Thumbnails:** the same diagram at 2+1 or 1+1 px when the maze fits 36x20 px (levels 1-5 normal), else one
+  block per cell (levels 6-10, all hard mazes: wall lines would not fit). Dimmer colors than the view.
+- **Themed maps (mockup, OFF):** `MapView.render(..., theme)` / `thumbnail(..., theme)` draw a level in its theme's
+  palette (`MapView.THEMED`: paper tinted to the theme, ink walls and a trail color from the theme's tile palette in
+  `tools/make_theme_art.py`, the theme's fog behind) with a 4 px themed frame (`_draw_frame`: stone joints, moss
+  tufts, sand strata, wave crests, pipe bolts + toxic drips, bones, frost, glossy glints, crystals, lava glow;
+  integer hashing, accent studs in the corners). Off in the game: `map_select.THEMED_MAPS = false`;
+  `tests/demo_maps.tscn -- --themed` turns it on there. Sheets for the owner: `docs/polish-shots/map_themed_sheet.png`
+  (all 10 levels), `map_themed_l5.png`, `map_themed_l10.png`, and the default style `map_default_sheet.png`. To
+  enable: set `THEMED_MAPS = true` (nothing else needed).
+- **Demo:** `tests/demo_maps.tscn` also takes `--uturn=N [--uturn-try]` (a walk along level N's shortest route to a
+  few cells past its first hairpin, only the tiles beside it seen) and `--themed`.
+- **Tests** (`tests/test_maps.gd` `_test_drawing`, screen checks updated): no pixel on unseen cells at all 17 sizes,
+  plain and themed (route, coins, goal over unseen cells included); no line or post between two unseen cells; every
+  wall beside a seen cell drawn; 36 hairpins on levels 5/10 normal + hard keep a whole wall line between their legs
+  with floor on both sides, and the demo's partial U-turn too; every story/hard maze (36x20 max) fits 316x149 at
+  whole pixels, themed too; thumbnails clean on unseen cells and inside 36x20; tiles show exactly name + %; no
+  times or route labels on either screen; THEMED_MAPS off.
+- **Shots:** before/after `docs/polish-shots/map_v2_select_before.png` / `map_v2_select.png`,
+  `map_v2_view_uturn_before.png` / `map_v2_view_uturn.png` (level 5, grape), plus `map_v2_view_hard10.png`,
+  `map_v2_view_l3.png`, `map_v2_view_partial_l7.png` (faint last try with a hairpin); themed select `map_themed_select.png`.
+- **Pixel check:** HEAD (cc2d7fe) worktree vs this tree, the batch capture set (title, hub, rainbow hub, level
+  select, levels 1/5/10 autopilot, Brightness 10, standing still, hard 3, rainbow 10, randomizer seed 5, story
+  intro, pause; 51 frames): 0 differing pixels. Web export (Web preset) to a temp dir: OK.
+- **Open for the owner:** look at the themed sheet and decide; thumbnails of levels 6-10 and hard mazes stay blocks.
