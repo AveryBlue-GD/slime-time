@@ -241,3 +241,23 @@ not saved, cleared with `random_attempts`): after the wipe clears (0.2 s) the TI
 flashes white twice and the pod frame brightens, fading out by ~0.5 s (`Hud.ATTEMPT_POP_*`); none
 with Reduce Motion, none when the number stays (1/5 from the 5th on). Shots
 `docs/polish-shots/attempts_1/2/3.png` (after real R restarts) and `attempts_2_pop.png` (mid-flash).
+
+## Attempt pod: re-derived every frame, no "/5" (2026-10-14)
+Owner report: in dev mode (`./tools/play.sh --dev`), Esc then pause-menu RESTART left the pod on
+`TIX AVAILABLE 5/5`. Not reproducible: a driver with the exact launch (`-- --unlock-all`, the real
+save read-only, saving off), entering through the hub portal and sending real Esc / Down / Enter
+key events and real mouse clicks on RESTART (at once, after moving, after drying up, after DEV panel
+toggles, during the reveal wipe), windowed and headless, counted 1-10 every time. By code, a pause
+RESTART reloads the scene and `_count_attempt` always runs in `_ready`; the counter's key (seed code)
+only changes on a new/typed maze. Note the owner's save has no MORE SLIME, so a dev launch shows 1
+(capped) on every attempt unless MORE SLIME is bought in that session. Hardening: `game.payout()` is
+the one computation behind the pod and the win (dev toggles / assist = 0; dev mode pays the same,
+only unsaved; the win asserts it paid that); `game._process` re-derives the pod every frame
+(`Hud.set_attempt` only touches the label when the text changes, so a stale pod can't survive a
+frame). Format now `ATTEMPT n` over `TIX AVAILABLE k` (5, 4, 3, 2, 1; 1 capped; dim 0). Pop on a
+restart that changes k kept (not with Reduce Motion). `Progress.enable_dev_mode()` = what
+`--unlock-all` does (tests use it). `tests/test_attempt_restarts.gd`: every route (R, R prompt,
+pause by keys and by mouse, Esc after dry-up, dry-up RESTART, UPGRADES round trip, REPLAY MAZE) x
+attempts 1-6 x normal and dev launch, autopilot wins paying exactly the shown k with the result line,
+plus hub/NEW MAZE resets, typed seed, no MORE SLIME, daily cap, assist, dev toggles, stale-label fix.
+Shots `docs/polish-shots/attempts2_1..6.png` (dev launch, real pause-menu restarts, `tests/demo_attempts.tscn --route=pause --shots=`).

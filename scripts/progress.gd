@@ -207,12 +207,7 @@ func _ready() -> void:
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
 		elif arg == "--unlock-all":
-			saving_enabled = false
-			story_seen = STORY_INTRO | STORY_FINALE
-			dev_tools = true
-			levels_cleared = Levels.COUNT
-			highest_unlocked = Levels.COUNT
-			hard_cleared.assign(range(1, Levels.COUNT + 1))
+			enable_dev_mode()
 		elif arg == "--touch":
 			force_touch = true
 		elif arg == "--hard":
@@ -655,6 +650,17 @@ func mark_tutorial_seen(bit: int) -> void:
 	if not has_seen_tutorial(bit):
 		tutorial_seen |= bit
 		save_progress()
+
+
+## Dev mode, exactly as `--unlock-all` (tools/play.sh --dev) sets it up: every level unlocked,
+## dev tools on, nothing saved. Tests call this to play in the owner's dev launch configuration.
+func enable_dev_mode() -> void:
+	saving_enabled = false
+	story_seen = STORY_INTRO | STORY_FINALE
+	dev_tools = true
+	levels_cleared = Levels.COUNT
+	highest_unlocked = Levels.COUNT
+	hard_cleared.assign(range(1, Levels.COUNT + 1))
 
 
 func start_story(level: int) -> void:

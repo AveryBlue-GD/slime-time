@@ -44,8 +44,8 @@ var time_label: Label
 var coin_label: Label
 var coins_left_label: Label
 var _coins_left_pod: Control
-## Randomizer only: the attempt on this maze and the tickets a win would pay now, out of the most a
-## maze can pay ("ATTEMPT 2  TIX AVAILABLE 4/5").
+## Randomizer only: the attempt on this maze and the tickets a win would pay now
+## ("ATTEMPT 2" over "TIX AVAILABLE 4").
 var attempt_pod: Control
 var attempt_label: Label
 var _attempt_icon: TextureRect
@@ -314,22 +314,25 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 
 
 ## The attempt pod (randomizer mazes only): which attempt at this maze it is and the tickets a win
-## would pay right now (every cap applied) out of a first attempt's full pay, counting down
-## attempt by attempt: "ATTEMPT 1  TIX AVAILABLE 5/5", "ATTEMPT 2  TIX AVAILABLE 4/5" ... 1/5 from
-## the 5th; e.g. 1/5 when capped, dim 0/5 when a win would pay nothing. `most` = a first attempt's pay.
+## would pay right now (every cap applied), counting down attempt by attempt: "ATTEMPT 1" over
+## "TIX AVAILABLE 5", then 4, 3, 2 and 1 from the 5th; 1 when capped, dim 0 when a win would pay
+## nothing. Called every frame by the game (only a changed text touches the label).
 ## `pop`: the number just changed (a restart): the TIX AVAILABLE line flashes bright twice and
 ## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
-func set_attempt(attempt: int, payout: int, most := 5, pop := false) -> void:
+func set_attempt(attempt: int, payout: int, pop := false) -> void:
+	var text := "ATTEMPT %d\nTIX AVAILABLE %d" % [mini(attempt, 99), payout]
+	if text == attempt_label.text and attempt_pod.visible and not pop:
+		return  # called every frame: only a change touches the label
 	attempt_pod.visible = true
 	# The two-line pod reaches down to y 40: the area name moves under it instead of under the timer.
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
-	attempt_label.text = "ATTEMPT %d\nTIX AVAILABLE %d/%d" % [mini(attempt, 99), payout, most]
+	attempt_label.text = text
 	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
 	attempt_label.add_theme_color_override("font_color", color)
 	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM
 	# The flash: a bright copy of the second line drawn over it (the first line left blank).
-	_attempt_flash.text = " \nTIX AVAILABLE %d/%d" % [payout, most]
+	_attempt_flash.text = " \nTIX AVAILABLE %d" % payout
 	if _attempt_tween:
 		_attempt_tween.kill()
 		_attempt_tween = null

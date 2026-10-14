@@ -94,21 +94,21 @@ func _initialize() -> void:
 	progress.new_random_maze()
 	var maze_seed: int = progress.random_seed
 	var game := await _spawn_random(maze_seed)
-	_check(game.attempt == 1 and game.hud.attempt_pod.visible and game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 5/5", "first start: attempt 1, the pod says ATTEMPT 1\nTIX AVAILABLE 5/5 (%s)" % game.hud.attempt_label.text)
+	_check(game.attempt == 1 and game.hud.attempt_pod.visible and game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 5", "first start: attempt 1, the pod says ATTEMPT 1\nTIX AVAILABLE 5 (%s)" % game.hud.attempt_label.text)
 	game.slime_remaining = 0.0
 	for i in 30:
 		await physics_frame
 	_check(game.finished and not game.won, "(dried up)")
 	game.retry()  # the dry-up's RESTART button: the real scene reload
 	game = await _current_game()
-	_check(game.attempt == 2 and game.random_seed == maze_seed and game.hud.attempt_label.text == "ATTEMPT 2\nTIX AVAILABLE 4/5", "a dry-up retry is attempt 2: ATTEMPT 2\nTIX AVAILABLE 4/5 (%s)" % game.hud.attempt_label.text)
+	_check(game.attempt == 2 and game.random_seed == maze_seed and game.hud.attempt_label.text == "ATTEMPT 2\nTIX AVAILABLE 4", "a dry-up retry is attempt 2: ATTEMPT 2\nTIX AVAILABLE 4 (%s)" % game.hud.attempt_label.text)
 	var press := InputEventAction.new()  # R mid-run (no coins in hand: restarts at once)
 	press.action = "restart"
 	press.pressed = true
 	Input.parse_input_event(press)
 	await process_frame
 	game = await _current_game()
-	_check(game.attempt == 3 and game.hud.attempt_label.text == "ATTEMPT 3\nTIX AVAILABLE 3/5", "a manual restart counts too: ATTEMPT 3\nTIX AVAILABLE 3/5 (%s)" % game.hud.attempt_label.text)
+	_check(game.attempt == 3 and game.hud.attempt_label.text == "ATTEMPT 3\nTIX AVAILABLE 3", "a manual restart counts too: ATTEMPT 3\nTIX AVAILABLE 3 (%s)" % game.hud.attempt_label.text)
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
@@ -116,15 +116,15 @@ func _initialize() -> void:
 		"winning on attempt 3 pays 3 and the result says TICKET! ATTEMPT 3 = +3 (%s)" % [game.hud.rewards_texts])
 	game.replay()  # REPLAY MAZE: another attempt at a seed that already paid today
 	game = await _current_game()
-	_check(game.attempt == 4 and game.hud.attempt_label.text == "ATTEMPT 4\nTIX AVAILABLE 0/5", "replaying the won maze is attempt 4 and would pay nothing (%s)" % game.hud.attempt_label.text)
+	_check(game.attempt == 4 and game.hud.attempt_label.text == "ATTEMPT 4\nTIX AVAILABLE 0", "replaying the won maze is attempt 4 and would pay nothing (%s)" % game.hud.attempt_label.text)
 	game.play_next()  # NEW MAZE
 	game = await _current_game()
-	_check(game.random_seed != maze_seed and game.attempt == 1 and progress.random_attempts.size() == 1 and game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 5/5",
+	_check(game.random_seed != maze_seed and game.attempt == 1 and progress.random_attempts.size() == 1 and game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 5",
 		"NEW MAZE starts over at attempt 1 (and forgets the old counts)")
 	for i in 4:  # four more starts of this maze: attempts 2-5
 		game.retry()
 		game = await _current_game()
-	_check(game.attempt == 5 and game.hud.attempt_label.text == "ATTEMPT 5\nTIX AVAILABLE 1/5", "the 5th attempt would pay 1 (%s)" % game.hud.attempt_label.text)
+	_check(game.attempt == 5 and game.hud.attempt_label.text == "ATTEMPT 5\nTIX AVAILABLE 1", "the 5th attempt would pay 1 (%s)" % game.hud.attempt_label.text)
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
@@ -140,7 +140,7 @@ func _initialize() -> void:
 	progress.upgrades = {"slime": 1}
 	progress.random_seed_fresh = false  # typed in
 	game = await _spawn_random(780)
-	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 1/5", "a typed seed's pod shows 1 ticket at most (%s)" % game.hud.attempt_label.text)
+	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 1", "a typed seed's pod shows 1 ticket at most (%s)" % game.hud.attempt_label.text)
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
@@ -150,7 +150,7 @@ func _initialize() -> void:
 	progress.reset_progress()
 	progress.day_override = 30000
 	game = await _spawn_random(777)
-	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 1/5", "no slime upgrade: the pod shows 1 ticket (%s)" % game.hud.attempt_label.text)
+	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 1", "no slime upgrade: the pod shows 1 ticket (%s)" % game.hud.attempt_label.text)
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
@@ -174,7 +174,7 @@ func _initialize() -> void:
 	progress.hard_mode = false
 	progress.random_paid = 5
 	game = await _spawn_random(779)
-	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 0/5", "past the daily cap the pod shows 0 tickets (%s)" % game.hud.attempt_label.text)
+	_check(game.hud.attempt_label.text == "ATTEMPT 1\nTIX AVAILABLE 0", "past the daily cap the pod shows 0 tickets (%s)" % game.hud.attempt_label.text)
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame

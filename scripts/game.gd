@@ -229,6 +229,8 @@ var seed_level := 0
 ## count, NEW MAZE starts over; Progress.random_attempts) and the key it is counted under.
 var attempt := 1
 var attempt_key := ""
+## What the attempt pod shows for this run (-1 until it first shows).
+var _pod_offer := -1
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
@@ -449,6 +451,7 @@ func _low_slime_warning(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	_refresh_attempt_pod()  # randomizer: the pod follows the run's state every frame (never stale)
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
@@ -1182,35 +1185,49 @@ func _make_goal() -> void:
 
 
 ## Randomizer: counts this start of the maze (an attempt) and shows it with what a win would pay.
-## Runs in _ready, so the restarted run's very first frame already shows the new count; when the
-## tickets on offer changed since the pod last showed this maze, the pod pops (see Hud.set_attempt).
+## Runs in _ready, so the restarted run's very first frame already shows the new count.
 func _count_attempt() -> void:
 	if not is_random() or progress == null:
 		return
 	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
 	attempt = progress.begin_random_attempt(attempt_key)
 	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line attempt pod
-	var before: int = progress.random_offer_shown.get(attempt_key, -1)
-	_refresh_attempt_pod(before >= 0 and before != ticket_offer())
+	_refresh_attempt_pod()
 
 
-## Randomizer: the tickets a win on this run would pay right now, every cap applied (0 once dev
-## toggles or the assist were used). The attempt pod shows exactly this, and a win pays exactly
-## this (Progress.complete_random applies the same Progress.random_payout).
-func ticket_offer() -> int:
-	if not is_random() or progress == null or dev_toggled or assisted:
-		return 0
-	return progress.random_tickets_due(attempt, random_seed)
-
-
-## The HUD's attempt pod: ATTEMPT n and ticket_offer() (of 5). `pop` (a restart changed the number)
-## flashes it, unless Reduce Motion is on.
-func _refresh_attempt_pod(pop := false) -> void:
+## Randomizer: what a win on this run would pay right now and why ({tickets, table, cap}, see
+## Progress.random_payout), from this run's attempt number; tickets 0 once dev toggles or the
+## assist were used. The ONE computation behind both the attempt pod and the payout (a win pays
+## exactly payout().tickets, in dev mode too, where it only isn't saved).
+func payout() -> Dictionary:
 	if not is_random() or progress == null:
+		return {tickets = 0, table = 0, cap = ""}
+	var due: Dictionary = progress.random_payout(attempt, random_seed)
+	if dev_toggled or assisted:
+		due.tickets = 0
+	return due
+
+
+## The tickets a win on this run would pay right now (payout().tickets).
+func ticket_offer() -> int:
+	return payout().tickets
+
+
+## The HUD's attempt pod, derived afresh from `attempt` and ticket_offer() (on the run's first frame
+## and then every frame, so it can never go stale; the HUD only touches the label when the text
+## changes). The run's first showing pops the pod when its number differs from what it last showed
+## for this maze (a restart that lowered it), unless Reduce Motion is on.
+func _refresh_attempt_pod() -> void:
+	if not is_random() or progress == null or attempt_key == "":
 		return
 	var offer := ticket_offer()
+	var pop := false
+	if _pod_offer < 0:
+		var before: int = progress.random_offer_shown.get(attempt_key, -1)
+		pop = before >= 0 and before != offer and motion_scale() > 0.0
+	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
-	hud.set_attempt(attempt, offer, progress.tickets_for_attempt(1), pop and motion_scale() > 0.0)
+	hud.set_attempt(attempt, offer, pop)
 
 
 # ---------------------------------------------------------------- dev: wall power
@@ -1325,17 +1342,18 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_sfx("unlock", CHALICE_VOLUME_DB)
 		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "   " + usage_text() + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
-			var payout: Dictionary = progress.random_payout(attempt, random_seed)  # before the win is recorded
+			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, attempt)
+			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
 			if paid > 0:
-				reward = {tickets = paid, attempt = attempt, cap = payout.cap}
+				reward = {tickets = paid, attempt = attempt, cap = due.cap}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif dev_toggled:
 				hud.show_rewards({dev = true})
 			elif assisted:
 				hud.show_rewards({assisted = true})
-			elif payout.cap == "paid":
+			elif due.cap == "paid":
 				hud.show_rewards({repeat = true})
 			else:
 				hud.show_rewards({capped = true})
