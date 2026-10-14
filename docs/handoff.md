@@ -14,7 +14,7 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
 CONTROLS page and SAVE CODE, 11 placeholder hats (live for players since batch 2), the ticket store (hat wheel + SHOP,
-cauldron TICKETS workshop, trail styles, map papers). Save version 6 (+ `[meta] epoch` 1). 64 test suites; 6 agents in `.claude/agents/`.
+cauldron TICKETS workshop, trail styles, map papers). Save version 6 (+ `[meta] epoch` 1). 66 test suites; 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
@@ -40,7 +40,8 @@ game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS pre
 breakpoints: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 (165 coins, same maxima); all economy numbers in
 `scripts/economy.gd`. Old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, save version 6, one-time hub
 notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. **Batch 2 (2026-10-15): hats live, ticket store, WORKSHOP,
-cosmetics v1** (section "Upgrades v2, batch 2" at the end). Batches 3-4 (Descent, Heat) are not built.
+cosmetics v1** (section "Upgrades v2, batch 2"). **Batch 3 (2026-10-15): DESCENT runs** from the portal's new RANDOM MAZE /
+DESCENT choice (section "Upgrades v2, batch 3" at the end; rules in level-design.md section 9). Batch 4 (Heat) is not built.
 
 **Known limitations.**
 - Hats are live (`Hats.available = true`, batch 2) but still the 11 placeholder hats until the owner picks the real ones.
@@ -734,3 +735,59 @@ Spec: [design/upgrades-v2.md](design/upgrades-v2.md) B.2, C.1-C.3, D.1. Every nu
   level's skin), `batch2_second_wind.png`, `batch2_map_paper_{blueprint,night}.png`.
 - Not built (spec, cosmetic): the cauldron preview ring, hat dyes / wallpapers (v2 ideas); Descent / Heat (batches 3-4).
 
+
+## Upgrades v2, batch 3: DESCENT runs (2026-10-15, save version 6)
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C2, D.1-D.3. Rules and numbers: [level-design.md](level-design.md)
+section 9; every number in `scripts/economy.gd` (`DESCENT_*`, `BOONS`).
+- **Entry**: the portal (after the story) opens a goo panel RANDOMIZER: RANDOM MAZE (the randomizer as before) /
+  DESCENT, a line BEST FLOOR n  PAID RUNS k/2, BACK (`hub.gd` `portal_menu`; focus RANDOM MAZE, up/down wrap, Esc =
+  BACK, touch taps; a dim layer swallows clicks). The portal prompt shows BEST FLOOR n once a run was played. Labels
+  per the batch brief (the spec said QUICK MAZE).
+- **Run** (`scripts/descent.gd` `Descent` = pure rules; `Progress.descent_run` = the run, in memory only): floors
+  chained by rebuilding the game scene from the run (`game.gd` `descent`, `_apply_descent`); the meter carries over
+  (+60/50/40/35% refill, cap 100%); u = 0.30 + 0.05/floor (+-0.05, cap 0.85); size = the randomizer's (from the
+  slime capacity: the owner's no-small-mazes rule beat the spec's route-sized floors); seeded per run seed; themes in
+  story order; the exit is the chalice (spec); 2 goo drops per floor (+8%, deep dead ends, under the fog with a faint
+  glow, glimmers/MAGNET/GOO NOSE apply, `scripts/goo_drop.gd`); a dry-up ends the run. Normal rules only (the
+  HARD MODE setting is ignored in Descent), no ASSIST, no coins, no maps survey, no medals/records besides its own.
+- **Boons** (all 11, `Economy.BOONS`): BIG GULP, DEEP TANK (2x), FEATHER LEAP, RUBBER BODY, SLICK (2x), BLAZE,
+  CHALICE SENSE, BACKUP BLADDER (stacks; +25% when empty, after SECOND WIND), THRIFT (2x), GREEDY GOO (2x), GLASS
+  SLIME. Offers: 3 distinct by weight, seeded by run + floor, non-stacking held / maxed stacks excluded. Icons are
+  8x8 pixel art drawn from palette rows in code (`scripts/ui/boon_icons.gd`), 2x on the card, 1x in the HUD strip.
+  Capacity boons keep the slime left in tiles; BLAZE past BRIGHTNESS 3 = reach 33 (reveal 42 px).
+- **Cards** (`scripts/ui/descent_card.gd`, layer 15 under the pause menu): BOON card = FLOOR n CLEARED, meter + next
+  refill, POT n (+gain) (PRACTICE / NO TICKETS / PAYS 1 when capped), 3 tiles (icon, name, two lines, HAVE x/2),
+  CASH OUT +N / DESCEND (a tile picks and moves focus to DESCEND; DESCEND without a pick says PICK A BOON FIRST).
+  SUMMARY = CASHED OUT / RUN OVER, the floor, BEST FLOOR n (NEW BEST! only past the best before this run), TIME,
+  +N TICKETS (and why fewer: HALF THE POT (n), PRACTICE, DEV TOGGLES, MORE SLIME = MORE), milestone lines, the
+  boons held; NEW RUN (focused) / HUB (faces the portal). Esc on either opens the pause menu.
+- **HUD**: right column DESCENT FLOOR n, the pot pod (attempt pod reused, `hud.set_pot`), the boon strip
+  (`hud.set_boons`, 8 per row; BIG GULP not shown, BLADDER only while unused); the area name + FLOOR n under them;
+  the touch pause button moves under the strip.
+- **Pay**: pot +1/+2/+3/+4 by floor band (+1 per GREEDY), max 30; CASH OUT = all, dry-up / QUIT TO HUB mid-floor =
+  half, QUIT TO HUB on the boon card = cash out; GLASS x1.5 after halving, cap 30. 2 paying runs per UTC day
+  (forward-only, far-future clamp; a run that banks 0 uses no slot), then PRACTICE; no MORE SLIME = max 1;
+  dev-toggled runs (F1/F2 on any floor, carried as `tainted`) pay 0; dev mode pays unsaved (like the randomizer).
+  Milestones (once ever, on reaching the floor, saved at once, outside the daily cap): 5 +10, 10 +15 + ABYSS trail,
+  15 +20, 20 +25 = 70. SECOND WIND once per run.
+- **No reload exploit**: an in-progress run is never saved; closing the app / web tab mid-run banks nothing and uses
+  no paying slot (milestones and the best floor were already saved on reaching). A floor cannot be replayed: the
+  pause menu has no RESTART in Descent (a note says what quitting banks), R does nothing, NEW RUN is a new seed.
+- **ABYSS trail** (earned, never sold): `Cosmetics` entry with `earned`, left out of `Cosmetics.ids()` (the SHOP,
+  totals) but in `trail_ids()` (wardrobe: locked tile says REACH DESCENT FLOOR 10); dark violet goo + specks;
+  `can_buy_cosmetic` refuses it; a save claiming it without the floor-10 milestone drops it on load.
+- **Save**: `[descent] best_floor, best_time, runs, paid_day, paid_runs, milestones` (written only once played;
+  clamped on read: best floor <= 999, paid_runs <= 2, milestones 4 bits); no `save_text.gd` change; version 6, epoch 1;
+  a played save's code ~650 chars; RESET PROGRESS clears it.
+- **Flags**: `--descent` / `--descent=SEED` start a run. Autoplay bot: not extended (cheap demo instead:
+  `tests/demo_descent.tscn --shot=demo` plays floors with the test autopilot, picking the first boon).
+- **Tests**: `test_descent.gd` (tables, determinism, offers/stacking, refill/pot/bank maths, daily cap with clock
+  back/forward/far future, slime cap, dev toggles, milestones once + ABYSS, saves/codes/clamps/reset, every boon in a
+  real floor, drops + glimmers + MAGNET, SECOND WIND once per run, the card flow incl. CASH OUT / dry-up / quit, R
+  ignored, the portal choice), `test_descent_runs.gd` (autopilot: 20 short runs all reach floor 4, 3 deep runs to
+  floors 11 / 14 / 11; every floor entered with enough meter is cleared; carried meter = the maths). Nav fuzz: the
+  portal choice and the card are modals; a scripted Descent Esc/focus ladder; a 10th area walk "descent" (2,000
+  inputs; seeds 1234 / 77 / 4242 / 9001: zero violations). `test_attempt_restarts` goes through RANDOM MAZE now.
+- **Shots** (`tests/demo_descent.tscn`): `docs/polish-shots/descent_portal.png`, `descent_floor.png` (floor 3, Lemon),
+  `descent_boons.png`, `descent_cashout.png`, `descent_summary.png`; clip `descent_demo.mp4` (git-ignored, 48 s).
+- Open (owner): playtest depth/tickets per day (knobs `DESCENT_REFILL`, `DESCENT_POT_PER_FLOOR`); real boon art if wanted.

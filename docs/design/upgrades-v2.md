@@ -1,7 +1,16 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
 Status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
-live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15)**; batches 3-4 (Descent, Heat) are not. Batch 2
+live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
+batch 4 (Heat) is not. Batch 3 decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md),
+"Upgrades v2, batch 3", and [../level-design.md](../level-design.md) section 9): the portal buttons read RANDOM MAZE /
+DESCENT; floors use the randomizer's size (from the slime capacity; the owner's no-small-mazes rule) instead of
+`1.25 x route + 12` / 14x8; u jitter is clamped to 0.25-0.85; the refill is that of the floor being entered; capacity
+boons stack additively and keep the slime left in tiles; BIG GULP is added on DESCEND (with the refill, cap 100%);
+BACKUP BLADDER adds a fixed 25% after SECOND WIND; BLAZE past BRIGHTNESS 3 = reach 33 (42 px); GLASS x1.5 applies
+after halving, cap 30; a run that banks 0 uses no paying slot; dev mode pays unsaved (dev-toggled runs 0, carried
+across floors); milestones pay on reaching the floor, outside the daily cap; best floor = floor reached; QUIT TO HUB on
+the boon card = CASH OUT; pick = a tile then DESCEND; Descent ignores the HARD MODE setting. Batch 2
 decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 2"): the
 SHOP has three sections (HATS / TRAILS / PAPERS) instead of one grid; the workshop rows are 25 px apart from y 24; the
 SECOND WIND HUD sign is a WIND tag under the meter; a TAILOR buy of a non-rainbow hat leaves the rainbow pity alone; dev
@@ -479,7 +488,7 @@ GROUNDED + RACE is the tightest: 6% slack, intended as the summit).
 |---|---|---|---|
 | **1. Core tree rework** (DONE 2026-10-15) | per-track tables in `upgrades.gd`, brightness breakpoints, upgrades screen pips/next-effect line, migration + notice, randomizer size/code changes, golden rewrite, autoplay cost lookup, playtime model re-run | M (2-3 days) | all suites pass; autoplay story run completes; playtime median within +-5% |
 | **2. Hats + store + workshop** (DONE 2026-10-15; review fixes applied, see docs/review-upgrades-b2.md) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
-| **3. Descent** | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
+| **3. Descent** (DONE 2026-10-15) | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
 | **4. Heat** | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
 | **QA / balance** | qa-tester pass, web build check, first playtest with logging (tickets/day, workshop buy order, descent depth, heat usage) | ongoing | |
 

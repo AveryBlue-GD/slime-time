@@ -428,3 +428,54 @@ give identical tiles (`tests/test_maps.gd`).
 **Save size** (measured in `tests/test_maps.gd`): save code 543 chars with no maps, 2,543 with all 20 levels
 fully surveyed (full surveys compress to almost nothing), 19,447 in a worst case no player reaches (random
 bits and 2,000-move routes everywhere); cap 65,536.
+
+## 9. DESCENT floors (upgrades v2 batch 3, 2026-10-15)
+
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C2. Code: `scripts/descent.gd` (`Descent`: rules, no
+nodes), `scripts/economy.gd` (`DESCENT_*`, `BOONS`: every number), `scripts/progress.gd` (the run in memory,
+daily cap, milestones, records, `[descent]`), `game.gd` (floors, carry-over, drops, boons), `scripts/ui/descent_card.gd`
+(boon card + run summary), `hub.gd` (portal choice). Tests: `tests/test_descent.gd`, `tests/test_descent_runs.gd`.
+
+**A run** is floors 1, 2, 3 ... built from one run seed (1 .. 2,000,000): floor k's maze seed is
+`run seed x 1000 + k`, so a run is fully deterministic (mazes, drops, offers) and has no seed code (no replay
+farming). The theme cycles in story order (`Themes.for_level((k - 1) % 10 + 1)`: floor 11 is the dungeon
+again) and tile wear grows with depth (`tile_level` = min(k, 10)). The goal is the chalice (the floor's exit).
+
+**Usage u per floor** (permille of the player's base meter a perfect glide needs): `300 + 50 (k - 1)`, capped at
+850 (floor 12+), plus a seeded jitter of +-50 (`run seed x 1000 + k` xor a salt), kept within 250-850. Measured over
+200 run seeds: floor 1 averages 302, floor 14 837. The route is `Levels.random_route_cells_for(u, MORE SLIME level)`
+(the randomizer's integer maths: u x 136 tiles x the slime factor), so the meter cost per tile is the randomizer's
+(`100 / 136 / factor`) and a perfect glide uses exactly u of the base meter (test: 25.4% vs u 25.5%).
+
+**Size: the randomizer's, not the spec's.** The spec sized floors for their own route (`1.25 x route + 12`,
+floor 14x8) so early floors would be small. The owner ruled on 2026-10-14 that randomizer mazes must not be small
+(section 5, "no longer follows u"), and the batch-3 brief asked for the size "from the player's slime capacity as
+for the randomizer", so a floor uses `Levels.random_cells(floor seed, MORE SLIME level)` (sized for the 95% route
+at that level, 18x10 .. 36x20) with the exit `route` cells from the start: early floors are big mazes with a near
+exit. Build time: 6.7 ms average per floor at MORE SLIME 7 (headless Mac), the randomizer's budget.
+
+**The meter carries over.** Floor 1 starts full. Entering floor k adds the refill of the last row of
+`DESCENT_REFILL` whose floor <= k: +60% (floors 2-3), +50% (4-6), +40% (7-9), +35% (10+), + THRIFT 15 per stack,
++ BIG GULP 30 if just picked, capped at 100%. The meter is a percent of the run's capacity (DEEP TANK +15% each,
+GREEDY GOO -10% each, additive); picking a capacity boon keeps the slime left in tiles (percent x old / new).
+
+**Goo drops:** 2 per floor (`Descent.drop_cells`: `Levels.coin_cells`'s priority, i.e. deep dead ends one per side
+branch of the route first, seeded; never the start or the exit), +8% of the meter each (capped at 100%), under the
+fog like coins (a pixel drop in the skin's shades with a faint glow); fog glimmers twinkle over them like coins
+(GOO NOSE more often), MAGNET pulls them (same rule as coins: revealed floor, clear line).
+
+**Solvability with the carried meter** (`tests/test_descent_runs.gd`, the autopilot on the shortest route,
+first boon offered, no drops): every floor entered with more meter than its perfect run needs (+3% autopilot
+slack) is cleared; 20/20 short runs (MORE SLIME 0/2/4/7) reach floor 4; deep runs reach floors 11, 14 and 11
+(MORE SLIME 0 / 4 / 7) before the meter falls short. Without boons or drops a perfect player runs dry around
+floor 9-11 (u rises 5 points a floor while the refill falls); humans explore, so a median run should end around
+floors 5-6 (spec estimate; no playtest yet). Knob for "runs too short": `DESCENT_REFILL` (spec D.4).
+
+**Pot and pay** (all in `Economy`): each cleared floor adds +1 (1-3), +2 (4-6), +3 (7-9), +4 (10+) and GREEDY GOO
++1 per stack, pot max 30. CASH OUT (on the boon card) banks the whole pot, a dry-up or QUIT TO HUB mid-floor half
+(rounded down); GLASS SLIME x1.5 (rounded down) after that, never above 30. Caps: the first 2 runs per UTC day that
+bank anything pay (forward-only day like the randomizer's, a pay day > 2 days ahead counts as today); later runs
+are PRACTICE (0, no slot used); no MORE SLIME bought = at most 1 (not in dev mode); a run with a dev toggle
+(F1 / F2) on any floor pays 0. Milestones (once ever, paid on reaching the floor, outside the daily cap, never for a
+dev-toggled run): floor 5 +10, 10 +15 (and the ABYSS trail), 15 +20, 20 +25 = 70. Best floor = the deepest floor
+reached (the one being played when the run ended), with the run time on reaching it.
