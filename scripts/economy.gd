@@ -43,3 +43,51 @@ const OLD_TREE_LEVELS := 10
 ## Old dev wall power did power x lerp(4, 12, charge) damage; the new factor x that formula equals
 ## it at old power = OLD_POWER_PER_LEVEL x new level, so old power maps to floor(old / 2.5).
 const OLD_POWER_PER_LEVEL := 2.5
+
+## ---------------------------------------------------------------- tickets: faucets (spec A.1)
+## The randomizer pays by attempt at a maze: attempt 1, 2, 3 ... (later attempts pay the last).
+const RANDOM_ATTEMPT_PAY: Array[int] = [5, 4, 3, 2, 1]
+## Randomizer wins that pay tickets per UTC day.
+const RANDOM_PAID_PER_DAY := 5
+## A win with no MORE SLIME bought, or on a typed / replayed seed, pays at most this.
+const TICKETS_NO_SLIME_CAP := 1
+const TICKETS_REPLAY_CAP := 1
+
+## ---------------------------------------------------------------- tickets: the hat wheel (C.1)
+## The first spin is free, the second costs SPIN_COST, each later one SPIN_STEP more (spins already
+## taken beyond the second), never above SPIN_COST_MAX: 0, 12, 14 ... 30 = 210 for all 11 hats.
+const SPIN_COST := 12
+const SPIN_STEP := 2
+const SPIN_COST_MAX := 40
+## TAILOR (the SHOP's direct buy): any hat still on the wheel for TAILOR_PRICE (the rainbow hat
+## TAILOR_RAINBOW_PRICE), once TAILOR_AFTER_SPINS spins have been taken. A buy counts as a spin.
+const TAILOR_PRICE := 45
+const TAILOR_RAINBOW_PRICE := 80
+const TAILOR_AFTER_SPINS := 3
+
+## ---------------------------------------------------------------- tickets: the WORKSHOP (B.2)
+## Utility upgrades bought with tickets in the cauldron's TICKETS tab: 3 levels each, not
+## refundable, off in hard mode, never change par, routes, u or seed codes. `costs[i]` = tickets for
+## level i + 1, `values[i]` = the effect AT level i + 1 (level 0 = `base`).
+##   wind:   SECOND WIND, the meter refills to this share (0-1) the first time it hits 0 in a run
+##   charge: QUICK CHARGE, seconds for a full leap charge (Slime.CHARGE_TIME 1.5 at level 0)
+##   sticky: STICKY, splat penalty factor; `stun` = the splat stun (s) (Slime.SPLAT_STUN 0.3)
+##   magnet: MAGNET, coin pickup reach (px) for coins in plain sight (Coin.REACH 10 at level 0)
+##   nose:   GOO NOSE, glimmers come `values` x as often; `reach` = how far they reach (px, 160)
+const WORKSHOP := {
+	"wind": {base = 0.0, costs = [15, 30, 50], values = [0.15, 0.25, 0.35]},
+	"charge": {base = 1.5, costs = [12, 25, 45], values = [1.2, 0.95, 0.7]},
+	"sticky": {base = 1.0, costs = [12, 25, 45], values = [0.75, 0.55, 0.40], stun_base = 0.3, stun = [0.2, 0.12, 0.06]},
+	"magnet": {base = 10.0, costs = [12, 25, 45], values = [18.0, 26.0, 34.0]},
+	"nose": {base = 1.0, costs = [12, 25, 45], values = [1.5, 2.0, 3.0], reach_base = 160.0, reach = [200.0, 240.0, 300.0]},
+}
+## SECOND WIND refills the meter over this many seconds.
+const WIND_REFILL_TIME := 0.4
+
+## ---------------------------------------------------------------- tickets: cosmetics (C.2)
+## Ticket prices of the v1 cosmetics (palette / pattern only; Cosmetics has their names and looks).
+## 20 + 25 + 30 + 35 + 40 + 25 + 25 + 40 = 240.
+const COSMETICS := {
+	"ink": 20, "glow": 25, "gold": 30, "candy": 35, "starry": 40,
+	"blueprint": 25, "night": 25, "goldleaf": 40,
+}

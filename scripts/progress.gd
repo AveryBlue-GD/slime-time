@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -75,28 +75,29 @@ const SAVE_VERSION := 6
 const LAYOUT_VERSION := 4
 ## The first save version whose hard-mode best times belong to the current hard mazes.
 const HARD_LAYOUT_VERSION := 5
-## TICKET VOUCHERS: the renewable, cosmetic-only currency (never converted to or from coins). The
-## ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that maze
-## took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5 paying
-## wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a typed or
-## replayed seed, get at most 1 per win. The only sink so far is the hat wheel (12, then +2 for each
-## spin already taken, up to 40).
+## TICKET VOUCHERS: the renewable, cosmetic-and-utility currency (never converted to or from coins).
+## The ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that
+## maze took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5
+## paying wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a
+## typed or replayed seed, get at most 1 per win. Sinks (upgrades v2 batch 2): the hat wheel (free,
+## then 12, +2 per spin taken, up to 40), the TAILOR (a hat for 45, rainbow 80), the WORKSHOP
+## (ticket utility upgrades) and cosmetics (trail styles, map papers). All numbers: Economy.
 ## (Saved under the old [wallet] keys "globs" and "globs_lifetime" so existing saves still load.)
 const TICKETS_MAX := 99999
 ## Tickets a randomizer win pays on attempt 1, 2, 3 ... of that maze; later attempts pay the last.
-const RANDOM_ATTEMPT_PAY: Array[int] = [5, 4, 3, 2, 1]
+const RANDOM_ATTEMPT_PAY: Array[int] = Economy.RANDOM_ATTEMPT_PAY
 ## Payout cap for a player who has bought no MORE SLIME upgrade ("excess slime"), and for a typed or
 ## replayed seed (a memorized seed can't be farmed).
-const TICKETS_NO_SLIME_CAP := 1
-const TICKETS_REPLAY_CAP := 1
+const TICKETS_NO_SLIME_CAP := Economy.TICKETS_NO_SLIME_CAP
+const TICKETS_REPLAY_CAP := Economy.TICKETS_REPLAY_CAP
 ## Randomizer wins that pay tickets per UTC day.
-const RANDOM_PAID_PER_DAY := 5
+const RANDOM_PAID_PER_DAY := Economy.RANDOM_PAID_PER_DAY
 const PAID_SEEDS_MAX := 10
 ## Hat wheel price: the first spin is free, the second costs SPIN_COST, each later one SPIN_STEP more
 ## (spins already taken beyond the second), never above SPIN_COST_MAX.
-const SPIN_COST := 12
-const SPIN_STEP := 2
-const SPIN_COST_MAX := 40
+const SPIN_COST := Economy.SPIN_COST
+const SPIN_STEP := Economy.SPIN_STEP
+const SPIN_COST_MAX := Economy.SPIN_COST_MAX
 const RAINBOW_PITY_MAX := 40
 ## Spins kept when a save is read (a hostile save can't push the price math anywhere odd).
 const SPINS_MAX := 100000
@@ -146,6 +147,17 @@ var selected_skin := Skins.DEFAULT
 var selected_hat := Hats.NONE
 ## Hats won on the hat wheel (saved): they're off the wheel and can be worn.
 var hats_owned: Array[String] = []
+## Hats bought from the TAILOR ([hats] bought; stats only: `spins` already counts them).
+var hats_bought := 0
+## Tickets spent in all ([wallet] tickets_spent; for stats and sanity checks).
+var tickets_spent := 0
+## The ticket WORKSHOP's levels by id (Workshop; [workshop], 0-3 each; off in hard mode).
+var workshop := {}
+## Cosmetics bought with tickets (Cosmetics ids; [cosmetics] owned) and the ones worn: a trail
+## style and a map paper (Cosmetics.DEFAULT_TRAIL / DEFAULT_PAPER when none is).
+var cosmetics_owned: Array[String] = []
+var trail_style := Cosmetics.DEFAULT_TRAIL
+var map_paper := Cosmetics.DEFAULT_PAPER
 ## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
 ## only be collected once; they're saved the moment they're grabbed.
 var coins_found := {}
@@ -295,6 +307,26 @@ func _ready() -> void:
 		elif arg.begins_with("--hat="):
 			saving_enabled = false
 			selected_hat = arg.trim_prefix("--hat=")
+		elif arg.begins_with("--workshop="):  # e.g. --workshop=1,0,3,2,0: SECOND WIND, QUICK CHARGE, STICKY, MAGNET, GOO NOSE (0-3)
+			saving_enabled = false
+			var levels := arg.trim_prefix("--workshop=").split(",")
+			for i in mini(levels.size(), Workshop.LIST.size()):
+				var id: String = Workshop.LIST[i].id
+				workshop[id] = clampi(levels[i].to_int(), 0, Workshop.max_level(id))
+		elif arg.begins_with("--trail="):  # wear (and own) a trail style, e.g. --trail=candy
+			saving_enabled = false
+			var style := arg.trim_prefix("--trail=")
+			if Cosmetics.kind_of(style) == Cosmetics.TRAIL:
+				if style != Cosmetics.DEFAULT_TRAIL and not style in cosmetics_owned:
+					cosmetics_owned.append(style)
+				trail_style = style
+		elif arg.begins_with("--paper="):  # use (and own) a map paper, e.g. --paper=blueprint
+			saving_enabled = false
+			var paper := arg.trim_prefix("--paper=")
+			if Cosmetics.kind_of(paper) == Cosmetics.PAPER:
+				if paper != Cosmetics.DEFAULT_PAPER and not paper in cosmetics_owned:
+					cosmetics_owned.append(paper)
+				map_paper = paper
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 	if MAPS_FULL_FLAG in args:  # after the loop: --unlock-all clears the maps
@@ -583,6 +615,7 @@ func _read(file: ConfigFile) -> void:
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
 	_read_bindings(file)
 	_read_wallet(file)
+	_read_store(file)
 	_read_maps(file)
 	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
 		_migrate_hard_times()
@@ -704,6 +737,31 @@ func _read_wallet(file: ConfigFile) -> void:
 			var tier := _migrate_medals(key, version) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
 			if tier > 0:
 				medals[key] = tier
+
+
+## The ticket store (upgrades v2 batch 2), all optional with defaults: [workshop] levels clamped to
+## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
+## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
+## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
+func _read_store(file: ConfigFile) -> void:
+	workshop = {}
+	for id in Workshop.ids():
+		var level := clampi(_int(file, "workshop", id, 0), 0, Workshop.max_level(id))
+		if level > 0:
+			workshop[id] = level
+	var owned: Array[String] = []
+	for id in _strings(file.get_value("cosmetics", "owned", [])):
+		if not Cosmetics.get_item(id).is_empty() and not id in owned:
+			owned.append(id)
+	cosmetics_owned.assign(owned)
+	trail_style = _string(file, "cosmetics", "trail", Cosmetics.DEFAULT_TRAIL)
+	if not owns_cosmetic(trail_style) or Cosmetics.kind_of(trail_style) != Cosmetics.TRAIL:
+		trail_style = Cosmetics.DEFAULT_TRAIL
+	map_paper = _string(file, "cosmetics", "paper", Cosmetics.DEFAULT_PAPER)
+	if not owns_cosmetic(map_paper) or Cosmetics.kind_of(map_paper) != Cosmetics.PAPER:
+		map_paper = Cosmetics.DEFAULT_PAPER
+	hats_bought = clampi(_int(file, "hats", "bought", 0), 0, Hats.LIST.size())
+	tickets_spent = clampi(_int(file, "wallet", "tickets_spent", 0), 0, 100 * TICKETS_MAX)
 
 
 ## The tier for a level key from a version 1-2 save: its best time against the level's par when it
@@ -864,7 +922,7 @@ func _write() -> ConfigFile:
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
 	file.set_value("skin", "hat", selected_hat)
-	file.set_value("hats", "owned", hats_owned)
+	file.set_value("hats", "owned", hats_owned.duplicate())
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
@@ -890,6 +948,19 @@ func _write() -> ConfigFile:
 	file.set_value("wallet", "paid_seeds", random_paid_seeds)
 	file.set_value("hats", "spins", spins)
 	file.set_value("hats", "rainbow_pity", rainbow_pity)
+	# The ticket store: written only once used, so a save without it stays as small as before.
+	if hats_bought > 0:
+		file.set_value("hats", "bought", hats_bought)
+	if tickets_spent > 0:
+		file.set_value("wallet", "tickets_spent", tickets_spent)
+	for id: String in workshop:
+		file.set_value("workshop", id, workshop[id])
+	if not cosmetics_owned.is_empty():
+		file.set_value("cosmetics", "owned", cosmetics_owned.duplicate())
+	if trail_style != Cosmetics.DEFAULT_TRAIL:
+		file.set_value("cosmetics", "trail", trail_style)
+	if map_paper != Cosmetics.DEFAULT_PAPER:
+		file.set_value("cosmetics", "paper", map_paper)
 	for key: int in medals:
 		file.set_value("medals", "level_%d" % key, medals[key])
 	for key: int in maps:
@@ -1401,8 +1472,8 @@ func hats_left() -> Array[String]:
 	return left
 
 
-## Whether the hat wheel can be spun right now: dev mode always (free); otherwise only once hats
-## are out (Hats.available), with a hat left to win and the first spin or 12 tickets to pay for it.
+## Whether the hat wheel can be spun right now: dev mode always (free); otherwise once hats are out
+## (Hats.available), with a hat left to win and the first spin (free) or its price in tickets.
 func can_spin_hats() -> bool:
 	if hats_left().is_empty():
 		return false
@@ -1434,11 +1505,155 @@ func spin_hat(roll := -1.0) -> String:
 		return ""
 	var left := hats_left()
 	var pick := Hats.pick(left, rainbow_pity, randf() if roll < 0.0 else roll)
-	tickets -= spin_cost()
+	_pay(spin_cost())
 	spins += 1
 	rainbow_pity = 0 if Hats.get_hat(pick).get("flows", false) else mini(rainbow_pity + 1, RAINBOW_PITY_MAX)
 	win_hat(pick)  # saves everything above too
 	return pick
+
+
+## TAILOR (the hat wheel's SHOP): whether direct buys are open (after Economy.TAILOR_AFTER_SPINS
+## spins; dev mode always).
+func tailor_open() -> bool:
+	return dev_tools or (Hats.available and spins >= Economy.TAILOR_AFTER_SPINS)
+
+
+## What the TAILOR asks for hat `id` (0 in dev mode).
+func tailor_price(id: String) -> int:
+	if dev_tools:
+		return 0
+	return Economy.TAILOR_RAINBOW_PRICE if Hats.get_hat(id).get("flows", false) else Economy.TAILOR_PRICE
+
+
+func can_buy_hat(id: String) -> bool:
+	return tailor_open() and id in hats_left() and tailor_price(id) <= tickets
+
+
+## Buys hat `id` from the TAILOR, atomically like spin_hat (pay, win, save at once). The buy
+## counts as a spin taken (so mixing can't dodge the price ramp); buying the rainbow hat resets its
+## pity (another hat leaves the pity as it is: a buy isn't a roll). False if it can't be bought.
+func buy_hat(id: String) -> bool:
+	if not can_buy_hat(id):
+		return false
+	_pay(tailor_price(id))
+	spins = mini(spins + 1, SPINS_MAX)
+	hats_bought += 1
+	if Hats.get_hat(id).get("flows", false):
+		rainbow_pity = 0
+	win_hat(id)  # saves
+	return true
+
+
+## Takes `amount` tickets (never below 0) and counts them as spent. Doesn't save.
+func _pay(amount: int) -> void:
+	var paid := clampi(amount, 0, tickets)
+	tickets -= paid
+	tickets_spent = mini(tickets_spent + paid, 100 * TICKETS_MAX)
+
+
+# ---------------------------------------------------------------- the ticket workshop and cosmetics
+
+func workshop_level(id: String) -> int:
+	return int(workshop.get(id, 0))
+
+
+## What the next level of workshop track `id` costs (0 when maxed, and in dev mode).
+func workshop_cost(id: String) -> int:
+	return 0 if dev_tools else Workshop.cost(id, workshop_level(id))
+
+
+## The TICKETS tab opens once the player has ever had a ticket (dev mode always).
+func workshop_open() -> bool:
+	return dev_tools or tickets_lifetime > 0
+
+
+func can_buy_workshop(id: String) -> bool:
+	return workshop_open() and workshop_level(id) < Workshop.max_level(id) and workshop_cost(id) <= tickets
+
+
+## Buys the next level of workshop track `id` (pay + level + save at once). Not refundable.
+func buy_workshop(id: String) -> bool:
+	if not can_buy_workshop(id):
+		return false
+	_pay(workshop_cost(id))
+	workshop[id] = workshop_level(id) + 1
+	save_progress()
+	return true
+
+
+## Defaults are always owned; dev mode owns everything.
+func owns_cosmetic(id: String) -> bool:
+	if id == Cosmetics.DEFAULT_TRAIL or id == Cosmetics.DEFAULT_PAPER:
+		return true
+	return id in cosmetics_owned or (dev_tools and not Cosmetics.get_item(id).is_empty())
+
+
+func cosmetic_price(id: String) -> int:
+	return 0 if dev_tools else Cosmetics.price(id)
+
+
+func can_buy_cosmetic(id: String) -> bool:
+	return not Cosmetics.get_item(id).is_empty() and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
+
+
+## Buys cosmetic `id` and puts it on (pay + own + wear + save at once). False if it can't.
+func buy_cosmetic(id: String) -> bool:
+	if not can_buy_cosmetic(id):
+		return false
+	_pay(cosmetic_price(id))
+	cosmetics_owned.append(id)
+	_wear(id)
+	save_progress()
+	return true
+
+
+## Wears an owned cosmetic (or a default), replacing the one of its kind. Saves. False if not owned.
+func equip_cosmetic(id: String) -> bool:
+	if not owns_cosmetic(id) or Cosmetics.kind_of(id) == "":
+		return false
+	_wear(id)
+	save_progress()
+	return true
+
+
+## Takes off cosmetic `id` if it is worn (back to its kind's default). Saves.
+func unequip_cosmetic(id: String) -> void:
+	if trail_style == id:
+		trail_style = Cosmetics.DEFAULT_TRAIL
+	elif map_paper == id:
+		map_paper = Cosmetics.DEFAULT_PAPER
+	save_progress()
+
+
+func _wear(id: String) -> void:
+	if Cosmetics.kind_of(id) == Cosmetics.TRAIL:
+		trail_style = id
+	else:
+		map_paper = id
+
+
+## The cheapest thing in the store not owned yet (hat spin, TAILOR hat, workshop level, cosmetic)
+## is affordable: the hub prompts show a "!" (spec C.3).
+func store_affordable(where: String) -> bool:
+	if dev_tools:
+		return false
+	var cheapest := TICKETS_MAX + 1
+	if where == "upgrades":
+		if not workshop_open():
+			return false
+		for id in Workshop.ids():
+			if workshop_level(id) < Workshop.max_level(id):
+				cheapest = mini(cheapest, workshop_cost(id))
+	else:
+		if Hats.available and not hats_left().is_empty():
+			cheapest = mini(cheapest, spin_cost())
+		for id in Cosmetics.ids():
+			if not owns_cosmetic(id):
+				cheapest = mini(cheapest, cosmetic_price(id))
+		if tailor_open():
+			for id in hats_left():
+				cheapest = mini(cheapest, tailor_price(id))
+	return cheapest <= tickets
 
 
 ## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
@@ -1561,6 +1776,12 @@ func reset_progress() -> void:
 	medals = {}
 	spins = 0
 	rainbow_pity = 0
+	hats_bought = 0
+	tickets_spent = 0
+	workshop = {}
+	cosmetics_owned.clear()
+	trail_style = Cosmetics.DEFAULT_TRAIL
+	map_paper = Cosmetics.DEFAULT_PAPER
 	random_pay_day = 0
 	random_paid = 0
 	random_paid_seeds.clear()

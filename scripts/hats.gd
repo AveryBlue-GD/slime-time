@@ -3,16 +3,16 @@ extends RefCounted
 
 ## Hats: won on the hat wheel in the hub (a spin lands on a random hat you don't have yet, and
 ## won hats come off the wheel; Progress.hats_owned), then picked on the Skins screen's hats page
-## (Progress.selected_hat). A spin costs 12 tickets (the first is free; Progress.spin_hat), but the wheel stays dev-only
-## while Hats.available is false.
+## (Progress.selected_hat). The first spin is free, then 12 tickets rising by 2 per spin (Progress.spin_hat);
+## after 3 spins the wheel's SHOP also sells any hat still on it (the TAILOR: 45, the rainbow hat 80).
 ## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
 ## frame. The Hat node (scripts/hat.gd) puts the chosen one on the slime and handles its physics.
 ##
 ## These are placeholders until the real hats are decided.
 
-## Hats are still placeholders, so for now they show "COMING SOON" and can't be worn (except in
-## dev mode). Set to true once the real hats are in.
-static var available := false
+## Hats are out for every player (upgrades v2 batch 2). The switch stays so a test (or a future
+## content gap) can turn the wheel back off: false = no spins and no hats worn outside dev mode.
+static var available := true
 
 ## How much each missed spin fattens the rainbow hat's wedge.
 const PITY_STEP := 0.15
