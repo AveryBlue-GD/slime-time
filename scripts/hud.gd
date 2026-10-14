@@ -90,8 +90,25 @@ const WIND_USED := Color(0.45, 0.45, 0.5, 0.75)
 ## Dev mode only: a tag naming the dev toggles that are on (made on first use, so it never exists
 ## in normal play; see set_dev_badge).
 var dev_badge: Control
+## HEAT runs: a pod under the level with a flame, the heat and the modifiers' icons (set_heat); the
+## timer's clock becomes an hourglass counting down with RACE (set_countdown); the result's heat
+## line (show_heat_result).
+var heat_pod: Control
+var heat_label: Label
+var heat_icons: Array[String] = []
+var heat_row: HBoxContainer
+var heat_texts: Array[String] = []
+var _clock_icon: TextureRect
+var _message_center: CenterContainer
+## The result panel moves up by this when the HEAT line adds a row, so its bottom stays clear of
+## the NEW RECORD! banner (13 = the row's 9 px + the 4 px gap).
+const HEAT_ROW_LIFT := 13
+var countdown := -1.0
+const HEAT_TINT := Color8(255, 170, 90)
+const RACE_LOW := 10.0
 var _dev_label: Label
 var _left_bar: BoxContainer
+var _right_bar: BoxContainer
 var _vignette: ColorRect
 const DEV_TINT := Color8(255, 120, 220)
 const MEDAL_GOLD := Color8(255, 205, 117)
@@ -124,6 +141,7 @@ func _ready() -> void:
 	var left_bar := _make_bar(Control.PRESET_TOP_LEFT)
 	_left_bar = left_bar
 	var right_bar := _make_bar(Control.PRESET_TOP_RIGHT)
+	_right_bar = right_bar
 
 	# Left pod: goo drop, segmented meter, percent.
 	var meter_row := _make_pod(left_bar)
@@ -158,7 +176,8 @@ func _ready() -> void:
 
 	# Center pod: clock + run time.
 	var time_row := _make_pod(null)
-	time_row.add_child(UIKit.make_icon("clock", UIKit.TEXT))
+	_clock_icon = UIKit.make_icon("clock", UIKit.TEXT)
+	time_row.add_child(_clock_icon)
 	time_label = _make_label()
 	time_label.custom_minimum_size = Vector2(37, 0)  # "0:00.0" + 1: an even-width pod sits exactly on center
 	time_row.add_child(time_label)
@@ -215,6 +234,7 @@ func _ready() -> void:
 	add_child(story_label)
 
 	var message_center := CenterContainer.new()
+	_message_center = message_center
 	message_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	message_center.offset_top = 20
 	message_center.offset_bottom = -40
@@ -238,6 +258,12 @@ func _ready() -> void:
 	rewards_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rewards_row.visible = false
 	message_box.add_child(rewards_row)
+	heat_row = HBoxContainer.new()
+	heat_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	heat_row.add_theme_constant_override("separation", 4)
+	heat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	heat_row.visible = false
+	message_box.add_child(heat_row)
 	# The panel shows whenever the message does.
 	message.visibility_changed.connect(func() -> void: _message_panel.visible = message.visible)
 	message.visible = false
@@ -433,6 +459,68 @@ func attempt_flashing() -> bool:
 
 func set_time(seconds: float) -> void:
 	time_label.text = UIKit.format_time(seconds)
+
+
+## RACE: the timer counts down `seconds` left (an hourglass instead of the clock; red under RACE_LOW).
+func set_countdown(seconds: float) -> void:
+	seconds = maxf(seconds, 0.0)
+	if countdown < 0.0:
+		_clock_icon.texture = Heat.icon("race")
+		_clock_icon.modulate = Color.WHITE
+	countdown = seconds
+	time_label.text = UIKit.format_time(seconds)
+	var low := seconds < RACE_LOW
+	if low != time_label.has_theme_color_override("font_color"):
+		if low:
+			time_label.add_theme_color_override("font_color", LOW_COLOR)
+		else:
+			time_label.remove_theme_color_override("font_color")
+
+
+## HEAT: the pod under the level name (a flame in the run's tier color, HEAT n, and the icon of each
+## modifier on). Built the first time it is needed.
+func set_heat(heat: int, ids: Array[String]) -> void:
+	if heat_pod == null:
+		var row := _make_pod(_right_bar)
+		heat_pod = row.get_parent()
+		heat_pod.name = "HeatPod"
+		row.add_theme_constant_override("separation", 2)
+		row.add_child(Heat.make_rect(Heat.flame(heat)))
+		heat_label = UIKit.make_label("", 8, HEAT_TINT)
+		row.add_child(heat_label)
+		for id in ids:
+			row.add_child(Heat.make_rect(Heat.icon(id)))
+	heat_label.text = "HEAT %d" % heat
+	heat_icons = ids.duplicate()
+	heat_pod.visible = heat > 0
+
+
+## The result's HEAT line (a heat run's clear): the flame and HEAT n, then the bounty it paid
+## (+N TICKETS), NEW BEST HEAT, or the best so far. `result` = Progress.complete_heat's ({} when the
+## run could earn nothing: dev toggles).
+func show_heat_result(heat: int, result: Dictionary) -> void:
+	for child in heat_row.get_children():
+		child.queue_free()
+	heat_texts.clear()
+	heat_row.add_child(Heat.make_rect(Heat.flame(heat)))
+	_heat_text("HEAT %d" % heat, HEAT_TINT)
+	var paid := int(result.get("paid", 0))
+	if paid > 0:
+		heat_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
+		_heat_text("BOUNTY +%d" % paid, TICKET_TINT)
+	elif result.get("new_best", false):
+		_heat_text("NEW BEST HEAT!", NEW_BEST_COLOR)
+	elif not result.is_empty():
+		_heat_text("BEST HEAT %d" % int(result.best), MEDAL_OWNED)
+	if not heat_row.visible:
+		_message_center.offset_top -= HEAT_ROW_LIFT
+		_message_center.offset_bottom -= HEAT_ROW_LIFT
+	heat_row.visible = true
+
+
+func _heat_text(text: String, color: Color) -> void:
+	heat_row.add_child(UIKit.make_label(text, 8, color))
+	heat_texts.append(text)
 
 
 ## The assist tag in the top bar.

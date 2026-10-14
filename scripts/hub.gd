@@ -143,6 +143,9 @@ var portal_info: Label
 ## Top-left pod: ticket balance and medal count.
 var ticket_pod: PanelContainer
 var ticket_label: Label
+## The ticket pod's HEAT total (hidden until a level has been cleared with heat).
+var heat_flame: TextureRect
+var heat_label: Label
 var medal_label: Label
 var _touch_controls: CanvasLayer
 var _time := 0.0
@@ -583,12 +586,20 @@ func _build_ticket_pod(root: Control) -> void:
 	row.add_child(UIKit.make_icon("medal", UIKit.GOLD))
 	medal_label = UIKit.make_label("", 8, UIKit.GOLD)
 	row.add_child(medal_label)
+	# HEAT: the sum of every hard level's best heat, once there is any (HEAT n/100).
+	heat_flame = Heat.make_rect(Heat.flame(Economy.HEAT_MAX))
+	row.add_child(heat_flame)
+	heat_label = UIKit.make_label("", 8, Color8(255, 170, 90))
+	row.add_child(heat_label)
 	_refresh_tickets()
 
 
 func _refresh_tickets() -> void:
 	ticket_label.text = str(Progress.tickets)
 	medal_label.text = "%d/%d" % [Progress.medals_total(false), Progress.medals_max()]
+	heat_label.text = "%d/%d" % [Progress.heat_total(), Economy.HEAT_MAX * Levels.COUNT]
+	heat_flame.visible = Progress.heat_total() > 0
+	heat_label.visible = heat_flame.visible
 
 
 ## The coin bag's board: every story level's coins found out of its total (a gold check once it's

@@ -21,6 +21,8 @@ uniform vec4 fade_alpha = vec4(0.0, 0.3, 0.5, 0.65);
 uniform float fade_alpha_last = 0.78;
 // Hard mode: once a cell has fully dimmed it is covered again like unexplored ground.
 uniform bool hard_mode = false;
+// Hard mode: a cell lit this long ago is fog again (the last fade step; HEAT FOG BITES halves it).
+uniform float refog_after = 9.0;
 
 uniform vec2 map_size;
 // World position of the texture's top-left corner (px), so the mist and dither line up between
@@ -66,7 +68,7 @@ float cell_alpha(vec4 texel) {
 	float wall = mod(packed, 2.0);
 	float first_revealed = (floor(packed / 2.0) - 1.0) / TICKS;
 	float age = now - (bytes.r * 256.0 + bytes.g) / TICKS;
-	if (hard_mode && age >= fade_after.w) {
+	if (hard_mode && age >= refog_after) {
 		return 1.0;
 	}
 	float alpha = fade_alpha_last;

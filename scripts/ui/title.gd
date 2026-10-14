@@ -33,6 +33,12 @@ func _ready() -> void:
 	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 12)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
+	if Progress.heat_crown():  # HEAT 10 on every hard level: a crown of white-hot flames over the logo
+		for i in 5:
+			var flame := Heat.make_rect(Heat.flame(Economy.HEAT_MAX))
+			flame.name = "CrownFlame%d" % i
+			flame.position = Vector2(160 - 4 + (i - 2) * 12, 2 + absi(i - 2))
+			add_child(flame)
 	for x in [52, 268]:
 		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow(), null, Progress.is_stopwatch())
 		preview.position = Vector2(x, 112)

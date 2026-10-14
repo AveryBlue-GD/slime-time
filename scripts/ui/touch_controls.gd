@@ -28,6 +28,8 @@ var joy_vector := Vector2.ZERO
 var _joy_touch := -1
 var _joy_center := JOY_HOME
 var _jump_touch := -1
+## False when the run has no leaps (HEAT GROUNDED): the JUMP button is drawn struck out and does nothing.
+var jump_enabled := true
 ## The finger on the pause button: its `menu` press is released when it lifts (or the level pauses /
 ## the controls go away), so the action is never left held.
 var _pause_touch := -1
@@ -96,7 +98,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 			_move_joystick(pos)
 	elif _jump_touch == -1:
 		_jump_touch = index
-		_press("jump")
+		if jump_enabled:
+			_press("jump")
 	_canvas.queue_redraw()
 
 
@@ -188,7 +191,10 @@ func _draw_controls() -> void:
 	var font := _canvas.get_theme_default_font()
 	var label_width := font.get_string_size("JUMP", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), "JUMP",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9 if jump_enabled else 0.35))
+	if not jump_enabled:  # GROUNDED: struck out
+		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6
+		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
 	# Pause button: two bars.
 	_canvas.draw_rect(pause_rect, dim)
 	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))

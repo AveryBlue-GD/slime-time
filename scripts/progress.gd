@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -154,6 +154,13 @@ var descent_runs := 0
 var descent_pay_day := 0
 var descent_paid := 0
 var descent_milestones := 0
+## HEAT (upgrades v2 batch 4, Heat): the modifiers picked on the level select's HEAT panel (a Heat
+## bitmask, saved [settings] heat_mods; they apply to hard story levels already cleared on hard), the
+## best heat each hard level was cleared at (level -> 0-10, saved [heat] level_N; the bounty tiers up
+## to it are the ones paid) and the bounty tickets paid in all (saved [heat] paid; stats only).
+var heat_mods := 0
+var heat_best := {}
+var heat_paid := 0
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -342,11 +349,29 @@ func _ready() -> void:
 				if paper != Cosmetics.DEFAULT_PAPER and not paper in cosmetics_owned:
 					cosmetics_owned.append(paper)
 				map_paper = paper
+		elif arg.begins_with("--heat="):  # HEAT modifiers: ids (--heat=dim,fog,race) or a mask number (not saved)
+			saving_enabled = false
+			heat_mods = Heat.sanitize(_heat_arg(arg.trim_prefix("--heat=")))
+		elif arg.begins_with("--heat-best="):  # best heat per hard level 1, 2, ... e.g. 10,7,4 (not saved)
+			saving_enabled = false
+			var bests := arg.trim_prefix("--heat-best=").split(",")
+			for i in mini(bests.size(), Levels.COUNT):
+				heat_best[i + 1] = clampi(bests[i].to_int(), 0, Economy.HEAT_MAX)
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 	if MAPS_FULL_FLAG in args:  # after the loop: --unlock-all clears the maps
 		saving_enabled = false
 		seed_full_surveys()
+
+
+## `--heat=` value: modifier ids separated by commas, or a plain mask number.
+static func _heat_arg(text: String) -> int:
+	if text.is_valid_int():
+		return text.to_int()
+	var mask := 0
+	for id in text.split(","):
+		mask |= Heat.bit(id.strip_edges())
+	return mask
 
 
 ## Launch flags an exported RELEASE build still honors: they only preview the touch / web UI layout.
@@ -631,6 +656,7 @@ func _read(file: ConfigFile) -> void:
 	_read_bindings(file)
 	_read_wallet(file)
 	_read_descent(file)
+	_read_heat(file)  # before the store: the EMBER trail counts only with its heat
 	_read_store(file)
 	_read_maps(file)
 	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
@@ -791,6 +817,19 @@ func _read_store(file: ConfigFile) -> void:
 		map_paper = Cosmetics.DEFAULT_PAPER
 	hats_bought = clampi(_int(file, "hats", "bought", 0), 0, Hats.LIST.size())
 	tickets_spent = clampi(_int(file, "wallet", "tickets_spent", 0), 0, 100 * TICKETS_MAX)
+
+
+## HEAT: the picked modifiers (sanitized), each hard level's best heat (0-10; only for a level cleared
+## on hard, since heat unlocks with that clear) and the bounty paid (never more than those bests
+## could have paid).
+func _read_heat(file: ConfigFile) -> void:
+	heat_mods = Heat.sanitize(maxi(_int(file, "settings", "heat_mods", 0), 0))
+	heat_best = {}
+	for level in range(1, Levels.COUNT + 1):
+		var best := clampi(_int(file, "heat", "level_%d" % level, 0), 0, Economy.HEAT_MAX)
+		if best > 0 and level in hard_cleared:
+			heat_best[level] = best
+	heat_paid = clampi(_int(file, "heat", "paid", 0), 0, _heat_bounty_earned())
 
 
 ## The tier for a level key from a version 1-2 save: its best time against the level's par when it
@@ -957,6 +996,8 @@ func _write() -> ConfigFile:
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("settings", "reduce_motion", reduce_motion)
 	file.set_value("settings", "fog_brightness", fog_brightness)
+	if heat_mods != 0:
+		file.set_value("settings", "heat_mods", heat_mods)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
 	file.set_value("progress", "hard_cleared", hard_cleared)
 	for level: int in best_times:
@@ -996,6 +1037,11 @@ func _write() -> ConfigFile:
 		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
 	if maps_hint_seen:
 		file.set_value("maps", "hint_seen", true)
+	# HEAT: written only once a level has been cleared with heat.
+	for level: int in heat_best:
+		file.set_value("heat", "level_%d" % level, heat_best[level])
+	if heat_paid > 0:
+		file.set_value("heat", "paid", heat_paid)
 	# DESCENT records and its daily counter: written only once a run has been played.
 	if descent_best_floor > 0 or descent_runs > 0 or descent_pay_day > 0 or descent_milestones > 0:
 		file.set_value("descent", "best_floor", descent_best_floor)
@@ -1471,8 +1517,11 @@ func _reach_descent_floor() -> void:
 		save_progress()
 
 
-## True once earned cosmetic `id` has been earned (ABYSS: Descent floor DESCENT_ABYSS_FLOOR reached).
+## True once earned cosmetic `id` has been earned (ABYSS: Descent floor DESCENT_ABYSS_FLOOR reached;
+## EMBER: every hard level cleared at heat Economy.HEAT_EMBER or more).
 func cosmetic_earned(id: String) -> bool:
+	if id == "ember":
+		return heat_levels_at(Economy.HEAT_EMBER) == Levels.COUNT
 	if id == "abyss":
 		var bit := Descent.milestone_bit(Economy.DESCENT_ABYSS_FLOOR)
 		return descent_best_floor >= Economy.DESCENT_ABYSS_FLOOR or (bit >= 0 and descent_milestones & (1 << bit) != 0)
@@ -1545,6 +1594,89 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 	descent_run.result = result
 	save_progress()
 	return result
+
+
+# ---------------------------------------------------------------- HEAT (batch 4)
+
+## True when hard level `level` can be played with heat: it has its plain hard clear.
+func heat_unlocked(level: int) -> bool:
+	return level in hard_cleared
+
+
+## The HEAT mask a hard story run of `level` plays with: the picked modifiers once the level is
+## cleared on hard, else 0. (The game asks only for hard story levels: never normal mode, the
+## randomizer or Descent.)
+func heat_for_run(level: int) -> int:
+	if not hard_mode or not heat_unlocked(level):
+		return 0
+	return Heat.sanitize(heat_mods)
+
+
+## Picks the HEAT modifiers (the level select's panel). Saves.
+func set_heat_mods(mask: int) -> void:
+	heat_mods = Heat.sanitize(mask)
+	save_progress()
+
+
+## The best heat hard level `level` was cleared at (0 = none yet).
+func best_heat(level: int) -> int:
+	return clampi(int(heat_best.get(level, 0)), 0, Economy.HEAT_MAX)
+
+
+## The sum of every hard level's best heat (the hub pod's HEAT n/100).
+func heat_total() -> int:
+	var total := 0
+	for level in range(1, Levels.COUNT + 1):
+		total += best_heat(level)
+	return total
+
+
+## How many hard levels have been cleared at `heat` or more.
+func heat_levels_at(heat: int) -> int:
+	var count := 0
+	for level in range(1, Levels.COUNT + 1):
+		if best_heat(level) >= heat and best_heat(level) > 0:
+			count += 1
+	return count
+
+
+## The bounty tickets the best heats so far have paid (Heat.bounty from 0 to each best).
+func _heat_bounty_earned() -> int:
+	var total := 0
+	for level in range(1, Levels.COUNT + 1):
+		total += Heat.bounty(0, best_heat(level))
+	return total
+
+
+## Records a hard clear of `level` at `heat` (the game calls it only for an unassisted run with no
+## dev toggles): a new best heat pays the bounty of every tier it newly crosses (Heat.bounty, once
+## per level and tier) and every level at Economy.HEAT_EMBER+ earns the EMBER trail. Returns
+## {heat, before, best, paid, new_best, ember}.
+func complete_heat(level: int, heat: int, save := true) -> Dictionary:
+	var before := best_heat(level)
+	heat = clampi(heat, 0, Economy.HEAT_MAX)
+	var result := {heat = heat, before = before, best = before, paid = 0, new_best = false, ember = false}
+	if heat <= 0 or level < 1 or level > Levels.COUNT or not heat_unlocked(level):
+		return result
+	if heat > before:
+		heat_best[level] = heat
+		result.best = heat
+		result.new_best = true
+		var due := Heat.bounty(before, heat)
+		if due > 0:
+			result.paid = add_tickets(due, false)
+			heat_paid = mini(heat_paid + due, _heat_bounty_earned())
+	if cosmetic_earned("ember") and not "ember" in cosmetics_owned:
+		cosmetics_owned.append("ember")
+		result.ember = true
+	if save:
+		save_progress()
+	return result
+
+
+## True once every hard level has been cleared at the top heat (the title's flame crown).
+func heat_crown() -> bool:
+	return heat_levels_at(Economy.HEAT_MAX) == Levels.COUNT
 
 
 func new_random_maze() -> void:
@@ -1987,6 +2119,9 @@ func reset_progress() -> void:
 	descent_pay_day = 0
 	descent_paid = 0
 	descent_milestones = 0
+	heat_mods = 0
+	heat_best = {}
+	heat_paid = 0
 	save_progress()
 
 

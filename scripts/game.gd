@@ -177,7 +177,9 @@ var trail_dirty := false
 ## at once: the fog shader draws a cell the same (the first fade band) until it is FADE_AFTER[0] old,
 ## so the texture's older time still looks identical. The upload waits until _fog_lazy_due (the
 ## oldest such old time + LAZY_RELIGHT_TICKS, 0.25 s before it could show) or the next real change.
+## (`_lazy_ticks` is the same for this run's first fade step: shorter with HEAT DIM.)
 const LAZY_RELIGHT_TICKS := 20
+var _lazy_ticks := LAZY_RELIGHT_TICKS
 var _fog_lazy := false
 var _fog_lazy_due := INF
 ## Last 1/FOG_TICKS tick, slime cell and light radius _relight ran for (it only has work when one changes).
@@ -237,6 +239,21 @@ var atmosphere_tint := Color(0, 0, 0, 0)
 var stopwatch := false
 ## Hard mode: fully dimmed areas turn back into unexplored fog.
 var hard_mode := false
+## HEAT (hard story levels already cleared on hard; see Heat / _apply_heat): the modifiers this run
+## plays with, their heat (0-10) and what they do (Heat.effects). `fade_after` = this run's fade
+## steps (FADE_AFTER, x0.6 with DIM), `refog_after` = when hard mode's fog comes back (the last step,
+## halved by FOG BITES), `relight_radius` = the slime's own keep-lit radius (LIGHT_RADIUS, DIM 10),
+## `race_limit` = RACE's countdown (s; 0 = none), `slide_drains` = BRITTLE (the knockback slide
+## costs slime), `heat_result` = what the clear paid (Progress.complete_heat).
+var heat_mask := 0
+var heat := 0
+var heat_fx := {}
+var fade_after: Array[float] = FADE_AFTER.duplicate()
+var refog_after: float = FADE_AFTER[-1]
+var relight_radius := LIGHT_RADIUS
+var race_limit := 0.0
+var slide_drains := false
+var heat_result := {}
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
 ## Wall splats this run, the par time the medal tiers are measured against (seconds; the solution path at the base gliding speed plus slack, so speed
@@ -384,6 +401,7 @@ func _ready() -> void:
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
 	_apply_workshop()
+	_apply_heat()
 	if descent:
 		_apply_descent()
 	if is_random() and path_tiles * slime_cost_per_tile > Levels.RANDOM_MAX_USAGE * 100.0:
@@ -501,14 +519,20 @@ func _physics_process(delta: float) -> void:
 		return
 	_survey_step(pos)
 	run_time += delta
-	hud.set_time(run_time)
+	if race_limit > 0.0:
+		hud.set_countdown(race_limit - run_time)
+		if run_time >= race_limit and not slime.is_airborne():
+			_dry_up(true)  # RACE: out of time
+			return
+	else:
+		hud.set_time(run_time)
 	if slime.is_airborne():
 		last_slime_pos = pos
 	else:
 		var moved := pos.distance_to(last_slime_pos)
 		if moved > 0.0:
 			last_slime_pos = pos
-			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
+			if (not slime.knocked_back or slide_drains) and not dev_no_drain:  # a splat's knockback slide is already paid for (not with BRITTLE)
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			trail_travel += moved
 			_paint_goo(pos, TRAIL_RADIUS)
@@ -758,10 +782,10 @@ func fog_alpha_at(pos: Vector2) -> float:
 	if packed == 0:
 		return 1.0
 	var age: float = elapsed - ((v & 255) * 256 + ((v >> 8) & 255)) / FOG_TICKS
-	if hard_mode and age >= FADE_AFTER[-1]:
+	if hard_mode and age >= refog_after:
 		return 1.0
 	var look := fog_look()
-	var alpha := fade_alpha(age, look.fade)
+	var alpha := fade_alpha(age, look.fade, fade_after)
 	if packed % 2 == 1:
 		alpha += (1.0 - alpha) * look.wall
 	return alpha
@@ -806,10 +830,11 @@ static func splat_penalty(intended_distance: float) -> float:
 	return lerpf(SPLAT_PENALTY_MIN, SPLAT_PENALTY_MAX, clampf(power, 0.0, 1.0))
 
 
-## Darkness of a revealed floor cell last lit `age` seconds ago.
-static func fade_alpha(age: float, table: Array = FADE_ALPHA) -> float:
-	for i in FADE_AFTER.size():
-		if age < FADE_AFTER[i]:
+## Darkness of a revealed floor cell last lit `age` seconds ago (`after`: the fade steps, FADE_AFTER
+## or a HEAT run's own).
+static func fade_alpha(age: float, table: Array = FADE_ALPHA, after: Array = FADE_AFTER) -> float:
+	for i in after.size():
+		if age < after[i]:
 			return table[i]
 	return table[-1]
 
@@ -874,7 +899,8 @@ func _build_overlays() -> void:
 	var fog_material := ShaderMaterial.new()
 	fog_material.shader = preload("res://assets/shaders/fog.gdshader")
 	var look := fog_look()
-	fog_material.set_shader_parameter("fade_after", Vector4(FADE_AFTER[0], FADE_AFTER[1], FADE_AFTER[2], FADE_AFTER[3]))
+	fog_material.set_shader_parameter("fade_after", Vector4(fade_after[0], fade_after[1], fade_after[2], fade_after[3]))
+	fog_material.set_shader_parameter("refog_after", refog_after)
 	fog_material.set_shader_parameter("fade_alpha", Vector4(look.fade[0], look.fade[1], look.fade[2], look.fade[3]))
 	fog_material.set_shader_parameter("fade_alpha_last", look.fade[4])
 	fog_material.set_shader_parameter("wall_shade", look.wall)
@@ -882,7 +908,9 @@ func _build_overlays() -> void:
 	fog_material.set_shader_parameter("mist_gain", look.mist_gain)
 	fog_material.set_shader_parameter("far_dim", look.far_dim)
 	fog_material.set_shader_parameter("vig_max", look.vig_max)
-	fog_material.set_shader_parameter("light_outer", look.light_outer)
+	fog_material.set_shader_parameter("light_outer", look.light_outer * float(heat_fx.get("lantern", 1.0)))
+	if heat_fx.get("lantern", 1.0) != 1.0:  # DIM: the lantern's glow on the mist shrinks too
+		fog_material.set_shader_parameter("light_inner", 32.0 * float(heat_fx.lantern))
 	fog_material.set_shader_parameter("map_size", Vector2(cells * FOG_CELL))
 	fog_material.set_shader_parameter("origin", -BORDER_PX)
 	fog_material.set_shader_parameter("hard_mode", hard_mode)
@@ -893,7 +921,7 @@ func _build_overlays() -> void:
 	fog_sprite.material = fog_material
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
-	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
+	slime_light = Fx.make_light(int((SLIME_LIGHT_SIZE + int(light_reach * 2.0)) * float(heat_fx.get("lantern", 1.0))), Color(skin_color, SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
@@ -935,8 +963,8 @@ func _build_outer_fog(inner: ShaderMaterial, inner_rect: Rect2) -> void:
 	# both copies, in this Godot version).
 	var material := ShaderMaterial.new()
 	material.shader = inner.shader
-	for param in ["fade_after", "fade_alpha", "fade_alpha_last", "wall_shade", "hard_mode", "fog_deep", "fog_mist",
-			"deep_gain", "mist_gain", "far_dim", "vig_max", "light_outer"]:
+	for param in ["fade_after", "fade_alpha", "fade_alpha_last", "wall_shade", "hard_mode", "refog_after", "fog_deep", "fog_mist",
+			"deep_gain", "mist_gain", "far_dim", "vig_max", "light_inner", "light_outer"]:
 		var value: Variant = inner.get_shader_parameter(param)
 		if value != null:
 			material.set_shader_parameter(param, value)
@@ -1010,7 +1038,7 @@ func _goo_color(dark: bool) -> Color:
 ## Keeps already-revealed cells around the slime fully lit (restarts their fade). The
 ## Brightness upgrade widens it.
 func _relight(pos: Vector2) -> void:
-	var radius := LIGHT_RADIUS + light_reach
+	var radius := relight_radius + light_reach
 	var tick := int(elapsed * FOG_TICKS)
 	var slime_cell := _cell_at(pos)
 	if tick == _relit_tick and slime_cell == _relit_cell and radius == _relit_radius:
@@ -1044,7 +1072,7 @@ func _relight(pos: Vector2) -> void:
 			i += 4
 	if oldest >= 0:
 		_fog_lazy = true
-		_fog_lazy_due = minf(_fog_lazy_due, (oldest + LAZY_RELIGHT_TICKS) / FOG_TICKS)
+		_fog_lazy_due = minf(_fog_lazy_due, (oldest + _lazy_ticks) / FOG_TICKS)
 
 
 ## Brightness upgrade: the slime's own light reveals unexplored floor (and the walls beside it)
@@ -1240,6 +1268,35 @@ func _apply_upgrades() -> void:
 	slime.acceleration *= speed
 	light_reach = Upgrades.light_reach(progress.upgrade_level("brightness"))
 	wall_power = progress.upgrade_level("power")
+
+
+## HEAT: a hard STORY level already cleared on hard plays with the modifiers picked on the level
+## select (Progress.heat_for_run; never normal mode, the randomizer or Descent). Called after par and
+## the meter are set (no modifier moves par, the route or the meter's size): DIM shrinks the
+## keep-lit radius, the lantern and the fade steps, FOG BITES brings the fog back sooner, BRITTLE
+## doubles splat penalties and makes the knockback slide drain, GROUNDED takes the leap away,
+## THIRSTY drains faster, RACE starts a countdown of 1.3 x par (Heat.effects, Economy.HEAT_MODS).
+func _apply_heat() -> void:
+	heat_mask = 0
+	if progress and hard_mode and not is_random() and not descent:
+		heat_mask = progress.heat_for_run(level)
+	heat = Heat.points(heat_mask)
+	heat_fx = Heat.effects(heat_mask)
+	for i in FADE_AFTER.size():
+		fade_after[i] = FADE_AFTER[i] * float(heat_fx.fade)
+	refog_after = fade_after[-1] * float(heat_fx.refog)
+	_lazy_ticks = LAZY_RELIGHT_TICKS if heat_fx.fade == 1.0 else maxi(int((fade_after[0] - 0.25) * FOG_TICKS), 0)
+	relight_radius = float(heat_fx.relight) if heat_fx.relight > 0.0 else LIGHT_RADIUS
+	splat_factor *= float(heat_fx.splat)
+	slide_drains = heat_fx.slide
+	slime.can_charge = not heat_fx.grounded
+	touch_controls.jump_enabled = not heat_fx.grounded
+	slime_cost_per_tile *= float(heat_fx.drain)
+	race_limit = par_time * float(heat_fx.race)
+	if heat_mask != 0:
+		hud.set_heat(heat, Heat.ids_in(heat_mask))
+	if race_limit > 0.0:
+		hud.set_countdown(race_limit)
 
 
 ## The ticket workshop's level of `id` on this run: 0 in hard mode (it is the pure skill track) and
@@ -1794,9 +1851,13 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	var best: float = progress.best_time(level) if progress else -1.0
 	text += "\nTIME " + UIKit.format_time(run_time)
 	if progress and _is_running_scene():
+		if heat > 0 and not no_record:  # HEAT: a new best heat pays its bounty tiers (saved with the clear below)
+			heat_result = progress.complete_heat(level, heat, false)
 		reward = progress.record_clear(level, run_time, par_time, no_record, true)
 		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else reward)
-		if reward.get("new_best", false):
+		if heat > 0:
+			hud.show_heat_result(heat, heat_result if not no_record else {})
+		if reward.get("new_best", false) or int(heat_result.get("paid", 0)) > 0:
 			get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 	if no_record:
 		pass  # no record to beat or show
@@ -1821,6 +1882,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif unlocked != "":
 			text += "\nNEW SKIN: " + unlocked
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
+	if heat_result.get("ember", false):
+		text += "\nNEW TRAIL: " + Cosmetics.display_name("ember")
+		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
 	# The last gold medal: the stopwatch skin (once, saved like the other skin notices).
 	if reward.get("new_best", false) and progress.all_medals() and progress.take_skin_notice(Progress.STOPWATCH_NOTICE):
 		text += "\nALL MEDALS! NEW SKIN: " + Skins.STOPWATCH_NAME
@@ -1838,7 +1902,8 @@ func _skins_unlocked_solid_by(level: int) -> Array[String]:
 	return names
 
 
-func _dry_up() -> void:
+## `out_of_time`: RACE's countdown ran out (the same dry-up, said differently).
+func _dry_up(out_of_time := false) -> void:
 	slime.play_dry_up()
 	if descent:
 		# The run is over: half the pot is banked (Progress.end_descent), the summary card follows.
@@ -1848,7 +1913,7 @@ func _dry_up() -> void:
 		return
 	if progress and not is_random():
 		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
-	_finish(false, "DRIED UP", END_DELAY)
+	_finish(false, "OUT OF TIME!\nDRIED UP" if out_of_time else "DRIED UP", END_DELAY)
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
