@@ -196,9 +196,10 @@ func _ready() -> void:
 	if save_path == _throwaway_save_path():
 		_clear_throwaway_saves()  # fresh every run
 	var story_complete := STORY_COMPLETE_FLAG in OS.get_cmdline_user_args()
+	var autoplay := Autoplay.requested(OS.get_cmdline_user_args())
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
-	elif story_complete:
+	elif story_complete or autoplay:
 		pass  # a clean in-memory state (set up below), never the player's save
 	elif save_path == _throwaway_save_path():
 		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
@@ -208,6 +209,8 @@ func _ready() -> void:
 	apply_volume()
 	if story_complete:  # first, so the other debug flags can still adjust the state it sets
 		enable_story_complete()
+	if autoplay:
+		enable_autoplay()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
@@ -709,6 +712,19 @@ func enable_story_complete() -> void:
 			var key: int = level + (HARD_RECORDS if hard else 0)
 			best_times[key] = snappedf(par * pace, 0.01)
 			medals[key] = tier_for(best_times[key], par)
+
+
+## Debug `--autoplay` (tools/play.sh --autoplay, see scripts/autoplay/autoplay.gd): the game plays
+## the story by itself from a brand-new player's state, in memory only (the real save is never read
+## and nothing is saved). Story intro/finale count as seen unless `--autoplay-cinematics`; the
+## tutorial counts as seen. Adds the Autoplay driver to the root (it survives scene changes).
+func enable_autoplay() -> void:
+	saving_enabled = false
+	dev_tools = false
+	tutorial_seen = TUTORIAL_MOVE | TUTORIAL_LEAP
+	if not Autoplay.CINEMATICS_FLAG in OS.get_cmdline_user_args():
+		story_seen = STORY_INTRO | STORY_FINALE
+	get_tree().root.add_child.call_deferred(Autoplay.new())
 
 
 func start_story(level: int) -> void:
