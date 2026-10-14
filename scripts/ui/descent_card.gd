@@ -1,0 +1,318 @@
+class_name DescentCard
+extends CanvasLayer
+
+## The DESCENT cards over a floor (built by game.gd on first use):
+## - the BOON card after a cleared floor: FLOOR n CLEARED, the meter carried + the next refill, the
+##   pot (+ this floor's tickets), three boon tiles (icon, name, two short lines, how many held) to
+##   pick one of, then DESCEND (or CASH OUT +N to bank the whole pot and end the run);
+## - the SUMMARY after the run ends (dry-up, CASH OUT): why it ended, the floor reached, the best
+##   floor, the run time, the tickets banked (and why fewer), milestone bonuses, the boons held,
+##   then NEW RUN / HUB.
+## Keyboard: arrows move between the tiles and buttons, Enter / Space picks; a tile picks the boon
+## and moves the focus to DESCEND. Touch / mouse: tap a tile, then DESCEND. Esc opens the pause menu
+## (the game's), whose QUIT TO HUB here cashes out. The tree pauses under the pause menu, and so does
+## this card (it is the game's child).
+
+const TILE := Vector2(96, 78)
+const TILE_Y := 47.0
+const TILE_XS: Array[float] = [10.0, 112.0, 214.0]
+const BUTTON_Y := 152.0
+const BUTTON := Vector2(96, 15)
+const DIM := Color(0.06, 0.06, 0.1, 0.82)
+
+var game: Node
+var root: Control
+var boons_root: Control
+var summary_root: Control
+## The boon card's parts.
+var title: Label
+var meter_label: Label
+var pot_label: Label
+var status: Label
+var tiles: Array[Button] = []
+var tile_ids: Array[String] = []
+var cash_button: Button
+var descend_button: Button
+var picked := ""
+## The summary's parts.
+var summary_title: Label
+var summary_lines: VBoxContainer
+var new_run_button: Button
+var hub_button: Button
+var _skin_text: SkinText
+var _group := ButtonGroup.new()
+
+
+func _ready() -> void:
+	layer = 15  # over the HUD (and its message), under the pause menu (20)
+	root = Control.new()
+	root.theme = UIKit.make_theme()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(root)
+	var dim := ColorRect.new()  # swallows clicks on the level behind
+	dim.color = DIM
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(dim)
+	_build_boons()
+	_build_summary()
+	_skin_text = UIKit.add_skin_text(root)
+	visible = false
+
+
+# ---------------------------------------------------------------- the boon card
+
+func _build_boons() -> void:
+	boons_root = Control.new()
+	boons_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	boons_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(boons_root)
+	title = _centered(boons_root, "", 16, UIKit.GOLD, 4.0)
+	# The meter carried + the next floor's refill on the left, the pot on the right.
+	var info := HBoxContainer.new()
+	info.add_theme_constant_override("separation", 3)
+	info.position = Vector2(10, 27)
+	boons_root.add_child(info)
+	info.add_child(UIKit.make_icon("drop", Color8(148, 226, 112)))
+	meter_label = UIKit.make_label("", 8, UIKit.TEXT)
+	info.add_child(meter_label)
+	var pot_row := HBoxContainer.new()
+	pot_row.add_theme_constant_override("separation", 3)
+	pot_row.alignment = BoxContainer.ALIGNMENT_END
+	pot_row.position = Vector2(150, 27)
+	pot_row.size = Vector2(160, 10)
+	boons_root.add_child(pot_row)
+	pot_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
+	pot_label = UIKit.make_label("", 8, UIKit.GOLD)
+	pot_row.add_child(pot_label)
+	var pick := _centered(boons_root, "PICK ONE", 8, UIKit.TEXT_DIM, 37.0)
+	pick.name = "PickHint"
+	for i in TILE_XS.size():
+		var tile := UIKit.make_button("", _on_tile.bind(i), TILE)
+		tile.toggle_mode = true
+		tile.button_group = _group
+		tile.position = Vector2(TILE_XS[i], TILE_Y)
+		tile.size = TILE
+		boons_root.add_child(tile)
+		tiles.append(tile)
+	status = _centered(boons_root, "", 8, UIKit.TEXT_DIM, 133.0)
+	cash_button = UIKit.make_button("CASH OUT", _on_cash_out, BUTTON)
+	cash_button.position = Vector2(TILE_XS[0], BUTTON_Y)
+	boons_root.add_child(cash_button)
+	descend_button = UIKit.make_button("DESCEND", _on_descend, BUTTON)
+	descend_button.position = Vector2(TILE_XS[2], BUTTON_Y)
+	boons_root.add_child(descend_button)
+	# Focus: the tiles in a row; down from any tile to the buttons; up back to the tiles.
+	for i in tiles.size():
+		var t := tiles[i]
+		t.focus_neighbor_left = t.get_path_to(tiles[(i + tiles.size() - 1) % tiles.size()])
+		t.focus_neighbor_right = t.get_path_to(tiles[(i + 1) % tiles.size()])
+		t.focus_neighbor_bottom = t.get_path_to(cash_button if i == 0 else descend_button)
+		t.focus_neighbor_top = t.get_path_to(t)
+	cash_button.focus_neighbor_top = cash_button.get_path_to(tiles[0])
+	cash_button.focus_neighbor_right = cash_button.get_path_to(descend_button)
+	cash_button.focus_neighbor_left = cash_button.get_path_to(descend_button)
+	descend_button.focus_neighbor_top = descend_button.get_path_to(tiles[2])
+	descend_button.focus_neighbor_left = descend_button.get_path_to(cash_button)
+	descend_button.focus_neighbor_right = descend_button.get_path_to(cash_button)
+	cash_button.focus_neighbor_bottom = cash_button.get_path_to(cash_button)
+	descend_button.focus_neighbor_bottom = descend_button.get_path_to(descend_button)
+
+
+## Shows the boon card for `run` (Progress.descent_run, its floor just cleared) with `offers`.
+func show_boons(run: Dictionary, offers: Array) -> void:
+	visible = true
+	boons_root.visible = true
+	summary_root.visible = false
+	picked = ""
+	tile_ids.assign(offers)
+	var floor_no: int = run.get("floor", 1)
+	title.text = "FLOOR %d CLEARED" % floor_no
+	var refill := Descent.floor_refill(floor_no + 1, run.get("boons", {}))
+	meter_label.text = "%d%%  NEXT FLOOR +%d%%" % [ceili(float(run.get("meter", 0.0))), roundi(refill)]
+	var practice := ""
+	var progress: Node = get_node_or_null("/root/Progress")
+	if progress:
+		var due: Dictionary = progress.descent_payout(true)
+		practice = {"practice": "  PRACTICE", "dev": "  NO TICKETS", "slime": "  PAYS 1"}.get(due.cap, "")
+		cash_button.text = "CASH OUT +%d" % due.tickets
+	pot_label.text = "POT %d (+%d)%s" % [int(run.get("pot", 0)), int(run.get("gain", 0)), practice]
+	for i in tiles.size():
+		var tile := tiles[i]
+		tile.button_pressed = false
+		for child in tile.get_children():
+			child.queue_free()
+		tile.visible = i < tile_ids.size()
+		if tile.visible:
+			_fill_tile(tile, tile_ids[i], run.get("boons", {}))
+	status.text = ""
+	_skin_text.recolor()
+	if not tiles.is_empty() and tiles[0].visible:
+		tiles[0].grab_focus()
+	else:
+		descend_button.grab_focus()
+
+
+## A tile's face: the icon (2x), the name, two short lines and how many are held (stacking boons).
+func _fill_tile(tile: Button, id: String, held: Dictionary) -> void:
+	var icon := BoonIcons.make(id, 2)
+	icon.position = Vector2((TILE.x - 16) / 2.0, 7)
+	tile.add_child(icon)
+	var name_label := UIKit.make_label(Descent.display_name(id), 8, UIKit.GOLD)
+	_span(tile, name_label, 28.0)
+	var lines: Array = Descent.about(id)
+	_span(tile, UIKit.make_label(lines[0], 8, UIKit.TEXT), 40.0)
+	_span(tile, UIKit.make_label(lines[1], 8, UIKit.TEXT), 52.0)
+	var top: int = int(Descent.boon(id).get("max", 1))
+	var have := Descent.held(held, id)
+	var note := ""
+	if top > 1:
+		note = "HAVE %d/%d" % [have, top]
+	elif top <= 0 and have > 0:
+		note = "HAVE %d" % have
+	if note != "":
+		_span(tile, UIKit.make_label(note, 8, UIKit.TEXT_DIM), 64.0)
+
+
+func _span(tile: Control, label: Label, y: float) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tile.add_child(label)  # (sized once in the tree: off it the label measures with the default font)
+	label.position = Vector2(0, y)
+	label.size = Vector2(TILE.x, 10)
+
+
+func _on_tile(i: int) -> void:
+	if i >= tile_ids.size():
+		return
+	picked = tile_ids[i]
+	tiles[i].button_pressed = true
+	status.text = Descent.display_name(picked) + "  -  DESCEND?"
+	descend_button.grab_focus()
+
+
+func _on_descend() -> void:
+	if picked == "":
+		status.text = "PICK A BOON FIRST"
+		if not tiles.is_empty():
+			tiles[0].grab_focus()
+		return
+	if game and game.has_method("descend_with"):
+		game.descend_with(picked)
+
+
+func _on_cash_out() -> void:
+	if game and game.has_method("cash_out"):
+		game.cash_out()
+
+
+# ---------------------------------------------------------------- the run summary
+
+func _build_summary() -> void:
+	summary_root = Control.new()
+	summary_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	summary_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary_root.visible = false
+	root.add_child(summary_root)
+	UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))
+	summary_title = _centered(summary_root, "RUN OVER", 16, UIKit.GOLD, 8.0)
+	summary_lines = VBoxContainer.new()
+	summary_lines.add_theme_constant_override("separation", 4)
+	summary_lines.position = Vector2(40, 38)
+	summary_lines.size = Vector2(240, 100)
+	summary_lines.custom_minimum_size = Vector2(240, 0)
+	summary_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary_root.add_child(summary_lines)
+	new_run_button = UIKit.make_button("NEW RUN", _on_new_run, Vector2(84, 15))
+	new_run_button.position = Vector2(70, BUTTON_Y)
+	summary_root.add_child(new_run_button)
+	hub_button = UIKit.make_button("HUB", _on_hub, Vector2(84, 15))
+	hub_button.position = Vector2(166, BUTTON_Y)
+	summary_root.add_child(hub_button)
+	for b: Button in [new_run_button, hub_button]:
+		var other: Button = hub_button if b == new_run_button else new_run_button
+		b.focus_neighbor_left = b.get_path_to(other)
+		b.focus_neighbor_right = b.get_path_to(other)
+		b.focus_neighbor_top = b.get_path_to(b)
+		b.focus_neighbor_bottom = b.get_path_to(b)
+
+
+## Shows the end of the run: `result` = Progress.end_descent's.
+func show_summary(result: Dictionary) -> void:
+	visible = true
+	boons_root.visible = false
+	summary_root.visible = true
+	for child in summary_lines.get_children():
+		child.queue_free()
+	var floor_no: int = result.get("floor", 1)
+	var cashed: bool = result.get("cashed", false)
+	summary_title.text = "CASHED OUT" if cashed else "RUN OVER"
+	_line("CLEARED %d FLOORS" % int(result.get("cleared", 0)) if cashed else "DRIED UP ON FLOOR %d" % floor_no, UIKit.TEXT)
+	var best_text := "BEST FLOOR %d" % int(result.get("best_floor", floor_no))
+	_line(best_text + ("   NEW BEST!" if result.get("new_best", false) else ""), UIKit.GOLD if result.get("new_best", false) else UIKit.TEXT_DIM)
+	_line("TIME " + UIKit.format_time(float(result.get("time", 0.0))), UIKit.TEXT_DIM)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 3)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tickets: int = result.get("tickets", 0)
+	row.add_child(UIKit.make_icon("ticket", Color.WHITE if tickets > 0 else Color(0.55, 0.55, 0.6)))
+	var pot: int = result.get("pot", 0)
+	var why := ""
+	match result.get("cap", ""):
+		"practice":
+			why = "  PRACTICE (%d PAID RUNS A DAY)" % Economy.DESCENT_PAID_PER_DAY
+		"dev":
+			why = "  DEV TOGGLES"
+		"slime":
+			why = "  MORE SLIME = MORE"
+		_:
+			if not cashed and pot > 0:
+				why = "  HALF THE POT (%d)" % pot
+	row.add_child(UIKit.make_label("+%d %s%s" % [tickets, "TICKET" if tickets == 1 else "TICKETS", why], 8, Color8(255, 226, 150) if tickets > 0 else UIKit.TEXT_DIM))
+	summary_lines.add_child(row)
+	for bonus: Array in result.get("bonuses", []):
+		_line("FLOOR %d BONUS +%d" % [bonus[0], bonus[1]], UIKit.GOLD)
+	var held: Dictionary = result.get("boons", {})
+	if not held.is_empty():
+		var strip := HBoxContainer.new()
+		strip.alignment = BoxContainer.ALIGNMENT_CENTER
+		strip.add_theme_constant_override("separation", 2)
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for id in Descent.IDS:
+			for n in mini(Descent.held(held, id), 3):
+				strip.add_child(BoonIcons.make(id))
+		summary_lines.add_child(strip)
+	_skin_text.recolor()
+	new_run_button.grab_focus()
+
+
+func _line(text: String, color: Color) -> void:
+	var label := UIKit.make_label(text, 8, color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	summary_lines.add_child(label)
+
+
+func _on_new_run() -> void:
+	if game and game.has_method("new_descent_run"):
+		game.new_descent_run()
+
+
+func _on_hub() -> void:
+	if game and game.has_method("go_to_hub"):
+		game.go_to_hub()
+
+
+# ---------------------------------------------------------------- helpers
+
+func _centered(parent: Control, text: String, font_size: int, color: Color, y: float) -> Label:
+	var label := UIKit.make_label(text, font_size, color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(label)
+	label.position = Vector2(0, y)
+	label.size = Vector2(320, 20 if font_size == 16 else 10)
+	return label
+
+
+## The card's modal part (focus must stay inside it): the boon card or the summary.
+func modal() -> Control:
+	return summary_root if summary_root.visible else boons_root

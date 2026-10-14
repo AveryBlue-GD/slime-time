@@ -11,6 +11,10 @@ var volume_row: PanelContainer
 var seed_button: Button
 var seed_edit: LineEdit
 var _panel: Panel
+## DESCENT: RESTART is hidden (a floor can't be replayed: the meter carries over) and this line says
+## what QUIT TO HUB does to the run (mid-floor: banks half the pot; on the boon card: cashes out).
+var restart_button: Button
+var descent_note: Label
 ## Dev mode only (built only then): FULL BRIGHT and NO DRAIN switches (Game.set_dev_bright /
 ## set_dev_no_drain, also F1 / F2 in the level), on their own panel to the right.
 var dev_panel: Control
@@ -47,9 +51,10 @@ func _ready() -> void:
 	menu.add_theme_constant_override("separation", 3)
 	root.add_child(menu)
 	sound_button = UIKit.make_button("", _toggle_sound)
+	restart_button = UIKit.make_button("RESTART", _restart)
 	buttons = [
 		UIKit.make_button("RESUME", resume),
-		UIKit.make_button("RESTART", _restart),
+		restart_button,
 		sound_button,
 		UIKit.make_button("QUIT TO HUB", _quit),
 	]
@@ -71,6 +76,12 @@ func _ready() -> void:
 	seed_edit.text_submitted.connect(_submit_seed)
 	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
 	menu.add_child(seed_edit)
+	descent_note = UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	descent_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	descent_note.position = Vector2(0, 150)
+	descent_note.size = Vector2(320, 10)
+	descent_note.visible = false
+	root.add_child(descent_note)
 	_refresh_sound()
 	var progress := get_node_or_null("/root/Progress")
 	if progress and progress.dev_tools:
@@ -118,7 +129,14 @@ func open() -> void:
 	var random: bool = game.has_method("is_random") and game.is_random()
 	seed_button.visible = random
 	seed_edit.visible = false
-	_panel.size.y = 88 + (16 if random else 0)
+	var descent: bool = game.get("descent") == true
+	restart_button.visible = not descent
+	_panel.size.y = 88 + (16 if random else 0) - (16 if descent else 0)
+	descent_note.visible = false
+	var progress := get_node_or_null("/root/Progress")
+	if descent and progress and progress.descent_active():
+		descent_note.visible = true
+		descent_note.text = "QUITTING CASHES OUT THE POT" if game.won else "QUITTING BANKS HALF THE POT"
 	if random:
 		seed_button.text = "SEED " + Levels.seed_code(game.random_seed, game.seed_level)
 	get_tree().paused = true
@@ -191,6 +209,8 @@ func _restart() -> void:
 
 func _quit() -> void:
 	DevLog.log_event(get_tree(), "quit to hub (pause)", get_parent())
+	if get_parent().has_method("quit_descent"):
+		get_parent().quit_descent()  # DESCENT: the run is banked as it stands (see game.quit_descent)
 	var transition := get_node_or_null("/root/Transition")
 	if transition == null or transition.busy:
 		resume()

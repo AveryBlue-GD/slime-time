@@ -71,6 +71,8 @@ const PROMPT_Y := 156.0
 const BOARD := Rect2(52, 8, 216, 164)
 ## The trapdoor's confirm panel.
 const QUIT_PANEL := Rect2(80, 54, 160, 72)
+## The portal's mode choice (RANDOM MAZE / DESCENT, BACK).
+const PORTAL_PANEL := Rect2(70, 34, 180, 112)
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
 ## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
@@ -131,6 +133,13 @@ var hat_wheel: HatWheel
 var quit_menu: Control
 var quit_button: Button
 var back_button: Button
+## The portal's mode choice (upgrades v2 batch 3): RANDOM MAZE (the randomizer as before), DESCENT
+## (a run of floors, Descent) with its best floor and today's paying runs, BACK. Esc = BACK.
+var portal_menu: Control
+var maze_button: Button
+var descent_button: Button
+var portal_back: Button
+var portal_info: Label
 ## Top-left pod: ticket balance and medal count.
 var ticket_pod: PanelContainer
 var ticket_label: Label
@@ -370,6 +379,7 @@ func _build_ui() -> void:
 	_build_coin_board(root)
 	_build_ticket_pod(root)
 	_build_quit_menu(root)
+	_build_portal_menu(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
@@ -470,6 +480,90 @@ func close_quit_menu() -> void:
 
 func _confirm_quit() -> void:
 	get_tree().quit()
+
+
+## The portal's mode choice: RANDOM MAZE and DESCENT stacked, a line with the Descent best floor and
+## today's paying runs, BACK under them (focus starts on RANDOM MAZE; up / down wrap).
+func _build_portal_menu(root: Control) -> void:
+	portal_menu = Control.new()
+	portal_menu.visible = false
+	root.add_child(portal_menu)
+	portal_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()  # swallows clicks on the room behind
+	dim.color = Color(0, 0, 0, 0.45)
+	portal_menu.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(portal_menu, PORTAL_PANEL)
+	var title := UIKit.make_label("RANDOMIZER", 8, UIKit.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.position = Vector2(PORTAL_PANEL.position.x, PORTAL_PANEL.position.y + 10)
+	title.size = Vector2(PORTAL_PANEL.size.x, 10)
+	portal_menu.add_child(title)
+	var x := PORTAL_PANEL.position.x + (PORTAL_PANEL.size.x - 120) / 2.0
+	maze_button = UIKit.make_button("RANDOM MAZE", _start_random_maze, Vector2(120, 15))
+	maze_button.position = Vector2(x, PORTAL_PANEL.position.y + 26)
+	portal_menu.add_child(maze_button)
+	descent_button = UIKit.make_button("DESCENT", _start_descent, Vector2(120, 15))
+	descent_button.position = Vector2(x, PORTAL_PANEL.position.y + 46)
+	portal_menu.add_child(descent_button)
+	portal_info = UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	portal_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	portal_info.position = Vector2(PORTAL_PANEL.position.x, PORTAL_PANEL.position.y + 66)
+	portal_info.size = Vector2(PORTAL_PANEL.size.x, 10)
+	portal_menu.add_child(portal_info)
+	portal_back = UIKit.make_button("BACK", close_portal_menu, Vector2(56, 15))
+	portal_back.position = Vector2(PORTAL_PANEL.position.x + (PORTAL_PANEL.size.x - 56) / 2.0, PORTAL_PANEL.position.y + 84)
+	portal_menu.add_child(portal_back)
+	var order: Array[Button] = [maze_button, descent_button, portal_back]
+	for i in order.size():
+		var b := order[i]
+		b.focus_neighbor_top = b.get_path_to(order[(i + order.size() - 1) % order.size()])
+		b.focus_neighbor_bottom = b.get_path_to(order[(i + 1) % order.size()])
+		b.focus_neighbor_left = b.get_path_to(b)
+		b.focus_neighbor_right = b.get_path_to(b)
+		b.focus_previous = b.focus_neighbor_top
+		b.focus_next = b.focus_neighbor_bottom
+
+
+func open_portal_menu() -> void:
+	var best: int = Progress.descent_best_floor
+	var left: int = Progress.descent_paid_left()
+	portal_info.text = ("BEST FLOOR %d   " % best if best > 0 else "") + "PAID RUNS %d/%d" % [left, Economy.DESCENT_PAID_PER_DAY]
+	portal_menu.visible = true
+	prompt.visible = false
+	slime.frozen = true
+	if _touch_controls != null:
+		_touch_controls.menu_open = true
+	_sfx("click")
+	for child in portal_menu.get_parent().get_children():
+		if child is SkinText:
+			child.recolor()
+	maze_button.grab_focus()
+
+
+func close_portal_menu() -> void:
+	portal_menu.visible = false
+	get_viewport().gui_release_focus()
+	slime.frozen = false
+	if _touch_controls != null:
+		_touch_controls.menu_open = false
+	_show_prompt()
+
+
+func _start_random_maze() -> void:
+	if not portal_menu.visible:
+		return
+	portal_menu.visible = false
+	Progress.start_random()
+	_leave(_station("random"), UIKit.GAME_SCENE)
+
+
+func _start_descent() -> void:
+	if not portal_menu.visible:
+		return
+	portal_menu.visible = false
+	Progress.start_descent()
+	_leave(_station("random"), UIKit.GAME_SCENE)
 
 
 ## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
@@ -608,6 +702,11 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)
 			close_quit_menu()
+		return
+	if portal_menu.visible:
+		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
+			_sfx("click", 0.8)
+			close_portal_menu()
 		return
 	if hat_wheel.visible:
 		var touch := _touch_controls != null and _touch_controls.visible
@@ -851,6 +950,8 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
+	elif near.id == "random" and Progress.descent_best_floor > 0:
+		prompt_key.text = "BEST FLOOR %d" % Progress.descent_best_floor  # Descent's record
 	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
 		prompt_key.text = "SHOP"  # every hat won: the overlay opens on its SHOP
 	elif near.id == "wheel":
@@ -892,8 +993,7 @@ func _use(station: Dictionary) -> void:
 			_leave(station, "res://scenes/controls.tscn")
 		"random":
 			if Progress.is_randomizer_unlocked():
-				Progress.start_random()
-				_leave(station, UIKit.GAME_SCENE)
+				open_portal_menu()  # RANDOM MAZE or DESCENT
 			else:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":

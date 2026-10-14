@@ -60,6 +60,12 @@ const ATTEMPT_POP_FADE := 0.34
 const ATTEMPT_POP_COLOR := Color(1.6, 1.5, 1.2)
 const ATTEMPT_FLASH_TINT := Color.WHITE
 const ATTEMPT_POP_PANEL := Color(2.2, 2.0, 1.6)
+## DESCENT: the boons held this run, an 8x8 icon each (stacks repeat; unused BACKUP BLADDERs only).
+var boon_pod: Control
+var boon_strip: GridContainer
+## The ids the strip shows, in order (for tests).
+var boon_icons: Array[String] = []
+const BOON_COLUMNS := 8
 ## Shown only when a level is beaten faster than its saved record.
 var record_banner: CenterContainer
 var record_time_label: Label
@@ -181,6 +187,17 @@ func _ready() -> void:
 	_attempt_flash.modulate.a = 0.0
 	attempt_label.add_child(_attempt_flash)
 	attempt_pod.visible = false
+
+	# DESCENT: the run's boons as a strip of icons (see set_boons), under the pot pod.
+	var boon_row := _make_pod(right_bar)
+	boon_pod = boon_row.get_parent()
+	boon_strip = GridContainer.new()
+	boon_strip.columns = BOON_COLUMNS
+	boon_strip.add_theme_constant_override("h_separation", 1)
+	boon_strip.add_theme_constant_override("v_separation", 1)
+	boon_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boon_row.add_child(boon_strip)
+	boon_pod.visible = false
 
 	area_label = _make_label(SkinText.ROLE_DIM)
 	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -366,6 +383,47 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 	_attempt_tween.tween_method(flash, 0.25, 0.25, ATTEMPT_POP_BLINK)
 	_attempt_tween.tween_method(flash, 1.0, 0.0, ATTEMPT_POP_FADE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_attempt_tween.tween_callback(func() -> void: _attempt_tween = null)
+
+
+## DESCENT: the pot pod (in the attempt pod's place): "POT 6" with the ticket icon, and a second
+## line when the run would pay less: PRACTICE (today's paying runs used), NO TICKETS (dev toggles),
+## PAYS 1 (no MORE SLIME). `gain` > 0 adds "+N" (the floor just cleared). Dim when it pays nothing.
+func set_pot(pot: int, cap: String, gain := 0) -> void:
+	var text := "POT %d" % pot
+	if gain > 0:
+		text += " +%d" % gain
+	var why: String = {"practice": "PRACTICE", "dev": "NO TICKETS", "slime": "PAYS 1"}.get(cap, "")
+	if why != "":
+		text += "\n" + why
+	if text == attempt_label.text and attempt_pod.visible:
+		return
+	attempt_pod.visible = true
+	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
+	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
+	story_label.offset_top = AREA_TOP_UNDER_ATTEMPT + 11  # the floor number under the area name
+	story_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 21
+	attempt_label.text = text
+	var pays := cap == "" or cap == "slime"
+	attempt_label.add_theme_color_override("font_color", TICKET_TINT if pays else MEDAL_OWNED)
+	_attempt_icon.modulate = Color.WHITE if pays else TICKET_DIM
+
+
+## DESCENT: shows the run's boons (Descent.IDS order; stacks repeat; BIG GULP, used at once, and
+## used BACKUP BLADDERs are left out). Hidden when there are none.
+func set_boons(boons: Dictionary, bladders_left := 0) -> void:
+	for child in boon_strip.get_children():
+		child.queue_free()
+	boon_icons.clear()
+	for id in Descent.IDS:
+		var n := Descent.held(boons, id)
+		if id == "gulp":
+			n = 0
+		elif id == "bladder":
+			n = bladders_left
+		for i in n:
+			boon_strip.add_child(BoonIcons.make(id))
+			boon_icons.append(id)
+	boon_pod.visible = not boon_icons.is_empty()
 
 
 ## True while the attempt pod's pop is still playing (or waiting for the goo wipe to clear).

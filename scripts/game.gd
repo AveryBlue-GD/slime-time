@@ -70,6 +70,8 @@ const UPGRADES_SCENE := "res://scenes/upgrades.tscn"
 const CHOICE_DELAY := 0.6
 ## A dry-up offers its retry buttons sooner: failing should cost a moment, not a pause.
 const DRY_CHOICE_DELAY := 0.25
+## Descent: the run summary card follows a dry-up after this long (the dry-up is seen first).
+const DESCENT_SUMMARY_DELAY := 1.0
 ## The chalice fanfare plays about a third quieter than other sounds (-3.5 dB = 67% amplitude).
 const CHALICE_VOLUME_DB := -3.5
 ## Screen shake on a splat: lasts SHAKE_TIME, up to SHAKE_MAX px for a full-power leap.
@@ -123,6 +125,23 @@ signal level_finished(won: bool)
 @export var level := 0
 ## Non-zero: play a randomizer maze from this seed instead of a story level.
 @export var random_seed := 0
+## DESCENT (upgrades v2 batch 3): this maze is a floor of the Descent run in Progress.descent_run
+## (set in _ready from Progress.mode). The goal is the chalice (the floor's exit), the meter starts
+## where the last floor left it (+ the refill), two goo drops wait at dead ends, boons apply
+## (`_apply_descent`), and clearing the floor opens the boon card (DescentCard); a dry-up ends the run.
+var descent := false
+## The run (Progress.descent_run, shared: the game writes the floor's results into it).
+var descent_run := {}
+## The floor's goo drops still waiting (GooDrop), and the between-floor / end-of-run card.
+var drops: Array[GooDrop] = []
+var descent_card: DescentCard
+## BACKUP BLADDER refills left this run, and slime still to be added by one firing.
+var bladders := 0
+var _bladder_left := 0.0
+## Leap cost (share of gliding the distance flown; FEATHER LEAP lowers it) and how near the goal
+## shows itself (CHALICE SENSE widens it).
+var jump_cost_factor := JUMP_COST_FACTOR
+var goal_reveal_distance := CHALICE_REVEAL_DISTANCE
 
 ## (Par time: Levels.par_for_path.)
 
@@ -311,14 +330,22 @@ var _survey_done := false
 
 func _ready() -> void:
 	if level == 0 and random_seed == 0:
-		if progress and progress.mode == progress.MODE_RANDOM:
+		if progress and progress.mode == progress.MODE_DESCENT and not progress.descent_run.is_empty():
+			descent = true
+			descent_run = progress.descent_run
+		elif progress and progress.mode == progress.MODE_RANDOM:
 			random_seed = progress.random_seed
 		else:
 			level = progress.current_level if progress else 1
-	hard_mode = progress.hard_mode if progress else false
+	hard_mode = progress.hard_mode if progress and not descent else false  # Descent: normal rules only
 	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
-	if is_random():
+	if descent:
+		seed_level = clampi(progress.upgrade_level("slime"), 0, Levels.max_slime_level())
+		config = Descent.floor_config(descent_run.seed, descent_run.floor, seed_level)
+		maze = _random_maze(config)
+		hud.set_level_text("DESCENT  FLOOR %d" % descent_run.floor)
+	elif is_random():
 		var own_level: int = progress.upgrade_level("slime") if progress else 0
 		seed_level = own_level
 		if progress and progress.mode == progress.MODE_RANDOM and progress.random_seed == random_seed:
@@ -350,19 +377,21 @@ func _ready() -> void:
 		# Hard story levels: the meter is set directly (Levels.hard_meter_tiles = the v4 hard meter x
 		# HARD_SLIME_MULT) and the maze's route was built to fit it (same as target / route).
 		slime_cost_per_tile = 100.0 / config.meter_tiles
-	if is_random() and not hard_mode:
+	if (is_random() or descent) and not hard_mode:
 		# The randomizer is the other way round: the player's meter is fixed (RANDOM_METER_TILES tiles,
 		# x MORE SLIME below) and the route was built to the seed's usage x that meter (Levels.random_config).
 		slime_cost_per_tile = 100.0 / Levels.RANDOM_METER_TILES
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
 	_apply_workshop()
+	if descent:
+		_apply_descent()
 	if is_random() and path_tiles * slime_cost_per_tile > Levels.RANDOM_MAX_USAGE * 100.0:
 		# A code built for a higher MORE SLIME level than the player's: never more than 95% (always winnable).
 		slime_cost_per_tile = Levels.RANDOM_MAX_USAGE * 100.0 / path_tiles
 	perfect_usage = path_tiles * slime_cost_per_tile / 100.0
 	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
-	if progress and not is_random() and progress.take_assist(level):
+	if progress and not is_random() and not descent and progress.take_assist(level):
 		assisted = true
 		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
 		hud.set_assist(true)
@@ -370,7 +399,7 @@ func _ready() -> void:
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
 	if progress:
-		if not is_random() and not hard_mode:
+		if not is_random() and not descent and not hard_mode:
 			equipped = progress.equip_first_run_skin(level)
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
@@ -389,14 +418,24 @@ func _ready() -> void:
 		hud.flash_message("NEW SKIN EQUIPPED: %s" % Skins.display_name(equipped), FORCED_SKIN_NOTICE)
 
 
-	theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
+	if descent:
+		theme = config.theme
+	else:
+		theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
-	hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
+	if descent:
+		hud.show_area_name(Themes.display_name(theme), "FLOOR %d" % descent_run.floor)
+	else:
+		hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
 	_start_ambience()
 	_build_overlays()
 	_place_coins(config.seed)
 	_count_attempt()
+	if descent:
+		_place_drops(config.seed)
+		slime_remaining = clampf(float(descent_run.meter), 0.0, 100.0)
+		_refresh_descent_pod()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
@@ -411,7 +450,7 @@ func _ready() -> void:
 	restart_prompt.game = self
 	add_child(restart_prompt)
 	_put_on_hat()
-	if progress and not is_random() and not hard_mode and level <= TutorialCues.MAX_LEVEL \
+	if progress and not is_random() and not descent and not hard_mode and level <= TutorialCues.MAX_LEVEL \
 			and level > progress.levels_cleared and progress.randoms_won == 0:
 		var cues := TutorialCues.new()
 		cues.setup(self, slime, progress)
@@ -431,6 +470,8 @@ func _ready() -> void:
 		set_dev_no_drain(progress.dev_no_drain)
 	_ease_in.call_deferred()
 	_arm_survey.call_deferred()
+	if descent:
+		_announce_floor()
 
 
 ## Restarts and next levels ease in from under a sheet of goo (only when actually playing).
@@ -474,8 +515,10 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	if not drops.is_empty():
+		_pick_up_drops(pos)
 	_count_glimmer_travel(pos)
-	if not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_REVEAL_DISTANCE:
+	if not _shown(goal) and pos.distance_to(goal.position) <= goal_reveal_distance:
 		_show(goal)
 		survey_goal = true
 	if wind_state == "refilling":
@@ -485,12 +528,20 @@ func _physics_process(delta: float) -> void:
 		if _wind_left <= 0.001:
 			wind_state = "used"
 			hud.set_wind(wind_state)
+	if _bladder_left > 0.0:
+		var add := minf(float(Economy.BOONS.bladder.value) / Economy.WIND_REFILL_TIME * delta, _bladder_left)
+		slime_remaining += add
+		_bladder_left -= add
+		if _bladder_left <= 0.001:
+			_bladder_left = 0.0
 	hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
 		if wind_state == "ready":
 			_second_wind()
-		elif wind_state != "refilling":
+		elif wind_state != "refilling" and _bladder_left <= 0.0 and bladders > 0:
+			_backup_bladder()
+		elif wind_state != "refilling" and _bladder_left <= 0.0:
 			_dry_up()
 
 
@@ -514,6 +565,8 @@ func _low_slime_warning(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	_refresh_attempt_pod()  # randomizer: the pod follows the run's state every frame (never stale)
+	if descent:
+		_refresh_descent_pod()
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
@@ -622,11 +675,14 @@ func _glimmer_gap() -> float:
 ## A twinkle over a coin that's still waiting in the fog near the slime (picked at random), in
 ## that coin's metal: a hint of treasure. No coins left nearby (or none in the level), no glimmer.
 func _spawn_glimmer() -> void:
-	var hidden: Array[Coin] = []
+	var hidden: Array[Node2D] = []
 	var half := get_viewport_rect().size * 0.5 + Vector2.ONE * GLIMMER_VIEW_MARGIN
 	var center := camera.get_screen_center_position() if camera != null else slime.position
 	var view := Rect2(center - half, half * 2.0)
-	for coin in coins:
+	var waiting: Array[Node2D] = []
+	waiting.append_array(coins)
+	waiting.append_array(drops)  # Descent goo drops twinkle too (GOO NOSE included)
+	for coin in waiting:
 		if not is_instance_valid(coin):
 			continue
 		if coin.position.distance_to(slime.position) > glimmer_reach or fog_alpha_at(coin.position) < 0.99:
@@ -636,10 +692,13 @@ func _spawn_glimmer() -> void:
 		hidden.append(coin)
 	if hidden.is_empty():
 		return
-	var coin: Coin = hidden.pick_random()
+	var coin: Node2D = hidden.pick_random()
 	var glimmer := Glimmer.new()
 	glimmer.position = coin.position.round()
-	glimmer.color = Coin.GLOW[maxi(Themes.BY_LEVEL.find(theme), 0) % Coin.GLOW.size()].lightened(0.35)
+	if coin is GooDrop:
+		glimmer.color = Skins.shades(skin_color).light.lightened(0.3)
+	else:
+		glimmer.color = Coin.GLOW[maxi(Themes.BY_LEVEL.find(theme), 0) % Coin.GLOW.size()].lightened(0.35)
 	glimmer.still = motion_scale() <= 0.0
 	glimmer.z_index = fog_sprite.z_index + 1  # seen through the fog
 	glimmer.add_to_group("glimmer")
@@ -1144,7 +1203,7 @@ func _flush_textures() -> void:
 
 
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
-	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * JUMP_COST_FACTOR
+	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * jump_cost_factor
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall:
 		splats += 1
@@ -1206,8 +1265,8 @@ func _apply_workshop() -> void:
 	glimmer_rate = Workshop.nose_rate(workshop_level("nose"))
 	if workshop_level("nose") > 0:
 		glimmer_reach = maxf(glimmer_reach, Workshop.nose_reach(workshop_level("nose")))
-	if workshop_level("wind") > 0 and (is_random() or level <= progress.levels_cleared):
-		wind_state = "ready"
+	if workshop_level("wind") > 0 and (is_random() or descent or level <= progress.levels_cleared):
+		wind_state = "ready"  # (Descent: once per run, see _apply_descent)
 	hud.set_wind(wind_state)
 
 
@@ -1216,6 +1275,8 @@ func _apply_workshop() -> void:
 func _second_wind() -> void:
 	wind_state = "refilling"
 	wind_fired = true
+	if descent:
+		descent_run.wind_used = true  # once per run, not per floor
 	_wind_target = Workshop.wind_refill(workshop_level("wind")) * 100.0
 	_wind_left = _wind_target
 	hud.set_wind(wind_state)
@@ -1248,7 +1309,7 @@ static func _random_maze(config: Dictionary) -> Dictionary:
 
 ## Puts out the coins of a story level that haven't been collected yet.
 func _place_coins(maze_seed: int) -> void:
-	if is_random() or hard_mode or progress == null:  # coins live in the normal story mazes
+	if is_random() or descent or hard_mode or progress == null:  # coins live in the normal story mazes
 		hud.set_coins(progress.coins() if progress else 0, 0, 0)
 		return
 	var theme_index := Themes.BY_LEVEL.find(theme)
@@ -1442,6 +1503,160 @@ func _commit_survey() -> void:
 	progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal)
 
 
+# ---------------------------------------------------------------- DESCENT
+
+## Applies the run's boons (Descent) on top of the upgrades and the workshop: capacity (DEEP TANK,
+## GREEDY GOO), speed (SLICK), leap cost (FEATHER LEAP), splats (RUBBER BODY, GLASS SLIME), light
+## (BLAZE), the exit's reveal reach (CHALICE SENSE), BACKUP BLADDER refills; SECOND WIND only if it
+## hasn't fired this run; a dev toggle on an earlier floor keeps the run unpaid.
+func _apply_descent() -> void:
+	var boons: Dictionary = descent_run.boons
+	slime_cost_per_tile /= Descent.capacity(boons)
+	var speed := Descent.speed(boons)
+	slime.max_speed *= speed
+	slime.acceleration *= speed
+	jump_cost_factor = Descent.jump_cost(boons, JUMP_COST_FACTOR)
+	splat_factor *= Descent.splat_factor(boons)
+	light_reach = Descent.light_reach(boons, progress.upgrade_level("brightness") if progress else 0)
+	goal_reveal_distance = Descent.goal_reveal(boons, CHALICE_REVEAL_DISTANCE)
+	bladders = int(descent_run.bladders)
+	if descent_run.wind_used and wind_state == "ready":
+		wind_state = "used"
+		hud.set_wind(wind_state)
+	dev_toggled = dev_toggled or descent_run.tainted
+	hud.set_boons(boons, bladders)
+	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line pot pod
+	if is_inside_tree():
+		get_tree().process_frame.connect(_place_touch_pause, CONNECT_ONE_SHOT)
+
+
+## Touch: the pause button goes under the pot pod and the boon strip (once their sizes are known).
+func _place_touch_pause() -> void:
+	var bottom: float = hud.attempt_pod.get_global_rect().end.y if hud.attempt_pod.visible else 0.0
+	if hud.boon_pod.visible:
+		bottom = maxf(bottom, hud.boon_pod.get_global_rect().end.y)
+	touch_controls.pause_rect.position.y = maxf(touch_controls.PAUSE_Y_RANDOM, ceilf(bottom) + 3.0)
+
+
+## BACKUP BLADDER fires (the meter hit 0 after SECOND WIND, if any): +25% over WIND_REFILL_TIME.
+func _backup_bladder() -> void:
+	bladders -= 1
+	descent_run.bladders = bladders
+	_bladder_left = float(Economy.BOONS.bladder.value)
+	hud.set_boons(descent_run.boons, bladders)
+	_sfx("upgrade", -4.0)
+	Fx.burst(self, slime.position, skin_color, 20, 45.0, Vector2.UP, 180.0, rainbow)
+	DevLog.log_event(get_tree(), "backup bladder", self)
+
+
+## The floor's goo drops (Descent.drop_cells: deep dead ends, seeded), under the fog like coins.
+func _place_drops(maze_seed: int) -> void:
+	for cell in Descent.drop_cells(maze, maze_seed):
+		var drop := GooDrop.new()
+		drop.z_index = 6  # under the fog: found by exploring (glimmers mark them)
+		drop.position = MazeGenerator.cell_center(cell, TILE)
+		drop.cell = cell
+		drop.color = skin_color
+		drop.still = motion_scale() <= 0.0
+		add_child(drop)
+		drops.append(drop)
+
+
+## Touching a goo drop (or MAGNET pulling one in plain sight) adds DESCENT_DROP_REFILL % of the meter.
+func _pick_up_drops(pos: Vector2) -> void:
+	for drop in drops.duplicate():
+		var d := pos.distance_to(drop.position)
+		if d > coin_reach:
+			continue
+		if d > Coin.REACH and not (is_revealed_at(drop.position) and clear_line(pos, drop.position)):
+			continue
+		drops.erase(drop)
+		slime_remaining = minf(slime_remaining + Economy.DESCENT_DROP_REFILL, 100.0)
+		hud.set_slime(slime_remaining)
+		_sfx("coin", -4.0)
+		Fx.burst(self, drop.position, skin_color, 14, 40.0, Vector2.UP, 180.0, rainbow)
+		drop.queue_free()
+
+
+## The HUD's pot pod: the pot and what it would pay ("PRACTICE" once today's paying runs are used).
+func _refresh_descent_pod() -> void:
+	if not descent or progress == null:
+		return
+	var due: Dictionary = progress.descent_payout(true, dev_toggled)
+	hud.set_pot(int(descent_run.pot), due.cap, int(descent_run.get("gain", 0)) if finished and won else 0)
+
+
+## The floor's first frames: a milestone reached for the first time says what it paid.
+func _announce_floor() -> void:
+	var bonus := int(descent_run.get("bonus", 0))
+	if bonus <= 0:
+		return
+	descent_run.bonus = 0  # shown once
+	var text := "FLOOR %d BONUS +%d TICKETS" % [descent_run.floor, bonus]
+	if int(descent_run.floor) == Economy.DESCENT_ABYSS_FLOOR:
+		text += "\nNEW TRAIL: " + Cosmetics.display_name("abyss")
+	hud.flash_message(text, 3.0)
+	_sfx("unlock")
+
+
+func _ensure_card() -> DescentCard:
+	if descent_card == null:
+		descent_card = DescentCard.new()
+		descent_card.game = self
+		add_child(descent_card)
+	return descent_card
+
+
+## After a cleared floor: the boon card (pick 1 of 3, then DESCEND; or CASH OUT).
+func _open_boon_card() -> void:
+	hud.message.visible = false
+	_ensure_card().show_boons(descent_run, progress.descent_offers() if progress else [])
+
+
+## The run is over (dry-up, CASH OUT): its summary (NEW RUN / HUB).
+func _show_descent_summary() -> void:
+	hud.message.visible = false
+	_ensure_card().show_summary(descent_run.get("result", {}))
+
+
+## DESCEND with boon `id`: the next floor (the scene is rebuilt from the run).
+func descend_with(id: String) -> void:
+	if _leaving() or progress == null or not progress.descend(id):
+		return
+	DevLog.route(get_tree(), "DESCEND " + id, self)
+	if _is_running_scene():
+		get_tree().reload_current_scene()
+
+
+## CASH OUT: banks the whole pot and shows the summary.
+func cash_out() -> void:
+	if _leaving() or progress == null:
+		return
+	progress.end_descent(true)
+	_show_descent_summary()
+
+
+## NEW RUN (from the summary): a fresh run from floor 1.
+func new_descent_run() -> void:
+	if _leaving() or progress == null:
+		return
+	progress.start_descent()
+	DevLog.route(get_tree(), "NEW RUN", self)
+	if _is_running_scene():
+		get_tree().reload_current_scene()
+
+
+## Leaving a Descent floor for the hub (pause menu QUIT TO HUB): mid-floor it counts as a dry-up
+## (half the pot), on the boon card (floor cleared) as a CASH OUT; an ended run is left as it is.
+func quit_descent() -> void:
+	if not descent or progress == null or not progress.descent_active():
+		return
+	if finished and won:
+		progress.end_descent(true)
+	else:
+		progress.end_descent(false, dev_toggled, run_time)
+
+
 # ---------------------------------------------------------------- dev: wall power
 
 ## Wall power (dev only): a splat chips away at the wall it hits, harder the stronger the leap.
@@ -1535,6 +1750,14 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
+	if descent:
+		# The floor's exit: the chalice fanfare, the floor's tickets into the pot, then the boon card.
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		_sfx("chalice", CHALICE_VOLUME_DB)
+		var gain: int = progress.clear_descent_floor(slime_remaining, run_time, dev_toggled) if progress else 0
+		DevLog.log_event(get_tree(), "descent floor cleared", self, "pot+%d" % gain)
+		_finish(true, "FLOOR %d CLEARED" % int(descent_run.get("floor", 1)), END_DELAY)
+		return
 	if is_random():
 		# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
 		Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
@@ -1617,6 +1840,12 @@ func _skins_unlocked_solid_by(level: int) -> Array[String]:
 
 func _dry_up() -> void:
 	slime.play_dry_up()
+	if descent:
+		# The run is over: half the pot is banked (Progress.end_descent), the summary card follows.
+		if progress:
+			progress.end_descent(false, dev_toggled, run_time)
+		_finish(false, "DRIED UP ON FLOOR %d" % int(descent_run.get("floor", 1)), END_DELAY)
+		return
 	if progress and not is_random():
 		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
 	_finish(false, "DRIED UP", END_DELAY)
@@ -1642,7 +1871,7 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 	if not did_win:
 		# The delay pauses with the game (false = not while paused), and the buttons are skipped
 		# if the player has left for the menu meanwhile.
-		await get_tree().create_timer(DRY_CHOICE_DELAY, false).timeout
+		await get_tree().create_timer(DESCENT_SUMMARY_DELAY if descent else DRY_CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
 			_offer_retry()
 		return
@@ -1659,6 +1888,9 @@ func _finish(did_win: bool, text: String, delay: float) -> void:
 ## upgrades screen's PLAY button comes back here).
 func _offer_retry() -> void:
 	# RESTART has the focus: one press of SPACE / Enter / R tries the same maze again.
+	if descent:
+		_show_descent_summary()  # a dry-up ends the run: its summary (NEW RUN / HUB)
+		return
 	if is_random():
 		hud.show_choices([["RESTART", retry], ["NEW MAZE", play_next], ["UPGRADES", go_to_upgrades]], 0)
 	elif progress and progress.assist_offered(level):
@@ -1700,6 +1932,9 @@ func go_to_upgrades() -> void:
 ## The buttons shown after a win.
 func _offer_next_steps() -> void:
 	# The middle button (carry on) has the focus, so SPACE / Enter just keeps going.
+	if descent:
+		_open_boon_card()
+		return
 	if is_random():
 		hud.show_choices([["REPLAY MAZE", replay], ["NEW MAZE", play_next], ["HUB", go_to_hub]], 1)
 	elif level >= Levels.COUNT:
@@ -1713,7 +1948,7 @@ func go_to_hub() -> void:
 	if _leaving():
 		return
 	DevLog.log_event(get_tree(), "quit to hub (after win/dry-up)", self)
-	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if is_random() else "story")
+	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if is_random() or descent else "story")
 	UIKit.go(get_tree(), HUB_SCENE)
 
 
@@ -1769,6 +2004,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		DevLog.log_event(get_tree(), "pause opened", self)
 	elif event.is_action_pressed("restart"):
 		get_viewport().set_input_as_handled()
+		if descent:
+			return  # a floor can't be restarted (the meter carries over); the run ends by dry-up or CASH OUT
 		if won:
 			replay("R")
 		elif finished:
