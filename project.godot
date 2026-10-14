@@ -16,6 +16,7 @@ config/custom_user_dir_name="SlimeTime_R1"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
 
 [autoload]
 
@@ -93,3 +94,4 @@ restart={
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 2d/snap/snap_2d_transforms_to_pixel=true
+textures/vram_compression/import_etc2_astc=true
