@@ -79,8 +79,8 @@ func _totals() -> void:
 	var values := [Workshop.wind_refill(1), Workshop.wind_refill(3), Workshop.charge_time(0), Workshop.charge_time(3),
 		Workshop.splat_factor(2), Workshop.splat_stun(0), Workshop.splat_stun(3), Workshop.magnet_reach(0), Workshop.magnet_reach(3),
 		Workshop.nose_rate(3), Workshop.nose_reach(0), Workshop.nose_reach(2)]
-	_check(values == [0.15, 0.35, 1.5, 0.7, 0.55, 0.3, 0.06, 10.0, 34.0, 3.0, 160.0, 240.0],
-		"workshop tables: wind 15..35%%, charge 1.5 -> 0.7 s, sticky x0.55 / stun 0.3 -> 0.06, magnet 10 -> 34, nose x3 / 160 -> 240 (%s)" % [values])
+	_check(values == [0.15, 0.35, 1.5, 0.7, 0.55, 0.3, 0.06, 10.0, 34.0, 2.3, 160.0, 240.0],
+		"workshop tables: wind 15..35%%, charge 1.5 -> 0.7 s, sticky x0.55 / stun 0.3 -> 0.06, magnet 10 -> 34, nose x2.3 / 160 -> 240 (%s)" % [values])
 	_check(is_equal_approx(Workshop.charge_time(0), Slime.CHARGE_TIME) and is_equal_approx(Workshop.splat_stun(0), Slime.SPLAT_STUN)
 		and is_equal_approx(Workshop.magnet_reach(0), Coin.REACH) and is_equal_approx(Workshop.nose_reach(0), 160.0),
 		"every workshop base equals the game's own constant (level 0 changes nothing)")
@@ -306,6 +306,23 @@ func _ui_upgrades() -> void:
 		and rows.wind.about.text == "REFILL AT EMPTY NONE -> 15%" and screen.coin_label.text == "20" and rows.wind.plus.has_focus(),
 		"prices with the ticket icon, effects now -> next, the pod shows tickets, focus on the first +")
 	rows.wind.plus.pressed.emit()
+	_check(progress.workshop_level("wind") == 0 and screen.confirm.visible and screen.confirm_back.has_focus()
+		and "BUY SECOND WIND 1?" in screen.confirm_label.text and screen.confirm_price.text == "15",
+		"+ asks first (BUY / BACK, focus on BACK, focus locked); nothing is spent yet")
+	_check(rows.wind.plus.focus_mode == Control.FOCUS_NONE and screen.confirm_buy.focus_mode != Control.FOCUS_NONE, "focus is locked to the confirm")
+	# Esc closes the confirm first (the screen stays), then nothing is bought.
+	var esc := InputEventAction.new()
+	esc.action = "ui_cancel"
+	esc.pressed = true
+	screen._unhandled_input(esc)
+	_check(not screen.confirm.visible and progress.tickets == 20 and is_instance_valid(screen) and rows.wind.plus.has_focus(),
+		"Esc closes the confirm (focus back on the +), no tickets spent")
+	rows.wind.plus.pressed.emit()
+	screen.confirm_buy.pressed.emit()
+	screen.confirm_buy.pressed.emit()  # a double tap on BUY
+	rows.wind.plus.pressed.emit()  # ...and a quick extra tap on +
+	screen.confirm_buy.pressed.emit()
+	_check(progress.workshop_level("wind") == 1 and not screen.confirm.visible and progress.tickets == 5, "a double tap buys exactly once (guard 0.3 s)")
 	_check(progress.workshop_level("wind") == 1 and progress.tickets == 5 and screen.coin_label.text == "5" and rows.wind.cost.text == "30"
 		and rows.wind.plus.disabled and rows.charge.plus.disabled, "pressing + buys a level; the rows update (5 left: nothing else affordable)")
 	var boxes: Array[Rect2] = []

@@ -127,6 +127,7 @@ func _initialize() -> void:
 
 	# --- Glimmers through the fog: with distance traveled (not time), only over hidden coins
 	game = await _spawn({level = 4})
+	game.glimmer_view_only = false
 	game.glimmer_reach = 100000.0  # any coin in the level counts as near, for the test
 	for i in 240:  # standing still for 4 s
 		await physics_frame
@@ -145,6 +146,7 @@ func _initialize() -> void:
 		progress.coins_found[4] = progress.coins_found.get(4, []) + ["found%d" % i]
 	progress.all_coins_debug = true
 	game = await _spawn({level = 4})
+	game.glimmer_view_only = false
 	game.glimmer_reach = 100000.0
 	game.glimmer_travel = 10000.0
 	await physics_frame

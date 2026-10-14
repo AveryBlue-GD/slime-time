@@ -12,7 +12,7 @@ extends RefCounted
 ##   QUICK CHARGE a full leap charge in 1.2 / 0.95 / 0.7 s (1.5)
 ##   STICKY       splat penalty x0.75 / 0.55 / 0.40, splat stun 0.2 / 0.12 / 0.06 s (0.3)
 ##   MAGNET       coins within 18 / 26 / 34 px (10) fly in, if on revealed floor in plain sight
-##   GOO NOSE     fog glimmers x1.5 / x2 / x3 as often, reaching 200 / 240 / 300 px (160)
+##   GOO NOSE     fog glimmers x1.4 / x1.8 / x2.3 as often, reaching 200 / 240 / 300 px (160)
 
 const LIST := [
 	{id = "wind", name = "SECOND WIND"},

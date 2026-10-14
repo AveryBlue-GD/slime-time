@@ -106,6 +106,8 @@ const AMBIENT_EVENT_TRIM := {"catacombs": -7.0}
 ## They come with distance traveled (gliding or leaping), not time: one per this many px (picked
 ## at random in the range each time).
 const GLIMMER_EVERY := Vector2(180.0, 360.0)
+## A glimmer's coin may sit this far outside the visible view (px).
+const GLIMMER_VIEW_MARGIN := 8.0
 ## Only coins within this many px of the slime glimmer (about a screen away).
 const GLIMMER_REACH := 160.0
 ## The maze's edge is doubled by a ring of BORDER wall tiles just outside it (covered by the fog
@@ -180,6 +182,8 @@ var last_slime_pos: Vector2
 var glimmer_travel := 0.0
 ## How near a hidden coin must be to glimmer (px; GLIMMER_REACH, tests widen it).
 var glimmer_reach := GLIMMER_REACH
+## Glimmers only pick coins inside the visible view (+ GLIMMER_VIEW_MARGIN); tests turn it off.
+var glimmer_view_only := true
 var _next_glimmer := 0.0
 var _glimmer_from := Vector2.ZERO
 ## Seconds since the maze started; the fog's clock.
@@ -201,6 +205,8 @@ var workshop := {}
 var wind_state := ""
 var wind_fired := false
 var _wind_target := 0.0
+## SECOND WIND: slime still to be added during the refill.
+var _wind_left := 0.0
 ## STICKY's splat penalty factor, MAGNET's coin reach (px) and GOO NOSE's glimmer rate.
 var splat_factor := 1.0
 var coin_reach := Coin.REACH
@@ -321,6 +327,7 @@ func _ready() -> void:
 			seed_level = progress.random_level
 		if hard_mode:
 			seed_level = 0
+		seed_level = clampi(seed_level, 0, Levels.max_slime_level())  # (a stray saved level stays valid)
 		config = Levels.random_config(random_seed, hard_mode, seed_level)
 		maze = _random_maze(config)
 		var level_note := "" if seed_level == own_level or hard_mode else "  CODE LV%d (YOU %d)" % [seed_level, own_level]
@@ -472,8 +479,10 @@ func _physics_process(delta: float) -> void:
 		_show(goal)
 		survey_goal = true
 	if wind_state == "refilling":
-		slime_remaining = minf(slime_remaining + _wind_target / Economy.WIND_REFILL_TIME * delta, _wind_target)
-		if slime_remaining >= _wind_target:
+		var add := minf(_wind_target / Economy.WIND_REFILL_TIME * delta, _wind_left)
+		slime_remaining += add  # a fixed amount: slime spent meanwhile is not topped up
+		_wind_left -= add
+		if _wind_left <= 0.001:
 			wind_state = "used"
 			hud.set_wind(wind_state)
 	hud.set_slime(slime_remaining)
@@ -605,7 +614,7 @@ func _count_glimmer_travel(pos: Vector2) -> void:
 		_spawn_glimmer()
 
 
-## The distance to the next glimmer: GLIMMER_EVERY, shortened by GOO NOSE (x1.5 / x2 / x3 as often).
+## The distance to the next glimmer: GLIMMER_EVERY, shortened by GOO NOSE (x1.4 / x1.8 / x2.3 as often).
 func _glimmer_gap() -> float:
 	return randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y) / glimmer_rate
 
@@ -614,11 +623,17 @@ func _glimmer_gap() -> float:
 ## that coin's metal: a hint of treasure. No coins left nearby (or none in the level), no glimmer.
 func _spawn_glimmer() -> void:
 	var hidden: Array[Coin] = []
+	var half := get_viewport_rect().size * 0.5 + Vector2.ONE * GLIMMER_VIEW_MARGIN
+	var center := camera.get_screen_center_position() if camera != null else slime.position
+	var view := Rect2(center - half, half * 2.0)
 	for coin in coins:
 		if not is_instance_valid(coin):
 			continue
-		if coin.position.distance_to(slime.position) <= glimmer_reach and fog_alpha_at(coin.position) >= 0.99:
-			hidden.append(coin)
+		if coin.position.distance_to(slime.position) > glimmer_reach or fog_alpha_at(coin.position) < 0.99:
+			continue
+		if glimmer_view_only and not view.has_point(coin.position):
+			continue  # a twinkle you can't see would waste the glimmer
+		hidden.append(coin)
 	if hidden.is_empty():
 		return
 	var coin: Coin = hidden.pick_random()
@@ -1202,6 +1217,7 @@ func _second_wind() -> void:
 	wind_state = "refilling"
 	wind_fired = true
 	_wind_target = Workshop.wind_refill(workshop_level("wind")) * 100.0
+	_wind_left = _wind_target
 	hud.set_wind(wind_state)
 	_sfx("upgrade", -4.0)
 	Fx.burst(self, slime.position, skin_color, 24, 50.0, Vector2.UP, 180.0, rainbow)
@@ -1265,12 +1281,24 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if progress.jelly:
 			coin.dissolve_into(slime, Skins.shades(skin_color).light)  # seen sinking into the body
 		else:
-			Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
-			coin.queue_free()
+			_fly_coin_in(coin)
 		hud.set_coins(progress.coins(), progress.coins_found_in(level) + assisted_coins, coins_here, true)
 		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
+
+
+## A solid slime has no see-through body: the coin glides into it, then pops.
+func _fly_coin_in(coin: Coin) -> void:
+	if coin.position.distance_to(slime.position) <= Coin.REACH:
+		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
+		coin.queue_free()
+		return
+	var tween := coin.create_tween()
+	tween.tween_property(coin, "global_position", slime.global_position, 0.12)
+	tween.tween_callback(func() -> void:
+		Fx.burst(self, slime.position, Color8(255, 214, 110), 14, 45.0)
+		coin.queue_free())
 
 
 ## True once the fog cell at `pos` has been revealed (ever).

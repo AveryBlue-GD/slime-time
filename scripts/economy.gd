@@ -79,7 +79,7 @@ const WORKSHOP := {
 	"charge": {base = 1.5, costs = [12, 25, 45], values = [1.2, 0.95, 0.7]},
 	"sticky": {base = 1.0, costs = [12, 25, 45], values = [0.75, 0.55, 0.40], stun_base = 0.3, stun = [0.2, 0.12, 0.06]},
 	"magnet": {base = 10.0, costs = [12, 25, 45], values = [18.0, 26.0, 34.0]},
-	"nose": {base = 1.0, costs = [12, 25, 45], values = [1.5, 2.0, 3.0], reach_base = 160.0, reach = [200.0, 240.0, 300.0]},
+	"nose": {base = 1.0, costs = [12, 25, 45], values = [1.4, 1.8, 2.3], reach_base = 160.0, reach = [200.0, 240.0, 300.0]},
 }
 ## SECOND WIND refills the meter over this many seconds.
 const WIND_REFILL_TIME := 0.4

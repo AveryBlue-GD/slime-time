@@ -3,7 +3,7 @@ extends SceneTree
 ## Ticket WORKSHOP checks (upgrades v2 batch 2, docs/design/upgrades-v2.md B.2): each effect in a real
 ## level - QUICK CHARGE (a full charge in 0.7 s instead of 1.5), STICKY (splat penalty x0.40, stun
 ## 0.06 s), MAGNET (coins within 34 px fly in, only on revealed floor in plain sight), GOO NOSE
-## (glimmers x3 as often, 300 px), SECOND WIND (refills to 25% once per run, then the next empty meter
+## (glimmers x2.3 as often, 300 px), SECOND WIND (refills to 25% once per run, then the next empty meter
 ## dries up; not on a level's first clear; in the randomizer it costs one attempt step of the payout,
 ## the attempt pod shows it live). Hard mode turns all of it off, par never moves, nothing touches the
 ## real save. Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_workshop.gd
@@ -175,6 +175,31 @@ func _magnet() -> void:
 	_check(game.coin_reach == Coin.REACH and not await _try_coin(game, c2, c2.position + Vector2(d2) * 24.0)
 		and await _try_coin(game, c2, c2.position + Vector2(d2) * 8.0), "no MAGNET: 24 px away it stays, touching it (8 px) takes it")
 	await _stop(game)
+	# A solid slime (jelly off): a magnetized coin flies into the slime instead of bursting in place.
+	_state({magnet = 3})
+	var was_jelly: bool = progress.jelly
+	progress.jelly = false
+	game = await _spawn(2)
+	await _frames(3)
+	var c3: Coin = game.coins[0]
+	var tile3: Vector2i = c3.cell * 2 + Vector2i.ONE
+	var d3 := Vector2i.ZERO
+	for d: Vector2i in MazeGenerator.DIRS:
+		if not game.is_wall_tile(tile3 + d):
+			d3 = d
+	game._paint_goo(c3.position, game.TRAIL_RADIUS)
+	var from3 := c3.position
+	var slime_at := c3.position + Vector2(d3) * 30.0
+	game.slime.position = slime_at
+	game.last_slime_pos = slime_at
+	game.slime.velocity = Vector2.ZERO
+	await _frames(2)
+	_check(not c3 in game.coins and is_instance_valid(c3) and c3.position.distance_to(slime_at) < from3.distance_to(slime_at),
+		"jelly off: the magnetized coin is flying toward the slime (%.0f px left of 30)" % c3.position.distance_to(slime_at))
+	await _frames(20)
+	_check(not is_instance_valid(c3) or c3.is_queued_for_deletion(), "...and is gone once it arrives")
+	progress.jelly = was_jelly
+	await _stop(game)
 
 
 # ---------------------------------------------------------------- GOO NOSE
@@ -186,28 +211,50 @@ func _nose() -> void:
 	var gaps := []
 	for i in 200:
 		gaps.append(game._glimmer_gap())
-	_check(game.glimmer_rate == 3.0 and game.glimmer_reach == 300.0 and gaps.min() >= 60.0 and gaps.max() <= 120.0,
-		"GOO NOSE 3: glimmers every 60-120 px (x3 as often), reaching 300 px (%.0f-%.0f)" % [gaps.min(), gaps.max()])
-	# Count glimmers over the same distance with and without the nose (a straight test walk).
-	var with_nose := await _count_glimmers(game)
+	_check(game.glimmer_rate == 2.3 and game.glimmer_reach == 300.0 and gaps.min() >= 180.0 / 2.3 - 0.1 and gaps.max() <= 360.0 / 2.3 + 0.1,
+		"GOO NOSE 3: glimmers every 78-157 px (x2.3 as often), reaching 300 px (%.0f-%.0f)" % [gaps.min(), gaps.max()])
 	await _stop(game)
-	_state({})
-	game = await _spawn(3)
-	await _frames(2)
-	var without := await _count_glimmers(game)
-	_check(with_nose >= without, "...more glimmers over the same travel (%d vs %d)" % [with_nose, without])
-	await _stop(game)
+	# Visible glimmers per minute at levels 0-3: a field of hidden coins round the slime, 60 s of
+	# gliding at the slime's speed (~70 px/s); every glimmer must sit inside the camera view.
+	var counts := []
+	for lvl in 4:
+		_state({nose = lvl} if lvl > 0 else {})
+		game = await _spawn(3)
+		await _frames(2)
+		counts.append(_visible_glimmers(game))
+		await _stop(game)
+	var ratios := []
+	for c in counts:
+		ratios.append(snappedf(float(c) / counts[0], 0.01))
+	print("GOO NOSE visible glimmers per minute at levels 0-3: %s  ratios %s" % [counts, ratios])
+	_check(counts[0] > 0 and counts[1] > counts[0] and counts[2] > counts[1] and counts[3] > counts[2]
+		and ratios[1] >= 1.25 and ratios[2] >= 1.55 and ratios[3] >= 2.0,
+		"each GOO NOSE level shows clearly more glimmers on screen (ratios %s)" % [ratios])
 
 
-func _count_glimmers(game: Node2D) -> int:
+## Counts the glimmers per minute (all on screen, asserted) over 20 min of travel across a fake coin field.
+func _visible_glimmers(game: Node2D) -> float:
+	var field: Array[Coin] = []
+	for ix in range(-12, 13):
+		for iy in range(-8, 9):
+			var coin := Coin.new()
+			coin.position = game.slime.position + Vector2(ix * 25, iy * 25)
+			game.add_child(coin)
+			field.append(coin)
+	game.coins = field
 	var count := 0
-	game.glimmer_reach = 9999.0  # every hidden coin counts, wherever it is
-	for i in 3000:
-		game._count_glimmer_travel(game._glimmer_from + Vector2(1, 0))
+	var all_visible := true
+	var rect: Rect2 = Rect2(game.camera.get_screen_center_position() - Vector2(168, 98), Vector2(336, 196))
+	for i in 72000:  # 20 minutes at 60 fps, 70 px/s (counts are divided by 20)
+		game._count_glimmer_travel(game._glimmer_from + Vector2(70.0 / 60.0, 0))
 	for node in game.get_children():
 		if node.is_in_group("glimmer"):
 			count += 1
-	return count
+			all_visible = all_visible and rect.grow(80).has_point(node.position)  # the slime moved no real distance
+			node.remove_from_group("glimmer")
+			node.queue_free()
+	_check(all_visible, "...every glimmer sits in the visible view")
+	return count / 20.0
 
 
 # ---------------------------------------------------------------- SECOND WIND
@@ -226,6 +273,19 @@ func _wind() -> void:
 	game.slime_remaining = 0.0
 	await _frames(2)
 	_check(game.finished and not game.won, "once per run: the next empty meter dries up")
+	await _stop(game)
+	# A fixed amount: slime spent during the 0.4 s refill is not topped up again (25% added - 10 spent).
+	_state({wind = 2}, 1)
+	game = await _spawn(1)
+	await _frames(2)
+	game.slime_remaining = 0.0
+	await _frames(2)
+	await _frames(5)
+	var spent := 5.0
+	game.slime_remaining -= spent
+	await _frames(40)
+	_check(game.wind_state == "used" and absf(game.slime_remaining - (25.0 - spent)) < 0.8,
+		"SECOND WIND adds a fixed 25%%, slime spent while refilling stays spent (%.1f%%, want %.1f)" % [game.slime_remaining, 25.0 - spent])
 	await _stop(game)
 	# A level's first clear: no SECOND WIND.
 	_state({wind = 3}, 0)

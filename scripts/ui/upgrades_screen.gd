@@ -25,6 +25,9 @@ const PIP_GAP := 4
 const PIPS_RIGHT := 222
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
+## Presses of a workshop buy closer together than this are ignored (a double tap).
+const BUY_GUARD_MSEC := 300
+const PREVIEW_TIME := 1.0
 const TICKETS_LOCKED := "EARN TICKETS IN THE RANDOMIZER FIRST"
 ## The tab the next opening shows ("coins" or "tickets"), for that one opening (demos and tests set
 ## it); the hub's cauldron always opens on COINS.
@@ -45,6 +48,20 @@ var ticket_page: Control
 var hint: Label
 var back: Button
 var _rows_bottom := {}
+## The TICKETS tab's BUY / BACK confirm (like the SHOP's): the workshop is not refundable.
+var confirm: Control
+var confirm_label: Label
+var confirm_price: Label
+var confirm_buy: Button
+var confirm_back: Button
+var _blocker: ColorRect
+var _confirm_id := ""
+var _confirm_lock := {}
+var _last_buy_msec := -100000
+## The dim tag on the MORE SLIME row (shown until it is maxed) and the 1 s BRIGHTNESS light-ring
+## preview (null when not showing).
+var recommended: Label
+var preview: Control
 
 
 func _ready() -> void:
@@ -100,6 +117,7 @@ func _ready() -> void:
 		back.text = "PLAY"
 		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
 		back.pressed.connect(_leave)
+	_build_confirm()
 	show_page(open_tab if open_tab in ["coins", "tickets"] else "coins")
 	open_tab = "coins"  # (one opening only)
 
@@ -157,6 +175,10 @@ func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	cost.position = Vector2(264, y + 2)
 	parent.add_child(cost)
+	if upgrade.id == "slime":  # A2.3: the model's biggest risk is skipping MORE SLIME
+		recommended = UIKit.make_label("RECOMMENDED", 8, Color(UIKit.TEXT_DIM, 0.75))
+		recommended.position = Vector2(PIPS_RIGHT - 66, y + 12)
+		parent.add_child(recommended)
 	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, about = about}
 
 
@@ -199,16 +221,124 @@ func _make_pips(parent: Control, count: int, y: int) -> Array[ColorRect]:
 
 
 func _change(id: String, up: bool) -> void:
+	var before: int = Progress.upgrade_level(id)
 	var changed: bool = Progress.buy_upgrade(id) if up else Progress.refund_upgrade(id)
+	if changed and up and id == "brightness":
+		_show_preview(Upgrades.reveal_radius(before), Upgrades.reveal_radius(before + 1))
 	if changed and up:
 		_upgrade_sound(Progress.upgrade_level(id), Upgrades.max_level(id))
 	_refresh()
 
 
+## The row's + opens the confirm (nothing is spent yet).
 func _buy_workshop(id: String) -> void:
+	if confirm.visible or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+		return
+	if not Progress.can_buy_workshop(id):
+		return
+	_confirm_id = id
+	var next_level: int = Progress.workshop_level(id) + 1
+	confirm_label.text = "BUY %s %d?" % [Workshop.display_name(id), next_level]
+	confirm_price.text = str(Progress.workshop_cost(id))
+	confirm.visible = true
+	_blocker.visible = true
+	if _confirm_lock.is_empty():
+		_confirm_lock = UIKit.lock_focus(self, confirm)
+	confirm_back.grab_focus()
+
+
+func _buy_confirmed() -> void:
+	var id := _confirm_id
+	if id == "" or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+		return
+	_last_buy_msec = Time.get_ticks_msec()
+	_close_confirm(false)
 	if Progress.buy_workshop(id):
 		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id))
 	_refresh()
+	if ticket_rows.has(id):
+		(ticket_rows[id].plus as Button).grab_focus()
+
+
+func close_confirm() -> void:
+	_close_confirm(true)
+
+
+func _close_confirm(refocus: bool) -> void:
+	if not confirm.visible:
+		return
+	confirm.visible = false
+	_blocker.visible = false
+	UIKit.unlock_focus(_confirm_lock)
+	var id := _confirm_id
+	_confirm_id = ""
+	if refocus and ticket_rows.has(id):
+		(ticket_rows[id].plus as Button).grab_focus()
+
+
+func _build_confirm() -> void:
+	_blocker = ColorRect.new()
+	_blocker.color = Color(0, 0, 0, 0.45)
+	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_blocker.visible = false
+	add_child(_blocker)
+	_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	confirm = UIKit.add_panel(self, Rect2(86, 60, 148, 58))
+	confirm.visible = false
+	confirm_label = UIKit.make_label("", 8, UIKit.TEXT)
+	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_label.position = Vector2(0, 8)
+	confirm_label.size = Vector2(148, 10)
+	confirm.add_child(confirm_label)
+	var price := HBoxContainer.new()
+	price.alignment = BoxContainer.ALIGNMENT_CENTER
+	price.add_theme_constant_override("separation", 2)
+	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	price.position = Vector2(0, 20)
+	price.size = Vector2(148, 10)
+	confirm.add_child(price)
+	confirm_price = UIKit.make_label("", 8, UIKit.TEXT)
+	price.add_child(confirm_price)
+	price.add_child(UIKit.make_icon("ticket", Color.WHITE))
+	confirm_buy = UIKit.make_button("BUY", _buy_confirmed, Vector2(48, 13))
+	confirm_buy.position = Vector2(20, 36)
+	confirm.add_child(confirm_buy)
+	confirm_back = UIKit.make_button("BACK", close_confirm, Vector2(48, 13))
+	confirm_back.position = Vector2(80, 36)
+	confirm.add_child(confirm_back)
+
+
+## BRIGHTNESS bought: for 1 s the hint area shows a disc at the old light radius and a ring at the
+## new one (to scale), so the jump is seen.
+func _show_preview(old_radius: float, new_radius: float) -> void:
+	if preview != null:
+		preview.queue_free()
+	var rows_bottom: int = _rows_bottom["coins"]
+	var top := rows_bottom + 2
+	var bottom := 162
+	var scale := minf(0.7, float(bottom - top) / 2.0 / new_radius)
+	var center := Vector2(112, (top + bottom) / 2.0)
+	var skin := Progress.skin_color()
+	preview = Control.new()
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(preview)
+	preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preview.draw.connect(func() -> void:
+		preview.draw_circle(center, new_radius * scale, Color(skin, 0.14))
+		preview.draw_circle(center, old_radius * scale, Color(skin, 0.42))
+		preview.draw_arc(center, new_radius * scale, 0.0, TAU, 48, skin, 1.0, false))
+	var text := UIKit.make_label("LIGHT %d -> %d PX" % [roundi(old_radius), roundi(new_radius)], 8, UIKit.TEXT)
+	text.position = Vector2(center.x + new_radius * scale + 10, center.y - 4)
+	preview.add_child(text)
+	preview.queue_redraw()
+	hint.visible = false
+	var shown := preview
+	get_tree().create_timer(PREVIEW_TIME).timeout.connect(func() -> void:
+		if is_instance_valid(shown):
+			shown.queue_free()
+			if preview == shown:
+				preview = null
+				hint.visible = true)
 
 
 ## A power-up swell, a little higher for each level.
@@ -243,6 +373,7 @@ func _refresh() -> void:
 		row.plus.disabled = not Progress.can_buy_workshop(id)
 		row.about.text = Workshop.effect_text(id, level)
 		row.about.modulate = Color.WHITE if open else Color(1, 1, 1, 0.5)
+	recommended.visible = Progress.upgrade_level("slime") < Upgrades.max_level("slime")
 	hint.text = (TICKETS_HINT if open else TICKETS_LOCKED) if tickets else COINS_HINT
 
 
@@ -284,5 +415,9 @@ func _leave() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if confirm != null and confirm.visible and (event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel")):
+		close_confirm()  # Esc closes the confirm first, then the screen
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
 		_leave()
