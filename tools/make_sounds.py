@@ -1,6 +1,7 @@
 """Generates the game's slimy sound effects as WAV files (no dependencies).
 
-Run from the project root:  python tools/make_sounds.py
+Run from the project root:  python tools/make_sounds.py  (or name sounds to write only those:
+python tools/make_sounds.py huh grumble)
 Writes assets/sounds/<name>.wav (22.05 kHz, 16-bit mono). Tweak the recipes below and rerun.
 
 Wet sounds are built from "bubbles" (a sine whose pitch sweeps up fast while it dies away, like
@@ -10,6 +11,7 @@ so it reads as a wet thud rather than a hiss.
 import math
 import random
 import struct
+import sys
 import wave
 from pathlib import Path
 
@@ -239,11 +241,18 @@ SOUNDS = {
                            bloop(147, 148, 2.2, 0.1, attack=0.9, release=1.2, shape="tri"),
                            chime_tone(392, 1.2, 0.2), [0.0] * int(0.35 * RATE) + chime_tone(494, 1.2, 0.17),
                            [0.0] * int(0.7 * RATE) + chime_tone(587, 1.4, 0.15)),
+    # Story finale: an adventurer puzzled over the puddle: a short, low, questioning "huh?" rising.
+    "huh": lambda: mix(bloop(150, 235, 0.17, 0.4, wobble=0.03, wobble_rate=9, attack=0.02, release=0.07, shape="tri"),
+                       bubble(260, 0.05, 0.08)),
+    # Story finale: the adventurers fuming: a low rumbling grumble that growls and dies away.
+    "grumble": lambda: mix(bloop(84, 64, 0.8, 0.36, wobble=0.16, wobble_rate=23, attack=0.06, release=0.35, shape="tri"),
+                           bloop(118, 92, 0.7, 0.16, wobble=0.2, wobble_rate=17, attack=0.1, release=0.3, shape="tri"),
+                           wet_thud(0.5, 0.12, seed=91, release=0.3)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }
 
 
 if __name__ == "__main__":
-    for sound_name, recipe in SOUNDS.items():
-        write(sound_name, recipe())
+    for sound_name in sys.argv[1:] or SOUNDS:
+        write(sound_name, SOUNDS[sound_name]())

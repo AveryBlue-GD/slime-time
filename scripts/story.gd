@@ -28,7 +28,7 @@ const INTRO: Array[Dictionary] = [
 
 const FINALE: Array[Dictionary] = [
 	{art = "daylight", time = 6.6, still = 5.4},
-	{art = "search", time = 6.2, still = 2.6},
+	{art = "search", time = 6.2, still = 2.7},
 ]
 
 ## One line under the area name when a level starts (story levels 1-10, bottom to top).

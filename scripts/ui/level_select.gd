@@ -9,12 +9,15 @@ var grid: GridContainer
 var skin_text: SkinText
 var hard_mode_box: CheckBox
 
+const TILE := Vector2i(44, 38)
+const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
+
 
 func _ready() -> void:
 	skin_text = UIKit.setup_screen(self, "LEVEL SELECT")
 	grid = GridContainer.new()
 	grid.columns = 5
-	grid.position = Vector2(42, 34)
+	grid.position = Vector2(42, 23)
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 4)
 	add_child(grid)
@@ -55,46 +58,69 @@ func _fill_grid() -> void:
 		skin_text.recolor.call_deferred()
 
 
-## A level tile: the big level number, and under it the record time, a check (cleared, no
-## time saved) or a lock.
+## A level tile: the big level number dead center (its letter pixels, not its line box, sit on the
+## tile's center), and under it the record time or a check (cleared). A locked tile draws the lock
+## over the number, also centered; unlocking just drops the lock and leaves the number there.
 func _make_tile(level: int) -> Button:
-	# 32 tall: the number and the status line fit between the goo bands (rows 3-29).
-	var button := UIKit.make_button("", func() -> void: _play(level), Vector2(44, 32))
+	# 38 tall: the 14 px digits centered (rows 12-25) leave room under them for the status line
+	# (rows 28-34, between the goo bands at rows 0-2 and 35-37).
+	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
 	var locked := level > Progress.highest_unlocked
 	button.disabled = locked
-	var number := UIKit.make_label(str(level), 16, UIKit.TEXT_OFF if locked else UIKit.TEXT)
+	var number := UIKit.make_label(str(level), 16, LOCKED_NUMBER if locked else UIKit.TEXT)
+	number.name = "Number"
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	number.position = Vector2(0, 3)
-	number.size = Vector2(44, 18)
+	# The 16 px font's line box is exactly its 14 px letter body (see CLAUDE.md), so the box
+	# centered on the tile is the digits centered on the tile; the glyph cells have no empty
+	# columns, so the horizontal centering is exact too.
+	number.size = Vector2(TILE.x, 14)
+	number.position = Vector2(0, (TILE.y - 14) / 2)
 	button.add_child(number)
 
-	var status := CenterContainer.new()
-	status.position = Vector2(0, 21)
-	status.size = Vector2(44, 9)
-	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(status)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 2)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	status.add_child(row)
-	if not locked:
-		# Medal pips stacked at the tile's top right: one gold pip per tier won (bronze 1, silver 2,
-		# gold 3) on this mode's best clear, dark for the rest.
-		var tier := Progress.medals_for(level)
-		for i in 3:
-			var pip := ColorRect.new()
-			pip.position = Vector2(36, 5 + i * 5)
-			pip.size = Vector2(3, 3)
-			pip.color = UIKit.GOLD if i < tier else UIKit.TEXT_OFF
-			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			button.add_child(pip)
 	if locked:
-		row.add_child(UIKit.make_icon("lock", UIKit.TEXT_OFF))
-	elif Progress.best_time(level) >= 0.0:
-		row.add_child(UIKit.make_label(UIKit.format_time(Progress.best_time(level)), 8, UIKit.TEXT_DIM))
-	elif (level in Progress.hard_cleared) if Progress.hard_mode else (level <= Progress.levels_cleared):
-		row.add_child(UIKit.make_icon("check", UIKit.GOLD))
+		button.add_child(_make_lock())
+		return button
+	# Medal pips stacked at the tile's top right: one gold pip per tier won (bronze 1, silver 2,
+	# gold 3) on this mode's best clear, dark for the rest.
+	var tier := Progress.medals_for(level)
+	for i in 3:
+		var pip := ColorRect.new()
+		pip.position = Vector2(36, 5 + i * 5)
+		pip.size = Vector2(3, 3)
+		pip.color = UIKit.GOLD if i < tier else UIKit.TEXT_OFF
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(pip)
+	var cleared := (level in Progress.hard_cleared) if Progress.hard_mode else (level <= Progress.levels_cleared)
+	var status: Control = null
+	if Progress.best_time(level) >= 0.0:
+		status = UIKit.make_label(UIKit.format_time(Progress.best_time(level)), 8, UIKit.TEXT_DIM)
+		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status.size = Vector2(TILE.x, 7)
+		status.position = Vector2(0, 28)
+	elif cleared:
+		status = UIKit.make_icon("check", UIKit.GOLD)
+		status.position = Vector2((TILE.x - 8) / 2, 27)
+	if status:
+		button.add_child(status)
 	return button
+
+
+## The lock icon centered by its own pixels over the tile's center, on a dark copy (like the text
+## shadow) so it reads over the digits beneath it.
+func _make_lock() -> Control:
+	var holder := Control.new()
+	holder.name = "Lock"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ink := UIKit.icon_ink_rect("lock")
+	var at := Vector2(TILE) / 2.0 - (Vector2(ink.position) + Vector2(ink.size) / 2.0)
+	at = Vector2(floorf(at.x), floorf(at.y))
+	var shadow := UIKit.make_icon("lock", UIKit.BG)
+	shadow.position = at + Vector2(1, 1)
+	holder.add_child(shadow)
+	var icon := UIKit.make_icon("lock", UIKit.TEXT_DIM)
+	icon.position = at
+	holder.add_child(icon)
+	return holder
 
 
 func _play(level: int) -> void:

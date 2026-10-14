@@ -132,6 +132,14 @@ static func make_icon(icon_name: String, tint := TEXT) -> TextureRect:
 	return icon
 
 
+## The bounding box (in icon pixels) of an icon's visible pixels, so it can be centered by its ink
+## rather than its 8x8 cell.
+static func icon_ink_rect(icon_name: String) -> Rect2i:
+	var img: Image = (load(UI_DIR + "icon_%s.png" % icon_name) as Texture2D).get_image()
+	var used := img.get_used_rect()
+	return used
+
+
 ## Full-screen menu root: theme, the drifting maze backdrop, a title at the top, and skin-colored
 ## text.
 ## Returns the SkinText node (call its recolor() after changing the skin).

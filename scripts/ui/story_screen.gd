@@ -99,7 +99,7 @@ func finish() -> void:
 	finished = true
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		for long_sound in ["sunrise", "whoosh", "crumble", "crack", "splat"]:
+		for long_sound in ["sunrise", "whoosh", "crumble", "crack", "splat", "grumble"]:
 			sfx.stop(long_sound)
 	Progress.mark_story_seen(Progress.STORY_FINALE if mode == "finale" else Progress.STORY_INTRO)
 	done.emit()
@@ -206,6 +206,14 @@ class StageArt extends Node2D:
 	const FLOOR_Y := 112.0
 	const STAGE_BOTTOM := 146.0
 	const MAX_PARTS := 220
+	## The finale's search: when each adventurer (knight, rogue, wizard) is puzzled ("?") and then
+	## angry, the wizard's stomps, and the cut back to the sunrise (s into the shot).
+	const SEARCH_HUH := [0.45, 0.75, 1.05]
+	const SEARCH_MAD := [2.15, 2.27, 2.39]
+	const SEARCH_STOMPS := [2.55, 2.95, 3.35, 3.75]
+	const SEARCH_CUT := 3.9
+	## Where a reaction pictogram ("?", angry face) is centered, above an adventurer's feet.
+	const REACT_Y := -44.0
 	const RUN_SPEED := 84.0
 	## The fall: ten floors (level 10 at the top down to level 1), FALL_TIME seconds.
 	const LAYER_H := 118.0
@@ -346,8 +354,8 @@ class StageArt extends Node2D:
 			"fall":
 				c.a = 0.0
 			"search":
-				if t >= 3.9 and t < 4.2:
-					c = Color(INK, 1.0 - (t - 3.9) / 0.3)
+				if t >= SEARCH_CUT and t < SEARCH_CUT + 0.3:
+					c = Color(INK, 1.0 - (t - SEARCH_CUT) / 0.3)
 				elif t > 4.7:
 					c = Color(Color8(255, 214, 140), clampf((t - 4.7) / 1.3, 0.0, 1.0))
 		return c
@@ -473,10 +481,22 @@ class StageArt extends Node2D:
 				if _at(prev, now, 2.0):
 					_sfx("sunrise", -8.0)
 			"search":
-				if _at(prev, now, 1.9):
-					_pop("loot", 0, 1.9)
-					_sfx("coin", -14.0, 0.8)
-				if _at(prev, now, 3.9):
+				# Puzzled (a "?" over each head) ... then furious (angry faces) till the cut.
+				for i in 3:
+					if _at(prev, now, SEARCH_HUH[i]):
+						_pop("huh", i, SEARCH_MAD[i] - SEARCH_HUH[i])
+						_sfx("huh", -15.0, [1.0, 1.12, 0.9][i])
+					if _at(prev, now, SEARCH_MAD[i]):
+						_pop("angry", i, SEARCH_CUT - SEARCH_MAD[i])
+				if _at(prev, now, SEARCH_MAD[0]):
+					_sfx("grumble", -12.0)
+				for stomp in SEARCH_STOMPS:
+					if _at(prev, now, stomp):
+						_sfx("land", -15.0, 0.6)
+						_kick(0.8)
+						_dust(Vector2(200, 120), 3)
+				if _at(prev, now, SEARCH_CUT):
+					parts.clear()  # no sparks, steam or dust over the sunrise
 					_sfx("sunrise", -11.0, 1.12)
 
 	## Continuous emitters: torch sparks, trail goo, dust, falling grit.
@@ -533,9 +553,17 @@ class StageArt extends Node2D:
 					_part({p = Vector2(rng.randf_range(124, 144), 108.0), v = Vector2(rng.randf_range(4, 12), rng.randf_range(-14, -8)),
 						g = 0.0, life = 2.4, c = Color(Color8(120, 100, 120), 0.5), s = 2.0, fade = true})
 			"search":
-				for i in _every(prev, now, 0.06, 0.0, 3.9):
+				for i in _every(prev, now, 0.06, 0.0, SEARCH_CUT - 0.05):
 					var hero: Dictionary = heroes[rng.randi_range(0, 1)]
 					_spark(hero.tip, Vector2(rng.randf_range(-6, 6), rng.randf_range(-30, -12)))
+				# Steam puffing off the angry faces.
+				for i in _every(prev, now, 0.11, SEARCH_MAD[0] + 0.15, SEARCH_CUT - 0.05):
+					var k := rng.randi_range(0, 2)
+					if now < SEARCH_MAD[k] + 0.1:
+						continue
+					var side := -1.0 if rng.randf() < 0.5 else 1.0
+					_part({p = heroes[k].foot + Vector2(side * 7.0, REACT_Y - 3.0), v = Vector2(side * rng.randf_range(10, 18), rng.randf_range(-22, -12)),
+						g = -6.0, drag = 1.5, life = rng.randf_range(0.4, 0.6), c = Color(Color8(214, 208, 218), 0.8), s = 2.0, fade = true})
 
 	func _part(d: Dictionary) -> void:
 		if parts.size() >= MAX_PARTS:
@@ -625,16 +653,21 @@ class StageArt extends Node2D:
 	const ICONS := {
 		alarm = ["rr", "rr", "rr", "rr", "..", "rr", "rr"],
 		coin = ["..GGG..", ".GgggG.", "GgyggGG", "GgyggGG", "GggggGG", ".GGGGG.", "..GGG.."],
-		loot = ["....w..", "..GGw..", ".GgwwwG", "GgyGwGG", "GgyggGG", ".GGGGG.", "..GGG.."],
 		moon = ["..mmm....", ".mmm...w.", "mmm......", "mmm...w..", "mmm......", ".mmm.....", "..mmm...."],
 		swords = ["s.......s", "Ss.....sS", ".SS...SS.", "..SS.SS..", "...SSS...", "..gSSSg..", ".g.g.g.g.", ".ng...gn.", "nn.....nn"],
 		sweat = [".b.", ".b.", "bbb", "bwb", ".b."],
-		sparkle = ["..y..", "..y..", "yywyy", "..y..", "..y.."],
+		# Reactions, drawn bare (no bubble) with a dark outline: a puzzled "?" and an angry face.
+		huh = [".qqqq..", "qqqqqq.", "qq..qqQ", "....qqQ", "...qqQ.", "..qqQ..", "..qqQ..", ".......", "..qqQ..", "..qqQ.."],
+		angry = ["....ooooo....", "..oohhRRRoo..", ".ohhRRRRRRRo.", ".ohkRRRRRkRo.", "ohRRkRRRkRRRo", "oRRRRkRkRRRRo",
+			"oRRRRRRRRRRRo", "oRRkkRRRkkRRo", "oRRRRRRRRRRDo", "oRRRRkkkRRRDo", ".oRRkRRRkRDo.", "..ooDDDDDoo..", "....ooooo...."],
+		vein = [".r.r.", "rr.rr", ".....", "rr.rr", ".r.r."],
 	}
 	const ICON_INK := {
 		r = Color8(214, 52, 44), G = Color8(150, 82, 22), g = Color8(255, 196, 70), y = Color8(255, 244, 180),
 		w = Color8(255, 255, 255), m = Color8(250, 226, 130), s = Color8(150, 164, 190), S = Color8(64, 76, 104),
 		b = Color8(110, 170, 240), n = Color8(110, 64, 36),
+		q = Color8(240, 236, 224), Q = Color8(150, 158, 190),
+		o = Color8(96, 14, 26), R = Color8(222, 56, 44), h = Color8(255, 132, 92), D = Color8(164, 30, 36), k = Color8(44, 8, 18),
 	}
 	const BUBBLE := Color8(240, 236, 224)
 
@@ -655,6 +688,9 @@ class StageArt extends Node2D:
 			elif pop.who < heroes.size():
 				base = heroes[pop.who].foot + Vector2(0, -36 if zoom < 1.5 else -28)
 			else:
+				continue
+			if pop.icon in ["huh", "angry"]:
+				_reaction(canvas, pop.icon, heroes[pop.who], age)
 				continue
 			var alpha := clampf((pop.life - age) / 0.2, 0.0, 1.0)
 			# Pops up with a little overshoot, then hangs, bobbing a pixel.
@@ -697,6 +733,30 @@ class StageArt extends Node2D:
 			canvas.draw_rect(Rect2(tip + Vector2(0, px), Vector2(1, 1) * px), fill)
 			canvas.draw_rect(Rect2(tip + Vector2(0, 2 * px), Vector2(1, 1) * px), edge)
 		_icon(canvas, rows, box.get_center(), px, alpha)
+
+	## A bare reaction over an adventurer's head: a "?" that pops up and sways, puzzled, or an
+	## angry face that shakes with rage, an anger mark throbbing beside it.
+	func _reaction(canvas: CanvasItem, icon: String, hero: Dictionary, age: float) -> void:
+		var c: Vector2 = hero.foot + Vector2(0, REACT_Y)
+		if not screen.calm:
+			c.y += (1.0 - minf(age / 0.12, 1.0)) * 6.0 - (1.0 if age > 0.12 and age < 0.22 else 0.0)
+			if icon == "huh":
+				c.x += [0.0, 1.0, 0.0, -1.0][int(age * 5.0 + hero.kind) % 4]
+			else:
+				c.x += 1.0 if int(age * 24.0) % 2 == 0 else -1.0
+		_outlined(canvas, ICONS[icon], c.round())
+		if icon == "angry" and (screen.calm or fposmod(age + hero.kind * 0.17, 0.5) < 0.3):
+			_outlined(canvas, ICONS.vein, c.round() + Vector2(8, -7))
+
+	## An icon at 1x with a dark outline all round, so it reads on any background.
+	func _outlined(canvas: CanvasItem, rows: Array, center: Vector2) -> void:
+		var origin := (center - Vector2(rows[0].length(), rows.size()) * 0.5).round()
+		for y in rows.size():
+			var row: String = rows[y]
+			for x in row.length():
+				if row[x] != ".":
+					canvas.draw_rect(Rect2(origin + Vector2(x - 1, y - 1), Vector2(3, 3)), INK)
+		_icon(canvas, rows, center, 1.0)
 
 	## Draws an icon bitmap centered on `center`, `px` stage pixels per icon pixel.
 	func _icon(canvas: CanvasItem, rows: Array, center: Vector2, px: float, alpha := 1.0) -> void:
@@ -801,7 +861,7 @@ class StageArt extends Node2D:
 			"daylight":
 				_place_daylight_slime(s)
 			"search":
-				s.visible = t >= 3.9
+				s.visible = t >= SEARCH_CUT
 				_set_anim("celebrate", int(t * 8.0) % 4)
 				s.position = Vector2(186, 101)
 
@@ -846,7 +906,7 @@ class StageArt extends Node2D:
 			"daylight":
 				_draw_daylight(t)
 			"search":
-				if t < 3.9:
+				if t < SEARCH_CUT:
 					_draw_search()
 				else:
 					_draw_daylight(7.0 + t)
@@ -914,18 +974,54 @@ class StageArt extends Node2D:
 			"search":
 				var spots := [Vector2(150, 120), Vector2(112, 120), Vector2(200, 120)]
 				for i in 3:
-					var hero := _hero_at(spots[i], i, 0.0, sin(t * 2.0 + i) * 0.15 + 0.2)
-					hero.crouch = i == 0
-					list.append(hero)
+					var pose := _search_pose(i)
+					var torch: float = pose.get("torch", sin(t * 2.0 + i) * 0.15 + 0.2)
+					list.append(_hero_at(spots[i] - Vector2(0, pose.get("hop", 0.0)), i, 0.0, torch, pose))
 		return list
 
-	func _hero_at(foot: Vector2, kind: int, run: float, torch: float) -> Dictionary:
-		var hero := {foot = foot, kind = kind, run = run, torch = torch, crouch = false}
+	func _hero_at(foot: Vector2, kind: int, run: float, torch: float, pose := {}) -> Dictionary:
+		var hero := {foot = foot, kind = kind, run = run, torch = torch, crouch = pose.get("crouch", false), pose = pose}
 		if kind == 2:
 			hero.tip = foot + Vector2(7, -29)
 		else:
-			hero.tip = foot + _hand(kind, run) + Vector2(sin(torch), -cos(torch)) * 9.0
+			var hand: Vector2 = pose.get("hand", _hand(kind, run) + (Vector2(2, 3) if hero.crouch else Vector2.ZERO))
+			hero.tip = foot + hand + Vector2(sin(torch), -cos(torch)) * 9.0
+		if pose.get("face", 1.0) < 0.0:
+			hero.tip.x = 2.0 * foot.x - hero.tip.x
 		return hero
+
+	## The search's acting, per adventurer (0 knight, 1 rogue, 2 wizard): poking at the puddle,
+	## then puzzled (scratching heads, peering, looking round), then furious (the knight shakes his
+	## torch in the air, the rogue jabs his at the puddle, the wizard stomps). Keys for _hero: face
+	## (-1 turns left), head (offset), hand (in place of the torch hand), crouch; plus torch and hop.
+	func _search_pose(i: int) -> Dictionary:
+		var mad: bool = t >= SEARCH_MAD[i]
+		var calm: bool = screen.calm
+		var jig := 0.0 if calm else float(int(t * 12.0 + i) % 2)
+		match i:
+			0:
+				if mad:
+					return {hand = Vector2(6 + jig, -27), torch = 0.25 + (0.0 if calm else sin(t * 26.0) * 0.4)}
+				if t < 1.15:
+					return {crouch = true, head = Vector2(0 if t < 0.6 else -1, 0)}
+				return {head = Vector2(-1, 0), hand = Vector2(3, -24 + jig), torch = -0.45}  # scratching his helmet
+			1:
+				if mad:
+					return {hand = Vector2(7 + jig * 2.0, -19), torch = 1.0 + jig * 0.15}
+				if t > 1.0 and t < 1.6:
+					return {face = -1.0}  # looking back down the corridor
+				return {head = Vector2(1, 1) if t > 0.6 else Vector2.ZERO}
+			_:
+				if mad:
+					var hop := 0.0
+					for stomp in SEARCH_STOMPS:
+						var u: float = (t - (stomp - 0.16)) / 0.16
+						if u > 0.0 and u < 1.0 and not calm:
+							hop = roundf(sin(u * PI) * 3.0)
+					return {face = -1.0, hop = hop}
+				if t > 1.4 and t < 1.85:
+					return {face = 1.0}  # a look round
+				return {face = -1.0, head = Vector2(-1, 1) if t > 0.9 else Vector2.ZERO}
 
 	func _hand(kind: int, run: float) -> Vector2:
 		var bob := -1.0 if run > 0.0 and absf(sin(t * run * 11.0)) < 0.5 else 0.0
@@ -989,7 +1085,12 @@ class StageArt extends Node2D:
 			_halo(self, tip, 22.0, Color8(140, 190, 255), 0.06)
 		else:
 			_halo(self, tip, 40.0 * _flicker(hero.kind + 2.0), FLAME_HOT, 0.05)
-		_hero(self, hero.foot, hero.kind, hero.run, hero.torch, 1.0, SIL, true, true, hero.crouch)
+		var face: float = hero.get("pose", {}).get("face", 1.0)
+		if face < 0.0:  # mirrored about the feet
+			draw_set_transform(Vector2(2.0 * roundf(hero.foot.x), 0), 0.0, Vector2(-1, 1))
+		_hero(self, hero.foot, hero.kind, hero.run, hero.torch, 1.0, SIL, true, true, hero.crouch, hero.get("pose", {}))
+		if face < 0.0:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	func _draw_arches(s: float, view: Rect2) -> void:
 		var first := floorf(s * 0.75 / 150.0) - 1
@@ -1096,8 +1197,11 @@ class StageArt extends Node2D:
 	## An adventurer's silhouette, foot at `foot`, facing right; sc scales whole pixels.
 	## kind: 0 knight (helmet, plume, shield, torch), 1 rogue (hood, cape, torch), 2 wizard (hat, staff).
 	func _hero(canvas: CanvasItem, foot: Vector2, kind: int, run: float, torch_a: float, sc: float, col: Color,
-			rim: bool, flame: bool, crouch: bool) -> void:
+			rim: bool, flame: bool, crouch: bool, pose := {}) -> void:
 		var ph := t * run * 11.0
+		var head: Vector2 = pose.get("head", Vector2.ZERO)
+		var hx := head.x
+		var hy := head.y
 		var a := sin(ph) if run > 0.0 else 0.0
 		var by := -1.0 if run > 0.0 and absf(a) < 0.5 else 0.0
 		var cy := 3.0 if crouch else 0.0
@@ -1119,10 +1223,10 @@ class StageArt extends Node2D:
 			r.call(-2 - leg, -7, 2, 7 - lift_a)
 			r.call(1 + leg, -7, 2, 7 - lift_b)
 			poly.call([Vector2(-6, -3 + by), Vector2(5, -3 + by), Vector2(3, -17 + by), Vector2(-3, -17 + by)])
-			r.call(-3, -21 + by, 6, 4)
-			r.call(-6, -22 + by, 12, 1)
-			poly.call([Vector2(-3, -22 + by), Vector2(3, -22 + by), Vector2(-2, -29 + by), Vector2(-6, -31 + by)])
-			r.call(2, -18 + by, 3, 5)  # beard
+			r.call(-3 + hx, -21 + by + hy, 6, 4)
+			r.call(-6 + hx, -22 + by + hy, 12, 1)
+			poly.call([Vector2(-3 + hx, -22 + by + hy), Vector2(3 + hx, -22 + by + hy), Vector2(-2 + hx, -29 + by + hy), Vector2(-6 + hx, -31 + by + hy)])
+			r.call(2 + hx, -18 + by + hy, 3, 5)  # beard
 			r.call(6, -28, 1, 28)  # staff
 			if flame:
 				rc.call(5, -31, 3, 3, Color8(140, 190, 255))
@@ -1137,28 +1241,28 @@ class StageArt extends Node2D:
 		if kind == 0:
 			r.call(-4 + lean, -17 + by + cy, 8, 10 - cy)
 			r.call(2 + lean, -17 + by + cy, 3, 3)
-			r.call(-3 + lean * 2, -23 + by + cy, 6, 6)
-			r.call(-2 + lean * 2, -24 + by + cy, 4, 1)
-			r.call(-5 + lean * 2, -25 + by + cy, 3, 2)
-			r.call(-7 + lean * 2, -24 + by + cy, 2, 2)
-			r.call(-8 + lean * 2, -22 + by + cy, 1, 2)
+			r.call(-3 + lean * 2 + hx, -23 + by + cy + hy, 6, 6)
+			r.call(-2 + lean * 2 + hx, -24 + by + cy + hy, 4, 1)
+			r.call(-5 + lean * 2 + hx, -25 + by + cy + hy, 3, 2)
+			r.call(-7 + lean * 2 + hx, -24 + by + cy + hy, 2, 2)
+			r.call(-8 + lean * 2 + hx, -22 + by + cy + hy, 1, 2)
 			r.call(-7 + lean, -17 + by + cy, 4, 8)
 			if rim:
-				rc.call(1 + lean * 2, -21 + by + cy, 2, 1, Color8(255, 196, 120))  # visor glint
+				rc.call(1 + lean * 2 + hx, -21 + by + cy + hy, 2, 1, Color8(255, 196, 120))  # visor glint
 				rc.call(3 + lean, -14 + by + cy, 1, 6, RIM)
 				rc.call(-6 + lean, -14 + by + cy, 1, 1, Color8(110, 104, 120))  # shield boss
 		else:
 			var flap := 0.0 if screen.calm or run <= 0.0 else roundf(sin(t * 14.0) * 2.0)
 			poly.call([Vector2(-2, -18 + by), Vector2(-10 - flap, -13 + by), Vector2(-9 - flap, -4), Vector2(-2, -7)])
 			r.call(-3 + lean, -16 + by + cy, 6, 9 - cy)
-			r.call(-3 + lean * 2, -22 + by + cy, 6, 6)
-			r.call(-5 + lean * 2, -23 + by + cy, 3, 2)
+			r.call(-3 + lean * 2 + hx, -22 + by + cy + hy, 6, 6)
+			r.call(-5 + lean * 2 + hx, -23 + by + cy + hy, 3, 2)
 			rc.call(-5, -10 + by, 3, 1, Color8(120, 120, 140) if rim else col)  # dagger
 			if rim:
 				rc.call(2 + lean, -15 + by + cy, 1, 7, RIM)
-				rc.call(2 + lean * 2, -21 + by + cy, 1, 4, RIM)
+				rc.call(2 + lean * 2 + hx, -21 + by + cy + hy, 1, 4, RIM)
 		# The torch arm and the torch.
-		var hand := _hand(kind, run) + Vector2(lean, cy)
+		var hand: Vector2 = pose.get("hand", _hand(kind, run) + Vector2(lean, cy))
 		var shoulder := Vector2(2 + lean, -15 + by + cy)
 		canvas.draw_line(f + shoulder * sc, f + hand * sc, col, sc)
 		var tip := hand + Vector2(sin(torch_a), -cos(torch_a)) * 9.0
@@ -1898,19 +2002,11 @@ class StageArt extends Node2D:
 		draw_rect(Rect2(156, 119, 18, 2), goo.dark)
 		draw_rect(Rect2(158, 118, 13, 2), goo.mid)
 		draw_rect(Rect2(161, 118, 3, 1), goo.highlight)
-		# The puddle glints in their torchlight: loot!
-		if t > 0.9:
-			var spots := [Vector2(160, 115), Vector2(169, 113), Vector2(165, 110), Vector2(156, 112)]
-			for k in spots.size():
-				var phase := 0.3 if screen.calm else fposmod(t * 1.6 + k * 0.29, 1.0)
-				if phase < 0.55:
-					var r := 1.0 if phase < 0.12 or phase > 0.42 else 2.0
-					var p: Vector2 = spots[k]
-					draw_rect(Rect2(p.x - r, p.y, r * 2 + 1, 1), FLAME_TIP)
-					draw_rect(Rect2(p.x, p.y - r, 1, r * 2 + 1), FLAME_TIP)
-					draw_rect(Rect2(p, Vector2.ONE), Color.WHITE)
+		# Just goo: a faint wet shimmer creeping along it (no treasure here).
+		var sx := 159.0 + (3.0 if screen.calm else roundf(fposmod(t * 5.0, 12.0)))
+		draw_rect(Rect2(sx, 119, 2, 1), Color(goo.light, 0.5))
 		for hero in heroes:
-			var f: Vector2 = hero.foot
+			var f := Vector2(hero.foot.x, 120)  # on the floor, even mid-stomp
 			draw_colored_polygon(PackedVector2Array([f + Vector2(-4, 1), f + Vector2(4, 1), f + Vector2(-30, 8), f + Vector2(-46, 8)]), Color(INK, 0.4))
 		for hero in heroes:
 			_draw_hero_with_light(hero)
