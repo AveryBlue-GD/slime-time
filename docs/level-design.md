@@ -69,7 +69,8 @@ Each level keeps its size, target, theme and coin count; the maze is rebuilt:
 
 4 edge, 3 near-edge, 3 interior. Level 1 has no interior cells at all (6 rows: max depth 2).
 Hard mode uses the same class per level on its own seeds (`HARD_SEEDS`, `HARD_BRANCHING`,
-`HARD_RUN`), routes 25-96 cells (old 25-101). Overviews: `docs/polish-shots/spawn_level01..10.png`
+`HARD_RUN`), routes 25-96 cells (old 25-101). (Superseded for hard mode by section 7: bigger hard
+mazes since save version 5.) Overviews: `docs/polish-shots/spawn_level01..10.png`
 and randomizer seeds `spawn_random_110/114` (EDGE), `101/107` (NEAR), `100/102` (ANY), made with
 the debug scene `tests/demo_overview.tscn` (fog off, green ring = start, gold ring = chalice, cyan
 dots = route; see its header for the command).
@@ -289,3 +290,77 @@ chalice node, ticket on the goal cell, autopilot wins by reaching it, story keep
 `test_dev_toggles`, `test_mercy` (assisted pays 0), `test_random_usage`, `test_maze_golden`.
 Shots: `docs/polish-shots/ticketgoal_goal.png` (ticket + HUD pod), `ticketgoal_bright.png` (F1),
 `ticketgoal_result_try1/3/6.png` (+5 / +3 / +1), `ticketgoal_result_noslime.png` (capped).
+
+## 7. Hard-mode rebalance: more slime, bigger mazes, growing slack (2026-10-14, save version 5)
+
+Owner request: +10% slime per hard level (progressive), mazes scaled up so the meter-to-route ratio
+holds, plus extra forgiveness on the big late levels. Normal mode and the randomizer (hard included)
+are unchanged: their golden lines are byte-identical. Code: `Levels` (`HARD_SLIME_MULT`,
+`HARD_ALLOWANCE`, `HARD_BRANCHING`, `HARD_RUN`, `HARD_MAX_CELLS`, `HARD_V4_STEPS`/`HARD_V4_TARGETS`,
+`hard_meter_tiles`, `hard_route_cells`, `hard_start_cells`, `build_story_maze`, `v4_hard_par`),
+`MazeGenerator.generate_hard_level` (+ `_grow_level`, shared with `generate_level`),
+`SpawnPicker.pick_farthest_at`, `game.gd` (`config.meter_tiles`), `Progress` (`SAVE_VERSION` 5,
+`_migrate_hard_times`). Tests: `tests/test_hard_rebalance.gd`, `test_phase3` (autopilot walks every
+hard level under par), `test_autoplay`, `test_maze_golden`, `test_spawn_picker`, `test_hard_mode`.
+
+**How a hard level is built** (three tables, one entry per level, index 0 = level 1):
+1. **Meter** = v4 hard meter x `HARD_SLIME_MULT[n]`. The v4 meter is the old hard maze's route /
+   its old target (`HARD_V4_STEPS` / `HARD_V4_TARGETS`, frozen constants). **To change how much more
+   slime hard mode gives, edit only `HARD_SLIME_MULT`**: shipped `[1.1, 1.2, ... 2.0]` (+10% per
+   level); a flat +10% is `[1.1, 1.1, ... 1.1]`; the old meters are ten `1.0`. Routes, maze sizes,
+   pars and the game's meter all follow automatically (then rewrite the 10 hard golden lines with
+   `test_maze_golden.gd --write-golden=...` and update the pin in `test_hard_rebalance.gd`).
+2. **Route** = meter / `HARD_ALLOWANCE[n]`, rounded down to whole cells (so the real allowance is
+   the table's or up to one cell more). So route ~ v4 route x mult (ratio preserved) x
+   (v4 usage x allowance)^-1 (the extra slack).
+3. **Size**: starts at the normal level's size x sqrt(route / v4 route) per side; grows +1/8 per side
+   until the tree's longest route is >= 115% of the route (`HARD_ROOM_PCT`), at most
+   `HARD_MAX_CELLS` 36x20 (the randomizer's web cap; at the cap up to 4 re-seeded trees). The start
+   is a cell of the level's spawn class whose **farthest cell is exactly the route** (seeded shuffle;
+   the chalice is that farthest cell, the end of a branch, like every story level); if the class had
+   none it would fall back to a seeded cell exactly `route` away (no level does; tested). Branching
+   was retuned per level (very high branching gives short longest routes: L8-L10 at the old
+   0.24-0.30 could not hold a 117-149 cell route in 36x20); every level has more dead ends than its
+   v4 maze.
+
+| Lvl | size (v4) | route cells (v4) | meter tiles (v4) | allowance table / real | perfect run uses | dead ends (v4) | par s (v4) |
+|---|---|---|---|---|---|---|---|
+| 1 | 12x7 (10x6) | 27 (25) | 60.8 (55.3) | 1.12 / 1.143 | 87.5% | 13 (8) | 17.0 (15.8) |
+| 2 | 15x9 (12x7) | 37 (32) | 84.2 (70.2) | 1.13 / 1.151 | 86.9% | 25 (11) | 23.0 (20.0) |
+| 3 | 16x10 (13x8) | 48 (39) | 110.3 (84.8) | 1.14 / 1.158 | 86.3% | 25 (12) | 29.6 (24.2) |
+| 4 | 23x12 (15x8) | 64 (48) | 146.4 (104.6) | 1.15 / 1.151 | 86.9% | 48 (25) | 39.2 (29.6) |
+| 5 | 21x12 (16x9) | 79 (57) | 184.5 (123.0) | 1.17 / 1.174 | 85.2% | 45 (20) | 48.2 (35.0) |
+| 6 | 22x12 (18x10) | 90 (63) | 215.4 (134.6) | 1.19 / 1.202 | 83.2% | 40 (28) | 54.8 (38.6) |
+| 7 | 27x14 (20x11) | 104 (71) | 252.7 (148.6) | 1.21 / 1.219 | 82.0% | 51 (34) | 63.2 (43.4) |
+| 8 | 30x16 (22x12) | 117 (77) | 287.2 (159.6) | 1.23 / 1.232 | 81.2% | 63 (50) | 71.0 (47.0) |
+| 9 | 33x18 (24x13) | 142 (93) | 359.0 (189.0) | 1.26 / 1.268 | 78.9% | 72 (67) | 86.0 (56.6) |
+| 10 | 36x20 (26x14) | 149 (96) | 382.4 (191.2) | 1.28 / 1.287 | 77.7% | 116 (68) | 90.2 (58.4) |
+
+Allowance before: 1.12 (L1) .. 1.00 (L10). L1 deliberately stays at today's 1.12 rather than the
+owner's "about 1.08" example (that would have made L1 tighter than before, against "early levels
+stay near today's feel"); it then rises to 1.28. **Par** = route tiles / 72 px/s x 1.35 + 1 s from
+the new routes (`Levels.level_par`); a perfect walk is ~73% of par. Measured: the test autopilot
+walks every hard level, no leaps, under par using 75.7-85.6% of the meter (`test_phase3`); the
+`--autoplay` bot wins all 10 on its first attempt with GOLD, walking (12.3, 16.7, 21.9, 29.2, 36.1,
+40.9, 47.4, 53.3, 65.0, 67.9 s vs par 17-90 s; 14-24% slime left).
+
+**Build time** (headless, Mac): hard builds mean 3.2 ms, worst 8.6 ms (L10 36x20; built once per
+session, cached); the randomizer is unchanged (mean ~4.8 ms, p99 13.3-13.6 ms, worst 17.9 ms as in
+docs/perf/results-batch-b.md; one rerun showed a single 67 ms outlier while the machine was busy).
+The new hard mazes are no bigger than randomizer mazes (36x20 cap), so the fog/tile/camera costs are
+already covered by the randomizer's web measurements. Web export verified.
+
+**Save migration (version 5, `Progress._migrate_hard_times`).** Old hard best times were set on the
+shorter v4 mazes, so a save (or `SLIME1-` code) older than version 5 has its hard best times
+(`records` level 101-110) dropped; `hard_cleared` and the stored hard medal tiers are kept (never
+downgraded); normal records/tiers/clears, coins, upgrades, tickets, hats and skins are untouched.
+Order: pre-v3 saves still turn their times into tiers first (against `legacy_par`); a v4 save with
+hard times but no `[medals]` section gets tiers against the v4 hard par (`Levels.v4_hard_par`),
+then the times go. Pure function of the old data (idempotent); the next save is version 5 and its
+hard times are kept. Hostile values: non-numeric/INF times are ignored, wrong-typed version = old
+(migrated), tiers clamp to 0-3. `--story-complete` sets hard times at 1.15 x the NEW par (silver),
+so its state stays valid. A version 5 save opened in an older build keeps working but its hard
+medals/times were earned on the new mazes (not handled, like the earlier version notes).
+
+Shots (`tests/demo_overview.tscn -- --unlock-all --level=N --hard --skin=...`):
+`docs/polish-shots/hard_before_l1/l5/l10.png` (v4) and `hard_after_l1/l5/l10.png`.

@@ -1,6 +1,6 @@
 # Playtime estimate (story campaign, normal + hard)
 
-How long a **first-time human** takes to beat Slime Time as it is now (2026-10-14, save layout v4),
+How long a **first-time human** takes to beat Slime Time as it is now (2026-10-14, save layout v5: hard mode rebalanced),
 excluding the randomizer and hats. Grounded in the game's own data (measured headless from
 `Levels` / `MazeGenerator` / `Upgrades`) plus a transparent behaviour model run as a Monte Carlo
 over the real story mazes. **No playtest data yet** — treat these as priors to check against one.
@@ -11,12 +11,14 @@ over the real story mazes. **No playtest data yet** — treat these as priors to
 |---|---|---|---|---|
 | (a) Clear all 10 levels on normal | 30-34 min | **~45 min** (44-49) | 67-74 min | **30-75 min** |
 | (b) Normal + all 165 coins | ~50 min | **~67 min** (66-68) | 97-100 min | **50-100 min** |
-| (c) Normal + all 10 hard levels | 74-80 min | **~2 h** (116-125 min) | 4.7-5.2 h* | **1.25-5+ h** |
-| (d) Everything: normal, hard, 165 coins, 30/30 normal golds | 94-98 min | **~2.4 h** (141-148 min) | 5.2-5.7 h* | **1.5-6 h** |
+| (c) Normal + all 10 hard levels | 89-98 min | **~2.1 h** (123-134 min) | 3.5-3.75 h | **1.5-4 h** |
+| (d) Everything: normal, hard, 165 coins, 30/30 normal golds | 108-117 min | **~2.5 h** (148-159 min) | 4-4.3 h | **1.75-4.5 h** |
 
 Fast / median / slow = p25 / median / p75 of 300 simulated runs of each profile (columns are the
-profile's own p25-p75). *About 20% of slow players hit the 80-attempt cap on **hard level 10** (a
-real player would likely quit or need many sessions), so the slow hard numbers are a floor.
+profile's own p25-p75). Hard rows re-run 2026-10-14 after the hard-mode rebalance (bigger hard mazes,
++10%/level slime, allowance 1.14-1.29; level-design.md section 7). Before it, (c) was 74-80 / ~2 h /
+4.7-5.2 h and ~20% of slow players hit the 80-attempt cap on hard 10; now no simulated player hits
+the cap on any level: hard takes the fast profile longer (bigger mazes) and the slow one much less.
 
 **Three key assumptions** (each moves the result most):
 1. **Retries learn the maze.** Story mazes are fixed, so a retry walks the remembered part (at
@@ -25,9 +27,10 @@ real player would likely quit or need many sessions), so the slow hard numbers a
 2. **Time per attempt ≈ the meter** (attempts end by drying up), stretched by pauses: exploring
    unknown corridors takes 1.15-1.7x the perfect glide time, known corridors 1.05-1.3x (standing
    still doesn't drain). Plus 2.8 s of game delay + 1-4 s reaction per dry-up.
-3. **Hard mode is an execution test.** Allowance 1.00-1.12 means the winning run must be nearly the
-   exact route; it becomes feasible only through learning plus **leaps** on known straights (half
-   price per tile). Hard mode has no upgrades and no coins; its dominant cost is hard 8-10.
+3. **Hard mode is an exploration-and-execution test.** Allowance 1.14 (L1) .. 1.29 (L10) on mazes
+   up to 36x20: the winning run must be close to the route, more forgiving on the big late levels;
+   learning the maze is the main cost. Hard mode has no upgrades and no coins; its dominant cost is
+   hard 8-10 (biggest mazes).
 
 ## 1. Measured level data
 
@@ -47,16 +50,16 @@ Base glide 72 px/s = 4.5 tiles/s. Meter = route / target (`Game`: `slime_cost_pe
 | normal | 8 | 22x12 | 37 | 159.2 | 0.88 | 180.9 | 40.2 | 1.14 | 1.48 | 35.4 | 48.8 | 5.82 | 22 | 3.85 / 10,4,3 |
 | normal | 9 | 24x13 | 43 | 181.2 | 0.94 | 192.8 | 42.8 | 1.06 | 1.41 | 40.3 | 55.4 | 6.45 | 27 | 4.12 / 11,5,3 |
 | normal | 10 | 26x14 | 41 | 189.2 | 0.99 | 191.1 | 42.5 | 1.01 | 1.33 | 42.0 | 57.8 | 7.60 | 31 | 5.42 / 8,5,3 |
-| hard | 1 | 10x6 | 8 | 49.2 | 0.89 | 55.3 | 12.3 | 1.12 | 1.62 | 10.9 | 15.8 | 4.27 | - | - |
-| hard | 2 | 12x7 | 11 | 63.2 | 0.90 | 70.2 | 15.6 | 1.11 | 1.59 | 14.0 | 20.0 | 4.73 | - | - |
-| hard | 3 | 13x8 | 12 | 77.2 | 0.91 | 84.8 | 18.8 | 1.10 | 1.63 | 17.2 | 24.2 | 4.86 | - | - |
-| hard | 4 | 15x8 | 25 | 95.2 | 0.91 | 104.6 | 23.2 | 1.10 | 1.53 | 21.2 | 29.6 | 4.55 | - | - |
-| hard | 5 | 16x9 | 20 | 113.2 | 0.92 | 123.0 | 27.3 | 1.09 | 1.50 | 25.2 | 35.0 | 4.65 | - | - |
-| hard | 6 | 18x10 | 28 | 125.2 | 0.93 | 134.6 | 29.9 | 1.08 | 1.44 | 27.8 | 38.6 | 5.32 | - | - |
-| hard | 7 | 20x11 | 34 | 141.2 | 0.95 | 148.6 | 33.0 | 1.05 | 1.47 | 31.4 | 43.4 | 5.89 | - | - |
-| hard | 8 | 22x12 | 50 | 153.2 | 0.96 | 159.6 | 35.5 | 1.04 | 1.47 | 34.0 | 47.0 | 6.59 | - | - |
-| hard | 9 | 24x13 | 67 | 185.2 | 0.98 | 189.0 | 42.0 | 1.02 | 1.38 | 41.2 | 56.6 | 6.58 | - | - |
-| hard | 10 | 26x14 | 68 | 191.2 | 1.00 | 191.2 | 42.5 | 1.00 | 1.33 | 42.5 | 58.4 | 7.59 | - | - |
+| hard | 1 | 12x7 | 13 | 53.2 | 0.87 | 60.8 | 13.5 | 1.14 | 1.68 | 11.8 | 17.0 | 5.46 | - | - |
+| hard | 2 | 15x9 | 25 | 73.2 | 0.87 | 84.2 | 18.7 | 1.15 | 1.58 | 16.3 | 23.0 | 6.36 | - | - |
+| hard | 3 | 16x10 | 25 | 95.2 | 0.86 | 110.3 | 24.5 | 1.16 | 1.53 | 21.2 | 29.6 | 5.77 | - | - |
+| hard | 4 | 23x12 | 48 | 127.2 | 0.87 | 146.4 | 32.5 | 1.15 | 1.52 | 28.3 | 39.2 | 7.51 | - | - |
+| hard | 5 | 21x12 | 45 | 157.2 | 0.85 | 184.5 | 41.0 | 1.17 | 1.50 | 34.9 | 48.2 | 5.44 | - | - |
+| hard | 6 | 22x12 | 40 | 179.2 | 0.83 | 215.4 | 47.9 | 1.20 | 1.67 | 39.8 | 54.8 | 4.88 | - | - |
+| hard | 7 | 27x14 | 51 | 207.2 | 0.82 | 252.7 | 56.1 | 1.22 | 1.74 | 46.0 | 63.2 | 5.97 | - | - |
+| hard | 8 | 30x16 | 63 | 233.2 | 0.81 | 287.2 | 63.8 | 1.23 | 1.68 | 51.8 | 71.0 | 6.67 | - | - |
+| hard | 9 | 33x18 | 72 | 283.2 | 0.79 | 359.0 | 79.8 | 1.27 | 1.57 | 62.9 | 86.0 | 6.61 | - | - |
+| hard | 10 | 36x20 | 116 | 297.2 | 0.78 | 382.4 | 85.0 | 1.29 | 1.79 | 66.0 | 90.2 | 7.52 | - | - |
 
 \* "Allow. w/ leaps": the allowance if every straight run of the route (minus 1 tile before each
 corner) is leapt at half price (`JUMP_COST_FACTOR` 0.5, no splat) — the theoretical ceiling.
@@ -77,8 +80,9 @@ Other facts that matter:
   (x2 at 10, which costs 55); SPEED +5% / level (x1.5); BRIGHTNESS +2.5 px light reach / level.
   The first 15 coins buy MORE SLIME 5 (x1.5). Level 10 normal (allowance 1.01) is essentially
   unwinnable without upgrades or leaps; with MORE SLIME 10 it's 2.02.
-- **Hard mode** (open from the level select once levels are unlocked): different mazes, same sizes,
-  no loops, allowance 1.00-1.12, **no upgrades, no coins, no slime reserve (assist)**, and explored
+- **Hard mode** (open from the level select once levels are unlocked): its own mazes, 12x7 .. 36x20
+  (bigger than normal since the 2026-10-14 rebalance), no loops, meter = old hard meter x (1 + 0.1 x
+  level), allowance 1.14-1.29, **no upgrades, no coins, no slime reserve (assist)**, and explored
   areas fog over again after ~9 s. Its medals are separate and don't count toward 30/30.
 - **Retry overhead:** `END_DELAY` 2.0 s + `DRY_CHOICE_DELAY` 0.25 s + the goo wipe (0.22 + 0.32 s),
   then a button press. Normal mode offers the +10% slime reserve after 3 dry-ups on a level
@@ -118,20 +122,21 @@ player starts with a full meter and:
 
 | Lv | Normal attempts | Normal min | MORE SLIME lv at start | Coins found on the way | + coin hunt runs | Normal+hunt min | Hard attempts | Hard min |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 2/2/3 | 1.6 | 0 | 3 of 6 | 2 | 2.4 | 4/5/6 | 2.3 |
-| 2 | 2/3/3 | 2.2 | 1 | 5 of 9 | 2 | 3.1 | 5/6/7 | 3.0 |
-| 3 | 2/2/3 | 2.3 | 3 | 4 of 7 | 1 | 3.5 | 7/7/8 | 3.9 |
-| 4 | 2/3/3 | 3.0 | 3 | 6 of 12 | 2 | 4.4 | 7/8/8 | 5.0 |
-| 5 | 2/3/3 | 3.5 | 4 | 7 of 14 | 2 | 5.1 | 5/6/7 | 4.5 |
-| 6 | 3/3/4 | 4.1 | 5 | 9 of 17 | 2 | 6.1 | 8/10/10 | 7.3 |
-| 7 | 3/3/4 | 4.4 | 6 | 11 of 20 | 2 | 7.2 | 8/9/10 | 7.4 |
-| 8 | 3/4/5 | 6.3 | 7 | 12 of 22 | 2 | 9.6 | 11/13/16 | 10.8 |
-| 9 | 3/4/6 | 7.7 | 9 | 17 of 27 | 3 | 11.3 | 11/12/13 | 11.6 |
-| 10 | 3/4/5 | 7.2 | 10 | 20 of 31 | 2 | 10.5 | 16/18/21 | 17.1 |
+| 1 | 2/2/3 | 1.6 | 0 | 3 of 6 | 2 | 2.4 | 5/6/7 | 2.8 |
+| 2 | 2/3/3 | 2.2 | 1 | 5 of 9 | 2 | 3.1 | 5/6/12 | 3.4 |
+| 3 | 2/2/3 | 2.3 | 3 | 4 of 7 | 1 | 3.5 | 7/8/10 | 5.2 |
+| 4 | 2/3/3 | 3.0 | 3 | 6 of 12 | 2 | 4.4 | 9/10/11 | 8.0 |
+| 5 | 2/3/3 | 3.5 | 4 | 7 of 14 | 2 | 5.1 | 8/9/11 | 8.7 |
+| 6 | 3/3/4 | 4.1 | 5 | 9 of 17 | 2 | 6.1 | 4/6/6 | 6.8 |
+| 7 | 3/3/4 | 4.4 | 6 | 11 of 20 | 2 | 7.2 | 5/6/7 | 8.0 |
+| 8 | 3/4/5 | 6.3 | 7 | 12 of 22 | 2 | 9.6 | 6/7/8 | 10.1 |
+| 9 | 3/4/6 | 7.7 | 9 | 17 of 27 | 3 | 11.3 | 6/7/8 | 12.3 |
+| 10 | 3/4/5 | 7.2 | 10 | 20 of 31 | 2 | 10.5 | 5/9/11 | 16.5 |
 
-Fast profile: normal 2-4 attempts per level, hard 4-10 (hard 10: ~8.5 min). Slow profile: normal
-2-5 (taking the reserve on 60-80% of levels 6-10), hard 13-58 attempts per level, hard 8-10 alone
-~2 h, and ~19% never clear hard 10 within 80 attempts.
+Fast profile: normal 2-4 attempts per level, hard 5-9 (hard 10: ~14.6 min). Slow profile: normal
+2-5 (taking the reserve on 60-80% of levels 6-10), hard 8-16 attempts per level, hard 8-10 ~61 min,
+and nobody stuck at the 80-attempt cap (before the rebalance: hard 13-58 attempts, hard 8-10 ~2 h,
+~19% never cleared hard 10).
 
 What drives it:
 - **Normal mode is gentle**: incidental coins buy MORE SLIME fast enough (median SLIME 5 by level 6,
@@ -140,10 +145,11 @@ What drives it:
   main way normal mode gets much longer than the table.
 - **Coins add ~20 min** (median): about half the coins are picked up on the way; the rest need
   1-3 dedicated runs per level because they persist through dry-ups.
-- **Hard mode roughly doubles to triples the total.** Allowance ~1.0-1.1 with no upgrades means
-  every hard level needs the route learnt and then executed nearly perfectly, with leaps; attempts
-  grow with maze size (median 5 -> 18). Hard 10 (allowance exactly 1.00 — winnable only by leaping
-  some straights or cutting corners) is the single biggest time sink and the main quit risk.
+- **Hard mode roughly doubles to triples the total.** Allowance 1.14-1.29 with no upgrades on mazes
+  up to 36x20 means every hard level needs the route learnt and then executed cleanly (walking is
+  enough: a perfect walk uses 78-88% of the meter); attempts stay at a median 6-10 per level, while
+  minutes grow with maze size. Hard 10 (biggest maze, ~16 min median) is still the single biggest
+  time sink, no longer a near-perfect-run wall.
 - **Gold medals add little** (~5 min median): a clean replay of a known route usually beats par.
 
 ## 3. Biggest uncertainties
@@ -151,7 +157,7 @@ What drives it:
 1. **Maze memory between attempts.** The model remembers every dead end perfectly. Real players
    (map black again on every retry, no minimap) will re-enter branches; that raises attempts on the
    large levels, most on hard 8-10. Could add 25-50% to hard time.
-2. **Leap mastery on hard.** Hard 9-10 depend on leaping known straights without splatting (a splat
+2. **Leap mastery on hard.** (Mostly moot since the rebalance: walking clears every hard level.) Hard 9-10 used to depend on leaping known straights without splatting (a splat
    costs 2-5% of the meter). Whether median players discover and trust this is unknown; if not,
    hard 10 is nearly impossible (allowance 1.00) and many will quit.
 3. **Upgrade shopping.** The model buys MORE SLIME with every coin. Players who don't visit the

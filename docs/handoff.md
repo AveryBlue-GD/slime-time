@@ -300,7 +300,8 @@ throwaway path). Not dev mode (F1/F2 stay off). Inert without the flag and on th
   Victory -> HUB -> `AUTOPLAY COMPLETE` (top-right in the hub) and control goes to the player; the end state
   stays in memory (165 coins, all upgrades maxed, 30/30 + 30/30, finale seen).
 - **Result (measured):** 165/165 coins, every upgrade maxed, gold on all 10 normal and all 10 hard levels, 41 runs
-  (23 coin runs, 2 of which already won gold; 18 clean runs), 0 dry-ups; hard 10 by walking uses 97% of its meter. Nothing was out
+  (23 coin runs, 2 of which already won gold; 18 clean runs), 0 dry-ups; hard 10 by walking used 97% of its meter before
+  the hard rebalance below, 78% after (game time now 1711 s). Nothing was out
   of reach, so no leaps are used. Game time 1594 s. Wall time (= frames / 60; a windowed run on the MacBook
   matched this, the game renders 1000+ fps): **~11.2 min at --speed=3, ~5.6 min at --speed=8**, ~0.2 min
   headless with `--autoplay-hold=0.05`.
@@ -319,3 +320,21 @@ throwaway path). Not dev mode (F1/F2 stay off). Inert without the flag and on th
   finds 165 coins, meter = the game's, flag inert) and `tests/test_autoplay.gd` (the whole campaign in a child
   process at 8x headless, ~13 s: 165/165, 10 + 10 clears, medal tiers = tier_for(real best time, par), no
   dry-ups, hub at 1x, real save md5/mtime unchanged; F10 and pause-menu hand-over in process).
+
+## Hard-mode rebalance (2026-10-14, save version 5)
+
+Full write-up and table: [level-design.md section 7](level-design.md). In short:
+- Hard meter = v4 hard meter x `Levels.HARD_SLIME_MULT` (shipped +10% per level, L1 x1.1 .. L10 x2.0; **the
+  single knob**, edit it for a flat +10% etc.). Route = meter / `HARD_ALLOWANCE` (1.12 at L1 rising to 1.28 at
+  L10, so a perfect run uses 87.5% .. 77.7%). Mazes grow to fit (12x7 .. 36x20, cap `HARD_MAX_CELLS` = the
+  randomizer's 36x20), the chalice on the start's farthest cell exactly `route` away, more dead ends than before
+  on every level; built once per session in <= 9 ms headless. Par follows the new routes (17 .. 90 s).
+- Normal story mazes and every randomizer maze (hard randomizer too) are byte-identical (golden test); only the 10
+  hard story golden lines were rewritten. Upgrades stay off in hard mode; tutorial cues never run there.
+- Save version 5: older saves/codes keep hard clears and hard medal tiers but lose their hard BEST TIMES (set on
+  the old, shorter mazes); everything else untouched; idempotent. `--story-complete` hard times use the new par.
+- Autoplay: all 10 hard levels gold on the first walking attempt (12.3 .. 67.9 s, 14-24% slime left).
+- CLAUDE.md's hard-mode line ("HARD_TARGETS 89%-100% budgets ... 85%+") is now stale (not edited: owner-only file).
+- Tests: `tests/test_hard_rebalance.gd` (tables, ratios, mazes, par, migration, story-complete) + updated
+  `test_phase3`, `test_hard_mode`, `test_spawn_picker`, `test_layout_migration`, `test_tickets` (version 5).
+- Shots: `docs/polish-shots/hard_before_l1/l5/l10.png`, `hard_after_l1/l5/l10.png`.
