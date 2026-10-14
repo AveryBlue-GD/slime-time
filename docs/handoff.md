@@ -128,7 +128,7 @@ Each randomizer seed rolls a usage u (median 0.58, middle half 0.42-0.72, ~2.5% 
 ~2.2% at or over 0.90, range 0.10-0.95); the player's meter is fixed (136 tiles x MORE SLIME) and the
 route is built to u of it (the maze size followed u until the size rework below). Spawn
 classes unchanged; the chalice sits exactly at the target route; tickets adapt (NONE HERE when no
-cell fits). Win text shows USED N% SLIME (+ EFFICIENT! under 25%). Story levels untouched. See
+cell fits). (The win text no longer shows slime usage: USED N% / EFFICIENT! removed 2026-10-14.) Story levels untouched. See
 [level-design.md](level-design.md) section 5; test `tests/test_random_usage.gd`. CLAUDE.md's line on
 `Levels` (randomizer 18-24 x 10-13, 85%) is now out of date (not edited: off limits for the agent).
 
@@ -249,8 +249,9 @@ save read-only, saving off), entering through the hub portal and sending real Es
 key events and real mouse clicks on RESTART (at once, after moving, after drying up, after DEV panel
 toggles, during the reveal wipe), windowed and headless, counted 1-10 every time. By code, a pause
 RESTART reloads the scene and `_count_attempt` always runs in `_ready`; the counter's key (seed code)
-only changes on a new/typed maze. Note the owner's save has no MORE SLIME, so a dev launch shows 1
-(capped) on every attempt unless MORE SLIME is bought in that session. Hardening: `game.payout()` is
+only changes on a new/typed maze. The no-MORE-SLIME cap (1) does NOT apply in dev mode
+(`Progress.random_payout` skips it when `dev_tools`), so the owner's dev launch counts 5, 4, 3, 2, 1, 1 (shots `attempts3_*.png`, result `attempts3_result.png`);
+normal play keeps the cap. Hardening: `game.payout()` is
 the one computation behind the pod and the win (dev toggles / assist = 0; dev mode pays the same,
 only unsaved; the win asserts it paid that); `game._process` re-derives the pod every frame
 (`Hud.set_attempt` only touches the label when the text changes, so a stale pod can't survive a

@@ -122,10 +122,12 @@ func _initialize() -> void:
 		_reset_day()
 		progress.upgrades = {}
 		g = await _start_new_maze()
-		_check(_pod(g) == _text(1, 1), "%sno MORE SLIME: attempt 1 shows 1 (%s)" % [tag, _pod(g)])
+		# No MORE SLIME bought: capped at 1 in normal play; dev mode (everything unlocked) has no such cap.
+		var no_slime_k := [5, 4] if dev else [1, 1]
+		_check(_pod(g) == _text(1, no_slime_k[0]), "%sno MORE SLIME: attempt 1 shows %d (%s)" % [tag, no_slime_k[0], _pod(g)])
 		g = await _restart(g, "pause_mouse")
 		w = await _win(g)
-		_check(w.shown == _text(2, 1) and w.paid == 1, "%s...attempt 2 shows 1 and a win pays 1 (%s)" % [tag, w.shown])
+		_check(w.shown == _text(2, no_slime_k[1]) and w.paid == no_slime_k[1], "%s...attempt 2 shows %d and a win pays it (%s)" % [tag, no_slime_k[1], w.shown])
 		await _leave(g)
 		_reset_day()
 		progress.upgrades = {"slime": 1}
@@ -153,6 +155,20 @@ func _initialize() -> void:
 		await process_frame
 		_check(_pod(g) == _text(2, 4), "%sa stale pod is corrected on the next frame (%s)" % [tag, _pod(g)])
 		await _leave(g)
+
+	# Dev launch with no MORE SLIME bought (the owner's setup): the pod counts 5, 4, 3, 2, 1, 1 and a win pays what it showed.
+	_set_mode(true)
+	progress.upgrades = {}
+	var table := []
+	var dg := await _start_new_maze()
+	for n in range(1, 7):
+		if n > 1:
+			dg = await _restart(dg, "pause_keys")
+		table.append(_k(_pod(dg)))
+	var dw := await _win(dg)
+	_check(table == [5, 4, 3, 2, 1, 1] and dw.shown == _text(6, 1) and dw.paid == 1, "dev mode, no MORE SLIME: the pod counts %s and the win pays 1 (%s)" % [table, dw.shown])
+	await _leave(dg)
+	_reset_day()
 
 	# Dev toggles (dev launch): 0 while on, kept across restarts, and a toggled win pays 0.
 	_set_mode(true)

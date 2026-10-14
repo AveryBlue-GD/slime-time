@@ -1321,17 +1321,6 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power))
 
 
-## Below this share of the meter used, a randomizer win says EFFICIENT!
-const EFFICIENT_USAGE := 25.0
-
-
-## The randomizer win's slime line: what this run really used (splats included), e.g.
-## "USED 23% SLIME", plus "EFFICIENT!" under EFFICIENT_USAGE percent.
-func usage_text() -> String:
-	var used := clampi(roundi(100.0 - slime_remaining), 0, 100)
-	return "USED %d%% SLIME%s" % [used, " EFFICIENT!" if used < EFFICIENT_USAGE else ""]
-
-
 func _on_goal_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
@@ -1346,7 +1335,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
 		goal.visible = false
 		_sfx("unlock", CHALICE_VOLUME_DB)
-		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "   " + usage_text() + "\nSEED " + Levels.seed_code(random_seed, seed_level)
+		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, attempt)

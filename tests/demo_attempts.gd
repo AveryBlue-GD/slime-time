@@ -8,16 +8,19 @@ extends Node
 ##   --route=pause the pause menu's RESTART with real input (Esc, Down, Enter; every other one a
 ##                 mouse click on RESTART);  --route=dryup  the dry-up RESTART button
 ##   --pop         quit mid-pop (the TIX AVAILABLE flash), else once it has finished
+##   --win         after the last attempt, win it (slime onto the ticket) and shoot the result screen
 ##   --shots=PATH  (windowed run) saves PATH_N.png of every attempt 1..N once its pop has finished
 ## ./tools/screenshot.sh --frames 900 --scene res://tests/demo_attempts.tscn --upgrades=3,0,0 --skin=ocean --attempt=2
 ## The dev launch (as tools/play.sh --dev), shots of attempts 1-6 after pause-menu restarts:
 ## ./tools/godot.sh --path . res://tests/demo_attempts.tscn -- --unlock-all --upgrades=1,0,0 --route=pause --attempt=6 --shots=/tmp/attempts2
+## (add --win for the result screen; drop --upgrades to show the owner's no-MORE-SLIME dev launch)
 
 const GAME_SCENE := "res://scenes/main.tscn"
 
 var target := 1
 var route := "key"
 var pop := false
+var win := false
 var shots := ""
 
 
@@ -31,6 +34,8 @@ func _ready() -> void:
 			route = arg.trim_prefix("--route=")
 		elif arg == "--pop":
 			pop = true
+		elif arg == "--win":
+			win = true
 		elif arg.begins_with("--shots="):
 			shots = arg.trim_prefix("--shots=")
 	Progress.start_random()
@@ -78,6 +83,13 @@ func _drive(game: Node2D) -> void:
 		print("attempt pod: ", game.hud.attempt_label.text.replace("\n", " / "))
 	await get_tree().create_timer(0.23 if pop and target > 1 else 1.2).timeout
 	await _shot(game)
+	if win:
+		game.slime.position = game.goal.position
+		await get_tree().create_timer(1.5).timeout
+		print("result: ", game.hud.rewards_texts, " won=", game.won)
+		await RenderingServer.frame_post_draw
+		if shots != "":
+			get_viewport().get_texture().get_image().save_png("%s_result.png" % shots)
 	get_tree().quit()
 
 

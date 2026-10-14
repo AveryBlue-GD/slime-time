@@ -164,12 +164,8 @@ func _initialize() -> void:
 	for g: Node2D in [mine, richer, poorer]:
 		g.free()
 
-	# --- The result line
+	# --- The result line (ticket line only; no slime-usage commentary)
 	var g2: Node2D = await _game(code_seed, 0, 0)
-	g2.slime_remaining = 77.0
-	_check(g2.usage_text() == "USED 23% SLIME EFFICIENT!", "result: %s" % g2.usage_text())
-	g2.slime_remaining = 40.0
-	_check(g2.usage_text() == "USED 60% SLIME", "result: %s" % g2.usage_text())
 	g2.hud.show_rewards({tickets = 4, attempt = 2, cap = ""})
 	_check(g2.hud.rewards_texts == ["TICKET! ATTEMPT 2 = +4"], "the result names the attempt and its payout (%s)" % [g2.hud.rewards_texts])
 	g2.free()

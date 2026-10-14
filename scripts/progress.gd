@@ -726,7 +726,7 @@ func random_tickets_due(attempt := 1, seed_value := 0) -> int:
 ## What a randomizer win on `attempt` of the maze `seed_value` would pay right now, and why it is
 ## less than the table says: {tickets, table, cap} with cap "" (full), "daily" (today's paying wins
 ## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
-## or "slime" (no MORE SLIME bought: 1). Assisted / dev-toggled runs are the caller's (they pay 0).
+## or "slime" (no MORE SLIME bought: 1; never in dev mode, where everything is unlocked). Assisted / dev-toggled runs are the caller's (they pay 0).
 func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
 	var table := tickets_for_attempt(attempt)
 	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
@@ -736,7 +736,7 @@ func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
 		return {tickets = 0, table = table, cap = "paid"}
 	if not random_seed_fresh and table > TICKETS_REPLAY_CAP:
 		return {tickets = TICKETS_REPLAY_CAP, table = table, cap = "replay"}
-	if int(upgrades.get("slime", 0)) <= 0 and table > TICKETS_NO_SLIME_CAP:
+	if int(upgrades.get("slime", 0)) <= 0 and not dev_tools and table > TICKETS_NO_SLIME_CAP:
 		return {tickets = TICKETS_NO_SLIME_CAP, table = table, cap = "slime"}
 	return {tickets = table, table = table, cap = ""}
 

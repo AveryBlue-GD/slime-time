@@ -227,8 +227,8 @@ ticket, section 6) for everyone. The player's own meter is used: a lower-level c
 code needs more of the meter, capped at 95% (`RANDOM_MAX_USAGE`) so a borrowed code is always
 winnable.
 
-**HUD.** The randomizer win line reads `TIME 0:41.2   USED 23% SLIME` (what the run really used,
-splats included), plus `EFFICIENT!` under 25% (`game.EFFICIENT_USAGE`).
+**HUD.** The randomizer win text is `TICKET CLAIMED!` / `TIME 0:41.2` / `SEED ...`; it says nothing
+about how much slime the run used (the USED nn% SLIME / EFFICIENT! line was removed 2026-10-14).
 
 Shots (`tests/demo_overview.tscn -- --unlock-all --usage=P [--upgrades=L,0,0]`): the old `usage_*`
 shots show the u-sized mazes (u 0.10 was 10x6); since the size rework `docs/polish-shots/size_u100_ms0`
@@ -266,7 +266,7 @@ the hub portal, which rolls a new maze) clears it, so a new maze starts at 1. Th
 maze name (two lines, right-aligned; since 2026-10-14, was `TRY 2  4 TIX`) reads `ATTEMPT 2` /
 `TIX AVAILABLE 4` (no "/5" since 2026-10-14): the attempt and what a win would pay right now,
 counting down 5, 4, 3, 2, then 1 from the 5th, with all caps applied (1 for a typed or replayed
-seed or no MORE SLIME; dim 0 when nothing would be paid: daily limit, seed already paid today, dev
+seed or no MORE SLIME (not in dev mode, where everything is unlocked and 5-4-3-2-1 shows); dim 0 when nothing would be paid: daily limit, seed already paid today, dev
 toggles, assist). It is derived every frame from `game.payout()`, the same function the win pays
 from (dev mode pays the same, only unsaved). The pod
 reaches y 40, so in randomizer mazes the area name shows at y 44 (`Hud.AREA_TOP_UNDER_ATTEMPT`) and
@@ -278,8 +278,8 @@ it overlaps nothing. The single-line form did not fit at 320x180 (it ran into th
 seed that already paid today pays 0; a typed or replayed seed pays at most 1 (REPLAYED SEED); no
 MORE SLIME bought = at most 1 (MORE SLIME = MORE); assisted or dev-toggled runs pay 0; dev mode and
 debug runs never save. The result row: ticket icon + `TICKET! ATTEMPT 2 = +4` (+ the cap reason),
-or DAILY TICKET LIMIT REACHED / SEED ALREADY PAID TODAY / ASSIST / DEV TOGGLES; the TIME / USED nn%
-SLIME (EFFICIENT!) line stays. Removed: the optional ticket pickup (`TicketSpawn`, `TicketPickup`,
+or DAILY TICKET LIMIT REACHED / SEED ALREADY PAID TODAY / ASSIST / DEV TOGGLES; MORE SLIME = MORE shows only
+when the no-upgrade cap really cut the payout. Removed: the optional ticket pickup (`TicketSpawn`, `TicketPickup`,
 FIND IT / FOUND / NONE HERE pod, TICKET FOUND / NO TICKET IN THIS MAZE text) and the old payout
 (win 1, pickup +2, under par +1).
 
