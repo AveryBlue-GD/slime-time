@@ -319,26 +319,33 @@ func _show_preview(old_radius: float, new_radius: float) -> void:
 	var scale := minf(0.7, float(bottom - top) / 2.0 / new_radius)
 	var center := Vector2(112, (top + bottom) / 2.0)
 	var skin := Progress.skin_color()
-	preview = Control.new()
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(preview)
-	preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	preview.draw.connect(func() -> void:
-		preview.draw_circle(center, new_radius * scale, Color(skin, 0.14))
-		preview.draw_circle(center, old_radius * scale, Color(skin, 0.42))
-		preview.draw_arc(center, new_radius * scale, 0.0, TAU, 48, skin, 1.0, false))
+	var canvas := Control.new()  # (the draw lambda keeps its own reference: `preview` is cleared later)
+	preview = canvas
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(canvas)
+	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.draw.connect(func() -> void:
+		canvas.draw_circle(center, new_radius * scale, Color(skin, 0.14))
+		canvas.draw_circle(center, old_radius * scale, Color(skin, 0.42))
+		canvas.draw_arc(center, new_radius * scale, 0.0, TAU, 48, skin, 1.0, false))
 	var text := UIKit.make_label("LIGHT %d -> %d PX" % [roundi(old_radius), roundi(new_radius)], 8, UIKit.TEXT)
 	text.position = Vector2(center.x + new_radius * scale + 10, center.y - 4)
-	preview.add_child(text)
-	preview.queue_redraw()
+	canvas.add_child(text)
+	canvas.queue_redraw()
 	hint.visible = false
-	var shown := preview
-	get_tree().create_timer(PREVIEW_TIME).timeout.connect(func() -> void:
-		if is_instance_valid(shown):
-			shown.queue_free()
-			if preview == shown:
-				preview = null
-				hint.visible = true)
+	var timer := Timer.new()  # a child of the preview: replaced or freed with it
+	timer.one_shot = true
+	timer.wait_time = PREVIEW_TIME
+	timer.timeout.connect(_end_preview)
+	canvas.add_child(timer)
+	timer.start()
+
+
+func _end_preview() -> void:
+	if preview != null:
+		preview.queue_free()
+		preview = null
+	hint.visible = true
 
 
 ## A power-up swell, a little higher for each level.
