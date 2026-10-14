@@ -5,9 +5,12 @@ extends SceneTree
 ## missing sections, future version / epoch), a hostile value in EVERY key, read-only and missing user dirs,
 ## and 20,000 mutated codes. Checks: no engine/script error, every loaded value in range, nothing partially
 ## applied by a refused code, the corrupt file is not touched by a load. Throwaway files only (user://qa_*).
-## Known open bugs found here are printed as KNOWN and do not fail the suite (`-- --qa-strict` fails them):
-##   S1 code injection (ConfigFile.parse of Object(...)), S2 no way back after a corrupt save is overwritten,
-##   S3 daily-cap day pushed into the future by a wrong clock. (Stack-overflow crash: tests/qa_poc_code_injection.gd.)
+## Known open bugs found here would be printed as KNOWN and not fail the suite (`-- --qa-strict` fails them);
+## none are open now. Regression checks for the fixed release bugs (docs/qa-release-report.md):
+##   S1 code / save.cfg injection and S11 deep nesting (_injection, _validator, _limits: the SaveText allow-list,
+##   with the inputs of tests/qa_poc_code_injection.gd), S10 gzip + trailing bytes (_gzip: tests/qa_poc_gzip_hang.gd
+##   inputs), S2 unreadable save moved aside + S9 atomic writes (_file_cases, _overwrite_policy, _dirs, _disk_full:
+##   runs tests/qa_poc_disk_full.gd under `ulimit -f` on macOS/Linux), S3 far-future pay day (_clock), S4/S6 (_matrix).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_save_robust.gd
 
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
@@ -21,6 +24,9 @@ class ErrLog extends Logger:
 		if error_type == 1:
 			return
 		var all := code + " " + rationale
+		if function == "decompress" and "err != 1" in code:
+			noise += 1  # zlib refusing a broken gzip stream in a pasted code (SaveText.gunzip): console only
+			return
 		if "ConfigFile parse error" in all or "Decompression failed" in all or "no default was given" in all or "Unexpected" in all or "Expected value" in all or "Cannot represent" in all:
 			noise += 1
 			return
@@ -77,6 +83,16 @@ func _initialize() -> void:
 	print("  [%d ms] _state_fuzz()" % (Time.get_ticks_msec() - t0))
 	_injection()
 	print("  [%d ms] _injection()" % (Time.get_ticks_msec() - t0))
+	_validator()
+	print("  [%d ms] _validator()" % (Time.get_ticks_msec() - t0))
+	_limits()
+	print("  [%d ms] _limits()" % (Time.get_ticks_msec() - t0))
+	_gzip()
+	print("  [%d ms] _gzip()" % (Time.get_ticks_msec() - t0))
+	_full_round_trip()
+	print("  [%d ms] _full_round_trip()" % (Time.get_ticks_msec() - t0))
+	_disk_full()
+	print("  [%d ms] _disk_full()" % (Time.get_ticks_msec() - t0))
 	_code_fuzz()
 	print("  [%d ms] _code_fuzz()" % (Time.get_ticks_msec() - t0))
 	_e("whole suite: %d engine/script errors (%s)" % [errlog.count, "; ".join(errlog.lines)], errlog.count == 0)
@@ -85,7 +101,8 @@ func _initialize() -> void:
 		var now: String = FileAccess.get_md5(path) if FileAccess.file_exists(path) else ""
 		_e("real save %s untouched" % path, now == watched[path])
 	for path in scratch:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		for f in [path, path + ".tmp", PROGRESS_SCRIPT.corrupt_backup_path(path, 1), PROGRESS_SCRIPT.corrupt_backup_path(path, 2), PROGRESS_SCRIPT.corrupt_backup_path(path, 3)]:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	for line in known:
 		print("  KNOWN " + line)
 	print("elapsed %.1f s, %d harmless engine messages about corrupt files/codes (S8)" % [(Time.get_ticks_msec() - t0) / 1000.0, errlog.noise])
@@ -159,7 +176,22 @@ func _file_cases() -> void:
 			bad == "" and errlog.count == errs and FileAccess.get_md5(path) == md5 and ms < 5000)
 		if bad != "":
 			print("      insane: " + bad)
+		if label in ["valid", "UTF-8 BOM + valid", "CRLF line endings", "duplicate sections/keys"]:
+			_e("file '%s' loads the save (levels_cleared=%d)" % [label, p.levels_cleared], p.levels_cleared == 7)
 		p.free()
+		# the same file as the game's own save (saving on): a file that can't be used is moved aside intact
+		var q := _new_at(path)
+		q.saving_enabled = true
+		q.load_progress()
+		var backup: String = PROGRESS_SCRIPT.corrupt_backup_path(path)
+		var kept := FileAccess.file_exists(path) and not FileAccess.file_exists(backup)  # (a loaded old-version save is rewritten)
+		var moved: bool = not FileAccess.file_exists(path) and FileAccess.get_md5(backup) == md5 and q.corrupt_backup == backup
+		var expect_moved := label in ["invalid UTF-8", "lone brackets", "unterminated string", "key without value", "5 MB of text",
+			"5 MB of random bytes", "64 KB random bytes", "a directory-like path name", "NUL bytes", "one byte"]
+		_e("file '%s' as the live save: %s" % [label, "moved aside to .corrupt.cfg intact" if moved else ("left as is" if kept else "CHANGED")],
+			(moved if expect_moved else kept) and _insane(q) == "")
+		q.free()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup))
 	# truncated at every 1/25th of a valid save, and byte-flipped
 	var bytes := text.to_utf8_buffer()
 	var sane_all := true
@@ -237,10 +269,10 @@ func _matrix() -> void:
 	var ms := Time.get_ticks_msec() - t
 	_e("a save with a 300,000-entry coin list reads in %d ms" % ms, ms < 4000)
 	_e("best_time 0 / negative records are dropped or harmless: level 1 best = %s, level 2 = %s, level 3 = %s" % [p.best_times.get(1), p.best_times.get(2), p.best_times.get(3)],
-		not (p.best_times.has(1) and p.best_times[1] <= 0.0) or _known("S4 a hand-made record of 0 s (best_times level_N = 0.0) is accepted and can never be beaten; negative / 1e-9 records likewise (progress.gd:_read records loop)"))
+		not p.best_times.has(1) and not p.best_times.has(2) and not p.best_times.has(3))
 	_e("coins() cannot exceed the real coin count (%d coins from a hostile list)" % p.coins(), p.coins() <= 200 or _known("S5 [coins] level_N list of ANY strings counts up to Levels.COINS per level, so coins stay capped; total %d" % p.coins()))
 	_e("one key bound twice or to nothing is repaired (jump=%d, move_up=%d)" % [p.bindings.get("jump"), p.bindings.get("move_up")],
-		p.bindings.get("jump", 0) != 0 and p.bindings.get("jump") != p.bindings.get("restart") or _known("S6 hostile [controls] values are not validated: jump=0 means no jump key (the SETTINGS > CONTROLS page can fix it), a key may be bound to two actions (progress.gd:_read bindings loop)"))
+		p.bindings.get("jump", 0) > 0 and p.bindings.values().size() == _unique(p.bindings.values()))
 	p.free()
 
 
@@ -281,39 +313,87 @@ func _future() -> void:
 	p.free()
 
 
-## What happens to a corrupt save the first time the game saves: it is replaced with no copy kept.
+## S2: a save that can't be used is moved aside (rotating, bounded) before the game starts fresh, so the
+## next save can't destroy it; S9: saves are written atomically (temp file, read back, rename).
 func _overwrite_policy() -> void:
 	var path := _scratch("corrupt")
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	f.store_string("[meta]\nepoch=1\n[progress]\nlevels_cleared=7\nhighest_unlocked=8\n[records\nlevel_1=12.5\n")  # a hand-edit typo
-	f.close()
+	var typo := "[meta]\nepoch=1\n[progress]\nlevels_cleared=7\nhighest_unlocked=8\n[records\nlevel_1=12.5\n"  # a hand-edit typo
+	_store(path, typo)
 	var md5 := FileAccess.get_md5(path)
 	var p := _new_at(path)
-	p.load_progress()
-	_e("corrupt save loads as a fresh start (levels_cleared=%d) and is not touched by the load" % p.levels_cleared, p.levels_cleared == 0 and FileAccess.get_md5(path) == md5)
 	p.saving_enabled = true
+	p.load_progress()
+	var backup: String = PROGRESS_SCRIPT.corrupt_backup_path(path)
+	_e("an unreadable save starts fresh (levels_cleared=%d) and is moved to %s intact" % [p.levels_cleared, backup.get_file()],
+		p.levels_cleared == 0 and not FileAccess.file_exists(path) and FileAccess.get_md5(backup) == md5 and p.corrupt_backup == backup)
 	p.save_progress()  # e.g. the first coin, or hitting the title's PLAY
-	_e("the next save replaces the corrupt file (md5 changed: %s)" % (FileAccess.get_md5(path) != md5), FileAccess.get_md5(path) != md5)
-	var siblings := 0
-	var dir := DirAccess.open(path.get_base_dir())
-	for name in dir.get_files():
-		if name.begins_with(path.get_file().get_basename()) and name != path.get_file():
-			siblings += 1
-	_e("a backup of the corrupt / unreadable save exists next to it (%d found)" % siblings,
-		siblings > 0 or _known("S2 a save that fails to parse (typo, truncated by a crash, other epoch) starts a fresh game and the FIRST save of the new game overwrites it: no .bak / .corrupt copy, no message. A player loses everything for one bad byte. progress.gd:395-405 load_progress + :601 save_progress"))
-	# a different-epoch save is overwritten the same way (by design in itch-release.md); a read error is not an overwrite excuse
+	_e("the next save writes a new file and the backup survives it", FileAccess.file_exists(path) and FileAccess.get_md5(backup) == md5)
 	p.free()
-	# write is non-atomic: ConfigFile.save truncates the file then writes
+	# backups rotate: the newest CORRUPT_KEEP are kept, never more
+	for i in 5:
+		_store(path, "[meta]\nepoch=1\n[progress]\nbroken %d=\n" % i)
+		var q := _new_at(path)
+		q.saving_enabled = true
+		q.load_progress()
+		q.free()
+	var kept := 0
+	for name in DirAccess.open(path.get_base_dir()).get_files():
+		if name.begins_with(path.get_file().get_basename() + ".corrupt"):
+			kept += 1
+	_e("after 5 more unreadable saves: %d backups kept (max %d), newest first" % [kept, PROGRESS_SCRIPT.CORRUPT_KEEP],
+		kept == PROGRESS_SCRIPT.CORRUPT_KEEP and FileAccess.get_file_as_string(backup).contains("broken 4") \
+		and FileAccess.get_file_as_string(PROGRESS_SCRIPT.corrupt_backup_path(path, 3)).contains("broken 2"))
+	# a save of another release epoch / an empty file is NOT corrupt: left in place (fresh start by policy)
+	for text: String in ["[meta]\nepoch=7\n[progress]\nlevels_cleared=3\n", "", "\n  \n"]:
+		var other := _scratch("epoch")
+		_store(other, text)
+		var r := _new_at(other)
+		r.saving_enabled = true
+		r.load_progress()
+		_e("a %s save is left where it is (no backup)" % ("blank" if text.strip_edges() == "" else "other-epoch"),
+			FileAccess.file_exists(other) and not FileAccess.file_exists(PROGRESS_SCRIPT.corrupt_backup_path(other)) and r.levels_cleared == 0)
+		r.free()
+	# dev / headless runs only peek at a save (saving off): they never move it
+	var peek := _scratch("peek")
+	_store(peek, typo)
+	var s := _new_at(peek)
+	s.load_progress()
+	_e("with saving off, an unreadable save is not moved", FileAccess.get_md5(peek) == md5)
+	s.free()
+	# atomic write: no temp left behind, and a blocked temp path keeps the old save byte-identical
 	var sp := _new_at(_scratch("atomic"))
 	sp.saving_enabled = true
-	sp.save_progress()
-	var temp_seen := false
-	var d2 := DirAccess.open(sp.save_path.get_base_dir())
-	for name in d2.get_files():
-		if name.contains(sp.save_path.get_file()) and name != sp.save_path.get_file():
-			temp_seen = true
-	print("  info save write leaves a temp/backup sibling: %s (ConfigFile.save writes in place; a crash or power loss mid-write leaves a truncated save)" % temp_seen)
+	sp.levels_cleared = 3
+	_e("a save succeeds and leaves no temp file", sp.save_progress() and not FileAccess.file_exists(sp.save_path + ".tmp") and not sp.save_failed)
+	var old := FileAccess.get_md5(sp.save_path)
+	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(sp.save_path + ".tmp"))  # the temp file can't be created
+	sp.levels_cleared = 9
+	var ok: bool = sp.save_progress()
+	_e("a save that can't be written returns false, keeps the old file and the progress in memory",
+		not ok and sp.save_failed and FileAccess.get_md5(sp.save_path) == old and sp.levels_cleared == 9)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(sp.save_path + ".tmp"))
+	_e("...and the next save (or the retry) writes it", sp.save_progress() and not sp.save_failed and _load_levels(sp.save_path) == 9)
 	sp.free()
+	# an interrupted save: a temp next to a save is discarded; a lone valid temp (crash between remove and rename) is used
+	var cp := _scratch("crash")
+	var good := _new_at(cp)
+	good.levels_cleared = 4
+	_store(cp, good._write().encode_to_text())
+	good.levels_cleared = 6
+	_store(cp + ".tmp", good._write().encode_to_text().left(40))
+	var t := _new_at(cp)
+	t.saving_enabled = true
+	t.load_progress()
+	_e("a half-written temp next to the save is discarded and the save loads (levels_cleared=%d)" % t.levels_cleared,
+		t.levels_cleared == 4 and not FileAccess.file_exists(cp + ".tmp"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(cp))
+	_store(cp + ".tmp", good._write().encode_to_text())
+	var u := _new_at(cp)
+	u.saving_enabled = true
+	u.load_progress()
+	_e("a complete temp with no save is recovered (levels_cleared=%d)" % u.levels_cleared, u.levels_cleared == 6 and FileAccess.file_exists(cp))
+	for n in [good, t, u]:
+		n.free()
 
 
 func _dirs() -> void:
@@ -321,9 +401,9 @@ func _dirs() -> void:
 	var p := _new_at("user://qa_no_such_dir_%d/save.cfg" % OS.get_process_id())
 	p.saving_enabled = true
 	var errs := errlog.count
-	p.save_progress()
+	var saved: bool = p.save_progress()
 	p.load_progress()
-	_e("save_path in a missing dir: save + load are no-ops without crashing (%d new errors)" % (errlog.count - errs), p.is_fresh_save())
+	_e("save_path in a missing dir: save reports failure, load is a no-op, no crash (%d new errors)" % (errlog.count - errs), p.is_fresh_save() and not saved and p.save_failed)
 	p.free()
 	# read-only dir
 	var dir_path := "user://qa_ro_%d" % OS.get_process_id()
@@ -340,11 +420,11 @@ func _dirs() -> void:
 	q.saving_enabled = true
 	q.levels_cleared = 9
 	errs = errlog.count
-	q.save_progress()
+	var ok: bool = q.save_progress()
 	var after := FileAccess.get_md5(ro_file)
 	OS.execute("chmod", ["-R", "u+w", abs_dir])
-	print("  info read-only dir: save returned silently, file unchanged=%s, new engine errors=%d (the player is never told progress is not being saved)" % [after == md5, errlog.count - errs])
-	_e("a read-only save dir does not crash and does not corrupt the old save", after == md5 and FileAccess.get_md5(ro_file) == md5)
+	_e("a read-only save dir: the save fails visibly (save_failed), no crash, the old save is unchanged, progress kept in memory",
+		not ok and q.save_failed and after == md5 and q.levels_cleared == 9)
 	var r := _new_at(ro_file)
 	r.load_progress()
 	_e("...and the old save still loads (levels_cleared=%d)" % r.levels_cleared, r.levels_cleared == 4)
@@ -354,7 +434,23 @@ func _dirs() -> void:
 		n.free()
 
 
-## Daily-cap clock behaviour (UTC day from the clock; tests set day_override).
+## S9 for real: tests/qa_poc_disk_full.gd run in a child process under `ulimit -f 1` (a 512-byte file size
+## limit: the write fails part way like a full disk). The old save must survive byte for byte.
+func _disk_full() -> void:
+	if OS.get_name() == "Windows":
+		print("  info disk-full child run skipped on Windows (needs ulimit)")
+		return
+	var out: Array = []
+	var cmd := "ulimit -f 1; trap '' XFSZ; '%s' --path '%s' --headless -s res://tests/qa_poc_disk_full.gd 2>&1" % [OS.get_executable_path(), ProjectSettings.globalize_path("res://")]
+	var code := OS.execute("bash", ["-c", cmd], out)
+	var text: String = "\n".join(out)
+	var ok := text.contains("RESULT: old save intact") and not text.contains("TRUNCATED")
+	_e("a save under a 512-byte file size limit fails cleanly: old save intact (exit %d)" % code, ok)
+	if not ok:
+		print("      child output: " + text.right(400).c_escape())
+
+
+## S3: randomizer daily cap against a wrong clock (UTC day from the clock; tests set day_override).
 func _clock() -> void:
 	var p := _new("clock")
 	p.upgrades = {"slime": 1}
@@ -366,7 +462,7 @@ func _clock() -> void:
 		paid.append(p.complete_random(false, 100 + i, 1))
 	_e("5 paying wins a day then 0: %s" % [paid], paid == [5, 5, 5, 5, 5, 0, 0])
 	p.day_override = 19000  # clock moved back ~3 years
-	_e("clock moved back: still capped (%d)" % 0, p.random_tickets_due(1, 301) == 0)
+	_e("clock moved back: still capped (forward-only)", p.random_tickets_due(1, 301) == 0)
 	p.day_override = 20001
 	p.random_seed_fresh = true
 	p.complete_random(false, 400, 1)
@@ -377,23 +473,34 @@ func _clock() -> void:
 	# a one-off wrong clock far in the future: win once, set the clock right again
 	var q := _new("clock2")
 	q.upgrades = {"slime": 1}
-	q.day_override = 20000 + 365 * 70  # year ~2040 (a dead CMOS battery says 2099)
+	q.day_override = 20000 + 365 * 70  # a dead CMOS battery / wrong clock
 	q.random_seed_fresh = true
 	q.complete_random(false, 1, 1)
 	q.day_override = 20000  # the clock is corrected
-	var locked_days: int = q.random_pay_day - 20000
+	q.random_seed_fresh = true
+	_e("after a win under a clock 70 years ahead, the stored day is treated as today (%d)" % (q.random_tickets_due(1, 99)), q.random_tickets_due(1, 99) == 5 and q.random_pay_day == 20000)
 	for i in 4:
 		q.random_seed_fresh = true
 		q.complete_random(false, 10 + i, 1)
-	_e("after one win under a clock %d days too far ahead and the clock fixed: payouts keep working (due=%d, paid today=%d)" % [locked_days, q.random_tickets_due(1, 99), q.random_paid],
-		q.random_tickets_due(1, 99) > 0 or _known("S3 a randomizer win made while the system clock is wrong (future) stores that future day in random_pay_day; once the clock is right again `utc_day() > random_pay_day` is never true, so after 5 more wins the ticket payout is 0 until the real date catches up (years); a save code carries it too. progress.gd:849-852 + :890-896. Fix: treat random_pay_day > utc_day()+1 as corrupt (reset it) on read and in complete_random"))
-	# a hostile day in the save is just as sticky
+	_e("...that win counts toward today's 5 (due now %d)" % q.random_tickets_due(1, 99), q.random_tickets_due(1, 99) == 0)
+	q.day_override = 20001
+	q.random_seed_fresh = true
+	_e("...and the next real day pays again (%d), not in 70 years" % q.random_tickets_due(1, 99), q.random_tickets_due(1, 99) == 5)
+	# small differences keep the forward-only rule: a day 1-2 ahead (time zones) is not reset
+	q.day_override = 20000
+	q.random_pay_day = 20002
+	q.random_paid = 5
+	_e("a stored day 2 ahead stays capped (clock-back protection)", q.random_tickets_due(1, 98) == 0 and q.random_pay_day == 20002)
+	# a hostile day in the save
 	var file: ConfigFile = full._write()
 	file.set_value("wallet", "random_day", 9223372036854775807)
 	file.set_value("wallet", "random_paid", 5)
 	var r := _new("clock3")
+	r.day_override = 20000
 	r._read(file)
-	_e("a save with random_day = INT64_MAX and random_paid = 5 pays 0 forever (%d): same fix" % r.random_tickets_due(1, 7), r.random_tickets_due(1, 7) > 0 or _known("S3b random_day is not clamped to a plausible day on read (progress.gd:_read_wallet)"))
+	_e("a save with random_day = INT64_MAX reads as today (%d), capped today, paying tomorrow" % r.random_pay_day, r.random_pay_day == 20000 and r.random_tickets_due(1, 7) == 0)
+	r.day_override = 20001
+	_e("...tomorrow pays (%d)" % r.random_tickets_due(1, 7), r.random_tickets_due(1, 7) > 0)
 	for n in [p, q, r]:
 		n.free()
 
@@ -465,47 +572,228 @@ func _state_fuzz() -> void:
 	Hats.available = false
 
 
+## S1: the PoC payload (tests/qa_poc_code_injection.gd --mode=object) and variants, through a pasted code
+## (is_old_code / read_code / load_code) AND a save.cfg (load_progress): nothing runs, nothing is created.
 func _injection() -> void:
-	Engine.remove_meta(&"qa_pwned") if Engine.has_meta(&"qa_pwned") else null
-	var text := "[meta]\nepoch=1\n[progress]\nlevels_cleared=Object(Node,\"name\":\"x\",\"script\":Object(GDScript,\"script/source\":\"extends Node\\nfunc _init():\\n\\tEngine.set_meta(&'qa_pwned', true)\\n\"))\n"
-	var code: String = PROGRESS_SCRIPT.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(text.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
-	PROGRESS_SCRIPT.is_old_code(code)
-	PROGRESS_SCRIPT.read_code(code)
-	var ran := Engine.has_meta(&"qa_pwned")
-	_e("a pasted save code cannot run a script embedded in its text", not ran or _known("S1 CRITICAL: a SLIME2- code whose text holds Object(Node,\"script\":Object(GDScript,\"script/source\":...)) RUNS that GDScript the moment the code is pasted (is_old_code / read_code -> ConfigFile.parse, progress.gd:709). Arbitrary code execution on desktop (OS.execute), JavaScriptBridge.eval on the web. Same through a hand-made save.cfg (load_progress -> ConfigFile.load). Proof: tests/qa_poc_code_injection.gd. Fix: refuse any text containing 'Object(' before parse (a legit save has none) and cap nesting depth"))
+	var marker := "Engine.set_meta(&'qa_pwned', true)"
+	var obj := "Object(Node,\"name\":\"x\",\"script\":Object(GDScript,\"script/source\":\"extends Node\\nfunc _init():\\n\\t%s\\n\"))" % marker
+	var payloads := {
+		"PoC (plain value)": "levels_cleared=" + obj,
+		"inside an array": "skin_notices_seen=[1, " + obj + "]",
+		"inside a typed array": "hard_cleared=Array[int]([" + obj + "])",
+		"Array[Object]": "hard_cleared=Array[Object]([" + obj + "])",
+		"inside a dictionary": "x={\"a\": " + obj + "}",
+		"as a dictionary key": "x={" + obj + ": 1}",
+		"inside Color()": "custom_color=Color(" + obj + ", 1, 1)",
+		"spaces before (": "levels_cleared=Object (Node,\"script\":Object (GDScript,\"script/source\":\"%s\"))" % marker,
+		"lower case": "levels_cleared=object(Node)",
+		"Cyrillic O lookalike": "levels_cleared=Оbject(Node)",
+		"fullwidth letters": "levels_cleared=Ｏbject(Node)",
+		"after a value on the line": "levels_cleared=1 " + obj,
+		"on a continuation line": "levels_cleared=1\n  " + obj,
+		"key then newline then value": "levels_cleared=\n" + obj,
+		"escaped quote closes nothing": "skin=\"a\\\\\"\nlevels_cleared=" + obj,
+		"section tag attribute": "[progress x=" + obj + "]",
+		"# line (not a comment for ConfigFile)": "# hi\nlevels_cleared=" + obj,
+		"; comment with code": "; x=" + obj,
+		"Resource()": "x=Resource(\"res://icon.png\")",
+		"Callable()": "x=Callable()",
+		"Signal()": "x=Signal()",
+		"RID()": "x=RID()",
+		"ExtResource()": "x=ExtResource(\"1\")",
+		"SubResource()": "x=SubResource(\"1\")",
+		"preload()": "x=preload(\"res://scripts/progress.gd\")",
+		"load()": "x=load(\"res://scripts/progress.gd\")",
+		"StringName &\"\"": "x=&\"Object\"",
+		"NodePath ^\"\"": "x=^\"/root\"",
+		"Vector2 (not in a save)": "x=Vector2(1, 2)",
+		"PackedByteArray (not in a save)": "x=PackedByteArray(1, 2)",
+		"Transform3D": "x=Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)",
+	}
+	var created_before := Performance.get_monitor(Performance.OBJECT_COUNT)
+	for label: String in payloads:
+		Engine.remove_meta(&"qa_pwned") if Engine.has_meta(&"qa_pwned") else null
+		var text: String = "[meta]\nepoch=1\nversion=5\n[progress]\n" + payloads[label] + "\n"
+		var code := _code_of(text)
+		var old_code: bool = PROGRESS_SCRIPT.is_old_code(code)
+		var read: ConfigFile = PROGRESS_SCRIPT.read_code(code)
+		var target := _new("inject_code")
+		var loaded: bool = target.load_code(code)
+		var path := _scratch("inject")
+		_store(path, text)
+		var p := _new_at(path)
+		p.saving_enabled = true
+		p.load_progress()
+		var ran := Engine.has_meta(&"qa_pwned")
+		_e("injection '%s': code refused (%s/%s/%s), save.cfg moved aside, nothing ran" % [label, old_code, read, loaded],
+			not ran and not old_code and read == null and not loaded and target.is_fresh_save() and p.is_fresh_save()
+			and not FileAccess.file_exists(path) and FileAccess.file_exists(PROGRESS_SCRIPT.corrupt_backup_path(path)))
+		target.free()
+		p.free()
+	# strings that merely CONTAIN those words are data: a valid save with them loads (no false rejects)
+	var legit := "[meta]\nepoch=1\nversion=5\n[progress]\nlevels_cleared=2\n[skin]\nselected=\"Object(Node, \\\"script\\\": Object(GDScript))\"\nhat=\"preload(\\\"x\\\") ExtResource Callable Signal RID Script ; # = [ ] { }\"\n[maps]\nhint=\"Оbject( \\\\\"\n"
+	var lf: ConfigFile = PROGRESS_SCRIPT.SaveText.parse(legit.to_utf8_buffer())
+	_e("words like Object( / preload / ExtResource inside strings are accepted as text", lf != null and str(lf.get_value("skin", "selected")).begins_with("Object(Node") and not Engine.has_meta(&"qa_pwned"))
+	var lc: ConfigFile = PROGRESS_SCRIPT.read_code(_code_of(legit))
+	_e("...also inside a pasted code (levels_cleared=%s)" % (lc.get_value("progress", "levels_cleared") if lc else "refused"), lc != null)
+	_e("no objects leaked by the injection cases (%d -> %d)" % [created_before, Performance.get_monitor(Performance.OBJECT_COUNT)],
+		Performance.get_monitor(Performance.OBJECT_COUNT) <= created_before + 8)
 	if Engine.has_meta(&"qa_pwned"):
 		Engine.remove_meta(&"qa_pwned")
-	# proposed guard: a save is only primitives, Color, arrays; no Object(, bounded nesting
-	_e("proposed guard _safe_text() blocks the payload and passes real saves",
-		not _safe_text(text) and _safe_text(full._write().encode_to_text()) and not _safe_text("[progress]\nx=" + "[".repeat(5000)))
 
 
-## Proposed fix (not in the game): true if `text` is safe to hand to ConfigFile.parse.
-func _safe_text(text: String) -> bool:
-	if text.contains("Object") or text.length() > (1 << 20):
-		return false
-	var depth := 0
-	var in_string := false
-	var i := 0
-	while i < text.length():
-		var c := text.unicode_at(i)
-		if in_string:
-			if c == 92:
-				i += 1
-			elif c == 34:
-				in_string = false
-		elif c == 34:
-			in_string = true
-		elif c == 91 or c == 123 or c == 40:
-			depth += 1
-			if depth > 8:
-				return false
-		elif c == 93 or c == 125 or c == 41:
-			depth -= 1
-		elif c == 10:
-			depth = 0
-		i += 1
-	return true
+## SaveText unit checks: exact grammar edges.
+func _validator() -> void:
+	var st: GDScript = PROGRESS_SCRIPT.SaveText
+	var good := ["[a]\nk=1\n", "[a]\nk=-1.5e-05\n", "[a]\nk=\"x\\\"y\"\n", "[a]\nk=Array[int]([])\n", "[a]\nk=Array[String]([\"a\", \"b\"])\n",
+		"[a]\nk=Color(0.1, 0.2, 0.3, 1)\n", "[a]\nk=[[1, [2, [3]]], \"x\", true, false, null]\n", "[a]\nk={\"x\": 1, 2: [3]}\n",
+		"[a]\nk=nan\nj=inf\nl=inf_neg\n", "; a comment\n[a]\nk = 1\n", "[a]\r\nk=1\r\n", "[a]\nk=9223372036854775807\nj=-9223372036854775808\n",
+		"[a]\nk=\"multi\nline\"\n", "[a]\nk=[1,\n 2]\n", ""]
+	var bad := ["[a]\nk=Array[float]([1.0])\n", "[a]\nk=Array[int]([\"a\"])\n", "[a]\nk=Array[String]([1])\n", "[a]\nk=Color(1, 2)\n", "[a]\nk=Color(1, 0, 0)\n", "[a]\nk=Color(1,2,3,4,5)\n",
+		"[a]\nk=Color(\"x\", 1, 1)\n", "[a]\nk=[1,]\n", "[a]\nk=0x10\n", "[a]\nk=1e400\n", "[a]\nk=99999999999999999999\n", "[a]\nk=+5\n", "[a]\nk=.5\n",
+		"[a]\nk=\"unterminated\n", "[a]\nk=1 2\n", "[a b]\nk=1\n", "[a]\n\"k\"=1\n", "[a]\nk\n", "[a]\n=1\n", "[a]\nk={[1]: 2}\n", "[a]\nk=Object()\n",
+		"[a]\nk=\"x\u0001\"\n", "é=1\n", "[a]\nk=\"\\\n"]
+	var wrong := 0
+	for text: String in good:
+		if not st.is_safe(text.to_utf8_buffer()) or st.parse(text.to_utf8_buffer()) == null:
+			wrong += 1
+			print("      false reject: " + text.c_escape())
+	for text: String in bad:
+		if st.is_safe(text.to_utf8_buffer()):
+			wrong += 1
+			print("      false accept: " + text.c_escape())
+	_e("SaveText grammar: %d good texts accepted, %d bad ones refused (%d wrong)" % [good.size(), bad.size(), wrong], wrong == 0)
+	var deep := "[a]\nk=" + "[".repeat(8) + "]".repeat(8) + "\n"
+	var deeper := "[a]\nk=" + "[".repeat(9) + "]".repeat(9) + "\n"
+	_e("nesting depth 8 accepted, 9 refused", st.is_safe(deep.to_utf8_buffer()) and not st.is_safe(deeper.to_utf8_buffer()))
+	var invalid_utf8 := PackedByteArray([0x5B, 0x61, 0x5D, 0x0A, 0x6B, 0x3D, 0x22, 0xC3, 0x28, 0x22, 0x0A])
+	var nul := "[a]\nk=1".to_utf8_buffer()
+	nul.append(0)  # (a NUL byte; never written as a \u0000 escape in a script: Godot's tokenizer complains)
+	_e("a NUL byte is refused", not st.is_safe(nul))
+	_e("invalid UTF-8 inside a string refused, valid UTF-8 accepted", not st.is_safe(invalid_utf8) and st.is_safe("[a]\nk=\"héllo ☃\"\n".to_utf8_buffer()))
+
+
+## S11 and size limits: checked BEFORE any parser runs, for a code and for a save.cfg, without crashing.
+func _limits() -> void:
+	var st: GDScript = PROGRESS_SCRIPT.SaveText
+	for depth: int in [200000, 100000, 10000, 9]:
+		var text := "[meta]\nepoch=1\n[progress]\nx=" + "[".repeat(depth) + "]".repeat(depth) + "\n"
+		var t := Time.get_ticks_msec()
+		var code_ok: bool = PROGRESS_SCRIPT.read_code(_code_of(text)) != null or PROGRESS_SCRIPT.is_old_code(_code_of(text))
+		var path := _scratch("nest")
+		_store(path, text)
+		var p := _new_at(path)
+		p.saving_enabled = true
+		p.load_progress()
+		_e("%d nested '[' (%d KB): code refused, save.cfg refused and moved aside, no crash, %d ms" % [depth, text.length() / 1024, Time.get_ticks_msec() - t],
+			not code_ok and p.is_fresh_save() and FileAccess.file_exists(PROGRESS_SCRIPT.corrupt_backup_path(path)))
+		p.free()
+	var big := "[meta]\nepoch=1\n[progress]\nlevels_cleared=1\nx=\"" + "y".repeat(st.MAX_BYTES) + "\"\n"
+	_e("a save text over %d KB is refused" % (st.MAX_BYTES / 1024), not st.is_safe(big.to_utf8_buffer()) and PROGRESS_SCRIPT.read_code(_code_of(big)) == null)
+	var long_line := "[a]\nk=\"" + "y".repeat(st.MAX_LINE + 1) + "\"\n"
+	_e("a line over %d KB is refused" % (st.MAX_LINE / 1024), not st.is_safe(long_line.to_utf8_buffer()))
+	# the gzip size field can't make it allocate more than MAX_BYTES (a zip bomb inflates into a fixed buffer)
+	var bomb := "A".repeat(4 << 20).to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	var t2 := Time.get_ticks_msec()
+	var bomb_read: ConfigFile = PROGRESS_SCRIPT.read_code(PROGRESS_SCRIPT.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(bomb))
+	_e("a 4 MB zip bomb code is refused in %d ms" % (Time.get_ticks_msec() - t2), bomb_read == null)
+
+
+## S10: the PoC inputs of tests/qa_poc_gzip_hang.gd (a gzip stream + 1..8 extra bytes), a code pasted twice,
+## stray characters after it: every check returns at once (the old decompress_dynamic spun forever).
+func _gzip() -> void:
+	var gz := "[meta]\nepoch=1\n[progress]\nlevels_cleared=3\n".to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	var slowest := 0
+	var all_ok := true
+	for extra in 9:
+		var bytes := gz.duplicate()
+		for i in extra:
+			bytes.append(0)
+		while bytes.size() % 3 != 0:
+			bytes.append(0)
+		var code: String = PROGRESS_SCRIPT.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(bytes)
+		var t := Time.get_ticks_msec()
+		var old: bool = PROGRESS_SCRIPT.is_old_code(code)
+		var read: ConfigFile = PROGRESS_SCRIPT.read_code(code)
+		slowest = maxi(slowest, Time.get_ticks_msec() - t)
+		var expect_ok := bytes.size() == gz.size()
+		if old or (read != null) != expect_ok:
+			all_ok = false
+	_e("gzip + 0..8 trailing bytes (PoC): returns in %d ms max, only the exact stream reads" % slowest, all_ok and slowest < 500)
+	var good: String = full.save_code()
+	var t3 := Time.get_ticks_msec()
+	var twice: ConfigFile = PROGRESS_SCRIPT.read_code(good + good.trim_prefix(PROGRESS_SCRIPT.SAVE_CODE_PREFIX))
+	var stray: ConfigFile = PROGRESS_SCRIPT.read_code(good + "AAAA")
+	PROGRESS_SCRIPT.is_old_code(good + "AAAAAAAA")
+	_e("a code pasted twice / with stray AAAA after it returns at once (%d ms; twice %s, stray %s)" % [Time.get_ticks_msec() - t3, "reads" if twice else "refused", "reads" if stray else "refused"],
+		Time.get_ticks_msec() - t3 < 500 and stray == null)
+	# base64 stage: oversize and broken base64 are refused before decoding
+	_e("base64 stage: 70,000 chars / bad padding / bad characters refused",
+		PROGRESS_SCRIPT.read_code(PROGRESS_SCRIPT.SAVE_CODE_PREFIX + "A".repeat(70000)) == null and PROGRESS_SCRIPT.read_code(good + "=") == null
+		and PROGRESS_SCRIPT.read_code(good.insert(20, "*")) == null)
+	# mangled by a chat app: invisible / wrapping characters are cleaned off
+	var mangled := [" " + good, good.insert(40, "​"), good + ".", "\"" + good + "\"", "“" + good + "”", "```\n" + good + "\n```", "﻿" + good]
+	var all_read := true
+	for m: String in mangled:
+		all_read = all_read and PROGRESS_SCRIPT.read_code(m) != null
+	_e("codes with NBSP / zero-width / quotes / code fence / trailing period / BOM still load", all_read)
+
+
+## A fully populated save (every section: story complete on both modes, every coin, maps, records, medals,
+## hats, custom color, upgrades, wallet) passes the allow-list and round-trips exactly as a file and a code.
+func _full_round_trip() -> void:
+	Hats.available = true
+	var p := _new("full")
+	p.enable_story_complete()
+	p.hats_owned.assign(Hats.ids().slice(0, 4))
+	p.selected_hat = p.hats_owned[0]
+	p.custom_color = Color(0.123, 0.456, 0.789, 1.0)
+	p.upgrades = {"slime": 4, "speed": 2, "brightness": 1}
+	p.tickets = 1234
+	p.tickets_lifetime = 5678
+	p.random_pay_day = 20000
+	p.random_paid = 3
+	p.random_paid_seeds.assign([7, 8, 9])
+	p.spins = 5
+	p.rainbow_pity = 2
+	p.maps_hint_seen = true
+	p.volume = 0.35
+	p.reduce_motion = true
+	p.fog_brightness = p.FOG_BRIGHT
+	p.set_binding("jump", KEY_J)
+	for key: int in p.best_times:  # binary-exact times: Godot's own float text round trip can be 1 ulp off
+		p.best_times[key] = snappedf(p.best_times[key], 0.25)
+	var text: String = p._write().encode_to_text()
+	var st: GDScript = PROGRESS_SCRIPT.SaveText
+	_e("a fully populated save (%d bytes, %d map surveys) passes the allow-list" % [text.length(), p.maps.size()], st.is_safe(text.to_utf8_buffer()) and p.maps.size() == 20)
+	p.saving_enabled = true
+	p.save_progress()
+	var q := _new_at(p.save_path)
+	q.day_override = 20000
+	q.load_progress()
+	var r := _new("full_code")
+	r.day_override = 20000
+	var code_ok: bool = r.load_code(p.save_code())
+	_e("...and round-trips exactly through save.cfg and a save code (%s / %s)" % [_first_diff(_canon(p._write()), _canon(q._write())), _first_diff(_canon(p._write()), _canon(r._write()))],
+		_canon(q._write()) == _canon(p._write()) and code_ok and _canon(r._write()) == _canon(p._write()))
+	for n in [p, q, r]:
+		n.free()
+	Hats.available = false
+
+
+func _code_of(text: String) -> String:
+	return PROGRESS_SCRIPT.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(text.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
+
+
+func _store(path: String, text: String) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(text)
+	f.close()
+
+
+func _load_levels(path: String) -> int:
+	var f: ConfigFile = PROGRESS_SCRIPT.SaveText.parse(FileAccess.get_file_as_bytes(path))
+	return f.get_value("progress", "levels_cleared", -1) if f else -1
 
 
 # ------------------------------------------------------------------ code fuzz
@@ -710,6 +998,13 @@ func _random_bytes(rng: RandomNumberGenerator, n: int) -> PackedByteArray:
 	for i in n:
 		b[i] = rng.randi() & 0xFF
 	return b
+
+
+func _unique(values: Array) -> int:
+	var seen := {}
+	for v: Variant in values:
+		seen[v] = true
+	return seen.size()
 
 
 func _many_strings(n: int) -> Array:

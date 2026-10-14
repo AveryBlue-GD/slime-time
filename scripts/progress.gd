@@ -37,6 +37,8 @@ const RELEASE_EPOCH := 1
 ## Save codes start with this. "SLIME1-" codes come from builds before the public release and are
 ## refused with "FROM AN OLD VERSION" (is_old_code).
 const SAVE_CODE_PREFIX := "SLIME2-"
+## The allow-list checker every untrusted save text (save.cfg, pasted codes) goes through first.
+const SaveText := preload("res://scripts/save_text.gd")
 ## The stopwatch skin's "notice seen" mark in skin_notices_seen (level numbers are 1-10).
 const STOPWATCH_NOTICE := 200
 ## Highest level the player may start (1-10).
@@ -392,16 +394,87 @@ static func _is_test_or_tool_run() -> bool:
 
 
 ## Loads `path` (default: save_path). Saving still only ever goes to save_path.
+## The file's text is checked by SaveText's allow-list BEFORE it is parsed (a save.cfg can't run code
+## or crash the parser). A save that exists but can't be read or doesn't pass is moved aside to
+## `<name>.corrupt.cfg` (the newest CORRUPT_KEEP kept) before the game starts fresh, so the next save
+## can't silently destroy it; that only happens for our own save file while saving is enabled (dev runs
+## that just peek at the real save never touch it). A save from another release epoch is not corrupt:
+## it starts fresh by policy (docs/itch-release.md) and is overwritten by the next save.
 func load_progress(path := "") -> void:
-	var file := ConfigFile.new()
-	if file.load(save_path if path == "" else path) != OK or not _is_this_epoch(file):
-		return  # no save, or one from another release epoch: a fresh start (the file is overwritten on the next save)
+	var file_path := save_path if path == "" else path
+	var owned := file_path == save_path and saving_enabled
+	if owned:
+		_recover_temp_save(file_path)
+	if not FileAccess.file_exists(file_path):
+		return  # no save: a fresh start
+	var file := _load_checked(file_path)
+	if file == null:
+		if owned:
+			_set_aside_corrupt(file_path)
+		return
+	if not _is_this_epoch(file):
+		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
 	_read(file)
 	# An older save was migrated in memory; write it back once so the migration (which builds
 	# every story maze) doesn't rerun on each launch.
 	if _int(file, "meta", "version", 0) < SAVE_VERSION:
 		save_progress()
 
+
+## The save file at `path` as a ConfigFile, or null if it can't be opened, is too big, or fails the
+## allow-list / parse. An empty (or whitespace-only) file parses as an empty save (no epoch: fresh).
+static func _load_checked(path: String) -> ConfigFile:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	if f.get_length() > SaveText.MAX_BYTES:
+		return null  # (never read a huge file into memory)
+	var bytes := f.get_buffer(f.get_length())
+	f.close()
+	if SaveText.is_blank(bytes):
+		return ConfigFile.new()
+	return SaveText.parse(bytes)
+
+
+## Backups of unreadable saves kept next to it: <name>.corrupt.cfg (newest), .corrupt.2.cfg, ...
+const CORRUPT_KEEP := 3
+## Set when this session's save was found unreadable: where it was moved ("" if it wasn't).
+var corrupt_backup := ""
+
+
+static func corrupt_backup_path(path: String, n := 1) -> String:
+	return "%s.corrupt%s.cfg" % [path.get_basename(), "" if n <= 1 else ".%d" % n]
+
+
+## Moves an unreadable save out of the way (rotating older backups), so starting fresh never overwrites
+## it. If it can't be moved or copied, saving is turned off for this session to protect it.
+func _set_aside_corrupt(path: String) -> void:
+	var g := func(p: String) -> String: return ProjectSettings.globalize_path(p)
+	DirAccess.remove_absolute(g.call(corrupt_backup_path(path, CORRUPT_KEEP)))
+	for n in range(CORRUPT_KEEP - 1, 0, -1):
+		if FileAccess.file_exists(corrupt_backup_path(path, n)):
+			DirAccess.rename_absolute(g.call(corrupt_backup_path(path, n)), g.call(corrupt_backup_path(path, n + 1)))
+	var backup := corrupt_backup_path(path)
+	if DirAccess.rename_absolute(g.call(path), g.call(backup)) == OK or DirAccess.copy_absolute(g.call(path), g.call(backup)) == OK:
+		corrupt_backup = backup
+	else:
+		saving_enabled = false
+
+
+## Finishes or cleans up an interrupted atomic save (see _write_atomic): a leftover `<save>.tmp` next
+## to an existing save is an unfinished write and is deleted; with no save at all (a crash between
+## removing and renaming on platforms where rename can't replace) a temp that passes the checks is
+## the newest save and becomes it.
+func _recover_temp_save(path: String) -> void:
+	var temp := path + TEMP_SUFFIX
+	if not FileAccess.file_exists(temp):
+		return
+	var g_temp := ProjectSettings.globalize_path(temp)
+	var file := _load_checked(temp) if not FileAccess.file_exists(path) else null
+	if file != null and _is_this_epoch(file):
+		DirAccess.rename_absolute(g_temp, ProjectSettings.globalize_path(path))
+	else:
+		DirAccess.remove_absolute(g_temp)
 
 ## Takes everything from a save (the save file or a loaded save code).
 func _read(file: ConfigFile) -> void:
@@ -432,7 +505,9 @@ func _read(file: ConfigFile) -> void:
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
 			if file.has_section_key("records", "level_%d" % key):
-				best_times[key] = _float(file, "records", "level_%d" % key, 0.0)
+				var best := _float(file, "records", "level_%d" % key, 0.0)
+				if best >= MIN_RECORD:  # a 0 s / negative record (hand-made) could never be beaten (S4)
+					best_times[key] = best
 	coins_found = {}
 	for level in range(1, Levels.COUNT + 1):
 		var found: Array = []
@@ -448,8 +523,7 @@ func _read(file: ConfigFile) -> void:
 			upgrades[upgrade.id] = level
 	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
-	for action: String in DEFAULT_KEYS:
-		bindings[action] = _int(file, "controls", action, DEFAULT_KEYS[action])
+	_read_bindings(file)
 	_read_wallet(file)
 	_read_maps(file)
 	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
@@ -491,6 +565,32 @@ func _migrate_hard_times() -> void:
 		best_times.erase(level + HARD_RECORDS)
 
 
+## The shortest best time kept (S4): a record of 0 s, a negative one or 1e-9 (hand-made saves) could
+## never be beaten; anything a real frame-stepped run can set (1/60 s and up) is kept.
+const MIN_RECORD := 0.001
+
+
+## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
+## another action falls back to that action's default; if that leaves two actions on one key, every
+## binding goes back to the defaults (the CONTROLS page can change them again).
+func _read_bindings(file: ConfigFile) -> void:
+	var used := {}
+	for action: String in DEFAULT_KEYS:
+		var key := _int(file, "controls", action, DEFAULT_KEYS[action])
+		if key <= 0 or key > KEY_MAX_CODE or used.has(key):
+			key = DEFAULT_KEYS[action]
+		if used.has(key):
+			bindings = DEFAULT_KEYS.duplicate()
+			return
+		used[key] = true
+		bindings[action] = key
+	return
+
+
+## Largest physical keycode accepted from a save (Godot keycodes stay below KEY_SPECIAL | 0xFF...).
+const KEY_MAX_CODE := (1 << 23) - 1
+
+
 ## Tickets, medals and hat-wheel counters. Every key is optional: a save from before them gets
 ## zeros. The ticket balance sits under the old [wallet] keys "globs" / "globs_lifetime" (the old
 ## clears_paid / hard_clears_paid / retro-grant keys are ignored: tickets now come only from the
@@ -501,6 +601,7 @@ func _read_wallet(file: ConfigFile) -> void:
 	tickets_lifetime = clampi(_int(file, "wallet", "globs_lifetime", tickets), 0, 100 * TICKETS_MAX)
 	random_pay_day = maxi(_int(file, "wallet", "random_day", 0), 0)
 	random_paid = clampi(_int(file, "wallet", "random_paid", 0), 0, RANDOM_PAID_PER_DAY)
+	_check_pay_day()
 	random_paid_seeds.assign(_ints(file.get_value("wallet", "paid_seeds", [])).slice(-PAID_SEEDS_MAX))
 	spins = clampi(_int(file, "hats", "spins", 0), 0, SPINS_MAX)
 	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
@@ -598,10 +699,66 @@ static func _ints(v: Variant) -> Array[int]:
 	return out
 
 
-func save_progress() -> void:
+## Writes the save (if saving is on). Returns false if it couldn't be written: the old file is then
+## left exactly as it was, the progress stays in memory and the write is retried later
+## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
+func save_progress() -> bool:
 	if not saving_enabled:
+		return true
+	var ok := write_atomic(save_path, _write().encode_to_text())
+	save_failed = not ok
+	if not ok:
+		_schedule_save_retry()
+	else:
+		_retry_delay = SAVE_RETRY_FIRST
+	return ok
+
+
+const TEMP_SUFFIX := ".tmp"
+const SAVE_RETRY_FIRST := 5.0
+const SAVE_RETRY_MAX := 60.0
+## True while the last save attempt failed (disk full, read-only folder, storage blocked...).
+var save_failed := false
+var _retry_pending := false
+var _retry_delay := SAVE_RETRY_FIRST
+
+
+func _schedule_save_retry() -> void:
+	if _retry_pending or not is_inside_tree():
 		return
-	_write().save(save_path)
+	_retry_pending = true
+	get_tree().create_timer(_retry_delay, true).timeout.connect(_retry_save)
+	_retry_delay = minf(_retry_delay * 2.0, SAVE_RETRY_MAX)
+
+
+func _retry_save() -> void:
+	_retry_pending = false
+	if save_failed:
+		save_progress()
+
+
+## Writes `text` to `path` so the file is always either the old save or the complete new one: the
+## text goes to `path.tmp`, is read back and compared (a short write on a full disk / quota is caught
+## even when the OS reported success), and only then renamed over `path` (atomic on macOS, Linux and
+## the web's in-memory file system, which Godot syncs to IndexedDB on the next frame; on Windows Godot
+## removes then renames, and _recover_temp_save handles a crash in between). On any failure the temp
+## file is removed, `path` is untouched and false is returned.
+static func write_atomic(path: String, text: String) -> bool:
+	var bytes := text.to_utf8_buffer()
+	var temp := path + TEMP_SUFFIX
+	var g_temp := ProjectSettings.globalize_path(temp)
+	var f := FileAccess.open(temp, FileAccess.WRITE)
+	if f == null:
+		return false
+	var stored := f.store_buffer(bytes)
+	f.close()
+	if not stored or FileAccess.get_file_as_bytes(temp) != bytes:
+		DirAccess.remove_absolute(g_temp)
+		return false
+	if DirAccess.rename_absolute(g_temp, ProjectSettings.globalize_path(path)) != OK:
+		DirAccess.remove_absolute(g_temp)
+		return false
+	return true
 
 
 ## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
@@ -687,12 +844,19 @@ static func is_old_code(code: String) -> bool:
 
 ## True if a save (file or code) was written by this release epoch.
 static func _is_this_epoch(file: ConfigFile) -> bool:
-	var epoch: Variant = file.get_value("meta", "epoch", null)
+	if not file.has_section_key("meta", "epoch"):
+		return false  # (get_value with a null default logs an engine error for a missing key, S8)
+	var epoch: Variant = file.get_value("meta", "epoch")
 	return typeof(epoch) == TYPE_INT and epoch == RELEASE_EPOCH
 
 
+## A pasted code without the whitespace, invisible characters and wrapping a chat app or web page
+## may add: spaces, tabs, line breaks, non-breaking / zero-width spaces, a BOM, quotes or backticks
+## round it (a markdown code fence) and a trailing period. None of these can be part of a code.
 static func _clean_code(code: String) -> String:
-	return code.strip_edges().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+	for junk in [" ", "\n", "\r", "\t", "\u00a0", "\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "`", "\"", "\u201c", "\u201d", "'"]:
+		code = code.replace(junk, "")
+	return code.trim_suffix(".")
 
 
 static var _BASE64 := RegEx.create_from_string("^[A-Za-z0-9+/]+={0,2}$")
@@ -705,9 +869,11 @@ static func _decode_code(body: String) -> ConfigFile:
 	var packed := Marshalls.base64_to_raw(body)
 	if packed.is_empty():
 		return null
-	var text := packed.decompress_dynamic(1 << 20, FileAccess.COMPRESSION_GZIP).get_string_from_utf8()
-	var file := ConfigFile.new()
-	if text == "" or file.parse(text) != OK or not file.has_section("progress"):
+	var text := SaveText.gunzip(packed)  # bounded: never decompress_dynamic (it hangs on trailing bytes, S10)
+	if text.is_empty():
+		return null
+	var file := SaveText.parse(text)  # allow-list first: a code is data, never code (S1, S11)
+	if file == null or not file.has_section("progress"):
 		return null
 	return file
 
@@ -845,6 +1011,7 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 	randoms_won += 1
 	var paid := 0
 	if not assisted:
+		_check_pay_day()
 		if utc_day() > random_pay_day:  # a new day: the cap starts over (never when the clock went back)
 			random_pay_day = utc_day()
 			random_paid = 0
@@ -886,6 +1053,18 @@ func utc_day() -> int:
 	return day_override if day_override >= 0 else int(Time.get_unix_time_from_system() / 86400.0)
 
 
+## How far after today a stored pay day may be before it counts as today (time zones, a clock
+## that was a day off). The cap is forward-only (a clock moved back never resets it), but a day further
+## ahead than this comes from a wrong (future) clock or a hand-made save and would lock the daily
+## payouts until the real date caught up (years): it is treated as today, keeping today's count.
+const PAY_DAY_AHEAD := 2
+
+
+func _check_pay_day() -> void:
+	if random_pay_day > utc_day() + PAY_DAY_AHEAD:
+		random_pay_day = utc_day()
+
+
 ## What a randomizer win on `attempt` would pay right now (see random_payout).
 func random_tickets_due(attempt := 1, seed_value := 0) -> int:
 	return random_payout(attempt, seed_value).tickets
@@ -896,6 +1075,7 @@ func random_tickets_due(attempt := 1, seed_value := 0) -> int:
 ## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
 ## or "slime" (no MORE SLIME bought: 1; never in dev mode, where everything is unlocked). Assisted / dev-toggled runs are the caller's (they pay 0).
 func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
+	_check_pay_day()
 	var table := tickets_for_attempt(attempt)
 	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
 	if not open:
@@ -911,6 +1091,7 @@ func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
 
 ## True when `seed_value` already paid a win on the current UTC day.
 func seed_paid_today(seed_value: int) -> bool:
+	_check_pay_day()
 	return seed_value != 0 and utc_day() <= random_pay_day and seed_value in random_paid_seeds
 
 
@@ -1080,6 +1261,9 @@ func upgrade_level(id: String) -> int:
 
 ## Puts coins into an upgrade (one level). Returns false if it's maxed or too expensive.
 func buy_upgrade(id: String) -> bool:
+	var upgrade := Upgrades.get_upgrade(id)
+	if upgrade.is_empty() or (upgrade.get("dev", false) and not dev_tools):
+		return false  # unknown, or the dev-only wall power outside dev mode (E3)
 	var level := upgrade_level(id)
 	if level >= Upgrades.MAX_LEVEL or coins() < Upgrades.cost(level):
 		return false
@@ -1210,6 +1394,8 @@ func best_time(level: int) -> float:
 ## Saves `seconds` as the level's record if it's the first time or faster. Returns true only when
 ## an existing record was beaten (a first clear just sets the record).
 func record_time(level: int, seconds: float, save := true) -> bool:
+	if not is_finite(seconds) or seconds < MIN_RECORD:
+		return false  # no real clear is that fast (and a save could never read it back: _read drops it)
 	var previous := best_time(level)
 	if previous >= 0.0 and seconds >= previous:
 		return false
@@ -1346,6 +1532,8 @@ func apply_volume() -> void:
 ## Binds `keycode` as the primary key for `action`. If another action used that key, the two
 ## swap keys so no key is ever bound twice.
 func set_binding(action: String, keycode: int) -> void:
+	if keycode <= 0 or keycode > KEY_MAX_CODE or not action in DEFAULT_KEYS:
+		return  # (not a key; a save could never read it back)
 	for other: String in bindings:
 		if other != action and bindings[other] == keycode:
 			bindings[other] = bindings[action]

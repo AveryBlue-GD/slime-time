@@ -391,14 +391,15 @@ static func seed_code(maze_seed: int, slime_level: int) -> String:
 ## level); anything that isn't a code gives Vector2i.ZERO.
 static func parse_seed_code(text: String) -> Vector2i:
 	var parts := text.strip_edges().split("-")
-	if parts.size() < 1 or parts.size() > 2 or not parts[0].is_valid_int():
+	# digits only, and short enough that to_int can't overflow (and log an engine error)
+	if parts.size() < 1 or parts.size() > 2 or parts[0].length() > 10 or not parts[0].is_valid_int() or parts[0].begins_with("+"):
 		return Vector2i.ZERO
 	var value := parts[0].to_int()
 	if value < 1 or value > 2_000_000_000:
 		return Vector2i.ZERO
 	var level := -1
 	if parts.size() == 2:
-		if not parts[1].is_valid_int() or parts[1].begins_with("+"):
+		if parts[1].length() > 3 or not parts[1].is_valid_int() or parts[1].begins_with("+"):
 			return Vector2i.ZERO
 		level = parts[1].to_int()
 		if level < 0 or level > Upgrades.MAX_LEVEL:

@@ -503,11 +503,8 @@ func _seeds() -> void:
 		var got: int = PauseMenuScript.parse_seed(text)
 		if got != parse[text]:
 			bad.append("'%s' -> %d (want %d)" % [text, got, parse[text]])
-	_check(bad.is_empty() or bad == ["'+5' -> 5 (want 0)"], "typed seed edge values parse as expected %s" % [bad])
-	if not bad.is_empty():
-		print("  KNOWN E1 '+5' is accepted as seed 5 while '5-+1' is refused (Levels.parse_seed_code only rejects '+' on the level part): harmless")
-	print("  KNOWN E2 typing a 20-digit number (99999999999999999999) logs an engine ERROR 'Cannot represent ... as a 64-bit signed integer' (parse_seed_code -> to_int); refused correctly, console noise only (%d errors)" % (errlog.count - errs))
-	errlog.count = errs
+	_check(bad.is_empty(), "typed seed edge values parse as expected (E1: '+5' refused like '5-+1') %s" % [bad])
+	_check(errlog.count == errs, "E2: a 20-digit seed is refused without an engine error (%d errors)" % (errlog.count - errs))
 	# edge seeds build completable mazes at every MORE SLIME level; replay is identical
 	var mazes := {}
 	for seed_value in [1, 2, 3, 1999999999, 2000000000, 123456789]:
@@ -543,12 +540,14 @@ func _economy() -> void:
 	_check(progress.buy_upgrade("slime") and progress.coins() == 0, "level 2 costs 2: bought with exactly enough")
 	_check(not progress.buy_upgrade("slime") and progress.upgrade_level("slime") == 2 and progress.coins() == 0, "one short (cost 3, have 0): refused, nothing changes")
 	progress.coins_found = {1: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]}
+	var coins_before: int = progress.coins()
 	var bought_power: bool = progress.buy_upgrade("power")
 	var bought_nope: bool = progress.buy_upgrade("nope")
-	if bought_power or bought_nope:
-		print("  KNOWN E3 buy_upgrade accepts the dev-only 'power' (%s) and the unknown id 'nope' (%s) outside dev mode: coins are spent on a level upgrade_level() then reports as 0 / that no screen shows (not reachable from the UI; progress.gd:1082)" % [bought_power, bought_nope])
-		progress.upgrades.erase("power")
-		progress.upgrades.erase("nope")
+	_check(not bought_power and not bought_nope and progress.coins() == coins_before, "E3: the dev-only 'power' and an unknown id can't be bought outside dev mode")
+	progress.dev_tools = true
+	_check(progress.buy_upgrade("power"), "...the dev-only 'power' is still bought in dev mode")
+	progress.dev_tools = false
+	progress.upgrades.erase("power")
 	progress.coins_found = {1: ["a", "b"], 2: ["c"]}
 	var spam := 0
 	for i in 50:

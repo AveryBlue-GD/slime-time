@@ -8,6 +8,8 @@ extends SceneTree
 ##                 (SIGSEGV, exit 139) while the paste is only being checked.
 ## Run: ./tools/godot.sh --path . --headless -s res://tests/qa_poc_code_injection.gd -- --mode=object|nest
 ## Harmless payload: object mode only sets Engine meta "qa_pwned"; nothing is touched on disk.
+## FIXED (scripts/save_text.gd allow-list before ConfigFile.parse): both modes now print "RESULT: not executed" and
+## exit normally; test_save_robust.gd (_injection, _limits) checks the same inputs on every run.
 
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 

@@ -69,7 +69,8 @@ func _initialize() -> void:
 	_check(progress.random_tickets_due() == 0 and progress.random_pay_day == 20010, "five paid wins use up the day's cap")
 	progress.day_override = 20005  # clock set back
 	_check(progress.random_tickets_due() == 0 and progress.complete_random() == 0, "an earlier day (clock moved back) keeps the cap")
-	_check(progress.random_pay_day == 20010 and progress.random_paid == 5, "...and keeps the stored day and count")
+	# (5 days back is more than Progress.PAY_DAY_AHEAD: the stored day counts as today, with today's count kept)
+	_check(progress.random_pay_day == 20005 and progress.random_paid == 5, "...and keeps the count (a stored day far ahead counts as today)")
 	progress.day_override = 20011
 	_check(progress.random_tickets_due() == 5 and progress.complete_random() == 5 and progress.random_pay_day == 20011 and progress.random_paid == 1, "a later day starts the cap over")
 	progress.day_override = 20012

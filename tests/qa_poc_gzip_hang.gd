@@ -6,7 +6,9 @@ extends SceneTree
 ## typed after it, a hostile code) makes decompress_dynamic loop forever at 100% CPU: the game freezes
 ## while the text box is only being checked (is_old_code runs on every paste / LOAD).
 ## DEFLATE hangs the same way; ZSTD and the fixed-size decompress(isize, GZIP) do not.
-## Run (it will not finish, kill it): ./tools/godot.sh --path . --headless -s res://tests/qa_poc_gzip_hang.gd -- --extra=1
+## Run: ./tools/godot.sh --path . --headless -s res://tests/qa_poc_gzip_hang.gd -- --extra=1
+## FIXED (SaveText.gunzip: ISIZE-bounded single-shot decompress): returns at once for any --extra; before the fix it
+## never finished. test_save_robust.gd (_gzip) checks extra 0..8 on every run.
 ## --extra=0 shows the well-formed code reading fine.
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 
