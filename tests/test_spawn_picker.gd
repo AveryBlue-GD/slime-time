@@ -81,7 +81,10 @@ func _initialize() -> void:
 			var maze := Levels.story_maze(level, hard)
 			var reach := MazeGenerator.distances_from(maze, maze.start)
 			story_ok = story_ok and MazeGenerator.is_completable(maze) and reach.has(maze.goal)
-			story_ok = story_ok and maze.goal_steps * 100 >= SpawnPicker.MIN_ROUTE_PCT * maze.diameter
+			if hard:  # hard levels ask for an exact route (Levels.hard_route_cells), like the randomizer
+				story_ok = story_ok and maze.goal_steps == Levels.get_config(level, true).route
+			else:
+				story_ok = story_ok and maze.goal_steps * 100 >= SpawnPicker.MIN_ROUTE_PCT * maze.diameter
 			story_ok = story_ok and maze.spawn_kind == Levels.get_config(level, hard).spawn
 			if not hard:
 				kinds[maze.spawn_kind] += 1
@@ -89,7 +92,7 @@ func _initialize() -> void:
 					story_ok = story_ok and reach.has(cell) and cell != maze.start and cell != maze.goal
 				if maze.spawn_kind == SpawnPicker.Kind.ANY and level > 1:
 					story_ok = story_ok and SpawnPicker.edge_depth(maze.start, maze.cells) >= 3  # visibly interior
-	_check(story_ok, "story levels: solvable, chalice and coins reachable, route >= %d%%, the configured class" % SpawnPicker.MIN_ROUTE_PCT)
+	_check(story_ok, "story levels: solvable, chalice and coins reachable, route >= %d%% (hard: its exact route), the configured class" % SpawnPicker.MIN_ROUTE_PCT)
 	_check(kinds[0] >= 3 and kinds[1] >= 3 and kinds[2] >= 3, "the 10 levels mix edge / near-edge / interior starts %s" % [kinds])
 
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)

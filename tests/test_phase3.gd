@@ -53,8 +53,8 @@ func _initialize() -> void:
 	_check(stats[-1].dead_ends > stats[0].dead_ends * 3, "dead ends grow (%d -> %d)" % [stats[0].dead_ends, stats[-1].dead_ends])
 	_check(stats[-1].broken > stats[0].broken * 3, "broken walls grow (%.0f%% -> %.0f%%)" % [stats[0].broken * 100.0, stats[-1].broken * 100.0])
 
-	# Hard mode: different mazes, every one beatable by a perfect run with no upgrades, and every
-	# one needing 85%+ of the slime.
+	# Hard mode: different, bigger mazes, every one beatable by a perfect walking run with no upgrades
+	# under par (gold), using about the level's planned share (1 / Levels.HARD_ALLOWANCE) of the meter.
 	var settings: Node = root.get_node("Progress")
 	settings.hard_mode = true
 	for level in range(1, Levels.COUNT + 1):
@@ -65,8 +65,12 @@ func _initialize() -> void:
 				break
 			await physics_frame
 		var used: float = 100.0 - hard.slime_remaining
-		_check(hard.won and used >= 85.0,
-			"hard level %2d: a perfect run wins using %.1f%% of the slime" % [level, used])
+		var hard_target: float = Levels.get_config(level, true).target * 100.0
+		_check(hard.won and absf(used - hard_target) < 4.0,
+			"hard level %2d: %dx%d, a perfect walking run wins using %.1f%% of the slime (planned %.1f%%)"
+			% [level, hard.maze.cells.x, hard.maze.cells.y, used, hard_target])
+		_check(hard.won and hard.run_time <= hard.par_time, "hard level %2d: walking beats par (%.1f s, par %.1f s)"
+			% [level, hard.run_time, hard.par_time])
 		hard.free()
 	settings.hard_mode = false
 

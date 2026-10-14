@@ -210,15 +210,44 @@ static func cell_at_distance(maze: Dictionary, from: Vector2i, steps: int, rng: 
 	return ring[rng.randi_range(0, ring.size() - 1)]
 
 
+## Hard story levels (MazeGenerator.generate_hard_level): like pick with a `route`, but the start must
+## be a cell whose FARTHEST cell is exactly `route` away, and that farthest cell (ties: first in
+## row-major order) is the chalice, as on every other story level (so heading away from the start
+## still finds it, and it sits at the end of a branch). Only the asked class is scanned (seeded
+## shuffle as in pick); if none of its cells has exactly that reach, falls back to pick(..., route)
+## (same class, the chalice a seeded cell exactly `route` away). Adds goal_farthest to the result.
+static func pick_farthest_at(maze: Dictionary, pick_seed: int, kind: int, route: int) -> Dictionary:
+	var rng := _rng(pick_seed)
+	var roll := rng.randi_range(0, 99)
+	var rolled := kind if kind >= 0 and kind <= Kind.ANY else _kind_for_roll(roll)
+	var reach := _Reach.new(maze)
+	var options := cells_of(rolled, maze.cells)
+	for j in range(options.size() - 1, 0, -1):  # seeded Fisher-Yates, integer draws only
+		var swap := rng.randi_range(0, j)
+		var tmp := options[j]
+		options[j] = options[swap]
+		options[swap] = tmp
+	for cell in options:
+		if reach.at_least(cell, route) and not reach.at_least(cell, route + 1):
+			var far: Dictionary = farthest(maze, cell)
+			return {start = cell, goal = far.cell, steps = far.steps, kind = rolled, rolled = rolled, diameter = reach.longest, goal_farthest = true}
+	var fallback := pick(maze, pick_seed, kind, route)
+	fallback.goal_farthest = false
+	return fallback
+
+
 ## Puts a pick into the maze dictionary (start, goal, goal_steps, spawn_kind, spawn_rolled, diameter).
-static func apply(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> Dictionary:
-	var result := pick(maze, pick_seed, kind, route)
+## `farthest_exact` (hard story levels, with a `route`): pick_farthest_at instead of pick.
+static func apply(maze: Dictionary, pick_seed: int, kind := -1, route := -1, farthest_exact := false) -> Dictionary:
+	var result := pick_farthest_at(maze, pick_seed, kind, route) if farthest_exact and route > 0 else pick(maze, pick_seed, kind, route)
 	maze.start = result.start
 	maze.goal = result.goal
 	maze.goal_steps = result.steps
 	maze.spawn_kind = result.kind
 	maze.spawn_rolled = result.rolled
 	maze.diameter = result.diameter
+	if result.has("goal_farthest"):
+		maze.goal_farthest = result.goal_farthest
 	return maze
 
 

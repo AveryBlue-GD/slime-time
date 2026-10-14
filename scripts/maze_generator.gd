@@ -175,6 +175,53 @@ static func generate_random(config: Variant, maze_seed := 0) -> Dictionary:
 ## dead end so the coin dead ends survive), then a fixed spawn from SpawnPicker with the level's
 ## class (`spawn`) and seed, the chalice the farthest cell from it.
 static func generate_level(config: Dictionary) -> Dictionary:
+	return SpawnPicker.apply(_grow_level(config), int(config.seed), int(config.get("spawn", -1)))
+
+
+## A hard story level's maze (Levels.get_config(level, true), docs/level-design.md section 7): the
+## growing tree of generate_level, built at `cells` and grown (+1/8 per side, at least 2 x 1) up to
+## `max_cells` until its longest route is at least HARD_ROOM_PCT % of `route`; at the max size up to
+## MAX_SIZE_TRIES re-seeded trees are tried and the longest kept. Then SpawnPicker.pick_farthest_at
+## picks the start in the level's class (pick seed = the level's seed) whose farthest cell is exactly
+## `route` cells away, and puts the chalice on that farthest cell (like every story level).
+## Deterministic: same config, same maze. Adds `maze_seed` (the tree's seed) and `route_target`.
+const HARD_ROOM_PCT := 115
+
+
+static func generate_hard_level(config: Dictionary) -> Dictionary:
+	var route: int = config.route
+	var cells: Vector2i = config.cells
+	var top: Vector2i = config.get("max_cells", cells)
+	var tree := config.duplicate()
+	var maze := {}
+	var longest := -1
+	var tries := 0
+	while true:
+		tree.cells = cells
+		var attempt := _grow_level(tree)
+		var d := SpawnPicker.diameter(attempt)
+		if d > longest:
+			maze = attempt
+			longest = d
+			maze.maze_seed = tree.seed
+		if d * 100 >= route * HARD_ROOM_PCT:
+			maze = attempt
+			maze.maze_seed = tree.seed
+			break
+		if cells != top:
+			cells = Vector2i(mini(cells.x + maxi(2, cells.x / 8), top.x), mini(cells.y + maxi(1, cells.y / 8), top.y))
+		else:
+			tries += 1
+			if tries >= MAX_SIZE_TRIES:
+				break
+			tree.seed = (int(config.seed) * 31 + tries * 7919) % 2147483647
+	SpawnPicker.apply(maze, int(config.seed), int(config.get("spawn", -1)), route, true)
+	maze.route_target = route
+	return maze
+
+
+## generate_level's growing tree + loops, before the spawn pick (start = the corner placeholder).
+static func _grow_level(config: Dictionary) -> Dictionary:
 	var cells: Vector2i = config.cells
 	var maze_seed: int = config.seed
 	var branching: float = config.get("branching", 0.0)
@@ -212,7 +259,7 @@ static func generate_level(config: Dictionary) -> Dictionary:
 		active.append(chosen)
 	var maze := {size = size, cells = cells, walls = walls, start = Vector2i.ZERO}
 	_add_loops(maze, rng, int(config.get("loops", 0)))
-	return SpawnPicker.apply(maze, maze_seed, int(config.get("spawn", -1)))
+	return maze
 
 
 ## Shortcut gaps must join cells at least this far apart along the passages.

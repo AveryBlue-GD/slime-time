@@ -35,14 +35,38 @@ const DATA := [
 const LEGACY_STEPS: Array[int] = [22, 30, 38, 46, 54, 62, 70, 80, 90, 100]
 const LEGACY_HARD_STEPS: Array[int] = [25, 31, 39, 48, 57, 64, 72, 81, 92, 101]
 
-## Hard mode plays different mazes (same sizes, their own seeds) on a much tighter budget: a
-## perfect run (even cutting every corner) always needs 85% or more of the slime, and upgrades
-## are switched off.
+## ---------------------------------------------------------------- hard mode (story)
+## Hard mode plays its own mazes (own seeds, no loops) on a tight budget, without upgrades or coins.
+## Since the 2026-10-14 rebalance (docs/level-design.md section 7) each hard level is built from
+## three per-level tables, in this order:
+## 1. METER: hard_meter_tiles(n) = the v4 hard meter (HARD_V4_STEPS / HARD_V4_TARGETS, the meter
+##    the old hard mazes had) x HARD_SLIME_MULT[n]. **Edit HARD_SLIME_MULT to change how much more
+##    slime hard mode gives**: the default is the progressive +10% per level (L1 x1.1 ... L10 x2.0);
+##    a flat +10% is ten 1.1s, today's old meters ten 1.0s. Everything else follows from it.
+## 2. ROUTE: hard_route_cells(n) = the meter / HARD_ALLOWANCE[n] (the exploration allowance, meter /
+##    shortest route; it grows with the level so the big late mazes don't demand a perfect route).
+## 3. SIZE: the maze starts at the level's normal size scaled by sqrt(route / v4 route) per side and
+##    MazeGenerator.generate_hard_level grows it until its longest route has room for the route
+##    (at most HARD_MAX_CELLS); the chalice sits exactly that route from the start.
 const HARD_SEEDS: Array[int] = [51089, 52223, 53226, 54019, 55041, 56205, 57062, 58160, 59062, 60900]
-## Hard mazes' own shape: branching and run per level (searched like DATA, no loops).
-const HARD_BRANCHING: Array[float] = [0.05, 0.06, 0.05, 0.20, 0.15, 0.18, 0.11, 0.24, 0.27, 0.30]
-const HARD_RUN: Array[float] = [0.35, 0.45, 0.40, 0.45, 0.30, 0.45, 0.40, 0.45, 0.30, 0.45]
-const HARD_TARGETS: Array[float] = [0.89, 0.90, 0.91, 0.91, 0.92, 0.93, 0.95, 0.96, 0.98, 1.0]
+## THE knob: each hard level's slime meter as a multiple of its v4 meter (index 0 = level 1).
+const HARD_SLIME_MULT: Array[float] = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+## Meter / shortest route per hard level (1 / the share of the meter a perfect run uses).
+const HARD_ALLOWANCE: Array[float] = [1.12, 1.13, 1.14, 1.15, 1.17, 1.19, 1.21, 1.23, 1.26, 1.28]
+## Hard mazes' own shape: branching and run per level (no loops). Retuned with the rebalance so every
+## level has more dead ends than its v4 maze and room for its longer route within HARD_MAX_CELLS
+## (very high branching shortens a tree's longest route: L8-L10 at the old 0.24-0.30 could not hold
+## a 117-149 cell route in 36x20). Each level also has a start of its class whose farthest cell is
+## exactly the route (the chalice there, SpawnPicker.pick_farthest_at; test_hard_rebalance checks it).
+const HARD_BRANCHING: Array[float] = [0.10, 0.15, 0.15, 0.20, 0.15, 0.18, 0.13, 0.15, 0.08, 0.18]
+const HARD_RUN: Array[float] = [0.30, 0.45, 0.40, 0.45, 0.30, 0.45, 0.45, 0.45, 0.30, 0.40]
+## The largest hard maze (cells), like the randomizer's RANDOM_MAX_CELLS (web build performance).
+const HARD_MAX_CELLS := Vector2i(36, 20)
+## The v4 hard mazes (2026-10-13 .. 2026-10-14, save version 4): their start-to-chalice routes
+## (cells) and the share of the meter a perfect run used. They define the base meter
+## (hard_meter_tiles) and the par old hard medals/times were set against (v4_hard_par).
+const HARD_V4_STEPS: Array[int] = [25, 32, 39, 48, 57, 63, 71, 77, 93, 96]
+const HARD_V4_TARGETS: Array[float] = [0.89, 0.90, 0.91, 0.91, 0.92, 0.93, 0.95, 0.96, 0.98, 1.0]
 const RANDOM_HARD_TARGET := 0.9
 
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
@@ -78,13 +102,52 @@ const RANDOM_TILE_LEVEL := 6
 static func get_config(level: int, hard := false) -> Dictionary:
 	var config: Dictionary = DATA[clampi(level, 1, COUNT) - 1]
 	if hard:
+		var i := clampi(level, 1, COUNT) - 1
 		config = config.duplicate()
-		config.seed = HARD_SEEDS[clampi(level, 1, COUNT) - 1]
-		config.target = HARD_TARGETS[clampi(level, 1, COUNT) - 1]
-		config.branching = HARD_BRANCHING[clampi(level, 1, COUNT) - 1]
-		config.run = HARD_RUN[clampi(level, 1, COUNT) - 1]
+		config.seed = HARD_SEEDS[i]
+		config.branching = HARD_BRANCHING[i]
+		config.run = HARD_RUN[i]
 		config.loops = 0  # hard mode stays a tight single-route maze
+		config.route = hard_route_cells(level)
+		config.cells = hard_start_cells(level)
+		config.max_cells = HARD_MAX_CELLS
+		config.meter_tiles = hard_meter_tiles(level)
+		# The share of the meter a perfect glide of the route uses (= 1 / the real allowance).
+		config.target = (config.route * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE) / config.meter_tiles
 	return config
+
+
+## A hard level's full slime meter in tiles (no upgrades in hard mode): the v4 meter x HARD_SLIME_MULT.
+static func hard_meter_tiles(level: int) -> float:
+	var i := clampi(level, 1, COUNT) - 1
+	return v4_hard_route_tiles(level) / HARD_V4_TARGETS[i] * HARD_SLIME_MULT[i]
+
+
+## The v4 hard maze's start-to-chalice route in tiles (as the game measures it, short by the grab reach).
+static func v4_hard_route_tiles(level: int) -> float:
+	return HARD_V4_STEPS[clampi(level, 1, COUNT) - 1] * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE
+
+
+## A hard level's start-to-chalice route in cells: the meter / HARD_ALLOWANCE, rounded down (so the
+## allowance is never below the table's).
+static func hard_route_cells(level: int) -> int:
+	var tiles := hard_meter_tiles(level) / HARD_ALLOWANCE[clampi(level, 1, COUNT) - 1]
+	return maxi(RANDOM_MIN_ROUTE, floori((tiles + GRAB_REACH / TILE) / MazeGenerator.CELL_SPAN))
+
+
+## The size a hard maze starts from: the level's normal size scaled by sqrt(route / v4 route) per
+## side (area grows with the route), at most HARD_MAX_CELLS. generate_hard_level may grow it.
+static func hard_start_cells(level: int) -> Vector2i:
+	level = clampi(level, 1, COUNT)
+	var base: Vector2i = DATA[level - 1].cells
+	var k := sqrt(float(hard_route_cells(level)) / HARD_V4_STEPS[level - 1])
+	return Vector2i(clampi(roundi(base.x * k), base.x, HARD_MAX_CELLS.x), clampi(roundi(base.y * k), base.y, HARD_MAX_CELLS.y))
+
+
+## Par of a v4 hard maze (only to migrate hard medals from a version 4 save that has best times but
+## no [medals] section: those times were set on the v4 hard mazes).
+static func v4_hard_par(level: int) -> float:
+	return par_for_path(v4_hard_route_tiles(level))
 
 
 ## Par time (seconds) for a maze whose solution is `path_tiles` tiles: the path at the slime's BASE
@@ -123,8 +186,15 @@ static func legacy_par(level: int, hard := false) -> float:
 static func story_maze(level: int, hard := false) -> Dictionary:
 	var key := clampi(level, 1, COUNT) + (100 if hard else 0)
 	if not _maze_cache.has(key):
-		_maze_cache[key] = MazeGenerator.generate_level(get_config(level, hard))
+		_maze_cache[key] = build_story_maze(level, hard)
 	return _maze_cache[key].duplicate(true)
+
+
+## Builds a story level's maze from scratch (uncached; story_maze caches it): normal levels with
+## MazeGenerator.generate_level, hard levels with generate_hard_level (sized for their route).
+static func build_story_maze(level: int, hard := false) -> Dictionary:
+	var config := get_config(level, hard)
+	return MazeGenerator.generate_hard_level(config) if hard else MazeGenerator.generate_level(config)
 
 
 ## Story mazes are built from constants only, so each is built once (`story_maze` hands out deep

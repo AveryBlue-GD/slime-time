@@ -39,7 +39,10 @@ static func budget(meter: float) -> float:
 static func level_meter_tiles(level: int, hard: bool, slime_level: int) -> float:
 	var maze := Levels.story_maze(level, hard)
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - GRAB_TILES
-	var cost: float = Levels.get_config(level, hard).target * 100.0 / path_tiles
+	var config := Levels.get_config(level, hard)
+	var cost: float = config.target * 100.0 / path_tiles
+	if config.has("meter_tiles"):  # hard levels: the meter is set directly, as in Game._ready
+		cost = 100.0 / config.meter_tiles
 	if not hard:
 		cost /= Upgrades.slime_factor(slime_level)
 	return meter_tiles(cost)

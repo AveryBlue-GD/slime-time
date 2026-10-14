@@ -9,7 +9,10 @@ extends SceneTree
 ## randomizer mazes stopped shrinking with the seed's usage u (sized for the 95% route of the MORE
 ## SLIME level instead): the MORE SLIME 0 / 5 / 10 lines changed (except seeds that were already at
 ## the max size); the story lines and the hard-mode lines (fixed u, so the same size) are
-## byte-identical to before. Also checks every randomizer build is solvable, its ticket exactly the
+## byte-identical to before. Rewritten on purpose again on 2026-10-14 for the hard-mode rebalance
+## (Levels.HARD_SLIME_MULT, docs/level-design.md section 7): only the 10 "story N hard" lines changed
+## (bigger hard mazes, new routes and pars; built via Levels.build_story_maze); every story normal
+## line and all 8,000 randomizer lines (hard randomizer included) are byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
 ## asked route (>= RANDOM_MIN_ROUTE) from the start, and its size at least the level's floor.
 ##   ./tools/godot.sh --path . --headless -s res://tests/test_maze_golden.gd -- --write-golden=/abs/path.txt
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maze_golden.gd
@@ -96,7 +99,7 @@ static func _sound(config: Dictionary, maze: Dictionary, slime_level: int, hard:
 
 
 static func _story_digest(level: int, hard: bool) -> String:
-	var maze := MazeGenerator.generate_level(Levels.get_config(level, hard))
+	var maze := Levels.build_story_maze(level, hard)
 	var depths := MazeGenerator.dead_end_depths(maze)
 	var depth_list := []
 	for y in maze.cells.y:

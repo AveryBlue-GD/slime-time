@@ -309,6 +309,10 @@ func _ready() -> void:
 	# perfect glide always uses `target` of the meter and the exploration allowance (meter / route =
 	# 1 / target) is the level's own, wherever the slime starts.
 	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	if config.has("meter_tiles"):
+		# Hard story levels: the meter is set directly (Levels.hard_meter_tiles = the v4 hard meter x
+		# HARD_SLIME_MULT) and the maze's route was built to fit it (same as target / route).
+		slime_cost_per_tile = 100.0 / config.meter_tiles
 	if is_random() and not hard_mode:
 		# The randomizer is the other way round: the player's meter is fixed (RANDOM_METER_TILES tiles,
 		# x MORE SLIME below) and the route was built to the seed's usage x that meter (Levels.random_config).

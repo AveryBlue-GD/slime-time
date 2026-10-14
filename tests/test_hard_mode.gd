@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Hard mode + one-time skin notice checks: hard mode has its own mazes, an 85%+ budget, no
+## Hard mode + one-time skin notice checks: hard mode has its own mazes, a 75-92% budget, no
 ## upgrades, no coins and its own records; explored areas that have fully dimmed turn back into
 ## unexplored fog (and relight when you return); the level select checkbox toggles and saves it;
 ## a new level's skin is equipped (with a notice) only the first time it loads.
@@ -41,16 +41,16 @@ func _initialize() -> void:
 
 	# --- Hard mode: its own mazes, a tight budget, no upgrades, no coins, its own records.
 	var normal := await _spawn(4)
-	var normal_cost: float = normal.slime_cost_per_tile
 	var normal_walls: PackedByteArray = normal.maze.walls
 	normal.free()
 	progress.set_hard_mode(true)
 	progress.upgrades = {"slime": 10, "speed": 10, "brightness": 10}
 	var hard := await _spawn(4)
 	_check(hard.maze.walls != normal_walls, "hard mode plays a different maze")
-	_check(Levels.HARD_TARGETS.min() >= 0.88, "every hard maze is budgeted so even a perfect run needs 85%+ of the slime")
-	_check(hard.slime_cost_per_tile > normal_cost and hard.light_reach == 0.0 and absf(hard.slime.max_speed - 72.0) < 0.01,
-		"upgrades are switched off in hard mode")
+	_check(hard.perfect_usage >= 0.75 and hard.perfect_usage <= 0.92, "the hard maze is budgeted tight: a perfect run needs %.0f%% of the slime" % (hard.perfect_usage * 100.0))
+	_check(is_equal_approx(hard.slime_cost_per_tile, 100.0 / Levels.hard_meter_tiles(4))
+		and hard.light_reach == 0.0 and absf(hard.slime.max_speed - 72.0) < 0.01,
+		"upgrades are switched off in hard mode (the meter is exactly Levels.hard_meter_tiles)")
 	_check(hard.coins.is_empty() and not hard.hud._coins_left_pod.visible, "no coins in hard mode")
 	hard.free()
 	progress.upgrades = {}
