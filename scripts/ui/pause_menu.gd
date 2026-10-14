@@ -153,6 +153,7 @@ func _submit_seed(text: String) -> void:
 		progress.random_level = code.y  # -1 (a plain number): the game uses the player's own level
 		progress.random_seed_fresh = false  # a typed seed pays at most 1 ticket
 	resume()
+	DevLog.route(get_tree(), "typed seed", get_parent())
 	get_tree().reload_current_scene()
 
 
@@ -164,10 +165,12 @@ static func parse_seed(text: String) -> int:
 
 func _restart() -> void:
 	resume()
+	DevLog.route(get_tree(), "pause RESTART", get_parent())
 	get_tree().reload_current_scene()
 
 
 func _quit() -> void:
+	DevLog.log_event(get_tree(), "quit to hub (pause)", get_parent())
 	resume()
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 

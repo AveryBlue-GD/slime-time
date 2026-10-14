@@ -55,7 +55,7 @@ func close() -> void:
 
 func _restart() -> void:
 	close()
-	game.retry()
+	game.retry("prompt RESTART")
 
 
 func _upgrades() -> void:

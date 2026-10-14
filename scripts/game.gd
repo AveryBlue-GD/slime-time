@@ -231,6 +231,7 @@ var attempt := 1
 var attempt_key := ""
 ## What the attempt pod shows for this run (-1 until it first shows).
 var _pod_offer := -1
+var _dev_pod_text := ""  # DevLog only
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
@@ -1191,6 +1192,8 @@ func _count_attempt() -> void:
 		return
 	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
 	attempt = progress.begin_random_attempt(attempt_key)
+	DevLog.log_event(get_tree(), "maze built (via %s)" % (DevLog.last_route if DevLog.last_route != "" else "fresh"), self)
+	DevLog.last_route = ""
 	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line attempt pod
 	_refresh_attempt_pod()
 
@@ -1228,6 +1231,9 @@ func _refresh_attempt_pod() -> void:
 	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
 	hud.set_attempt(attempt, offer, pop)
+	if hud.attempt_label.text != _dev_pod_text:
+		_dev_pod_text = hud.attempt_label.text
+		DevLog.log_event(get_tree(), "pod text changed", self)
 
 
 # ---------------------------------------------------------------- dev: wall power
@@ -1344,6 +1350,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		if progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, attempt)
+			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)
 			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
 			if paid > 0:
 				reward = {tickets = paid, attempt = attempt, cap = due.cap}
@@ -1463,19 +1470,22 @@ func _offer_retry() -> void:
 
 
 ## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).
-func retry() -> void:
+func retry(via := "dry-up RESTART") -> void:
+	DevLog.route(get_tree(), via, self)
 	get_tree().reload_current_scene()
 
 
 ## Tries again with the slime reserve: a bit more slime, but no medals, records or tickets.
 func retry_assisted() -> void:
 	if progress and progress.accept_assist(level):
+		DevLog.route(get_tree(), "ASSIST", self)
 		get_tree().reload_current_scene()
 	else:
 		retry()
 
 
 func go_to_upgrades() -> void:
+	DevLog.log_event(get_tree(), "to UPGRADES", self)
 	if progress:
 		progress.return_to_game = true
 	UIKit.go(get_tree(), UPGRADES_SCENE)
@@ -1494,12 +1504,14 @@ func _offer_next_steps() -> void:
 
 ## Back to the hub, in front of the station this run came from (the archway or the portal).
 func go_to_hub() -> void:
+	DevLog.log_event(get_tree(), "quit to hub (after win/dry-up)", self)
 	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if is_random() else "story")
 	UIKit.go(get_tree(), HUB_SCENE)
 
 
 ## Plays this same maze again (for a random maze, the same seed).
-func replay() -> void:
+func replay(via := "REPLAY MAZE") -> void:
+	DevLog.route(get_tree(), via, self)
 	if progress and not is_random():
 		progress.start_story(level)
 	get_tree().reload_current_scene()
@@ -1510,6 +1522,7 @@ func play_next() -> void:
 	if is_random():
 		if progress:
 			progress.new_random_maze()
+		DevLog.route(get_tree(), "NEW MAZE", self)
 		get_tree().reload_current_scene()
 	elif level >= Levels.COUNT:
 		if progress and not progress.dev_tools and not progress.has_seen_story(progress.STORY_FINALE):
@@ -1541,16 +1554,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu"):
 		get_viewport().set_input_as_handled()
 		pause_menu.open()
+		DevLog.log_event(get_tree(), "pause opened", self)
 	elif event.is_action_pressed("restart"):
 		get_viewport().set_input_as_handled()
 		if won:
-			replay()
+			replay("R")
 		elif finished:
-			retry()  # the dry-up buttons already offer the upgrades
+			retry("R")  # the dry-up buttons already offer the upgrades
 		elif progress and not hard_mode and progress.coins() > 0:
 			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
+			DevLog.log_event(get_tree(), "R prompt opened", self)
 		else:
-			retry()  # nothing to spend (and no upgrades on hard mode): restart at once
+			retry("R")  # nothing to spend (and no upgrades on hard mode): restart at once
 
 
 # ---------------------------------------------------------------- dev toggles

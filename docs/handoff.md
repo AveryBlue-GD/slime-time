@@ -261,3 +261,13 @@ pause by keys and by mouse, Esc after dry-up, dry-up RESTART, UPGRADES round tri
 attempts 1-6 x normal and dev launch, autopilot wins paying exactly the shown k with the result line,
 plus hub/NEW MAZE resets, typed seed, no MORE SLIME, daily cap, assist, dev toggles, stale-label fix.
 Shots `docs/polish-shots/attempts2_1..6.png` (dev launch, real pause-menu restarts, `tests/demo_attempts.tscn --route=pause --shots=`).
+
+## Dev attempts log (2026-10-14)
+Dev mode only (`Progress.dev_tools`, i.e. `./tools/play.sh --dev`): `scripts/dev_log.gd` (`DevLog`) appends one line per
+event (ms ticks, event, level/random, seed code, attempt, ticket offer/table/cap, the pod's text, dev-toggle/assist flags,
+and which restart route led to a rebuilt maze) to a plain text file, truncated at each launch and capped at ~200 KB.
+Events: maze built, pause opened, R prompt opened, each restart route (R, pause RESTART, dry-up RESTART, prompt RESTART,
+REPLAY MAZE, NEW MAZE, typed seed, ASSIST, UPGRADES return), pod text changes, win (paid), quit to hub. Inert outside dev
+mode and on the web; touches no save. macOS path: `~/Library/Application Support/Godot/app_userdata/<project name>/dev_attempts.log`
+(only for a hand-played `play.sh --dev`); tests, headless, movie and screenshot runs write `dev_attempts_<pid>.log` instead
+(stale ones are deleted after 6 h). Test: `tests/test_dev_log.gd`.
