@@ -279,3 +279,43 @@ REPLAY MAZE, NEW MAZE, typed seed, ASSIST, UPGRADES return), pod text changes, w
 mode and on the web; touches no save. macOS path: `~/Library/Application Support/Godot/app_userdata/<project name>/dev_attempts.log`
 (only for a hand-played `play.sh --dev`); tests, headless, movie and screenshot runs write `dev_attempts_<pid>.log` instead
 (stale ones are deleted after 6 h). Test: `tests/test_dev_log.gd`.
+
+## Autoplay: watch the game beat itself (2026-10-14)
+`./tools/play.sh --autoplay [--speed=N]` (Windows `tools/play.ps1 -Autoplay [-Speed N] [-Cinematics]`; game flag
+`--autoplay`): the game plays the whole story campaign on screen by itself, from a fresh in-memory state
+(`Progress.enable_autoplay`, the `--story-complete` pattern: the real save is never read or written, saving off,
+throwaway path). Not dev mode (F1/F2 stay off). Inert without the flag and on the web (`Autoplay.requested`).
+- **Real game:** real level scenes, physics, fog/trail, meter, coin pickups, result screens and buttons, the R
+  RESTART? prompt and the upgrades screen's + buttons (`Progress.buy_upgrade`), medals from the real run timer.
+  The bot only presses the movement actions (`RoutePilot`, the old test autopilot's steering, now shared:
+  `tests/autopilot.gd` extends it) and the real buttons/keys.
+- **Planner** (`scripts/autoplay/autoplay_planner.gd`): knows the maze graph. Per normal level: coin runs =
+  nearest-neighbour tour over the coins left + 2-opt/or-opt, trimmed (costliest detour first) to fit
+  `0.97 x meter - 0.75` tiles of the game's own meter (`100 / slime_cost_per_tile`), topped up by cheapest
+  insertion; legs never touch the chalice early. Ends at the chalice when that collects as many coins as an open
+  route, else the run ends with R -> RESTART (or UPGRADES). Coins are spent whenever they buy the next level in
+  the order MORE SLIME -> SPEED -> BRIGHTNESS (via R -> UPGRADES at a run's start, or the dry-up UPGRADES button).
+  When a level's coins are all found: a clean run on the shortest route (walking, no leaps) for gold (up to 3
+  tries). Then victory -> HUB -> STORY archway -> level select HARD MODE box -> hard 1-10, shortest route each.
+  Victory -> HUB -> `AUTOPLAY COMPLETE` (top-right in the hub) and control goes to the player; the end state
+  stays in memory (165 coins, all upgrades maxed, 30/30 + 30/30, finale seen).
+- **Result (measured):** 165/165 coins, every upgrade maxed, gold on all 10 normal and all 10 hard levels, 41 runs
+  (23 coin runs, 2 of which already won gold; 18 clean runs), 0 dry-ups; hard 10 by walking uses 97% of its meter. Nothing was out
+  of reach, so no leaps are used. Game time 1594 s. Wall time (= frames / 60; a windowed run on the MacBook
+  matched this, the game renders 1000+ fps): **~11.2 min at --speed=3, ~5.6 min at --speed=8**, ~0.2 min
+  headless with `--autoplay-hold=0.05`.
+- **Speed:** `Engine.time_scale = N` and `physics_ticks_per_second = 60 x N` (max steps per frame raised), so
+  every tick is 1/60 s of game time and a run plays exactly as at 1x; master volume a little lower above 1x
+  (sounds come N times as often); all restored on stop/finish. The story screen plays at 1x.
+- **Banner** (`autoplay_banner.gd`, layer 110, bottom-right, band only as wide as its text): `AUTOPLAY  NORMAL L3
+  COINS 9/14  ATTEMPT 2` over `COINS 31/165  MEDALS 6/30  PRESS F10 TO STOP` (one line under result buttons and
+  in menus). Holds on screens are real time (result 2 s, upgrades ~2-3 s with each purchase visible).
+- **Stopping:** F10 (fn+F10 on a Mac) hands over control in place (pilot freed, keys released, 1x); leaving a level
+  from the pause menu (Esc -> QUIT TO HUB) does too. Without `--autoplay-cinematics` intro/finale are marked
+  seen and skipped; tutorials are marked seen.
+- Other flags: `--autoplay-hold=S` (scale the on-screen pauses), `--autoplay-quit` (quit at the end, printing
+  `AUTOPLAY SUMMARY {json}`). Log lines start with `AUTOPLAY:`.
+- Tests: `tests/test_autoplay_planner.gd` (routes walkable, fit the meter, end on the chalice, paper campaign
+  finds 165 coins, meter = the game's, flag inert) and `tests/test_autoplay.gd` (the whole campaign in a child
+  process at 8x headless, ~13 s: 165/165, 10 + 10 clears, medal tiers = tier_for(real best time, par), no
+  dry-ups, hub at 1x, real save md5/mtime unchanged; F10 and pause-menu hand-over in process).

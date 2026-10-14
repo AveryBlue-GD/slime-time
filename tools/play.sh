@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # macOS/Linux version of play.ps1: opens the game for playtesting.
-# Usage: ./tools/play.sh [--dev | --story] [--scene res://tests/demo_record_run.tscn] [extra game flags...]
+# Usage: ./tools/play.sh [--dev | --story | --autoplay [--speed=N]] [--scene res://tests/demo_record_run.tscn] [extra game flags...]
 #   --dev     everything unlocked, nothing saved (the --unlock-all debug flag)
 #   --story   the whole story beaten on normal AND hard, all 165 coins found (none spent), nothing saved
 #             and the real save never read (the --story-complete debug flag); for testing the postgame
+#   --autoplay  watch the game play the whole story by itself (normal: every coin, upgrades bought,
+#             gold medals; then hard mode), from a fresh in-memory state: the real save is never read or
+#             written. --speed=N runs it at N x real time (default 3, 1-8; ~11 min at 3, ~6 min at 8).
+#             F10 (fn+F10 on a Mac) or Esc -> QUIT TO HUB stops it and hands you control.
+#             --autoplay-cinematics also plays the story intro and finale. See scripts/autoplay/autoplay.gd.
 #   --scene   start in a specific scene instead of the title
 #   anything else is passed to the game as a debug flag (see scripts/progress.gd), e.g. --skin=ocean
 root="$(cd "$(dirname "$0")/.." && pwd)"
