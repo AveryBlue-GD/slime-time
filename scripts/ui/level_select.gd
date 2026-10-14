@@ -9,7 +9,13 @@ var grid: GridContainer
 var skin_text: SkinText
 var hard_mode_box: CheckBox
 
-const TILE := Vector2i(44, 38)
+## 48x42: the 14 px digits are centered (rows 14-27), the 7 px record time sits 3 px under them
+## (rows 31-37) and 3 px above the frame's bottom edge (row 41); both gaps are 1 px more than the
+## 2 px drips the digits and the time grow into them, so a normal drip never touches the next line.
+const TILE := Vector2i(48, 42)
+const GRID_POS := Vector2(30, 22)
+const GRID_GAP := 3
+const STATUS_Y := 31  # top row of the record time / check
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
 
 
@@ -17,21 +23,21 @@ func _ready() -> void:
 	skin_text = UIKit.setup_screen(self, "LEVEL SELECT")
 	grid = GridContainer.new()
 	grid.columns = 5
-	grid.position = Vector2(42, 23)
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.position = GRID_POS
+	grid.add_theme_constant_override("h_separation", GRID_GAP)
+	grid.add_theme_constant_override("v_separation", GRID_GAP)
 	add_child(grid)
 
 	_fill_grid()
 	level_buttons[Progress.current_level - 1].grab_focus()
 
-	UIKit.add_panel(self, Rect2(14, 105, 292, 50))  # wide enough that the checkbox text clears the goo
+	UIKit.add_panel(self, Rect2(14, 111, 292, 48))  # wide enough that the checkbox text clears the goo
 	var info := UIKit.make_label("CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN", 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	info.offset_top = 111
-	info.offset_bottom = 133
+	info.offset_top = 116
+	info.offset_bottom = 136
 
 	hard_mode_box = CheckBox.new()
 	hard_mode_box.material = UIKit.text_material()
@@ -40,7 +46,7 @@ func _ready() -> void:
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
 		_fill_grid())  # show that mode's record times
-	hard_mode_box.position = Vector2(25, 140)  # 270 wide, centered
+	hard_mode_box.position = Vector2(25, 143)  # 270 wide, centered
 	add_child(hard_mode_box)
 	UIKit.add_back_button(self)
 
@@ -62,8 +68,6 @@ func _fill_grid() -> void:
 ## tile's center), and under it the record time or a check (cleared). A locked tile draws the lock
 ## over the number, also centered; unlocking just drops the lock and leaves the number there.
 func _make_tile(level: int) -> Button:
-	# 38 tall: the 14 px digits centered (rows 12-25) leave room under them for the status line
-	# (rows 28-34, between the goo bands at rows 0-2 and 35-37).
 	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
 	var locked := level > Progress.highest_unlocked
 	button.disabled = locked
@@ -85,7 +89,7 @@ func _make_tile(level: int) -> Button:
 	var tier := Progress.medals_for(level)
 	for i in 3:
 		var pip := ColorRect.new()
-		pip.position = Vector2(36, 5 + i * 5)
+		pip.position = Vector2(TILE.x - 8, 5 + i * 5)
 		pip.size = Vector2(3, 3)
 		pip.color = UIKit.GOLD if i < tier else UIKit.TEXT_OFF
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -95,11 +99,15 @@ func _make_tile(level: int) -> Button:
 	if Progress.best_time(level) >= 0.0:
 		status = UIKit.make_label(UIKit.format_time(Progress.best_time(level)), 8, UIKit.TEXT_DIM)
 		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		status.size = Vector2(TILE.x, 7)
-		status.position = Vector2(0, 28)
+		# clip_text drops the label's minimum width (52 px here, wider than the tile, which pushed
+		# the centered text right); the 9 px height (7 + 2 drip rows) keeps its drips unclipped.
+		status.clip_text = true
+		status.size = Vector2(TILE.x, 9)
+		status.position = Vector2(0, STATUS_Y)
 	elif cleared:
 		status = UIKit.make_icon("check", UIKit.GOLD)
-		status.position = Vector2((TILE.x - 8) / 2, 27)
+		var ink := UIKit.icon_ink_rect("check")  # centered in the 7 px status band by its own pixels
+		status.position = Vector2((TILE.x - 8) / 2, STATUS_Y + (7 - ink.size.y) / 2 - ink.position.y)
 	if status:
 		button.add_child(status)
 	return button

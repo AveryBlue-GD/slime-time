@@ -613,3 +613,6 @@ and `--touch` UI; `--web-ui` only changes the hub): move glyph cleared in 22 fra
 touch alike, both bits in the saved `tutorial_seen`, beacon cleared after a move by either device, a 0.5 s frame
 mid-fade still fades and clears. The old code fails 16 of its checks. Shots: `tests/demo_touch_hint.tscn` (`--hitch`)
 -> `docs/polish-shots/touchhint_1_before.png`, `_2_fading.png`, `_3_after.png`.
+
+## Level select: roomier tiles (2026-10-14)
+Tiles are 48x42 (grid at (30,22), 3 px gaps; was 44x38 crammed). The 14 px digits / lock stay ink-centered on the tile, in every state (locked, open, cleared, with time), so the number never jumps. The 7 px record time sits 3 px under the digits and 3 px above the frame's bottom edge (the 2 px letter drips, which the text shader grows under every glyph, fill 2 of each 3, leaving 1 clear). Gotcha fixed: the 8 px time Label's minimum width (52) was wider than the tile, so it grew and the "centered" time sat ~3 px right; it now uses `clip_text` with a 9 px high box. Info panel (14,111) 292x48, HARD toggle y=143, BACK unchanged. `tools/measure_tiles.py --gaps` prints the pixel gaps above/below the time; `tools/zoom_crop.py` makes the 4-8x crops (`docs/polish-shots/levelselect2_*.png`). `tests/test_level_tiles.gd` checks the geometry (gaps 1-3 px, margins, centering, no overlap, widest times).
