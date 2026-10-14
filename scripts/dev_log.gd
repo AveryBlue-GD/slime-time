@@ -6,7 +6,7 @@ extends RefCounted
 ## (the first write of the process) and stops growing at MAX_BYTES.
 ## Path: `user://dev_attempts.log` for the owner's play.sh --dev launch; any test / headless / movie /
 ## screenshot run writes `user://dev_attempts_<pid>.log` instead, so it never clobbers a running game's log.
-## macOS: ~/Library/Application Support/Godot/app_userdata/<project name>/dev_attempts.log
+## macOS: ~/Library/Application Support/SlimeTime_R1/dev_attempts.log (the release user dir, project.godot)
 
 const MAX_BYTES := 200_000
 const PLAIN_PATH := "user://dev_attempts.log"

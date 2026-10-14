@@ -18,6 +18,10 @@ const DEFAULT_KEYS := {
 }
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
 
+## The player's save. user:// is the RELEASE user data dir (project.godot application/config/
+## custom_user_dir_name, e.g. ~/Library/Application Support/SlimeTime_R1 on macOS, /userfs/SlimeTime_R1
+## in a browser), so saves from builds before the public release (in the old "Slime Time" app_userdata
+## dir) are never read. See docs/itch-release.md "Fresh-start policy".
 const REAL_SAVE_PATH := "user://save.cfg"
 ## Throwaway saves are this + the process id + ".cfg" (deleted on start and on quit).
 const THROWAWAY_PREFIX := "user://test_save_run_"
@@ -25,8 +29,14 @@ const THROWAWAY_PREFIX := "user://test_save_run_"
 ## movie/screenshot and dev runs get a per-process throwaway file (see _default_save_path), and
 ## `--save-path=user://x.cfg` picks one explicitly.
 var save_path := _default_save_path()
-## Save codes start with this (the 1 is the format, in case it ever changes).
-const SAVE_CODE_PREFIX := "SLIME1-"
+## The release epoch: written to every save and code as [meta] epoch, and required when one is read.
+## A save or code from another epoch (or with none: every build before the public release) is never
+## loaded. Bump it together with custom_user_dir_name ("SlimeTime_R<epoch>") and SAVE_CODE_PREFIX
+## ("SLIME<epoch + 1>-") to wipe everyone's progress again (docs/itch-release.md).
+const RELEASE_EPOCH := 1
+## Save codes start with this. "SLIME1-" codes come from builds before the public release and are
+## refused with "FROM AN OLD VERSION" (is_old_code).
+const SAVE_CODE_PREFIX := "SLIME2-"
 ## The stopwatch skin's "notice seen" mark in skin_notices_seen (level numbers are 1-10).
 const STOPWATCH_NOTICE := 200
 ## Highest level the player may start (1-10).
@@ -52,6 +62,9 @@ var current_level := 1
 ## 5 = the bigger hard-mode mazes (HARD_SLIME_MULT rebalance, docs/level-design.md section 7): hard best
 ## times from an older save were set on the old, shorter hard mazes, so they are cleared (hard clears
 ## and hard medal tiers are kept; see _migrate_hard_times).
+## Every save of the public release (RELEASE_EPOCH 1) is version 5 or later, and saves/codes without
+## the epoch are never loaded, so the version < 5 migrations no longer run for real players; they are
+## kept (tested through _read) for any hand-made save that claims this epoch.
 const SAVE_VERSION := 5
 ## The first save version whose story coin keys / best times belong to the current layouts.
 const LAYOUT_VERSION := 4
@@ -381,8 +394,8 @@ static func _is_test_or_tool_run() -> bool:
 ## Loads `path` (default: save_path). Saving still only ever goes to save_path.
 func load_progress(path := "") -> void:
 	var file := ConfigFile.new()
-	if file.load(save_path if path == "" else path) != OK:
-		return
+	if file.load(save_path if path == "" else path) != OK or not _is_this_epoch(file):
+		return  # no save, or one from another release epoch: a fresh start (the file is overwritten on the next save)
 	_read(file)
 	# An older save was migrated in memory; write it back once so the migration (which builds
 	# every story maze) doesn't rerun on each launch.
@@ -454,7 +467,7 @@ func _read(file: ConfigFile) -> void:
 ## level keeps its COUNT of found coins (as counted before, capped at Levels.COINS), now as the first
 ## N coins of the new layout (Levels.coin_keys order), so coins_earned, and with it the coins spent
 ## on upgrades, stays exactly the same and nobody's balance can go negative. A pure function of
-## the old data: reading the same old save or SLIME1- code again gives the same result, and the
+## the old data: reading the same old save again gives the same result, and the
 ## next save is version 4, which is never migrated again.
 func _migrate_coins() -> void:
 	for level: int in coins_found.keys():
@@ -595,6 +608,7 @@ func save_progress() -> void:
 func _write() -> ConfigFile:
 	var file := ConfigFile.new()
 	file.set_value("meta", "version", SAVE_VERSION)
+	file.set_value("meta", "epoch", RELEASE_EPOCH)
 	file.set_value("progress", "levels_cleared", levels_cleared)
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
 	file.set_value("progress", "current_level", current_level)
@@ -637,7 +651,7 @@ func _write() -> ConfigFile:
 	return file
 
 
-## The whole save as a code to copy somewhere safe: "SLIME1-" and the save file, gzipped, in
+## The whole save as a code to copy somewhere safe: SAVE_CODE_PREFIX ("SLIME2-") and the save file, gzipped, in
 ## base64. Pasting it back with load_code restores the progress (in a browser whose storage was
 ## cleared, on another browser, or in the Windows version).
 func save_code() -> String:
@@ -650,11 +664,45 @@ func save_code() -> String:
 const MAX_SAVE_CODE_LENGTH := 65536
 
 
+## Only codes made by this release epoch work: an old prefix, or a code without this [meta] epoch,
+## gives null (is_old_code tells those apart from broken codes).
 static func read_code(code: String) -> ConfigFile:
-	code = code.strip_edges().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
-	if not code.begins_with(SAVE_CODE_PREFIX) or code.length() > MAX_SAVE_CODE_LENGTH:
+	code = _clean_code(code)
+	if not code.begins_with(SAVE_CODE_PREFIX):
 		return null
-	var packed := Marshalls.base64_to_raw(code.trim_prefix(SAVE_CODE_PREFIX))
+	var file := _decode_code(code.trim_prefix(SAVE_CODE_PREFIX))
+	return file if file != null and _is_this_epoch(file) else null
+
+
+## True for a code from an older build: another "SLIME<n>-" prefix (e.g. SLIME1- from before the
+## public release), or a working save with this prefix but not this release epoch.
+static func is_old_code(code: String) -> bool:
+	code = _clean_code(code)
+	if code.begins_with(SAVE_CODE_PREFIX):
+		var file := _decode_code(code.trim_prefix(SAVE_CODE_PREFIX))
+		return file != null and not _is_this_epoch(file)
+	var dash := code.find("-")
+	return code.begins_with("SLIME") and dash > 5 and code.substr(5, dash - 5).is_valid_int()
+
+
+## True if a save (file or code) was written by this release epoch.
+static func _is_this_epoch(file: ConfigFile) -> bool:
+	var epoch: Variant = file.get_value("meta", "epoch", null)
+	return typeof(epoch) == TYPE_INT and epoch == RELEASE_EPOCH
+
+
+static func _clean_code(code: String) -> String:
+	return code.strip_edges().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+
+
+static var _BASE64 := RegEx.create_from_string("^[A-Za-z0-9+/]+={0,2}$")
+
+
+## The save inside a code's base64 (after the prefix), or null if it isn't one.
+static func _decode_code(body: String) -> ConfigFile:
+	if body.length() > MAX_SAVE_CODE_LENGTH or body.length() % 4 != 0 or not _BASE64.search(body):
+		return null  # (not base64: refused before base64_to_raw, which would log engine errors)
+	var packed := Marshalls.base64_to_raw(body)
 	if packed.is_empty():
 		return null
 	var text := packed.decompress_dynamic(1 << 20, FileAccess.COMPRESSION_GZIP).get_string_from_utf8()

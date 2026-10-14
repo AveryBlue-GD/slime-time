@@ -6,6 +6,8 @@ extends Control
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
+## What the SAVE CODE panel says about a code from an older build (it never loads).
+const OLD_CODE_MESSAGE := "THAT CODE IS FROM AN OLD VERSION"
 
 ## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
 ## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
@@ -130,7 +132,7 @@ func _build_code_panel() -> void:
 	paste_button = UIKit.make_button("PASTE", _paste_code, Vector2(64, 13))
 	paste_button.position = Vector2(164, 93)
 	code_panel.add_child(paste_button)
-	code_in.placeholder_text = "SLIME1-..."
+	code_in.placeholder_text = Progress.SAVE_CODE_PREFIX + "..."
 	code_in.text_changed.connect(func(_text: String) -> void:
 		load_armed = false
 		code_status.text = "")
@@ -200,7 +202,7 @@ func _set_pasted(text: String) -> void:
 	code_in.text = text
 	code_in.caret_column = text.length()
 	load_armed = false
-	code_status.text = "PASTED - PRESS LOAD" if Progress.read_code(text) != null else "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
+	code_status.text = "PASTED - PRESS LOAD" if Progress.read_code(text) != null else _bad_code_message(text)
 	load_button.grab_focus()
 
 
@@ -258,7 +260,7 @@ func _copy_code() -> void:
 func _load_code() -> void:
 	if Progress.read_code(code_in.text) == null:
 		load_armed = false
-		code_status.text = "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
+		code_status.text = _bad_code_message(code_in.text)
 		return
 	if not load_armed:
 		load_armed = true
@@ -266,6 +268,12 @@ func _load_code() -> void:
 		return
 	Progress.load_code(code_in.text)
 	UIKit.go(get_tree(), UIKit.TITLE_SCENE)  # start fresh with the loaded save
+
+
+## Why a code won't load: one from an older version of the game (progress from before the public
+## release never carries over) or a broken / cut-off one.
+func _bad_code_message(code: String) -> String:
+	return OLD_CODE_MESSAGE if Progress.is_old_code(code) else "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
 
 
 ## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
