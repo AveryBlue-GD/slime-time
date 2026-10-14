@@ -10,9 +10,13 @@ extends SceneTree
 ##   printed), RESET PROGRESS clears the maps and the first-time hint;
 ## - seeds: --story-complete and --maps=full (child process with --unlock-all) give 20 full surveys
 ##   (every tile seen, the shortest route as a clear, the goal seen); --unlock-all alone gives none;
-## - the MAP TABLE screen: tiles locked until surveyed, thumbnail/percent/route marker, opening a map,
-##   BACK / Esc / ui_cancel at each depth (Esc on the select returns to the hub), taps, the
-##   first-time hint, and the map never drawing an unseen tile.
+## - drawing (MapView): wall lines between cells, drawn only next to a seen cell; nothing on unseen
+##   cells at any size (also with a route, coins, start and goal over unseen cells) nor on thumbnails;
+##   a hairpin (U-turn) route keeps a wall line between its two legs; every story and hard maze
+##   (up to 36x20 cells) fits the view at whole pixels, themed (mockup) too; a foreign survey draws nothing;
+## - the MAP TABLE screen: tiles locked until surveyed, just thumbnail/name/percent (no times or route
+##   labels), opening a map (name + "NN% UNCOVERED"), BACK / Esc / ui_cancel at each depth (Esc on the
+##   select returns to the hub), taps, the first-time hint.
 ## Uses a throwaway save; the real save's md5 is checked unchanged at the end.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maps.gd
 
@@ -50,6 +54,7 @@ func _initialize() -> void:
 	_test_rules()
 	_test_save()
 	_test_seeds()
+	_test_drawing()
 	await _test_screen()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
@@ -428,75 +433,6 @@ func _test_screen() -> void:
 	progress.maps_hint_seen = false
 	progress.hard_mode = false
 
-	# The map never draws an unseen tile.
-	var sizes := MapView.layout(maze.cells, Vector2i(312, 146))
-	var image := MapView.render(maze, partial, sizes, [] as Array[Vector2i], Skins.shades(Color.GREEN))
-	var leaks := 0
-	for ty in maze.size.y:
-		for tx in maze.size.x:
-			if Survey.is_seen(partial, Vector2i(tx, ty)):
-				continue
-			# The middle pixel of an unseen tile must be fog (the start ring / route may cross a tile's edge only).
-			var px := Vector2i(MapView._tile_px(tx, sizes).x + MapView._tile_px(tx, sizes).y / 2, MapView._tile_px(ty, sizes).x + MapView._tile_px(ty, sizes).y / 2)
-			var c := image.get_pixelv(px)
-			if c != MapView.FOG and not (Vector2i(tx, ty) == maze.start * 2 + Vector2i.ONE):
-				leaks += 1
-	_check(leaks == 0, "the map draws nothing on unseen tiles (%d leaks)" % leaks)
-	# The same, with every mark that could leak: a clear route running on over unseen tiles, found
-	# coins on seen and unseen cells, the goal flagged but its tile unseen, the start unseen.
-	var leaky := Survey.blank(maze)
-	var leaky_tiles := PackedByteArray()
-	leaky_tiles.resize(maze.size.x * maze.size.y)
-	var route := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
-	for i in mini(4, route.size() - 1):  # only the first few steps of the route were seen (not the start)
-		leaky_tiles[(route[i + 1].y * 2 + 1) * maze.size.x + route[i + 1].x * 2 + 1] = 1
-		leaky_tiles[(route[i].y + route[i + 1].y + 1) * maze.size.x + route[i].x + route[i + 1].x + 1] = 1
-	var coin_cells: Array[Vector2i] = Levels.story_coin_cells(2)
-	leaky_tiles[(coin_cells[0].y * 2 + 1) * maze.size.x + coin_cells[0].x * 2 + 1] = 1  # one coin's cell seen, the rest not
-	Survey.merge_seen(leaky, leaky_tiles)
-	leaky.moves = Survey.moves_along(route)
-	leaky.clear = true
-	leaky.best_ms = 30000
-	leaky.goal = true
-	var all_sizes: Array[Vector2i] = []
-	for sz: Vector2i in MapView.SIZES:  # every size the view can use (the largest maze gets 4 px+ cells)
-		if sz.x >= 4:
-			all_sizes.append(sz)
-	var unseen_leaks := 0
-	var drawn_seen := 0
-	for sz in all_sizes:
-		var img := MapView.render(maze, leaky, sz, coin_cells, Skins.shades(Color.GREEN))
-		for ty in maze.size.y:
-			for tx in maze.size.x:
-				var c := img.get_pixelv(Vector2i(MapView._tile_px(tx, sz).x + MapView._tile_px(tx, sz).y / 2, MapView._tile_px(ty, sz).x + MapView._tile_px(ty, sz).y / 2))
-				if Survey.is_seen(leaky, Vector2i(tx, ty)):
-					drawn_seen += int(c != MapView.FOG)
-				elif c != MapView.FOG:
-					unseen_leaks += 1
-	_check(unseen_leaks == 0 and drawn_seen > 0,
-		"a survey with a route over unseen tiles, coins on unseen cells and an unseen goal still draws nothing there (%d leaks over %d sizes; %d seen tiles drawn)" % [unseen_leaks, all_sizes.size(), drawn_seen])
-	var thumb := MapView.thumbnail(maze, leaky, Skins.shades(Color.GREEN))
-	var scale: int = thumb.get_width() / maze.cells.x
-	var thumb_leaks := 0
-	for cy in maze.cells.y:
-		for cx in maze.cells.x:
-			if not Survey.is_seen(leaky, Vector2i(cx * 2 + 1, cy * 2 + 1)) and thumb.get_pixel(cx * scale, cy * scale).a > 0.0:
-				thumb_leaks += 1
-	_check(thumb_leaks == 0, "...nor does its thumbnail on unseen cells (%d leaks)" % thumb_leaks)
-	# A survey of another layout of the same size draws nothing at all.
-	var foreign_maze := maze.duplicate(true)
-	foreign_maze.goal = foreign_maze.start
-	var foreign := Survey.full(foreign_maze, 5.0)
-	var blank_img := MapView.render(maze, foreign, sizes, coin_cells, Skins.shades(Color.GREEN))
-	var all_fog := true
-	for y in range(0, blank_img.get_height(), 2):
-		for x in range(0, blank_img.get_width(), 2):
-			all_fog = all_fog and blank_img.get_pixel(x, y) == MapView.FOG
-	_check(all_fog, "a same-size survey of another layout draws nothing on the map")
-	var big := MapView.layout(Vector2i(36, 20), Vector2i(312, 146))
-	_check(MapView.map_size(Vector2i(36, 20), big).x <= 312 and MapView.map_size(Vector2i(36, 20), big).y <= 146 and big.x >= 4,
-		"the largest maze (36x20 cells) fits the view at an integer %d px per cell" % big.x)
-
 	# Open from the hub.
 	var hub_script: GDScript = load("res://scripts/hub.gd")
 	hub_script.return_to = "maps"
@@ -518,9 +454,11 @@ func _test_screen() -> void:
 		"tiles: unsurveyed levels are locked (1, 4), surveyed ones open (2, 3)")
 	_check(screen.tiles[2].get_meta("percent") == 100 and screen.tiles[1].get_meta("percent") < 30, "...with their survey %% (%d, %d)" % [screen.tiles[1].get_meta("percent"), screen.tiles[2].get_meta("percent")])
 	var texts := _texts(screen.tiles[2])
-	_check("SANDSTONE SANCTUM" in texts and "L3 100%" in texts and "0:23.5" in texts, "...name, number, %% and the best route's time (%s)" % ", ".join(texts))
-	_check("LAST TRY" in _texts(screen.tiles[1]), "...or LAST TRY without a clear")
-	_check("L1 NO SURVEY YET" in _texts(screen.tiles[0]), "...or NO SURVEY YET")
+	_check(texts == (["SANDSTONE SANCTUM", "100%"] as Array[String]), "...each with just its name and %% uncovered (%s)" % ", ".join(texts))
+	var texts2 := _texts(screen.tiles[1])
+	_check(texts2.size() == 2 and texts2[0] == "MOSSY MINES" and texts2[1].ends_with("%") and not "LAST TRY" in texts2,
+		"...also without a clear: no LAST TRY or other labels (%s)" % ", ".join(texts2))
+	_check(_texts(screen.tiles[0]) == (["DARK DUNGEON", "0%"] as Array[String]), "...and a locked tile: its name and 0%% (%s)" % ", ".join(_texts(screen.tiles[0])))
 	_check(screen.get_viewport().gui_get_focus_owner() == screen.tiles[1] or screen.get_viewport().gui_get_focus_owner() == screen.tiles[2],
 		"focus starts on a surveyed tile")
 
@@ -531,8 +469,8 @@ func _test_screen() -> void:
 	await _action("ui_accept")
 	_check(screen.viewing and screen.viewed_level == 3 and screen.view_root.visible and screen.view_map.texture != null,
 		"Enter opens that level's map")
-	_check("LEVEL 3" in screen.view_title.text and "BEST ROUTE 0:23.5" in screen.view_line.text and "100%" in screen.view_line.text,
-		"...titled, with its survey %% and best route (%s / %s)" % [screen.view_title.text, screen.view_line.text])
+	_check(screen.view_title.text == "SANDSTONE SANCTUM" and screen.view_line.text == "100% UNCOVERED",
+		"...titled with its name, one line with the %% uncovered, no time (%s / %s)" % [screen.view_title.text, screen.view_line.text])
 	# Tab / Shift+Tab (ui_focus_next / prev) and the arrows keep focus on the view's BACK; the hidden
 	# select (tiles, HARD, its BACK) can't be reached, so Enter never acts on it.
 	var escaped := ""
@@ -576,23 +514,14 @@ func _test_screen() -> void:
 	screen.hard_box.button_pressed = false
 	await _frames(2)
 
-	# BEST ROUTE never contradicts the level's record: a record faster than the survey's clear (set
-	# before the maps existed) hides the route's time on the tile and says SET A NEW BEST in the view.
+	# No times anywhere on the map screens, whatever the record (the level select has those).
 	progress.best_times[3] = 20.0
 	screen._fill_grid()
 	await _frames(1)
-	var tile3 := _texts(screen.tiles[2])
-	_check("ROUTE" in tile3 and not "0:23.5" in tile3 and not "0:20.0" in tile3, "a record faster than the route: the tile shows ROUTE, no time (%s)" % ", ".join(tile3))
 	screen.open_view(3)
-	_check("ROUTE 0:23.5" in screen.view_line.text and "SET A NEW BEST" in screen.view_line.text and not "BEST ROUTE" in screen.view_line.text,
-		"...and the view says ROUTE 0:23.5  SET A NEW BEST (%s)" % screen.view_line.text)
-	screen.close_view()
-	progress.best_times[3] = 23.5
-	screen._fill_grid()
-	await _frames(1)
-	screen.open_view(3)
-	_check("0:23.5" in _texts(screen.tiles[2]) and "BEST ROUTE 0:23.5" in screen.view_line.text,
-		"when the route is the record both show it, the same as the level select (%s)" % screen.view_line.text)
+	var all_text := " ".join(_texts(screen))
+	_check(not ":" in all_text and not "ROUTE" in all_text and not "BEST" in all_text and not "LAST TRY" in all_text,
+		"no times or route labels on the select or the view (%s)" % all_text)
 	screen.close_view()
 	progress.best_times.erase(3)
 	screen._fill_grid()
@@ -619,6 +548,203 @@ func _test_screen() -> void:
 	current_scene = null
 	if is_instance_valid(last):
 		last.free()
+
+
+# ---------------------------------------------------------------- drawing (MapView)
+
+func _test_drawing() -> void:
+	var goo := Skins.shades(Color.GREEN)
+	var none: Array[Vector2i] = []
+	var maze := Levels.story_maze(2)
+	# A survey that sees only the first few cells of the route (and the tiles next to them), with every
+	# mark that could leak: the clear route running on over unseen cells, a coin on a seen cell and
+	# coins on unseen ones, the goal flagged but unseen.
+	var leaky := Survey.blank(maze)
+	var tiles := PackedByteArray()
+	tiles.resize(maze.size.x * maze.size.y)
+	var route := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
+	for i in mini(5, route.size()):
+		tiles[(route[i].y * 2 + 1) * maze.size.x + route[i].x * 2 + 1] = 1
+	var coin_cells: Array[Vector2i] = Levels.story_coin_cells(2)
+	tiles[(coin_cells[0].y * 2 + 1) * maze.size.x + coin_cells[0].x * 2 + 1] = 1
+	Survey.merge_seen(leaky, tiles)
+	leaky.moves = Survey.moves_along(route)
+	leaky.clear = true
+	leaky.best_ms = 30000
+	leaky.goal = true
+	var unseen_px := 0
+	var edge_px := 0
+	var seen_cells := 0
+	var walls_ok := 0
+	var walls_bad := 0
+	for sz: Vector2i in MapView.SIZES:
+		for theme: String in ["", "volcanic"]:
+			var img := MapView.render(maze, leaky, sz, coin_cells, goo, theme)
+			var off := Vector2i.ONE * (MapView.FRAME if theme != "" else 0)
+			var fog: Color = MapView.palette(goo, theme).fog
+			var wall: Color = MapView.palette(goo, theme).wall
+			for cy in maze.cells.y:
+				for cx in maze.cells.x:
+					var cell := Vector2i(cx, cy)
+					var seen := _seen_cell(leaky, cell)
+					seen_cells += int(seen)
+					if not seen:  # no pixel at all on an unseen cell
+						unseen_px += _count_not(img, Rect2i(MapView.cell_rect(cell, sz).position + off, MapView.cell_rect(cell, sz).size), fog)
+					for dir: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+						var other := cell + dir
+						var r := MapView.edge_rect(cell, dir, sz)
+						r.position += off
+						if not seen and not _seen_cell(leaky, other):  # a line between two unseen cells: never drawn
+							edge_px += _count_not(img, r, fog)
+						elif MazeGenerator.is_wall(maze, cell * 2 + Vector2i.ONE + dir):  # beside a seen cell: drawn where a wall is
+							if _count_not(img, r, wall) == 0:
+								walls_ok += 1
+							else:
+								walls_bad += 1
+			# The posts (where lines cross) only at a seen cell's corners.
+			var step := sz.x + sz.y
+			for py in maze.cells.y + 1:
+				for px in maze.cells.x + 1:
+					var near := false
+					for d: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i.ZERO]:
+						near = near or _seen_cell(leaky, Vector2i(px, py) + d)
+					if not near:
+						edge_px += _count_not(img, Rect2i(Vector2i(px, py) * step + off, Vector2i.ONE * sz.y), fog)
+	_check(unseen_px == 0 and seen_cells > 0, "no pixel is drawn on an unseen cell, route/coins/goal included (%d px over %d sizes, plain and themed)" % [unseen_px, MapView.SIZES.size()])
+	_check(edge_px == 0, "no wall line or post is drawn between unseen cells (%d px)" % edge_px)
+	_check(walls_bad == 0 and walls_ok > 0, "every wall beside a seen cell is drawn as a line (%d drawn, %d missing)" % [walls_ok, walls_bad])
+
+	# A hairpin: the route goes up one corridor and back down the one next to it (path[i + 3] is next
+	# to path[i] across a wall). The wall line between the legs is drawn whole, both legs carry the
+	# route, and floor shows between each leg and the wall.
+	var hairpins := 0
+	var hairpin_bad: Array[String] = []
+	for level in [5, 10]:
+		for hard_mode: bool in [false, true]:
+			var m := Levels.story_maze(level, hard_mode)
+			var full := Survey.full(m, 10.0)
+			var path := Survey.route_cells(full, m)
+			var sz := MapView.layout(m.cells, Vector2i(316, 149))
+			var img := MapView.render(m, full, sz, none, goo)
+			var pal := MapView.palette(goo)
+			for i in path.size() - 3:
+				var a := path[i]
+				var b := path[i + 3]
+				if (b - a).abs().x + (b - a).abs().y != 1 or i == 0 or b == m.goal:
+					continue
+				hairpins += 1
+				var line := MapView.edge_rect(a, b - a, sz)
+				var w := MapView.route_width(sz.x)
+				var ra := MapView.cell_rect(a, sz)
+				var rb := MapView.cell_rect(b, sz)
+				var ca := ra.position + Vector2i.ONE * (sz.x / 2)
+				var cb := rb.position + Vector2i.ONE * (sz.x / 2)
+				# The pixel just inside each leg's cell next to the wall is floor (the route doesn't touch the wall).
+				var a_side := _side_px(ra, b - a)
+				var b_side := _side_px(rb, a - b)
+				var ok: bool = _count_not(img, line, pal.wall) == 0 and img.get_pixelv(ca) != pal.floor and img.get_pixelv(cb) != pal.floor \
+					and img.get_pixelv(a_side) == pal.floor and img.get_pixelv(b_side) == pal.floor and w < sz.x
+				if not ok and hairpin_bad.size() < 3:
+					hairpin_bad.append("L%d%s %s/%s at %s" % [level, "h" if hard_mode else "", a, b, sz])
+	_check(hairpins > 0 and hairpin_bad.is_empty(),
+		"a hairpin route shows a wall line between its two legs, with floor either side (%d hairpins on L5/L10 normal+hard; %s)" % [hairpins, ", ".join(hairpin_bad)])
+	# The demo's U-turn walk (only the tiles beside it seen): the same, on a partly seen map.
+	var demo: GDScript = load("res://tests/demo_maps.gd")
+	var m5 := Levels.story_maze(5)
+	var turn: Dictionary = demo.uturn(m5)
+	var cells := Survey.route_cells(turn, m5)
+	var sz5 := MapView.layout(m5.cells, Vector2i(316, 149))
+	var img5 := MapView.render(m5, turn, sz5, none, goo)
+	var found := false
+	for i in cells.size() - 3:
+		if (cells[i + 3] - cells[i]).abs().x + (cells[i + 3] - cells[i]).abs().y == 1:
+			found = _count_not(img5, MapView.edge_rect(cells[i], cells[i + 3] - cells[i], sz5), MapView.WALL) == 0
+			break
+	_check(found, "...also on a partly seen map (the demo's --uturn walk on level 5)")
+
+	# Every story and hard maze fits the view at whole pixels, plain and themed; the biggest (36x20).
+	var fit_bad: Array[String] = []
+	var smallest := 99
+	for level in range(1, Levels.COUNT + 1):
+		for hard_mode: bool in [false, true]:
+			var cells_n: Vector2i = Levels.story_maze(level, hard_mode).cells
+			for framed: bool in [false, true]:
+				var sz := MapView.layout(cells_n, Vector2i(316, 149), framed)
+				var px := MapView.map_size(cells_n, sz) + Vector2i.ONE * (MapView.FRAME * 2 if framed else 0)
+				smallest = mini(smallest, sz.x)
+				if px.x > 316 or px.y > 149 or sz.x < 4:
+					fit_bad.append("L%d%s%s %s" % [level, "h" if hard_mode else "", " themed" if framed else "", px])
+	var big := MapView.layout(Levels.HARD_MAX_CELLS, Vector2i(316, 149))
+	var big_px := MapView.map_size(Levels.HARD_MAX_CELLS, big)
+	_check(fit_bad.is_empty() and big_px.x <= 316 and big_px.y <= 149 and big.x >= 5,
+		"every story/hard maze fits the 316x149 view at whole pixels, themed too (smallest floor %d px; 36x20: %d+%d px = %s; %s)" % [smallest, big.x, big.y, big_px, ", ".join(fit_bad)])
+	var rendered := MapView.render({cells = Levels.HARD_MAX_CELLS, size = Levels.HARD_MAX_CELLS * 2 + Vector2i.ONE, walls = PackedByteArray(), start = Vector2i.ZERO, goal = Vector2i.ZERO}, {}, big, none, goo)
+	_check(rendered.get_size() == big_px, "...and the image is exactly that size (%s)" % rendered.get_size())
+
+	# Thumbnails: nothing on unseen cells (wall-line thumbnails for the small mazes, blocks for big ones).
+	var thumb_leaks := 0
+	var line_thumbs := 0
+	for level in range(1, Levels.COUNT + 1):
+		var m := Levels.story_maze(level)
+		var s := Survey.blank(m)
+		var t := PackedByteArray()
+		t.resize(m.size.x * m.size.y)
+		var p := MazeGenerator.shortest_path(m, m.start, m.goal)
+		for i in mini(6, p.size()):
+			t[(p[i].y * 2 + 1) * m.size.x + p[i].x * 2 + 1] = 1
+		Survey.merge_seen(s, t)
+		s.moves = Survey.moves_along(p)
+		s.clear = true
+		s.best_ms = 1000
+		s.goal = true
+		var thumb := MapView.thumbnail(m, s, goo)
+		if thumb.get_width() > MapView.THUMB.x or thumb.get_height() > MapView.THUMB.y:
+			_check(false, "L%d's thumbnail fits its box (%s)" % [level, thumb.get_size()])
+		var sz := MapView.layout(m.cells, MapView.THUMB)
+		var lines := thumb.get_size() == MapView.map_size(m.cells, sz)
+		line_thumbs += int(lines)
+		for cy in m.cells.y:
+			for cx in m.cells.x:
+				if _seen_cell(s, Vector2i(cx, cy)):
+					continue
+				var r := MapView.cell_rect(Vector2i(cx, cy), sz) if lines else Rect2i(Vector2i(cx, cy) * (thumb.get_width() / m.cells.x), Vector2i.ONE * (thumb.get_width() / m.cells.x))
+				thumb_leaks += _count_not(thumb, r, Color(0, 0, 0, 0))
+	_check(thumb_leaks == 0 and line_thumbs >= 1, "thumbnails draw nothing on unseen cells (%d px; %d of 10 with wall lines)" % [thumb_leaks, line_thumbs])
+
+	# A survey of another layout of the same size draws nothing at all.
+	var foreign_maze := maze.duplicate(true)
+	foreign_maze.goal = foreign_maze.start
+	var foreign := Survey.full(foreign_maze, 5.0)
+	var sizes := MapView.layout(maze.cells, Vector2i(316, 149))
+	var blank_img := MapView.render(maze, foreign, sizes, coin_cells, goo)
+	_check(_count_not(blank_img, Rect2i(Vector2i.ZERO, blank_img.get_size()), MapView.FOG) == 0, "a same-size survey of another layout draws nothing on the map")
+	# The themed option is a mockup: off in the game.
+	var select: GDScript = load("res://scripts/ui/map_select.gd")
+	_check(select.get_script_constant_map().THEMED_MAPS == false, "themed maps are off by default (map_select.THEMED_MAPS)")
+
+
+## The middle pixel of `r`'s side facing `dir`.
+func _side_px(r: Rect2i, dir: Vector2i) -> Vector2i:
+	var c := r.position + Vector2i.ONE * (r.size.x / 2)
+	if dir.x != 0:
+		c.x = r.end.x - 1 if dir.x > 0 else r.position.x
+	else:
+		c.y = r.end.y - 1 if dir.y > 0 else r.position.y
+	return c
+
+
+func _seen_cell(survey: Dictionary, cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and Survey.is_seen(survey, cell * 2 + Vector2i.ONE)
+
+
+## How many pixels of `r` (clipped to the image) aren't `color`.
+func _count_not(img: Image, r: Rect2i, color: Color) -> int:
+	var clip := r.intersection(Rect2i(Vector2i.ZERO, img.get_size()))
+	var n := 0
+	for y in range(clip.position.y, clip.end.y):
+		for x in range(clip.position.x, clip.end.x):
+			n += int(img.get_pixel(x, y) != color)
+	return n
 
 
 # ---------------------------------------------------------------- helpers
