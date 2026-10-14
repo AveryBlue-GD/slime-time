@@ -71,6 +71,10 @@ const DIR_NAMES: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 @export var acceleration := 420.0
 @export var friction := 260.0
 
+## Seconds for a full leap charge and the splat stun: CHARGE_TIME / SPLAT_STUN, shortened by the
+## ticket workshop's QUICK CHARGE and STICKY (game.gd `_apply_workshop`; never in hard mode).
+var charge_time := CHARGE_TIME
+var splat_stun := SPLAT_STUN
 ## Set by the game when the slime dries up or reaches the chalice.
 var frozen := false
 ## False while the jump key means something else (the hub: next to a station it opens it).
@@ -374,7 +378,7 @@ func _physics_process(delta: float) -> void:
 				charge = 0.0
 				_sfx_stop("charge")
 			else:
-				charge = minf(charge + 100.0 / CHARGE_TIME * delta, 100.0)
+				charge = minf(charge + 100.0 / charge_time * delta, 100.0)
 				if not Input.is_action_pressed("jump"):
 					launch(charge)
 		State.AIRBORNE:
@@ -437,7 +441,7 @@ func _animate() -> void:
 			else:
 				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
 		State.STUNNED:
-			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / SPLAT_STUN)
+			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / maxf(splat_stun, 0.001))
 
 
 func _play(anim: String) -> void:
@@ -562,7 +566,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	last_jump_traveled = _jump_traveled
 	if hit_wall:
 		state = State.STUNNED
-		_stun_left = SPLAT_STUN
+		_stun_left = splat_stun
 		_splat_side = splat_side(wall_normal)
 		_knock_back(wall_normal)
 		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))

@@ -5,10 +5,12 @@ shader_type canvas_item;
 // the lower/right edges, a bright bevel on the upper/left edges and rare twinkling specks. The
 // cell colors are kept, so every skin (and the rainbow) is tinted by what is stored.
 // Texture is sampled with nearest filtering; no arrays, 4 extra taps on painted cells only.
+// `stars` adds the STARRY trail style's specks (a hash per screen pixel, no texture, no array).
 
 uniform float animate = 1.0;      // 0 = no twinkle (Reduce Motion)
 uniform float rim_dark = 0.55;    // brightness of the shaded edge
 uniform float bevel_lift = 0.42;  // how far the lit edge moves toward white
+uniform float stars = 0.0;        // 1 = the STARRY trail style: 1 px white specks (Cosmetics)
 
 float hash(vec2 p) {
 	vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -39,6 +41,14 @@ void fragment() {
 		float tw = animate > 0.5 ? 0.5 + 0.5 * sin(TIME * 3.0 + g * 80.0) : 0.5;
 		c = mix(c, vec3(1.0), 0.35 + 0.4 * tw);
 		a = min(1.0, a + 0.25);
+	}
+	if (stars > 0.5) {
+		// STARRY: fixed 1 px specks (each 2 px cell holds 2x2 pixels), picked by a pixel hash.
+		float s = hash(floor(UV / px * 2.0) + vec2(37.0, 11.0));
+		if (s > 0.94) {
+			c = mix(c, vec3(1.0), 0.85);
+			a = max(a, 0.9);
+		}
 	}
 	COLOR = vec4(c, a);
 }

@@ -74,6 +74,13 @@ var rewards_row: HBoxContainer
 var rewards_texts: Array[String] = []
 ## Shown on the left while an attempt is played with the slime reserve (ASSIST).
 var assist_pod: Control
+## The ticket workshop's SECOND WIND (set_wind): a drop + WIND tag under the meter, full color while
+## ready, dim once used, hidden when it isn't on this run (not bought, hard mode, a first clear).
+var wind_pod: Control
+var _wind_icon: TextureRect
+var wind_state := ""
+const WIND_TINT := Color8(170, 236, 255)
+const WIND_USED := Color(0.45, 0.45, 0.5, 0.75)
 ## Dev mode only: a tag naming the dev toggles that are on (made on first use, so it never exists
 ## in normal play; see set_dev_badge).
 var dev_badge: Control
@@ -134,6 +141,14 @@ func _ready() -> void:
 	assist_row.add_child(UIKit.make_icon("drop", ASSIST_TINT))
 	assist_row.add_child(UIKit.make_label("ASSIST +%d%%" % roundi(Progress.ASSIST_BONUS * 100.0), 8, GOLD))
 	assist_pod.visible = false
+
+	# SECOND WIND (hidden unless it's on this run).
+	var wind_row := _make_pod(left_bar)
+	wind_pod = wind_row.get_parent()
+	_wind_icon = UIKit.make_icon("drop", WIND_TINT)
+	wind_row.add_child(_wind_icon)
+	wind_row.add_child(UIKit.make_label("WIND", 8, WIND_TINT))
+	wind_pod.visible = false
 
 	# Center pod: clock + run time.
 	var time_row := _make_pod(null)
@@ -365,6 +380,21 @@ func set_time(seconds: float) -> void:
 ## The assist tag in the top bar.
 func set_assist(on: bool) -> void:
 	assist_pod.visible = on
+
+
+## SECOND WIND's tag: "" hides it, "ready" full color, "refilling" flashes bright, "used" dim.
+func set_wind(state: String) -> void:
+	wind_state = state
+	wind_pod.visible = state != ""
+	match state:
+		"ready":
+			wind_pod.modulate = Color.WHITE
+		"refilling":
+			wind_pod.modulate = Color(1.8, 1.8, 1.8)
+			var tween := wind_pod.create_tween()
+			tween.tween_property(wind_pod, "modulate", WIND_USED, 0.6)
+		"used":
+			wind_pod.modulate = WIND_USED
 
 
 ## Dev mode: a DEV tag under the meter naming the toggles that are on ("" hides it). Only ever

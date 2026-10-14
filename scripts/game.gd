@@ -56,7 +56,8 @@ const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
 const FOG_TICKS := 16.0
 
-const GOO_ALPHA := 120
+## (Trail goo alpha and halo strength now live in Cosmetics: GOO_ALPHA / TRAIL_GLOW, per trail style.)
+const GOO_ALPHA := Cosmetics.GOO_ALPHA
 ## Rainbow skin: the trail's hue advances this many full rainbows per second of play.
 const RAINBOW_TRAIL_SPEED := 0.08
 const CLEAR := Color(0, 0, 0, 0)
@@ -76,7 +77,7 @@ const SHAKE_TIME := 0.25
 const SHAKE_MAX := 3.0
 ## The slime's own soft light on the floor and walls around it (diameter px, strength 0-1).
 ## Strength of the additive halo over the goo trail.
-const TRAIL_GLOW := 0.3
+const TRAIL_GLOW := Cosmetics.TRAIL_GLOW
 const SLIME_LIGHT_SIZE := 112
 ## Drawn above the fog (z 11), so it lights the unexplored ground around the slime a little.
 const SLIME_LIGHT_STRENGTH := 0.14
@@ -188,6 +189,22 @@ var last_jump_cost := 0.0
 var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
 var goo_dark := Color(0, 0, 0)
+## The worn trail style (Progress.trail_style, Cosmetics) and how it paints (Cosmetics.trail_look);
+## `trail_travel` = px moved on the ground this run (the CANDY style's stripes).
+var trail_style := Cosmetics.DEFAULT_TRAIL
+var trail_look := {}
+var trail_travel := 0.0
+## The ticket workshop this run (Workshop; all 0 in hard mode and without Progress). SECOND WIND:
+## `wind_state` "" (not on this run) / "ready" / "refilling" / "used"; `wind_fired` = it fired this
+## run (a randomizer win then pays one attempt step less, pay_attempt).
+var workshop := {}
+var wind_state := ""
+var wind_fired := false
+var _wind_target := 0.0
+## STICKY's splat penalty factor, MAGNET's coin reach (px) and GOO NOSE's glimmer rate.
+var splat_factor := 1.0
+var coin_reach := Coin.REACH
+var glimmer_rate := 1.0
 var rainbow := false
 ## The skin's hue the fog and ambient motes lean toward (Skins.atmosphere_color).
 var atmosphere_tint := Color(0, 0, 0, 0)
@@ -332,6 +349,7 @@ func _ready() -> void:
 		slime_cost_per_tile = 100.0 / Levels.RANDOM_METER_TILES
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
+	_apply_workshop()
 	if is_random() and path_tiles * slime_cost_per_tile > Levels.RANDOM_MAX_USAGE * 100.0:
 		# A code built for a higher MORE SLIME level than the player's: never more than 95% (always winnable).
 		slime_cost_per_tile = Levels.RANDOM_MAX_USAGE * 100.0 / path_tiles
@@ -354,6 +372,8 @@ func _ready() -> void:
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
 	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
+	trail_style = progress.trail_style if progress else Cosmetics.DEFAULT_TRAIL
+	trail_look = Cosmetics.trail_look(trail_style, skin_color, rainbow)
 	slime.apply_skin(skin_color, rainbow, stopwatch)
 	slime.set_translucency(1.0 if progress and progress.jelly else 0.0)
 	hud.set_skin_color(skin_color, rainbow)
@@ -374,7 +394,7 @@ func _ready() -> void:
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
 	_glimmer_from = slime.position
-	_next_glimmer = randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y)
+	_next_glimmer = _glimmer_gap()
 	goal.position = MazeGenerator.cell_center(maze.goal, TILE)
 	goal.visible = false
 	goal.body_entered.connect(_on_goal_body_entered)
@@ -442,6 +462,7 @@ func _physics_process(delta: float) -> void:
 			last_slime_pos = pos
 			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
+			trail_travel += moved
 			_paint_goo(pos, TRAIL_RADIUS)
 			if light_reach > 0.0:
 				_reveal_light(pos)
@@ -450,10 +471,18 @@ func _physics_process(delta: float) -> void:
 	if not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_REVEAL_DISTANCE:
 		_show(goal)
 		survey_goal = true
+	if wind_state == "refilling":
+		slime_remaining = minf(slime_remaining + _wind_target / Economy.WIND_REFILL_TIME * delta, _wind_target)
+		if slime_remaining >= _wind_target:
+			wind_state = "used"
+			hud.set_wind(wind_state)
 	hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
-		_dry_up()
+		if wind_state == "ready":
+			_second_wind()
+		elif wind_state != "refilling":
+			_dry_up()
 
 
 ## Audible low-slime warning: a falling bloop when the meter drops under the red mark, then a
@@ -572,8 +601,13 @@ func _count_glimmer_travel(pos: Vector2) -> void:
 	_glimmer_from = pos
 	if glimmer_travel >= _next_glimmer:
 		glimmer_travel = 0.0
-		_next_glimmer = randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y)
+		_next_glimmer = _glimmer_gap()
 		_spawn_glimmer()
+
+
+## The distance to the next glimmer: GLIMMER_EVERY, shortened by GOO NOSE (x1.5 / x2 / x3 as often).
+func _glimmer_gap() -> float:
+	return randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y) / glimmer_rate
 
 
 ## A twinkle over a coin that's still waiting in the fog near the slime (picked at random), in
@@ -760,6 +794,7 @@ func _build_overlays() -> void:
 	trail_material.shader = preload("res://assets/shaders/trail.gdshader")
 	trail_material.set_shader_parameter("animate", motion_scale())
 	trail_sprite.material = trail_material
+	trail_material.set_shader_parameter("stars", 1.0 if trail_look.get("stars", false) else 0.0)
 	_build_trail_glow()
 
 	var fog_material := ShaderMaterial.new()
@@ -805,7 +840,7 @@ func _build_trail_glow() -> void:
 	var material := CanvasItemMaterial.new()
 	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	glow.material = material
-	glow.modulate = Color(1, 1, 1, TRAIL_GLOW)
+	glow.modulate = Color(1, 1, 1, trail_look.get("glow", TRAIL_GLOW))
 	trail_sprite.add_child(glow)
 
 
@@ -889,13 +924,13 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 			i += 4
 
 
-## Trail color for a newly painted cell: the skin's goo, or for the rainbow skin a hue that
-## shifts as you go, so the trail lays down rainbow bands along your path.
+## Trail color for a newly painted cell, by the worn trail style (Cosmetics.trail_cell): the skin's
+## goo, or for the rainbow skin (default style) a hue that shifts as you go, so the trail lays down
+## rainbow bands along your path; INK / GLOW / GOLD recolor it, CANDY stripes it by distance.
 func _goo_color(dark: bool) -> Color:
-	if not rainbow:
-		return goo_dark if dark else goo
-	var hue := fposmod(elapsed * RAINBOW_TRAIL_SPEED, 1.0) * 0.83
-	return Color.from_hsv(hue, 0.85, 0.5 if dark else 0.9, GOO_ALPHA / 255.0)
+	if trail_look.is_empty():
+		trail_look = Cosmetics.trail_look(trail_style, skin_color, rainbow)
+	return Cosmetics.trail_cell(trail_look, dark, trail_travel, fposmod(elapsed * RAINBOW_TRAIL_SPEED, 1.0) * 0.83)
 
 
 ## Keeps already-revealed cells around the slime fully lit (restarts their fade). The
@@ -1098,7 +1133,7 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall:
 		splats += 1
-		last_jump_cost += splat_penalty(intended_distance)
+		last_jump_cost += splat_penalty(intended_distance) * splat_factor
 		_stain_wall(slime.position, wall_normal)
 		shake_left = SHAKE_TIME
 		var hit_power := inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance)
@@ -1131,6 +1166,46 @@ func _apply_upgrades() -> void:
 	slime.acceleration *= speed
 	light_reach = Upgrades.light_reach(progress.upgrade_level("brightness"))
 	wall_power = progress.upgrade_level("power")
+
+
+## The ticket workshop's level of `id` on this run: 0 in hard mode (it is the pure skill track) and
+## without Progress.
+func workshop_level(id: String) -> int:
+	return int(workshop.get(id, 0))
+
+
+## Applies the ticket workshop (Workshop): QUICK CHARGE and STICKY on the slime, STICKY's splat
+## factor, MAGNET's reach, GOO NOSE's glimmers, SECOND WIND's readiness (story: only on a level
+## already cleared on normal). None of it touches par (set before), the route or the meter.
+func _apply_workshop() -> void:
+	workshop = {}
+	if progress == null or hard_mode:
+		return
+	for id in Workshop.ids():
+		if progress.workshop_level(id) > 0:
+			workshop[id] = progress.workshop_level(id)
+	slime.charge_time = Workshop.charge_time(workshop_level("charge"))
+	slime.splat_stun = Workshop.splat_stun(workshop_level("sticky"))
+	splat_factor = Workshop.splat_factor(workshop_level("sticky"))
+	coin_reach = maxf(Coin.REACH, Workshop.magnet_reach(workshop_level("magnet")))
+	glimmer_rate = Workshop.nose_rate(workshop_level("nose"))
+	if workshop_level("nose") > 0:
+		glimmer_reach = maxf(glimmer_reach, Workshop.nose_reach(workshop_level("nose")))
+	if workshop_level("wind") > 0 and (is_random() or level <= progress.levels_cleared):
+		wind_state = "ready"
+	hud.set_wind(wind_state)
+
+
+## SECOND WIND fires: the meter refills to its level's share over WIND_REFILL_TIME (once per run),
+## with a gulp and a ring of goo. In the randomizer the win now pays one attempt step less.
+func _second_wind() -> void:
+	wind_state = "refilling"
+	wind_fired = true
+	_wind_target = Workshop.wind_refill(workshop_level("wind")) * 100.0
+	hud.set_wind(wind_state)
+	_sfx("upgrade", -4.0)
+	Fx.burst(self, slime.position, skin_color, 24, 50.0, Vector2.UP, 180.0, rainbow)
+	DevLog.log_event(get_tree(), "second wind", self)
 
 
 # ---------------------------------------------------------------- coins
@@ -1177,8 +1252,11 @@ func _place_coins(maze_seed: int) -> void:
 
 func _pick_up_coins(pos: Vector2) -> void:
 	for coin in coins.duplicate():
-		if pos.distance_to(coin.position) > Coin.REACH:
+		var d := pos.distance_to(coin.position)
+		if d > coin_reach:
 			continue
+		if d > Coin.REACH and not (is_revealed_at(coin.position) and clear_line(pos, coin.position)):
+			continue  # MAGNET pulls only coins on revealed floor in plain sight
 		coins.erase(coin)
 		progress.collect_coin(level, coin.cell, assisted)
 		if assisted:
@@ -1193,6 +1271,25 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
+
+
+## True once the fog cell at `pos` has been revealed (ever).
+func is_revealed_at(pos: Vector2) -> bool:
+	var at := _cell_at(pos)
+	if not Rect2i(Vector2i.ZERO, _cells).has_point(at):
+		return false
+	var v := _fog_bytes.decode_u32((at.y * _cells.x + at.x) * 4)
+	return ((v >> 16) & 255) * 256 + ((v >> 24) & 255) > 0
+
+
+## True if no wall tile lies on the straight line from `a` to `b` (a tile raycast, 2 px steps).
+func clear_line(a: Vector2, b: Vector2) -> bool:
+	var steps := maxi(ceili(a.distance_to(b) / 2.0), 1)
+	for i in steps + 1:
+		var p := a.lerp(b, float(i) / steps)
+		if is_wall_tile(Vector2i(floori(p.x / TILE), floori(p.y / TILE))):
+			return false
+	return true
 
 
 # ---------------------------------------------------------------- goal and attempts
@@ -1233,10 +1330,16 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
-	var due: Dictionary = progress.random_payout(attempt, random_seed)
+	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed)
 	if dev_toggled or assisted:
 		due.tickets = 0
 	return due
+
+
+## The attempt a randomizer win is paid for: this run's attempt, one more once SECOND WIND fired
+## (the extra slime costs one attempt step of the payout; spec B.2).
+func pay_attempt() -> int:
+	return attempt + (1 if wind_fired else 0)
 
 
 ## The tickets a win on this run would pay right now (payout().tickets).
@@ -1413,7 +1516,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
-			var paid: int = progress.complete_random(no_record, random_seed, attempt)
+			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)
 			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
 			if paid > 0:
