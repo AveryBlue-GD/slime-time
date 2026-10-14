@@ -263,8 +263,14 @@ shows it; the overview's gold ring marks it.
 pause-menu restarts, REPLAY MAZE after a win and coming back from UPGRADES. Counted in memory only
 (`Progress.random_attempts`, keyed by the seed code + H for hard mode, never saved); NEW MAZE (and
 the hub portal, which rolls a new maze) clears it, so a new maze starts at 1. The HUD pod under the
-maze name reads `TRY 2  4 TIX`: the attempt and what a win would pay right now (all caps applied;
-dim and 0 when nothing would be paid: daily limit, seed already paid today, dev toggles, assist).
+maze name (two lines, right-aligned; since 2026-10-14, was `TRY 2  4 TIX`) reads `ATTEMPT 2` /
+`TIX AVAILABLE 4/5`: the attempt and what a win would pay right now out of a first attempt's 5,
+counting down 5/5, 4/5, 3/5, 2/5, then 1/5 from the 5th, with all caps applied (1/5 for a typed or
+replayed seed or no MORE SLIME; dim 0/5 when nothing would be paid: daily limit, seed already paid
+today, dev toggles, assist). It updates on every start (dry-up RESTART, restart, replay). The pod
+reaches y 40, so in randomizer mazes the area name shows at y 44 (`Hud.AREA_TOP_UNDER_ATTEMPT`) and
+the touch pause button sits at y 44 (`TouchControls.PAUSE_Y_RANDOM`); `test_random_tickets` checks
+it overlaps nothing. The single-line form did not fit at 320x180 (it ran into the area name).
 
 **Payout** (`Progress.random_payout`): attempt 1 = 5 tickets, 2 = 4, 3 = 3, 4 = 2, 5th or later =
 1. Kept safeguards: 5 paying wins per UTC day (forward-only rollover; 25 tickets a day at most); a

@@ -1187,14 +1187,15 @@ func _count_attempt() -> void:
 		return
 	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
 	attempt = progress.begin_random_attempt(attempt_key)
+	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line attempt pod
 	_refresh_attempt_pod()
 
 
-## The HUD's attempt pod: TRY n and the tickets a win would pay now (0 once dev toggles were used).
+## The HUD's attempt pod: ATTEMPT n and the tickets a win would pay now (of 5) (0 once dev toggles were used).
 func _refresh_attempt_pod() -> void:
 	if not is_random() or progress == null:
 		return
-	hud.set_attempt(attempt, 0 if dev_toggled or assisted else progress.random_tickets_due(attempt, random_seed))
+	hud.set_attempt(attempt, 0 if dev_toggled or assisted else progress.random_tickets_due(attempt, random_seed), progress.tickets_for_attempt(1))
 
 
 # ---------------------------------------------------------------- dev: wall power

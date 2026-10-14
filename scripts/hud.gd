@@ -13,6 +13,8 @@ const POD_MARGIN := 3
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
 const AREA_NAME_TIME := 2.0
+## Where the area name sits in a randomizer maze, clear of the two-line attempt pod (normally y 20).
+const AREA_TOP_UNDER_ATTEMPT := 44
 const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
@@ -42,7 +44,8 @@ var time_label: Label
 var coin_label: Label
 var coins_left_label: Label
 var _coins_left_pod: Control
-## Randomizer only: the attempt on this maze and what a win would pay now ("TRY 2  4 TIX").
+## Randomizer only: the attempt on this maze and the tickets a win would pay now, out of the most a
+## maze can pay ("ATTEMPT 2  TIX AVAILABLE 4/5").
 var attempt_pod: Control
 var attempt_label: Label
 var _attempt_icon: TextureRect
@@ -144,6 +147,7 @@ func _ready() -> void:
 	_attempt_icon = UIKit.make_icon("ticket", Color.WHITE)
 	attempt_row.add_child(_attempt_icon)
 	attempt_label = UIKit.make_label("", 8, TICKET_TINT)
+	attempt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	attempt_row.add_child(attempt_label)
 	attempt_pod.visible = false
 
@@ -294,10 +298,15 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 
 
 ## The attempt pod (randomizer mazes only): which attempt at this maze it is and the tickets a win
-## would pay right now, e.g. "TRY 2  4 TIX" (dim when it would pay nothing).
-func set_attempt(attempt: int, payout: int) -> void:
+## would pay right now (every cap applied) out of a first attempt's full pay, counting down
+## attempt by attempt: "ATTEMPT 1  TIX AVAILABLE 5/5", "ATTEMPT 2  TIX AVAILABLE 4/5" ... 1/5 from
+## the 5th; e.g. 1/5 when capped, dim 0/5 when a win would pay nothing. `most` = a first attempt's pay.
+func set_attempt(attempt: int, payout: int, most := 5) -> void:
 	attempt_pod.visible = true
-	attempt_label.text = "TRY %d  %d TIX" % [mini(attempt, 99), payout]
+	# The two-line pod reaches down to y 40: the area name moves under it instead of under the timer.
+	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
+	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
+	attempt_label.text = "ATTEMPT %d\nTIX AVAILABLE %d/%d" % [mini(attempt, 99), payout, most]
 	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
 	attempt_label.add_theme_color_override("font_color", color)
 	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM

@@ -3,6 +3,7 @@ extends Node
 ## Screenshot scenario: a randomizer maze, the slime walked (6 px a frame) along the route to just
 ## before its goal, the ticket, so the ticket shows in the lit area. `--bright` (dev mode,
 ## --unlock-all) turns on the F1 FULL BRIGHT toggle at the end, so the whole maze shows.
+## `--attempt=N` shows the HUD's attempt pod as on attempt N of the maze.
 ## ./tools/screenshot.sh --frames 420 --scene res://tests/demo_random_ticket.tscn --upgrades=3,0,0 --skin=ocean [--unlock-all --bright]
 
 var game: Node2D
@@ -21,6 +22,10 @@ func _drive() -> void:
 	await get_tree().process_frame
 	get_tree().current_scene = game
 	await get_tree().physics_frame
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--attempt="):
+			game.attempt = arg.trim_prefix("--attempt=").to_int()
+			game._refresh_attempt_pod()
 	var route := MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
 	var points: Array[Vector2] = []
 	for cell in route:

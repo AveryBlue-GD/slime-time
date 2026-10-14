@@ -17,6 +17,10 @@ const JOY_HOME := Vector2(40, 140)
 const JUMP_CENTER := Vector2(282, 142)
 const JUMP_RADIUS := 19.0
 const PAUSE_RECT := Rect2(302, 35, 15, 13)
+## Where the pause button really is: PAUSE_RECT, moved down under the randomizer's taller attempt
+## pod by game.gd (`pause_rect.position.y = PAUSE_Y_RANDOM`).
+const PAUSE_Y_RANDOM := 44.0
+var pause_rect := PAUSE_RECT
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 
@@ -72,7 +76,7 @@ func _notification(what: int) -> void:
 
 
 func _touch_down(index: int, pos: Vector2) -> void:
-	if PAUSE_RECT.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
+	if pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		var pause := InputEventAction.new()
 		pause.action = "menu"
 		pause.pressed = true
@@ -154,9 +158,9 @@ func _draw_controls() -> void:
 	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), "JUMP",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
 	# Pause button: two bars.
-	_canvas.draw_rect(PAUSE_RECT, dim)
-	_canvas.draw_rect(Rect2(PAUSE_RECT.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))
-	_canvas.draw_rect(Rect2(PAUSE_RECT.position + Vector2(9, 3), Vector2(2, 7)), Color(color, 0.9))
+	_canvas.draw_rect(pause_rect, dim)
+	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))
+	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(9, 3), Vector2(2, 7)), Color(color, 0.9))
 
 
 func _skin_color() -> Color:

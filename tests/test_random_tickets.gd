@@ -87,7 +87,21 @@ func _initialize() -> void:
 	_check(not game.goal.visible, "...hidden under the fog until the slime is near")
 	_check((game.goal.get_node("CollisionShape2D").shape as CircleShape2D).radius == TicketGoal.GRAB_RADIUS and TicketGoal.GRAB_RADIUS == 6.0,
 		"...with the chalice's grab circle (so the meter calibration is unchanged)")
-	_check(game.hud.attempt_pod.visible and game.hud.attempt_label.text.begins_with("TRY "), "the HUD shows the attempt pod (%s)" % game.hud.attempt_label.text)
+	_check(game.hud.attempt_pod.visible and game.hud.attempt_label.text.begins_with("ATTEMPT "), "the HUD shows the attempt pod (%s)" % game.hud.attempt_label.text)
+	# The two-line pod fits the 320x180 screen without touching the other pods, the area name (moved
+	# under it) or the touch pause button (moved down too).
+	await process_frame
+	var hud: CanvasLayer = game.hud
+	var pod: Rect2 = hud.attempt_pod.get_global_rect()
+	var others: Array[Rect2] = [hud.time_label.get_parent().get_parent().get_global_rect(), hud.level_label.get_parent().get_parent().get_global_rect(),
+		hud.coin_label.get_parent().get_parent().get_global_rect(), hud.label.get_parent().get_parent().get_global_rect()]
+	var text_w: float = hud.area_label.get_theme_font("font").get_string_size(hud.area_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	others.append(Rect2(160.0 - text_w / 2.0, hud.area_label.offset_top, text_w, hud.area_label.offset_bottom - hud.area_label.offset_top))
+	others.append(game.touch_controls.pause_rect)
+	var clear := pod.position.x >= 0 and pod.end.x <= 320 and pod.end.y <= 180
+	for r: Rect2 in others:
+		clear = clear and not pod.intersects(r)
+	_check(clear, "the attempt pod %s stays on screen and clear of the other pods, the area name and the touch pause button" % pod)
 	game.slime.position = game.goal.position + Vector2(game.CHALICE_REVEAL_DISTANCE - 2.0, 0)
 	await physics_frame
 	await physics_frame

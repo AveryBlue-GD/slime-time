@@ -196,7 +196,7 @@ the 5th (`Progress.RANDOM_ATTEMPT_PAY`, `random_payout`). Attempts = every start
 RESTART, R / pause restart, REPLAY MAZE, back from UPGRADES), in memory per seed code (`random_attempts`,
 not saved), cleared by NEW MAZE / a new maze from the hub. Caps kept: 5 paying wins per UTC day (25/day max),
 seed already paid today = 0, typed/replayed seed = 1, no MORE SLIME = 1, assist / dev toggles = 0. HUD pod
-`TRY 2  4 TIX`; result `TICKET! ATTEMPT 2 = +4` (+ REPLAYED SEED / MORE SLIME = MORE). The optional pickup
+`TRY 2  4 TIX` (now `ATTEMPT 2` / `TIX AVAILABLE 4/5`, see below); result `TICKET! ATTEMPT 2 = +4` (+ REPLAYED SEED / MORE SLIME = MORE). The optional pickup
 (`TicketSpawn`, `TicketPickup`, FIND IT pod) and the old payout (1 / +2 pickup / +1 under par) are gone.
 Details: [level-design.md](level-design.md) section 6. Shots `docs/polish-shots/ticketgoal_*.png`.
 CLAUDE.md still says the chalice is the exit everywhere and lists `chalice.gd` only (not edited: off limits).
@@ -220,3 +220,10 @@ meter, spawn classes, seed codes' format and story/hard mazes unchanged (golden 
 byte-identical; MORE SLIME 0/5/10 golden lines rewritten). Build worst case 18 ms (same as batch B),
 mean up (7 ms at level 10). Details: level-design.md section 5; benchmark `tests/bench_random_size.gd`;
 tests `test_random_usage`, `test_maze_golden`; shots `docs/polish-shots/size_*.png`.
+
+## Attempt pod wording (2026-10-14)
+The randomizer HUD pod now reads `ATTEMPT n` over `TIX AVAILABLE k/5` (k = what a win pays now, caps
+applied: 5/5, 4/5, 3/5, 2/5, 1/5 from the 5th; 1/5 capped; dim 0/5 when nothing). Two lines because
+one line ran into the area name; the area name and the touch pause button move to y 44 in
+randomizer mazes. Result screen unchanged (`TICKET! ATTEMPT 2 = +4`). Shots
+`docs/polish-shots/size_hud_attempt1.png` / `size_hud_attempt3.png` (`tests/demo_random_ticket.tscn --attempt=N`).

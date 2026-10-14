@@ -69,7 +69,7 @@ func _initialize() -> void:
 	root.add_child(game)
 	current_scene = game
 	await physics_frame
-	_check(game.hud.attempt_label.text.ends_with(" 0 TIX"), "an assisted randomizer attempt shows 0 TIX (%s)" % game.hud.attempt_label.text)
+	_check(game.hud.attempt_label.text.ends_with(" 0/5"), "an assisted randomizer attempt shows 0/5 tickets available (%s)" % game.hud.attempt_label.text)
 	var tickets_before: int = progress.tickets
 	game.slime.position = game.goal.position
 	for i in 10:
