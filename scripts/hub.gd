@@ -4,6 +4,7 @@ extends Node2D
 ## (glossy goo rim, the slime's eyes on the back, jelly-cube floor; all in your skin's colors) and
 ## seen at a slant. The stations stand evenly spaced around the rim, all facing the center:
 ## - archway: STORY (level select, with the hard mode switch)
+## - map table: MAP TABLE (the trail maps of the story levels: scripts/ui/map_select.gd)
 ## - coin bag: a board of the coins found in each story level (no screen change)
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
 ## - wardrobe: SKINS & HATS
@@ -46,10 +47,12 @@ const ROTOR_RADIUS := 5.0
 const TURN_TIME := 0.55
 const START := CENTER + Vector2(-20, 27)  # clear of the wheel and the station straight ahead
 const ART := "res://assets/sprites/hub/"
+const MAP_SCENE := "res://scenes/maps.tscn"
 ## Warm (or cool) pools of light on the floor under each station: id -> color (alpha = strength).
 ## The door's torches and the cauldron flicker. Skipped for the flat hatch.
 const POOLS := {
 	"story": Color(1.0, 0.62, 0.25, 0.48),
+	"maps": Color(1.0, 0.74, 0.42, 0.4),
 	"upgrades": Color(0.55, 1.0, 0.45, 0.45),
 	"coins": Color(1.0, 0.82, 0.3, 0.42),
 	"random": Color(0.7, 0.45, 1.0, 0.48),
@@ -58,7 +61,7 @@ const POOLS := {
 	"wardrobe": Color(1.0, 0.78, 0.35, 0.42),
 }
 const POOL_SIZE := Vector2i(68, 32)
-const FLICKER := ["story", "upgrades"]
+const FLICKER := ["story", "maps", "upgrades"]
 const FPS := 6.0
 const PROMPT_Y := 156.0
 ## Where the coin bag's board sits on screen.
@@ -66,6 +69,10 @@ const BOARD := Rect2(52, 8, 216, 164)
 ## The trapdoor's confirm panel.
 const QUIT_PANEL := Rect2(80, 54, 160, 72)
 enum View { FRONT, SIDE, BACK }
+## A station within this many degrees of straight across the room shows its front, of straight
+## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
+## apart), so no station ever rests on the edge between two views and flickers.
+const VIEW_ARC := 35.0
 
 ## Stations that come to life now and then instead of looping: each entry plays a sequence of
 ## [frame, seconds] every `every` seconds (random in that range), then rests on its last frame.
@@ -187,12 +194,13 @@ func _build_stations() -> void:
 	var web := OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args()
 	# Clockwise round the room from the back.
 	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 4)  # torches flickering
+	_add_station("maps", "MAP TABLE", "maptable", Vector2i(30, 36), 4)  # lantern flickering
 	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
+	if not web:
+		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
 	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
 	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
 	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 6)
-	if not web:
-		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
 	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 24)
 	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(28, 40), 5)
 	step = TAU / stations.size()
@@ -635,11 +643,11 @@ func _place_all() -> void:
 			station.body.position = base + Vector2(0, -2)
 		var deg := rad_to_deg(wrapf(a, -PI, PI))
 		var view := View.SIDE
-		# Front and back within 40 degrees of straight across / straight ahead, side views otherwise
+		# Front and back within VIEW_ARC of straight across / straight ahead, side views otherwise
 		# (so stations on the diagonals settle on their side view instead of flickering).
-		if deg > -130.0 and deg < -50.0:
+		if absf(deg + 90.0) < VIEW_ARC:
 			view = View.FRONT
-		elif deg > 50.0 and deg < 130.0:
+		elif absf(deg - 90.0) < VIEW_ARC:
 			view = View.BACK
 		station.view = view
 		station.flipped = view == View.SIDE and absf(deg) < 90.0  # right-hand side faces left
@@ -800,6 +808,8 @@ func _use(station: Dictionary) -> void:
 	match station.id:
 		"story":
 			_leave(station, "res://scenes/level_select.tscn")
+		"maps":
+			_leave(station, MAP_SCENE)
 		"wardrobe":
 			_leave(station, "res://scenes/skins.tscn")
 		"upgrades":

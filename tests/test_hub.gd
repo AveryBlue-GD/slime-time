@@ -49,17 +49,18 @@ func _initialize() -> void:
 	progress.medals = {}
 	progress.hard_mode = false
 	var ids: Array = hub.stations.map(func(s: Dictionary) -> String: return s.id)
-	_check(ids == ["story", "upgrades", "coins", "random", "settings", "quit", "wheel", "wardrobe"],
+	_check(ids == ["story", "maps", "upgrades", "quit", "coins", "random", "settings", "wheel", "wardrobe"],
 		"the room has every station: %s" % ", ".join(ids))
-	_check(is_equal_approx(hub.step, TAU / 8.0), "...evenly spaced round the rim")
+	_check(is_equal_approx(hub.step, TAU / 9.0), "...evenly spaced round the rim")
 	var story: Dictionary = hub._station("story")
 	_check(story.view == HubScript.View.FRONT and story.sprite.region_rect.position.y == 0.0,
 		"the station at the back of the room shows its front")
-	var right: Dictionary = hub._station("random")
+	var right: Dictionary = hub._station("upgrades")
 	var left: Dictionary = hub._station("wheel")
 	_check(right.view == HubScript.View.SIDE and right.sprite.flip_h and left.view == HubScript.View.SIDE and not left.sprite.flip_h,
 		"stations at the sides show their side, facing the center (mirrored on the right)")
-	_check(hub._station("settings").view == HubScript.View.BACK, "stations up close show their back")
+	_check(hub._station("coins").view == HubScript.View.BACK and hub._station("random").view == HubScript.View.BACK,
+		"stations up close show their back")
 	_check(hub.near.is_empty() and not hub.prompt.visible, "the slime starts in the room with nothing to use")
 
 	# --- Away from stations the jump key leaps as usual
@@ -95,7 +96,7 @@ func _initialize() -> void:
 	Input.action_release("interact")
 	_check(hub.turning and hub.slime.state == Slime.State.GLIDE, "hitting it (F) starts the room turning (no leap)")
 	await _frames(int(HubScript.TURN_TIME * 60) + 4)
-	_check(not hub.turning and hub._station("upgrades").view == HubScript.View.FRONT and hub._station("story").view == HubScript.View.SIDE,
+	_check(not hub.turning and hub._station("maps").view == HubScript.View.FRONT and hub._station("story").view == HubScript.View.SIDE,
 		"...one station round: the next one comes to the back, facing you")
 	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
 	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)

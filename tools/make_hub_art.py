@@ -27,6 +27,10 @@ the skin shader recolors it to the equipped skin; stone stays off the dried-crus
                            edge-on / from behind; the gears turning (a looping tooth's worth)
 - hatch.png     28x18 x4 : QUIT: an iron-braced trapdoor over a ladder into the dark (flat: the
                            same from every side); frames: shut, lifting, blown open with a puff, open
+- maptable.png  30x36 x4 : MAP TABLE: a cartographer's desk: a map pinned on a standing board (an inked maze
+                           with a goo trail and a red X), a compass, a quill in a pot of goo, a small
+                           lantern and a drawer / the desk side-on (board edge-on) / the board's braced back
+                           with a rolled scroll; frames: the lantern flame flickering
 - rotor.png     26x36 x4 : the wheel on a stick in the middle: a ship's wheel with handles and a
                            brass hub on a rope-wrapped post, spinning
 (The room itself is drawn live by assets/shaders/hub_room.gdshader, so it can turn.)
@@ -820,6 +824,194 @@ def hatch() -> list:
     return [_hatch(0, False), _hatch(1, False), _hatch(2, True), _hatch(2, False)]
 
 
+# ----------------------------------------------------------------- MAP TABLE: the cartographer's desk
+
+# Parchment, hue-shifted: shadows lean red-brown, lights lean cream-yellow (off the bone and stone greys).
+PARCHMENT = [rgb(126, 80, 60), rgb(176, 130, 88), rgb(216, 182, 126), rgb(242, 224, 172)]
+INK = rgb(64, 42, 58)            # a violet-brown ink line
+FEATHER = [rgb(150, 142, 172), rgb(206, 202, 218), rgb(246, 242, 232)]  # cool shadow -> warm white
+## The lantern flame, per frame: (dx, dy, fire shade) inside the lantern's glass.
+LANTERN_FLAMES = [
+    [(1, 2, 2), (1, 1, 3), (2, 2, 1), (1, 0, 1)],
+    [(1, 2, 3), (1, 1, 2), (0, 2, 1), (1, 0, 2)],
+    [(1, 2, 2), (1, 1, 3), (2, 1, 1), (2, 2, 1)],
+    [(1, 2, 3), (1, 1, 3), (1, 0, 2), (0, 1, 1)],
+]
+MAP_FRAMES = len(LANTERN_FLAMES)
+
+
+def _lantern(cv: Canvas, x: int, y: int, f: int) -> None:
+    """A small lantern standing at (x, y) (top-left of its 4x8 body): a ring, a cap, glass with a
+    flickering flame and a base."""
+    cv.put(x + 1, y, IRON[3])                # the ring handle
+    cv.put(x + 2, y, IRON[2])
+    cv.hline(x, x + 3, y + 1, IRON[2])       # cap
+    cv.put(x, y + 1, IRON[3])
+    cv.rect(x, y + 2, 4, 4, rgb(96, 58, 40))  # glass, glowing warm
+    for dx, dy, shade in LANTERN_FLAMES[f % MAP_FRAMES]:
+        cv.put(x + dx, y + 2 + dy, FIRE[shade])
+    cv.vline(x, y + 2, y + 5, IRON[1])       # frame bars
+    cv.vline(x + 3, y + 2, y + 5, IRON[1])
+    cv.hline(x, x + 3, y + 6, IRON[2])       # base
+    cv.hline(x, x + 3, y + 7, IRON[1])
+
+
+def _pinned_map(cv: Canvas, x0: int, y0: int, w: int, h: int) -> None:
+    """The map pinned on the board: parchment lit from the top-left with a curled corner, an inked
+    maze, a goo trail winding through it (the skin recolors it) and a red X where the chalice is."""
+    for y in range(y0, y0 + h):
+        for x in range(x0, x0 + w):
+            u, v = (x - x0) / (w - 1), (y - y0) / (h - 1)
+            shade = 3 if u + v < 0.5 else 2 if u + v < 1.4 else 1
+            cv.put(x, y, PARCHMENT[shade])
+    cv.vline(x0 + w - 1, y0 + 1, y0 + h - 1, PARCHMENT[0])   # its shadowed edges
+    cv.hline(x0 + 1, x0 + w - 1, y0 + h - 1, PARCHMENT[0])
+    # An inked maze: a border and a few walls on a 3 px grid.
+    ink = [(0, 0, w - 3, 0), (0, 0, 0, h - 4), (w - 3, 0, w - 3, h - 4), (0, h - 4, w - 3, h - 4),
+           (3, 0, 3, 6), (6, 3, 6, h - 4), (9, 0, 9, 6), (9, 9, 12, 9), (3, 9, 3, h - 4), (12, 3, 15, 3)]
+    for ax, ay, bx, by in ink:
+        if ax == bx:
+            cv.vline(x0 + 1 + ax, y0 + 1 + ay, y0 + 1 + by, INK)
+        else:
+            cv.hline(x0 + 1 + ax, x0 + 1 + bx, y0 + 1 + ay, INK)
+    # The goo trail: from the start (bottom-left) round the walls toward the X.
+    trail = [(2, 10), (2, 8), (2, 7), (2, 6), (2, 5), (2, 4), (2, 3), (2, 2), (3, 2), (4, 2), (5, 2),
+             (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8), (5, 9), (5, 10), (6, 10), (7, 10), (8, 10),
+             (8, 9), (8, 8), (9, 8), (10, 8), (11, 8)]
+    for i, (tx, ty) in enumerate(trail):
+        cv.put(x0 + tx, y0 + ty, GOO[3] if i % 4 else GOO[4])
+    cv.put(x0 + 2, y0 + 11, GOO[2])           # a drop where it starts
+    gx, gy = x0 + 13, y0 + 7                  # the red X (the chalice)
+    for d in (-1, 0, 1):
+        cv.put(gx + d, gy + d, RED[2] if d < 1 else RED[1])
+        cv.put(gx + d, gy - d, RED[1])
+    for px, py in ((x0, y0), (x0 + w - 1, y0)):  # red pins in the top corners
+        cv.put(px, py, RED[2])
+    cv.put(x0 + w - 2, y0 + h - 2, PARCHMENT[3])  # the curled-up corner
+    cv.put(x0 + w - 1, y0 + h - 2, PARCHMENT[2])
+    cv.put(x0 + w - 2, y0 + h - 1, PARCHMENT[2])
+
+
+def _desk_legs(cv: Canvas, xs, top: int, bottom: int) -> None:
+    for x in xs:
+        cv.rect(x, top, 2, bottom - top + 1, WOOD[1])
+        cv.vline(x, top, bottom, WOOD[2])
+
+
+def _maptable_front(f: int) -> list:
+    cv = Canvas(30, 36)
+    rng = random.Random(31)
+    # The standing board, its legs reaching down behind the desk.
+    _desk_legs(cv, (6, 22), 19, 22)
+    cv.rect(4, 1, 22, 19, WOOD[1])
+    cv.hline(4, 25, 1, WOOD[3])
+    cv.vline(4, 1, 19, WOOD[2])
+    _pinned_map(cv, 6, 3, 18, 15)
+    # The desk: a lit top seen at a slant, a front with a drawer, legs.
+    cv.rect(1, 21, 28, 3, WOOD[2])
+    cv.hline(1, 28, 21, WOOD[4])
+    for x in range(2, 28, 5):
+        cv.put(x + rng.randint(0, 2), 22 + rng.randint(0, 1), WOOD[3])  # grain on the top
+    plank(cv, 2, 24, 26, 6, rng, vertical=False, tone=2)
+    cv.hline(2, 27, 29, WOOD[1])
+    cv.rect(10, 25, 10, 4, WOOD[1])          # drawer
+    cv.rect(11, 26, 8, 2, WOOD[3])
+    cv.hline(11, 18, 26, WOOD[4])
+    cv.put(14, 27, GOLD[3])                   # brass knob
+    cv.put(15, 27, GOLD[1])
+    _desk_legs(cv, (2, 26), 30, 34)
+    cv.hline(1, 3, 35, WOOD[0])
+    cv.hline(26, 28, 35, WOOD[0])
+    # On the desk: the lantern (left), a compass, and the quill in a pot of goo (right).
+    _lantern(cv, 1, 13, f)
+    cv.ellipse(10.5, 22.0, 3.0, 1.9, lambda x, y, u, v: GOLD[2] if u + v < -0.3 else GOLD[1])  # compass
+    cv.hline(9, 11, 22, rgb(240, 236, 226))   # its face
+    cv.put(10, 22, RED[2])                    # and needle
+    cv.put(11, 22, INK)
+    cv.rect(21, 19, 4, 3, IRON[1])            # the pot, full of goo
+    cv.hline(21, 24, 19, GOO[4])
+    cv.put(22, 19, GOO[5])
+    for i, (qx, qy) in enumerate(((23, 18), (23, 17), (24, 16), (24, 15), (24, 14), (25, 13), (25, 12), (25, 11))):
+        cv.put(qx, qy, FEATHER[1] if i < 2 else FEATHER[2])   # the quill's feather
+        if i >= 2:
+            cv.put(qx + 1, qy, FEATHER[0])
+    cv.put(23, 22, GOO[3])                    # a drip running down the desk front from the pot
+    for y in range(24, 27):
+        cv.put(23, y, GOO[3] if y < 26 else GOO[2])
+    cv.outline()
+    return cv.px
+
+
+def _maptable_side(f: int) -> list:
+    cv = Canvas(30, 36)
+    rng = random.Random(32)
+    cv.rect(8, 1, 2, 21, WOOD[1])             # the board edge-on, at the desk's back
+    cv.vline(8, 1, 21, WOOD[3])
+    cv.vline(10, 3, 17, PARCHMENT[2])         # the map's edge, toward the center
+    cv.put(10, 3, RED[2])
+    cv.rect(7, 21, 16, 3, WOOD[2])            # the desk top, end-on (its depth)
+    cv.hline(7, 22, 21, WOOD[4])
+    plank(cv, 8, 24, 14, 6, rng, vertical=False, tone=1)  # the desk's side
+    cv.hline(8, 21, 29, WOOD[0])
+    cv.vline(22, 24, 29, WOOD[2])             # the front edge with the drawer's knob
+    cv.put(23, 26, GOLD[3])
+    _desk_legs(cv, (8, 20), 30, 34)
+    cv.hline(7, 9, 35, WOOD[0])
+    cv.hline(20, 22, 35, WOOD[0])
+    _lantern(cv, 11, 13, f)
+    cv.hline(15, 18, 21, GOLD[2])             # the compass, flat
+    cv.put(16, 21, RED[2])
+    cv.rect(18, 18, 3, 3, IRON[1])            # the goo pot and quill
+    cv.hline(18, 20, 18, GOO[4])
+    for i, (qx, qy) in enumerate(((19, 17), (20, 16), (20, 15), (21, 14), (21, 13), (22, 12))):
+        cv.put(qx, qy, FEATHER[2] if i else FEATHER[1])
+        if i >= 2:
+            cv.put(qx - 1, qy, FEATHER[0])
+    cv.outline()
+    return cv.px
+
+
+def _maptable_back(_f: int) -> list:
+    cv = Canvas(30, 36)
+    rng = random.Random(33)
+    for x in range(4, 26, 4):                 # the board's back: planks and a cross brace
+        plank(cv, x, 1, 4, 19, rng, vertical=True, tone=1 + (x // 4) % 2)
+    cv.hline(4, 25, 1, WOOD[3])
+    for i in range(20):                        # the diagonal brace
+        cv.put(5 + i, 2 + (i * 17) // 20, WOOD[0])
+        cv.put(5 + i, 3 + (i * 17) // 20, WOOD[3])
+    # A rolled-up spare map tied to the back with string.
+    cv.rect(9, 7, 12, 3, PARCHMENT[2])
+    cv.hline(9, 20, 7, PARCHMENT[3])
+    cv.hline(9, 20, 9, PARCHMENT[1])
+    cv.vline(8, 7, 9, PARCHMENT[0])
+    cv.vline(21, 7, 9, PARCHMENT[1])
+    cv.vline(14, 6, 10, RED[1])
+    cv.put(15, 11, RED[1])
+    _desk_legs(cv, (6, 22), 20, 22)
+    cv.rect(1, 21, 28, 3, WOOD[2])            # the desk from behind: top edge, back panel, legs
+    cv.hline(1, 28, 21, WOOD[3])
+    plank(cv, 2, 24, 26, 6, rng, vertical=False, tone=1)
+    cv.hline(2, 27, 29, WOOD[0])
+    _desk_legs(cv, (2, 26), 30, 34)
+    cv.hline(1, 3, 35, WOOD[0])
+    cv.hline(26, 28, 35, WOOD[0])
+    cv.outline()
+    return cv.px
+
+
+def maptable() -> list:
+    return [_maptable_front(f) for f in range(MAP_FRAMES)]
+
+
+def maptable_side() -> list:
+    return [_maptable_side(f) for f in range(MAP_FRAMES)]
+
+
+def maptable_back() -> list:
+    return [_maptable_back(0)] * MAP_FRAMES  # the lantern is hidden behind the board
+
+
 # ----------------------------------------------------------------- the wheel on a stick
 
 def rotor() -> list:
@@ -872,6 +1064,7 @@ if __name__ == "__main__":
         "wheel": [wheel(), wheel_side(), wheel_back()],
         "signpost": [signpost(), signpost_side(), signpost_back()],
         "hatch": [hatch()] * 3,
+        "maptable": [maptable(), maptable_side(), maptable_back()],
         "rotor": [rotor()],
     }
     for name, rows in sheets.items():
