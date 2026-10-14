@@ -217,6 +217,11 @@ class StageArt extends Node2D:
 	const RUN_SPEED := 84.0
 	## The fall: ten floors (level 10 at the top down to level 1), FALL_TIME seconds.
 	const LAYER_H := 118.0
+	## Depth gauge geometry (see gauge_slice).
+	const GAUGE_SLICE_H := 3
+	const GAUGE_GAP := 1
+	const GAUGE_BASE_W := 6
+	const GAUGE_STEP := 2
 	const FALL_TOP := -70.0
 	const FALL_TIME := 4.8
 	## Stone colors per theme (from tools/make_theme_art.py): outline k, highlight x, light w,
@@ -360,9 +365,17 @@ class StageArt extends Node2D:
 					c = Color(Color8(255, 214, 140), clampf((t - 4.7) / 1.3, 0.0, 1.0))
 		return c
 
+	## One depth-gauge slice (i = 0 is the top floor, the Volcanic Vault) in gauge space: every
+	## slice GAUGE_SLICE_H tall with a GAUGE_GAP gap, centered on x = 0 in whole pixels, and
+	## GAUGE_STEP narrower than the one above it (an upside-down stepped pyramid: the top floor is
+	## the biggest maze, the Dark Dungeon at the bottom the smallest, GAUGE_BASE_W wide).
+	static func gauge_slice(i: int, n: int) -> Rect2:
+		var w := GAUGE_BASE_W + (n - 1 - i) * GAUGE_STEP
+		return Rect2(w * -0.5, i * (GAUGE_SLICE_H + GAUGE_GAP), w, GAUGE_SLICE_H)
+
 	## Screen-space depth gauge (drawn by Cover): the mountain's ten floors as a stack of colored
-	## slices widening toward the base, a little sun above the summit, and the slime's marker sliding
-	## down it during the fall. After the splat the marker sits at the very bottom and a dotted arrow
+	## slices, widest at the top (see gauge_slice), a little sun above it, and the slime's marker
+	## sliding down beside it during the fall. After the splat the marker sits at the very bottom and a dotted arrow
 	## climbs from it to the sun: the way out is up.
 	func draw_gauge(canvas: CanvasItem) -> void:
 		var alpha := 0.0
@@ -383,9 +396,11 @@ class StageArt extends Node2D:
 			return
 		canvas.draw_set_transform(origin, 0.0, Vector2(sc, sc))
 		var n := layers.size()
-		var slice_h := 3.0
-		var stack_h := n * (slice_h + 1.0) - 1.0
-		canvas.draw_rect(Rect2(-16, -17, 30, stack_h + 23), Color(INK, 0.6 * alpha))
+		var stack_h := float(n * (GAUGE_SLICE_H + GAUGE_GAP) - GAUGE_GAP)
+		# The marker runs in its own column just left of the widest (top) slice.
+		var half_top := (GAUGE_BASE_W + (n - 1) * GAUGE_STEP) * 0.5
+		var mx := -half_top - 7.0
+		canvas.draw_rect(Rect2(mx - 2.0, -17, half_top + 4.0 - mx, stack_h + 23), Color(INK, 0.6 * alpha))
 		# The sun over the summit.
 		var sun := Vector2(0, -9)
 		canvas.draw_rect(Rect2(sun + Vector2(-2, -2), Vector2(5, 5)), Color(FLAME, alpha))
@@ -396,16 +411,14 @@ class StageArt extends Node2D:
 			canvas.draw_rect(Rect2(sun + ray, Vector2.ONE), Color(FLAME_HOT, alpha))
 		var current := clampi(int(depth * n), 0, n - 1)
 		for i in n:
-			var w := 6.0 + i * 1.2
-			var y := i * (slice_h + 1.0)
+			var r := gauge_slice(i, n)
 			var c: Color = _sig_color(layers[i])
 			if i != current:
 				c = c.lerp(INK, 0.45)
-			canvas.draw_rect(Rect2(roundf(-w * 0.5), y, roundf(w), slice_h), Color(c, alpha))
-			canvas.draw_rect(Rect2(roundf(-w * 0.5), y, roundf(w), 1), Color(c.lightened(0.3), alpha))
+			canvas.draw_rect(r, Color(c, alpha))
+			canvas.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Color(c.lightened(0.3), alpha))
 		# The slime's marker: a little goo blob with a pointer, beside the current depth.
-		var my := roundf(depth * (stack_h - 3.0)) - 1.0
-		var mx := -14.0
+		var my := roundf(depth * (stack_h - GAUGE_SLICE_H)) - 1.0
 		canvas.draw_rect(Rect2(mx, my + 1, 5, 3), Color(goo.mid, alpha))
 		canvas.draw_rect(Rect2(mx + 1, my, 3, 1), Color(goo.light, alpha))
 		canvas.draw_rect(Rect2(mx + 1, my + 1, 1, 1), Color(goo.highlight, alpha))

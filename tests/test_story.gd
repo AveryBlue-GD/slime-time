@@ -204,6 +204,23 @@ func _initialize() -> void:
 	_check(not maze.hud.story_label.visible, "randomizer mazes have no story line")
 	maze.free()
 
+	# --- Depth gauge: an even, centered, upside-down stepped pyramid (widest floor on top)
+	var art_class: GDScript = load("res://scripts/ui/story_screen.gd").StageArt
+	var even := true
+	var n: int = Levels.COUNT
+	var top: Rect2 = art_class.gauge_slice(0, n)
+	var step: float = top.size.x - art_class.gauge_slice(1, n).size.x
+	for i in n:
+		var r: Rect2 = art_class.gauge_slice(i, n)
+		even = even and r.size.y == top.size.y and r.position == r.position.round() and r.size == r.size.round()
+		even = even and is_equal_approx(r.position.x + r.size.x * 0.5, 0.0)
+		if i > 0:
+			var above: Rect2 = art_class.gauge_slice(i - 1, n)
+			even = even and r.position.y - above.end.y == art_class.GAUGE_GAP and above.size.x - r.size.x == step
+	var bottom: Rect2 = art_class.gauge_slice(n - 1, n)
+	_check(even and step > 0 and bottom.size.x >= 6 and top.size.x >= 24 and top.size.x <= 30,
+		"the depth gauge's slices are equal height, evenly gapped, centered and shrink by %d px from top (%d) to bottom (%d)" % [step, top.size.x, bottom.size.x])
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_story.cfg"))
 	# --- A huge first frame delta (web scene load) keeps the stage bounce bounded
 	var big := await _open("intro", false)
