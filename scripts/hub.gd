@@ -191,7 +191,7 @@ func _build_room() -> void:
 
 
 func _build_stations() -> void:
-	var web := OS.has_feature("web") or "--web-ui" in OS.get_cmdline_user_args()
+	var web := OS.has_feature("web") or "--web-ui" in Progress.user_args()
 	# Clockwise round the room from the back.
 	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 4)  # torches flickering
 	_add_station("maps", "MAP TABLE", "maptable", Vector2i(30, 36), 4)  # lantern flickering

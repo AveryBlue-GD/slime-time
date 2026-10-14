@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg.
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels and coins (for promo shots), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -223,8 +223,11 @@ func _ready() -> void:
 		InputMap.add_action("interact")
 	if save_path == _throwaway_save_path():
 		_clear_throwaway_saves()  # fresh every run
-	var story_complete := STORY_COMPLETE_FLAG in OS.get_cmdline_user_args()
-	var autoplay := Autoplay.requested(OS.get_cmdline_user_args())
+	var args := user_args()
+	if args.size() != OS.get_cmdline_user_args().size():
+		print("Slime Time: debug launch flags are ignored in release builds (kept: %s)" % ", ".join(args))
+	var story_complete := STORY_COMPLETE_FLAG in args
+	var autoplay := Autoplay.requested(args)
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
 	elif story_complete or autoplay:
@@ -239,7 +242,7 @@ func _ready() -> void:
 		enable_story_complete()
 	if autoplay:
 		enable_autoplay()
-	for arg in OS.get_cmdline_user_args():
+	for arg in args:
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
 		elif arg == "--unlock-all":
@@ -287,9 +290,35 @@ func _ready() -> void:
 			selected_hat = arg.trim_prefix("--hat=")
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
-	if MAPS_FULL_FLAG in OS.get_cmdline_user_args():  # after the loop: --unlock-all clears the maps
+	if MAPS_FULL_FLAG in args:  # after the loop: --unlock-all clears the maps
 		saving_enabled = false
 		seed_full_surveys()
+
+
+## Launch flags an exported RELEASE build still honors: they only preview the touch / web UI layout.
+## Every other flag after `--` (--unlock-all, --story-complete, --autoplay*, --level=, --coins=,
+## --tickets=, --medals=, --upgrades=, --skin=, --hat=, --maps=, --random, --hard, --jelly,
+## --all-coins, --save-path=, --quiet-window...) is a debug / dev tool: a release export
+## (OS.is_debug_build() false) ignores them and launches as a normal game. The editor binary that
+## tools/play.sh, screenshot.sh and test_all.sh run is a debug build, so they keep working.
+const RELEASE_FLAGS := ["--touch", "--web-ui"]
+
+
+## The launch flags this build honors out of `args`: all of them in a debug build (editor binary,
+## debug export), only RELEASE_FLAGS in a release export.
+static func game_args(args: PackedStringArray, debug_build: bool) -> PackedStringArray:
+	if debug_build:
+		return args
+	var out := PackedStringArray()
+	for arg in args:
+		if arg in RELEASE_FLAGS:
+			out.append(arg)
+	return out
+
+
+## The flags after `--` that this launch honors (see game_args). Game code reads flags through this.
+static func user_args() -> PackedStringArray:
+	return game_args(OS.get_cmdline_user_args(), OS.is_debug_build())
 
 
 ## Debug (--quiet-window, used by tools/play.ps1 and screenshot.ps1): the window was opened
@@ -354,13 +383,14 @@ func _clear_throwaway_saves() -> void:
 static func _is_non_player_run() -> bool:
 	const TOOL_FLAGS := ["-s", "--script", "--headless", "--write-movie", "--quit", "--quit-after",
 		"--fixed-fps", "--import", "--check-only", "--doctor", "--dev", "--unlock-all", "--editor", "-e"]
-	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+	for arg: String in OS.get_cmdline_args() + user_args():
 		if arg in TOOL_FLAGS or arg.begins_with("--write-movie=") or arg.begins_with("--script=") \
 				or arg.begins_with("--export") or arg.begins_with("res://tests/") \
 				or arg.begins_with("res://tools/") or arg.ends_with(".gd"):
 			return true
-	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("-") and arg != "--quiet-window" and not arg.begins_with("--save-path="):
+	for arg: String in user_args():
+		if arg.begins_with("-") and arg != "--quiet-window" and not arg.begins_with("--save-path=") \
+				and not (arg in RELEASE_FLAGS and not OS.is_debug_build()):
 			return true
 	return DisplayServer.get_name() == "headless"
 
@@ -369,7 +399,7 @@ static func _is_non_player_run() -> bool:
 ## (before or after `--`) picks a file explicitly; the real save is refused outside a normal launch.
 static func _default_save_path() -> String:
 	var explicit := ""
-	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+	for arg: String in (OS.get_cmdline_args() + user_args()) if OS.is_debug_build() else PackedStringArray():
 		if arg.begins_with("--save-path="):
 			explicit = arg.trim_prefix("--save-path=")
 	var non_player := _is_non_player_run()
@@ -992,7 +1022,7 @@ func enable_autoplay() -> void:
 	saving_enabled = false
 	dev_tools = false
 	tutorial_seen = TUTORIAL_MOVE | TUTORIAL_LEAP
-	if not Autoplay.CINEMATICS_FLAG in OS.get_cmdline_user_args():
+	if not Autoplay.CINEMATICS_FLAG in user_args():
 		story_seen = STORY_INTRO | STORY_FINALE
 	get_tree().root.add_child.call_deferred(Autoplay.new())
 
