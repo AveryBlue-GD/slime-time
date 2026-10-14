@@ -240,7 +240,7 @@ class Hat:
         and lower down it stays within `thick` px of the head (plus `extra` on each side), down to
         `down` px below the top of the head. So it wraps round the head instead of mushrooming."""
         lift = rise * self.sy
-        y_bot = self.Y(down)
+        y_bot = self.top + down * min(1.0, self.sy)  # (a stretched head is taller: don't reach further down it)
 
         def inside(x, y):
             if y > y_bot:
@@ -314,7 +314,7 @@ def beanie(h: Hat):
 
 def party_hat(h: Hat):
     h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
-    tip = (h.cx + 0.5, h.Y(-6.8))
+    tip = (h.cx, h.Y(-6.8))                                                   # (a 2 px tip: centered)
     base_y, half = h.Y(1.2), max(2.5, h.rx * 0.78)
 
     def cone(x, y):
@@ -336,21 +336,22 @@ def party_hat(h: Hat):
 
 def baseball_cap(h: Hat):
     h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
-    h.cap(3.4, 3.0, BLUE, extra=0.5)                                          # crown hugging the head
-    h.recolor(lambda x, y, c: x == fx(h.cx) and y + 0.5 < h.Y(1.0) and c in BLUE[:2], BLUE[2])  # front seam
-    h.put(fx(h.cx) - 1, fx(h.Y(-3.0)), BLUE[0])                              # top button
-    h.put(fx(h.cx), fx(h.Y(-3.0)), BLUE[1])
-    vy, vw = h.Y(2.0), max(2.5, h.rx)                                      # the bill, out over the brow
-    h.recolor(lambda x, y, c: y == fx(vy) - 1, lambda x, y, c: BLUE[2] if c != BLUE[3] else c)  # seam above it
-
-    def bill(x, y):
-        d = (y - vy) / 1.9
-        return 0 <= d <= 1 and abs(x - h.cx) <= vw * math.sqrt(max(0.0, 1 - d * d)) + 0.3
-    pts = h.shape(bill, BLUE, light="flat")
-    if pts:
-        last = max(y for x, y in pts)
-        for x, y in pts:                                                      # lit top, dark underside
-            h.put(x, y, BLUE[3] if y == last else BLUE[0] if y == fx(vy) and x + 0.5 < h.cx + vw * 0.5 else BLUE[1])
+    crown = h.cap(4.0, 1.4, BLUE, extra=0.5)                                  # crown hugging the head
+    c = fx(h.cx)                                                              # (pixels c-1, c: the middle two)
+    top = min(y for x, y in crown)
+    h.put(c - 1, top, BLUE[0])                                                # button on top, 2 px: centered
+    h.put(c, top, BLUE[1])
+    b0 = max(y for x, y in crown)                                             # the bill, out over the brow:
+    half = (max(x for x, y in crown if y == b0) - min(x for x, y in crown if y == b0) + 1) / 2
+    h.recolor(lambda x, y, col: y == b0, BLUE[3])                             # the crown's band in its shadow,
+    for k, (reach, shade) in enumerate(((half - 0.6, 0), (half - 3.4, 2)), start=1):  # the bill's lit top
+        for x in range(W):                                                    # curving down in front
+            u = (x + 0.5 - h.cx) / reach
+            if abs(u) <= 1.0:
+                h.put(x, b0 + k, BLUE[shade] if shade or u < 0.3 else BLUE[1])
+    if h.width != SQUEEZED:                                                   # a white badge on the front
+        for x in (c - 1, c):
+            h.put(x, b0 - 2, CREAM[0] if x < c else CREAM[1])
     h.finish()
 
 
@@ -418,25 +419,30 @@ def wizard_hat(h: Hat):
     h.finish()
 
 
+# A viking horn, the left one, as pixels up from its root on the helmet's shoulder: (dx out, dy up,
+# shade: 0 lit, 1 mid, 2 dark). Out and up from the helmet, the tip turning upright: a crescent.
+HORNS = {
+    "big": [(0, 0, 1), (1, 0, 0), (0, 1, 0), (1, 1, 1), (2, 1, 0), (2, 2, 1), (3, 2, 0), (3, 3, 0), (3, 4, 1)],
+    "low": [(0, 0, 1), (1, 0, 0), (0, 1, 0), (1, 1, 1), (2, 1, 0), (2, 2, 1), (3, 2, 0), (3, 3, 1)],
+    "small": [(0, 0, 1), (1, 0, 0), (1, 1, 1), (2, 1, 0), (2, 2, 1)],
+}
+
+
 def viking_helmet(h: Hat):
     h.ink, h.lining = ink(*METAL[2][:3]), METAL[3]
     h.cap(3.6, 3.4, METAL, extra=0.5)                                         # dome helmet over the head
     rim_y = fx(h.Y(1.0))
-    h.recolor(lambda x, y, c: y >= rim_y,                                     # riveted brass rim
-              lambda x, y, c: GOLD[0] if y == rim_y and (x - fx(h.cx)) % 3 == 1 else GOLD[1] if x + 0.5 < h.cx + 2 else GOLD[2])
-    h.recolor(lambda x, y, c: x == fx(h.cx) and y < rim_y and c in METAL[1:], METAL[0])  # crest ridge
-    if h.width != SQUEEZED:                                                   # horns sweeping out and up
-        for side in (-1, 1):
-            root = (h.cx + side * (h.span - 1.0), h.Y(0.8))
-            path = []
-            for i in range(13):
-                t = i / 12
-                path.append((root[0] + side * 2.4 * math.sin(t * 1.7) * min(1.0, h.sx),
-                             root[1] - 4.4 * h.sy * t ** 1.7, 1.2 * (1 - t) + 0.35))
-
-            def horn(x, y, path=path):
-                return any((x - px_) ** 2 + (y - py_) ** 2 <= r * r for px_, py_, r in path) and not h.filled(int(x), int(y))
-            h.shape(horn, BONE if side < 0 else BONE[1:], light="dome")
+    c = fx(h.cx)                                                              # (pixels c-1, c: the middle two)
+    h.recolor(lambda x, y, col: y >= rim_y,                                   # riveted brass rim
+              lambda x, y, col: GOLD[0] if y == rim_y and (x - c) % 3 == 1 else GOLD[1] if x + 0.5 < h.cx + 2 else GOLD[2])
+    h.recolor(lambda x, y, col: x in (c - 1, c) and y < rim_y,               # crest ridge, 2 px: centered
+              lambda x, y, col: METAL[0] if x == c - 1 else METAL[1])
+    root_y = fx(h.Y(-0.6))                                                    # horns from the helmet's shoulders
+    xs = [x for x in range(W) if h.filled(x, root_y)]
+    horn = HORNS["small" if h.width == SQUEEZED else "low" if h.width == WIDE else "big"]
+    for dx, dy, shade in horn:                                                # left, then mirrored on the right
+        h.put(xs[0] - dx, root_y - dy, BONE[shade])
+        h.put(W - 1 - (xs[0] - dx), root_y - dy, BONE[min(2, shade + 1)])
     h.finish()
 
 
@@ -444,26 +450,34 @@ def propeller_cap(h: Hat):
     h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
     pts = h.cap(3.4, 3.0, BLUE, extra=0.5)
     panels = [RED, YELLOW, BLUE, GREEN]
-    left, right = min(x for x, y in pts), max(x for x, y in pts)
-    tops = {}
+    rows = {}
     for x, y in pts:
-        tops[x] = min(tops.get(x, y), y)
-    for x, y in pts:                                                          # four colored panels
-        k = int((x - left) / (right - left + 1) * 4)
-        r = panels[max(0, min(3, k))]
-        u = (x - left + 0.5) / (right - left + 1) * 2 - 1
-        h.put(x, y, r[0] if y == tops[x] and u < 0.3 else r[1] if u < 0.45 else r[2])
-    bill_x = h.cx - h.dome_width(h.Y(2.2)) - 0.5                              # little bill
-    h.ellipse(bill_x - 0.4, h.Y(2.2), 2.0 * min(1.0, h.sx + 0.1), 1.0, BLUE, light="flat")
-    px, py = fx(h.cx), fx(h.Y(-3.0)) - 1                                     # the propeller on a stem
-    span = 3 if h.width != SQUEEZED else 2
-    h.put(px - 1, py, METAL[1])
-    h.put(px, py, METAL[2])
-    for dx in range(1, span + 1):
-        h.put(px - 1 - dx, py - 1, RED[0] if dx < span else RED[1])
-        h.put(px + dx, py - 1, YELLOW[0] if dx < span else YELLOW[2])
-    h.put(px - 1, py - 1, METAL[0])
-    h.put(px, py - 1, METAL[1])
+        lo, hi = rows.get(y, (x, x))
+        rows[y] = (min(lo, x), max(hi, x))
+    top, bottom = min(rows), max(rows)
+    for x, y in pts:                                                          # four panels meeting at the top
+        lo, hi = rows[y]
+        u = (x + 0.5 - h.cx) / ((hi - lo + 1) / 2)                            # -1 .. 1 across this row
+        v = (y - top) / max(1, bottom - top) * 2 - 1
+        r = panels[max(0, min(3, int((u + 1) * 2)))]
+        lit = -u * 0.8 - v * 0.3
+        h.put(x, y, r[0] if lit > 0.5 else r[1] if lit > -0.45 else r[2])
+    c = fx(h.cx)                                                              # (pixels c-1, c: the middle two)
+    h.put(c - 1, top, METAL[0])                                               # button and stem: 2 px wide
+    h.put(c, top, METAL[1])
+    for y in (top - 1, top - 2):
+        h.put(c - 1, y, METAL[1])
+        h.put(c, y, METAL[2])
+    hub = top - 3                                                             # hub, blades caught mid-turn
+    h.put(c - 1, hub, METAL[0])
+    h.put(c, hub, METAL[1])
+    if h.width == SQUEEZED:
+        blades = [(-2, 0, RED[0]), (-3, -1, RED[1]), (1, 0, YELLOW[1]), (2, 1, YELLOW[2])]
+    else:
+        blades = [(-2, 0, RED[0]), (-3, 0, RED[0]), (-3, -1, RED[0]), (-4, -1, RED[1]),
+                  (1, 0, YELLOW[1]), (2, 0, YELLOW[1]), (2, 1, YELLOW[2]), (3, 1, YELLOW[2])]
+    for dx, dy, col in blades:
+        h.put(c + dx, hub + dy, col)
     h.finish()
 
 
@@ -479,6 +493,8 @@ def crown(h: Hat):
         hw = max(h.dome_width(y), h.rx * 0.7) + 0.6
         if abs(x - h.cx) > hw:
             return False
+        if y < y_base and h.width == SQUEEZED:                                # (no room to taper: three prongs)
+            return y >= y_tip + (0 if abs(x - h.cx) <= 1.0 else 1) and (abs(x - h.cx) <= 1.0 or abs(x - h.cx) >= hw - 1.0)
         if y < y_base:                                                        # three points, the middle one tallest
             for c, tip in ((0.0, y_tip), (-(hw - 1.1), y_tip + 0.6), (hw - 1.1, y_tip + 0.6)):
                 if y >= tip:

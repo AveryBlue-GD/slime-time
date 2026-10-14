@@ -73,3 +73,52 @@ Per hat
 - Center details (cap seam, viking crest, propeller stem) are 1 px on an even-width head, so half a
   pixel off center; brims and crowns are symmetric.
 - The hat wheel draws the rainbow hat without its flowing shader (unchanged).
+
+## Live release check (upgrades v2 batch 2, 2026-10-15)
+
+Hats are live for real players, so every place they now show was checked: the prize wheel's
+wedges (and right after a win), the SHOP's HATS section (the TAILOR), the wardrobe's HATS page,
+the hub slime, in-game on all 6 trail styles (skin goo, ink, glow, gold, candy, starry) with lime,
+Inkky, ocean, Stopwatch, rainbow and a custom color, at 2x (title / skins), and every splat frame.
+Shots (4x): `docs/polish-shots/hats2_before_*.png` / `hats2_after_*.png` (lineup, big, squeezed,
+wheel_won, shop, wardrobe, hub, ingame_trails). Pages `squeezed` and `ui_*` were added to
+`tests/demo_hat_audit.tscn` (`--only=squeezed,ui`).
+
+Findings
+- **Wheel**: the rainbow hat sat static on its wedge (no flow). A win only said YOU WON THE X! (the
+  hat wasn't shown on you anywhere until the overlay closed).
+- **SHOP / TAILOR**: hat tiles are name + price only - 45-80 tickets for a hat you can't see. The
+  13 px tiles have a 9 px face, too small for a hat icon (hats are 8-13 px tall).
+- **Viking**: horns were 1 px hooks; at WIDE (charging, landing) they flattened into `[ ]` brackets;
+  SQUEEZED had none (a grey bullet). Crest 1 px, half a pixel off center.
+- **Propeller cap**: 4 panels split by x, so red was a sliver on the left; a little bill stuck out
+  to the left (lopsided); the propeller sat flat on top like a lid; stem 1 px off center.
+- **Baseball cap**: a blue bowl; 1 px seam off center; the deepest hat over the face, so the most
+  eye lifts (29 hat-frames, up to 3 px) - it bobbed on every diagonal glide.
+- **Bob**: lifts are monotone through the charge animations (the hat holds while the body squashes,
+  never pops up), but in the looping diagonal glides the beanie, viking and cap jumped 1 px up for
+  one frame of every cycle (NARROW hats reached a row further down the stretched head).
+- **Party hat**: 1 px tip and pompom half a pixel right of center. **Squeezed crown**: a cup.
+- Fine as is: hub (y-sort, scale), in-game on every trail style and skin (trails stay under the
+  hat; Stopwatch face and rainbow skin don't clash), wardrobe tiles and locked silhouettes, title.
+
+Fixes
+- `tools/make_hats.py`: viking horns are pixel crescents out of the helmet's shoulders (HORNS:
+  big / low for WIDE / small for SQUEEZED), 2 px crest; propeller cap panels are wedges meeting at
+  the top, no side bill, 2 px button + stem, the blades caught mid-turn over it; baseball cap is
+  shallower with a shadowed band, a curved visor and a 2 px badge and button; party cone centered
+  (2 px tip / pompom); squeezed crown has three prongs; `cap()` no longer reaches further down a
+  stretched (NARROW) head.
+- Lifts: {0: 1801, 1: 96, 2: 15, 3: 2} -> {0: 1850, 1: 53, 2: 11} hat-frames; no hat moves up
+  against the body in any glide / idle / charge / land loop any more.
+- `scripts/hats.gd`: `flow_step` / `flow_texture`: the flowing hat's hue turn done on the CPU, same
+  math and steps as `rainbow_hat.gdshader`, for draw calls that can't take the shader.
+- `scripts/ui/hat_wheel.gd`: the wheel draws the rainbow hat with `flow_texture` (redrawn when the
+  step changes); try-on slimes in your skin wearing the hat: 2x either side of the wheel after a
+  win, 1x either side of the description for the focused TAILOR hat (no layout, price or store
+  changes).
+
+Still imperfect
+- The baseball cap reads as a cap at 2x, more of a sailor cap at 1x; a front-on bill at 14 px is
+  a compromise (it can't overhang the eyes).
+- 1-2 px lifts remain in charge frame 2 / diagonal charges (held, never a pop-up).

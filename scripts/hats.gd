@@ -31,6 +31,10 @@ enum Width { NARROW, NORMAL, WIDE, SQUEEZED, BROAD, LOOSE }
 const MAX_LIFT := 3
 static var _lifts := {}
 static var _image: Image
+## The flowing hat's hue turn, as in assets/shaders/rainbow_hat.gdshader (its speed and steps).
+const FLOW_SPEED := 0.35
+const FLOW_STEPS := 12
+static var _flow_frames := {}
 
 const LIST := [
 	{id = "tophat", name = "TOP HAT", column = 0},
@@ -81,6 +85,34 @@ static func material_for(id: String) -> Material:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/rainbow_hat.gdshader")
 	return mat
+
+
+## Which of the FLOW_STEPS hue turns the flowing hat shows now (the shader's, from the clock).
+static func flow_step() -> int:
+	return int(floor(Time.get_ticks_msec() / 1000.0 * FLOW_SPEED * FLOW_STEPS)) % FLOW_STEPS
+
+
+## Hat `id` at `width`, its colors turned `step` hue steps like rainbow_hat.gdshader does (every
+## colorful pixel; whites, greys and the outline as drawn): for places that draw a hat without its
+## shader (the hat wheel's wedges). Made once per frame and step.
+static func flow_texture(id: String, width: int, step: int) -> Texture2D:
+	var key := "%s:%d:%d" % [id, width, step]
+	if _flow_frames.has(key):
+		return _flow_frames[key]
+	if _image == null:
+		_image = preload("res://assets/sprites/hats.png").get_image()
+		if _image.is_compressed():
+			_image.decompress()
+	var frame := _image.get_region(Rect2i(region(id, width)))
+	frame.convert(Image.FORMAT_RGBA8)
+	for y in frame.get_height():
+		for x in frame.get_width():
+			var c := frame.get_pixel(x, y)
+			if c.a > 0.0 and c.s > 0.4 and c.v > 0.3:
+				frame.set_pixel(x, y, Color.from_hsv(fposmod(c.h - float(step) / FLOW_STEPS, 1.0), c.s, c.v, c.a))
+	var texture := ImageTexture.create_from_image(frame)
+	_flow_frames[key] = texture
+	return texture
 
 
 static func get_hat(id: String) -> Dictionary:

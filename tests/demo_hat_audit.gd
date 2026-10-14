@@ -5,7 +5,10 @@ extends Node2D
 ## Pages: `lineup` (every hat x 7 poses, lime), `skins_<hat>` (10 skins x 7 poses),
 ## `frames_<hat>` (every frame of idle/glide/charge/launch/air/land/splat/celebrate/recover, lime),
 ## `big` (2x, as on the title and skins screens), `rainbow_<n>` (the rainbow hat's flow over time),
-## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors).
+## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors),
+## `squeezed` (every hat on the splat frames, 2x), and the real screens players see them on:
+## `ui_wheel` (the hub's prize wheel), `ui_won` (just after a spin lands), `ui_shop` (the SHOP's
+## HATS section: the TAILOR), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
 ## ./tools/godot.sh --path . res://tests/demo_hat_audit.tscn -- --unlock-all --out=/abs/dir [--only=lineup,...]
 ## then: python3 -I tools/upscale_png.py OUT/lineup.png OUT/lineup_x4.png 4
 
@@ -57,6 +60,12 @@ func _run() -> void:
 		await _page("frames_" + id, _frames_page.bind(id))
 	await _page("big", _big)
 	await _page("wheel", _wheel)
+	await _page("squeezed", _squeezed)
+	await _ui_page("ui_wheel", _ui_wheel, 30)
+	await _ui_page("ui_won", _ui_won, 4)
+	await _ui_page("ui_shop", _ui_shop, 30)
+	await _ui_page("ui_wardrobe", _ui_wardrobe, 30)
+	await _ui_page("ui_hub", _ui_hub, 30)
 	if _only.is_empty() or "rainbow" in _only:
 		_clear()
 		_rainbow()
@@ -72,6 +81,22 @@ func _page(page_name: String, build: Callable) -> void:
 	_clear()
 	build.call()
 	await _settle(4)
+	_save(page_name)
+
+
+## A page built from a real screen, saved after `frames` frames (spins, tweens and fades settle).
+func _ui_page(page_name: String, build: Callable, frames: int) -> void:
+	if not _only.is_empty() and not page_name in _only and not "ui" in _only:
+		return
+	_clear()
+	Progress.hats_owned.clear()
+	Progress.selected_hat = "viking"
+	Progress.spins = 3
+	Progress.dev_tools = false  # a real player's wheel and prices (nothing is saved: a test run)
+	Progress.tickets = 120
+	seed(7)
+	await build.call()
+	await _settle(frames)
 	_save(page_name)
 
 
@@ -194,6 +219,60 @@ func _wheel() -> void:
 			s.centered = false
 			s.position = at + Vector2(14, 14) - Vector2(Hats.FRAME) / 2.0
 			add_child(s)
+
+
+func _squeezed() -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var ids := Hats.ids()
+	var cells := [["splat_e", 0], ["splat_e", 1], ["splat_e", 2], ["splat_w", 2]]
+	for k in cells.size():
+		if k % 2:
+			_rect(Vector2(0, 2 + k * 44), Vector2(320, 44), BG_ALT)
+		for i in ids.size():
+			_slime(Vector2(15 + i * 29, 26 + k * 44), ids[i], cells[k][0], cells[k][1], [], 2)
+
+
+func _hub() -> Node:
+	var hub: Node = load("res://scenes/hub.tscn").instantiate()
+	add_child(hub)
+	return hub
+
+
+func _ui_wheel() -> void:
+	var hub := _hub()
+	hub.open_hat_wheel.call_deferred()
+
+
+func _ui_won() -> void:
+	var hub := _hub()
+	await get_tree().process_frame
+	hub.open_hat_wheel()
+	hub.hat_wheel.spin()
+	await hub.hat_wheel.landed
+	await get_tree().create_timer(0.6).timeout
+
+
+func _ui_shop() -> void:
+	var hub := _hub()
+	await get_tree().process_frame
+	hub.open_hat_wheel()
+	hub.hat_wheel.show_tab("shop")
+	hub.hat_wheel.show_section("hats")
+
+
+func _ui_wardrobe() -> void:
+	for id in Hats.ids():
+		if id != "crown":
+			Progress.hats_owned.append(id)
+	var layer := CanvasLayer.new()  # (so the screen fills the window, as it does in the game)
+	add_child(layer)
+	var screen: Control = load("res://scenes/skins.tscn").instantiate()
+	layer.add_child(screen)
+	screen.show_page.call_deferred("hats")
+
+
+func _ui_hub() -> void:
+	_hub()
 
 
 func _rainbow() -> void:

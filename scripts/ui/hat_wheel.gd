@@ -47,6 +47,9 @@ const GRID_LEFT := [22.0, 162.0]
 const GRID_TOP := 46
 const GRID_STEP := 15
 const SECTIONS := ["hats", "trails", "papers"]
+## Where the try-on slimes stand (centers): either side of the wheel at 2x after a win, or of the
+## text under the shop grid at 1x (clear of the grid's last row, whatever hat).
+const TRY_ON := {"wheel": [Vector2(56, 92), Vector2(264, 92)], "shop": [Vector2(30, 154), Vector2(290, 154)]}
 
 ## The hats on the wheel right now (the ones not won yet), in wheel order.
 var hats: Array[String] = []:
@@ -89,6 +92,12 @@ var status_line: Label
 ## goo in the worn skin through the trail shader, or a scrap of map on that paper).
 var preview: TextureRect
 var _preview_floor: ColorRect
+## Two slimes in your skin wearing a hat, either side of the text at the bottom: the hat you just won
+## (WHEEL), or the TAILOR's hat you're looking at (SHOP). `_try_on_id` = "tab:hat" they're dressed for.
+var _try_on_root: Node2D
+var _try_on_id := ""
+## The hue step the flowing (rainbow) hat on the wheel was last drawn at (Hats.flow_step).
+var _flow_step := -1
 ## The buy confirm: BUY <NAME>? <price> [ticket], BUY / BACK.
 var confirm: Panel
 var confirm_label: Label
@@ -152,6 +161,8 @@ func _ready() -> void:
 	shop_page.add_child(preview)
 	status = _label("", UIKit.TEXT, 141, shop_page)
 	status_line = _label("", UIKit.TEXT_DIM, 153, shop_page)
+	_try_on_root = Node2D.new()  # (under the confirm and its dim sheet)
+	add_child(_try_on_root)
 	_build_confirm()
 	show_tab("wheel", false)
 
@@ -248,6 +259,7 @@ func refresh(spin_key: String, opening := false) -> void:
 	_spin_key = spin_key
 	if opening:
 		_won = ""
+		_try_on_id = ""  # (the skin may have changed since: dress new ones)
 		close_confirm()
 		show_tab("shop" if Progress.hats_left().is_empty() else "wheel")
 	elif tab == "shop":
@@ -276,6 +288,7 @@ func _refresh_wheel() -> void:
 		result.text = "NEED %d TICKETS TO SPIN" % cost
 	else:
 		result.text = "%d HAT%s TO WIN - %s TO SPIN" % [hats.size(), "" if hats.size() == 1 else "S", _spin_key]
+	_show_try_on(_won if not spinning else "")  # the hat you just won, on you
 	spin_button.disabled = not can
 	if Progress.hats_left().is_empty():
 		spin_button.text = "SPIN"
@@ -358,6 +371,8 @@ func spin() -> bool:
 func _process(delta: float) -> void:
 	_kick = maxf(_kick - delta * 6.0, 0.0)
 	if not spinning:
+		if tab == "wheel" and is_visible_in_tree() and Hats.flow_step() != _flow_step:
+			queue_redraw()  # the rainbow hat's colors flow on (Hats.flow_texture)
 		return
 	_t = minf(_t + delta / SPIN_TIME, 1.0)
 	var eased := 1.0 - pow(1.0 - _t, 3.0)  # fast at first, slowing to a stop
@@ -399,6 +414,7 @@ func show_section(which: String, focus := true) -> void:
 		shop_tiles[ids[i]] = tile
 	balance.text = str(Progress.tickets)
 	if ids.is_empty():
+		_show_try_on("")
 		status.text = "EVERY HAT IS YOURS"
 		status_line.text = "WEAR THEM IN THE WARDROBE"
 	else:
@@ -464,6 +480,7 @@ func _make_tile(id: String) -> Button:
 ## its picture (trails and papers).
 func _describe(id: String) -> void:
 	_show_preview(id)
+	_show_try_on(id if _is_hat(id) else "")
 	if _is_hat(id):
 		status.text = Hats.display_name(id) + " - FROM THE TAILOR"
 		if not Progress.tailor_open():
@@ -505,6 +522,26 @@ func _show_preview(id: String) -> void:
 	preview.position = (Vector2(CENTER.x, 112) - preview.size / 2.0).round()
 	_preview_floor.position = preview.position - Vector2(4, 4)  # a bit of dark floor round it
 	_preview_floor.size = preview.size + Vector2(8, 8)
+
+
+## Puts hat `id` on the two try-on slimes (in the skin you wear now), or hides them ("").
+func _show_try_on(id: String) -> void:
+	_try_on_root.visible = id != ""
+	var key := tab + ":" + id
+	if key == _try_on_id or id == "":
+		return
+	_try_on_id = key
+	for child in _try_on_root.get_children():
+		child.queue_free()
+	var scale := 2 if tab == "wheel" else 1
+	for at: Vector2 in TRY_ON[tab]:
+		var slime := UIKit.make_slime_preview(Progress.skin_color(), scale, Progress.is_rainbow(), null, Progress.is_stopwatch())
+		slime.position = at
+		_try_on_root.add_child(slime)
+		var hat := Hat.new()
+		hat.scale = slime.scale
+		_try_on_root.add_child(hat)
+		hat.setup(id, slime)
 
 
 ## A scrap of map on paper `paper`: a little maze corner (floor cells, wall lines, a red route, a coin).
@@ -633,6 +670,7 @@ func _draw() -> void:
 		draw_line(CENTER, CENTER + Vector2(cos(a), sin(a)) * RADIUS, DIVIDER, 1.0)
 		var peg := (CENTER + Vector2(cos(a), sin(a)) * (RADIUS + 1.5)).round()
 		draw_rect(Rect2(peg - Vector2(1, 1), Vector2(2, 2)), PEG)
+	_flow_step = Hats.flow_step()
 	draw_circle(CENTER, 6.0, Color8(209, 136, 58))
 	draw_circle(CENTER, 4.0, Color8(255, 205, 117))
 	var atlas: Texture2D = preload("res://assets/sprites/hats.png")
@@ -641,8 +679,12 @@ func _draw() -> void:
 		# Out toward the rim in a thin wedge, where it has the most room.
 		var reach := 0.7 if sizes[i] > 0.4 else 0.8
 		var at := (CENTER + Vector2(cos(a), sin(a)) * RADIUS * reach).round()
-		# The loose version (its own shape, inside showing; narrow, so neighbors don't touch).
-		draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.LOOSE))
+		# The loose version (its own shape, inside showing; narrow, so neighbors don't touch). The
+		# rainbow hat flows like it does on a slime (its shader can't go on one draw call).
+		if Hats.get_hat(hats[i]).get("flows", false):
+			draw_texture(Hats.flow_texture(hats[i], Hats.Width.LOOSE, _flow_step), at - Vector2(Hats.FRAME) / 2.0)
+		else:
+			draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.LOOSE))
 	# The flapper at the top, kicked aside as it ticks past each wedge.
 	var tip := Vector2(CENTER.x + roundf(_kick * 2.0), CENTER.y - RADIUS + 6.0)
 	var base_y := CENTER.y - RADIUS - 7.0
