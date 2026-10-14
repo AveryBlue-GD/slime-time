@@ -49,6 +49,17 @@ var _coins_left_pod: Control
 var attempt_pod: Control
 var attempt_label: Label
 var _attempt_icon: TextureRect
+## The attempt pod's pop (set_attempt): a bright copy of the TIX AVAILABLE line, flashed over it.
+var _attempt_flash: Label
+var _attempt_tween: Tween
+## Pop timing: wait for the restart's goo wipe (Transition.UNCOVER_TIME 0.32 s) to clear the top of
+## the screen, blink bright, dim, bright, then fade (about half a second in all).
+const ATTEMPT_POP_DELAY := 0.2
+const ATTEMPT_POP_BLINK := 0.08
+const ATTEMPT_POP_FADE := 0.34
+const ATTEMPT_POP_COLOR := Color(1.6, 1.5, 1.2)
+const ATTEMPT_FLASH_TINT := Color.WHITE
+const ATTEMPT_POP_PANEL := Color(2.2, 2.0, 1.6)
 ## Shown only when a level is beaten faster than its saved record.
 var record_banner: CenterContainer
 var record_time_label: Label
@@ -149,6 +160,11 @@ func _ready() -> void:
 	attempt_label = UIKit.make_label("", 8, TICKET_TINT)
 	attempt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	attempt_row.add_child(attempt_label)
+	_attempt_flash = UIKit.make_label("", 8, ATTEMPT_FLASH_TINT)
+	_attempt_flash.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_attempt_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_attempt_flash.modulate.a = 0.0
+	attempt_label.add_child(_attempt_flash)
 	attempt_pod.visible = false
 
 	area_label = _make_label(SkinText.ROLE_DIM)
@@ -301,7 +317,9 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 ## would pay right now (every cap applied) out of a first attempt's full pay, counting down
 ## attempt by attempt: "ATTEMPT 1  TIX AVAILABLE 5/5", "ATTEMPT 2  TIX AVAILABLE 4/5" ... 1/5 from
 ## the 5th; e.g. 1/5 when capped, dim 0/5 when a win would pay nothing. `most` = a first attempt's pay.
-func set_attempt(attempt: int, payout: int, most := 5) -> void:
+## `pop`: the number just changed (a restart): the TIX AVAILABLE line flashes bright twice and
+## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
+func set_attempt(attempt: int, payout: int, most := 5, pop := false) -> void:
 	attempt_pod.visible = true
 	# The two-line pod reaches down to y 40: the area name moves under it instead of under the timer.
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
@@ -310,6 +328,31 @@ func set_attempt(attempt: int, payout: int, most := 5) -> void:
 	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
 	attempt_label.add_theme_color_override("font_color", color)
 	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM
+	# The flash: a bright copy of the second line drawn over it (the first line left blank).
+	_attempt_flash.text = " \nTIX AVAILABLE %d/%d" % [payout, most]
+	if _attempt_tween:
+		_attempt_tween.kill()
+		_attempt_tween = null
+	_attempt_flash.modulate.a = 0.0
+	_attempt_icon.self_modulate = Color.WHITE
+	attempt_pod.self_modulate = Color.WHITE
+	if not pop:
+		return
+	var flash := func(a: float) -> void:
+		_attempt_flash.modulate.a = a
+		_attempt_icon.self_modulate = Color.WHITE.lerp(ATTEMPT_POP_COLOR, a)
+		attempt_pod.self_modulate = Color.WHITE.lerp(ATTEMPT_POP_PANEL, a)
+	_attempt_tween = create_tween()
+	_attempt_tween.tween_interval(ATTEMPT_POP_DELAY)
+	_attempt_tween.tween_method(flash, 1.0, 1.0, ATTEMPT_POP_BLINK)
+	_attempt_tween.tween_method(flash, 0.25, 0.25, ATTEMPT_POP_BLINK)
+	_attempt_tween.tween_method(flash, 1.0, 0.0, ATTEMPT_POP_FADE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_attempt_tween.tween_callback(func() -> void: _attempt_tween = null)
+
+
+## True while the attempt pod's pop is still playing (or waiting for the goo wipe to clear).
+func attempt_flashing() -> bool:
+	return _attempt_tween != null and _attempt_tween.is_valid() and _attempt_tween.is_running()
 
 
 func set_time(seconds: float) -> void:

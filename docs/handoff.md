@@ -227,3 +227,17 @@ applied: 5/5, 4/5, 3/5, 2/5, 1/5 from the 5th; 1/5 capped; dim 0/5 when nothing)
 one line ran into the area name; the area name and the touch pause button move to y 44 in
 randomizer mazes. Result screen unchanged (`TICKET! ATTEMPT 2 = +4`). Shots
 `docs/polish-shots/size_hud_attempt1.png` / `size_hud_attempt3.png` (`tests/demo_random_ticket.tscn --attempt=N`).
+
+## Attempt pod on restarts (2026-10-14)
+Owner report: the pod stayed on `TIX AVAILABLE 5/5` after restarts (except after drying up). Every real
+restart route was driven end to end in `tests/test_attempt_restarts.gd` (R at once, R prompt RESTART,
+pause-menu RESTART, dry-up RESTART, win REPLAY MAZE, dry-up UPGRADES -> PLAY; normal and dev mode,
+headless and windowed with real key events, `tests/demo_attempts.tscn`): the counter and the pod's text
+were already right on the restarted run's first frame, and the win paid what the pod showed. What
+the player saw was one digit changing silently under the restart's goo wipe. Changes: `game.ticket_offer()`
+is the one number the pod shows and a win pays (dev toggles / assist = 0, every Progress cap); the
+pod pops when that number changed since it last showed this maze (`Progress.random_offer_shown`,
+not saved, cleared with `random_attempts`): after the wipe clears (0.2 s) the TIX AVAILABLE line
+flashes white twice and the pod frame brightens, fading out by ~0.5 s (`Hud.ATTEMPT_POP_*`); none
+with Reduce Motion, none when the number stays (1/5 from the 5th on). Shots
+`docs/polish-shots/attempts_1/2/3.png` (after real R restarts) and `attempts_2_pop.png` (mid-flash).

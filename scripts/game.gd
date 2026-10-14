@@ -1182,20 +1182,35 @@ func _make_goal() -> void:
 
 
 ## Randomizer: counts this start of the maze (an attempt) and shows it with what a win would pay.
+## Runs in _ready, so the restarted run's very first frame already shows the new count; when the
+## tickets on offer changed since the pod last showed this maze, the pod pops (see Hud.set_attempt).
 func _count_attempt() -> void:
 	if not is_random() or progress == null:
 		return
 	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
 	attempt = progress.begin_random_attempt(attempt_key)
 	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line attempt pod
-	_refresh_attempt_pod()
+	var before: int = progress.random_offer_shown.get(attempt_key, -1)
+	_refresh_attempt_pod(before >= 0 and before != ticket_offer())
 
 
-## The HUD's attempt pod: ATTEMPT n and the tickets a win would pay now (of 5) (0 once dev toggles were used).
-func _refresh_attempt_pod() -> void:
+## Randomizer: the tickets a win on this run would pay right now, every cap applied (0 once dev
+## toggles or the assist were used). The attempt pod shows exactly this, and a win pays exactly
+## this (Progress.complete_random applies the same Progress.random_payout).
+func ticket_offer() -> int:
+	if not is_random() or progress == null or dev_toggled or assisted:
+		return 0
+	return progress.random_tickets_due(attempt, random_seed)
+
+
+## The HUD's attempt pod: ATTEMPT n and ticket_offer() (of 5). `pop` (a restart changed the number)
+## flashes it, unless Reduce Motion is on.
+func _refresh_attempt_pod(pop := false) -> void:
 	if not is_random() or progress == null:
 		return
-	hud.set_attempt(attempt, 0 if dev_toggled or assisted else progress.random_tickets_due(attempt, random_seed), progress.tickets_for_attempt(1))
+	var offer := ticket_offer()
+	progress.random_offer_shown[attempt_key] = offer
+	hud.set_attempt(attempt, offer, progress.tickets_for_attempt(1), pop and motion_scale() > 0.0)
 
 
 # ---------------------------------------------------------------- dev: wall power

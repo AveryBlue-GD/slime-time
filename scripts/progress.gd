@@ -110,6 +110,9 @@ var random_seed_fresh := true
 ## Not saved: attempts (starts, incl. dry-up retries and restarts) per randomizer maze this session,
 ## keyed by random_attempt_key (the seed code). NEW MAZE clears it.
 var random_attempts := {}
+## Not saved: the tickets the attempt pod last showed for each maze (same keys as random_attempts), so
+## a restart that changes the number can make the pod pop. Cleared with random_attempts.
+var random_offer_shown := {}
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -843,6 +846,7 @@ func new_random_maze() -> void:
 	random_level = -1
 	random_seed_fresh = true
 	random_attempts.clear()  # a new maze starts counting at attempt 1
+	random_offer_shown.clear()
 
 
 # ---------------------------------------------------------------- skins
@@ -1110,6 +1114,7 @@ func reset_progress() -> void:
 	random_paid_seeds.clear()
 	random_seed_fresh = true
 	random_attempts.clear()
+	random_offer_shown.clear()
 	assist_level = 0
 	save_progress()
 
