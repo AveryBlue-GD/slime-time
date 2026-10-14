@@ -254,6 +254,8 @@ var fade_after: Array[float] = FADE_AFTER.duplicate()
 var refog_after: float = FADE_AFTER[-1]
 var relight_radius := LIGHT_RADIUS
 var race_limit := 0.0
+## True once RACE's countdown has hit 0:00 (the run can no longer be won; it dries up on landing).
+var race_over := false
 var slide_drains := false
 var heat_result := {}
 ## Seconds spent on this maze (stops on pause and when the maze ends).
@@ -530,9 +532,11 @@ func _physics_process(delta: float) -> void:
 	run_time += delta
 	if race_limit > 0.0:
 		hud.set_countdown(race_limit - run_time)
-		if run_time >= race_limit and not slime.is_airborne():
-			_dry_up(true)  # RACE: out of time
-			return
+		if run_time >= race_limit:
+			race_over = true  # remembered: a leap still in the air can't win the run any more
+			if not slime.is_airborne():
+				_dry_up(true)  # RACE: out of time
+				return
 	else:
 		hud.set_time(run_time)
 	if slime.is_airborne():
@@ -1296,7 +1300,7 @@ func _apply_heat() -> void:
 	refog_after = fade_after[-1] * float(heat_fx.refog)
 	_lazy_ticks = LAZY_RELIGHT_TICKS if heat_fx.fade == 1.0 else maxi(int((fade_after[0] - 0.25) * FOG_TICKS), 0)
 	relight_radius = float(heat_fx.relight) if heat_fx.relight > 0.0 else LIGHT_RADIUS
-	splat_factor *= float(heat_fx.splat)
+	splat_factor *= float(heat_fx.splat) * float(heat_fx.drain)  # THIRSTY drains splats too
 	slide_drains = heat_fx.slide
 	slime.can_charge = not heat_fx.grounded
 	touch_controls.jump_enabled = not heat_fx.grounded
@@ -1817,6 +1821,10 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 
 func _on_goal_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
+		return
+	if race_over or (race_limit > 0.0 and run_time >= race_limit):
+		race_over = true
+		_dry_up(true)  # RACE: the leap landed on the chalice after 0:00 - too late
 		return
 	_show(goal)
 	var no_record := assisted or dev_toggled

@@ -205,16 +205,15 @@ const _ICONS := {
 		"..abbba..",
 		"...aaa...",
 	],
-	race = [  # an hourglass
-		"aaaaaaaaa",
-		".b.....b.",
-		"..bcccb..",
-		"...bcb...",
-		"....b....",
-		"...b.b...",
-		"..bcccb..",
-		".bcccccb.",
-		"aaaaaaaaa",
+	race = [  # an hourglass (8x8, so the HUD's timer pod keeps an even width)
+		"aaaaaaaa",
+		".b....b.",
+		"..bccb..",
+		"...bb...",
+		"...bb...",
+		"..bccb..",
+		".bcccccb",
+		"aaaaaaaa",
 	],
 }
 const _ICON_COLORS := {

@@ -56,7 +56,7 @@ func _table() -> void:
 	var expect := {dim = 1, brittle = 1, fog = 2, grounded = 2, thirsty = 2, race = 3}
 	for id: String in expect:
 		_check(Heat.heat_of(id) == expect[id], "%s is heat %d" % [id, expect[id]])
-		_check(Heat.NAMES.has(id) and Heat.ABOUT.has(id) and Heat.icon(id).get_size() == Vector2(9, 9), "%s has a name, an about line and a 9x9 icon" % id)
+		_check(Heat.NAMES.has(id) and Heat.ABOUT.has(id) and Heat.icon(id).get_size() == (Vector2(8, 8) if id == "race" else Vector2(9, 9)), "%s has a name, an about line and a 9x9 icon (RACE 8x8: an even pod)" % id)
 	var masks := Heat.masks()
 	var top := 0
 	for mask in masks:
@@ -358,7 +358,11 @@ func _effects() -> void:
 
 	var thirsty := await _spawn(2, Heat.bit("thirsty"))
 	_check(is_equal_approx(thirsty.slime_cost_per_tile, base_cost * 1.08) and is_equal_approx(thirsty.par_time, par), "THIRSTY: drain x1.08, par unchanged")
+	_check(is_equal_approx(thirsty.splat_factor, 1.08), "THIRSTY: splat penalties x1.08 too (%.3f)" % thirsty.splat_factor)
 	thirsty.free()
+	var thirsty_brittle := await _spawn(2, Heat.bit("thirsty") | Heat.bit("brittle"))
+	_check(is_equal_approx(thirsty_brittle.splat_factor, 2.16), "THIRSTY + BRITTLE: splats x2.16 (%.3f)" % thirsty_brittle.splat_factor)
+	thirsty_brittle.free()
 
 	var race := await _spawn(2, Heat.bit("race"), 2)
 	_check(race.heat == 3 and is_equal_approx(race.race_limit, par * 1.3), "RACE: a countdown of 1.3 x par (%.1f s)" % race.race_limit)
@@ -368,6 +372,26 @@ func _effects() -> void:
 		await physics_frame
 	_check(race.finished and not race.won and race.hud.message.text.begins_with("OUT OF TIME"), "RACE: at 0 the slime dries up (%s)" % race.hud.message.text)
 	race.free()
+
+	# A leap launched before 0:00 that lands on the chalice after it: no win, no bounty.
+	var late := await _spawn(2, Heat.bit("race"), 2)
+	var tickets_before: int = progress.tickets
+	var best_before: int = progress.best_heat(2)
+	late.run_time = late.race_limit + 0.2
+	late.race_over = false
+	late._on_goal_body_entered(late.slime)
+	_check(late.finished and not late.won and late.hud.message.text.begins_with("OUT OF TIME"), "RACE: the chalice after 0:00 is no win (%s)" % late.hud.message.text)
+	_check(progress.tickets == tickets_before and progress.best_heat(2) == best_before and late.heat_result.is_empty(), "RACE: a late landing pays no bounty and sets no best heat")
+	late.free()
+	var inside := await _spawn(2, Heat.bit("race"), 2)
+	inside.run_time = inside.race_limit - 1.0
+	inside._on_goal_body_entered(inside.slime)
+	_check(inside.finished and inside.won and not inside.race_over, "RACE: just inside the limit the chalice still wins")
+	inside.free()
+	var pod := await _spawn(2, Heat.bit("race"), 2)
+	var pod_row: Control = pod.hud._clock_icon.get_parent()
+	_check(int(pod_row.get_combined_minimum_size().x) % 2 == 0, "RACE: the timer pod's content stays even (%s)" % pod_row.get_combined_minimum_size())
+	pod.free()
 
 	var top := await _spawn(2, Heat.sanitize(Heat.ALL))
 	_check(top.heat == 10 and top.hud.heat_label.text == "HEAT 10" and top.hud.heat_icons.size() == 5, "all on: HEAT 10, five icons")

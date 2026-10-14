@@ -66,7 +66,8 @@ func _initialize() -> void:
 							_check(hard, tag + ": flame only on hard tiles")
 							_check(rect.size == Vector2(Heat.flame_size()), tag + ": flame is %s" % rect.size)
 							_check(rect.end.x + 2.0 <= ink.position.x, tag + ": flame clear of the number (%s vs %s)" % [rect, ink])
-							_check(rect.position.x >= 3.0 and rect.position.y >= 3.0 and rect.end.y + 3.0 <= ink.position.y + 14.0, tag + ": flame inside the tile")
+							_check(Rect2(Vector2(3, 3), tile.size - Vector2(6, 6)).encloses(rect), tag + ": flame inside the tile with a 3 px margin (%s in %s)" % [rect, tile.size])
+							_check(rect.end.x + 2.0 <= ink.position.x or rect.end.y + 1.0 <= ink.position.y, tag + ": flame clear of the number's ink")
 							for other in tile.get_children():
 								if other != child and (other is ColorRect or other is Label) and other != number:
 									_check(not rect.intersects(Rect2(other.position, other.size)), tag + ": flame clear of %s" % other.name)
