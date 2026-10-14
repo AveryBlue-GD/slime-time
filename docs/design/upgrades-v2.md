@@ -1,7 +1,12 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
-Status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15)**; batches 2-4
-(hats + store + workshop, Descent, Heat) are not. Batch 1 decisions where this spec was open: the tables live in
+Status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
+live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15)**; batches 3-4 (Descent, Heat) are not. Batch 2
+decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 2"): the
+SHOP has three sections (HATS / TRAILS / PAPERS) instead of one grid; the workshop rows are 25 px apart from y 24; the
+SECOND WIND HUD sign is a WIND tag under the meter; a TAILOR buy of a non-rainbow hat leaves the rainbow pity alone; dev
+mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per station (wheel / cauldron); MAGNET's
+"revealed" = the coin's fog cell was ever revealed; the map select tiles ignore the paper. Batch 1 decisions where this spec was open: the tables live in
 `scripts/economy.gd` (`Economy.COIN_TRACKS`), not in `Upgrades.LIST`; the upgrades screen shows "now -> next" (e.g.
 `SLIME X1.45 -> X1.60`, `LIGHT 9 -> 17 PX  +257% AREA`) instead of "NEXT: ..."; old dev wall power maps by equal damage
 (p -> floor(p / 2.5)); the notice reads UPGRADES REWORKED / COINS RETURNED +N and waits in the save
@@ -472,7 +477,7 @@ GROUNDED + RACE is the tightest: 6% slack, intended as the summit).
 | Batch | Contents | Effort | Gate to ship |
 |---|---|---|---|
 | **1. Core tree rework** (DONE 2026-10-15) | per-track tables in `upgrades.gd`, brightness breakpoints, upgrades screen pips/next-effect line, migration + notice, randomizer size/code changes, golden rewrite, autoplay cost lookup, playtime model re-run | M (2-3 days) | all suites pass; autoplay story run completes; playtime median within +-5% |
-| **2. Hats + store + workshop** | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
+| **2. Hats + store + workshop** (DONE 2026-10-15) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
 | **3. Descent** | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
 | **4. Heat** | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
 | **QA / balance** | qa-tester pass, web build check, first playtest with logging (tickets/day, workshop buy order, descent depth, heat usage) | ongoing | |

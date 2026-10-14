@@ -1,6 +1,6 @@
-# Handoff: where Slime Time stands (updated 2026-10-14)
+# Handoff: where Slime Time stands (updated 2026-10-15)
 
-## Current state (2026-10-14)
+## Current state (2026-10-15)
 
 Read [CLAUDE.md](../CLAUDE.md) for the project facts and [README-docs.md](README-docs.md) for the docs index. The sections
 below this summary are the history (oldest first, newest last); where they disagree with this summary or with CLAUDE.md,
@@ -13,7 +13,8 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 `HARD_SLIME_MULT`), the **randomizer** (unlocked after the story; the gold ticket voucher is the goal, no chalice; payout
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
-CONTROLS page and SAVE CODE, 11 placeholder hats. Save version 6 (+ `[meta] epoch` 1). 61 test suites; 6 agents in `.claude/agents/`.
+CONTROLS page and SAVE CODE, 11 placeholder hats (live for players since batch 2), the ticket store (hat wheel + SHOP,
+cauldron TICKETS workshop, trail styles, map papers). Save version 6 (+ `[meta] epoch` 1). 64 test suites; 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
@@ -38,11 +39,11 @@ game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS pre
 **Upgrades v2 (2026-10-15, batch 1 of [design/upgrades-v2.md](design/upgrades-v2.md) done).** Core coin tree with big
 breakpoints: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 (165 coins, same maxima); all economy numbers in
 `scripts/economy.gd`. Old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, save version 6, one-time hub
-notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. Batches 2-4 (hats + store + ticket workshop, Descent, Heat)
-are not built; details in the section at the end.
+notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. **Batch 2 (2026-10-15): hats live, ticket store, WORKSHOP,
+cosmetics v1** (section "Upgrades v2, batch 2" at the end). Batches 3-4 (Descent, Heat) are not built.
 
 **Known limitations.**
-- Hats are placeholders: `Hats.available = false`, so the hat wheel says COMING SOON and hats can't be worn outside dev mode.
+- Hats are live (`Hats.available = true`, batch 2) but still the 11 placeholder hats until the owner picks the real ones.
 - Android and web are unverified on real devices (the Android shader fix is unconfirmed). The web build was QA'd in an
   itch-like cross-origin iframe with phone emulation ([qa-web-report.md](qa-web-report.md)); the Web preset now uses the
   custom shell `tools/web_shell.html` (Godot 4.7.2's default + marked additions: save flush on hide, storage-blocked bar,
@@ -65,7 +66,8 @@ wipe bumps the dir name, `RELEASE_EPOCH` and the prefix together (see the doc). 
 1. Android / web device checks: upload the web zip and run the 5-minute checklist in [qa-web-report.md](qa-web-report.md) section 6 on a real Android phone and an iPhone.
 2. Tuning from playtests (story budgets, hard allowances, randomizer usage curve, ticket payouts, hat wheel price).
 3. Optional map v1 as proposed in [advisor/maps.md](advisor/maps.md) (unlock/cost plan for the trail maps).
-4. Real hats from the owner, then set `Hats.available = true` (nothing else is needed); hat wheel currency is already tickets.
+4. Real hats from the owner (the wheel, SHOP and wardrobe already work with any `Hats.LIST`; more hats raise the wheel's
+   total, see the spec C.1).
 5. Optional: merge `v2` into `main`; update the itch page tagline when prepping a release.
 
 The "Open tasks" list further down is from 2026-10-12 and is kept as history.
@@ -664,3 +666,71 @@ Spec: [design/upgrades-v2.md](design/upgrades-v2.md) A2 (owner rule: few big bre
   in 4 states); `test_fog_bytes` replays the new radii against the reference fog; updated coins/extremes/planner/
   autoplay/random/tickets/save tests. Shots of the light: `tests/demo_brightness.tscn` ->
   `docs/polish-shots/brightness2_{0,1,2,3}.png` (level 4, same frame).
+
+
+## Upgrades v2, batch 2: hats live, ticket store, workshop, cosmetics (2026-10-15, save version 6)
+Spec: [design/upgrades-v2.md](design/upgrades-v2.md) B.2, C.1-C.3, D.1. Every number is in `scripts/economy.gd`
+(`RANDOM_ATTEMPT_PAY` etc. moved there; `Progress` keeps aliases), so a balance pass edits one file.
+- **Hats live**: `Hats.available = true` (kept as a switch). Wheel unchanged: free, 12, 14 ... 30 = 210 for all 11, no
+  duplicates, rainbow pity. The overlay (`scripts/ui/hat_wheel.gd`) is now a full goo panel with **WHEEL | SHOP** tabs
+  and a SPIN button (price + ticket icon; F / touch JUMP still spin); every hat won = an empty wheel ("EVERY HAT WON!
+  NEW LOOKS IN THE SHOP") and the overlay opens on the SHOP. Spins stay atomic (pay + win + save before the animation).
+  COMING SOON is gone everywhere (hub prompt, wheel, wardrobe).
+- **SHOP**: sections HATS (the TAILOR: hats still on the wheel, 45 / rainbow 80, after 3 spins, `Progress.buy_hat`:
+  atomic, counts as a spin, rainbow pity reset; a non-rainbow buy leaves pity as it is, a buy isn't a roll), TRAILS,
+  PAPERS; 2-column goo tiles with price + ticket icon (OWNED / WORN once bought; pressing an owned one wears / takes it
+  off), a picture of the focused trail / paper, and a BUY X? [price] BUY / BACK confirm (focus BACK, a dim sheet
+  blocks clicks behind it, focus locked inside; Esc / B close the confirm first, then the overlay). Decision: three
+  sections instead of one grid (19 tiles don't fit 320x180 with the status lines).
+- **Cauldron**: COINS | TICKETS tabs top left, the pod top right follows the tab. TICKETS = the **WORKSHOP**
+  (`scripts/workshop.gd`): 5 rows of name, effect now -> next, 3 pips, + and price with the ticket icon; not
+  refundable; dimmed with "EARN TICKETS IN THE RANDOMIZER FIRST" until `tickets_lifetime > 0`. Rows are 25 px apart from
+  y 24 (the spec's 24 px from 26 put the effect line on the goo band). The hub always opens it on COINS.
+- **Workshop effects** (`game.gd` `_apply_workshop`, all off in hard mode and without a bought level; assisted runs
+  keep them; dev toggles unchanged): SECOND WIND (`wind_state`: the first time the meter is 0 on the ground it refills to
+  15/25/35% over 0.4 s, once per run, upgrade sound + goo ring; story only on levels already cleared on normal; in the
+  randomizer `pay_attempt()` = attempt + 1 once it fired, so the pod and the payout drop one step live; HUD: a WIND tag
+  under the meter column, bright when ready, dim once used, hidden when not on this run - a tag instead of an icon at the
+  meter's end, which had no room), QUICK CHARGE (`Slime.charge_time` 1.2/0.95/0.7 s), STICKY (splat penalty x0.75/0.55/0.40,
+  `Slime.splat_stun` 0.2/0.12/0.06), MAGNET (`coin_reach` 18/26/34 px, only coins whose fog cell was ever revealed and
+  with no wall tile on the line, `clear_line`), GOO NOSE (`glimmer_rate` x1.5/2/3, `glimmer_reach` 200/240/300).
+  Par is computed before any of it (base speed): unchanged. Autoplay starts at workshop 0 and ignores it.
+- **Story difficulty impact**: none on first clears (tickets come only after the story, SECOND WIND is off on a level's
+  first clear, the free hat spin is cosmetic). On replays (coin hunts, medals) of cleared levels: SECOND WIND adds one
+  15-35% refill per run (coin hunts get much easier: a 35% refill is ~1/3 of an extra route on L10's 1.01 allowance);
+  QUICK CHARGE saves up to 0.8 s per full leap (leap-heavy gold runs a bit faster, as SPEED already does; par ignores
+  both); STICKY turns a 2-5% splat into 0.8-2%; MAGNET saves ~2 tiles each way per dead-end coin; GOO NOSE only shows
+  coins sooner. Hard mode and its medals are untouched. Randomizer budgets don't count STICKY/MAGNET (small); SECOND
+  WIND is paid for with one payout step.
+- **Cosmetics** (`scripts/cosmetics.gd`, prices 20/25/30/35/40 + 25/25/40 = 240): trails INK (skin deep shade, alpha
+  150), GLOW (alpha 170, halo 0.6), GOLD (chalice gold, alpha 185, any skin), CANDY (skin / white stripes every 12 px
+  traveled on the ground, `game.trail_travel`), STARRY (skin goo + 1 px white specks: `trail.gdshader` `stars`, pixel
+  hash, no arrays); all CPU-side cell colors (`Cosmetics.trail_cell`) except the specks; the default style is
+  byte-identical to before (test_fog_bytes). The rainbow skin keeps its rainbow trail unless a style is worn.
+  Papers BLUEPRINT / NIGHT (ink = skin color) / GOLD LEAF recolor `MapView.palette` (paper, ink, fog, marks, the frame's
+  colors with its theme motif; the route stays red); the map view's PAPER button (shown once a paper is owned) cycles
+  them; the select tiles keep the theme look. The wardrobe's page button cycles SKINS -> HATS -> TRAILS (owned styles
+  worn by pressing; others a silhouette with their price). Dev mode owns every cosmetic and buys everything free.
+- **Hub**: the wheel prompt shows the next spin's price with the ticket icon (FREE, or SHOP once every hat is won);
+  the wheel and cauldron prompts add a gold "!" when the cheapest unowned item there is affordable
+  (`Progress.store_affordable`). The hub ticket pod hides under the overlay.
+- **Save**: still version 6 (spec D.1: all additive), epoch 1, `SLIME2-`. New optional keys: `[workshop] wind, charge,
+  sticky, magnet, nose` (0-3, clamped; unknown ignored), `[cosmetics] owned` (allow-listed ids once each), `trail`,
+  `paper` (back to the default unless owned and of the right kind), `[hats] bought`, `[wallet] tickets_spent`; written
+  only once used. `_write` now stores copies of the owned arrays (a direct `_write` -> `_read` no longer aliases them).
+  No `save_text.gd` change needed (a syntax allow-list). A full store's code is ~0.7 KB. RESET PROGRESS clears all of it.
+- **Flags**: `--workshop=w,c,s,m,n`, `--trail=ID`, `--paper=ID` (own + wear; saving off).
+- **Tests**: new `test_store.gd` (totals 210 / 423 / 240 / 873, hats live + no dupes + pity, TAILOR, atomic spin read
+  back from the file, workshop + cosmetic buys (exact / short / double / max / dev), round trips through file and code,
+  hostile values, reset, epoch; the TICKETS tab, the SHOP with its confirm, the TRAILS page, PAPER), `test_workshop.gd`
+  (each effect in a real level: charge 44 vs 91 frames, splat 5% -> 2%, magnet fog / wall / reach, glimmers 32 vs 10,
+  SECOND WIND once + first-clear gate + randomizer payout 5 -> 4 live, hard mode off, par unchanged), `test_trails.gd`
+  (6 styles x 13 skins in a real level, previews, no errors). Nav fuzz: the lib treats the wheel overlay (or its
+  confirm) as a modal, a "rich" start state, a scripted SHOP / confirm Esc ladder, and three new 2,000-input area walks
+  (wheel + SHOP + confirm, cauldron tabs, wardrobe pages; the map walk now owns papers): zero violations (also seeds
+  77 / 4242 / 9001). Updated: test_hub, test_tickets, test_hats (hats live by default), test_maps (player state).
+- **Shots** (`tests/demo_store.tscn`, `--shot=tickets|shop|trails|wind|trail`): `docs/polish-shots/batch2_cauldron_tickets.png`,
+  `batch2_wheel_shop.png`, `batch2_wardrobe_trails.png`, `batch2_trail_{gold,ink,glow,candy,starry}.png` (each on its
+  level's skin), `batch2_second_wind.png`, `batch2_map_paper_{blueprint,night}.png`.
+- Not built (spec, cosmetic): the cauldron preview ring, hat dyes / wallpapers (v2 ideas); Descent / Heat (batches 3-4).
+
