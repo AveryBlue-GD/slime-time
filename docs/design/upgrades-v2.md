@@ -1,6 +1,6 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
-Status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
+Status: **IMPLEMENTED (all four batches, 2026-10-15)**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
 **batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
 open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and
@@ -40,6 +40,16 @@ current numbers quoted (`scripts/upgrades.gd`, `scripts/progress.gd`, `scripts/g
 `scripts/levels.gd`, `scripts/hats.gd`); the difficulty priors come from [../playtime-estimate.md](../playtime-estimate.md)
 and [../level-design.md](../level-design.md) sections 5-7. Background research: [../advisor/roguelike-progression.md](../advisor/roguelike-progression.md),
 [../advisor/maps.md](../advisor/maps.md), [../advisor/juice-audio-ui.md](../advisor/juice-audio-ui.md).
+
+## Implemented: deviations from this spec
+
+Everything below was built as specified except these (collected from the status note above and the per-batch sections of
+[../handoff.md](../handoff.md); code and `scripts/economy.gd` are the source of truth for numbers):
+
+- **Batch 1 (coin tree):** tables live in `Economy.COIN_TRACKS`, not `Upgrades.LIST`; the screen shows "now -> next" instead of "NEXT: ..."; old dev wall power p maps to floor(p / 2.5); the refund notice waits in the save until the hub shows it; typed seed levels 8-10 clamp to 7. The RECOMMENDED tag and 1 s light-ring preview were deferred, then built in the review-fix pass.
+- **Batch 2 (store, workshop, cosmetics):** the SHOP has three sections (HATS / TRAILS / PAPERS) instead of one grid; workshop rows 25 px apart from y 24; SECOND WIND's HUD sign is a WIND tag under the meter; a TAILOR buy of a non-rainbow hat leaves the rainbow pity alone; dev mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per station; MAGNET needs the coin's fog cell to have been revealed; map select tiles ignore the paper. Not built: the cauldron preview ring, hat dyes / wallpapers.
+- **Batch 3 (Descent):** portal buttons read RANDOM MAZE / DESCENT (spec: QUICK MAZE); floors use the randomizer's size (from slime capacity) instead of route-sized floors; u jitter clamped 0.25-0.85; refill is that of the floor being entered; capacity boons stack additively; BIG GULP is added on DESCEND (cap 100%); BACKUP BLADDER adds a fixed 25% after SECOND WIND; BLAZE past BRIGHTNESS 3 = reach 33; GLASS x1.5 applies after halving (cap 30); a run that banks 0 uses no paying slot; milestones pay on reaching the floor, outside the daily cap; QUIT TO HUB on the boon card = CASH OUT; Descent ignores the HARD MODE setting; autoplay bot not extended.
+- **Batch 4 (Heat):** DIM's relight is the code's 20 px and also shrinks the lantern x0.6; FOG BITES halves the last fade step; BRITTLE's slide drains; GROUNDED drops BRITTLE (greyed out while on); RACE replaces the run timer (hourglass) and running out is a dry-up (OUT OF TIME!, also for a leap still airborne at 0:00); THIRSTY also scales splats (review fix); HEAT button bottom right opens a modal panel; heat applies only to hard STORY levels with a plain hard clear; claimed bounties are derived from the best heat (plus `[heat] paid` for stats); no separate heat records; dev-toggled runs earn nothing; the HUD shows a HEAT n pod; the title crown is 5 white-hot flames; no `--autoplay-heat`.
 
 Owner decisions this spec implements:
 1. New upgrade types beyond Slime / Speed / Brightness.

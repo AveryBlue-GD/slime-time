@@ -14,7 +14,7 @@ LEAVE THE HUB? confirm, coin bag, randomizer portal, settings signpost, hat whee
 5/4/3/2/1 by attempt; per-seed slime usage; seed codes `N-L`), **trail maps** (MAP TABLE), skins (10 presets, rainbow,
 Stopwatch for 30 gold medals, CHAMELEON; jelly by default, solid via hard clears), SETTINGS (two columns) with a separate
 CONTROLS page and SAVE CODE, 11 placeholder hats (live for players since batch 2), the ticket store (hat wheel + SHOP,
-cauldron TICKETS workshop, trail styles, map papers), DESCENT runs and hard-mode HEAT. Save version 6 (+ `[meta] epoch` 1). 67 test suites; 6 agents in `.claude/agents/`.
+cauldron TICKETS workshop, trail styles, map papers), DESCENT runs and hard-mode HEAT. Save version 6 (+ `[meta] epoch` 1). 67 test suites (`./tools/test_all.sh`); 6 agents in `.claude/agents/`.
 
 **Launch / test.** `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain,
 fn+F1/F2 on a Mac), `--story` (postgame state), `--autoplay [--speed=N]` (the game plays itself; F10 stops it), `--scene
@@ -36,14 +36,35 @@ game icon + version info (`icon.ico` from `tools/make_icon_ico.py`); a macOS pre
 `com.slimetime.game` placeholder). Status tables: [qa-release-report.md](qa-release-report.md),
 [qa-web-report.md](qa-web-report.md); builds: [itch-release.md](itch-release.md). 59 test suites.
 
-**Upgrades v2 (2026-10-15, batch 1 of [design/upgrades-v2.md](design/upgrades-v2.md) done).** Core coin tree with big
-breakpoints: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 (165 coins, same maxima); all economy numbers in
-`scripts/economy.gd`. Old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, save version 6, one-time hub
-notice COINS RETURNED +N). Seed codes carry MORE SLIME 0-7. **Batch 2 (2026-10-15): hats live, ticket store, WORKSHOP,
-cosmetics v1** (section "Upgrades v2, batch 2"). **Batch 3 (2026-10-15): DESCENT runs** from the portal's new RANDOM MAZE /
-DESCENT choice (section "Upgrades v2, batch 3"; rules in level-design.md section 9). **Batch 4 (2026-10-15): hard-mode
-HEAT** (six modifiers on the level select's HEAT panel, bounties 3/5/7/10 at heat 2/4/7/10, flame badges, EMBER trail;
-section "Upgrades v2, batch 4" at the end; rules in level-design.md section 10). All four batches of the spec are built.
+**Economy now (upgrades v2, all 4 batches done 2026-10-15; spec and deviations: [design/upgrades-v2.md](design/upgrades-v2.md);
+every number in `scripts/economy.gd`).** Two currencies. **Coins** (165, hidden in story levels) buy the core tree at the
+cauldron's COINS tab: MORE SLIME 7 levels (x1.15 .. x2.0; 1,4,7,9,10,12,12), SPEED 4 (8,12,16,24), BRIGHTNESS 3 (12,16,22),
+refundable; old-tree saves are remapped by coins invested (`[upgrades] tree = 2`, hub notice COINS RETURNED +N). **Tickets**
+(randomizer wins, DESCENT pots, HEAT bounties) buy: hat wheel spins (free, then 12, 14 .. 30; 210 for all 11 hats), the
+SHOP (TAILOR hats 45 / rainbow 80 after 3 spins, 5 trail styles, 3 map papers; 240 for cosmetics), and the cauldron's
+TICKETS tab WORKSHOP (SECOND WIND, QUICK CHARGE, STICKY, MAGNET, GOO NOSE, 3 levels each; not refundable; off in hard
+mode). Hats are live. **DESCENT** (portal -> RANDOM MAZE / DESCENT): chained randomizer-sized floors, boons, a ticket pot
+(2 paying runs per UTC day; milestones floors 5/10/15/20; ABYSS trail at 10). **HEAT** (hard level select, HEAT button): six
+modifiers, bounties 3/5/7/10 tickets at heat 2/4/7/10 per level (250 in all), flame badges, EMBER trail at heat 7+ everywhere.
+Rules: level-design.md sections 9 (Descent) and 10 (Heat); per-batch history at the end of this file.
+
+**How to test the new economy.** Suites: `test_upgrades_v2` (tree, migration), `test_store`, `test_workshop`, `test_trails`,
+`test_descent`, `test_descent_runs`, `test_heat` (all 48 masks winnable; `tests/bench_heat.gd` is the 480-run sweep, minutes
+long: `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 10000000 -s res://tests/bench_heat.gd`). By hand, with
+saving off: `--upgrades=a,b,c` (new-tree levels, max 7/4/3), `--tickets=N` (a ticket balance), `--workshop=w,c,s,m,n`,
+`--trail=ID`, `--paper=ID`, `--descent[=SEED]`, `--heat=dim,fog,race` (or a mask number), `--heat-best=10,7,4`, plus the
+older `--dev` (buys free, owns every cosmetic), `--story` (postgame state) and `--unlock-all`. Demo scenes
+(`./tools/play.sh --scene res://tests/demo_X.tscn`, most take `--shot=NAME`): `demo_store` (tickets, shop, trails, wind),
+`demo_descent`, `demo_heat`, `demo_brightness`, `demo_level_select -- hard heat[-panel]`, `demo_hat_audit`. Review notes with
+status: review-upgrades-b1..b4.md; hats live check: hats-audit.md.
+
+**Open tuning questions (need playtests, all priors today).** Are 2 paying Descent runs a day and the pot sizes (1..4 a
+floor, max 30) about right against the randomizer's 5 wins x up to 5 tickets? Do the workshop prices (see
+`Economy.WORKSHOP`) feel worth it, and is SECOND WIND too strong on coin hunts? Hat wheel price curve and TAILOR 45/80 vs
+the 210 total. Which HEAT modifiers do people pick; is 250 tickets for the whole HEAT ladder too generous or too slow; are
+heat 4/7/10 reachable (RACE 1.3 x par, THIRSTY on L1 leaves only 7.4% slime for a perfect walk)? Cosmetic prices
+(20..40) vs how fast tickets arrive. Whether the randomizer should still give 5 tickets on the first attempt now that
+Descent and HEAT also pay.
 
 **Known limitations.**
 - Hats are live (`Hats.available = true`, batch 2) but still the 11 placeholder hats until the owner picks the real ones.

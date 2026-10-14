@@ -202,6 +202,14 @@ wins every normal level both at those levels and with no upgrades at all, and th
 collects 165/165 coins and golds all 20 normal + hard levels.
 
 
+### Note: workshop, Descent and Heat (2026-10-15, *estimates, not measured*)
+
+The headline table covers the story only and is unchanged by these; they add optional play after it. Rough priors:
+- **Workshop:** nothing changes on first clears (tickets only come after the story). On replays it speeds coin hunts and gold runs a little (SECOND WIND, QUICK CHARGE), so goal (d) may shrink by perhaps 5-10%. Buying all 15 levels takes ~423 tickets, i.e. roughly 90-140 randomizer wins (*est.*, 3-4 tickets a win after the first attempt, 5 wins a day cap), which spreads over days, not hours.
+- **Descent:** a run is ~10-40 min depending on depth (a floor takes about as long as a randomizer maze, 1-3 min); with 2 paying runs a day and 1-4 tickets per floor it adds a daily 20-60 min loop for long-term players (*est.*).
+- **Heat:** each level can be replayed up to heat 10 for 25 tickets (250 in all). A new heat tier is a re-clear of a hard level at harder rules: ~3-8 min per attempt chain on the early levels, 10+ on the late ones; going for all 10 levels at heat 10 plausibly adds 4-10 h for a dedicated player (*est.*, no data; RACE and THIRSTY leave only 7-40% slack on a perfect walk, so real players will take many tries).
+- **Net:** a first playthrough is unchanged (~45 min normal, ~2.1 h with hard); the long tail (collecting 873 tickets' worth of items, Descent depth, HEAT 100/100) moves from "done at ~2.5 h" to "tens of hours" for completionists. Validate with a playtest.
+
 ## How this was computed
 
 Headless scripts kept outside the repo (scratch, not shipped): a GDScript that prints the table in
