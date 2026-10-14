@@ -471,8 +471,11 @@ func _initialize() -> void:
 	progress.reset_progress()
 	progress.load_progress()
 	var old_code := _code(old)
-	_check(progress.load_code(old_code) and progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
-		"a SLIME1- code from an older build loads: balance kept, medals as tiers")
+	_check(not progress.load_code(old_code) and progress.tickets == 0 and progress.medals.is_empty(),
+		"a code from a pre-release build (no release epoch) is refused and changes nothing")
+	progress._read(old)  # the migration itself (kept for hand-made saves of this epoch)
+	_check(progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
+		"an old v2 save read directly: balance kept, medals as tiers")
 	var snapshot: String = progress._write().encode_to_text()
 	_check("version=5" in snapshot, "...and re-saves as version 5")
 	var new_code: String = progress.save_code()
@@ -523,7 +526,7 @@ func _old_save(par1: float, par2: float, par3: float) -> ConfigFile:
 	return old
 
 
-## The "SLIME1-" code of a save, the way Progress.save_code makes it.
+## The code of a save, the way Progress.save_code makes it (minus the epoch Progress._write adds).
 func _code(file: ConfigFile) -> String:
 	var packed := file.encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
 	return progress.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)

@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Save codes: the whole save as a "SLIME1-" code (gzipped, base64) that can be copied out and
+## Save codes: the whole save as a "SLIME2-" code (gzipped, base64) that can be copied out and
 ## pasted back in. A code restores exactly what was saved; broken, cut-off or foreign codes are
 ## refused without touching the progress; the settings screen's SAVE CODE panel shows your code,
 ## refuses a bad one and only loads a good one on the second LOAD press. Never touches a real save.
@@ -30,7 +30,7 @@ func _initialize() -> void:
 	progress.set_binding("jump", KEY_J)
 	var before: String = progress._write().encode_to_text()
 	var code: String = progress.save_code()
-	_check(code.begins_with("SLIME1-") and code.length() < 2000, "your save becomes a code (%d characters)" % code.length())
+	_check(code.begins_with("SLIME2-") and code.length() < 2000, "your save becomes a code (%d characters)" % code.length())
 
 	# --- Back to nothing, then the code brings it all back
 	progress.reset_progress()
@@ -44,8 +44,8 @@ func _initialize() -> void:
 	_check(progress.load_code("  " + code + "\n"), "spaces or a line break around the pasted code are fine")
 
 	# --- Bad codes are refused and change nothing
-	var bad := ["", "hello", "SLIME1-", "SLIME1-not a code!", code.substr(0, code.length() / 2), "SLIME2-" + code.trim_prefix("SLIME1-"),
-		"SLIME1-" + Marshalls.raw_to_base64("just some text".to_utf8_buffer())]
+	var bad := ["", "hello", "SLIME2-", "SLIME2-not a code!", code.substr(0, code.length() / 2), "SLIME1-" + code.trim_prefix("SLIME2-"),
+		"SLIME2-" + Marshalls.raw_to_base64("just some text".to_utf8_buffer())]
 	var refused := true
 	for attempt: String in bad:
 		if progress.load_code(attempt):
@@ -58,7 +58,7 @@ func _initialize() -> void:
 	await process_frame
 	screen._open_codes()
 	_check(screen.code_panel.visible and screen.code_out.text == progress.save_code(), "SAVE CODE shows your code to copy")
-	screen.code_in.text = "SLIME1-garbage"
+	screen.code_in.text = "SLIME2-garbage"
 	screen._load_code()
 	_check("DOESN'T WORK" in screen.code_status.text, "a bad code says so (%s)" % screen.code_status.text)
 	progress.levels_cleared = 2  # pretend the progress moved on since the code was made

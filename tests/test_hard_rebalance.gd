@@ -4,7 +4,7 @@ extends SceneTree
 ## table (Levels.HARD_SLIME_MULT), meters / routes / allowances hitting their targets, the bigger hard
 ## mazes (solvable, within HARD_MAX_CELLS, spawn class kept, more dead ends, deterministic and fast to
 ## build), par from the new routes, the save version 5 migration (old hard best times cleared, hard
-## clears and tiers kept, idempotent, old SLIME1- codes, hostile values) and --story-complete's hard
+## clears and tiers kept, idempotent, pre-release codes refused, hostile values) and --story-complete's hard
 ## times on the new pars. The autopilot walking every hard level under par: tests/test_phase3.gd;
 ## the --autoplay bot: tests/test_autoplay.gd. Uses throwaway Progress nodes (never the real save).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_hard_rebalance.gd
@@ -121,7 +121,7 @@ func _check_migration() -> void:
 	_check(r.best_times == p.best_times and r.medals == p.medals and r.best_times[103] == 40.0, "a version 5 save keeps its hard times (no second migration)")
 	var code: String = PROGRESS.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(_v4_save().encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
 	var u := _fresh()
-	_check(u.load_code(code) and u.best_times == q.best_times and u.medals == q.medals, "an old SLIME1- code migrates the same way")
+	_check(not u.load_code(code) and u.best_times.is_empty() and u.is_fresh_save(), "a pre-release v4 code (no release epoch) is refused: nothing migrates in")
 
 	# A v4 save with hard times but no [medals]: tiers come from the times against the v4 hard par.
 	var bare := ConfigFile.new()

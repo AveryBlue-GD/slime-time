@@ -5,7 +5,7 @@ extends SceneTree
 ## and spent (upgrades) are unchanged; stored medal tiers, normal best times and hard clears are kept
 ## (hard best times are dropped since version 5's bigger hard mazes, see test_hard_rebalance.gd);
 ## pre-v3 best times still become tiers against the OLD pars; migrating twice gives the same result;
-## old SLIME1- codes go through the same path; hostile values clamp; v4 saves are untouched.
+## old SLIME1- codes are refused (docs/itch-release.md); hostile values clamp; v4 saves are untouched.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_layout_migration.gd
 
 const PROGRESS := preload("res://scripts/progress.gd")
@@ -70,10 +70,10 @@ func _initialize() -> void:
 		"v2 best times -> tiers against the old pars (gold, silver, bronze; hard gold)")
 	_check(t.coins_found[1] == Levels.coin_keys(1).slice(0, 1), "v2 coins migrate the same way")
 
-	# --- An old SLIME1- save code loads through the same migration
+	# --- Pre-release SLIME1- save codes are refused (fresh-start policy): nothing migrates in
 	var code := "SLIME1-" + Marshalls.raw_to_base64(_v3_save().encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
 	var u := _fresh()
-	_check(u.load_code(code) and u.coins_found == p.coins_found and u.medals == p.medals and u.coins() == 8, "an old save code loads and migrates the same way")
+	_check(not u.load_code(code) and u.coins_found.is_empty() and u.medals.is_empty() and u.is_old_code(code), "an old SLIME1- save code is refused as old")
 
 	# --- Hostile values clamp safely
 	var bad := ConfigFile.new()
