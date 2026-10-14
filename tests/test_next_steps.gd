@@ -122,7 +122,7 @@ func _spawn(settings: Dictionary) -> Node2D:
 
 ## Wins and waits for the replay / next buttons.
 func _win(game: Node2D) -> void:
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	await _frames(int(game.CHOICE_DELAY * 60) + 10)
 
 

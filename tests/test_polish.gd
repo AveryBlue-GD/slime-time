@@ -60,8 +60,8 @@ func _initialize() -> void:
 	await _frames(5)
 	var slime: Node2D = close.get_node("Slime")
 	_check(get_nodes_in_group("glimmer").is_empty(), "no glimmers at the start")
-	slime.position = close.chalice.position + Vector2(40, 0)
-	close.chalice.visible = false
+	slime.position = close.goal.position + Vector2(40, 0)
+	close.goal.visible = false
 	await _frames(20)
 	_check(not get_nodes_in_group("glimmer").is_empty(), "the chalice glimmers when the slime is near")
 	close.queue_free()

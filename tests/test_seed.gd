@@ -89,7 +89,7 @@ func _initialize() -> void:
 	other.free()
 	again.free()
 
-	# --- A typed code replays that maze size and ticket cell whatever the player's level is
+	# --- A typed code replays that maze size and goal whatever the player's level is
 	progress.upgrades = {"slime": 5}
 	progress.random_seed = 31337
 	progress.random_level = -1
@@ -105,8 +105,8 @@ func _initialize() -> void:
 	var zero: Node2D = MAIN.instantiate()
 	root.add_child(zero)
 	await physics_frame
-	_check(_same_maze(mine.maze, zero.maze) and zero.seed_level == 5 and (zero.ticket == null or mine.ticket.cell == zero.ticket.cell),
-		"31337-5 gives the same maze (and the same ticket cell, unless out of reach of the smaller meter) to a player with no upgrades")
+	_check(_same_maze(mine.maze, zero.maze) and zero.seed_level == 5 and mine.goal.position == zero.goal.position,
+		"31337-5 gives the same maze (and the same ticket goal) to a player with no upgrades")
 	_check("CODE LV5 (YOU 0)" in zero.hud.level_label.text, "...with a visible note that it differs from their level (%s)" % zero.hud.level_label.text)
 	_check(not ("CODE" in mine.hud.level_label.text), "no note when the code matches")
 	zero.pause_menu.open()
@@ -125,7 +125,7 @@ func _initialize() -> void:
 	root.add_child(win)
 	current_scene = win
 	await physics_frame
-	win.slime.position = win.chalice.position
+	win.slime.position = win.goal.position
 	await _frames(10)
 	_check(win.hud.message.text.contains("SEED 5150-"), "(code in win text)")
 	_check("SEED 5150" in win.hud.message.text, "winning a randomizer maze shows its seed (%s)" % win.hud.message.text.replace("\n", " / "))

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## SpawnPicker (scripts/spawn_picker.gd): class odds 33 / 30 / 37 over 10k seeds (also after the
 ## minimum-route rule), determinism, integer-only RNG, the 60% minimum route, every maze solvable
-## with the chalice, the ticket and the story coins reachable from the start.
+## with the goal (story chalice / randomizer ticket) and the story coins reachable from the start.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_spawn_picker.gd
 
 const SEEDS := 10000
@@ -62,18 +62,16 @@ func _initialize() -> void:
 		"the picker uses integer RNG draws and integer comparisons only")
 	_check(SpawnPicker.roll_kind(1) == SpawnPicker.roll_kind(1) and _golden(), "pinned picks still match (guards against drift)")
 
-	# --- Randomizer mazes: solvable, chalice + ticket reachable
+	# --- Randomizer mazes: solvable, the goal (where the ticket stands) reachable
 	var bad := 0
 	for i in 150:
 		var s := 50000 + i * 31
 		var cfg := Levels.random_config(s)
 		var maze := MazeGenerator.generate_random(cfg)
 		var reach := MazeGenerator.distances_from(maze, maze.start)
-		var ticket := TicketSpawn.pick(maze, s, cfg.tile_cost)
-		var ticket_ok: bool = ticket == TicketSpawn.NONE or (reach.has(ticket) and ticket != maze.start)  # none = no ticket in that maze
-		if not MazeGenerator.is_completable(maze) or maze.start == maze.goal or not reach.has(maze.goal) or not ticket_ok:
+		if not MazeGenerator.is_completable(maze) or maze.start == maze.goal or not reach.has(maze.goal):
 			bad += 1
-	_check(bad == 0, "150 randomizer seeds: always solvable, chalice and ticket reachable (%d bad)" % bad)
+	_check(bad == 0, "150 randomizer seeds: always solvable, the ticket goal reachable (%d bad)" % bad)
 
 	# --- Story levels (normal + hard): solvable, the chalice and every coin reachable, classes mixed
 	var kinds := [0, 0, 0]

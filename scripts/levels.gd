@@ -88,8 +88,8 @@ static func get_config(level: int, hard := false) -> Dictionary:
 
 
 ## Par time (seconds) for a maze whose solution is `path_tiles` tiles: the path at the slime's BASE
-## gliding speed (PAR_SPEED; upgrades don't move it) x PAR_SLACK plus PAR_EXTRA. Medal tiers and
-## the randomizer's under-par ticket bonus are measured against it (game.gd passes its own speed).
+## gliding speed (PAR_SPEED; upgrades don't move it) x PAR_SLACK plus PAR_EXTRA. Medal tiers are
+## measured against it (game.gd passes its own speed).
 const PAR_SPEED := 72.0
 const PAR_SLACK := 1.35
 const PAR_EXTRA := 1.0

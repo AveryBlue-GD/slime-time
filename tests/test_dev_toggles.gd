@@ -4,7 +4,7 @@ extends SceneTree
 ## reveal untouched, so switching it off restores the exact normal fog), F2 = NO DRAIN (the meter
 ## stays put, then drains on from there). Outside dev mode they don't exist: keys, setters, HUD tag
 ## and pause-menu switches are all inert or never built. A run with a toggle used sets no record or
-## medal. Uses a throwaway save.
+## medal (or tickets, in a randomizer maze, where FULL BRIGHT shows the goal ticket). Uses a throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_dev_toggles.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -52,14 +52,14 @@ func _initialize() -> void:
 	await _glide(game, Vector2(30, 0))
 	var fog_before: PackedByteArray = game._fog_bytes.duplicate()
 	var trail_before: PackedByteArray = game._trail_bytes.duplicate()
-	var chalice_seen: bool = game.chalice.visible
+	var chalice_seen: bool = game.goal.visible
 	_check(game.dev_key_pressed(_key(KEY_F1)) and game.dev_bright, "dev mode: F1 switches FULL BRIGHT on")
-	_check(not game.fog_sprite.visible and not game.outer_fog.visible and game.chalice.visible,
+	_check(not game.fog_sprite.visible and not game.outer_fog.visible and game.goal.visible,
 		"FULL BRIGHT: no fog layers, the chalice shows")
 	_check(game.hud.dev_badge.visible and game.hud._dev_label.text == "DEV BRIGHT", "FULL BRIGHT: the HUD tag says %s" % game.hud._dev_label.text)
 	_check(game._fog_bytes == fog_before and game._trail_bytes == trail_before, "FULL BRIGHT on: the fog and trail bytes are untouched")
 	game.set_dev_bright(false)
-	_check(game.fog_sprite.visible and game.outer_fog.visible and game.chalice.visible == chalice_seen and not game.hud.dev_badge.visible,
+	_check(game.fog_sprite.visible and game.outer_fog.visible and game.goal.visible == chalice_seen and not game.hud.dev_badge.visible,
 		"FULL BRIGHT off: the fog is back, the chalice hidden again, the tag gone")
 	_check(game._fog_bytes == fog_before and game._trail_bytes == trail_before, "FULL BRIGHT off: the fog bytes are exactly as before")
 	game.free()
@@ -85,11 +85,11 @@ func _initialize() -> void:
 	_check(a.fog_sprite.visible and a._fog_bytes == b._fog_bytes, "...and switching it off shows that same normal fog")
 	# The chalice: seen for real while bright (the slime went to it) stays seen afterwards.
 	a.set_dev_bright(true)
-	a.slime.position = a.chalice.position + Vector2(a.CHALICE_REVEAL_DISTANCE - 2.0, 0)
+	a.slime.position = a.goal.position + Vector2(a.CHALICE_REVEAL_DISTANCE - 2.0, 0)
 	await physics_frame
 	await physics_frame
 	a.set_dev_bright(false)
-	_check(a.chalice.visible, "the chalice reached while FULL BRIGHT was on stays revealed when it goes off")
+	_check(a.goal.visible, "the chalice reached while FULL BRIGHT was on stays revealed when it goes off")
 	a.free()
 	b.free()
 
@@ -135,12 +135,36 @@ func _initialize() -> void:
 	await physics_frame
 	_check(game.dev_toggled, "a run started with the toggles on counts as toggled")
 	game.run_time = 1.0
-	game._on_chalice_body_entered(game.slime)
+	game._on_goal_body_entered(game.slime)
 	_check(game.won and game.finished, "the win goes through as usual")
 	_check(progress.best_time(5) < 0.0 and progress.medals_for(5) == 0, "no record and no medal from a toggled run")
 	_check("DEV" in " ".join(game.hud.rewards_texts), "the result says the dev toggles earn nothing: %s" % " ".join(game.hud.rewards_texts))
 	current_scene = null
 	game.free()
+	progress.dev_bright = false
+	progress.dev_no_drain = false
+
+	# --- Randomizer: FULL BRIGHT shows the ticket goal; a toggled run pays no tickets (the pod says 0)
+	progress.upgrades = {"slime": 1}
+	progress.mode = progress.MODE_RANDOM
+	game = MAIN.instantiate()
+	game.random_seed = 4242
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	_check(game.hud.attempt_label.text.ends_with(" 5 TIX") and not game.goal.visible, "randomizer: the ticket starts hidden; the pod shows 5 TIX (%s)" % game.hud.attempt_label.text)
+	game.set_dev_bright(true)
+	_check(game.goal is TicketGoal and game.goal.visible and game.hud.attempt_label.text.ends_with(" 0 TIX"), "FULL BRIGHT shows the ticket, and the pod drops to 0 TIX (%s)" % game.hud.attempt_label.text)
+	game.set_dev_bright(false)
+	_check(not game.goal.visible, "...hidden again when it goes off")
+	var tickets_before: int = progress.tickets
+	game.slime.position = game.goal.position
+	for i in 10:
+		await physics_frame
+	_check(game.won and progress.tickets == tickets_before and "DEV" in " ".join(game.hud.rewards_texts), "a dev-toggled randomizer win pays no tickets: %s" % " ".join(game.hud.rewards_texts))
+	current_scene = null
+	game.free()
+	progress.mode = progress.MODE_STORY
 	progress.dev_bright = false
 	progress.dev_no_drain = false
 	progress.dev_tools = false

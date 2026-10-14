@@ -61,6 +61,22 @@ func _initialize() -> void:
 	game._offer_retry()
 	_check(_buttons(game) == ["RESTART", "NEW MAZE", "UPGRADES"], "not in randomizer mazes")
 	game.free()
+	# (were a randomizer run ever assisted, its ticket would pay nothing, and the pod would say so)
+	progress.upgrades = {"slime": 1}
+	game = MAIN.instantiate()
+	game.random_seed = 778
+	game.assisted = true
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	_check(game.hud.attempt_label.text.ends_with(" 0 TIX"), "an assisted randomizer attempt shows 0 TIX (%s)" % game.hud.attempt_label.text)
+	var tickets_before: int = progress.tickets
+	game.slime.position = game.goal.position
+	for i in 10:
+		await physics_frame
+	_check(game.won and progress.tickets == tickets_before and "ASSIST" in " ".join(game.hud.rewards_texts), "...and its win pays nothing (%s)" % " ".join(game.hud.rewards_texts))
+	await _stop(game)
+	progress.upgrades = {}
 	progress.mode = progress.MODE_STORY
 
 	# --- An assisted attempt: a little more slime, labelled, for one attempt
@@ -93,7 +109,7 @@ func _initialize() -> void:
 	progress.best_times = {}
 	progress.accept_assist(1)
 	game = await _spawn(1, true)
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
 	_check(game.won and game.assisted and game.reward.assisted and game.reward.tier == 0 and progress.tickets == 0, "an assisted win earns no tier or tickets")
@@ -103,7 +119,7 @@ func _initialize() -> void:
 	await _stop(game)
 	progress.start_story(1)
 	game = await _spawn(1, true)
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
 	_check(not game.assisted and game.reward.new_best and progress.medals_for(1) >= 1 and progress.best_times.has(1), "the next, unassisted clear earns its medal and sets the record")

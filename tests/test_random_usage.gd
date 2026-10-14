@@ -2,9 +2,9 @@ extends SceneTree
 
 ## Randomizer slime usage (docs/level-design.md section 5): each seed rolls a usage u (the share of
 ## the player's fixed meter a perfect run needs) from a bell over [0.10, 0.95]; the maze size,
-## spawn, chalice and ticket follow it. Checks the distribution over 10k seeds, determinism,
-## routes of exactly the asked length, size bounds, spawn class odds, tickets reachable or absent
-## cleanly, seed-code portability, the result text, and real autopilot runs at low, middle and high u.
+## spawn and the goal ticket follow it. Checks the distribution over 10k seeds, determinism,
+## routes of exactly the asked length, size bounds, spawn class odds, seed-code portability, the
+## result text, and real autopilot runs (gliding to the ticket) at low, middle and high u.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_random_usage.gd
 
 const SEEDS := 10000
@@ -68,8 +68,6 @@ func _initialize() -> void:
 	var off_route := 0
 	var too_big := 0
 	var not_solvable := 0
-	var ticket_bad := 0
-	var no_ticket := 0
 	var areas := [0, 0, 0]
 	for i in MAZES:
 		var s := 1 + i * 7919
@@ -87,31 +85,15 @@ func _initialize() -> void:
 			off_route += 1
 		if maze.cells.x < Levels.RANDOM_MIN_CELLS.x or maze.cells.y < Levels.RANDOM_MIN_CELLS.y or maze.cells.x > Levels.RANDOM_MAX_CELLS.x or maze.cells.y > Levels.RANDOM_MAX_CELLS.y:
 			too_big += 1
-		var ticket := TicketSpawn.pick(maze, s, cfg.tile_cost)
-		if ticket == TicketSpawn.NONE:
-			no_ticket += 1
-		else:
-			var unit: float = MazeGenerator.CELL_SPAN * cfg.tile_cost / 100.0
-			var from_goal := MazeGenerator.distances_from(maze, maze.goal)
-			var f: float = reach[ticket] * unit
-			var trip: float = (reach[ticket] + from_goal[ticket]) * unit
-			if f < TicketSpawn.MIN_FRACTION - 0.0001 or f > TicketSpawn.MAX_FRACTION + 0.0001 or trip > maxf(TicketSpawn.ROUTE_LIMIT, maze.goal_steps * unit) + 0.0001 or ticket == maze.start or ticket == maze.goal:
-				ticket_bad += 1
-	_check(not_solvable == 0, "%d mazes: every one solvable, the chalice exactly goal_steps from the start" % MAZES)
-	_check(off_route == 0, "...the chalice at the intended route length +-2 (%d off)" % off_route)
+	_check(not_solvable == 0, "%d mazes: every one solvable, the ticket exactly goal_steps from the start" % MAZES)
+	_check(off_route == 0, "...the ticket at the intended route length +-2 (%d off)" % off_route)
 	_check(too_big == 0, "...sizes within %s .. %s (avg area L0 %d, L5 %d, L10 %d)" % [Levels.RANDOM_MIN_CELLS, Levels.RANDOM_MAX_CELLS, areas[0] / (MAZES / 3), areas[1] / (MAZES / 3), areas[2] / (MAZES / 3)])
 	_check(areas[0] < areas[1] and areas[1] < areas[2], "...mazes grow with MORE SLIME")
-	_check(ticket_bad == 0, "...the ticket 10-60%% from the start and start->ticket->chalice within 92%% (or on the route) (%d bad)" % ticket_bad)
-	_check(no_ticket <= MAZES / 50, "...almost always a ticket; none = cleanly absent (%d of %d)" % [no_ticket, MAZES])
 	# 600 picks: +-5% (3.5 sd); the rule rarely needs a fallback (measured 0 in 1,200 mazes).
 	var total := float(MAZES)
 	_check(absf(kinds[0] / total - 0.33) <= 0.05 and absf(kinds[1] / total - 0.30) <= 0.05 and absf(kinds[2] / total - 0.37) <= 0.05,
 		"spawn classes still about 33/30/37: EDGE %.1f%% NEAR %.1f%% ANY %.1f%% (%d fallbacks)" % [kinds[0] * 100 / total, kinds[1] * 100 / total, kinds[2] * 100 / total, fallbacks])
 	_check(fallbacks <= MAZES / 20, "class fallbacks are rare (%d)" % fallbacks)
-
-	# --- Ticket absent cleanly: no fitting cell -> NONE (an absurd cost leaves nothing within 60%)
-	var small_maze := MazeGenerator.generate_random(Levels.random_config(4242))
-	_check(TicketSpawn.pick(small_maze, 4242, 500.0) == TicketSpawn.NONE, "no fitting cell: no ticket (NONE), not a forced one")
 
 	# --- Seed codes: the same "N-L" code gives the same maze for anyone; the meter stays the player's
 	var code_seed := _seed_with(500, 650)
@@ -120,11 +102,9 @@ func _initialize() -> void:
 	var poorer: Node2D = await _game(code_seed, 3, 0)
 	var same: bool = mine.maze.walls == richer.maze.walls and mine.maze.start == richer.maze.start and mine.maze.goal == richer.maze.goal \
 		and mine.maze.walls == poorer.maze.walls and mine.maze.goal == poorer.maze.goal
-	# the ticket cell is the code's; a smaller meter may hide it (NONE HERE) if the trip no longer fits
-	same = same and mine.ticket != null and richer.ticket != null
-	same = same and mine.ticket.cell == richer.ticket.cell and (poorer.ticket == null or mine.ticket.cell == poorer.ticket.cell)
-	same = same and (poorer.ticket != null or poorer.no_ticket)
-	_check(same, "code %s: same maze, start, chalice and ticket at MORE SLIME 0, 3 and 8" % Levels.seed_code(code_seed, 3))
+	# the goal ticket stands on the code's goal cell for everyone
+	same = same and mine.goal.position == richer.goal.position and mine.goal.position == poorer.goal.position and mine.goal is TicketGoal
+	_check(same, "code %s: same maze, start and ticket at MORE SLIME 0, 3 and 8" % Levels.seed_code(code_seed, 3))
 	var u := Levels.random_usage(code_seed)
 	_check(absf(mine.perfect_usage - u) < 0.02, "the code's own level: a perfect run uses u (%.3f vs %.3f)" % [mine.perfect_usage, u])
 	_check(absf(richer.perfect_usage - mine.perfect_usage * 1.3 / 1.8) < 0.01, "more slime than the code: a smaller share of a bigger meter (%.3f)" % richer.perfect_usage)
@@ -138,10 +118,8 @@ func _initialize() -> void:
 	_check(g2.usage_text() == "USED 23% SLIME EFFICIENT!", "result: %s" % g2.usage_text())
 	g2.slime_remaining = 40.0
 	_check(g2.usage_text() == "USED 60% SLIME", "result: %s" % g2.usage_text())
-	g2.hud.show_rewards({tickets = 1, ticket_found = false, no_ticket = true})
-	_check("NO TICKET IN THIS MAZE +1" in g2.hud.rewards_texts, "the result says the maze had no ticket (%s)" % [g2.hud.rewards_texts])
-	g2.hud.set_ticket(false, true)
-	_check(g2.hud._ticket_label.text == "NONE HERE", "the HUD ticket pod says NONE HERE")
+	g2.hud.show_rewards({tickets = 4, attempt = 2, cap = ""})
+	_check(g2.hud.rewards_texts == ["TICKET! ATTEMPT 2 = +4"], "the result names the attempt and its payout (%s)" % [g2.hud.rewards_texts])
 	g2.free()
 
 	# --- Autopilot perfect runs: slime used within a few % of u (low, middle, high u; MORE SLIME 0 and 10)

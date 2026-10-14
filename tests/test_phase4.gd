@@ -98,7 +98,7 @@ func _initialize() -> void:
 	game.free()
 
 	game = await _spawn()
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	await _wait(0.1)
 	_check(game.slime.sprite.animation == "celebrate", "reaching the chalice plays the celebration")
 	game.free()

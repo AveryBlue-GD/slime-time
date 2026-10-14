@@ -53,17 +53,19 @@ const SAVE_VERSION := 4
 ## The first save version whose story coin keys / best times belong to the current layouts.
 const LAYOUT_VERSION := 4
 ## TICKET VOUCHERS: the renewable, cosmetic-only currency (never converted to or from coins). The
-## ONLY faucet is the randomizer: 1 per win, +2 when the maze's ticket pickup was collected, +1 when
-## the win beats that maze's par time (4 at most), and at most 5 paying wins per UTC day (so at most
-## 20 a day). A player with no MORE SLIME upgrade bought gets 1 per win whatever else they did.
-## The only sink so far is the hat wheel (12, then +2 for each spin already taken, up to 40).
+## ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that maze
+## took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5 paying
+## wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a typed or
+## replayed seed, get at most 1 per win. The only sink so far is the hat wheel (12, then +2 for each
+## spin already taken, up to 40).
 ## (Saved under the old [wallet] keys "globs" and "globs_lifetime" so existing saves still load.)
 const TICKETS_MAX := 99999
-const TICKETS_RANDOM_WIN := 1
-const TICKETS_PICKUP := 2
-const TICKETS_UNDER_PAR := 1
-## Payout cap for a player who has bought no MORE SLIME upgrade ("excess slime").
+## Tickets a randomizer win pays on attempt 1, 2, 3 ... of that maze; later attempts pay the last.
+const RANDOM_ATTEMPT_PAY: Array[int] = [5, 4, 3, 2, 1]
+## Payout cap for a player who has bought no MORE SLIME upgrade ("excess slime"), and for a typed or
+## replayed seed (a memorized seed can't be farmed).
 const TICKETS_NO_SLIME_CAP := 1
+const TICKETS_REPLAY_CAP := 1
 ## Randomizer wins that pay tickets per UTC day.
 const RANDOM_PAID_PER_DAY := 5
 const PAID_SEEDS_MAX := 10
@@ -102,9 +104,12 @@ var random_paid := 0
 ## Seeds that paid a randomizer win on random_pay_day (newest last, at most PAID_SEEDS_MAX): the
 ## same seed pays nothing again that day.
 var random_paid_seeds: Array[int] = []
-## Not saved: false once the current seed was typed in or already won (replayed), which pays no
-## under-par bonus. NEW MAZE makes it true again.
+## Not saved: false once the current seed was typed in or already won (replayed), which pays at most
+## TICKETS_REPLAY_CAP. NEW MAZE makes it true again.
 var random_seed_fresh := true
+## Not saved: attempts (starts, incl. dry-up retries and restarts) per randomizer maze this session,
+## keyed by random_attempt_key (the seed code). NEW MAZE clears it.
+var random_attempts := {}
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -654,12 +659,11 @@ func start_story(level: int) -> void:
 	current_level = clampi(level, 1, highest_unlocked)
 
 
-## Records a randomizer win (saved) and pays its tickets: 1, +2 when `ticket_found` (the maze's pickup
-## was collected), +1 when `under_par` (the win beat that maze's par time), capped at 1 with no MORE
-## SLIME upgrade bought (the player's own); the pickup and under-par bonuses count on a fresh seed only (not a typed or replayed one), for the first 5 wins of the
-## UTC day (none after that, none while the assist was on, none for a seed that already paid today).
-## Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, under_par := false, seed_value := 0, ticket_found := false) -> int:
+## Records a randomizer win (saved) and pays its tickets for winning on `attempt` (see
+## random_payout: the attempt table, capped at 1 for a typed / replayed seed or no MORE SLIME bought;
+## 0 once today's 5 paying wins are used, while assisted (or dev toggles), or for a seed that already
+## paid today). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
+func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 	randoms_cleared += 1
 	randoms_won += 1
 	var paid := 0
@@ -668,7 +672,7 @@ func complete_random(assisted := false, under_par := false, seed_value := 0, tic
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(under_par and random_seed_fresh, seed_value, ticket_found and random_seed_fresh)
+		paid = random_tickets_due(attempt, seed_value)
 		if paid > 0:
 			random_paid += 1
 			if seed_value != 0:
@@ -682,6 +686,22 @@ func complete_random(assisted := false, under_par := false, seed_value := 0, tic
 	return paid
 
 
+## The key random_attempts counts a maze's starts under: its seed code (+ hard mode).
+static func random_attempt_key(seed_value: int, seed_level: int, hard := false) -> String:
+	return Levels.seed_code(seed_value, seed_level) + ("H" if hard else "")
+
+
+## Counts one more start of the maze under `key` and returns which attempt this is (1 = first).
+func begin_random_attempt(key: String) -> int:
+	random_attempts[key] = int(random_attempts.get(key, 0)) + 1
+	return random_attempts[key]
+
+
+## Tickets a win pays on attempt `attempt` before any cap: 5, 4, 3, 2, then 1 from the fifth on.
+static func tickets_for_attempt(attempt: int) -> int:
+	return RANDOM_ATTEMPT_PAY[clampi(attempt, 1, RANDOM_ATTEMPT_PAY.size()) - 1]
+
+
 # ---------------------------------------------------------------- tickets and medals
 
 ## Today as a UTC day number (days since 1970).
@@ -689,13 +709,27 @@ func utc_day() -> int:
 	return day_override if day_override >= 0 else int(Time.get_unix_time_from_system() / 86400.0)
 
 
-## What a randomizer win would pay right now (0 once today's cap of paid wins is used).
-func random_tickets_due(under_par := false, seed_value := 0, ticket_found := false) -> int:
+## What a randomizer win on `attempt` would pay right now (see random_payout).
+func random_tickets_due(attempt := 1, seed_value := 0) -> int:
+	return random_payout(attempt, seed_value).tickets
+
+
+## What a randomizer win on `attempt` of the maze `seed_value` would pay right now, and why it is
+## less than the table says: {tickets, table, cap} with cap "" (full), "daily" (today's paying wins
+## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
+## or "slime" (no MORE SLIME bought: 1). Assisted / dev-toggled runs are the caller's (they pay 0).
+func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
+	var table := tickets_for_attempt(attempt)
 	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
-	if not open or seed_paid_today(seed_value):
-		return 0
-	var due := TICKETS_RANDOM_WIN + (TICKETS_PICKUP if ticket_found else 0) + (TICKETS_UNDER_PAR if under_par else 0)
-	return mini(due, TICKETS_NO_SLIME_CAP) if int(upgrades.get("slime", 0)) <= 0 else due
+	if not open:
+		return {tickets = 0, table = table, cap = "daily"}
+	if seed_paid_today(seed_value):
+		return {tickets = 0, table = table, cap = "paid"}
+	if not random_seed_fresh and table > TICKETS_REPLAY_CAP:
+		return {tickets = TICKETS_REPLAY_CAP, table = table, cap = "replay"}
+	if int(upgrades.get("slime", 0)) <= 0 and table > TICKETS_NO_SLIME_CAP:
+		return {tickets = TICKETS_NO_SLIME_CAP, table = table, cap = "slime"}
+	return {tickets = table, table = table, cap = ""}
 
 
 ## True when `seed_value` already paid a win on the current UTC day.
@@ -808,6 +842,7 @@ func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
 	random_seed_fresh = true
+	random_attempts.clear()  # a new maze starts counting at attempt 1
 
 
 # ---------------------------------------------------------------- skins
@@ -1074,6 +1109,7 @@ func reset_progress() -> void:
 	random_paid = 0
 	random_paid_seeds.clear()
 	random_seed_fresh = true
+	random_attempts.clear()
 	assist_level = 0
 	save_progress()
 

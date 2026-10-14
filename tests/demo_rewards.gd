@@ -1,10 +1,11 @@
 extends Node
 
-## Screenshot scenario: a real win (the slime is dropped on the chalice early). A story win shows
+## Screenshot scenario: a real win (the slime is dropped on the goal early). A story win shows
 ## the medal tier (`--slow` = a silver-time run instead of gold, `--best=N` = a tier already held
 ## on this level, so a better run says NEW BEST); `--random` plays a randomizer maze and shows the
-## tickets paid (`--slow` = over par, so no under-par bonus; `--ticket` collects the pickup first).
-## ./tools/screenshot.sh --frames 200 --scene res://tests/demo_rewards.tscn --unlock-all --skin=lemon --random
+## tickets its ticket goal paid (`--attempt=N` = won on attempt N of that maze; give MORE SLIME with
+## `--upgrades=3,0,0`, else the win is capped at 1).
+## ./tools/screenshot.sh --frames 200 --scene res://tests/demo_rewards.tscn --upgrades=3,0,0 --skin=lemon --random --attempt=3
 const LEVEL := 3
 
 var game: Node2D
@@ -15,7 +16,12 @@ func _ready() -> void:
 	game = preload("res://scenes/main.tscn").instantiate()
 	if "--random" in args:
 		Progress.start_random()
+		Progress.random_seed = 777
 		game.random_seed = 777
+		for arg in args:
+			if arg.begins_with("--attempt="):  # the earlier starts of this maze (this one is the Nth)
+				var key: String = Progress.random_attempt_key(777, Progress.upgrade_level("slime"), Progress.hard_mode)
+				Progress.random_attempts[key] = maxi(arg.trim_prefix("--attempt=").to_int() - 1, 0)
 	else:
 		Progress.start_story(LEVEL)
 		Progress.levels_cleared = LEVEL - 1
@@ -33,9 +39,5 @@ func _drive() -> void:
 	await get_tree().create_timer(1.0).timeout
 	if "--slow" in OS.get_cmdline_user_args():
 		game.run_time = game.par_time * (1.1 if "--random" not in OS.get_cmdline_user_args() else 1.5)
-	if "--ticket" in OS.get_cmdline_user_args():  # grab the maze's ticket pickup first
-		game.slime.position = game.ticket.position
-		await get_tree().physics_frame
-		await get_tree().physics_frame
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	queue_free()

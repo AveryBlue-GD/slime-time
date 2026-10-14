@@ -71,7 +71,7 @@ func _process(delta: float) -> void:
 
 
 func _beacon_wanted() -> bool:
-	if game.chalice.visible:
+	if game.goal.visible:
 		return false
 	return idle >= IDLE_FOR_BEACON or int(progress.dry_ups.get(game.level, 0)) > 0
 
@@ -145,7 +145,7 @@ func _key_text(action: String, fallback: String) -> String:
 
 ## A small gold chevron on the straight line toward the chalice (not along the path).
 func _draw_beacon(alpha: float) -> void:
-	var dir: Vector2 = (game.chalice.position - slime.position).normalized()
+	var dir: Vector2 = (game.goal.position - slime.position).normalized()
 	if dir == Vector2.ZERO:
 		return
 	var perp := Vector2(-dir.y, dir.x)

@@ -1,14 +1,15 @@
 extends Node
 
 ## Debug overview for level design: the whole maze top-down with the fog off, the start (green
-## ring), the chalice (gold ring), the solution route (dots) and the coins, plus the spawn class.
+## ring), the goal (gold ring: the chalice, or the randomizer's ticket), the solution route (dots)
+## and the coins, plus the spawn class.
 ## Renders the level in a 1280x720 SubViewport (so a whole level fits) and saves it to --out=PATH
 ## (default .screens/overview.png), then quits. Needs a window (not --headless):
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --level=5 [--hard] [--out=/abs/path.png]
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --seed=4242   (randomizer)
 ## ./tools/godot.sh --path . res://tests/demo_overview.tscn -- --unlock-all --usage=550 [--upgrades=10,0,0]
 ##   (randomizer: the first seed 1, 7920, 15839 ... whose usage roll is within 10 permille of 550;
-##   the ticket's cell gets a magenta ring and the second line shows u and the perfect run's usage)
+##   the second line shows u and the perfect run's usage)
 
 const SIZE := Vector2i(1280, 720)
 
@@ -62,7 +63,7 @@ func _overview() -> void:
 	if game.slime_light:
 		game.slime_light.visible = false
 	game.hud.visible = false
-	game.chalice.visible = true
+	game.goal.visible = true
 	game.slime.set_physics_process(false)
 	var maze: Dictionary = game.maze
 	var world := Vector2(maze.size * game.TILE)
@@ -86,9 +87,7 @@ func _overview() -> void:
 		var s := MazeGenerator.cell_center(maze.start, game.TILE)
 		var g := MazeGenerator.cell_center(maze.goal, game.TILE)
 		marks.draw_arc(s, 11.0, 0, TAU, 24, Color(0.3, 1.0, 0.4), 3.0)
-		marks.draw_arc(g, 11.0, 0, TAU, 24, Color(1.0, 0.8, 0.2), 3.0)
-		if game.ticket:
-			marks.draw_arc(game.ticket.position, 9.0, 0, TAU, 24, Color(1.0, 0.3, 0.9), 3.0))
+		marks.draw_arc(g, 11.0, 0, TAU, 24, Color(1.0, 0.8, 0.2), 3.0))
 	marks.queue_redraw()
 
 	var layer := CanvasLayer.new()
@@ -103,8 +102,7 @@ func _overview() -> void:
 		title, maze.cells.x, maze.cells.y, SpawnPicker.KIND_NAMES[maze.spawn_kind], maze.start, d,
 		maze.goal_steps, maze.diameter, game.coins.size()]
 	if game.is_random():
-		label.text += "\nU %.2f   PERFECT RUN USES %d%% OF THE METER   MORE SLIME %d   CODE %s   TICKET %s" % [
+		label.text += "\nU %.2f   PERFECT RUN USES %d%% OF THE METER   MORE SLIME %d   CODE %s   GOAL: TICKET" % [
 			Levels.random_usage(game.random_seed, game.hard_mode), roundi(game.perfect_usage * 100.0), get_node("/root/Progress").upgrade_level("slime"),
-			Levels.seed_code(game.random_seed, game.seed_level),
-			("%d%% IN" % roundi(TicketSpawn.fraction_to(maze, game.ticket.cell, game.ticket_cost_per_tile) * 100.0)) if game.ticket else "NONE"]
+			Levels.seed_code(game.random_seed, game.seed_level)]
 	layer.add_child(label)

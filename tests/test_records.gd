@@ -96,7 +96,7 @@ func _spawn_running() -> Node2D:
 
 
 func _win(game: Node2D) -> void:
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	await _frames(3)
 
 

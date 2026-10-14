@@ -1,7 +1,7 @@
 extends Node
 
 ## Test/demo helper: add as a child of the game scene and it steers the slime along the
-## shortest maze path to the chalice by pressing the real movement actions.
+## shortest maze path to the goal (chalice, or the randomizer ticket) by pressing the real movement actions.
 
 const ARRIVE_DISTANCE := 6.0
 

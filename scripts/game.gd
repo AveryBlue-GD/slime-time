@@ -1,7 +1,8 @@
 extends Node2D
 
 ## One maze: the map starts black, the slime's goo trail reveals it, moving drains the slime
-## meter, and touching the golden chalice wins. Plays a story level or a randomizer maze.
+## meter, and touching the goal wins: the golden chalice in a story level, the gold ticket voucher
+## (TicketGoal) in a randomizer maze. Plays a story level or a randomizer maze.
 ##
 ## Jumps leave no trail in the air, only a splat where they land. A jump costs JUMP_COST_FACTOR
 ## of gliding the distance flown; hitting a wall adds a penalty (SPLAT_PENALTY_MIN for a tiny hop
@@ -24,17 +25,13 @@ const TRAIL_RADIUS := 9.0
 const WALL_REVEAL_REACH := 4.0
 ## How much darker revealed walls are than the floor beside them (0-1 of the remaining light).
 const WALL_FOG_ALPHA := 0.3
+## The goal (chalice or randomizer ticket) shows itself within this many px of the slime.
 const CHALICE_REVEAL_DISTANCE := 24.0
-## Close to a chalice you haven't seen yet (a few tiles), a gold twinkle shows through the fog
+## Close to a goal you haven't seen yet (a few tiles), a gold twinkle shows through the fog
 ## every CHALICE_GLIMMER_GAP seconds: the goal is near. Gameplay-neutral: it is within 4 tiles.
 const CHALICE_GLIMMER_REACH := 64.0
 const CHALICE_GLIMMER_GAP := 1.4
 const CHALICE_GLIMMER_COLOR := Color(1.0, 0.82, 0.4)
-## The ticket pickup shows itself within TICKET_REVEAL_DISTANCE px of the slime (like the chalice), and
-## glints through the fog the same way (every TICKET_GLIMMER_GAP s) once the slime is within the other.
-const TICKET_REVEAL_DISTANCE := 26.0
-const TICKET_GLIMMER_REACH := 80.0
-const TICKET_GLIMMER_GAP := 1.8
 const END_DELAY := 2.0
 const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
@@ -134,10 +131,8 @@ signal level_finished(won: bool)
 ## Percent of slime used per tile glided; set per maze so a perfect run uses its target (story), or
 ## fixed per player (randomizer: 100 / Levels.RANDOM_METER_TILES / the MORE SLIME factor).
 var slime_cost_per_tile := 1.0
-## Randomizer: the share of the meter (0-1) a perfect glide to the chalice uses in this maze, and
-## the per-tile cost at the seed code's MORE SLIME level that places the ticket (same for everyone).
+## Randomizer: the share of the meter (0-1) a perfect glide to the ticket uses in this maze.
 var perfect_usage := 0.0
-var ticket_cost_per_tile := 1.0
 var slime_remaining := 100.0
 var finished := false
 var maze: Dictionary
@@ -190,7 +185,7 @@ var glimmer_travel := 0.0
 ## How near a hidden coin must be to glimmer (px; GLIMMER_REACH, tests widen it).
 var glimmer_reach := GLIMMER_REACH
 var _next_glimmer := 0.0
-var _chalice_glimmer_left := 0.0
+var _goal_glimmer_left := 0.0
 var _glimmer_from := Vector2.ZERO
 ## Seconds since the maze started; the fog's clock.
 var elapsed := 0.0
@@ -208,8 +203,7 @@ var stopwatch := false
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
-## Wall splats this run, the par time the medal tiers and the randomizer's under-par ticket bonus
-## are measured against (seconds; the solution path at the base gliding speed plus slack, so speed
+## Wall splats this run, the par time the medal tiers are measured against (seconds; the solution path at the base gliding speed plus slack, so speed
 ## upgrades don't move it), whether this attempt is played with the slime reserve (ASSIST: no
 ## medals, records or tickets), and what the win paid (Progress.record_clear / complete_random).
 var splats := 0
@@ -232,14 +226,15 @@ var hat: Hat
 var coins: Array[Coin] = []
 ## How many coins this level hides in total.
 var coins_here := 0
-## The randomizer maze's ticket pickup (null once collected, and in story mazes) and whether it was.
-var ticket: TicketPickup
-var ticket_found := false
-## True when this randomizer maze has no ticket at all (TicketSpawn found no fitting cell).
-var no_ticket := false
+## The goal touching which wins: the chalice in a story level, the TicketGoal in a randomizer maze
+## (which has no chalice node at all: it is freed in _ready).
+var goal: Area2D
 ## The MORE SLIME level this randomizer maze was built for (the second half of its seed code).
 var seed_level := 0
-var _ticket_glimmer_left := 0.0
+## Randomizer: which start of this maze this is (1 = first; dry-up retries, restarts and replays
+## count, NEW MAZE starts over; Progress.random_attempts) and the key it is counted under.
+var attempt := 1
+var attempt_key := ""
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
@@ -262,7 +257,7 @@ var _last_ambient_event := -1
 ## Dev toggles (dev mode only, see set_dev_bright / set_dev_no_drain): FULL BRIGHT hides the fog
 ## layers (the fog bytes and reveal logic carry on untouched underneath), NO DRAIN stops the meter
 ## draining. `dev_toggled` = one was on at some point this run, so the run sets no medal, record or
-## ticket. `_bright_shown`: nodes FULL BRIGHT shows (chalice, ticket) -> their real visibility.
+## ticket. `_bright_shown`: nodes FULL BRIGHT shows (the goal) -> their real visibility.
 var dev_bright := false
 var dev_no_drain := false
 var dev_toggled := false
@@ -274,6 +269,7 @@ var _bright_shown := {}
 @onready var trail_sprite: Sprite2D = $Trail
 @onready var fog_sprite: Sprite2D = $Fog
 @onready var slime: Slime = $Slime
+## The story chalice (null in a randomizer maze, whose goal is the ticket).
 @onready var chalice: Area2D = $Chalice
 @onready var hud: CanvasLayer = $HUD
 @onready var pause_menu: CanvasLayer = $PauseMenu
@@ -308,8 +304,9 @@ func _ready() -> void:
 		config = Levels.get_config(level, hard_mode)
 		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
-	# The slime grabs the chalice when their shapes touch, a little short of its center.
-	var grab_reach: float = chalice.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
+	_make_goal()
+	# The slime grabs the goal when their shapes touch, a little short of its center.
+	var grab_reach: float = goal.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
 	var path_tiles: float = maze.goal_steps * MazeGenerator.CELL_SPAN - grab_reach / TILE
 	# Story and randomizer alike are calibrated on the real start-to-chalice route (SpawnPicker), so a
 	# perfect glide always uses `target` of the meter and the exploration allowance (meter / route =
@@ -319,7 +316,6 @@ func _ready() -> void:
 		# The randomizer is the other way round: the player's meter is fixed (RANDOM_METER_TILES tiles,
 		# x MORE SLIME below) and the route was built to the seed's usage x that meter (Levels.random_config).
 		slime_cost_per_tile = 100.0 / Levels.RANDOM_METER_TILES
-	ticket_cost_per_tile = config.get("tile_cost", slime_cost_per_tile) if not hard_mode else slime_cost_per_tile
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
 	_apply_upgrades()
 	if is_random() and path_tiles * slime_cost_per_tile > Levels.RANDOM_MAX_USAGE * 100.0:
@@ -359,15 +355,15 @@ func _ready() -> void:
 	_start_ambience()
 	_build_overlays()
 	_place_coins(config.seed)
-	_place_ticket()
+	_count_attempt()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	last_slime_pos = slime.position
 	_glimmer_from = slime.position
 	_next_glimmer = randf_range(GLIMMER_EVERY.x, GLIMMER_EVERY.y)
-	chalice.position = MazeGenerator.cell_center(maze.goal, TILE)
-	chalice.visible = false
-	chalice.body_entered.connect(_on_chalice_body_entered)
+	goal.position = MazeGenerator.cell_center(maze.goal, TILE)
+	goal.visible = false
+	goal.body_entered.connect(_on_goal_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
 	restart_prompt = RestartPrompt.new()
@@ -431,15 +427,14 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
-	_pick_up_ticket(pos, delta)
 	_count_glimmer_travel(pos)
-	if not _shown(chalice) and pos.distance_to(chalice.position) <= CHALICE_REVEAL_DISTANCE:
-		_show(chalice)
-	elif not _shown(chalice) and pos.distance_to(chalice.position) <= CHALICE_GLIMMER_REACH:
-		_chalice_glimmer_left -= delta
-		if _chalice_glimmer_left <= 0.0:
-			_chalice_glimmer_left = CHALICE_GLIMMER_GAP
-			_spawn_chalice_glimmer()
+	if not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_REVEAL_DISTANCE:
+		_show(goal)
+	elif not _shown(goal) and pos.distance_to(goal.position) <= CHALICE_GLIMMER_REACH:
+		_goal_glimmer_left -= delta
+		if _goal_glimmer_left <= 0.0:
+			_goal_glimmer_left = CHALICE_GLIMMER_GAP
+			_spawn_goal_glimmer()
 	hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
@@ -586,11 +581,12 @@ func _spawn_glimmer() -> void:
 	add_child(glimmer)
 
 
-## A gold twinkle on the (still hidden) chalice.
-func _spawn_chalice_glimmer() -> void:
+## A gold twinkle on the (still hidden) goal: the chalice, or the randomizer's ticket.
+func _spawn_goal_glimmer() -> void:
 	var glimmer := Glimmer.new()
-	glimmer.position = (chalice.position + Vector2(randi_range(-3, 3), randi_range(-5, 1))).round()
-	glimmer.color = CHALICE_GLIMMER_COLOR
+	var spread := Vector2(randi_range(-3, 3), randi_range(-3, 3) if is_random() else randi_range(-5, 1))
+	glimmer.position = (goal.position + spread).round()
+	glimmer.color = TicketGoal.GLOW.lightened(0.3) if is_random() else CHALICE_GLIMMER_COLOR
 	glimmer.still = motion_scale() <= 0.0
 	glimmer.z_index = fog_sprite.z_index + 1
 	glimmer.add_to_group("glimmer")
@@ -1190,54 +1186,38 @@ func _pick_up_coins(pos: Vector2) -> void:
 			_sfx("unlock")
 
 
-# ---------------------------------------------------------------- ticket pickup
+# ---------------------------------------------------------------- goal and attempts
 
-## The randomizer maze's ticket voucher (see TicketSpawn): in the same cell for the same seed.
-func _place_ticket() -> void:
+## The maze's goal: the scene's chalice in a story level. A randomizer maze has no chalice: it is
+## freed and a TicketGoal takes its place in the tree (same grab circle, drawn at the same depth).
+func _make_goal() -> void:
 	if not is_random():
+		goal = chalice
 		return
-	# The cell follows the seed code's MORE SLIME level, not the player's, so a seed puts it in the same place for everyone.
-	var cell := TicketSpawn.pick(maze, random_seed, ticket_cost_per_tile)
-	# The cell is the code's, but the trip must also fit the PLAYER's meter (a code from a higher MORE
-	# SLIME level played on a lower one could otherwise hide it beyond reach): then it is hidden.
-	if cell != TicketSpawn.NONE and not TicketSpawn.trip_fits(maze, cell, slime_cost_per_tile):
-		cell = TicketSpawn.NONE
-	if cell == TicketSpawn.NONE:  # no cell fits the ticket rules: this maze simply has none
-		no_ticket = true
-		hud.set_ticket(false, true)
-		return
-	ticket = TicketPickup.new()
-	ticket.z_index = fog_sprite.z_index + 1  # above the fog, but hidden until the slime is close
-	ticket.visible = false
+	var ticket := TicketGoal.new()
 	ticket.still = motion_scale() <= 0.0
 	add_child(ticket)
-	ticket.setup(cell, MazeGenerator.cell_center(cell, TILE))
-	hud.set_ticket(false)
+	move_child(ticket, chalice.get_index())
+	remove_child(chalice)
+	chalice.free()
+	chalice = null
+	goal = ticket
 
 
-func _pick_up_ticket(pos: Vector2, delta: float) -> void:
-	if ticket == null:
+## Randomizer: counts this start of the maze (an attempt) and shows it with what a win would pay.
+func _count_attempt() -> void:
+	if not is_random() or progress == null:
 		return
-	if not _shown(ticket) and pos.distance_to(ticket.position) <= TICKET_REVEAL_DISTANCE:
-		_show(ticket)  # seen like the chalice, a couple of tiles away
-	if pos.distance_to(ticket.position) <= TicketPickup.REACH:
-		ticket.collect(self)
-		ticket = null
-		ticket_found = true
-		_sfx("unlock", -5.0)
-		hud.set_ticket(true)
-		hud.flash_message("TICKET FOUND!", 1.2)
-	elif not _shown(ticket) and pos.distance_to(ticket.position) <= TICKET_GLIMMER_REACH:
-		_ticket_glimmer_left -= delta
-		if _ticket_glimmer_left <= 0.0:
-			_ticket_glimmer_left = TICKET_GLIMMER_GAP
-			var glimmer := Glimmer.new()
-			glimmer.position = (ticket.position + Vector2(randi_range(-3, 3), randi_range(-3, 3))).round()
-			glimmer.color = TicketPickup.GLOW.lightened(0.3)
-			glimmer.still = motion_scale() <= 0.0
-			glimmer.z_index = fog_sprite.z_index + 1
-			glimmer.add_to_group("glimmer")
-			add_child(glimmer)
+	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
+	attempt = progress.begin_random_attempt(attempt_key)
+	_refresh_attempt_pod()
+
+
+## The HUD's attempt pod: TRY n and the tickets a win would pay now (0 once dev toggles were used).
+func _refresh_attempt_pod() -> void:
+	if not is_random() or progress == null:
+		return
+	hud.set_attempt(attempt, 0 if dev_toggled or assisted else progress.random_tickets_due(attempt, random_seed))
 
 
 # ---------------------------------------------------------------- dev: wall power
@@ -1336,36 +1316,40 @@ func usage_text() -> String:
 	return "USED %d%% SLIME%s" % [used, " EFFICIENT!" if used < EFFICIENT_USAGE else ""]
 
 
-func _on_chalice_body_entered(body: Node2D) -> void:
+func _on_goal_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
-	_show(chalice)
+	_show(goal)
 	var no_record := assisted or dev_toggled
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
-	Fx.burst(self, chalice.position, CHALICE_GOLD, 28, 60.0)
-	_sfx("chalice", CHALICE_VOLUME_DB)
 	if is_random():
-		var random_text := "CHALICE CONSUMED!\nTIME " + UIKit.format_time(run_time) + "   " + usage_text() + "\nSEED " + Levels.seed_code(random_seed, seed_level)
+		# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
+		Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
+		_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
+		goal.visible = false
+		_sfx("unlock", CHALICE_VOLUME_DB)
+		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "   " + usage_text() + "\nSEED " + Levels.seed_code(random_seed, seed_level)
 		if progress and _is_running_scene():
-			var under_par: bool = run_time <= par_time and progress.random_seed_fresh
-			var repeat: bool = progress.seed_paid_today(random_seed)  # before the win is recorded
-			var no_slime: bool = progress.upgrade_level("slime") <= 0  # pays 1 whatever else happened
-			var bonus_pickup: bool = ticket_found and progress.random_seed_fresh  # a replayed seed pays no pickup bonus
-			var paid: int = progress.complete_random(no_record, under_par, random_seed, ticket_found)
+			var payout: Dictionary = progress.random_payout(attempt, random_seed)  # before the win is recorded
+			var paid: int = progress.complete_random(no_record, random_seed, attempt)
 			if paid > 0:
-				reward = {tickets = paid, under_par = under_par and not no_slime, ticket_found = ticket_found, no_ticket = no_ticket, slime_cap = no_slime and (bonus_pickup or under_par)}
+				reward = {tickets = paid, attempt = attempt, cap = payout.cap}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif dev_toggled:
 				hud.show_rewards({dev = true})
-			elif repeat:
+			elif assisted:
+				hud.show_rewards({assisted = true})
+			elif payout.cap == "paid":
 				hud.show_rewards({repeat = true})
-			elif not assisted:
+			else:
 				hud.show_rewards({capped = true})
 		_finish(true, random_text, END_DELAY)
 		return
+	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+	_sfx("chalice", CHALICE_VOLUME_DB)
 	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
 	var first_hard_clear: bool = progress != null and hard_mode and not level in progress.hard_cleared
@@ -1589,10 +1573,10 @@ func dev_key_pressed(event: InputEvent) -> bool:
 	return true
 
 
-## FULL BRIGHT (dev only): hides the fog layers and the HUD vignette and shows the chalice and the
-## ticket, so the whole maze is seen at full brightness. Nothing underneath changes: the fog bytes,
+## FULL BRIGHT (dev only): hides the fog layers and the HUD vignette and shows the goal (chalice or
+## ticket), so the whole maze is seen at full brightness. Nothing underneath changes: the fog bytes,
 ## reveal and fade carry on as usual, and switching it off shows exactly the normal fog again (the
-## chalice and ticket go back to whether they had really been seen meanwhile).
+## goal goes back to whether it had really been seen meanwhile).
 func set_dev_bright(on: bool) -> void:
 	if not dev_enabled() or on == dev_bright:
 		return
@@ -1600,10 +1584,9 @@ func set_dev_bright(on: bool) -> void:
 	progress.dev_bright = on
 	if on:
 		dev_toggled = true
-		for node: CanvasItem in [chalice, ticket]:
-			if node:
-				_bright_shown[node] = node.visible
-				node.visible = true
+		if goal and not finished:
+			_bright_shown[goal] = goal.visible
+			goal.visible = true
 	else:
 		for node: Variant in _bright_shown:
 			if is_instance_valid(node):
@@ -1635,9 +1618,10 @@ func _refresh_dev_badge() -> void:
 	if dev_no_drain:
 		tags.append("NO DRAIN")
 	hud.set_dev_badge(" ".join(tags))
+	_refresh_attempt_pod()  # a dev-toggled run pays nothing
 
 
-## Whether the chalice / ticket has really been seen (FULL BRIGHT only shows it for the moment).
+## Whether the goal has really been seen (FULL BRIGHT only shows it for the moment).
 func _shown(node: CanvasItem) -> bool:
 	return _bright_shown.get(node, node.visible)
 

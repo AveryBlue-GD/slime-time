@@ -21,4 +21,4 @@ func _physics_process(_delta: float) -> void:
 	if frame == 3:
 		get_tree().current_scene = game
 	elif frame == 40:
-		game.slime.position = game.chalice.position
+		game.slime.position = game.goal.position

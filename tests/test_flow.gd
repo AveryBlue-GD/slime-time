@@ -98,7 +98,7 @@ func _initialize() -> void:
 	progress.dry_ups[1] = 1
 	await _frames(40)
 	_check(cues.beacon_alpha > 0.0, "a dry-up on the level shows the beacon")
-	game.chalice.visible = true
+	game.goal.visible = true
 	await _frames(80)
 	_check(cues.beacon_alpha == 0.0, "the beacon is gone once the chalice is in view")
 	cues.queue_redraw()

@@ -30,7 +30,7 @@ func _initialize() -> void:
 	_check(progress.selected_skin == Skins.DEFAULT, "rainbow is locked at first")
 	progress.levels_cleared = Levels.COUNT - 1
 	var game := await _spawn_story_running(Levels.COUNT)
-	game.slime.position = game.chalice.position
+	game.slime.position = game.goal.position
 	await _frames(5)
 	_check(progress.is_skin_unlocked(Skins.CUSTOM) and not progress.is_skin_unlocked(Skins.RAINBOW),
 		"beating level 10 unlocks the color wheel, not the rainbow")

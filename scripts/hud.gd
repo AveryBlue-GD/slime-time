@@ -42,9 +42,10 @@ var time_label: Label
 var coin_label: Label
 var coins_left_label: Label
 var _coins_left_pod: Control
-var _ticket_pod: Control
-var _ticket_icon: TextureRect
-var _ticket_label: Label
+## Randomizer only: the attempt on this maze and what a win would pay now ("TRY 2  4 TIX").
+var attempt_pod: Control
+var attempt_label: Label
+var _attempt_icon: TextureRect
 ## Shown only when a level is beaten faster than its saved record.
 var record_banner: CenterContainer
 var record_time_label: Label
@@ -137,14 +138,14 @@ func _ready() -> void:
 	coins_left_label = _make_label(SkinText.ROLE_DIM)
 	left_row.add_child(coins_left_label)
 
-	# The randomizer maze's ticket pickup: a dim ticket and FIND IT until it is collected.
-	var ticket_row := _make_pod(right_bar)
-	_ticket_pod = ticket_row.get_parent()
-	_ticket_icon = UIKit.make_icon("ticket", TICKET_DIM)
-	ticket_row.add_child(_ticket_icon)
-	_ticket_label = _make_label(SkinText.ROLE_DIM)
-	ticket_row.add_child(_ticket_label)
-	_ticket_pod.visible = false
+	# Randomizer mazes: the attempt and the tickets a win would pay now (see set_attempt).
+	var attempt_row := _make_pod(right_bar)
+	attempt_pod = attempt_row.get_parent()
+	_attempt_icon = UIKit.make_icon("ticket", Color.WHITE)
+	attempt_row.add_child(_attempt_icon)
+	attempt_label = UIKit.make_label("", 8, TICKET_TINT)
+	attempt_row.add_child(attempt_label)
+	attempt_pod.visible = false
 
 	area_label = _make_label(SkinText.ROLE_DIM)
 	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -292,13 +293,14 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 		tween.tween_callback(func() -> void: _skin_text.recolor())
 
 
-## The ticket pod (randomizer mazes only): FIND IT, then FOUND in gold once it is collected.
-func set_ticket(found: bool, none := false) -> void:
-	_ticket_pod.visible = true
-	_ticket_icon.modulate = Color.WHITE if found else TICKET_DIM
-	_ticket_label.text = "FOUND" if found else ("NONE HERE" if none else "FIND IT")
-	if found:
-		_ticket_label.add_theme_color_override("font_color", TICKET_TINT)
+## The attempt pod (randomizer mazes only): which attempt at this maze it is and the tickets a win
+## would pay right now, e.g. "TRY 2  4 TIX" (dim when it would pay nothing).
+func set_attempt(attempt: int, payout: int) -> void:
+	attempt_pod.visible = true
+	attempt_label.text = "TRY %d  %d TIX" % [mini(attempt, 99), payout]
+	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
+	attempt_label.add_theme_color_override("font_color", color)
+	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM
 
 
 func set_time(seconds: float) -> void:
@@ -332,7 +334,9 @@ func set_vignette(on: bool) -> void:
 ## Under the result text. A story clear shows its medal tier as three icons (gold up to the tier
 ## won this run, dim gold up to an older better tier, dark for the rest), the tier name and NEW BEST
 ## when it raised the saved one. `info` is Progress.record_clear's result. A randomizer win shows
-## the ticket vouchers it paid ({tickets, under_par}; `capped` says the day's limit is used up).
+## the ticket vouchers it paid ({tickets, attempt, cap}: "TICKET! ATTEMPT 2 = +4", plus why when
+## capped to 1: cap "replay" = REPLAYED SEED, "slime" = MORE SLIME = MORE); `capped` says the day's
+## limit is used up, `repeat` that this seed already paid today.
 ## An assisted run says it earns nothing instead.
 func show_rewards(info: Dictionary) -> void:
 	for child in rewards_row.get_children():
@@ -361,19 +365,16 @@ func show_rewards(info: Dictionary) -> void:
 	elif info.get("capped", false):
 		_reward_label("DAILY TICKET LIMIT REACHED", MEDAL_OWNED)
 	else:
-		rewards_row.add_child(UIKit.make_icon("ticket", Color.WHITE if info.get("ticket_found", true) else TICKET_DIM))
-		if not info.has("ticket_found"):  # (older callers)
-			_reward_label("+%d TICKETS" % info.tickets, TICKET_TINT)
-		elif info.ticket_found:
-			_reward_label("TICKET FOUND! +%d" % info.tickets, TICKET_TINT)
-		elif info.get("no_ticket", false):
-			_reward_label("NO TICKET IN THIS MAZE +%d" % info.tickets, MEDAL_OWNED)
+		rewards_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
+		if info.has("attempt"):
+			_reward_label("TICKET! ATTEMPT %d = +%d" % [info.attempt, info.tickets], TICKET_TINT)
 		else:
-			_reward_label("NO TICKET FOUND +%d" % info.tickets, MEDAL_OWNED)
-		if info.get("under_par", false):
-			_reward_label("UNDER PAR", MEDAL_GOLD)
-		if info.get("slime_cap", false):
-			_reward_label("MORE SLIME = MORE", MEDAL_OWNED)
+			_reward_label("+%d TICKETS" % info.tickets, TICKET_TINT)
+		match info.get("cap", ""):
+			"replay":
+				_reward_label("REPLAYED SEED", MEDAL_OWNED)
+			"slime":
+				_reward_label("MORE SLIME = MORE", MEDAL_OWNED)
 	rewards_row.visible = true
 
 

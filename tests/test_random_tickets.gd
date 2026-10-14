@@ -1,7 +1,8 @@
 extends SceneTree
 
-## Randomizer extras: random (seeded) spawn cells, the ticket pickup's placement odds and
-## reachability, maze size growing with MORE SLIME, and save/story compatibility.
+## Randomizer extras: random (seeded) spawn cells, the TICKET as the maze's goal (no chalice node;
+## the ticket stands on the goal cell, the autopilot wins by reaching it; story keeps the chalice),
+## maze size growing with MORE SLIME, and save/story compatibility.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_random_tickets.gd
 
 const SEEDS := 300
@@ -14,26 +15,17 @@ func _initialize() -> void:
 	var progress: Node = root.get_node("Progress")
 	progress.saving_enabled = false
 
-	# --- Deterministic: the same seed gives the same maze, start, chalice and ticket
+	# --- Deterministic: the same seed gives the same maze, start and goal (the ticket's cell)
 	var cfg := Levels.random_config(4242)
 	var a := MazeGenerator.generate_random(cfg)
 	var b := MazeGenerator.generate_random(cfg)
-	_check(a.walls == b.walls and a.start == b.start and a.goal == b.goal and a.goal_steps == b.goal_steps, "same seed: same maze, start and chalice")
-	var cost_a: float = cfg.tile_cost
-	_check(TicketSpawn.pick(a, 4242, cost_a) == TicketSpawn.pick(b, 4242, cost_a), "same seed: same ticket cell")
+	_check(a.walls == b.walls and a.start == b.start and a.goal == b.goal and a.goal_steps == b.goal_steps, "same seed: same maze, start and ticket cell")
 	_check(Levels.random_config(4242).cells == Levels.random_config(4242).cells, "same seed: same size")
 
-	# --- Many seeds: spawn variety, route length, ticket odds, reachability
+	# --- Many seeds: spawn variety, route length
 	var starts := {}
 	var corner := 0
 	var wrong_route := 0
-	var no_ticket := 0
-	var bands := [0, 0, 0, 0, 0]  # <20%, 20-30, 30-40, 40-50, 50-60+
-	var total := 0
-	var unreachable := 0
-	var worst_trip := 0.0
-	var min_f := 1.0
-	var max_f := 0.0
 	var all_connected := true
 	for i in SEEDS:
 		var s := 1000 + i * 7919
@@ -43,39 +35,12 @@ func _initialize() -> void:
 		if maze.start == Vector2i.ZERO:
 			corner += 1
 		all_connected = all_connected and MazeGenerator.is_completable(maze)
-		var cost: float = c.tile_cost
 		if maze.goal_steps != c.route:
 			wrong_route += 1
-		var cell := TicketSpawn.pick(maze, s, cost)
-		if cell == TicketSpawn.NONE:
-			no_ticket += 1
-			continue
-		var dist_start := MazeGenerator.distances_from(maze, maze.start)
-		var dist_goal := MazeGenerator.distances_from(maze, maze.goal)
-		var f: float = dist_start[cell] * 2 * cost / 100.0
-		var trip: float = (dist_start[cell] + dist_goal[cell]) * 2 * cost / 100.0
-		worst_trip = maxf(worst_trip, trip)
-		min_f = minf(min_f, f)
-		max_f = maxf(max_f, f)
-		if trip > maxf(TicketSpawn.ROUTE_LIMIT, maze.goal_steps * 2 * cost / 100.0) + 0.0001 or cell == maze.start or cell == maze.goal:
-			unreachable += 1
-		bands[clampi(int((f - 0.1) / 0.1), 0, 4) if f >= 0.2 else 0] += 1
-		total += 1
 	_check(all_connected, "every random-start maze is fully connected")
 	_check(starts.size() >= SEEDS * 0.5, "spawn varies across seeds (%d distinct starts in %d)" % [starts.size(), SEEDS])
 	_check(corner < SEEDS * 0.2, "the old top-left corner is no longer the usual start (%d/%d)" % [corner, SEEDS])
-	_check(wrong_route == 0, "the start-chalice route is the length the seed's usage asks for (%d off)" % wrong_route)
-	_check(unreachable == 0 and worst_trip <= Levels.RANDOM_MAX_USAGE + 0.01, "the ticket is always within budget: start -> ticket -> chalice <= 92%% of the meter, or the route itself when longer (worst %.0f%%)" % (worst_trip * 100))
-	_check(no_ticket < SEEDS * 0.02, "almost every maze has a ticket (%d without)" % no_ticket)
-	_check(min_f >= TicketSpawn.MIN_FRACTION - 0.0001 and max_f <= TicketSpawn.MAX_FRACTION + 0.0001, "the ticket is %d%%-%d%% of the meter from the start (saw %.0f%%-%.0f%%)" % [TicketSpawn.MIN_FRACTION * 100, TicketSpawn.MAX_FRACTION * 100, min_f * 100, max_f * 100])
-	print("ticket distance bands (<20, 20-30, 30-40, 40-50, 50+ pct of meter): ", bands, " of ", total)
-	_check(bands[0] > 0, "near spawns (10-20%%) are rare but possible (%d of %d)" % [bands[0], total])
-	_check(bands[0] < total * 0.12, "...and rare (<12%%: %.1f%%)" % (bands[0] * 100.0 / total))
-	_check(bands[3] + bands[4] > bands[0] * 3 and bands[3] + bands[4] > bands[1], "far spots (40%%+) are much more common than near ones")
-
-	# --- The weight curve itself
-	_check(TicketSpawn.weight(0.1) < TicketSpawn.weight(0.2) and TicketSpawn.weight(0.2) < TicketSpawn.weight(0.4) and TicketSpawn.weight(0.4) < TicketSpawn.weight(0.6),
-		"weights rise with distance")
+	_check(wrong_route == 0, "the start-to-ticket route is the length the seed's usage asks for (%d off)" % wrong_route)
 
 	# --- Size scales with MORE SLIME (the route is u x the meter, and the meter grows)
 	var last_area := 0
@@ -110,23 +75,51 @@ func _initialize() -> void:
 	await physics_frame
 	_check(game.slime.position == MazeGenerator.cell_center(game.maze.start, 16) and game.maze.start == a.start, "the slime spawns on the seeded start cell %s" % game.maze.start)
 	var real_tiles: float = game.maze.goal_steps * 2 - 13.0 / 16.0
-	_check(is_equal_approx(game.par_time, Levels.par_for_path(real_tiles, game.slime.max_speed)), "par is measured along the real start-to-chalice route")
+	_check(is_equal_approx(game.par_time, Levels.par_for_path(real_tiles, game.slime.max_speed)), "par is measured along the real start-to-ticket route")
 	var used: float = real_tiles * game.slime_cost_per_tile
 	var want: float = Levels.random_usage(4242) * 100.0
 	_check(absf(used - want) < 1.5, "a perfect run uses the seed's usage of the (fixed) meter: %.1f%% (u %.1f%%)" % [used, want])
-	_check(game.ticket != null and game.ticket.cell == TicketSpawn.pick(game.maze, 4242, cfg.tile_cost), "the ticket pickup sits in the seeded cell")
-	# A ticket cell chosen for a higher MORE SLIME level can be out of reach on the player's smaller meter
-	var cost: float = game.slime_cost_per_tile
-	var fits_all := true
-	var detour := Vector2i(-1, -1)
-	for option in TicketSpawn.candidates(game.maze, cost):
-		fits_all = fits_all and TicketSpawn.trip_fits(game.maze, option.cell, cost)
-		if option.trip > MazeGenerator.distances_from(game.maze, game.maze.start)[game.maze.goal] * MazeGenerator.CELL_SPAN * cost / 100.0 + 0.02:
-			detour = option.cell
-	_check(fits_all, "every candidate cell fits the meter it was chosen for")
-	if detour != Vector2i(-1, -1):
-		_check(not TicketSpawn.trip_fits(game.maze, detour, cost * 3.0), "a side-branch ticket is dropped when the player's meter is far smaller (3x cost per tile)")
+	# The goal is the ticket: no chalice node anywhere in the maze, a TicketGoal on the goal cell.
+	_check(game.chalice == null and game.get_node_or_null("Chalice") == null and _find_chalice(game) == null,
+		"a randomizer maze has no chalice node")
+	_check(game.goal is TicketGoal and game.goal.get_parent() == game and game.goal.position == MazeGenerator.cell_center(game.maze.goal, 16),
+		"the ticket stands on the goal cell %s (where the chalice was)" % game.maze.goal)
+	_check(not game.goal.visible, "...hidden under the fog until the slime is near")
+	_check((game.goal.get_node("CollisionShape2D").shape as CircleShape2D).radius == TicketGoal.GRAB_RADIUS and TicketGoal.GRAB_RADIUS == 6.0,
+		"...with the chalice's grab circle (so the meter calibration is unchanged)")
+	_check(game.hud.attempt_pod.visible and game.hud.attempt_label.text.begins_with("TRY "), "the HUD shows the attempt pod (%s)" % game.hud.attempt_label.text)
+	game.slime.position = game.goal.position + Vector2(game.CHALICE_REVEAL_DISTANCE - 2.0, 0)
+	await physics_frame
+	await physics_frame
+	_check(game.goal.visible, "the ticket shows once the slime is a couple of tiles away")
 	game.queue_free()
+	await process_frame
+
+	# --- The autopilot wins a randomizer maze by gliding to the ticket
+	for s in [4242, 777]:
+		var run: Node2D = load("res://scenes/main.tscn").instantiate()
+		run.random_seed = s
+		root.add_child(run)
+		await physics_frame
+		run.add_child(preload("res://tests/autopilot.gd").new())
+		var waited := 0.0
+		while not run.finished and waited < 60.0:
+			await physics_frame
+			waited += 1.0 / 60.0
+		_check(run.won and run.slime_remaining > 0.0 and run.slime.position.distance_to(run.goal.position) < 16.0,
+			"seed %d: the autopilot reaches the ticket and wins (%.0f%% slime left)" % [s, run.slime_remaining])
+		run.queue_free()
+		await process_frame
+
+	# --- Story levels keep the chalice as their goal
+	progress.mode = progress.MODE_STORY
+	var story: Node2D = load("res://scenes/main.tscn").instantiate()
+	story.level = 1
+	root.add_child(story)
+	await physics_frame
+	_check(story.chalice != null and story.goal == story.chalice and story.get_node_or_null("Chalice") != null and not (story.goal is TicketGoal)
+		and not story.hud.attempt_pod.visible, "story levels keep the chalice (no ticket goal, no attempt pod)")
+	story.queue_free()
 	await process_frame
 
 	# --- Save compatibility: an old save (no new keys) loads; the spins counter sets the wheel price
@@ -147,6 +140,17 @@ func _initialize() -> void:
 	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)
 
+
+
+## Any node in the game made from the chalice scene or script.
+func _find_chalice(node: Node) -> Node:
+	if node.scene_file_path == "res://scenes/chalice.tscn" or (node.get_script() and (node.get_script() as Script).resource_path == "res://scripts/chalice.gd"):
+		return node
+	for child in node.get_children():
+		var found := _find_chalice(child)
+		if found:
+			return found
+	return null
 
 
 func _check(ok: bool, what: String) -> void:
