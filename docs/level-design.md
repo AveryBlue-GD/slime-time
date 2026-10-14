@@ -460,7 +460,13 @@ exit. Build time: 6.7 ms average per floor at MORE SLIME 7 (headless Mac), the r
 **The meter carries over.** Floor 1 starts full. Entering floor k adds the refill of the last row of
 `DESCENT_REFILL` whose floor <= k: +60% (floors 2-3), +50% (4-6), +40% (7-9), +35% (10+), + THRIFT 15 per stack,
 + BIG GULP 30 if just picked, capped at 100%. The meter is a percent of the run's capacity (DEEP TANK +15% each,
-GREEDY GOO -10% each, additive); picking a capacity boon keeps the slime left in tiles (percent x old / new).
+GREEDY GOO -10%, additive); picking a capacity boon keeps the slime left in tiles (percent x old / new).
+
+**Boon limits (review b3 fixes, 2026-10-15):** GREEDY GOO stacks once (`max = 1`): with 2 stacks the capacity
+(0.80) fell below the deepest floors' u (0.80-0.85 from floor 11-12), so those floors needed more than a full
+meter; one stack keeps it at 0.90. RUBBER BODY and GLASS SLIME exclude each other (`BOONS.*.excludes`,
+`Descent.can_offer`): RUBBER's free splats would cancel GLASS's double splats and make its x1.5 free, so
+neither is offered while the other is held.
 
 **Goo drops:** 2 per floor (`Descent.drop_cells`: `Levels.coin_cells`'s priority, i.e. deep dead ends one per side
 branch of the route first, seeded; never the start or the exit), +8% of the meter each (capped at 100%), under the
@@ -475,13 +481,26 @@ floor 9-11 (u rises 5 points a floor while the refill falls); humans explore, so
 floors 5-6 (spec estimate; no playtest yet). Knob for "runs too short": `DESCENT_REFILL` (spec D.4).
 
 **Pot and pay** (all in `Economy`): each cleared floor adds +1 (1-3), +2 (4-6), +3 (7-9), +4 (10+) and GREEDY GOO
-+1 per stack, pot max 30. CASH OUT (on the boon card) banks the whole pot, a dry-up or QUIT TO HUB mid-floor half
-(rounded down); GLASS SLIME x1.5 (rounded down) after that, never above 30. Caps: the first 2 runs per UTC day that
-bank anything pay (forward-only day like the randomizer's, a pay day > 2 days ahead counts as today); later runs
-are PRACTICE (0, no slot used); no MORE SLIME bought = at most 1 (not in dev mode); a run with a dev toggle
++1, pot max 30. CASH OUT (on the boon card) banks the whole pot, a dry-up or QUIT TO HUB mid-floor half
+(rounded down); GLASS SLIME x1.5 (rounded down) after that, never above 30. Caps: 2 paid runs per UTC day (forward-only day like
+the randomizer's, a pay day > 2 days ahead counts as today). **A run takes its paid slot when it first clears
+floor 1**, and that is saved at once (`Progress._take_descent_slot`, `[descent] paid_runs`), so closing the tab or
+app mid-run can't keep the slot (review b3 #3: abandoning bad runs used to keep both slots for good ones); the run
+later banks into that slot, even after midnight, even with a pot that banks 0. A run that dries up or quits on
+floor 1 (pot 0) takes no slot. A run that cleared floor 1 with no slot left is PRACTICE (0), unless a new day has
+begun when it banks (it then takes the new day's slot). The HUD pot pod and the summary's time line say PAID RUN
+n/2 (the slot taken, or the one floor 1 would take); dev-toggled runs take no slot; no MORE SLIME bought = at most 1 (not in dev mode); a run with a dev toggle
 (F1 / F2) on any floor pays 0. Milestones (once ever, paid on reaching the floor, outside the daily cap, never for a
 dev-toggled run): floor 5 +10, 10 +15 (and the ABYSS trail), 15 +20, 20 +25 = 70. Best floor = the deepest floor
 reached (the one being played when the run ended), with the run time on reaching it.
+
+**Story data is never touched by a floor** (review b3 #1, #4): a floor has `level` 0, which `Progress.survey_key`
+and friends clamp to level 1, so the game excludes Descent from every per-level side effect: no map survey
+(`_arm_survey`), no `complete_level` on a dev-toggled clear, no records / medals / coins / tutorial cues / first-run
+skin / assist / dry-up count; `record_survey`, `record_clear` and `complete_level` also ignore level < 1.
+`test_descent` plays a whole run as the running scene and checks every saved story key is byte-identical.
+One action per boon card: DESCEND and CASH OUT in the same frame count once, and a floor built for a run that is
+already banked shows only its summary. The pot pod behind the summary shows what the run was paid as.
 
 ## 10. Hard-mode HEAT (upgrades v2 batch 4, 2026-10-15)
 

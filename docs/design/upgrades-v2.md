@@ -384,16 +384,19 @@ hub wallpapers (`hub_room.gdshader` uniforms), map stamps.
 | BIG GULP | refill +30% now | yes | 1.0 |
 | DEEP TANK | meter capacity +15% for the run | 2x | 0.8 |
 | FEATHER LEAP | leap cost 50% -> 35% of glide | no | 0.8 |
-| RUBBER BODY | no splat penalty (stun stays) | no | 0.8 |
+| RUBBER BODY | no splat penalty (stun stays); never with GLASS SLIME | no | 0.8 |
 | SLICK | glide speed +15% | 2x | 0.8 |
 | BLAZE | +1 brightness breakpoint (past level 3: 42 px) | no | 0.6 |
 | CHALICE SENSE | the exit shows through fog within 6 tiles (default 1.5) | no | 0.5 |
 | BACKUP BLADDER | one extra SECOND WIND-style refill to 25% | yes | 0.5 |
 | THRIFT | floor refills +15 points | 2x | 0.8 |
-| GREEDY GOO (trade-off) | +1 ticket per floor to the pot, capacity -10% | 2x | 0.5 |
-| GLASS SLIME (trade-off) | pot x1.5 when banked, splats cost double | no | 0.4 |
+| GREEDY GOO (trade-off) | +1 ticket per floor to the pot, capacity -10% | no (built: was 2x) | 0.5 |
+| GLASS SLIME (trade-off) | pot x1.5 when banked, splats cost double; never with RUBBER BODY | no | 0.4 |
 
-Offers: 3 distinct, non-stackable boons already held are excluded; seeded from the run seed and floor (same run,
+*Built change (review b3 fixes, 2026-10-15):* GREEDY GOO is one stack (two put capacity 0.80 under the deepest
+floors' u 0.85), and RUBBER BODY / GLASS SLIME exclude each other (RUBBER cancelled GLASS's drawback).
+
+Offers: 3 distinct, non-stackable boons already held are excluded (and RUBBER / GLASS while the other is held); seeded from the run seed and floor (same run,
 same offers). Picking is a full-screen panel over the cleared floor (keyboard / touch: 3 big tiles + CASH OUT).
 
 ### C2.3 Rewards, daily cap, records
@@ -401,13 +404,15 @@ same offers). Picking is a full-screen panel over the cleared floor (keyboard / 
 - **Pot:** each floor cleared adds **+1 (floors 1-3), +2 (4-6), +3 (7-9), +4 (10+)**; GREEDY/GLASS modify it; **max 30**.
 - **Cash out** (button on the boon screen): end the run and bank the whole pot. **Dry-up:** bank half the pot
   (rounded down). Quitting mid-floor = a dry-up.
-- **Daily:** the first **2 runs per UTC day** that bank anything are paid (separate counter from the randomizer's
-  5 wins; same forward-only day rollover). Later runs show PRACTICE on the pot and pay 0. No-MORE-SLIME rule: pot
+- **Daily:** **2 paid runs per UTC day** (separate counter from the randomizer's 5 wins; same forward-only day
+  rollover). *Built (review b3 #3):* a run takes its paid slot when it first clears floor 1, saved at once, so
+  closing the app mid-run can't keep the slot; it banks into that slot later (HUD / summary: PAID RUN n/2). A run
+  ending on floor 1 takes none. Later runs show PRACTICE on the pot and pay 0. No-MORE-SLIME rule: pot
   capped at 1. Dev / dev-toggled runs: 0.
 - **Milestones** (once ever): first reach floor 5 / 10 / 15 / 20 -> +10 / +15 / +20 / +25 tickets; floor 10 also
   unlocks the ABYSS trail.
 - **Exploit check:** pay needs floors cleared; quitting early only loses; boons are seeded per run (no reroll by
-  restarting the same run: a restart is a new run and uses a paid slot when it banks); 2 x 30 = 60/day is the
+  restarting the same run: a restart is a new run and uses a paid slot once it clears floor 1); 2 x 30 = 60/day is the
   ceiling and needs ~floor 9+ twice (*est.* ~25 min of excellent play).
 - *est.* pacing: median run reaches floor 5-6 in ~8 min and banks ~7 (cash out) or ~4 (dry-up).
 - **Records:** `best_floor` (and its time) on the portal prompt (DESCENT  BEST FLOOR 7) and the choice panel.
