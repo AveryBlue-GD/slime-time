@@ -658,8 +658,8 @@ class StageArt extends Node2D:
 		sweat = [".b.", ".b.", "bbb", "bwb", ".b."],
 		# Reactions, drawn bare (no bubble) with a dark outline: a puzzled "?" and an angry face.
 		huh = [".qqqq..", "qqqqqq.", "qq..qqQ", "....qqQ", "...qqQ.", "..qqQ..", "..qqQ..", ".......", "..qqQ..", "..qqQ.."],
-		angry = ["....ooooo....", "..oohhRRRoo..", ".ohhRRRRRRRo.", ".ohkRRRRRkRo.", "ohRRkRRRkRRRo", "oRRRRkRkRRRRo",
-			"oRRRRRRRRRRRo", "oRRkkRRRkkRRo", "oRRRRRRRRRRDo", "oRRRRkkkRRRDo", ".oRRkRRRkRDo.", "..ooDDDDDoo..", "....ooooo...."],
+		angry = ["....ooooo....", "..oohhRRRoo..", ".ohhRRRRRRRo.", ".ohkkRRRkkRo.", "ohRRkkRkkRRRo", "oRRRRRRRRRRRo",
+			"oRRkkRRRkkRRo", "oRRkkRRRkkRRo", "oRRRRRRRRRRDo", "oRRRRkkkRRRDo", ".oRRkRRRkRDo.", "..ooDDDDDoo..", "....ooooo...."],
 		vein = [".r.r.", "rr.rr", ".....", "rr.rr", ".r.r."],
 	}
 	const ICON_INK := {
@@ -680,7 +680,7 @@ class StageArt extends Node2D:
 		var sc := 2.0 if zoom < 1.5 else 1.0  # same size on screen at 1x and 2x
 		for pop in pops:
 			var age: float = t - pop.at
-			if age < 0.0 or age > pop.life:
+			if age < 0.0 or age > pop.life or (pop.icon == "huh" and age >= pop.life - 0.001):
 				continue
 			var base: Vector2
 			if pop.who < 0:

@@ -162,6 +162,14 @@ func _initialize() -> void:
 	progress.reduce_motion = true
 	screen = await _open("finale")
 	_check(screen.calm and screen.cards.size() == Story.FINALE.size() and screen.slime != null, "Reduce Motion: finale shows stills")
+	# The search: the adventurers find only a puddle: puzzled ("?") first, then angry faces (the still).
+	screen.show_card(1)
+	_check(_reactions(screen.art) == ["angry", "angry", "angry"], "finale search still: an angry face over each adventurer (%s)" % [_reactions(screen.art)])
+	screen.art.start("search")
+	screen.art.simulate_to(1.6)
+	_check(_reactions(screen.art) == ["huh", "huh", "huh"], "...after a puzzled \"?\" over each (%s)" % [_reactions(screen.art)])
+	var icons: Dictionary = screen.art.ICONS
+	_check(not icons.has("loot") and not icons.has("sparkle"), "...and no loot or sparkle pictograms any more")
 	screen.free()
 	screen = await _open("intro", false)
 	screen.show_card(4)  # the splat: shakes, bounces and zooms with motion on
@@ -216,6 +224,17 @@ func _open(which: String, leave := true) -> Control:
 	root.add_child(screen)
 	await process_frame
 	return screen
+
+
+## The reaction pictograms showing over the adventurers right now, in hero order.
+func _reactions(art: Node2D) -> Array:
+	var shown := []
+	for who in 3:
+		for pop in art.pops:
+			var age: float = art.t - pop.at
+			if pop.who == who and pop.icon in ["huh", "angry"] and age >= 0.0 and age < pop.life:
+				shown.append(pop.icon)
+	return shown
 
 
 ## Text-showing nodes under `node` (the story must have none).
