@@ -52,9 +52,13 @@ func _initialize() -> void:
 	var a := await _spawn(3, 0)
 	var b := await _spawn(3, 0)
 	var same := true
-	for tile: Vector2i in a.wall_layer.get_used_cells():
-		same = same and a.wall_layer.get_cell_atlas_coords(tile) == b.wall_layer.get_cell_atlas_coords(tile) \
-			and a.wall_layer.get_cell_source_id(tile) == b.wall_layer.get_cell_source_id(tile)
+	for layer: String in ["border_layer", "bedrock_layer"]:
+		var la: TileMapLayer = a.get(layer)
+		var lb: TileMapLayer = b.get(layer)
+		same = same and la.get_used_cells().size() == lb.get_used_cells().size()
+		for tile: Vector2i in la.get_used_cells():
+			same = same and la.get_cell_atlas_coords(tile) == lb.get_cell_atlas_coords(tile) \
+				and la.get_cell_source_id(tile) == lb.get_cell_source_id(tile)
 	_check(same, "two builds of level 3 lay identical border tiles")
 
 	# --- The brightness light reveals ring tiles like any wall, never the bedrock past them
@@ -94,6 +98,13 @@ func _check_border(game: Node2D, what: String, square: PackedVector2Array) -> vo
 			var tile := Vector2i(x, y)
 			var d := MazeTiles.border_depth(tile, size)
 			var source: int = game.wall_layer.get_cell_source_id(tile)
+			if d > 0:
+				# Outside the maze: the ring on the border layer, the bedrock on its own layer, never both
+				# (the walls layer stops at the maze's edge).
+				var ring_source: int = game.border_layer.get_cell_source_id(tile)
+				var deep_source: int = game.bedrock_layer.get_cell_source_id(tile)
+				covered = covered and source == -1 and (ring_source == -1 or deep_source == -1)
+				source = ring_source if ring_source != -1 else deep_source
 			if d == 0:
 				# Inside the maze: only the maze's own walls and floors, as before.
 				ok_inside = ok_inside and (source == -1 or source == MazeTiles.WALL_SOURCE) == true \
@@ -102,12 +113,12 @@ func _check_border(game: Node2D, what: String, square: PackedVector2Array) -> vo
 					ok_inside = false
 			elif d <= game.BORDER:
 				# The ring: a wall tile whose collision is the same full square as every maze wall.
-				var data: TileData = game.wall_layer.get_cell_tile_data(tile)
+				var data: TileData = game.border_layer.get_cell_tile_data(tile)
 				ok_ring = ok_ring and source == MazeTiles.BORDER_SOURCE and data != null \
 					and data.get_collision_polygons_count(0) == 1 and data.get_collision_polygon_points(0, 0) == square \
 					and game.is_wall_tile(tile)
 			elif d <= depth:
-				var data: TileData = game.wall_layer.get_cell_tile_data(tile)
+				var data: TileData = game.bedrock_layer.get_cell_tile_data(tile)
 				ok_past = ok_past and source == MazeTiles.BORDER_DEEP_SOURCE and data.get_collision_polygons_count(0) == 0
 			else:
 				covered = covered and source == -1

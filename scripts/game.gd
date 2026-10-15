@@ -340,6 +340,10 @@ var _survey_done := false
 
 @onready var floor_layer: TileMapLayer = $Floor
 @onready var wall_layer: TileMapLayer = $Walls
+## The border outside the maze (MazeTiles.add_border): the colliding ring and the bedrock past it, each
+## on its own layer so their atlases never break the walls' (or each other's) draw batches.
+@onready var border_layer: TileMapLayer = $Border
+@onready var bedrock_layer: TileMapLayer = $Bedrock
 @onready var fillet_layer: TileMapLayer = $Fillets
 @onready var trail_sprite: Sprite2D = $Trail
 @onready var fog_sprite: Sprite2D = $Fog
@@ -450,7 +454,7 @@ func _ready() -> void:
 	else:
 		theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
-	MazeTiles.add_border(floor_layer, wall_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
+	MazeTiles.add_border(border_layer, bedrock_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
 	if descent:
 		hud.show_area_name(Themes.display_name(theme), "FLOOR %d" % descent_run.floor)
 	else:
@@ -955,7 +959,7 @@ func _build_overlays() -> void:
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
 	if motes:
 		add_child(motes)
-		move_child(motes, $Walls.get_index() + 1)  # on the floor: under trail, chalice and slime
+		move_child(motes, bedrock_layer.get_index() + 1)  # on the floor: under trail, chalice and slime
 
 
 ## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same

@@ -165,7 +165,7 @@ func _initialize() -> void:
 
 	# --- The maze edge: a double wall, then fog carrying on
 	var w: int = game.maze.size.x
-	_check(game.wall_layer.get_cell_source_id(Vector2i(-1, 3)) != -1 and game.wall_layer.get_cell_source_id(Vector2i(w, 3)) != -1,
+	_check(game.border_layer.get_cell_source_id(Vector2i(-1, 3)) != -1 and game.border_layer.get_cell_source_id(Vector2i(w, 3)) != -1,
 		"a second ring of wall runs just outside the maze")
 	_check(game.fog_alpha_at(Vector2(-40, -40)) == 1.0 and game.outer_fog != null and game.outer_fog.visible,
 		"past the border, fog carries on (not black)")

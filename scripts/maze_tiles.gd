@@ -108,14 +108,21 @@ static func construction_at(patches: FastNoiseLite, tile: Vector2i) -> int:
 ## double wall that marks where the maze ends; they collide like any wall), then bedrock on out to
 ## `depth` tiles (scenery only: no collision, never reachable), drawn from the theme's border atlas
 ## (tools/make_theme_art.py `<id>_border.png`). See border_cells for how the tiles are picked.
-## Fully opaque art, so no floor is laid under it.
-static func add_border(_floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dictionary, ring := 1,
+## Fully opaque art, so no floor is laid under it. The ring goes on `border_layer` and the bedrock on
+## `bedrock_layer`, each its own TileMapLayer drawn right after the walls (the tiles never overlap the
+## maze or each other): every atlas source gets its own padded texture, so sharing a layer would break
+## the batch at every texture switch (about 100 draw calls instead of a few).
+static func add_border(border_layer: TileMapLayer, bedrock_layer: TileMapLayer, maze: Dictionary, ring := 1,
 		depth := 1, salt := 0, theme := Themes.DUNGEON) -> void:
-	_add_border_sources(wall_layer.tile_set, theme)
+	var tile_set := make_tile_set(theme)
+	_add_border_sources(tile_set, theme)
+	border_layer.tile_set = tile_set
+	bedrock_layer.tile_set = tile_set
 	var cells := border_cells(maze.size, ring, maxi(depth, ring), salt)
 	for tile: Vector2i in cells:
 		var pick: Vector3i = cells[tile]
-		wall_layer.set_cell(tile, pick.z, Vector2i(pick.x, pick.y))
+		var layer := border_layer if pick.z == BORDER_SOURCE else bedrock_layer
+		layer.set_cell(tile, pick.z, Vector2i(pick.x, pick.y))
 
 
 ## Border tiles by tile coordinate: Vector3i(atlas column, atlas row, source). Every tile within
