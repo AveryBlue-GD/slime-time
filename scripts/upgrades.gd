@@ -3,7 +3,7 @@ extends RefCounted
 
 ## The upgrade tree, bought with coins found in the story mazes. Each track has its own number of
 ## levels and costs (Economy.COIN_TRACKS: MORE SLIME 7 levels, SPEED 4, BRIGHTNESS 3 - few big
-## breakpoints, docs/design/upgrades-v2.md A2); the three regular tracks cost 55 + 60 + 50 = 165,
+## breakpoints, docs/design/upgrades-v2.md A2); the three regular tracks cost 80 + 46 + 39 = 165,
 ## exactly the coins hidden across all ten levels (Levels.COINS). Coins can be put in and taken
 ## back out at any time (Progress.buy_upgrade / refund_upgrade).
 ## "power" (breaking walls) is a dev-only experiment: shown and applied only in dev mode.
@@ -112,15 +112,33 @@ static func old_total_cost(old_level: int) -> int:
 	return l * (l + 1) / 2
 
 
-## The new level for a track that stood at `old_level` on the old 10-level tree: the highest level
-## whose cumulative new cost fits in the coins invested (rounded down; the rest goes back into the
-## player's hand, since coins in hand are derived). Dev wall power (free now) maps by equal damage.
+## The tree 2 level for a track that stood at `old_level` on the old 10-level tree: the highest level
+## whose cumulative tree 2 cost (Economy.TREE2_COSTS) fits in the coins invested (rounded down; the
+## rest goes back into the player's hand, since coins in hand are derived). Dev wall power (free now)
+## maps by equal damage. Progress then reprices tree 2 levels to the current table (_migrate_prices).
 static func migrate_level(id: String, old_level: int) -> int:
 	var old := clampi(old_level, 0, Economy.OLD_TREE_LEVELS)
 	if id == "power":
 		return mini(floori(old / Economy.OLD_POWER_PER_LEVEL), max_level(id))
 	var invested := old_total_cost(old)
 	var level := 0
-	while level < max_level(id) and total_cost(id, level + 1) <= invested:
+	while level < max_level(id) and tree2_total_cost(id, level + 1) <= invested:
+		level += 1
+	return level
+
+
+## Coins a tree 2 level held (Economy.TREE2_COSTS; 0 for dev wall power and unknown ids).
+static func tree2_total_cost(id: String, level: int) -> int:
+	var costs: Array = Economy.TREE2_COSTS.get(id, [])
+	var total := 0
+	for i in clampi(level, 0, costs.size()):
+		total += int(costs[i])
+	return total
+
+
+## The highest level of a track whose cumulative CURRENT cost fits in `coins` (rounded down).
+static func level_for_coins(id: String, coins: int) -> int:
+	var level := 0
+	while level < max_level(id) and total_cost(id, level + 1) <= coins:
 		level += 1
 	return level

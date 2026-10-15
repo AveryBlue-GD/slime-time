@@ -370,7 +370,7 @@ func _upgrade_sound(level: int, top_level: int) -> void:
 
 func _refresh() -> void:
 	var tickets := page == "tickets"
-	coin_label.text = str(Progress.tickets if tickets else Progress.coins())
+	coin_label.text = str(maxi(Progress.tickets if tickets else Progress.coins(), 0))  # never negative
 	var skin := Progress.skin_color()
 	for id: String in rows:
 		var row: Dictionary = rows[id]

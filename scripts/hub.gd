@@ -658,7 +658,7 @@ func open_coin_board() -> void:
 		count.remove_from_group(SkinText.GROUP)  # keep the gold for finished levels
 		if found < total:
 			count.add_to_group(SkinText.GROUP)
-	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), Progress.coins()]
+	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), maxi(Progress.coins(), 0)]
 	var touch := _touch_controls != null and _touch_controls.visible
 	board_hint.text = "TAP JUMP TO CLOSE" if touch else "%s TO CLOSE" % Progress.key_name(Progress.bindings.interact)
 	coin_board.visible = true

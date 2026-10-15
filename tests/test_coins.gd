@@ -74,11 +74,11 @@ func _initialize() -> void:
 	for i in 10:
 		progress.buy_upgrade("slime")
 		progress.buy_upgrade("speed")
-	_check(progress.upgrade_level("slime") == 7 and progress.upgrade_level("speed") == 4 and progress.coins() == 165 - 115,
-		"maxing MORE SLIME (7 levels, 55) and SPEED (4 levels, 60) costs 115")
+	_check(progress.upgrade_level("slime") == 7 and progress.upgrade_level("speed") == 4 and progress.coins() == 165 - 126,
+		"maxing MORE SLIME (7 levels, 80) and SPEED (4 levels, 46) costs 126")
 	_check(not progress.buy_upgrade("slime"), "a maxed upgrade can't go higher")
 	progress.refund_upgrade("speed")
-	_check(progress.upgrade_level("speed") == 3 and progress.coins() == 74, "coins can be taken back out (SPEED 4 refunds 24)")
+	_check(progress.upgrade_level("speed") == 3 and progress.coins() == 57, "coins can be taken back out (SPEED 4 refunds 18)")
 	for i in 10:
 		progress.buy_upgrade("speed")
 		progress.buy_upgrade("brightness")

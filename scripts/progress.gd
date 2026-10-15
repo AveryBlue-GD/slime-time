@@ -70,7 +70,9 @@ var current_level := 1
 ## kept (tested through _read) for any hand-made save that claims this epoch.
 ## 6 = the upgrades v2 coin tree (docs/design/upgrades-v2.md A2.4): [upgrades] tree = 2 marks levels of
 ## the new per-track tables; a save without it holds old 10-level tracks, remapped by coins invested
-## (see _migrate_tree; keyed on the tree mark, not the version, so it is idempotent on its own).
+## (see _migrate_tree; keyed on the tree mark, not the version, so it is idempotent on its own);
+## tree = 3 marks the repriced tree (MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39): tree 2 levels are
+## repriced on load (_migrate_prices), no save version bump needed.
 const SAVE_VERSION := 6
 ## The first save version whose story coin keys / best times belong to the current layouts.
 const LAYOUT_VERSION := 4
@@ -280,6 +282,7 @@ func _ready() -> void:
 		enable_story_complete()
 	if autoplay:
 		enable_autoplay()
+	var coins_in_hand := -1  # --coins=N (-1: not given)
 	for arg in args:
 		if arg.begins_with("--level="):
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
@@ -303,12 +306,10 @@ func _ready() -> void:
 			for i in mini(levels.size(), 3):
 				var id: String = Upgrades.LIST[i].id  # levels of the current tree (7 / 4 / 3)
 				upgrades[id] = clampi(levels[i].to_int(), 0, Upgrades.max_level(id))
-		elif arg.begins_with("--coins="):  # exactly this many coins in hand (no dev bonus)
+		elif arg.begins_with("--coins="):  # exactly this many coins in hand (no dev bonus; set after the loop)
 			saving_enabled = false
 			dev_coins = 0
-			coins_found = {0: []}
-			for i in arg.trim_prefix("--coins=").to_int() + coins_spent():
-				coins_found[0].append("debug%d" % i)
+			coins_in_hand = maxi(arg.trim_prefix("--coins=").to_int(), 0)
 		elif arg == "--all-coins":  # every story coin found (for rainbow screenshots); not saved
 			saving_enabled = false
 			dev_coins = 0
@@ -359,9 +360,25 @@ func _ready() -> void:
 				heat_best[i + 1] = clampi(bests[i].to_int(), 0, Economy.HEAT_MAX)
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
+	settle_debug_coins(coins_in_hand)  # after the loop, so the flag order doesn't matter
 	if MAPS_FULL_FLAG in args:  # after the loop: --unlock-all clears the maps
 		saving_enabled = false
 		seed_full_surveys()
+
+
+## The debug coin flags, after every other flag: `in_hand` >= 0 (--coins=N) leaves exactly N coins in
+## hand on top of whatever --upgrades= bought; otherwise, if the flags left a negative balance (e.g.
+## --upgrades= over the real save's coins, read-only: the '-4' of an old screenshot), debug coins
+## (level 0 keys, never saved) pay for what the coins found don't cover, so it reads 0.
+func settle_debug_coins(in_hand: int) -> void:
+	if in_hand >= 0:
+		coins_found = {0: []}
+	if in_hand < 0 and coins() >= 0:
+		return
+	if not coins_found.has(0):
+		coins_found[0] = []
+	for i in maxi(maxi(in_hand, 0) - coins(), 0):
+		coins_found[0].append("debug%d" % coins_found[0].size())
 
 
 ## `--heat=` value: modifier ids separated by commas, or a plain mask number.
@@ -641,7 +658,8 @@ func _read(file: ConfigFile) -> void:
 	if _int(file, "meta", "version", 1) < LAYOUT_VERSION:
 		_migrate_coins()
 	upgrades = {}
-	var new_tree := _int(file, "upgrades", "tree", 1) >= Economy.TREE_VERSION
+	var tree := _int(file, "upgrades", "tree", 1)
+	var new_tree := tree >= 2  # levels of the 7 / 4 / 3 tracks (tree 2 prices or later)
 	for upgrade: Dictionary in Upgrades.LIST:
 		var top: int = Upgrades.max_level(upgrade.id) if new_tree else Economy.OLD_TREE_LEVELS
 		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, top)
@@ -650,6 +668,8 @@ func _read(file: ConfigFile) -> void:
 	tree_refund_notice = clampi(_int(file, "upgrades", "refund_notice", 0), 0, Upgrades.full_tree_cost()) if new_tree else 0
 	if not new_tree:
 		_migrate_tree()
+	if tree < Economy.TREE_VERSION:
+		_migrate_prices()
 	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
@@ -688,23 +708,58 @@ func _migrate_coins() -> void:
 
 
 ## Upgrade levels from a save without [upgrades] tree = 2 are levels of the old 3 x 10 tree (level n
-## cost n coins). Each track maps by coins invested, rounded down (Upgrades.migrate_level: SLIME 10 ->
-## 7, SPEED 10 -> 3 with 19 coins back, BRIGHTNESS 10 -> 3 with 5 back, SLIME 5 -> 3 with 3 back); coins
-## in hand are derived (found - spent), so the remainder is back in hand by itself and nobody can go
-## negative. A pure function of the stored levels; the next save writes tree = 2, so it never runs
-## twice. Runs before the "never spend more than found" check. Dev wall power is not counted in the
-## notice (it was never real money). The coins returned are kept for the hub's one-time notice.
+## cost n coins). Each track maps by coins invested onto TREE 2's prices, rounded down
+## (Upgrades.migrate_level: SLIME 10 -> 7, SPEED 10 -> 3 with 19 coins back, BRIGHTNESS 10 -> 3 with 5
+## back, SLIME 5 -> 3 with 3 back); _migrate_prices then reprices those tree 2 levels like any tree 2
+## save. Coins in hand are derived (found - spent), so the remainder is back in hand by itself and
+## nobody can go negative. A pure function of the stored levels; the next save writes the current
+## tree, so it never runs twice. Runs before the "never spend more than found" check. Dev wall power
+## is not counted in the notice (it was never real money). The coins returned are kept for the hub's
+## one-time notice.
 func _migrate_tree() -> void:
 	var returned := 0
 	for id: String in upgrades.keys():
 		var level := Upgrades.migrate_level(id, upgrades[id])
 		if id != "power":
-			returned += Upgrades.old_total_cost(upgrades[id]) - Upgrades.total_cost(id, level)
+			returned += Upgrades.old_total_cost(upgrades[id]) - Upgrades.tree2_total_cost(id, level)
 		if level > 0:
 			upgrades[id] = level
 		else:
 			upgrades.erase(id)
 	tree_refund_notice = maxi(0, returned)
+
+
+## Upgrade levels from a tree 2 save were bought at Economy.TREE2_COSTS (MORE SLIME 55, SPEED 60,
+## BRIGHTNESS 50); coins in hand are derived from levels x the CURRENT prices, so without this a
+## repricing would silently move every balance (and could make it negative). Each track first maps by
+## the coins it held, rounded down onto the current prices (Upgrades.level_for_coins), then levels are
+## bought back up to what the player had, MORE SLIME first, while the coins found still cover them:
+## a player keeps every level they can afford (a maxed tree stays maxed; it costs 165 either way),
+## and never ends with less in hand than 0. The coins this frees (old spent - new spent, if more)
+## join the hub's one-time COINS RETURNED notice. A pure function of the stored levels and coins
+## found (idempotent: the next save writes the current tree, so it never runs twice); runs before the
+## "never spend more than found" check. Dev wall power is free in both trees and kept as it is.
+func _migrate_prices() -> void:
+	var had := upgrades.duplicate()
+	var old_spent := 0
+	for upgrade: Dictionary in Upgrades.LIST:
+		var id: String = upgrade.id
+		if upgrade.get("dev", false) or not had.has(id):
+			continue
+		var invested := Upgrades.tree2_total_cost(id, had[id])
+		old_spent += invested
+		var level := Upgrades.level_for_coins(id, invested)
+		if level > 0:
+			upgrades[id] = level
+		else:
+			upgrades.erase(id)
+	for upgrade: Dictionary in Upgrades.LIST:
+		var id: String = upgrade.id
+		if upgrade.get("dev", false):
+			continue
+		while upgrade_level(id) < int(had.get(id, 0)) and coins_earned() - coins_spent() >= Upgrades.cost(id, upgrade_level(id)):
+			upgrades[id] = upgrade_level(id) + 1
+	tree_refund_notice = maxi(0, tree_refund_notice + old_spent - coins_spent())
 
 
 ## The coins the tree migration returned, once: the hub shows UPGRADES REWORKED / COINS RETURNED +N

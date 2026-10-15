@@ -202,6 +202,14 @@ wins every normal level both at those levels and with no upgrades at all, and th
 collects 165/165 coins and golds all 20 normal + hard levels.
 
 
+**Tree 3 repricing (2026-10-15, measured).** MORE SLIME now costs 1, 4, 7, 9, 12, 20, 27 = 80 (SPEED 6, 9, 13, 18;
+BRIGHTNESS 9, 12, 18; still 165 in all). Its first four levels cost the same, so with the median coins found levels 1-7
+start exactly as above; levels 8-10 start one MORE SLIME step lower: allowance 1.99 / 2.02 / 1.92 instead of 2.16 /
+2.13 / 2.02 (meter -7.9% / -5.0% / -5.0%), still above the ~1.8 flat line, so the per-level attempts are expected to
+hold (*est.*). The model column above gives 1.82 at L8 (unchanged) and 1.86 / 1.92 at L9 / L10 (was 2.01 / 2.02).
+The test autopilot wins every normal level at the median levels and the `--autoplay` bot still finds 165/165 coins,
+maxes 7 / 4 / 3 and golds all 20 levels. Full table: [design/upgrades-v2.md](design/upgrades-v2.md) A2.3.
+
 ### Note: workshop, Descent and Heat (2026-10-15, *estimates, not measured*)
 
 The headline table covers the story only and is unchanged by these; they add optional play after it. Rough priors:

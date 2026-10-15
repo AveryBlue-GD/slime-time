@@ -1,6 +1,6 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
-Status: **IMPLEMENTED (all four batches, 2026-10-15); the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
+Status: **IMPLEMENTED (all four batches, 2026-10-15); core tree REPRICED (tree 3, owner request 2026-10-15): MORE SLIME is the premium track at 80 of the 165 coins (1, 4, 7, 9, 12, 20, 27), SPEED 46 (6, 9, 13, 18), BRIGHTNESS 39 (9, 12, 18); see A2.1, A2.3 "Tree 3" and A2.4; the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
 **batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
 open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and
@@ -46,6 +46,7 @@ and [../level-design.md](../level-design.md) sections 5-7. Background research: 
 Everything below was built as specified except these (collected from the status note above and the per-batch sections of
 [../handoff.md](../handoff.md); code and `scripts/economy.gd` are the source of truth for numbers):
 
+- **Tree 3 repricing (after batch 4):** the A2.1 prices were changed to MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39 (same lengths, effects and 165 total); tree 2 saves are repriced on load (A2.4); coin counters clamp at 0 on screen; `--upgrades=` without enough coins pads debug coins and `--coins=` works in any flag order.
 - **Batch 1 (coin tree):** tables live in `Economy.COIN_TRACKS`, not `Upgrades.LIST`; the screen shows "now -> next" instead of "NEXT: ..."; old dev wall power p maps to floor(p / 2.5); the refund notice waits in the save until the hub shows it; typed seed levels 8-10 clamp to 7. The RECOMMENDED tag and 1 s light-ring preview were deferred, then built in the review-fix pass.
 - **Batch 2 (store, workshop, cosmetics):** the SHOP has three sections (HATS / TRAILS / PAPERS) instead of one grid; workshop rows 25 px apart from y 24; SECOND WIND's HUD sign is a WIND tag under the meter; a TAILOR buy of a non-rainbow hat leaves the rainbow pity alone; dev mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per station; MAGNET needs the coin's fog cell to have been revealed; map select tiles ignore the paper. Not built: the cauldron preview ring, hat dyes / wallpapers.
 - **Batch 3 (Descent):** portal buttons read RANDOM MAZE / DESCENT (spec: QUICK MAZE); floors use the randomizer's size (from slime capacity) instead of route-sized floors; u jitter clamped 0.25-0.85; refill is that of the floor being entered; capacity boons stack additively; BIG GULP is added on DESCEND (cap 100%); BACKUP BLADDER adds a fixed 25% after SECOND WIND; BLAZE past BRIGHTNESS 3 = reach 33; GLASS x1.5 applies after halving (cap 30); a run that banks 0 uses no paying slot; milestones pay on reaching the floor, outside the daily cap; QUIT TO HUB on the boon card = CASH OUT; Descent ignores the HARD MODE setting; autoplay bot not extended.
@@ -151,11 +152,17 @@ of play (8 h), and the store stays meaningful for about a month of daily session
 
 | Track | Kind | Levels | Effect per level (cumulative) | Cost per level | Track total |
 |---|---|---|---|---|---|
-| MORE SLIME | major | 7 | meter x1.15, 1.30, 1.45, 1.60, 1.75, 1.90, 2.00 | 1, 4, 7, 9, 10, 12, 12 | **55** |
-| SPEED | minor | 4 | glide x1.12, 1.25, 1.37, 1.50 | 8, 12, 16, 24 | **60** |
-| BRIGHTNESS | minor | 3 | reveal radius 17, 25, 34 px (base 9) | 12, 16, 22 | **50** |
+| MORE SLIME | major (premium) | 7 | meter x1.15, 1.30, 1.45, 1.60, 1.75, 1.90, 2.00 | 1, 4, 7, 9, 12, 20, 27 | **80** |
+| SPEED | minor | 4 | glide x1.12, 1.25, 1.37, 1.50 | 6, 9, 13, 18 | **46** |
+| BRIGHTNESS | minor | 3 | reveal radius 17, 25, 34 px (base 9) | 9, 12, 18 | **39** |
 | WALL POWER (dev only) | - | 4 | damage x2.5 per level of the old formula | 0 | - |
 | **Total** | | | | | **165** |
+
+These are the **tree 3** prices (owner request 2026-10-15: MORE SLIME clearly the most expensive track, 48% of the
+coins). Tree 2 (the first v2 release) was MORE SLIME 1, 4, 7, 9, 10, 12, 12 = 55, SPEED 8, 12, 16, 24 = 60, BRIGHTNESS
+12, 16, 22 = 50 (kept as `Economy.TREE2_COSTS` for the save migration). MORE SLIME 1-4 still cost 1, 4, 7, 9 (21), so
+the early and mid story is untouched; only its last three steps (the late top-ups) got pricier. SPEED and BRIGHTNESS
+are 25 coins cheaper together.
 
 Maxima are unchanged (x2.0 meter, x1.5 speed, 34 px light) so **level 10 normal (allowance 1.01 base -> 2.02) and all
 end-state calibrations are untouched**; only the path to them is coarser. `Upgrades.full_tree_cost()` still returns
@@ -206,6 +213,23 @@ Worst deviation: **-7% of meter at level 5 and -6% at level 8**, both still with
 attempts are flat above ~1.8). The model's "MORE SLIME ~5 by level 6 and ~10 by level 10" holds *in effect*
 (x1.45 vs x1.5 at L6, x2.0 at L10). No change to `Levels.DATA` needed.
 
+**Tree 3 (repriced, measured).** With the median coins found before each level and every coin put into MORE SLIME
+first (allowance = `AutoplayPlanner.level_meter_tiles` / the shortest route; `tests/test_slime_pricing.gd` prints it):
+
+| Level start | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Coins found (median) | 0 | 3 | 8 | 12 | 18 | 25 | 34 | 45 | 57 | 74 |
+| Tree 2 SLIME level / allowance | 0 / 2.22 | 1 / 2.21 | 2 / 2.24 | 3 / 2.27 | 3 / 2.07 | 4 / 2.11 | 5 / 2.13 | 6 / 2.16 | 7 / 2.13 | 7 / 2.02 |
+| Tree 3 SLIME level / allowance | 0 / 2.22 | 1 / 2.21 | 2 / 2.24 | 3 / 2.27 | 3 / 2.07 | 4 / 2.11 | 5 / 2.13 | 5 / 1.99 | 6 / 2.02 | 6 / 1.92 |
+| Meter vs tree 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | -7.9% | -5.0% | -5.0% |
+
+Levels 1-7 are identical; levels 8-10 start one MORE SLIME step lower and stay >= 1.92 (the flat line is ~1.8). On the
+model's coins-invested column (0/1/6/6/10/15/21/28/45/55) tree 3 gives 2.22 / 2.21 / 2.24 / 2.03 / 1.86 / 1.91 / 1.95 /
+1.82 / 1.86 / 1.92 (min 1.82, as tree 2). The test autopilot clears every normal level at the tree 3 median levels
+(50-57% of the meter left) and the `--autoplay` bot still finds 165/165, buys 7 / 4 / 3 and golds all 20 levels.
+Tree 3 buy order: L2 SLIME 1 -> L3 SLIME 2 -> L4 SLIME 3 -> (L5 saving) -> L6 SLIME 4 -> L7 SLIME 5 -> (L8 saving) ->
+L9 SLIME 6 -> L10 saving for SLIME 7 (27), bought on the first coin hunt after the story; then SPEED and BRIGHTNESS.
+
 **Typical buy order during the campaign** (coins found on the way, median: 3, 8, 12, 18, 25, 34, 45, 57, 74 before
 levels 2-10): L2 SLIME 1 -> L3 SLIME 2 -> L4 SLIME 3 -> (L5 saving) -> L6 SLIME 4 -> L7 SLIME 5 -> L8 SLIME 6 ->
 L9 SLIME 7 (max) -> L10 SPEED 1. Post-story coin hunts (~71 coins left) buy SPEED 2-4 and BRIGHTNESS 1-3. The
@@ -221,6 +245,16 @@ Examples: SLIME 10 (55) -> 7; SLIME 5 (15) -> 3 (+3 coins); SPEED 10 (55) -> 3 (
 (50) +5. Gate it on a new key `[upgrades] tree = 2` (missing = old tree): pure function of the stored levels,
 idempotent, runs before the existing "never spend more than found" check. A one-time hub notice: UPGRADES
 REWORKED - N COINS RETURNED (only if N > 0). Save codes go through the same `_read`, so codes migrate too.
+
+**Tree 3 repricing (`[upgrades] tree = 3`).** Coins in hand are derived from levels x the *current* prices, so a price
+change would move every balance (a tree 2 SLIME 7 player with 2 in hand would read -23). Saves with `tree = 2` (and old
+saves, after the tree 1 -> 2 step above) go through `Progress._migrate_prices`: each track first maps by the coins it
+held at tree 2 prices, rounded down onto the new prices; then levels are bought back up to what the player had (MORE
+SLIME, SPEED, BRIGHTNESS) while the coins found cover them. So a player keeps every level they can afford (a maxed tree
+stays maxed), never ends below 0, and the coins freed (tree 2 spent - tree 3 spent, if positive) join the one-time
+COINS RETURNED notice (e.g. SPEED 4 + BRIGHTNESS 3: +25; SLIME 7 at 57 found: SLIME 6, +2). Pure function of the
+stored levels and coins found; written back as tree 3, so it never runs twice. Coin counters (HUD, cauldron, hub
+board) also never display a negative number.
 
 ### A2.5 Knock-on code changes
 

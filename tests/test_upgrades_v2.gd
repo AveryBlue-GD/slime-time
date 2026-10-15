@@ -46,16 +46,16 @@ func _initialize() -> void:
 func _economy() -> void:
 	_check(Upgrades.max_level("slime") == 7 and Upgrades.max_level("speed") == 4 and Upgrades.max_level("brightness") == 3
 		and Upgrades.max_level("power") == 4 and Upgrades.max_level("nope") == 0, "track lengths: MORE SLIME 7, SPEED 4, BRIGHTNESS 3 (dev WALL POWER 4)")
-	var costs := {slime = [1, 4, 7, 9, 10, 12, 12], speed = [8, 12, 16, 24], brightness = [12, 16, 22]}
+	var costs := {slime = [1, 4, 7, 9, 12, 20, 27], speed = [6, 9, 13, 18], brightness = [9, 12, 18]}
 	for id: String in costs:
 		var got := []
 		for level in Upgrades.max_level(id):
 			got.append(Upgrades.cost(id, level))
 		_check(got == costs[id], "%s costs %s" % [id, got])
-	_check(Upgrades.total_cost("slime", 7) == 55 and Upgrades.total_cost("speed", 4) == 60 and Upgrades.total_cost("brightness", 3) == 50,
-		"track totals 55 + 60 + 50")
+	_check(Upgrades.total_cost("slime", 7) == 80 and Upgrades.total_cost("speed", 4) == 46 and Upgrades.total_cost("brightness", 3) == 39,
+		"track totals 80 + 46 + 39 (tree 3: MORE SLIME is the premium track)")
 	_check(Upgrades.full_tree_cost() == 165 and Levels.total_coins() == 165, "the whole tree costs exactly the 165 story coins")
-	_check(Upgrades.cost("slime", 7) == 0 and Upgrades.cost("slime", -1) == 0 and Upgrades.total_cost("speed", 99) == 60
+	_check(Upgrades.cost("slime", 7) == 0 and Upgrades.cost("slime", -1) == 0 and Upgrades.total_cost("speed", 99) == 46
 		and Upgrades.total_cost("power", 4) == 0, "no next cost past the top; totals clamp; dev wall power is free")
 	var factors := []
 	var want_factors := [1.0, 1.15, 1.3, 1.45, 1.6, 1.75, 1.9, 2.0]
@@ -97,8 +97,8 @@ func _migration() -> void:
 		for old in 11:
 			var want: Array = MIGRATION[id][old]
 			var level := Upgrades.migrate_level(id, old)
-			ok = ok and level == want[0] and Upgrades.old_total_cost(old) - Upgrades.total_cost(id, level) == want[1]
-		_check(ok, "%s: every old level 0-10 maps by coins invested, rounded down, the rest back in hand" % id)
+			ok = ok and level == want[0] and Upgrades.old_total_cost(old) - Upgrades.tree2_total_cost(id, level) == want[1]
+		_check(ok, "%s: every old level 0-10 maps by coins invested onto tree 2 prices, rounded down, the rest back in hand" % id)
 	_check(Upgrades.migrate_level("slime", 99) == 7 and Upgrades.migrate_level("speed", -4) == 0 and Upgrades.migrate_level("power", 10) == 4
 		and Upgrades.migrate_level("power", 4) == 1, "out-of-range old levels clamp; old dev power maps by equal damage (10 -> 4, 4 -> 1)")
 
@@ -109,25 +109,26 @@ func _migration() -> void:
 			var p := _fresh()
 			p._read(_old_save({id: old}, 165))
 			var want: Array = MIGRATION[id][old]
-			ok = ok and p.upgrade_level(id) == want[0] and p.coins() == 165 - Upgrades.total_cost(id, want[0]) and p.tree_refund_notice == want[1]
-		_check(ok, "%s: a v5 save at every old level reads as the new level, coins back in hand, notice = coins back" % id)
+			ok = ok and p.upgrade_level(id) == want[0] and p.coins() == 165 - Upgrades.total_cost(id, want[0])
+			ok = ok and p.tree_refund_notice == maxi(0, Upgrades.old_total_cost(old) - Upgrades.total_cost(id, want[0]))
+		_check(ok, "%s: a v5 save at every old level reads as the tree 2 level (kept at tree 3 prices: 165 found), coins back in hand, notice = coins back" % id)
 
-	# A maxed old tree: SLIME 10 -> 7, SPEED 10 -> 3 (+19), BRIGHTNESS 10 -> 3 (+5).
+	# A maxed old tree: SLIME 10 -> 7, SPEED 10 -> 3, BRIGHTNESS 10 -> 3: 165 - (80 + 28 + 39) = 18 back.
 	var p := _fresh()
 	p._read(_old_save({slime = 10, speed = 10, brightness = 10}, 165))
 	_check(p.upgrade_level("slime") == 7 and p.upgrade_level("speed") == 3 and p.upgrade_level("brightness") == 3
-		and p.coins() == 24 and p.tree_refund_notice == 24, "maxed old tree: 7 / 3 / 3 with 24 coins back (SPEED 4 costs 24 again)")
+		and p.coins() == 18 and p.tree_refund_notice == 18, "maxed old tree: 7 / 3 / 3 with 18 coins back (SPEED 4 costs 18 again)")
 	var written: ConfigFile = p._write()
 	_check(written.get_value("meta", "version") == 6 and PROGRESS.SAVE_VERSION == 6 and written.get_value("upgrades", "tree") == Economy.TREE_VERSION
-		and written.get_value("upgrades", "refund_notice") == 24 and PROGRESS.RELEASE_EPOCH == 1,
-		"the next save is version 6 with [upgrades] tree = 2 and the pending notice (epoch stays 1)")
+		and written.get_value("upgrades", "refund_notice") == 18 and PROGRESS.RELEASE_EPOCH == 1 and Economy.TREE_VERSION == 3,
+		"the next save is version 6 with [upgrades] tree = 3 and the pending notice (epoch stays 1)")
 	var q := _fresh()
 	q._read(written)
-	_check(q.upgrades == p.upgrades and q.coins() == 24 and q.tree_refund_notice == 24, "read back: no second migration, the notice still pending")
+	_check(q.upgrades == p.upgrades and q.coins() == 18 and q.tree_refund_notice == 18, "read back: no second migration, the notice still pending")
 	var r := _fresh()
 	r._read(_old_save({slime = 10, speed = 10, brightness = 10}, 165))
 	_check(r.upgrades == p.upgrades and r.coins() == p.coins(), "the same old save read again gives the same result (idempotent)")
-	_check(q.take_tree_refund_notice() == 24 and q.take_tree_refund_notice() == 0 and q.tree_refund_notice == 0,
+	_check(q.take_tree_refund_notice() == 18 and q.take_tree_refund_notice() == 0 and q.tree_refund_notice == 0,
 		"the notice is taken once")
 	var shown: ConfigFile = q._write()
 	_check(not shown.has_section_key("upgrades", "refund_notice"), "once shown it is not saved again")
@@ -164,9 +165,9 @@ func _migration() -> void:
 	odd_tree.set_value("upgrades", "tree", "2")
 	var o := _fresh()
 	o._read(odd_tree)
-	_check(o.upgrade_level("speed") == 3 and o.tree_refund_notice == 19, "a tree mark that isn't an int counts as the old tree (migrated)")
+	_check(o.upgrade_level("speed") == 3 and o.tree_refund_notice == 27, "a tree mark that isn't an int counts as the old tree (migrated: 55 - 28 back)")
 	var neg := _old_save({speed = 2}, 165)
-	neg.set_value("upgrades", "tree", 2)
+	neg.set_value("upgrades", "tree", Economy.TREE_VERSION)
 	neg.set_value("upgrades", "refund_notice", -5)
 	var g := _fresh()
 	g._read(neg)
@@ -188,28 +189,28 @@ func _save_paths() -> void:
 	p.load_progress()
 	var after := ConfigFile.new()
 	after.load(path)
-	_check(p.upgrade_level("speed") == 3 and after.get_value("meta", "version") == 6 and after.get_value("upgrades", "tree") == 2
-		and after.get_value("upgrades", "speed") == 3 and after.get_value("upgrades", "refund_notice") == 24,
-		"an old save file is migrated and written back once (version 6, tree 2, levels 7/3/3, notice 24)")
+	_check(p.upgrade_level("speed") == 3 and after.get_value("meta", "version") == 6 and after.get_value("upgrades", "tree") == 3
+		and after.get_value("upgrades", "speed") == 3 and after.get_value("upgrades", "refund_notice") == 18,
+		"an old save file is migrated and written back once (version 6, tree 3, levels 7/3/3, notice 18)")
 	var p2 := _fresh()
 	p2.save_path = path
 	p2.saving_enabled = true
 	p2.load_progress()
-	_check(p2.upgrades == p.upgrades and p2.coins() == 24 and p2.take_tree_refund_notice() == 24, "loading it again changes nothing")
+	_check(p2.upgrades == p.upgrades and p2.coins() == 18 and p2.take_tree_refund_notice() == 18, "loading it again changes nothing")
 	var p3 := _fresh()
 	p3.save_path = path
 	p3.saving_enabled = true
 	p3.load_progress()
-	_check(p3.tree_refund_notice == 0 and p3.coins() == 24, "after the notice was shown it stays gone across launches")
+	_check(p3.tree_refund_notice == 0 and p3.coins() == 18, "after the notice was shown it stays gone across launches")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	_check(not FileAccess.file_exists(path), "(throwaway save removed)")
 
 	var code := PROGRESS.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(old.encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
 	var k := _fresh()
-	_check(k.load_code(code) and k.upgrade_level("slime") == 7 and k.upgrade_level("speed") == 3 and k.coins() == 24 and k.tree_refund_notice == 24,
+	_check(k.load_code(code) and k.upgrade_level("slime") == 7 and k.upgrade_level("speed") == 3 and k.coins() == 18 and k.tree_refund_notice == 18,
 		"an old-tree save code migrates the same way")
 	var again := _fresh()
-	_check(again.load_code(k.save_code()) and again.upgrades == k.upgrades and again.coins() == 24, "and its new code reads back unchanged")
+	_check(again.load_code(k.save_code()) and again.upgrades == k.upgrades and again.coins() == 18, "and its new code reads back unchanged")
 	var pre_epoch := _old_save({speed = 10}, 165)
 	pre_epoch.erase_section_key("meta", "epoch")
 	var e := _fresh()

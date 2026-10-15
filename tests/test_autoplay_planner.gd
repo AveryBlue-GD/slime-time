@@ -59,7 +59,7 @@ func _initialize() -> void:
 
 	# --- Upgrade priority: MORE SLIME first, saving up for it; then SPEED, then BRIGHTNESS.
 	_check(AutoplayPlanner.next_purchase({}, 1) == "slime", "1 coin buys MORE SLIME 1")
-	_check(AutoplayPlanner.next_purchase({slime = 3}, 8) == "", "8 coins wait for MORE SLIME 4 (costs 9), no SPEED (8) meanwhile")
+	_check(AutoplayPlanner.next_purchase({slime = 3}, 8) == "", "8 coins wait for MORE SLIME 4 (costs 9), no SPEED (6) meanwhile")
 	_check(AutoplayPlanner.next_purchase({slime = 3}, 9) == "slime", "9 coins buy MORE SLIME 4")
 	_check(AutoplayPlanner.next_purchase({slime = 7}, 8) == "speed", "MORE SLIME maxed: SPEED next")
 	_check(AutoplayPlanner.next_purchase({slime = 7, speed = 4}, 12) == "brightness", "then BRIGHTNESS")

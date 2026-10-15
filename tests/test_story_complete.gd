@@ -47,6 +47,13 @@ func _initialize() -> void:
 	_check(keys_match and not progress.all_coins_debug, "...as the levels' real coin keys (every coin cell counts as taken)")
 	_check(progress.upgrades.is_empty() and progress.coins_spent() == 0 and progress.coins() == 165,
 		"no upgrades bought: 165 coins in hand (%d)" % progress.coins())
+	var bought := 0
+	for id: String in ["slime", "speed", "brightness"]:
+		while progress.buy_upgrade(id):
+			bought += 1
+	_check(bought == 14 and progress.coins() == 0 and progress.coins_spent() == Upgrades.full_tree_cost(),
+		"those 165 coins buy the whole tree (7 / 4 / 3) with 0 left (%d bought, %d left)" % [bought, progress.coins()])
+	progress.enable_story_complete()
 	_check(progress.has_seen_story(PROGRESS_SCRIPT.STORY_INTRO) and progress.has_seen_story(PROGRESS_SCRIPT.STORY_FINALE)
 		and not Story.intro_due(progress), "story intro and finale seen (no cinematic on launch)")
 	_check(progress.has_seen_tutorial(PROGRESS_SCRIPT.TUTORIAL_MOVE) and progress.has_seen_tutorial(PROGRESS_SCRIPT.TUTORIAL_LEAP), "tutorial seen")

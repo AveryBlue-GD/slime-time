@@ -8,10 +8,12 @@ extends RefCounted
 ## Descent and Heat tables here.
 
 ## ---------------------------------------------------------------- core coin tree (spec A2.1)
-## The tree's version, saved as [upgrades] tree. Saves without it (or with a lower one) still hold
-## levels of the old 3 x 10-level tree (level n cost n coins) and are remapped on load
-## (Upgrades.migrate_level, Progress._migrate_tree).
-const TREE_VERSION := 2
+## The tree's version, saved as [upgrades] tree. Saves without it hold levels of the old 3 x 10-level
+## tree (level n cost n coins) and are remapped on load (Upgrades.migrate_level, Progress._migrate_tree);
+## tree 2 saves hold levels bought at TREE2_COSTS and are repriced (Progress._migrate_prices). Any
+## change to COIN_TRACKS costs must bump this and keep the previous table for that migration:
+## coins in hand are DERIVED from the levels x these prices (Progress.coins_spent).
+const TREE_VERSION := 3
 
 ## Each track: `costs[i]` = coins for level i + 1, `values[i]` = the effect AT level i + 1 (level 0
 ## is `base`). Few big breakpoints instead of 10 thin levels; the maxima equal the old tree's
@@ -21,10 +23,14 @@ const TREE_VERSION := 2
 ##   brightness: extra reach (px) of the slime's own light, added to REVEAL_RADIUS and RELIGHT_RADIUS
 ##   power:      (dev only, never in the totals) the wall-damage factor of a splat, x the old
 ##               per-level formula; free in dev mode
+## MORE SLIME is the premium track (80 of the 165 coins, 48%): its first four levels cost what they
+## did in tree 2 (1, 4, 7, 9), so the meter at each early / mid story level is unchanged for a player
+## who buys it first; the last three (12, 20, 27) are the late top-ups. SPEED (46) and BRIGHTNESS (39)
+## got cheaper by the same 25 coins (docs/design/upgrades-v2.md A2.1 / A2.3).
 const COIN_TRACKS := {
-	"slime": {base = 1.0, costs = [1, 4, 7, 9, 10, 12, 12], values = [1.15, 1.30, 1.45, 1.60, 1.75, 1.90, 2.00]},
-	"speed": {base = 1.0, costs = [8, 12, 16, 24], values = [1.12, 1.25, 1.37, 1.50]},
-	"brightness": {base = 0.0, costs = [12, 16, 22], values = [8.0, 16.0, 25.0]},
+	"slime": {base = 1.0, costs = [1, 4, 7, 9, 12, 20, 27], values = [1.15, 1.30, 1.45, 1.60, 1.75, 1.90, 2.00]},
+	"speed": {base = 1.0, costs = [6, 9, 13, 18], values = [1.12, 1.25, 1.37, 1.50]},
+	"brightness": {base = 0.0, costs = [9, 12, 18], values = [8.0, 16.0, 25.0]},
 	"power": {base = 0.0, costs = [0, 0, 0, 0], values = [2.5, 5.0, 7.5, 10.0]},
 }
 
@@ -36,6 +42,14 @@ const COIN_TRACKS := {
 ## Main.LIGHT_RADIUS (tests/test_upgrades_v2.gd checks they stay equal).
 const REVEAL_RADIUS := 9.0
 const RELIGHT_RADIUS := 20.0
+
+## Tree 2's prices (TREE_VERSION 2, until the MORE SLIME repricing), only for migrating saves: the
+## coins a tree 2 level held. Same track lengths and effects as COIN_TRACKS. 55 + 60 + 50 = 165.
+const TREE2_COSTS := {
+	"slime": [1, 4, 7, 9, 10, 12, 12],
+	"speed": [8, 12, 16, 24],
+	"brightness": [12, 16, 22],
+}
 
 ## The old tree (before TREE_VERSION 2), only for migrating saves: OLD_TREE_LEVELS levels per track,
 ## level n cost n coins (an old level L holds L x (L + 1) / 2 coins).

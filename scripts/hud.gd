@@ -361,7 +361,7 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 ## (`here` = 0 hides that pod: randomizer mazes have no coins). `pop` flashes the total gold
 ## (a coin was just picked up).
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
-	coin_label.text = str(mini(total, 999))
+	coin_label.text = str(clampi(total, 0, 999))  # never shows a negative balance
 	coins_left_label.text = "ALL FOUND" if found >= here else "%d LEFT" % (here - found)
 	_coins_left_pod.visible = here > 0
 	if pop:
