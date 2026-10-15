@@ -34,7 +34,6 @@ const RUBBLE_CHANCE := 0.7
 const BORDER_SOURCE := 3
 const BORDER_DEEP_SOURCE := 4
 const BORDER_GRID := Vector2i(16, 8)
-const BORDER_VARIANTS := 4
 const BORDER_PROP_ROW := 4
 const BORDER_RIM_ROW := 5
 const BORDER_BOULDER_ROW := 6

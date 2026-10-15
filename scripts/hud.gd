@@ -95,8 +95,6 @@ var dev_badge: Control
 var ability_pod: Control
 var ability_row: HBoxContainer
 var ability_items: Array[Dictionary] = []
-const ABILITY_PIP := Vector2(2, 4)
-const ABILITY_PIP_OFF := Color8(70, 74, 96)
 ## HEAT runs: a pod under the level with a flame, the heat and the modifiers' icons (set_heat); the
 ## timer's clock becomes an hourglass counting down with RACE (set_countdown); the result's heat
 ## line (show_heat_result).
@@ -118,7 +116,6 @@ var _left_bar: BoxContainer
 var _right_bar: BoxContainer
 var _vignette: ColorRect
 const DEV_TINT := Color8(255, 120, 220)
-const MEDAL_GOLD := Color8(255, 205, 117)
 const MEDAL_OWNED := Color8(150, 134, 100)
 const MEDAL_OFF := Color8(70, 74, 96)
 const TIER_COLORS: Array[Color] = [Color8(70, 74, 96), Color8(214, 140, 84), Color8(206, 214, 232), Color8(255, 205, 117)]

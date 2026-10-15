@@ -51,11 +51,6 @@ const PRESETS := [
 	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},         # 10 Volcanic Vault: molten
 ]
 
-## The goo shades the sprite sheet is drawn in (palette "l", "m", "n" in the art script).
-const SOURCE_LIGHT := Color8(148, 226, 112)
-const SOURCE_MID := Color8(56, 183, 100)
-const SOURCE_DARK := Color8(37, 113, 121)
-
 
 static func get_preset(id: String) -> Dictionary:
 	for preset: Dictionary in PRESETS:

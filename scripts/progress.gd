@@ -2337,11 +2337,6 @@ func survey_for(level: int, hard: bool) -> Dictionary:
 	return survey
 
 
-## The record time of a story level in a given mode (seconds), or -1 without one.
-func record_for(level: int, hard: bool) -> float:
-	return best_times.get(survey_key(level, hard), -1.0)
-
-
 ## Merges one recorded attempt at a story level into its survey and saves (game.gd calls this once
 ## per real, unassisted, non-dev run, when it ends). `tiles`: one byte per maze tile, non-zero = seen
 ## this attempt; `moves`: the cells walked (Survey move codes) from the maze's start. The tiles seen
