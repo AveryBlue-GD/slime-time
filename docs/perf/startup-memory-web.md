@@ -154,7 +154,7 @@ Format: **file:line** - issue - fidelity-preserving fix - gain (measured or esti
   An earlier export in `build/web/` is inside the project folder, so Godot imports
   `index.png`, `index.icon.png` and `index.apple-touch-icon.png` and ships them again in the pck
   (about 15.6 KB). It also rescans the build output on every editor or headless start.
-- Unused assets that are still exported: `assets/sprites/walls.png` (pre-theme level art, 11.2 KB ctex;
+- (Resolved 2026-10-15: these unused files were deleted in spring cleaning.) Unused assets that were still exported: `assets/sprites/walls.png` (pre-theme level art, 11.2 KB ctex;
   the game loads `themes/dungeon_walls.png`), `assets/sprites/fillets.png` (byte-identical to
   `themes/dungeon_fillets.png`), `assets/ui/button_{normal,hover,pressed,disabled}.png` (GooBox replaced
   them). The generators in `tools/` still write them; check before deleting.

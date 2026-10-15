@@ -2,7 +2,7 @@
 
 Written 2026-10-13 (gameplay-dev). Code: `scripts/spawn_picker.gd`, `scripts/maze_generator.gd`
 (`generate_level`, `generate_random`, `dead_end_depths`), `scripts/levels.gd` (`DATA`, `coin_cells`,
-`coin_keys`, `level_par`, `legacy_par`), `scripts/progress.gd` (`_migrate_coins`, `_migrate_medals`).
+`coin_keys`, `level_par`), `scripts/progress.gd` (`_tier_from_record`; the pre-v5 migrations were removed 2026-10-15).
 Rollback tags from before this work: `v2-phase3`, `v2-before-advisor-polish`.
 
 ## 1. The spawn picker (`SpawnPicker`)
@@ -93,14 +93,16 @@ dots = route; see its header for the command).
 
 ## 4. Save migration (`[meta] version` 4)
 
+Historical: the migrations described here (coins, legacy par, hard times) ran on pre-release saves and were removed in spring cleaning (2026-10-15); every release-epoch save is version 5+. Only `_migrate_tree` / `_migrate_prices` remain (docs/design/upgrades-v2.md A2.4).
+
 Story coin keys are `level + cell`, so a v1-3 save's keys name cells of the old mazes.
-- **Coins** (`Progress._migrate_coins`, only when `version < 4`): each level keeps its COUNT of
+- **Coins** (was `Progress._migrate_coins`, only when `version < 4`; removed): each level keeps its COUNT of
   found coins (as counted before: valid strings, capped at `Levels.COINS`), re-mapped to the first
   N keys of `Levels.coin_keys(level)` (the deep-first priority order). `coins_earned` is unchanged,
   so `coins_spent` (upgrades) stays covered and nobody goes negative or loses an upgrade.
 - **Medals:** stored v3 tiers are kept as they are (never downgraded, never recomputed). v1-2
-  saves still turn best times into tiers, against the OLD layout's par (`Levels.legacy_par`, from
-  the old route lengths `LEGACY_STEPS` / `LEGACY_HARD_STEPS`), so they get exactly the tiers they
+  saves still turn best times into tiers, against the OLD layout's par (was `Levels.legacy_par`, from
+  the old route lengths `LEGACY_STEPS` / `LEGACY_HARD_STEPS`; removed), so they get exactly the tiers they
   got before.
 - **Records:** best times are kept as they are, normal and hard. They were set on the old layouts,
   so some may now be easier or harder to beat than the new par; nothing is recomputed downward.
@@ -115,7 +117,7 @@ Story coin keys are `level + cell`, so a v1-3 save's keys name cells of the old 
 
 Tests: `tests/test_spawn_picker.gd` (odds, min route, determinism, integer-only, pinned picks,
 solvable / chalice / ticket / coins reachable), `tests/test_layout_migration.gd` (partial coins per
-level, spent upgrades, medals, hard data, idempotence, v2 times, old save codes, hostile values,
+level, spent upgrades, medals, hard data, idempotence, v2 times, old save codes, hostile values (the v2/v3 migration sections were removed 2026-10-15),
 deep coins), plus updated `test_phase3` (autopilot under par), `test_random_tickets`,
 `test_tickets` (version 4, legacy par) and the tests that assumed a corner start.
 
@@ -298,10 +300,10 @@ Owner request: +10% slime per hard level (progressive), mazes scaled up so the m
 holds, plus extra forgiveness on the big late levels. Normal mode and the randomizer (hard included)
 are unchanged: their golden lines are byte-identical. Code: `Levels` (`HARD_SLIME_MULT`,
 `HARD_ALLOWANCE`, `HARD_BRANCHING`, `HARD_RUN`, `HARD_MAX_CELLS`, `HARD_V4_STEPS`/`HARD_V4_TARGETS`,
-`hard_meter_tiles`, `hard_route_cells`, `hard_start_cells`, `build_story_maze`, `v4_hard_par`),
+`hard_meter_tiles`, `hard_route_cells`, `hard_start_cells`, `build_story_maze`; `v4_hard_par` was removed),
 `MazeGenerator.generate_hard_level` (+ `_grow_level`, shared with `generate_level`),
 `SpawnPicker.pick_farthest_at`, `game.gd` (`config.meter_tiles`), `Progress` (`SAVE_VERSION` 5,
-`_migrate_hard_times`). Tests: `tests/test_hard_rebalance.gd`, `test_phase3` (autopilot walks every
+`_migrate_hard_times`, since removed). Tests: `tests/test_hard_rebalance.gd`, `test_phase3` (autopilot walks every
 hard level under par), `test_autoplay`, `test_maze_golden`, `test_spawn_picker`, `test_hard_mode`.
 
 **How a hard level is built** (three tables, one entry per level, index 0 = level 1):
@@ -351,12 +353,12 @@ docs/archive/perf/results-batch-b.md; one rerun showed a single 67 ms outlier wh
 The new hard mazes are no bigger than randomizer mazes (36x20 cap), so the fog/tile/camera costs are
 already covered by the randomizer's web measurements. Web export verified.
 
-**Save migration (version 5, `Progress._migrate_hard_times`).** Old hard best times were set on the
+**Save migration (version 5, `Progress._migrate_hard_times`; removed 2026-10-15, historical).** Old hard best times were set on the
 shorter v4 mazes, so a save older than version 5 has its hard best times
 (`records` level 101-110) dropped; `hard_cleared` and the stored hard medal tiers are kept (never
 downgraded); normal records/tiers/clears, coins, upgrades, tickets, hats and skins are untouched.
-Order: pre-v3 saves still turn their times into tiers first (against `legacy_par`); a v4 save with
-hard times but no `[medals]` section gets tiers against the v4 hard par (`Levels.v4_hard_par`),
+Order: pre-v3 saves still turn their times into tiers first (against the then `legacy_par`); a v4 save with
+hard times but no `[medals]` section gets tiers against the v4 hard par (the then `Levels.v4_hard_par`),
 then the times go. Pure function of the old data (idempotent); the next save is version 5 and its
 hard times are kept. Hostile values: non-numeric/INF times are ignored, wrong-typed version = old
 (migrated), tiers clamp to 0-3. `--story-complete` sets hard times at 1.15 x the NEW par (silver),

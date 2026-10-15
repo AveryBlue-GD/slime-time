@@ -197,7 +197,7 @@ apply**: slow motion / different feel); make the tick cheaper instead (findings 
 - **Fix:** cache textures by `(width, height)` and share one additive `CanvasItemMaterial`; per-light colour stays
   in `modulate`. Identical. **Gain:** small per frame, fewer textures/uploads at load. **Risk:** low. **Effort:** S.
 
-### 9. One-time save migration builds all 20 story mazes
+### 9. One-time save migration builds all 20 story mazes (obsolete: `_migrate_coins`/`_migrate_medals` removed 2026-10-15)
 - **Where:** `progress.gd:346` (`_migrate_coins` -> `Levels.coin_keys`, 116 ms cold) and `_migrate_medals` ->
   `Levels.level_par` (114 ms cold for 20 mazes). Only for saves older than version 4, once (then written back).
 - **Fix:** none needed beyond fast BFS (finding 4), which cuts it ~3x. **Effort:** none extra.

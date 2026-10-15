@@ -62,3 +62,11 @@ Verified against code: 320x180 / 1280x720 / viewport+integer stretch, main scene
 ## Images referenced by living docs (please keep in docs/polish-shots/)
 
 `abilities2_before.png`, `abilities_*.png`, `finale2_*.png`, `hard_before_l1*`, `size_u100_ms0*`, `spawn_level01..10.png`, `story3_*.png`, `ticketgoal_goal.png` (from level-design.md, design/upgrades-v2.md, story.md). The docs only name them in backticks (no embedded markdown images), so a missing file breaks nothing technically. Archived docs (handoff-history, hats-audit, ...) name many more shots; those are historical and may lose their pictures.
+
+## Phase 1 follow-up (docs-keeper, 2026-10-15)
+Stale facts fixed after code-janitor and asset-auditor removals (verified against the code):
+- `docs/level-design.md`: header and section 4 note the pre-v5 migrations, `legacy_par`, `v4_hard_par`, `_migrate_coins` and `_migrate_hard_times` are removed (kept as history); `_migrate_medals` is now `_tier_from_record`.
+- `docs/itch-release.md`: migrations are gone from the code; only `_migrate_tree` / `_migrate_prices` remain.
+- `docs/architecture.md`: save-format line (in-epoch migrations only); `walls.png` / `fillets.png` dropped from the sprites list.
+- `docs/advisor/maps.md`, `docs/perf/cpu.md`, `docs/perf/startup-memory-web.md`: notes that the referenced migration / unused assets are removed.
+- Left as dated reports: `docs/qa-release-report.md` (exclude_filter line), `docs/design/upgrades-v2.md` (refers to the kept `_migrate_tree` / `_migrate_prices`).

@@ -37,8 +37,8 @@ Two independent locks, so one slip can't let old progress in:
    exactly this int; a save without it (every pre-release build) or with another epoch starts fresh (the
    file is left as it is until the next save overwrites it). Codes now start `SLIME2-`
    (`Progress.SAVE_CODE_PREFIX`); old `SLIME1-` codes, and old code bodies re-labelled `SLIME2-`, are
-   refused. The pre-v5 save migrations (`_migrate_*`) are still in the code but can't run for a real
-   player any more (every save of this epoch is version 5+); they are tested through `_read` directly.
+   refused. The pre-v5 save migrations were removed from the code (spring cleaning, 2026-10-15); every save of this
+   epoch is version 5+. Only `_migrate_tree` / `_migrate_prices` (in-epoch coin tree 1/2 saves) remain.
 
 Tests: `tests/test_fresh_start.gd` (dir name / epoch / prefix agree, `OS.get_user_data_dir()`, fresh start
 on a missing or epoch-less save, the code round trip, old codes refused with the message (LOAD and the web

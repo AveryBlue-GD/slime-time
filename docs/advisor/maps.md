@@ -445,7 +445,7 @@ players quitting on hard 8-10 (then the compass as an ASSIST-style mercy, never 
   Options: keep maps in `save.cfg` (new optional `[maps]` section, defaulted) and either exclude them
   from save codes in the trial (maps rebuild by playing) or include them and accept longer codes.
 - **Layout changes.** Story layouts changed once (save v4). Store each mask with a fingerprint of
-  the maze (cell count + a hash of its walls); drop it if the maze changes, like `_migrate_coins`.
+  the maze (cell count + a hash of its walls); drop it if the maze changes, like the old `_migrate_coins` (since removed).
   Never key by cell coordinates alone.
 - **Older builds** re-saving a newer save drop unknown sections (noted in roguelike-progression.md);
   maps would be lost, nothing else.
