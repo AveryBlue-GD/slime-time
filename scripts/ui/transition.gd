@@ -15,12 +15,25 @@ const SCREEN_HEIGHT := 180.0
 ## one of them doesn't flicker it on and off.
 const INTERPOLATION_ON_ABOVE_FPS := 72.0
 const INTERPOLATION_OFF_BELOW_FPS := 66.0
+## The frame rate must stay past a threshold this long (seconds, without a break) before the switch
+## flips: a hitch or a short slowdown never flips it (each flip is a frame the camera and slime
+## change how they are placed), a lasting change flips it once.
+const INTERPOLATION_SWITCH_HOLD := 0.5
+## A frame longer than this (s) is a hitch (a first-use compile, an autosave, a background spike):
+## left out of the estimate and the hold. Only a run of HITCH_RUN of them in a row counts (the game
+## really runs that slowly now).
+const HITCH_FRAME := 0.05
+const HITCH_RUN := 3
 ## How fast the frame-rate estimate follows (share of each new frame).
 const FPS_FOLLOW := 0.1
 
 var busy := false
 ## Seconds per frame, smoothed (render frames, unscaled by Engine.time_scale).
 var _frame_time := 1.0 / 60.0
+## Seconds the estimate has been past the threshold for the other state, without a break.
+var _switch_wait := 0.0
+## Hitch frames in a row (see HITCH_FRAME).
+var _hitches := 0
 var _sheet: ColorRect
 var _material: ShaderMaterial
 var _tween: Tween
@@ -52,20 +65,30 @@ func _process(delta: float) -> void:
 		follow_frame_rate(delta / maxf(Engine.time_scale, 0.001))
 
 
-## Takes one render frame's length (s) into the frame-rate estimate and switches interpolation.
+## Takes one render frame's length (s) into the frame-rate estimate and switches interpolation once
+## the estimate has stayed past the threshold for INTERPOLATION_SWITCH_HOLD.
 func follow_frame_rate(frame: float) -> void:
 	if frame <= 0.0:
 		return
+	if frame > HITCH_FRAME:
+		_hitches += 1
+		if _hitches < HITCH_RUN:
+			return
+	else:
+		_hitches = 0
 	_frame_time = lerpf(_frame_time, frame, FPS_FOLLOW)
 	var fps := 1.0 / _frame_time
 	var on := get_tree().physics_interpolation
-	if not on and fps > INTERPOLATION_ON_ABOVE_FPS:
-		_set_interpolation(true)
-	elif on and fps < INTERPOLATION_OFF_BELOW_FPS:
-		_set_interpolation(false)
+	if (fps > INTERPOLATION_ON_ABOVE_FPS) if not on else (fps < INTERPOLATION_OFF_BELOW_FPS):
+		_switch_wait += frame
+		if _switch_wait >= INTERPOLATION_SWITCH_HOLD:
+			_set_interpolation(not on)
+	else:
+		_switch_wait = 0.0
 
 
 func _set_interpolation(on: bool) -> void:
+	_switch_wait = 0.0
 	get_tree().physics_interpolation = on
 	# Godot's advice: no jitter fix with interpolation (the fraction does the pacing); its default
 	# (0.5) otherwise, as before.

@@ -717,6 +717,7 @@ func _lead_camera(delta: float) -> void:
 		_set_pixel_cam(not _pixel_cam)
 	if not _pixel_cam:
 		camera.position = _look_ahead.round()
+		_cam_fresh = false  # (Camera2D eases on from here; a later switch carries its eased view on)
 		return
 	# The same ease as Camera2D's smoothing (position_smoothing_speed), but the camera moves in whole
 	# pixels in step with the slime's own: the slime-to-screen offset never flickers by a pixel when
@@ -732,14 +733,18 @@ func _lead_camera(delta: float) -> void:
 ## The pixel-locked camera (_lead_camera) is used while the slime is drawn between ticks (physics
 ## interpolation, above 60 Hz: see Transition); otherwise the Camera2D follows as a child of the
 ## slime with its own smoothing, exactly as without interpolation.
+## A switch mid-level carries the eased view across (no snap onto the slime): turning on, the pixel
+## camera's ease starts where Camera2D's has the view (its screen center less the shake offset);
+## turning off, Camera2D's own ease starts where the pixel camera left it (with smoothing off it
+## tracked the camera's position every frame), so no reset_smoothing.
 func _set_pixel_cam(on: bool) -> void:
 	_pixel_cam = on
-	_cam_fresh = true
+	if on and not _cam_fresh:
+		_cam_smooth = camera.get_screen_center_position() - camera.offset
 	camera.top_level = on
 	camera.position_smoothing_enabled = not on
 	if not on:
 		camera.position = _look_ahead.round()
-		camera.reset_smoothing()
 
 
 func _shake_camera(delta: float) -> void:
