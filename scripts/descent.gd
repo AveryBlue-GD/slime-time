@@ -6,8 +6,8 @@ extends RefCounted
 ## after every floor and a ticket pot banked by CASH OUT (all) or a dry-up (half). This file is the
 ## pure rules (no nodes, no save): floor recipes, refills, the pot, boon offers and effects. Every
 ## number lives in Economy (DESCENT_*, BOONS). The run itself is a Dictionary kept in memory by
-## Progress (`descent_run`, never saved: closing the game mid-run banks nothing, and a paid slot it
-## took on floor 1 stays used), made by `new_run`:
+## Progress (`descent_run`; a copy at each floor start and cleared floor is saved as Progress.descent_resume,
+## so a killed app or closed window resumes that floor on relaunch: owner decision D6), made by `new_run`:
 ##   seed     the run seed (1 .. Economy.DESCENT_SEED_MAX)
 ##   floor    the floor being played (1 = first)
 ##   meter    the meter (percent of the run's capacity) the current floor starts with

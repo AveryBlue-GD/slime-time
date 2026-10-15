@@ -511,7 +511,16 @@ func _ready() -> void:
 	_ease_in.call_deferred()
 	_arm_survey.call_deferred()
 	if descent:
-		if progress.descent_active():
+		if progress.descent_active() and int(descent_run.cleared) >= int(descent_run.floor):
+			# A run resumed on its boon card (saved right after clearing this floor, D6): the floor stays
+			# cleared and its card (the same offers, from the run seed) comes back.
+			finished = true
+			won = true
+			slime.frozen = true
+			touch_controls.hide_controls()
+			_refresh_descent_pod()
+			_open_boon_card.call_deferred()
+		elif progress.descent_active():
 			_announce_floor()
 		else:
 			# The run was already banked (e.g. CASH OUT landed while DESCEND's reload was queued): no

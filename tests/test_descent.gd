@@ -275,7 +275,7 @@ func _saves() -> void:
 	_check(file.get_value("descent", "best_floor", -1) == 12 and file.get_value("descent", "milestones", -1) == 3 and file.get_value("descent", "paid_runs", -1) == 1,
 		"[descent] best_floor, best_time, runs, paid_day, paid_runs, milestones are saved")
 	_check(not "run" in file.get_section_keys("descent") and not file.has_section_key("descent", "floor") and not file.has_section_key("descent", "pot"),
-		"no in-run state is saved (quitting the app mid-run banks nothing)")
+		"no in-run state in [descent] (a run in progress lives in [descent_run]: test_descent_resume.gd)")
 	progress.reset_progress()
 	progress._read(file)
 	_check(progress.descent_best_floor == 12 and is_equal_approx(progress.descent_best_time, 321.5) and progress.descent_runs == 7 and progress.descent_paid == 1
@@ -612,7 +612,7 @@ func _story_snapshot() -> String:
 	var file: ConfigFile = progress._write()
 	var out := ""
 	for section in file.get_sections():
-		if section in ["descent", "wallet"]:
+		if section in ["descent", "descent_run", "wallet"]:
 			continue
 		for key in file.get_section_keys(section):
 			out += "%s/%s=%s\n" % [section, key, var_to_str(file.get_value(section, key))]

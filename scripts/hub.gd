@@ -75,6 +75,8 @@ const BOARD := Rect2(52, 8, 216, 164)
 const QUIT_PANEL := Rect2(80, 63, 160, 54)
 ## The portal's mode choice (RANDOM MAZE / DESCENT, BACK).
 const PORTAL_PANEL := Rect2(70, 45, 180, 89)
+## A saved DESCENT run's prompt (three lines, RESUME / QUIT RUN).
+const RESUME_PANEL := Rect2(80, 57, 160, 66)
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
 ## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
@@ -142,6 +144,13 @@ var maze_button: Button
 var descent_button: Button
 var portal_back: Button
 var portal_info: Label
+## A Descent run saved by a killed app / closed window (Progress.descent_resume, owner decision D6): shown on
+## arrival and at the portal's DESCENT. RESUME plays on from that floor's start (or its boon card), QUIT RUN banks
+## it as quitting from the pause menu would; Esc / B / back closes it and the run stays saved.
+var resume_menu: Control
+var resume_button: Button
+var resume_quit: Button
+var resume_lines: Array[Label] = []
 ## Top-left pod: ticket balance and medal count.
 var ticket_pod: PanelContainer
 var ticket_label: Label
@@ -164,6 +173,8 @@ func _ready() -> void:
 	_build_ui()
 	_place_all()
 	_update_near()
+	if Progress.descent_resume_pending():
+		open_resume_menu.call_deferred()
 
 
 ## The room (drawn by hub_room.gdshader for the current turn), its walls (an ellipse the slime
@@ -388,6 +399,7 @@ func _build_ui() -> void:
 	_build_ticket_pod(root)
 	_build_quit_menu(root)
 	_build_portal_menu(root)
+	_build_resume_menu(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
@@ -565,9 +577,89 @@ func _start_random_maze() -> void:
 func _start_descent() -> void:
 	if not portal_menu.visible:
 		return
+	if Progress.descent_resume_pending():  # a saved run first: resume it or quit it
+		close_portal_menu()
+		open_resume_menu()
+		return
 	portal_menu.visible = false
 	Progress.start_descent()
 	_leave(_station("random"), UIKit.GAME_SCENE)
+
+
+## The saved-run prompt: DESCENT RUN SAVED, where it stands, what quitting banks; RESUME (focused) and QUIT RUN.
+func _build_resume_menu(root: Control) -> void:
+	resume_menu = Control.new()
+	resume_menu.visible = false
+	root.add_child(resume_menu)
+	resume_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()  # swallows clicks on the room behind
+	dim.color = Color(0, 0, 0, 0.45)
+	resume_menu.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	UIKit.add_panel(resume_menu, RESUME_PANEL)
+	var top := RESUME_PANEL.position.y + UIKit.PANEL_PAD
+	for i in 3:
+		var color: Color = [UIKit.GOLD, UIKit.TEXT, UIKit.TEXT_DIM][i]
+		resume_lines.append(UIKit.add_label(resume_menu, "", Rect2(RESUME_PANEL.position.x, top + i * UIKit.LINE_PITCH, RESUME_PANEL.size.x, 10), 8, color))
+	var buttons_y := RESUME_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
+	resume_button = UIKit.make_button("RESUME", _resume_descent, Vector2(56, UIKit.BUTTON_H))
+	resume_button.position = Vector2(RESUME_PANEL.position.x + 16, buttons_y)
+	resume_menu.add_child(resume_button)
+	resume_quit = UIKit.make_button("QUIT RUN", _quit_saved_descent, Vector2(56, UIKit.BUTTON_H))
+	resume_quit.position = Vector2(RESUME_PANEL.end.x - 16 - 56, buttons_y)
+	resume_menu.add_child(resume_quit)
+	for b: Button in [resume_button, resume_quit]:
+		var other := resume_quit if b == resume_button else resume_button
+		b.focus_next = b.get_path_to(other)
+		b.focus_previous = b.get_path_to(other)
+		b.focus_neighbor_left = b.get_path_to(other)
+		b.focus_neighbor_right = b.get_path_to(other)
+		b.focus_neighbor_top = b.get_path_to(b)
+		b.focus_neighbor_bottom = b.get_path_to(b)
+
+
+func open_resume_menu() -> void:
+	if not Progress.descent_resume_pending() or quit_menu.visible or portal_menu.visible or hat_wheel.visible or coin_board.visible:
+		return
+	var run: Dictionary = Progress.descent_resume
+	var on_card := int(run.cleared) >= int(run.floor)
+	resume_lines[0].text = "DESCENT RUN SAVED"
+	resume_lines[1].text = ("FLOOR %d CLEARED" if on_card else "FLOOR %d") % int(run.floor) + " - POT %d" % int(run.pot)
+	resume_lines[2].text = "QUIT RUN CASHES OUT" if on_card else "QUIT RUN BANKS HALF"
+	resume_menu.visible = true
+	prompt.visible = false
+	slime.frozen = true
+	if _touch_controls != null:
+		_touch_controls.menu_open = true
+	for child in resume_menu.get_parent().get_children():
+		if child is SkinText:
+			child.recolor()
+	resume_button.grab_focus()
+
+
+func close_resume_menu() -> void:
+	resume_menu.visible = false
+	get_viewport().gui_release_focus()
+	slime.frozen = false
+	if _touch_controls != null:
+		_touch_controls.menu_open = false
+	_show_prompt()
+
+
+func _resume_descent() -> void:
+	if not resume_menu.visible or not Progress.resume_descent():
+		return
+	resume_menu.visible = false
+	_leave(_station("random"), UIKit.GAME_SCENE)
+
+
+func _quit_saved_descent() -> void:
+	if not resume_menu.visible:
+		return
+	Progress.quit_saved_descent()
+	_sfx("coin", 0.8)
+	close_resume_menu()
+	_refresh_tickets()
 
 
 ## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
@@ -727,6 +819,11 @@ func _spin_room_wheel() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if resume_menu.visible:
+		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
+			_sfx("click", 0.8)
+			close_resume_menu()  # (the run stays saved: asked again next time)
+		return
 	if quit_menu.visible:
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)

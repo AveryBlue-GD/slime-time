@@ -307,6 +307,8 @@ func modal() -> Node:
 			if cs.reset_confirm.visible:
 				return cs.reset_confirm
 		"hub":
+			if cs.resume_menu.visible:
+				return cs.resume_menu
 			if cs.quit_menu.visible:
 				return cs.quit_menu
 			if cs.portal_menu.visible:
@@ -333,7 +335,8 @@ func overlay_count() -> int:
 		"controls":
 			n += int(cs.code_panel.visible) + int(cs.reset_confirm.visible)
 		"hub":
-			n += int(cs.quit_menu.visible) + int(cs.coin_board.visible) + int(cs.hat_wheel.visible) + int(cs.portal_menu.visible)
+			n += int(cs.quit_menu.visible) + int(cs.coin_board.visible) + int(cs.hat_wheel.visible) + int(cs.portal_menu.visible) \
+				+ int(cs.resume_menu.visible)
 		"main":
 			n += int(cs.restart_prompt.visible) + int(cs.pause_menu.visible)
 	return n

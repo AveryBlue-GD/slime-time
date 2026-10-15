@@ -140,12 +140,24 @@ var random_offer_shown := {}
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
 var day_override := -1
-## DESCENT (upgrades v2 batch 3, Descent): the run being played (Descent.new_run; in memory only,
-## never saved: closing the game mid-run banks nothing), the deepest floor ever reached and the run
+## DESCENT (upgrades v2 batch 3, Descent): the run being played (Descent.new_run; in memory, with a copy
+## at each floor start / cleared floor saved for a relaunch: descent_resume), the deepest floor ever reached and the run
 ## time it took (saved [descent] best_floor / best_time), runs banked in all, the UTC day and how many
 ## runs were paid on it (forward-only like the randomizer's), and the milestone floors already paid
 ## (bitmask, Descent.milestone_bit).
 var descent_run := {}
+## DESCENT resume (owner decision D6, docs/spring-cleaning/phase5-platform.md "Descent resume"): the run as it
+## stood at the start of its current floor, or right after clearing it (on the boon card), saved as
+## [descent_run] so a phone that kills the app (or a closed window) brings the run back on relaunch: the hub
+## offers RESUME (that floor's start, or its boon card) or QUIT RUN (banked like quitting from the pause menu
+## today: half the pot mid-floor, the whole pot on the boon card). {} = no run saved. Cleared when the run banks
+## (CASH OUT, dry-up, quit), so a run can never bank twice; the maze and the boon offers come from the run seed,
+## so resuming can never reroll them. Never in a save code (codes copy progress to other devices).
+var descent_resume := {}
+## The keys of a saved run ([descent_run]); `format` guards the layout (another format is dropped, not read).
+const DESCENT_RUN_FORMAT := 1
+const DESCENT_RESUME_KEYS := ["seed", "floor", "meter", "boons", "bladders", "pot", "time", "wind_used", "slot",
+	"cleared", "bonuses", "new_best", "best_before"]
 var descent_best_floor := 0
 var descent_best_time := 0.0
 var descent_runs := 0
@@ -629,7 +641,8 @@ func _recover_temp_save(path: String) -> void:
 		DirAccess.remove_absolute(g_temp)
 
 ## Takes everything from a save (the save file or a loaded save code).
-func _read(file: ConfigFile) -> void:
+## Reads a save (`from_code`: a pasted save code, which never brings a saved Descent run with it).
+func _read(file: ConfigFile, from_code := false) -> void:
 	levels_cleared = clampi(_int(file, "progress", "levels_cleared", 0), 0, Levels.COUNT)
 	highest_unlocked = clampi(_int(file, "progress", "highest_unlocked", 1), 1, Levels.COUNT)
 	current_level = clampi(_int(file, "progress", "current_level", 1), 1, highest_unlocked)
@@ -685,7 +698,7 @@ func _read(file: ConfigFile) -> void:
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
 	_read_bindings(file)
 	_read_wallet(file)
-	_read_descent(file)
+	_read_descent(file, from_code)
 	_read_heat(file)  # before the store: the EMBER trail counts only with its heat
 	_read_store(file)
 	_read_maps(file)
@@ -825,7 +838,7 @@ func _read_wallet(file: ConfigFile) -> void:
 ## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
 ## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
 ## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
-func _read_descent(file: ConfigFile) -> void:
+func _read_descent(file: ConfigFile, from_code := false) -> void:
 	descent_best_floor = clampi(_int(file, "descent", "best_floor", 0), 0, DESCENT_FLOOR_MAX)
 	descent_best_time = clampf(_float(file, "descent", "best_time", 0.0), 0.0, 1.0e7)
 	descent_runs = clampi(_int(file, "descent", "runs", 0), 0, 100 * TICKETS_MAX)
@@ -834,6 +847,58 @@ func _read_descent(file: ConfigFile) -> void:
 	_check_descent_day()
 	descent_milestones = clampi(_int(file, "descent", "milestones", 0), 0, (1 << Economy.DESCENT_MILESTONES.size()) - 1)
 	descent_run = {}
+	descent_resume = {}
+	if not from_code:
+		descent_resume = read_descent_run(file)
+
+
+## A saved Descent run ([descent_run], D6) checked and clamped, or {} when there is none or it can't be one
+## (another format, a seed / floor out of range, boons that can't go together or more boons than floors
+## cleared): such a run is dropped, like any unreadable optional section.
+static func read_descent_run(file: ConfigFile) -> Dictionary:
+	const S := "descent_run"
+	if not file.has_section(S) or _int(file, S, "format", 0) != DESCENT_RUN_FORMAT:
+		return {}
+	var run_seed := _int(file, S, "seed", 0)
+	var floor_no := _int(file, S, "floor", 0)
+	if run_seed < 1 or run_seed > Economy.DESCENT_SEED_MAX or floor_no < 1 or floor_no > DESCENT_FLOOR_MAX:
+		return {}
+	var cleared := _int(file, S, "cleared", floor_no - 1)
+	if cleared != floor_no - 1 and cleared != floor_no:
+		return {}
+	var boons := {}
+	var raw: Variant = file.get_value(S, "boons", {})
+	if typeof(raw) != TYPE_DICTIONARY:
+		return {}
+	var picks := 0
+	for id: Variant in raw:
+		var n: Variant = raw[id]
+		if typeof(id) != TYPE_STRING or not id in Descent.IDS or typeof(n) != TYPE_INT or n < 1:
+			return {}
+		var top := int(Descent.boon(id).get("max", 1))
+		boons[id] = mini(n, top if top > 0 else DESCENT_FLOOR_MAX)
+		picks += boons[id]
+	if picks > floor_no - 1 or (boons.has("rubber") and boons.has("glass")):
+		return {}
+	var bonuses: Array = []
+	var raw_bonuses: Variant = file.get_value(S, "bonuses", [])
+	if typeof(raw_bonuses) == TYPE_ARRAY:
+		for pair: Variant in raw_bonuses:
+			if typeof(pair) == TYPE_ARRAY and pair.size() == 2 and typeof(pair[0]) == TYPE_INT and typeof(pair[1]) == TYPE_INT:
+				bonuses.append([clampi(pair[0], 1, DESCENT_FLOOR_MAX), clampi(pair[1], 0, 100)])
+	return {
+		seed = run_seed, floor = floor_no, cleared = cleared,
+		meter = clampf(_float(file, S, "meter", 100.0), 0.0, 100.0),
+		boons = boons,
+		bladders = clampi(_int(file, S, "bladders", 0), 0, int(boons.get("bladder", 0))),
+		pot = clampi(_int(file, S, "pot", 0), 0, Economy.DESCENT_POT_MAX),
+		time = clampf(_float(file, S, "time", 0.0), 0.0, 1.0e7),
+		wind_used = _bool(file, S, "wind_used", false),
+		slot = clampi(_int(file, S, "slot", 0), 0, Economy.DESCENT_PAID_PER_DAY),
+		bonuses = bonuses.slice(-8),
+		new_best = _bool(file, S, "new_best", false),
+		best_before = clampi(_int(file, S, "best_before", 0), 0, DESCENT_FLOOR_MAX),
+	}
 
 
 func _read_store(file: ConfigFile) -> void:
@@ -1019,7 +1084,9 @@ static func write_atomic(path: String, text: String) -> bool:
 
 
 ## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
-func _write() -> ConfigFile:
+## The save as a ConfigFile (`for_code`: for a save code, without the saved Descent run: a run copied to another
+## device could be banked on both).
+func _write(for_code := false) -> ConfigFile:
 	var file := ConfigFile.new()
 	file.set_value("meta", "version", SAVE_VERSION)
 	file.set_value("meta", "epoch", RELEASE_EPOCH)
@@ -1097,6 +1164,11 @@ func _write() -> ConfigFile:
 		file.set_value("descent", "paid_day", descent_pay_day)
 		file.set_value("descent", "paid_runs", descent_paid)
 		file.set_value("descent", "milestones", descent_milestones)
+	# A Descent run in progress (D6): written only while one is saved.
+	if not descent_resume.is_empty() and not for_code:
+		file.set_value("descent_run", "format", DESCENT_RUN_FORMAT)
+		for key: String in DESCENT_RESUME_KEYS:
+			file.set_value("descent_run", key, descent_resume[key])
 	return file
 
 
@@ -1104,7 +1176,7 @@ func _write() -> ConfigFile:
 ## base64. Pasting it back with load_code restores the progress (in a browser whose storage was
 ## cleared, on another browser, or in the Windows version).
 func save_code() -> String:
-	var packed := _write().encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+	var packed := _write(true).encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
 	return SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)
 
 
@@ -1175,7 +1247,7 @@ func load_code(code: String) -> bool:
 	var file := read_code(code)
 	if file == null:
 		return false
-	_read(file)
+	_read(file, true)
 	apply_bindings()
 	apply_volume()
 	save_progress()
@@ -1499,6 +1571,8 @@ const DESCENT_FLOOR_MAX := 999
 ## Starts a new DESCENT run (seed 0 = a random run seed) on floor 1 with a full meter. Any run in
 ## progress is dropped (it never banked).
 func start_descent(run_seed := 0) -> void:
+	if descent_resume_pending():
+		quit_saved_descent()  # (a saved run is banked as a quit, never silently dropped)
 	mode = MODE_DESCENT
 	descent_run = Descent.new_run(run_seed if run_seed > 0 else Descent.roll_seed())
 	descent_run.best_before = descent_best_floor
@@ -1518,6 +1592,7 @@ func clear_descent_floor(left: float, seconds: float, tainted := false) -> int:
 	descent_run.tainted = descent_run.tainted or tainted
 	var gain := Descent.clear_floor(descent_run, left, seconds)
 	_take_descent_slot()
+	_snapshot_descent()  # (resumes on the boon card: the floor stays cleared, its offers are the same)
 	return gain
 
 
@@ -1565,6 +1640,7 @@ func descend(id: String) -> bool:
 func _reach_descent_floor() -> void:
 	descent_run.bonus = 0
 	if descent_run.tainted:
+		_snapshot_descent()
 		return
 	var floor_no: int = descent_run.floor
 	var t: float = descent_run.time
@@ -1585,8 +1661,49 @@ func _reach_descent_floor() -> void:
 	if floor_no >= Economy.DESCENT_ABYSS_FLOOR and not "abyss" in cosmetics_owned:
 		cosmetics_owned.append("abyss")
 		changed = true
-	if changed and floor_no > 1:
-		save_progress()
+	_snapshot_descent()  # saves (the records above with it)
+
+
+## Keeps the run as it stands now (a floor start or a cleared floor) as `descent_resume` and saves it (D6). A
+## run with a dev toggle (pays nothing) or already banked keeps none.
+func _snapshot_descent() -> void:
+	if descent_run.is_empty() or descent_run.get("ended", false) or descent_run.get("tainted", false):
+		descent_resume = {}
+	else:
+		var snap := {}
+		for key: String in DESCENT_RESUME_KEYS:
+			snap[key] = descent_run.get(key, Descent.new_run(1).get(key, 0))
+		descent_resume = snap.duplicate(true)
+	save_progress()
+
+
+## True when a saved run waits to be resumed (or quit): the hub asks on arrival and at the portal's DESCENT.
+func descent_resume_pending() -> bool:
+	return not descent_resume.is_empty() and not descent_active()
+
+
+## Makes the saved run the run being played again (mode DESCENT), exactly as it was saved: the same floor (its
+## maze from the run seed), meter, boons, pot, time, paid slot and milestone record. A cleared floor resumes on
+## its boon card with the same offers. False when none is saved. Nothing is paid or saved by resuming.
+func resume_descent() -> bool:
+	if descent_resume.is_empty():
+		return false
+	var run := Descent.new_run(int(descent_resume.seed))
+	for key: String in descent_resume:
+		run[key] = descent_resume[key]
+	run.best_before = mini(int(run.best_before), descent_best_floor)
+	descent_run = run.duplicate(true)
+	mode = MODE_DESCENT
+	return true
+
+
+## QUIT RUN on the resume prompt: the saved run banks as quitting it from the pause menu would (half the pot
+## mid-floor, the whole pot on the boon card) and is gone. Returns end_descent's result ({} if none was saved).
+func quit_saved_descent() -> Dictionary:
+	if not resume_descent():
+		return {}
+	var on_boon_card := int(descent_run.cleared) >= int(descent_run.floor)
+	return end_descent(on_boon_card)
 
 
 ## True once earned cosmetic `id` has been earned (ABYSS: Descent floor DESCENT_ABYSS_FLOOR reached;
@@ -1662,6 +1779,7 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 		paid = add_tickets(due.tickets, false)
 	descent_runs = mini(descent_runs + 1, 100 * TICKETS_MAX)
 	descent_run.ended = true
+	descent_resume = {}  # banked: nothing left to resume
 	var result := {tickets = paid, base = due.base, cap = due.cap, slot = int(descent_run.get("slot", 0)) if due.cap in ["", "slime"] else 0, cashed = cashed, floor = int(descent_run.floor),
 		cleared = int(descent_run.cleared), pot = int(descent_run.pot), best_floor = descent_best_floor,
 		new_best = descent_run.get("new_best", false),
@@ -2234,6 +2352,7 @@ func reset_progress() -> void:
 	maps = {}
 	maps_hint_seen = false
 	descent_run = {}
+	descent_resume = {}
 	descent_best_floor = 0
 	descent_best_time = 0.0
 	descent_runs = 0
