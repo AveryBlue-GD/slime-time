@@ -30,11 +30,6 @@ const DATA := [
 	{cells = Vector2i(26, 14), seed = 10383, branching = 0.10, run = 0.30, loops = 6, spawn = 0, target = 0.99},
 ]
 
-## Solution paths (cells) of the pre-v4 layouts (corner start), normal and hard. Saves from before
-## version 3 turn best times into medal tiers against the par of the layout they were set on.
-const LEGACY_STEPS: Array[int] = [22, 30, 38, 46, 54, 62, 70, 80, 90, 100]
-const LEGACY_HARD_STEPS: Array[int] = [25, 31, 39, 48, 57, 64, 72, 81, 92, 101]
-
 ## ---------------------------------------------------------------- hard mode (story)
 ## Hard mode plays its own mazes (own seeds, no loops) on a tight budget, without upgrades or coins.
 ## Since the 2026-10-14 rebalance (docs/level-design.md section 7) each hard level is built from
@@ -64,7 +59,7 @@ const HARD_RUN: Array[float] = [0.30, 0.45, 0.40, 0.45, 0.30, 0.45, 0.45, 0.45, 
 const HARD_MAX_CELLS := Vector2i(36, 20)
 ## The v4 hard mazes (2026-10-13 .. 2026-10-14, save version 4): their start-to-chalice routes
 ## (cells) and the share of the meter a perfect run used. They define the base meter
-## (hard_meter_tiles) and the par old hard medals/times were set against (v4_hard_par).
+## (hard_meter_tiles) and the start size of the current hard mazes (hard_start_cells).
 const HARD_V4_STEPS: Array[int] = [25, 32, 39, 48, 57, 63, 71, 77, 93, 96]
 const HARD_V4_TARGETS: Array[float] = [0.89, 0.90, 0.91, 0.91, 0.92, 0.93, 0.95, 0.96, 0.98, 1.0]
 const RANDOM_HARD_TARGET := 0.9
@@ -144,12 +139,6 @@ static func hard_start_cells(level: int) -> Vector2i:
 	return Vector2i(clampi(roundi(base.x * k), base.x, HARD_MAX_CELLS.x), clampi(roundi(base.y * k), base.y, HARD_MAX_CELLS.y))
 
 
-## Par of a v4 hard maze (only to migrate hard medals from a version 4 save that has best times but
-## no [medals] section: those times were set on the v4 hard mazes).
-static func v4_hard_par(level: int) -> float:
-	return par_for_path(v4_hard_route_tiles(level))
-
-
 ## Par time (seconds) for a maze whose solution is `path_tiles` tiles: the path at the slime's BASE
 ## gliding speed (PAR_SPEED; upgrades don't move it) x PAR_SLACK plus PAR_EXTRA. Medal tiers are
 ## measured against it (game.gd passes its own speed).
@@ -173,13 +162,6 @@ static func level_par(level: int, hard := false) -> float:
 	if not _par_cache.has(key):
 		_par_cache[key] = par_for_path(story_maze(level, hard).goal_steps * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE)
 	return _par_cache[key]
-
-
-## Par of a level's pre-v4 layout (used only to migrate best times from saves older than version 3
-## into tiers, exactly as before).
-static func legacy_par(level: int, hard := false) -> float:
-	var steps: Array[int] = LEGACY_HARD_STEPS if hard else LEGACY_STEPS
-	return par_for_path(steps[clampi(level, 1, COUNT) - 1] * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE)
 
 
 ## A story level's maze: a fresh deep copy of the cached build (the game may break walls in its own).

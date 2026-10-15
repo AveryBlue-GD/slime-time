@@ -3,8 +3,8 @@ extends SceneTree
 ## Hard-mode rebalance (2026-10-14, docs/level-design.md section 7): the per-level slime multiplier
 ## table (Levels.HARD_SLIME_MULT), meters / routes / allowances hitting their targets, the bigger hard
 ## mazes (solvable, within HARD_MAX_CELLS, spawn class kept, more dead ends, deterministic and fast to
-## build), par from the new routes, the save version 5 migration (old hard best times cleared, hard
-## clears and tiers kept, idempotent, pre-release codes refused, hostile values) and --story-complete's hard
+## build), par from the new routes, hard records and tiers in a save (pre-release codes refused,
+## hostile values; the pre-v5 migration was removed in spring cleaning) and --story-complete's hard
 ## times on the new pars. The autopilot walking every hard level under par: tests/test_phase3.gd;
 ## the --autoplay bot: tests/test_autoplay.gd. Uses throwaway Progress nodes (never the real save).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_hard_rebalance.gd
@@ -98,50 +98,33 @@ func _check_mazes() -> void:
 
 
 func _check_migration() -> void:
-	var old := _v4_save()
 	var p := _fresh()
-	p._read(old)
-	_check(not p.best_times.has(101) and not p.best_times.has(105) and not p.best_times.has(110),
-		"v4 hard best times are cleared (set on the old, shorter hard mazes)")
-	_check(p.medals.get(101, 0) == 3 and p.medals.get(105, 0) == 2 and p.medals.get(110, 0) == 1 and p.hard_cleared == [1, 5, 10],
-		"hard medal tiers and hard clears are kept (never downgraded)")
-	_check(p.best_times[1] == 14.0 and p.best_times[2] == 19.5 and p.medals_for(1) == 3 and p.levels_cleared == 10,
-		"normal best times, tiers and clears are untouched")
-	_check(p.coins_found[1] == ["9,9", "8,8"] and p.upgrade_level("slime") == 1 and p.tickets == 12 and p.hats_owned == ["tophat"]
-		and p.selected_skin == "mint", "coins, upgrades, tickets, hats and skin are untouched")
-	var q := _fresh()
-	q._read(_v4_save())
-	_check(q.best_times == p.best_times and q.medals == p.medals and q.hard_cleared == p.hard_cleared, "reading the same old save again gives the same result")
+	p._read(_v5_save())
+	_check(p.best_times[101] == 12.0 and p.best_times[105] == 30.0 and p.medals.get(101, 0) == 3 and p.medals.get(105, 0) == 2
+		and p.hard_cleared == [1, 5, 10], "a version 5 save keeps its hard best times, tiers and clears")
+	_check(p.best_times[1] == 14.0 and p.medals_for(1) == 3 and p.levels_cleared == 10 and p.coins_found[1] == ["9,9", "8,8"]
+		and p.tickets == 12 and p.hats_owned == ["tophat"] and p.selected_skin == "mint", "normal records, coins, tickets, hats and skin are read")
 	var written: ConfigFile = p._write()
-	_check(written.get_value("meta", "version") == PROGRESS.SAVE_VERSION and PROGRESS.SAVE_VERSION >= 5, "the next save is the current version (5 or later)")
-	p.best_times[103] = 40.0  # a time set on the new hard maze
-	written = p._write()
 	var r := _fresh()
 	r._read(written)
-	_check(r.best_times == p.best_times and r.medals == p.medals and r.best_times[103] == 40.0, "a version 5 save keeps its hard times (no second migration)")
-	var code: String = PROGRESS.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(_v4_save().encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
+	_check(written.get_value("meta", "version") == PROGRESS.SAVE_VERSION and r.best_times == p.best_times and r.medals == p.medals,
+		"the next save is the current version and reads back unchanged")
+	var old := _v5_save()
+	old.set_value("meta", "version", 4)
+	var code: String = PROGRESS.SAVE_CODE_PREFIX + Marshalls.raw_to_base64(old.encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
 	var u := _fresh()
 	_check(not u.load_code(code) and u.best_times.is_empty() and u.is_fresh_save(), "a pre-release v4 code (no release epoch) is refused: nothing migrates in")
 
-	# A v4 save with hard times but no [medals]: tiers come from the times against the v4 hard par.
+	# A save with hard times but no [medals]: tiers come from the times against the current hard par.
 	var bare := ConfigFile.new()
-	bare.set_value("meta", "version", 4)
+	bare.set_value("meta", "version", 5)
 	bare.set_value("progress", "hard_cleared", [2, 3])
-	bare.set_value("records", "level_102", Levels.v4_hard_par(2) * 1.2)
-	bare.set_value("records", "level_103", Levels.v4_hard_par(3) * 0.9)
+	bare.set_value("records", "level_102", Levels.level_par(2, true) * 1.2)
+	bare.set_value("records", "level_103", Levels.level_par(3, true) * 0.9)
 	var b := _fresh()
 	b._read(bare)
-	_check(b.medals.get(102, 0) == 2 and b.medals.get(103, 0) == 3 and not b.best_times.has(102) and not b.best_times.has(103),
-		"a v4 save without [medals]: hard tiers from the old times vs the OLD hard par (silver, gold), then the times are cleared")
-
-	# A v3 save's hard time still sets its tier (against the pre-v4 par), then is cleared.
-	var v3 := ConfigFile.new()
-	v3.set_value("meta", "version", 2)
-	v3.set_value("progress", "hard_cleared", [4])
-	v3.set_value("records", "level_104", Levels.legacy_par(4, true) * 0.9)
-	var c := _fresh()
-	c._read(v3)
-	_check(c.medals.get(104, 0) == 3 and not c.best_times.has(104), "a v2 save's hard time still becomes its tier (gold), then is cleared")
+	_check(b.medals.get(102, 0) == 2 and b.medals.get(103, 0) == 3 and b.best_times.has(102) and b.best_times.has(103),
+		"a save without [medals]: hard tiers from the times vs the hard par (silver, gold), times kept")
 
 	var bad := ConfigFile.new()
 	bad.set_value("meta", "version", "five")
@@ -157,7 +140,7 @@ func _check_migration() -> void:
 	for key: int in h.best_times:
 		hard_times += 1 if key > PROGRESS.HARD_RECORDS else 0
 	_check(hard_times == 0 and h.medals.get(101, 0) <= 3 and h.medals.get(102, 0) == 0, "hostile values: no hard time survives, tiers clamp")
-	for node in [p, q, r, u, b, c, h]:
+	for node in [p, r, u, b, h]:
 		node.free()
 
 
@@ -178,9 +161,9 @@ func _check_story_complete() -> void:
 	p.free()
 
 
-func _v4_save() -> ConfigFile:
+func _v5_save() -> ConfigFile:
 	var f := ConfigFile.new()
-	f.set_value("meta", "version", 4)
+	f.set_value("meta", "version", 5)
 	f.set_value("progress", "levels_cleared", 10)
 	f.set_value("progress", "highest_unlocked", 10)
 	f.set_value("progress", "hard_cleared", [1, 5, 10])

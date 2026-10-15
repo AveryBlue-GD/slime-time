@@ -62,27 +62,18 @@ var dry_ups := {}
 ## Story level the game scene loads next.
 var current_level := 1
 
-## Save layout version, written to [meta]. 2 = globs + per-level medal bitmasks (PAR/CLEAN/COINS);
-## 3 = TICKET VOUCHERS (randomizer-only, kept under the old [wallet] globs keys) + medal TIERS.
-## Anything older than 3 gets its medals converted when it is read (see _migrate_medals).
-## 4 = the redesigned story layouts (random-class spawns, docs/level-design.md): coin keys from an
-## older save are re-mapped by COUNT to the new layout's coins (see _migrate_coins).
-## 5 = the bigger hard-mode mazes (HARD_SLIME_MULT rebalance, docs/level-design.md section 7): hard best
-## times from an older save were set on the old, shorter hard mazes, so they are cleared (hard clears
-## and hard medal tiers are kept; see _migrate_hard_times).
-## Every save of the public release (RELEASE_EPOCH 1) is version 5 or later, and saves/codes without
-## the epoch are never loaded, so the version < 5 migrations no longer run for real players; they are
-## kept (tested through _read) for any hand-made save that claims this epoch.
+## Save layout version, written to [meta]. 3 = ticket vouchers (under the old [wallet] globs keys) +
+## medal tiers; 4 = the redesigned story layouts (docs/level-design.md); 5 = the bigger hard-mode mazes
+## (HARD_SLIME_MULT rebalance, docs/level-design.md section 7). Every save of the public release
+## (RELEASE_EPOCH 1) is version 5 or later and saves/codes without the epoch are never loaded, so the
+## pre-v5 migrations were removed in spring cleaning (2026-10-15).
 ## 6 = the upgrades v2 coin tree (docs/design/upgrades-v2.md A2.4): [upgrades] tree = 2 marks levels of
 ## the new per-track tables; a save without it holds old 10-level tracks, remapped by coins invested
 ## (see _migrate_tree; keyed on the tree mark, not the version, so it is idempotent on its own);
 ## tree = 3 marks the repriced tree (MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39): tree 2 levels are
-## repriced on load (_migrate_prices), no save version bump needed.
+## repriced on load (_migrate_prices), no save version bump needed. Both can still run for a real
+## player: release-epoch saves were written by builds with tree 1 and tree 2.
 const SAVE_VERSION := 6
-## The first save version whose story coin keys / best times belong to the current layouts.
-const LAYOUT_VERSION := 4
-## The first save version whose hard-mode best times belong to the current hard mazes.
-const HARD_LAYOUT_VERSION := 5
 ## TICKET VOUCHERS: the renewable, cosmetic-and-utility currency (never converted to or from coins).
 ## The ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that
 ## maze took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5
@@ -572,8 +563,8 @@ func load_progress(path := "") -> void:
 	if not _is_this_epoch(file):
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
 	_read(file)
-	# An older save was migrated in memory; write it back once so the migration (which builds
-	# every story maze) doesn't rerun on each launch.
+	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
+	# migration doesn't rerun on each launch.
 	if _int(file, "meta", "version", 0) < SAVE_VERSION:
 		save_progress()
 
@@ -671,8 +662,6 @@ func _read(file: ConfigFile) -> void:
 		found.assign(_strings(file.get_value("coins", "level_%d" % level, [])))
 		if not found.is_empty():
 			coins_found[level] = found
-	if _int(file, "meta", "version", 1) < LAYOUT_VERSION:
-		_migrate_coins()
 	upgrades = {}
 	var tree := _int(file, "upgrades", "tree", 1)
 	var new_tree := tree >= 2  # levels of the 7 / 4 / 3 tracks (tree 2 prices or later)
@@ -695,8 +684,6 @@ func _read(file: ConfigFile) -> void:
 	_read_heat(file)  # before the store: the EMBER trail counts only with its heat
 	_read_store(file)
 	_read_maps(file)
-	if _int(file, "meta", "version", 1) < HARD_LAYOUT_VERSION:
-		_migrate_hard_times()
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
 	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
 	set_jelly(_bool(file, "skin", "jelly", true))
@@ -704,23 +691,6 @@ func _read(file: ConfigFile) -> void:
 		set_jelly(true)
 		if not is_skin_unlocked(selected_skin):
 			selected_skin = Skins.DEFAULT
-
-
-## Story coins from a save made on the pre-v4 layouts: their keys name cells of the old mazes. Each
-## level keeps its COUNT of found coins (as counted before, capped at Levels.COINS), now as the first
-## N coins of the new layout (Levels.coin_keys order), so coins_earned, and with it the coins spent
-## on upgrades, stays exactly the same and nobody's balance can go negative. A pure function of
-## the old data: reading the same old save again gives the same result, and the
-## next save is version 4, which is never migrated again.
-func _migrate_coins() -> void:
-	for level: int in coins_found.keys():
-		var count := coins_found_in(level)
-		if level < 1 or level > Levels.COUNT or count <= 0:
-			coins_found.erase(level)
-			continue
-		var keys: Array = []
-		keys.assign(Levels.coin_keys(level).slice(0, count))
-		coins_found[level] = keys
 
 
 ## Upgrade levels from a save without [upgrades] tree = 2 are levels of the old 3 x 10 tree (level n
@@ -788,17 +758,6 @@ func take_tree_refund_notice() -> int:
 	return n
 
 
-## Hard best times from a save older than version 5 were set on the old, shorter hard mazes (before
-## the HARD_SLIME_MULT rebalance) and most would be out of reach on the new ones, so they are dropped:
-## players set real times on the new mazes. Everything else stays: hard_cleared, the stored hard medal
-## tiers (already read, never downgraded; a pre-v3 save's tiers come from these times first, in
-## _read_wallet), and all normal-mode records. A pure function of the old data (idempotent); the next
-## save is version 5, which is never migrated again.
-func _migrate_hard_times() -> void:
-	for level in range(1, Levels.COUNT + 1):
-		best_times.erase(level + HARD_RECORDS)
-
-
 ## The shortest best time kept (S4): a record of 0 s, a negative one or 1e-9 (hand-made saves) could
 ## never be beaten; anything a real frame-stepped run can set (1/60 s and up) is kept.
 const MIN_RECORD := 0.001
@@ -835,8 +794,7 @@ const KEY_MAX_CODE := (1 << 23) - 1
 ## Tickets, medals and hat-wheel counters. Every key is optional: a save from before them gets
 ## zeros. The ticket balance sits under the old [wallet] keys "globs" / "globs_lifetime" (the old
 ## clears_paid / hard_clears_paid / retro-grant keys are ignored: tickets now come only from the
-## randomizer, and an existing balance is kept as it is). Medals from a save older than version 3
-## are bitmasks and get converted to tiers (_migrate_medals).
+## randomizer, and an existing balance is kept as it is).
 func _read_wallet(file: ConfigFile) -> void:
 	tickets = clampi(_int(file, "wallet", "globs", 0), 0, TICKETS_MAX)
 	tickets_lifetime = clampi(_int(file, "wallet", "globs_lifetime", tickets), 0, 100 * TICKETS_MAX)
@@ -847,14 +805,13 @@ func _read_wallet(file: ConfigFile) -> void:
 	spins = clampi(_int(file, "hats", "spins", 0), 0, SPINS_MAX)
 	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
 	medals = {}
-	# Older saves, and a version 3 save with best times but no [medals] section at all, get tiers from
-	# their best times; otherwise stored tiers count when 1-3 (anything else is 0).
-	var version := _int(file, "meta", "version", 1)
-	var migrate := version < 3 or (not file.has_section("medals") and not best_times.is_empty())
+	# A save with best times but no [medals] section at all gets tiers from its best times; otherwise
+	# stored tiers count when 1-3 (anything else is 0).
+	var from_times := not file.has_section("medals") and not best_times.is_empty()
 	for level in range(1, Levels.COUNT + 1):
 		for key in [level, level + HARD_RECORDS]:
 			var stored := _int(file, "medals", "level_%d" % key, 0)
-			var tier := _migrate_medals(key, version) if migrate else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
+			var tier := _tier_from_record(key) if from_times else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
 			if tier > 0:
 				medals[key] = tier
 
@@ -915,24 +872,14 @@ func _read_heat(file: ConfigFile) -> void:
 	heat_paid = clampi(_int(file, "heat", "paid", 0), 0, _heat_bounty_earned())
 
 
-## The tier for a level key from a version 1-2 save: its best time against the level's par when it
-## has one (so nobody loses a medal they would have earned), else bronze when the level was cleared,
-## else none (the old bitmask bits themselves are dropped). Needs best_times / levels_cleared / hard_cleared read first.
-## A pure function of the old data, so reading the same old save twice gives the same result.
-## `version`: the save's version. Times are measured against the par of the layout they were set on:
-## before version 4 the pre-v4 layouts (Levels.legacy_par, exactly the tiers this migration gave before
-## the redesign); a version 4 hard time the v4 hard maze (Levels.v4_hard_par); else the current par.
-func _migrate_medals(key: int, version := 1) -> int:
+## The tier for a level key from its best time against the level's par when it has one, else bronze
+## when the level was cleared, else none. Needs best_times / levels_cleared / hard_cleared read first.
+func _tier_from_record(key: int) -> int:
 	var hard := key > HARD_RECORDS
 	var level := key - HARD_RECORDS if hard else key
 	var best: float = best_times.get(key, -1.0)
 	if is_finite(best) and best > 0.0:
-		var par := Levels.level_par(level, hard)
-		if version < LAYOUT_VERSION:
-			par = Levels.legacy_par(level, hard)
-		elif hard and version < HARD_LAYOUT_VERSION:
-			par = Levels.v4_hard_par(level)
-		return tier_for(best, par)
+		return tier_for(best, Levels.level_par(level, hard))
 	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
 	return TIER_BRONZE if cleared else TIER_NONE
 

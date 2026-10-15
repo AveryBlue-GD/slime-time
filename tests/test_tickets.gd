@@ -7,9 +7,9 @@ extends SceneTree
 ## hard clears, medals); the per-day cap goes forwards and backwards in time; the hat wheel's atomic
 ## spin (free first spin, 12 tickets after, picked + paid + won + saved before the wheel turns,
 ## rainbow pity) and its lock outside dev mode while hats are placeholders; the save (kept under the
-## old [wallet] "globs" keys, version 3); migration of version 1/2 saves and their save codes (an
-## existing balance kept as it is, no retro grant, medal bitmasks turned into tiers by best time vs
-## par, idempotent, hostile values); RESET PROGRESS. Uses a throwaway save.
+## old [wallet] "globs" keys); reading saves and save codes (an existing balance kept as it is, no
+## retro grant, the old paid masks dropped, idempotent, hostile values); RESET PROGRESS. Uses a
+## throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_tickets.gd
 
 const TEST_SAVE := "user://test_save.cfg"
@@ -365,23 +365,23 @@ func _initialize() -> void:
 	_check("SEED ALREADY PAID TODAY - TRY NEW MAZE" in game_seed.hud.rewards_texts, "the result screen explains a repeated seed pays no tickets")
 	await _stop(game_seed)
 
-	# --- Medals on a version 3 save: tiers outside 1-3 are 0; best times without [medals] migrate
+	# --- Medals in a save: tiers outside 1-3 are 0; best times without [medals] become tiers
 	var vth := ConfigFile.new()
-	vth.set_value("meta", "version", 3)
+	vth.set_value("meta", "version", 5)
 	vth.set_value("progress", "levels_cleared", 3)
-	vth.set_value("records", "level_1", Levels.legacy_par(1) * 0.5)
+	vth.set_value("records", "level_1", Levels.level_par(1) * 0.5)
 	vth.set_value("medals", "level_1", 7)
 	vth.set_value("medals", "level_2", 2)
 	vth.set_value("medals", "level_3", 0)
 	var vthp: Node = preload("res://scripts/progress.gd").new()
 	vthp._read(vth)
-	_check(vthp.medals_for(1) == 0 and vthp.medals_for(2) == 2 and vthp.medals_for(3) == 0, "a version 3 save's out-of-range tiers (7) are 0, valid ones kept")
+	_check(vthp.medals_for(1) == 0 and vthp.medals_for(2) == 2 and vthp.medals_for(3) == 0, "a save's out-of-range tiers (7) are 0, valid ones kept")
 	var vthb := ConfigFile.new()
-	vthb.set_value("meta", "version", 3)
+	vthb.set_value("meta", "version", 5)
 	vthb.set_value("progress", "levels_cleared", 3)
-	vthb.set_value("records", "level_1", Levels.legacy_par(1) * 0.5)
+	vthb.set_value("records", "level_1", Levels.level_par(1) * 0.5)
 	vthp._read(vthb)
-	_check(vthp.medals_for(1) == 3, "a version 3 save with best times and no [medals] gets tiers from the times")
+	_check(vthp.medals_for(1) == 3, "a save with best times and no [medals] gets tiers from the times")
 	vthp.free()
 	var par_start := Time.get_ticks_usec()
 	for lv in range(1, Levels.COUNT + 1):
@@ -392,50 +392,33 @@ func _initialize() -> void:
 	var par_ms := (Time.get_ticks_usec() - par_start) / 1000.0
 	_check(par_ms < 100.0, "computing par for all 20 levels takes %.0f ms (< 100)" % par_ms)
 
-	# --- A version-2 save (globs, bitmask medals, clears_paid): balance kept, medals become tiers
-	var par1: float = Levels.legacy_par(1)
-	var par2: float = Levels.legacy_par(2)
-	var par3: float = Levels.legacy_par(3)
-	var old := _old_save(par1, par2, par3)
+	# --- A save with the old wallet keys (globs, clears_paid): balance kept, paid masks dropped
+	var par2: float = Levels.level_par(2)
+	var old := _old_save()
 	var veteran: Node = preload("res://scripts/progress.gd").new()
 	veteran._read(old)
-	_check(veteran.levels_cleared == 6 and veteran.coins_earned() == 2 and veteran.best_times[1] == par1 * 0.8 and veteran.hats_owned == ["tophat"], "an old save still loads as before")
-	_check(veteran.tickets == 37 and veteran.tickets_lifetime == 90, "the old balance is kept as it is (%d, lifetime %d), no retro grant" % [veteran.tickets, veteran.tickets_lifetime])
-	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 2 and veteran.medals_for(3) == 1, "best times become tiers: under par gold, within 1.3 x silver, slower bronze (%s)" % [veteran.medals])
-	_check(veteran.medals_for(4) == 1 and veteran.medals_for(5) == 1 and veteran.medals_for(6) == 1, "cleared levels with no best time (even with a stray mask bit) get bronze (%s)" % [veteran.medals])
-	_check(veteran.medals_for(7) == 0 and veteran.medals_for(10) == 0, "uncleared levels get nothing, whatever stale bits they carried")
-	veteran.hard_mode = true
-	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 1 and veteran.medals_for(3) == 0, "hard tiers: best time vs par, else bronze when hard-cleared, else none (%s)" % [veteran.medals])
-	veteran.hard_mode = false
-	_check(veteran.medals_total() == 3 + 2 + 1 + 1 + 1 + 1 and not veteran.all_medals(), "the total is the tier sum")
+	_check(veteran.levels_cleared == 6 and veteran.coins_earned() == 2 and veteran.best_times[1] == snappedf(Levels.level_par(1) * 0.8, 0.125) and veteran.hats_owned == ["tophat"], "the save loads")
+	_check(veteran.tickets == 37 and veteran.tickets_lifetime == 90, "the balance is kept as it is (%d, lifetime %d), no retro grant" % [veteran.tickets, veteran.tickets_lifetime])
+	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 2 and veteran.medals_for(3) == 1 and veteran.medals_for(7) == 0, "stored tiers are read (%s)" % [veteran.medals])
 	var written: ConfigFile = veteran._write()
 	_check(written.get_value("meta", "version") == 6 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 6 without the paid masks")
 	var again := ConfigFile.new()
 	again.parse(written.encode_to_text())
 	var veteran2: Node = preload("res://scripts/progress.gd").new()
 	veteran2._read(again)
-	_check(veteran2.medals == veteran.medals and veteran2.tickets == 37, "migrating is idempotent: loading the new save changes nothing")
-	var veteran3: Node = preload("res://scripts/progress.gd").new()
-	veteran3._read(old)
-	_check(veteran3.medals == veteran.medals, "...and reading the old save again gives the same tiers")
-	# bitmask 1-3 in a version 3+ save is a tier, not a mask: the version tells them apart
-	var v3 := ConfigFile.new()
-	v3.parse(written.encode_to_text())
-	v3.set_value("medals", "level_8", 2)
-	veteran2._read(v3)
-	_check(veteran2.medals_for(8) == 2, "a version 3 save's small ints are read as tiers as they are")
+	_check(veteran2.medals == veteran.medals and veteran2.tickets == 37, "loading the new save changes nothing")
 	# losing the balance then re-reading does not re-pay anything
 	veteran.tickets = 0
 	var spent := ConfigFile.new()
 	spent.parse(veteran._write().encode_to_text())
 	veteran2._read(spent)
-	_check(veteran2.tickets == 0, "an old save's spent balance doesn't come back")
+	_check(veteran2.tickets == 0, "a spent balance doesn't come back")
 	veteran.free()
 	veteran2.free()
-	veteran3.free()
 
-	# --- A version-1 save (before globs): no tickets, no retro grant
+	# --- A save from before tickets: no tickets, no retro grant
 	var v1 := ConfigFile.new()
+	v1.set_value("meta", "version", 5)
 	v1.set_value("progress", "levels_cleared", 6)
 	v1.set_value("progress", "highest_unlocked", 7)
 	v1.set_value("progress", "hard_cleared", [1, 2])
@@ -443,7 +426,7 @@ func _initialize() -> void:
 	var ancient: Node = preload("res://scripts/progress.gd").new()
 	ancient._read(v1)
 	_check(ancient.tickets == 0 and ancient.tickets_lifetime == 0 and ancient.levels_cleared == 6, "a save from before tickets gets no grant")
-	_check(ancient.medals_for(2) == 3 and ancient.medals_for(1) == 1 and ancient.medals_for(7) == 0, "...but its clears and times still become tiers (%s)" % [ancient.medals])
+	_check(ancient.medals_for(2) == 3 and ancient.medals_for(1) == 1 and ancient.medals_for(7) == 0, "...and with no [medals] its clears and times become tiers (%s)" % [ancient.medals])
 	ancient.free()
 
 	# --- A hostile old save: junk, huge, NaN-ish and wrong-typed entries
@@ -465,9 +448,7 @@ func _initialize() -> void:
 	for key: int in hostile.medals:
 		ok = ok and hostile.medals[key] >= 1 and hostile.medals[key] <= 3 and (key % 100) >= 1 and (key % 100) <= Levels.COUNT
 	_check(ok and hostile.tickets == 0 and hostile.levels_cleared == Levels.COUNT, "junk entries give only valid tiers (1-3) for real levels (%s)" % [hostile.medals])
-	_check(hostile.medals_for(1) == 1 and hostile.medals_for(2) == 1 and hostile.medals_for(3) == 1 and hostile.medals_for(5) == 1, "...a bad best time falls back to bronze for a cleared level")
-	hostile.hard_mode = true
-	_check(hostile.medals.size() == 10 + 3 and hostile.medals_for(3) == 1 and hostile.medals_for(Levels.COUNT) == 1 and hostile.medals_for(4) == 0, "...hard tiers only for real hard-cleared levels")
+	_check(hostile.medals.is_empty() and hostile.best_times.is_empty(), "...wild stored tiers and bad best times are dropped")
 	hostile.free()
 
 	# --- Save codes: from an old build and from this one
@@ -476,9 +457,9 @@ func _initialize() -> void:
 	var old_code := _code(old)
 	_check(not progress.load_code(old_code) and progress.tickets == 0 and progress.medals.is_empty(),
 		"a code from a pre-release build (no release epoch) is refused and changes nothing")
-	progress._read(old)  # the migration itself (kept for hand-made saves of this epoch)
+	progress._read(old)
 	_check(progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
-		"an old v2 save read directly: balance kept, medals as tiers")
+		"the same save read directly: balance kept, medals as tiers")
 	var snapshot: String = progress._write().encode_to_text()
 	_check("version=6" in snapshot, "...and re-saves as version 6")
 	var new_code: String = progress.save_code()
@@ -504,27 +485,27 @@ func _initialize() -> void:
 	quit(1 if failures else 0)
 
 
-## What a version 2 build wrote: globs + clears_paid masks + PAR/CLEAN/COINS bitmask medals.
-func _old_save(par1: float, par2: float, par3: float) -> ConfigFile:
+## A version 5 save with the old [wallet] keys (globs, clears_paid masks) and medal tiers (records on
+## 1/8 s steps, so they survive a save code's text exactly).
+func _old_save() -> ConfigFile:
 	var old := ConfigFile.new()
-	old.set_value("meta", "version", 2)
+	old.set_value("meta", "version", 5)
 	old.set_value("progress", "levels_cleared", 6)
 	old.set_value("progress", "highest_unlocked", 7)
 	old.set_value("progress", "hard_cleared", [1, 2])
 	old.set_value("coins", "level_1", ["2,3", "5,1"])
 	old.set_value("hats", "owned", ["tophat"])
-	old.set_value("records", "level_1", par1 * 0.8)
-	old.set_value("records", "level_2", par2 * 1.2)
-	old.set_value("records", "level_3", par3 * 2.0)
-	old.set_value("records", "level_101", Levels.legacy_par(1, true) * 0.9)
+	old.set_value("records", "level_1", snappedf(Levels.level_par(1) * 0.8, 0.125))
+	old.set_value("records", "level_2", snappedf(Levels.level_par(2) * 1.2, 0.125))
+	old.set_value("records", "level_3", snappedf(Levels.level_par(3) * 2.0, 0.125))
+	old.set_value("records", "level_101", snappedf(Levels.level_par(1, true) * 0.9, 0.125))
 	old.set_value("wallet", "globs", 37)
 	old.set_value("wallet", "globs_lifetime", 90)
 	old.set_value("wallet", "clears_paid", 0b111111)
 	old.set_value("wallet", "hard_clears_paid", 0b11)
-	old.set_value("medals", "level_1", 7)
-	old.set_value("medals", "level_2", 1)
-	old.set_value("medals", "level_5", 2)
-	old.set_value("medals", "level_7", 5)  # stray bits on a level that was never cleared
+	old.set_value("medals", "level_1", 3)
+	old.set_value("medals", "level_2", 2)
+	old.set_value("medals", "level_3", 1)
 	old.set_value("medals", "level_101", 3)
 	return old
 
