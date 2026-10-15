@@ -10,7 +10,7 @@ extends SceneTree
 ##   menu (and stays inside the open modal), no engine/script errors, Engine.time_scale is 1, no input action
 ##   stays held, a way back exists (Esc ladder) and node counts do not grow over 50 enter/exit cycles.
 ## Then deterministic random walks (fixed seeds) from several start states; the first violation of a walk is
-## printed with a replayable trace. Known open bugs (docs/qa-nav-report.md) are listed in KNOWN and only reported.
+## printed with a replayable trace. Known open bugs (docs/archive/qa-nav-report.md) are listed in KNOWN and only reported.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_nav_fuzz.gd
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
 ##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
@@ -25,7 +25,7 @@ extends SceneTree
 
 const Lib := preload("res://tests/nav_fuzz_lib.gd")
 
-## Open bugs found by this fuzzer (see docs/qa-nav-report.md): reported, not failed, until fixed.
+## Open bugs found by this fuzzer (see docs/archive/qa-nav-report.md): reported, not failed, until fixed.
 const KNOWN := {
 }
 

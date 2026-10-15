@@ -12,7 +12,7 @@ extends Node
 ## ./tools/screenshot.sh --frames 160 --scene res://tests/demo_descent.tscn --story-complete --upgrades=4,1,1 --skin=lemon --shot=boons
 ## ./tools/screenshot.sh --frames 200 --scene res://tests/demo_descent.tscn --story-complete --upgrades=4,1,1 --skin=lemon --shot=cashout
 ## ./tools/screenshot.sh --frames 260 --scene res://tests/demo_descent.tscn --story-complete --upgrades=4,1,1 --skin=lemon --shot=summary
-## Clip: --write-movie with --shot=demo (see docs/handoff.md, Descent).
+## Clip: --write-movie with --shot=demo (Descent: docs/level-design.md section 9).
 
 const RUN_SEED := 4242
 

@@ -44,7 +44,7 @@ const LIGHT_RADIUS := 20.0
 const FADE_AFTER: Array[float] = [1.5, 3.5, 6.0, 9.0]
 const FADE_ALPHA: Array[float] = [0.0, 0.3, 0.5, 0.65, 0.78]
 ## Fog brightness setting (Progress.fog_brightness: Dark, Normal, Bright). Normal is the game's
-## standard look (FADE_ALPHA / WALL_FOG_ALPHA above). Bright follows docs/advisor/graphics-shading.md
+## standard look (FADE_ALPHA / WALL_FOG_ALPHA above). Bright follows docs/archive/advisor/graphics-shading.md
 ## (lighter memory and unexplored mist); Dark is a bit heavier than Normal. `fade`/`wall` feed both
 ## the shader and fog_alpha_at, so they always agree.
 const FOG_LOOKS: Array[Dictionary] = [
