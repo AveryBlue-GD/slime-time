@@ -10,7 +10,17 @@ const UNCOVER_TIME := 0.32
 const OFF_SCREEN := 1.3
 const SCREEN_HEIGHT := 180.0
 
+## Physics interpolation (project setting on; see _process): only while frames come faster than the
+## 60 Hz physics ticks. Between ON_ABOVE_FPS and OFF_BELOW_FPS it keeps its state, so a display near
+## one of them doesn't flicker it on and off.
+const INTERPOLATION_ON_ABOVE_FPS := 72.0
+const INTERPOLATION_OFF_BELOW_FPS := 66.0
+## How fast the frame-rate estimate follows (share of each new frame).
+const FPS_FOLLOW := 0.1
+
 var busy := false
+## Seconds per frame, smoothed (render frames, unscaled by Engine.time_scale).
+var _frame_time := 1.0 / 60.0
 var _sheet: ColorRect
 var _material: ShaderMaterial
 var _tween: Tween
@@ -19,6 +29,10 @@ var _tween: Tween
 func _ready() -> void:
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Interpolation is opt-in: only nodes moved on physics ticks (the slime) turn it on; everything
+	# placed per frame (menus, the hat, lights, the camera) would wobble between stale ticks.
+	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_set_interpolation(false)
 	_material = ShaderMaterial.new()
 	_material.shader = preload("res://assets/shaders/goo_wipe.gdshader")
 	_sheet = ColorRect.new()
@@ -27,6 +41,36 @@ func _ready() -> void:
 	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_sheet.visible = false
 	add_child(_sheet)
+
+
+## High refresh: physics stays at 60 ticks a second (jump arcs, drain and timers never change), and
+## above 60 Hz the slime is drawn between ticks (physics interpolation) instead of on a 60 Hz cadence
+## held for 2-3 frames. At 60 Hz the frames are exactly what they were without it: interpolation
+## would only draw everything one tick late there, so it stays off.
+func _process(delta: float) -> void:
+	if DisplayServer.get_name() != "headless":  # (nothing drawn there, and frames are unpaced)
+		follow_frame_rate(delta / maxf(Engine.time_scale, 0.001))
+
+
+## Takes one render frame's length (s) into the frame-rate estimate and switches interpolation.
+func follow_frame_rate(frame: float) -> void:
+	if frame <= 0.0:
+		return
+	_frame_time = lerpf(_frame_time, frame, FPS_FOLLOW)
+	var fps := 1.0 / _frame_time
+	var on := get_tree().physics_interpolation
+	if not on and fps > INTERPOLATION_ON_ABOVE_FPS:
+		_set_interpolation(true)
+	elif on and fps < INTERPOLATION_OFF_BELOW_FPS:
+		_set_interpolation(false)
+
+
+func _set_interpolation(on: bool) -> void:
+	get_tree().physics_interpolation = on
+	# Godot's advice: no jitter fix with interpolation (the fraction does the pacing); its default
+	# (0.5) otherwise, as before.
+	Engine.physics_jitter_fix = 0.0 if on else 0.5
+	get_tree().root.reset_physics_interpolation()
 
 
 ## Covers the screen, changes to `scene`, then uncovers.

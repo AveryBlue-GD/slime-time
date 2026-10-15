@@ -122,6 +122,7 @@ func flush() -> void:
 	for i in 64:
 		if dashing and slime.state == Slime.State.DASH:
 			slime.finish_dash()
+			slime.reset_physics_interpolation()  # jumped to the wall: drawn there at once, not swept
 		if flying.is_empty():
 			return
 		for node in flying.duplicate():

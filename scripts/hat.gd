@@ -37,6 +37,12 @@ var hat_id := Hats.NONE
 var jolt := Vector2.ZERO
 var _slime_last := Vector2.ZERO
 var _slime_velocity := Vector2.ZERO
+## The height when this physics tick began (drawn between ticks when interpolating).
+var _height_from := 0.0
+
+
+func _init() -> void:
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF  # it places itself every frame
 
 
 ## Puts hat `hat_id` on the given slime sprite.
@@ -61,6 +67,7 @@ func pop(slime_velocity: Vector2, flight_time: float) -> void:
 	region_rect = Hats.region(hat_id, Hats.Width.LOOSE)  # off the head it keeps its own shape
 	_slime_last = ground
 	_slime_velocity = slime_velocity
+	_height_from = height
 	jolt = Vector2.ZERO
 	var time := maxf(flight_time * 0.95, MIN_FLIGHT)
 	lift = GRAVITY * time / 2.0
@@ -73,6 +80,7 @@ func pop(slime_velocity: Vector2, flight_time: float) -> void:
 ## follows per frame.
 func _physics_process(delta: float) -> void:
 	if state == State.FLYING:
+		_height_from = height
 		_fly(delta)
 
 
@@ -81,7 +89,11 @@ func _process(_delta: float) -> void:
 		State.ON:
 			_follow()
 		State.FLYING:
-			global_position = _snap(ground - Vector2(0.0, height))
+			var drawn_height := height
+			var slime := anchor as Slime
+			if slime and slime.is_physics_interpolated_and_enabled():
+				drawn_height = lerpf(_height_from, height, Engine.get_physics_interpolation_fraction())
+			_place(_snap(ground + _drawn_shift(false) - Vector2(0.0, drawn_height)))
 
 
 func _follow() -> void:
@@ -90,7 +102,21 @@ func _follow() -> void:
 	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
 	region_rect = Hats.region(hat_id, width)
 	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
-	global_position = _snap(_head() - Vector2(0, lift_px) * body.global_scale)
+	_place(_snap(_head() + _drawn_shift(true) - Vector2(0, lift_px) * body.global_scale))
+
+
+## How far from its physics position a slime anchor is drawn this frame (Slime.drawn_shift: only
+## with physics interpolation on; `with_sprite` = its jump arc too). Zero for menu previews.
+func _drawn_shift(with_sprite: bool) -> Vector2:
+	var slime := anchor as Slime
+	return slime.drawn_shift(with_sprite) if slime else Vector2.ZERO
+
+
+## Puts the hat at `drawn` on screen. A hat that is the slime's own child (the hub) is already
+## carried along by the slime's interpolation, so that share comes off.
+func _place(drawn: Vector2) -> void:
+	var parent := get_parent() as Slime
+	global_position = drawn - (parent.drawn_shift(false) if parent and parent == anchor else Vector2.ZERO)
 
 
 func _fly(delta: float) -> void:

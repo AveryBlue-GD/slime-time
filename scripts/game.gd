@@ -313,6 +313,10 @@ var wall_health := {}
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
+## The pixel-locked camera (see _set_pixel_cam): on, its eased position, and "start it on the slime".
+var _pixel_cam := false
+var _cam_smooth := Vector2.ZERO
+var _cam_fresh := true
 ## Plays the theme's continuous ambient loop (follows the sound on/off setting).
 var ambient: AudioStreamPlayer
 ## The theme's one-off ambient sounds, and the player and countdown for the next one.
@@ -471,6 +475,7 @@ func _ready() -> void:
 		_refresh_descent_pod()
 
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
+	slime.reset_physics_interpolation()  # placed, not moved: never drawn sweeping in from (0, 0)
 	last_slime_pos = slime.position
 	_glimmer_from = slime.position
 	_next_glimmer = _glimmer_gap()
@@ -496,6 +501,7 @@ func _ready() -> void:
 	camera.limit_right = maze.size.x * TILE + edge
 	camera.limit_bottom = maze.size.y * TILE + edge
 	camera.reset_smoothing()
+	_cam_fresh = true
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
@@ -625,7 +631,8 @@ func _process(_delta: float) -> void:
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
-	slime_light.position = (slime.position + slime.sprite.position).round()
+	# Where the slime is drawn (between ticks when interpolating), so the hole stays on the sprite.
+	slime_light.position = (slime.position + slime.sprite.position + slime.drawn_shift()).round()
 	fog_material.set_shader_parameter("slime_px", slime_light.position)
 	var view_center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size * 0.5)
 	fog_material.set_shader_parameter("view_center", view_center.round())
@@ -697,7 +704,33 @@ func _lead_camera(delta: float) -> void:
 	if finished:
 		target = Vector2.ZERO
 	_look_ahead = _look_ahead.lerp(target, 1.0 - exp(-LOOK_AHEAD_SPEED * delta))
-	camera.position = _look_ahead.round()
+	if slime.is_physics_interpolated_and_enabled() != _pixel_cam:
+		_set_pixel_cam(not _pixel_cam)
+	if not _pixel_cam:
+		camera.position = _look_ahead.round()
+		return
+	# The same ease as Camera2D's smoothing (position_smoothing_speed), but the camera moves in whole
+	# pixels in step with the slime's own: the slime-to-screen offset never flickers by a pixel when
+	# the two would round differently (a 1 px twitch 20-30 times a second at 120-240 Hz).
+	var follow := slime.position + slime.drawn_shift(false) + _look_ahead.round()
+	if _cam_fresh:
+		_cam_fresh = false
+		_cam_smooth = follow
+	_cam_smooth = _cam_smooth.lerp(follow, minf(camera.position_smoothing_speed * delta, 1.0))
+	camera.global_position = follow.round() + (_cam_smooth - follow).round()
+
+
+## The pixel-locked camera (_lead_camera) is used while the slime is drawn between ticks (physics
+## interpolation, above 60 Hz: see Transition); otherwise the Camera2D follows as a child of the
+## slime with its own smoothing, exactly as without interpolation.
+func _set_pixel_cam(on: bool) -> void:
+	_pixel_cam = on
+	_cam_fresh = true
+	camera.top_level = on
+	camera.position_smoothing_enabled = not on
+	if not on:
+		camera.position = _look_ahead.round()
+		camera.reset_smoothing()
 
 
 func _shake_camera(delta: float) -> void:

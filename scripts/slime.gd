@@ -126,6 +126,11 @@ static var _heads := {}
 static var _sheet_image: Image
 var _drips: CPUParticles2D
 
+## Where the slime and its sprite were when this physics tick began: what the renderer draws them
+## between ticks from when physics interpolation is on (high refresh, see Transition), so drawn_shift
+## can tell the nodes placed by hand each frame (fog hole, light, hat, camera) where it is drawn.
+var _tick_from := Vector2.ZERO
+var _sprite_from := Vector2.ZERO
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var shadow: Sprite2D = $Shadow
 
@@ -299,6 +304,11 @@ static func dir_name(v: Vector2) -> String:
 
 
 func _ready() -> void:
+	# Moved on physics ticks, so drawn between them when interpolation is on (the scene root opts out,
+	# Transition); the camera places itself (game.gd) and never interpolates (slime.tscn).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
+	get_tree().physics_frame.connect(_mark_tick)
+	_mark_tick()
 	sprite.sprite_frames = load_sprite_frames()
 	sprite.material = Skins.make_material(Skins.get_preset(Skins.DEFAULT).color)
 	sprite.play("idle")
@@ -310,6 +320,30 @@ func _ready() -> void:
 	_drips.show_behind_parent = true
 	_drips.color = Skins.get_preset(Skins.DEFAULT).color
 	add_child(_drips)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESET_PHYSICS_INTERPOLATION and is_node_ready():
+		_mark_tick()  # a teleport: drawn where it is, not swept from where it was
+
+
+## The start of a physics tick (SceneTree.physics_frame, before any node moves): the renderer's
+## "previous" transforms for the slime and its sprite.
+func _mark_tick() -> void:
+	_tick_from = position
+	_sprite_from = sprite.position if sprite else Vector2.ZERO
+
+
+## How far from its physics position the slime is drawn this frame (its node's share and, with
+## `with_sprite`, the sprite's jump arc too): zero unless physics interpolation is on.
+func drawn_shift(with_sprite := true) -> Vector2:
+	if not is_physics_interpolated_and_enabled():
+		return Vector2.ZERO
+	var f := Engine.get_physics_interpolation_fraction()
+	var shift := _tick_from.lerp(position, f) - position
+	if with_sprite:
+		shift += _sprite_from.lerp(sprite.position, f) - sprite.position
+	return shift
 
 
 ## Jelly test: how see-through the goo body is (0 = solid).
