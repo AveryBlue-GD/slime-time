@@ -284,6 +284,29 @@ func _initialize() -> void:
 	Input.action_release("interact")
 	_check(not hub.coin_board.visible and not hub.slime.frozen, "F again closes it")
 	hub.free()
+
+	# --- Rainbow skin: the flowing text color a hidden board label is due must not land on a count
+	# that left the skin-text group for its gold (QA phase 4, finding 1).
+	for level in range(1, Levels.COUNT + 1):
+		progress.coins_found[level] = []
+		for i in Levels.COINS[level - 1]:
+			progress.coins_found[level].append("r%d" % i)
+	var kept_skin: String = progress.selected_skin
+	progress.selected_skin = Skins.RAINBOW
+	_check(progress.is_rainbow(), "every coin found: the rainbow skin is on")
+	hub = await _open()
+	for i in 10:
+		await process_frame  # the rainbow flows while the board is hidden
+	hub.open_coin_board()
+	for i in 3:
+		await process_frame
+	var gold := true
+	for row: Label in hub.board_rows:
+		gold = gold and row.get_theme_color("font_color") == UIKit.GOLD
+	_check(gold, "rainbow skin: every finished level's count on the coin board stays gold once it shows")
+	hub.close_coin_board()
+	hub.free()
+	progress.selected_skin = kept_skin
 	progress.coins_found = {}
 
 	# --- Using a station leaves for its screen

@@ -129,8 +129,14 @@ const DUE := &"skin_text_due"
 const HOOKED := &"skin_text_hooked"
 
 
+## A label that left the group meanwhile (e.g. the hub's gold coin counts) has its own color now:
+## its due color is dropped, never applied.
 static func _label_shown(label: Label) -> void:
-	if label.is_visible_in_tree() and label.has_meta(DUE):
+	if not label.has_meta(DUE):
+		return
+	if not label.is_in_group(GROUP):
+		label.remove_meta(DUE)
+	elif label.is_visible_in_tree():
 		label.add_theme_color_override("font_color", label.get_meta(DUE))
 		label.remove_meta(DUE)
 

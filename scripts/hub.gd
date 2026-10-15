@@ -751,6 +751,7 @@ func open_coin_board() -> void:
 		count.text = "%d/%d" % [found, total]
 		count.add_theme_color_override("font_color", UIKit.GOLD if found >= total else UIKit.TEXT)
 		count.remove_from_group(SkinText.GROUP)  # keep the gold for finished levels
+		count.remove_meta(SkinText.DUE)  # (a rainbow color it was due while hidden is stale now)
 		if found < total:
 			count.add_to_group(SkinText.GROUP)
 	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), maxi(Progress.coins(), 0)]
