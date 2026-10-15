@@ -209,6 +209,9 @@ var sound_on := true
 var volume := 0.8
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
 var reduce_motion := false
+## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;
+## applied at launch on a normal player launch, Platform.remembers_fullscreen). Kept by RESET PROGRESS.
+var fullscreen := false
 ## Fog brightness: FOG_DARK, FOG_NORMAL (the default look) or FOG_BRIGHT (see Game.fog_look).
 const FOG_DARK := 0
 const FOG_NORMAL := 1
@@ -254,7 +257,7 @@ var skin_override := ""
 func _ready() -> void:
 	# In a browser the save lives in the site's storage; asking for it to be kept as persistent
 	# stops the browser from evicting it when space runs low (Chrome/Edge usually just agree).
-	if OS.has_feature("web"):
+	if Platform.has_js():
 		JavaScriptBridge.eval("if (navigator.storage && navigator.storage.persist) { navigator.storage.persist(); }", true)
 	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
 	if not InputMap.has_action("interact"):
@@ -279,6 +282,8 @@ func _ready() -> void:
 		load_progress()
 	apply_bindings()
 	apply_volume()
+	if fullscreen and save_path == REAL_SAVE_PATH and Platform.remembers_fullscreen():
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)  # the player's last choice (M4)
 	if story_complete:  # first, so the other debug flags can still adjust the state it sets
 		enable_story_complete()
 	if autoplay:
@@ -439,27 +444,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## False only in a browser without the Fullscreen API for page elements (iPhone Safari): SETTINGS then
-## disables its FULLSCREEN button (it did nothing there; docs/qa-web-report.md O4). Asked once; if the
-## browser can't be asked, the button stays.
+## False where FULLSCREEN means nothing: a browser without the Fullscreen API for page elements (iPhone
+## Safari; docs/qa-web-report.md O4) and native phones (always fullscreen). SETTINGS then disables its
+## FULLSCREEN button and F11 does nothing. See Platform.has_window_fullscreen.
 static func fullscreen_available() -> bool:
-	if not OS.has_feature("web"):
-		return true
-	if _fullscreen_ok < 0:
-		var ok: Variant = JavaScriptBridge.eval("!!(document.fullscreenEnabled || document.webkitFullscreenEnabled)", true)
-		_fullscreen_ok = 0 if typeof(ok) == TYPE_BOOL and not ok else 1
-	return _fullscreen_ok == 1
-
-
-static var _fullscreen_ok := -1
+	return Platform.has_window_fullscreen()
 
 
 func is_fullscreen() -> bool:
 	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 
 
+## F11 / SETTINGS FULLSCREEN. On desktop the choice is saved ([settings] fullscreen) and applied at the next
+## launch (Platform.remembers_fullscreen).
 func toggle_fullscreen() -> void:
+	if not fullscreen_available():
+		return
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if is_fullscreen() else DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if Platform.remembers_fullscreen():
+		fullscreen = is_fullscreen()
+		save_progress()
 
 
 ## Removes this run's throwaway save when the game quits (only the autoload owns it).
@@ -647,6 +651,7 @@ func _read(file: ConfigFile) -> void:
 	hard_mode = _bool(file, "settings", "hard_mode", false)
 	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
 	fog_brightness = clampi(_int(file, "settings", "fog_brightness", fog_brightness), FOG_DARK, FOG_BRIGHT)
+	fullscreen = _bool(file, "settings", "fullscreen", false)
 	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
 	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
 	best_times = {}
@@ -981,6 +986,14 @@ func _retry_save() -> void:
 		save_progress()
 
 
+## The app is going to the background (PlatformEvents): every change is already saved the moment it happens
+## (atomically), so only a save that failed earlier (disk full, storage blocked) is still waiting; it is
+## retried now instead of on its timer, which a suspended app would never reach.
+func flush_save() -> void:
+	if save_failed:
+		save_progress()
+
+
 ## Writes `text` to `path` so the file is always either the old save or the complete new one: the
 ## text goes to `path.tmp`, is read back and compared (a short write on a full disk / quota is caught
 ## even when the OS reported success), and only then renamed over `path` (atomic on macOS, Linux and
@@ -1026,6 +1039,8 @@ func _write() -> ConfigFile:
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("settings", "reduce_motion", reduce_motion)
 	file.set_value("settings", "fog_brightness", fog_brightness)
+	if fullscreen:
+		file.set_value("settings", "fullscreen", true)
 	if heat_mods != 0:
 		file.set_value("settings", "heat_mods", heat_mods)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
@@ -2298,6 +2313,8 @@ func reset_bindings() -> void:
 	save_progress()
 
 
+## Puts the key bindings into the input map (every event of a remappable action is replaced), then the fixed
+## gamepad layout on top (Platform.PAD_BUTTONS; the left stick is PlatformEvents').
 func apply_bindings() -> void:
 	for action: String in bindings:
 		if not InputMap.has_action(action):
@@ -2307,6 +2324,7 @@ func apply_bindings() -> void:
 		var secondary: int = SECONDARY_KEYS.get(action, 0)
 		if secondary != 0 and secondary != bindings[action]:
 			InputMap.action_add_event(action, _key_event(secondary))
+	Platform.apply_pad_layout()  # the fixed gamepad layer (D4), never wiped by a key change
 
 
 static func key_name(keycode: int) -> String:

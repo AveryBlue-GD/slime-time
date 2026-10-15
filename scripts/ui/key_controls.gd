@@ -25,6 +25,8 @@ var key_buttons := {}
 var waiting_for := ""
 var reset_keys_button: Button
 var back_button: Button
+## The line under the key rows: fixed keys on a keyboard, the fixed pad layout after pad input (Platform).
+var note: Label
 
 
 func _ready() -> void:
@@ -53,8 +55,8 @@ func _ready() -> void:
 		right.focus_neighbor_left = right.get_path_to(left)
 	_refresh()
 	key_buttons.move_up.grab_focus()
-	var pause_keys := "P PAUSES" if OS.has_feature("web") else "ESC OR P PAUSES"  # browsers keep Esc for themselves
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys, UIKit.FONT, UIKit.TEXT_DIM)
+	note = UIKit.make_label(note_text(), UIKit.FONT, UIKit.TEXT_DIM)
+	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void: note.text = note_text())
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -64,6 +66,17 @@ func _ready() -> void:
 	add_child(reset_keys_button)
 	UIKit.place_bottom_row(reset_keys_button, 0)
 	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)
+
+
+## The fixed controls, for the device in use: the gamepad layout after pad input (not remappable yet), else the
+## keys that always work (browsers keep Esc in fullscreen, so there P; F11 only where fullscreen exists).
+static func note_text() -> String:
+	if Platform.using_pad():
+		return "PAD: A LEAP - X USE - START PAUSE - B BACK"
+	var pause_keys := "P PAUSES" if Platform.is_web() else "ESC OR P PAUSES"
+	if not Platform.has_window_fullscreen():
+		return "ARROWS ALWAYS MOVE - %s" % pause_keys
+	return "ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys
 
 
 func _back() -> void:
@@ -88,7 +101,18 @@ func _on_reset() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if waiting_for == "" or not (event is InputEventKey) or not event.pressed or event.echo:
+	if waiting_for == "":
+		return
+	if not (event is InputEventKey) and (event is InputEventJoypadButton or event.is_action("menu") or event.is_action("ui_cancel")) \
+			and event.is_pressed():
+		# A gamepad (or the system back button) can't give a key: it cancels the wait instead of trapping it.
+		get_viewport().set_input_as_handled()
+		var waited := waiting_for
+		waiting_for = ""
+		_refresh()
+		key_buttons[waited].grab_focus()
+		return
+	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	get_viewport().set_input_as_handled()
 	var key := event as InputEventKey

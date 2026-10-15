@@ -21,7 +21,7 @@ static var _bytes := 0
 
 ## Appends "<ms> <event> | <state> | <extra>" if dev mode is on. `game` (a Game node) may be null.
 static func log_event(tree: SceneTree, event: String, game: Node = null, extra := "") -> void:
-	if OS.has_feature("web") or tree == null:
+	if Platform.has_js() or tree == null:
 		return
 	var progress := tree.root.get_node_or_null("Progress")
 	if progress == null or not progress.dev_tools:

@@ -77,7 +77,7 @@ var _status := "AUTOPLAY"
 
 ## True when this launch asked for the autoplay (never on the web build).
 static func requested(args: PackedStringArray) -> bool:
-	if OS.has_feature("web"):
+	if Platform.has_js():
 		return false
 	return FLAG in args or CINEMATICS_FLAG in args
 

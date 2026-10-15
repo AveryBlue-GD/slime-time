@@ -2215,6 +2215,17 @@ func _leaving() -> bool:
 	return transition != null and transition.busy
 
 
+## The app lost focus or went to the background (PlatformEvents): a run in progress opens its pause menu, so
+## the run clock and the RACE countdown stop (they only tick while the tree runs) and coming back waits for
+## RESUME. Nothing happens over a result, a menu already open or a screen change. True if it paused.
+func pause_for_background() -> bool:
+	if not _is_running_scene() or _leaving() or finished or get_tree().paused:
+		return false
+	pause_menu.open()
+	DevLog.log_event(get_tree(), "pause (app in the background)", self)
+	return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _is_running_scene() or _leaving():
 		return

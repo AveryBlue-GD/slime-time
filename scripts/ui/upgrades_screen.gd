@@ -39,8 +39,11 @@ const MINUS_X := 226
 const PLUS_X := 246
 const COST_X := 266
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
-## The ABILITIES page's hint: its keys (read from the bindings) and where they work (randomizer mazes and Descent only).
+## The ABILITIES page's hint: its keys (read from the bindings; the pad buttons after pad input, the on-screen
+## buttons on touch) and where they work (randomizer mazes and Descent only). See ability_hint.
 const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES + DESCENT"
+const ABILITIES_HINT_PAD := "PAD %s %s %s - RANDOM MAZES + DESCENT"
+const ABILITIES_HINT_TOUCH := "TAP THEIR BUTTONS - RANDOM MAZES + DESCENT"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
 ## Presses of a buy closer together than this are ignored (a double tap). Timed on the engine's
 ## clock (a SceneTreeTimer), so it plays out the same in fixed-fps runs on a loaded machine.
@@ -485,12 +488,22 @@ func _refresh() -> void:
 	if rows.has("slime"):  # the name sits over the tag while it shows, else on the row's middle
 		rows.slime.name.position.y = rows.slime.y + (1 if recommended.visible else 6)
 	if page == "abilities":
-		var keys := []
-		for id in Abilities.ids():
-			keys.append(Progress.key_name(Progress.bindings.get(Abilities.action(id), 0)))
-		hint.text = ABILITIES_HINT % keys if abilities_open else TICKETS_LOCKED
+		hint.text = ability_hint() if abilities_open else TICKETS_LOCKED
 	else:
 		hint.text = (TICKETS_HINT if open else TICKETS_LOCKED) if tickets else COINS_HINT
+
+
+## The ABILITIES hint for the device in use (Platform.last_input): keys, pad buttons or the touch buttons.
+static func ability_hint() -> String:
+	var keys := []
+	for id in Abilities.ids():
+		var action := Abilities.action(id)
+		keys.append(Platform.prompt_for(action, Progress.key_name(Progress.bindings.get(action, 0))))
+	if Platform.using_pad():
+		return ABILITIES_HINT_PAD % keys
+	if UIKit.touch_active() or Platform.is_mobile_native():
+		return ABILITIES_HINT_TOUCH
+	return ABILITIES_HINT % keys
 
 
 func _color_pips(pips: Array, level: int, skin: Color) -> void:
@@ -514,3 +527,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
 		_leave()
+	elif (event.is_action_pressed("tab_next") or event.is_action_pressed("tab_prev")) and (confirm == null or not confirm.visible):
+		var tabs := _tab_pages()  # LB / RB on a gamepad: the previous / next tab
+		if tabs.size() > 1:
+			var step := 1 if event.is_action_pressed("tab_next") else -1
+			show_page(tabs[(tabs.find(page) + step + tabs.size()) % tabs.size()])
+			get_viewport().set_input_as_handled()
+
+
+## The tabs shown, left to right (page names).
+func _tab_pages() -> Array[String]:
+	var out: Array[String] = []
+	for pair: Array in [[coins_tab, "coins"], [abilities_tab, "abilities"], [tickets_tab, "tickets"]]:
+		if pair[0] != null:
+			out.append(pair[1])
+	return out

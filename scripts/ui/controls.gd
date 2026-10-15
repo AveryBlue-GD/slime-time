@@ -192,7 +192,7 @@ func _open_codes() -> void:
 ## `clipboard-read` permission) the browser refuses, and a phone has no Ctrl+V, so then the browser's
 ## own prompt asks for the code: its text field takes a long-press paste (web QA pass).
 func _paste_code() -> void:
-	if not OS.has_feature("web"):
+	if not Platform.has_js():
 		_set_pasted(DisplayServer.clipboard_get())
 		return
 	var clipboard = JavaScriptBridge.get_interface("navigator").clipboard
@@ -227,7 +227,7 @@ func _set_pasted(text: String) -> void:
 ## In the browser, text pasted into the page (Ctrl+V, or paste from a phone's menu) goes straight
 ## into the load box while the SAVE CODE panel is open.
 func _listen_for_web_paste() -> void:
-	if not OS.has_feature("web") or _web_paste_event != null:
+	if not Platform.has_js() or _web_paste_event != null:
 		return
 	_web_paste_event = JavaScriptBridge.create_callback(func(args: Array) -> void:
 		if not code_panel.visible:
@@ -271,7 +271,7 @@ func _refocus_panel() -> void:
 
 func _copy_code() -> void:
 	code_out.select_all()
-	if OS.has_feature("web"):
+	if Platform.has_js():
 		_web_copy(code_out.text)
 		return
 	DisplayServer.clipboard_set(code_out.text)

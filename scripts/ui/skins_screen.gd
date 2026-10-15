@@ -377,3 +377,7 @@ func _refresh_hats(focus_id := "") -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
 		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+	elif event.is_action_pressed("tab_next") or event.is_action_pressed("tab_prev"):
+		var step := 1 if event.is_action_pressed("tab_next") else -1  # LB / RB: the previous / next page
+		show_page(PAGES[(PAGES.find(page) + step + PAGES.size()) % PAGES.size()])
+		get_viewport().set_input_as_handled()

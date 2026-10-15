@@ -34,7 +34,7 @@ func _ready() -> void:
 ## one plays an inaudible blip so the audio output starts on that gesture, not on the first
 ## real sound (which could then be swallowed).
 func _input(event: InputEvent) -> void:
-	if _unlocked or not OS.has_feature("web"):
+	if _unlocked or not Platform.has_js():
 		return
 	if (event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventKey) and event.is_pressed():
 		_unlocked = true

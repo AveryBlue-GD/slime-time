@@ -17,11 +17,15 @@ extends Control
 ## by pressing its tile. Buying asks once (BUY GOLD TRAIL? 30 [ticket]  BUY / BACK, focus on BACK).
 ## Focus stays inside (the confirm, when open, locks it); Esc / B close the confirm first, then the
 ## overlay (the hub does that, via `back`). The hub opens and closes it and passes on the spin key.
+## On a touchscreen there is no key to close it, so a BACK button shows in the header (mirroring the SHOP
+## tab, `show_close`); a tap anywhere else never spins (the hub's JUMP mapping is off while it's open).
 
 signal landed(hat_id: String)
 ## The SPIN button started a spin, something was bought in the SHOP (a hat or cosmetic id), or a
 ## cosmetic was worn / taken off ("" for a spin).
 signal changed(id: String)
+## The touch BACK button was pressed (the hub closes the overlay).
+signal close_requested
 
 const PANEL := Rect2(8, 4, 304, 172)
 const CENTER := Vector2(160, 88)
@@ -113,6 +117,8 @@ var _confirm_id := ""
 var _blocker: ColorRect
 var _confirm_lock := {}
 var _spin_key := "F"
+## Touch only: BACK in the header (hidden otherwise; see show_close).
+var close_button: Button
 
 
 func _ready() -> void:
@@ -136,6 +142,10 @@ func _ready() -> void:
 	shop_tab = UIKit.make_button("SHOP", func() -> void: show_tab("shop"), Vector2(44, UIKit.TAB_H))
 	shop_tab.position = Vector2(PANEL.position.x + HEADER_INSET + 44 + 2, HEADER_Y)
 	add_child(shop_tab)
+	close_button = UIKit.make_button("BACK", func() -> void: close_requested.emit(), Vector2(44, UIKit.TAB_H))
+	close_button.position = Vector2(320 - shop_tab.position.x - 44, HEADER_Y)  # the SHOP tab's mirror
+	close_button.visible = false
+	add_child(close_button)
 
 	wheel_page = _page()
 	result = _label("", UIKit.TEXT, 146, wheel_page)
@@ -233,6 +243,19 @@ func show_tab(which: String, focus := true) -> void:
 	queue_redraw()
 
 
+## The key named in the WHEEL's "TO SPIN" hint changed (the player switched between keys, pad and touch):
+## only the hint text is redone (nothing is rebuilt, so the focus stays where it is).
+func set_spin_key(spin_key: String) -> void:
+	_spin_key = spin_key
+	if tab == "wheel" and not spinning:
+		_refresh_wheel()
+
+
+## Shows the header's BACK (touch: there is no Esc / B to close the overlay).
+func show_close(on: bool) -> void:
+	close_button.visible = on
+
+
 ## Fills the overlay for the state of play. `opening`: the hub just opened it (WHEEL first, or the
 ## SHOP when every hat is already won; focus inside). Right after a win the won hat stays where it
 ## landed, lit up under the pointer, until the next spin takes it off.
@@ -268,7 +291,8 @@ func _refresh_wheel() -> void:
 	elif not can:
 		result.text = "NEED %d TICKETS TO SPIN" % cost
 	else:
-		result.text = "%d HAT%s TO WIN - %s TO SPIN" % [hats.size(), "" if hats.size() == 1 else "S", _spin_key]
+		result.text = "%d HAT%s TO WIN" % [hats.size(), "" if hats.size() == 1 else "S"] \
+			+ ("" if _spin_key == "" else " - %s TO SPIN" % _spin_key)  # (touch: no key, the SPIN button)
 	_show_try_on(_won if not spinning else "")  # the hat you just won, on you
 	spin_button.disabled = not can
 	if Progress.hats_left().is_empty():
@@ -283,7 +307,7 @@ func _refresh_wheel() -> void:
 	# A disabled button never takes the keyboard (arrows skip it): the tabs while the wheel turns, SPIN
 	# when it can't spin (mid-spin it keeps the focus it has).
 	spin_button.focus_mode = Control.FOCUS_ALL if can or spinning else Control.FOCUS_NONE
-	for button: Button in [wheel_tab, shop_tab]:
+	for button: Button in [wheel_tab, shop_tab, close_button]:
 		button.disabled = spinning
 		button.focus_mode = Control.FOCUS_NONE if spinning else Control.FOCUS_ALL
 

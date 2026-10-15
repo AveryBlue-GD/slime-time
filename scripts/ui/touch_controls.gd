@@ -12,9 +12,12 @@ extends CanvasLayer
 ##   off to cancel). With buttons shown JUMP catches the right strip x >= JUMP_ZONE_X (not the whole
 ##   right half), and a DEAD_RING gap between that zone and the buttons does nothing, so a thumb that
 ##   misses JUMP still leaps (or does nothing) and never fires an ability.
-## Shown on touchscreens (or with the --touch debug flag); hidden again when a keyboard is used.
+## Shown on touchscreens (Platform.has_touch: also the --touch debug flag); hidden again when a keyboard or a
+## gamepad is used.
 
 const SCREEN := Vector2(320, 180)
+## Every TouchControls is in this group (PlatformEvents lets go of their held inputs when the app goes away).
+const GROUP := "touch_controls"
 const JOY_RADIUS := 20.0
 const KNOB_RADIUS := 8.0
 ## Joystick dead zone, as a share of its radius.
@@ -66,29 +69,32 @@ var _canvas: Control
 
 func _ready() -> void:
 	layer = 15
+	add_to_group(GROUP)
 	_canvas = Control.new()
 	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_canvas.draw.connect(_draw_controls)
 	add_child(_canvas)
-	var progress := get_node_or_null("/root/Progress")
-	visible = DisplayServer.is_touchscreen_available() or (progress != null and progress.force_touch)
+	visible = Platform.has_touch()
 
 
-## True while a hub panel with buttons is open: touches pass through to it.
+## True while a hub panel with buttons is open: touches pass through to it, and the joystick and JUMP are not
+## drawn over it (they do nothing meanwhile).
 var menu_open := false:
 	set(value):
 		menu_open = value
 		if value:
 			_release_all()  # a finger still down when the panel opens must not stick
+		if _canvas:
+			_canvas.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
 	if menu_open:
 		return
-	if event is InputEventKey and event.pressed and visible:
+	if (event is InputEventKey or event is InputEventJoypadButton) and event.pressed and visible:
 		_release_all()
-		visible = false  # someone is using a keyboard
+		visible = false  # someone is using a keyboard or a gamepad
 		return
 	if event is InputEventScreenTouch:
 		visible = true
@@ -236,6 +242,11 @@ func _release_pause() -> void:
 	Input.parse_input_event(release)
 
 
+## Lets go of everything these controls hold (PlatformEvents: the app lost focus or went to the background).
+func release_all() -> void:
+	_release_all()
+
+
 func _release_all() -> void:
 	_release_pause()
 	_joy_touch = -1
@@ -251,6 +262,8 @@ func _release_all() -> void:
 
 
 func _draw_controls() -> void:
+	if menu_open:
+		return  # (a hub panel is open: its buttons take the taps)
 	var color := _skin_color()
 	var dim := Color(UIKit.BG, 0.45)
 	# Joystick: base ring + knob.

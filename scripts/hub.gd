@@ -216,12 +216,12 @@ func _build_room() -> void:
 
 
 func _build_stations() -> void:
-	var web := OS.has_feature("web") or "--web-ui" in Progress.user_args()
+	var can_quit := Platform.can_quit()  # (desktop only: not the web, iOS or Android)
 	# Clockwise round the room from the back.
 	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 4)  # torches flickering
 	_add_station("maps", "MAP TABLE", "maptable", Vector2i(30, 36), 4)  # lantern flickering
 	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
-	if not web:
+	if can_quit:
 		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
 	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
 	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
@@ -394,7 +394,11 @@ func _build_ui() -> void:
 	hat_wheel.landed.connect(func(_id: String) -> void:
 		_put_on_hat()
 		_refresh_tickets()
-		hat_wheel.refresh(_use_key()))
+		hat_wheel.refresh(_spin_key()))
+	hat_wheel.close_requested.connect(func() -> void:
+		if hat_wheel.visible and not hat_wheel.spinning:
+			_sfx("click", 0.8)
+			close_hat_wheel())
 	hat_wheel.changed.connect(func(id: String) -> void:
 		if id == "":
 			_spin_room_wheel()  # the SPIN button started a spin
@@ -405,6 +409,9 @@ func _build_ui() -> void:
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
+	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
+		if hat_wheel.visible:
+			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
 
 
 ## Once after the upgrades v2 migration gave coins back (Progress.take_tree_refund_notice, which
@@ -656,7 +663,7 @@ func open_coin_board() -> void:
 			count.add_to_group(SkinText.GROUP)
 	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), maxi(Progress.coins(), 0)]
 	var touch := _touch_controls != null and _touch_controls.visible
-	board_hint.text = "TAP JUMP TO CLOSE" if touch else "%s TO CLOSE" % Progress.key_name(Progress.bindings.interact)
+	board_hint.text = "TAP JUMP TO CLOSE" if touch else "%s TO CLOSE" % Platform.prompt_for("ui_cancel", Progress.key_name(Progress.bindings.interact))
 	coin_board.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -672,22 +679,37 @@ func close_coin_board() -> void:
 	_show_prompt()
 
 
-## The key that uses things here, as shown in hints (TAP JUMP on a touchscreen).
+## The key that uses things here, as shown in hints (TAP JUMP on a touchscreen, X on a gamepad).
 func _use_key() -> String:
-	var touch := _touch_controls != null and _touch_controls.visible
-	return "TAP JUMP" if touch else Progress.key_name(Progress.bindings.interact)
+	return "TAP JUMP" if _touch() else Platform.prompt_for("interact", Progress.key_name(Progress.bindings.interact))
 
 
-## Opens the prize wheel's overlay (WHEEL | SHOP, see HatWheel), focus inside it.
+## True while the touch controls are in use here.
+func _touch() -> bool:
+	return _touch_controls != null and _touch_controls.visible
+
+
+## The hat wheel's spin key for its hint: none on touch (the SPIN button; a tap elsewhere never spins).
+func _spin_key() -> String:
+	return "" if _touch() else _use_key()
+
+
+## Opens the prize wheel's overlay (WHEEL | SHOP, see HatWheel), focus inside it. On touch, the touch controls
+## stand down (no tap is a JUMP, so none can spin) and the overlay shows its BACK button.
 func open_hat_wheel() -> void:
 	hat_wheel.visible = true
-	hat_wheel.refresh(_use_key(), true)
+	hat_wheel.show_close(_touch() or UIKit.touch_active())
+	hat_wheel.refresh(_spin_key(), true)
 	prompt.visible = false
 	ticket_pod.visible = false  # (the overlay shows the balance itself)
 	slime.frozen = true
+	if _touch_controls != null:
+		_touch_controls.menu_open = true
 
 
 func close_hat_wheel() -> void:
+	if _touch_controls != null:
+		_touch_controls.menu_open = false
 	hat_wheel.close_confirm()
 	hat_wheel.visible = false
 	get_viewport().gui_release_focus()  # (no hidden button keeps the keyboard)
@@ -716,14 +738,17 @@ func _physics_process(delta: float) -> void:
 			close_portal_menu()
 		return
 	if hat_wheel.visible:
-		var touch := _touch_controls != null and _touch_controls.visible
-		var pressed := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
+		# Only the interact key (F / X) or the SPIN button spins: never JUMP, which a touchscreen presses for any
+		# tap on the right half (a paid spin by accident, audit H4).
+		var pressed := Input.is_action_just_pressed("interact")
 		if hat_wheel.spinning:
 			return
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)
 			if not hat_wheel.back():  # Esc / B: the buy confirm first, then the overlay
 				close_hat_wheel()
+		elif (Input.is_action_just_pressed("tab_next") or Input.is_action_just_pressed("tab_prev")) and not hat_wheel.confirm.visible:
+			hat_wheel.show_tab("shop" if hat_wheel.tab == "wheel" else "wheel")  # LB / RB: WHEEL <-> SHOP
 		elif pressed and hat_wheel.tab == "wheel" and not hat_wheel.confirm.visible:
 			if hat_wheel.spin():
 				_spin_room_wheel()
@@ -733,7 +758,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if coin_board.visible:
 		var touch := _touch_controls != null and _touch_controls.visible
-		if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("menu") or (touch and Input.is_action_just_pressed("jump")):
+		if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel") \
+				or (touch and Input.is_action_just_pressed("jump")):
 			close_coin_board()
 		return
 	if Input.is_action_just_pressed("menu") and not slime.frozen:
