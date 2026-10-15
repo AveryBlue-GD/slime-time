@@ -61,7 +61,7 @@ func _ready() -> void:
 	var fresh: bool = Progress.is_fresh_save()
 	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
 	enter_button = UIKit.make_button("PLAY" if fresh else "ENTER THE HUB", _play if fresh else _enter, Vector2(176, 25))
-	enter_button.add_theme_font_size_override("font_size", 16)
+	enter_button.add_theme_font_size_override("font_size", UIKit.FONT_BIG)
 	UIKit.use_big_font(enter_button, 16)
 	enter_button.position = Vector2(72, 84)
 	add_child(enter_button)
@@ -71,7 +71,7 @@ func _ready() -> void:
 	add_child(story_button)
 	UIKit.place_bottom_row(story_button, -1)
 
-	var tagline := UIKit.make_label(TAGLINE, 16, UIKit.TEXT_DIM)  # big, filling the bottom
+	var tagline := UIKit.make_label(TAGLINE, UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING * 2)
 	add_child(tagline)

@@ -62,8 +62,8 @@ func _ready() -> void:
 	grid = GridContainer.new()
 	grid.columns = 2
 	grid.position = GRID_POS
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
+	grid.add_theme_constant_override("h_separation", UIKit.GAP_XS)
+	grid.add_theme_constant_override("v_separation", UIKit.GAP_XS)
 	add_child(grid)
 	back_button = UIKit.add_back_button(self)
 	# The bottom bar's line: centered on the screen (48..271, like the map view's), on BACK's baseline.
@@ -120,8 +120,8 @@ func _make_tile(level: int) -> Button:
 	button.add_child(name_label)
 	var percent := 0 if locked else roundi(Survey.completeness(survey, maze) * 100.0)
 	button.set_meta("percent", percent)
-	var percent_label := UIKit.make_label("%d%%" % percent, 8, UIKit.TEXT_OFF if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
-	percent_label.position = Vector2(43, 14)
+	var percent_label := UIKit.make_label("%d%%" % percent, UIKit.FONT, UIKit.TEXT_OFF if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
+	percent_label.position = Vector2(43, 3 + UIKit.DENSE_PITCH)  # the dense two-line pitch
 	button.add_child(percent_label)
 	var route := 0
 	if not locked and not (survey.moves as PackedByteArray).is_empty():
@@ -166,7 +166,7 @@ func _build_view() -> void:
 	view_area.size = Vector2(MAP_AREA.size)
 	view_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view_root.add_child(view_area)
-	view_title = UIKit.make_label("", 8, UIKit.GOLD)
+	view_title = UIKit.make_label("", UIKit.FONT, UIKit.GOLD)
 	view_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	view_title.position = Vector2(0, 3)
 	view_title.size = Vector2(320, 10)
@@ -174,7 +174,7 @@ func _build_view() -> void:
 	view_map = TextureRect.new()
 	view_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view_root.add_child(view_map)
-	view_line = UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	view_line = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	view_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	view_root.add_child(view_line)
 	view_line.position = Vector2(48, UIKit.BOTTOM_ROW_Y + 3)

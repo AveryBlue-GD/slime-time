@@ -32,7 +32,7 @@ const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
 const FLAME_POS := Vector2(5, 5)
 const INFO_NORMAL := "CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN"
 const INFO_HARD := "HEAT UP LEVELS BEATEN ON HARD\nHEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-const HEAT_BUTTON_SIZE := Vector2(52, 13)
+const HEAT_BUTTON_SIZE := Vector2(52, UIKit.BUTTON_H)
 
 
 func _ready() -> void:
@@ -48,7 +48,7 @@ func _ready() -> void:
 	level_buttons[Progress.current_level - 1].grab_focus()
 
 	UIKit.add_panel(self, INFO_RECT)  # wide enough that the checkbox text clears the goo
-	info = UIKit.make_label(INFO_HARD if Progress.hard_mode else INFO_NORMAL, 8, UIKit.TEXT_DIM)
+	info = UIKit.make_label(INFO_HARD if Progress.hard_mode else INFO_NORMAL, UIKit.FONT, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -111,7 +111,7 @@ func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
 	var locked := level > Progress.highest_unlocked
 	button.disabled = locked
-	var number := UIKit.make_label(str(level), 16, LOCKED_NUMBER if locked else UIKit.TEXT)
+	var number := UIKit.make_label(str(level), UIKit.FONT_BIG, LOCKED_NUMBER if locked else UIKit.TEXT)
 	number.name = "Number"
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# The 16 px font's line box is exactly its 14 px letter body (see CLAUDE.md), so the digits

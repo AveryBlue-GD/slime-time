@@ -39,10 +39,10 @@ func _ready() -> void:
 		add_child(rows)
 		for action: String in COLUMNS[c]:
 			var label := UIKit.make_label(ACTION_NAMES[action])
-			label.custom_minimum_size = Vector2(LABEL_WIDTH, 13)
+			label.custom_minimum_size = Vector2(LABEL_WIDTH, UIKit.BUTTON_H)
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			rows.add_child(label)
-			var button := UIKit.make_button("", func() -> void: _start_rebind(action), Vector2(KEY_WIDTH, 13))
+			var button := UIKit.make_button("", func() -> void: _start_rebind(action), Vector2(KEY_WIDTH, UIKit.BUTTON_H))
 			rows.add_child(button)
 			key_buttons[action] = button
 	# Arrows move between the columns too (a GridContainer per column has no neighbors across).
@@ -54,13 +54,13 @@ func _ready() -> void:
 	_refresh()
 	key_buttons.move_up.grab_focus()
 	var pause_keys := "P PAUSES" if OS.has_feature("web") else "ESC OR P PAUSES"  # browsers keep Esc for themselves
-	var note := UIKit.make_label("ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys, 8, UIKit.TEXT_DIM)
+	var note := UIKit.make_label("ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys, UIKit.FONT, UIKit.TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(note)
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	note.offset_top = 140
 	note.offset_bottom = 150
-	reset_keys_button = UIKit.make_button("RESET KEYS", _on_reset, Vector2(98, 13))
+	reset_keys_button = UIKit.make_button("RESET KEYS", _on_reset, Vector2(98, UIKit.BUTTON_H))
 	add_child(reset_keys_button)
 	UIKit.place_bottom_row(reset_keys_button, 0)
 	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)

@@ -3,8 +3,10 @@
 Status: **final** (Phase 3 spring cleaning, 2026-10-16). Derived from the audit
 ([spring-cleaning/phase3-ui-audit.md](spring-cleaning/phase3-ui-audit.md)) and applied in the fix pass
 ([spring-cleaning/phase3-ui.md](spring-cleaning/phase3-ui.md)). The numbers live in `scripts/ui/ui_kit.gd` as named
-constants (`UIKit.EDGE`, `UIKit.BOTTOM_ROW_Y`, ...); screens use them, not literals. `tests/test_ui_layout.gd` and
-`tests/test_ui_touch.gd` check the rules on every screen they cover.
+constants (`UIKit.EDGE`, `UIKit.BOTTOM_ROW_Y`, ...); the screens in `scripts/ui/` use them, not literals (button and
+tab heights, gaps, font sizes, the title line). `UIKit.POD_H2` and `UIKit.TOUCH_MIN` are rule values that only the tests
+read. Not yet migrated: font sizes and gaps in `hub.gd` and the pod code of `hud.gd` (same values). `tests/test_ui_layout.gd`
+and `tests/test_ui_touch.gd` check the rules on every screen they cover.
 
 All values are base pixels at 320x180. Coordinates are top-left; spans like `x..y` are inclusive. "Ink" means the
 pixels actually drawn (text letters, icon pixels), measured from rendered frames, not from control rects.

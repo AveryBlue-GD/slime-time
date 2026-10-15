@@ -44,7 +44,7 @@ func _ready() -> void:
 	dim.color = Color(UIKit.BG, 0.75)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
-	var title := UIKit.make_label("PAUSED", 16, UIKit.GOLD)
+	var title := UIKit.make_label("PAUSED", UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
 	title.size = Vector2(320, 20)
@@ -73,17 +73,17 @@ func _ready() -> void:
 	seed_button.visible = false
 	menu.add_child(seed_button)
 	seed_edit = LineEdit.new()
-	seed_edit.custom_minimum_size = Vector2(100, 13)
+	seed_edit.custom_minimum_size = Vector2(100, UIKit.BUTTON_H)
 	seed_edit.max_length = 13
 	seed_edit.placeholder_text = "NEW SEED"
-	seed_edit.add_theme_font_size_override("font_size", 8)
+	seed_edit.add_theme_font_size_override("font_size", UIKit.FONT)
 	seed_edit.material = UIKit.text_material()
 	UIKit.add_touch_target(seed_edit)
 	seed_edit.visible = false
 	seed_edit.text_submitted.connect(_submit_seed)
 	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
 	menu.add_child(seed_edit)
-	descent_note = UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	descent_note = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	descent_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	descent_note.position = Vector2(0, 150)
 	descent_note.size = Vector2(320, 10)
@@ -101,9 +101,9 @@ func _build_dev_panel(root: Control) -> void:
 	var column := VBoxContainer.new()
 	column.position = dev_panel.position + Vector2(6, 5)
 	column.custom_minimum_size = Vector2(76, 0)
-	column.add_theme_constant_override("separation", 3)
+	column.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(column)
-	var title := UIKit.make_label("DEV (F1 / F2)", 8, UIKit.TEXT_DIM)
+	var title := UIKit.make_label("DEV (F1 / F2)", UIKit.FONT, UIKit.TEXT_DIM)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 	bright_button = UIKit.make_button("", func() -> void: _dev_toggle("set_dev_bright", "dev_bright"))

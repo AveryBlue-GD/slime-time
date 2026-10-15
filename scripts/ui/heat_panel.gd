@@ -46,7 +46,7 @@ func _ready() -> void:
 
 	title_flame = Heat.make_rect(Heat.flame(0))
 	add_child(title_flame)
-	title = UIKit.make_label("", 8, UIKit.GOLD)
+	title = UIKit.make_label("", UIKit.FONT, UIKit.GOLD)
 	add_child(title)
 	title.position = Vector2(RECT.position.x, RECT.position.y + UIKit.PANEL_PAD)
 
@@ -58,14 +58,14 @@ func _ready() -> void:
 		add_child(button)
 		toggles[id] = button
 
-	about = UIKit.make_label(DEFAULT_ABOUT, 8, UIKit.TEXT_DIM)
+	about = UIKit.make_label(DEFAULT_ABOUT, UIKit.FONT, UIKit.TEXT_DIM)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	about.clip_text = true  # (keeps the label at the panel's width: the text centers on the panel)
 	about.position = Vector2(RECT.position.x, ABOUT_Y)
 	about.size = Vector2(RECT.size.x, 9)
 	add_child(about)
 
-	done_button = UIKit.make_button("DONE", close, Vector2(50, 13))
+	done_button = UIKit.make_button("DONE", close, Vector2(50, UIKit.BUTTON_H))
 	done_button.position = Vector2(roundf(RECT.get_center().x - 25.0), DONE_Y)
 	done_button.focus_entered.connect(func() -> void: about.text = DEFAULT_ABOUT)
 	add_child(done_button)
@@ -84,7 +84,7 @@ func _make_toggle(id: String) -> Button:
 	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
 	icon.position = Vector2(5, 8) + (cell * ICON_SCALE / 2.0).floor()
 	button.add_child(icon)
-	var name_label := UIKit.make_label(Heat.NAMES[id], 8, UIKit.TEXT)
+	var name_label := UIKit.make_label(Heat.NAMES[id], UIKit.FONT, UIKit.TEXT)
 	name_label.name = "Name"
 	name_label.position = Vector2(26, 7)
 	button.add_child(name_label)
@@ -92,7 +92,7 @@ func _make_toggle(id: String) -> Button:
 	flame.name = "Flame"
 	flame.position = Vector2(26, 19)
 	button.add_child(flame)
-	var points := UIKit.make_label("+%d" % Heat.heat_of(id), 8, HEAT_TINT)
+	var points := UIKit.make_label("+%d" % Heat.heat_of(id), UIKit.FONT, HEAT_TINT)
 	points.name = "Points"
 	points.position = Vector2(35, 20)
 	button.add_child(points)

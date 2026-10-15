@@ -45,9 +45,9 @@ const GAP_L := 8   # result choice row, columns, panel side insets
 const GAP_XL := 12  # paired confirm buttons, text line pitch
 ## Component sizes.
 const BUTTON_H := 13
-const BACK_SIZE := Vector2(40, 13)
-const CHOICE_SIZE := Vector2(84, 13)  # the result / summary choice row...
-const CHOICE_GAP := 8                 # ...its gap...
+const BACK_SIZE := Vector2(40, BUTTON_H)
+const CHOICE_SIZE := Vector2(84, BUTTON_H)  # the result / summary choice row...
+const CHOICE_GAP := GAP_L             # ...its gap...
 const CHOICE_Y := 153                 # ...and its top (also the Descent card's buttons)
 const TAB_H := 13
 ## HUD and hub pods: one line (an 8 px icon sets it) and two lines.
@@ -74,7 +74,7 @@ static var _drip_scene := -1
 
 static func make_theme() -> Theme:
 	var theme := Theme.new()
-	theme.default_font_size = 8
+	theme.default_font_size = FONT
 	# Beveled nine-slice buttons: hovering lifts the text 1 px, pressing pushes it down 1 px.
 	theme.set_stylebox("normal", "Button", button_style("normal"))
 	theme.set_stylebox("hover", "Button", button_style("hover"))
@@ -182,7 +182,7 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel := add_panel(parent, Rect2(86, 60, 148, 58))
 	panel.visible = false
-	var label := make_label("", 8, TEXT)
+	var label := make_label("", FONT, TEXT)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.position = Vector2(0, 8)
 	label.size = Vector2(148, 10)
@@ -194,14 +194,14 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	row.position = Vector2(0, 20)
 	row.size = Vector2(148, 10)
 	panel.add_child(row)
-	var price := make_label("", 8, price_tint)
+	var price := make_label("", FONT, price_tint)
 	row.add_child(price)
 	row.add_child(make_icon("ticket", Color.WHITE))
-	var buy := make_button("BUY", on_buy, Vector2(48, 13))
+	var buy := make_button("BUY", on_buy, Vector2(48, BUTTON_H))
 	buy.position = Vector2(20, 36)
 	panel.add_child(buy)
-	var back := make_button("BACK", on_back, Vector2(48, 13))
-	back.position = Vector2(80, 36)
+	var back := make_button("BACK", on_back, Vector2(48, BUTTON_H))
+	back.position = Vector2(buy.position.x + 48 + GAP_XL, 36)
 	panel.add_child(back)
 	return {blocker = blocker, panel = panel, label = label, price = price, buy = buy, back = back}
 
@@ -248,12 +248,12 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(MenuBackdrop.new())
 	if title != "":
-		var label := make_label(title, 16, GOLD)
+		var label := make_label(title, FONT_BIG, GOLD)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		root.add_child(label)
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-		label.offset_top = 2
-		label.offset_bottom = 22
+		label.offset_top = TITLE_Y
+		label.offset_bottom = TITLE_Y + 20
 		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 2)
@@ -268,7 +268,7 @@ static func add_skin_text(root: Control) -> SkinText:
 	return skin_text
 
 
-static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
+static func make_label(text: String, font_size := FONT, color := TEXT) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", font_size)
@@ -287,7 +287,7 @@ static func make_label(text: String, font_size := 8, color := TEXT) -> Label:
 ## 16 px text uses the 2x font, whose letter gaps are split evenly so centered titles sit exactly
 ## on center (the 8 px font, scaled up, would put them a pixel right).
 static func use_big_font(control: Control, font_size: int) -> void:
-	if font_size == 16:
+	if font_size == FONT_BIG:
 		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))
 
 
@@ -437,7 +437,7 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	var row := HBoxContainer.new()
 	box.add_child(row)
 	row.add_theme_constant_override("separation", 6)
-	var label := make_label("VOLUME", 8, TEXT_DIM)
+	var label := make_label("VOLUME", FONT, TEXT_DIM)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var slider := HSlider.new()

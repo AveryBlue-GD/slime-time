@@ -7,7 +7,7 @@ var buttons: Array[Button] = []
 
 func _ready() -> void:
 	UIKit.setup_screen(self, "YOU ESCAPED!")
-	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: %s (ANY COLOR YOU LIKE)" % [Levels.COUNT, Skins.CUSTOM_NAME], 8, UIKit.TEXT)
+	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: %s (ANY COLOR YOU LIKE)" % [Levels.COUNT, Skins.CUSTOM_NAME], UIKit.FONT, UIKit.TEXT)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(lines)
 	lines.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -34,7 +34,7 @@ func _ready() -> void:
 	var menu := VBoxContainer.new()
 	menu.position = Vector2(100, 112)
 	menu.custom_minimum_size = Vector2(120, 0)
-	menu.add_theme_constant_override("separation", 3)
+	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	add_child(menu)
 	buttons = [
 		UIKit.make_button("PICK YOUR COLOR", func() -> void: _choose_custom()),

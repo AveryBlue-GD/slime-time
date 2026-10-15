@@ -24,7 +24,7 @@ func _ready() -> void:
 	root.add_child(dim)
 	# Three 13 px buttons 3 apart, PANEL_PAD above and below (like the pause menu).
 	UIKit.add_panel(root, Rect2(100, 60 - UIKit.PANEL_PAD, 120, UIKit.PANEL_PAD * 2 + 3 * UIKit.BUTTON_H + 2 * UIKit.GAP_S))
-	var title := UIKit.make_label("RESTART?", 16, UIKit.GOLD)
+	var title := UIKit.make_label("RESTART?", UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
 	title.size = Vector2(320, 20)

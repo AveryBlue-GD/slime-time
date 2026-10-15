@@ -20,7 +20,7 @@ const TILE_XS: Array[float] = [10.0, 112.0, 214.0]
 ## The buttons: 13 px tall on the result rows' line (UIKit.CHOICE_Y); the card's two take the tile
 ## width (one under each outer tile), the summary's two are the standard choice row.
 const BUTTON_Y := float(UIKit.CHOICE_Y)
-const BUTTON := Vector2(96, 13)
+const BUTTON := Vector2(96, UIKit.BUTTON_H)
 ## The boon tiles' content (icon, name, two lines, HAVE n): its top row, and lower when no tile in
 ## the row has a HAVE line (then the three lines sit centered in the tile).
 const TILE_TOP := 7.0
@@ -82,7 +82,7 @@ func _build_boons() -> void:
 	info.position = Vector2(10, 27)
 	boons_root.add_child(info)
 	info.add_child(UIKit.make_icon("drop", Color8(148, 226, 112)))
-	meter_label = UIKit.make_label("", 8, UIKit.TEXT)
+	meter_label = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
 	info.add_child(meter_label)
 	var pot_row := HBoxContainer.new()
 	pot_row.add_theme_constant_override("separation", 3)
@@ -91,7 +91,7 @@ func _build_boons() -> void:
 	pot_row.size = Vector2(160, 10)
 	boons_root.add_child(pot_row)
 	pot_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
-	pot_label = UIKit.make_label("", 8, UIKit.GOLD)
+	pot_label = UIKit.make_label("", UIKit.FONT, UIKit.GOLD)
 	pot_row.add_child(pot_label)
 	var pick := _centered(boons_root, "PICK ONE", 8, UIKit.TEXT_DIM, 37.0)
 	pick.name = "PickHint"
@@ -171,14 +171,14 @@ func _fill_tile(tile: Button, id: String, held: Dictionary, top := TILE_TOP) -> 
 	var icon := BoonIcons.make(id, 2)
 	icon.position = Vector2((TILE.x - 16) / 2.0, top)
 	tile.add_child(icon)
-	var name_label := UIKit.make_label(Descent.display_name(id), 8, UIKit.GOLD)
+	var name_label := UIKit.make_label(Descent.display_name(id), UIKit.FONT, UIKit.GOLD)
 	_span(tile, name_label, top + 21.0)
 	var lines: Array = Descent.about(id)
-	_span(tile, UIKit.make_label(lines[0], 8, UIKit.TEXT), top + 33.0)
-	_span(tile, UIKit.make_label(lines[1], 8, UIKit.TEXT), top + 45.0)
+	_span(tile, UIKit.make_label(lines[0], UIKit.FONT, UIKit.TEXT), top + 33.0)
+	_span(tile, UIKit.make_label(lines[1], UIKit.FONT, UIKit.TEXT), top + 45.0)
 	var note := _have_note(id, held)
 	if note != "":
-		_span(tile, UIKit.make_label(note, 8, UIKit.TEXT_DIM), top + 57.0)
+		_span(tile, UIKit.make_label(note, UIKit.FONT, UIKit.TEXT_DIM), top + 57.0)
 
 
 ## "HAVE n/max" for a stacking boon (or "HAVE n" for an unlimited one already held), else "".
@@ -289,7 +289,7 @@ func show_summary(result: Dictionary) -> void:
 		_:
 			if not cashed and pot > 0:
 				why = "  HALF THE POT (%d)" % pot
-	row.add_child(UIKit.make_label("+%d %s%s" % [tickets, "TICKET" if tickets == 1 else "TICKETS", why], 8, Color8(255, 226, 150) if tickets > 0 else UIKit.TEXT_DIM))
+	row.add_child(UIKit.make_label("+%d %s%s" % [tickets, "TICKET" if tickets == 1 else "TICKETS", why], UIKit.FONT, Color8(255, 226, 150) if tickets > 0 else UIKit.TEXT_DIM))
 	summary_lines.add_child(row)
 	for bonus: Array in result.get("bonuses", []):
 		_line("FLOOR %d BONUS +%d" % [bonus[0], bonus[1]], UIKit.GOLD)
@@ -338,7 +338,7 @@ func _hide_hud() -> void:
 
 
 func _line(text: String, color: Color) -> void:
-	var label := UIKit.make_label(text, 8, color)
+	var label := UIKit.make_label(text, UIKit.FONT, color)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_lines.add_child(label)
 

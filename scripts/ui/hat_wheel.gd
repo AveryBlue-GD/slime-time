@@ -46,7 +46,7 @@ const TICKET_TINT := Color8(255, 226, 150)
 ## text rows 3-9 = the labels at HEADER_Y + 3), HEADER_INSET from the panel's sides.
 const HEADER_Y := 9
 const HEADER_INSET := 8
-const TILE := Vector2(138, 13)
+const TILE := Vector2(138, UIKit.BUTTON_H)
 ## Two columns of 138 px tiles 2 apart, centered in the panel: insets 13 / 13.
 const GRID_LEFT := [21.0, 161.0]
 const GRID_TOP := 46
@@ -122,7 +122,7 @@ func _ready() -> void:
 	panel.show_behind_parent = true  # the wheel is drawn by this control, over its panel
 	title = _label("HAT WHEEL", UIKit.GOLD, HEADER_Y + 3)  # on the tabs' text baseline
 	# The ticket balance, top right of the panel.
-	balance = UIKit.make_label("", 8, TICKET_TINT)
+	balance = UIKit.make_label("", UIKit.FONT, TICKET_TINT)
 	balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	balance.position = Vector2(PANEL.end.x - 50, HEADER_Y + 3)
 	balance.size = Vector2(32, 10)
@@ -130,16 +130,16 @@ func _ready() -> void:
 	_balance_icon = UIKit.make_icon("ticket", Color.WHITE)
 	_balance_icon.position = Vector2(PANEL.end.x - HEADER_INSET - 8, HEADER_Y + 3)  # mirrors the WHEEL tab's inset
 	add_child(_balance_icon)
-	wheel_tab = UIKit.make_button("WHEEL", func() -> void: show_tab("wheel"), Vector2(44, 13))
+	wheel_tab = UIKit.make_button("WHEEL", func() -> void: show_tab("wheel"), Vector2(44, UIKit.TAB_H))
 	wheel_tab.position = Vector2(PANEL.position.x + HEADER_INSET, HEADER_Y)
 	add_child(wheel_tab)
-	shop_tab = UIKit.make_button("SHOP", func() -> void: show_tab("shop"), Vector2(44, 13))
+	shop_tab = UIKit.make_button("SHOP", func() -> void: show_tab("shop"), Vector2(44, UIKit.TAB_H))
 	shop_tab.position = Vector2(PANEL.position.x + HEADER_INSET + 44 + 2, HEADER_Y)
 	add_child(shop_tab)
 
 	wheel_page = _page()
 	result = _label("", UIKit.TEXT, 146, wheel_page)
-	spin_button = UIKit.make_button("SPIN", _on_spin_pressed, Vector2(84, 13))
+	spin_button = UIKit.make_button("SPIN", _on_spin_pressed, Vector2(84, UIKit.BUTTON_H))
 	spin_button.position = Vector2(roundf(CENTER.x - 42), 158)
 	spin_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	wheel_page.add_child(spin_button)
@@ -147,7 +147,7 @@ func _ready() -> void:
 	shop_page = _page()
 	var x := roundf(CENTER.x - (3 * 52 + 2 * 4) / 2.0)
 	for id: String in SECTIONS:
-		var button := UIKit.make_button(id.to_upper(), func() -> void: show_section(id), Vector2(52, 13))
+		var button := UIKit.make_button(id.to_upper(), func() -> void: show_section(id), Vector2(52, UIKit.TAB_H))
 		button.position = Vector2(x, 28)
 		x += 56
 		shop_page.add_child(button)
@@ -181,7 +181,7 @@ func _page() -> Control:
 
 
 func _label(text: String, color: Color, top: int, parent: Control = null) -> Label:
-	var label := UIKit.make_label(text, 8, color)
+	var label := UIKit.make_label(text, UIKit.FONT, color)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	(parent if parent else self).add_child(label)
 	label.position = Vector2(PANEL.position.x, top)
@@ -432,24 +432,24 @@ func _worn(id: String) -> bool:
 ## A goo-framed tile: the item's name, and its price with the ticket icon (or OWNED / WORN).
 func _make_tile(id: String) -> Button:
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE)
-	var name_label := UIKit.make_label(_name_of(id), 8, UIKit.TEXT)
+	var name_label := UIKit.make_label(_name_of(id), UIKit.FONT, UIKit.TEXT)
 	name_label.position = Vector2(4, 3)
 	tile.add_child(name_label)
 	var right := HBoxContainer.new()
 	right.alignment = BoxContainer.ALIGNMENT_END
-	right.add_theme_constant_override("separation", 2)
+	right.add_theme_constant_override("separation", UIKit.GAP_XS)
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.position = Vector2(TILE.x - 4 - 40, 2)
 	right.size = Vector2(40, 9)
 	tile.add_child(right)
 	if not _is_hat(id) and Progress.owns_cosmetic(id):
-		right.add_child(UIKit.make_label("WORN" if _worn(id) else "OWNED", 8, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
+		right.add_child(UIKit.make_label("WORN" if _worn(id) else "OWNED", UIKit.FONT, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
 		if _worn(id):
 			UIKit.set_selected(tile, true)
 	else:
 		var price := _price_of(id)
 		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open())
-		right.add_child(UIKit.make_label("FREE" if price == 0 else str(price), 8, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
+		right.add_child(UIKit.make_label("FREE" if price == 0 else str(price), UIKit.FONT, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
 		if price > 0:
 			right.add_child(UIKit.make_icon("ticket", Color.WHITE if affordable else Color(0.55, 0.55, 0.6)))
 	tile.focus_entered.connect(func() -> void: _describe(id))

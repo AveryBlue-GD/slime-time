@@ -16,11 +16,11 @@ const COPY_BY_HAND_MESSAGE := "COPY THE CODE FROM THE POP-UP"
 ## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
 const COL_W := 120
 const COL_L := 36
-const COL_R := 164
+const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
 const FIRST_ROW := 38
 const ROW_STEP := 20
 ## RESET PROGRESS on the bottom row, mirroring BACK (its text + the 4 px margins, even).
-const RESET_SIZE := Vector2(92, 13)
+const RESET_SIZE := Vector2(92, UIKit.BUTTON_H)
 ## The VOLUME box is 6 + "VOLUME" + 6 + slider + 6 wide, which must equal COL_W (as in the pause menu).
 const SLIDER_W := COL_W - 54
 
@@ -65,8 +65,8 @@ func _ready() -> void:
 	var volume_row := UIKit.make_volume_slider(SLIDER_W)
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
 	volume_row.position = _cell(0, 1)
-	volume_row.custom_minimum_size = Vector2(COL_W, 13)
-	volume_row.size = Vector2(COL_W, 13)
+	volume_row.custom_minimum_size = Vector2(COL_W, UIKit.BUTTON_H)
+	volume_row.size = Vector2(COL_W, UIKit.BUTTON_H)
 	volume_slider = volume_row.get_meta("slider")
 	motion_button = _column_button(_cell(0, 2), _toggle_motion)
 	fog_button = _column_button(_cell(0, 3), _cycle_fog)
@@ -93,7 +93,7 @@ func _cell(column: int, row: int) -> Vector2:
 
 
 func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
-	var button := UIKit.make_button(text, on_press, Vector2(COL_W, 13))
+	var button := UIKit.make_button(text, on_press, Vector2(COL_W, UIKit.BUTTON_H))
 	button.position = at
 	add_child(button)
 	return button
@@ -101,7 +101,7 @@ func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
 
 ## A small dim heading over a column.
 func _section(text: String, x: int, y: int) -> void:
-	var label := UIKit.make_label(text, 8, UIKit.TEXT_DIM)
+	var label := UIKit.make_label(text, UIKit.FONT, UIKit.TEXT_DIM)
 	label.position = Vector2(x, y)
 	add_child(label)
 
@@ -123,42 +123,42 @@ func _build_code_panel() -> void:
 	code_panel.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(code_panel, Rect2(12, 14, 296, 150))
-	_panel_label(code_panel, UIKit.make_label("SAVE CODE", 16, UIKit.GOLD), 20, 40)
+	_panel_label(code_panel, UIKit.make_label("SAVE CODE", UIKit.FONT_BIG, UIKit.GOLD), 20, 40)
 	# Each line sits one line pitch (12) over the row it describes; 10 px between the two sections.
-	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", 8, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
+	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", UIKit.FONT, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
 	code_out = _code_box(true)
 	code_out.position = Vector2(24, 58)
-	copy_button = UIKit.make_button("COPY", _copy_code, Vector2(64, 13))
+	copy_button = UIKit.make_button("COPY", _copy_code, Vector2(64, UIKit.BUTTON_H))
 	copy_button.position = Vector2(232, 58)
 	code_panel.add_child(copy_button)
-	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", 8, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
+	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", UIKit.FONT, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
 	code_in = _code_box(false)
 	code_in.position = Vector2(24, 93)
-	code_in.custom_minimum_size = Vector2(136, 13)  # (before size: a size under the old minimum won't stick)
-	code_in.size = Vector2(136, 13)
-	paste_button = UIKit.make_button("PASTE", _paste_code, Vector2(64, 13))
+	code_in.custom_minimum_size = Vector2(136, UIKit.BUTTON_H)  # (before size: a size under the old minimum won't stick)
+	code_in.size = Vector2(136, UIKit.BUTTON_H)
+	paste_button = UIKit.make_button("PASTE", _paste_code, Vector2(64, UIKit.BUTTON_H))
 	paste_button.position = Vector2(164, 93)
 	code_panel.add_child(paste_button)
 	code_in.placeholder_text = Progress.SAVE_CODE_PREFIX + "..."
 	code_in.text_changed.connect(func(_text: String) -> void:
 		load_armed = false
 		code_status.text = "")
-	load_button = UIKit.make_button("LOAD", _load_code, Vector2(64, 13))
+	load_button = UIKit.make_button("LOAD", _load_code, Vector2(64, UIKit.BUTTON_H))
 	load_button.position = Vector2(232, 93)
 	code_panel.add_child(load_button)
-	code_status = UIKit.make_label("", 8, UIKit.TEXT)
+	code_status = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
 	_panel_label(code_panel, code_status, 114, 124)
-	var close := UIKit.make_button("CLOSE", _close_codes, Vector2(64, 13))
+	var close := UIKit.make_button("CLOSE", _close_codes, Vector2(64, UIKit.BUTTON_H))
 	close.position = Vector2(128, 140)
 	code_panel.add_child(close)
 
 
 func _code_box(read_only: bool) -> LineEdit:
 	var box := LineEdit.new()
-	box.custom_minimum_size = Vector2(204, 13)
+	box.custom_minimum_size = Vector2(204, UIKit.BUTTON_H)
 	box.editable = not read_only
 	box.select_all_on_focus = read_only
-	box.add_theme_font_size_override("font_size", 8)
+	box.add_theme_font_size_override("font_size", UIKit.FONT)
 	box.material = UIKit.text_material()
 	code_panel.add_child(box)
 	# Sized once in the themed tree (sized before, it keeps the default font's 22 px height).
@@ -356,13 +356,13 @@ func _build_reset_confirm() -> void:
 	reset_confirm.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(reset_confirm, Rect2(24, 48, 272, 82))
-	_centered_label(UIKit.make_label("ERASE ALL PROGRESS?", 16, UIKit.GOLD), 54, 74)
-	_centered_label(UIKit.make_label("LEVELS, RECORDS, COINS, UPGRADES AND\nSKINS WILL BE GONE FOR GOOD", 8, UIKit.TEXT_DIM), 78, 98)
-	confirm_button = UIKit.make_button("CONFIRM", _reset, Vector2(70, 13))
+	_centered_label(UIKit.make_label("ERASE ALL PROGRESS?", UIKit.FONT_BIG, UIKit.GOLD), 54, 74)
+	_centered_label(UIKit.make_label("LEVELS, RECORDS, COINS, UPGRADES AND\nSKINS WILL BE GONE FOR GOOD", UIKit.FONT, UIKit.TEXT_DIM), 78, 98)
+	confirm_button = UIKit.make_button("CONFIRM", _reset, Vector2(70, UIKit.BUTTON_H))
 	confirm_button.position = Vector2(84, 108)
 	reset_confirm.add_child(confirm_button)
-	cancel_button = UIKit.make_button("CANCEL", _cancel_reset, Vector2(70, 13))
-	cancel_button.position = Vector2(166, 108)
+	cancel_button = UIKit.make_button("CANCEL", _cancel_reset, Vector2(70, UIKit.BUTTON_H))
+	cancel_button.position = Vector2(confirm_button.position.x + 70 + UIKit.GAP_XL, 108)  # 166
 	reset_confirm.add_child(cancel_button)
 
 

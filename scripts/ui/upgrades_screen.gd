@@ -105,26 +105,26 @@ func _ready() -> void:
 	coin_pod.offset_top = UIKit.EDGE
 	coin_pod.custom_minimum_size.y = UIKit.POD_H
 	var coin_row := HBoxContainer.new()
-	coin_row.add_theme_constant_override("separation", 3)
+	coin_row.add_theme_constant_override("separation", UIKit.GAP_S)
 	coin_pod.add_child(coin_row)
 	pod_icon = UIKit.make_icon("coin", Color.WHITE)
 	coin_row.add_child(pod_icon)
 	# Sized to its text (the pod grows leftward from the edge): the content pads stay 4 / 4.
-	coin_label = UIKit.make_label("", 8, UIKit.TEXT)
+	coin_label = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
 	coin_row.add_child(coin_label)
 
 	# The tabs, top left (mirroring the pod).
 	if workshop_on or abilities_on:  # (one page only with both switched off: no tab bar)
-		coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, 13))
+		coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, UIKit.TAB_H))
 		coins_tab.position = Vector2(4, 4)
 		add_child(coins_tab)
 	if abilities_on:
-		abilities_tab = UIKit.make_button("TICKETS", func() -> void: show_page("abilities"), Vector2(52, 13))
+		abilities_tab = UIKit.make_button("TICKETS", func() -> void: show_page("abilities"), Vector2(52, UIKit.TAB_H))
 		abilities_tab.position = Vector2(46, 4)
 		add_child(abilities_tab)
 	if workshop_on:
 		tickets_tab = UIKit.make_button("TOOLS" if abilities_on else "TICKETS", func() -> void: show_page("tickets"),
-			Vector2(40 if abilities_on else 52, 13))
+			Vector2(40 if abilities_on else 52, UIKit.TAB_H))
 		tickets_tab.position = Vector2(100 if abilities_on else 46, 4)
 		add_child(tickets_tab)
 
@@ -153,7 +153,7 @@ func _ready() -> void:
 			y += ABILITY_ROW_HEIGHT
 		_rows_bottom["abilities"] = y - 5
 
-	hint = UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	hint = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -216,21 +216,21 @@ func show_page(which: String) -> void:
 ## cost. MORE SLIME's name moves up while its RECOMMENDED tag shows under it (_refresh).
 func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	UIKit.add_panel(parent, Rect2(10, y - 2, 300, ROW_HEIGHT - 3))
-	var name_label := UIKit.make_label(upgrade.name, 8, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
+	var name_label := UIKit.make_label(upgrade.name, UIKit.FONT, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
 	name_label.position = Vector2(18, y + 6)
 	parent.add_child(name_label)
 	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y + 3)
-	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, 13))
+	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, UIKit.BUTTON_H))
 	minus.position = Vector2(MINUS_X, y + 3)
 	parent.add_child(minus)
-	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, 13))
+	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, UIKit.BUTTON_H))
 	plus.position = Vector2(PLUS_X, y + 3)
 	parent.add_child(plus)
-	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	cost.position = Vector2(COST_X, y + 6)
 	parent.add_child(cost)
 	if upgrade.id == "slime":  # A2.3: the model's biggest risk is skipping MORE SLIME
-		recommended = UIKit.make_label("RECOMMENDED", 8, Color(UIKit.TEXT_DIM, 0.75))
+		recommended = UIKit.make_label("RECOMMENDED", UIKit.FONT, Color(UIKit.TEXT_DIM, 0.75))
 		recommended.position = Vector2(18, y + 11)
 		parent.add_child(recommended)
 	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, name = name_label, y = y}
@@ -243,14 +243,14 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	var icon := Abilities.make_icon(item.id, 2)
 	icon.position = Vector2(17, y + 3)
 	ability_page.add_child(icon)
-	var name_label := UIKit.make_label(item.name, 8, UIKit.TEXT)
+	var name_label := UIKit.make_label(item.name, UIKit.FONT, UIKit.TEXT)
 	name_label.position = Vector2(40, y + 2)
 	ability_page.add_child(name_label)
-	var tag := UIKit.make_label(item.tag, 8, UIKit.TEXT_DIM)
+	var tag := UIKit.make_label(item.tag, UIKit.FONT, UIKit.TEXT_DIM)
 	tag.position = Vector2(40, y + 13)
 	ability_page.add_child(tag)
 	var pips := _make_pips(ability_page, Abilities.max_level(item.id), y + 5)
-	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, 13))
+	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, UIKit.BUTTON_H))
 	plus.position = Vector2(PLUS_X, y + 5)
 	ability_page.add_child(plus)
 	var price := HBoxContainer.new()
@@ -258,7 +258,7 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	price.position = Vector2(COST_X, y + 8)  # the price text on the + button's text row (y + 8)
 	ability_page.add_child(price)
-	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	price.add_child(cost)
 	var ticket := UIKit.make_icon("ticket", Color.WHITE)
 	price.add_child(ticket)
@@ -268,14 +268,14 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 ## A workshop row: name, effect now -> next, 3 pips, + and the price with the ticket icon.
 func _make_ticket_row(item: Dictionary, y: int) -> void:
 	UIKit.add_panel(ticket_page, Rect2(10, y - 2, 300, TICKET_ROW_HEIGHT - 2))
-	var name_label := UIKit.make_label(item.name, 8, UIKit.TEXT)
+	var name_label := UIKit.make_label(item.name, UIKit.FONT, UIKit.TEXT)
 	name_label.position = Vector2(18, y + 1)
 	ticket_page.add_child(name_label)
-	var about := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	var about := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	about.position = Vector2(18, y + 11)
 	ticket_page.add_child(about)
 	var pips := _make_pips(ticket_page, Workshop.max_level(item.id), y)
-	var plus := UIKit.make_button("+", func() -> void: _buy_workshop(item.id), Vector2(16, 13))
+	var plus := UIKit.make_button("+", func() -> void: _buy_workshop(item.id), Vector2(16, UIKit.BUTTON_H))
 	plus.position = Vector2(PLUS_X, y)
 	ticket_page.add_child(plus)
 	var price := HBoxContainer.new()
@@ -283,7 +283,7 @@ func _make_ticket_row(item: Dictionary, y: int) -> void:
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	price.position = Vector2(COST_X, y + 2)
 	ticket_page.add_child(price)
-	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	price.add_child(cost)
 	var icon := UIKit.make_icon("ticket", Color.WHITE)
 	price.add_child(icon)

@@ -87,7 +87,7 @@ func _ready() -> void:
 	page_button = UIKit.make_button("HATS", func() -> void: show_page(PAGES[(PAGES.find(page) + 1) % PAGES.size()]), back.custom_minimum_size)
 	page_button.position = Vector2(320 - back.position.x - back.custom_minimum_size.x, back.position.y)
 	add_child(page_button)
-	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, 13))
+	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, UIKit.BUTTON_H))
 	jelly_button.position = Vector2((320 - 80) / 2, back.position.y)
 	add_child(jelly_button)
 	show_page("skins")
@@ -95,7 +95,7 @@ func _ready() -> void:
 
 ## A label centered across the screen, `top` = its top edge.
 func _centered_label(text: String, color: Color, top: int) -> Label:
-	var label := UIKit.make_label(text, 8, color)
+	var label := UIKit.make_label(text, UIKit.FONT, color)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
