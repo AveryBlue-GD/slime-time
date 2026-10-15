@@ -268,7 +268,7 @@ func _draw_controls() -> void:
 	if not jump_enabled:  # GROUNDED: struck out
 		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6
 		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
-	# Ability buttons: a ring, the icon (2x) and a pip per use left.
+	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used.
 	for i in abilities.size():
 		var item: Dictionary = abilities[i]
 		var at := slot_center(i)
@@ -280,10 +280,6 @@ func _draw_controls() -> void:
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
 			Color(1, 1, 1, 0.95 if ready else 0.35))
-		var pips := int(item.max)
-		for p in pips:
-			var x := at.x - (pips * 3 - 1) / 2.0 + p * 3
-			_canvas.draw_rect(Rect2(Vector2(roundf(x), at.y + 7), Vector2(2, 2)), Color(color, 0.95) if p < int(item.left) else Color(0.3, 0.3, 0.38, 0.8))
 	# Pause button: two bars.
 	_canvas.draw_rect(pause_rect, dim)
 	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))

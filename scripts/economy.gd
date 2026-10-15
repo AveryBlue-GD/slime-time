@@ -113,7 +113,8 @@ const WIND_REFILL_TIME := 0.4
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in
-## scripts/ability_runner.gd). 3 levels each, not refundable; a level gives `charges[i]` uses per
+## scripts/ability_runner.gd). 3 levels each, not refundable; every level gives exactly ONE use (`charges[i]` = 1; the
+## levels only make it stronger) per
 ## attempt (refilled by every restart, new maze, next level or Descent floor). Each use costs `slime`
 ## percent of the meter (SLIME RIFLE / SLIME SPLAT are refused unless the meter holds MORE than that;
 ## SLIMAKAZE always fires and leaves the meter at 0, a dry-up on impact, when it holds that much or
@@ -131,9 +132,9 @@ static func abilities_on() -> bool:
 ## First ability ~15 tickets = about one day's paid randomizer wins (~16 in ~18 min, A.2); all three
 ## maxed = 95 + 108 + 140 = 343.
 const ABILITIES := {
-	"rifle": {costs = [15, 30, 50], charges = [1, 2, 3], slime = 2.0},
-	"splat": {costs = [18, 35, 55], charges = [1, 2, 3], slime = 4.0},
-	"kaze": {costs = [25, 45, 70], charges = [1, 2, 3], slime = 30.0},
+	"rifle": {costs = [15, 30, 50], charges = [1, 1, 1], slime = 2.0},
+	"splat": {costs = [18, 35, 55], charges = [1, 1, 1], slime = 4.0},
+	"kaze": {costs = [25, 45, 70], charges = [1, 1, 1], slime = 30.0},
 }
 ## Abilities PASS OVER WALLS (owner buff, 2026-10-15): the rifle shot pierces them, the bomb is
 ## lobbed over them, the SLIMAKAZE splatter lands in the corridors beyond (only the dash stops at a

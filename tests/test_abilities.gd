@@ -592,28 +592,50 @@ func _splatter_rule() -> void:
 
 func _charges() -> void:
 	for level in [1, 2, 3]:
-		_check(Abilities.charges("rifle", level) == level and Abilities.charges("kaze", level) == level, "level %d = %d charges" % [level, level])
+		for id in Abilities.ids():
+			_check(Abilities.charges(id, level) == 1, "%s L%d = exactly 1 charge" % [id, level])
+	_check(Abilities.charges("rifle", 0) == 0, "not owned = 0 charges")
 	_state({rifle = 2, splat = 3})
 	var game := await _spawn(4)
 	_aim(game, _dir_with(game, 1))
-	_check(game.abilities.charges == {rifle = 2, splat = 3} and game.abilities.levels.size() == 2, "owned abilities only, charges by level")
+	_check(game.abilities.charges == {rifle = 1, splat = 1} and game.abilities.levels.size() == 2, "owned abilities only, charges by level")
 	var a: bool = game.abilities.use("rifle")
 	game.abilities.flush()
 	var b: bool = game.abilities.use("rifle")
 	game.abilities.flush()
+	var m2: float = game.slime_remaining
 	var c: bool = game.abilities.use("rifle")
-	_check(a and b and not c, "two shots, then none")
+	_check(a and not b and not c and game.slime_remaining == m2 and game.abilities.charges.rifle == 0 and game.abilities.uses == 1,
+		"L2: one shot, a second press does nothing and costs nothing")
+	for lvl in [1, 3]:
+		_state({rifle = lvl, splat = lvl, kaze = lvl})
+		var g3 := await _spawn(4)
+		_aim(g3, _dir_with(g3, 1))
+		for id in ["rifle", "splat"]:
+			var first: bool = g3.abilities.use(id)
+			g3.abilities.flush()
+			var before: float = g3.slime_remaining
+			_check(first and not g3.abilities.use(id) and g3.slime_remaining == before, "L%d %s: exactly one use per attempt, the second press is free" % [lvl, id])
+		await _stop(g3)
+		g3 = await _spawn(4)
+		_check(g3.abilities.charges == {rifle = 1, splat = 1, kaze = 1}, "L%d: a new attempt refills the single charge" % lvl)
+		await _stop(g3)
+	await _stop(game)
+	_state({rifle = 2, splat = 3})
+	game = await _spawn(4)
+	_aim(game, _dir_with(game, 1))
 	var pods: int = game.hud.ability_row.get_child_count()
 	_check(game.hud.ability_pod.visible and pods == 2, "the HUD strip shows the two owned abilities")
+	_check(game.abilities.strip()[0].left == 1 and game.abilities.strip()[0].max == 1, "strip: one charge max, ready")
 	game.slime_remaining = Economy.ABILITIES.splat.slime
-	_check(not game.abilities.use("splat") and game.abilities.charges.splat == 3, "SPLAT needs more slime than it costs (never kills)")
+	_check(not game.abilities.use("splat") and game.abilities.charges.splat == 1, "SPLAT needs more slime than it costs (never kills)")
 	game.slime_remaining = 50.0
 	game.slime.state = Slime.State.CHARGING
 	_check(not game.abilities.use("splat"), "not while charging a leap (only gliding / still)")
 	game.slime.state = Slime.State.GLIDE
 	await _stop(game)
 	game = await _spawn(4)  # a restart = a new attempt
-	_check(game.abilities.charges == {rifle = 2, splat = 3}, "a restart refills every charge")
+	_check(game.abilities.charges == {rifle = 1, splat = 1}, "a restart refills every charge")
 	await _stop(game)
 
 
@@ -689,7 +711,7 @@ func _touch() -> void:
 				missed.append(p)
 			_tap(tc, 7, Vector2(-60, -60), false)
 	_check(missed.is_empty(), "a thumb missing JUMP (up to 25 px off its edge, all round) still leaps, never an ability (%s)" % [missed.slice(0, 4)])
-	_check(_charges_left(game) == {rifle = 1, kaze = 2}, "probing every spot (each lifted off its button) fired nothing")
+	_check(_charges_left(game) == {rifle = 1, kaze = 1}, "probing every spot (each lifted off its button) fired nothing")
 	_check(center.kaze.distance_to(TouchControls.JUMP_CENTER) > center.rifle.distance_to(TouchControls.JUMP_CENTER),
 		"SLIMAKAZE sits farther from JUMP than SLIME RIFLE")
 	var kaze_only: Array[Dictionary] = [{id = "kaze", left = 1, max = 1}]

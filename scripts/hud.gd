@@ -90,7 +90,7 @@ const WIND_USED := Color(0.45, 0.45, 0.5, 0.75)
 ## Dev mode only: a tag naming the dev toggles that are on (made on first use, so it never exists
 ## in normal play; see set_dev_badge).
 var dev_badge: Control
-## ABILITIES v1: a pod under the meter with each owned ability's icon and its uses left as pips
+## ABILITIES v1: a pod under the meter with each owned ability's icon and its single use as lit (ready) / dimmed (used)
 ## (set_abilities; hidden without any).
 var ability_pod: Control
 var ability_row: HBoxContainer
@@ -468,8 +468,8 @@ func set_boons(boons: Dictionary, bladders_left := 0) -> void:
 	boon_pod.visible = not boon_icons.is_empty()
 
 
-## ABILITIES: `items` = [{id, left, max}] (AbilityRunner.strip): the icon, then one pip per use (lit
-## while left); an ability with none left is dimmed. A use that just went pops its icon (not with
+## ABILITIES: `items` = [{id, left, max}] (AbilityRunner.strip): the icon, lit while its one use is
+## left, dimmed once used. A use that just went pops its icon (not with
 ## Reduce Motion).
 func set_abilities(items: Array[Dictionary]) -> void:
 	var before := {}
@@ -488,13 +488,6 @@ func set_abilities(items: Array[Dictionary]) -> void:
 		var icon := Abilities.make_icon(item.id)
 		icon.modulate = Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7)
 		group.add_child(icon)
-		var pips := Control.new()
-		pips.custom_minimum_size = Vector2(int(item.max) * (ABILITY_PIP.x + 1) - 1, ABILITY_PIP.y)
-		pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for i in int(item.max):
-			_add_rect(pips, Vector2(i * (ABILITY_PIP.x + 1), 0), ABILITY_PIP, goo_color if i < int(item.left) else ABILITY_PIP_OFF)
-		group.add_child(pips)
 		ability_row.add_child(group)
 		if before.has(item.id) and int(item.left) < int(before[item.id]) and not still:
 			icon.modulate = Color(2.0, 2.0, 2.0)
