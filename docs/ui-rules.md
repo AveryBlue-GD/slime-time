@@ -168,12 +168,14 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 Physical size of 1 game px: about 1.67-2.3 pt/dp on phones (5-6x scale at DPR 2.6-3) and 3-4 pt on tablets. Target:
 44 pt / 48 dp = **`UIKit.TOUCH_MIN` 22 game px** at the common 2 pt per px.
 
-- Every menu button is a `TouchButton`. With a touchscreen (or `--touch`) its **hit area** is its drawn rect grown by
+- Every menu button is a `TouchButton`. While touch is in use (`UIKit.touch_active()`: the last pointer event was a
+  screen touch or drag, or the mouse event Godot emulates from one, tracked by `UIKit.note_pointer` on the root
+  window's input; or `--touch`) its **hit area** is its drawn rect grown by
   `UIKit.HIT_PAD` (5) on every side, art unchanged: a 13 px button is hit over 23 px. The grown margin is shared by
   distance: a point belongs to the nearest touch target (`UIKit.TOUCH_GROUP`: buttons, plus checkboxes, sliders and text
   boxes registered with `UIKit.add_touch_target`), never to a button when it lies inside another target's own rect, so
-  hit areas never overlap. Controls kept out of focus behind an open panel don't compete. Without touch the hit area is
-  exactly the drawn rect.
+  hit areas never overlap. Controls kept out of focus behind an open panel don't compete. With a mouse the hit area is
+  exactly the drawn rect, also on a desktop or browser with touchscreen hardware (it switches per input event).
 - Lone buttons and rows (BACK, tabs, result rows, hub dialogs, the upgrade - / + with 4 px between them) reach 23 px both
   ways. Stacks with a 3 px gap (pause, restart) get their pitch: 16-20 px (32-40 pt). Wider pitches for touch would be a
   layout change (see phase3-ui.md, remaining issues).

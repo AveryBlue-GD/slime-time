@@ -8,7 +8,8 @@ extends "res://tests/suite_base.gd"
 ## - no point of the screen is claimed by two targets (buttons, sliders, text boxes, checkboxes),
 ##   on every screen checked, and no button claims a point inside another target's own rect;
 ## - a real click (through the GUI input pipeline) in the grown margin presses the nearest button;
-## - without touch the hit area is exactly the drawn rect.
+## - without touch the hit area is exactly the drawn rect, and "touch" means the last pointer event was
+##   a touch (UIKit.note_pointer): a mouse on a touchscreen laptop gets exact hit areas.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_ui_touch.gd
 
 var progress: Node
@@ -26,6 +27,31 @@ func _initialize() -> void:
 	var plus: Button = upg.rows["slime"].plus
 	var above := TouchButton.rect_of(plus).get_center() - Vector2(0, 9)
 	_check(not _hits(plus, above), "no touch: the hit area is exactly the drawn button")
+	# Touch in use = the last pointer event was a touch (a desktop with touchscreen hardware but a
+	# mouse in hand keeps exact hit areas). Every window input goes through UIKit.note_pointer.
+	_check(root.window_input.is_connected(UIKit.note_pointer), "the RotateHint autoload feeds window input to UIKit.note_pointer")
+	var mouse := InputEventMouseMotion.new()
+	mouse.position = above
+	root.window_input.emit(mouse)
+	_check(not UIKit.touch_active() and not _hits(plus, above), "a real mouse: exact hit areas")
+	var touch := InputEventScreenTouch.new()
+	touch.position = above
+	touch.pressed = true
+	root.window_input.emit(touch)
+	_check(UIKit.touch_active() and _hits(plus, above), "a screen touch: grown hit areas")
+	var tap := InputEventMouseButton.new()  # the mouse click Godot makes from that touch
+	tap.device = InputEvent.DEVICE_ID_EMULATION
+	tap.button_index = MOUSE_BUTTON_LEFT
+	tap.pressed = true
+	tap.position = above
+	root.window_input.emit(tap)
+	_check(UIKit.touch_active(), "the mouse event emulated from a touch keeps touch in use")
+	root.window_input.emit(mouse)
+	_check(not UIKit.touch_active() and not _hits(plus, above), "the mouse again: exact hit areas again")
+	var drag := InputEventScreenDrag.new()
+	root.window_input.emit(drag)
+	_check(UIKit.touch_active(), "a screen drag: touch in use")
+	UIKit.touch_in_use = false
 	upg.free()
 
 	progress.force_touch = true

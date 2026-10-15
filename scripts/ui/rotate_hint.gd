@@ -30,6 +30,8 @@ func _ready() -> void:
 	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 	_update.call_deferred()
+	# Every input event, before any node: menus grow their touch hit areas only while touch is in use.
+	get_tree().root.window_input.connect(UIKit.note_pointer)
 
 
 ## The window size is checked every frame: with the `viewport` stretch mode the root viewport

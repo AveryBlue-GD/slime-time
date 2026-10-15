@@ -58,7 +58,7 @@ const POD_H2 := 23
 ## bottom edge, clear of the goo lumps and the buttons' own drops.
 const PANEL_PAD := 8
 ## Touch: a target should be TOUCH_MIN px tall and wide (44 pt at about 2 pt per game px on phones).
-## With a touchscreen, a TouchButton's hit area grows by HIT_PAD on every side (13 -> 23), shared
+## While touch is in use (UIKit.touch_active), a TouchButton's hit area grows by HIT_PAD on every side (13 -> 23), shared
 ## with its neighbors by distance so hit areas never overlap (see TouchButton).
 const TOUCH_MIN := 22
 const HIT_PAD := 5
@@ -67,6 +67,9 @@ const TOUCH_GROUP := "ui_touch_targets"
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
 
+## True while the player is using touch: the last pointer event was a screen touch or drag (or the
+## mouse event Godot makes from one); a real mouse turns it off. See note_pointer / touch_active.
+static var touch_in_use := false
 static var _text_material: ShaderMaterial
 static var _tabular_font: FontFile
 static var _drip_scene := -1
@@ -380,13 +383,24 @@ static func set_selected(button: Button, on: bool) -> void:
 	button.set_meta("selected", on)
 
 
-## True when menus should use touch hit areas: a touchscreen, or the --touch debug flag.
+## True when menus should use touch hit areas: the player is touching the screen (touch_in_use), or
+## the --touch debug flag. A desktop that merely has a touchscreen keeps exact hit areas for its mouse.
 static func touch_active() -> bool:
-	if DisplayServer.is_touchscreen_available():
+	if touch_in_use:
 		return true
 	var tree := Engine.get_main_loop() as SceneTree
 	var progress: Node = tree.root.get_node_or_null("Progress") if tree else null
 	return progress != null and progress.get("force_touch") == true
+
+
+## Tracks touch_in_use from every input event, before any node or the GUI sees it (the RotateHint
+## autoload connects it to the root window's window_input). A tap reaches the GUI as a mouse event
+## Godot makes from the touch (device DEVICE_ID_EMULATION), so it counts as touch too.
+static func note_pointer(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		touch_in_use = true
+	elif event is InputEventMouseButton or event is InputEventMouseMotion:
+		touch_in_use = event.device == InputEvent.DEVICE_ID_EMULATION
 
 
 ## Marks a non-TouchButton input (checkbox, slider box, text box) as a touch target, so grown

@@ -1,13 +1,14 @@
 class_name TouchButton
 extends Button
 
-## The menu button (UIKit.make_button). With a touchscreen (or --touch) its hit area is bigger than
-## its art: the drawn rect grown by UIKit.HIT_PAD on every side (a 13 px button becomes 23 px, about
-## 44 pt on a phone). The grown margin is shared fairly: a point in it belongs to the nearest touch
+## The menu button (UIKit.make_button). While touch is in use (UIKit.touch_active: the last pointer
+## event was a touch, or --touch) its hit area is bigger than its art: the drawn rect grown by
+## UIKit.HIT_PAD on every side (a 13 px button becomes 23 px, about 44 pt on a phone). The grown margin is shared fairly: a point in it belongs to the nearest touch
 ## target (UIKit.TOUCH_GROUP on the same canvas layer, ties to the lower instance id), and never to
 ## this button when it lies inside another target's drawn rect. So hit areas never overlap and a tap
 ## between two buttons goes to the closer one. Targets kept out of focus by UIKit.lock_focus (behind
-## an open panel) don't compete. Without touch the hit area is exactly the drawn rect.
+## an open panel) don't compete. With a mouse (even on a touchscreen laptop) the hit area is exactly
+## the drawn rect.
 
 
 func _init() -> void:
