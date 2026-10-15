@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## DESCENT with the autopilot (the shortest route, no detours for goo drops): runs of real floors,
 ## the meter carried from floor to floor exactly as the rules say (Progress.descend), the first
@@ -19,7 +19,6 @@ const DEEP_MAX := 14
 ## autopilot cuts corners a little and pays a few px of start/turn wobble).
 const MARGIN := 3.0
 
-var failures := 0
 var progress: Node
 var short_runs := 20
 var deep_runs := 3
@@ -50,7 +49,7 @@ func _initialize() -> void:
 		_check(deepest >= 6, "a deep run with the shortest route and first-offer boons gets to floor 6+ (%d)" % deepest)
 	print("  elapsed %.1f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -105,7 +104,3 @@ func _run(run_seed: int, slime_level: int, stop_floor: int) -> int:
 	return reached
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

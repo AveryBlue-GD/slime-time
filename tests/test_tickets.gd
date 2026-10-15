@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Ticket vouchers (the renewable cosmetic currency): the ONLY faucet is the randomizer, whose goal is
 ## a ticket (a win pays by attempt: 5, 4, 3, 2, then 1; dry-up retries and restarts count, NEW MAZE
@@ -12,17 +12,16 @@ extends SceneTree
 ## throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_tickets.gd
 
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.hard_mode = false
 	progress.reset_progress()
@@ -203,7 +202,7 @@ func _initialize() -> void:
 	_check(second != "" and second != first and progress.tickets == 88 and progress.hats_owned.size() == 2, "spin 2: pays 12, never a hat you own (%s)" % second)
 	# The whole spin is saved at once: a fresh load sees the payment AND the prize.
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.tickets == 88 and second in reloaded.hats_owned and reloaded.spins == 2, "payment and prize are saved together, before any animation")
 	reloaded.free()
@@ -383,14 +382,14 @@ func _initialize() -> void:
 	vthp._read(vthb)
 	_check(vthp.medals_for(1) == 3, "a save with best times and no [medals] gets tiers from the times")
 	vthp.free()
-	var par_start := Time.get_ticks_usec()
-	for lv in range(1, Levels.COUNT + 1):
-		Levels._par_cache.erase(lv)
-		Levels._par_cache.erase(lv + 100)
-		Levels.level_par(lv)
-		Levels.level_par(lv, true)
-	var par_ms := (Time.get_ticks_usec() - par_start) / 1000.0
-	_check(par_ms < 100.0, "computing par for all 20 levels takes %.0f ms (< 100)" % par_ms)
+	_check_budget("computing par for all 20 levels", 100.0, func() -> float:
+		var par_start := Time.get_ticks_usec()
+		for lv in range(1, Levels.COUNT + 1):
+			Levels._par_cache.erase(lv)
+			Levels._par_cache.erase(lv + 100)
+			Levels.level_par(lv)
+			Levels.level_par(lv, true)
+		return (Time.get_ticks_usec() - par_start) / 1000.0)
 
 	# --- A save with the old wallet keys (globs, clears_paid): balance kept, paid masks dropped
 	var par2: float = Levels.level_par(2)
@@ -480,8 +479,8 @@ func _initialize() -> void:
 	var big: String = progress.save_code()
 	_check(big.length() < progress.MAX_SAVE_CODE_LENGTH / 8, "even with every medal the save code stays small (%d of %d characters)" % [big.length(), progress.MAX_SAVE_CODE_LENGTH])
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -537,12 +536,8 @@ func _current_game() -> Node2D:
 ## Detaches the game before its end-of-level timer fires (so it doesn't reload), then frees it.
 func _stop(game: Node2D) -> void:
 	current_scene = null
-	for i in int(game.END_DELAY * 60) + 10:
+	for i in int(game.CHOICE_DELAY * 60) + 10:
 		await physics_frame
 	game.free()
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

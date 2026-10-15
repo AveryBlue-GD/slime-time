@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Level select tiles: the level number's letter pixels and (on locked tiles) the lock icon's own
 ## pixels are centered on the tile, within 1 px, for all 10 tiles, locked and unlocked, normal and
@@ -7,16 +7,15 @@ extends SceneTree
 ## renderer); the rendered pixels are measured with tools/measure_tiles.py.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_level_tiles.gd
 
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.reset_progress()
 
@@ -106,8 +105,8 @@ func _initialize() -> void:
 		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 		_check(width <= 48.0 - 8.0, "time %s (%s px) fits a 48 px tile with margins" % [text, width])
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 

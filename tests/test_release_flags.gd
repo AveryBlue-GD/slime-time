@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Release hardening (docs/qa-release-report.md X2): debug / dev launch flags only work in a debug build (the editor
 ## binary that tools/play.sh, screenshot.sh and test_all.sh run, or a debug export). An exported RELEASE build
@@ -13,7 +13,6 @@ const DEBUG_FLAGS := ["--unlock-all", "--dev", "--story-complete", "--autoplay",
 	"--speed=8", "--maps=full", "--tickets=99", "--medals=3,3,3", "--upgrades=1,2,3", "--coins=50", "--skin=rainbow",
 	"--hat=crown", "--level=10", "--random", "--hard", "--jelly", "--all-coins", "--save-path=user://x.cfg", "--quiet-window"]
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -36,7 +35,7 @@ func _initialize() -> void:
 				and not path.ends_with("autoplay/autoplay.gd"):
 			direct.append(path)
 	_check(direct.is_empty(), "no game script reads OS.get_cmdline_user_args() directly (%s)" % [direct])
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -51,7 +50,3 @@ func _scripts(dir: String) -> Array[String]:
 	return out
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

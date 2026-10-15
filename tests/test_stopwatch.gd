@@ -1,18 +1,20 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The STOPWATCH skin: unlock rule (all 30 normal-mode medals gold; dev mode unlocks it), selection
 ## saved/loaded (and a locked saved one falls back to Lime), save codes, clock gearing from one value
 ## (second:minute 60:1, minute:hour 12:1), speed ramp per mode, Reduce Motion, the unlock notice.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_stopwatch.gd
 
-var failures := 0
 var progress: Node
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = "user://test_save.cfg"
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.hard_mode = false
 	progress.reset_progress()
@@ -125,16 +127,9 @@ func _initialize() -> void:
 	_check(Progress.STOPWATCH_NOTICE in progress.skin_notices_seen, "...once (saved in skin_notices_seen)")
 	await _stop(game)
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1
 
 
 func _spawn_running(level: int) -> Node2D:
@@ -156,6 +151,6 @@ func _until_finished(game: Node2D, max_seconds: float) -> void:
 
 func _stop(game: Node2D) -> void:
 	current_scene = null
-	for i in int(game.END_DELAY * 60) + 10:
+	for i in int(game.CHOICE_DELAY * 60) + 10:
 		await physics_frame
 	game.free()

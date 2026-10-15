@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## QA: extreme inputs and timing in real level scenes (docs/qa-release-report.md section 3).
 ##   - time-scale / delta spikes: Engine.time_scale 60 (a 1 s physics step) and 300 (5 s) with the slime pushed into
@@ -26,7 +26,6 @@ class ErrLog extends Logger:
 		if lines.size() < 8:
 			lines.append("%s:%d %s %s" % [file, line, code, rationale])
 
-var failures := 0
 var progress: Node
 var errlog := ErrLog.new()
 
@@ -47,7 +46,7 @@ func _initialize() -> void:
 	_check(errlog.count == 0, "no engine / script errors in the whole run (%d) %s" % [errlog.count, errlog.lines])
 	_check(Engine.time_scale == 1.0 and not paused, "time scale is back to 1 and the tree is not paused")
 	print("elapsed %.1f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -291,24 +290,24 @@ func _wipe_and_pause() -> void:
 	# pause spam in a level: Esc / P 200 times, mixed with same-frame doubles
 	var gp := await _start(1)
 	for i in 200:
-		_key(KEY_ESCAPE if i % 3 != 0 else KEY_P)
+		_tap_key(KEY_ESCAPE if i % 3 != 0 else KEY_P)
 		if i % 5 == 0:
-			_key(KEY_ESCAPE)
+			_tap_key(KEY_ESCAPE)
 		await process_frame
 	await _frames(3)
 	var open: bool = gp.pause_menu.visible
 	_check(open == paused, "after 200 Esc/P presses the pause menu (%s) and the tree pause (%s) agree" % [open, paused])
 	if open:
-		_key(KEY_ESCAPE)
+		_tap_key(KEY_ESCAPE)
 		await _frames(3)
 	_check(not paused and not gp.pause_menu.visible, "one more Esc and the game runs again")
 	# the goal touched while paused does nothing until resumed
-	_key(KEY_ESCAPE)
+	_tap_key(KEY_ESCAPE)
 	await _frames(2)
 	gp.slime.position = gp.goal.position
 	await _frames(10)
 	_check(paused and not gp.finished, "paused with the slime on the chalice: not finished while paused")
-	_key(KEY_ESCAPE)
+	_tap_key(KEY_ESCAPE)
 	await _frames(6)
 	_check(gp.won, "...and it wins the moment the game resumes")
 	# hat wheel spun on the same frame as a scene change (and left mid-spin): charged once, saved, no errors
@@ -344,21 +343,11 @@ func _wipe_and_pause() -> void:
 	# the restart key spammed
 	var gs := await _start(2)
 	for i in 30:
-		_key(KEY_R)
+		_tap_key(KEY_R)
 		await process_frame
 	await _frames(10)
 	gs = current_scene
 	_check(gs != null and is_instance_valid(gs), "R pressed 30 times in a row leaves one running scene")
-
-
-func _key(code: Key) -> void:
-	for down in [true, false]:
-		var key := InputEventKey.new()
-		key.keycode = code
-		key.physical_keycode = code
-		key.pressed = down
-		Input.parse_input_event(key)
-		Input.flush_buffered_events()
 
 
 # ---------------------------------------------------------------------------------------------- settings / resize
@@ -599,7 +588,3 @@ func _economy() -> void:
 	progress.day_override = -1
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

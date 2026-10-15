@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
 ## 210, workshop 423, cosmetics 240), hats live for players (11 spins = 11 different hats, never a
@@ -10,7 +10,6 @@ extends SceneTree
 ## page and the map view's PAPER button. Every write goes to this run's throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_store.gd
 
-var failures := 0
 var progress: Node
 
 
@@ -47,7 +46,7 @@ func _initialize() -> void:
 	await _ui_maps()
 	progress.reset_progress()
 	_check(errlog.count == 0, "no engine or script errors (%d)%s" % [errlog.count, "" if errlog.lines.is_empty() else ": " + errlog.lines[0]])
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -444,7 +443,3 @@ func _ui_maps() -> void:
 	progress.maps = {}
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

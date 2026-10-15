@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Dev toggles (dev mode only): F1 = FULL BRIGHT (the fog layers hidden, the fog/trail bytes and
 ## reveal untouched, so switching it off restores the exact normal fog), F2 = NO DRAIN (the meter
@@ -8,16 +8,15 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_dev_toggles.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_dev_toggles.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.hard_mode = false
 	progress.levels_cleared = 10
 	progress.tutorial_seen = 3
@@ -122,7 +121,7 @@ func _initialize() -> void:
 	# --- Never saved
 	progress.saving_enabled = true
 	progress.save_progress()
-	var text := FileAccess.get_file_as_string(TEST_SAVE)
+	var text := FileAccess.get_file_as_string(test_save)
 	_check(text != "" and not "dev_bright" in text and not "dev_no_drain" in text, "the toggles are never written to the save")
 
 	# --- A run with a toggle used sets no record or medal (and still wins normally)
@@ -169,8 +168,8 @@ func _initialize() -> void:
 	progress.dev_no_drain = false
 	progress.dev_tools = false
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -198,7 +197,3 @@ func _spawn(level: int) -> Node2D:
 	return game
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

@@ -14,7 +14,9 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_nav_fuzz.gd
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
 ##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
-##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them).
+##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them),
+##        `-- --nav-walk=I` or `--nav-walk=A-B` (only those walk indices), `-- --nav-no-web-child` (skip the --web-ui
+##        child process; tools/test_all.sh runs that ring as its own parallel job, see its SHARDS).
 ## Area walks: eleven more walks (the last: the level select's HEAT panel and heat runs) that start inside one area and keep steering back into it (`_area_op`,
 ## about a third of the inputs): the map table + map view (with its PAPER button), the SETTINGS panels,
 ## the pause menu, the dry-up choices, the win choices, a touch-driven level, the prize wheel's
@@ -38,6 +40,9 @@ var strict := false
 var only := ""
 var variant := ""
 var only_walk := -1
+## Last walk index of a `--nav-walk=A-B` range (only_walk = A); -1 when a single walk or all walks are selected.
+var only_walk_to := -1
+var web_child := true
 var done := false
 var rng := RandomNumberGenerator.new()
 var current_walk := ""
@@ -67,7 +72,11 @@ func _initialize() -> void:
 		elif arg.begins_with("--nav-only="):
 			only = arg.get_slice("=", 1)
 		elif arg.begins_with("--nav-walk="):
-			only_walk = int(arg.get_slice("=", 1))
+			var which := arg.get_slice("=", 1)
+			only_walk = int(which.get_slice("-", 0))
+			only_walk_to = int(which.get_slice("-", 1)) if "-" in which else -1
+		elif arg == "--nav-no-web-child":
+			web_child = false
 		elif arg.begins_with("--nav-area-steps="):
 			area_steps = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--nav-variant="):
@@ -1069,7 +1078,7 @@ func _story() -> void:
 	var game: Node2D = await _fresh_scene(L.GAME)
 	await L.frames(20)
 	game._on_goal_body_entered(game.slime)
-	await L.frames(int(game.WIN_FINAL_DELAY * 60) + 90)
+	await L.frames(int(game.CHOICE_DELAY * 60) + 90)
 	if game.hud.choice_buttons.size() == 3:
 		game.hud.choice_buttons[1].grab_focus()
 		await L.tap(KEY_ENTER)
@@ -1165,11 +1174,11 @@ func _variants() -> void:
 
 ## The web build has no trapdoor (hub without QUIT): run a short walk in a child process with --web-ui.
 func _web_child() -> void:
-	if "--nav-child" in OS.get_cmdline_user_args():
+	if "--nav-child" in OS.get_cmdline_user_args() or not web_child:
 		return
 	var out := []
 	var args := ["--path", ProjectSettings.globalize_path("res://"), "--headless", "--fixed-fps", "60", "--quit-after", "300000",
-		"-s", "res://tests/test_nav_fuzz.gd", "--", "--web-ui", "--nav-child", "--nav-only=walks", "--nav-steps=600", "--nav-seed=%d" % (base_seed + 5)]
+		"-s", "res://tests/test_nav_fuzz.gd", "--", "--web-ui", "--nav-child", "--nav-only=walks", "--nav-steps=600", "--nav-area-steps=500", "--nav-seed=%d" % (base_seed + 5)]
 	var code := OS.execute(OS.get_executable_path(), args, out, true)
 	var text: String = "".join(out)
 	var ok := "RESULT: PASS" in text
@@ -1189,17 +1198,24 @@ func _walks() -> void:
 		starts = [[variant if variant == "touch" else "complete", L.HUB]]
 	var i := 0
 	for s in starts:
-		if only_walk < 0 or only_walk == i:
+		if _walk_selected(i):
 			await _walk(s[0], s[1], base_seed + i * 7919, walk_steps)
 		i += 1
 	if variant != "" or area_steps <= 0:
 		return
 	for a in AREAS:  # walk indices continue after the plain ones (replay one with --nav-walk=I)
-		if only_walk < 0 or only_walk == i:
+		if _walk_selected(i):
 			area = a[0]
 			await _walk(a[1], a[2], base_seed + i * 7919, area_steps)
 			area = ""
 		i += 1
+
+
+## Whether walk index `i` is selected by --nav-walk (none given = all; I = one; A-B = a range).
+func _walk_selected(i: int) -> bool:
+	if only_walk < 0:
+		return true
+	return i >= only_walk and i <= (only_walk_to if only_walk_to >= 0 else only_walk)
 
 
 func _walk(state: String, scene: String, wseed: int, steps: int) -> void:

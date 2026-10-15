@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 6 checks: pixel font with real spaces, every sound loads and plays (and stays quiet when
 ## muted), splats shake the screen briefly, the pause menu freezes the level, and the victory
@@ -7,14 +7,16 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	var progress: Node = root.get_node("Progress")
 	var sfx: Node = root.get_node("Sfx")
-	progress.save_path = "user://test_save.cfg"
+	progress.save_path = test_save
 	progress.sound_on = true
 
 	# --- Font
@@ -47,7 +49,7 @@ func _initialize() -> void:
 	progress.set_volume(0.8)
 
 	# --- Splat: sound + brief screen shake
-	var game := await _spawn()
+	var game := await _spawn_game()
 	game.slime.facing = Vector2.UP
 	game.slime.launch(100.0)
 	var shook := false
@@ -91,17 +93,8 @@ func _initialize() -> void:
 	_check(victory.buttons.size() == 3 and victory.buttons[0].text == "PICK YOUR COLOR", "victory screen offers: pick your color, randomizer, title")
 	victory.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
-
-
-func _spawn() -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	game.level = 1
-	root.add_child(game)
-	await physics_frame
-	return game
 
 
 func _playing(sfx: Node, sound_name: String) -> bool:
@@ -111,7 +104,3 @@ func _playing(sfx: Node, sound_name: String) -> bool:
 	return false
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

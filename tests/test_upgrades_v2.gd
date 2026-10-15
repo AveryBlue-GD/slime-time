@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Upgrades v2, batch 1 (docs/design/upgrades-v2.md A2): the core coin tree with few big breakpoints.
 ## Checks: the Economy table (MORE SLIME 7 / SPEED 4 / BRIGHTNESS 3 levels, exact costs and effects,
@@ -14,7 +14,6 @@ extends SceneTree
 const PROGRESS := preload("res://scripts/progress.gd")
 const Main := preload("res://scripts/game.gd")
 
-var failures := 0
 var progress: Node
 
 
@@ -37,7 +36,7 @@ func _initialize() -> void:
 	progress.dev_tools = false
 	for node in _made:
 		node.free()
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -430,7 +429,3 @@ func _old_save(levels: Dictionary, coins: int) -> ConfigFile:
 	return f
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

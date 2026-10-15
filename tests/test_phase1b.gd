@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 1B feel + light checks: jump input buffer, camera kick / hit-stop (and Reduce Motion),
 ## SFX pitch variation, the low-slime warning, the new optional settings (saved, defaulted,
@@ -8,19 +8,21 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const GameScript := preload("res://scripts/game.gd")
 
-var failures := 0
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	var progress: Node = root.get_node("Progress")
-	progress.save_path = "user://test_save_1b.cfg"
+	progress.save_path = test_save
 	progress.reduce_motion = false
 	progress.fog_brightness = progress.FOG_NORMAL
 	var spot := {}
 
 	# --- Jump buffer: a press made while stunned starts the charge when the stun ends.
-	var game := await _spawn()
+	var game := await _spawn_game()
 	spot = _dead_end(game, 3)
 	await _splat(game, spot, 100.0)
 	_check(game.slime.state == Slime.State.STUNNED, "a hard splat stuns the slime")
@@ -39,7 +41,7 @@ func _initialize() -> void:
 	game.free()
 
 	# A tap that was let go before the slime recovered must not start (or fire) anything.
-	game = await _spawn()
+	game = await _spawn_game()
 	await _splat(game, spot, 100.0)
 	Input.action_press("jump")
 	await physics_frame
@@ -52,7 +54,7 @@ func _initialize() -> void:
 	game.free()
 
 	# --- Hit-stop and kick: the picture holds, the run clock does not.
-	game = await _spawn()
+	game = await _spawn_game()
 	var clock_before: float = game.run_time
 	var frames := 0
 	var splat_pos := await _splat(game, spot, 100.0, true)
@@ -67,7 +69,7 @@ func _initialize() -> void:
 
 	# --- Reduce motion: no shake, kick or hit-stop.
 	progress.reduce_motion = true
-	game = await _spawn()
+	game = await _spawn_game()
 	var calm := await _splat(game, spot, 100.0, true)
 	_check(calm.hit_stop == 0.0 and not calm.shook, "REDUCE MOTION skips the hit-stop and the shake/kick")
 	game.free()
@@ -86,7 +88,7 @@ func _initialize() -> void:
 	_check(sfx.has_sound("heartbeat") and sfx.has_sound("lowwarn"), "the low-slime warning sounds exist")
 
 	# --- Low-slime warning
-	game = await _spawn()
+	game = await _spawn_game()
 	game.slime_remaining = 50.0
 	await physics_frame
 	_check(not game._was_low, "no warning above the red mark")
@@ -126,7 +128,7 @@ func _initialize() -> void:
 	# --- Fog looks: shader and fog_alpha_at agree for every brightness, Normal is the standard look.
 	for setting in 3:
 		progress.fog_brightness = setting
-		game = await _spawn()
+		game = await _spawn_game()
 		var look: Dictionary = game.fog_look()
 		var material: ShaderMaterial = game.fog_sprite.material
 		var fa: Vector4 = material.get_shader_parameter("fade_alpha")
@@ -149,8 +151,7 @@ func _initialize() -> void:
 	_check(not code.contains("["), "the fog shader indexes no arrays")
 	_check(not code.contains("for ("), "...and has no loops over uniforms")
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_1b.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -192,15 +193,3 @@ func _dead_end(game: Node2D, behind: int) -> Dictionary:
 	return {}
 
 
-func _spawn() -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	game.level = 1
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

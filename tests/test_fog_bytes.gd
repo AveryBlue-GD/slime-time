@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The fog/trail bookkeeping (game.gd: bytes, exact disc spans, only cells new to the disc) must
 ## give byte-for-byte the fog and trail of the original per-cell Image code, which is kept below as
@@ -9,7 +9,6 @@ extends SceneTree
 ## fog always looks the same as the current one (same fade band and refog for every cell).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_fog_bytes.gd
 
-var failures := 0
 var game: Node
 var ref_fog: Image
 var ref_trail: Image
@@ -41,7 +40,7 @@ func _initialize() -> void:
 	# The upgrades v2 BRIGHTNESS breakpoints (Upgrades.light_reach 0 / 8 / 16 / 25 px).
 	await _replay(progress, 4, 0, [Upgrades.light_reach(0), Upgrades.light_reach(1), Upgrades.light_reach(2), Upgrades.light_reach(3)], false)
 	print("  (%d fog uploads over %d frames)" % [uploads, frames])
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -270,9 +269,3 @@ func ref_reveal_wall(tile: Vector2i) -> void:
 	ref_fog.fill_rect(game._tile_cells(tile), Main._fog_color(game.elapsed, game.elapsed, true))
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

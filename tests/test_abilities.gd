@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1", with the pass-over-walls buff): SLIME RIFLE
 ## (pierces walls: reveals exactly the tiles on its line for its range, floor tiles with the walls around
@@ -16,7 +16,6 @@ const TILE := 16
 ## The gap the touch layout must keep between an ability's hit area and JUMP's real catch zone (px).
 const DEAD_RING := 8.0
 
-var failures := 0
 var progress: Node
 
 
@@ -43,7 +42,7 @@ func _initialize() -> void:
 	_saves()
 	_bindings_migration()
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -94,11 +93,6 @@ func _stop(game: Node2D) -> void:
 		Input.action_release(Abilities.action(id))
 	game.free()
 	await process_frame
-
-
-func _frames(n: int) -> void:
-	for i in n:
-		await physics_frame
 
 
 func _start_tile(game: Node2D) -> Vector2i:
@@ -301,7 +295,7 @@ func _kaze() -> void:
 		var before := _snapshot(game)
 		var meter: float = game.slime_remaining
 		var fired: bool = game.abilities.use("kaze")
-		await _frames(1)
+		await _physics_frames(1)
 		_check(fired and game.slime.state == Slime.State.DASH and game.slime.is_airborne(), "SLIMAKAZE: the slime dashes (no drain while it flies)")
 		game.abilities.flush()
 		var impact := Vector2i((game.slime.position / TILE).floor())
@@ -380,7 +374,7 @@ func _kaze_kill_and_refuse() -> void:
 	game.slime_remaining = 20.0
 	game.abilities.use("kaze")
 	game.abilities.flush()
-	await _frames(game.slime.splat_stun * 60 + 60)
+	await _physics_frames(game.slime.splat_stun * 60 + 60)
 	_check(game.slime_remaining == 0.0 and game.finished and not game.won, "SLIMAKAZE with 20% left (<= its 30%): the impact dries the slime up")
 	await _stop(game)
 	_state({kaze = 1})
@@ -447,7 +441,7 @@ func _kaze_goal() -> void:
 			var line := _goal_line(game, 2)
 			_place(game, line.from, line.dir)
 			game.slime_remaining = meter
-			await _frames(1)
+			await _physics_frames(1)
 			var fired: bool = game.abilities.use("kaze")
 			for i in 60:
 				if game.finished:
@@ -656,7 +650,7 @@ func _inputs() -> void:
 	var game := await _spawn(4)
 	_aim(game, _dir_with(game, 1))
 	Input.action_press("ability_rifle")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("ability_rifle")
 	_check(game.abilities.charges.rifle == 0, "pressing the rifle action fires it")
 	await _stop(game)
@@ -723,7 +717,7 @@ func _touch() -> void:
 	tc.set_abilities(kaze_only)
 	_check(_button_center(tc, 0).distance_to(TouchControls.JUMP_CENTER) > 80.0, "owning only SLIMAKAZE, its button keeps its far spot (%s)" % _button_center(tc, 0))
 	game.abilities._refresh()
-	await _frames(90)  # (the probe's JUMP taps set off a leap or two: let them land)
+	await _physics_frames(90)  # (the probe's JUMP taps set off a leap or two: let them land)
 	for i in 180:
 		if game.slime.state == Slime.State.GLIDE:
 			break
@@ -731,15 +725,15 @@ func _touch() -> void:
 	_place(game, _start_tile(game), _dir_with(game, 1))
 	# Fires on RELEASE, and only on its own button.
 	_tap(tc, 3, center.rifle, true)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.abilities.can_use("rifle") and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"), "touching SLIME RIFLE's button doesn't fire it yet")
 	_tap(tc, 3, center.rifle + Vector2(0, 40), false)
-	await _frames(1)
+	await _physics_frames(1)
 	_check(game.abilities.charges.rifle == 1, "sliding off the button and letting go cancels it")
 	_tap(tc, 3, center.rifle, true)
-	await _frames(1)
+	await _physics_frames(1)
 	_tap(tc, 3, center.rifle + Vector2(3, 0), false)
-	await _frames(1)
+	await _physics_frames(1)
 	_check(game.abilities.charges.rifle == 0 and not Input.is_action_pressed("ability_rifle") and not Input.is_action_pressed("jump"),
 		"lifting the finger on the button fires SLIME RIFLE (no JUMP, nothing left held)")
 	progress.force_touch = false
@@ -832,10 +826,10 @@ func _inert(game: Node2D, label: String) -> void:
 	var sounds := 0
 	for id in Abilities.ids():
 		Input.action_press(Abilities.action(id))
-	await _frames(3)
+	await _physics_frames(3)
 	for id in Abilities.ids():
 		Input.action_release(Abilities.action(id))
-	await _frames(3)
+	await _physics_frames(3)
 	_check(is_equal_approx(game.slime_remaining, meter) and game.get_children().all(func(c: Node) -> bool: return not (c is AbilityRunner)),
 		"%s: keys 1 2 3 do nothing (meter %.1f -> %.1f)" % [label, meter, game.slime_remaining])
 
@@ -932,7 +926,3 @@ func _bindings_migration() -> void:
 	progress.reset_bindings()
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

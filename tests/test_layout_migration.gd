@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Story coin keys and save layouts since the pre-v5 save migrations were removed (spring cleaning,
 ## 2026-10-15: every release-epoch save is version 5+, docs/itch-release.md): a v5 save's coin keys are
@@ -8,7 +8,6 @@ extends SceneTree
 
 const PROGRESS := preload("res://scripts/progress.gd")
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -63,7 +62,7 @@ func _initialize() -> void:
 
 	for node in [s, u, h]:
 		node.free()
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -98,9 +97,3 @@ func _v3_save() -> ConfigFile:
 	return f
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

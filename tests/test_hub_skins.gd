@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Every skin in the hub: for each skin (all ten presets, the CHAMELEON color wheel and the
 ## rainbow), in both jelly and solid versions, the skin is picked on the real skins screen and the
@@ -9,7 +9,6 @@ extends SceneTree
 ## colors from the skin before would show up. Everything unlocked (dev); never touches a save.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hub_skins.gd
 
-var failures := 0
 var progress: Node
 var skins_scene: PackedScene
 var hub_scene: PackedScene
@@ -38,7 +37,7 @@ func _initialize() -> void:
 				checked += 1
 	_check(checked == order.size() * 2, "%d of %d skin swaps show the right colors everywhere in the hub" % [checked, order.size() * 2])
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -96,7 +95,3 @@ func _check_hub(id: String, jelly: bool, base: Color) -> bool:
 	return true
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

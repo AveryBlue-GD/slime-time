@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The hub's ring with the MAP TABLE, at every rotation state the room can be in (9 stations; 8 on
 ## the web, without the trapdoor: checked in a child process with --web-ui). For each state:
@@ -15,7 +15,6 @@ extends SceneTree
 
 const WEB_FLAG := "--web-ui"
 
-var failures := 0
 var progress: Node
 var hub_script: GDScript
 var web := false
@@ -40,7 +39,7 @@ func _initialize() -> void:
 			if line.begins_with("  ok") or line.begins_with("  FAIL"):
 				print(line.replace("  ok   ", "  ok   [web] ").replace("  FAIL ", "  FAIL [web] "))
 		_check("RESULT: PASS" in text, "the web ring passes too")
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -48,7 +47,7 @@ func _check_ring() -> void:
 	hub_script.return_to = ""
 	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
 	root.add_child(hub)
-	await _frames(2)
+	await _physics_frames(2)
 	var n: int = hub.stations.size()
 	var ids: Array = hub.stations.map(func(s: Dictionary) -> String: return s.id)
 	_check(n == (8 if web else 9) and "maps" in ids and ("quit" in ids) != web,
@@ -136,7 +135,7 @@ func _check_ring() -> void:
 	hub_script.return_to = "maps"
 	hub = load("res://scenes/hub.tscn").instantiate()
 	root.add_child(hub)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub._station("maps").view == hub_script.View.FRONT and hub.near.get("id", "") == "maps" and hub.prompt_name.text == "MAP TABLE",
 		"coming back from the map table turns the room to face it, the slime in front of it")
 	hub.free()
@@ -178,12 +177,3 @@ func _screen_rect(station: Dictionary, rows: Array) -> Rect2i:
 	return Rect2i(Vector2i(station.sprite.position + station.sprite.offset) + used.position, used.size)
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 1 checks: trail reveals the black map, walls next to the trail show, gliding costs
 ## slime (idling doesn't), walls block, the chalice is reachable, and running dry loses.
@@ -8,7 +8,6 @@ const MAIN := preload("res://scenes/main.tscn")
 const StartDirs := preload("res://tests/start_dirs.gd")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
 
-var failures := 0
 var last_result := -1  # -1 = not finished, 0 = lost, 1 = won
 
 
@@ -23,7 +22,7 @@ func _initialize() -> void:
 
 	var open_dir := StartDirs.action(StartDirs.open_dir(game.maze, game.maze.start))
 	await _hold(open_dir, 0.6)
-	await _wait(1.0)
+	await _wait_seconds(1.0)
 	var traveled: float = game.slime.position.distance_to(start)
 	var used: float = 100.0 - game.slime_remaining
 	_check(traveled > 10.0, "gliding moves the slime (%.1f px)" % traveled)
@@ -31,7 +30,7 @@ func _initialize() -> void:
 	_check(game.fog_alpha_at(game.slime.position) == 0.0, "trail reveals where the slime went")
 
 	var before: float = game.slime_remaining
-	await _wait(1.0)
+	await _wait_seconds(1.0)
 	_check(game.slime_remaining == before, "standing still costs nothing")
 
 	game.slime.position = start  # back on the start, then push into the wall beside it
@@ -56,7 +55,7 @@ func _initialize() -> void:
 	_check(last_result == 0, "running out of slime dries the slime up")
 	game.free()
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -72,13 +71,8 @@ func _spawn() -> Node2D:
 
 func _hold(action: String, seconds: float) -> void:
 	Input.action_press(action)
-	await _wait(seconds)
+	await _wait_seconds(seconds)
 	Input.action_release(action)
-
-
-func _wait(seconds: float) -> void:
-	for i in int(seconds * 60):
-		await physics_frame
 
 
 func _wait_until_finished(game: Node2D, timeout: float) -> void:
@@ -88,7 +82,3 @@ func _wait_until_finished(game: Node2D, timeout: float) -> void:
 		await physics_frame
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

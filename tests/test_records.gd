@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Timer + record checks: the run timer counts (and stops while paused), a first clear only sets
 ## the record (no celebration), a slower repeat shows the best time, a faster repeat shows the gold
@@ -7,16 +7,15 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_records.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.levels_cleared = 0
 	progress.highest_unlocked = 1
 	progress.best_times = {}
@@ -26,11 +25,11 @@ func _initialize() -> void:
 
 	# --- Timer counts, and stops while paused.
 	var game := await _spawn_running()
-	await _frames(60)
+	await _physics_frames(60)
 	_check(absf(game.run_time - 1.0) < 0.05 and game.hud.time_label.text == "0:01.0", "the HUD timer counts up (%s)" % game.hud.time_label.text)
 	game.pause_menu.open()
 	var paused_at: float = game.run_time
-	await _frames(30)
+	await _physics_frames(30)
 	_check(game.run_time == paused_at, "the timer stops while paused")
 	game.pause_menu.resume()
 
@@ -44,7 +43,7 @@ func _initialize() -> void:
 	# --- Slower repeat: shows the best, no banner, record unchanged.
 	progress.best_times[1] = 0.05
 	game = await _spawn_running()
-	await _frames(30)
+	await _physics_frames(30)
 	await _win(game)
 	_check(not game.hud.record_banner.visible and "BEST 0:00.0" in game.hud.message.text, "a slower clear shows your best, no banner")
 	_check(progress.best_time(1) == 0.05, "a slower clear keeps the old record")
@@ -53,7 +52,7 @@ func _initialize() -> void:
 	# --- Faster repeat: gold NEW RECORD! with chalices, record saved.
 	progress.best_times[1] = 999.0
 	game = await _spawn_running()
-	await _frames(30)
+	await _physics_frames(30)
 	await _win(game)
 	var banner: CenterContainer = game.hud.record_banner
 	_check(banner.visible, "beating your record shows the NEW RECORD! banner")
@@ -63,7 +62,7 @@ func _initialize() -> void:
 	_check(title.text == "NEW RECORD!" and title.get_theme_color("font_color") == game.hud.GOLD, "NEW RECORD! is gold")
 	_check(progress.best_time(1) < 999.0, "the new record is saved (%s)" % UIKit.format_time(progress.best_time(1)))
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(absf(reloaded.best_time(1) - progress.best_time(1)) < 0.001, "records survive a restart")
 	reloaded.free()
@@ -79,8 +78,8 @@ func _initialize() -> void:
 	_check(UIKit.format_time(progress.best_time(1)) in tile_text, "level select shows the record (%s)" % tile_text)
 	screen.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -97,22 +96,13 @@ func _spawn_running() -> Node2D:
 
 func _win(game: Node2D) -> void:
 	game.slime.position = game.goal.position
-	await _frames(3)
+	await _physics_frames(3)
 
 
 ## Detaches the game before its end-of-level timer reloads the scene, then frees it.
 func _stop_running(game: Node2D) -> void:
 	current_scene = null
-	await _frames(int(game.END_DELAY * 60) + 10)
+	await _physics_frames(int(game.CHOICE_DELAY * 60) + 10)
 	game.free()
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

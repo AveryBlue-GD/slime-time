@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 4 checks: the sprite sheet has every animation with enough frames, each game state
 ## shows the right animation, and lit areas fade back toward darkness in steps.
@@ -7,7 +7,6 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const StartDirs := preload("res://tests/start_dirs.gd")
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -25,18 +24,18 @@ func _initialize() -> void:
 	for anim_name in ["dry", "celebrate", "splat_n", "splat_e", "splat_s", "splat_w", "glide_ne", "air_sw"]:
 		_check(manifest.has(anim_name), "has animation '%s'" % anim_name)
 
-	var game := await _spawn()
+	var game := await _spawn_game()
 	var slime: Slime = game.slime
 	var open_dir := StartDirs.open_dir(game.maze, game.maze.start)
 	var action := StartDirs.action(open_dir)
 	var glide_anim: String = "glide_" + StartDirs.ANIMS[open_dir]
 	_check(slime.sprite.animation == "idle", "standing still shows idle")
 	Input.action_press(action)
-	await _wait(0.3)
+	await _wait_seconds(0.3)
 	_check(slime.sprite.animation == glide_anim and slime.sprite.is_playing(),
 		"gliding shows %s (got %s)" % [glide_anim, slime.sprite.animation])
 	Input.action_release(action)
-	await _wait(1.0)
+	await _wait_seconds(1.0)
 	_check(slime.sprite.animation == "idle", "stopping returns to idle")
 
 	# Leap from a cell whose corridor ends in a wall one cell on (the start is random since v4).
@@ -44,9 +43,9 @@ func _initialize() -> void:
 	slime.position = MazeGenerator.cell_center(hop.cell, 16)
 	slime.velocity = Vector2.ZERO
 	game.last_slime_pos = slime.position
-	await _wait(0.2)
+	await _wait_seconds(0.2)
 	Input.action_press("jump")
-	await _wait(0.8)
+	await _wait_seconds(0.8)
 	_check(slime.sprite.animation.begins_with("charge_") and slime.sprite.frame == 2,
 		"charging shows charge frames that follow the meter (frame %d at %.0f%%)" % [slime.sprite.frame, slime.charge])
 	slime.facing = Vector2(hop.dir)
@@ -62,7 +61,7 @@ func _initialize() -> void:
 		await physics_frame
 	_check(slime.sprite.animation == splat_anim, "hitting the wall ahead shows %s (got %s)" % [splat_anim, slime.sprite.animation])
 	_check(not slime.shadow.visible, "shadow hides on landing")
-	await _wait(0.35)
+	await _wait_seconds(0.35)
 	_check(slime.sprite.animation == "recover", "after the stun the slime wobbles back (got %s)" % slime.sprite.animation)
 
 	# Fading: the start is lit, then left alone it steps down toward darkness.
@@ -73,57 +72,38 @@ func _initialize() -> void:
 	slime.position = far
 	slime.velocity = Vector2.ZERO  # drop any leftover splat knockback
 	game.last_slime_pos = far
-	await _wait(2.0)
+	await _wait_seconds(2.0)
 	var after_4: float = game.fog_alpha_at(start)
-	await _wait(3.0)
+	await _wait_seconds(3.0)
 	var after_9: float = game.fog_alpha_at(start)
-	await _wait(5.0)
+	await _wait_seconds(5.0)
 	var after_21: float = game.fog_alpha_at(start)
 	_check(after_4 > 0.0 and after_9 > after_4 and after_21 > after_9 and after_21 < 1.0,
 		"left behind, it darkens in layers: %.2f -> %.2f -> %.2f (never fully black)" % [after_4, after_9, after_21])
 	_check(game.fog_alpha_at(far) == 1.0, "unexplored areas stay black even next to the slime")
 	slime.position = start
 	game.last_slime_pos = start
-	await _wait(0.1)
+	await _wait_seconds(0.1)
 	_check(game.fog_alpha_at(start) == 0.0, "coming back relights it")
 	_check(game.fade_alpha(0.0) == 0.0 and game.fade_alpha(1000.0) == game.FADE_ALPHA[-1], "fade starts lit and ends at the memory level")
 	game.free()
 
-	game = await _spawn()
+	game = await _spawn_game()
 	game.slime_remaining = 0.2
 	Input.action_press(action)
-	await _wait(0.5)
+	await _wait_seconds(0.5)
 	Input.action_release(action)
 	_check(game.slime.sprite.animation == "dry", "running out of slime plays the dry-up")
 	game.free()
 
-	game = await _spawn()
+	game = await _spawn_game()
 	game.slime.position = game.goal.position
-	await _wait(0.1)
+	await _wait_seconds(0.1)
 	_check(game.slime.sprite.animation == "celebrate", "reaching the chalice plays the celebration")
 	game.free()
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
-
-
-func _spawn() -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	game.level = 1
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _wait(seconds: float) -> void:
-	for i in int(seconds * 60):
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1
 
 
 ## The cell nearest the start with an open neighbor in some direction and a wall right after it.

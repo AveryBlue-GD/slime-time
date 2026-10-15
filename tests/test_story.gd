@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The story: the intro shows only on a fresh save (any key advances, Esc skips, seen is saved and
 ## reset by RESET PROGRESS), old saves count as seen, every level banner line fits the 320 px
@@ -9,15 +9,17 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_story.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-var failures := 0
 var progress: Node
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.saving_enabled = true
-	progress.save_path = "user://test_save_story.cfg"
+	progress.save_path = test_save
 	progress.dev_tools = false
 
 	# --- Text: ten level lines, everything uppercase and narrow enough
@@ -221,7 +223,6 @@ func _initialize() -> void:
 	_check(even and step > 0 and bottom.size.x >= 6 and top.size.x >= 24 and top.size.x <= 30,
 		"the depth gauge's slices are equal height, evenly gapped, centered and shrink by %d px from top (%d) to bottom (%d)" % [step, top.size.x, bottom.size.x])
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_story.cfg"))
 	# --- A huge first frame delta (web scene load) keeps the stage bounce bounded
 	var big := await _open("intro", false)
 	big.art.start("splat")
@@ -229,7 +230,7 @@ func _initialize() -> void:
 	_check(absf(big.art.bounce) < 20.0 and absf(big.art.bounce_v) < 400.0, "a 1 s first frame keeps the bounce bounded (%.1f)" % big.art.bounce)
 	big.finish()
 	big.free()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 

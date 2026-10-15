@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The unbreakable border outside the maze (MazeTiles.add_border / border_cells): the ring next to
 ## the maze collides exactly like before (a full wall square on every ring tile, nothing past it),
@@ -9,14 +9,16 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
 var progress: Node
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = "user://test_border.cfg"
+	progress.save_path = test_save
 	progress.hard_mode = false
 	progress.dev_tools = false
 	progress.tutorial_seen = 3
@@ -75,8 +77,7 @@ func _initialize() -> void:
 	# --- The art: what tools/make_theme_art.py draws, exactly (and drawn twice the same)
 	_check_generator()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_border.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -151,7 +152,3 @@ func _spawn(level: int, random_seed: int) -> Node2D:
 	return game
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Randomizer extras: random (seeded) spawn cells, the TICKET as the maze's goal (no chalice node;
 ## the ticket stands on the goal cell, the autopilot wins by reaching it; story keeps the chalice),
@@ -7,7 +7,6 @@ extends SceneTree
 
 const SEEDS := 300
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -151,7 +150,7 @@ func _initialize() -> void:
 	loaded.free()
 	fresh.free()
 
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -167,9 +166,3 @@ func _find_chalice(node: Node) -> Node:
 	return null
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

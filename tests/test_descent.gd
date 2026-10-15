@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## DESCENT runs (upgrades v2 batch 3, docs/design/upgrades-v2.md C2): the floor tables (usage u,
 ## refill, pot, theme cycle, size), determinism by run seed, boon offers and stacking, the refill /
@@ -12,7 +12,6 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const SEED := 777
 
-var failures := 0
 var progress: Node
 
 
@@ -37,7 +36,7 @@ func _initialize() -> void:
 	await _story_untouched()
 	await _card_guards()
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -91,11 +90,11 @@ func _tables() -> void:
 	for c in drops:
 		good = good and c != maze.start and c != maze.goal and depths.has(c)
 	_check(good, "2 goo drops per floor, at dead ends (never the start or the exit): %s" % [drops])
-	var t0 := Time.get_ticks_usec()
-	for f in range(1, 21):
-		MazeGenerator.generate_random(Descent.floor_config(SEED + 1, f, 7))
-	var ms := (Time.get_ticks_usec() - t0) / 1000.0 / 20.0
-	_check(ms < 40.0, "a floor builds fast (%.1f ms average at MORE SLIME 7; web budget ~20 ms native-equivalent)" % ms)
+	_check_budget("a floor builds fast (average over 20 floors at MORE SLIME 7; web budget ~20 ms native-equivalent)", 40.0, func() -> float:
+		var t0 := Time.get_ticks_usec()
+		for f in range(1, 21):
+			MazeGenerator.generate_random(Descent.floor_config(SEED + 1, f, 7))
+		return (Time.get_ticks_usec() - t0) / 1000.0 / 20.0)
 
 
 func _determinism() -> void:
@@ -765,7 +764,3 @@ func _plain(offers: Array[String]) -> String:
 	return offers[0]
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Coins and upgrades: every story level hides its coins at dead ends (the same ones every
 ## time), together exactly enough to max the three regular upgrades; a coin is collected once,
@@ -8,16 +8,15 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_coins.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.coins_found = {}
 	progress.upgrades = {}
 	progress.dev_tools = false
@@ -33,7 +32,7 @@ func _initialize() -> void:
 	var all_fit := true
 	var at_dead_ends := true
 	for level in range(1, Levels.COUNT + 1):
-		var game := await _spawn({level = level})
+		var game := await _spawn_game({level = level})
 		all_fit = all_fit and game.coins.size() == Levels.COINS[level - 1]
 		for coin: Coin in game.coins:
 			at_dead_ends = at_dead_ends and MazeGenerator.open_neighbors(game.maze, coin.cell).size() == 1
@@ -42,7 +41,7 @@ func _initialize() -> void:
 	_check(at_dead_ends, "coins only sit at dead ends")
 
 	# --- Collecting
-	var game := await _spawn({level = 2})
+	var game := await _spawn_game({level = 2})
 	var first: Coin = game.coins[0]
 	var cell := first.cell
 	game.slime.position = first.position
@@ -53,15 +52,15 @@ func _initialize() -> void:
 		"the HUD counts it: %s in hand, %s here" % [game.hud.coin_label.text, game.hud.coins_left_label.text])
 	game.free()
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.has_coin(2, cell), "the coin is saved the moment it's grabbed")
 	reloaded.free()
-	game = await _spawn({level = 2})
+	game = await _spawn_game({level = 2})
 	var cells: Array = game.coins.map(func(c: Coin) -> Vector2i: return c.cell)
 	_check(not cell in cells and game.coins.size() == Levels.COINS[1] - 1, "a collected coin never comes back")
 	game.free()
-	game = await _spawn({random_seed = 99})
+	game = await _spawn_game({random_seed = 99})
 	_check(game.coins.is_empty() and not game.hud._coins_left_pod.visible, "randomizer mazes have no coins")
 	game.free()
 
@@ -85,14 +84,14 @@ func _initialize() -> void:
 	_check(progress.coins() == 0 and progress.upgrade_level("brightness") == 3, "every coin found maxes all three upgrades exactly")
 
 	# --- Upgrade effects
-	game = await _spawn({level = 1})
+	game = await _spawn_game({level = 1})
 	var plain_speed := 72.0
 	_check(absf(game.slime.max_speed - plain_speed * 1.5) < 0.01, "speed 4: the slime glides 50% faster")
 	_check(game.light_reach == 25.0, "brightness 3: a wider light (25 px more reach)")
 	var cost: float = game.slime_cost_per_tile
 	game.free()
 	progress.upgrades = {}
-	game = await _spawn({level = 1})
+	game = await _spawn_game({level = 1})
 	_check(absf(game.slime_cost_per_tile / cost - 2.0) < 0.01, "more slime 7: twice as far on a full meter")
 	game.free()
 
@@ -100,7 +99,7 @@ func _initialize() -> void:
 	progress.upgrades = {"power": 4}
 	_check(progress.upgrade_level("power") == 0, "wall power does nothing outside dev mode")
 	progress.dev_tools = true
-	game = await _spawn({level = 1})
+	game = await _spawn_game({level = 1})
 	var spot := _inner_wall_spot(game)
 	_check(not spot.is_empty(), "found an inner wall to splat into")
 	var wall_tile: Vector2i = spot.wall
@@ -119,14 +118,14 @@ func _initialize() -> void:
 	progress.coins_found = {}
 
 	# --- Coins glint in their own metal
-	game = await _spawn({level = 4})
+	game = await _spawn_game({level = 4})
 	var glow: Sprite2D = game.coins[0].get_child(0)
 	_check(game.coins[0].region_rect.size == Vector2(Coin.FRAME, Coin.FRAME) and Coin.FRAME == 12, "coins are 12x12 frames")
 	_check(Color(glow.modulate, 1.0).is_equal_approx(Color(Coin.GLOW[3], 1.0)), "a coin's glow is its level's metal")
 	game.free()
 
 	# --- Glimmers through the fog: with distance traveled (not time), only over hidden coins
-	game = await _spawn({level = 4})
+	game = await _spawn_game({level = 4})
 	game.glimmer_view_only = false
 	game.glimmer_reach = 100000.0  # any coin in the level counts as near, for the test
 	for i in 240:  # standing still for 4 s
@@ -145,7 +144,7 @@ func _initialize() -> void:
 	for i in Levels.COINS[3]:  # every coin of level 4 found: nothing left to glimmer
 		progress.coins_found[4] = progress.coins_found.get(4, []) + ["found%d" % i]
 	progress.all_coins_debug = true
-	game = await _spawn({level = 4})
+	game = await _spawn_game({level = 4})
 	game.glimmer_view_only = false
 	game.glimmer_reach = 100000.0
 	game.glimmer_travel = 10000.0
@@ -164,8 +163,8 @@ func _initialize() -> void:
 	_check(game.camera.limit_left < -16 and game.camera.limit_right > w * 16 + 16, "the camera can look past the double wall")
 	game.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -184,16 +183,3 @@ func _inner_wall_spot(game: Node2D) -> Dictionary:
 	return {}
 
 
-func _spawn(settings: Dictionary) -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	for key: String in settings:
-		game.set(key, settings[key])
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

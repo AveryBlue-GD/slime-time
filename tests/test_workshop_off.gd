@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The ticket workshop is switched off by ONE flag (Economy.WORKSHOP_ENABLED = false). With it off:
 ## nothing is offered (no TICKETS tab or page, no buying, no hub '!'), nothing is applied (story,
@@ -12,7 +12,6 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const FULL := {wind = 3, charge = 3, sticky = 3, magnet = 3, nose = 3}
 
-var failures := 0
 var progress: Node
 
 
@@ -28,7 +27,7 @@ func _initialize() -> void:
 	await _games()
 	await _screen()
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -65,7 +64,7 @@ func _data() -> void:
 
 func _saves() -> void:
 	_state()
-	var path := "user://test_workshop_off.cfg"
+	var path := throwaway_save("_saves")
 	progress.save_path = path
 	progress.saving_enabled = true
 	progress.save_progress()
@@ -205,7 +204,3 @@ func _screen() -> void:
 	Economy.workshop_force = -1
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

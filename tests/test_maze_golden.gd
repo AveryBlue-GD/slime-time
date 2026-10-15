@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Maze determinism guard: every randomizer seed (2,000 seeds x MORE SLIME 0 / 4 / 7 and hard
 ## mode) and every story level must build exactly the maze, start, goal (chalice / randomizer ticket)
@@ -24,9 +24,10 @@ extends SceneTree
 const GOLDEN := "res://tests/data/maze_golden.txt"
 const SEEDS := 2000
 const LEVELS: Array[int] = [0, 4, 7, -1]  # -1 = hard mode
-
-var failures := 0
-
+const STORY_LINES := Levels.COUNT * 2
+## `-- --shard=K` (0-3): only the randomizer group LEVELS[K] (plus the story digests when K is 0), compared with that slice
+## of the golden file. tools/test_all.sh runs the four shards in parallel; no argument = everything in one process.
+var shard := -1
 
 func _initialize() -> void:
 	await process_frame
@@ -39,13 +40,16 @@ func _initialize() -> void:
 			out = a.trim_prefix("--write-golden=")
 		elif a.begins_with("--golden="):
 			golden_path = a.trim_prefix("--golden=")
+		elif a.begins_with("--shard="):
+			shard = int(a.trim_prefix("--shard="))
 	var lines := PackedStringArray()
 	var times: Array[float] = []
 	var unsound := 0
-	for level in range(1, Levels.COUNT + 1):
-		for hard in [false, true]:
-			lines.append("story %d %s %s" % [level, "hard" if hard else "normal", _story_digest(level, hard)])
-	for slime_level in LEVELS:
+	if shard <= 0:
+		for level in range(1, Levels.COUNT + 1):
+			for hard in [false, true]:
+				lines.append("story %d %s %s" % [level, "hard" if hard else "normal", _story_digest(level, hard)])
+	for slime_level in LEVELS if shard < 0 else [LEVELS[shard]]:
 		for i in SEEDS:
 			var s := _seed(i)
 			var t := Time.get_ticks_usec()
@@ -69,6 +73,9 @@ func _initialize() -> void:
 		return
 
 	var golden := FileAccess.get_file_as_string(golden_path).strip_edges().split("\n")
+	if shard >= 0:  # this shard's slice: the story lines (shard 0) and its SEEDS randomizer lines
+		var first := STORY_LINES + shard * SEEDS
+		golden = golden.slice(0 if shard == 0 else first, first + SEEDS)
 	_check(golden.size() == lines.size(), "golden file has every digest (%d of %d)" % [golden.size(), lines.size()])
 	var bad := 0
 	for i in mini(golden.size(), lines.size()):
@@ -76,8 +83,8 @@ func _initialize() -> void:
 			if bad < 5:
 				print("  differs: now '%s', golden '%s'" % [lines[i], golden[i]])
 			bad += 1
-	_check(bad == 0, "every story level and %d randomizer builds match the golden mazes, starts, goals and routes (%d differ)" % [SEEDS * LEVELS.size(), bad])
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_check(bad == 0, "every story level and %d randomizer builds match the golden mazes, starts, goals and routes (%d differ)" % [SEEDS * (LEVELS.size() if shard < 0 else 1), bad])
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -125,9 +132,3 @@ static func _mean(values: Array[float]) -> float:
 	return total / maxf(values.size(), 1)
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

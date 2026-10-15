@@ -27,8 +27,6 @@ const WALL_REVEAL_REACH := 4.0
 const WALL_FOG_ALPHA := 0.3
 ## The goal (chalice or randomizer ticket) shows itself within this many px of the slime.
 const CHALICE_REVEAL_DISTANCE := 24.0
-const END_DELAY := 2.0
-const WIN_FINAL_DELAY := 5.0
 const JUMP_COST_FACTOR := 0.5
 ## Extra percent of slime lost when a jump hits a wall, scaled by how hard it was charged.
 const SPLAT_PENALTY_MIN := 2.0
@@ -1917,7 +1915,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		var gain: int = progress.clear_descent_floor(slime_remaining, run_time, dev_toggled) if progress else 0
 		DevLog.log_event(get_tree(), "descent floor cleared", self, "pot+%d" % gain)
-		_finish(true, "FLOOR %d CLEARED" % int(descent_run.get("floor", 1)), END_DELAY)
+		_finish(true, "FLOOR %d CLEARED" % int(descent_run.get("floor", 1)))
 		return
 	if is_random():
 		# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
@@ -1943,7 +1941,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				hud.show_rewards({repeat = true})
 			else:
 				hud.show_rewards({capped = true})
-		_finish(true, random_text, END_DELAY)
+		_finish(true, random_text)
 		return
 	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
@@ -1970,10 +1968,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx("unlock"))
 	elif best >= 0.0:
 		text += "   BEST " + UIKit.format_time(best)
-	var delay := END_DELAY
 	if level >= Levels.COUNT:
 		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
-		delay = WIN_FINAL_DELAY
 	if first_hard_clear:
 		var solid := ", ".join(_skins_unlocked_solid_by(level))
 		if solid != "":
@@ -1993,7 +1989,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	if reward.get("new_best", false) and progress.all_medals() and progress.take_skin_notice(Progress.STOPWATCH_NOTICE):
 		text += "\nALL MEDALS! NEW SKIN: " + Skins.STOPWATCH_NAME
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
-	_finish(true, text, delay)
+	_finish(true, text)
 
 
 ## Skins whose solid (jelly off) version beating `level` on hard mode unlocks.
@@ -2013,17 +2009,17 @@ func _dry_up(out_of_time := false) -> void:
 		# The run is over: half the pot is banked (Progress.end_descent), the summary card follows.
 		if progress:
 			progress.end_descent(false, dev_toggled, run_time)
-		_finish(false, "DRIED UP ON FLOOR %d" % int(descent_run.get("floor", 1)), END_DELAY)
+		_finish(false, "DRIED UP ON FLOOR %d" % int(descent_run.get("floor", 1)))
 		return
 	if progress and not is_random():
 		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
-	_finish(false, "OUT OF TIME!\nDRIED UP" if out_of_time else "DRIED UP", END_DELAY)
+	_finish(false, "OUT OF TIME!\nDRIED UP" if out_of_time else "DRIED UP")
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
 ## result. After a dry-up it retries automatically (a story level again, or a freshly shuffled
 ## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
-func _finish(did_win: bool, text: String, delay: float) -> void:
+func _finish(did_win: bool, text: String) -> void:
 	finished = true
 	won = did_win
 	if did_win:

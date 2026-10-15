@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## HEAT (upgrades v2 batch 4, docs/design/upgrades-v2.md C3; Heat, Economy.HEAT_*): the table and
 ## mask rules (BRITTLE/GROUNDED exclusion, max heat 10, 48 pickable masks), bounty math (25 a level,
@@ -13,17 +13,16 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
-const TEST_SAVE := "user://test_save_heat.cfg"
+var test_save := throwaway_save()
 const Main := preload("res://scripts/game.gd")
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "a throwaway save")
 	_table()
 	_bounties()
@@ -35,8 +34,8 @@ func _initialize() -> void:
 	await _win_flow()
 	await _winnable()
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -219,7 +218,7 @@ func _level_select() -> void:
 	await _click(panel.toggles["brittle"])
 	_check(progress.heat_mods == Heat.bit("dim") | Heat.bit("grounded"), "a click on the greyed BRITTLE does nothing")
 	var file := ConfigFile.new()
-	_check(file.load(TEST_SAVE) == OK and file.get_value("settings", "heat_mods", 0) == progress.heat_mods, "toggles are saved at once")
+	_check(file.load(test_save) == OK and file.get_value("settings", "heat_mods", 0) == progress.heat_mods, "toggles are saved at once")
 	await _key(KEY_ESCAPE)
 	_check(not panel.visible and screen.heat_button.has_focus() and screen.heat_button.text == "HEAT 3" and current_scene == screen, "Esc closes the panel only, focus back on HEAT 3")
 	_check(screen.level_buttons[0].focus_mode != Control.FOCUS_NONE, "the screen is unlocked again")
@@ -472,7 +471,7 @@ func _win_flow() -> void:
 	_check(game.hud.heat_row.visible and "HEAT 6" in game.hud.heat_texts and "BOUNTY +8" in game.hud.heat_texts, "the result shows HEAT 6 and BOUNTY +8 (%s)" % [game.hud.heat_texts])
 	_check(progress.medals_for(3) == progress.TIER_GOLD and is_equal_approx(progress.best_time(3), 10.0), "heat runs keep hard medals and records (%d, %.1f)" % [progress.medals_for(3), progress.best_time(3)])
 	var on_disk := ConfigFile.new()
-	_check(on_disk.load(TEST_SAVE) == OK and on_disk.get_value("heat", "level_3", 0) == 6, "saved with the clear")
+	_check(on_disk.load(test_save) == OK and on_disk.get_value("heat", "level_3", 0) == 6, "saved with the clear")
 	current_scene = null
 	game.free()
 	game = await _spawn(3, mask)

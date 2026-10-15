@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 2 checks: charging roots and aims the slime, clean jumps are cheap and leave no
 ## trail in the air, wall splats cost the penalty, stun, and stain the wall.
@@ -7,7 +7,6 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const StartDirs := preload("res://tests/start_dirs.gd")
 
-var failures := 0
 var landed_hit := -1  # -1 = not landed yet, 0 = clean, 1 = wall
 
 
@@ -23,7 +22,7 @@ func _initialize() -> void:
 	var start: Vector2 = game.slime.position
 	Input.action_press("jump")
 	Input.action_press(open_action)
-	await _wait(0.75)
+	await _wait_seconds(0.75)
 	_check(game.slime.state == Slime.State.CHARGING, "holding jump charges")
 	_check(absf(game.slime.charge - 50.0) < 4.0, "charge fills to ~50%% in 0.75 s (%.1f)" % game.slime.charge)
 	_check(game.slime.position.distance_to(start) < 0.5, "slime holds still while charging")
@@ -72,11 +71,11 @@ func _initialize() -> void:
 	_check(game.last_jump_cost > glide_cost, "splat costs more than gliding there (%.2f%% vs %.2f%%)" % [game.last_jump_cost, glide_cost])
 	_check(game.fog_alpha_at(start + wall * 10.0) == 0.0, "splat stains the wall with goo")
 	_check(game.slime.state == Slime.State.STUNNED, "splat stuns the slime")
-	await _wait(0.5)
+	await _wait_seconds(0.5)
 	_check(game.slime.state == Slime.State.GLIDE, "slime recovers after the stun")
 	game.free()
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -114,12 +113,3 @@ func _wait_for_landing() -> void:
 		await physics_frame
 
 
-func _wait(seconds: float) -> void:
-	for i in int(seconds * 60):
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

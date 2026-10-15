@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The --autoplay launch end to end. A child Godot process plays the whole campaign headless at
 ## --speed=8 (`-- --autoplay --speed=8 --autoplay-hold=0.05 --autoplay-quit`, ~15 s) and prints a
@@ -13,7 +13,6 @@ extends SceneTree
 const REAL_SAVE := "user://save.cfg"
 const PROGRESS := preload("res://scripts/progress.gd")
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -167,7 +166,7 @@ func _run_game(user_args: Array, frames: int) -> String:
 
 
 func _finish() -> void:
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -176,7 +175,3 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

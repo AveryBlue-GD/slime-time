@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Trail maps (Survey; the hub's MAP TABLE). Checks:
 ## - capture: real story runs record the tiles they revealed (kept across restarts and a save/load
@@ -26,10 +26,9 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maps.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_maps.cfg"
+var test_save := throwaway_save()
 const CHILD_FLAG := "--maps-child"
 
-var failures := 0
 var progress: Node
 
 
@@ -48,7 +47,7 @@ func _initialize() -> void:
 		return
 	var real := ProjectSettings.globalize_path(progress.REAL_SAVE_PATH)
 	var real_md5 := FileAccess.get_md5(real) if FileAccess.file_exists(real) else ""
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.saving_enabled = true
 	progress.reset_progress()
 	progress.levels_cleared = 2
@@ -62,9 +61,9 @@ func _initialize() -> void:
 	_test_drawing()
 	await _test_screen()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
 	_check(real_md5 == "" or FileAccess.get_md5(real) == real_md5, "the real save is untouched (md5 %s)" % real_md5)
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -91,9 +90,9 @@ func _test_capture() -> void:
 	game = await _spawn_running(1)
 	await _walk(game, other)
 	game.slime_remaining = 0.0
-	await _frames(3)
+	await _physics_frames(3)
 	_check(game.finished and not game.won, "the second attempt dries up")
-	await _frames(30)  # past its retry buttons' delay
+	await _physics_frames(30)  # past its retry buttons' delay
 	await _stop(game)
 	survey = progress.survey_for(1, false)
 	_check(_seen_count(survey) > first_seen, "a later attempt adds to the tiles seen (%d -> %d)" % [first_seen, _seen_count(survey)])
@@ -117,7 +116,7 @@ func _test_capture() -> void:
 	_check(survey.clear and survey.goal and absi(survey.best_ms - roundi(clear_time * 1000.0)) <= 1,
 		"a clear becomes the best route with its time (%d ms) and the goal is marked" % survey.best_ms)
 	_check(Survey.route_cells(survey, maze) == path, "...its route is the path walked, start to chalice (%d cells)" % path.size())
-	await _frames(60)  # past its win buttons' delay
+	await _physics_frames(60)  # past its win buttons' delay
 	await _stop(game)
 	var clear_pack := Survey.pack(progress.survey_for(1, false))
 
@@ -158,10 +157,10 @@ func _test_capture() -> void:
 	game = MAIN.instantiate()
 	root.add_child(game)
 	current_scene = game
-	await _frames(3)
+	await _physics_frames(3)
 	_check(game.is_random(), "a randomizer maze...")
 	game.slime.position += Vector2(16, 0)
-	await _frames(20)
+	await _physics_frames(20)
 	await _stop(game)
 	_check(progress.maps.is_empty(), "...records nothing (it is fresh every time)")
 	progress.start_story(1)
@@ -169,7 +168,7 @@ func _test_capture() -> void:
 	game = MAIN.instantiate()
 	game.level = 1
 	root.add_child(game)  # not the running scene: a test's or demo's loose game node
-	await _frames(20)
+	await _physics_frames(20)
 	game.free()
 	_check(progress.maps.is_empty(), "a game node that isn't the running scene records nothing")
 
@@ -179,7 +178,7 @@ func _test_capture() -> void:
 	var hard_path: Array[Vector2i] = MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
 	# Halfway between the last cell before the chalice and the chalice: in sight, not in reach.
 	game.slime.position = (MazeGenerator.cell_center(hard_path[-2], game.TILE) + MazeGenerator.cell_center(hard_path[-1], game.TILE)) / 2.0
-	await _frames(3)
+	await _physics_frames(3)
 	await _stop(game)
 	progress.hard_mode = false
 	_check(progress.maps.has(102) and not progress.maps.has(2) and progress.maps[102].goal and not progress.maps[102].clear,
@@ -385,7 +384,7 @@ func _test_save() -> void:
 	progress.reset_progress()
 	_check(progress.maps.is_empty() and not progress.maps_hint_seen, "RESET PROGRESS clears the maps and the first-time hint")
 	var reread := ConfigFile.new()
-	reread.load(TEST_SAVE)
+	reread.load(test_save)
 	_check(not reread.has_section("maps"), "...and the saved file has no [maps] after it")
 
 
@@ -445,16 +444,16 @@ func _test_screen() -> void:
 	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
 	root.add_child(hub)
 	current_scene = hub
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub.near.get("id", "") == "maps" and hub.prompt_name.text == "MAP TABLE", "standing at the map table, the prompt says MAP TABLE")
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	var screen: Control = await _until_scene("res://scenes/maps.tscn")
 	_check(screen != null, "F at the map table opens the MAP TABLE screen")
 	if screen == null:
 		return
-	await _frames(2)
+	await _physics_frames(2)
 	_check(screen.hint_label.text == screen.HINT and progress.maps_hint_seen, "the first opening shows the hint line")
 	_check(screen.tiles.size() == 10 and screen.tiles[0].disabled and not screen.tiles[1].disabled and not screen.tiles[2].disabled and screen.tiles[3].disabled,
 		"tiles: unsurveyed levels are locked (1, 4), surveyed ones open (2, 3)")
@@ -511,19 +510,19 @@ func _test_screen() -> void:
 
 	# The HARD switch shows hard mode's maps.
 	screen.hard_box.button_pressed = true
-	await _frames(2)
+	await _physics_frames(2)
 	_check(screen.hard and not screen.tiles[2].disabled and screen.tiles[1].disabled and not progress.hard_mode,
 		"HARD shows the hard maps (3 surveyed, 2 not) without changing the game's mode")
 	screen.open_view(3)
 	_check("HARD" in screen.view_title.text, "...and their maps say HARD")
 	screen.close_view()
 	screen.hard_box.button_pressed = false
-	await _frames(2)
+	await _physics_frames(2)
 
 	# No times anywhere on the map screens, whatever the record (the level select has those).
 	progress.best_times[3] = 20.0
 	screen._fill_grid()
-	await _frames(1)
+	await _physics_frames(1)
 	screen.open_view(3)
 	var all_text := " ".join(_texts(screen))
 	_check(not ":" in all_text and not "ROUTE" in all_text and not "BEST" in all_text and not "LAST TRY" in all_text,
@@ -531,7 +530,7 @@ func _test_screen() -> void:
 	screen.close_view()
 	progress.best_times.erase(3)
 	screen._fill_grid()
-	await _frames(1)
+	await _physics_frames(1)
 
 	# The tile pictures never read the survey's cells: two completely different surveys of level 5 at
 	# the same % (one lit outward from the start, one from the goal, different routes) look the same.
@@ -589,13 +588,13 @@ func _test_screen() -> void:
 	var back: Node = await _until_scene("res://scenes/hub.tscn")
 	_check(back != null and hub_script.return_to == "maps", "Esc on the select returns to the hub, facing the map table")
 	if back:
-		await _frames(3)
+		await _physics_frames(3)
 		_check(back.near.get("id", "") == "maps", "...with the slime in front of the table")
 		Input.action_press("interact")
-		await _frames(2)
+		await _physics_frames(2)
 		Input.action_release("interact")
 		screen = await _until_scene("res://scenes/maps.tscn")
-		await _frames(2)
+		await _physics_frames(2)
 		_check(screen != null and screen.hint_label.text == "", "the hint shows only the first time")
 		if screen:
 			screen.back_button.pressed.emit()
@@ -914,7 +913,7 @@ func _spawn_running(level: int) -> Node2D:
 	game.level = level
 	root.add_child(game)
 	current_scene = game
-	await _frames(2)  # _arm_survey runs deferred
+	await _physics_frames(2)  # _arm_survey runs deferred
 	return game
 
 
@@ -922,7 +921,7 @@ func _spawn_running(level: int) -> Node2D:
 func _stop(game: Node2D) -> void:
 	current_scene = null
 	game.free()
-	await _frames(1)
+	await _physics_frames(1)
 
 
 ## Steers the slime cell by cell along `cells` (from its current cell) with a RoutePilot.
@@ -934,7 +933,7 @@ func _walk(game: Node2D, cells: Array[Vector2i]) -> void:
 	pilot.route_done.connect(func() -> void: done[0] = true)
 	await _until(func() -> bool: return done[0] or game.finished, 1200)
 	pilot.queue_free()
-	await _frames(10)
+	await _physics_frames(10)
 
 
 func _until(condition: Callable, max_frames: int) -> void:
@@ -957,12 +956,12 @@ func _action(action: String) -> void:
 	event.action = action
 	event.pressed = true
 	Input.parse_input_event(event)
-	await _frames(2)
+	await _physics_frames(2)
 	event = InputEventAction.new()
 	event.action = action
 	event.pressed = false
 	Input.parse_input_event(event)
-	await _frames(2)
+	await _physics_frames(2)
 
 
 func _tap(at: Vector2) -> void:
@@ -972,7 +971,7 @@ func _tap(at: Vector2) -> void:
 		touch.position = root.get_final_transform() * at  # touches arrive in window pixels
 		touch.pressed = pressed
 		Input.parse_input_event(touch)
-		await _frames(2)
+		await _physics_frames(2)
 
 
 func _texts(node: Node) -> Array[String]:
@@ -982,12 +981,3 @@ func _texts(node: Node) -> Array[String]:
 	return out
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

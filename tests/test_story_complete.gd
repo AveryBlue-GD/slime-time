@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## `--story-complete` (./tools/play.sh --story): a player who beat the whole story on normal and hard
 ## with every coin found, for testing the postgame. Plain player state (no dev tools), no upgrades
@@ -9,7 +9,6 @@ extends SceneTree
 
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 
-var failures := 0
 var progress: Node
 
 
@@ -88,18 +87,18 @@ func _initialize() -> void:
 	# Boots fine: title, hub (medal count, open portal), level select.
 	var title: Control = load("res://scenes/title.tscn").instantiate()
 	root.add_child(title)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(title.enter_button.text == "ENTER THE HUB", "the title boots (ENTER THE HUB)")
 	title.free()
 	load("res://scripts/hub.gd").return_to = ""
 	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
 	root.add_child(hub)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub.medal_label.text == "25/30", "the hub shows 25/30 medals (%s)" % hub.medal_label.text)
 	hub.free()
 	var select: Control = load("res://scenes/level_select.tscn").instantiate()
 	root.add_child(select)
-	await _frames(3)
+	await _physics_frames(3)
 	var open := 0
 	for button: Button in select.level_buttons:
 		open += 0 if button.disabled else 1
@@ -112,16 +111,7 @@ func _initialize() -> void:
 	else:
 		_check(not FileAccess.file_exists(real), "no real save was created")
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

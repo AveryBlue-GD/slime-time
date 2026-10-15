@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Save codes: the whole save as a "SLIME2-" code (gzipped, base64) that can be copied out and
 ## pasted back in. A code restores exactly what was saved; broken, cut-off or foreign codes are
@@ -6,7 +6,6 @@ extends SceneTree
 ## refuses a bad one and only loads a good one on the second LOAD press. Never touches a real save.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_save_code.gd
 
-var failures := 0
 var progress: Node
 
 
@@ -103,7 +102,7 @@ func _initialize() -> void:
 	progress.reduce_motion = false
 	progress.fog_brightness = Progress.FOG_NORMAL
 	progress.reset_bindings()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -128,7 +127,3 @@ func _print_diff(before: String, after: String) -> void:
 			print("  changed: ", line)
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Tests, tools, headless and dev runs never touch the player's real save (user://save.cfg): Progress
 ## points at a per-process throwaway file that starts fresh, and saving there leaves the real
@@ -7,7 +7,6 @@ extends SceneTree
 
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -45,11 +44,7 @@ func _initialize() -> void:
 	progress.saving_enabled = false
 	progress.coins_found = {}
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

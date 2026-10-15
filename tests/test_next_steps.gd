@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## After-win choices: story wins offer REPLAY / NEXT LEVEL (CONTINUE after level 10) / HUB, random
 ## wins offer REPLAY MAZE / NEW MAZE / HUB; each button loads the right thing (HUB lands in front of
@@ -7,16 +7,15 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 const StartDirs := preload("res://tests/start_dirs.gd")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.levels_cleared = 0
 	progress.highest_unlocked = 1
 	progress.best_times = {}
@@ -86,15 +85,15 @@ func _initialize() -> void:
 	game.slime_remaining = 0.2
 	var open_action := StartDirs.action(StartDirs.open_dir(game.maze, game.maze.start))
 	Input.action_press(open_action)
-	await _frames(20)
+	await _physics_frames(20)
 	Input.action_release(open_action)
-	await _frames(int(game.CHOICE_DELAY * 60) + 5)
+	await _physics_frames(int(game.CHOICE_DELAY * 60) + 5)
 	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES"], "drying up offers %s" % [_texts(game)])
 	_check(not game.won, "...and it's not a win")
 	_drop(game)
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -123,7 +122,7 @@ func _spawn(settings: Dictionary) -> Node2D:
 ## Wins and waits for the replay / next buttons.
 func _win(game: Node2D) -> void:
 	game.slime.position = game.goal.position
-	await _frames(int(game.CHOICE_DELAY * 60) + 10)
+	await _physics_frames(int(game.CHOICE_DELAY * 60) + 10)
 
 
 ## Waits for a button's scene reload and returns the new level scene.
@@ -144,7 +143,7 @@ func _drop(game: Node2D) -> void:
 ## Detaches a game before any automatic retry fires, then frees it.
 func _drop_running(game: Node2D) -> void:
 	current_scene = null
-	await _frames(int(game.END_DELAY * 60) + 10)
+	await _physics_frames(int(game.CHOICE_DELAY * 60) + 10)
 	game.free()
 
 
@@ -152,12 +151,3 @@ func _texts(game: Node2D) -> Array:
 	return game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

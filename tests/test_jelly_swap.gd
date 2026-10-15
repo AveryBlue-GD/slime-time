@@ -1,19 +1,21 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The skins screen's JELLY switch swaps the worn skin to its other version (same skin id) when
 ## that version is unlocked; if it is locked the worn skin stays and the status line says so.
 ## Dev mode (everything unlocked) always swaps. The choice survives a save/load.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_jelly_swap.gd
 
-var failures := 0
 var progress: Node
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.saving_enabled = true
-	progress.save_path = "user://test_save_swap.cfg"
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.levels_cleared = 3
 	progress.hard_cleared.assign([1, 2])
@@ -63,8 +65,7 @@ func _initialize() -> void:
 	_check(progress.selected_skin == "ember" and not progress.jelly, "dev mode swaps to solid ember")
 	screen.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save_swap.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 

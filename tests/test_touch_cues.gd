@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Level 1's wordless cues react to the slime, not to the input device: the d-pad / WASD glyph
 ## and the JUMP / SPACE key fade the same way (same frames) after a move or a leap made with the
@@ -14,7 +14,6 @@ const StartDirs := preload("res://tests/start_dirs.gd")
 ## Frames allowed for a full fade (1 / FADE_SPEED s = 20 frames) plus the first move and the redraw.
 const FADE_FRAMES := 26
 
-var failures := 0
 var progress: Node
 var game: Node2D
 var cues: TutorialCues
@@ -41,7 +40,7 @@ func _initialize() -> void:
 	for device: String in ["keys", "touch"]:
 		await _beacon_case(device)
 	await _hitch_case()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -49,7 +48,7 @@ func _initialize() -> void:
 ## gone from the screen (move, leap).
 func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 	await _start_level(force_touch)
-	await _frames(30)
+	await _physics_frames(30)
 	_check(cues.move_alpha > 0.3 and cues.drawn_alpha > 0.3, "%s: the move glyph shows on a fresh save" % mode)
 	if force_touch:
 		_check(cues._touch(), "%s: as a d-pad (touch controls up)" % mode)
@@ -72,16 +71,16 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 		_key(StartDirs.action(dir), false)
 
 	# Wandered without leaping and paused: the JUMP / SPACE key shows; one tap of JUMP fades it.
-	await _frames(30)
+	await _physics_frames(30)
 	cues.wandered = TutorialCues.WANDER_FOR_LEAP + 10.0
 	cues.idle = TutorialCues.LEAP_PAUSE + 1.0
-	await _frames(30)
+	await _physics_frames(30)
 	_check(cues.leap_alpha > 0.3 and cues.drawn_alpha > 0.3, "%s: the jump key shows after wandering" % mode)
 	if device == "touch":
 		_touch(1, TouchControls.JUMP_CENTER, true)
 	else:
 		_key("jump", true)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(game.slime.state == Slime.State.CHARGING, "%s: JUMP starts a charge" % mode)
 	if device == "touch":
 		_touch(1, TouchControls.JUMP_CENTER, false)
@@ -99,9 +98,9 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 ## The chalice beacon (after standing still) goes on a move by either device and is cleared too.
 func _beacon_case(device: String) -> void:
 	await _start_level(device == "touch", Progress.TUTORIAL_MOVE | Progress.TUTORIAL_LEAP)
-	await _frames(10)
+	await _physics_frames(10)
 	cues.idle = TutorialCues.IDLE_FOR_BEACON + 1.0
-	await _frames(60)
+	await _physics_frames(60)
 	_check(cues.beacon_alpha > 0.3 and cues.drawn_alpha > 0.3, "beacon, %s: shows after standing still" % device)
 	var dir := StartDirs.open_dir(game.maze, game.maze.start)
 	if device == "touch":
@@ -121,7 +120,7 @@ func _beacon_case(device: String) -> void:
 ## A long frame right after the first touch move must not skip the fade or leave the glyph drawn.
 func _hitch_case() -> void:
 	await _start_level(true)
-	await _frames(30)
+	await _physics_frames(30)
 	var dir := StartDirs.open_dir(game.maze, game.maze.start)
 	_touch(0, Vector2(50, 130), true)
 	_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
@@ -133,7 +132,7 @@ func _hitch_case() -> void:
 	_check(cues.move_alpha > 0.8, "a long frame doesn't skip the fade (alpha %.2f after it)" % cues.move_alpha)
 	var frames := await _until_cleared(func() -> bool: return cues.move_alpha == 0.0)
 	_check(frames > 0, "after a long frame the glyph still fades out and is cleared (%d frames)" % frames)
-	await _frames(20)
+	await _physics_frames(20)
 	_check(cues.drawn_alpha == 0.0, "nothing is left drawn")
 	_touch(0, Vector2(50, 130), false)
 	await _end_level()
@@ -163,7 +162,7 @@ func _start_level(force_touch: bool, seen := 0) -> void:
 func _end_level() -> void:
 	current_scene = null
 	game.free()
-	await _frames(2)
+	await _physics_frames(2)
 
 
 ## Physics frames until `faded` holds and the last drawn frame shows nothing (0 = never).
@@ -206,12 +205,3 @@ func _drag(index: int, view_pos: Vector2) -> void:
 	Input.parse_input_event(event)
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

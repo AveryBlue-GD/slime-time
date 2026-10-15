@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Hat fit and craft checks, on the real sprite sheets: every hat on every frame of every
 ## animation it's worn through sits on the head (no floating gap, never over the eyes), its
@@ -16,7 +16,6 @@ const MAX_HEIGHT := 10
 const MAX_COLORS := 24
 const EYE := Color8(26, 28, 44)
 
-var failures := 0
 var sheet: Image
 var hats: Image
 
@@ -32,7 +31,7 @@ func _initialize() -> void:
 	_check_fit()
 	_check_pixel_craft()
 	_check_generator()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -204,7 +203,3 @@ func _check_generator() -> void:
 	print("  skip (no python): generator determinism")
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

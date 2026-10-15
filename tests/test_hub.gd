@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The hub (the title screen): a slime-shaped room with the stations evenly round its rim facing
 ## the center and a wheel in the middle. Checks: every station is there, evenly spaced; each
@@ -10,7 +10,6 @@ extends SceneTree
 ## Starts from a fresh state (tests never read the real save).
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hub.gd
 
-var failures := 0
 var progress: Node
 ## Loaded once the autoloads exist (the hub script uses Progress).
 var HubScript: GDScript
@@ -28,7 +27,7 @@ func _initialize() -> void:
 	# --- The title screen leads into the hub
 	var title: Control = load("res://scenes/title.tscn").instantiate()
 	root.add_child(title)
-	await _frames(2)
+	await _physics_frames(2)
 	var texts: Array = []
 	for node in title.find_children("*", "Label", true, false):
 		texts.append(node.text)
@@ -65,37 +64,37 @@ func _initialize() -> void:
 
 	# --- Away from stations the jump key leaps as usual
 	Input.action_press("jump")
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub.slime.state == Slime.State.CHARGING, "away from stations, the jump key charges a leap")
 	Input.action_release("jump")
-	await _frames(70)
+	await _physics_frames(70)
 	hub.free()
 
 	# --- The wheel turns the room one station round
 	HubScript.return_to = "story"
 	hub = await _open()
 	hub.slime.position = hub.rotor.position + Vector2(0, 8)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(hub.near.get("id", "") == "rotor" and hub.prompt_name.text == "ROTATE", "the wheel offers to rotate the room")
 	for side: Vector2 in [Vector2(0, -9), Vector2(13, -2), Vector2(-13, -2)]:
 		hub.slime.position = hub.rotor.position + side
-		await _frames(2)
+		await _physics_frames(2)
 		_check(hub.near.get("id", "") == "rotor", "...from any side of it too (%s)" % side)
 	_check(hub.rotor_base.z_index < 0 and hub.rotor.get_parent() == hub.world and hub.rotor_base.region_rect.position.y == HubScript.ROTOR_SPLIT,
 		"the goo at the wheel's foot lies under the slime; the post and wheel are y-sorted with it")
 	var far_station: Dictionary = hub._station("story")
 	var near_volume: float = hub.station_volume(far_station)
 	hub.slime.position = far_station.sprite.position + Vector2(18, 10)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(hub.near.get("id", "") == "story", "a station can be used from beside it, not just in front")
 	_check(hub.station_volume(far_station) > near_volume + 8.0, "a station sounds much louder up close than from across the room (%.0f vs %.0f dB)" % [hub.station_volume(far_station), near_volume])
 	hub.slime.position = hub.rotor.position + Vector2(0, 8)
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.turning and hub.slime.state == Slime.State.GLIDE, "hitting it (F) starts the room turning (no leap)")
-	await _frames(int(HubScript.TURN_TIME * 60) + 4)
+	await _physics_frames(int(HubScript.TURN_TIME * 60) + 4)
 	_check(not hub.turning and hub._station("maps").view == HubScript.View.FRONT and hub._station("story").view == HubScript.View.SIDE,
 		"...one station round: the next one comes to the back, facing you")
 	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
@@ -109,10 +108,10 @@ func _initialize() -> void:
 	slime.position = hub.rotor.position + Vector2(-3, 30)  # below the wheel, a little off-center
 	var start_y := slime.position.y
 	Input.action_press("move_right")
-	await _frames(20)
+	await _physics_frames(20)
 	Input.action_release("move_right")
 	_check(absf(slime.position.y - start_y) < 0.5, "gliding sideways doesn't tug toward grid lanes (y moved %.2f)" % (slime.position.y - start_y))
-	await _frames(30)
+	await _physics_frames(30)
 	slime.position = hub.rotor.position + Vector2(-3, 30)
 	var largest := 0.0
 	var last := slime.position
@@ -133,7 +132,7 @@ func _initialize() -> void:
 	_check(hub.prompt_name.text.begins_with("STORY - LEVEL") and hub.prompt_key.text == "", "the story prompt has no key after it (%s)" % hub.prompt_name.text)
 	current_scene = hub
 	Input.action_press("menu")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("menu")
 	_check(hub.slime.frozen, "Esc in the hub heads back to the title")
 	for i in 120:
@@ -155,7 +154,7 @@ func _initialize() -> void:
 	_check(hub.prompt.visible and hub.prompt_name.text == "UPGRADES" and hub.prompt_key.text == "",
 		"standing at it, the prompt names it, with no key after it (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	Input.action_press("jump")
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub.slime.state == Slime.State.CHARGING and not hub.slime.frozen, "...SPACE still leaps there (F is the use key)")
 	Input.action_release("jump")
 	hub.free()
@@ -164,7 +163,7 @@ func _initialize() -> void:
 	HubScript.return_to = "random"
 	hub = await _open()
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.prompt_key.text.begins_with("BEAT ALL") and not hub.slime.frozen,
 		"the locked portal says what unlocks it and you stay in the room (%s)" % hub.prompt_key.text)
@@ -212,7 +211,7 @@ func _initialize() -> void:
 	HubScript.return_to = "wheel"
 	hub = await _open()
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.hat_wheel.visible and hub.hat_wheel.tab == "wheel" and not hub.hat_wheel.spin_button.disabled and "FREE" in hub.hat_wheel.spin_button.text,
 		"hats are live: a player's first visit opens the wheel with a FREE spin")
@@ -220,13 +219,13 @@ func _initialize() -> void:
 	progress.dev_tools = true
 	hub = await _open()
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.hat_wheel.visible and hub.hat_wheel.hats.size() == Hats.LIST.size(), "in dev mode it opens with every hat on the wheel (%d)" % hub.hat_wheel.hats.size())
 	var won: Array[String] = []
 	for spin_number in 3:
 		Input.action_press("interact")
-		await _frames(2)
+		await _physics_frames(2)
 		Input.action_release("interact")
 		_check(hub.hat_wheel.spinning, "spin %d starts the wheel" % (spin_number + 1))
 		for i in int(hub.hat_wheel.SPIN_TIME * 60) + 10:
@@ -273,7 +272,7 @@ func _initialize() -> void:
 	HubScript.return_to = "coins"
 	hub = await _open()
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.coin_board.visible and hub.slime.frozen, "F at the coin bag opens the coin board (and holds the slime still)")
 	_check(hub.board_rows[0].text == "%d/%d" % [Levels.COINS[0], Levels.COINS[0]] and hub.board_rows[1].text == "3/%d" % Levels.COINS[1]
@@ -281,7 +280,7 @@ func _initialize() -> void:
 	_check(hub.board_rows[0].get_theme_color("font_color") == UIKit.GOLD, "...a level with every coin found shows in gold")
 	_check(("%d/%d" % [Levels.COINS[0] + 3, Levels.total_coins()]) in hub.board_total.text, "...and the story total (%s)" % hub.board_total.text)
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(not hub.coin_board.visible and not hub.slime.frozen, "F again closes it")
 	hub.free()
@@ -291,7 +290,7 @@ func _initialize() -> void:
 	HubScript.return_to = "settings"
 	hub = await _open()
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.slime.frozen and HubScript.return_to == "settings", "the signpost opens the settings (and remembers it)")
 	hub.free()
@@ -302,7 +301,7 @@ func _initialize() -> void:
 	hub = await _open()
 	_check(not hub.quit_menu.visible, "the confirm panel starts closed")
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.quit_menu.visible and hub.slime.frozen and not hub.prompt.visible, "F at the trapdoor opens the confirm panel instead of quitting (slime held, prompt hidden)")
 	_check(hub.back_button.has_focus() and not hub.quit_button.has_focus(), "...with the focus on BACK, so a stray press doesn't quit")
@@ -317,41 +316,32 @@ func _initialize() -> void:
 	ui_right.action = "ui_left"
 	ui_right.pressed = true
 	Input.parse_input_event(ui_right)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(hub.quit_button.has_focus(), "...a controller / arrow key moves the focus to QUIT")
 	hub.back_button.grab_focus()
 	Input.action_press("menu")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("menu")
 	_check(not hub.quit_menu.visible and not hub.slime.frozen, "Esc / menu closes it")
 	_check(not hub.quit_menu.visible and not hub.slime.frozen and not hub._touch_controls.menu_open, "...BACK in effect: control returns to the slime")
 	Input.action_press("interact")
-	await _frames(2)
+	await _physics_frames(2)
 	Input.action_release("interact")
 	_check(hub.quit_menu.visible, "it opens again at the trapdoor")
 	hub.back_button.pressed.emit()
-	await _frames(2)
+	await _physics_frames(2)
 	_check(not hub.quit_menu.visible and not hub.slime.frozen and hub.quit_button.pressed.get_connections().size() >= 2, "BACK button closes it; QUIT is wired up (not pressed here)")
 	hub.free()
 	HubScript.return_to = ""
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
 func _open() -> Node2D:
 	var hub: Node2D = hub_scene.instantiate()
 	root.add_child(hub)
-	await _frames(2)
+	await _physics_frames(2)
 	return hub
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

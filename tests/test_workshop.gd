@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Ticket WORKSHOP checks (upgrades v2 batch 2, docs/design/upgrades-v2.md B.2): each effect in a real
 ## level - QUICK CHARGE (a full charge in 0.7 s instead of 1.5), STICKY (splat penalty x0.40, stun
@@ -10,7 +10,6 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
 var progress: Node
 
 
@@ -28,7 +27,7 @@ func _initialize() -> void:
 	await _wind_random()
 	await _hard_and_par()
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -62,11 +61,6 @@ func _stop(game: Node2D) -> void:
 	await process_frame
 
 
-func _frames(n: int) -> void:
-	for i in n:
-		await physics_frame
-
-
 # ---------------------------------------------------------------- QUICK CHARGE
 
 ## Frames from pressing jump until the charge is full.
@@ -77,19 +71,19 @@ func _charge_frames(game: Node2D) -> int:
 		await physics_frame
 		n += 1
 	Input.action_release("jump")
-	await _frames(80)
+	await _physics_frames(80)
 	return n
 
 
 func _charge() -> void:
 	_state({})
 	var game := await _spawn()
-	await _frames(5)
+	await _physics_frames(5)
 	var base := await _charge_frames(game)
 	await _stop(game)
 	_state({charge = 3})
 	game = await _spawn()
-	await _frames(5)
+	await _physics_frames(5)
 	var quick := await _charge_frames(game)
 	_check(is_equal_approx(game.slime.charge_time, 0.7) and absi(base - 90) <= 3 and absi(quick - 42) <= 3,
 		"QUICK CHARGE 3: a full charge in %d frames (0.7 s) instead of %d (1.5 s)" % [quick, base])
@@ -102,7 +96,7 @@ func _sticky() -> void:
 	for level in [0, 3]:
 		_state({sticky = level} if level > 0 else {})
 		var game := await _spawn()
-		await _frames(3)
+		await _physics_frames(3)
 		game.slime.last_jump_traveled = 0.0
 		var before: float = game.slime_remaining
 		game._on_jump_landed(Slime.jump_distance_for(100.0), true, Vector2.LEFT)
@@ -120,18 +114,18 @@ func _try_coin(game: Node2D, coin: Coin, at: Vector2) -> bool:
 	game.slime.position = at
 	game.last_slime_pos = at
 	game.slime.velocity = Vector2.ZERO
-	await _frames(2)
+	await _physics_frames(2)
 	var taken: bool = not coin in game.coins
 	game.slime.position = MazeGenerator.cell_center(game.maze.start, 16)
 	game.last_slime_pos = game.slime.position
-	await _frames(1)
+	await _physics_frames(1)
 	return taken
 
 
 func _magnet() -> void:
 	_state({magnet = 3})
 	var game := await _spawn(2)
-	await _frames(3)
+	await _physics_frames(3)
 	_check(game.coin_reach == 34.0, "MAGNET 3: coin reach 34 px")
 	# A coin at a dead end: its open side, and a walled side.
 	var coin: Coin = null
@@ -165,7 +159,7 @@ func _magnet() -> void:
 	# Without the magnet, 24 px is too far even in plain sight.
 	_state({})
 	game = await _spawn(2)
-	await _frames(3)
+	await _physics_frames(3)
 	var c2: Coin = game.coins[0]
 	var tile2: Vector2i = c2.cell * 2 + Vector2i.ONE
 	var d2 := Vector2i.ZERO
@@ -181,7 +175,7 @@ func _magnet() -> void:
 	var was_jelly: bool = progress.jelly
 	progress.jelly = false
 	game = await _spawn(2)
-	await _frames(3)
+	await _physics_frames(3)
 	var c3: Coin = game.coins[0]
 	var tile3: Vector2i = c3.cell * 2 + Vector2i.ONE
 	var d3 := Vector2i.ZERO
@@ -194,10 +188,10 @@ func _magnet() -> void:
 	game.slime.position = slime_at
 	game.last_slime_pos = slime_at
 	game.slime.velocity = Vector2.ZERO
-	await _frames(2)
+	await _physics_frames(2)
 	_check(not c3 in game.coins and is_instance_valid(c3) and c3.position.distance_to(slime_at) < from3.distance_to(slime_at),
 		"jelly off: the magnetized coin is flying toward the slime (%.0f px left of 30)" % c3.position.distance_to(slime_at))
-	await _frames(20)
+	await _physics_frames(20)
 	_check(not is_instance_valid(c3) or c3.is_queued_for_deletion(), "...and is gone once it arrives")
 	progress.jelly = was_jelly
 	await _stop(game)
@@ -208,7 +202,7 @@ func _magnet() -> void:
 func _nose() -> void:
 	_state({nose = 3})
 	var game := await _spawn(3)
-	await _frames(2)
+	await _physics_frames(2)
 	var gaps := []
 	for i in 200:
 		gaps.append(game._glimmer_gap())
@@ -221,7 +215,7 @@ func _nose() -> void:
 	for lvl in 4:
 		_state({nose = lvl} if lvl > 0 else {})
 		game = await _spawn(3)
-		await _frames(2)
+		await _physics_frames(2)
 		counts.append(_visible_glimmers(game))
 		await _stop(game)
 	var ratios := []
@@ -263,38 +257,38 @@ func _visible_glimmers(game: Node2D) -> float:
 func _wind() -> void:
 	_state({wind = 2}, 1)
 	var game := await _spawn(1)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.wind_state == "ready" and game.hud.wind_pod.visible, "SECOND WIND 2 on a cleared level: ready, the HUD shows WIND")
 	game.slime_remaining = 0.0
-	await _frames(2)
+	await _physics_frames(2)
 	_check(not game.finished and game.wind_state == "refilling" and game.wind_fired, "the meter hits 0: it fires instead of drying up")
-	await _frames(40)
+	await _physics_frames(40)
 	_check(not game.finished and game.wind_state == "used" and absf(game.slime_remaining - 25.0) < 0.6 and game.hud.wind_pod.visible,
 		"...refilled to 25%% over 0.4 s (%.1f%%), the tag dims" % game.slime_remaining)
 	game.slime_remaining = 0.0
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.finished and not game.won, "once per run: the next empty meter dries up")
 	await _stop(game)
 	# A fixed amount: slime spent during the 0.4 s refill is not topped up again (25% added - 10 spent).
 	_state({wind = 2}, 1)
 	game = await _spawn(1)
-	await _frames(2)
+	await _physics_frames(2)
 	game.slime_remaining = 0.0
-	await _frames(2)
-	await _frames(5)
+	await _physics_frames(2)
+	await _physics_frames(5)
 	var spent := 5.0
 	game.slime_remaining -= spent
-	await _frames(40)
+	await _physics_frames(40)
 	_check(game.wind_state == "used" and absf(game.slime_remaining - (25.0 - spent)) < 0.8,
 		"SECOND WIND adds a fixed 25%%, slime spent while refilling stays spent (%.1f%%, want %.1f)" % [game.slime_remaining, 25.0 - spent])
 	await _stop(game)
 	# A level's first clear: no SECOND WIND.
 	_state({wind = 3}, 0)
 	game = await _spawn(1)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.wind_state == "" and not game.hud.wind_pod.visible, "not on a level's first clear (no tag either)")
 	game.slime_remaining = 0.0
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.finished and not game.won, "...it just dries up")
 	await _stop(game)
 
@@ -305,11 +299,11 @@ func _wind_random() -> void:
 	progress.coins_found = {0: ["a"]}
 	progress.random_attempts.clear()
 	var game := await _spawn(0, 777001)
-	await _frames(3)
+	await _physics_frames(3)
 	var before: int = game.payout().tickets
 	_check(game.wind_state == "ready" and before == 5, "randomizer attempt 1 offers 5 with SECOND WIND ready")
 	game.slime_remaining = 0.0
-	await _frames(3)
+	await _physics_frames(3)
 	await process_frame
 	_check(game.pay_attempt() == 2 and game.payout().tickets == 4 and "TIX AVAILABLE 4" in game.hud.attempt_label.text,
 		"firing it costs one attempt step: a win now pays 4, the pod says so (%s)" % game.hud.attempt_label.text.replace("\n", " / "))
@@ -331,7 +325,7 @@ func _hard_and_par() -> void:
 	_state(full)
 	progress.hard_mode = true
 	game = await _spawn(4)
-	await _frames(2)
+	await _physics_frames(2)
 	_check(game.workshop.is_empty() and game.slime.charge_time == Slime.CHARGE_TIME and game.slime.splat_stun == Slime.SPLAT_STUN
 		and game.splat_factor == 1.0 and game.coin_reach == Coin.REACH and game.glimmer_rate == 1.0 and game.wind_state == ""
 		and not game.hud.wind_pod.visible, "hard mode: the whole workshop is off (no WIND tag)")
@@ -339,7 +333,3 @@ func _hard_and_par() -> void:
 	progress.hard_mode = false
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

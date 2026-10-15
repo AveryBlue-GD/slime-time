@@ -1,16 +1,15 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Trail styles (upgrades v2 batch 2 cosmetics, Cosmetics): every style on every skin (10 presets,
 ## CHAMELEON, rainbow, stopwatch) in a real level paints its cells in its own colors and alpha (INK the
 ## skin's deep shade at 150, GLOW 170 with the halo x2, GOLD chalice gold whatever the skin, CANDY white
 ## stripes every 12 px traveled, STARRY the shader's specks), the default style is byte-identical to
 ## the skin's own goo (rainbow bands included), the wardrobe / shop previews build, and nothing logs an
-## error. (Pixels on screen: docs/polish-shots/batch2_trail_*.png.)
+## error. (Pixels on screen: the batch 2 reference shots were deleted in the spring cleaning; `git show spring-cleaning-baseline:docs/polish-shots/batch2_trail_<style>.png` still has them.)
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_trails.gd
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
 var progress: Node
 
 
@@ -56,7 +55,7 @@ func _initialize() -> void:
 	_check(previews_ok, "every style's preview strip builds (owned and locked)")
 	_check(errlog.count == 0, "no engine or script errors (%d)%s" % [errlog.count, "" if errlog.lines.is_empty() else ": " + errlog.lines[0]])
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -152,7 +151,3 @@ func _same_rgb(a: Color, b: Color) -> bool:
 	return absi(a.r8 - b.r8) <= 1 and absi(a.g8 - b.g8) <= 1 and absi(a.b8 - b.b8) <= 1
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

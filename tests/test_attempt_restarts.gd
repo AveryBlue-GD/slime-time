@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The randomizer's attempt pod ("ATTEMPT n" over "TIX AVAILABLE k") counts down on EVERY real
 ## restart route and a win pays exactly the k it shows, in normal mode AND in the owner's dev launch
@@ -15,19 +15,18 @@ extends SceneTree
 ## Uses a throwaway save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_attempt_restarts.gd
 
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 const GAME_SCENE := "res://scenes/main.tscn"
 const PAY := [5, 4, 3, 2, 1, 1]
 const ROUTES := ["r_key", "prompt", "pause_keys", "pause_mouse", "pause_after_dryup", "dryup", "upgrades"]
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.hard_mode = false
 	progress.reset_progress()
 	progress.day_override = 40000
@@ -204,7 +203,7 @@ func _initialize() -> void:
 	progress.day_override = -1
 	progress.dev_tools = false
 	progress.reset_progress()
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures > 0 else 0)
 
 

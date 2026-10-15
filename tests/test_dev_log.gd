@@ -1,18 +1,20 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## DevLog (dev-only diagnostics file): nothing written outside dev mode, a line per event in dev mode,
 ## truncated at each launch, capped near 200 KB, and a test/headless run never uses the plain
 ## dev_attempts.log (that is the owner's play.sh --dev launch) but a per-process file.
 ## Uses a throwaway save. Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_dev_log.gd
 
-const LOG := "user://test_dev_log.log"
-var failures := 0
+var LOG := "user://test_dev_log_%d.log" % OS.get_process_id()
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	var progress: Node = root.get_node("Progress")
-	progress.save_path = "user://test_save.cfg"
+	progress.save_path = test_save
 	DevLog.path_override = LOG
 	_remove()
 
@@ -44,7 +46,7 @@ func _initialize() -> void:
 
 	_remove()
 	progress.dev_tools = false
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures > 0 else 0)
 
 

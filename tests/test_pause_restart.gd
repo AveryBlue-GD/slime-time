@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## After drying up: the RESTART / UPGRADES buttons appear (no automatic restart), pausing in the
 ## meantime doesn't freeze anything, RESTART reloads the level, UPGRADES opens the upgrades
@@ -8,7 +8,6 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -20,7 +19,7 @@ func _initialize() -> void:
 	await _dry_up(game)
 	_check(game.finished and not game.won, "the slime dries up")
 	game.pause_menu.open()
-	await _frames(int(game.END_DELAY * 60) + 60)
+	await _frames(int(game.CHOICE_DELAY * 60) + 60)
 	_check(current_scene == game and paused and game.pause_menu.visible, "pausing holds everything (nothing reloads underneath)")
 	game.pause_menu.resume()
 	await _frames(int(game.CHOICE_DELAY * 60) + 10)
@@ -48,11 +47,11 @@ func _initialize() -> void:
 	await _dry_up(game)
 	game.pause_menu.open()
 	game.pause_menu._quit()
-	await _frames(int(game.END_DELAY * 60) + 60)
+	await _frames(int(game.CHOICE_DELAY * 60) + 60)
 	_check(current_scene != null and current_scene.scene_file_path == UIKit.HUB_SCENE and not paused,
 		"quitting to the hub lands in the hub, unpaused (%s)" % (current_scene.scene_file_path if current_scene else "none"))
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -77,7 +76,3 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

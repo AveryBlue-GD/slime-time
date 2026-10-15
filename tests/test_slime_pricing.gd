@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Tree 3 (docs/design/upgrades-v2.md A2.1 / A2.3): MORE SLIME is the premium track (80 of the 165
 ## coins) while the story stays fair. Checks: the price table (165 in all, every price >= 1, rising
@@ -20,7 +20,6 @@ const MODEL_INVESTED: Array[int] = [0, 1, 6, 6, 10, 15, 21, 28, 45, 55]
 ## Flat-difficulty line: above ~1.8 x the perfect route the model's attempts no longer drop.
 const FLAT := 1.8
 
-var failures := 0
 var progress: Node
 var _made: Array[Node] = []
 
@@ -41,7 +40,7 @@ func _initialize() -> void:
 	progress.coins_found = {}
 	for node in _made:
 		node.free()
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -277,7 +276,3 @@ func _debug_flags() -> void:
 	_check(q.coins() == 3, "no flags over a positive balance: unchanged")
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

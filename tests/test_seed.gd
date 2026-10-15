@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Seed codes for randomizer mazes: the pause menu shows a maze's seed (not in story levels), a
 ## seed typed in rebuilds exactly that maze (the same one for anyone), bad input is ignored, and the
@@ -6,16 +6,15 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_seed.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.saving_enabled = false
 	progress.hard_mode = false
 	progress.dev_tools = false
@@ -73,7 +72,7 @@ func _initialize() -> void:
 	_check(not game.pause_menu.seed_edit.visible and paused and progress.random_seed == 424242, "a bad entry just closes the box")
 	game.pause_menu._edit_seed()
 	game.pause_menu._submit_seed("9001")
-	await _frames(4)
+	await _physics_frames(4)
 	var next: Node2D = current_scene
 	_check(next != game and next.is_random() and next.random_seed == 9001 and progress.random_seed == 9001 and not paused, "typing 9001 reloads the randomizer on seed 9001")
 	var again := MAIN.instantiate()
@@ -126,15 +125,15 @@ func _initialize() -> void:
 	current_scene = win
 	await physics_frame
 	win.slime.position = win.goal.position
-	await _frames(10)
+	await _physics_frames(10)
 	_check(win.hud.message.text.contains("SEED 5150-"), "(code in win text)")
 	_check("SEED 5150" in win.hud.message.text, "winning a randomizer maze shows its seed (%s)" % win.hud.message.text.replace("\n", " / "))
 	current_scene = null
-	await _frames(150)
+	await _physics_frames(150)
 	win.free()
 	next.free()
 	progress.mode = progress.MODE_STORY
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -142,12 +141,3 @@ func _same_maze(a: Dictionary, b: Dictionary) -> bool:
 	return a.cells == b.cells and a.start == b.start and a.goal == b.goal and a.goal_steps == b.goal_steps and str(a) == str(b)
 
 
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

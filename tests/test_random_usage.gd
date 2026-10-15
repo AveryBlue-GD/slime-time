@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Randomizer slime usage (docs/level-design.md section 5): each seed rolls a usage u (the share of
 ## the player's fixed meter a perfect run needs) from a bell over [0.10, 0.95]; only the start-to-
@@ -14,7 +14,6 @@ const MAZES := 600
 const MAIN := preload("res://scenes/main.tscn")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
 
-var failures := 0
 var progress: Node
 
 
@@ -187,7 +186,7 @@ func _initialize() -> void:
 			"autopilot seed %d (u %.2f, MORE SLIME %d, %dx%d, route %d): used %.1f%% (perfect %.1f%%)" % [s, want / 100.0, level, game.maze.cells.x, game.maze.cells.y, game.maze.goal_steps, used, game.perfect_usage * 100.0])
 		game.free()
 
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -229,9 +228,3 @@ func _golden() -> bool:
 	return true
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

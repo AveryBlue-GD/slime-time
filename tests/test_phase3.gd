@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Phase 3 checks: all 10 levels are beatable by a perfect glide using about the level's
 ## target share of slime, difficulty rises, tiles are varied but deterministic, every wall
@@ -8,9 +8,8 @@ extends SceneTree
 const MAIN := preload("res://scenes/main.tscn")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
 const PROGRESS := preload("res://scripts/progress.gd")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -90,12 +89,12 @@ func _initialize() -> void:
 	a.free()
 	b.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
 	var progress: Node = PROGRESS.new()
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.complete_level(3)
 	var reloaded: Node = PROGRESS.new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.levels_cleared == 3 and reloaded.highest_unlocked == 4 and reloaded.current_level == 4,
 		"clearing level 3 saves and unlocks level 4")
@@ -103,9 +102,9 @@ func _initialize() -> void:
 	_check(reloaded.levels_cleared == 10 and reloaded.current_level == 1, "beating level 10 records it and returns to level 1")
 	progress.free()
 	reloaded.free()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -125,7 +124,3 @@ func _broken_share(game: Node2D) -> float:
 	return float(broken) / game.wall_damage.size()
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

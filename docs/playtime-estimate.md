@@ -84,7 +84,7 @@ Other facts that matter:
   (bigger than normal since the 2026-10-14 rebalance), no loops, meter = old hard meter x (1 + 0.1 x
   level), allowance 1.14-1.29, **no upgrades, no coins, no slime reserve (assist)**, and explored
   areas fog over again after ~9 s. Its medals are separate and don't count toward 30/30.
-- **Retry overhead:** `END_DELAY` 2.0 s + `DRY_CHOICE_DELAY` 0.25 s + the goo wipe (0.22 + 0.32 s),
+- **Retry overhead:** `DRY_CHOICE_DELAY` 0.25 s + the goo wipe (0.22 + 0.32 s) (there is no 2 s auto-advance wait any more),
   then a button press. Normal mode offers the +10% slime reserve after 3 dry-ups on a level
   (no medal/record).
 

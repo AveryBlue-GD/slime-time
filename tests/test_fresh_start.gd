@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Fresh-start policy for the public release (docs/itch-release.md): user:// is the release dir
 ## (custom_user_dir_name "SlimeTime_R<epoch>"), never the old "Slime Time" app_userdata dir; saves and
@@ -11,7 +11,6 @@ extends SceneTree
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 const OLD_DIR_NAME := "Slime Time"  # application/config/name: the pre-release user dir (app_userdata)
 
-var failures := 0
 var progress: Node
 var scratch: Array[String] = []
 
@@ -167,7 +166,7 @@ func _initialize() -> void:
 	full.free()
 	for path in scratch:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -231,7 +230,3 @@ func _body(file: ConfigFile) -> String:
 	return Marshalls.raw_to_base64(file.encode_to_text().to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

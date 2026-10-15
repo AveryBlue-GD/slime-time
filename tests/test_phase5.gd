@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 const StartDirs := preload("res://tests/start_dirs.gd")
 
@@ -11,9 +11,8 @@ const StartDirs := preload("res://tests/start_dirs.gd")
 const MAIN := preload("res://scenes/main.tscn")
 const AUTOPILOT := preload("res://tests/autopilot.gd")
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 var last_result := -1
 
@@ -21,7 +20,7 @@ var last_result := -1
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	_reset_progress()
 
 	# --- Skins
@@ -72,7 +71,7 @@ func _initialize() -> void:
 	var lockstep := absf(wall_now - (floor_now + (1.0 - floor_now) * game.WALL_FOG_ALPHA)) < 0.01
 	var steps := []
 	for wait in [4.0, 5.0, 4.0]:
-		await _wait(wait)
+		await _wait_seconds(wait)
 		var f: float = game.fog_alpha_at(start)
 		var w: float = game.fog_alpha_at(wall_point)
 		lockstep = lockstep and absf(w - (f + (1.0 - f) * game.WALL_FOG_ALPHA)) < 0.01
@@ -89,7 +88,7 @@ func _initialize() -> void:
 	progress.set_binding("move_up", KEY_I)
 	_check(_has_key("move_up", KEY_I) and _has_key("move_up", KEY_UP), "remapped movement keeps the arrow keys")
 	var reloaded: Node = PROGRESS_SCRIPT.new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.bindings == progress.bindings, "key bindings are saved and loaded")
 	reloaded.free()
@@ -165,8 +164,8 @@ func _initialize() -> void:
 		"controls screen lists 10 actions (jump = %s, interact = %s)" % [screen.key_buttons.jump.text, screen.key_buttons.interact.text])
 	screen.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -208,12 +207,3 @@ func _close(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01
 
 
-func _wait(seconds: float) -> void:
-	for i in int(seconds * 60):
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

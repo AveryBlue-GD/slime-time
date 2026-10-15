@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Level medals: 1-3 per level by clear TIME against the level's par (path / base speed x 1.35 + 1 s):
 ## gold <= par, silver <= 1.3 x par, bronze = any unassisted clear. The best tier is kept per level
@@ -8,16 +8,15 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_medals.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.hard_mode = false
 	progress.reset_progress()
@@ -125,8 +124,8 @@ func _initialize() -> void:
 	_check(pips == [3, 2, 0], "tiles show 3 / 2 / 0 gold pips for gold / silver / none (%s)" % [pips])
 	screen.free()
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -161,12 +160,8 @@ func _until_finished(game: Node2D, max_seconds: float) -> void:
 ## Detaches the game before its end-of-level timer fires (so it doesn't reload), then frees it.
 func _stop(game: Node2D) -> void:
 	current_scene = null
-	for i in int(game.END_DELAY * 60) + 10:
+	for i in int(game.CHOICE_DELAY * 60) + 10:
 		await physics_frame
 	game.free()
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

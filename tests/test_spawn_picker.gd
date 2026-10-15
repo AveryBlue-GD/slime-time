@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## SpawnPicker (scripts/spawn_picker.gd): class odds 33 / 30 / 37 over 10k seeds (also after the
 ## minimum-route rule), determinism, integer-only RNG, the 60% minimum route, every maze solvable
@@ -9,7 +9,6 @@ const SEEDS := 10000
 const MAZES := 40
 const TOLERANCE := 0.02
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -95,7 +94,7 @@ func _initialize() -> void:
 	_check(story_ok, "story levels: solvable, chalice and coins reachable, route >= %d%% (hard: its exact route), the configured class" % SpawnPicker.MIN_ROUTE_PCT)
 	_check(kinds[0] >= 3 and kinds[1] >= 3 and kinds[2] >= 3, "the 10 levels mix edge / near-edge / interior starts %s" % [kinds])
 
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -122,9 +121,3 @@ func _check_odds(counts: Array, what: String) -> void:
 	_check(ok, "%s: EDGE %.1f%% NEAR %.1f%% ANY %.1f%% (want 33/30/37 +-%d)" % [what, counts[0] * 100.0 / total, counts[1] * 100.0 / total, counts[2] * 100.0 / total, TOLERANCE * 100])
 
 
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)

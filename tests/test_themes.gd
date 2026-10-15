@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Level themes + rounded corners: every story level has its own theme (level 1 is the original
 ## Dungeon art), random mazes pick a theme from their seed (the same seed always gets the same
@@ -8,12 +8,14 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
-	root.get_node("Progress").save_path = "user://test_save.cfg"
+	root.get_node("Progress").save_path = test_save
 
 	var ids := {}
 	for level in range(1, Levels.COUNT + 1):
@@ -27,7 +29,7 @@ func _initialize() -> void:
 	_check(Themes.for_seed(1234) == Themes.for_seed(1234), "a random maze keeps its theme on replay")
 	_check(random_ids.size() >= 6, "random mazes pick from many themes (%d seen)" % random_ids.size())
 
-	var game := await _spawn({level = 1})
+	var game := await _spawn_game({level = 1})
 	_check("dungeon_walls" in _wall_texture(game).resource_path, "level 1 uses the dungeon art")
 	var constructions := {}
 	for tile: Vector2i in game.wall_layer.get_used_cells():
@@ -46,7 +48,7 @@ func _initialize() -> void:
 	_check(alliterative, "every area name is alliterative")
 	game.free()
 
-	game = await _spawn({level = 7})
+	game = await _spawn_game({level = 7})
 	_check(game.theme == "frozen" and "frozen_walls" in _wall_texture(game).resource_path,
 		"level 7 is the Frozen Fortress, with its own tile art (%s)" % _wall_texture(game).resource_path)
 	var fog := game.fog_sprite.material as ShaderMaterial
@@ -57,7 +59,7 @@ func _initialize() -> void:
 	for id: String in Themes.ALL:
 		all_have_sounds = all_have_sounds and ResourceLoader.exists("res://assets/sounds/ambient_%s_0.wav" % id)
 	_check(all_have_sounds, "every theme has its own ambient sounds")
-	game = await _spawn({level = 10})
+	game = await _spawn_game({level = 10})
 	_check(game.ambient.playing and "ambient_volcanic" in game.ambient.stream.resource_path and game.ambient_events.size() >= 3,
 		"the Volcanic Vault has a faint magma rumble and %d occasional sounds" % game.ambient_events.size())
 	await _frames(int(game.AMBIENT_FADE * 60) + 10)
@@ -69,7 +71,7 @@ func _initialize() -> void:
 		heard = heard or game.ambient_event_player.playing
 	_check(heard, "an occasional sound plays within a few seconds")
 	game.free()
-	game = await _spawn({level = 4})
+	game = await _spawn_game({level = 4})
 	var bed := game.ambient.stream as AudioStreamWAV
 	_check(game.ambient.playing and "ambient_sunken" in bed.resource_path and bed.loop_mode == AudioStreamWAV.LOOP_FORWARD,
 		"the Sunken Shrine loops its waves")
@@ -84,12 +86,11 @@ func _initialize() -> void:
 	_check(game.ambient.playing, "...and turning it back on resumes it")
 	game.free()
 
-	game = await _spawn({random_seed = 777})
+	game = await _spawn_game({random_seed = 777})
 	_check(game.theme == Themes.for_seed(777), "a random maze uses its seed's theme (%s)" % game.theme)
 	game.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -102,16 +103,3 @@ func _wall_texture(game: Node2D) -> Texture2D:
 	return (game.wall_layer.tile_set.get_source(MazeTiles.WALL_SOURCE) as TileSetAtlasSource).texture
 
 
-func _spawn(settings: Dictionary) -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	for key: String in settings:
-		game.set(key, settings[key])
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

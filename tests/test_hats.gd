@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Hat checks: hats are won on the hat wheel and saved; a worn hat sits on the slime's
 ## head, pops off when it leaps, keeps its momentum and lands back on its head; after a splat it
@@ -6,16 +6,15 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hats.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.levels_cleared = 10
 	progress.selected_hat = Hats.NONE
 	progress.hats_owned.clear()
@@ -34,21 +33,21 @@ func _initialize() -> void:
 	progress.win_hat(first)
 	_check(progress.selected_hat == first and not first in progress.hats_left(), "winning a hat puts it on and takes it off the wheel")
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.selected_hat == first and first in reloaded.hats_owned, "won hats and the one you wear are saved")
 	reloaded.free()
 
 	# --- On the head
-	var game := await _spawn()
+	var game := await _spawn_game()
 	_check(game.hat != null and game.hat.state == Hat.State.ON, "the slime wears its hat into the level")
-	await _frames(5)
+	await _physics_frames(5)
 	_check(game.hat.region_rect.position.y == Hats.Width.NORMAL * Hats.FRAME.y, "at rest it's the normal-width hat")
 	Input.action_press("jump")
-	await _frames(70)
+	await _physics_frames(70)
 	_check(game.hat.region_rect.position.y == Hats.Width.WIDE * Hats.FRAME.y, "squashed down to charge, the slime wears it wider")
 	Input.action_release("jump")
-	await _frames(90)
+	await _physics_frames(90)
 	var spot := _straight(game, 4)
 	_check(not spot.is_empty(), "found a straight corridor to jump along")
 	var start := MazeGenerator.cell_center(spot.cell, 16)
@@ -79,7 +78,7 @@ func _initialize() -> void:
 	game.free()
 
 	# --- A splat: the hat stays over the slime (just jolted on a little) and comes back down on it
-	game = await _spawn()
+	game = await _spawn_game()
 	var end := _dead_end(game, 3)
 	var near := MazeGenerator.cell_center(end.cell, 16)
 	game.slime.position = near
@@ -106,8 +105,8 @@ func _initialize() -> void:
 	game.free()
 
 	progress.selected_hat = Hats.NONE
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -144,20 +143,3 @@ func _dead_end(game: Node2D, behind: int) -> Dictionary:
 	return {}
 
 
-func _spawn() -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	game.level = 1
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1
-
-
-func _frames(count: int) -> void:
-	for i in count:
-		await physics_frame

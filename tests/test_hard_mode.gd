@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Hard mode + one-time skin notice checks: hard mode has its own mazes, a 75-92% budget, no
 ## upgrades, no coins and its own records; explored areas that have fully dimmed turn back into
@@ -8,16 +8,15 @@ extends SceneTree
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_hard_mode.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.levels_cleared = 0
 	progress.selected_skin = Skins.DEFAULT
 	progress.skin_notices_seen.clear()
@@ -33,7 +32,7 @@ func _initialize() -> void:
 	_check(not game.hud.message.visible, "restarting the level doesn't show it again")
 	game.free()
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(2 in reloaded.skin_notices_seen, "seen notices are saved")
 	reloaded.free()
@@ -72,15 +71,15 @@ func _initialize() -> void:
 	var far := MazeGenerator.cell_center(path[path.size() / 2], 16)
 	game.slime.position = far
 	game.last_slime_pos = far
-	await _wait(4.0)
+	await _wait_seconds(4.0)
 	var mid: float = game.fog_alpha_at(start)
-	await _wait(6.0)
+	await _wait_seconds(6.0)
 	var late: float = game.fog_alpha_at(start)
 	_check(mid > 0.0 and mid < 1.0, "it dims in steps like normal at first (%.2f after 4 s)" % mid)
 	_check(late == 1.0, "once fully dimmed, the fog takes it back completely (%.2f after 10 s)" % late)
 	game.slime.position = start
 	game.last_slime_pos = start
-	await _wait(0.1)
+	await _wait_seconds(0.1)
 	_check(game.fog_alpha_at(start) == 0.0, "coming back clears it again")
 	game.free()
 
@@ -91,7 +90,7 @@ func _initialize() -> void:
 	far = MazeGenerator.cell_center(path[path.size() / 2], 16)
 	game.slime.position = far
 	game.last_slime_pos = far
-	await _wait(10.0)
+	await _wait_seconds(10.0)
 	_check(game.fog_alpha_at(start) < 1.0, "normal mode keeps the faint memory of the path")
 	game.free()
 
@@ -103,14 +102,14 @@ func _initialize() -> void:
 	screen.hard_mode_box.button_pressed = true
 	_check(progress.hard_mode, "ticking the box turns hard mode on")
 	reloaded = preload("res://scripts/progress.gd").new()
-	reloaded.save_path = TEST_SAVE
+	reloaded.save_path = test_save
 	reloaded.load_progress()
 	_check(reloaded.hard_mode, "hard mode is saved")
 	reloaded.free()
 	screen.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -122,12 +121,3 @@ func _spawn(level := 1) -> Node2D:
 	return game
 
 
-func _wait(seconds: float) -> void:
-	for i in int(seconds * 60):
-		await physics_frame
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

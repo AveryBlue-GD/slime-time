@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Mercy assist ("slime reserve"): after 3 dry-ups on the same story level in a session, the dry-up
 ## screen offers an optional ASSIST attempt with a bit more slime. It's never offered on hard
@@ -7,16 +7,15 @@ extends SceneTree
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_mercy.gd
 
 const MAIN := preload("res://scenes/main.tscn")
-const TEST_SAVE := "user://test_save.cfg"
+var test_save := throwaway_save()
 
-var failures := 0
 var progress: Node
 
 
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
-	progress.save_path = TEST_SAVE
+	progress.save_path = test_save
 	progress.dev_tools = false
 	progress.hard_mode = false
 	progress.reset_progress()
@@ -133,8 +132,8 @@ func _initialize() -> void:
 	_check(done.tier == 3 and saved.get_value("medals", "level_1", 0) == 3 and saved.get_value("progress", "levels_cleared", 0) == 1
 		and saved.get_value("records", "level_1", -1.0) == 5.0, "record_clear(finish) saves the medal tier, record and cleared mark together")
 	progress.reset_progress()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -158,12 +157,8 @@ func _spawn(level: int, running: bool) -> Node2D:
 
 func _stop(game: Node2D) -> void:
 	current_scene = null
-	for i in int(game.END_DELAY * 60) + 10:
+	for i in int(game.CHOICE_DELAY * 60) + 10:
 		await physics_frame
 	game.free()
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

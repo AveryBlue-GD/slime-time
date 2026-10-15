@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The --autoplay bot's route planner (scripts/autoplay/autoplay_planner.gd), on paper (no physics):
 ## every planned run is a real walk through open cells from the start, fits the meter with the
@@ -7,7 +7,6 @@ extends SceneTree
 ## upgrade priority; the meter matches the game's own. And the --autoplay flag is inert without it.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_autoplay_planner.gd
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -90,7 +89,7 @@ func _initialize() -> void:
 		"Autoplay.requested is false without the flag")
 	_check(Autoplay.requested(PackedStringArray(["--autoplay", "--speed=8"])), "and true with --autoplay")
 
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -116,7 +115,3 @@ func _route_problem(maze: Dictionary, plan: Dictionary) -> String:
 	return ""
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

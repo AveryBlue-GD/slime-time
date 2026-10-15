@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Splat knockback checks: hitting a wall throws the slime back the way it came, by about
 ## BOUNCE_FACTOR of the jump distance it had left, so hard leaps bounce further than soft hops;
@@ -7,16 +7,18 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 
-var failures := 0
+
+
+var test_save := throwaway_save()
 
 
 func _initialize() -> void:
 	await process_frame
 	var progress: Node = root.get_node("Progress")
-	progress.save_path = "user://test_save.cfg"
+	progress.save_path = test_save
 	progress.levels_cleared = 1
 
-	var game := await _spawn()
+	var game := await _spawn_game()
 	var spot := _dead_end(game, 3)
 	_check(not spot.is_empty(), "found a dead end with an open corridor behind it")
 	var dir: Vector2 = Vector2(spot.dir)
@@ -32,7 +34,7 @@ func _initialize() -> void:
 	game.free()
 
 	# A soft hop into the same wall bounces much less.
-	game = await _spawn()
+	game = await _spawn_game()
 	var soft := await _splat(game, spot, 0.0)
 	_check(soft.bounce < hard.bounce / 3.0, "a gentle hop barely bounces (%.1f px vs %.0f px)" % [soft.bounce, hard.bounce])
 	game.free()
@@ -53,20 +55,19 @@ func _initialize() -> void:
 	_check(glancing.x > 0.0 and glancing.y > 0.0 and glancing.x > glancing.y, "glancing: keeps going along the wall and bounces off (%s)" % glancing)
 
 	# Pinball: a hard diagonal leap down a corridor ricochets between its walls.
-	game = await _spawn()
+	game = await _spawn_game()
 	var hard_zig := await _diagonal(game, spot, 100.0)
 	_check(hard_zig.bounces >= 2, "a hard angled splat ricochets off more walls (%d bounces)" % hard_zig.bounces)
 	_check(hard_zig.along > 10.0, "...carrying on down the corridor (%.0f px)" % hard_zig.along)
 	_check(not game.slime.knocked_back, "...and settles once it runs out of energy")
 	game.free()
-	game = await _spawn()
+	game = await _spawn_game()
 	var soft_zig := await _diagonal(game, spot, 0.0)
 	_check(soft_zig.along < hard_zig.along / 3.0 and soft_zig.bounces <= hard_zig.bounces,
 		"a weak angled hop barely comes off the wall (%.1f px, %d bounces)" % [soft_zig.along, soft_zig.bounces])
 	game.free()
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_save.cfg"))
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -131,15 +132,3 @@ func _dead_end(game: Node2D, behind: int) -> Dictionary:
 	return {}
 
 
-func _spawn() -> Node2D:
-	var game: Node2D = MAIN.instantiate()
-	game.level = 1
-	root.add_child(game)
-	await physics_frame
-	return game
-
-
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

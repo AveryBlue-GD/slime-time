@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## The real screen-change flow: hub -> Skins screen (Transition goo wipe + scene change) -> pick a
 ## skin -> back to the hub. The new hub (floor, rim, goo wipe, goo boxes, slime) must wear the NEW
@@ -6,7 +6,6 @@ extends SceneTree
 ## Everything unlocked (dev); never touches a save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_hub_skin_flow.gd
 
-var failures := 0
 var progress: Node
 
 
@@ -19,7 +18,7 @@ func _initialize() -> void:
 	progress.skin_notices_seen.append(1)  # level 1 must not re-equip its first-run skin under us
 	for id: String in ["ember", Skins.STOPWATCH, Skins.RAINBOW, "lime", Skins.CUSTOM, Skins.STOPWATCH, "frost"]:
 		await _visit(id)
-	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+	_result()
 	quit(1 if failures else 0)
 
 
@@ -85,7 +84,3 @@ func _screen_colors(id: String) -> String:
 	return ", ".join(wrong)
 
 
-func _check(ok: bool, label: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + label)
-	if not ok:
-		failures += 1

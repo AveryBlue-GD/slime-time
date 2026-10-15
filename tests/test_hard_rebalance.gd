@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/suite_base.gd"
 
 ## Hard-mode rebalance (2026-10-14, docs/level-design.md section 7): the per-level slime multiplier
 ## table (Levels.HARD_SLIME_MULT), meters / routes / allowances hitting their targets, the bigger hard
@@ -14,7 +14,6 @@ const PROGRESS := preload("res://scripts/progress.gd")
 const V4_DEAD_ENDS: Array[int] = [8, 11, 12, 25, 20, 28, 34, 50, 67, 68]
 const GRAB := Levels.GRAB_REACH / Levels.TILE
 
-var failures := 0
 
 
 func _initialize() -> void:
@@ -24,7 +23,7 @@ func _initialize() -> void:
 	_check_mazes()
 	_check_migration()
 	_check_story_complete()
-	print("RESULT: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
+	_result()
 	quit(0 if failures == 0 else 1)
 
 
@@ -65,14 +64,9 @@ func _check_tables() -> void:
 
 
 func _check_mazes() -> void:
-	var times: Array[float] = []
 	for level in range(1, Levels.COUNT + 1):
 		var config := Levels.get_config(level, true)
-		var maze: Dictionary
-		for n in 3:
-			var t := Time.get_ticks_usec()
-			maze = Levels.build_story_maze(level, true)
-			times.append((Time.get_ticks_usec() - t) / 1000.0)
+		var maze: Dictionary = Levels.build_story_maze(level, true)
 		var again := Levels.build_story_maze(level, true)
 		var dist := MazeGenerator.distances_from(maze, maze.start)
 		var base: Vector2i = Levels.DATA[level - 1].cells
@@ -93,8 +87,14 @@ func _check_mazes() -> void:
 		var walk: float = route_tiles * Levels.TILE / Levels.PAR_SPEED
 		_check(is_equal_approx(Levels.level_par(level, true), Levels.par_for_path(route_tiles)) and walk < Levels.level_par(level, true),
 			"hard %2d: par %.1f s = new route / base speed x 1.35 + 1 (walking it takes %.1f s)" % [level, Levels.level_par(level, true), walk])
-	times.sort()
-	_check(times[-1] < 30.0, "hard maze builds (headless): mean %.1f ms, worst %.1f ms over %d builds" % [_mean(times), times[-1], times.size()])
+	_check_budget("hard maze builds (headless): the slowest of 3 builds per level", 30.0, func() -> float:
+		var worst := 0.0
+		for level in range(1, Levels.COUNT + 1):
+			for n in 3:
+				var t := Time.get_ticks_usec()
+				Levels.build_story_maze(level, true)
+				worst = maxf(worst, (Time.get_ticks_usec() - t) / 1000.0)
+		return worst)
 
 
 func _check_migration() -> void:
@@ -189,17 +189,3 @@ func _fresh() -> Node:
 	node.saving_enabled = false
 	return node
 
-
-static func _mean(values: Array[float]) -> float:
-	var total := 0.0
-	for v in values:
-		total += v
-	return total / maxf(values.size(), 1)
-
-
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		print("  ok   ", what)
-	else:
-		failures += 1
-		print("  FAIL ", what)
