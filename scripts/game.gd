@@ -271,6 +271,8 @@ var reward := {}
 var won := false
 var shake_left := 0.0
 var shake_strength := 0.0
+## How long the current shake lasts in all (SHAKE_TIME, or longer for a SLIMAKAZE impact: shake()).
+var shake_span := SHAKE_TIME
 ## Camera kick toward a wall that was just hit (px), fading with the shake.
 var kick := Vector2.ZERO
 var _heartbeat_left := 0.0
@@ -299,6 +301,10 @@ var _dev_pod_text := ""  # DevLog only
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
+## ABILITIES v1 (AbilityRunner): the ticket abilities on this run; null in hard mode / without any.
+var abilities: AbilityRunner
+## The seed this maze was built from (config.seed; the SLIMAKAZE splatter is seeded from it).
+var maze_seed := 0
 ## Brightness upgrade: extra reach (px) of the slime's light (see Upgrades.light_reach).
 var light_reach := 0.0
 ## Dev wall power (see Upgrades): damage left on walls, by tile (100 = intact).
@@ -384,6 +390,7 @@ func _ready() -> void:
 		config = Levels.get_config(level, hard_mode)
 		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
 		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
+	maze_seed = int(config.seed)
 	_make_goal()
 	survey_tiles.resize(maze.size.x * maze.size.y)
 	_survey_cell = maze.start
@@ -472,6 +479,7 @@ func _ready() -> void:
 	restart_prompt.game = self
 	add_child(restart_prompt)
 	_put_on_hat()
+	abilities = AbilityRunner.create(self)
 	if progress and not is_random() and not descent and not hard_mode and level <= TutorialCues.MAX_LEVEL \
 			and level > progress.levels_cleared and progress.randoms_won == 0:
 		var cues := TutorialCues.new()
@@ -685,13 +693,23 @@ func _lead_camera(delta: float) -> void:
 func _shake_camera(delta: float) -> void:
 	if shake_left <= 0.0 or motion_scale() <= 0.0:
 		shake_left = 0.0
+		shake_span = SHAKE_TIME
 		kick = Vector2.ZERO
 		camera.offset = Vector2.ZERO
 		return
 	shake_left = maxf(shake_left - delta, 0.0)
-	var fade := shake_left / SHAKE_TIME
+	var fade := minf(shake_left / maxf(shake_span, 0.001), 1.0)
 	var strength := ceilf(shake_strength * fade)
 	camera.offset = (Vector2(randf_range(-strength, strength), randf_range(-strength, strength)) + kick * fade).round()
+
+
+## A screen shake of `strength` px fading over `time` s with a `push` (px) toward a side; nothing
+## with Reduce Motion (see _shake_camera).
+func shake(strength: float, time: float, push := Vector2.ZERO) -> void:
+	shake_left = time
+	shake_span = time
+	shake_strength = strength
+	kick = push
 
 
 ## Adds the distance moved since last frame; past the next mark, a glimmer appears.
@@ -1210,6 +1228,45 @@ func _reveal_wall(tile: Vector2i) -> void:
 	_fill_fog(_tile_cells(tile), _fog_color(elapsed, elapsed, true))
 	if tile.x >= 0 and tile.y >= 0 and tile.x < maze.size.x and tile.y < maze.size.y:
 		survey_tiles[tile.y * maze.size.x + tile.x] = 1
+
+
+## ABILITIES: reveals a whole tile at once, lit now (so it shows bright, then fades like the trail):
+## a floor tile's fog cells (unrevealed ones revealed, revealed ones relit) and the survey, plus with
+## `walls_around` the walls bordering it (as the goo trail's reveal does); a wall tile just as a wall.
+func reveal_tile(tile: Vector2i, walls_around := true) -> void:
+	if tile.x < 0 or tile.y < 0 or tile.x >= maze.size.x or tile.y >= maze.size.y:
+		return
+	if is_wall_tile(tile):
+		_reveal_wall(tile)
+		return
+	var rect := _tile_cells(tile).intersection(Rect2i(Vector2i.ZERO, _cells))
+	var fresh := _rgba8(_fog_color(elapsed, elapsed, false))
+	var lit := clampi(int(elapsed * FOG_TICKS), 0, 65535)
+	var lit_bytes := (lit >> 8) | ((lit & 255) << 8)
+	for cy in range(rect.position.y, rect.end.y):
+		var i := (cy * _cells.x + rect.position.x) * 4
+		for cx in rect.size.x:
+			var v := _fog_bytes.decode_u32(i)
+			_fog_bytes.encode_u32(i, fresh if v < 0x10000 else (v & 0xFFFF0000) | lit_bytes)
+			i += 4
+	survey_tiles[tile.y * maze.size.x + tile.x] = 1
+	fog_dirty = true
+	if walls_around:
+		_reveal_walls_near((Vector2(tile) + Vector2(0.5, 0.5)) * TILE, TILE / 2.0)
+
+
+## ABILITIES: a thin goo streak (radius `radius` px) along the segment a..b (floor cells only).
+func paint_streak(a: Vector2, b: Vector2, radius := 2.0) -> void:
+	var steps := maxi(ceili(a.distance_to(b) / 2.0), 1)
+	for i in steps + 1:
+		_paint_cells(a.lerp(b, float(i) / steps), radius, false)
+
+
+## ABILITIES: takes `percent` of the meter (not with dev NO DRAIN).
+func spend_slime(percent: float) -> void:
+	if not dev_no_drain:
+		slime_remaining = maxf(slime_remaining - percent, 0.0)
+	hud.set_slime(slime_remaining)
 
 
 ## Image.fill_rect on the fog bytes (clipped to the image).

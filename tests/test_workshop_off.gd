@@ -52,7 +52,9 @@ func _data() -> void:
 	_check(inert and not progress.workshop_open() and progress.tickets == 900, "off: every level reads 0, nothing opens or sells")
 	_check(progress.workshop == FULL and progress.workshop_saved_level("wind") == 3, "off: the saved levels are still held")
 	_state({})
-	_check(not progress.store_affordable("upgrades"), "off: the cauldron '!' ignores the workshop")
+	Economy.abilities_force = 0
+	_check(not progress.store_affordable("upgrades"), "off: the cauldron '!' ignores the workshop (abilities off too)")
+	Economy.abilities_force = -1
 	progress.dev_tools = true
 	_check(not progress.workshop_open() and not progress.store_affordable("upgrades"), "off: not even dev mode opens it")
 	progress.dev_tools = false
@@ -158,8 +160,10 @@ func _screen() -> void:
 	root.add_child(screen)
 	await process_frame
 	await process_frame
-	_check(screen.tickets_tab == null and screen.coins_tab == null and screen.ticket_page == null and screen.ticket_rows.is_empty()
-		and screen.page == "coins" and screen.coin_page.visible and screen.rows.size() == 3, "off: the cauldron is the three coin rows, no tab bar, no TICKETS page")
+	_check(screen.tickets_tab == null and screen.ticket_page == null and screen.ticket_rows.is_empty()
+		and screen.abilities_tab != null and screen.abilities_tab.text == "TICKETS" and screen.ability_rows.size() == 3
+		and screen.page == "coins" and screen.coin_page.visible and screen.rows.size() == 3,
+		"off: the cauldron is the three coin rows and the TICKETS tab holds the abilities (no workshop page)")
 	var bars := {}
 	for id: String in ["slime", "speed", "brightness"]:
 		bars[id] = _bar(screen.rows[id])
@@ -173,7 +177,7 @@ func _screen() -> void:
 	_check(bars.slime[2] == [11, 11, 11, 11, 11, 11, 11] and bars.speed[2] == [20, 20, 20, 20] and bars.brightness[2] == [27, 27, 27],
 		"segments: 7 x 11, 4 x 20, 3 x 27 px (%s %s %s)" % [bars.slime[2], bars.speed[2], bars.brightness[2]])
 	var minus_left: float = screen.rows.slime.minus.position.x
-	_check(right < minus_left and left > screen.rows.slime.about.position.x, "the bars end before the - button (x %d < %d)" % [right, minus_left])
+	_check(right < minus_left and left > screen.rows.slime.name.position.x, "the bars end before the - button (x %d < %d)" % [right, minus_left])
 	# Several upgrade states: every state keeps the same extents.
 	for state: Dictionary in [{}, {slime = 3, speed = 2, brightness = 1}, {slime = 7, speed = 4, brightness = 3}]:
 		progress.upgrades = state.duplicate()

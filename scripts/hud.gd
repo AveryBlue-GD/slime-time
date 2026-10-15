@@ -90,6 +90,13 @@ const WIND_USED := Color(0.45, 0.45, 0.5, 0.75)
 ## Dev mode only: a tag naming the dev toggles that are on (made on first use, so it never exists
 ## in normal play; see set_dev_badge).
 var dev_badge: Control
+## ABILITIES v1: a pod under the meter with each owned ability's icon and its uses left as pips
+## (set_abilities; hidden without any).
+var ability_pod: Control
+var ability_row: HBoxContainer
+var ability_items: Array[Dictionary] = []
+const ABILITY_PIP := Vector2(2, 4)
+const ABILITY_PIP_OFF := Color8(70, 74, 96)
 ## HEAT runs: a pod under the level with a flame, the heat and the modifiers' icons (set_heat); the
 ## timer's clock becomes an hourglass counting down with RACE (set_countdown); the result's heat
 ## line (show_heat_result).
@@ -173,6 +180,12 @@ func _ready() -> void:
 	wind_row.add_child(_wind_icon)
 	wind_row.add_child(UIKit.make_label("WIND", 8, WIND_TINT))
 	wind_pod.visible = false
+
+	# ABILITIES (hidden unless this run has any).
+	ability_row = _make_pod(left_bar)
+	ability_row.add_theme_constant_override("separation", 5)
+	ability_pod = ability_row.get_parent()
+	ability_pod.visible = false
 
 	# Center pod: clock + run time.
 	var time_row := _make_pod(null)
@@ -453,6 +466,41 @@ func set_boons(boons: Dictionary, bladders_left := 0) -> void:
 			boon_strip.add_child(BoonIcons.make(id))
 			boon_icons.append(id)
 	boon_pod.visible = not boon_icons.is_empty()
+
+
+## ABILITIES: `items` = [{id, left, max}] (AbilityRunner.strip): the icon, then one pip per use (lit
+## while left); an ability with none left is dimmed. A use that just went pops its icon (not with
+## Reduce Motion).
+func set_abilities(items: Array[Dictionary]) -> void:
+	var before := {}
+	for item in ability_items:
+		before[item.id] = int(item.left)
+	ability_items = items.duplicate(true)
+	for child in ability_row.get_children():
+		ability_row.remove_child(child)
+		child.queue_free()
+	var progress := get_node_or_null("/root/Progress")
+	var still: bool = progress != null and progress.reduce_motion
+	for item in items:
+		var group := HBoxContainer.new()
+		group.add_theme_constant_override("separation", 2)
+		group.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var icon := Abilities.make_icon(item.id)
+		icon.modulate = Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7)
+		group.add_child(icon)
+		var pips := Control.new()
+		pips.custom_minimum_size = Vector2(int(item.max) * (ABILITY_PIP.x + 1) - 1, ABILITY_PIP.y)
+		pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for i in int(item.max):
+			_add_rect(pips, Vector2(i * (ABILITY_PIP.x + 1), 0), ABILITY_PIP, goo_color if i < int(item.left) else ABILITY_PIP_OFF)
+		group.add_child(pips)
+		ability_row.add_child(group)
+		if before.has(item.id) and int(item.left) < int(before[item.id]) and not still:
+			icon.modulate = Color(2.0, 2.0, 2.0)
+			icon.create_tween().tween_property(icon, "modulate",
+				Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7), 0.35)
+	ability_pod.visible = not items.is_empty()
 
 
 ## True while the attempt pod's pop is still playing (or waiting for the goo wipe to clear).

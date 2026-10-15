@@ -13,7 +13,11 @@ signal bounced(wall_normal: Vector2, impact: float)
 ## (a hat uses this to fly along with it).
 signal launched(floor_velocity: Vector2, flight_time: float)
 
-enum State { GLIDE, CHARGING, AIRBORNE, STUNNED }
+## Emitted when a SLIMAKAZE dash (Abilities) hits its wall (`wall_normal` points back at the slime).
+signal dash_hit(wall_normal: Vector2)
+
+## DASH: the SLIMAKAZE ability's straight dash to a wall (set by AbilityRunner through dash()).
+enum State { GLIDE, CHARGING, AIRBORNE, STUNNED, DASH }
 
 const TILE := 16
 ## Slime sheet frames are this many px square (slime_sheet.json frame_size).
@@ -108,6 +112,9 @@ var _squish_left := 0.0
 var _recover_anim_left := 0.0
 ## Set by play_dry_up()/play_celebrate(); overrides the state-driven animation.
 var _special_anim := ""
+var _dash_target := Vector2.ZERO
+var _dash_speed := 0.0
+var _dash_stun := 0.0
 
 static var _sprite_frames: SpriteFrames
 ## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
@@ -318,8 +325,53 @@ func _process(_delta: float) -> void:
 		Stopwatch.request(Stopwatch.mode_for(state, velocity.length()))
 
 
+## In the air (a leap) or dashing (SLIMAKAZE): the ground doesn't drain, and a dry-up waits.
 func is_airborne() -> bool:
-	return state == State.AIRBORNE
+	return state == State.AIRBORNE or state == State.DASH
+
+
+## SLIMAKAZE: dashes in a straight line along `dir` to `target` (against a wall, worked out on the
+## maze grid by Abilities) at `speed` px/s, then splats there (stunned `stun` s, dash_hit). Frozen
+## meanwhile (a win or dry-up), it just stops where it is.
+func dash(target: Vector2, dir: Vector2, speed: float, stun: float) -> void:
+	_jump_dir = dir
+	facing = dir
+	_dash_target = target
+	_dash_speed = speed
+	_dash_stun = stun
+	velocity = Vector2.ZERO
+	charge = 0.0
+	knocked_back = false
+	_jump_buffer_left = 0.0
+	state = State.DASH
+	_sfx_stop("charge")
+	launched.emit(dir * speed, position.distance_to(target) / maxf(speed, 1.0))
+
+
+## Ends a dash at once at its target (tests, and the last step of a dash).
+func finish_dash() -> void:
+	if state != State.DASH:
+		return
+	position = _dash_target
+	sprite.position.y = 0.0
+	state = State.STUNNED
+	_stun_left = _dash_stun
+	_splat_side = splat_side(-_jump_dir)
+	velocity = Vector2.ZERO
+	_hit_stop(1.0)
+	_sfx("splat", 2.0, 0.75)
+	Input.vibrate_handheld(120)
+	dash_hit.emit(-_jump_dir)
+
+
+func _dash_step(delta: float) -> void:
+	if frozen:
+		state = State.GLIDE  # the run ended mid-dash: stop here, no splat
+		sprite.position.y = 0.0
+		return
+	position = position.move_toward(_dash_target, _dash_speed * delta)
+	if position.is_equal_approx(_dash_target):
+		finish_dash()
 
 
 func play_dry_up() -> void:
@@ -383,6 +435,8 @@ func _physics_process(delta: float) -> void:
 					launch(charge)
 		State.AIRBORNE:
 			_fly(delta)
+		State.DASH:
+			_dash_step(delta)
 		State.STUNNED:
 			_glide(Vector2.ZERO, delta)  # the knockback slides on while stunned
 			_stun_left -= delta
@@ -442,6 +496,8 @@ func _animate() -> void:
 				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
 		State.STUNNED:
 			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / maxf(splat_stun, 0.001))
+		State.DASH:
+			_show_frame("air_" + dir_name(_jump_dir), 0.5)
 
 
 func _play(anim: String) -> void:

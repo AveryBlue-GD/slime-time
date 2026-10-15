@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -16,7 +16,12 @@ const TUTORIAL_LEAP := 2
 const DEFAULT_KEYS := {
 	move_up = KEY_W, move_down = KEY_S, move_left = KEY_A, move_right = KEY_D,
 	jump = KEY_SPACE, restart = KEY_R, interact = KEY_F,
+	ability_rifle = KEY_1, ability_splat = KEY_2, ability_kaze = KEY_3,
 }
+## Keys an ability action (Abilities v1) takes when a save from before them already uses its default
+## for another action (first free one), so an older custom binding is never reset.
+const ABILITY_SPARE_KEYS: Array[int] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0,
+	KEY_Q, KEY_E, KEY_C, KEY_Z, KEY_X, KEY_V, KEY_G, KEY_T]
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
 
 ## The player's save. user:// is the RELEASE user data dir (project.godot application/config/
@@ -175,6 +180,8 @@ var hats_bought := 0
 var tickets_spent := 0
 ## The ticket WORKSHOP's levels by id (Workshop; [workshop], 0-3 each; off in hard mode).
 var workshop := {}
+## ABILITIES v1: the ticket abilities' levels by id (Abilities; [abilities], 0-3 each; off in hard mode).
+var abilities := {}
 ## Cosmetics bought with tickets (Cosmetics ids; [cosmetics] owned) and the ones worn: a trail
 ## style and a map paper (Cosmetics.DEFAULT_TRAIL / DEFAULT_PAPER when none is).
 var cosmetics_owned: Array[String] = []
@@ -261,6 +268,9 @@ func _ready() -> void:
 	# The hub's use key isn't in project.godot's input map; it's made here (F by default).
 	if not InputMap.has_action("interact"):
 		InputMap.add_action("interact")
+	for id in Abilities.ids():  # the abilities' keys (1 / 2 / 3 by default), made here like interact
+		if not InputMap.has_action(Abilities.action(id)):
+			InputMap.add_action(Abilities.action(id))
 	if save_path == _throwaway_save_path():
 		_clear_throwaway_saves()  # fresh every run
 	var args := user_args()
@@ -336,6 +346,12 @@ func _ready() -> void:
 			for i in mini(levels.size(), Workshop.LIST.size()):
 				var id: String = Workshop.LIST[i].id
 				workshop[id] = clampi(levels[i].to_int(), 0, Workshop.max_level(id))
+		elif arg.begins_with("--abilities="):  # e.g. --abilities=3,1,2: SLIME RIFLE, SLIME SPLAT, SLIMAKAZE (0-3)
+			saving_enabled = false
+			var ability_levels := arg.trim_prefix("--abilities=").split(",")
+			for i in mini(ability_levels.size(), Abilities.LIST.size()):
+				var id: String = Abilities.LIST[i].id
+				abilities[id] = clampi(ability_levels[i].to_int(), 0, Abilities.max_level(id))
 		elif arg.begins_with("--trail="):  # wear (and own) a trail style, e.g. --trail=candy
 			saving_enabled = false
 			var style := arg.trim_prefix("--trail=")
@@ -797,6 +813,13 @@ func _read_bindings(file: ConfigFile) -> void:
 		var key := _int(file, "controls", action, DEFAULT_KEYS[action])
 		if key <= 0 or key > KEY_MAX_CODE or used.has(key):
 			key = DEFAULT_KEYS[action]
+		if used.has(key) and action.begins_with("ability_"):
+			# (an ability key missing from an older save, or broken: the first free spare, so the
+			# player's other bindings are kept)
+			for spare in ABILITY_SPARE_KEYS:
+				if not used.has(spare):
+					key = spare
+					break
 		if used.has(key):
 			bindings = DEFAULT_KEYS.duplicate()
 			return
@@ -857,6 +880,11 @@ func _read_store(file: ConfigFile) -> void:
 		var level := clampi(_int(file, "workshop", id, 0), 0, Workshop.max_level(id))
 		if level > 0:
 			workshop[id] = level
+	abilities = {}
+	for id in Abilities.ids():
+		var ability_level := clampi(_int(file, "abilities", id, 0), 0, Abilities.max_level(id))
+		if ability_level > 0:
+			abilities[id] = ability_level
 	var owned: Array[String] = []
 	for id in _strings(file.get_value("cosmetics", "owned", [])):
 		if Cosmetics.is_earned(id) and not cosmetic_earned(id):
@@ -1080,6 +1108,8 @@ func _write() -> ConfigFile:
 		file.set_value("wallet", "tickets_spent", tickets_spent)
 	for id: String in workshop:
 		file.set_value("workshop", id, workshop[id])
+	for id: String in abilities:
+		file.set_value("abilities", id, abilities[id])
 	if not cosmetics_owned.is_empty():
 		file.set_value("cosmetics", "owned", cosmetics_owned.duplicate())
 	if trail_style != Cosmetics.DEFAULT_TRAIL:
@@ -1992,6 +2022,39 @@ func buy_workshop(id: String) -> bool:
 	return true
 
 
+# ---------------------------------------------------------------- ABILITIES v1
+
+## The level in effect: 0 while the abilities are switched off (Economy.ABILITIES_ENABLED); the saved
+## level stays in `abilities`.
+func ability_level(id: String) -> int:
+	return int(abilities.get(id, 0)) if Economy.abilities_on() else 0
+
+
+## What the next level of ability `id` costs (0 when maxed, and in dev mode).
+func ability_cost(id: String) -> int:
+	return 0 if dev_tools else Abilities.cost(id, ability_level(id))
+
+
+## The TICKETS tab's abilities open once the player has ever had a ticket (dev mode always).
+func abilities_open() -> bool:
+	return Economy.abilities_on() and (dev_tools or tickets_lifetime > 0)
+
+
+func can_buy_ability(id: String) -> bool:
+	return abilities_open() and Abilities.max_level(id) > 0 and ability_level(id) < Abilities.max_level(id) \
+		and ability_cost(id) <= tickets
+
+
+## Buys the next level of ability `id` (pay + level + save at once). Not refundable.
+func buy_ability(id: String) -> bool:
+	if not can_buy_ability(id):
+		return false
+	_pay(ability_cost(id))
+	abilities[id] = ability_level(id) + 1
+	save_progress()
+	return true
+
+
 ## Defaults are always owned; dev mode owns everything.
 func owns_cosmetic(id: String) -> bool:
 	if id == Cosmetics.DEFAULT_TRAIL or id == Cosmetics.DEFAULT_PAPER:
@@ -2050,11 +2113,16 @@ func store_affordable(where: String) -> bool:
 		return false
 	var cheapest := TICKETS_MAX + 1
 	if where == "upgrades":
-		if not workshop_open():
+		if not workshop_open() and not abilities_open():
 			return false
-		for id in Workshop.ids():
-			if workshop_level(id) < Workshop.max_level(id):
-				cheapest = mini(cheapest, workshop_cost(id))
+		if workshop_open():
+			for id in Workshop.ids():
+				if workshop_level(id) < Workshop.max_level(id):
+					cheapest = mini(cheapest, workshop_cost(id))
+		if abilities_open():
+			for id in Abilities.ids():
+				if ability_level(id) < Abilities.max_level(id):
+					cheapest = mini(cheapest, ability_cost(id))
 	else:
 		if Hats.available and not hats_left().is_empty():
 			cheapest = mini(cheapest, spin_cost())
@@ -2190,6 +2258,7 @@ func reset_progress() -> void:
 	hats_bought = 0
 	tickets_spent = 0
 	workshop = {}
+	abilities = {}
 	cosmetics_owned.clear()
 	trail_style = Cosmetics.DEFAULT_TRAIL
 	map_paper = Cosmetics.DEFAULT_PAPER

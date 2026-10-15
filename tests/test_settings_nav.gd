@@ -24,7 +24,7 @@ func _initialize() -> void:
 	settings.controls_button.pressed.emit()
 	await _frames(240)
 	var page: Control = current_scene
-	_check(page.scene_file_path == "res://scenes/key_controls.tscn" and page.key_buttons.size() == 7, "CONTROLS opens the key page")
+	_check(page.scene_file_path == "res://scenes/key_controls.tscn" and page.key_buttons.size() == 10, "CONTROLS opens the key page")
 	page._start_rebind("jump")
 	var event := InputEventKey.new()
 	event.pressed = true

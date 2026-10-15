@@ -6,6 +6,8 @@ extends CanvasLayer
 ##   directions so the slime's lane assist still lines it up with corridors
 ## - right half: the JUMP button (hold to charge, aim with the joystick, release to leap)
 ## - top-right corner: pause
+## - ABILITIES (when the run has any): a small round button each, in an arc left of / above JUMP
+##   (ABILITY_SLOTS, in Abilities order), with its icon and uses left; a tap presses its action
 ## Shown on touchscreens (or with the --touch debug flag); hidden again when a keyboard is used.
 
 const SCREEN := Vector2(320, 180)
@@ -23,6 +25,13 @@ const PAUSE_Y_RANDOM := 44.0
 var pause_rect := PAUSE_RECT
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
+## ABILITIES: the buttons' centers (left of JUMP, up-left, above; 33 px from its center) and radius.
+const ABILITY_SLOTS: Array[Vector2] = [Vector2(249, 142), Vector2(259, 119), Vector2(282, 109)]
+const ABILITY_RADIUS := 11.0
+## [{id, left, max}] from AbilityRunner.strip (empty: no buttons).
+var abilities: Array[Dictionary] = []
+## Ability id -> the finger holding its button.
+var _ability_touch := {}
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
@@ -84,7 +93,12 @@ func _notification(what: int) -> void:
 
 
 func _touch_down(index: int, pos: Vector2) -> void:
-	if pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
+	var slot := ability_at(pos)
+	if slot >= 0:
+		var action := Abilities.action(abilities[slot].id)
+		_ability_touch[index] = action
+		_press(action)
+	elif pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		_release_pause()  # (a second finger on it: the first one's press ends)
 		_pause_touch = index
 		var pause := InputEventAction.new()
@@ -104,7 +118,10 @@ func _touch_down(index: int, pos: Vector2) -> void:
 
 
 func _touch_up(index: int) -> void:
-	if index == _pause_touch:
+	if _ability_touch.has(index):
+		_release(_ability_touch[index])
+		_ability_touch.erase(index)
+	elif index == _pause_touch:
 		_release_pause()
 	elif index == _joy_touch:
 		_joy_touch = -1
@@ -147,6 +164,21 @@ func _release(action: String) -> void:
 		Input.action_release(action)
 
 
+## ABILITIES: the buttons to show ([{id, left, max}]; AbilityRunner keeps it current).
+func set_abilities(items: Array[Dictionary]) -> void:
+	abilities = items.duplicate(true)
+	if _canvas:
+		_canvas.queue_redraw()
+
+
+## The ability button slot under `pos` (-1 = none).
+func ability_at(pos: Vector2) -> int:
+	for i in mini(abilities.size(), ABILITY_SLOTS.size()):
+		if pos.distance_to(ABILITY_SLOTS[i]) <= ABILITY_RADIUS + 2.0:
+			return i
+	return -1
+
+
 ## Hides the controls (e.g. when a level ends and menu buttons take over).
 func hide_controls() -> void:
 	_release_all()
@@ -172,6 +204,9 @@ func _release_all() -> void:
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
 	_release("jump")
+	for index: int in _ability_touch:
+		_release(_ability_touch[index])
+	_ability_touch.clear()
 	if _canvas:
 		_canvas.queue_redraw()
 
@@ -195,6 +230,20 @@ func _draw_controls() -> void:
 	if not jump_enabled:  # GROUNDED: struck out
 		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6
 		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
+	# Ability buttons: a ring, the icon (2x) and a pip per use left.
+	for i in mini(abilities.size(), ABILITY_SLOTS.size()):
+		var item: Dictionary = abilities[i]
+		var at := ABILITY_SLOTS[i]
+		var held := _ability_touch.values().has(Abilities.action(item.id))
+		var ready := int(item.left) > 0
+		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
+		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
+		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
+			Color(1, 1, 1, 0.95 if ready else 0.35))
+		var pips := int(item.max)
+		for p in pips:
+			var x := at.x - (pips * 3 - 1) / 2.0 + p * 3
+			_canvas.draw_rect(Rect2(Vector2(roundf(x), at.y + 7), Vector2(2, 2)), Color(color, 0.95) if p < int(item.left) else Color(0.3, 0.3, 0.38, 0.8))
 	# Pause button: two bars.
 	_canvas.draw_rect(pause_rect, dim)
 	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))

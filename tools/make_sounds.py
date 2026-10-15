@@ -248,6 +248,19 @@ SOUNDS = {
     "grumble": lambda: mix(bloop(84, 64, 0.8, 0.36, wobble=0.16, wobble_rate=23, attack=0.06, release=0.35, shape="tri"),
                            bloop(118, 92, 0.7, 0.16, wobble=0.2, wobble_rate=17, attack=0.1, release=0.3, shape="tri"),
                            wet_thud(0.5, 0.12, seed=91, release=0.3)),
+    # ABILITIES. SLIME RIFLE: a quick wet spit, a tight pitch drop with a bubble on top.
+    "goo_shot": lambda: mix(bloop(520, 160, 0.12, 0.42, wobble=0.05, wobble_rate=30, release=0.06),
+                            bubble(700, 0.05, 0.25, rise=1.6), wet_thud(0.06, 0.2, seed=101, release=0.04)),
+    # SLIME SPLAT throw: a soft upward lob.
+    "goo_lob": lambda: mix(bloop(140, 330, 0.2, 0.36, wobble=0.04, wobble_rate=8, attack=0.02, release=0.08),
+                           bubble(420, 0.04, 0.15)),
+    # SLIME SPLAT burst: a fat wet pop and a spray of bubbles.
+    "goo_burst": lambda: mix(bloop(260, 55, 0.3, 0.5, wobble=0.1, wobble_rate=16, release=0.18),
+                             wet_thud(0.25, 0.4, seed=102, release=0.18), gurgle(0.35, 9, 300, 900, 0.18, seed=103)),
+    # SLIMAKAZE impact: a huge low splat, a crunch of goo and a long bubbling spatter.
+    "kaze": lambda: mix(bloop(220, 30, 0.6, 0.55, wobble=0.14, wobble_rate=14, release=0.35),
+                        wet_thud(0.5, 0.55, seed=104, release=0.35), crunch(0.25, 0.3, seed=105),
+                        gurgle(0.8, 18, 200, 800, 0.2, seed=106, falling=True)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }

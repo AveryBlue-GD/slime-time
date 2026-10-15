@@ -110,6 +110,52 @@ const WORKSHOP := {
 ## SECOND WIND refills the meter over this many seconds.
 const WIND_REFILL_TIME := 0.4
 
+## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
+## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
+## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in
+## scripts/ability_runner.gd). 3 levels each, not refundable; a level gives `charges[i]` uses per
+## attempt (refilled by every restart, new maze, next level or Descent floor). Each use costs `slime`
+## percent of the meter (SLIME RIFLE / SLIME SPLAT are refused unless the meter holds MORE than that;
+## SLIMAKAZE always fires and leaves the meter at 0, a dry-up on impact, when it holds that much or
+## less). On in story normal mode, the randomizer and Descent; OFF in hard mode (so in every HEAT run).
+## Never change par, routes, u, payouts or seed codes. `abilities_force` (-1 follow the const, 0 off,
+## 1 on) is a test hook, like `workshop_force`.
+const ABILITIES_ENABLED := true
+static var abilities_force := -1
+
+
+static func abilities_on() -> bool:
+	return ABILITIES_ENABLED if abilities_force < 0 else abilities_force == 1
+
+
+## First ability ~15 tickets = about one day's paid randomizer wins (~16 in ~18 min, A.2); all three
+## maxed = 95 + 108 + 140 = 343.
+const ABILITIES := {
+	"rifle": {costs = [15, 30, 50], charges = [1, 2, 3], slime = 2.0},
+	"splat": {costs = [18, 35, 55], charges = [1, 2, 3], slime = 4.0},
+	"kaze": {costs = [25, 45, 70], charges = [1, 2, 3], slime = 30.0},
+}
+## SLIME RIFLE: the goo shot's speed (px/s); it flies straight until a wall.
+const RIFLE_SPEED := 480.0
+## SLIME SPLAT: thrown at most this many tiles (it stops at the last floor tile before a wall), in
+## the air this long (s), bursts over the (2 x AREA + 1)^2 tiles around where it lands, its glow
+## fading over GLOW_TIME s.
+const SPLAT_RANGE := 4
+const SPLAT_FLIGHT := 0.4
+const SPLAT_AREA := 1
+const SPLAT_GLOW_TIME := 1.5
+## SLIMAKAZE: the dash's speed (px/s) to the first wall, the stun after the impact (s), the screen
+## shake (px, s; none with Reduce Motion), and the splatter: every floor tile within RADIUS tiles of
+## the impact tile (center to center) is goo'd and revealed with a chance falling from NEAR (at the
+## impact) to FAR (at the edge), seeded by the maze, the attempt, the impact tile and the use.
+const KAZE_SPEED := 640.0
+const KAZE_STUN := 0.6
+const KAZE_SHAKE := 6.0
+const KAZE_SHAKE_TIME := 0.5
+const KAZE_RADIUS := 5.5
+const KAZE_CHANCE_NEAR := 0.75
+const KAZE_CHANCE_FAR := 0.25
+
 ## ---------------------------------------------------------------- tickets: cosmetics (C.2)
 ## Ticket prices of the v1 cosmetics (palette / pattern only; Cosmetics has their names and looks).
 ## 20 + 25 + 30 + 35 + 40 + 25 + 25 + 40 = 240.
