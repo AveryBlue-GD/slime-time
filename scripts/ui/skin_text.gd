@@ -38,17 +38,23 @@ func _process(delta: float) -> void:
 		var shared := not (frame == _shared_frame and _time == _shared_time)
 		_shared_frame = frame
 		_shared_time = _time
-		recolor(shared)
+		recolor(shared, true)
 
 
 ## Re-applies colors (call after the skin changes). `shared` = also recolor the group labels and
 ## the goo (global; skipped when another SkinText already did it this frame with the same time).
-func recolor(shared := true) -> void:
+## `flow` = the rainbow's per-frame step (_process): only colors change, so instead of re-theming
+## every control under the theme (re-layout, re-shaped text), the goo boxes are redrawn
+## (GooBox.tint) and only the buttons, whose text colors the theme sets, are told; same pixels.
+func recolor(shared := true, flow := false) -> void:
 	if not is_inside_tree():  # (a deferred call landing after its scene was swapped out)
 		return
 	var rainbow := _is_rainbow()
 	var base := _skin_color()
 	var theme: Theme = theme_owner.theme if theme_owner else null
+	if flow and rainbow:
+		_flow(shared, base, theme)
+		return
 	# Hold the theme's change signal while its colors and goo boxes change, then emit it once:
 	# the same final colors, re-themed once instead of once per edit.
 	var hold := theme != null and not theme.is_blocking_signals()
@@ -63,7 +69,41 @@ func recolor(shared := true) -> void:
 		theme.emit_changed()
 
 
+func _flow(shared: bool, base: Color, theme: Theme) -> void:
+	if shared:
+		_recolor_labels(true, base, true)
+		GooBox.tint(rainbow_color(_time, 160.0), get_tree())
+	if theme == null or not is_instance_valid(theme_owner):
+		return
+	var held := theme.is_blocking_signals()
+	theme.set_block_signals(true)
+	_recolor_theme(theme, true, base)
+	theme.set_block_signals(held)
+	# The theme's colors reach a control through its theme cache (refreshed on THEME_CHANGED): only
+	# buttons and check boxes read the ones set here. Sliders and focus frames draw the theme's own
+	# (changed) style boxes, so a redraw shows them.
+	# A hidden one is told when it shows (_button_shown), before it draws again.
+	for node: Node in theme_owner.find_children("*", "Button", true, false):
+		var button := node as Control
+		if button.is_visible_in_tree():
+			button.notification(Control.NOTIFICATION_THEME_CHANGED)
+		elif not button.has_meta(HOOKED):
+			button.set_meta(HOOKED, true)
+			button.visibility_changed.connect(_button_shown.bind(button))
+	for node: Node in theme_owner.find_children("*", "HSlider", true, false):
+		(node as Control).queue_redraw()
+
+
 func _recolor_shared(rainbow: bool, base: Color) -> void:
+	_recolor_labels(rainbow, base)
+	# Button and panel frames are goo in the skin's color.
+	GooBox.set_goo_color(rainbow_color(_time, 160.0) if rainbow else base)
+
+
+## `flow` (the rainbow's per-frame step): a hidden label only keeps the color it is due (an
+## override re-themes it: re-shaped text, re-layout), and gets it the moment it shows (_label_shown),
+## before it draws again: the same colors as setting them all every frame.
+func _recolor_labels(rainbow: bool, base: Color, flow := false) -> void:
 	for node in get_tree().get_nodes_in_group(GROUP):
 		var label := node as Label
 		if label == null:
@@ -71,9 +111,33 @@ func _recolor_shared(rainbow: bool, base: Color) -> void:
 		var color_base := base
 		if rainbow:
 			color_base = rainbow_color(_time, label.global_position.x)
-		label.add_theme_color_override("font_color", color_for(label.get_meta("role", ROLE_TEXT), color_base))
-	# Button and panel frames are goo in the skin's color.
-	GooBox.set_goo_color(rainbow_color(_time, 160.0) if rainbow else base)
+		var color := color_for(label.get_meta("role", ROLE_TEXT), color_base)
+		if flow and not label.is_visible_in_tree():
+			label.set_meta(DUE, color)
+			if not label.has_meta(HOOKED):
+				label.set_meta(HOOKED, true)
+				label.visibility_changed.connect(_label_shown.bind(label))
+			continue
+		if label.has_meta(DUE):
+			label.remove_meta(DUE)
+		label.add_theme_color_override("font_color", color)
+
+
+## Meta keys: the text color a hidden label is due (see _recolor_labels), and "already listens for
+## being shown".
+const DUE := &"skin_text_due"
+const HOOKED := &"skin_text_hooked"
+
+
+static func _label_shown(label: Label) -> void:
+	if label.is_visible_in_tree() and label.has_meta(DUE):
+		label.add_theme_color_override("font_color", label.get_meta(DUE))
+		label.remove_meta(DUE)
+
+
+static func _button_shown(button: Control) -> void:
+	if button.is_visible_in_tree():
+		button.notification(Control.NOTIFICATION_THEME_CHANGED)
 
 
 func _recolor_theme(theme: Theme, rainbow: bool, base: Color) -> void:

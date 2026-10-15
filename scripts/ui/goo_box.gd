@@ -104,6 +104,26 @@ static func set_goo_color(color: Color) -> void:
 		theme.emit_changed()
 
 
+## The rainbow skin's per-frame recolor (SkinText): only the goo's color changes, and every goo box
+## reads it when it draws, so redrawing the controls that drew one is enough. set_goo_color's change
+## signals would re-theme every control under the tracked themes instead (re-layout, re-shaped
+## text): 1-1.5 ms a frame on the hub and the skins screen on the M3. Same pixels.
+static func tint(color: Color, tree: SceneTree) -> void:
+	if color.is_equal_approx(goo_color):
+		return
+	goo_color = color
+	var drawn := _drawn
+	_drawn = {}
+	for node: Node in tree.root.find_children("*", "Control", true, false):
+		var control := node as Control
+		if drawn.has(control.get_canvas_item()):
+			control.queue_redraw()
+
+
+## The canvas items goo boxes drew into since the last tint (they re-register when they redraw).
+static var _drawn := {}
+
+
 static func make_button(button_state: String) -> GooBox:
 	var box := GooBox.new()
 	box.state = button_state
@@ -161,6 +181,7 @@ func _draw(item: RID, rect: Rect2) -> void:
 	var h := int(rect.size.y)
 	if w < 6 or h < 6:
 		return
+	_drawn[item] = true
 	var key := Vector3i(item.get_id(), w, h)
 	var layout: Array = _layouts.get(key, [])
 	if layout.is_empty():
