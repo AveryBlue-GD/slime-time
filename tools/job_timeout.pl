@@ -6,6 +6,11 @@
 use strict;
 use warnings;
 my ($limit, $pidfile, @cmd) = @ARGV;
+# Guard the arguments: a missing PIDFILE once shifted the command path into its slot and the pid was written over the
+# Godot binary. The pid file must be a *.pid path that is not a directory or an existing large file, and a command must follow.
+die "usage: job_timeout.pl SECONDS PIDFILE COMMAND [ARGS...]\n"
+    unless defined $limit && $limit =~ /^\d+$/ && defined $pidfile && $pidfile =~ /\.pid\z/ && @cmd;
+die "job_timeout.pl: refusing to write a pid over $pidfile\n" if -e $pidfile && (-d $pidfile || -s $pidfile > 32);
 my $pid = fork();
 die "fork: $!" unless defined $pid;
 if ($pid == 0) {

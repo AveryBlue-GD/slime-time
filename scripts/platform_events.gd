@@ -82,6 +82,8 @@ func _steer_stick(event: InputEventJoypadMotion) -> void:
 
 
 func _notification(what: int) -> void:
+	if not is_inside_tree():  # a focus-out can arrive on quit after the autoload has left the tree
+		return
 	match what:
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			go_back()
