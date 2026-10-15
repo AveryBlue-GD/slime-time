@@ -146,7 +146,8 @@ var portal_back: Button
 var portal_info: Label
 ## A Descent run saved by a killed app / closed window (Progress.descent_resume, owner decision D6): shown on
 ## arrival and at the portal's DESCENT. RESUME plays on from that floor's start (or its boon card), QUIT RUN banks
-## it as quitting from the pause menu would; Esc / B / back closes it and the run stays saved.
+## it as quitting from the pause menu would; Esc / B / back closes it and the run stays saved. A floor already
+## resumed once (D9, Progress.descent_resume_spent) shows only QUIT RUN (banks half).
 var resume_menu: Control
 var resume_button: Button
 var resume_quit: Button
@@ -421,6 +422,7 @@ func _build_ui() -> void:
 	UIKit.add_skin_text(root)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
+	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
 	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
 		if hat_wheel.visible:
 			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
@@ -608,8 +610,15 @@ func _build_resume_menu(root: Control) -> void:
 	resume_quit = UIKit.make_button("QUIT RUN", _quit_saved_descent, Vector2(56, UIKit.BUTTON_H))
 	resume_quit.position = Vector2(RESUME_PANEL.end.x - 16 - 56, buttons_y)
 	resume_menu.add_child(resume_quit)
+	_link_resume_buttons(false)
+
+
+## RESUME <-> QUIT RUN; with the floor's resume spent (D9) RESUME is hidden and QUIT RUN, centred, links to itself.
+func _link_resume_buttons(spent: bool) -> void:
+	resume_button.visible = not spent
+	resume_quit.position.x = UIKit.center_x(56, RESUME_PANEL.position.x, RESUME_PANEL.size.x) if spent else RESUME_PANEL.end.x - 16 - 56
 	for b: Button in [resume_button, resume_quit]:
-		var other := resume_quit if b == resume_button else resume_button
+		var other := b if spent else (resume_quit if b == resume_button else resume_button)
 		b.focus_next = b.get_path_to(other)
 		b.focus_previous = b.get_path_to(other)
 		b.focus_neighbor_left = b.get_path_to(other)
@@ -623,7 +632,9 @@ func open_resume_menu() -> void:
 		return
 	var run: Dictionary = Progress.descent_resume
 	var on_card := int(run.cleared) >= int(run.floor)
-	resume_lines[0].text = "DESCENT RUN SAVED"
+	var spent: bool = Progress.descent_resume_spent()
+	_link_resume_buttons(spent)
+	resume_lines[0].text = "FLOOR ALREADY RESUMED" if spent else "DESCENT RUN SAVED"
 	resume_lines[1].text = ("FLOOR %d CLEARED" if on_card else "FLOOR %d") % int(run.floor) + " - POT %d" % int(run.pot)
 	resume_lines[2].text = "QUIT RUN CASHES OUT" if on_card else "QUIT RUN BANKS HALF"
 	resume_menu.visible = true
@@ -634,7 +645,7 @@ func open_resume_menu() -> void:
 	for child in resume_menu.get_parent().get_children():
 		if child is SkinText:
 			child.recolor()
-	resume_button.grab_focus()
+	(resume_quit if spent else resume_button).grab_focus()
 
 
 func close_resume_menu() -> void:

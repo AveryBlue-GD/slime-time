@@ -26,6 +26,9 @@ func _initialize() -> void:
 	_hostile()
 	await _game_resumes()
 	await _hub_prompt()
+	_one_resume_per_floor()
+	await _hub_spent_prompt()
+	_boon_excludes()
 	progress.reset_progress()
 	_result()
 	quit(1 if failures else 0)
@@ -294,3 +297,124 @@ func _hub_prompt() -> void:
 		cs.free()
 	paused = false
 	await process_frame
+
+
+## Owner decision D9: one resume per floor. A second kill on a floor already resumed leaves only QUIT RUN (banks
+## half, as a dry-up); clearing the floor starts the count over; a boon card is never limited; no reroll, the slot
+## once, the bank once.
+func _one_resume_per_floor() -> void:
+	_state()
+	progress.start_descent(SEED)
+	progress.clear_descent_floor(60.0, 30.0)
+	var paid: int = progress.descent_paid
+	progress.descend(progress.descent_offers()[0])
+	var pot: int = progress.descent_run.pot
+	_relaunch()
+	_check(not progress.descent_resume_spent() and progress.resume_descent(), "first kill on floor 2: RESUME works")
+	_check(_saved().get_value("descent_run", "resumes", 0) == 1, "the resume is counted and saved at once")
+	progress.descent_run.meter = 2.0  # about to dry up...
+	_relaunch()  # ...killed again on the same floor
+	_check(progress.descent_resume_pending() and progress.descent_resume_spent(), "second kill on floor 2: the floor's resume is spent")
+	_check(not progress.resume_descent() and not progress.descent_active(), "RESUME is refused")
+	var before: int = progress.tickets
+	var boons: Dictionary = progress.descent_resume.boons
+	var result: Dictionary = progress.quit_saved_descent()
+	_check(not result.get("cashed", true) and result.get("tickets", -1) == Descent.bank(pot, false, boons) and progress.tickets == before + result.tickets,
+		"QUIT RUN banks half the pot (%d of %d), like a dry-up" % [result.get("tickets", -1), pot])
+	_check(progress.quit_saved_descent().is_empty() and not _saved().has_section("descent_run") and progress.descent_paid == paid,
+		"banked once, the run is gone, no new slot taken")
+	# A cleared floor starts the count over; the boon card can be resumed any number of times.
+	_state()
+	progress.start_descent(SEED)
+	_relaunch()
+	progress.resume_descent()
+	_check(progress.descent_run.resumes == 1, "floor 1 resumed once")
+	progress.clear_descent_floor(60.0, 30.0)
+	_check(_saved().get_value("descent_run", "resumes", -1) == 0, "clearing the floor resets the count (boon card saved with 0)")
+	var offers: Array[String] = progress.descent_offers()
+	for i in 3:
+		_relaunch()
+		_check(progress.resume_descent() and progress.descent_offers() == offers, "boon card resume %d: allowed, the same offers" % (i + 1))
+	progress.descend(offers[2])
+	_relaunch()
+	_check(progress.resume_descent() and progress.descent_run.floor == 2, "the next floor gets its own resume")
+	_relaunch()
+	_check(progress.descent_resume_spent() and not progress.resume_descent(), "...and only one")
+	# A new run from the portal still banks the spent one first.
+	var runs: int = progress.descent_runs
+	progress.start_descent(SEED + 1)
+	_check(progress.descent_runs == runs + 1 and progress.descent_run.seed == SEED + 1 and not progress.descent_resume_spent(), "a new run banks the spent one and starts fresh")
+	# Hostile / older saves: no key = 0, clamped to 1, ignored on a boon card.
+	var f := _base_run()
+	_check(progress.read_descent_run(f).resumes == 0, "no resumes key (older save): not resumed yet")
+	f.set_value("descent_run", "resumes", 99)
+	_check(progress.read_descent_run(f).resumes == progress.DESCENT_RESUMES_PER_FLOOR, "resumes 99 clamps to %d" % progress.DESCENT_RESUMES_PER_FLOOR)
+	f.set_value("descent_run", "resumes", "x")
+	_check(progress.read_descent_run(f).resumes == 0, "a non-number resumes reads as 0")
+	f.set_value("descent_run", "resumes", 1)
+	f.set_value("descent_run", "cleared", 3)
+	_check(progress.read_descent_run(f).resumes == 0, "a boon card is never limited")
+	_check(SaveText.parse(f.encode_to_text().to_utf8_buffer()) != null, "the key passes the allow-list")
+
+
+## The hub prompt for a spent floor: QUIT RUN only (focused, centred), what it banks; RESUME hidden.
+func _hub_spent_prompt() -> void:
+	_state()
+	progress.start_descent(SEED)
+	_relaunch()
+	progress.resume_descent()
+	_relaunch()
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	for i in 3:
+		await process_frame
+	_check(hub.resume_menu.visible and not hub.resume_button.visible and hub.resume_quit.visible and root.gui_get_focus_owner() == hub.resume_quit,
+		"hub: a spent floor shows only QUIT RUN (focused)")
+	_check(hub.resume_lines[0].text == "FLOOR ALREADY RESUMED" and hub.resume_lines[2].text == "QUIT RUN BANKS HALF", "the prompt says why: %s / %s" % [hub.resume_lines[0].text, hub.resume_lines[2].text])
+	var q: Button = hub.resume_quit
+	_check(q.get_node(q.focus_neighbor_left) == q and q.get_node(q.focus_next) == q, "focus stays on QUIT RUN")
+	_check(absf(q.position.x + q.size.x / 2.0 - (hub.RESUME_PANEL.position.x + hub.RESUME_PANEL.size.x / 2.0)) <= 0.5, "QUIT RUN centred in the panel")
+	hub._resume_descent()
+	_check(not progress.descent_active() and hub.resume_menu.visible, "RESUME can't be forced")
+	hub._quit_saved_descent()
+	_check(not hub.resume_menu.visible and not progress.descent_resume_pending(), "QUIT RUN banks it and closes the prompt")
+	current_scene = null
+	hub.free()
+	await process_frame
+
+
+## QA phase 5 #5: the saved boons are checked with the table's `excludes` rule (Descent.boons_compatible), not by
+## name; for real runs over many seeds it accepts and rejects exactly what the RUBBER / GLASS check did, and a
+## run read back offers exactly the same boons (golden comparison).
+func _boon_excludes() -> void:
+	var table := {"a": {excludes = "b"}, "b": {}, "c": {}}
+	_check(not Descent.boons_compatible({"a": 1, "b": 1}, table) and not Descent.boons_compatible({"b": 1, "a": 1}, table)
+		and Descent.boons_compatible({"a": 1, "c": 2}, table), "any table pair that excludes each other is refused")
+	var rng := RandomNumberGenerator.new()
+	var same := true
+	var offers_same := true
+	var reads := 0
+	for run_seed in range(1, 401):
+		rng.seed = run_seed
+		var held := {}
+		for id: String in Descent.IDS:
+			if rng.randf() < 0.3:
+				held[id] = 1
+		same = same and Descent.boons_compatible(held) == not (held.has("rubber") and held.has("glass"))
+		var run := Descent.new_run(run_seed * 7919 % Economy.DESCENT_SEED_MAX + 1)
+		for floor_no in range(1, 9):
+			Descent.clear_floor(run, 50.0, 20.0)
+			var offers: Array[String] = Descent.offers(run.seed, run.floor, run.boons)
+			var f := ConfigFile.new()
+			f.set_value("descent_run", "format", progress.DESCENT_RUN_FORMAT)
+			for key: String in ["seed", "floor", "cleared", "boons", "meter", "pot"]:
+				f.set_value("descent_run", key, run[key])
+			var back: Dictionary = progress.read_descent_run(f)
+			reads += 1
+			offers_same = offers_same and not back.is_empty() and Descent.offers(back.seed, back.floor, back.boons) == offers
+			if offers.is_empty():
+				break
+			Descent.descend(run, offers[rng.randi() % offers.size()])
+	_check(same, "the table rule matches the old RUBBER / GLASS check on 400 random boon sets")
+	_check(offers_same, "%d saved runs (400 seeds) read back with identical offers" % reads)

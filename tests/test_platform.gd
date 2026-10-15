@@ -38,6 +38,9 @@ func _initialize() -> void:
 	await _safe_area_ui()
 	await _back_button()
 	await _background()
+	await _background_during_wipe()
+	_fullscreen_sync()
+	await _home_icon()
 	Platform.reset_overrides()
 	_result()
 	quit(1 if failures else 0)
@@ -379,3 +382,82 @@ func _background() -> void:
 	events.enter_background(true)
 	_check(not progress.save_failed and FileAccess.file_exists(progress.save_path), "backgrounding retries a failed save at once")
 	events.leave_background()
+
+
+## QA phase 5 #2: the app goes to the background during the goo wipe into a level (pause_for_background skips a
+## screen change): the level pauses itself once the wipe is over, so its run clock never runs unattended.
+func _background_during_wipe() -> void:
+	var transition: Node = root.get_node("Transition")
+	progress.mode = progress.MODE_STORY
+	progress.current_level = 1
+	paused = false
+	transition.go("res://scenes/main.tscn")
+	await process_frame
+	_check(transition.busy, "the wipe into a level is underway")
+	events.enter_background(true)
+	for i in 120:
+		await physics_frame
+	var game := current_scene
+	var is_level: bool = game != null and game.scene_file_path == "res://scenes/main.tscn"
+	_check(is_level and paused and game.pause_menu.visible, "backgrounded during the wipe: the level pauses once it is in place")
+	_check(is_level and game.run_time < 0.1, "...and its clock does not run (%.2f s)" % (game.run_time if is_level else -1.0))
+	events.leave_background()
+	await _physics_frames(5)
+	_check(is_level and paused, "foreground again: still paused until RESUME")
+	await _clear_scene()
+	# Not backgrounded: the level starts unpaused, as before.
+	transition.go("res://scenes/main.tscn")
+	for i in 60:
+		await physics_frame
+	_check(current_scene != null and not paused and not current_scene.pause_menu.visible, "a wipe in the foreground starts the level unpaused")
+	await _clear_scene()
+
+
+## QA phase 5 #4: the window leaves (or enters) fullscreen without F11 (macOS green button): the remembered choice
+## follows the window mode on desktop only.
+func _fullscreen_sync() -> void:
+	Platform.reset_overrides()
+	Platform.override = "desktop"
+	progress.fullscreen = true
+	progress.save_progress()
+	_check(progress.window_mode_changed(DisplayServer.WINDOW_MODE_WINDOWED) and not progress.fullscreen, "desktop: leaving fullscreen by the OS clears the choice")
+	var file := ConfigFile.new()
+	file.load(progress.save_path)
+	_check(not file.get_value("settings", "fullscreen", false), "...and saves it")
+	_check(not progress.window_mode_changed(DisplayServer.WINDOW_MODE_MAXIMIZED) and not progress.fullscreen, "a maximized window is not fullscreen")
+	_check(progress.window_mode_changed(DisplayServer.WINDOW_MODE_FULLSCREEN) and progress.fullscreen, "entering fullscreen by the OS sets it")
+	file.load(progress.save_path)
+	_check(file.get_value("settings", "fullscreen", false) == true, "...and saves it")
+	_check(not progress.window_mode_changed(DisplayServer.WINDOW_MODE_FULLSCREEN), "the same mode again changes nothing")
+	for kind: String in ["web", "ios", "android"]:
+		Platform.override = kind
+		_check(not progress.window_mode_changed(DisplayServer.WINDOW_MODE_WINDOWED) and progress.fullscreen, "%s: the window mode is not remembered" % kind)
+	Platform.reset_overrides()
+	progress.fullscreen = false
+	progress.save_progress()
+
+
+## Owner decision D10: on iOS / Android the hub's touch pause button (it goes to the title) draws a home icon; desktop,
+## web and levels keep the pause bars.
+func _home_icon() -> void:
+	for kind: String in ["desktop", "web", "ios", "android"]:
+		Platform.reset_overrides()
+		Platform.override = kind
+		var hub: Node2D = HUB.instantiate()
+		await _set_scene(hub)
+		var home: bool = hub._touch_controls.home_icon
+		_check(home == (kind in ["ios", "android"]), "%s: hub touch button draws %s" % [kind, "a home icon" if home else "pause bars"])
+		await _clear_scene()
+	var game: Node2D = BASE_MAIN.instantiate()
+	game.level = 1
+	await _set_scene(game)
+	_check(not game.touch_controls.home_icon, "ios: a level keeps the pause bars")
+	await _clear_scene()
+	Platform.reset_overrides()
+	# Both glyphs are 7 px tall, inside the 15x13 rect and centred on it (ui-rules: whole pixels, centred ink).
+	for glyph: Array in [TouchControls.PAUSE_PIXELS, TouchControls.HOME_PIXELS]:
+		var ink := Rect2i(glyph[0])
+		for r: Rect2i in glyph:
+			ink = ink.merge(r)
+		_check(Rect2i(Vector2i.ZERO, Vector2i(TouchControls.PAUSE_RECT.size)).encloses(ink) and ink.position == Vector2i(4, 3) and ink.end == Vector2i(11, 10),
+			"pause-button glyph ink %s centred in the rect" % ink)

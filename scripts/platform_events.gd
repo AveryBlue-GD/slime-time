@@ -24,6 +24,9 @@ signal progress_event(id: String, value: int)
 
 ## True between a focus loss / backgrounding and the focus coming back.
 var in_background := false
+## True while in the background where that pauses a level (Platform.pauses_on_focus_loss, or a test's `force`): a
+## level that starts meanwhile (its goo wipe was still running) pauses itself once it is in place (game.gd _ease_in).
+var pause_wanted := false
 ## The left stick: its latest position, the 8-way direction it presses (Platform.snap8) and the move actions it
 ## holds (only those are released by it, as TouchControls does).
 const STICK_DEADZONE := 0.35
@@ -111,7 +114,8 @@ func enter_background(force := false) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.flush_save()
-	if force or (Platform.pauses_on_focus_loss() and get_tree().root.get_node_or_null("Autoplay") == null):
+	pause_wanted = force or (Platform.pauses_on_focus_loss() and get_tree().root.get_node_or_null("Autoplay") == null)
+	if pause_wanted:
 		var scene := get_tree().current_scene
 		if scene and scene.has_method("pause_for_background"):
 			scene.pause_for_background()
@@ -122,6 +126,7 @@ func leave_background() -> void:
 	if not in_background:
 		return
 	in_background = false
+	pause_wanted = false
 	release_held_inputs()
 	foregrounded.emit()
 

@@ -10,3 +10,5 @@
 | D6 | Descent on mobile app kill (H7) | Save the in-progress Descent run so it resumes on relaunch at the start of the same floor (floor, meter, boons, pot, seed); no reroll exploit. |
 | D7 | Local video clips / git-history purge | Pending (owner has not decided): keep the git-ignored mp4s; do not rewrite git history. |
 | D8 | Language | English only. |
+| D9 | Descent resume limit (QA phase 5 #1) | One resume per floor: after a floor has been resumed once, a further app kill / window close / tab reload on that floor offers only QUIT RUN (banks half, like a dry-up). Clearing a floor resets the count. (owner, 2026-10-16) |
+| D10 | Mobile hub button (QA phase 5 #3) | The mobile hub button returns to the title (home icon): on iOS / Android the hub's touch pause button draws a small pixel-art house instead of pause bars, so the title and its STORY replay are discoverable. Desktop and web unchanged. (owner, 2026-10-16) |

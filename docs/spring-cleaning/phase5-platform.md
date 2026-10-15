@@ -83,6 +83,9 @@ buttons; the CONTROLS page remaps keys only (a pad press cancels the wait).
   floor 1) and right after every cleared floor (the boon card). Nothing is saved during a floor.
 - **Relaunch:** the hub asks on arrival (and the portal's DESCENT asks instead of starting a run): DESCENT RUN SAVED,
   FLOOR n (CLEARED) - POT p, RESUME (focused) / QUIT RUN; Esc / B / back closes the prompt and keeps the run.
+- **One resume per floor (D9):** RESUME of a floor start counts it (`resumes` in `[descent_run]`, saved at once). A
+  second kill / closed window / reloaded tab on that floor brings a prompt with only QUIT RUN (FLOOR ALREADY RESUMED,
+  QUIT RUN BANKS HALF: the dry-up's result). Clearing the floor resets the count; the boon card is never limited.
 - **RESUME** plays that floor's start (same seed -> same maze, the saved meter, boons, backup bladders, pot, run time,
   SECOND WIND state, paid slot and milestone record) or, for a cleared floor, its boon card with the same three offers.
 - **No reroll:** floor mazes and boon offers come from the run seed, the floor and the boons held, so a relaunch can't
@@ -93,12 +96,13 @@ buttons; the CONTROLS page remaps keys only (a pad press cancels the wait).
   a second device. Starting a new run while one is saved banks the saved one first (as a quit).
 - **QUIT RUN** = quitting from the pause menu today: half the pot mid-floor, the whole pot on the boon card.
 - **Validation:** read through the save allow-list like every save; another format, a seed or floor out of range, a
-  cleared count that isn't floor or floor-1, an unknown boon, RUBBER BODY with GLASS SLIME, more boons than floors
-  cleared, or a non-dictionary of boons drops the run; pot, meter, time, slot and bladders are clamped. Older saves have no
+  cleared count that isn't floor or floor-1, an unknown boon, two boons the table's `excludes` keeps apart (RUBBER BODY
+  with GLASS SLIME), more boons than floors
+  cleared, or a non-dictionary of boons drops the run; pot, meter, time, slot, bladders and resumes (0..1, always 0 on
+  a boon card; missing = 0) are clamped. Older saves have no
   section (no run). No save version / epoch change: older builds ignore the section.
-- **Known trade-off (owner rule):** killing the app mid-floor returns to that floor's start, so a player who force-quits
-  just before drying up gets that floor again (same maze, same starting meter) instead of banking half. Bounding it (e.g.
-  one resume per floor, then QUIT RUN only) is a one-line rule in `Progress.resume_descent` if the owner wants it.
+- **Trade-off, bounded (D9):** killing the app mid-floor returns to that floor's start, so a player who quits just
+  before drying up gets that floor again (same maze, same starting meter) once; the second time only QUIT RUN is left.
 
 ## Android preset (port-time; not in the repo)
 
@@ -225,9 +229,8 @@ NEW RECORD banner on this build; it is now frame 1150 in both scripts (QA follow
 ## Remaining (not done, and why)
 
 - Glyph art and remapping for pads (D4: later); pad control of the CHAMELEON wheel (M3).
-- The iOS title screen (and its STORY replay) is reachable only at launch: the hub has no way back to it without Esc /
-  START / Android back. Owner call whether phones need a hub route to the title.
-- An app that goes to the background during the goo wipe into a level (about 0.3 s) starts that level unpaused.
+- (Corrected by QA: the hub's touch button already went to the title on phones; since D10 it draws a home icon there.)
+- (Fixed in the QA follow-up: an app backgrounded during the goo wipe into a level now pauses it once the wipe ends.)
 - M5 rainbow recolor cost, low-end device profiling, `Engine.max_fps = 60` on phones for battery: port-time measurements.
 
 ## Port-time checklist
@@ -242,3 +245,41 @@ NEW RECORD banner on this build; it is now frame 1150 in both scripts (QA follow
    on `save.cfg`, Deck: controller-only playthrough, the save-code text box (M6), 1280x800 (L9), glyphs.
 6. Profiling on a low-end Android phone and an older iPhone (M5, thermals, `max_fps`).
 7. Store pages: mention save codes as the cross-platform transfer path.
+
+## QA follow-up (2026-10-16)
+
+The five findings of [qa-phase5-review.md](qa-phase5-review.md), with the two owner decisions (D9, D10 in
+[decisions.md](decisions.md)). Each has a regression test that fails with its fix taken out (checked one by one).
+
+1. **One resume per floor (D9).** `[descent_run]` gains an optional `resumes` (format 1 unchanged; missing = 0, clamped
+   0..1, always 0 on a boon card). `Progress.resume_descent` counts a mid-floor resume and saves at once;
+   `descent_resume_spent()` is then true and RESUME is refused. The hub prompt shows FLOOR ALREADY RESUMED / FLOOR n -
+   POT p / QUIT RUN BANKS HALF with only QUIT RUN (centred, focused, focus loops on itself). QUIT RUN loads the run
+   without counting (`_load_saved_descent`) and banks half once. Clearing a floor (and reaching a new one) resets the
+   count; the boon card is unlimited. No reroll, slot once and bank once are unchanged.
+   Tests: `test_descent_resume` `_one_resume_per_floor`, `_hub_spent_prompt`.
+2. **Mobile hub home icon (D10).** `TouchControls.home_icon` (set by the hub when `Platform.is_mobile_native()`) draws a
+   7x7 pixel house (pointed roof, door gap) in the pause button's 15x13 rect instead of the two bars; both glyphs are
+   constant pixel lists centred on the rect (ink x 4..10, y 3..9, whole pixels). Same rect, same tap (to the title).
+   Desktop, web and every level keep the bars. Before / after (iOS preview, `--platform=ios`):
+   [before](phase5/hub_home_icon_before.png), [after](phase5/hub_home_icon_after.png), zoomed
+   [before](phase5/hub_home_icon_zoom_before.png) / [after](phase5/hub_home_icon_zoom_after.png).
+   Tests: `test_platform` `_home_icon`.
+3. **Background during the wipe into a level.** `PlatformEvents.pause_wanted` records that the current background
+   pauses levels (same gate as before: never headless, in movie captures or under autoplay). `game.gd` `_ease_in` arms a
+   check that runs on the first `_process` once the screen change is over; a level whose app is still in the background
+   then pauses itself (`pause_for_background`). Probe before the fix: clock 1.77 s after 120 background frames; after:
+   paused, clock < 0.1 s. Tests: `test_platform` `_background_during_wipe`.
+4. **Remembered fullscreen follows the window.** On desktop (not headless), every root `size_changed` restarts a 0.8 s
+   settle timer (longer than macOS's animated fullscreen transition); it then calls `Progress.window_mode_changed(mode)`,
+   which updates and saves `fullscreen` when it differs (FULLSCREEN / EXCLUSIVE count as on, MAXIMIZED as off). Web and
+   phones never remember it. Tests: `test_platform` `_fullscreen_sync` (simulated mode changes). **Still recommended:** a
+   manual check on the Mac (green button out of fullscreen, quit, relaunch: windowed; F11, quit, relaunch: fullscreen),
+   which the headless tests can't see.
+5. **Boon exclusion from the table.** `Descent.boons_compatible(boons, table = Economy.BOONS)` applies every boon's
+   `excludes`; `read_descent_run` uses it instead of the RUBBER / GLASS names. Golden comparison: the same verdict as the
+   old check on 400 random boon sets, and 3200 saved runs (400 seeds x 8 floors) read back with identical offers; a
+   synthetic table pair is refused. Tests: `test_descent_resume` `_boon_excludes`.
+
+Gates: `./tools/test_all.sh` 76 suites, 0 failed (incl. the four nav-fuzz shards, clean); Web, Windows, macOS and Linux
+exports build with the 4.7.2 templates (scratch dir, removed). Cutscenes, saves' version / epoch and balance untouched.

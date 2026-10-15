@@ -153,11 +153,15 @@ var descent_run := {}
 ## today: half the pot mid-floor, the whole pot on the boon card). {} = no run saved. Cleared when the run banks
 ## (CASH OUT, dry-up, quit), so a run can never bank twice; the maze and the boon offers come from the run seed,
 ## so resuming can never reroll them. Never in a save code (codes copy progress to other devices).
+## One resume per floor (owner decision D9): RESUME of a mid-floor snapshot counts it (`resumes`, saved at once);
+## once a floor has been resumed DESCENT_RESUMES_PER_FLOOR times, a further kill / closed window / reloaded tab on
+## that floor leaves only QUIT RUN (banks half, as a dry-up does). Clearing the floor starts the count over.
 var descent_resume := {}
+const DESCENT_RESUMES_PER_FLOOR := 1
 ## The keys of a saved run ([descent_run]); `format` guards the layout (another format is dropped, not read).
 const DESCENT_RUN_FORMAT := 1
 const DESCENT_RESUME_KEYS := ["seed", "floor", "meter", "boons", "bladders", "pot", "time", "wind_used", "slot",
-	"cleared", "bonuses", "new_best", "best_before"]
+	"cleared", "bonuses", "new_best", "best_before", "resumes"]
 var descent_best_floor := 0
 var descent_best_time := 0.0
 var descent_runs := 0
@@ -296,6 +300,8 @@ func _ready() -> void:
 	apply_volume()
 	if fullscreen and save_path == REAL_SAVE_PATH and Platform.remembers_fullscreen():
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)  # the player's last choice (M4)
+	if Platform.remembers_fullscreen() and DisplayServer.get_name() != "headless":
+		_watch_window_mode()
 	if story_complete:  # first, so the other debug flags can still adjust the state it sets
 		enable_story_complete()
 	if autoplay:
@@ -476,6 +482,37 @@ func toggle_fullscreen() -> void:
 	if Platform.remembers_fullscreen():
 		fullscreen = is_fullscreen()
 		save_progress()
+
+
+## The window can leave or enter fullscreen without F11 (macOS: the green button, View > Exit Full Screen): on
+## desktop every window resize re-reads the mode once the resizing has settled (WINDOW_SETTLE seconds, longer
+## than macOS's animated fullscreen transition), so the remembered choice follows the window (QA phase 5 #4).
+const WINDOW_SETTLE := 0.8
+var _window_settle: Timer
+
+
+func _watch_window_mode() -> void:
+	_window_settle = Timer.new()
+	_window_settle.one_shot = true
+	_window_settle.wait_time = WINDOW_SETTLE
+	_window_settle.ignore_time_scale = true
+	_window_settle.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_window_settle)
+	_window_settle.timeout.connect(func() -> void: window_mode_changed(DisplayServer.window_get_mode()))
+	get_tree().root.size_changed.connect(_window_settle.start)
+
+
+## The window is now in `mode` (DisplayServer.WINDOW_MODE_*): on desktop a fullscreen choice that differs from it
+## is updated and saved. Returns true if it changed.
+func window_mode_changed(mode: int) -> bool:
+	if not Platform.remembers_fullscreen():
+		return false
+	var now := mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+	if now == fullscreen:
+		return false
+	fullscreen = now
+	save_progress()
+	return true
 
 
 ## Removes this run's throwaway save when the game quits (only the autoload owns it).
@@ -878,7 +915,7 @@ static func read_descent_run(file: ConfigFile) -> Dictionary:
 		var top := int(Descent.boon(id).get("max", 1))
 		boons[id] = mini(n, top if top > 0 else DESCENT_FLOOR_MAX)
 		picks += boons[id]
-	if picks > floor_no - 1 or (boons.has("rubber") and boons.has("glass")):
+	if picks > floor_no - 1 or not Descent.boons_compatible(boons):
 		return {}
 	var bonuses: Array = []
 	var raw_bonuses: Variant = file.get_value(S, "bonuses", [])
@@ -898,6 +935,8 @@ static func read_descent_run(file: ConfigFile) -> Dictionary:
 		bonuses = bonuses.slice(-8),
 		new_best = _bool(file, S, "new_best", false),
 		best_before = clampi(_int(file, S, "best_before", 0), 0, DESCENT_FLOOR_MAX),
+		# (optional, D9: older saves have none = not resumed yet; a boon card is never limited)
+		resumes = 0 if cleared == floor_no else clampi(_int(file, S, "resumes", 0), 0, DESCENT_RESUMES_PER_FLOOR),
 	}
 
 
@@ -1606,6 +1645,7 @@ func clear_descent_floor(left: float, seconds: float, tainted := false) -> int:
 		return 0
 	descent_run.tainted = descent_run.tainted or tainted
 	var gain := Descent.clear_floor(descent_run, left, seconds)
+	descent_run.resumes = 0  # (D9: a cleared floor starts the resume count over)
 	_take_descent_slot()
 	_snapshot_descent()  # (resumes on the boon card: the floor stays cleared, its offers are the same)
 	return gain
@@ -1654,6 +1694,7 @@ func descend(id: String) -> bool:
 ## floor 10 also unlocks the ABYSS trail). Dev-toggled runs set no record and earn no bonus.
 func _reach_descent_floor() -> void:
 	descent_run.bonus = 0
+	descent_run.resumes = 0  # (D9: a new floor has not been resumed)
 	if descent_run.tainted:
 		_snapshot_descent()
 		return
@@ -1697,10 +1738,29 @@ func descent_resume_pending() -> bool:
 	return not descent_resume.is_empty() and not descent_active()
 
 
+## True when the saved run is mid-floor and that floor was already resumed DESCENT_RESUMES_PER_FLOOR times (D9):
+## the resume prompt then offers only QUIT RUN (banks half, as a dry-up does).
+func descent_resume_spent() -> bool:
+	return not descent_resume.is_empty() and int(descent_resume.cleared) < int(descent_resume.floor) \
+		and int(descent_resume.get("resumes", 0)) >= DESCENT_RESUMES_PER_FLOOR
+
+
 ## Makes the saved run the run being played again (mode DESCENT), exactly as it was saved: the same floor (its
 ## maze from the run seed), meter, boons, pot, time, paid slot and milestone record. A cleared floor resumes on
-## its boon card with the same offers. False when none is saved. Nothing is paid or saved by resuming.
+## its boon card with the same offers. False when none is saved, or when its floor's one resume is spent (D9).
+## Nothing is paid by resuming; a mid-floor resume is counted and saved at once (one per floor, D9).
 func resume_descent() -> bool:
+	if descent_resume_spent() or not _load_saved_descent():
+		return false
+	if int(descent_run.cleared) < int(descent_run.floor):
+		descent_run.resumes = int(descent_run.get("resumes", 0)) + 1
+		descent_resume.resumes = descent_run.resumes
+		save_progress()
+	return true
+
+
+## The saved run made the live run again, as saved (RESUME, QUIT RUN). False when none is saved.
+func _load_saved_descent() -> bool:
 	if descent_resume.is_empty():
 		return false
 	var run := Descent.new_run(int(descent_resume.seed))
@@ -1715,7 +1775,7 @@ func resume_descent() -> bool:
 ## QUIT RUN on the resume prompt: the saved run banks as quitting it from the pause menu would (half the pot
 ## mid-floor, the whole pot on the boon card) and is gone. Returns end_descent's result ({} if none was saved).
 func quit_saved_descent() -> Dictionary:
-	if not resume_descent():
+	if not _load_saved_descent():
 		return {}
 	var on_boon_card := int(descent_run.cleared) >= int(descent_run.floor)
 	return end_descent(on_boon_card)

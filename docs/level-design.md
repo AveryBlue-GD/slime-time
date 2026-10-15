@@ -504,6 +504,15 @@ skin / assist / dry-up count; `record_survey`, `record_clear` and `complete_leve
 One action per boon card: DESCEND and CASH OUT in the same frame count once, and a floor built for a run that is
 already banked shows only its summary. The pot pod behind the summary shows what the run was paid as.
 
+**Resume after an app kill** (owner decisions D6 and D9; details in
+[spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md) "Descent resume"): the run is saved as
+`[descent_run]` at every floor start and right after every clear, so a killed app, a closed window or a reloaded tab
+brings it back on relaunch at that floor's start (the same maze from the run seed, the floor-start meter, boons, pot)
+or on its boon card (the same three offers). **One resume per floor:** RESUME of a floor start counts it
+(`resumes`, saved at once); a second kill on that floor leaves only QUIT RUN, which banks half the pot like a dry-up.
+Clearing the floor starts the count over; the boon card can be resumed any number of times (it has nothing to
+retry). The paid slot is taken once and the run banks once whatever happens.
+
 ## 10. Hard-mode HEAT (upgrades v2 batch 4, 2026-10-15)
 
 Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C3. Code: `scripts/heat.gd` (`Heat`: ids, masks, points,

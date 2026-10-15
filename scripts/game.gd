@@ -537,6 +537,21 @@ func _ease_in() -> void:
 	var transition := get_node_or_null("/root/Transition")
 	if transition:
 		transition.reveal()
+	_background_check = true
+
+
+## Set by _ease_in: once the screen change into this level is over, an app that went to the background during its
+## goo wipe (pause_for_background skipped it then) pauses the level (_process).
+var _background_check := false
+
+
+func _pause_if_backgrounded() -> void:
+	if not _background_check or _leaving():
+		return
+	_background_check = false
+	var events := get_node_or_null("/root/PlatformEvents")
+	if events and events.in_background and events.pause_wanted:
+		pause_for_background()
 
 
 func _exit_tree() -> void:
@@ -628,6 +643,7 @@ func _low_slime_warning(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	_pause_if_backgrounded()
 	if is_random() or descent:
 		# The attempt / pot pod follows the run's state (never stale): re-derived on the first frame
 		# any of its inputs differs from the last time, instead of rebuilding it every frame.

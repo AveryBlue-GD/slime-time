@@ -151,6 +151,16 @@ static func held(boons: Dictionary, id: String) -> int:
 	return int(boons.get(id, 0))
 
 
+## True when no boon held excludes another one held (the table's `excludes`, e.g. RUBBER BODY / GLASS SLIME).
+## `table` = Economy.BOONS (tests pass their own).
+static func boons_compatible(boons: Dictionary, table: Dictionary = Economy.BOONS) -> bool:
+	for id: Variant in boons:
+		var other := String(table.get(id, {}).get("excludes", ""))
+		if other != "" and held(boons, other) > 0:
+			return false
+	return true
+
+
 ## True when `id` may still be offered: a boon held its `max` times (non-stacking: once) is not, nor
 ## one whose `excludes` boon is held (RUBBER BODY and GLASS SLIME never go together).
 static func can_offer(id: String, boons: Dictionary) -> bool:

@@ -31,6 +31,13 @@ const PAUSE_RECT := Rect2(302, 35, 15, 13)
 ## pod by game.gd (`pause_rect.position.y = PAUSE_Y_RANDOM`).
 const PAUSE_Y_RANDOM := 44.0
 var pause_rect := PAUSE_RECT
+## Draws a small house instead of the pause bars (owner decision D10): the hub sets it on iOS / Android, where its
+## button goes back to the title (and its STORY replay). Same rect and tap.
+var home_icon := false:
+	set(value):
+		home_icon = value
+		if _canvas:
+			_canvas.queue_redraw()
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
@@ -309,10 +316,17 @@ func _draw_controls() -> void:
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
 			Color(1, 1, 1, 0.95 if ready else 0.35))
-	# Pause button: two bars.
+	# Pause button: two bars (or the hub's home icon on phones).
 	_canvas.draw_rect(pause_rect, dim)
-	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(4, 3), Vector2(2, 7)), Color(color, 0.9))
-	_canvas.draw_rect(Rect2(pause_rect.position + Vector2(9, 3), Vector2(2, 7)), Color(color, 0.9))
+	for r: Rect2i in (HOME_PIXELS if home_icon else PAUSE_PIXELS):
+		_canvas.draw_rect(Rect2(pause_rect.position + Vector2(r.position), Vector2(r.size)), Color(color, 0.9))
+
+
+## The pause button's ink, inside its 15x13 rect: two 2x7 bars, and the home icon (7x7 house: a 4-row pointed
+## roof, 3 rows of wall with a 1x2 door gap), both centred on the rect (x 4..10, y 3..9).
+const PAUSE_PIXELS: Array[Rect2i] = [Rect2i(4, 3, 2, 7), Rect2i(9, 3, 2, 7)]
+const HOME_PIXELS: Array[Rect2i] = [Rect2i(7, 3, 1, 1), Rect2i(6, 4, 3, 1), Rect2i(5, 5, 5, 1), Rect2i(4, 6, 7, 1),
+	Rect2i(5, 7, 5, 1), Rect2i(5, 8, 2, 2), Rect2i(8, 8, 2, 2)]
 
 
 func _skin_color() -> Color:
