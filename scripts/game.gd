@@ -295,6 +295,8 @@ var attempt_key := ""
 ## What the attempt pod shows for this run (-1 until it first shows).
 var _pod_offer := -1
 var _dev_pod_text := ""  # DevLog only
+## What the pod was last derived from (_pod_inputs).
+var _pod_inputs_shown: Array = []
 ## Coins picked up this run while assisted: shown on screen, but never saved.
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
@@ -611,9 +613,15 @@ func _low_slime_warning(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	_refresh_attempt_pod()  # randomizer: the pod follows the run's state every frame (never stale)
-	if descent:
-		_refresh_descent_pod()
+	if is_random() or descent:
+		# The attempt / pot pod follows the run's state (never stale): re-derived on the first frame
+		# any of its inputs differs from the last time, instead of rebuilding it every frame.
+		var pod_inputs := _pod_inputs()
+		if pod_inputs != _pod_inputs_shown:
+			_pod_inputs_shown = pod_inputs
+			_refresh_attempt_pod()
+			if descent:
+				_refresh_descent_pod()
 	var fog_material := fog_sprite.material as ShaderMaterial
 	fog_material.set_shader_parameter("now", elapsed)
 	(outer_fog.material as ShaderMaterial).set_shader_parameter("now", elapsed)
@@ -1566,8 +1574,8 @@ func ticket_offer() -> int:
 
 
 ## The HUD's attempt pod, derived afresh from `attempt` and ticket_offer() (on the run's first frame
-## and then every frame, so it can never go stale; the HUD only touches the label when the text
-## changes). The run's first showing pops the pod when its number differs from what it last showed
+## and then whenever any of its inputs changes, see _pod_inputs, so it can never go stale; the HUD
+## only touches the label when the text changes). The run's first showing pops the pod when its number differs from what it last showed
 ## for this maze (a restart that lowered it), unless Reduce Motion is on.
 func _refresh_attempt_pod() -> void:
 	if not is_random() or progress == null or attempt_key == "":
@@ -1724,6 +1732,19 @@ func _pick_up_drops(pos: Vector2) -> void:
 		_sfx("coin", -4.0)
 		Fx.burst(self, drop.position, skin_color, 14, 40.0, Vector2.UP, 180.0, rainbow)
 		drop.queue_free()
+
+
+## Everything the attempt pod (payout(), Progress.random_payout) and the pot pod (_refresh_descent_pod,
+## Progress.descent_payout) are derived from, as a cheap value to compare frame to frame: the run's
+## own state, the UTC day and the day's paid counts, the caps' inputs, and the Descent run's pot.
+func _pod_inputs() -> Array:
+	if progress == null:
+		return []
+	return [attempt, wind_fired, dev_toggled, assisted, finished, won, progress.utc_day(), progress.dev_tools,
+		progress.upgrades.get("slime", 0), progress.random_paid, progress.random_pay_day,
+		progress.random_paid_seeds.hash(), progress.random_seed_fresh, progress.descent_paid, progress.descent_pay_day,
+		descent_run.get("pot"), descent_run.get("gain"), descent_run.get("slot"), descent_run.get("ended"),
+		descent_run.get("tainted"), descent_run.get("result", {}).size()]
 
 
 ## The HUD's pot pod: the pot and what it would pay ("PRACTICE" once today's paying runs are used).
