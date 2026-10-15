@@ -36,8 +36,9 @@ portal, settings signpost, hat wheel, wardrobe).
 
 - Launch: `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain), `--story`
   (postgame state), `--autoplay [--speed=N]` (F10 stops), `--scene res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`.
-- Tests: `./tools/test_all.sh` (70 suites, prints `suites: N failed: 0`, about 6 minutes; baseline in
-  [spring-cleaning/baseline.md](spring-cleaning/baseline.md)). One suite:
+- Tests: `./tools/test_all.sh` (70 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3 (`-j 1` = one at a
+  time, about 5 minutes); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
+  [spring-cleaning/phase2-tests.md](spring-cleaning/phase2-tests.md)). One suite:
   `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
 - Debug flags for economy work: `--upgrades=a,b,c`, `--tickets=N`, `--trail=ID`, `--paper=ID`, `--descent[=SEED]`, `--heat=...`,
   `--abilities=r,s,k`, `--coins=N`, `--unlock-all`; none of them saves.

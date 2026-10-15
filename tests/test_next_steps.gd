@@ -41,6 +41,19 @@ func _initialize() -> void:
 	_check(next.level == 1, "REPLAY loads the same level again (got %d)" % next.level)
 	_drop(next)
 
+	# The win buttons come up CHOICE_DELAY (0.6 s) after the win on every level, the last one included (it used to
+	# carry a dead 5 s delay that was never waited): none at 0.5 s, there at 0.7 s.
+	for win_level in [1, Levels.COUNT]:
+		game = await _spawn_story(win_level)
+		game.slime.position = game.goal.position
+		await _physics_frames(2)
+		_check(game.finished and game.won, "level %d: touching the goal wins" % win_level)
+		await _physics_frames(int(0.5 * 60) - 2)
+		_check(game.hud.choice_buttons.is_empty(), "level %d: no buttons yet 0.5 s after the win" % win_level)
+		await _physics_frames(int(0.2 * 60))
+		_check(_texts(game).size() == 3 and game.hud.choice_buttons[1].has_focus(), "level %d: the 3 buttons are up 0.7 s after the win (%s)" % [win_level, _texts(game)])
+		_drop(game)
+
 	# Story win -> HUB goes back to the hub, in front of the archway.
 	game = await _spawn_story(1)
 	await _win(game)
