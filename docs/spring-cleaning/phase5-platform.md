@@ -204,8 +204,8 @@ respects the mute switch). `user://` is the app's Documents (iCloud-backed); the
 
 `./tools/promo/make_promo.sh [--out-dir DIR]` is the twin of `make_promo.ps1`: the same cover (630x500) and eight
 1280x720 screenshots with the same names, scenes, frames and flags (default `~/Desktop/SlimeTime-itch-images`). Smoke-run
-only (to a temp dir, 53 s): all nine files at the right sizes. Note for the next real render: `screenshot-6-new-record`
-at frame 1050 shows the run before the NEW RECORD banner on this build (the frame may need moving; same in the .ps1).
+only (to a temp dir, 53 s): all nine files at the right sizes. `screenshot-6-new-record` was at frame 1050, before the
+NEW RECORD banner on this build; it is now frame 1150 in both scripts (QA follow-up in [phase4-perf.md](phase4-perf.md)).
 
 ## Gates
 
