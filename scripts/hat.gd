@@ -67,12 +67,21 @@ func pop(slime_velocity: Vector2, flight_time: float) -> void:
 	state = State.FLYING
 
 
-func _process(delta: float) -> void:
+## The flight is simulated on physics ticks, when the slime itself moves: measured per render frame,
+## the slime's speed would read 0 on frames without a tick and 2-4x on frames after one (any display
+## above 60 Hz), and the jolt would flicker the hat by a few px every frame of a leap. The drawing
+## follows per frame.
+func _physics_process(delta: float) -> void:
+	if state == State.FLYING:
+		_fly(delta)
+
+
+func _process(_delta: float) -> void:
 	match state:
 		State.ON:
 			_follow()
 		State.FLYING:
-			_fly(delta)
+			global_position = _snap(ground - Vector2(0.0, height))
 
 
 func _follow() -> void:
@@ -85,7 +94,7 @@ func _follow() -> void:
 
 
 func _fly(delta: float) -> void:
-	# Predict from where the slime really is: its speed this frame against last frame's. A sudden
+	# Predict from where the slime really is: its speed this tick against last tick's. A sudden
 	# drop (a bonk, a bounce back) throws the hat on a little, in line with the slime.
 	var slime_at := _floor_point()
 	if delta > 0.0:
@@ -101,8 +110,6 @@ func _fly(delta: float) -> void:
 	if lift < 0.0 and height <= _head_height() + 1.0:
 		state = State.ON  # back on the slime's head
 		_follow()
-		return
-	global_position = _snap(ground - Vector2(0.0, height))
 
 
 ## Whole pixels, rounded the way the renderer snaps the slime's sprite (half up), so the hat never
