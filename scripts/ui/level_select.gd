@@ -15,9 +15,9 @@ var info: Label
 var heat_button: Button
 var heat_panel: HeatPanel
 
-## 48x42: the 14 px digits sit 1 px above the tile's center (rows 13-26, their 4 px drips 27-30),
-## the 7 px record time under them (rows 32-38, drips 39-40) clear of the frame's bottom goo (row
-## 41): the digits' drips never run into the time.
+## 48x42: the 14 px digits sit 1 px above the tile's center (rows 13-26; their drips and shadow end
+## on row 31), the 7 px record time right under them (rows 32-38, drips 39-40) and clear of the
+## frame's bottom goo (row 41): the digits' drips never run into the time.
 const TILE := Vector2i(48, 42)
 const NUMBER_Y := 13
 ## Five tiles 3 apart (252 px) centered on the screen: L34 / R34.

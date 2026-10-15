@@ -1,78 +1,82 @@
-# UI rules (draft)
+# UI rules
 
-Status: **draft** from the Phase 3 spring-cleaning audit ([spring-cleaning/phase3-ui-audit.md](spring-cleaning/phase3-ui-audit.md)).
-These rules describe what most current screens already do, as measured from rendered pixels. Each "Deviations" list
-names the screens that break a rule, with the audit's issue ID. When the fix half lands, the numbers should move into
-`scripts/ui/ui_kit.gd` as named constants (proposed names are given), and screens should use them instead of literals.
+Status: **final** (Phase 3 spring cleaning, 2026-10-16). Derived from the audit
+([spring-cleaning/phase3-ui-audit.md](spring-cleaning/phase3-ui-audit.md)) and applied in the fix pass
+([spring-cleaning/phase3-ui.md](spring-cleaning/phase3-ui.md)). The numbers live in `scripts/ui/ui_kit.gd` as named
+constants (`UIKit.EDGE`, `UIKit.BOTTOM_ROW_Y`, ...); screens use them, not literals. `tests/test_ui_layout.gd` and
+`tests/test_ui_touch.gd` check the rules on every screen they cover.
 
-All values are base pixels at 320x180. Coordinates are top-left, and spans like `x..y` are inclusive.
+All values are base pixels at 320x180. Coordinates are top-left; spans like `x..y` are inclusive. "Ink" means the
+pixels actually drawn (text letters, icon pixels), measured from rendered frames, not from control rects.
 
 ## 1. Canvas and scaling
 
-- One 320x180 viewport, `viewport` stretch with **integer** scaling. The window shows the largest whole multiple and
-  the rest is black bars. UI never re-lays out for other aspect ratios (16:10, 21:9, 4:3, phones, tablets all just
-  letterbox). On 4:3 and tablets this uses about 66% of the screen; that is accepted, not a bug.
-- Every position and size is a whole pixel. Centre with `roundf` / `floori`, never leave `.5`.
-- Give centred boxes an **even width** (the screen is even). An odd width always leaves a 0.5-1 px asymmetry.
-  Deviations: logo 291 (T2), hub prompts 115/179 (U1b), skins row 2 (S1).
+- One 320x180 viewport, `viewport` stretch with **integer** scaling. The window shows the largest whole multiple and the
+  rest is black bars. UI never re-lays out for other aspect ratios (16:10, 21:9, 4:3, phones, tablets all letterbox):
+  measured layouts are identical at 1280x720, 1280x800, 2560x1080, 1024x768, 2340x1080, 2048x1536 and portrait.
+  On 4:3 and tablets this uses about 66% of the screen; accepted (a non-integer mode would be a feature).
+- Every position and size is a whole pixel. Centre with `UIKit.center_x(width, from, span)` (`roundf`), never leave `.5`.
+- Prefer an **even width** for a box centred on the screen (the screen is even). When content forces an odd width,
+  keep the box's *inner* padding symmetric and accept the 0.5 px offset of the box (hub prompts, logo).
 - Portrait on a touchscreen shows the rotate cover (the same 320x180 band, scaled).
 
 ## 2. Edges and margins
 
-| Constant (proposed) | Value | Used by |
+| Constant | Value | Used by |
 |---|---|---|
-| `UIKit.EDGE` | **4** | menu chrome: BACK (4,164), page/next button bottom right (R4), tabs (4,4), HEAT button, PAPER button |
-| `UIKit.BOTTOM_ROW_Y` | **164** | bottom-row buttons, 13 tall, so B=3 |
-| `HUD.POD_MARGIN` (exists) | **3** | in-level HUD pods and the hub ticket/medal pod |
-| title label | `(0,2)-(320,22)`, 16 px font | body rows 2..15, drips to 19 |
+| `UIKit.EDGE` | **4** | menu chrome: BACK, the bottom-right page button, tabs (4, 4), balance pods, map tiles, DEV panel |
+| `UIKit.BOTTOM_ROW_Y` | **164** | bottom-row buttons (13 tall, B = 3); `UIKit.place_bottom_row(control, -1 / 0 / 1)` |
+| `UIKit.HUD_EDGE` (= `HUD.POD_MARGIN`) | **3** | in-level HUD pods and the hub's ticket pod |
+| `UIKit.TITLE_Y` | **2** | screen titles: line box (0, 2)..(320, 22), 16 px font, body rows 2..15, drips to 19 |
 
-Deviations:
-- Controls page bottom row at y160 (K1).
-- Settings BACK as a 120-wide column button at (36,154) (C2).
-- Title STORY at y163 (T1).
-- Map grid L3/R3 (M3).
-- Descent card margins 10 (R5).
-- DEV panel R6 (P3).
-- Maps HARD checkbox ink R6 and 1 px low (M1).
+- The bottom row: **BACK at (4, 164) 40x13** on every screen (`UIKit.add_back_button(root, on_press)`); the page's own
+  action mirrors it at the right edge (HEAT, PAPER, HATS / SKINS / TRAILS, RESET PROGRESS) or sits centred (JELLY,
+  RESET KEYS). The title's STORY button uses the same slot.
+- Text on the bottom row (map hints, the HARD checkbox) sits on BACK's text baseline (row 167).
+- Documented exceptions: the Descent boon card keeps 10 px side margins (its three 96 px tiles and the buttons under
+  them); the in-level touch pause button follows the HUD pods.
 
 ## 3. Spacing scale
 
-Measured majority:
-
-| Step | Use |
-|---|---|
-| 2 | between dense tiles (map tiles), header items, HUD pods stacked (VBox gap 2) |
-| 3 | stacked menu buttons (pitch 16 = 13 + 3: pause, restart, victory), tile grids (skins, level select) |
-| 4 | toggles (HEAT), section tabs (HATS/TRAILS/PAPERS), button to box (save code), key rows (pitch 17) |
-| 8 | result choice row, settings column gap, panel inner side inset (HEAT panel, shop) |
-| 12 | paired confirm buttons (BUY/BACK, CONFIRM/CANCEL), text line pitch |
+| Constant | Step | Use |
+|---|---|---|
+| `UIKit.GAP_XS` | 2 | dense tiles (map tiles, shop rows), header items, stacked HUD pods |
+| `UIKit.GAP_S` | 3 | stacked menu buttons (pitch 16 = 13 + 3: pause, restart, victory), tile grids |
+| `UIKit.GAP_M` | 4 | toggles, tabs, button to box, controls inside one row (upgrade bar / - / + / cost), section gap |
+| `UIKit.GAP_L` | 8 | result choice row (`CHOICE_GAP`), settings column gap, panel side insets |
+| `UIKit.GAP_XL` | 12 | paired confirm buttons, text line pitch |
 
 Rules:
-- Use only 2 / 3 / 4 / 8 / 12 for gaps. Inside one row, all gaps are equal. Deviation: the upgrades row is 3 / 2 / 4 (G2).
-- Section gap (between a grid and the panel under it) ≥ 4. Deviation: level select 2 (L7).
-- Keep ≥ 2 px of clear space (drips included) between any text and a box edge it doesn't belong to. Deviations: story line
-  under the HUD pods 0 px (H5), save-code line under the box 0 px (C1), big level number drips into the record time 0 px (L2).
+- Use only these gaps. Inside one row all gaps are equal.
+- Section gap (between a grid and the panel under it) ≥ 4.
+- Keep ≥ 2 px of clear space (drips included) between any text and a box edge it doesn't belong to. Exception: the level
+  tiles' big number, whose drips end on the row right above the record time (0 clear rows, no overlap) so the number
+  stays centred on the tile (see phase3-ui.md, remaining issues).
 
 ## 4. Text
 
-- **8 px font** (`pixel.fnt`): 5x7 glyphs. The letter body is 7 rows and the drips hang 2 rows below. The line box is the 7
-  px body. The 1 px letter gap sits on each glyph's left, so a left-aligned label's ink starts 1 px inside its rect.
-- **16 px font** (`pixel_big.fnt`, `UIKit.use_big_font`): titles and big numbers only. The body is 14 rows and the drips
-  hang 4 rows below.
-- **Line pitch 12** (7 + `UIKit.LINE_SPACING` 5) for multi-line text. Dense lists may use 11 (coin board 10 rows, map tiles):
-  record such exceptions here (U5, M3).
-- Vertical centring is measured on the **letter body**, never the drips. In a 13-px button the body is rows 3..9 (3 above,
-  3 below).
-- Horizontal centring: measured ink is within ±0.5 px of the box centre (0.5 is the odd/even remainder). Centre an icon and
-  its text **as one group**, not the text alone. Deviation: HEAT panel title, group 6 px left (L4).
-- A fixed-width label that reserves room for longer values (timer, balances) must **centre** its text, or its pod must
-  size to content. Deviations: HUD timer pod 4/15 (H1), upgrades balance pod 4/16 (G1).
-- Every label in one row shares one baseline. Deviations: hat-wheel header 12 vs 13 (U6), maps bottom bar 167 vs 168 (M1),
-  HUD second row 22 vs 21 (H3).
-- Text side margin inside a button ≥ 4 px (GooBox face). The longest dynamic text must fit. Deviation: the pause SEED
-  button grows to 106 px with a 10-digit seed (P4).
-- Size a Label **after** it is added to the themed tree. A label sized before can keep the default font's larger minimum
-  width. Deviation: hub quit "THE GAME CLOSES" is 172 wide, 6 px off (U2, X6).
+- **8 px font** (`pixel.fnt`, `UIKit.FONT`): 5x7 glyphs; the letter body is 7 rows (`UIKit.TEXT_BODY`) and the drips hang
+  2 rows below (`UIKit.TEXT_DRIP`). The line box is the 7 px body. The 1 px letter gap sits on each glyph's left, so a
+  left-aligned label's ink starts 1 px inside its rect and ends exactly at its right edge.
+- **16 px font** (`pixel_big.fnt`, `UIKit.FONT_BIG`, `UIKit.use_big_font`): titles and big numbers only. Body 14 rows,
+  drips 4 rows.
+- **Tabular digits** (`UIKit.tabular_font()`): a running number (the HUD timer) uses the 8 px font with "1" in a full
+  6 px digit cell, so its width never changes while it counts.
+- **Line pitch 12** (`UIKit.LINE_PITCH` = 7 + `UIKit.LINE_SPACING` 5). Dense lists use 11 (`UIKit.DENSE_PITCH`): the coin
+  board's 10 rows and the map tiles' two lines.
+- Vertical centring is measured on the **letter body**, never the drips. In a 13 px button the body is rows 3..9.
+- Horizontal centring: the measured ink is within ±0.5 px of the box centre. Centre an icon and its text **as one
+  group** (HEAT panel title: flame, 5 px gap, text).
+- A label that shows changing values is either sized to its text (its pod grows from the anchored edge: the upgrades
+  balance pod) or uses tabular digits in a fixed box (the HUD timer). Never a fixed oversize box with left-aligned text.
+- Every label in one row shares one baseline (hat wheel header: tabs, title and balance on row 12; map table bottom bar
+  on row 167; HUD second-row pods on row 22).
+- Text side margin inside a button ≥ 4 px. The longest dynamic text must fit: a too-long text shortens (the pause SEED
+  button drops the "SEED " word when "SEED 4294967295-7" would not fit its 100 px).
+- **Size a label after it is in the themed tree** (`UIKit.add_label(parent, text, rect, ...)` does this). A label sized
+  before keeps the default font's larger minimum size and sits off centre.
+- Titles: 16 px, `UIKit.GOLD`, 2 px shadow straight down. In-panel headings: 8 px gold. The map view's title is 8 px on
+  purpose (map space).
 - Roles and colours (recoloured from the skin by `SkinText`):
 
   | Role | Colour constant | Used for |
@@ -82,108 +86,105 @@ Rules:
   | dim | `UIKit.TEXT_DIM` | hints, secondary lines |
   | disabled | `UIKit.TEXT_OFF` | disabled text |
 
-  Fixed tints: tickets `255,226,150`, HEAT `255,170,90`, DEV badge pink. Labels use a 1 px shadow (`BG` at 0.9), and titles
-  use a 2 px shadow straight down.
+  Fixed tints: tickets `255,226,150`, HEAT `255,170,90`, DEV badge pink. Labels use a 1 px shadow (`BG` at 0.9).
 
 ## 5. Components
 
-### Buttons (`UIKit.make_button`, `GooBox`)
+### Buttons (`UIKit.make_button` -> `TouchButton`, `GooBox`)
 
-| Kind | Size | Notes |
+| Kind | Size | Constant |
 |---|---|---|
-| standard | **h 13** | text body rows 3..9 |
-| BACK / short page buttons | **40x13** | |
-| tabs | 40-52 x 13 | |
-| panel pair | 48x13 (confirm), 64x13 (save code), 70x13 (reset) | |
-| result choice row | **84x13**, gap 8, y153 | |
-| stacked menu | 100x13 (pause/restart), 120x13 (settings columns, victory) | |
-| title CTA | 176x25 | the only tall button |
+| standard | **h 13**, text body rows 3..9 | `UIKit.BUTTON_H` |
+| BACK / short page buttons | **40x13** | `UIKit.BACK_SIZE` |
+| tabs | 40-52 x 13 | `UIKit.TAB_H` |
+| panel pair | 48x13 (BUY? confirm), 56x13 (hub quit), 64x13 (save code), 70x13 (reset) | |
+| result choice row (in-level results, Descent summary) | **84x13**, gap 8, y 153 | `UIKit.CHOICE_SIZE`, `CHOICE_GAP`, `CHOICE_Y` |
+| Descent card buttons | 96x13 at y 153 (the tile width, under the outer tiles) | |
+| stacked menu | 100x13 (pause, restart), 120x13 (settings columns, portal, victory) | |
+| title CTA | 176x25, 16 px text | the only tall button |
 
-Deviation: 15 px tall buttons in the hub portal and quit menus and the Descent card and summary (U3, R4, X2) should become 13.
+Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT toggles 84x34, boon 96x78).
 
 ### Panels (`UIKit.add_panel`, `panel_style`)
 
-- GooBox frame. Content margin 6 top, 5 bottom. Centred on screen (`L == R`).
-- A button stack inside a panel gets the same insets top and bottom. Deviations:
-  - The restart prompt has 20 px of empty face under its last button (P1).
-  - The pause and restart stacks sit flush on the goo band (P2).
-  - The Descent summary panel is 58 px taller than its text (R2).
-  - The portal menu's insets are 10 / 13 (U4).
-  - The HEAT panel's insets are 7 / 13 (L6).
-- Modal: a dim sheet `Color(0,0,0,0.45)` that takes clicks, plus `UIKit.lock_focus`. A modal that sits over the in-level
-  HUD hides the HUD texts that would show through or collide (H7, R1).
+- GooBox frame; centred on the screen (`L == R`) or on its parent area.
+- **Content inset `UIKit.PANEL_PAD` = 8** at the top (to the first text's top row or the first button) and at the bottom
+  (from the last button's bottom edge, or the last text line's drips). Applied to: pause and restart stacks, hub quit and
+  portal dialogs, HEAT panel, Descent summary (which fits its panel to its lines). The BUY? and RESET confirms use 8 / 9.
+- Modal: a dim sheet that takes clicks, plus `UIKit.lock_focus`. A modal over the in-level HUD hides the HUD texts that
+  would show through (`HUD.hide_area_texts()` from pause and restart; the Descent card hides the HUD layer).
 
 ### Pods (HUD and hub)
 
 - `hud_pod.png` 9-slice, content margins 4/4/3/3, edge margin 3.
-- Height **14** for one line (the 8x8 icon sets it), **23** for two lines. Pods in the same row have equal heights.
-  Deviations: the level pod is 13 (H2), so its mirror pod sits 1 px higher (H3). The HEAT pod is 15 (H4).
-- Icons in pods are 8x8 (ink ≤ 8x7). Deviation: 9x9 HEAT modifier icons (H4).
-- Hub station prompt: GooBox pod, centred at y156 (`PROMPT_Y`), separation 5, even width.
+- Height **14** (`UIKit.POD_H`) for one line, **23** (`UIKit.POD_H2`) for two. Every one-line pod is 14 (text-only pods
+  included), so pods in a row share their bottom edge and mirrored rows start together (rows at y 3, 19, 35, 51).
+- Icons in pods are 8x8. Taller art (the 7x9 flame, 9x9 HEAT modifier icons) goes through `UIKit.fit_icon`, an 8 px tall
+  cell the art overhangs by 1 px, so the pod stays 14.
+- Content ink pads equal on both sides (HUD timer 4 / 4, upgrades balance 4 / 4, hub prompt 8 / 8: the prompt's left
+  content margin is 1 less to absorb the font's leading letter gap).
+- The area name (y 20, or 44 under the randomizer's attempt pod) and the story line (15 under it; 12 in Descent) are
+  placed by `HUD._place_area_texts`: each line moves down until its text, drips included, is 2 px clear of every visible
+  pod. They re-place whenever a pod shows or hides.
 
 ### Icons
 
-- 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check).
-- 7x9 flame.
-- 16x16 ability and boon icons.
-- 18x18 HEAT modifier icons in the panel. Deviation: RACE is 16x16 (L5).
+- 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check); 7x9 flame; 16x16 ability and boon
+  icons; HEAT modifier icons 9x9 (RACE 8x8), drawn at 2x in the HEAT panel and centred in an 18x18 cell.
 
 ### Tiles and grids
 
-| Grid | Tile | Gap |
-|---|---|---|
-| level select | 48x42 | 3 |
-| skins | 40x30 | 3 |
-| map table | 156x26 | 2 |
-| shop | 138x13 | 2 |
-| HEAT toggles | 84x34 | 4 |
-| boon tiles | 96x78 | 6 |
+| Grid | Tile | Gap | Placement |
+|---|---|---|---|
+| level select | 48x42 | 3 | centred: L34 / R34 |
+| skins | 40x30 | 3 | centred (row 2 of 6 tiles: 0.5 px, accepted) |
+| map table | 155x26 | 2 | L4 / R4 |
+| shop | 138x13 | 2 | centred in its panel: L13 / R13 |
+| HEAT toggles | 84x34 | 4 | centred in the panel |
+| boon tiles | 96x78 | 6 | L10 / R10 |
 
-- A grid is centred on the screen or on its panel, ±0.5 px. Deviations: level grid L30/R38 (L1), shop grid L14/R12 inside
-  the panel (U7).
+- A grid is centred on the screen or on its panel, ±0.5 px.
 - Mirrored badges inside tiles share an inset (level tiles: flame and pips both at 5).
 
 ## 6. States
 
-| State | Look (measured) |
+| State | Look |
 |---|---|
-| normal | face `#332c40`, goo frame in the skin colour (dark band `#280109` with the default skin) |
-| hover | face `#483e5e` and a brighter goo frame |
-| pressed | face `#282234` (darker) |
-| focus | 1 px ring in the title colour, 1 px outside the button (`expand_margin 1`). Shown for keyboard/gamepad focus only (a mouse click shows none: engine behaviour) |
-| disabled | dim face and `TEXT_OFF` text |
-| **selected (tabs)** | needs its own style. Today it reuses hover, so a hovered tab looks selected (U8). Proposed: the pressed face plus a title-colour underline or ring |
+| normal | face `#332c40`, goo frame in the skin colour |
+| hover | face `#483e5e` and the goo one shade lighter |
+| pressed | face `#282234` |
+| **selected** (tabs, the chosen skin / hat / trail tile, the worn shop item) | face `#282234` (pressed-in) with the lighter hover goo, in normal and hover alike: `UIKit.set_selected(button, on)` (GooBox state `"selected"`). A hovered unselected tab (light face) never looks selected |
+| focus | 1 px ring in the title colour, 1 px outside the button (keyboard / controller only; a mouse click shows none) |
+| disabled | dried goo, dim face and `TEXT_OFF` text |
 
 - Text never moves between states.
-- Keep ≥ 2 px between neighbouring buttons so a focus ring never touches the next button (≥ 4 px for touch, see 7).
+- Keep ≥ 2 px between neighbouring buttons so a focus ring never touches the next button.
 
 ## 7. Touch
 
-Physical size of 1 game px: about 1.67-2.3 pt/dp on phones (5-6x scale at DPR 2.6-3) and 3-4 pt on tablets.
-Target: ≥ 44 pt / 48 dp.
+Physical size of 1 game px: about 1.67-2.3 pt/dp on phones (5-6x scale at DPR 2.6-3) and 3-4 pt on tablets. Target:
+44 pt / 48 dp = **`UIKit.TOUCH_MIN` 22 game px** at the common 2 pt per px.
 
-| Control | Size | Status |
-|---|---|---|
-| JUMP | r19 | ok |
-| joystick | r20, knob r8, floats on the left half | ok |
-| abilities | r11 drawn, r13 hit | ok |
-| pause | 15x13 drawn, +5 hit margin | borderline at 5x |
-
-Rules:
-- Mirrored controls share a centre line. Deviation: the joystick centre y140 and JUMP y142 (TC1).
-- Menus on touch: 13-px buttons are 22-30 pt tall. Give buttons a hit area ≥ 22 game px tall when touch is active (grow the
-  click rect, not the art). Keep ≥ 4 px between neighbouring targets. Deviation: upgrade "-"/"+" 16x13 with a 2 px gap
-  (TT1, TT2).
-- Touches in the letterbox bars still reach the controls (x < 0 counts as joystick, x > 320 as JUMP). Keep it that way.
+- Every menu button is a `TouchButton`. With a touchscreen (or `--touch`) its **hit area** is its drawn rect grown by
+  `UIKit.HIT_PAD` (5) on every side, art unchanged: a 13 px button is hit over 23 px. The grown margin is shared by
+  distance: a point belongs to the nearest touch target (`UIKit.TOUCH_GROUP`: buttons, plus checkboxes, sliders and text
+  boxes registered with `UIKit.add_touch_target`), never to a button when it lies inside another target's own rect, so
+  hit areas never overlap. Controls kept out of focus behind an open panel don't compete. Without touch the hit area is
+  exactly the drawn rect.
+- Lone buttons and rows (BACK, tabs, result rows, hub dialogs, the upgrade - / + with 4 px between them) reach 23 px both
+  ways. Stacks with a 3 px gap (pause, restart) get their pitch: 16-20 px (32-40 pt). Wider pitches for touch would be a
+  layout change (see phase3-ui.md, remaining issues).
+- Mirrored controls share a centre line: joystick home (40, 140), JUMP (280, 140).
+- Touches in the letterbox bars still reach the controls (x < 0 counts as the joystick, x > 320 as JUMP). Keep it.
 
 ## 8. Safe areas
 
 - The web shell uses `viewport-fit=cover`, and there is no safe-area code. Integer pillarboxing keeps the content clear of
   notches and punch-hole cameras on 19.5:9 / 20:9 phones (210-306 px bars).
-- Exactly-16:9 phones have no bars. Keep important HUD content ≥ 4 game px (≥ 24 px physical) from corners. The rounded
-  corners will still clip the HUD pods' outer corners there (AR3).
-- iPhone landscape: the bottom bar (45 px) is narrower than the home-indicator zone (63 px). Keep interactive content at
-  y ≤ 176 (AR2).
+- Exactly-16:9 phones have no bars. Keep important HUD content ≥ 3-4 game px (18-24 px physical) from corners; large
+  rounded corners still clip the HUD pods' outer corners there.
+- iPhone landscape: the bottom bar (45 px) is narrower than the home-indicator zone (63 px). Keep interactive art at
+  y ≤ 176. The touch hit areas of bottom-row buttons now reach y 181 (into the bar). Both are Phase 5 items.
 
 ## 9. Motion
 
