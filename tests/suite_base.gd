@@ -24,6 +24,10 @@ func _check(ok: bool, label: String) -> void:
 func _result() -> void:
 	for path in _temp_files:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# DevLog's per-process log (dev_attempts_<pid>.log) - only this process's own, never the owner's dev_attempts.log.
+	# A crash or a kill never gets here: tools/test_all.sh removes those files per job and sweeps dead pids at the start.
+	if DevLog.path_override == "":
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://dev_attempts_%d.log" % OS.get_process_id()))
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 
 
@@ -92,18 +96,29 @@ func _busy_work() -> float:
 	return (Time.get_ticks_usec() - t) / 1000.0
 
 
-## A wall-clock budget check that survives a busy machine. `measure` does the work and returns its milliseconds;
-## up to `tries` times it is run right after _busy_work(), and a run passes when its time, divided by how much slower
-## than idle the machine just was (never below 1), is within `budget_ms`. A real slowdown of the code under test on an
-## idle machine still fails; load from other test jobs (a parallel test_all.sh, even two of them) does not.
+## The most the busy-machine correction of _check_budget may divide by. Every caller's budget is the idle time x ~1.6, so a
+## code slowdown of 2x is caught whenever the probes see the machine less than 1.25x slower than idle (2 / 1.25 = 1.6) - a
+## quiet machine, `test_all.sh -j 1`, a suite run alone. Under heavy parallel load (probe 1.25x and up) only a slowdown beyond
+## 1.6 x the probe (capped at 2.0, so about 3.2x idle) fails, because there the probe cannot tell code from load.
+const BUDGET_LOAD_CAP := 2.0
+
+
+## A wall-clock budget check that survives a busy machine but still catches a real 2x slowdown. `measure` does the work
+## and returns its milliseconds. Each try runs _busy_work() BEFORE and AFTER it and takes the smaller (the less preempted)
+## of the two as how much slower than idle the machine is (clamped to 1 .. BUDGET_LOAD_CAP); the try's time is divided by
+## that. Passes when the best of up to `tries` tries is within `budget_ms`.
 func _check_budget(label: String, budget_ms: float, measure: Callable, tries := 5) -> void:
 	var best := INF
+	var factor := 1.0
 	for i in tries:
-		var slowdown := maxf(1.0, _busy_work() / IDLE_BUSY_MS)
-		best = minf(best, float(measure.call()) / slowdown)
+		var before := _busy_work()
+		var took := float(measure.call())
+		var after := _busy_work()
+		factor = clampf(minf(before, after) / IDLE_BUSY_MS, 1.0, BUDGET_LOAD_CAP)
+		best = minf(best, took / factor)
 		if best <= budget_ms:
 			break
-	_check(best <= budget_ms, "%s (best of up to %d runs, load-adjusted: %.1f ms, budget %.0f ms)" % [label, tries, best, budget_ms])
+	_check(best <= budget_ms, "%s (best of up to %d runs, load-adjusted by <= %.1fx: %.1f ms, budget %.0f ms)" % [label, tries, BUDGET_LOAD_CAP, best, budget_ms])
 
 
 ## Touch events arrive in window pixels; convert from the game's 320x180 view.

@@ -387,6 +387,8 @@ func _initialize() -> void:
 		for lv in range(1, Levels.COUNT + 1):
 			Levels._par_cache.erase(lv)
 			Levels._par_cache.erase(lv + 100)
+			Levels._maze_cache.erase(lv)  # cold every try: a retry must not measure a warm cache (0.1 ms)
+			Levels._maze_cache.erase(lv + 100)
 			Levels.level_par(lv)
 			Levels.level_par(lv, true)
 		return (Time.get_ticks_usec() - par_start) / 1000.0)

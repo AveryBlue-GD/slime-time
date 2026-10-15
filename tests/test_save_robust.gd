@@ -60,10 +60,10 @@ func _initialize() -> void:
 	for path in [real, old_real]:
 		watched[path] = FileAccess.get_md5(path) if FileAccess.file_exists(path) else ""
 	var t0 := Time.get_ticks_msec()
-	var stale := DirAccess.open("user://")  # leftovers of a killed earlier run
+	var stale := DirAccess.open("user://")  # leftovers of a killed earlier run - never a live run's files (qa_robust_<pid>_...)
 	if stale:
 		for f in stale.get_files():
-			if f.begins_with("qa_robust_"):
+			if f.begins_with("qa_robust_") and not _pid_alive(int(f.trim_prefix("qa_robust_").get_slice("_", 0))):
 				DirAccess.remove_absolute(ProjectSettings.globalize_path("user://" + f))
 
 	full = _busy()
@@ -972,6 +972,16 @@ func _insane(p: Node) -> String:
 			bad.append("save -> code -> save is not stable: " + _first_diff(_canon(p._write()), _canon(q._write())))
 		q.free()
 	return "; ".join(bad)
+
+
+## Whether process `pid` exists (kill -0; OS.is_process_running only knows our own children and logs an engine error for
+## any other pid). Without a `kill` command (Windows) every other pid counts as alive: nothing of other runs is deleted.
+func _pid_alive(pid: int) -> bool:
+	if pid == OS.get_process_id():
+		return true
+	if OS.get_name() not in ["macOS", "Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]:
+		return true
+	return OS.execute("kill", ["-0", str(pid)], []) == 0
 
 
 func _new(tag: String) -> Node:

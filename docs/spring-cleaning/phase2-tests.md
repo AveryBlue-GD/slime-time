@@ -229,3 +229,20 @@ test/demo code. For Phase 4: optional, free the `Sfx` players and `AudioServer` 
   would make building mazes on worker threads unsafe without changes.
 - `Progress`'s per-process `dev_attempts_<pid>.log` files pile up in the user dir (45 left over from test runs); `DevLog._remove_stale` only deletes those older
   than 6 h. Harmless, a nicety to clean up on start.
+
+## QA follow-up (review `qa-phase2-review.md`, 6 findings)
+
+1. **Timeout**: `tools/job_timeout.pl` (perl, runs on macOS bash 3.2) runs each job in its own process group and kills that group after
+   `JOB_TIMEOUT` seconds (default 600). The job is reported `<label> TIMEOUT:`, the run exits 1, and `test_all.sh` checks that results == jobs. Proof: a fake
+   Godot that sleeps (plus a child `sleep`) with `JOB_TIMEOUT=5` gave `test_coins TIMEOUT:`, `failed: 1`, exit 1 after 5 s and no process left behind.
+   SIGINT/SIGTERM keeps `$work` and prints the jobs without a result and the log directory.
+2. **test_save_robust**: the start-up sweep only removes `qa_robust_<pid>_*` of pids that `kill -0` says are dead (own pid and Windows: kept). Two overlapping
+   runs (6 s apart): both `failed: 0`.
+3. **`_check_budget`**: probe before and after, smaller probe, correction capped at 2.0 (a cap of 1.2 caught 2x always but failed under the 6-job run, where the probe reads 2x+), budgets 12 / 15 / 100 ms (idle 7.5 / 9.5 / ~65). test_tickets now
+   erases `Levels._maze_cache` per try (before, retries timed a warm cache at 0.1 ms and could not fail). Mutation in a scratch copy, doing each maze build
+   twice: floor 25 ms vs 12 and hard 28 ms vs 15 FAIL, par 220 ms vs 100 FAIL; unmutated all pass. Guarantee (README): 2x is caught when the machine is quiet (probe < 1.25x); under heavy parallel load only ~3x+.
+4. **nav_fuzz shards**: the last walk shard is `--nav-walk=9-` (open-ended).
+5. **Mistyped names**: `test_all.sh test_phase1 test_typo` prints `no such suite: test_typo`, exit 1.
+6. **Cleanup**: `suite_base._result()` deletes the process's `dev_attempts_<pid>.log`; each job also removes its own pid's files after Godot exits (covers crashes
+   and timeouts); a start-of-run sweep removes files of dead pids (`dev_attempts_<pid>.log`, `<suite>_<pid>*.cfg`, `qa_robust_<pid>_*`) and prints the count
+   (first run: 169 swept; live-pid files and `dev_attempts.log` kept, checked). The nav_fuzz web child's own log is left for the next sweep.

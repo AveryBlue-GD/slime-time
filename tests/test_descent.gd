@@ -90,7 +90,7 @@ func _tables() -> void:
 	for c in drops:
 		good = good and c != maze.start and c != maze.goal and depths.has(c)
 	_check(good, "2 goo drops per floor, at dead ends (never the start or the exit): %s" % [drops])
-	_check_budget("a floor builds fast (average over 20 floors at MORE SLIME 7; web budget ~20 ms native-equivalent)", 40.0, func() -> float:
+	_check_budget("a floor builds fast (average over 20 floors at MORE SLIME 7; web budget ~20 ms native-equivalent)", 12.0, func() -> float:
 		var t0 := Time.get_ticks_usec()
 		for f in range(1, 21):
 			MazeGenerator.generate_random(Descent.floor_config(SEED + 1, f, 7))

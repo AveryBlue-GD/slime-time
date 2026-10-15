@@ -15,7 +15,7 @@ extends SceneTree
 ## Extra: `-- --nav-steps=N` (steps per walk), `-- --nav-seed=N`, `-- --nav-strict` (known bugs fail too),
 ##        `-- --nav-only=walks|scripted`, `-- --nav-variant=web|touch`,
 ##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them),
-##        `-- --nav-walk=I` or `--nav-walk=A-B` (only those walk indices), `-- --nav-no-web-child` (skip the --web-ui
+##        `-- --nav-walk=I` or `--nav-walk=A-B` (only those walk indices) or `--nav-walk=A-` (A and every later one), `-- --nav-no-web-child` (skip the --web-ui
 ##        child process; tools/test_all.sh runs that ring as its own parallel job, see its SHARDS).
 ## Area walks: eleven more walks (the last: the level select's HEAT panel and heat runs) that start inside one area and keep steering back into it (`_area_op`,
 ## about a third of the inputs): the map table + map view (with its PAPER button), the SETTINGS panels,
@@ -40,8 +40,10 @@ var strict := false
 var only := ""
 var variant := ""
 var only_walk := -1
-## Last walk index of a `--nav-walk=A-B` range (only_walk = A); -1 when a single walk or all walks are selected.
+## Last walk index of a `--nav-walk=A-B` range (only_walk = A); -1 when a single walk or all walks are selected
+## or the range is open-ended (`--nav-walk=A-`: every walk from A on, so tools/test_all.sh's last shard never misses a new walk).
 var only_walk_to := -1
+var open_ended := false
 var web_child := true
 var done := false
 var rng := RandomNumberGenerator.new()
@@ -74,7 +76,8 @@ func _initialize() -> void:
 		elif arg.begins_with("--nav-walk="):
 			var which := arg.get_slice("=", 1)
 			only_walk = int(which.get_slice("-", 0))
-			only_walk_to = int(which.get_slice("-", 1)) if "-" in which else -1
+			only_walk_to = int(which.get_slice("-", 1)) if "-" in which and which.get_slice("-", 1) != "" else -1
+			open_ended = which.ends_with("-")
 		elif arg == "--nav-no-web-child":
 			web_child = false
 		elif arg.begins_with("--nav-area-steps="):
@@ -1215,6 +1218,8 @@ func _walks() -> void:
 func _walk_selected(i: int) -> bool:
 	if only_walk < 0:
 		return true
+	if open_ended:
+		return i >= only_walk
 	return i >= only_walk and i <= (only_walk_to if only_walk_to >= 0 else only_walk)
 
 

@@ -87,7 +87,7 @@ func _check_mazes() -> void:
 		var walk: float = route_tiles * Levels.TILE / Levels.PAR_SPEED
 		_check(is_equal_approx(Levels.level_par(level, true), Levels.par_for_path(route_tiles)) and walk < Levels.level_par(level, true),
 			"hard %2d: par %.1f s = new route / base speed x 1.35 + 1 (walking it takes %.1f s)" % [level, Levels.level_par(level, true), walk])
-	_check_budget("hard maze builds (headless): the slowest of 3 builds per level", 30.0, func() -> float:
+	_check_budget("hard maze builds (headless): the slowest of 3 builds per level", 15.0, func() -> float:
 		var worst := 0.0
 		for level in range(1, Levels.COUNT + 1):
 			for n in 3:
