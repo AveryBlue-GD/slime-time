@@ -314,6 +314,12 @@ func _ui_upgrades() -> void:
 	rows.wind.plus.pressed.emit()  # ...and a quick extra tap on +
 	screen.confirm_buy.pressed.emit()
 	_check(progress.workshop_level("wind") == 1 and not screen.confirm.visible and progress.tickets == 5, "a double tap buys exactly once (guard 0.3 s)")
+	for i in 12:  # 0.2 s of engine time: still guarded
+		await process_frame
+	var still_guarded: bool = screen._buy_guarded
+	for i in 12:  # 0.4 s: the guard is over
+		await process_frame
+	_check(still_guarded and not screen._buy_guarded, "the guard lasts 0.3 s of engine time (fixed-fps runs play out the same on any machine)")
 	_check(progress.workshop_level("wind") == 1 and progress.tickets == 5 and screen.coin_label.text == "5" and rows.wind.cost.text == "30"
 		and rows.wind.plus.disabled and rows.charge.plus.disabled, "pressing + buys a level; the rows update (5 left: nothing else affordable)")
 	var boxes: Array[Rect2] = []

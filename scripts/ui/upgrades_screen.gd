@@ -42,8 +42,9 @@ const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK
 ## The ABILITIES page's hint: its keys (read from the bindings) and where they work (randomizer mazes and Descent only).
 const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES + DESCENT"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
-## Presses of a workshop buy closer together than this are ignored (a double tap).
-const BUY_GUARD_MSEC := 300
+## Presses of a buy closer together than this are ignored (a double tap). Timed on the engine's
+## clock (a SceneTreeTimer), so it plays out the same in fixed-fps runs on a loaded machine.
+const BUY_GUARD_TIME := 0.3
 const PREVIEW_TIME := 1.0
 const TICKETS_LOCKED := "EARN TICKETS IN THE RANDOMIZER FIRST"
 ## The tab the next opening shows ("coins", "abilities" or, with the workshop on, "tickets"), for that one opening (demos and tests set
@@ -80,7 +81,8 @@ var _confirm_id := ""
 ## What the confirm buys: "ability" or "workshop".
 var _confirm_kind := ""
 var _confirm_lock := {}
-var _last_buy_msec := -100000
+## True for BUY_GUARD_TIME s after a buy.
+var _buy_guarded := false
 ## The dim tag on the MORE SLIME row (shown until it is maxed) and the 1 s BRIGHTNESS light-ring
 ## preview (null when not showing).
 var recommended: Label
@@ -315,7 +317,7 @@ func _change(id: String, up: bool) -> void:
 
 ## The row's + opens the confirm (nothing is spent yet).
 func _buy_workshop(id: String) -> void:
-	if confirm.visible or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+	if confirm.visible or _buy_guarded:
 		return
 	if not Progress.can_buy_workshop(id):
 		return
@@ -333,7 +335,7 @@ func _buy_workshop(id: String) -> void:
 
 ## An ABILITIES row's + opens the confirm (nothing is spent yet): BUY SLIME RIFLE 2? / price.
 func _buy_ability(id: String) -> void:
-	if confirm.visible or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+	if confirm.visible or _buy_guarded:
 		return
 	if not Progress.can_buy_ability(id):
 		return
@@ -348,12 +350,17 @@ func _buy_ability(id: String) -> void:
 	confirm_back.grab_focus()
 
 
+func _end_buy_guard() -> void:
+	_buy_guarded = false
+
+
 func _buy_confirmed() -> void:
 	var id := _confirm_id
 	var kind := _confirm_kind
-	if id == "" or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+	if id == "" or _buy_guarded:
 		return
-	_last_buy_msec = Time.get_ticks_msec()
+	_buy_guarded = true
+	get_tree().create_timer(BUY_GUARD_TIME, true, false, true).timeout.connect(_end_buy_guard)
 	_close_confirm(false)
 	if kind == "ability":
 		if Progress.buy_ability(id):
