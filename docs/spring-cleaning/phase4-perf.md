@@ -268,3 +268,74 @@ No script errors in any run; RSS levels off (242 -> 256 MB over the 30 minutes, 
 - The rainbow skins screen keeps about 1.2 ms over a plain skin (section 3).
 - Boot is 0.37 s longer on the M3 (section 6); on a phone maybe 1-2 s more on the loading bar, against the same time taken
   off the first hub, level and story changes.
+
+## QA follow-up (2026-10-16)
+
+The four findings of [qa-phase4-review.md](qa-phase4-review.md), plus the promo frame from the phase 5 notes. Each fix has a
+regression check that fails on the code before it. Measured from scratch copies (`git archive`) with a fake `HOME`.
+
+| # | Finding | Fix | Check (fails before the fix) |
+|---|---|---|---|
+| 1 | Rainbow skin: the coin board's gold N/N counts showed the stale rainbow text color | `SkinText._label_shown` drops a due color instead of applying it when the label has left the skin-text group (the hub also drops it when it takes a count out). The hub's counts are the only labels that ever leave the group. | `test_hub`: rainbow hub, rainbow flows while the board is hidden, then every count is gold |
+| 2 | One hitch turned interpolation off and on again, and each switch snapped the camera | See below | `test_interpolation`: hitches, slowdowns, 60 Hz jitter, camera continuity |
+| 3 | First launch: no preload before the hand-off to the trailer (section 6 was wrong) | The booted title of a fresh save runs the preload before it changes to the story intro. These are the same plain loads as on every other boot, still under the boot screen. Section 6 is now true for every boot. | `test_story`: main, hub and story are loaded at the hand-off (before: none) |
+| 4 | `MazeGenerator.shortest_path` with an unreachable target | Returns `[]` when the target is not reached or a cell is outside the maze. Callers already treat an empty route as none. `AutoplayPlanner.fastest_run` clamps its tile count. | `test_phase4`: walled-in and outside cells give `[]`. Before the fix: a made-up path through cell -1, then an endless loop. |
+| - | Promo `screenshot-6-new-record` at frame 1050 caught the run before the win | Moved to frame 1150 in `make_promo.sh` and `make_promo.ps1`. The win lands at about frame 1084: the banner shows at once and the buttons 0.6 s later. | A full `make_promo.sh` render to a temp dir shows the banner, the result panel and the three buttons (not committed) |
+
+**1, pixels.** Rainbow hub, `--story-complete --skin=rainbow`, frames 1-40, with the coin board opened at frame 12. Against
+phase 3 (`9f965f0`):
+- Before the fix: 546 px differ in each of frames 12-40, all in the count column.
+- After the fix: **0 px in all 40 frames**.
+
+**2, the switch** (`transition.gd`, `game.gd`):
+- **Time-based.** The estimate must stay past the threshold, without a break, for `INTERPOLATION_SWITCH_HOLD` = 0.5 s before
+  the switch flips. The thresholds are unchanged: on above 72 fps, off below 66.
+- **Hitches.** A frame over 50 ms (`HITCH_FRAME`) counts as a hitch and is left out of the estimate. Only a run of 3 such
+  frames in a row counts, because then the game really runs that slowly.
+- **Camera carried across.** Turning on seeds the pixel camera's ease from Camera2D's eased view (its screen center less the
+  shake offset). Turning off no longer calls `reset_smoothing()`: with smoothing off, Camera2D tracked the pixel camera's
+  position every frame, so its own ease carries on from there.
+- **At level start** the camera still starts on the slime, as before.
+
+Measured windowed: level 5 on autopilot at `--fixed-fps` 60 / 75 / 90 / 120 / 144 / 240, 7 s per run. A scratch probe feeds
+the switch a scripted frame-time sequence:
+- **hitch:** single frames of 32, 52, 90, 120 and 250 ms;
+- **slow:** 40 fps from 2.0 s to 4.5 s.
+
+"Jump" is the worst change of the slime's on-screen step on the 3 frames after a switch. "Normal" is the same measure on
+every other frame. The start-up switch on (in the first second) is left out.
+
+| Refresh | hitch, before: switches / jump | hitch, after | slow, before: switches / jump | slow, after: switches / jump (normal) |
+|---|---|---|---|---|
+| 60 Hz | 0 | 0 | 0 | 0 |
+| 75 Hz | 2 / 9.5 px | **0** | 2 / 7.9 px | **2 / 2.2 px** (2.3) |
+| 90 Hz | 8 / 14.7 px | **0** | 2 / 3.7 px | **2 / 1.7 px** (2.3) |
+| 120 Hz | 6 / 14.7 px | **0** | 2 / 4.8 px | **2 / 2.1 px** (2.3) |
+| 144 Hz | 6 / 13.1 px | **0** | 2 / 3.9 px | **2 / 2.0 px** (2.3) |
+| 240 Hz | 4 / 15.3 px | **0** | 2 / 3.6 px | **2 / 1.2 px** (2.0) |
+
+Reading the table:
+- In the slow case, the 2 switches are one off when the slowdown sets in and one on when it ends.
+- The camera's own step at those switches is 0.8-1.8 px (2.0-2.2 px normal). Before the fix it was 3.4-13.8 px.
+- At 60 Hz there are no switches in any case.
+- 99 frames at 60 Hz, the phase 4 pixel set (gameplay, menus, cutscenes, hat hops, rainbow), are **byte-identical** to the
+  commit before the fix.
+
+`test_interpolation` covers:
+- At 75 / 90 / 120 / 144 / 240 Hz:
+  - single hitches of 32-250 ms (alone and in close pairs) never switch;
+  - a 0.3 s dip to 40 fps does not switch;
+  - a lasting dip switches off once and its end switches on once;
+  - a fall to 12 fps for good switches off once.
+- At 60 Hz, 10 minutes of jitter, bursty pairs and hitches never switch.
+- In a mid-glide switch off and back on, the change in the camera's step stays within normal frames: 2.3 px vs 2.2 px. The
+  old code jumped 12.3 px.
+
+Trade-off: on a high-refresh screen, interpolation now turns on about 0.5 s after boot (on the title) instead of after a few
+frames.
+
+Gates:
+- `./tools/test_all.sh`: **76 suites, 0 failed**.
+- Web, Windows and macOS release exports build with 0 errors.
+- A local web export with a fresh save runs the trailer, then the title, then PLAY into level 1 with no console errors. This
+  is the preload-before-hand-off path.
