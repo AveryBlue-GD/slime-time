@@ -49,8 +49,15 @@ func _initialize() -> void:
 		rows[once[tile].y] = true
 		masks[once[tile].x] = true
 	_check(rows.size() >= 6 and masks.size() >= 10, "variety: %d atlas rows and %d columns in use (corner terrain, props, boulders)" % [rows.size(), masks.size()])
+	MazeTiles._fill_cache = {}  # a is laid tile by tile, b (a retry of the same maze) from the cache
+	MazeTiles._border_cache = {}
 	var a := await _spawn(3, 0)
 	var b := await _spawn(3, 0)
+	var cached_same: bool = a.wall_damage == b.wall_damage
+	for layer: String in ["floor_layer", "wall_layer", "fillet_layer", "border_layer", "bedrock_layer"]:
+		var la: TileMapLayer = a.get(layer)
+		cached_same = cached_same and not la.get_used_cells().is_empty() and la.tile_map_data == (b.get(layer) as TileMapLayer).tile_map_data
+	_check(cached_same, "a retry's tiles from the fill cache are byte for byte the first build's (every layer, wall damage)")
 	var same := true
 	for layer: String in ["border_layer", "bedrock_layer"]:
 		var la: TileMapLayer = a.get(layer)
