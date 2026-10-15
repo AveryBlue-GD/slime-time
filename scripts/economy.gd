@@ -118,7 +118,7 @@ const WIND_REFILL_TIME := 0.4
 ## attempt (refilled by every restart, new maze, next level or Descent floor). Each use costs `slime`
 ## percent of the meter (SLIME RIFLE / SLIME SPLAT are refused unless the meter holds MORE than that;
 ## SLIMAKAZE always fires and leaves the meter at 0, a dry-up on impact, when it holds that much or
-## less). On in story normal mode, the randomizer and Descent; OFF in hard mode (so in every HEAT run).
+## less). ON only in randomizer mazes and Descent (Abilities.allowed_in); OFF in every story level (normal, hard, HEAT) and in the hard-mode randomizer.
 ## Never change par, routes, u, payouts or seed codes. `abilities_force` (-1 follow the const, 0 off,
 ## 1 on) is a test hook, like `workshop_force`.
 const ABILITIES_ENABLED := true

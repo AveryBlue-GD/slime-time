@@ -6,8 +6,8 @@ extends SceneTree
 ## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
 ## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
-## their bindings), touch buttons, the HUD strip, off in hard mode / HEAT / with the flag off, on in
-## the randomizer and Descent, par and payout untouched, the TICKETS tab purchase flow (exact tickets,
+## their bindings), touch buttons, the HUD strip, OFF in every story level (normal, hard, HEAT) and hard-mode randomizer / with the flag off, ON in
+## randomizer mazes and Descent, par and payout untouched, the TICKETS tab purchase flow (exact tickets,
 ## confirm, max level, locked), saves and hostile values. Never touches the real save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_abilities.gd
 
@@ -62,7 +62,11 @@ func _state(levels: Dictionary) -> void:
 	progress.abilities = levels.duplicate()
 
 
+## `level` > 0 picks a randomizer maze (seed 9000 + level): abilities work only in randomizer mazes and
+## Descent, so the ability tests run there; `_story` plays a real story level (they are off there).
 func _spawn(level := 1, random_seed := 0) -> Node2D:
+	if level > 0 and random_seed == 0:
+		random_seed = 9000 + level
 	var game: Node2D = MAIN.instantiate()
 	if random_seed != 0:
 		progress.mode = progress.MODE_RANDOM
@@ -70,6 +74,15 @@ func _spawn(level := 1, random_seed := 0) -> Node2D:
 		game.random_seed = random_seed
 	elif level > 0:
 		game.level = level
+	root.add_child(game)
+	await physics_frame
+	await physics_frame
+	return game
+
+
+func _story(level: int) -> Node2D:
+	var game: Node2D = MAIN.instantiate()
+	game.level = level
 	root.add_child(game)
 	await physics_frame
 	await physics_frame
@@ -411,8 +424,6 @@ func _goal_game(kind: String) -> Node2D:
 		_state({kaze = 1})
 		var game: Node2D
 		match kind:
-			"story":
-				game = await _spawn(1 + n % 10)
 			"random":
 				game = await _spawn(0, 5100 + n)
 			"descent":
@@ -427,7 +438,7 @@ func _goal_game(kind: String) -> Node2D:
 ## SLIMAKAZE dashing into the chalice / ticket pays its 30% there: with <= 30% left it dries up (no
 ## win); with more it wins with 30% less (Descent carries that meter to the next floor).
 func _kaze_goal() -> void:
-	for kind: String in ["story", "random", "descent"]:
+	for kind: String in ["random", "descent"]:
 		for meter: float in [20.0, 60.0]:
 			var game := await _goal_game(kind)
 			if game == null:
@@ -456,7 +467,7 @@ func _kaze_goal() -> void:
 			if kind == "descent":
 				progress.descent_run = {}
 	# SECOND WIND still saves it (its refill lands at once, as the run ends on the goal).
-	var saved := await _goal_game("story")
+	var saved := await _goal_game("random")
 	var into := _goal_line(saved, 2)
 	_place(saved, into.from, into.dir)
 	saved.workshop = {wind = 1}
@@ -504,15 +515,12 @@ func _kaze_off_lane() -> void:
 ## for the trail map.
 func _goal_reveals() -> void:
 	for kind: String in ["rifle", "splat"]:
-		for mode: String in ["story", "random"]:
+		for mode: String in ["random"]:
 			var game: Node2D = null
 			var line := {}
 			for n in 12:
 				_state({rifle = 1, splat = 1})
-				if mode == "story":
-					game = await _spawn(1 + n % 10)
-				else:
-					game = await _spawn(0, 6100 + n)
+				game = await _spawn(0, 6100 + n)
 				line = _goal_shot(game, Abilities.splat_range(1) if kind == "splat" else 0)
 				if not line.is_empty():
 					break
@@ -567,17 +575,14 @@ func _shake_spans() -> void:
 
 
 ## One splatter rule in every mode: the maze, the impact tile and the use index; never the attempt
-## (story / Descent attempts don't count, and a randomizer restart can't re-roll it).
+## (Descent attempts don't count, and a randomizer restart can't re-roll it).
 func _splatter_rule() -> void:
-	for mode: String in ["story", "random"]:
+	for mode: String in ["random"]:
 		var shots := []
 		for attempt in [1, 4]:
 			_state({kaze = 1})
 			var game: Node2D
-			if mode == "story":
-				game = await _spawn(6)
-			else:
-				game = await _spawn(0, 4242)
+			game = await _spawn(0, 4242)
 			game.attempt = attempt
 			_aim(game, _dir_with(game, 2))
 			var before := _snapshot(game)
@@ -769,24 +774,32 @@ func _charges_left(game: Node2D) -> Dictionary:
 # ---------------------------------------------------------------- modes
 
 func _modes() -> void:
-	_state({rifle = 3})
+	_state({rifle = 3, splat = 3, kaze = 3})
+	# Story levels (normal, hard, HEAT): abilities are OFF; keys do nothing, cost nothing, no strip/buttons.
+	var game := await _story(1)
+	var par: float = game.par_time
+	await _inert(game, "story normal")
+	await _stop(game)
 	progress.hard_mode = true
 	progress.hard_cleared.assign([1])
-	var game := await _spawn(1)
-	_check(game.abilities == null and not game.hud.ability_pod.visible and game.touch_controls.abilities.is_empty(), "hard mode: no abilities")
+	game = await _story(1)
+	await _inert(game, "story hard")
 	await _stop(game)
 	progress.heat_mods = 1  # DIM
-	game = await _spawn(1)
-	_check(game.heat > 0 and game.abilities == null, "a HEAT run (hard): no abilities")
+	game = await _story(1)
+	_check(game.heat > 0, "a HEAT run is on")
+	await _inert(game, "HEAT")
 	await _stop(game)
 	progress.heat_mods = 0
-	progress.hard_mode = false
-	game = await _spawn(1)
-	var par: float = game.par_time
-	_check(game.abilities != null, "story normal: on")
+	progress.hard_mode = true
+	game = await _spawn(0, 4242)
+	_check(game.abilities == null, "hard-mode randomizer: off (hard mode plays without upgrades)")
 	await _stop(game)
+	progress.hard_mode = false
+	_check(Abilities.allowed_in(null) == false, "allowed_in(null) is false")
+	_state({rifle = 3, splat = 3, kaze = 3})
 	_state({})
-	game = await _spawn(1)
+	game = await _story(1)
 	_check(game.abilities == null and is_equal_approx(game.par_time, par), "no abilities owned: none; par is the same either way")
 	await _stop(game)
 	_state({rifle = 1})
@@ -808,6 +821,23 @@ func _modes() -> void:
 	_check(game.abilities == null and progress.ability_level("rifle") == 0 and progress.abilities.rifle == 1, "flag off: no abilities, the saved level kept")
 	await _stop(game)
 	Economy.abilities_force = -1
+
+
+## A story-level game with all three owned: no runner, no strip, no buttons; pressing 1 / 2 / 3 changes
+## nothing (no slime cost, no sound).
+func _inert(game: Node2D, label: String) -> void:
+	_check(not Abilities.allowed_in(game) and game.abilities == null and not game.hud.ability_pod.visible
+		and game.touch_controls.abilities.is_empty(), "%s: no abilities, no strip, no touch buttons" % label)
+	var meter: float = game.slime_remaining
+	var sounds := 0
+	for id in Abilities.ids():
+		Input.action_press(Abilities.action(id))
+	await _frames(3)
+	for id in Abilities.ids():
+		Input.action_release(Abilities.action(id))
+	await _frames(3)
+	_check(is_equal_approx(game.slime_remaining, meter) and game.get_children().all(func(c: Node) -> bool: return not (c is AbilityRunner)),
+		"%s: keys 1 2 3 do nothing (meter %.1f -> %.1f)" % [label, meter, game.slime_remaining])
 
 
 # ---------------------------------------------------------------- the TICKETS tab

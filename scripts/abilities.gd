@@ -19,6 +19,16 @@ extends RefCounted
 
 const TILE := 16
 
+
+## THE RULE (owner, 2026-10-15): abilities work ONLY in randomizer mazes and Descent runs, never in a
+## story level (normal, hard or HEAT). Hard-mode randomizer stays off too (hard mode is played without
+## upgrades; Descent always plays normal rules). Every ability path (runner, HUD strip, touch
+## buttons, keys) hangs off AbilityRunner.create, which asks this.
+static func allowed_in(game: Node) -> bool:
+	if game == null or game.hard_mode:
+		return false
+	return game.is_random() or game.descent
+
 const LIST := [
 	{id = "rifle", name = "SLIME RIFLE", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},
 	{id = "splat", name = "SLIME SPLAT", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},

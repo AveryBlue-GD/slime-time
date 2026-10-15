@@ -36,7 +36,7 @@ var _kaze_uses := 0
 ## The runner for `owner_game`'s run (added as its child), or null when this run has no abilities.
 static func create(owner_game: Node2D) -> AbilityRunner:
 	var progress: Node = owner_game.progress
-	if progress == null or owner_game.hard_mode or not Economy.abilities_on():
+	if progress == null or not Abilities.allowed_in(owner_game) or not Economy.abilities_on():
 		return null
 	var owned := {}
 	for id in Abilities.ids():

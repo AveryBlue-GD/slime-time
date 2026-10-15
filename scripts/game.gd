@@ -301,7 +301,7 @@ var _dev_pod_text := ""  # DevLog only
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
-## ABILITIES v1 (AbilityRunner): the ticket abilities on this run; null in hard mode / without any.
+## ABILITIES v1 (AbilityRunner): the ticket abilities on this run; null outside randomizer mazes and Descent / without any.
 var abilities: AbilityRunner
 ## The seed this maze was built from (config.seed; the SLIMAKAZE splatter is seeded from it).
 var maze_seed := 0

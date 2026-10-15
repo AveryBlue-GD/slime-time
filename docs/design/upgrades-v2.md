@@ -74,8 +74,8 @@ Decisions:
   Usable only while gliding or standing (not charging, airborne, stunned, dashing; not after the run ends).
 - **Charges** = exactly 1 per attempt at every level (owner, 2026-10-15: "a little too powerful"); the level tiers only make the ability STRONGER (range / radius, same numbers as before). A second press does nothing and costs nothing. Refilled by every restart, NEW MAZE, next level and Descent floor.
 - **Prices:** first ability (RIFLE 15) ~ one day's paid randomizer wins (~16 in ~18 min, A.2); all three maxed 343.
-- **Modes:** story normal, the randomizer and Descent (per floor; no boon changes them; GLASS / RUBBER don't touch the
-  SLIMAKAZE cost); OFF in hard mode and so in every HEAT run (like the workshop). Assisted / dev rules unchanged (dev
+- **Modes (owner, 2026-10-15: "randomizer and Descent only"):** ON only in randomizer mazes and Descent (per floor; no boon changes them; GLASS / RUBBER don't touch the
+  SLIMAKAZE cost); OFF in every story level (normal, hard, HEAT: no HUD strip, no touch buttons, keys 1/2/3 do nothing, no tutorial hint) and in the hard-mode randomizer (hard mode plays without upgrades, as before). One rule: `Abilities.allowed_in(game)`. The TICKETS hint reads KEYS 1 2 3 - RANDOM MAZES + DESCENT. Assisted / dev rules unchanged (dev
   mode buys free; F2 NO DRAIN also skips ability costs). The autoplay bot never uses them.
 - **Fairness:** par stays base-speed based and abilities don't move it, the route, u, seed codes or the randomizer payout
   (a win pays as before); medals and records can be earned with them (they are a paid utility, like SPEED). Their reveals

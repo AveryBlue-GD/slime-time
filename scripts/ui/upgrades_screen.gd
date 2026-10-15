@@ -34,8 +34,8 @@ const BAR_HEIGHT := 6
 const PIP_GAP := 1
 const PIPS_RIGHT := 222
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
-## The ABILITIES page's hint: its keys (read from the bindings) and where they work.
-const ABILITIES_HINT := "USE IN A LEVEL: %s %s %s - NOT IN HARD MODE"
+## The ABILITIES page's hint: its keys (read from the bindings) and where they work (randomizer mazes and Descent only).
+const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES + DESCENT"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
 ## Presses of a workshop buy closer together than this are ignored (a double tap).
 const BUY_GUARD_MSEC := 300
