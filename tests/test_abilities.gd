@@ -12,6 +12,8 @@ extends SceneTree
 
 const MAIN := preload("res://scenes/main.tscn")
 const TILE := 16
+## The gap the touch layout must keep between an ability's hit area and JUMP's real catch zone (px).
+const DEAD_RING := 8.0
 
 var failures := 0
 var progress: Node
@@ -27,6 +29,11 @@ func _initialize() -> void:
 	await _splat()
 	await _kaze()
 	await _kaze_kill_and_refuse()
+	await _kaze_goal()
+	await _kaze_off_lane()
+	await _goal_reveals()
+	await _shake_spans()
+	await _splatter_rule()
 	await _charges()
 	await _inputs()
 	await _touch()
@@ -244,7 +251,7 @@ func _kaze() -> void:
 			"...to the last floor tile before the wall %s, splatted (stunned)" % [stop])
 		_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.kaze.slime),
 			"...costing %.0f%% of the meter (%.1f -> %.1f)" % [Economy.ABILITIES.kaze.slime, meter, game.slime_remaining])
-		var blobs := Abilities.splatter(game.maze, impact, Abilities.splatter_seed(game.maze_seed, game.attempt, impact, 0))
+		var blobs := Abilities.splatter(game.maze, impact, Abilities.splatter_seed(game.maze_seed, impact, 0))
 		var after := _snapshot(game)
 		var all_lit := true
 		var in_zone := true
@@ -274,7 +281,7 @@ func _kaze() -> void:
 		_check(stray.is_empty(), "nothing outside the dash lane, the splatter and their walls changes (stray %s)" % [stray])
 		results.append(after)
 		await _stop(game)
-	_check(results[0] == results[1], "the same maze, attempt and impact splatter the same tiles (deterministic)")
+	_check(results[0] == results[1], "the same maze, impact and use splatter the same tiles (deterministic)")
 	var maze: Dictionary = Levels.story_maze(6, false)
 	var a := Abilities.splatter(maze, Vector2i(5, 5), 77)
 	_check(a == Abilities.splatter(maze, Vector2i(5, 5), 77) and a != Abilities.splatter(maze, Vector2i(5, 5), 78) or a.size() <= 1,
@@ -302,6 +309,194 @@ func _kaze_kill_and_refuse() -> void:
 				"a wall right ahead: SLIMAKAZE doesn't fire (charge and slime kept)")
 			break
 	await _stop(game)
+
+
+## A floor tile `n` tiles back from the goal along a straight corridor into it, and the direction
+## from there to the goal (n as large as the corridor allows, up to `most`; {} if none of >= `least`).
+func _goal_line(game: Node2D, least: int, most := 4) -> Dictionary:
+	var goal := Vector2i((game.goal.position / TILE).floor())
+	var best := {}
+	for d: Vector2i in MazeGenerator.DIRS:
+		var n := 0
+		while n < most and not game.is_wall_tile(goal - d * (n + 1)):
+			n += 1
+		if n >= least and (best.is_empty() or n > best.n):
+			best = {from = goal - d * n, dir = d, n = n, goal = goal}
+	return best
+
+
+## Puts the slime (still, on its lane) on `tile`, facing `dir`.
+func _place(game: Node2D, tile: Vector2i, dir: Vector2i) -> void:
+	game.slime.position = (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
+	game.slime.velocity = Vector2.ZERO
+	game.last_slime_pos = game.slime.position
+	_aim(game, dir)
+
+
+## A game (story level / randomizer seed / Descent) with SLIMAKAZE and a corridor of >= 2 tiles
+## into its goal; null if none of the candidates has one.
+func _goal_game(kind: String) -> Node2D:
+	for n in 12:
+		_state({kaze = 1})
+		var game: Node2D
+		match kind:
+			"story":
+				game = await _spawn(1 + n % 10)
+			"random":
+				game = await _spawn(0, 5100 + n)
+			"descent":
+				progress.start_descent(880 + n)
+				game = await _spawn(0)
+		if not _goal_line(game, 2).is_empty():
+			return game
+		await _stop(game)
+	return null
+
+
+## SLIMAKAZE dashing into the chalice / ticket pays its 30% there: with <= 30% left it dries up (no
+## win); with more it wins with 30% less (Descent carries that meter to the next floor).
+func _kaze_goal() -> void:
+	for kind: String in ["story", "random", "descent"]:
+		for meter: float in [20.0, 60.0]:
+			var game := await _goal_game(kind)
+			if game == null:
+				_check(false, "%s: a goal with a 2-tile corridor into it" % kind)
+				continue
+			var line := _goal_line(game, 2)
+			_place(game, line.from, line.dir)
+			game.slime_remaining = meter
+			await _frames(1)
+			var fired: bool = game.abilities.use("kaze")
+			for i in 60:
+				if game.finished:
+					break
+				await physics_frame
+			var want := maxf(meter - Economy.ABILITIES.kaze.slime, 0.0)
+			if meter <= Economy.ABILITIES.kaze.slime:
+				_check(fired and game.finished and not game.won and game.slime_remaining == 0.0,
+					"%s: SLIMAKAZE into the goal with %.0f%% left pays 30%% there and dries up (finished %s, won %s, %.1f%%)" % [kind, meter, game.finished, game.won, game.slime_remaining])
+			else:
+				_check(fired and game.won and is_equal_approx(game.slime_remaining, want),
+					"%s: SLIMAKAZE into the goal with %.0f%% left wins with %.0f%% (won %s, %.1f%%)" % [kind, meter, want, game.won, game.slime_remaining])
+				if kind == "descent":
+					_check(is_equal_approx(float(progress.descent_run.meter), want), "descent: the cleared floor carries %.0f%% (not the uncharged %.0f%%)" % [want, meter])
+			_check(not game.abilities.dashing and game.slime.state != Slime.State.DASH, "%s: the dash is over (no smear painting on)" % kind)
+			await _stop(game)
+			if kind == "descent":
+				progress.descent_run = {}
+	# SECOND WIND still saves it (its refill lands at once, as the run ends on the goal).
+	var saved := await _goal_game("story")
+	var into := _goal_line(saved, 2)
+	_place(saved, into.from, into.dir)
+	saved.workshop = {wind = 1}
+	saved.wind_state = "ready"
+	saved.slime_remaining = 20.0
+	saved.abilities.use("kaze")
+	for i in 60:
+		if saved.finished:
+			break
+		await physics_frame
+	_check(saved.won and saved.slime_remaining > 0.0 and saved.wind_state == "used",
+		"SLIMAKAZE emptying the meter on the goal with SECOND WIND ready: the wind saves it and it wins (%.1f%%)" % saved.slime_remaining)
+	await _stop(saved)
+
+
+## SLIMAKAZE from off the lane: it first slides sideways onto the lane, then dashes straight along it
+## (never moving ahead while off-lane, where the body would clip a wall corner).
+func _kaze_off_lane() -> void:
+	_state({kaze = 1})
+	var game := await _spawn(6)
+	var dir := _dir_with(game, 2)
+	var start := _start_tile(game)
+	var lane := (Vector2(start) + Vector2(0.5, 0.5)) * TILE
+	var side := Vector2(dir).orthogonal()
+	game.slime.position = lane + side * 6.0
+	game.slime.velocity = Vector2.ZERO
+	_aim(game, dir)
+	var fired: bool = game.abilities.use("kaze")
+	var bad := []
+	for i in 30:
+		await physics_frame
+		var p: Vector2 = game.slime.position
+		var off := absf((p - lane).dot(side))
+		var ahead := (p - lane).dot(Vector2(dir))
+		if off > 0.01 and ahead > 0.01:
+			bad.append(p)
+		if game.slime.state != Slime.State.DASH:
+			break
+	_check(fired and bad.is_empty() and game.slime.state == Slime.State.STUNNED,
+		"SLIMAKAZE 6 px off-lane: sideways onto the lane first, then straight ahead (off-lane and moved ahead at %s)" % [bad])
+	await _stop(game)
+
+
+## Ability reveals that light the goal's tile show the chalice / ticket (as seeing it does) and mark it
+## for the trail map.
+func _goal_reveals() -> void:
+	for kind: String in ["rifle", "splat"]:
+		for mode: String in ["story", "random"]:
+			var game: Node2D = null
+			var line := {}
+			for n in 12:
+				_state({rifle = 1, splat = 1})
+				if mode == "story":
+					game = await _spawn(1 + n % 10)
+				else:
+					game = await _spawn(0, 6100 + n)
+				line = _goal_line(game, 2)
+				if not line.is_empty() and (kind == "rifle" or line.n <= Economy.SPLAT_RANGE):
+					break
+				await _stop(game)
+				game = null
+			if game == null:
+				_check(false, "%s: a goal with a corridor into it" % mode)
+				continue
+			_place(game, line.from, line.dir)
+			game.goal.visible = false
+			game.survey_goal = false
+			var far: bool = game.slime.position.distance_to(game.goal.position) > game.goal_reveal_distance
+			game.abilities.use(kind)
+			game.abilities.flush()
+			_check(far and game.goal.visible and game.survey_goal and not game.finished,
+				"%s %s: a reveal over the goal's tile shows it and marks it seen (visible %s, survey %s)" % [mode, kind, game.goal.visible, game.survey_goal])
+			await _stop(game)
+
+
+## Every shake restarts the fade over its own span: a landing or bump right after a long ability shake
+## fades over its own time (not the ability's).
+func _shake_spans() -> void:
+	_state({kaze = 1})
+	var game := await _spawn(4)
+	var shake_time: float = Main().SHAKE_TIME
+	game.shake(Economy.KAZE_SHAKE, Economy.KAZE_SHAKE_TIME)
+	game._on_jump_landed(Slime.jump_distance_for(100.0), true, Vector2.LEFT)
+	_check(is_equal_approx(game.shake_span, shake_time) and is_equal_approx(game.shake_left, shake_time),
+		"a wall landing after an ability shake fades over SHAKE_TIME (span %.2f)" % game.shake_span)
+	game.shake(Economy.KAZE_SHAKE, Economy.KAZE_SHAKE_TIME)
+	game._on_bounced(Vector2.LEFT, 200.0)
+	_check(is_equal_approx(game.shake_span, shake_time * 0.6), "a ricochet after an ability shake fades over its own time (span %.2f)" % game.shake_span)
+	await _stop(game)
+
+
+## One splatter rule in every mode: the maze, the impact tile and the use index; never the attempt
+## (story / Descent attempts don't count, and a randomizer restart can't re-roll it).
+func _splatter_rule() -> void:
+	for mode: String in ["story", "random"]:
+		var shots := []
+		for attempt in [1, 4]:
+			_state({kaze = 1})
+			var game: Node2D
+			if mode == "story":
+				game = await _spawn(6)
+			else:
+				game = await _spawn(0, 4242)
+			game.attempt = attempt
+			_aim(game, _dir_with(game, 2))
+			var before := _snapshot(game)
+			game.abilities.use("kaze")
+			game.abilities.flush()
+			shots.append(_changed(before, _snapshot(game)))
+			await _stop(game)
+		_check(shots[0] == shots[1] and not shots[0].is_empty(), "%s: attempt 1 and attempt 4 splatter the same tiles" % mode)
 
 
 # ---------------------------------------------------------------- charges
@@ -372,19 +567,92 @@ func _touch() -> void:
 	var game := await _spawn(4)
 	_aim(game, _dir_with(game, 1))
 	var tc: TouchControls = game.touch_controls
-	_check(tc.abilities.size() == 2 and tc.ability_at(TouchControls.ABILITY_SLOTS[0]) == 0 and tc.ability_at(TouchControls.ABILITY_SLOTS[1]) == 1
-		and tc.ability_at(TouchControls.ABILITY_SLOTS[2]) == -1, "touch: a button per owned ability, in order")
-	var jump_gap := TouchControls.ABILITY_SLOTS.all(func(p: Vector2) -> bool:
-		return p.distance_to(TouchControls.JUMP_CENTER) > TouchControls.JUMP_RADIUS + TouchControls.ABILITY_RADIUS and p.x > 160.0)
-	_check(jump_gap, "the buttons sit on the right half, clear of JUMP")
-	tc._touch_down(3, TouchControls.ABILITY_SLOTS[0])
+	var center := {}
+	for i in tc.abilities.size():
+		center[tc.abilities[i].id] = _button_center(tc, i)
+	_check(tc.abilities.size() == 2 and center.size() == 2, "touch: a button per owned ability")
+	# JUMP's REAL catch area, probed: every touch the controls turn into a JUMP press (the letterbox
+	# past the screen's edges too), and every touch that lands on an ability button.
+	var jump_pts: Array[Vector2] = []
+	var button_pts: Array[Vector2] = []
+	for y in range(-10, 191, 2):
+		for x in range(150, 341, 2):
+			var p := Vector2(x, y)
+			if tc.ability_at(p) >= 0:
+				button_pts.append(p)
+			_tap(tc, 7, p, true)
+			if Input.is_action_pressed("jump"):
+				jump_pts.append(p)
+			_tap(tc, 7, Vector2(-60, -60), false)  # (lifted far away: an ability doesn't fire)
+	var gap := INF
+	for b in button_pts:
+		for j in jump_pts:
+			gap = minf(gap, b.distance_to(j))
+	_check(gap >= DEAD_RING - 0.01, "a dead ring of >= %d px between every ability hit area and JUMP's real catch zone (%.1f px)" % [DEAD_RING, gap])
+	var missed := []
+	for r in range(int(TouchControls.JUMP_RADIUS), int(TouchControls.JUMP_RADIUS) + 26, 3):
+		for a in 24:
+			var p := (TouchControls.JUMP_CENTER + Vector2.from_angle(TAU * a / 24.0) * r).round()
+			if not Rect2(0, 0, 320, 180).has_point(p) or tc.pause_rect.grow(TouchControls.PAUSE_TOUCH_MARGIN).has_point(p):
+				continue
+			_tap(tc, 7, p, true)
+			if tc.ability_at(p) >= 0 or not Input.is_action_pressed("jump"):
+				missed.append(p)
+			_tap(tc, 7, Vector2(-60, -60), false)
+	_check(missed.is_empty(), "a thumb missing JUMP (up to 25 px off its edge, all round) still leaps, never an ability (%s)" % [missed.slice(0, 4)])
+	_check(_charges_left(game) == {rifle = 1, kaze = 2}, "probing every spot (each lifted off its button) fired nothing")
+	_check(center.kaze.distance_to(TouchControls.JUMP_CENTER) > center.rifle.distance_to(TouchControls.JUMP_CENTER),
+		"SLIMAKAZE sits farther from JUMP than SLIME RIFLE")
+	var kaze_only: Array[Dictionary] = [{id = "kaze", left = 1, max = 1}]
+	tc.set_abilities(kaze_only)
+	_check(_button_center(tc, 0).distance_to(TouchControls.JUMP_CENTER) > 80.0, "owning only SLIMAKAZE, its button keeps its far spot (%s)" % _button_center(tc, 0))
+	game.abilities._refresh()
+	await _frames(90)  # (the probe's JUMP taps set off a leap or two: let them land)
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	_place(game, _start_tile(game), _dir_with(game, 1))
+	# Fires on RELEASE, and only on its own button.
+	_tap(tc, 3, center.rifle, true)
 	await _frames(2)
-	tc._touch_up(3)
+	_check(game.abilities.can_use("rifle") and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"), "touching SLIME RIFLE's button doesn't fire it yet")
+	_tap(tc, 3, center.rifle + Vector2(0, 40), false)
+	await _frames(1)
+	_check(game.abilities.charges.rifle == 1, "sliding off the button and letting go cancels it")
+	_tap(tc, 3, center.rifle, true)
+	await _frames(1)
+	_tap(tc, 3, center.rifle + Vector2(3, 0), false)
 	await _frames(1)
 	_check(game.abilities.charges.rifle == 0 and not Input.is_action_pressed("ability_rifle") and not Input.is_action_pressed("jump"),
-		"tapping the first button fires SLIME RIFLE (no JUMP, nothing left held)")
+		"lifting the finger on the button fires SLIME RIFLE (no JUMP, nothing left held)")
 	progress.force_touch = false
 	await _stop(game)
+
+
+## A touch event straight into the controls (viewport coordinates).
+func _tap(tc: TouchControls, index: int, pos: Vector2, pressed: bool) -> void:
+	var event := InputEventScreenTouch.new()
+	event.index = index
+	event.position = pos
+	event.pressed = pressed
+	tc._input(event)
+
+
+## The center of the button of `tc.abilities[i]` (the middle of the spots that hit it).
+func _button_center(tc: TouchControls, i: int) -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for y in 180:
+		for x in range(150, 320):
+			if tc.ability_at(Vector2(x, y)) == i:
+				sum += Vector2(x, y)
+				n += 1
+	return (sum / maxi(n, 1)).round()
+
+
+func _charges_left(game: Node2D) -> Dictionary:
+	return game.abilities.charges.duplicate()
 
 
 # ---------------------------------------------------------------- modes

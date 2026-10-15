@@ -23,7 +23,7 @@ var slime: Slime
 ## Owned abilities' levels (id -> 1-3) and the uses left this attempt.
 var levels := {}
 var charges := {}
-## Abilities fired this attempt (seeds the SLIMAKAZE splatter, with the maze and attempt).
+## Abilities fired this attempt.
 var uses := 0
 ## Shots, bombs and goo drops still flying (each has finish()).
 var flying: Array[Node2D] = []
@@ -54,6 +54,7 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	runner.z_index = Z
 	owner_game.add_child(runner)
 	runner.slime.dash_hit.connect(runner._on_dash_hit)
+	owner_game.touch_controls.ability_tapped.connect(runner.use)
 	runner._refresh()
 	return runner
 
@@ -216,6 +217,18 @@ func _paint_dash() -> void:
 	_dash_painted = to
 
 
+## The dash reached the goal (game._on_goal_body_entered, before it decides win or dry-up): it
+## stops there and pays its Abilities.slime_cost("kaze") now (no wall, so no splat or splatter).
+func settle_at_goal() -> void:
+	if not dashing:
+		return
+	slime.stop_dash()
+	_paint_dash()
+	dashing = false
+	game.spend_slime(Abilities.slime_cost("kaze"))
+	game.last_slime_pos = slime.position
+
+
 func _on_dash_hit(wall_normal: Vector2) -> void:
 	if not dashing:
 		return
@@ -230,7 +243,7 @@ func _on_dash_hit(wall_normal: Vector2) -> void:
 	Fx.burst(game, slime.position - wall_normal * Slime.RADIUS, game.skin_color, 40, 120.0, wall_normal, 100.0, game.rainbow)
 	_sfx("kaze", 0.0)
 	var impact := Vector2i((slime.position / Abilities.TILE).floor())
-	var seed_value := Abilities.splatter_seed(game.maze_seed, game.attempt, impact, _kaze_uses)
+	var seed_value := Abilities.splatter_seed(game.maze_seed, impact, _kaze_uses)
 	_kaze_uses += 1
 	var center := slime.position
 	for blob in Abilities.splatter(game.maze, impact, seed_value):

@@ -704,7 +704,8 @@ func _shake_camera(delta: float) -> void:
 
 
 ## A screen shake of `strength` px fading over `time` s with a `push` (px) toward a side; nothing
-## with Reduce Motion (see _shake_camera).
+## with Reduce Motion (see _shake_camera). Every shake goes through here, so each new one restarts
+## the fade over its own span (a landing right after an ability shake fades over SHAKE_TIME).
 func shake(strength: float, time: float, push := Vector2.ZERO) -> void:
 	shake_left = time
 	shake_span = time
@@ -1251,6 +1252,9 @@ func reveal_tile(tile: Vector2i, walls_around := true) -> void:
 			i += 4
 	survey_tiles[tile.y * maze.size.x + tile.x] = 1
 	fog_dirty = true
+	if not finished and not _shown(goal) and tile == Vector2i((goal.position / TILE).floor()):
+		_show(goal)  # (as when the slime comes near it: the chalice / ticket shows, the trail map marks it)
+		survey_goal = true
 	if walls_around:
 		_reveal_walls_near((Vector2(tile) + Vector2(0.5, 0.5)) * TILE, TILE / 2.0)
 
@@ -1307,10 +1311,8 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 		splats += 1
 		last_jump_cost += splat_penalty(intended_distance) * splat_factor
 		_stain_wall(slime.position, wall_normal)
-		shake_left = SHAKE_TIME
 		var hit_power := inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance)
-		shake_strength = lerpf(1.0, SHAKE_MAX, hit_power)
-		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX, hit_power))  # a shove into the wall that was hit
+		shake(lerpf(1.0, SHAKE_MAX, hit_power), SHAKE_TIME, -wall_normal * roundf(lerpf(1.0, KICK_MAX, hit_power)))  # a shove into the wall that was hit
 		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, 18, 70.0, wall_normal, 70.0, rainbow)
 		_damage_wall(slime.position, wall_normal,
 			inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
@@ -1665,6 +1667,25 @@ func _place_touch_pause() -> void:
 	touch_controls.pause_rect.position.y = maxf(touch_controls.PAUSE_Y_RANDOM, ceilf(bottom) + 3.0)
 
 
+## The meter just hit 0 on the goal (a SLIMAKAZE paying there): SECOND WIND or BACKUP BLADDER fires
+## as it would in play and, since the run ends now, its refill lands at once. False if neither is left.
+func _rescue_empty_meter() -> bool:
+	if wind_state == "ready":
+		_second_wind()
+		slime_remaining += _wind_left
+		_wind_left = 0.0
+		wind_state = "used"
+		hud.set_wind(wind_state)
+	elif wind_state != "refilling" and _bladder_left <= 0.0 and bladders > 0:
+		_backup_bladder()
+		slime_remaining += _bladder_left
+		_bladder_left = 0.0
+	else:
+		return false
+	hud.set_slime(slime_remaining)
+	return true
+
+
 ## BACKUP BLADDER fires (the meter hit 0 after SECOND WIND, if any): +25% over WIND_REFILL_TIME.
 func _backup_bladder() -> void:
 	bladders -= 1
@@ -1849,8 +1870,7 @@ func _break_wall(tile: Vector2i) -> void:
 				fillet_layer.erase_cell(near)
 	var center := (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
 	Fx.burst(self, center, Color8(148, 140, 150), 24, 60.0)
-	shake_left = SHAKE_TIME
-	shake_strength = SHAKE_MAX
+	shake(SHAKE_MAX, SHAKE_TIME, kick)  # (keeps the landing's shove)
 	_sfx("crumble")
 
 
@@ -1871,14 +1891,19 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 	_stain_wall(slime.position, wall_normal)
 	Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, int(lerpf(4, 12, power)), lerpf(25.0, 60.0, power), wall_normal, 70.0, rainbow)
 	if power > 0.3:
-		shake_left = SHAKE_TIME * 0.6
-		shake_strength = lerpf(1.0, SHAKE_MAX - 1.0, power)
-		kick = -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power))
+		shake(lerpf(1.0, SHAKE_MAX - 1.0, power), SHAKE_TIME * 0.6, -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power)))
 
 
 func _on_goal_body_entered(body: Node2D) -> void:
 	if body != slime or finished:
 		return
+	if slime.state == Slime.State.DASH and abilities:
+		# SLIMAKAZE into the goal: the dash ends here and pays its cost first (the carried Descent
+		# meter included). Emptied, it is a dry-up, not a win (SECOND WIND / BACKUP BLADDER still save it).
+		abilities.settle_at_goal()
+		if slime_remaining <= 0.0 and not _rescue_empty_meter():
+			_dry_up()
+			return
 	if race_over or (race_limit > 0.0 and run_time >= race_limit):
 		race_over = true
 		_dry_up(true)  # RACE: the leap landed on the chalice after 0:00 - too late

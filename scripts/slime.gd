@@ -113,6 +113,10 @@ var _recover_anim_left := 0.0
 ## Set by play_dry_up()/play_celebrate(); overrides the state-driven animation.
 var _special_anim := ""
 var _dash_target := Vector2.ZERO
+## The dash's first leg: straight sideways onto the target's lane (as the lane assist would), so the
+## body never cuts across a wall corner; `_dash_on_lane` once it is there.
+var _dash_lane := Vector2.ZERO
+var _dash_on_lane := true
 var _dash_speed := 0.0
 var _dash_stun := 0.0
 
@@ -337,6 +341,8 @@ func dash(target: Vector2, dir: Vector2, speed: float, stun: float) -> void:
 	_jump_dir = dir
 	facing = dir
 	_dash_target = target
+	_dash_lane = Vector2(target.x, position.y) if dir.y != 0.0 else Vector2(position.x, target.y)
+	_dash_on_lane = position.is_equal_approx(_dash_lane)
 	_dash_speed = speed
 	_dash_stun = stun
 	velocity = Vector2.ZERO
@@ -369,9 +375,24 @@ func _dash_step(delta: float) -> void:
 		state = State.GLIDE  # the run ended mid-dash: stop here, no splat
 		sprite.position.y = 0.0
 		return
-	position = position.move_toward(_dash_target, _dash_speed * delta)
+	var budget := _dash_speed * delta
+	if not _dash_on_lane:
+		budget -= position.distance_to(_dash_lane)
+		position = position.move_toward(_dash_lane, _dash_speed * delta)
+		_dash_on_lane = position.is_equal_approx(_dash_lane)
+	if _dash_on_lane and budget > 0.0:
+		position = position.move_toward(_dash_target, budget)
 	if position.is_equal_approx(_dash_target):
 		finish_dash()
+
+
+## Stops a dash where it is with no splat (it reached the goal: AbilityRunner.settle_at_goal).
+func stop_dash() -> void:
+	if state != State.DASH:
+		return
+	state = State.GLIDE
+	sprite.position.y = 0.0
+	velocity = Vector2.ZERO
 
 
 func play_dry_up() -> void:

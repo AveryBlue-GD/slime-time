@@ -162,9 +162,10 @@ static func dash_point(tile: Vector2i, dir: Vector2i) -> Vector2:
 	return (Vector2(tile) + Vector2(0.5, 0.5)) * TILE + Vector2(dir) * (TILE / 2.0 - Slime.RADIUS)
 
 
-## SLIMAKAZE: the seed of one splatter (stable for a maze, attempt, impact tile and use).
-static func splatter_seed(maze_seed: int, attempt: int, impact: Vector2i, use: int) -> int:
-	return hash([maze_seed, attempt, impact.x, impact.y, use])
+## SLIMAKAZE: the seed of one splatter: the maze, the impact tile and the use index (SLIMAKAZE uses
+## so far this attempt), never the attempt, so every mode follows one rule and a restart can't re-roll it.
+static func splatter_seed(maze_seed: int, impact: Vector2i, use: int) -> int:
+	return hash([maze_seed, impact.x, impact.y, use])
 
 
 ## SLIMAKAZE: the splatter around `impact`: for every floor tile within KAZE_RADIUS (tile centers),

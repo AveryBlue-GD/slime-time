@@ -53,13 +53,13 @@ Three active ABILITIES bought with tickets in the cauldron's TICKETS tab (separa
 |---|---|---|---|---|
 | SLIME RIFLE (SHOOTS GOO) | a goo shot (480 px/s) flies to the first wall, revealing its own tile and every floor tile up to the wall (all fog cells, lit now) plus the walls bordering them, leaving a thin goo streak | 2% (refused unless the meter holds more) | 15 / 30 / 50 | 1 / 2 / 3 |
 | SLIME SPLAT (BOMB 3X3) | a goo bomb lobbed (0.4 s) up to 4 tiles, stopping at the last floor tile before a wall, bursts: exactly the 3x3 tiles around it revealed and lit, a 1.5 s glow | 4% (refused unless the meter holds more) | 18 / 35 / 55 | 1 / 2 / 3 |
-| SLIMAKAZE (WALL DASH) | the slime dashes (640 px/s, goo smear, no drain in flight) to the last floor tile before the first wall, splats (stun 0.6 s, shake 6 px / 0.5 s), then goo drops spray onto a seeded random set of floor tiles within 5.5 tiles (chance 75% at the impact falling to 25% at the edge; the impact tile always); each is revealed with its bordering walls | 30%, taken on impact; always fires, so with <= 30% left the impact dries the slime up (SECOND WIND / BACKUP BLADDER still apply); refused (nothing spent) with a wall right ahead | 25 / 45 / 70 | 1 / 2 / 3 |
+| SLIMAKAZE (WALL DASH) | the slime dashes (640 px/s, goo smear, no drain in flight; from off its lane it first slides sideways onto the lane, then goes straight) to the last floor tile before the first wall, splats (stun 0.6 s, shake 6 px / 0.5 s), then goo drops spray onto a random set of floor tiles (seeded by the maze, the impact tile and the use index this attempt: one rule in every mode, never the attempt, so a restart can't re-roll it) within 5.5 tiles (chance 75% at the impact falling to 25% at the edge; the impact tile always); each is revealed with its bordering walls | 30%, taken on impact; always fires, so with <= 30% left the impact dries the slime up (SECOND WIND / BACKUP BLADDER still apply); a dash that reaches the chalice / ticket stops there and pays the 30% before the win: emptied, it is a dry-up, not a win (a SECOND WIND / BACKUP BLADDER that fires there lands its refill at once and it wins), and Descent carries the meter after the cost; refused (nothing spent) with a wall right ahead | 25 / 45 / 70 | 1 / 2 / 3 |
 
 Decisions:
 - **Keys:** remappable actions `ability_rifle` / `ability_splat` / `ability_kaze`, defaults **1 / 2 / 3** (no clash with
   WASD / arrows / Space / R / F / P / Esc / F11 / F1-F2), made at startup by Progress like `interact`; the CONTROLS page
   is two columns (10 rows). An older save whose keys already use 1-3 keeps its bindings; the abilities take the first
-  free spare (`ABILITY_SPARE_KEYS`). Touch: a round button per owned ability in an arc left of / above JUMP (icon +
+  free spare (`ABILITY_SPARE_KEYS`). Touch: a round button per owned ability in a cluster left of JUMP's zone, each ability on its own spot (SLIME RIFLE nearest, SLIMAKAZE farthest), firing on RELEASE only if the finger is still on it (slide off = cancel); with buttons shown JUMP catches x >= 228 (full height, letterbox included) and an 8 px dead band separates that zone from every button hit disc (`TouchControls.JUMP_ZONE_X` / `DEAD_RING`) (icon +
   uses-left pips).
 - **Aim:** the slime's facing (last movement direction) snapped to the grid, larger axis wins, x on an exact diagonal.
   Usable only while gliding or standing (not charging, airborne, stunned, dashing; not after the run ends).
@@ -70,7 +70,8 @@ Decisions:
   mode buys free; F2 NO DRAIN also skips ability costs). The autoplay bot never uses them.
 - **Fairness:** par stays base-speed based and abilities don't move it, the route, u, seed codes or the randomizer payout
   (a win pays as before); medals and records can be earned with them (they are a paid utility, like SPEED). Their reveals
-  are real reveals: fog bytes and survey tiles, so they count as seen on trail maps.
+  are real reveals: fog bytes and survey tiles, so they count as seen on trail maps; one that lights the goal's tile shows the
+  chalice / ticket (as seeing it does) and marks it on the trail map (`survey_goal`).
 - **UI:** the TICKETS tab shows each ability's icon (code-drawn 8x8, BoonIcons palette), name, 2-3 word tag, 3 level pips,
   + and the price with the ticket icon; + opens a BUY <NAME> <N>? confirm (not refundable); locked until the first
   ticket; the hint names the keys. The HUD shows a pod under the meter with each owned ability's icon and its uses as

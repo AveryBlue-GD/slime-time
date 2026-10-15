@@ -6,8 +6,12 @@ extends CanvasLayer
 ##   directions so the slime's lane assist still lines it up with corridors
 ## - right half: the JUMP button (hold to charge, aim with the joystick, release to leap)
 ## - top-right corner: pause
-## - ABILITIES (when the run has any): a small round button each, in an arc left of / above JUMP
-##   (ABILITY_SLOTS, in Abilities order), with its icon and uses left; a tap presses its action
+## - ABILITIES (when the run has any): a small round button each, in a cluster left of the JUMP zone
+##   (ABILITY_SLOTS: each ability has its own spot, SLIMAKAZE the farthest from JUMP), with its icon
+##   and uses left; an ability fires on RELEASE, and only if the finger is still on its button (slide
+##   off to cancel). With buttons shown JUMP catches the right strip x >= JUMP_ZONE_X (not the whole
+##   right half), and a DEAD_RING gap between that zone and the buttons does nothing, so a thumb that
+##   misses JUMP still leaps (or does nothing) and never fires an ability.
 ## Shown on touchscreens (or with the --touch debug flag); hidden again when a keyboard is used.
 
 const SCREEN := Vector2(320, 180)
@@ -25,13 +29,24 @@ const PAUSE_Y_RANDOM := 44.0
 var pause_rect := PAUSE_RECT
 const PAUSE_TOUCH_MARGIN := 5.0
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
-## ABILITIES: the buttons' centers (left of JUMP, up-left, above; 33 px from its center) and radius.
-const ABILITY_SLOTS: Array[Vector2] = [Vector2(249, 142), Vector2(259, 119), Vector2(282, 109)]
+## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
+## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
+const ABILITY_SLOTS: Array[Vector2] = [Vector2(207, 150), Vector2(207, 122), Vector2(181, 136)]
 const ABILITY_RADIUS := 11.0
+const ABILITY_HIT := ABILITY_RADIUS + 2.0
+## With ability buttons shown, JUMP catches every touch at x >= JUMP_ZONE_X (the full height, the
+## letterbox beyond the right edge too; minus pause); without them the whole right half as before.
+const JUMP_ZONE_X := 228.0
+## The gap kept between JUMP's catch zone and every ability hit disc: touches there do nothing.
+const DEAD_RING := 8.0
 ## [{id, left, max}] from AbilityRunner.strip (empty: no buttons).
 var abilities: Array[Dictionary] = []
-## Ability id -> the finger holding its button.
+## Finger -> the ability (index in `abilities`) it went down on, and where it is now; it fires on
+## release, if still on that button.
 var _ability_touch := {}
+var _ability_pos := {}
+## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use).
+signal ability_tapped(id: String)
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
@@ -79,10 +94,14 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			_touch_down(event.index, event.position)
 		else:
-			_touch_up(event.index)
+			_touch_up(event.index, event.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and event.index == _joy_touch:
 		_move_joystick(event.position)
+		get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag and _ability_touch.has(event.index):
+		_ability_pos[event.index] = event.position  # (the held look follows the finger on / off)
+		_canvas.queue_redraw()
 		get_viewport().set_input_as_handled()
 
 
@@ -95,9 +114,8 @@ func _notification(what: int) -> void:
 func _touch_down(index: int, pos: Vector2) -> void:
 	var slot := ability_at(pos)
 	if slot >= 0:
-		var action := Abilities.action(abilities[slot].id)
-		_ability_touch[index] = action
-		_press(action)
+		_ability_touch[index] = slot
+		_ability_pos[index] = pos
 	elif pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		_release_pause()  # (a second finger on it: the first one's press ends)
 		_pause_touch = index
@@ -110,6 +128,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 			_joy_touch = index
 			_joy_center = pos.clamp(Vector2(JOY_RADIUS, JOY_RADIUS + 12), SCREEN - Vector2(JOY_RADIUS, JOY_RADIUS))
 			_move_joystick(pos)
+	elif not catches_jump(pos):
+		pass  # (abilities shown: the dead ring / the buttons' side of the right half)
 	elif _jump_touch == -1:
 		_jump_touch = index
 		if jump_enabled:
@@ -117,10 +137,13 @@ func _touch_down(index: int, pos: Vector2) -> void:
 	_canvas.queue_redraw()
 
 
-func _touch_up(index: int) -> void:
+func _touch_up(index: int, pos: Vector2) -> void:
 	if _ability_touch.has(index):
-		_release(_ability_touch[index])
+		var slot: int = _ability_touch[index]
 		_ability_touch.erase(index)
+		_ability_pos.erase(index)
+		if slot < abilities.size() and ability_at(pos) == slot:
+			ability_tapped.emit(abilities[slot].id)
 	elif index == _pause_touch:
 		_release_pause()
 	elif index == _joy_touch:
@@ -171,12 +194,28 @@ func set_abilities(items: Array[Dictionary]) -> void:
 		_canvas.queue_redraw()
 
 
-## The ability button slot under `pos` (-1 = none).
+## The index (in `abilities`) of the button under `pos` (-1 = none).
 func ability_at(pos: Vector2) -> int:
-	for i in mini(abilities.size(), ABILITY_SLOTS.size()):
-		if pos.distance_to(ABILITY_SLOTS[i]) <= ABILITY_RADIUS + 2.0:
+	for i in abilities.size():
+		if pos.distance_to(slot_center(i)) <= ABILITY_HIT:
 			return i
 	return -1
+
+
+## The center of the button of `abilities[i]`: its ability's own spot (so SLIMAKAZE never takes the
+## spot nearest JUMP, whatever else is owned).
+func slot_center(i: int) -> Vector2:
+	return ABILITY_SLOTS[clampi(Abilities.ids().find(abilities[i].id), 0, ABILITY_SLOTS.size() - 1)]
+
+
+## The left edge of JUMP's catch zone (x >= this counts as JUMP; the pause button is checked first).
+func jump_zone_left() -> float:
+	return JUMP_ZONE_X if not abilities.is_empty() else SCREEN.x / 2.0
+
+
+## True if a touch at `pos` (not on pause or a button) goes to JUMP.
+func catches_jump(pos: Vector2) -> bool:
+	return pos.x >= jump_zone_left()
 
 
 ## Hides the controls (e.g. when a level ends and menu buttons take over).
@@ -204,9 +243,8 @@ func _release_all() -> void:
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
 	_release("jump")
-	for index: int in _ability_touch:
-		_release(_ability_touch[index])
-	_ability_touch.clear()
+	_ability_touch.clear()  # (nothing fires: an ability only fires on a real release)
+	_ability_pos.clear()
 	if _canvas:
 		_canvas.queue_redraw()
 
@@ -231,10 +269,12 @@ func _draw_controls() -> void:
 		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6
 		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
 	# Ability buttons: a ring, the icon (2x) and a pip per use left.
-	for i in mini(abilities.size(), ABILITY_SLOTS.size()):
+	for i in abilities.size():
 		var item: Dictionary = abilities[i]
-		var at := ABILITY_SLOTS[i]
-		var held := _ability_touch.values().has(Abilities.action(item.id))
+		var at := slot_center(i)
+		var held := false
+		for index: int in _ability_touch:
+			held = held or (_ability_touch[index] == i and ability_at(_ability_pos.get(index, at)) == i)
 		var ready := int(item.left) > 0
 		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
