@@ -49,9 +49,10 @@ pixels actually drawn (text letters, icon pixels), measured from rendered frames
 Rules:
 - Use only these gaps. Inside one row all gaps are equal.
 - Section gap (between a grid and the panel under it) ≥ 4.
-- Keep ≥ 2 px of clear space (drips included) between any text and a box edge it doesn't belong to. Exception: the level
-  tiles' big number, whose drips end on the row right above the record time (0 clear rows, no overlap) so the number
-  stays centred on the tile (see phase3-ui.md, remaining issues).
+- Keep ≥ 2 px of clear space (drips included) between any text and a box edge it doesn't belong to.
+- Level tiles: the big number is centred across the tile and sits 3 px above its middle (body rows 11..24, drips to
+  28, shadow 29), so 2 clear rows (30..31) separate it from the record time (body 32..38) on every tile, whatever the
+  random drips (owner decision L2). The time's drip shadow touches the frame's bottom row 41, by design.
 
 ## 4. Text
 
@@ -136,7 +137,7 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 
 | Grid | Tile | Gap | Placement |
 |---|---|---|---|
-| level select | 48x42 | 3 | centred: L34 / R34 |
+| level select | 48x42 | 3 | centred: L34 / R34 (number 3 px above the tile middle, §3) |
 | skins | 40x30 | 3 | centred (row 2 of 6 tiles: 0.5 px, accepted) |
 | map table | 155x26 | 2 | L4 / R4 |
 | shop | 138x13 | 2 | centred in its panel: L13 / R13 |

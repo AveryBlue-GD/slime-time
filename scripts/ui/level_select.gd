@@ -15,11 +15,12 @@ var info: Label
 var heat_button: Button
 var heat_panel: HeatPanel
 
-## 48x42: the 14 px digits sit 1 px above the tile's center (rows 13-26; their drips and shadow end
-## on row 31), the 7 px record time right under them (rows 32-38, drips 39-40) and clear of the
-## frame's bottom goo (row 41): the digits' drips never run into the time.
+## 48x42: the 14 px digits sit 3 px above the tile's center (rows 11-24; their drips end on row 28
+## and their shadow on row 29), then 2 clear rows (30-31) and the 7 px record time (rows 32-38,
+## drips 39-40, the drips' 1 px shadow on the frame's bottom row 41): the digits' drips never
+## touch the time on any tile (owner decision L2: the number 2 px above centre, not touching).
 const TILE := Vector2i(48, 42)
-const NUMBER_Y := 13
+const NUMBER_Y := 11
 ## Five tiles 3 apart (252 px) centered on the screen: L34 / R34.
 const GRID_POS := Vector2(34, 22)
 const GRID_GAP := 3
@@ -103,8 +104,8 @@ func _fill_grid() -> void:
 		skin_text.recolor.call_deferred()
 
 
-## A level tile: the big level number dead center (its letter pixels, not its line box, sit on the
-## tile's center), and under it the record time or a check (cleared). A locked tile draws the lock
+## A level tile: the big level number centered across the tile (its letter pixels, not its line
+## box) and 3 px above its middle (NUMBER_Y), and under it the record time or a check (cleared). A locked tile draws the lock
 ## over the number, also centered; unlocking just drops the lock and leaves the number there.
 func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
@@ -113,9 +114,9 @@ func _make_tile(level: int) -> Button:
 	var number := UIKit.make_label(str(level), 16, LOCKED_NUMBER if locked else UIKit.TEXT)
 	number.name = "Number"
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# The 16 px font's line box is exactly its 14 px letter body (see CLAUDE.md), so the box
-	# centered on the tile is the digits centered on the tile; the glyph cells have no empty
-	# columns, so the horizontal centering is exact too.
+	# The 16 px font's line box is exactly its 14 px letter body (see CLAUDE.md), so the digits
+	# fill rows NUMBER_Y..NUMBER_Y + 13; the glyph cells have no empty columns, so the horizontal
+	# centering is exact.
 	number.size = Vector2(TILE.x, 14)
 	number.position = Vector2(0, NUMBER_Y)
 	button.add_child(number)
@@ -159,7 +160,7 @@ func _make_tile(level: int) -> Button:
 	return button
 
 
-## The lock icon centered by its own pixels over the tile's center, on a dark copy (like the text
+## The lock icon centered by its own pixels on the number's center, on a dark copy (like the text
 ## shadow) so it reads over the digits beneath it.
 func _make_lock() -> Control:
 	var holder := Control.new()

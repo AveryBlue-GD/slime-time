@@ -1,7 +1,8 @@
 extends "res://tests/suite_base.gd"
 
 ## Level select tiles: the level number's letter pixels and (on locked tiles) the lock icon's own
-## pixels are centered on the tile, within 1 px, for all 10 tiles, locked and unlocked, normal and
+## pixels are centered across the tile, within 1 px, 3 px above its middle (so the number's drips
+## and shadow clear the record time by 2 rows), for all 10 tiles, locked and unlocked, normal and
 ## hard; unlocking only removes the lock and leaves the number where it was; medal pips, the
 ## record time and the check never overlap the number or the lock. Geometric (headless has no
 ## renderer); the rendered pixels are measured with tools/measure_tiles.py.
@@ -41,9 +42,12 @@ func _initialize() -> void:
 				_check(tile.disabled == locked, tag + ": disabled only when locked")
 				_check(tile.size.x >= 48.0 and tile.size.y >= 42.0, tag + ": touch target stays >= 48x42 (%s)" % tile.size)
 				var center := tile.size / 2.0
+				# The number (and the lock over it) centre: across the tile, 3 px above its middle.
+				var number_center := Vector2(center.x, center.y - 3.0)
 				var number: Label = tile.get_node("Number")
 				var ink := _number_ink(number)
-				_check(ink.get_center().distance_to(center) <= 1.0, tag + ": number ink centered (ink %s, tile center %s)" % [ink, center])
+				_check(ink.get_center().distance_to(number_center) <= 1.0, tag + ": number ink centered across, 3 px up (ink %s, wanted center %s)" % [ink, number_center])
+				_check(ink.position.y == 11.0, tag + ": number body starts on row 11 (%s)" % ink.position.y)
 				var key := "%d" % level
 				if number_boxes.has(key):
 					_check(number_boxes[key] == ink, tag + ": number sits at the same place locked or not")
@@ -54,7 +58,7 @@ func _initialize() -> void:
 					var icon: TextureRect = lock.get_child(1)
 					var lock_ink := UIKit.icon_ink_rect("lock")
 					var box := Rect2(Vector2(lock_ink.position) + icon.position, Vector2(lock_ink.size))
-					_check(box.get_center().distance_to(center) <= 1.0, tag + ": lock ink centered (%s vs %s)" % [box, center])
+					_check(box.get_center().distance_to(number_center) <= 1.0, tag + ": lock ink centered on the number (%s vs %s)" % [box, number_center])
 					_check(lock.get_index() > number.get_index(), tag + ": lock drawn over the number")
 				else:
 					for child in tile.get_children():
@@ -77,8 +81,9 @@ func _initialize() -> void:
 							var body := _time_body(child)
 							var gap_above := body.position.y - ink.end.y
 							var gap_below := (tile.size.y - 1.0) - body.end.y  # to the frame's bottom edge row
-							# The 16 px digits' drips hang 4 rows below their body: the time starts 1 row under them.
-							_check(gap_above >= 5.0 and gap_above <= 6.0, tag + ": time %s px under the number (5-6 wanted: 4 drip rows + 1)" % gap_above)
+							# The 16 px digits' drips hang 4 rows below their body and their shadow 1 more:
+							# then 2 clear rows before the time's body.
+							_check(gap_above == 7.0, tag + ": time %s px under the number (7 wanted: 4 drip rows, the shadow, 2 clear)" % gap_above)
 							_check(gap_below >= 1.0 and gap_below <= 3.0, tag + ": time %s px above the frame edge" % gap_below)
 							_check(body.position.x >= 4.0 and body.end.x <= tile.size.x - 4.0, tag + ": time %s fits with a margin" % body)
 							_check(absf(body.get_center().x - center.x) <= 1.0, tag + ": time centered (%s)" % body)

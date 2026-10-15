@@ -3,6 +3,7 @@ extends Node2D
 ## Level select with a mix of states for screenshots: tiles 1-3 cleared (gold / silver / bronze,
 ## two with record times), 4 cleared without a time, 5 open, 6-10 locked; focus on tile 5.
 ## Pass `-- hard`, `-- only=lock|number` (measuring) for hard mode, `-- focus=N` to focus another tile. Nothing is saved.
+## `-- all-times`: all 10 tiles open, each with a record time.
 ## `-- heat` (with hard): HEAT flames on tiles 1-4 (best heat 10 / 7 / 4 / 2) and DIM + FOG BITES + RACE
 ## picked; `-- heat-panel` also opens the HEAT panel (focus on its FOG BITES toggle).
 ## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_level_select.tscn [hard]
@@ -27,6 +28,14 @@ func _ready() -> void:
 		Progress.heat_mods = Heat.bit("dim") | Heat.bit("fog") | Heat.bit("race")
 	Progress.best_times[base + 1] = 12.3
 	Progress.best_times[base + 2] = 65.4
+	if "all-times" in args:  # every tile open with a record time (the number vs time gap on 1-10)
+		Progress.highest_unlocked = 10
+		Progress.levels_cleared = 10
+		if hard:
+			Progress.hard_cleared.assign(range(1, 11))
+		var times := [12.3, 65.4, 44.4, 66.6, 63.6, 99.9, 646.4, 81.0, 63.6, 600.0]
+		for i in 10:
+			Progress.best_times[base + i + 1] = times[i]
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("focus="):
 			Progress.current_level = arg.trim_prefix("focus=").to_int()
