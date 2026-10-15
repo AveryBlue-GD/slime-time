@@ -33,6 +33,7 @@ func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
 	OS.add_logger(errlog)
+	Economy.workshop_force = 1  # the workshop is switched off in the game; these suites test it
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "tests save to a throwaway file (%s)" % progress.save_path)
 	_totals()
 	_hats()

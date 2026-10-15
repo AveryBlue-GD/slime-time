@@ -20,6 +20,7 @@ func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.saving_enabled = false
+	Economy.workshop_force = 1  # the workshop is switched off in the game; these suites test it
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "a throwaway save")
 	_tables()
 	_determinism()

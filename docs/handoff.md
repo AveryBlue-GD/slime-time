@@ -2,6 +2,8 @@
 
 ## Current state (2026-10-15)
 
+- **Workshop switched OFF, upgrade bars uniform (latest).** One flag, `Economy.WORKSHOP_ENABLED := false` (scripts/economy.gd), disables the ticket workshop (SECOND WIND, QUICK CHARGE, STICKY, MAGNET, GOO NOSE): `Progress.workshop_level` reads 0 and `workshop_open` is false (so nothing applies in story / randomizer / Descent / hard, no WIND tag, the randomizer payout ignores SECOND WIND, the hub cauldron '!' is off), the cauldron builds only the COINS page (no tab bar, no TICKETS page, no confirm). `Progress.workshop` keeps any saved levels (file, save code, reload; `workshop_saved_level`) so flipping the const to `true` restores everything with no other change. Test hook `Economy.workshop_force` (-1 follow the const, 0 off, 1 on): test_workshop / test_store / test_descent force it on; `tests/test_workshop_off.gd` covers the off state (and the flag-on screen). Descent boons, Heat, hats, trails, papers are unaffected. COINS bars: every track is one 83 px bar (x 139..222) of whole-pixel segments with 1 px gaps (7 x 11, 4 x 20, 3 x 27; `BAR_WIDTH`, `PIP_GAP` in upgrades_screen.gd), measured in test_workshop_off.gd; shots `docs/polish-shots/upgrades3_{a,b,c}.png` (0 / 3,2,1 / max). The older bullets below still describe the workshop as it behaves with the flag on.
+
 Read [CLAUDE.md](../CLAUDE.md) for the project facts and [README-docs.md](README-docs.md) for the docs index. The sections
 below this summary are the history (oldest first, newest last); where they disagree with this summary or with CLAUDE.md,
 this summary and CLAUDE.md win.

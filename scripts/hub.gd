@@ -13,7 +13,7 @@ extends Node2D
 ##   hats come off the wheel); the first spin is free, then 12 tickets, 2 more for each spin taken
 ##   (up to 40). The SHOP sells hats (the TAILOR, after 3 spins), trail styles and map papers. The
 ##   prompt shows the next spin's price with the ticket icon (SHOP once every hat is won) and a "!"
-##   when something there is affordable (the cauldron's too, for its TICKETS workshop). The
+##   when something there is affordable (the cauldron's too, for its TICKETS workshop; none while Economy.WORKSHOP_ENABLED is off). The
 ##   top-left pod shows the ticket balance and medals won.
 ## - gear signpost: SETTINGS
 ## - trapdoor: QUIT (not in a browser, where quitting would leave a dead page); asks first with a

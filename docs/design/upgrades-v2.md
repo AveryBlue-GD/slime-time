@@ -1,6 +1,6 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
-Status: **IMPLEMENTED (all four batches, 2026-10-15)**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
+Status: **IMPLEMENTED (all four batches, 2026-10-15); the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
 **batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
 open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and

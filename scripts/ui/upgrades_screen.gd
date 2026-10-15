@@ -1,6 +1,7 @@
 extends Control
 
-## The cauldron: two tabs, COINS | TICKETS (upgrades v2, docs/design/upgrades-v2.md C.3).
+## The cauldron: two tabs, COINS | TICKETS (upgrades v2, docs/design/upgrades-v2.md C.3); with
+## Economy.WORKSHOP_ENABLED off (now) only the COINS page exists: no tab bar, no TICKETS page.
 ## COINS: the upgrade tree, a row per upgrade with its level (one fat pip per level: 7 / 4 / 3, so
 ## each level reads as a chunk), the effect now and after the next level (BRIGHTNESS as its light
 ## radius before -> after and the lit area gained, so the jump is clear), and buttons to put a coin
@@ -19,9 +20,12 @@ const ROW_HEIGHT := 30
 ## spec's 26 + 5 x 24 put the effect line on the goo band of its panel.)
 const TICKET_ROW_TOP := 24
 const TICKET_ROW_HEIGHT := 25
-const PIP := Vector2(10, 6)
-const PIP_GAP := 4
-## The pips end here (right-aligned against the - button at 226), whatever the track's length.
+## Every level bar has the same total width BAR_WIDTH (so MORE SLIME 7, SPEED 4, BRIGHTNESS 3 and the
+## workshop's 3 line up), split into one whole-pixel segment per level with BAR_GAP px between them:
+## 83 = 7 x 11 + 6 = 4 x 20 + 3 = 3 x 27 + 2. The bars end at PIPS_RIGHT (against the - button at 226).
+const BAR_WIDTH := 83
+const BAR_HEIGHT := 6
+const PIP_GAP := 1
 const PIPS_RIGHT := 222
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
@@ -85,12 +89,14 @@ func _ready() -> void:
 	coin_row.add_child(coin_label)
 
 	# The tabs, top left (mirroring the pod).
-	coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, 13))
-	coins_tab.position = Vector2(4, 4)
-	add_child(coins_tab)
-	tickets_tab = UIKit.make_button("TICKETS", func() -> void: show_page("tickets"), Vector2(52, 13))
-	tickets_tab.position = Vector2(46, 4)
-	add_child(tickets_tab)
+	var workshop_on := Economy.workshop_on()
+	if workshop_on:  # (one page only while the workshop is switched off: no tab bar)
+		coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, 13))
+		coins_tab.position = Vector2(4, 4)
+		add_child(coins_tab)
+		tickets_tab = UIKit.make_button("TICKETS", func() -> void: show_page("tickets"), Vector2(52, 13))
+		tickets_tab.position = Vector2(46, 4)
+		add_child(tickets_tab)
 
 	coin_page = _make_page()
 	var y := ROW_TOP
@@ -101,12 +107,13 @@ func _ready() -> void:
 		y += ROW_HEIGHT
 	_rows_bottom["coins"] = y - 5
 
-	ticket_page = _make_page()
-	y = TICKET_ROW_TOP
-	for item: Dictionary in Workshop.LIST:
-		_make_ticket_row(item, y)
-		y += TICKET_ROW_HEIGHT
-	_rows_bottom["tickets"] = y - 4
+	if workshop_on:
+		ticket_page = _make_page()
+		y = TICKET_ROW_TOP
+		for item: Dictionary in Workshop.LIST:
+			_make_ticket_row(item, y)
+			y += TICKET_ROW_HEIGHT
+		_rows_bottom["tickets"] = y - 4
 
 	hint = UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -117,8 +124,9 @@ func _ready() -> void:
 		back.text = "PLAY"
 		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
 		back.pressed.connect(_leave)
-	_build_confirm()
-	show_page(open_tab if open_tab in ["coins", "tickets"] else "coins")
+	if workshop_on:
+		_build_confirm()
+	show_page(open_tab if workshop_on and open_tab in ["coins", "tickets"] else "coins")
 	open_tab = "coins"  # (one opening only)
 
 
@@ -134,11 +142,13 @@ func _make_page() -> Control:
 ## is still shut).
 func show_page(which: String) -> void:
 	page = which
-	var tickets := page == "tickets"
+	var tickets := page == "tickets" and ticket_page != null
+	page = "tickets" if tickets else "coins"
 	coin_page.visible = not tickets
-	ticket_page.visible = tickets
-	for pair: Array in [[coins_tab, not tickets], [tickets_tab, tickets]]:
-		(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if pair[1] else "normal"))
+	if ticket_page != null:
+		ticket_page.visible = tickets
+		for pair: Array in [[coins_tab, not tickets], [tickets_tab, tickets]]:
+			(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if pair[1] else "normal"))
 	pod_icon.texture = load(UIKit.UI_DIR + ("icon_ticket.png" if tickets else "icon_coin.png"))
 	# Centered between the last row's panel and the bottom buttons (COINS: two lines, 7 + LINE_SPACING
 	# + 7 px; TICKETS: one line).
@@ -209,11 +219,13 @@ func _make_ticket_row(item: Dictionary, y: int) -> void:
 
 func _make_pips(parent: Control, count: int, y: int) -> Array[ColorRect]:
 	var pips: Array[ColorRect] = []
-	var left := PIPS_RIGHT - (count * (int(PIP.x) + PIP_GAP) - PIP_GAP)
+	var left := PIPS_RIGHT - BAR_WIDTH
 	for i in count:
+		var edge_a := left + (BAR_WIDTH + PIP_GAP) * i / count  # whole pixels; equal when count divides 83 + 1 - ...
+		var edge_b := left + (BAR_WIDTH + PIP_GAP) * (i + 1) / count - PIP_GAP
 		var pip := ColorRect.new()
-		pip.position = Vector2(left + i * (int(PIP.x) + PIP_GAP), y + 3)
-		pip.size = PIP
+		pip.position = Vector2(edge_a, y + 3)
+		pip.size = Vector2(edge_b - edge_a, BAR_HEIGHT)
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		parent.add_child(pip)
 		pips.append(pip)
@@ -370,7 +382,7 @@ func _refresh() -> void:
 		row.minus.disabled = level <= 0
 		row.about.text = effect_text(id, level)
 	var open: bool = Progress.workshop_open()
-	for id: String in ticket_rows:
+	for id: String in ticket_rows:  # (empty while the workshop is switched off)
 		var row: Dictionary = ticket_rows[id]
 		var level: int = Progress.workshop_level(id)
 		_color_pips(row.pips, level, skin)

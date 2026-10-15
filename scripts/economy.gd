@@ -74,6 +74,18 @@ const TAILOR_AFTER_SPINS := 3
 ##   sticky: STICKY, splat penalty factor; `stun` = the splat stun (s) (Slime.SPLAT_STUN 0.3)
 ##   magnet: MAGNET, coin pickup reach (px) for coins in plain sight (Coin.REACH 10 at level 0)
 ##   nose:   GOO NOSE, glimmers come `values` x as often; `reach` = how far they reach (px, 160)
+## ONE switch for the whole ticket workshop (the cauldron's TICKETS tab and all five tracks). Off:
+## nothing is offered or applied (Progress.workshop_level reads 0, workshop_open is false, no tab,
+## no WIND tag, the hub '!' ignores it), but levels already in a save are KEPT and come back when
+## this is true again. `workshop_force` (-1 follow the const, 0 off, 1 on) is a test hook.
+const WORKSHOP_ENABLED := false
+static var workshop_force := -1
+
+
+static func workshop_on() -> bool:
+	return WORKSHOP_ENABLED if workshop_force < 0 else workshop_force == 1
+
+
 const WORKSHOP := {
 	"wind": {base = 0.0, costs = [15, 30, 50], values = [0.15, 0.25, 0.35]},
 	"charge": {base = 1.5, costs = [12, 25, 45], values = [1.2, 0.95, 0.7]},

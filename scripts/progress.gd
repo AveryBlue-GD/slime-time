@@ -1902,7 +1902,14 @@ func _pay(amount: int) -> void:
 
 # ---------------------------------------------------------------- the ticket workshop and cosmetics
 
+## The level in effect: 0 while the workshop is switched off (Economy.WORKSHOP_ENABLED); the saved
+## level stays in `workshop` (see workshop_saved_level).
 func workshop_level(id: String) -> int:
+	return int(workshop.get(id, 0)) if Economy.workshop_on() else 0
+
+
+## The level held in the save, whether or not the workshop is on.
+func workshop_saved_level(id: String) -> int:
 	return int(workshop.get(id, 0))
 
 
@@ -1913,7 +1920,7 @@ func workshop_cost(id: String) -> int:
 
 ## The TICKETS tab opens once the player has ever had a ticket (dev mode always).
 func workshop_open() -> bool:
-	return dev_tools or tickets_lifetime > 0
+	return Economy.workshop_on() and (dev_tools or tickets_lifetime > 0)
 
 
 func can_buy_workshop(id: String) -> bool:

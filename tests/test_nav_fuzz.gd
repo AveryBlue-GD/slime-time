@@ -1292,7 +1292,8 @@ func _area_setup() -> void:
 				if cs.portal_menu.visible:
 					await L.click(cs.descent_button.get_global_rect().get_center(), 1)
 		"upgrades":
-			await L.click(cs.tickets_tab.get_global_rect().get_center(), 1)
+			if cs.tickets_tab != null:  # (no TICKETS tab while Economy.WORKSHOP_ENABLED is off)
+				await L.click(cs.tickets_tab.get_global_rect().get_center(), 1)
 		"heat":
 			await L.click(cs.heat_button.get_global_rect().get_center(), 1)
 		"skins":
