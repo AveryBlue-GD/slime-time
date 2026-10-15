@@ -168,10 +168,10 @@ what was moved on purpose: the top HUD rows y 3..56 (timer pod 132..187 -> 136..
 
 | ID | Issue | Why not changed |
 |---|---|---|
-| L2 | Level tiles: the number's drips end right above the record time (0 clear rows, no overlap). One clear row needs the number 2 px above the tile centre (or a taller tile, which no longer fits above the info panel) | design call: centred number vs a clear row |
+| L2 | Level tiles: the number's drips end right above the record time (0 clear rows, no overlap). One clear row needs the number 2 px above the tile centre (or a taller tile, which no longer fits above the info panel) | **done in the QA follow-up** (number 2 px up) |
 | TT (stacks) | Dense stacks (pause / restart pitch 16, key rows 17, shop rows 15) give 16-20 px hit areas (32-40 pt), under 44 pt, because their gaps are 2-4 px | a touch layout with a 22 px pitch is a layout change per platform; owner decision |
 | TT5 | HARD checkboxes (9 px box, 16 px row) and the volume slider keep their drawn hit areas (they are registered touch targets, so buttons never steal from them) | small; would need a TouchCheckBox |
-| L3 | 16 px glyphs "4" and "6": ink 1 px left in their cell | needs a font regeneration (`make_font.py`), touches every 16 px text |
+| L3 | 16 px glyphs "4" and "6": ink 1 px left in their cell | **closed in the QA follow-up**: re-measured centred (a measuring artifact), font unchanged |
 | T2 | Logo PNG 291 px wide (0.5 px) | asset change |
 | U1b / X5 | Odd-width centred boxes (hub prompts) sit 0.5 px off; their inner pads are equal | rule: inner symmetry first |
 | U5 / M4 | Coin board pitch 11, map view title 8 px | documented exceptions |
@@ -184,3 +184,20 @@ what was moved on purpose: the top HUD rows y 3..56 (timer pod 132..187 -> 136..
 
 Not changed on purpose: cutscene art (only the pip overlay), gameplay, economy, saves, the workshop (still off behind
 its flag), any text content.
+
+## QA follow-up (2026-10-16)
+
+Fixes for [qa-phase3-review.md](qa-phase3-review.md) and the owner decisions on L2 / L3. The Phase 3 base for any
+comparison is `d0e0c77` (QA finding 2: the `spring-cleaning-phase2` tag sits after the main Phase 3 commit).
+Captures: `ui-after/followup_*` and `ui-after/zoom/followup_*`.
+
+| Item | Change | Evidence |
+|---|---|---|
+| QA 1 (area texts lost after an early pause / R) | `HUD.cover_area_texts()` hides the area name and story line while pause or the restart prompt is open and leaves their fade alone (it pauses with the tree). `uncover_area_texts()` on RESUME / CANCEL shows them again at full alpha for the rest of their hold, at least `AREA_RESHOW_TIME` 1 s. Only the results (`show_rewards` / `show_choices`) still end them (`hide_area_texts`) | `followup_restart_cancel_before/after.png` (level 5, prompt opened at frame 30, CANCEL at 50, frame 70: before no area texts, after both lines). `test_ui_layout`: texts back after pause RESUME (story, randomizer, Descent) and restart CANCEL; nothing comes back once the fade ended |
+| L2 / QA 3 (tile number touching the record time) | Owner: number 2 px up. `NUMBER_Y` 13 -> 11: number body rows 11..24, drips to 28, shadow 29, rows 30..31 clear, time 32..38. The time's drip shadow touches the frame's bottom row 41, by design (rules §3) | 60 rendered tiles (normal + hard, tiles 1-10 all with a record time, 3 runs each, `demo_level_select -- all-times`): before 8 of 60 ran from the number into the time without a clear row; after 0, every tile has rows 30..31 clear. `followup_lvl_tiles_*`, `zoom/followup_lvl_tile9_10_*_6x.png`. `test_level_tiles` expects number row 11 and a gap of 7 |
+| L3 ("4" / "6" 1 px left) | **No font change.** Re-measured on rendered tiles, the ink of every digit, "4" and "6" included, is centred in its tile (`measure_tiles.py`: ink 19..28, dx +0.0 on all ten tiles, normal and hard). The audit's L19 / R21 counts only glyph rows 0-3: "4" and "6" are the only digits with no right-column pixel there (their right column is on rows 4-5), so the measure missed it. The glyph cells are symmetric by construction (xoffset 1, advance = width + 2). `make_font.py` regenerates pixel-identical PNGs (only the PNG compression differs, so the files were left as they were) | `zoom/followup_l3_tile4_6x.png`, `zoom/followup_l3_tile6_6x.png`. A glyph redesign for optical balance would be a font-art decision, not a centring fix |
+| QA 4 (constants vs literals) | `scripts/ui/` uses `UIKit.BUTTON_H` / `TAB_H` for every 13 px button and tab (the 31 literals), `FONT` / `FONT_BIG` for font sizes, `TITLE_Y`, `DENSE_PITCH` (map tiles), `GAP_XS` / `GAP_S` / `GAP_L` / `GAP_XL` (grid and stack separations, the settings column gap, the confirm pairs) and `CHOICE_GAP = GAP_L`. `POD_H2` and `TOUCH_MIN` stay rule values read by the tests. Not migrated: `hub.gd` and the pod code of `hud.gd` | Same values: a dump of every visible control's rect, font size and separation on the 23 screens `test_ui_layout` opens is identical before and after (682 lines) |
+| QA 5 (touch hit areas on touchscreen desktops) | `UIKit.touch_active()` no longer asks whether touch hardware exists. `UIKit.note_pointer`, fed every root-window input event by the RotateHint autoload (before any node or the GUI), sets `touch_in_use` on a screen touch / drag or the mouse event Godot emulates from one (`DEVICE_ID_EMULATION`) and clears it on a real mouse event. `--touch` still forces it | `test_ui_touch`: mouse -> exact, touch -> grown, emulated tap -> grown, mouse -> exact, drag -> grown |
+
+Runs: `test_ui_layout`, `test_ui_touch`, `test_level_tiles`, `test_nav_fuzz` (4 shards) and the full
+`./tools/test_all.sh`: 73 suites, 0 failed.
