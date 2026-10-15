@@ -16,6 +16,7 @@ extends RefCounted
 ## like every debug flag: Progress.game_args).
 
 const VIEW := Vector2(320, 180)
+const FULL_VIEW := Rect2(Vector2.ZERO, VIEW)
 ## Kinds of the last input device (`last_input`), for prompts: keys / mouse, a gamepad, a touchscreen.
 const INPUT_KEYS := "keys"
 const INPUT_PAD := "pad"

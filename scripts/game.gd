@@ -1578,7 +1578,7 @@ func _count_attempt() -> void:
 	attempt = progress.begin_random_attempt(attempt_key)
 	DevLog.log_event(get_tree(), "maze built (via %s)" % (DevLog.last_route if DevLog.last_route != "" else "fresh"), self)
 	DevLog.last_route = ""
-	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line attempt pod
+	touch_controls.pause_rect.position.y = touch_controls.pause_y_random()  # under the two-line attempt pod
 	_refresh_attempt_pod()
 
 
@@ -1695,7 +1695,7 @@ func _apply_descent() -> void:
 		hud.set_wind(wind_state)
 	dev_toggled = dev_toggled or descent_run.tainted
 	hud.set_boons(boons, bladders)
-	touch_controls.pause_rect.position.y = touch_controls.PAUSE_Y_RANDOM  # under the two-line pot pod
+	touch_controls.pause_rect.position.y = touch_controls.pause_y_random()  # under the two-line pot pod
 	if is_inside_tree():
 		get_tree().process_frame.connect(_place_touch_pause, CONNECT_ONE_SHOT)
 
@@ -1705,7 +1705,7 @@ func _place_touch_pause() -> void:
 	var bottom: float = hud.attempt_pod.get_global_rect().end.y if hud.attempt_pod.visible else 0.0
 	if hud.boon_pod.visible:
 		bottom = maxf(bottom, hud.boon_pod.get_global_rect().end.y)
-	touch_controls.pause_rect.position.y = maxf(touch_controls.PAUSE_Y_RANDOM, ceilf(bottom) + 3.0)
+	touch_controls.pause_rect.position.y = maxf(touch_controls.pause_y_random(), ceilf(bottom) + 3.0)
 
 
 ## The meter just hit 0 on the goal (a SLIMAKAZE paying there): SECOND WIND or BACKUP BLADDER fires

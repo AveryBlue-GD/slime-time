@@ -577,7 +577,7 @@ func _build_ticket_pod(root: Control) -> void:
 	ticket_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	ticket_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(ticket_pod)
-	ticket_pod.position = Vector2(UIKit.HUD_EDGE, UIKit.HUD_EDGE)
+	ticket_pod.position = Vector2(UIKit.hud_edge())
 	ticket_pod.custom_minimum_size.y = UIKit.POD_H
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)

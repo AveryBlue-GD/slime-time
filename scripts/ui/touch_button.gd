@@ -7,7 +7,8 @@ extends Button
 ## target (UIKit.TOUCH_GROUP on the same canvas layer, ties to the lower instance id), and never to
 ## this button when it lies inside another target's drawn rect. So hit areas never overlap and a tap
 ## between two buttons goes to the closer one. Targets kept out of focus by UIKit.lock_focus (behind
-## an open panel) don't compete. With a mouse (even on a touchscreen laptop) the hit area is exactly
+## an open panel) don't compete. The grown margin never reaches outside the safe area (Platform.safe_rect):
+## on an iPhone the bottom row's margin stops above the home indicator. With a mouse (even on a touchscreen laptop) the hit area is exactly
 ## the drawn rect.
 
 
@@ -30,6 +31,10 @@ func claims(at: Vector2) -> bool:
 	var mine := global_rect()
 	if not mine.grow(UIKit.HIT_PAD).has_point(at):
 		return false
+	var safe := Platform.safe_rect()
+	if safe != Platform.FULL_VIEW and not safe.has_point(at):
+		return false  # (the grown margin stops at the safe area: the iPhone home-indicator strip stays the system's;
+		# with the whole view safe, the letterbox around it still counts, as before)
 	var my_distance := _distance(mine, at)
 	var canvas := get_canvas()
 	for node in get_tree().get_nodes_in_group(UIKit.TOUCH_GROUP):

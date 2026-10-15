@@ -22,7 +22,8 @@ const LINE_SPACING := 5
 const SCREEN := Vector2(320, 180)
 ## Menu chrome (BACK, tabs, corner buttons, balance pods) sits this far from the screen edges.
 const EDGE := 4
-## In-level HUD pods and the hub's ticket pod sit this far from the edges (HUD.POD_MARGIN).
+## In-level HUD pods and the hub's ticket pod sit this far from the edges (HUD.POD_MARGIN); on a phone whose
+## safe area cuts into the view (rounded corners, a notch without bars) further in: see hud_edge.
 const HUD_EDGE := 3
 ## Top of the bottom-row buttons (BACK bottom left, the page's own action bottom right): 13 tall, B = 3.
 const BOTTOM_ROW_Y := 164
@@ -391,6 +392,13 @@ static func touch_active() -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	var progress: Node = tree.root.get_node_or_null("Progress") if tree else null
 	return progress != null and progress.get("force_touch") == true
+
+
+## The HUD pods' distance from the screen's sides (x, mirrored) and top (y): HUD_EDGE, or 1 px clear of the
+## safe area where it cuts deeper (Platform.safe_insets; never on desktop or the web, so those stay at 3).
+static func hud_edge() -> Vector2i:
+	var insets := Platform.safe_insets()
+	return Vector2i(maxi(HUD_EDGE, maxi(insets.left, insets.right) + 1), maxi(HUD_EDGE, insets.top + 1))
 
 
 ## Tracks touch_in_use from every input event, before any node or the GUI sees it (the RotateHint

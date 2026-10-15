@@ -284,6 +284,7 @@ func _build_custom_panel() -> void:
 	wheel.position = Vector2(left, 0)
 	wheel.size = Vector2(WHEEL_SIZE, WHEEL_SIZE)
 	custom_panel.add_child(wheel)
+	UIKit.add_touch_target(wheel)  # (a finger on the wheel is never taken by a tile's grown touch margin)
 	wheel.set_color(Progress.custom_color)
 	wheel.color_changed.connect(func(_c: Color) -> void: _on_custom_changed())
 

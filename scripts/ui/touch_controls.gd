@@ -70,6 +70,9 @@ var _canvas: Control
 func _ready() -> void:
 	layer = 15
 	add_to_group(GROUP)
+	# A phone whose safe area cuts into the view: pause follows the HUD pods in (UIKit.hud_edge).
+	var shift := UIKit.hud_edge() - Vector2i(UIKit.HUD_EDGE, UIKit.HUD_EDGE)
+	pause_rect.position += Vector2(-shift.x, shift.y)
 	_canvas = Control.new()
 	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -133,7 +136,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 	elif pos.x < SCREEN.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
-			_joy_center = pos.clamp(Vector2(JOY_RADIUS, JOY_RADIUS + 12), SCREEN - Vector2(JOY_RADIUS, JOY_RADIUS))
+			_joy_center = joystick_center_for(pos)
 			_move_joystick(pos)
 	elif not catches_jump(pos):
 		pass  # (abilities shown: the dead ring / the buttons' side of the right half)
@@ -162,6 +165,18 @@ func _touch_up(index: int, pos: Vector2) -> void:
 		_jump_touch = -1
 		_release("jump")
 	_canvas.queue_redraw()
+
+
+## Where the floating joystick appears for a thumb at `pos`: whole inside the screen (and the safe area: never
+## in an iPhone's home-indicator strip or under a notch, Platform.safe_rect), 12 px clear of the top.
+## PAUSE_Y_RANDOM, moved down with the HUD pods where a phone's safe area pushes them (UIKit.hud_edge).
+func pause_y_random() -> float:
+	return PAUSE_Y_RANDOM + UIKit.hud_edge().y - UIKit.HUD_EDGE
+
+
+func joystick_center_for(pos: Vector2) -> Vector2:
+	var safe := Platform.safe_rect()
+	return pos.clamp(safe.position + Vector2(JOY_RADIUS, JOY_RADIUS + 12), safe.end - Vector2(JOY_RADIUS, JOY_RADIUS))
 
 
 func _move_joystick(pos: Vector2) -> void:

@@ -117,9 +117,50 @@ func _initialize() -> void:
 	current_scene = null
 	other.free()
 	holder.free()
+	paused = false
 
+	await _hat_wheel_taps()
 	_result()
 	quit(1 if failures else 0)
+
+
+## Audit H4: on a touchscreen, a tap anywhere on the hat wheel overlay (the right half was JUMP, and JUMP used to
+## spin) never takes a paid spin; only the SPIN button does. The overlay has a BACK button on touch.
+func _hat_wheel_taps() -> void:
+	progress.enable_story_complete()
+	progress.force_touch = true
+	progress.saving_enabled = false
+	progress.tickets = 200
+	progress.spins = 4  # paid spins now
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	await _physics_frames(3)
+	hub.open_hat_wheel()
+	await _physics_frames(2)
+	var wheel = hub.hat_wheel  # (untyped: HatWheel compiles only once the autoloads exist)
+	_check(wheel.visible and wheel.tab == "wheel" and wheel.close_button.visible, "touch: the hat wheel opens with a BACK button")
+	_check(hub._touch_controls.menu_open, "touch: the touch controls stand down under the overlay")
+	var tickets: int = progress.tickets
+	var spins: int = progress.spins
+	for at: Vector2 in [Vector2(250, 100), Vector2(290, 150), Vector2(170, 90), Vector2(300, 60), Vector2(230, 140)]:
+		_send_touch(0, at, true)
+		await _physics_frames(3)
+		_send_touch(0, at, false)
+		await _physics_frames(3)
+	_check(progress.tickets == tickets and progress.spins == spins and not wheel.spinning,
+		"touch: taps on the wheel's right half never spin (tickets %d -> %d)" % [tickets, progress.tickets])
+	_check(not Input.is_action_pressed("jump"), "touch: no JUMP held under the overlay")
+	var back_at: Vector2 = wheel.close_button.get_global_rect().get_center()
+	_send_touch(0, back_at, true)
+	await _physics_frames(2)
+	_send_touch(0, back_at, false)
+	await _physics_frames(3)
+	_check(not wheel.visible and not hub._touch_controls.menu_open and progress.tickets == tickets, "touch: BACK closes the overlay, nothing spent")
+	current_scene = null
+	hub.free()
+	progress.force_touch = false
+	await process_frame
 
 
 func _pressed_moves() -> int:

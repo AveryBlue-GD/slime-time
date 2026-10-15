@@ -34,6 +34,7 @@ func _initialize() -> void:
 	_controls_note()
 	_project_settings()
 	_safe_area()
+	await _safe_area_ui()
 	await _back_button()
 	await _background()
 	Platform.reset_overrides()
@@ -165,6 +166,59 @@ func _safe_area() -> void:
 	_check(Platform.safe_rect().end.y == 175.0, "...unless a test simulates it (override honored on any platform)")
 	Platform.reset_overrides()
 	_check(Platform.safe_rect() == Rect2(0, 0, 320, 180), "overrides reset")
+
+
+## The safe area applied: bottom-row touch margins stop above an iPhone's home indicator, the floating joystick
+## stays out of it, and HUD pods (and the touch pause button) move in where a phone's safe area cuts the sides.
+## Desktop: unchanged.
+func _safe_area_ui() -> void:
+	var screen: Control = SETTINGS.instantiate()
+	root.add_child(screen)
+	await process_frame
+	var back: TouchButton = null
+	for child in screen.get_children():
+		if child is TouchButton and child.text == "BACK":
+			back = child
+	UIKit.touch_in_use = true
+	var below := Vector2(back.global_rect().get_center().x, back.global_rect().end.y + 1.5)  # y 178.5: in the grown margin
+	_check(back.claims(below), "desktop: BACK's grown touch margin reaches y %.1f" % below.y)
+	Platform.override = "ios"
+	Platform.window_override = Vector2i(2556, 1179)
+	Platform.safe_area_override = Rect2i(177, 0, 2202, 1116)
+	_check(not back.claims(below) and back.claims(below - Vector2(0, 1.0)), "iPhone: the margin stops at the home indicator (y 177.75)")
+	UIKit.touch_in_use = false
+	screen.free()
+
+	var touch := TouchControls.new()
+	_check(touch.joystick_center_for(Vector2(40, 179)).y <= 177.75 - TouchControls.JOY_RADIUS, "iPhone: the joystick never opens in the home-indicator strip")
+	touch.free()
+
+	# A phone whose safe area cuts 4 view px off each side (24 px at 6x): pods and the pause button move in.
+	Platform.window_override = Vector2i(1920, 1080)
+	Platform.safe_area_override = Rect2i(24, 0, 1872, 1080)
+	var game: Node2D = BASE_MAIN.instantiate()
+	game.level = 1
+	root.add_child(game)
+	await process_frame
+	await process_frame
+	var rects: Array[Rect2] = game.hud.pod_rects()
+	var right_edge := 0.0
+	for r in rects:
+		if r.position.x > 200.0:
+			right_edge = maxf(right_edge, r.end.x)
+	_check(rects[0].position.x == 5.0 and right_edge == 315.0, "safe area 4 px a side: HUD pods 5 px in (left %s, right edge %.0f)" % [rects[0], right_edge])
+	_check(game.touch_controls.pause_rect.position.x == TouchControls.PAUSE_RECT.position.x - 2.0, "...and the touch pause button with them")
+	game.free()
+	Platform.reset_overrides()
+	game = BASE_MAIN.instantiate()
+	game.level = 1
+	root.add_child(game)
+	await process_frame
+	await process_frame
+	rects = game.hud.pod_rects()
+	_check(rects[0].position.x == 3.0 and rects[0].position.y == 3.0 and game.touch_controls.pause_rect == TouchControls.PAUSE_RECT, "desktop: pods and pause where they were (3 px)")
+	game.free()
+	await process_frame
 
 
 func _go_back() -> void:

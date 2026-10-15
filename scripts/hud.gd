@@ -325,14 +325,15 @@ func _make_bar(preset: Control.LayoutPreset) -> BoxContainer:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bar)
 	bar.set_anchors_preset(preset)
-	bar.offset_top = POD_MARGIN
+	var edge := UIKit.hud_edge()  # (POD_MARGIN, unless a phone's safe area cuts deeper)
+	bar.offset_top = edge.y
 	if preset == Control.PRESET_TOP_RIGHT:
 		bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		bar.offset_left = -POD_MARGIN
-		bar.offset_right = -POD_MARGIN
+		bar.offset_left = -edge.x
+		bar.offset_right = -edge.x
 	else:
-		bar.offset_left = POD_MARGIN
-		bar.offset_right = POD_MARGIN
+		bar.offset_left = edge.x
+		bar.offset_right = edge.x
 	return bar
 
 
@@ -354,7 +355,7 @@ func _make_pod(bar: BoxContainer) -> HBoxContainer:
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(center)
 		center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-		center.offset_top = POD_MARGIN
+		center.offset_top = UIKit.hud_edge().y
 		center.add_child(pod)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
@@ -841,18 +842,19 @@ func _clear_y(label: Label, top: float, pods: Array[Rect2]) -> float:
 ## containers sort too), and the centered timer pod.
 func pod_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
+	var edge := UIKit.hud_edge()
 	for bar: BoxContainer in [_left_bar, _right_bar]:
-		var y := float(POD_MARGIN)
+		var y := float(edge.y)
 		for pod: Control in bar.get_children():
 			if not pod.visible:
 				continue
 			var size := pod.get_combined_minimum_size()
-			var x := float(POD_MARGIN) if bar == _left_bar else UIKit.SCREEN.x - POD_MARGIN - size.x
+			var x := float(edge.x) if bar == _left_bar else UIKit.SCREEN.x - edge.x - size.x
 			out.append(Rect2(x, y, size.x, size.y))
 			y += size.y + 2
 	var timer_pod := time_label.get_parent().get_parent() as Control
 	var timer_size := timer_pod.get_combined_minimum_size()
-	out.append(Rect2(floorf((UIKit.SCREEN.x - timer_size.x) / 2.0), POD_MARGIN, timer_size.x, timer_size.y))
+	out.append(Rect2(floorf((UIKit.SCREEN.x - timer_size.x) / 2.0), edge.y, timer_size.x, timer_size.y))
 	return out
 
 
