@@ -31,6 +31,7 @@ func _initialize() -> void:
 	await _hub_quit()
 	await _settings_fullscreen()
 	_fullscreen_memory()
+	_progress_events()
 	_controls_note()
 	_project_settings()
 	_safe_area()
@@ -119,6 +120,23 @@ func _fullscreen_memory() -> void:
 	Platform.reset_overrides()
 	progress.enable_story_complete()
 	progress.saving_enabled = true
+
+
+## The Steam seam: saved milestones are reported on PlatformEvents.progress_event (nothing listens yet).
+func _progress_events() -> void:
+	var got: Array = []
+	var take := func(id: String, value: int) -> void: got.append([id, value])
+	events.progress_event.connect(take)
+	progress.saving_enabled = true
+	progress.dev_tools = false
+	progress.coins_found.erase(1)
+	progress.collect_coin(1, Vector2i(3, 3))
+	_check(got.size() == 1 and got[0][0] == "coins" and got[0][1] == progress.coins_earned(), "a coin found reports coins (%s)" % [got])
+	progress.dev_tools = true
+	progress.collect_coin(1, Vector2i(5, 5))
+	_check(got.size() == 1, "dev mode reports nothing")
+	progress.dev_tools = false
+	events.progress_event.disconnect(take)
 
 
 func _controls_note() -> void:

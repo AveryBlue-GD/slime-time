@@ -12,12 +12,15 @@ extends Node
 ##   held inputs again and leaves the pause menu up: the player presses RESUME.
 ## - The last input device (Platform.last_input), read from every input event before any node sees it, so
 ##   prompts can name pad buttons, keys or taps (`input_kind_changed`).
-## Achievements / cloud hooks for Steam or the mobile stores attach to Progress.progress_event (see
-## docs/spring-cleaning/phase5-platform.md "Steam seam"), not here.
+## Achievements for Steam or the mobile stores attach to `progress_event` (emitted by Progress.report_progress
+## from the save points; see docs/spring-cleaning/phase5-platform.md "Steam seam"). Nothing listens yet.
 
 signal backgrounded
 signal foregrounded
 signal input_kind_changed(kind: String)
+## A progress milestone was saved (Progress.report_progress: id + its new value). The seam for Steam achievements
+## and mobile store hooks; nothing listens to it yet.
+signal progress_event(id: String, value: int)
 
 ## True between a focus loss / backgrounding and the focus coming back.
 var in_background := false

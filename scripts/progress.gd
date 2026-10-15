@@ -1051,6 +1051,19 @@ func _retry_save() -> void:
 		save_progress()
 
 
+## The Steam / store seam (docs/spring-cleaning/phase5-platform.md "Steam seam"): a progress milestone was just
+## saved: `id` = "medal_normal" / "medal_hard" (medals won in that mode), "coins" (story coins found), "hats" (hats
+## owned), "heat" (HEAT total), "random_wins", "descent_floor" (deepest floor). PlatformEvents.progress_event
+## carries it; nothing listens yet (a future Steam build's achievements backend will). Dev, story-complete and
+## autoplay runs report nothing (their progress isn't real).
+func report_progress(id: String, value: int) -> void:
+	if dev_tools or not saving_enabled:
+		return
+	var events := get_node_or_null("/root/PlatformEvents")
+	if events:
+		events.progress_event.emit(id, value)
+
+
 ## The app is going to the background (PlatformEvents): every change is already saved the moment it happens
 ## (atomically), so only a save that failed earlier (disk full, storage blocked) is still waiting; it is
 ## retried now instead of on its timer, which a suspended app would never reach.
@@ -1393,6 +1406,7 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 	if seed_value != 0:
 		random_seed_fresh = false  # winning it again is a replay
 	save_progress()
+	report_progress("random_wins", randoms_won)
 	return paid
 
 
@@ -1510,6 +1524,7 @@ func record_clear(level: int, run_time: float, par: float, assisted := false, fi
 		record_time(level, run_time, false)
 		complete_level(level, false)
 	save_progress()
+	report_progress("medal_%s" % ("hard" if hard_mode else "normal"), medals_total())
 	return result
 
 
@@ -1786,6 +1801,7 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 		time = float(descent_run.time), bonuses = descent_run.bonuses.duplicate(), boons = descent_run.boons.duplicate()}
 	descent_run.result = result
 	save_progress()
+	report_progress("descent_floor", descent_best_floor)
 	return result
 
 
@@ -1864,6 +1880,7 @@ func complete_heat(level: int, heat: int, save := true) -> Dictionary:
 		result.ember = true
 	if save:
 		save_progress()
+	report_progress("heat", heat_total())
 	return result
 
 
@@ -1901,6 +1918,7 @@ func collect_coin(level: int, cell: Vector2i, assisted := false) -> void:
 		coins_found[level] = []
 	coins_found[level].append(coin_key(cell))
 	save_progress()
+	report_progress("coins", coins_earned())
 
 
 func coins_found_in(level: int) -> int:
@@ -2222,6 +2240,7 @@ func win_hat(id: String) -> void:
 	hats_owned.append(id)
 	selected_hat = id
 	save_progress()
+	report_progress("hats", hats_owned.size())
 
 
 ## Wears hat `id` (if unlocked) and saves.
