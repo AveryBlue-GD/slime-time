@@ -21,8 +21,9 @@ extends Control
 ## menus; touch taps the tiles and BACK. Nothing moves (Reduce Motion needs nothing) and nothing is
 ## built per frame: thumbnails and the map are drawn into images once, when shown.
 
-const TILE_SIZE := Vector2(156, 26)
-const GRID_POS := Vector2(3, 21)
+## Two columns of tiles 2 apart, EDGE (4) from both screen edges.
+const TILE_SIZE := Vector2(155, 26)
+const GRID_POS := Vector2(4, 21)
 const THUMB_POS := Vector2(4, 3)
 ## Where the map may be drawn in the view.
 const MAP_AREA := Rect2i(2, 13, 316, 149)

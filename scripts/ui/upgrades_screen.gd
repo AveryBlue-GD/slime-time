@@ -254,7 +254,7 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	var price := HBoxContainer.new()
 	price.add_theme_constant_override("separation", 2)
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	price.position = Vector2(COST_X, y + 7)
+	price.position = Vector2(COST_X, y + 8)  # the price text on the + button's text row (y + 8)
 	ability_page.add_child(price)
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	price.add_child(cost)
