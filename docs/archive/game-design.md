@@ -1,6 +1,8 @@
 # Game: "Slime Time" — build it in this Godot project
 
-> **Status (2026-10-14): this is the original build brief; all 6 phases are done and the game has moved on.** Where a section below was superseded it carries a **[superseded]** note saying what is true now. For the current game read [../CLAUDE.md](../CLAUDE.md) (project facts), [handoff.md](handoff.md) (state and history), [level-design.md](level-design.md), [story.md](story.md) and the index in [README-docs.md](README-docs.md).
+> Archived original build brief (all 6 phases done); superseded by [../architecture.md](../architecture.md) (code layout), [../handoff.md](../handoff.md) (current state) and [../level-design.md](../level-design.md).
+
+> **Status (2026-10-14): this is the original build brief; all 6 phases are done and the game has moved on.** Where a section below was superseded it carries a **[superseded]** note saying what is true now. For the current game read [../CLAUDE.md](../../CLAUDE.md) (project facts), [handoff.md](../handoff.md) (state and history), [level-design.md](../level-design.md), [story.md](../story.md) and the index in [README-docs.md](../README-docs.md).
 
 Follow the rules in CLAUDE.md (320x180 base resolution, 16x16 tiles, nearest-neighbor, palette in tools/make_placeholder_art.py). Replace the current top-down sandbox with this game. Build it in the phases listed at the bottom, and after each phase run the tests, take a screenshot, check it, and commit.
 

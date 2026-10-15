@@ -33,13 +33,13 @@ mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per 
 `SLIME X1.45 -> X1.60`, `LIGHT 9 -> 17 PX  +257% AREA`) instead of "NEXT: ..."; old dev wall power maps by equal damage
 (p -> floor(p / 2.5)); the notice reads UPGRADES REWORKED / COINS RETURNED +N and waits in the save
 (`[upgrades] refund_notice`) until the hub shows it; seed codes accept L 0-10 and clamp 8-10 to 7, 11+ is not a code;
-`--upgrades=` takes new-tree levels. The RECOMMENDED tag and the 1 s light-ring preview on buy were built in the review-fix pass (docs/review-upgrades-b1.md status).
+`--upgrades=` takes new-tree levels. The RECOMMENDED tag and the 1 s light-ring preview on buy were built in the review-fix pass (docs/archive/review-upgrades-b1.md status).
 Measured story check: see [../playtime-estimate.md](../playtime-estimate.md) (upgrades v2 note) and
 [../handoff.md](../handoff.md) (last section). Code is the source of truth for the
 current numbers quoted (`scripts/upgrades.gd`, `scripts/progress.gd`, `scripts/game.gd`, `scripts/slime.gd`,
 `scripts/levels.gd`, `scripts/hats.gd`); the difficulty priors come from [../playtime-estimate.md](../playtime-estimate.md)
-and [../level-design.md](../level-design.md) sections 5-7. Background research: [../advisor/roguelike-progression.md](../advisor/roguelike-progression.md),
-[../advisor/maps.md](../advisor/maps.md), [../advisor/juice-audio-ui.md](../advisor/juice-audio-ui.md).
+and [../level-design.md](../level-design.md) sections 5-7. Background research: [../advisor/roguelike-progression.md](../archive/advisor/roguelike-progression.md),
+[../advisor/maps.md](../advisor/maps.md), [../advisor/juice-audio-ui.md](../archive/advisor/juice-audio-ui.md).
 
 ## Abilities v1 (owner request 2026-10-15; built)
 
@@ -598,7 +598,7 @@ GROUNDED + RACE is the tightest: 6% slack, intended as the summit).
 | Batch | Contents | Effort | Gate to ship |
 |---|---|---|---|
 | **1. Core tree rework** (DONE 2026-10-15) | per-track tables in `upgrades.gd`, brightness breakpoints, upgrades screen pips/next-effect line, migration + notice, randomizer size/code changes, golden rewrite, autoplay cost lookup, playtime model re-run | M (2-3 days) | all suites pass; autoplay story run completes; playtime median within +-5% |
-| **2. Hats + store + workshop** (DONE 2026-10-15; review fixes applied, see docs/review-upgrades-b2.md) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
+| **2. Hats + store + workshop** (DONE 2026-10-15; review fixes applied, see docs/archive/review-upgrades-b2.md) | `Hats.available = true`, wheel tabs WHEEL/SHOP, TAILOR, 5 trails + 3 papers, cauldron TICKETS tab, 5 workshop items, HUD wind icon, save keys | L (4-5 days) | store/workshop tests; nav fuzz; screenshots of every new screen |
 | **3. Descent** (DONE 2026-10-15) | portal choice, floor chain, boons, goo drops, pot/cash-out, daily cap, milestones, records | L (5-6 days) | descent tests; 20 autoplay runs reach floor >= 4 with no errors; web perf check (floor build <= 20 ms) |
 | **4. Heat** (DONE 2026-10-15) | 6 modifiers, level-select panel, bounties, badges, EMBER trail | M (2-3 days) | winnability test over all masks; hard autoplay at heat 10 on L1-3 |
 | **QA / balance** | qa-tester pass, web build check, first playtest with logging (tickets/day, workshop buy order, descent depth, heat usage) | ongoing | |

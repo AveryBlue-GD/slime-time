@@ -1,5 +1,7 @@
 # Slime Time: Game Feel, Audio, UI/UX and Character Audit
 
+> Archived advisor report (2026-10-12): its juice/audio/UI items were implemented; see [../../handoff.md](../../handoff.md) history.
+
 Advisor report. Read-only audit: no game code was changed. Files audited: `scripts/slime.gd`, `scripts/fx.gd`, `scripts/sfx.gd`, `scripts/hud.gd`, `scripts/ui/ui_kit.gd`, `scripts/ui/title.gd`, `scripts/ui/touch_controls.gd`, `scripts/ui/transition.gd`, the juice parts of `scripts/game.gd`, `tools/make_sounds.py`, plus `project.godot`.
 
 ## 0. Honesty note on sources

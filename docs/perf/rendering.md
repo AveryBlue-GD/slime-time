@@ -275,7 +275,7 @@ Suggested order: **3, 6, 7, 5b, 8, 9** (all S and bit-identical, one sitting), t
 
 These were considered and rejected because they change the look, even slightly:
 - **Coarser fog grid** (`FOG_CELL` 4) or a smaller fog texture: changes the reveal edge.
-- **13 -> 9-tap fog kernel** (proposed in `docs/advisor/graphics-shading.md` §6): changes the soft edge.
+- **13 -> 9-tap fog kernel** (proposed in `docs/archive/advisor/graphics-shading.md` §6): changes the soft edge.
 - **Sine-free hash / cheaper noise** in fog, atmosphere, hub_room or goo_wipe: a different mist pattern. Only
   worth it as a deliberate art change, for mediump precision on phones, not for speed.
 - **Uploading the fog only on fog ticks**, or deferring trail uploads a frame: delays the reveal by up to about

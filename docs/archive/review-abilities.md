@@ -1,5 +1,7 @@
 # Review: Abilities v1 (862fcbc..09df1db, excluding docs/)
 
+> Archived code review of Abilities v1: all six findings fixed; the rules are in [../design/upgrades-v2.md](../design/upgrades-v2.md) "Abilities v1".
+
 Read-only review against docs/design/upgrades-v2.md "Abilities v1". Most severe first.
 
 1. **scripts/ability_runner.gd:219-226 + scripts/slime.gd:367-370 + scripts/game.gd:1879** - A SLIMAKAZE that reaches the chalice or ticket never pays its 30%. The goal is an Area2D (`body_entered`), and the dash moves the body by setting `position` at 640 px/s, so the overlap fires before the dash reaches its target. `_finish` then freezes the slime, `_dash_step` drops it to GLIDE with no `finish_dash()`, and `dash_hit` (which is where the 30% is taken) never fires. `dashing` also stays true, so `_paint_dash` keeps running on every physics frame through the end card.

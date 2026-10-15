@@ -1,7 +1,9 @@
 # Graphics, lighting, shading, color and art direction
 
+> Archived advisor report (2026-10-12): its shading advice was implemented; the shaders are described in [../../architecture.md](../../architecture.md).
+
 Advisor report for Slime Time (Godot 4.7, gl_compatibility, 320x180 integer scaling, web + Android, no run-time-indexed arrays).
-Goes beyond `docs/polish-research.md`: that file's fog-crush and glow advice has been implemented, and the owner now says the fog is "a bit too dark". This report starts from what the code does today.
+Goes beyond `docs/archive/polish-research.md`: that file's fog-crush and glow advice has been implemented, and the owner now says the fog is "a bit too dark". This report starts from what the code does today.
 
 **Source honesty.** The web search tool returned thin results this session. Fetched and confirmed: Godot 4.7 2D lights doc, SLYNYRD Pixelblog 1, Lospec dark palette list. Searches that returned no primary source: Noita lighting, Hollow Knight lighting, Don't Starve darkness numbers, Darkwood, HLD GDC. Anything about those games below is general knowledge or a secondary summary and is labeled as such. Shader numbers are my own working, to be tuned by eye.
 

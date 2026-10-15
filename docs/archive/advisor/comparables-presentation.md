@@ -1,5 +1,7 @@
 # Comparables, itch.io positioning and "feels professional" for Slime Time
 
+> Archived advisor report (2026-10-12): its polish budget was worked through; current state is in [../../handoff.md](../../handoff.md).
+
 Advisor report, 2026-10-12. Scope: comparable small games, what separates amateur from pro presentation, a ranked polish budget and a playtest plan.
 
 **Source honesty.** Items tagged **[F]** come from a page I fetched or a search result this session (URL given). Items tagged **[K]** are from my general knowledge of the game and I did not re-verify them now. Most "best practice" web sources are indie-marketing blogs, not data; where a number is repeated across blogs it may be one origin copied. I found no hard first-minute drop-off data anywhere. Nothing here is copied from a source; all is paraphrased.

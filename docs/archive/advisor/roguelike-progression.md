@@ -1,7 +1,9 @@
 # Roguelike / roguelite elements and progression: research and audit for Slime Time
 
+> Archived advisor report (2026-10-12): superseded by the implemented economy in [../../design/upgrades-v2.md](../../design/upgrades-v2.md).
+
 Author: game-advisor. Read-only audit; no game code was changed. Date: 2026-10-12.
-Code read: `scripts/progress.gd`, `scripts/upgrades.gd`, `scripts/hats.gd`, `scripts/levels.gd`, `scripts/maze_generator.gd`, `scripts/hub.gd`, `scripts/ui/hat_wheel.gd`, parts of `scripts/game.gd`, plus CLAUDE.md, docs/game-design.md, docs/handoff.md.
+Code read: `scripts/progress.gd`, `scripts/upgrades.gd`, `scripts/hats.gd`, `scripts/levels.gd`, `scripts/maze_generator.gd`, `scripts/hub.gd`, `scripts/ui/hat_wheel.gd`, parts of `scripts/game.gd`, plus CLAUDE.md, docs/archive/game-design.md, docs/handoff.md.
 
 Source honesty: the GDC Vault talks (Slay the Spire "Metrics Driven Design", Dead Cells "What the F*n!?", Hades) are paywalled or returned 403, and the Hades GDC transcript fetch failed. Where a claim comes from a page I actually fetched, the URL is in the Sources list at the end. Where it came only from a search snippet or from my general knowledge, I say so inline ("general knowledge" / "secondary"). Nothing below is copied text; everything is paraphrased.
 

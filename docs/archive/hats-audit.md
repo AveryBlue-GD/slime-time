@@ -1,5 +1,7 @@
 # Hat audit (Mad Hatter pass)
 
+> Archived hat audit (scale/fit pass, hats live in upgrades v2 batch 2); the hats are still placeholders, the current hat rules live in [../architecture.md](../architecture.md) and [../handoff.md](../handoff.md).
+
 Owner's note: "some of the scaling and details on the hats seem off". Every hat was rendered on
 10 skins (lime, ocean, grape, Inkky, frost, ember, rainbow, a custom teal, solid lime, Stopwatch)
 x 7 poses (idle, glide, charge, launch, air, land, splat), on every frame of 14 animations, at 2x

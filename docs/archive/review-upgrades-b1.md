@@ -1,5 +1,7 @@
 # Review: upgrades v2 batch 1 (bc98bd1..fc9f64d, docs excluded)
 
+> Archived review of upgrades v2 batch 1; superseded by the implemented spec [../design/upgrades-v2.md](../design/upgrades-v2.md) (tree 3 repricing changed the numbers).
+
 Spec: docs/design/upgrades-v2.md (A2, D.1, D.2). This was a read-only review. No tests were run, because a batch 2 agent is working in the tree.
 
 ## Verified correct (no finding)

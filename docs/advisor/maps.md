@@ -1,7 +1,7 @@
 # Maps as a game mechanic: research, difficulty impact and an unlock plan for Slime Time
 
 Author: game-advisor. Date: 2026-10-14. Read-only research; no game code was changed.
-Read first: CLAUDE.md, docs/game-design.md, docs/handoff.md, docs/level-design.md,
+Read first: CLAUDE.md, docs/archive/game-design.md, docs/handoff.md, docs/level-design.md,
 docs/playtime-estimate.md, docs/advisor/*.md (especially roguelike-progression.md, which warned
 "do not add a map reveal meta upgrade that cheapens memory", and flow-level-design.md, which proposed
 a 2 s retry ghost of the last attempt). Code checked: `scripts/upgrades.gd`, the dry-up/win buttons in

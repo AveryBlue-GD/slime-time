@@ -246,7 +246,7 @@ cell fits). (The win text no longer shows slime usage: USED N% / EFFICIENT! remo
 `Levels` (randomizer 18-24 x 10-13, 85%) is now out of date (not edited: off limits for the agent).
 
 ## Hat audit (2026-10-14)
-Full Mad Hatter pass (findings, changes and what's still imperfect: `docs/hats-audit.md`; shots
+Full Mad Hatter pass (findings, changes and what's still imperfect: `docs/archive/hats-audit.md`; shots
 `docs/polish-shots/hats_before_*` / `hats_after_*`). Hats are fitted to the slime's measured head in five widths
 (NARROW / NORMAL / WIDE / SQUEEZED for sideways splats / BROAD) plus LOOSE (off the head: flying, hat wheel);
 `Hats.lift` raises a hat 1-3 px in the few frames where it would cover the eyes; head_point ignores sparkles.
@@ -499,7 +499,7 @@ Full write-up: [level-design.md section 8](level-design.md). In short:
 
 ## Map review + navigation QA fixes (2026-10-14)
 
-Fixes for [review-maps.md](review-maps.md) (5 findings) and [qa-nav-report.md](qa-nav-report.md) (B1-B10), each
+Fixes for [review-maps.md](archive/review-maps.md) (5 findings) and [qa-nav-report.md](archive/qa-nav-report.md) (B1-B10), each
 with a regression test; the fuzzer's `KNOWN` table is now empty, so any of them coming back fails it.
 - **Survey layout fingerprint** (review 1, 2): the packed survey is now **version 2** with a 16-byte header; bytes
   12-15 hold `Survey.fingerprint(maze)` (MD5 of size + start + goal + walls, first 32 bits; stable across

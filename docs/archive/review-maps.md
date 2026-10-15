@@ -1,10 +1,12 @@
 # Review: trail map trial (791ab83..HEAD, excluding docs)
 
+> Archived code review of the trail map trial: all five findings fixed; the current map rules are in [../handoff.md](../handoff.md) and [../architecture.md](../architecture.md).
+
 Read-only review. Nothing was run against the real save. Findings are listed most severe first.
 
 **Status (2026-10-14): all five fixed** (survey format version 2 with a layout fingerprint, stale surveys dropped,
 focus locked in the map view, marks clipped to seen tiles with a stronger leak test, route time shown only when it
-is the record). Details in [handoff.md](handoff.md), "Map review + navigation QA fixes".
+is the record). Details in [handoff.md](../handoff.md), "Map review + navigation QA fixes".
 
 1. scripts/survey.gd:48 (`fits`), also used at scripts/progress.gd:1356 and scripts/ui/map_select.gd:193 - **Surveys are matched to a maze by tile size only. There is no layout fingerprint.**
    - Normal mazes come from the shared MazeGenerator with fixed seeds. Hard mazes have already been re-laid once (HARD_LAYOUT_VERSION and `_migrate_hard_times`). A later change to generator tuning or to a level config can keep `cells` the same while changing walls, start or goal.

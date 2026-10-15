@@ -1,6 +1,8 @@
 # Perf batch A: results (2026-10-13)
 
-The safe items from [cpu.md](cpu.md), [rendering.md](rendering.md) and [startup-memory-web.md](startup-memory-web.md),
+> Archived: applied optimizations, batch A (2026-10-13); the live rules are in [../../architecture.md](../../architecture.md) "Performance" and the audits in [../../perf/](../../perf/).
+
+The safe items from [cpu.md](../../perf/cpu.md), [rendering.md](../../perf/rendering.md) and [startup-memory-web.md](../../perf/startup-memory-web.md),
 applied with **identical output**. Baseline = `1bc2b12`; after = this batch's commits. Apple M3, headless,
 `--fixed-fps 60` (dummy renderer: script, layout, text shaping and canvas recording only; GPU not included).
 Steady = mean frame over 300 frames after a 30-frame warm-up.

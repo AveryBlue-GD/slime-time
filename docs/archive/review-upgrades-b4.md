@@ -1,5 +1,7 @@
 # Review: upgrades v2 batch 4 (HEAT), 6d2db3b..53ae1fe (excluding docs/)
 
+> Archived review of upgrades v2 batch 4 (HEAT); superseded by [../design/upgrades-v2.md](../design/upgrades-v2.md) and [../level-design.md](../level-design.md) section 10.
+
 Checked against docs/design/upgrades-v2.md C3 and docs/level-design.md §10. Exploit paths checked first.
 
 ## Findings (most severe first)

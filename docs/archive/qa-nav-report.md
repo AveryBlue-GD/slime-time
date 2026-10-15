@@ -1,9 +1,11 @@
 # Navigation / Esc / menu QA report
 
+> Archived navigation QA: all findings fixed (B8 kept by design); the fuzzer is `tests/test_nav_fuzz.gd`, state in [../handoff.md](../handoff.md).
+
 **Status (2026-10-14): B1-B7, B9, B10 fixed; B8 kept by design (the first Esc in a text box only stops editing;
 focus now stays on a button and the second Esc closes), with N3's `_leaving()` guards. Each has a regression check
 and the fuzzer's `KNOWN` table is empty. Six area walks were added (see the Running section and
-[handoff.md](handoff.md)).** The report below describes the bugs as found.
+[handoff.md](../handoff.md)).** The report below describes the bugs as found.
 
 Driver: `tests/test_nav_fuzz.gd` (+ `tests/nav_fuzz_lib.gd`). It boots the real scenes in a SceneTree script with an in-memory
 save (`--story-complete`-style state via `Progress.enable_story_complete()`, plus fresh / mid-progress / dev / touch states),

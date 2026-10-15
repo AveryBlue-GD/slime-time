@@ -199,7 +199,7 @@ cells min / p10 / median / p90 / max (mean), share under the floor, build time m
 
 Before, the mean area by u band at level 0 was 62 (u < 0.3) / 155 / 305 (u >= 0.7); now 416 / 413 /
 413. Builds cost more on average (every maze is as big as the old u = 0.95 one) but the worst case
-stays at the batch-B level (17.9 ms at MORE SLIME 10, docs/perf/results-batch-b.md): 18.1 ms.
+stays at the batch-B level (17.9 ms at MORE SLIME 10, docs/archive/perf/results-batch-b.md): 18.1 ms.
 Every build is solvable with its ticket exactly `route` (>= 6) cells away (8,000 builds checked by
 `test_maze_golden`); the golden MORE SLIME 0/5/10 lines were rewritten (all seeds not already at
 36x20 changed); the story and hard-mode lines are byte-identical. A route <= 20% of the meter (the
@@ -347,7 +347,7 @@ walks every hard level, no leaps, under par using 75.7-85.6% of the meter (`test
 
 **Build time** (headless, Mac): hard builds mean 3.2 ms, worst 8.6 ms (L10 36x20; built once per
 session, cached); the randomizer is unchanged (mean ~4.8 ms, p99 13.3-13.6 ms, worst 17.9 ms as in
-docs/perf/results-batch-b.md; one rerun showed a single 67 ms outlier while the machine was busy).
+docs/archive/perf/results-batch-b.md; one rerun showed a single 67 ms outlier while the machine was busy).
 The new hard mazes are no bigger than randomizer mazes (36x20 cap), so the fog/tile/camera costs are
 already covered by the randomizer's web measurements. Web export verified.
 

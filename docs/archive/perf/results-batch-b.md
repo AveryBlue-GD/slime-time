@@ -1,6 +1,8 @@
 # Perf batch B: results (2026-10-14)
 
-The next safe items from [cpu.md](cpu.md) (#2, #3, #4) and [rendering.md](rendering.md) (#2, #5b, #6, #7), applied
+> Archived: applied optimizations, batch B (2026-10-14); the live rules are in [../../architecture.md](../../architecture.md) "Performance" and the audits in [../../perf/](../../perf/).
+
+The next safe items from [cpu.md](../../perf/cpu.md) (#2, #3, #4) and [rendering.md](../../perf/rendering.md) (#2, #5b, #6, #7), applied
 with **identical output**. Baseline = `194d2cc` (a worktree of it); after = `0a9c3e3`, `01b47a8`, `f164f5c`,
 `a357633`. Apple M3, headless `--fixed-fps 60` (dummy renderer: script work only, the GPU is not measured).
 

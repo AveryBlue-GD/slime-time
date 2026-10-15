@@ -1,5 +1,7 @@
 # Slime Time polish research
 
+> Archived early polish diagnosis; its fog, glow and hub advice was implemented (see [../handoff.md](../handoff.md) history and [advisor/graphics-shading.md](advisor/graphics-shading.md)).
+
 Screens reviewed: hub (unlock-all), levels 1/5/10 (demo scene), title. Level shots have a green goo trail on dark noisy fog.
 
 ## A. Diagnosis (what reads amateur)

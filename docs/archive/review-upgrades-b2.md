@@ -1,5 +1,7 @@
 # Review: upgrades v2 batch 2 (fc9f64d..9fd6383, code only)
 
+> Archived review of upgrades v2 batch 2; superseded by the implemented spec [../design/upgrades-v2.md](../design/upgrades-v2.md).
+
 Reviewer: code-reviewer (read-only). Scope: `git diff fc9f64d..9fd6383 -- . ':!docs'` against
 docs/design/upgrades-v2.md (B.2, B.3, C.1-C.3, D.1). Line numbers are from the tree at 9fd6383.
 

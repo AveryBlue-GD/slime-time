@@ -1,5 +1,7 @@
 # Review: upgrades v2 batch 3 (Descent), 64882d4..6d2db3b (excluding docs/)
 
+> Archived review of upgrades v2 batch 3 (Descent); superseded by [../design/upgrades-v2.md](../design/upgrades-v2.md) and [../level-design.md](../level-design.md) section 9.
+
 Read-only review against docs/design/upgrades-v2.md C2 and docs/level-design.md section 9. Most severe first.
 
 1. **scripts/game.gd:1465 (`_arm_survey`) + 1503 (`_commit_survey`): Descent floors overwrite story level 1's map.** `_survey_live` excludes only `is_random()`, and a Descent floor has `level == 0`. So every floor end (clear, dry-up, quit, and `_exit_tree` on DESCEND's reload) calls `record_survey(0, false, ...)`. `Progress.survey_key` clamps 0 to 1, `Survey.fits` fails on the Descent maze, and `maps[1]` is replaced by a blank survey of that floor and saved.

@@ -1,5 +1,7 @@
 # Flow, pacing, level design and onboarding: advisor report
 
+> Archived advisor report (2026-10-12): flow phases 1A-3 implemented; see [../../handoff.md](../../handoff.md) and [../../level-design.md](../../level-design.md).
+
 Topic: moment-to-moment flow, difficulty curve, tension and release around the slime meter, level length and maze quality, teaching without text, retry loops, goal and reward pacing, session length.
 Date: 2026-10-12. Author: game-advisor (read-only; no game code touched).
 
@@ -80,7 +82,7 @@ Derived facts:
 - Coins: `coin_cells` takes a seeded shuffle of *all* dead ends, so coins land on 1-cell stubs as often as on deep branches, regardless of difficulty (`game.gd:772-787`).
 - No level shows any in-game instruction. Level 1 begins with a title card (`show_area_name`) and the HUD; there is no teaching of glide, leap, the meter, the chalice, or coins. The leap's dotted landing marker (`jump_guide.gd`) exists only once a player has already discovered Space.
 - Retry path: a dry-up waits `END_DELAY` 2.0 s, then `CHOICE_DELAY` 0.6 s, then shows RESTART / UPGRADES buttons; only then does `reload_current_scene` run with a goo wipe. Pressing R mid-run opens a confirm prompt (`restart_prompt.gd`). That is about 3 s + a click per failure on a level where a perfect attempt is 10 s.
-- Randomizer dry-up shuffles to a *new* maze (`_dry_up` text "THE MAZE WILL SHUFFLE", `progress.new_random_maze`), although `docs/game-design.md` says "dying retries the same maze." The first retry therefore never lets the player apply what they learned.
+- Randomizer dry-up shuffles to a *new* maze (`_dry_up` text "THE MAZE WILL SHUFFLE", `progress.new_random_maze`), although `docs/archive/game-design.md` says "dying retries the same maze." The first retry therefore never lets the player apply what they learned.
 - Low-meter feedback: below 20% the bar turns red and pulses (`hud.gd:13`). No audio escalation, no vignette push, no relief beat.
 - Collected coins are saved at the moment of pickup (`progress.collect_coin` in `_pick_up_coins`), so a dry-up never loses coins. Good: failure is not punished by lost loot.
 
@@ -139,7 +141,7 @@ Impact ratings: Very high / High / Medium. Effort: S (under half a day), M (1-2 
 ### 5. Re-shape the difficulty curve into a sawtooth with a softened last step (S, High)
 - **Evidence**: Celeste critique that rooms lengthen instead of varying **[fetched]**, Brotato elite/rest cadence **[fetched]**, Bycer's "tension needs matching relief" **[fetched]**.
 - **Change** (data only in `Levels.DATA`): keep the overall climb but make each theme-introducing level (L4, L7 and L10) a notch gentler than a straight line and place the twist there. For example targets 0.45, 0.52, 0.58, 0.66 (new twist), 0.64 (breather), 0.72, 0.80 (twist), 0.78 (breather), 0.90, 0.97. Revisit `HARD_TARGETS` separately; hard mode is the 100% perfectionist track and need not follow this.
-- **Files**: `scripts/levels.gd`, `tests/test_phase3.gd` (monotonic target and "path grows" assertions), possibly `docs/game-design.md` text.
+- **Files**: `scripts/levels.gd`, `tests/test_phase3.gd` (monotonic target and "path grows" assertions), possibly `docs/archive/game-design.md` text.
 - **Risks**: the user set the 99% L10 target intentionally; frame this as an option. Changes to targets do not touch coin keys or saves.
 
 ### 6. Pay for risk: deepen and place dead ends and coins deliberately (M, High)
