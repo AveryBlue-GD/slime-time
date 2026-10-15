@@ -15,6 +15,8 @@ const TAGLINE := "ESCAPE THE FOG\nOR DRY TRYING"
 ## same scene before it finished, and the web build has no threads anyway.
 static var _preloaded: Array[Resource] = []
 static var _preload_started := false
+## Tests only: preload in a headless run too (see _start_preload).
+static var preload_in_headless := false
 
 var enter_button: Button
 var story_button: Button
@@ -24,6 +26,9 @@ func _ready() -> void:
 	# The very first launch of a fresh save opens with the animated intro (the launch trailer),
 	# which then wipes into this screen. Only the title the game boots into counts.
 	if Story.launch_due(self, Progress):
+		# Preload before the hand-off too: the trailer's title is then a warm one, like every other
+		# boot (still under the boot screen; the story scene is the one opening next anyway).
+		_start_preload(true)
 		Story.launched = true
 		Story.mode = "intro"
 		Story.next_scene = UIKit.TITLE_SCENE
@@ -120,7 +125,7 @@ func _warm_up_shaders() -> void:
 ## Once per session (not in headless runs: tests and tools have nothing to draw and change scenes
 ## at once).
 func _start_preload(fresh: bool) -> void:
-	if _preload_started or DisplayServer.get_name() == "headless":
+	if _preload_started or (DisplayServer.get_name() == "headless" and not preload_in_headless):
 		return
 	_preload_started = true
 	var paths := [UIKit.GAME_SCENE, UIKit.HUB_SCENE] if fresh else [UIKit.HUB_SCENE, UIKit.GAME_SCENE]

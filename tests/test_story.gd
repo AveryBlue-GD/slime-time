@@ -120,9 +120,17 @@ func _initialize() -> void:
 	current_scene.free()
 	current_scene = null
 	Story.launched = false
+	var title_script: GDScript = load("res://scripts/ui/title.gd")
+	title_script.set("preload_in_headless", true)
+	title_script.set("_preload_started", false)
+	(title_script.get("_preloaded") as Array).clear()
 	change_scene_to_packed(packed)
 	await _frames(5)
 	_check(current_scene != null and current_scene.scene_file_path == Story.SCENE and Story.launched, "booting a fresh save opens the intro first")
+	var warm: Array = (title_script.get("_preloaded") as Array).map(func(r: Resource) -> String: return r.resource_path)
+	_check(warm == [UIKit.GAME_SCENE, UIKit.HUB_SCENE, Story.SCENE],
+		"...after preloading level 1, the hub and the story under the boot screen (%s)" % [warm])
+	title_script.set("preload_in_headless", false)
 	var trailer := current_scene
 	await _frames(20)
 	trailer._unhandled_input(_key(KEY_ESCAPE))
