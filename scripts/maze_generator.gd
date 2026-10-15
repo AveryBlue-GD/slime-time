@@ -390,9 +390,14 @@ static func is_wall(maze: Dictionary, tile: Vector2i) -> bool:
 	return maze.walls[tile.y * maze.size.x + tile.x] == 1
 
 
-## Cells from `from` to `to` along open passages (inclusive).
+## Cells from `from` to `to` along open passages (inclusive). Empty when `to` cannot be reached from
+## `from` (or either is outside the maze); callers treat that as "no route".
 static func shortest_path(maze: Dictionary, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	# Breadth-first, neighbors in DIRS order (as open_neighbors), on flat arrays.
+	var none: Array[Vector2i] = []
+	var bounds := Rect2i(Vector2i.ZERO, maze.cells)
+	if not bounds.has_point(from) or not bounds.has_point(to):
+		return none
 	var width: int = maze.cells.x
 	var links := cell_links(maze)
 	var came_from := PackedInt32Array()
@@ -415,6 +420,8 @@ static func shortest_path(maze: Dictionary, from: Vector2i, to: Vector2i) -> Arr
 				if came_from[next] < 0:
 					came_from[next] = cell
 					queue.append(next)
+	if came_from[target] < 0:  # not reached: no walk back (index -1 would read the last cell)
+		return none
 	var path: Array[Vector2i] = [to]
 	var at := target
 	while at != source:

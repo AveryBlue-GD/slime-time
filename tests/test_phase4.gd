@@ -24,6 +24,8 @@ func _initialize() -> void:
 	for anim_name in ["dry", "celebrate", "splat_n", "splat_e", "splat_s", "splat_w", "glide_ne", "air_sw"]:
 		_check(manifest.has(anim_name), "has animation '%s'" % anim_name)
 
+	_check_unreachable_path()
+
 	var game := await _spawn_game()
 	var slime: Slime = game.slime
 	var open_dir := StartDirs.open_dir(game.maze, game.maze.start)
@@ -118,3 +120,22 @@ func _short_hop(maze: Dictionary) -> Dictionary:
 					best = {cell = cell, dir = dir, d = dist[cell]}
 				break
 	return best
+
+
+## MazeGenerator.shortest_path to a cell walled in on every side (or outside the maze) is empty: no route,
+## never a made-up one (QA phase 4, finding 4: the walk back read cell -1, the last cell).
+func _check_unreachable_path() -> void:
+	var maze := MazeGenerator.generate(Vector2i(6, 4), 11)
+	var reachable := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
+	_check(reachable.size() >= 2 and reachable[0] == maze.start and reachable[-1] == maze.goal, "a route from start to goal (%d cells)" % reachable.size())
+	for cell: Vector2i in [maze.goal, Vector2i(5, 3), Vector2i(0, 0), Vector2i(3, 1)]:
+		var walled: Dictionary = maze.duplicate(true)
+		var size_x: int = walled.size.x
+		var tile := (cell.y * MazeGenerator.CELL_SPAN + 1) * size_x + cell.x * MazeGenerator.CELL_SPAN + 1
+		for side in [tile + MazeGenerator.OPEN, tile - 1, tile + MazeGenerator.OPEN * size_x, tile - size_x]:
+			walled.walls[side] = 1
+		var from: Vector2i = walled.start if walled.start != cell else walled.goal
+		var path := MazeGenerator.shortest_path(walled, from, cell)
+		_check(path.is_empty(), "cell %s walled in: no path to it (%s)" % [cell, path])
+	_check(MazeGenerator.shortest_path(maze, maze.start, Vector2i(6, 0)).is_empty()
+		and MazeGenerator.shortest_path(maze, Vector2i(-1, 2), maze.goal).is_empty(), "a cell outside the maze: no path")

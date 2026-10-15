@@ -63,7 +63,7 @@ static func fastest_run(maze: Dictionary) -> Dictionary:
 	var cells := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
 	var none: Array[Vector2i] = []
 	return {cells = cells, coins = none, ends_at_goal = true,
-		tiles = (cells.size() - 1) * MazeGenerator.CELL_SPAN - GRAB_TILES}
+		tiles = maxi(cells.size() - 1, 0) * MazeGenerator.CELL_SPAN - GRAB_TILES}
 
 
 ## The run to play now to collect `coins_left` with a meter of `meter` tiles: {cells (waypoints,
