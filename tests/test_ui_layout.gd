@@ -123,6 +123,15 @@ func _hub() -> void:
 	_check_screen(hub.portal_menu, "hub portal")
 	_check_dialog(hub.portal_menu, hub.PORTAL_PANEL, "hub portal")
 	hub.close_portal_menu()
+	# A saved Descent run's prompt (phase 5, D6).
+	progress.descent_resume = {seed = 5, floor = 12, cleared = 11, meter = 50.0, boons = {}, bladders = 0, pot = 30, time = 600.0,
+		wind_used = false, slot = 1, bonuses = [], new_best = false, best_before = 0}
+	hub.open_resume_menu()
+	await _frames(2)
+	_check_screen(hub.resume_menu, "hub resume prompt")
+	_check_dialog(hub.resume_menu, hub.RESUME_PANEL, "hub resume prompt")
+	hub.close_resume_menu()
+	progress.descent_resume = {}
 	hub.open_coin_board()
 	await _frames(2)
 	_check_screen(hub.coin_board, "hub coin board")
@@ -140,6 +149,14 @@ func _hub() -> void:
 		_check(_rect(wheel.wheel_tab).position.x - panel.position.x == panel.end.x - _rect(wheel._balance_icon).end.x,
 			"hat wheel: the tab and the balance icon mirror their insets")
 		_check(wheel.wheel_tab.get_meta("selected", false) == (tab == "wheel") and wheel.shop_tab.get_meta("selected", false) == (tab == "shop"), "hat wheel: selected tab style")
+		wheel.show_close(true)  # touch: the header's BACK, the SHOP tab's mirror (phase 5, H4)
+		await _frames(1)
+		_check_screen(wheel, "hat wheel %s + touch BACK" % tab)
+		_check(_rect(wheel.close_button).position.y == _rect(wheel.shop_tab).position.y
+			and _rect(wheel.close_button).position.x - 160.0 == 160.0 - _rect(wheel.shop_tab).end.x
+			and _rect(wheel.close_button).end.x + 4.0 <= _rect(wheel.balance).end.x - 5 * 6.0,
+			"hat wheel: touch BACK mirrors the SHOP tab, 4 px clear of a 5-digit balance (%s)" % _rect(wheel.close_button))
+		wheel.show_close(false)
 	var tiles: Array = hub.hat_wheel.shop_tiles.values()
 	if not tiles.is_empty():
 		var left := INF
