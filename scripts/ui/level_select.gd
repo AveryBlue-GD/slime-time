@@ -15,13 +15,17 @@ var info: Label
 var heat_button: Button
 var heat_panel: HeatPanel
 
-## 48x42: the 14 px digits are centered (rows 14-27), the 7 px record time sits 3 px under them
-## (rows 31-37) and 3 px above the frame's bottom edge (row 41); both gaps are 1 px more than the
-## 2 px drips the digits and the time grow into them, so a normal drip never touches the next line.
+## 48x42: the 14 px digits sit 1 px above the tile's center (rows 13-26, their 4 px drips 27-30),
+## the 7 px record time under them (rows 32-38, drips 39-40) clear of the frame's bottom goo (row
+## 41): the digits' drips never run into the time.
 const TILE := Vector2i(48, 42)
-const GRID_POS := Vector2(30, 22)
+const NUMBER_Y := 13
+## Five tiles 3 apart (252 px) centered on the screen: L34 / R34.
+const GRID_POS := Vector2(34, 22)
 const GRID_GAP := 3
-const STATUS_Y := 31  # top row of the record time / check
+const STATUS_Y := 32  # top row of the record time / check
+## The info panel, 4 px under the grid (the section gap).
+const INFO_RECT := Rect2(14, 113, 292, 48)
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
 ## The flame badge's top-left corner on a hard tile (7x9; the medal pips mirror it at the top right).
 const FLAME_POS := Vector2(5, 5)
@@ -42,13 +46,13 @@ func _ready() -> void:
 	_fill_grid()
 	level_buttons[Progress.current_level - 1].grab_focus()
 
-	UIKit.add_panel(self, Rect2(14, 111, 292, 48))  # wide enough that the checkbox text clears the goo
+	UIKit.add_panel(self, INFO_RECT)  # wide enough that the checkbox text clears the goo
 	info = UIKit.make_label(INFO_HARD if Progress.hard_mode else INFO_NORMAL, 8, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	info.offset_top = 116
-	info.offset_bottom = 136
+	info.offset_top = INFO_RECT.position.y + 5
+	info.offset_bottom = INFO_RECT.position.y + 25
 
 	hard_mode_box = CheckBox.new()
 	hard_mode_box.material = UIKit.text_material()
@@ -58,13 +62,14 @@ func _ready() -> void:
 		Progress.set_hard_mode(on)
 		_fill_grid()  # show that mode's record times
 		_refresh_heat())
-	hard_mode_box.position = Vector2(25, 143)  # 270 wide, centered
 	add_child(hard_mode_box)
+	hard_mode_box.position = Vector2(25, INFO_RECT.position.y + 32)  # 270 wide, centered
+	UIKit.add_touch_target(hard_mode_box)
 	UIKit.add_back_button(self)
 	# HEAT (hard mode only): bottom right, mirroring BACK.
 	heat_button = UIKit.make_button("", _open_heat, HEAT_BUTTON_SIZE)
-	heat_button.position = Vector2(320 - 4 - HEAT_BUTTON_SIZE.x, 164)
 	add_child(heat_button)
+	UIKit.place_bottom_row(heat_button, 1)
 	heat_panel = HeatPanel.new()
 	heat_panel.closed.connect(_refresh_heat)
 	add_child(heat_panel)
@@ -112,7 +117,7 @@ func _make_tile(level: int) -> Button:
 	# centered on the tile is the digits centered on the tile; the glyph cells have no empty
 	# columns, so the horizontal centering is exact too.
 	number.size = Vector2(TILE.x, 14)
-	number.position = Vector2(0, (TILE.y - 14) / 2)
+	number.position = Vector2(0, NUMBER_Y)
 	button.add_child(number)
 
 	if locked:
@@ -161,7 +166,7 @@ func _make_lock() -> Control:
 	holder.name = "Lock"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ink := UIKit.icon_ink_rect("lock")
-	var at := Vector2(TILE) / 2.0 - (Vector2(ink.position) + Vector2(ink.size) / 2.0)
+	var at := Vector2(TILE.x / 2.0, NUMBER_Y + 7.0) - (Vector2(ink.position) + Vector2(ink.size) / 2.0)
 	at = Vector2(floorf(at.x), floorf(at.y))
 	var shadow := UIKit.make_icon("lock", UIKit.BG)
 	shadow.position = at + Vector2(1, 1)

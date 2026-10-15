@@ -77,7 +77,8 @@ func _initialize() -> void:
 							var body := _time_body(child)
 							var gap_above := body.position.y - ink.end.y
 							var gap_below := (tile.size.y - 1.0) - body.end.y  # to the frame's bottom edge row
-							_check(gap_above >= 1.0 and gap_above <= 3.0, tag + ": time %s px under the number (1-3 wanted)" % gap_above)
+							# The 16 px digits' drips hang 4 rows below their body: the time starts 1 row under them.
+							_check(gap_above >= 5.0 and gap_above <= 6.0, tag + ": time %s px under the number (5-6 wanted: 4 drip rows + 1)" % gap_above)
 							_check(gap_below >= 1.0 and gap_below <= 3.0, tag + ": time %s px above the frame edge" % gap_below)
 							_check(body.position.x >= 4.0 and body.end.x <= tile.size.x - 4.0, tag + ": time %s fits with a margin" % body)
 							_check(absf(body.get_center().x - center.x) <= 1.0, tag + ": time centered (%s)" % body)
@@ -149,8 +150,9 @@ func _check_bottom_row(screen: Control, hard: bool) -> void:
 	for text: String in Heat.ABOUT.values() + [panel.DEFAULT_ABOUT]:
 		longest = text if text.length() > longest.length() else longest
 	rects.append(_text_rect(panel.about, longest))  # the longest about line, centered
-	rects.append(_text_rect(panel.title, "HEAT 10/10"))
-	rects.append(Rect2(Vector2(_text_rect(panel.title, "HEAT 10/10").position.x - 11, panel.RECT.position.y + 6), Vector2(Heat.flame_size())))
+	panel.refresh()
+	rects.append(Rect2(panel.title.position, panel.title.size))
+	rects.append(Rect2(panel.title_flame.position, Vector2(Heat.flame_size())))
 	for i in rects.size():
 		_check(frame.grow(-3.0).encloses(rects[i]), "HEAT panel part %d inside the frame (%s)" % [i, rects[i]])
 		for j in range(i + 1, rects.size()):

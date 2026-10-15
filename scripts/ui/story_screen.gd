@@ -180,7 +180,9 @@ class Cover extends Control:
 		var y := SCREEN.y - 20.0
 		for i in n:
 			var c: Color = goo.light if i == screen.index else (goo.dark if i < screen.index else Color8(44, 40, 62))
-			draw_rect(Rect2(x0 + i * 6.0, y, 4, 4 if i == screen.index else 3), Color(c, alpha))
+			# The current pip grows a row above and below (4x5), so it stays centered on the row.
+			var current: bool = i == screen.index
+			draw_rect(Rect2(x0 + i * 6.0, y - (1.0 if current else 0.0), 4, 5 if current else 3), Color(c, alpha))
 		var ff := Color(Color8(84, 78, 110), alpha * 0.9)
 		for k in 2:
 			var fx := SCREEN.x - 22.0 + k * 5.0

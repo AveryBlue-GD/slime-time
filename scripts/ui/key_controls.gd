@@ -61,11 +61,9 @@ func _ready() -> void:
 	note.offset_top = 140
 	note.offset_bottom = 150
 	reset_keys_button = UIKit.make_button("RESET KEYS", _on_reset, Vector2(98, 13))
-	reset_keys_button.position = Vector2(111, 160)
 	add_child(reset_keys_button)
-	back_button = UIKit.make_button("BACK", _back, Vector2(40, 13))
-	back_button.position = Vector2(4, 160)
-	add_child(back_button)
+	UIKit.place_bottom_row(reset_keys_button, 0)
+	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)
 
 
 func _back() -> void:

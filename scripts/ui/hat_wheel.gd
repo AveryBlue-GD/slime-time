@@ -42,8 +42,13 @@ const RAINBOW_RINGS: Array[Color] = [
 ]
 const TICKET_TINT := Color8(255, 226, 150)
 ## The SHOP grid: two columns of tiles.
+## The header row (tabs top left, title centered, balance top right): one text baseline (the tabs'
+## text rows 3-9 = the labels at HEADER_Y + 3), HEADER_INSET from the panel's sides.
+const HEADER_Y := 9
+const HEADER_INSET := 8
 const TILE := Vector2(138, 13)
-const GRID_LEFT := [22.0, 162.0]
+## Two columns of 138 px tiles 2 apart, centered in the panel: insets 13 / 13.
+const GRID_LEFT := [21.0, 161.0]
 const GRID_TOP := 46
 const GRID_STEP := 15
 const SECTIONS := ["hats", "trails", "papers"]
@@ -115,21 +120,21 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel := UIKit.add_panel(self, PANEL)
 	panel.show_behind_parent = true  # the wheel is drawn by this control, over its panel
-	title = _label("HAT WHEEL", UIKit.GOLD, 12)
+	title = _label("HAT WHEEL", UIKit.GOLD, HEADER_Y + 3)  # on the tabs' text baseline
 	# The ticket balance, top right of the panel.
 	balance = UIKit.make_label("", 8, TICKET_TINT)
 	balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	balance.position = Vector2(PANEL.end.x - 52, 12)
+	balance.position = Vector2(PANEL.end.x - 50, HEADER_Y + 3)
 	balance.size = Vector2(32, 10)
 	add_child(balance)
 	_balance_icon = UIKit.make_icon("ticket", Color.WHITE)
-	_balance_icon.position = Vector2(PANEL.end.x - 18, 12)
+	_balance_icon.position = Vector2(PANEL.end.x - HEADER_INSET - 8, HEADER_Y + 3)  # mirrors the WHEEL tab's inset
 	add_child(_balance_icon)
 	wheel_tab = UIKit.make_button("WHEEL", func() -> void: show_tab("wheel"), Vector2(44, 13))
-	wheel_tab.position = Vector2(PANEL.position.x + 8, 10)
+	wheel_tab.position = Vector2(PANEL.position.x + HEADER_INSET, HEADER_Y)
 	add_child(wheel_tab)
 	shop_tab = UIKit.make_button("SHOP", func() -> void: show_tab("shop"), Vector2(44, 13))
-	shop_tab.position = Vector2(PANEL.position.x + 54, 10)
+	shop_tab.position = Vector2(PANEL.position.x + HEADER_INSET + 44 + 2, HEADER_Y)
 	add_child(shop_tab)
 
 	wheel_page = _page()
@@ -218,7 +223,7 @@ func show_tab(which: String, focus := true) -> void:
 	shop_page.visible = shop
 	title.text = "SHOP" if shop else "HAT WHEEL"
 	for pair: Array in [[wheel_tab, not shop], [shop_tab, shop]]:
-		(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if pair[1] else "normal"))
+		UIKit.set_selected(pair[0], pair[1])
 	if shop:
 		show_section(section, focus)
 	else:
@@ -377,7 +382,7 @@ func _process(delta: float) -> void:
 func show_section(which: String, focus := true) -> void:
 	section = which
 	for id: String in section_buttons:
-		(section_buttons[id] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if id == section else "normal"))
+		UIKit.set_selected(section_buttons[id], id == section)
 	for child in _grid.get_children():
 		_grid.remove_child(child)
 		child.queue_free()
@@ -440,7 +445,7 @@ func _make_tile(id: String) -> Button:
 	if not _is_hat(id) and Progress.owns_cosmetic(id):
 		right.add_child(UIKit.make_label("WORN" if _worn(id) else "OWNED", 8, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
 		if _worn(id):
-			tile.add_theme_stylebox_override("normal", UIKit.button_style("hover"))
+			UIKit.set_selected(tile, true)
 	else:
 		var price := _price_of(id)
 		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open())

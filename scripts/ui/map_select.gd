@@ -65,11 +65,9 @@ func _ready() -> void:
 	grid.add_theme_constant_override("v_separation", 2)
 	add_child(grid)
 	back_button = UIKit.add_back_button(self)
-	hint_label = UIKit.make_label(HINT if not Progress.maps_hint_seen else "", 8, UIKit.TEXT_DIM)
-	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_label.position = Vector2(48, 167)
-	hint_label.size = Vector2(216, 10)
-	add_child(hint_label)
+	# The bottom bar's line: centered on the screen (48..271, like the map view's), on BACK's baseline.
+	hint_label = UIKit.add_label(self, HINT if not Progress.maps_hint_seen else "", Rect2(48, UIKit.BOTTOM_ROW_Y + 3, 224, 10),
+		8, UIKit.TEXT_DIM)
 	if not Progress.maps_hint_seen:  # once: the first time the table is opened
 		Progress.maps_hint_seen = true
 		Progress.save_progress()
@@ -80,8 +78,11 @@ func _ready() -> void:
 	hard_box.toggled.connect(func(on: bool) -> void:
 		hard = on
 		_fill_grid())
-	hard_box.position = Vector2(270, 164)
 	add_child(hard_box)
+	# On the bottom row: its text on BACK's baseline, its ink ending EDGE from the right edge.
+	hard_box.size = hard_box.get_combined_minimum_size()
+	hard_box.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - hard_box.size.x, UIKit.BOTTOM_ROW_Y - 1)
+	UIKit.add_touch_target(hard_box)
 	_build_view()
 	_fill_grid()
 	_focus_tile(Progress.current_level)

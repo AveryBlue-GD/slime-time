@@ -13,8 +13,15 @@ const POD_MARGIN := 3
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
 const AREA_NAME_TIME := 2.0
-## Where the area name sits in a randomizer maze, clear of the two-line attempt pod (normally y 20).
+## Where the area name sits (its line box top): under the timer, between the second-row pods.
+const AREA_TOP := 20
+## In a randomizer maze: clear of the two-line attempt pod.
 const AREA_TOP_UNDER_ATTEMPT := 44
+## The story line sits this far under the area name (a 12 px line pitch would put it on the
+## second-row pods' bottom rows), and always 2 px clear of every pod it would cross (_place_area_texts).
+const STORY_GAP := 15
+## Clear space kept between the area name / story line (drips included) and any HUD pod.
+const TEXT_CLEARANCE := 2
 const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
@@ -37,6 +44,7 @@ var message: Label
 var area_label: Label
 ## A story line under the area name (see Story.level_line).
 var story_label: Label
+var _area_tween: Tween
 var _message_panel: PanelContainer
 var time_label: Label
 ## Coins in hand (top bar, beside the slime meter), and coins still to find in this story level
@@ -189,7 +197,11 @@ func _ready() -> void:
 	_clock_icon = UIKit.make_icon("clock", UIKit.TEXT)
 	time_row.add_child(_clock_icon)
 	time_label = _make_label()
-	time_label.custom_minimum_size = Vector2(37, 0)  # "0:00.0" + 1: an even-width pod sits exactly on center
+	# Tabular digits: the time keeps its width as it runs ("0:00.0" = 28 px), so the pod (sized to
+	# it) never changes size. A 4 px separation makes the content even (8 + 4 + 28 = 40): the 48 px
+	# pod sits exactly on the screen's center with ink pads of 4 / 4.
+	time_label.add_theme_font_override("font", UIKit.tabular_font())
+	time_row.add_theme_constant_override("separation", 4)
 	time_row.add_child(time_label)
 
 	# The level name, and under it the coins still hidden in this level (a dim coin).
@@ -230,15 +242,15 @@ func _ready() -> void:
 
 	area_label = _make_label(SkinText.ROLE_DIM)
 	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	area_label.offset_top = 20
-	area_label.offset_bottom = 30
+	area_label.offset_top = AREA_TOP
+	area_label.offset_bottom = AREA_TOP + 10
 	area_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	area_label.visible = false
 	add_child(area_label)
 	story_label = _make_label(SkinText.ROLE_DIM)
 	story_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	story_label.offset_top = 31
-	story_label.offset_bottom = 41
+	story_label.offset_top = AREA_TOP + STORY_GAP
+	story_label.offset_bottom = AREA_TOP + STORY_GAP + 10
 	story_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	story_label.visible = false
 	add_child(story_label)
@@ -323,6 +335,9 @@ func _make_pod(bar: BoxContainer) -> HBoxContainer:
 	var pod := PanelContainer.new()
 	pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Every one-line pod is POD_H tall (an 8 px icon sets it; text-only pods match), so pods in a
+	# row share their bottom edge and the mirrored second-row pods start on the same row.
+	pod.custom_minimum_size.y = UIKit.POD_H
 	if bar:
 		bar.add_child(pod)
 		var right := bar.grow_horizontal == Control.GROW_DIRECTION_BEGIN
@@ -396,6 +411,7 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
 	attempt_label.text = text
+	_pods_changed()
 	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
 	attempt_label.add_theme_color_override("font_color", color)
 	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM
@@ -439,9 +455,10 @@ func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
 	attempt_pod.visible = true
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
-	story_label.offset_top = AREA_TOP_UNDER_ATTEMPT + 11  # the floor number under the area name
-	story_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 21
+	story_label.offset_top = AREA_TOP_UNDER_ATTEMPT + UIKit.LINE_PITCH  # the floor number under the area name
+	story_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + UIKit.LINE_PITCH + 10
 	attempt_label.text = text
+	_pods_changed()
 	var pays := cap == "" or cap == "slime"
 	attempt_label.add_theme_color_override("font_color", TICKET_TINT if pays else MEDAL_OWNED)
 	_attempt_icon.modulate = Color.WHITE if pays else TICKET_DIM
@@ -463,6 +480,7 @@ func set_boons(boons: Dictionary, bladders_left := 0) -> void:
 			boon_strip.add_child(BoonIcons.make(id))
 			boon_icons.append(id)
 	boon_pod.visible = not boon_icons.is_empty()
+	_pods_changed()
 
 
 ## ABILITIES: `items` = [{id, left, max}] (AbilityRunner.strip): the icon, lit while its one use is
@@ -491,6 +509,7 @@ func set_abilities(items: Array[Dictionary]) -> void:
 			icon.create_tween().tween_property(icon, "modulate",
 				Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7), 0.35)
 	ability_pod.visible = not items.is_empty()
+	_pods_changed()
 
 
 ## True while the attempt pod's pop is still playing (or waiting for the goo wipe to clear).
@@ -526,14 +545,15 @@ func set_heat(heat: int, ids: Array[String]) -> void:
 		heat_pod = row.get_parent()
 		heat_pod.name = "HeatPod"
 		row.add_theme_constant_override("separation", 2)
-		row.add_child(Heat.make_rect(Heat.flame(heat)))
+		row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.flame(heat))))
 		heat_label = UIKit.make_label("", 8, HEAT_TINT)
 		row.add_child(heat_label)
 		for id in ids:
-			row.add_child(Heat.make_rect(Heat.icon(id)))
+			row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.icon(id))))
 	heat_label.text = "HEAT %d" % heat
 	heat_icons = ids.duplicate()
 	heat_pod.visible = heat > 0
+	_pods_changed()
 
 
 ## The result's HEAT line (a heat run's clear): the flame and HEAT n, then the bounty it paid
@@ -567,12 +587,14 @@ func _heat_text(text: String, color: Color) -> void:
 ## The assist tag in the top bar.
 func set_assist(on: bool) -> void:
 	assist_pod.visible = on
+	_pods_changed()
 
 
 ## SECOND WIND's tag: "" hides it, "ready" full color, "refilling" flashes bright, "used" dim.
 func set_wind(state: String) -> void:
 	wind_state = state
 	wind_pod.visible = state != ""
+	_pods_changed()
 	match state:
 		"ready":
 			wind_pod.modulate = Color.WHITE
@@ -596,6 +618,7 @@ func set_dev_badge(text: String) -> void:
 		row.add_child(_dev_label)
 	_dev_label.text = "DEV " + text
 	dev_badge.visible = text != ""
+	_pods_changed()
 
 
 ## The corner vignette (off while the dev FULL BRIGHT toggle is on).
@@ -611,6 +634,7 @@ func set_vignette(on: bool) -> void:
 ## limit is used up, `repeat` that this seed already paid today.
 ## An assisted run says it earns nothing instead.
 func show_rewards(info: Dictionary) -> void:
+	hide_area_texts()  # the result panel can reach up to them
 	for child in rewards_row.get_children():
 		child.queue_free()
 	rewards_texts.clear()
@@ -665,12 +689,13 @@ func show_record(seconds: float) -> void:
 ## Shows a row of buttons, each [text, Callable]; button `focus` (default: the last) gets
 ## keyboard focus.
 func show_choices(options: Array, focus := -1) -> void:
+	hide_area_texts()
 	var row: HBoxContainer = _choice_root.get_child(0).get_child(0)
 	for child in row.get_children():
 		child.queue_free()
 	choice_buttons.clear()
 	for option: Array in options:
-		var button := UIKit.make_button(option[0], option[1], Vector2(84, 13))
+		var button := UIKit.make_button(option[0], option[1], UIKit.CHOICE_SIZE)
 		row.add_child(button)
 		choice_buttons.append(button)
 	_choice_root.visible = true
@@ -687,12 +712,12 @@ func _build_choice_row() -> void:
 	add_child(_choice_root)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	center.offset_top = 152
-	center.offset_bottom = 168
+	center.offset_top = UIKit.CHOICE_Y - 1
+	center.offset_bottom = UIKit.CHOICE_Y + UIKit.BUTTON_H + 2
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_choice_root.add_child(center)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UIKit.CHOICE_GAP)
 	center.add_child(row)
 
 
@@ -752,13 +777,84 @@ func show_area_name(text: String, story_line := "") -> void:
 	story_label.text = story_line
 	story_label.visible = story_line != ""
 	story_label.modulate.a = 1.0
+	_place_area_texts()
+	if _area_tween:
+		_area_tween.kill()
 	var tween := create_tween()
+	_area_tween = tween
 	tween.tween_interval(AREA_NAME_TIME + (1.0 if story_line != "" else 0.0))
 	tween.tween_property(area_label, "modulate:a", 0.0, 0.8)
 	tween.parallel().tween_property(story_label, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(func() -> void:
 		area_label.visible = false
 		story_label.visible = false)
+
+
+## Moves the area name and the story line down (each as a whole line) until their text, drips
+## included, is TEXT_CLEARANCE clear of every pod showing in the top corners (the HEAT pod, an
+## ASSIST or DEV tag, a long line under the coin pods). Pods are measured by their minimum sizes, so
+## it works before the bars have sorted.
+func _place_area_texts() -> void:
+	var pods := pod_rects()
+	var y := _clear_y(area_label, area_label.offset_top, pods)
+	area_label.offset_top = y
+	area_label.offset_bottom = y + 10
+	if story_label.text != "":
+		var story_top := y + (UIKit.LINE_PITCH if attempt_pod.visible else STORY_GAP)
+		story_top = _clear_y(story_label, story_top, pods)
+		story_label.offset_top = story_top
+		story_label.offset_bottom = story_top + 10
+
+
+## The first line top from `top` down at which `label`'s centered text clears every rect in `pods`.
+func _clear_y(label: Label, top: float, pods: Array[Rect2]) -> float:
+	var width: float = label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var x := roundf((UIKit.SCREEN.x - width) / 2.0)
+	var moved := true
+	while moved:
+		moved = false
+		var ink := Rect2(x, top, width, UIKit.TEXT_BODY + UIKit.TEXT_DRIP).grow(TEXT_CLEARANCE)
+		for pod in pods:
+			if ink.intersects(pod):
+				top = pod.end.y + TEXT_CLEARANCE
+				moved = true
+	return top
+
+
+## Where the visible pods of the two top-corner bars sit (from their minimum sizes, so before the
+## containers sort too), and the centered timer pod.
+func pod_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for bar: BoxContainer in [_left_bar, _right_bar]:
+		var y := float(POD_MARGIN)
+		for pod: Control in bar.get_children():
+			if not pod.visible:
+				continue
+			var size := pod.get_combined_minimum_size()
+			var x := float(POD_MARGIN) if bar == _left_bar else UIKit.SCREEN.x - POD_MARGIN - size.x
+			out.append(Rect2(x, y, size.x, size.y))
+			y += size.y + 2
+	var timer_pod := time_label.get_parent().get_parent() as Control
+	var timer_size := timer_pod.get_combined_minimum_size()
+	out.append(Rect2(floorf((UIKit.SCREEN.x - timer_size.x) / 2.0), POD_MARGIN, timer_size.x, timer_size.y))
+	return out
+
+
+## A pod showed or hid while the area name is up (the HUD is filled in after the banner starts):
+## its texts move clear of it.
+func _pods_changed() -> void:
+	if area_label.visible:
+		_place_area_texts()
+
+
+## Hides the area name and story line at once (a pause or restart prompt opened over them, or the
+## run ended: they would show through or under the panel).
+func hide_area_texts() -> void:
+	if _area_tween:
+		_area_tween.kill()
+		_area_tween = null
+	area_label.visible = false
+	story_label.visible = false
 
 
 func set_level_text(text: String) -> void:

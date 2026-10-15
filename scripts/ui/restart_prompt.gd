@@ -22,7 +22,8 @@ func _ready() -> void:
 	dim.color = Color(UIKit.BG, 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
-	UIKit.add_panel(root, Rect2(100, 52, 120, 76))
+	# Three 13 px buttons 3 apart, PANEL_PAD above and below (like the pause menu).
+	UIKit.add_panel(root, Rect2(100, 60 - UIKit.PANEL_PAD, 120, UIKit.PANEL_PAD * 2 + 3 * UIKit.BUTTON_H + 2 * UIKit.GAP_S))
 	var title := UIKit.make_label("RESTART?", 16, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
@@ -31,7 +32,7 @@ func _ready() -> void:
 	var menu := VBoxContainer.new()
 	menu.position = Vector2(110, 60)
 	menu.custom_minimum_size = Vector2(100, 0)
-	menu.add_theme_constant_override("separation", 3)
+	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(menu)
 	buttons = [
 		UIKit.make_button("RESTART", _restart),
@@ -46,6 +47,9 @@ func _ready() -> void:
 func open() -> void:
 	visible = true
 	get_tree().paused = true
+	var hud: Node = game.get("hud") if game else null
+	if hud and hud.has_method("hide_area_texts"):
+		hud.hide_area_texts()  # (frozen mid-fade, they would show through around RESTART?)
 	buttons[0].grab_focus()
 	if _focus_lock.is_empty():  # the level's other controls can't take focus meanwhile
 		_focus_lock = UIKit.lock_focus(get_parent(), self)

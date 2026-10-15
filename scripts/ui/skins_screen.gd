@@ -269,7 +269,7 @@ func _refresh_trails(focus_id := "") -> void:
 		else:
 			status.text = "%s - %d TIX IN THE SHOP" % [Cosmetics.display_name(id), Cosmetics.price(id)]
 	for tile_id: String in trail_tiles:
-		(trail_tiles[tile_id] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if tile_id == Progress.trail_style else "normal"))
+		UIKit.set_selected(trail_tiles[tile_id], tile_id == Progress.trail_style)
 
 
 ## The custom color panel, mirrored about the center: the wheel on the left, the big preview
@@ -351,7 +351,7 @@ func _refresh(focus_id := "") -> void:
 		status.text = Skins.display_name(id) + ("  (SELECTED)" if worn_here and id == Progress.selected_skin else "")
 	for tile_id: String in tiles:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
-		(tiles[tile_id] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if selected else "normal"))
+		UIKit.set_selected(tiles[tile_id], selected)
 	jelly_button.text = "JELLY: ON" if view_jelly else "JELLY: OFF"
 	_rule.text = SKINS_RULE if view_jelly else SOLID_RULE
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
@@ -371,7 +371,7 @@ func _refresh_hats(focus_id := "") -> void:
 		status.text = "LOCKED - WIN IT ON THE HAT WHEEL"
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
-		tile.add_theme_stylebox_override("normal", UIKit.button_style("hover" if tile_id == Progress.selected_hat else "normal"))
+		UIKit.set_selected(tile, tile_id == Progress.selected_hat)
 
 
 func _unhandled_input(event: InputEvent) -> void:

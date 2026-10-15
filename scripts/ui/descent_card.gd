@@ -17,8 +17,14 @@ extends CanvasLayer
 const TILE := Vector2(96, 78)
 const TILE_Y := 47.0
 const TILE_XS: Array[float] = [10.0, 112.0, 214.0]
-const BUTTON_Y := 152.0
-const BUTTON := Vector2(96, 15)
+## The buttons: 13 px tall on the result rows' line (UIKit.CHOICE_Y); the card's two take the tile
+## width (one under each outer tile), the summary's two are the standard choice row.
+const BUTTON_Y := float(UIKit.CHOICE_Y)
+const BUTTON := Vector2(96, 13)
+## The boon tiles' content (icon, name, two lines, HAVE n): its top row, and lower when no tile in
+## the row has a HAVE line (then the three lines sit centered in the tile).
+const TILE_TOP := 7.0
+const TILE_TOP_SHORT := 13.0
 const DIM := Color(0.06, 0.06, 0.1, 0.82)
 
 var game: Node
@@ -38,6 +44,7 @@ var picked := ""
 ## The summary's parts.
 var summary_title: Label
 var summary_lines: VBoxContainer
+var summary_panel: Panel
 var new_run_button: Button
 var hub_button: Button
 var _skin_text: SkinText
@@ -123,6 +130,7 @@ func _build_boons() -> void:
 ## Shows the boon card for `run` (Progress.descent_run, its floor just cleared) with `offers`.
 func show_boons(run: Dictionary, offers: Array) -> void:
 	visible = true
+	_hide_hud()
 	boons_root.visible = true
 	summary_root.visible = false
 	picked = ""
@@ -138,6 +146,10 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 		practice = {"practice": "  PRACTICE", "dev": "  NO TICKETS", "slime": "  PAYS 1"}.get(due.cap, "")
 		cash_button.text = "CASH OUT +%d" % due.tickets
 	pot_label.text = "POT %d (+%d)%s" % [int(run.get("pot", 0)), int(run.get("gain", 0)), practice]
+	var top := TILE_TOP_SHORT
+	for id in tile_ids:
+		if _have_note(id, run.get("boons", {})) != "":
+			top = TILE_TOP
 	for i in tiles.size():
 		var tile := tiles[i]
 		tile.button_pressed = false
@@ -145,7 +157,7 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 			child.queue_free()
 		tile.visible = i < tile_ids.size()
 		if tile.visible:
-			_fill_tile(tile, tile_ids[i], run.get("boons", {}))
+			_fill_tile(tile, tile_ids[i], run.get("boons", {}), top)
 	status.text = ""
 	_skin_text.recolor()
 	if not tiles.is_empty() and tiles[0].visible:
@@ -155,24 +167,29 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 
 
 ## A tile's face: the icon (2x), the name, two short lines and how many are held (stacking boons).
-func _fill_tile(tile: Button, id: String, held: Dictionary) -> void:
+func _fill_tile(tile: Button, id: String, held: Dictionary, top := TILE_TOP) -> void:
 	var icon := BoonIcons.make(id, 2)
-	icon.position = Vector2((TILE.x - 16) / 2.0, 7)
+	icon.position = Vector2((TILE.x - 16) / 2.0, top)
 	tile.add_child(icon)
 	var name_label := UIKit.make_label(Descent.display_name(id), 8, UIKit.GOLD)
-	_span(tile, name_label, 28.0)
+	_span(tile, name_label, top + 21.0)
 	var lines: Array = Descent.about(id)
-	_span(tile, UIKit.make_label(lines[0], 8, UIKit.TEXT), 40.0)
-	_span(tile, UIKit.make_label(lines[1], 8, UIKit.TEXT), 52.0)
+	_span(tile, UIKit.make_label(lines[0], 8, UIKit.TEXT), top + 33.0)
+	_span(tile, UIKit.make_label(lines[1], 8, UIKit.TEXT), top + 45.0)
+	var note := _have_note(id, held)
+	if note != "":
+		_span(tile, UIKit.make_label(note, 8, UIKit.TEXT_DIM), top + 57.0)
+
+
+## "HAVE n/max" for a stacking boon (or "HAVE n" for an unlimited one already held), else "".
+func _have_note(id: String, held: Dictionary) -> String:
 	var top: int = int(Descent.boon(id).get("max", 1))
 	var have := Descent.held(held, id)
-	var note := ""
 	if top > 1:
-		note = "HAVE %d/%d" % [have, top]
+		return "HAVE %d/%d" % [have, top]
 	elif top <= 0 and have > 0:
-		note = "HAVE %d" % have
-	if note != "":
-		_span(tile, UIKit.make_label(note, 8, UIKit.TEXT_DIM), 64.0)
+		return "HAVE %d" % have
+	return ""
 
 
 func _span(tile: Control, label: Label, y: float) -> void:
@@ -214,20 +231,19 @@ func _build_summary() -> void:
 	summary_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.visible = false
 	root.add_child(summary_root)
-	UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))
+	summary_panel = UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))  # (fitted in show_summary)
 	summary_title = _centered(summary_root, "RUN OVER", 16, UIKit.GOLD, 8.0)
 	summary_lines = VBoxContainer.new()
-	summary_lines.add_theme_constant_override("separation", 4)
+	summary_lines.add_theme_constant_override("separation", UIKit.LINE_SPACING)  # a 12 px line pitch
 	summary_lines.position = Vector2(40, 38)
-	summary_lines.size = Vector2(240, 100)
 	summary_lines.custom_minimum_size = Vector2(240, 0)
 	summary_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.add_child(summary_lines)
-	new_run_button = UIKit.make_button("NEW RUN", _on_new_run, Vector2(84, 15))
-	new_run_button.position = Vector2(70, BUTTON_Y)
+	new_run_button = UIKit.make_button("NEW RUN", _on_new_run, UIKit.CHOICE_SIZE)
+	new_run_button.position = Vector2(160 - UIKit.CHOICE_GAP / 2 - UIKit.CHOICE_SIZE.x, BUTTON_Y)
 	summary_root.add_child(new_run_button)
-	hub_button = UIKit.make_button("HUB", _on_hub, Vector2(84, 15))
-	hub_button.position = Vector2(166, BUTTON_Y)
+	hub_button = UIKit.make_button("HUB", _on_hub, UIKit.CHOICE_SIZE)
+	hub_button.position = Vector2(160 + UIKit.CHOICE_GAP / 2, BUTTON_Y)
 	summary_root.add_child(hub_button)
 	for b: Button in [new_run_button, hub_button]:
 		var other: Button = hub_button if b == new_run_button else new_run_button
@@ -240,6 +256,7 @@ func _build_summary() -> void:
 ## Shows the end of the run: `result` = Progress.end_descent's.
 func show_summary(result: Dictionary) -> void:
 	visible = true
+	_hide_hud()
 	boons_root.visible = false
 	summary_root.visible = true
 	for child in summary_lines.get_children():
@@ -286,8 +303,38 @@ func show_summary(result: Dictionary) -> void:
 			for n in mini(Descent.held(held, id), 3):
 				strip.add_child(BoonIcons.make(id))
 		summary_lines.add_child(strip)
+	_fit_summary()
 	_skin_text.recolor()
 	new_run_button.grab_focus()
+
+
+## The panel hugs its lines (PANEL_PAD above and below; the last line's drips inside the pad), and
+## the title + panel are centered as one block between the top of the screen and the buttons.
+func _fit_summary() -> void:
+	var lines_height := 0.0
+	var count := 0
+	for child: Control in summary_lines.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		lines_height += child.get_combined_minimum_size().y
+		count += 1
+	lines_height += maxf(count - 1, 0) * UIKit.LINE_SPACING
+	var panel_h := UIKit.PANEL_PAD * 2 + lines_height
+	const TITLE_BLOCK := 26.0  # the 16 px title (14 rows), its 4 px drips and a 8 px gap
+	var block_top := floorf((BUTTON_Y - 4.0 - (TITLE_BLOCK + panel_h)) / 2.0)
+	summary_title.position.y = block_top
+	summary_panel.position.y = block_top + TITLE_BLOCK
+	summary_panel.size.y = panel_h
+	summary_lines.position.y = summary_panel.position.y + UIKit.PANEL_PAD
+	summary_lines.size.y = 0
+
+
+## The HUD's pods would show through the card's dim sheet under its title and pot line: hidden while
+## a card is up (the card leads to a new floor or out of the level, so it never needs them back).
+func _hide_hud() -> void:
+	var hud: CanvasLayer = game.get("hud") if game else null
+	if hud:
+		hud.visible = false
 
 
 func _line(text: String, color: Color) -> void:

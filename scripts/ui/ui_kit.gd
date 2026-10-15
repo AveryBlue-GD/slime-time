@@ -17,10 +17,58 @@ const TEXT_OFF := Color8(86, 108, 134)
 const GOLD := Color8(255, 205, 117)
 ## Space between lines of text (the 2 px drips below each line + a 3 px gap).
 const LINE_SPACING := 5
+
+# ---- Layout rules (docs/ui-rules.md). Base pixels at 320x180; use these instead of literals. ----
+const SCREEN := Vector2(320, 180)
+## Menu chrome (BACK, tabs, corner buttons, balance pods) sits this far from the screen edges.
+const EDGE := 4
+## In-level HUD pods and the hub's ticket pod sit this far from the edges (HUD.POD_MARGIN).
+const HUD_EDGE := 3
+## Top of the bottom-row buttons (BACK bottom left, the page's own action bottom right): 13 tall, B = 3.
+const BOTTOM_ROW_Y := 164
+## Screen titles (16 px font): the line box (0, TITLE_Y)..(320, TITLE_Y + 20).
+const TITLE_Y := 2
+## Font sizes: text and titles (titles use pixel_big.fnt, see use_big_font).
+const FONT := 8
+const FONT_BIG := 16
+## The 8 px font's letter body and the drips that hang below it (the 16 px font doubles both).
+const TEXT_BODY := 7
+const TEXT_DRIP := 2
+## Line pitch of multi-line text (7 + LINE_SPACING); dense lists (coin board, map tiles) use 11.
+const LINE_PITCH := 12
+const DENSE_PITCH := 11
+## The spacing scale: every gap is one of these.
+const GAP_XS := 2  # dense tiles, header items, stacked HUD pods
+const GAP_S := 3   # stacked menu buttons (pitch 16), tile grids
+const GAP_M := 4   # toggles, tabs, button to box, controls inside one row
+const GAP_L := 8   # result choice row, columns, panel side insets
+const GAP_XL := 12  # paired confirm buttons, text line pitch
+## Component sizes.
+const BUTTON_H := 13
+const BACK_SIZE := Vector2(40, 13)
+const CHOICE_SIZE := Vector2(84, 13)  # the result / summary choice row...
+const CHOICE_GAP := 8                 # ...its gap...
+const CHOICE_Y := 153                 # ...and its top (also the Descent card's buttons)
+const TAB_H := 13
+## HUD and hub pods: one line (an 8 px icon sets it) and two lines.
+const POD_H := 14
+const POD_H2 := 23
+## Inside a goo panel: content (text top, first button) starts PANEL_PAD below the panel's top
+## edge, and the last button's bottom edge (or the last text line's drips) ends PANEL_PAD above its
+## bottom edge, clear of the goo lumps and the buttons' own drops.
+const PANEL_PAD := 8
+## Touch: a target should be TOUCH_MIN px tall and wide (44 pt at about 2 pt per game px on phones).
+## With a touchscreen, a TouchButton's hit area grows by HIT_PAD on every side (13 -> 23), shared
+## with its neighbors by distance so hit areas never overlap (see TouchButton).
+const TOUCH_MIN := 22
+const HIT_PAD := 5
+## The group of every control a touch can land on (TouchButtons and the other inputs on screen).
+const TOUCH_GROUP := "ui_touch_targets"
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
 
 static var _text_material: ShaderMaterial
+static var _tabular_font: FontFile
 static var _drip_scene := -1
 
 
@@ -168,6 +216,22 @@ static func make_icon(icon_name: String, tint := TEXT) -> TextureRect:
 	return icon
 
 
+## Holds a pod icon bigger than the 8x8 UI icons (the 7x9 HEAT flame, the 9x9 HEAT modifier icons)
+## in an 8 px tall cell (its full width), the art centered on the cell's rows and allowed to hang 1 px
+## over it, so a pod holding it keeps the standard POD_H height instead of growing to 15.
+static func fit_icon(icon: TextureRect) -> Control:
+	var art := Vector2(icon.texture.get_size())
+	var cell := Control.new()
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.custom_minimum_size = Vector2(art.x, minf(art.y, 8.0))
+	cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.size_flags_vertical = Control.SIZE_FILL
+	icon.position = Vector2(0, floorf((cell.custom_minimum_size.y - art.y) / 2.0))
+	icon.size = art
+	cell.add_child(icon)
+	return cell
+
+
 ## The bounding box (in icon pixels) of an icon's visible pixels, so it can be centered by its ink
 ## rather than its 8x8 cell.
 static func icon_ink_rect(icon_name: String) -> Rect2i:
@@ -227,6 +291,21 @@ static func use_big_font(control: Control, font_size: int) -> void:
 		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))
 
 
+## The 8 px font with tabular digits: "1" takes a full digit cell (6 px, its ink centered in it) like
+## every other digit, so a running time keeps its width and never jiggles (the HUD timer).
+static func tabular_font() -> FontFile:
+	if _tabular_font == null:
+		var base: FontFile = load("res://assets/fonts/pixel.fnt")
+		_tabular_font = base.duplicate(true)
+		var size: Vector2i = _tabular_font.get_size_cache_list(0)[0]
+		var one := "1".unicode_at(0)
+		var zero := "0".unicode_at(0)
+		var extra: float = _tabular_font.get_glyph_advance(0, size.x, zero).x - _tabular_font.get_glyph_advance(0, size.x, one).x
+		_tabular_font.set_glyph_advance(0, size.x, one, _tabular_font.get_glyph_advance(0, size.x, zero))
+		_tabular_font.set_glyph_offset(0, size, one, _tabular_font.get_glyph_offset(0, size, one) + Vector2(floorf(extra / 2.0), 0))
+	return _tabular_font
+
+
 ## Shared material for text: every letter gets its own random goo drips (text_drips.gdshader).
 static func text_material() -> ShaderMaterial:
 	if _text_material == null:
@@ -241,8 +320,8 @@ static func text_material() -> ShaderMaterial:
 	return _text_material
 
 
-static func make_button(text: String, on_press: Callable, min_size := Vector2(0, 13)) -> Button:
-	var button := Button.new()
+static func make_button(text: String, on_press: Callable, min_size := Vector2(0, BUTTON_H)) -> Button:
+	var button := TouchButton.new()
 	button.text = text
 	button.material = text_material()
 	button.custom_minimum_size = min_size
@@ -254,12 +333,66 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 	return button
 
 
-## Bottom-left BACK button that returns to the title.
-static func add_back_button(root: Control) -> Button:
-	var button := make_button("BACK", func() -> void: go(root.get_tree(), HUB_SCENE), Vector2(40, 13))
-	button.position = Vector2(4, 164)
+## Bottom-left BACK button that returns to the hub (BACK_SIZE at EDGE, BOTTOM_ROW_Y on every screen).
+static func add_back_button(root: Control, on_press := Callable()) -> Button:
+	var press := on_press if on_press.is_valid() else func() -> void: go(root.get_tree(), HUB_SCENE)
+	var button := make_button("BACK", press, BACK_SIZE)
 	root.add_child(button)
+	place_bottom_row(button, -1)
 	return button
+
+
+## Puts `control` (sized) on the bottom row: side -1 = left edge, 1 = right edge, 0 = centered.
+static func place_bottom_row(control: Control, side: int) -> void:
+	var w := control.size.x
+	var x := float(EDGE) if side < 0 else (SCREEN.x - EDGE - w if side > 0 else center_x(w))
+	control.position = Vector2(x, BOTTOM_ROW_Y)
+
+
+## The x that centers a box `width` wide on the screen (or in `span` starting at `from`), on a
+## whole pixel.
+static func center_x(width: float, from := 0.0, span := SCREEN.x) -> float:
+	return from + roundf((span - width) / 2.0)
+
+
+## Adds a label to `parent` FIRST and sizes it after: a label sized before it is in the themed tree
+## measures with the default font and keeps that larger minimum size (it then sits off center).
+static func add_label(parent: Node, text: String, rect: Rect2, font_size := FONT, color := TEXT,
+		align := HORIZONTAL_ALIGNMENT_CENTER) -> Label:
+	var label := make_label(text, font_size, color)
+	label.horizontal_alignment = align
+	parent.add_child(label)
+	label.position = rect.position
+	label.size = rect.size
+	return label
+
+
+## Tabs and other one-of-many buttons: the selected one gets its own look (darker, pressed-in face
+## and the brighter hover goo) in every state, so hovering another tab never looks like selecting it.
+static func set_selected(button: Button, on: bool) -> void:
+	if on:
+		var style := button_style("selected")
+		button.add_theme_stylebox_override("normal", style)
+		button.add_theme_stylebox_override("hover", style)
+	else:
+		button.remove_theme_stylebox_override("normal")
+		button.remove_theme_stylebox_override("hover")
+	button.set_meta("selected", on)
+
+
+## True when menus should use touch hit areas: a touchscreen, or the --touch debug flag.
+static func touch_active() -> bool:
+	if DisplayServer.is_touchscreen_available():
+		return true
+	var tree := Engine.get_main_loop() as SceneTree
+	var progress: Node = tree.root.get_node_or_null("Progress") if tree else null
+	return progress != null and progress.get("force_touch") == true
+
+
+## Marks a non-TouchButton input (checkbox, slider box, text box) as a touch target, so grown
+## button hit areas never reach into it.
+static func add_touch_target(control: Control) -> void:
+	control.add_to_group(TOUCH_GROUP)
 
 
 ## Keeps keyboard / controller focus inside `modal`, a panel open over `screen`: every other
@@ -300,6 +433,7 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	style.content_margin_left = 6  # clear of the goo at the sides
 	style.content_margin_right = 6
 	box.add_theme_stylebox_override("panel", style)
+	add_touch_target(box)
 	var row := HBoxContainer.new()
 	box.add_child(row)
 	row.add_theme_constant_override("separation", 6)

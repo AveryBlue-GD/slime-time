@@ -31,7 +31,8 @@ const DRIED := {
 const LIFT := {H = "H", L = "H", M = "L", N = "M", D = "N", O = "D"}
 
 var kind := Kind.BUTTON
-## "normal", "hover", "pressed" or "disabled" (buttons).
+## "normal", "hover", "pressed", "disabled" or "selected" (buttons; "selected" = a chosen tab or tile:
+## the pressed face with the hover goo, see UIKit.set_selected).
 var state := "normal"
 var face := Color8(51, 44, 64)
 ## Goo band thickness inside the outline (top, sides, bottom) and how much thicker lumps get.
@@ -108,7 +109,7 @@ static func make_button(button_state: String) -> GooBox:
 	box.state = button_state
 	box.face = {
 		"normal": Color8(51, 44, 64), "hover": Color8(72, 62, 94),
-		"pressed": Color8(40, 34, 52), "disabled": Color8(34, 30, 44),
+		"pressed": Color8(40, 34, 52), "disabled": Color8(34, 30, 44), "selected": Color8(40, 34, 52),
 	}.get(button_state, Color8(51, 44, 64))
 	box.content_margin_left = 4
 	box.content_margin_right = 4
@@ -135,7 +136,7 @@ func _shades() -> Dictionary:
 		return DRIED
 	var s := Skins.shades(goo_color)
 	var shades := {H = s.highlight, L = s.light, M = s.mid, N = s.dark, D = s.deep, O = s.outline}
-	if state == "hover":
+	if state == "hover" or state == "selected":
 		var lifted := {}
 		for key: String in shades:
 			lifted[key] = shades[LIFT[key]]

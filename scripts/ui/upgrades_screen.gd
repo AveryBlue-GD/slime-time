@@ -33,6 +33,11 @@ const BAR_WIDTH := 83
 const BAR_HEIGHT := 6
 const PIP_GAP := 1
 const PIPS_RIGHT := 222
+## A row's controls, GAP_M (4) apart: bar | - | + | cost (- at 226, so the two 16 px buttons keep
+## a 4 px gap for touch: their grown hit areas split it).
+const MINUS_X := 226
+const PLUS_X := 246
+const COST_X := 266
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
 ## The ABILITIES page's hint: its keys (read from the bindings) and where they work (randomizer mazes and Descent only).
 const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES + DESCENT"
@@ -93,16 +98,17 @@ func _ready() -> void:
 	# Top-right corner, as far from the edges as BACK is in its corner.
 	coin_pod.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	coin_pod.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	coin_pod.offset_left = -4
-	coin_pod.offset_right = -4
-	coin_pod.offset_top = 4
+	coin_pod.offset_left = -UIKit.EDGE
+	coin_pod.offset_right = -UIKit.EDGE
+	coin_pod.offset_top = UIKit.EDGE
+	coin_pod.custom_minimum_size.y = UIKit.POD_H
 	var coin_row := HBoxContainer.new()
 	coin_row.add_theme_constant_override("separation", 3)
 	coin_pod.add_child(coin_row)
 	pod_icon = UIKit.make_icon("coin", Color.WHITE)
 	coin_row.add_child(pod_icon)
+	# Sized to its text (the pod grows leftward from the edge): the content pads stay 4 / 4.
 	coin_label = UIKit.make_label("", 8, UIKit.TEXT)
-	coin_label.custom_minimum_size = Vector2(28, 0)
 	coin_row.add_child(coin_label)
 
 	# The tabs, top left (mirroring the pod).
@@ -183,7 +189,7 @@ func show_page(which: String) -> void:
 		ability_page.visible = page == "abilities"
 	for pair: Array in [[coins_tab, "coins"], [tickets_tab, "tickets"], [abilities_tab, "abilities"]]:
 		if pair[0] != null:
-			(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if page == pair[1] else "normal"))
+			UIKit.set_selected(pair[0], page == pair[1])
 	pod_icon.texture = load(UIKit.UI_DIR + ("icon_ticket.png" if tickets else "icon_coin.png"))
 	# Centered between the last row's panel and the bottom buttons (COINS: two lines, 7 + LINE_SPACING
 	# + 7 px; TICKETS: one line).
@@ -213,13 +219,13 @@ func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	parent.add_child(name_label)
 	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y + 3)
 	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, 13))
-	minus.position = Vector2(226, y + 3)
+	minus.position = Vector2(MINUS_X, y + 3)
 	parent.add_child(minus)
 	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, 13))
-	plus.position = Vector2(244, y + 3)
+	plus.position = Vector2(PLUS_X, y + 3)
 	parent.add_child(plus)
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
-	cost.position = Vector2(264, y + 6)
+	cost.position = Vector2(COST_X, y + 6)
 	parent.add_child(cost)
 	if upgrade.id == "slime":  # A2.3: the model's biggest risk is skipping MORE SLIME
 		recommended = UIKit.make_label("RECOMMENDED", 8, Color(UIKit.TEXT_DIM, 0.75))
@@ -243,12 +249,12 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	ability_page.add_child(tag)
 	var pips := _make_pips(ability_page, Abilities.max_level(item.id), y + 5)
 	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, 13))
-	plus.position = Vector2(244, y + 5)
+	plus.position = Vector2(PLUS_X, y + 5)
 	ability_page.add_child(plus)
 	var price := HBoxContainer.new()
 	price.add_theme_constant_override("separation", 2)
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	price.position = Vector2(264, y + 7)
+	price.position = Vector2(COST_X, y + 7)
 	ability_page.add_child(price)
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	price.add_child(cost)
@@ -268,12 +274,12 @@ func _make_ticket_row(item: Dictionary, y: int) -> void:
 	ticket_page.add_child(about)
 	var pips := _make_pips(ticket_page, Workshop.max_level(item.id), y)
 	var plus := UIKit.make_button("+", func() -> void: _buy_workshop(item.id), Vector2(16, 13))
-	plus.position = Vector2(244, y)
+	plus.position = Vector2(PLUS_X, y)
 	ticket_page.add_child(plus)
 	var price := HBoxContainer.new()
 	price.add_theme_constant_override("separation", 2)
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	price.position = Vector2(264, y + 2)
+	price.position = Vector2(COST_X, y + 2)
 	ticket_page.add_child(price)
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	price.add_child(cost)

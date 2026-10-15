@@ -10,12 +10,15 @@ extends Control
 
 signal closed
 
-const RECT := Rect2(22, 20, 276, 142)
+## The title PANEL_PAD under the top edge, DONE PANEL_PAD over the bottom edge (docs/ui-rules.md).
+const RECT := Rect2(22, 20, 276, 138)
 const TOGGLE := Vector2i(84, 34)
 const GAP := 4
-const GRID_Y := 38
-const ABOUT_Y := 118
-const DONE_Y := 136
+const GRID_Y := 39
+const ABOUT_Y := 119
+const DONE_Y := 137
+## The title's flame and text are centered as one group: the flame, then this gap, then the text ink.
+const TITLE_GAP := 5
 const ICON_SCALE := 2
 const OFF_TINT := Color(0.55, 0.55, 0.62)
 const HEAT_TINT := Color8(255, 170, 90)
@@ -44,11 +47,8 @@ func _ready() -> void:
 	title_flame = Heat.make_rect(Heat.flame(0))
 	add_child(title_flame)
 	title = UIKit.make_label("", 8, UIKit.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.clip_text = true
-	title.position = Vector2(RECT.position.x, RECT.position.y + 7)
-	title.size = Vector2(RECT.size.x, 9)
 	add_child(title)
+	title.position = Vector2(RECT.position.x, RECT.position.y + UIKit.PANEL_PAD)
 
 	var left := RECT.position.x + floorf((RECT.size.x - (TOGGLE.x * 3 + GAP * 2)) / 2.0)
 	for i in Heat.IDS.size():
@@ -80,7 +80,9 @@ func _make_toggle(id: String) -> Button:
 	var icon := Heat.make_rect(Heat.icon(id))
 	icon.name = "Icon"
 	icon.scale = Vector2(ICON_SCALE, ICON_SCALE)
-	icon.position = Vector2(5, 8)
+	# Centered in an 18x18 cell (RACE's art is 8x8, the others 9x9).
+	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
+	icon.position = Vector2(5, 8) + (cell * ICON_SCALE / 2.0).floor()
 	button.add_child(icon)
 	var name_label := UIKit.make_label(Heat.NAMES[id], 8, UIKit.TEXT)
 	name_label.name = "Name"
@@ -131,8 +133,14 @@ func refresh() -> void:
 	var heat := Heat.points(mask)
 	title.text = "HEAT %d/%d" % [heat, Economy.HEAT_MAX]
 	title_flame.texture = Heat.flame(heat)
+	# Flame + gap + text ink centered on the panel as one group (the label's ink starts 1 px in).
 	var width: float = title.get_theme_font("font").get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	title_flame.position = Vector2(roundf(RECT.get_center().x - width / 2.0) - 11, RECT.position.y + 6)
+	var flame_w := float(Heat.flame_size().x)
+	var group := flame_w + TITLE_GAP + width - 1.0
+	var left := UIKit.center_x(group, RECT.position.x, RECT.size.x)
+	title_flame.position = Vector2(left, RECT.position.y + UIKit.PANEL_PAD - 1)
+	title.position.x = left + flame_w + TITLE_GAP - 1.0
+	title.size = Vector2(width, 9)
 
 
 ## Opens the panel over `screen` (its other controls stop taking focus); `return_to` gets the focus

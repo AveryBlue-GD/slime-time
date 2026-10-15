@@ -70,9 +70,11 @@ const PROMPT_Y := 156.0
 ## Where the coin bag's board sits on screen.
 const BOARD := Rect2(52, 8, 216, 164)
 ## The trapdoor's confirm panel.
-const QUIT_PANEL := Rect2(80, 54, 160, 72)
+## Both dialogs follow docs/ui-rules.md: content PANEL_PAD (8) inside the top and bottom edges,
+## 13 px buttons, 12 px line pitch, centered on the screen.
+const QUIT_PANEL := Rect2(80, 63, 160, 54)
 ## The portal's mode choice (RANDOM MAZE / DESCENT, BACK).
-const PORTAL_PANEL := Rect2(70, 34, 180, 112)
+const PORTAL_PANEL := Rect2(70, 45, 180, 89)
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
 ## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
@@ -364,7 +366,9 @@ func _build_ui() -> void:
 	layer.add_child(root)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prompt = PanelContainer.new()
-	prompt.add_theme_stylebox_override("panel", UIKit.panel_style())  # goo-framed, like the menus
+	var prompt_style := UIKit.panel_style()  # goo-framed, like the menus
+	prompt_style.content_margin_left -= 1  # the 1 px letter gap left of the name: ink pads 8 / 8
+	prompt.add_theme_stylebox_override("panel", prompt_style)
 	prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(prompt)
 	var row := HBoxContainer.new()
@@ -443,21 +447,15 @@ func _build_quit_menu(root: Control) -> void:
 	quit_menu.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(quit_menu, QUIT_PANEL)
-	var title := UIKit.make_label("LEAVE THE HUB?", 8, UIKit.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(QUIT_PANEL.position.x, QUIT_PANEL.position.y + 11)
-	title.size = Vector2(QUIT_PANEL.size.x, 10)
-	quit_menu.add_child(title)
-	var note := UIKit.make_label("THE GAME CLOSES", 8, UIKit.TEXT_DIM)
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.position = Vector2(QUIT_PANEL.position.x, QUIT_PANEL.position.y + 24)
-	note.size = Vector2(QUIT_PANEL.size.x, 10)
-	quit_menu.add_child(note)
-	quit_button = UIKit.make_button("QUIT", _confirm_quit, Vector2(56, 15))
-	quit_button.position = Vector2(QUIT_PANEL.position.x + 16, QUIT_PANEL.position.y + 43)
+	var top := QUIT_PANEL.position.y + UIKit.PANEL_PAD
+	UIKit.add_label(quit_menu, "LEAVE THE HUB?", Rect2(QUIT_PANEL.position.x, top, QUIT_PANEL.size.x, 10), 8, UIKit.GOLD)
+	UIKit.add_label(quit_menu, "THE GAME CLOSES", Rect2(QUIT_PANEL.position.x, top + UIKit.LINE_PITCH, QUIT_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
+	var buttons_y := QUIT_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
+	quit_button = UIKit.make_button("QUIT", _confirm_quit, Vector2(56, UIKit.BUTTON_H))
+	quit_button.position = Vector2(QUIT_PANEL.position.x + 16, buttons_y)
 	quit_menu.add_child(quit_button)
-	back_button = UIKit.make_button("BACK", close_quit_menu, Vector2(56, 15))
-	back_button.position = Vector2(QUIT_PANEL.end.x - 16 - 56, QUIT_PANEL.position.y + 43)
+	back_button = UIKit.make_button("BACK", close_quit_menu, Vector2(56, UIKit.BUTTON_H))
+	back_button.position = Vector2(QUIT_PANEL.end.x - 16 - 56, buttons_y)
 	quit_menu.add_child(back_button)
 	quit_button.focus_next = quit_button.get_path_to(back_button)
 	back_button.focus_next = back_button.get_path_to(quit_button)
@@ -497,25 +495,20 @@ func _build_portal_menu(root: Control) -> void:
 	portal_menu.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(portal_menu, PORTAL_PANEL)
-	var title := UIKit.make_label("RANDOMIZER", 8, UIKit.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(PORTAL_PANEL.position.x, PORTAL_PANEL.position.y + 10)
-	title.size = Vector2(PORTAL_PANEL.size.x, 10)
-	portal_menu.add_child(title)
-	var x := PORTAL_PANEL.position.x + (PORTAL_PANEL.size.x - 120) / 2.0
-	maze_button = UIKit.make_button("RANDOM MAZE", _start_random_maze, Vector2(120, 15))
-	maze_button.position = Vector2(x, PORTAL_PANEL.position.y + 26)
+	# Title, the two modes (pitch 16), the info line, BACK: gaps of 4 / 3 / 3 / 4 px between the
+	# text drips and the buttons, PANEL_PAD above and below.
+	var top := PORTAL_PANEL.position.y + UIKit.PANEL_PAD
+	UIKit.add_label(portal_menu, "RANDOMIZER", Rect2(PORTAL_PANEL.position.x, top, PORTAL_PANEL.size.x, 10), 8, UIKit.GOLD)
+	var x := UIKit.center_x(120, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x)
+	maze_button = UIKit.make_button("RANDOM MAZE", _start_random_maze, Vector2(120, UIKit.BUTTON_H))
+	maze_button.position = Vector2(x, top + 13)
 	portal_menu.add_child(maze_button)
-	descent_button = UIKit.make_button("DESCENT", _start_descent, Vector2(120, 15))
-	descent_button.position = Vector2(x, PORTAL_PANEL.position.y + 46)
+	descent_button = UIKit.make_button("DESCENT", _start_descent, Vector2(120, UIKit.BUTTON_H))
+	descent_button.position = Vector2(x, top + 29)
 	portal_menu.add_child(descent_button)
-	portal_info = UIKit.make_label("", 8, UIKit.TEXT_DIM)
-	portal_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	portal_info.position = Vector2(PORTAL_PANEL.position.x, PORTAL_PANEL.position.y + 66)
-	portal_info.size = Vector2(PORTAL_PANEL.size.x, 10)
-	portal_menu.add_child(portal_info)
-	portal_back = UIKit.make_button("BACK", close_portal_menu, Vector2(56, 15))
-	portal_back.position = Vector2(PORTAL_PANEL.position.x + (PORTAL_PANEL.size.x - 56) / 2.0, PORTAL_PANEL.position.y + 84)
+	portal_info = UIKit.add_label(portal_menu, "", Rect2(PORTAL_PANEL.position.x, top + 47, PORTAL_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
+	portal_back = UIKit.make_button("BACK", close_portal_menu, Vector2(56, UIKit.BUTTON_H))
+	portal_back.position = Vector2(UIKit.center_x(56, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x), PORTAL_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H)
 	portal_menu.add_child(portal_back)
 	var order: Array[Button] = [maze_button, descent_button, portal_back]
 	for i in order.size():
@@ -576,7 +569,8 @@ func _build_ticket_pod(root: Control) -> void:
 	ticket_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	ticket_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(ticket_pod)
-	ticket_pod.position = Vector2(3, 3)
+	ticket_pod.position = Vector2(UIKit.HUD_EDGE, UIKit.HUD_EDGE)
+	ticket_pod.custom_minimum_size.y = UIKit.POD_H
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
 	ticket_pod.add_child(row)
@@ -588,7 +582,7 @@ func _build_ticket_pod(root: Control) -> void:
 	row.add_child(medal_label)
 	# HEAT: the sum of every hard level's best heat, once there is any (HEAT n/100).
 	heat_flame = Heat.make_rect(Heat.flame(Economy.HEAT_MAX))
-	row.add_child(heat_flame)
+	row.add_child(UIKit.fit_icon(heat_flame))  # (7x9: kept to the pod's 14 px height)
 	heat_label = UIKit.make_label("", 8, Color8(255, 170, 90))
 	row.add_child(heat_label)
 	_refresh_tickets()
@@ -598,7 +592,8 @@ func _refresh_tickets() -> void:
 	ticket_label.text = str(Progress.tickets)
 	medal_label.text = "%d/%d" % [Progress.medals_total(false), Progress.medals_max()]
 	heat_label.text = "%d/%d" % [Progress.heat_total(), Economy.HEAT_MAX * Levels.COUNT]
-	heat_flame.visible = Progress.heat_total() > 0
+	heat_flame.get_parent().visible = Progress.heat_total() > 0
+	heat_flame.visible = heat_flame.get_parent().visible
 	heat_label.visible = heat_flame.visible
 
 
@@ -621,18 +616,18 @@ func _build_coin_board(root: Control) -> void:
 		var number := UIKit.make_label(str(i + 1), 8, UIKit.TEXT_DIM)
 		number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		coin_board.add_child(number)
-		number.position = Vector2(BOARD.position.x + 8, y)
+		number.position = Vector2(BOARD.position.x + 7, y)
 		number.size = Vector2(16, 10)
 		var name_label := UIKit.make_label(Themes.display_name(Themes.BY_LEVEL[i]), 8, UIKit.TEXT)
-		name_label.position = Vector2(BOARD.position.x + 30, y)
+		name_label.position = Vector2(BOARD.position.x + 29, y)
 		coin_board.add_child(name_label)
 		var count := UIKit.make_label("", 8, UIKit.TEXT)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		count.position = Vector2(BOARD.end.x - 66, y)
+		count.position = Vector2(BOARD.end.x - 68, y)
 		count.size = Vector2(42, 10)
 		coin_board.add_child(count)
 		var icon := UIKit.make_icon("coin", Color.WHITE)
-		icon.position = Vector2(BOARD.end.x - 20, y)
+		icon.position = Vector2(BOARD.end.x - 22, y)
 		coin_board.add_child(icon)
 		board_rows.append(count)
 	board_total = UIKit.make_label("", 8, UIKit.TEXT)

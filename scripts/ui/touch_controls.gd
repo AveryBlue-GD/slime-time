@@ -20,7 +20,8 @@ const KNOB_RADIUS := 8.0
 ## Joystick dead zone, as a share of its radius.
 const DEADZONE := 0.35
 const JOY_HOME := Vector2(40, 140)
-const JUMP_CENTER := Vector2(282, 142)
+## Mirrors the joystick's home (40, 140): both 40 px in from their side edge, on one center line.
+const JUMP_CENTER := Vector2(280, 140)
 const JUMP_RADIUS := 19.0
 const PAUSE_RECT := Rect2(302, 35, 15, 13)
 ## Where the pause button really is: PAUSE_RECT, moved down under the randomizer's taller attempt

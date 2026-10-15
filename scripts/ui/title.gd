@@ -59,9 +59,9 @@ func _ready() -> void:
 	add_child(enter_button)
 	enter_button.grab_focus()
 	# The story intro again: a small button in the bottom-left corner, beside the tagline.
-	story_button = UIKit.make_button("STORY", _replay_story, Vector2(40, 13))
-	story_button.position = Vector2(4, 163)
+	story_button = UIKit.make_button("STORY", _replay_story, UIKit.BACK_SIZE)
 	add_child(story_button)
+	UIKit.place_bottom_row(story_button, -1)
 
 	var tagline := UIKit.make_label(TAGLINE, 16, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -19,7 +19,8 @@ const COL_L := 36
 const COL_R := 164
 const FIRST_ROW := 38
 const ROW_STEP := 20
-const BOTTOM_ROW := 154
+## RESET PROGRESS on the bottom row, mirroring BACK (its text + the 4 px margins, even).
+const RESET_SIZE := Vector2(92, 13)
 ## The VOLUME box is 6 + "VOLUME" + 6 + slider + 6 wide, which must equal COL_W (as in the pause menu).
 const SLIDER_W := COL_W - 54
 
@@ -76,12 +77,11 @@ func _ready() -> void:
 
 	controls_button = _column_button(_cell(1, 1), _open_controls, "CONTROLS")
 	save_code_button = _column_button(_cell(1, 2), _open_codes, "SAVE CODE")
-	var back := UIKit.add_back_button(self)
-	back.custom_minimum_size = Vector2(COL_W, 13)
-	back.size = back.custom_minimum_size
-	back.position = Vector2(COL_L, BOTTOM_ROW)
+	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
-	reset_button = _column_button(Vector2(COL_R, BOTTOM_ROW), _ask_reset, "RESET PROGRESS")
+	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, RESET_SIZE)
+	add_child(reset_button)
+	UIKit.place_bottom_row(reset_button, 1)
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -124,13 +124,14 @@ func _build_code_panel() -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(code_panel, Rect2(12, 14, 296, 150))
 	_panel_label(code_panel, UIKit.make_label("SAVE CODE", 16, UIKit.GOLD), 20, 40)
-	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", 8, UIKit.TEXT_DIM), 45, 55)
+	# Each line sits one line pitch (12) over the row it describes; 10 px between the two sections.
+	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", 8, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
 	code_out = _code_box(true)
 	code_out.position = Vector2(24, 58)
 	copy_button = UIKit.make_button("COPY", _copy_code, Vector2(64, 13))
 	copy_button.position = Vector2(232, 58)
 	code_panel.add_child(copy_button)
-	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", 8, UIKit.TEXT_DIM), 80, 90)
+	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", 8, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
 	code_in = _code_box(false)
 	code_in.position = Vector2(24, 93)
 	code_in.custom_minimum_size = Vector2(136, 13)  # (before size: a size under the old minimum won't stick)
@@ -154,13 +155,15 @@ func _build_code_panel() -> void:
 
 func _code_box(read_only: bool) -> LineEdit:
 	var box := LineEdit.new()
-	box.size = Vector2(204, 13)
 	box.custom_minimum_size = Vector2(204, 13)
 	box.editable = not read_only
 	box.select_all_on_focus = read_only
 	box.add_theme_font_size_override("font_size", 8)
 	box.material = UIKit.text_material()
 	code_panel.add_child(box)
+	# Sized once in the themed tree (sized before, it keeps the default font's 22 px height).
+	box.size = Vector2(204, UIKit.BUTTON_H)
+	UIKit.add_touch_target(box)
 	return box
 
 

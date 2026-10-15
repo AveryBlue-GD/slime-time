@@ -5,6 +5,12 @@ extends CanvasLayer
 ## one: that maze is rebuilt, the same for anyone with the seed). Runs while the tree is paused;
 ## everything else in the level freezes.
 
+## The button column (100 wide, 13 px buttons 3 apart) on its panel, centered under PAUSED.
+const PANEL_X := 100
+const PANEL_W := 120
+const COLUMN_W := 100
+const MENU_TOP := 63
+
 var buttons: Array[Button] = []
 var sound_button: Button
 var volume_row: PanelContainer
@@ -44,11 +50,11 @@ func _ready() -> void:
 	title.size = Vector2(320, 20)
 	root.add_child(title)
 
-	_panel = UIKit.add_panel(root, Rect2(100, 55, 120, 88))
+	_panel = UIKit.add_panel(root, Rect2(PANEL_X, MENU_TOP - UIKit.PANEL_PAD, PANEL_W, 0))
 	var menu := VBoxContainer.new()
-	menu.position = Vector2(110, 62)
-	menu.custom_minimum_size = Vector2(100, 0)
-	menu.add_theme_constant_override("separation", 3)
+	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
+	menu.custom_minimum_size = Vector2(COLUMN_W, 0)
+	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(menu)
 	sound_button = UIKit.make_button("", _toggle_sound)
 	restart_button = UIKit.make_button("RESTART", _restart)
@@ -72,6 +78,7 @@ func _ready() -> void:
 	seed_edit.placeholder_text = "NEW SEED"
 	seed_edit.add_theme_font_size_override("font_size", 8)
 	seed_edit.material = UIKit.text_material()
+	UIKit.add_touch_target(seed_edit)
 	seed_edit.visible = false
 	seed_edit.text_submitted.connect(_submit_seed)
 	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
@@ -90,9 +97,9 @@ func _ready() -> void:
 
 
 func _build_dev_panel(root: Control) -> void:
-	dev_panel = UIKit.add_panel(root, Rect2(226, 55, 88, 50))
+	dev_panel = UIKit.add_panel(root, Rect2(320 - UIKit.EDGE - 88, MENU_TOP - UIKit.PANEL_PAD, 88, 50))
 	var column := VBoxContainer.new()
-	column.position = Vector2(232, 60)
+	column.position = dev_panel.position + Vector2(6, 5)
 	column.custom_minimum_size = Vector2(76, 0)
 	column.add_theme_constant_override("separation", 3)
 	root.add_child(column)
@@ -129,16 +136,21 @@ func open() -> void:
 	var random: bool = game.has_method("is_random") and game.is_random()
 	seed_button.visible = random
 	seed_edit.visible = false
+	var hud: Node = game.get("hud")
+	if hud and hud.has_method("hide_area_texts"):
+		hud.hide_area_texts()  # (frozen mid-fade, they would show through around PAUSED)
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
-	_panel.size.y = 88 + (16 if random else 0) - (16 if descent else 0)
+	# The panel fits the stack: PANEL_PAD above the first button and below the last one.
+	var count := 5 + (1 if random else 0) - (1 if descent else 0)
+	_panel.size.y = UIKit.PANEL_PAD * 2 + count * UIKit.BUTTON_H + (count - 1) * UIKit.GAP_S
 	descent_note.visible = false
 	var progress := get_node_or_null("/root/Progress")
 	if descent and progress and progress.descent_active():
 		descent_note.visible = true
 		descent_note.text = "QUITTING CASHES OUT THE POT" if game.won else "QUITTING BANKS HALF THE POT"
 	if random:
-		seed_button.text = "SEED " + Levels.seed_code(game.random_seed, game.seed_level)
+		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true
 	_refresh_sound()
 	_refresh_dev()
@@ -164,6 +176,16 @@ func resume() -> void:
 func _refocus() -> void:
 	if visible and is_inside_tree() and get_viewport().gui_get_focus_owner() == null:
 		buttons[0].grab_focus()
+
+
+## The SEED button's text: "SEED 123-4", or just the code when that would not fit the column with the
+## button's 4 px text margins (a 10-digit seed: "SEED 4294967295-7" is 102 px).
+func seed_text(code: String) -> String:
+	var font: Font = seed_button.get_theme_font("font")
+	var text := "SEED " + code
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > COLUMN_W - 8:
+		return code
+	return text
 
 
 ## The seed button: swaps to a box holding the seed (selected, so it can be copied) to type over.
