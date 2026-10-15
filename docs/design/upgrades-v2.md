@@ -1,6 +1,6 @@
 # Upgrades v2: core tree rework, ticket economy, Descent runs, hard-mode Heat (design spec)
 
-Status: **IMPLEMENTED (all four batches, 2026-10-15); core tree REPRICED (tree 3, owner request 2026-10-15): MORE SLIME is the premium track at 80 of the 165 coins (1, 4, 7, 9, 12, 20, 27), SPEED 46 (6, 9, 13, 18), BRIGHTNESS 39 (9, 12, 18); see A2.1, A2.3 "Tree 3" and A2.4; the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
+Status: **IMPLEMENTED (all four batches, 2026-10-15); core tree REPRICED (tree 3, owner request 2026-10-15): MORE SLIME is the premium track at 80 of the 165 coins (1, 4, 7, 9, 12, 20, 27), SPEED 46 (6, 9, 13, 18), BRIGHTNESS 39 (9, 12, 18); see A2.1, A2.3 "Tree 3" and A2.4; the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; **ABILITIES v1 (three ticket abilities on the TICKETS tab, 2026-10-15): see "Abilities v1" below**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
 **batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
 open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and
@@ -40,6 +40,45 @@ current numbers quoted (`scripts/upgrades.gd`, `scripts/progress.gd`, `scripts/g
 `scripts/levels.gd`, `scripts/hats.gd`); the difficulty priors come from [../playtime-estimate.md](../playtime-estimate.md)
 and [../level-design.md](../level-design.md) sections 5-7. Background research: [../advisor/roguelike-progression.md](../advisor/roguelike-progression.md),
 [../advisor/maps.md](../advisor/maps.md), [../advisor/juice-audio-ui.md](../advisor/juice-audio-ui.md).
+
+## Abilities v1 (owner request 2026-10-15; built)
+
+Three active ABILITIES bought with tickets in the cauldron's TICKETS tab (separate from COINS), switch
+`Economy.ABILITIES_ENABLED := true` (test hook `abilities_force`); the old WORKSHOP stays off behind
+`WORKSHOP_ENABLED := false` (with its hook on it returns on a third tab, TOOLS). Every number is in
+`scripts/economy.gd` (`ABILITIES`, `RIFLE_*`, `SPLAT_*`, `KAZE_*`); rules `scripts/abilities.gd`, in-level effects
+`scripts/ability_runner.gd`; tests `tests/test_abilities.gd`; shots `docs/polish-shots/abilities_*.png`.
+
+| Ability (tag) | Effect | Slime per use | Price L1 / L2 / L3 | Charges L1 / L2 / L3 |
+|---|---|---|---|---|
+| SLIME RIFLE (SHOOTS GOO) | a goo shot (480 px/s) flies to the first wall, revealing its own tile and every floor tile up to the wall (all fog cells, lit now) plus the walls bordering them, leaving a thin goo streak | 2% (refused unless the meter holds more) | 15 / 30 / 50 | 1 / 2 / 3 |
+| SLIME SPLAT (BOMB 3X3) | a goo bomb lobbed (0.4 s) up to 4 tiles, stopping at the last floor tile before a wall, bursts: exactly the 3x3 tiles around it revealed and lit, a 1.5 s glow | 4% (refused unless the meter holds more) | 18 / 35 / 55 | 1 / 2 / 3 |
+| SLIMAKAZE (WALL DASH) | the slime dashes (640 px/s, goo smear, no drain in flight) to the last floor tile before the first wall, splats (stun 0.6 s, shake 6 px / 0.5 s), then goo drops spray onto a seeded random set of floor tiles within 5.5 tiles (chance 75% at the impact falling to 25% at the edge; the impact tile always); each is revealed with its bordering walls | 30%, taken on impact; always fires, so with <= 30% left the impact dries the slime up (SECOND WIND / BACKUP BLADDER still apply); refused (nothing spent) with a wall right ahead | 25 / 45 / 70 | 1 / 2 / 3 |
+
+Decisions:
+- **Keys:** remappable actions `ability_rifle` / `ability_splat` / `ability_kaze`, defaults **1 / 2 / 3** (no clash with
+  WASD / arrows / Space / R / F / P / Esc / F11 / F1-F2), made at startup by Progress like `interact`; the CONTROLS page
+  is two columns (10 rows). An older save whose keys already use 1-3 keeps its bindings; the abilities take the first
+  free spare (`ABILITY_SPARE_KEYS`). Touch: a round button per owned ability in an arc left of / above JUMP (icon +
+  uses-left pips).
+- **Aim:** the slime's facing (last movement direction) snapped to the grid, larger axis wins, x on an exact diagonal.
+  Usable only while gliding or standing (not charging, airborne, stunned, dashing; not after the run ends).
+- **Charges** = level (1 / 2 / 3) per attempt; refilled by every restart, NEW MAZE, next level and Descent floor.
+- **Prices:** first ability (RIFLE 15) ~ one day's paid randomizer wins (~16 in ~18 min, A.2); all three maxed 343.
+- **Modes:** story normal, the randomizer and Descent (per floor; no boon changes them; GLASS / RUBBER don't touch the
+  SLIMAKAZE cost); OFF in hard mode and so in every HEAT run (like the workshop). Assisted / dev rules unchanged (dev
+  mode buys free; F2 NO DRAIN also skips ability costs). The autoplay bot never uses them.
+- **Fairness:** par stays base-speed based and abilities don't move it, the route, u, seed codes or the randomizer payout
+  (a win pays as before); medals and records can be earned with them (they are a paid utility, like SPEED). Their reveals
+  are real reveals: fog bytes and survey tiles, so they count as seen on trail maps.
+- **UI:** the TICKETS tab shows each ability's icon (code-drawn 8x8, BoonIcons palette), name, 2-3 word tag, 3 level pips,
+  + and the price with the ticket icon; + opens a BUY <NAME> <N>? confirm (not refundable); locked until the first
+  ticket; the hint names the keys. The HUD shows a pod under the meter with each owned ability's icon and its uses as
+  pips. The COINS tab lost its effect lines (owner: "don't give explanations"): one line per track (name, bar, - / +,
+  cost / MAX), RECOMMENDED under MORE SLIME's name until maxed; the BRIGHTNESS buy picture has no text.
+- **Saves:** `[abilities] rifle/splat/kaze` (0-3, clamped, written only when > 0), the three keys under `[controls]`;
+  RESET PROGRESS clears the levels (keys are preferences). No SAVE_VERSION bump (all optional with defaults).
+- **Sounds:** `goo_shot`, `goo_lob`, `goo_burst`, `kaze` (tools/make_sounds.py; existing WAVs unchanged).
 
 ## Implemented: deviations from this spec
 
