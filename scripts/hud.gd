@@ -45,6 +45,8 @@ var area_label: Label
 ## A story line under the area name (see Story.level_line).
 var story_label: Label
 var _area_tween: Tween
+## Where the area name goes when nothing is in its way (AREA_TOP, or under the attempt pod).
+var _area_base := float(AREA_TOP)
 var _message_panel: PanelContainer
 var time_label: Label
 ## Coins in hand (top bar, beside the slime meter), and coins still to find in this story level
@@ -388,7 +390,9 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
 	coin_label.text = str(clampi(total, 0, 999))  # never shows a negative balance
 	coins_left_label.text = "ALL FOUND" if found >= here else "%d LEFT" % (here - found)
-	_coins_left_pod.visible = here > 0
+	if _coins_left_pod.visible != (here > 0):
+		_coins_left_pod.visible = here > 0
+		_pods_changed()
 	if pop:
 		coin_label.add_theme_color_override("font_color", GOLD)
 		var tween := create_tween()
@@ -408,6 +412,7 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 		return  # called every frame: only a change touches the label
 	attempt_pod.visible = true
 	# The two-line pod reaches down to y 40: the area name moves under it instead of under the timer.
+	_area_base = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
 	attempt_label.text = text
@@ -453,6 +458,7 @@ func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
 	if text == attempt_label.text and attempt_pod.visible:
 		return
 	attempt_pod.visible = true
+	_area_base = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
 	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
 	story_label.offset_top = AREA_TOP_UNDER_ATTEMPT + UIKit.LINE_PITCH  # the floor number under the area name
@@ -796,7 +802,7 @@ func show_area_name(text: String, story_line := "") -> void:
 ## it works before the bars have sorted.
 func _place_area_texts() -> void:
 	var pods := pod_rects()
-	var y := _clear_y(area_label, area_label.offset_top, pods)
+	var y := _clear_y(area_label, _area_base, pods)
 	area_label.offset_top = y
 	area_label.offset_bottom = y + 10
 	if story_label.text != "":

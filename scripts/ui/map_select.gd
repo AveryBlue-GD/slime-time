@@ -175,19 +175,19 @@ func _build_view() -> void:
 	view_root.add_child(view_map)
 	view_line = UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	view_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_line.position = Vector2(48, 167)
-	view_line.size = Vector2(224, 10)
 	view_root.add_child(view_line)
-	view_back = UIKit.make_button("BACK", close_view, Vector2(40, 13))
-	view_back.position = Vector2(4, 164)
+	view_line.position = Vector2(48, UIKit.BOTTOM_ROW_Y + 3)
+	view_line.size = Vector2(224, 10)
+	view_back = UIKit.make_button("BACK", close_view, UIKit.BACK_SIZE)
 	view_root.add_child(view_back)
+	UIKit.place_bottom_row(view_back, -1)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:  # the select's tiles stay out of reach
 		view_back.set_focus_neighbor(side, view_back.get_path_to(view_back))
 	view_back.focus_next = view_back.get_path_to(view_back)  # Tab / Shift+Tab too
 	view_back.focus_previous = view_back.get_path_to(view_back)
-	view_paper = UIKit.make_button("PAPER", cycle_paper, Vector2(44, 13))
-	view_paper.position = Vector2(320 - 4 - 44, 164)
+	view_paper = UIKit.make_button("PAPER", cycle_paper, Vector2(44, UIKit.BUTTON_H))
 	view_root.add_child(view_paper)
+	UIKit.place_bottom_row(view_paper, 1)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
 		view_paper.set_focus_neighbor(side, view_paper.get_path_to(view_back if side in [SIDE_LEFT, SIDE_RIGHT] else view_paper))
 	view_paper.focus_next = view_paper.get_path_to(view_back)
