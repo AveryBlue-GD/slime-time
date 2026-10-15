@@ -300,25 +300,75 @@ static func _add_loops(maze: Dictionary, rng: RandomNumberGenerator, count: int)
 ## How deep each dead end is: cells from it back to the nearest junction (3+ openings) or the
 ## start, counting the dead end itself. {cell: depth}
 static func dead_end_depths(maze: Dictionary) -> Dictionary:
+	var links := cell_links(maze)
+	var width: int = maze.cells.x
+	var start: int = maze.start.y * width + maze.start.x
 	var out := {}
-	for y in maze.cells.y:
-		for x in maze.cells.x:
-			var cell := Vector2i(x, y)
-			if cell == maze.start or open_neighbors(maze, cell).size() != 1:
-				continue
-			var depth := 1
-			var prev := cell
-			var at: Vector2i = open_neighbors(maze, cell)[0]
-			while at != maze.start:
-				var around := open_neighbors(maze, at)
-				if around.size() != 2:
-					break
-				depth += 1
-				var next: Vector2i = around[0] if around[1] == prev else around[1]
-				prev = at
-				at = next
-			out[cell] = depth
+	for i in links.size():  # row by row, like the cells
+		if i == start or LINK_COUNT[links[i]] != 1:
+			continue
+		var depth := 1
+		var prev := i
+		var at := link_step(i, links[i], width)
+		while at != start:
+			var around := links[at]
+			if LINK_COUNT[around] != 2:
+				break
+			depth += 1
+			var next := link_step(at, around & ~_link_toward(at, prev, width), width)
+			prev = at
+			at = next
+		out[Vector2i(i % width, i / width)] = depth
 	return out
+
+
+## Each cell's open sides as a bit mask in DIRS order (1 right, 2 left, 4 down, 8 up), by cell index
+## (y * cells.x + x): what open_neighbors finds, for every cell at once on flat arrays.
+static func cell_links(maze: Dictionary) -> PackedByteArray:
+	var width: int = maze.cells.x
+	var height: int = maze.cells.y
+	var size_x: int = maze.size.x
+	var walls: PackedByteArray = maze.walls
+	var links := PackedByteArray()
+	links.resize(width * height)
+	for y in height:
+		for x in width:
+			var tile := (y * CELL_SPAN + 1) * size_x + x * CELL_SPAN + 1  # the cell's open tile
+			var mask := 0
+			if x + 1 < width and walls[tile + OPEN] != 1:
+				mask |= 1
+			if x > 0 and walls[tile - 1] != 1:
+				mask |= 2
+			if y + 1 < height and walls[tile + OPEN * size_x] != 1:
+				mask |= 4
+			if y > 0 and walls[tile - size_x] != 1:
+				mask |= 8
+			links[y * width + x] = mask
+	return links
+
+
+## How many sides a cell_links mask has open.
+const LINK_COUNT: Array[int] = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4]
+
+
+## The cell index past the first open side (DIRS order) in `mask`, from cell index `at`.
+static func link_step(at: int, mask: int, width: int) -> int:
+	if mask & 1:
+		return at + 1
+	if mask & 2:
+		return at - 1
+	if mask & 4:
+		return at + width
+	return at - width
+
+
+## The cell_links bit from cell index `at` toward its neighbor `to`.
+static func _link_toward(at: int, to: int, width: int) -> int:
+	if to == at + 1:
+		return 1
+	if to == at - 1:
+		return 2
+	return 4 if to == at + width else 8
 
 
 ## True when every cell (and so the goal) can be reached from the start.
@@ -342,19 +392,35 @@ static func is_wall(maze: Dictionary, tile: Vector2i) -> bool:
 
 ## Cells from `from` to `to` along open passages (inclusive).
 static func shortest_path(maze: Dictionary, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
-	var came_from := {from: from}
-	var queue: Array[Vector2i] = [from]
-	while not queue.is_empty():
-		var cell: Vector2i = queue.pop_front()
-		if cell == to:
+	# Breadth-first, neighbors in DIRS order (as open_neighbors), on flat arrays.
+	var width: int = maze.cells.x
+	var links := cell_links(maze)
+	var came_from := PackedInt32Array()
+	came_from.resize(links.size())
+	came_from.fill(-1)
+	var source := from.y * width + from.x
+	var target := to.y * width + to.x
+	came_from[source] = source
+	var queue := PackedInt32Array([source])
+	var head := 0
+	while head < queue.size():
+		var cell := queue[head]
+		head += 1
+		if cell == target:
 			break
-		for next in open_neighbors(maze, cell):
-			if not came_from.has(next):
-				came_from[next] = cell
-				queue.append(next)
+		var mask := links[cell]
+		for bit in [1, 2, 4, 8]:
+			if mask & bit:
+				var next := link_step(cell, bit, width)
+				if came_from[next] < 0:
+					came_from[next] = cell
+					queue.append(next)
 	var path: Array[Vector2i] = [to]
-	while path[0] != from:
-		path.push_front(came_from[path[0]])
+	var at := target
+	while at != source:
+		at = came_from[at]
+		path.append(Vector2i(at % width, at / width))
+	path.reverse()
 	return path
 
 

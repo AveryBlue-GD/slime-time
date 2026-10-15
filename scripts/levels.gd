@@ -219,32 +219,49 @@ static func coin_cells(maze: Dictionary, level: int, maze_seed: int) -> Array[Ve
 		var swap := ends[i]
 		ends[i] = ends[j]
 		ends[j] = swap
-	# Which route cell each cell's branch hangs off (multi-source BFS from the solution route).
-	var attach := {}
-	var queue: Array[Vector2i] = []
+	# Which route cell each cell's branch hangs off (multi-source BFS from the solution route, on flat
+	# arrays: neighbors in MazeGenerator.DIRS order, like open_neighbors).
+	var width: int = maze.cells.x
+	var links := MazeGenerator.cell_links(maze)
+	var attach := PackedInt32Array()
+	attach.resize(links.size())
+	attach.fill(-1)
+	var queue := PackedInt32Array()
 	for cell in MazeGenerator.shortest_path(maze, maze.start, maze.goal):
-		attach[cell] = cell
-		queue.append(cell)
-	while not queue.is_empty():
-		var cell: Vector2i = queue.pop_front()
-		for next in MazeGenerator.open_neighbors(maze, cell):
-			if not attach.has(next):
-				attach[next] = attach[cell]
-				queue.append(next)
+		var i := cell.y * width + cell.x
+		attach[i] = i
+		queue.append(i)
+	var head := 0
+	while head < queue.size():
+		var i := queue[head]
+		head += 1
+		var mask := links[i]
+		for bit in [1, 2, 4, 8]:
+			if mask & bit:
+				var next := MazeGenerator.link_step(i, bit, width)
+				if attach[next] < 0:
+					attach[next] = attach[i]
+					queue.append(next)
+	var wanted: int = COINS[clampi(level, 1, COUNT) - 1]
 	var picked: Array[Vector2i] = []
+	var taken := {}
 	var branches := {}
 	for pass_no in 3:
 		for cell in ends:
-			if cell in picked:
+			if picked.size() >= wanted:  # (only the first `wanted` are kept)
+				break
+			if taken.has(cell):
 				continue
 			var deep: bool = depths[cell] >= COIN_DEEP
-			if pass_no == 0 and (not deep or branches.has(attach[cell])):
+			var branch := attach[cell.y * width + cell.x]
+			if pass_no == 0 and (not deep or branches.has(branch)):
 				continue
 			if pass_no == 1 and not deep:
 				continue
 			picked.append(cell)
-			branches[attach[cell]] = true
-	return picked.slice(0, COINS[clampi(level, 1, COUNT) - 1])
+			taken[cell] = true
+			branches[branch] = true
+	return picked
 
 
 ## The coin keys (Progress.coin_key) of a normal-mode story level, in coin_cells order (cached).
