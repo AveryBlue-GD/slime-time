@@ -3,6 +3,7 @@
 Written 2026-10-13 (gameplay-dev). Code: `scripts/spawn_picker.gd`, `scripts/maze_generator.gd`
 (`generate_level`, `generate_random`, `dead_end_depths`), `scripts/levels.gd` (`DATA`, `coin_cells`,
 `coin_keys`, `level_par`), `scripts/progress.gd` (`_tier_from_record`; the pre-v5 migrations were removed 2026-10-15).
+Spring cleaning (2026-10-16): maze output is unchanged (`tests/data/maze_golden.txt` passes byte-for-byte); `dead_end_depths`, `shortest_path` and the coin pick now run on flat arrays, and `MazeGenerator.shortest_path` returns an empty path when the target cannot be reached. Descent resume (D6, D9): section 9.
 Rollback tags from before this work: `v2-phase3`, `v2-before-advisor-polish`.
 
 ## 1. The spawn picker (`SpawnPicker`)

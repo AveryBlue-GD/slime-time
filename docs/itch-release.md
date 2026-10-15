@@ -65,7 +65,7 @@ Change all three together (the test fails if they disagree):
 
 Never reuse an old dir name. To keep progress across a release instead, don't bump anything.
 
-## Desktop builds (Windows, macOS)
+## Desktop builds (Windows, macOS, Linux)
 
 Presets in `export_presets.cfg` (export with the 4.7.2 templates; zips go to the Desktop as before):
 
@@ -83,6 +83,10 @@ Presets in `export_presets.cfg` (export with the 4.7.2 templates; zips go to the
   `project.godot` `textures/vram_compression/import_etc2_astc=true` (set). Checked 2026-10-14: exports with no errors,
   `codesign -dv` = `Signature=adhoc`, `Format=app bundle with Mach-O universal (x86_64 arm64)`,
   `codesign --verify --deep --strict` clean, `Contents/MacOS/Slime Time --headless --quit-after 60` exits 0.
+- **Linux** (`build/linux/SlimeTime.x86_64`, x86_64, pck embedded; added in the spring cleaning, phase 5): the Windows
+  exclude filters, no console wrapper. Exported and checked with the 4.7.2 templates (78.7 MB, an x86-64 ELF, no tests / tools /
+  docs in the pck); not run on a Linux machine yet. Android, iOS and Steam presets are port-time work with their own
+  checklist: [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md).
 - **Gatekeeper (macOS players from itch):** an ad-hoc signed, un-notarized app downloaded in a browser is quarantined, and
   `spctl` rejects it. Players must **right-click (or Control-click) the app > Open > Open** the first time (on macOS 15+:
   try to open it once, then System Settings > Privacy & Security > "Open Anyway"), or run

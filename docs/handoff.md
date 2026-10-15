@@ -1,7 +1,7 @@
-# Handoff: where Slime Time stands (updated 2026-10-15)
+# Handoff: where Slime Time stands (updated 2026-10-16, end of the spring cleaning)
 
 Read [../CLAUDE.md](../CLAUDE.md) first (rules, commands), then this file. Code layout: [architecture.md](architecture.md). Docs
-index: [README-docs.md](README-docs.md). The long per-feature history (everything up to 2026-10-15, including the superseded
+index: [README-docs.md](README-docs.md). UI layout rules: [ui-rules.md](ui-rules.md). The long per-feature history (everything up to 2026-10-15, including the superseded
 back-and-forth on abilities and the workshop) is in [archive/handoff-history.md](archive/handoff-history.md).
 
 ## What the game is
@@ -10,6 +10,33 @@ Godot 4.7.2 pixel-art maze game, 320x180 base, `gl_compatibility`. A slime glide
 map, moving drains the slime meter, the golden chalice is the exit. Flow: title (first launch of a fresh save plays the wordless
 intro) -> round rotating **hub** with 9 stations (story archway, MAP TABLE, upgrades cauldron, QUIT trapdoor, coin bag, randomizer
 portal, settings signpost, hat wheel, wardrobe).
+
+## Spring cleaning (2026-10-15 / 16, branch `spring-cleaning`)
+
+A five-phase studio cleanup, no change to the economy, balance, save version / epoch or cutscenes. Owner decisions D1-D10:
+[spring-cleaning/decisions.md](spring-cleaning/decisions.md); baseline numbers: [spring-cleaning/baseline.md](spring-cleaning/baseline.md);
+each phase has a report and an independent QA review in [spring-cleaning/](spring-cleaning/).
+
+1. **Assets and code** ([phase1-assets](spring-cleaning/phase1-assets.md), [phase1-code](spring-cleaning/phase1-code.md),
+   [phase1-docs](spring-cleaning/phase1-docs.md)): unused art removed (`walls.png`, `fillets.png`, the `button_*` / `panel.png`
+   UI sheets), pre-v5 save migrations and legacy par tables removed (only the in-epoch `_migrate_tree` / `_migrate_prices`
+   remain), small duplicates merged, 256 old screenshots dropped from `docs/polish-shots`, docs reorganised (old reports in
+   `archive/`).
+2. **Tests** ([phase2-tests](spring-cleaning/phase2-tests.md)): suites run in parallel (about 2 min instead of 6), flakiness
+   fixed (per-process throwaway saves, wall-clock budgets with a CPU probe, a job timeout), `tests/README.md` explains every file.
+3. **UI** ([phase3-ui](spring-cleaning/phase3-ui.md), rules in [ui-rules.md](ui-rules.md)): measured audit of every screen, the
+   fixes, and the layout numbers as named `UIKit` constants; `test_ui_layout` / `test_ui_touch` enforce them; touch hit areas grow
+   only while touch is in use.
+4. **Performance** ([phase4-perf](spring-cleaning/phase4-perf.md)): maze border on its own layers, caches for retries, hub / level /
+   story preloaded at boot, goo wipe warmed, and physics interpolation above ~72 fps (D3 / D5: ticks stay 60, so 60 fps output is
+   unchanged and 120 / 144 / 240 Hz is smooth; captures in `spring-cleaning/perf/`; revert = `physics_interpolation=false`).
+5. **Platforms** ([phase5-platform](spring-cleaning/phase5-platform.md)): the `Platform` seam + `PlatformEvents` autoload, Android
+   back, background / focus-loss pause, a fixed gamepad layout (D4), safe areas, a Linux preset, `tools/promo/make_promo.sh`, the
+   Steam seam signal, and Descent resume after an app kill (D6) with one resume per floor (D9). The mobile hub button is a home
+   icon (D10).
+
+**Pad layout (D4):** left stick (8 directions) / D-pad move, A leap and menu accept, X use, B back, START pause, VIEW restart,
+LB / Y / RB abilities 1 / 2 / 3, LB / RB switch tabs. Glyph art and pad remapping are later work.
 
 ## Modes
 
@@ -36,13 +63,13 @@ portal, settings signpost, hat wheel, wardrobe).
 
 - Launch: `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain), `--story`
   (postgame state), `--autoplay [--speed=N]` (F10 stops), `--scene res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`.
-- Tests: `./tools/test_all.sh` (70 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3 (`-j 1` = one at a
-  time, about 5 minutes); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
+- Tests: `./tools/test_all.sh [-j N] [suite ...]` (76 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
+  (`-j 1` = one at a time, about 5 minutes; `JOB_TIMEOUT=sec` kills a hung job, default 600); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
   [spring-cleaning/phase2-tests.md](spring-cleaning/phase2-tests.md)). One suite:
   `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
 - Debug flags for economy work: `--upgrades=a,b,c`, `--tickets=N`, `--trail=ID`, `--paper=ID`, `--descent[=SEED]`, `--heat=...`,
   `--abilities=r,s,k`, `--coins=N`, `--unlock-all`; none of them saves.
-- Exports: Web (custom shell `tools/web_shell.html`), Windows Desktop, macOS presets in `export_presets.cfg`; steps in
+- Exports: Web (custom shell `tools/web_shell.html`), Windows Desktop, macOS, Linux presets in `export_presets.cfg`; steps in
   [itch-release.md](itch-release.md) and [itch-update-guide.md](itch-update-guide.md).
 
 ## Save safety
@@ -56,21 +83,29 @@ it: [itch-release.md](itch-release.md). Never run the game when the owner may be
 
 ## Platforms
 
-Desktop (macOS dev machine, Windows) and web/itch are the shipped targets. Android and iPhone web are unverified on real devices
-(the Android shader fix is unconfirmed; web QA in an itch-like iframe with phone emulation: [qa-web-report.md](qa-web-report.md),
-5-minute phone checklist in its section 6). Windows build zip and itch promo images are out of date (v2.2); rebuild only when asked.
-Targets for the ports (owner): stable 60 fps on low-end PCs and low-to-mid mobile, smooth scaling to 120/144/240 Hz, English only.
-Perf notes: [perf/](perf/).
+Desktop (macOS dev machine, Windows) and web/itch are the shipped targets; a Linux x86_64 preset exports (not run on a Linux
+machine yet). Platform code is behind `Platform` (`scripts/platform.gd`) and the `PlatformEvents` autoload. Ready in code but
+unverified on real hardware: Android back, background pause, safe areas, the gamepad layout, Descent resume (iPhone / Android
+web: [qa-web-report.md](qa-web-report.md), 5-minute phone checklist in its section 6). No Android / iOS / Steam export presets
+are in the repo (they need SDKs, a keystore, a Team ID, GodotSteam): the presets to paste and the **port-time checklist**
+(bundle id, icons, Android / iOS / Steam steps, low-end profiling, store pages) are in
+[spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md). The Windows build zip and itch promo images are out
+of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-end PCs and low-to-mid mobile, smooth scaling to
+120/144/240 Hz, English only. Perf notes: [perf/](perf/).
 
 ## Open tasks and open questions
 
-1. Real-device checks on Android and iPhone (web zip, checklist above).
+1. Real-device checks on Android and iPhone (web zip, checklist above); the native ports follow the port-time checklist.
 2. Tuning from playtests (all numbers are priors, see [playtime-estimate.md](playtime-estimate.md)): story budgets, hard allowances,
    randomizer/Descent/HEAT ticket payouts, hat wheel and cosmetic prices, whether the randomizer should still pay 5 tickets first try.
 3. Real hats from the owner (the wheel, SHOP and wardrobe work with any `Hats.LIST`).
 4. Trail maps: decide cost/unlock ([advisor/maps.md](advisor/maps.md)).
 5. Optional: merge `v2` into `main`; update the itch tagline when prepping a release.
 6. Re-base `tools/web_shell.html` on the new default shell on a Godot upgrade.
+7. Owner calls still open from the spring cleaning: D7 (keep the git-ignored local mp4s, no history rewrite: pending), the look at
+   the 60 / 144 Hz captures for interpolation (D5, kept meanwhile), a touch layout with larger pitch for dense stacks
+   ([phase3-ui.md](spring-cleaning/phase3-ui.md) remaining issues), a manual check on the Mac that the remembered fullscreen
+   follows the green button / F11 across a relaunch, pad glyphs and remapping.
 
 ## Decisions and standing preferences
 

@@ -132,6 +132,7 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 
 ### Icons
 
+- The touch pause button (15x13 rect, `TouchControls.PAUSE_RECT`) draws two pause bars; in the hub on iOS / Android it draws a 7x7 pixel house instead (`home_icon`, decision D10: the button goes to the title). Both are constant pixel lists centred on the rect, whole pixels.
 - 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check); 7x9 flame; 16x16 ability and boon
   icons; HEAT modifier icons 9x9 (RACE 8x8), drawn at 2x in the HEAT panel and centred in an 18x18 cell.
 
@@ -184,12 +185,19 @@ Physical size of 1 game px: about 1.67-2.3 pt/dp on phones (5-6x scale at DPR 2.
 
 ## 8. Safe areas
 
-- The web shell uses `viewport-fit=cover`, and there is no safe-area code. Integer pillarboxing keeps the content clear of
-  notches and punch-hole cameras on 19.5:9 / 20:9 phones (210-306 px bars).
-- Exactly-16:9 phones have no bars. Keep important HUD content ≥ 3-4 game px (18-24 px physical) from corners; large
-  rounded corners still clip the HUD pods' outer corners there.
-- iPhone landscape: the bottom bar (45 px) is narrower than the home-indicator zone (63 px). Keep interactive art at
-  y ≤ 176. The touch hit areas of bottom-row buttons now reach y 181 (into the bar). Both are Phase 5 items.
+Phase 5 added safe-area handling (`Platform.safe_rect()` / `safe_insets()` in `scripts/platform.gd`, see
+[spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md) M1). It applies on iOS and Android only (and
+with the test overrides / `--platform=ios`); desktop and web use the whole view and keep every number above.
+
+- `Platform.safe_rect()` maps `DisplayServer.get_display_safe_area()` into the 320x180 view (largest whole multiple,
+  centred). Integer pillarboxing already keeps content clear of notches and punch-hole cameras on 19.5:9 / 20:9 phones
+  (210-306 px bars), so the rect is the whole view there; exactly-16:9 phones and iPhone landscape cut into it.
+- HUD pods, the hub's ticket pod and the touch pause button sit `UIKit.hud_edge()` from the sides / top: `HUD_EDGE` (3),
+  or 1 px clear of the safe area where it cuts deeper.
+- Touch hit areas grow by `HIT_PAD` but never past the safe area (iPhone landscape: the bottom row's margin ends at
+  y 177.75, not 181, so the home-indicator strip stays the system's); the floating joystick never opens in that strip.
+  Keep interactive art at y <= 176. With the whole view safe, touches in the letterbox bars still count (section 7).
+- Rounded corners on exactly-16:9 phones may still clip a pod's outer corner by a pixel: check on a device (port-time).
 
 ## 9. Motion
 

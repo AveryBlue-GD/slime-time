@@ -247,6 +247,8 @@ Format: **file:line** - issue - fidelity-preserving fix - gain (measured or esti
 - `physics/common/physics_interpolation`: would smooth movement on 120 Hz displays, but it changes how
   motion looks with `snap_2d_transforms_to_pixel`. **FIDELITY RISK - do not apply** without the
   user's say-so.
+  (Superseded 2026-10-16: the owner approved it as D5. It is on, but switches itself on only above ~72 fps with a
+  pixel-locked camera, so 60 fps output is unchanged: [../spring-cleaning/phase4-perf.md](../spring-cleaning/phase4-perf.md).)
 - `vram_texture_compression/for_desktop=true` on the Web preset changes nothing (no texture uses VRAM
   compression), so it is harmless.
 

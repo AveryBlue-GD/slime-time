@@ -8,9 +8,11 @@ Living docs are here; finished reports and superseded plans are in [archive/](ar
 | Doc | What it is |
 |---|---|
 | [../CLAUDE.md](../CLAUDE.md) | project rules, commands (macOS and Windows), workflow |
+| [../tests/README.md](../tests/README.md) | what every file under `tests/` is: suites, demo scenes, tools, data |
 | [../README.md](../README.md) | player-facing how to run and play |
 | [handoff.md](handoff.md) | current state: modes, economy, build/test/launch, save safety, platforms, open tasks, standing preferences |
 | [architecture.md](architecture.md) | detailed code layout and conventions (moved out of CLAUDE.md): font and pixel rules, every screen and script |
+| [ui-rules.md](ui-rules.md) | final UI layout rules (spacing scale, button / pod / tile sizes, text, touch targets, safe areas); numbers are `UIKit` constants |
 | [level-design.md](level-design.md) | spawn picker, story layouts v4, calibration, save migration, randomizer, hard-mode rebalance, trail maps, Descent (9), Heat (10) |
 | [design/upgrades-v2.md](design/upgrades-v2.md) | implemented spec: coin tree, ticket store, workshop, Descent, Heat, Abilities v1, deviations |
 | [story.md](story.md) | plot, wordless intro and finale, level banners, `story_seen` |
@@ -20,8 +22,8 @@ Living docs are here; finished reports and superseded plans are in [archive/](ar
 | [qa-web-report.md](qa-web-report.md) | web/itch and phone QA, fixes W1-W5, the 5-minute phone checklist |
 | [qa-release-report.md](qa-release-report.md) | save robustness, soak, extremes, exports; status table of fixes |
 | [advisor/maps.md](advisor/maps.md) | open proposal: unlock/cost plan for trail maps |
-| [perf/](perf/) | performance audits: [measurements](perf/measurements.md), [cpu](perf/cpu.md), [rendering](perf/rendering.md), [startup-memory-web](perf/startup-memory-web.md) |
-| [spring-cleaning/](spring-cleaning/) | the studio spring cleaning (baseline numbers, per-agent phase reports) |
+| [perf/](perf/) | performance audits (dated 2026-10-13; what was applied since: [phase4-perf](spring-cleaning/phase4-perf.md)): [measurements](perf/measurements.md), [cpu](perf/cpu.md), [rendering](perf/rendering.md), [startup-memory-web](perf/startup-memory-web.md) |
+| [spring-cleaning/](spring-cleaning/) | the 2026-10 studio spring cleaning: [decisions D1-D10](spring-cleaning/decisions.md), [baseline](spring-cleaning/baseline.md), phase reports ([assets](spring-cleaning/phase1-assets.md), [code](spring-cleaning/phase1-code.md), [docs](spring-cleaning/phase1-docs.md), [tests](spring-cleaning/phase2-tests.md), [UI audit](spring-cleaning/phase3-ui-audit.md) + [UI](spring-cleaning/phase3-ui.md), [perf audit](spring-cleaning/phase4-perf-audit.md) + [perf](spring-cleaning/phase4-perf.md), [platform audit](spring-cleaning/phase5-platform-audit.md) + [platform](spring-cleaning/phase5-platform.md): presets, Descent resume, port-time checklist), the `qa-*.md` reviews, before / after captures |
 | `polish-shots/` | screenshots and videos referenced by the docs |
 
 ## Archive ([archive/](archive/))

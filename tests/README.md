@@ -2,7 +2,7 @@
 
 Everything under `tests/` is one of four kinds. Only the first kind is run by `./tools/test_all.sh`.
 
-## 1. Suites: `test_*.gd` (70) run by `./tools/test_all.sh`
+## 1. Suites: `test_*.gd` (76) run by `./tools/test_all.sh`
 
 - `./tools/test_all.sh` runs every suite headless, in parallel (`-j N`, default 3/4 of the cores; `-j 1` = one at a time),
   prints `suites: N failed: 0`. `./tools/test_all.sh test_coins test_hats` runs just those; `TIMES=1` lists the slowest jobs;
@@ -12,7 +12,11 @@ Everything under `tests/` is one of four kinds. Only the first kind is run by `.
 - Suites `extends "res://tests/suite_base.gd"`: `failures`, `_check(ok, label)`, `_result()`, `throwaway_save()` (a save file unique to the
   process, never a fixed name: suites run side by side), `_spawn_game({level = 3})`, `_physics_frames(n)`, `_wait_seconds(s)`, `_tap_key(code)`,
   `_check_budget(...)` (wall-clock budgets, see below). `nav_fuzz_lib.gd` is the shared driver of
-  the navigation fuzzer; `start_dirs.gd` and `autopilot.gd` are helpers.
+  the navigation fuzzer; `start_dirs.gd`, `err_log.gd` (collects engine errors during a test) and `autopilot.gd` are helpers.
+- Added in the spring cleaning: `test_platform` (Platform seam: Android back, background pause, safe areas, fullscreen sync, mobile
+  home icon; `Platform.override` / `safe_area_override` simulate phones), `test_gamepad` (the fixed pad layout with real joypad events),
+  `test_interpolation` (physics interpolation changes no run result), `test_ui_layout` / `test_ui_touch` (the rules of
+  [docs/ui-rules.md](../docs/ui-rules.md) on every screen), `test_descent_resume` (Descent run saved / resumed, one resume per floor).
 - `JOB_TIMEOUT=sec` (default 600) kills a hung job (and only its own process group, `tools/job_timeout.pl`) and reports `<label> TIMEOUT`; Ctrl-C keeps
   the logs and prints where. A suite name that matches no suite fails the run. Each job removes its own `dev_attempts_<pid>.log` and throwaway saves,
   and `test_all.sh` sweeps those of dead pids at the start (it prints how many); only those name patterns, never `save.cfg` / `dev_attempts.log`.

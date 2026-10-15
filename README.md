@@ -19,6 +19,10 @@ A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. 
 | Esc or P | Pause (volume, sound, restart, quit). In a browser in fullscreen, Esc exits fullscreen, so use P |
 | F11 | Toggle fullscreen |
 
+### With a gamepad
+
+Left stick or D-pad glide, **A** charge and leap (and confirm in menus), **X** use a hub station, **B** back, **START** pause, **VIEW** restart, **LB / Y / RB** abilities 1 / 2 / 3 (randomizer and DESCENT), **LB / RB** switch tabs. The layout is fixed for now.
+
 Keys can be remapped from the hub: **SETTINGS** (the gear signpost) > **CONTROLS**. In the hub, **F** uses the station you stand next to.
 
 ### On a phone or tablet
