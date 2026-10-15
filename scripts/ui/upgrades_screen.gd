@@ -1,20 +1,26 @@
 extends Control
 
-## The cauldron: two tabs, COINS | TICKETS (upgrades v2, docs/design/upgrades-v2.md C.3); with
-## Economy.WORKSHOP_ENABLED off (now) only the COINS page exists: no tab bar, no TICKETS page.
-## COINS: the upgrade tree, a row per upgrade with its level (one fat pip per level: 7 / 4 / 3, so
-## each level reads as a chunk), the effect now and after the next level (BRIGHTNESS as its light
-## radius before -> after and the lit area gained, so the jump is clear), and buttons to put a coin
-## level in (+) or take it back out (-) at any time. Dev-only upgrades (wall power) only appear in
-## dev mode. Tracks and costs: Economy.COIN_TRACKS via Upgrades.
-## TICKETS: the WORKSHOP (Workshop, Economy.WORKSHOP): five 3-level utility tracks bought with
-## tickets (+ only: not refundable), each with its effect now -> next and its price with the ticket
-## icon; locked (EARN TICKETS IN THE RANDOMIZER) until the player has ever had a ticket.
+## The cauldron: tabs COINS | TICKETS (upgrades v2, docs/design/upgrades-v2.md C.3 and "Abilities v1").
+## COINS: the upgrade tree, one line per upgrade (owner: no explanations, just let them be): its name,
+## its level as one uniform bar of fat pips (7 / 4 / 3), - / + to take a coin level back out or put
+## one in at any time, and the next level's cost (MAX when maxed). MORE SLIME carries a small
+## RECOMMENDED tag under its name until maxed. Buying BRIGHTNESS flashes a 1 s light-ring picture
+## (no text). Dev-only upgrades (wall power) only appear in dev mode. Tracks: Economy.COIN_TRACKS.
+## TICKETS (Economy.ABILITIES_ENABLED): the three ABILITIES (Abilities), a row each with its icon,
+## name, a 2-3 word tag, level pips, + and the price with the ticket icon (not refundable: a BUY /
+## BACK confirm); locked (EARN TICKETS IN THE RANDOMIZER) until the player has ever had a ticket.
+## The old WORKSHOP (Workshop, Economy.WORKSHOP; five 3-level tracks with effect lines) is switched
+## off (Economy.WORKSHOP_ENABLED); with the test hook on it comes back on a TOOLS tab (page "tickets",
+## its legacy name) and the title makes room for the third tab.
 ## The pod top right shows coins or tickets, following the tab. Esc / B / BACK leave the screen
 ## from either tab (a tab is not an overlay, so nothing stacks).
 
-const ROW_TOP := 26
-const ROW_HEIGHT := 30
+## COINS rows: one line each, centered in a panel ROW_HEIGHT - 3 tall.
+const ROW_TOP := 28
+const ROW_HEIGHT := 26
+## The ABILITIES rows (icon, name over tag), ABILITY_ROW_HEIGHT apart.
+const ABILITY_ROW_TOP := 28
+const ABILITY_ROW_HEIGHT := 30
 ## The workshop's five rows (two lines each: name, effect) from TICKET_ROW_TOP, TICKET_ROW_HEIGHT apart
 ## (panels 2 px shorter): 24 + 5 x 25 = 149, leaving one hint line above the bottom buttons. (The
 ## spec's 26 + 5 x 24 put the effect line on the goo band of its panel.)
@@ -28,22 +34,28 @@ const BAR_HEIGHT := 6
 const PIP_GAP := 1
 const PIPS_RIGHT := 222
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
+## The ABILITIES page's hint: its keys (read from the bindings) and where they work.
+const ABILITIES_HINT := "USE IN A LEVEL: %s %s %s - NOT IN HARD MODE"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
 ## Presses of a workshop buy closer together than this are ignored (a double tap).
 const BUY_GUARD_MSEC := 300
 const PREVIEW_TIME := 1.0
 const TICKETS_LOCKED := "EARN TICKETS IN THE RANDOMIZER FIRST"
-## The tab the next opening shows ("coins" or "tickets"), for that one opening (demos and tests set
+## The tab the next opening shows ("coins", "abilities" or, with the workshop on, "tickets"), for that one opening (demos and tests set
 ## it); the hub's cauldron always opens on COINS.
 static var open_tab := "coins"
 
 ## The coin rows (by track id) and the workshop rows.
 var rows := {}
 var ticket_rows := {}
+## The ABILITIES rows by id: {icon, name, tag, pips, plus, cost, ticket}.
+var ability_rows := {}
+var abilities_tab: Button
+var ability_page: Control
 var coin_label: Label
 var pod_icon: TextureRect
 var skin_text: SkinText
-## "coins" or "tickets".
+## "coins", "abilities" or "tickets" (the workshop).
 var page := "coins"
 var coins_tab: Button
 var tickets_tab: Button
@@ -60,6 +72,8 @@ var confirm_buy: Button
 var confirm_back: Button
 var _blocker: ColorRect
 var _confirm_id := ""
+## What the confirm buys: "ability" or "workshop".
+var _confirm_kind := ""
 var _confirm_lock := {}
 var _last_buy_msec := -100000
 ## The dim tag on the MORE SLIME row (shown until it is maxed) and the 1 s BRIGHTNESS light-ring
@@ -69,7 +83,10 @@ var preview: Control
 
 
 func _ready() -> void:
-	skin_text = UIKit.setup_screen(self, "UPGRADES")
+	var workshop_on := Economy.workshop_on()
+	var abilities_on := Economy.abilities_on()
+	# (three tabs need the title's room)
+	skin_text = UIKit.setup_screen(self, "" if workshop_on and abilities_on else "UPGRADES")
 	var coin_pod := PanelContainer.new()
 	coin_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	add_child(coin_pod)
@@ -89,13 +106,18 @@ func _ready() -> void:
 	coin_row.add_child(coin_label)
 
 	# The tabs, top left (mirroring the pod).
-	var workshop_on := Economy.workshop_on()
-	if workshop_on:  # (one page only while the workshop is switched off: no tab bar)
+	if workshop_on or abilities_on:  # (one page only with both switched off: no tab bar)
 		coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, 13))
 		coins_tab.position = Vector2(4, 4)
 		add_child(coins_tab)
-		tickets_tab = UIKit.make_button("TICKETS", func() -> void: show_page("tickets"), Vector2(52, 13))
-		tickets_tab.position = Vector2(46, 4)
+	if abilities_on:
+		abilities_tab = UIKit.make_button("TICKETS", func() -> void: show_page("abilities"), Vector2(52, 13))
+		abilities_tab.position = Vector2(46, 4)
+		add_child(abilities_tab)
+	if workshop_on:
+		tickets_tab = UIKit.make_button("TOOLS" if abilities_on else "TICKETS", func() -> void: show_page("tickets"),
+			Vector2(40 if abilities_on else 52, 13))
+		tickets_tab.position = Vector2(100 if abilities_on else 46, 4)
 		add_child(tickets_tab)
 
 	coin_page = _make_page()
@@ -115,6 +137,14 @@ func _ready() -> void:
 			y += TICKET_ROW_HEIGHT
 		_rows_bottom["tickets"] = y - 4
 
+	if abilities_on:
+		ability_page = _make_page()
+		y = ABILITY_ROW_TOP
+		for item: Dictionary in Abilities.LIST:
+			_make_ability_row(item, y)
+			y += ABILITY_ROW_HEIGHT
+		_rows_bottom["abilities"] = y - 5
+
 	hint = UIKit.make_label("", 8, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(hint)
@@ -124,9 +154,9 @@ func _ready() -> void:
 		back.text = "PLAY"
 		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
 		back.pressed.connect(_leave)
-	if workshop_on:
+	if workshop_on or abilities_on:
 		_build_confirm()
-	show_page(open_tab if workshop_on and open_tab in ["coins", "tickets"] else "coins")
+	show_page(open_tab)
 	open_tab = "coins"  # (one opening only)
 
 
@@ -141,14 +171,19 @@ func _make_page() -> Control:
 ## Shows the COINS or TICKETS tab and focuses its first + (or the TICKETS tab, while the workshop
 ## is still shut).
 func show_page(which: String) -> void:
+	if which == "tickets" and ticket_page == null or which == "abilities" and ability_page == null \
+			or not which in ["coins", "tickets", "abilities"]:
+		which = "coins"
 	page = which
-	var tickets := page == "tickets" and ticket_page != null
-	page = "tickets" if tickets else "coins"
-	coin_page.visible = not tickets
+	var tickets := page != "coins"
+	coin_page.visible = page == "coins"
 	if ticket_page != null:
-		ticket_page.visible = tickets
-		for pair: Array in [[coins_tab, not tickets], [tickets_tab, tickets]]:
-			(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if pair[1] else "normal"))
+		ticket_page.visible = page == "tickets"
+	if ability_page != null:
+		ability_page.visible = page == "abilities"
+	for pair: Array in [[coins_tab, "coins"], [tickets_tab, "tickets"], [abilities_tab, "abilities"]]:
+		if pair[0] != null:
+			(pair[0] as Button).add_theme_stylebox_override("normal", UIKit.button_style("hover" if page == pair[1] else "normal"))
 	pod_icon.texture = load(UIKit.UI_DIR + ("icon_ticket.png" if tickets else "icon_coin.png"))
 	# Centered between the last row's panel and the bottom buttons (COINS: two lines, 7 + LINE_SPACING
 	# + 7 px; TICKETS: one line).
@@ -158,7 +193,9 @@ func show_page(which: String) -> void:
 	hint.offset_bottom = hint.offset_top + hint_height + 2
 	_refresh()
 	var first: Button = null
-	if tickets:
+	if page == "abilities":
+		first = ability_rows[Abilities.LIST[0].id].plus if Progress.abilities_open() else abilities_tab
+	elif tickets:
 		first = ticket_rows[Workshop.LIST[0].id].plus if Progress.workshop_open() else tickets_tab
 	elif not rows.is_empty():
 		first = rows[Upgrades.LIST[0].id].plus
@@ -167,29 +204,57 @@ func show_page(which: String) -> void:
 	skin_text.recolor.call_deferred()
 
 
+## A COINS row on one line, everything centered on the panel's middle (y + 9.5): name, bar, - / +,
+## cost. MORE SLIME's name moves up while its RECOMMENDED tag shows under it (_refresh).
 func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	UIKit.add_panel(parent, Rect2(10, y - 2, 300, ROW_HEIGHT - 3))
 	var name_label := UIKit.make_label(upgrade.name, 8, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
-	name_label.position = Vector2(18, y + 1)
+	name_label.position = Vector2(18, y + 6)
 	parent.add_child(name_label)
-	var about := UIKit.make_label("", 8, UIKit.TEXT_DIM)
-	about.position = Vector2(18, y + 12)
-	parent.add_child(about)
-	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y)
+	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y + 3)
 	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, 13))
-	minus.position = Vector2(226, y)
+	minus.position = Vector2(226, y + 3)
 	parent.add_child(minus)
 	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, 13))
-	plus.position = Vector2(244, y)
+	plus.position = Vector2(244, y + 3)
 	parent.add_child(plus)
 	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
-	cost.position = Vector2(264, y + 2)
+	cost.position = Vector2(264, y + 6)
 	parent.add_child(cost)
 	if upgrade.id == "slime":  # A2.3: the model's biggest risk is skipping MORE SLIME
 		recommended = UIKit.make_label("RECOMMENDED", 8, Color(UIKit.TEXT_DIM, 0.75))
-		recommended.position = Vector2(PIPS_RIGHT - 66, y + 12)
+		recommended.position = Vector2(18, y + 11)
 		parent.add_child(recommended)
-	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, about = about}
+	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, name = name_label, y = y}
+
+
+## An ABILITIES row: the icon (2x), name over its short tag, 3 pips, + and the price with the ticket
+## icon.
+func _make_ability_row(item: Dictionary, y: int) -> void:
+	UIKit.add_panel(ability_page, Rect2(10, y - 2, 300, ABILITY_ROW_HEIGHT - 3))
+	var icon := Abilities.make_icon(item.id, 2)
+	icon.position = Vector2(17, y + 3)
+	ability_page.add_child(icon)
+	var name_label := UIKit.make_label(item.name, 8, UIKit.TEXT)
+	name_label.position = Vector2(40, y + 2)
+	ability_page.add_child(name_label)
+	var tag := UIKit.make_label(item.tag, 8, UIKit.TEXT_DIM)
+	tag.position = Vector2(40, y + 13)
+	ability_page.add_child(tag)
+	var pips := _make_pips(ability_page, Abilities.max_level(item.id), y + 5)
+	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, 13))
+	plus.position = Vector2(244, y + 5)
+	ability_page.add_child(plus)
+	var price := HBoxContainer.new()
+	price.add_theme_constant_override("separation", 2)
+	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	price.position = Vector2(264, y + 7)
+	ability_page.add_child(price)
+	var cost := UIKit.make_label("", 8, UIKit.TEXT_DIM)
+	price.add_child(cost)
+	var ticket := UIKit.make_icon("ticket", Color.WHITE)
+	price.add_child(ticket)
+	ability_rows[item.id] = {icon = icon, name = name_label, tag = tag, pips = pips, plus = plus, cost = cost, ticket = ticket}
 
 
 ## A workshop row: name, effect now -> next, 3 pips, + and the price with the ticket icon.
@@ -249,6 +314,7 @@ func _buy_workshop(id: String) -> void:
 	if not Progress.can_buy_workshop(id):
 		return
 	_confirm_id = id
+	_confirm_kind = "workshop"
 	var next_level: int = Progress.workshop_level(id) + 1
 	confirm_label.text = "BUY %s %d?" % [Workshop.display_name(id), next_level]
 	confirm_price.text = str(Progress.workshop_cost(id))
@@ -259,17 +325,39 @@ func _buy_workshop(id: String) -> void:
 	confirm_back.grab_focus()
 
 
+## An ABILITIES row's + opens the confirm (nothing is spent yet): BUY SLIME RIFLE 2? / price.
+func _buy_ability(id: String) -> void:
+	if confirm.visible or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
+		return
+	if not Progress.can_buy_ability(id):
+		return
+	_confirm_id = id
+	_confirm_kind = "ability"
+	confirm_label.text = "BUY %s %d?" % [Abilities.display_name(id), Progress.ability_level(id) + 1]
+	confirm_price.text = str(Progress.ability_cost(id))
+	confirm.visible = true
+	_blocker.visible = true
+	if _confirm_lock.is_empty():
+		_confirm_lock = UIKit.lock_focus(self, confirm)
+	confirm_back.grab_focus()
+
+
 func _buy_confirmed() -> void:
 	var id := _confirm_id
+	var kind := _confirm_kind
 	if id == "" or Time.get_ticks_msec() - _last_buy_msec < BUY_GUARD_MSEC:
 		return
 	_last_buy_msec = Time.get_ticks_msec()
 	_close_confirm(false)
-	if Progress.buy_workshop(id):
+	if kind == "ability":
+		if Progress.buy_ability(id):
+			_upgrade_sound(Progress.ability_level(id), Abilities.max_level(id))
+	elif Progress.buy_workshop(id):
 		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id))
 	_refresh()
-	if ticket_rows.has(id):
-		(ticket_rows[id].plus as Button).grab_focus()
+	var focus_rows := ability_rows if kind == "ability" else ticket_rows
+	if focus_rows.has(id):
+		(focus_rows[id].plus as Button).grab_focus()
 
 
 func close_confirm() -> void:
@@ -283,9 +371,11 @@ func _close_confirm(refocus: bool) -> void:
 	_blocker.visible = false
 	UIKit.unlock_focus(_confirm_lock)
 	var id := _confirm_id
+	var focus_rows := ability_rows if _confirm_kind == "ability" else ticket_rows
 	_confirm_id = ""
-	if refocus and ticket_rows.has(id):
-		(ticket_rows[id].plus as Button).grab_focus()
+	_confirm_kind = ""
+	if refocus and focus_rows.has(id):
+		(focus_rows[id].plus as Button).grab_focus()
 
 
 func _build_confirm() -> void:
@@ -321,7 +411,7 @@ func _build_confirm() -> void:
 
 
 ## BRIGHTNESS bought: for 1 s the hint area shows a disc at the old light radius and a ring at the
-## new one (to scale), so the jump is seen.
+## new one (to scale), so the jump is seen (a picture only, no text). Centered on the screen.
 func _show_preview(old_radius: float, new_radius: float) -> void:
 	if preview != null:
 		preview.queue_free()
@@ -329,7 +419,7 @@ func _show_preview(old_radius: float, new_radius: float) -> void:
 	var top := rows_bottom + 2
 	var bottom := 162
 	var scale := minf(0.7, float(bottom - top) / 2.0 / new_radius)
-	var center := Vector2(112, (top + bottom) / 2.0)
+	var center := Vector2(160, (top + bottom) / 2.0)
 	var skin := Progress.skin_color()
 	var canvas := Control.new()  # (the draw lambda keeps its own reference: `preview` is cleared later)
 	preview = canvas
@@ -340,9 +430,6 @@ func _show_preview(old_radius: float, new_radius: float) -> void:
 		canvas.draw_circle(center, new_radius * scale, Color(skin, 0.14))
 		canvas.draw_circle(center, old_radius * scale, Color(skin, 0.42))
 		canvas.draw_arc(center, new_radius * scale, 0.0, TAU, 48, skin, 1.0, false))
-	var text := UIKit.make_label("LIGHT %d -> %d PX" % [roundi(old_radius), roundi(new_radius)], 8, UIKit.TEXT)
-	text.position = Vector2(center.x + new_radius * scale + 10, center.y - 4)
-	canvas.add_child(text)
 	canvas.queue_redraw()
 	hint.visible = false
 	var timer := Timer.new()  # a child of the preview: replaced or freed with it
@@ -369,7 +456,7 @@ func _upgrade_sound(level: int, top_level: int) -> void:
 
 
 func _refresh() -> void:
-	var tickets := page == "tickets"
+	var tickets := page != "coins"
 	coin_label.text = str(maxi(Progress.tickets if tickets else Progress.coins(), 0))  # never negative
 	var skin := Progress.skin_color()
 	for id: String in rows:
@@ -380,7 +467,6 @@ func _refresh() -> void:
 		row.cost.text = "MAX" if maxed else "%d" % Upgrades.cost(id, level)
 		row.plus.disabled = maxed or Progress.coins() < Upgrades.cost(id, level)
 		row.minus.disabled = level <= 0
-		row.about.text = effect_text(id, level)
 	var open: bool = Progress.workshop_open()
 	for id: String in ticket_rows:  # (empty while the workshop is switched off)
 		var row: Dictionary = ticket_rows[id]
@@ -392,36 +478,33 @@ func _refresh() -> void:
 		row.plus.disabled = not Progress.can_buy_workshop(id)
 		row.about.text = Workshop.effect_text(id, level)
 		row.about.modulate = Color.WHITE if open else Color(1, 1, 1, 0.5)
+	var abilities_open: bool = Progress.abilities_open()
+	for id: String in ability_rows:
+		var row: Dictionary = ability_rows[id]
+		var level: int = Progress.ability_level(id)
+		_color_pips(row.pips, level, skin)
+		var maxed := level >= Abilities.max_level(id)
+		row.cost.text = "MAX" if maxed else "%d" % Progress.ability_cost(id)
+		row.ticket.visible = not maxed
+		row.plus.disabled = not Progress.can_buy_ability(id)
+		var shade := Color.WHITE if abilities_open else Color(1, 1, 1, 0.5)
+		row.icon.modulate = shade
+		row.tag.modulate = shade
 	recommended.visible = Progress.upgrade_level("slime") < Upgrades.max_level("slime")
-	hint.text = (TICKETS_HINT if open else TICKETS_LOCKED) if tickets else COINS_HINT
+	if rows.has("slime"):  # the name sits over the tag while it shows, else on the row's middle
+		rows.slime.name.position.y = rows.slime.y + (1 if recommended.visible else 6)
+	if page == "abilities":
+		var keys := []
+		for id in Abilities.ids():
+			keys.append(Progress.key_name(Progress.bindings.get(Abilities.action(id), 0)))
+		hint.text = ABILITIES_HINT % keys if abilities_open else TICKETS_LOCKED
+	else:
+		hint.text = (TICKETS_HINT if open else TICKETS_LOCKED) if tickets else COINS_HINT
 
 
 func _color_pips(pips: Array, level: int, skin: Color) -> void:
 	for i in pips.size():
 		(pips[i] as ColorRect).color = skin if i < level else Color8(74, 70, 96)
-
-
-## The row's second line: the effect at `level` and, unless maxed, after the next level.
-##   MORE SLIME: SLIME x1.30 -> x1.45     SPEED: SPEED x1.12 -> x1.25
-##   BRIGHTNESS: LIGHT 9 -> 17 PX  +257% AREA (the radius the light reveals, and the lit disc gained)
-static func effect_text(id: String, level: int) -> String:
-	var maxed := level >= Upgrades.max_level(id)
-	var now := Upgrades.value(id, level)
-	var next := Upgrades.value(id, level + 1)
-	match id:
-		"slime", "speed":
-			var label := "SLIME" if id == "slime" else "SPEED"
-			return "%s x%.2f" % [label, now] + ("  MAXED" if maxed else " -> x%.2f" % next)
-		"brightness":
-			var r_now := Upgrades.reveal_radius(level)
-			var r_next := Upgrades.reveal_radius(level + 1)
-			if maxed:
-				return "LIGHT %d PX  MAXED" % roundi(r_now)
-			var gain := roundi((r_next * r_next / (r_now * r_now) - 1.0) * 100.0)
-			return "LIGHT %d -> %d PX  +%d%% AREA" % [roundi(r_now), roundi(r_next), gain]
-		"power":
-			return "SPLATS DAMAGE WALLS (DEV ONLY)" if level <= 0 or maxed else "WALL DAMAGE x%.1f -> x%.1f" % [now, next]
-	return ""
 
 
 ## Leaves: back into the level after a dry-up, otherwise to the hub.

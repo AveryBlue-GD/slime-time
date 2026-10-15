@@ -336,7 +336,7 @@ func _screen_layout() -> void:
 				boxes.append(Rect2(pip.position, pip.size))
 				names.append("%s pip %d" % [id, i])
 				ok = ok and (pip.color == progress.skin_color()) == (i < level)
-			for key in ["minus", "plus", "cost", "about"]:
+			for key in ["minus", "plus", "cost", "name"]:
 				var node: Control = row[key]
 				var size: Vector2 = node.size.max(node.get_combined_minimum_size())
 				boxes.append(Rect2(node.position, size))
@@ -359,18 +359,11 @@ func _screen_layout() -> void:
 		_check(ok and overlap == "" and tracks.size() == want,
 			"upgrades screen %s%s: %d tracks, pips per track, MAX/costs right, nothing overlaps%s" % [state[0], " (dev)" if state[2] else "",
 			tracks.size(), "" if overlap == "" else " - " + overlap])
-		var abouts := []
-		for id: String in tracks:
-			abouts.append(screen.rows[id].about.text)
-		print("    ", abouts)
 		screen.free()
 	progress.dev_tools = false
 	progress.upgrades = {}
 	progress.coins_found = {}
-	var texts := [UpgradesScreenScript().effect_text("slime", 2), UpgradesScreenScript().effect_text("speed", 4),
-		UpgradesScreenScript().effect_text("brightness", 0), UpgradesScreenScript().effect_text("brightness", 3)]
-	_check(texts == ["SLIME x1.30 -> x1.45", "SPEED x1.50  MAXED", "LIGHT 9 -> 17 PX  +257% AREA", "LIGHT 34 PX  MAXED"],
-		"effect lines show now -> next (brightness as radius and area gained): %s" % [texts])
+	_check(not UpgradesScreenScript().has_method("effect_text"), "no effect lines on the COINS rows (owner: no explanations)")
 
 
 ## The RECOMMENDED tag follows MORE SLIME; buying BRIGHTNESS shows the 1 s light-ring preview.
@@ -386,8 +379,9 @@ func _preview() -> void:
 	_check(screen.recommended.visible, "MORE SLIME carries the RECOMMENDED tag until maxed")
 	screen.rows.brightness.plus.pressed.emit()
 	await process_frame
-	_check(screen.preview != null and not screen.hint.visible and progress.upgrade_level("brightness") == 1,
-		"buying BRIGHTNESS shows the light-ring preview in place of the hint")
+	_check(screen.preview != null and not screen.hint.visible and progress.upgrade_level("brightness") == 1
+		and screen.preview.find_children("*", "Label", true, false).is_empty(),
+		"buying BRIGHTNESS shows the light-ring picture (no text) in place of the hint")
 	for i in 75:
 		await process_frame
 	_check(screen.preview == null and screen.hint.visible, "...which is gone after about a second")
