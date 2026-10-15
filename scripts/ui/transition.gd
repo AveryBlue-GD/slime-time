@@ -48,6 +48,19 @@ func go(scene: String) -> void:
 	_uncover()
 
 
+## Draws the sheet for one frame slid fully off the screen (every pixel discarded, nothing shows):
+## its first draw costs several ms (7-8 ms on the M3), which otherwise lands on the first frame of
+## the first screen change. The title calls this while it shows (title.gd _warm_up_shaders).
+func warm_up() -> void:
+	if busy or _sheet.visible:
+		return
+	_set_edges(OFF_SCREEN, OFF_SCREEN)
+	_sheet.visible = true
+	await get_tree().process_frame
+	if not busy and not (_tween and _tween.is_valid() and _tween.is_running()):
+		_sheet.visible = false
+
+
 ## Starts fully covered and slides the goo off (no scene change).
 func reveal() -> void:
 	if busy:

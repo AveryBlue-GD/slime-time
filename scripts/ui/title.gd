@@ -7,6 +7,14 @@ extends Control
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
 const TAGLINE := "ESCAPE THE FOG\nOR DRY TRYING"
+## The scenes the first title of a session loads before its first frame (the boot screen still
+## shows), so the first change to each one doesn't stall under the goo wipe (the first level of a
+## session froze the wipe for 180-330 ms on the M3, several seconds on a phone; the hub and the story
+## 90 ms). Kept loaded for the session (a few MB), so every later change finds them in the cache.
+## Plain loads on purpose: a threaded request deadlocked Godot 4.7.2 when a scene change loaded the
+## same scene before it finished, and the web build has no threads anyway.
+static var _preloaded: Array[Resource] = []
+static var _preload_started := false
 
 var enter_button: Button
 var story_button: Button
@@ -71,6 +79,7 @@ func _ready() -> void:
 	tagline.offset_top = 124
 	tagline.offset_bottom = 176
 	_warm_up_shaders()
+	_start_preload(fresh)
 
 
 ## Shaders compile the first time something draws with them, which on the web (no shader cache)
@@ -80,7 +89,10 @@ func _warm_up_shaders() -> void:
 	var warm := Control.new()
 	warm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var materials: Array[Material] = []
-	for path in ["fog", "trail", "hub_room", "rainbow_hat", "color_wheel"]:
+	# goo_wipe: the first screen change's first frame would compile it (the title draws atmosphere,
+	# slime_skin and text_drips itself; listed so the set stays whole if the title changes). The wipe's
+	# own sheet also costs a few ms on its first draw: Transition.warm_up draws it, invisibly.
+	for path in ["fog", "trail", "hub_room", "rainbow_hat", "color_wheel", "goo_wipe", "atmosphere", "slime_skin", "text_drips"]:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://assets/shaders/%s.gdshader" % path)
 		materials.append(material)
@@ -97,9 +109,23 @@ func _warm_up_shaders() -> void:
 	move_child(warm, 0)  # under the backdrop, whose background covers the whole screen
 	# The warm-up node drops itself after a few frames; a tween bound to it dies with it, so this
 	# is safe when the title is freed early (e.g. the first-launch trailer takes over).
+	var transition := get_node_or_null("/root/Transition")
+	if transition:
+		transition.warm_up()
 	var drop := warm.create_tween()
 	drop.tween_interval(0.05)
 	drop.tween_callback(warm.queue_free)
+
+
+## Once per session (not in headless runs: tests and tools have nothing to draw and change scenes
+## at once).
+func _start_preload(fresh: bool) -> void:
+	if _preload_started or DisplayServer.get_name() == "headless":
+		return
+	_preload_started = true
+	var paths := [UIKit.GAME_SCENE, UIKit.HUB_SCENE] if fresh else [UIKit.HUB_SCENE, UIKit.GAME_SCENE]
+	for path: String in paths + [Story.SCENE]:
+		_preloaded.append(load(path))
 
 
 func _enter() -> void:
