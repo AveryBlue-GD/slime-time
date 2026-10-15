@@ -209,7 +209,7 @@ func _web_paste_by_hand() -> void:
 	if text is String and text.strip_edges() != "":
 		_set_pasted(text)
 	else:
-		code_status.text = "CLICK THE BOX AND PRESS CTRL+V"
+		code_status.text = "CLICK THE BOX AND PRESS %s" % ("CMD+V" if OS.has_feature("web_macos") or OS.has_feature("web_ios") else "CTRL+V")
 
 
 func _set_pasted(text: String) -> void:

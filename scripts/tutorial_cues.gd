@@ -92,13 +92,14 @@ func _draw() -> void:
 	var bob := -1.0 if fmod(_time, 0.9) < 0.45 else 0.0  # a stepped 1 px pulse
 	if move_alpha > 0.0:
 		var top := Vector2(0, -33 + bob)
-		if _touch():
+		if _touch() or Platform.using_pad():  # (no keys to show: the d-pad shape fits a stick and a joystick)
 			_draw_dpad(top + Vector2(0, 6), move_alpha)
 		else:
 			_draw_wasd(top, move_alpha)
 	if leap_alpha > 0.0:
 		var spot := Vector2(0, -23 + bob)
-		_draw_key(spot, "JUMP" if _touch() else _key_text("jump", "SPACE"), 29.0, leap_alpha)
+		var leap := "JUMP" if _touch() else Platform.prompt_for("jump", _key_text("jump", "SPACE"))  # (pad: A)
+		_draw_key(spot, leap, 29.0, leap_alpha)
 	if beacon_alpha > 0.0:
 		_draw_beacon(beacon_alpha * (0.7 if bob < 0.0 else 0.5))
 
