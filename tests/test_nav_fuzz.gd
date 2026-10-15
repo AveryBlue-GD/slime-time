@@ -4,7 +4,9 @@ extends SceneTree
 ## upgrades, skins + hats page, settings, controls, save-code panel, reset confirm, quit hatch, hat wheel,
 ## pause menu in a story level and in a randomizer maze with the seed box, restart prompt, dry-up and win
 ## choices, story intro, victory) and sends REAL input events (Escape / P / Enter / Space / arrows / WASD / F / R /
-## Tab, joypad B and A, mouse clicks and touches at the buttons' rects, rapid double presses, holds, presses during
+## Tab, the gamepad (A / B / X / Y / START / VIEW / LB / RB / D-pad, the left stick), the Android back button, the app
+## going to the background and back (a running level must pause with its clock still: BG-PAUSE / BG-CLOCK; nothing
+## may stay held: BG-HELD), mouse clicks and touches at the buttons' rects, rapid double presses, holds, presses during
 ## the goo wipe and on the exact frame a scene changes), asserting after each action:
 ##   one overlay owns input, the tree is paused only behind a pause overlay, a visible control has focus in every
 ##   menu (and stays inside the open modal), no engine/script errors, Engine.time_scale is 1, no input action
@@ -1573,7 +1575,8 @@ func _escape_ladder() -> bool:
 
 const OPS := ["esc", "esc", "esc", "p", "enter", "enter", "space", "up", "down", "left", "right", "w", "a", "s", "d", "tab", "shift_tab",
 	"f", "f", "r", "click_btn", "click_btn", "click_btn", "click_rand", "touch_btn", "touch_rand", "dbl_esc", "esc_enter", "hold_dir",
-	"hold_esc", "wait", "wait_wipe", "tp", "tp", "joy_b", "joy_a", "esc_f", "type", "act_cancel", "act_accept", "jump_tap", "enter_burst"]
+	"hold_esc", "wait", "wait_wipe", "tp", "tp", "joy_b", "joy_a", "esc_f", "type", "act_cancel", "act_accept", "jump_tap", "enter_burst",
+	"joy_dpad", "joy_dpad", "joy_start", "joy_x", "joy_lb_rb", "joy_view", "joy_y", "stick", "android_back", "background"]
 
 
 ## Picks the next input: uniform, but biased toward getting somewhere from the screens that are easy to bounce around in
@@ -1767,6 +1770,52 @@ func _random_op() -> String:
 			L.joy(JOY_BUTTON_B, true)
 			await L.frames(1)
 			L.joy(JOY_BUTTON_B, false)
+		"joy_dpad":
+			var button: JoyButton = [JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_RIGHT][rng.randi() % 4]
+			var hold := rng.randi_range(1, 6)
+			L.note("joy d-pad %d hold=%d" % [button, hold])
+			L.joy(button, true)
+			await L.frames(hold)
+			L.joy(button, false)
+		"joy_start", "joy_x", "joy_lb_rb", "joy_view", "joy_y":
+			if op == "joy_x" and guard_quit.call():
+				return op
+			var button: JoyButton = {"joy_start": JOY_BUTTON_START, "joy_x": JOY_BUTTON_X, "joy_view": JOY_BUTTON_BACK,
+				"joy_y": JOY_BUTTON_Y}.get(op, JOY_BUTTON_LEFT_SHOULDER if rng.randf() < 0.5 else JOY_BUTTON_RIGHT_SHOULDER)
+			L.note("joy %s (%d)" % [op, button])
+			L.joy(button, true)
+			await L.frames(rng.randi_range(1, 3))
+			L.joy(button, false)
+		"stick":
+			var dir := Vector2.from_angle(rng.randi_range(0, 7) * PI / 4.0) * rng.randf_range(0.2, 1.0)
+			var n := rng.randi_range(3, 40)
+			L.note("stick %s for %d" % [dir, n])
+			L.joy_motion(JOY_AXIS_LEFT_X, dir.x)
+			L.joy_motion(JOY_AXIS_LEFT_Y, dir.y)
+			await L.frames(n)
+			L.joy_motion(JOY_AXIS_LEFT_X, 0.0)
+			L.joy_motion(JOY_AXIS_LEFT_Y, 0.0)
+		"android_back":
+			L.note("android back")
+			L.android_back()
+			await L.frames(4)
+		"background":
+			var running: bool = L.kind() == "main" and not cs.finished and not paused and not L.transition.busy
+			var n := rng.randi_range(1, 30)
+			L.note("app to the background for %d frames" % n)
+			if running:
+				var clock: float = cs.run_time
+				L.root_events().enter_background(true)
+				if not (cs.pause_menu.visible and paused):
+					check(false, "BG-PAUSE", "backgrounding a running level opens its pause menu")
+				await L.frames(n)
+				if cs.run_time != clock:
+					check(false, "BG-CLOCK", "the run clock stays still in the background (%.3f -> %.3f)" % [clock, cs.run_time])
+				L.root_events().leave_background()
+			else:
+				await L.background(n)
+			if not L.stuck_actions().is_empty():
+				check(false, "BG-HELD", "nothing held after coming back: %s" % [L.stuck_actions()])
 		"type":
 			L.note("type")
 			await L.tap([KEY_P, KEY_1, KEY_A, KEY_BACKSPACE][rng.randi() % 4])

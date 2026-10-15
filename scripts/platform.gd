@@ -28,13 +28,14 @@ const PAD_STICK_USE := 0.5
 ## Left stick and D-pad move (the stick is snapped to 8 directions by PlatformEvents, like the touch joystick,
 ## so lanes and straight leaps behave as on keys); A leaps; X uses a hub station; START pauses / goes back;
 ## VIEW (Back / Select) restarts; LB / Y / RB are the three abilities (1 / 2 / 3); in menus the D-pad and stick
-## move the focus, A presses, B backs out (Godot's own ui_* pad events) and LB / RB switch tabs.
+## move the focus (Godot's own ui_* pad events), A presses, B backs out and LB / RB switch tabs.
 const PAD_BUTTONS := {
 	move_up = [JOY_BUTTON_DPAD_UP], move_down = [JOY_BUTTON_DPAD_DOWN],
 	move_left = [JOY_BUTTON_DPAD_LEFT], move_right = [JOY_BUTTON_DPAD_RIGHT],
 	jump = [JOY_BUTTON_A], interact = [JOY_BUTTON_X], menu = [JOY_BUTTON_START], restart = [JOY_BUTTON_BACK],
 	ability_rifle = [JOY_BUTTON_LEFT_SHOULDER], ability_splat = [JOY_BUTTON_Y], ability_kaze = [JOY_BUTTON_RIGHT_SHOULDER],
 	tab_prev = [JOY_BUTTON_LEFT_SHOULDER], tab_next = [JOY_BUTTON_RIGHT_SHOULDER],
+	ui_accept = [JOY_BUTTON_A], ui_cancel = [JOY_BUTTON_B],  # (Godot 4.7's defaults give pads no accept / cancel)
 }
 ## Menu actions made at startup (pad only: a keyboard reaches the tabs with the arrows).
 const PAD_ONLY_ACTIONS := ["tab_prev", "tab_next"]

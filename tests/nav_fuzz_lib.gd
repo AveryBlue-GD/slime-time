@@ -2,7 +2,8 @@ extends RefCounted
 
 ## Shared driver for the navigation fuzzer (tests/test_nav_fuzz.gd and tests/demo_nav_*.gd): boots the
 ## real scenes inside a SceneTree script, sends real input events (Input.parse_input_event: keys, actions,
-## joypad buttons, mouse and touch at the buttons' rects), and checks invariants after every action.
+## joypad buttons and sticks, mouse and touch at the buttons' rects, the Android back button, the app going to
+## the background and back), and checks invariants after every action.
 ## Never touches a real save (Progress is switched to in-memory before anything runs).
 
 const TITLE := "res://scenes/title.tscn"
@@ -189,6 +190,30 @@ func joy(button: JoyButton, down: bool) -> void:
 	e.button_index = button
 	e.pressed = down
 	Input.parse_input_event(e)
+
+
+func joy_motion(axis: JoyAxis, value: float) -> void:
+	var e := InputEventJoypadMotion.new()
+	e.axis = axis
+	e.axis_value = value
+	Input.parse_input_event(e)
+
+
+## The app goes to the background for `n` frames and comes back (PlatformEvents, forced: tests run headless).
+func background(n: int) -> void:
+	var events := tree.root.get_node("PlatformEvents")
+	events.enter_background(true)
+	await frames(n)
+	events.leave_background()
+
+
+func root_events() -> Node:
+	return tree.root.get_node("PlatformEvents")
+
+
+## The Android back button (NOTIFICATION_WM_GO_BACK_REQUEST: one `menu` tap).
+func android_back() -> void:
+	tree.root.get_node("PlatformEvents").notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 
 
 func mouse(pos: Vector2, down: bool, button := MOUSE_BUTTON_LEFT) -> void:
