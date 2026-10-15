@@ -16,6 +16,7 @@ var progress: Node
 func _initialize() -> void:
 	await process_frame
 	progress = root.get_node("Progress")
+	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run
 	progress.saving_enabled = false
 	Economy.workshop_force = 1  # the workshop is switched off in the game; these suites test it
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "a throwaway save")

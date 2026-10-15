@@ -15,16 +15,8 @@ extends "res://tests/suite_base.gd"
 const GAME_SCENE := "res://scenes/main.tscn"
 const PauseMenuScript := preload("res://scripts/ui/pause_menu.gd")
 
-class ErrLog extends Logger:
-	var count := 0
-	var lines: Array[String] = []
+const ErrLog := preload("res://tests/err_log.gd")
 
-	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _e: bool, error_type: int, _b: Array) -> void:
-		if error_type == 1 or "Clipboard" in rationale:
-			return
-		count += 1
-		if lines.size() < 8:
-			lines.append("%s:%d %s %s" % [file, line, code, rationale])
 
 var progress: Node
 var errlog := ErrLog.new()
@@ -154,7 +146,6 @@ func _time_spikes() -> void:
 			_check(inside == 0 and out_of_bounds == 0, "%s: never inside a wall tile (%d frames) or outside the maze (%d)" % [tag, inside, out_of_bounds])
 			_check(not game.won, "%s: no false win (slime %s from the start, goal %s)" % [tag, game.slime.position.distance_to(start_pos), game.goal.position])
 			_check(game.run_time >= 0.0 and is_finite(game.run_time) and game.slime_remaining >= 0.0 and game.slime_remaining <= 100.0, "%s: run_time %.1f, meter %.1f stay sane" % [tag, game.run_time, game.slime_remaining])
-			_check(progress.best_time(level) < 0.0 or progress.best_times.size() == 0 or true, "(records untouched below)")
 		_check(progress.best_times.size() == records0, "time scale %d: no record was written by wandering" % scale)
 	# a single 5 s _physics_process call (a hitch delivered as one step) on a fresh level
 	var game := await _start(2)
@@ -354,6 +345,7 @@ func _wipe_and_pause() -> void:
 
 func _settings_combos() -> void:
 	var combos := 0
+	var unapplied: Array[String] = []  # combinations the running level did not pick up
 	for reduce in [false, true]:
 		for fog in [progress.FOG_DARK, progress.FOG_BRIGHT]:
 			for volume in [0.0, 1.0]:
@@ -369,8 +361,13 @@ func _settings_combos() -> void:
 							continue
 						game.slime.position += Vector2(3, 0)
 						await _frames(3)
+						var sprite_material := game.slime.sprite.material as ShaderMaterial
+						if game.motion_scale() != (0.0 if reduce else 1.0) or game.fog_look() != game.FOG_LOOKS[fog] \
+								or is_equal_approx(float(sprite_material.get_shader_parameter("translucency")), 0.0) == jelly \
+								or game.level != 1 + combos % 10 or game.hard_mode != (combos % 3 == 0):
+							unapplied.append("#%d reduce=%s fog=%d jelly=%s" % [combos, reduce, fog, jelly])
 						combos += 1
-	_check(true, "%d settings combinations (reduce motion x fog x volume x sound x jelly x hard) rendered a level" % combos)
+	_check(combos == 32 and unapplied.is_empty(), "%d of 32 settings combinations (reduce motion x fog x volume x sound x jelly x hard) rendered a level that wears them%s" % [combos, "" if unapplied.is_empty() else ": " + ", ".join(unapplied.slice(0, 3))])
 	progress.reduce_motion = false
 	progress.fog_brightness = progress.FOG_DARK
 	progress.set_volume(1.0, false)
@@ -396,15 +393,19 @@ func _settings_combos() -> void:
 	win.size = Vector2i(1280, 720)
 	await _frames(2)
 	_check(ok and current_scene == game, "a resize storm (tiny, huge, odd aspect ratios) keeps the level running")
-	for path in ["res://scenes/hub.tscn", "res://scenes/controls.tscn", "res://scenes/maps.tscn", "res://scenes/skins.tscn", "res://scenes/upgrades.tscn", "res://scenes/level_select.tscn", "res://scenes/title.tscn", "res://scenes/victory.tscn"]:
+	var menus_ok := true
+	var menu_scenes := ["res://scenes/hub.tscn", "res://scenes/controls.tscn", "res://scenes/maps.tscn", "res://scenes/skins.tscn", "res://scenes/upgrades.tscn", "res://scenes/level_select.tscn", "res://scenes/title.tscn", "res://scenes/victory.tscn"]
+	for path in menu_scenes:
 		change_scene_to_file(path)
 		await _frames(3)
+		menus_ok = menus_ok and current_scene != null and current_scene.scene_file_path == path
 		for s: Vector2i in [Vector2i(100, 100), Vector2i(4000, 3000), Vector2i(2000, 90)]:
 			win.size = s
 			await _frames(2)
 		win.size = Vector2i(1280, 720)
 		await process_frame
-	_check(true, "menus survive tiny / huge windows")
+		menus_ok = menus_ok and current_scene != null and current_scene.scene_file_path == path and is_instance_valid(current_scene)
+	_check(menus_ok, "all %d menu scenes load and survive tiny / huge windows (still the same scene afterwards)" % menu_scenes.size())
 
 
 func rng_i(seed_value: int, lo: int, hi: int) -> int:
@@ -424,6 +425,7 @@ func _skins_hats() -> void:
 		skins.append(p.id)
 	skins += [Skins.CUSTOM, Skins.RAINBOW, Skins.STOPWATCH]
 	var n := 0
+	var wrong_look := 0
 	var hats := Hats.ids()
 	hats.append(Hats.NONE)
 	for skin in skins:
@@ -435,6 +437,7 @@ func _skins_hats() -> void:
 			var game := await _start(1 + n % 10)
 			if game == null:
 				continue
+			wrong_look += int(game.skin_color != progress.skin_color() or game.level != 1 + n % 10)
 			Input.action_press("move_right")
 			await _frames(3)
 			Input.action_release("move_right")
@@ -449,7 +452,7 @@ func _skins_hats() -> void:
 				continue
 			await _frames(2)
 			n += 1
-	_check(true, "%d skin x hat x jelly/solid level renders" % n)
+	_check(n == skins.size() * 2 + hats.size() * 2 and wrong_look == 0, "%d skin x hat x jelly/solid level renders (%d of them without the chosen skin)" % [n, wrong_look])
 	# the skins / hat screens with each combination selected
 	for hat_id in hats:
 		progress.selected_hat = hat_id
@@ -465,7 +468,7 @@ func _skins_hats() -> void:
 	_check(progress.selected_skin != Skins.STOPWATCH, "select_skin refuses the locked stopwatch")
 	progress.enable_story_complete()
 	progress.saving_enabled = false
-	_check(progress.all_medals() or true, "(story-complete state)")
+	_check(not progress.all_medals() and not progress.is_skin_unlocked(Skins.STOPWATCH), "the story-complete state has 25 of 30 gold medals, so the stopwatch stays locked")
 	progress.selected_skin = Skins.STOPWATCH
 	var gs := await _start(1)
 	_check(gs != null and gs.stopwatch == progress.is_stopwatch(), "stopwatch skin flag matches the unlock (%s)" % progress.is_stopwatch())

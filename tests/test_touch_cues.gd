@@ -56,8 +56,8 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 	var dir := StartDirs.open_dir(game.maze, game.maze.start)
 	var start: Vector2 = game.slime.position
 	if device == "touch":
-		_touch(0, Vector2(50, 130), true)
-		_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
+		_send_touch(0, Vector2(50, 130), true)
+		_send_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
 	else:
 		_key(StartDirs.action(dir), true)
 	var move_frames := await _until_cleared(func() -> bool: return cues.move_alpha == 0.0)
@@ -65,7 +65,7 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 	_check(move_frames > 0, "%s: the move glyph faded and was cleared off the screen (%d frames)" % [mode, move_frames])
 	_check(progress.has_seen_tutorial(Progress.TUTORIAL_MOVE), "%s: the move cue is stored as seen" % mode)
 	if device == "touch":
-		_touch(0, Vector2(66, 130), false)
+		_send_touch(0, Vector2(66, 130), false)
 		_check(game.touch_controls.visible, "%s: a touch brings the controls up" % mode)
 	else:
 		_key(StartDirs.action(dir), false)
@@ -77,13 +77,13 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 	await _physics_frames(30)
 	_check(cues.leap_alpha > 0.3 and cues.drawn_alpha > 0.3, "%s: the jump key shows after wandering" % mode)
 	if device == "touch":
-		_touch(1, TouchControls.JUMP_CENTER, true)
+		_send_touch(1, TouchControls.JUMP_CENTER, true)
 	else:
 		_key("jump", true)
 	await _physics_frames(3)
 	_check(game.slime.state == Slime.State.CHARGING, "%s: JUMP starts a charge" % mode)
 	if device == "touch":
-		_touch(1, TouchControls.JUMP_CENTER, false)
+		_send_touch(1, TouchControls.JUMP_CENTER, false)
 	else:
 		_key("jump", false)
 	var leap_frames := await _until_cleared(func() -> bool: return cues.leap_alpha == 0.0)
@@ -104,14 +104,14 @@ func _beacon_case(device: String) -> void:
 	_check(cues.beacon_alpha > 0.3 and cues.drawn_alpha > 0.3, "beacon, %s: shows after standing still" % device)
 	var dir := StartDirs.open_dir(game.maze, game.maze.start)
 	if device == "touch":
-		_touch(0, Vector2(50, 130), true)
-		_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
+		_send_touch(0, Vector2(50, 130), true)
+		_send_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
 	else:
 		_key(StartDirs.action(dir), true)
 	var frames := await _until_cleared(func() -> bool: return cues.beacon_alpha == 0.0)
 	_check(frames > 0, "beacon, %s: a move fades it and it is cleared off the screen (%d frames)" % [device, frames])
 	if device == "touch":
-		_touch(0, Vector2(50, 130), false)
+		_send_touch(0, Vector2(50, 130), false)
 	else:
 		_key(StartDirs.action(dir), false)
 	await _end_level()
@@ -122,8 +122,8 @@ func _hitch_case() -> void:
 	await _start_level(true)
 	await _physics_frames(30)
 	var dir := StartDirs.open_dir(game.maze, game.maze.start)
-	_touch(0, Vector2(50, 130), true)
-	_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
+	_send_touch(0, Vector2(50, 130), true)
+	_send_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
 	for i in 10:
 		await physics_frame
 		if cues._moved:
@@ -134,7 +134,7 @@ func _hitch_case() -> void:
 	_check(frames > 0, "after a long frame the glyph still fades out and is cleared (%d frames)" % frames)
 	await _physics_frames(20)
 	_check(cues.drawn_alpha == 0.0, "nothing is left drawn")
-	_touch(0, Vector2(50, 130), false)
+	_send_touch(0, Vector2(50, 130), false)
 	await _end_level()
 
 
@@ -183,25 +183,5 @@ func _key(action: String, pressed: bool) -> void:
 			event.pressed = pressed
 			Input.parse_input_event(event)
 			return
-
-
-## Touch events arrive in window pixels; convert from the game's 320x180 view.
-func _to_window(view_pos: Vector2) -> Vector2:
-	return root.get_final_transform() * view_pos
-
-
-func _touch(index: int, view_pos: Vector2, pressed: bool) -> void:
-	var event := InputEventScreenTouch.new()
-	event.index = index
-	event.position = _to_window(view_pos)
-	event.pressed = pressed
-	Input.parse_input_event(event)
-
-
-func _drag(index: int, view_pos: Vector2) -> void:
-	var event := InputEventScreenDrag.new()
-	event.index = index
-	event.position = _to_window(view_pos)
-	Input.parse_input_event(event)
 
 

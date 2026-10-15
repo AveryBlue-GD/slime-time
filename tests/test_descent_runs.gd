@@ -32,6 +32,7 @@ func _initialize() -> void:
 		elif arg.begins_with("--deep="):
 			deep_runs = int(arg.get_slice("=", 1))
 	progress = root.get_node("Progress")
+	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run
 	progress.saving_enabled = false
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "a throwaway save")
 	var t0 := Time.get_ticks_msec()

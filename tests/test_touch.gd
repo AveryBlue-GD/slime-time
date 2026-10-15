@@ -36,43 +36,43 @@ func _initialize() -> void:
 	var drag := Vector2(open_dir) * 16.0
 	var action := StartDirs.action(open_dir)
 	var start: Vector2 = game.slime.position
-	_touch(0, Vector2(50, 130), true)
-	_drag(0, Vector2(50, 130) + drag)
+	_send_touch(0, Vector2(50, 130), true)
+	_send_drag(0, Vector2(50, 130) + drag)
 	await _physics_frames(2)
 	_check(Input.is_action_pressed(action) and _pressed_moves() == 1, "dragging the joystick presses %s only" % action)
 	await _physics_frames(30)
 	_check(game.slime.position.distance_to(start) > 8.0, "the slime glides (%.0f px)" % game.slime.position.distance_to(start))
-	_drag(0, Vector2(50, 130) + Vector2(15, 14))
+	_send_drag(0, Vector2(50, 130) + Vector2(15, 14))
 	await _physics_frames(1)
 	_check(Input.is_action_pressed("move_right") and Input.is_action_pressed("move_down"), "a diagonal drag snaps to a diagonal")
-	_drag(0, Vector2(50, 130) + Vector2(4, 4))
+	_send_drag(0, Vector2(50, 130) + Vector2(4, 4))
 	await _physics_frames(1)
 	_check(_pressed_moves() == 0, "a tiny wiggle inside the dead zone does nothing")
-	_drag(0, Vector2(50, 130) + Vector2(16, 3))
+	_send_drag(0, Vector2(50, 130) + Vector2(16, 3))
 	await _physics_frames(1)
 	_check(Input.is_action_pressed("move_right") and _pressed_moves() == 1, "slightly-off drags snap to a straight line (lane assist keeps working)")
-	_touch(0, Vector2(66, 133), false)
+	_send_touch(0, Vector2(66, 133), false)
 	await _physics_frames(1)
 	_check(_pressed_moves() == 0, "lifting the thumb stops the slime")
 
 	# Jump: hold on the right half, then let go.
 	await _physics_frames(40)
-	_touch(1, Vector2(282, 142), true)
+	_send_touch(1, Vector2(282, 142), true)
 	await _physics_frames(30)
 	_check(game.slime.state == Slime.State.CHARGING, "holding JUMP charges (%.0f%%)" % game.slime.charge)
-	_touch(1, Vector2(282, 142), false)
+	_send_touch(1, Vector2(282, 142), false)
 	await _physics_frames(2)
 	_check(game.slime.is_airborne() or game.slime.state == Slime.State.STUNNED or game.slime.state == Slime.State.GLIDE and game.slime.last_jump_traveled > 0.0,
 		"releasing JUMP leaps")
 	await _physics_frames(60)
 
 	# Pause button.
-	_touch(2, Vector2(309, 41), true)
+	_send_touch(2, Vector2(309, 41), true)
 	await process_frame
 	await process_frame
 	_check(paused and game.pause_menu.visible, "the pause button opens the pause menu")
 	game.pause_menu.resume()
-	_touch(2, Vector2(309, 41), false)
+	_send_touch(2, Vector2(309, 41), false)
 
 	# A keyboard hides the touch controls.
 	var key := InputEventKey.new()
@@ -120,26 +120,6 @@ func _initialize() -> void:
 
 	_result()
 	quit(1 if failures else 0)
-
-
-## Touch events arrive in window pixels; convert from the game's 320x180 view.
-func _to_window(view_pos: Vector2) -> Vector2:
-	return root.get_final_transform() * view_pos
-
-
-func _touch(index: int, view_pos: Vector2, pressed: bool) -> void:
-	var event := InputEventScreenTouch.new()
-	event.index = index
-	event.position = _to_window(view_pos)
-	event.pressed = pressed
-	Input.parse_input_event(event)
-
-
-func _drag(index: int, view_pos: Vector2) -> void:
-	var event := InputEventScreenDrag.new()
-	event.index = index
-	event.position = _to_window(view_pos)
-	Input.parse_input_event(event)
 
 
 func _pressed_moves() -> int:

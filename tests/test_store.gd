@@ -13,16 +13,7 @@ extends "res://tests/suite_base.gd"
 var progress: Node
 
 
-class ErrLog extends Logger:
-	var count := 0
-	var lines: Array[String] = []
-
-	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array) -> void:
-		if error_type == 1:
-			return
-		count += 1
-		if lines.size() < 10:
-			lines.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+const ErrLog := preload("res://tests/err_log.gd")
 
 
 var errlog := ErrLog.new()

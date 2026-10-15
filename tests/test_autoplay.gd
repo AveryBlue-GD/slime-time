@@ -23,7 +23,7 @@ func _initialize() -> void:
 
 	# --- The whole campaign in a child process.
 	var started := Time.get_ticks_msec()
-	var output := _run_game(["--autoplay", "--speed=8", "--autoplay-hold=0.05", "--autoplay-quit"], 400000)
+	var output := _run_game(["--autoplay", "--speed=8", "--autoplay-hold=0.05", "--autoplay-quit"], 120000)  # the full campaign takes ~15k frames; a stuck bot is cut off at 120k
 	var summary := {}
 	for line in output.split("\n"):
 		if line.begins_with("AUTOPLAY SUMMARY "):

@@ -8,6 +8,7 @@ extends "res://tests/suite_base.gd"
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_coins.gd
 
 const MAIN := preload("res://scenes/main.tscn")
+const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 var test_save := throwaway_save()
 
 var progress: Node
@@ -29,6 +30,14 @@ func _initialize() -> void:
 		total += n
 	_check(total == Upgrades.full_tree_cost() and total == 165,
 		"the story hides %d coins: exactly enough to max all three upgrades" % total)
+	# Dev mode adds its free coins to the balance (--dev / --unlock-all launches); a normal save never sees them.
+	var earned_less_spent: int = progress.coins_earned() - progress.coins_spent()
+	progress.dev_coins = 40
+	progress.dev_tools = true
+	_check(progress.coins() == earned_less_spent + 40, "dev mode: the balance is earned - spent + the 40 dev coins (%d)" % progress.coins())
+	progress.dev_tools = false
+	_check(progress.coins() == earned_less_spent, "outside dev mode the dev coins do not count (%d)" % progress.coins())
+	progress.dev_coins = PROGRESS_SCRIPT.DEV_COINS
 	var all_fit := true
 	var at_dead_ends := true
 	for level in range(1, Levels.COUNT + 1):

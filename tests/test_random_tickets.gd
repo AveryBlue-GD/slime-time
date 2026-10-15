@@ -12,6 +12,7 @@ const SEEDS := 300
 func _initialize() -> void:
 	await process_frame
 	var progress: Node = root.get_node("Progress")
+	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run
 	progress.saving_enabled = false
 
 	# --- Deterministic: the same seed gives the same maze, start and goal (the ticket's cell)

@@ -22,18 +22,7 @@ const MENU_KINDS := ["title", "level_select", "maps", "upgrades", "skins", "cont
 
 
 ## Counts engine/script errors (ERROR, SCRIPT ERROR, warnings are ignored) with their first lines.
-class ErrLog extends Logger:
-	var count := 0
-	var lines: Array[String] = []
-
-	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array) -> void:
-		if error_type == 1:  # warning
-			return
-		if "Clipboard is not supported" in rationale:  # headless display server: COPY / PASTE buttons
-			return
-		count += 1
-		if lines.size() < 20:
-			lines.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+const ErrLog := preload("res://tests/err_log.gd")
 
 
 var tree: SceneTree
@@ -55,6 +44,7 @@ func _init(t: SceneTree) -> void:
 	progress = t.root.get_node("Progress")
 	transition = t.root.get_node("Transition")
 	progress.saving_enabled = false
+	progress.day_override = 40000  # pinned UTC day: the walks must not depend on today's date or roll over at midnight UTC
 	assert(progress.save_path != progress.REAL_SAVE_PATH)
 	OS.add_logger(errlog)
 	Input.use_accumulated_input = false

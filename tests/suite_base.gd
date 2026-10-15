@@ -84,3 +84,25 @@ func _check_budget(label: String, budget_ms: float, measure: Callable, tries := 
 		if best <= budget_ms:
 			break
 	_check(best <= budget_ms, "%s (best of up to %d runs: %.1f ms, budget %.0f ms)" % [label, tries, best, budget_ms])
+
+
+## Touch events arrive in window pixels; convert from the game's 320x180 view.
+func _to_window(view_pos: Vector2) -> Vector2:
+	return root.get_final_transform() * view_pos
+
+
+## A finger `index` goes down / up at `view_pos` (game view pixels).
+func _send_touch(index: int, view_pos: Vector2, pressed: bool) -> void:
+	var event := InputEventScreenTouch.new()
+	event.index = index
+	event.position = _to_window(view_pos)
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+## Finger `index` drags to `view_pos`.
+func _send_drag(index: int, view_pos: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = _to_window(view_pos)
+	Input.parse_input_event(event)

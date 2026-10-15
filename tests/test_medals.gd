@@ -24,6 +24,10 @@ func _initialize() -> void:
 	# --- The tier thresholds
 	_check(progress.tier_for(10.0, 12.0) == 3 and progress.tier_for(12.0, 12.0) == 3, "at or under par: gold (3)")
 	_check(progress.tier_for(12.1, 12.0) == 2 and progress.tier_for(15.6, 12.0) == 2, "up to 1.3 x par: silver (2)")
+	# The boundaries themselves belong to the better tier (15.6 is 1.3 x 12 only up to float rounding, so use the exact products).
+	_check(progress.tier_for(12.0 * progress.GOLD_FACTOR, 12.0) == 3 and progress.tier_for(12.0 * progress.SILVER_FACTOR, 12.0) == 2
+		and progress.tier_for((12.0 * progress.GOLD_FACTOR + 0.000001), 12.0) == 2 and progress.tier_for((12.0 * progress.SILVER_FACTOR + 0.000001), 12.0) == 1,
+		"exactly par is gold, exactly 1.3 x par is silver; one hair slower drops a tier")
 	_check(progress.tier_for(15.7, 12.0) == 1 and progress.tier_for(999.0, 12.0) == 1, "slower than that: bronze (1)")
 	_check(progress.medals_max() == Levels.COUNT * 3 and Levels.COUNT * 3 == 30, "30 medals to win in all")
 
