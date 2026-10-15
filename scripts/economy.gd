@@ -135,26 +135,32 @@ const ABILITIES := {
 	"splat": {costs = [18, 35, 55], charges = [1, 2, 3], slime = 4.0},
 	"kaze": {costs = [25, 45, 70], charges = [1, 2, 3], slime = 30.0},
 }
-## SLIME RIFLE: the goo shot's speed (px/s); it flies straight until a wall.
+## Abilities PASS OVER WALLS (owner buff, 2026-10-15): the rifle shot pierces them, the bomb is
+## lobbed over them, the SLIMAKAZE splatter lands in the corridors beyond (only the dash stops at a
+## wall). The per-level numbers below are indexed by ability level - 1 (L1 / L2 / L3).
+## SLIME RIFLE: the goo shot's speed (px/s) and range (tiles past the slime's own, by level); it
+## flies straight through walls, stopping only at the range or the maze's outer edge.
 const RIFLE_SPEED := 480.0
-## SLIME SPLAT: thrown at most this many tiles (it stops at the last floor tile before a wall), in
-## the air this long (s), bursts over the (2 x AREA + 1)^2 tiles around where it lands, its glow
-## fading over GLOW_TIME s.
-const SPLAT_RANGE := 4
+const RIFLE_RANGE := [8, 11, 14]
+## SLIME SPLAT: lobbed exactly this many tiles ahead (by level; over walls, clamped inside the maze),
+## in the air this long (s), bursts over the (2 x AREA + 1)^2 tiles around where it lands (a wall
+## tile too), its glow fading over GLOW_TIME s.
+const SPLAT_RANGE := [4, 5, 6]
 const SPLAT_FLIGHT := 0.4
 const SPLAT_AREA := 1
 const SPLAT_GLOW_TIME := 1.5
 ## SLIMAKAZE: the dash's speed (px/s) to the first wall, the stun after the impact (s), the screen
-## shake (px, s; none with Reduce Motion), and the splatter: every floor tile within RADIUS tiles of
-## the impact tile (center to center) is goo'd and revealed with a chance falling from NEAR (at the
-## impact) to FAR (at the edge), seeded by the maze, the attempt, the impact tile and the use.
+## shake (px, s; none with Reduce Motion), and the splatter: every floor tile within RADIUS tiles (by
+## level) of the impact tile (center to center, walls in between ignored) is goo'd and revealed with
+## a chance falling from NEAR (at the impact) to FAR (at the edge), seeded by the maze, the impact
+## tile and the use index this attempt (never the attempt).
 const KAZE_SPEED := 640.0
 const KAZE_STUN := 0.6
 const KAZE_SHAKE := 6.0
 const KAZE_SHAKE_TIME := 0.5
-const KAZE_RADIUS := 5.5
-const KAZE_CHANCE_NEAR := 0.75
-const KAZE_CHANCE_FAR := 0.25
+const KAZE_RADIUS := [6.0, 7.0, 8.0]
+const KAZE_CHANCE_NEAR := 0.9
+const KAZE_CHANCE_FAR := 0.4
 
 ## ---------------------------------------------------------------- tickets: cosmetics (C.2)
 ## Ticket prices of the v1 cosmetics (palette / pattern only; Cosmetics has their names and looks).

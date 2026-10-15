@@ -1,8 +1,9 @@
 extends SceneTree
 
-## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1"): SLIME RIFLE (reveals exactly the floor
-## tiles to the first wall, and the walls around them), SLIME SPLAT (lands up to 4 tiles ahead, reveals
-## exactly the 3x3 around it), SLIMAKAZE (dashes to the wall, costs 30%, a deterministic splatter;
+## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1", with the pass-over-walls buff): SLIME RIFLE
+## (pierces walls: reveals exactly the tiles on its line for its range, floor tiles with the walls around
+## them), SLIME SPLAT (lobbed over walls exactly its range ahead, reveals exactly the 3x3 around it),
+## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
 ## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
 ## their bindings), touch buttons, the HUD strip, off in hard mode / HEAT / with the flag off, on in
@@ -134,59 +135,104 @@ func _aim(game: Node2D, dir: Vector2i) -> void:
 
 # ---------------------------------------------------------------- SLIME RIFLE
 
+## A floor tile and a direction where the next `reach` tiles (all inside the maze) hold a wall with
+## a floor tile past it ({} if none).
+func _wall_spot(game: Node2D, reach: int) -> Dictionary:
+	for y in game.maze.size.y:
+		for x in game.maze.size.x:
+			var t := Vector2i(x, y)
+			if game.is_wall_tile(t):
+				continue
+			for d: Vector2i in MazeGenerator.DIRS:
+				if not Abilities.in_maze(game.maze, t + d * reach):
+					continue
+				var wall := false
+				for i in range(1, reach + 1):
+					if game.is_wall_tile(t + d * i):
+						wall = true
+					elif wall:
+						return {tile = t, dir = d}
+	return {}
+
+
 func _rifle() -> void:
-	_state({rifle = 1})
-	var game := await _spawn(4)
-	var dir := _dir_with(game, 2)
-	_aim(game, dir)
-	var tiles := Abilities.rifle_tiles(game.maze, _start_tile(game), dir)
-	var wall: Vector2i = tiles[-1] + dir
-	var before := _snapshot(game)
-	var meter: float = game.slime_remaining
-	_check(game.abilities != null and game.abilities.charges.rifle == 1, "SLIME RIFLE 1: one charge on the run")
-	var fired: bool = game.abilities.use("rifle")
-	game.abilities.flush()
-	var after := _snapshot(game)
-	var full := true
-	var surveyed := true
-	for t in tiles:
-		full = full and after[t] == 64
-		surveyed = surveyed and game.survey_tiles[t.y * game.maze.size.x + t.x] == 1
-	_check(fired and full and after[wall] == 1 and surveyed,
-		"the shot reveals all %d floor tiles to the wall (every fog cell), the wall it hits, and marks them seen" % tiles.size())
-	var stray := []
-	var path := {}
-	for t in tiles:
-		path[t] = true
-	for t in _changed(before, after):
-		if not game.is_wall_tile(t) and not path.has(t):
-			stray.append(t)
-		if game.is_wall_tile(t):
+	_check(Abilities.rifle_range(1) == 8 and Abilities.rifle_range(2) == 11 and Abilities.rifle_range(3) == 14, "SLIME RIFLE range 8 / 11 / 14 tiles")
+	for level in [1, 3]:
+		_state({rifle = level})
+		var game := await _spawn(4)
+		var reach := Abilities.rifle_range(level)
+		var spot := _wall_spot(game, reach)
+		_place(game, spot.tile, spot.dir)
+		var dir: Vector2i = spot.dir
+		var tiles := Abilities.rifle_tiles(game.maze, spot.tile, dir, reach)
+		var before := _snapshot(game)
+		var meter: float = game.slime_remaining
+		var fired: bool = game.abilities.use("rifle")
+		game.abilities.flush()
+		var after := _snapshot(game)
+		var full := true
+		var surveyed := true
+		var past_wall := 0
+		var crossed := false
+		for t in tiles:
+			if game.is_wall_tile(t):
+				full = full and after[t] == 1
+				crossed = true
+			else:
+				full = full and after[t] == 64
+				if crossed and before[t] < 64:
+					past_wall += 1
+			surveyed = surveyed and game.survey_tiles[t.y * game.maze.size.x + t.x] == 1
+		_check(fired and tiles.size() == reach + 1 and full and surveyed and past_wall > 0,
+			"SLIME RIFLE %d pierces walls: all %d tiles on its line revealed and seen, %d floor tiles past a wall" % [level, tiles.size(), past_wall])
+		var path := {}
+		for t in tiles:
+			path[t] = true
+		var stray := []
+		for t in _changed(before, after):
+			if path.has(t):
+				continue
 			var near := false
 			for p in tiles:
-				near = near or (absi(p.x - t.x) <= 1 and absi(p.y - t.y) <= 1)
-			if not near:
+				near = near or (not game.is_wall_tile(p) and absi(p.x - t.x) <= 1 and absi(p.y - t.y) <= 1)
+			if not game.is_wall_tile(t) or not near:
 				stray.append(t)
-	_check(stray.is_empty(), "...and nothing else: only walls bordering the line change (stray %s)" % [stray])
-	var beyond := wall + dir
-	_check(game.is_wall_tile(beyond) or after[beyond] == before[beyond], "the tile past the wall stays as it was")
-	var decoded: Dictionary = Main()._fog_decode(Color8(0, 0, 0, 0))
-	var cell: Rect2i = game._tile_cells(tiles[-1])
-	var v: int = game._fog_bytes.decode_u32((cell.position.y * game._cells.x + cell.position.x) * 4)
-	decoded = Main()._fog_decode(Color8(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255))
-	_check(decoded.revealed and not decoded.wall and absf(decoded.lit - game.elapsed) < 0.1,
-		"a revealed floor cell decodes as floor, lit just now (fresh glow, then the usual fade)")
-	var streak := 0
-	var trail_cell := Rect2i(game._tile_cells(tiles[-1]))
-	for cy in range(trail_cell.position.y, trail_cell.end.y):
-		for cx in range(trail_cell.position.x, trail_cell.end.x):
-			if game._trail_bytes[(cy * game._cells.x + cx) * 4 + 3] != 0:
-				streak += 1
-	_check(streak > 0 and streak <= 24, "a thin goo streak crosses the last tile (%d of 64 cells goo'd)" % streak)
-	_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.rifle.slime) and game.abilities.charges.rifle == 0,
-		"one shot costs %.0f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
-	_check(not game.abilities.use("rifle"), "no charges left: it doesn't fire")
-	await _stop(game)
+		_check(stray.is_empty(), "...and nothing else: only walls bordering its floor tiles change (stray %s)" % [stray])
+		var beyond: Vector2i = tiles[-1] + dir
+		_check(not Abilities.in_maze(game.maze, beyond) or game.is_wall_tile(beyond) or after[beyond] == before[beyond], "the tile past its range stays as it was")
+		var goo_on_walls := 0
+		for t in tiles.slice(0, tiles.size() - 1):
+			if game.is_wall_tile(t):
+				var r: Rect2i = game._tile_cells(t)
+				for cy in range(r.position.y, r.end.y):
+					for cx in range(r.position.x, r.end.x):
+						if game._trail_bytes[(cy * game._cells.x + cx) * 4 + 3] != 0:
+							goo_on_walls += 1
+		_check(goo_on_walls == 0, "the goo streak stays on the floor (%d wall cells goo'd)" % goo_on_walls)
+		if level == 1:
+			var last_floor: Vector2i = spot.tile
+			for t in tiles:
+				if not game.is_wall_tile(t):
+					last_floor = t
+			var cell: Rect2i = game._tile_cells(last_floor)
+			var v: int = game._fog_bytes.decode_u32((cell.position.y * game._cells.x + cell.position.x) * 4)
+			var decoded: Dictionary = Main()._fog_decode(Color8(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255))
+			_check(decoded.revealed and not decoded.wall and absf(decoded.lit - game.elapsed) < 0.1,
+				"a revealed floor cell decodes as floor, lit just now (fresh glow, then the usual fade)")
+			var streak := 0
+			for cy in range(cell.position.y, cell.end.y):
+				for cx in range(cell.position.x, cell.end.x):
+					if game._trail_bytes[(cy * game._cells.x + cx) * 4 + 3] != 0:
+						streak += 1
+			_check(streak > 0 and streak <= 24, "a thin goo streak crosses a floor tile past the wall (%d of 64 cells goo'd)" % streak)
+			_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.rifle.slime) and game.abilities.charges.rifle == 0,
+				"one shot costs %.0f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
+			_check(not game.abilities.use("rifle"), "no charges left: it doesn't fire")
+		await _stop(game)
+	# At the maze's outer edge it stops (nothing outside the maze).
+	var maze: Dictionary = Levels.story_maze(4, false)
+	var edge := Abilities.rifle_tiles(maze, Vector2i(1, 1), Vector2i.LEFT, 14)
+	_check(edge == [Vector2i(1, 1), Vector2i(0, 1)], "the shot stops at the maze's edge (%s)" % [edge])
 
 
 func Main() -> GDScript:
@@ -196,37 +242,36 @@ func Main() -> GDScript:
 # ---------------------------------------------------------------- SLIME SPLAT
 
 func _splat() -> void:
-	_state({splat = 1})
-	var game := await _spawn(4)
-	var dir := _dir_with(game, 2)
-	_aim(game, dir)
-	var land := Abilities.lob_tile(game.maze, _start_tile(game), dir)
-	var ahead := Abilities.line_tiles(game.maze, _start_tile(game), dir)
-	_check(land == ahead[mini(ahead.size(), Economy.SPLAT_RANGE) - 1], "the bomb lands %d tiles ahead at most, short of a wall" % Economy.SPLAT_RANGE)
-	var before := _snapshot(game)
-	game.abilities.use("splat")
-	_check(not game.abilities.flying.is_empty(), "...it flies first (a lob)")
-	game.abilities.flush()
-	var after := _snapshot(game)
-	var area := Abilities.burst_tiles(game.maze, land)
-	var ok := area.size() == 9
-	for t in area:
-		ok = ok and (after[t] == 1 if game.is_wall_tile(t) else after[t] == 64)
-	var stray := []
-	for t in _changed(before, after):
-		if not t in area:
-			stray.append(t)
-	_check(ok and stray.is_empty(), "the burst reveals exactly the 3x3 around the landing tile %s (stray %s)" % [land, stray])
-	_check(game.abilities.get_children().any(func(c: Node) -> bool: return c is Sprite2D), "...with a fading glow")
-	await _stop(game)
-	# A wall right ahead: it bursts at the slime's own tile.
-	_state({splat = 1})
-	game = await _spawn(1)
-	for d: Vector2i in MazeGenerator.DIRS:
-		if game.is_wall_tile(_start_tile(game) + d):
-			_check(Abilities.lob_tile(game.maze, _start_tile(game), d) == _start_tile(game), "against a wall the bomb lands at the slime's feet")
-			break
-	await _stop(game)
+	_check(Abilities.splat_range(1) == 4 and Abilities.splat_range(2) == 5 and Abilities.splat_range(3) == 6, "SLIME SPLAT lands 4 / 5 / 6 tiles ahead")
+	for level in [1, 3]:
+		_state({splat = level})
+		var game := await _spawn(4)
+		var reach := Abilities.splat_range(level)
+		var spot := _wall_spot(game, reach)
+		_place(game, spot.tile, spot.dir)
+		var land := Abilities.lob_tile(game.maze, spot.tile, spot.dir, reach)
+		_check(land == spot.tile + spot.dir * reach, "SLIME SPLAT %d: lobbed over the wall, exactly %d tiles ahead" % [level, reach])
+		var before := _snapshot(game)
+		game.abilities.use("splat")
+		_check(not game.abilities.flying.is_empty(), "...it flies first (a lob)")
+		game.abilities.flush()
+		var after := _snapshot(game)
+		var area := Abilities.burst_tiles(game.maze, land)
+		var ok := area.size() == 9
+		for t in area:
+			ok = ok and (after[t] == 1 if game.is_wall_tile(t) else after[t] == 64)
+		var stray := []
+		for t in _changed(before, after):
+			if not t in area:
+				stray.append(t)
+		_check(ok and stray.is_empty(), "the burst reveals exactly the 3x3 around the landing tile %s (stray %s)" % [land, stray])
+		_check(game.abilities.get_children().any(func(c: Node) -> bool: return c is Sprite2D), "...with a fading glow")
+		await _stop(game)
+	var maze: Dictionary = Levels.story_maze(4, false)
+	var size: Vector2i = maze.size
+	_check(Abilities.lob_tile(maze, Vector2i(1, 1), Vector2i.LEFT, 6) == Vector2i(0, 1)
+		and Abilities.lob_tile(maze, Vector2i(size.x - 2, 1), Vector2i.RIGHT, 6) == Vector2i(size.x - 1, 1)
+		and Abilities.burst_tiles(maze, Vector2i(0, 1)).size() == 6, "near the edge it lands clamped inside the maze, its 3x3 clipped to it")
 
 
 # ---------------------------------------------------------------- SLIMAKAZE
@@ -251,14 +296,15 @@ func _kaze() -> void:
 			"...to the last floor tile before the wall %s, splatted (stunned)" % [stop])
 		_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.kaze.slime),
 			"...costing %.0f%% of the meter (%.1f -> %.1f)" % [Economy.ABILITIES.kaze.slime, meter, game.slime_remaining])
-		var blobs := Abilities.splatter(game.maze, impact, Abilities.splatter_seed(game.maze_seed, impact, 0))
+		var radius := Abilities.kaze_radius(1)
+		var blobs := Abilities.splatter(game.maze, impact, Abilities.splatter_seed(game.maze_seed, impact, 0), radius)
 		var after := _snapshot(game)
 		var all_lit := true
 		var in_zone := true
 		for b in blobs:
 			all_lit = all_lit and after[b.tile] == 64 and game.survey_tiles[b.tile.y * game.maze.size.x + b.tile.x] == 1
-			in_zone = in_zone and Vector2(b.tile - impact).length() <= Economy.KAZE_RADIUS
-		_check(blobs.size() >= 3 and all_lit and in_zone, "the splatter reveals %d tiles within %.1f tiles of the impact, all seen" % [blobs.size(), Economy.KAZE_RADIUS])
+			in_zone = in_zone and Vector2(b.tile - impact).length() <= radius
+		_check(blobs.size() >= 3 and all_lit and in_zone, "the splatter reveals %d tiles within %.1f tiles of the impact, all seen" % [blobs.size(), radius])
 		var allowed := {}
 		for b in blobs:
 			allowed[b.tile] = true
@@ -283,9 +329,34 @@ func _kaze() -> void:
 		await _stop(game)
 	_check(results[0] == results[1], "the same maze, impact and use splatter the same tiles (deterministic)")
 	var maze: Dictionary = Levels.story_maze(6, false)
-	var a := Abilities.splatter(maze, Vector2i(5, 5), 77)
-	_check(a == Abilities.splatter(maze, Vector2i(5, 5), 77) and a != Abilities.splatter(maze, Vector2i(5, 5), 78) or a.size() <= 1,
+	var a := Abilities.splatter(maze, Vector2i(5, 5), 77, 6.0)
+	_check(a == Abilities.splatter(maze, Vector2i(5, 5), 77, 6.0) and a != Abilities.splatter(maze, Vector2i(5, 5), 78, 6.0) or a.size() <= 1,
 		"splatter: same seed same tiles, another seed others")
+	_check(Abilities.kaze_radius(1) == 6.0 and Abilities.kaze_radius(2) == 7.0 and Abilities.kaze_radius(3) == 8.0, "SLIMAKAZE splatter radius 6 / 7 / 8 tiles")
+	# Over walls: the splatter lands in other corridors (floor tiles with no straight floor path from
+	# the impact), and a bigger level reaches farther and hits more.
+	var impact := Vector2i(9, 9)
+	for y in maze.size.y:
+		for x in maze.size.x:
+			if not MazeGenerator.is_wall(maze, Vector2i(x, y)) and Vector2(Vector2i(x, y) - Vector2i(maze.size / 2)).length() < Vector2(impact - Vector2i(maze.size / 2)).length():
+				impact = Vector2i(x, y)
+	var small := Abilities.splatter(maze, impact, 5, Abilities.kaze_radius(1))
+	var big := Abilities.splatter(maze, impact, 5, Abilities.kaze_radius(3))
+	var floors := 0
+	var behind := 0
+	for dy in range(-6, 7):
+		for dx in range(-6, 7):
+			if Vector2(dx, dy).length() <= 6.0 and not MazeGenerator.is_wall(maze, impact + Vector2i(dx, dy)):
+				floors += 1
+	for b in small:
+		var seen: bool = b.tile == impact
+		for d: Vector2i in MazeGenerator.DIRS:
+			seen = seen or Abilities.line_tiles(maze, impact, d).has(b.tile)
+		if not seen:
+			behind += 1
+	var far := big.any(func(b: Dictionary) -> bool: return Vector2(b.tile - impact).length() > 6.0)
+	_check(behind >= 5 and small.size() * 5 >= floors * 2 and far and big.size() > small.size(),
+		"the splatter reaches over walls (%d of %d tiles off the impact's straight lines; %d of %d floor tiles in reach), level 3 farther (%d tiles)" % [behind, small.size(), small.size(), floors, big.size()])
 
 
 func _kaze_kill_and_refuse() -> void:
@@ -442,8 +513,8 @@ func _goal_reveals() -> void:
 					game = await _spawn(1 + n % 10)
 				else:
 					game = await _spawn(0, 6100 + n)
-				line = _goal_line(game, 2)
-				if not line.is_empty() and (kind == "rifle" or line.n <= Economy.SPLAT_RANGE):
+				line = _goal_shot(game, Abilities.splat_range(1) if kind == "splat" else 0)
+				if not line.is_empty():
 					break
 				await _stop(game)
 				game = null
@@ -456,9 +527,27 @@ func _goal_reveals() -> void:
 			var far: bool = game.slime.position.distance_to(game.goal.position) > game.goal_reveal_distance
 			game.abilities.use(kind)
 			game.abilities.flush()
-			_check(far and game.goal.visible and game.survey_goal and not game.finished,
-				"%s %s: a reveal over the goal's tile shows it and marks it seen (visible %s, survey %s)" % [mode, kind, game.goal.visible, game.survey_goal])
+			_check(far and game.goal.visible and game.survey_goal and not game.finished and not game.won,
+				"%s %s: a reveal over the goal's tile (%d tiles off, a wall between: %s) shows it and marks it seen, never takes it (visible %s, survey %s)" % [mode, kind, line.n, line.walled, game.goal.visible, game.survey_goal])
 			await _stop(game)
+
+
+## A floor tile `exact` tiles (or, with 0, 2-8 tiles, a wall between preferred) from the goal in a
+## straight line, walls between allowed: {from, dir, n, walled} ({} if none).
+func _goal_shot(game: Node2D, exact: int) -> Dictionary:
+	var goal := Vector2i((game.goal.position / TILE).floor())
+	var best := {}
+	for d: Vector2i in MazeGenerator.DIRS:
+		for n in ([exact] if exact > 0 else range(2, 9)):
+			var from: Vector2i = goal - d * n
+			if not Abilities.in_maze(game.maze, from) or game.is_wall_tile(from):
+				continue
+			var walled := false
+			for i in range(1, n):
+				walled = walled or game.is_wall_tile(from + d * i)
+			if best.is_empty() or (walled and not best.walled):
+				best = {from = from, dir = d, n = n, walled = walled}
+	return best
 
 
 ## Every shake restarts the fade over its own span: a landing or bump right after a long ability shake

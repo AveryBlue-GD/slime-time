@@ -4,12 +4,14 @@ extends RefCounted
 ## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1"): three active abilities bought with
 ## tickets in the cauldron's TICKETS tab (Progress.buy_ability; 3 levels each, not refundable) and
 ## used in a level with their own keys (1 / 2 / 3 by default, remappable; touch buttons by JUMP):
-##   SLIME RIFLE  a goo shot flies straight to the first wall, revealing every floor tile it passes
-##                (and the walls around them) and leaving a thin goo streak
-##   SLIME SPLAT  a goo bomb lobbed up to Economy.SPLAT_RANGE tiles (stops at walls) bursts and lights
-##                up / reveals the 3x3 tiles around where it lands
+##   SLIME RIFLE  a goo shot flies straight THROUGH walls for Economy.RIFLE_RANGE tiles (by level; to
+##                the maze's edge at most), revealing every tile it crosses (floor tiles with the walls
+##                around them) and leaving a thin goo streak on the floor
+##   SLIME SPLAT  a goo bomb lobbed OVER walls exactly Economy.SPLAT_RANGE tiles (by level, clamped to
+##                the maze) bursts and lights up / reveals the 3x3 tiles around where it lands
 ##   SLIMAKAZE    the slime dashes to the first wall and splats hard (Economy.ABILITIES.kaze.slime %
-##                of the meter), spraying goo over a seeded random spread of tiles around the impact
+##                of the meter), spraying goo over a seeded random spread of floor tiles within
+##                Economy.KAZE_RADIUS (by level) of the impact, walls in between ignored
 ## Each is aimed along the slime's facing (its last movement direction), snapped to the nearest of the
 ## four grid directions (a diagonal goes along x). Numbers: Economy.ABILITIES and the RIFLE_ / SPLAT_ /
 ## KAZE_ constants. This file holds the static rules (geometry, prices, icons); the in-level effects
@@ -125,17 +127,46 @@ static func line_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i, limit :=
 	return out
 
 
-## SLIME RIFLE: the tiles the shot reveals (its own tile, then every floor tile to the wall).
-static func rifle_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i) -> Array[Vector2i]:
+## A per-level number from one of Economy's [L1, L2, L3] tables.
+static func _by_level(table: Array, level: int):
+	return table[clampi(level, 1, table.size()) - 1]
+
+
+## SLIME RIFLE: tiles the shot flies past its own at `level`.
+static func rifle_range(level: int) -> int:
+	return _by_level(Economy.RIFLE_RANGE, level)
+
+
+## SLIME SPLAT: tiles ahead the bomb lands at `level`.
+static func splat_range(level: int) -> int:
+	return _by_level(Economy.SPLAT_RANGE, level)
+
+
+## SLIMAKAZE: the splatter's radius (tiles) at `level`.
+static func kaze_radius(level: int) -> float:
+	return _by_level(Economy.KAZE_RADIUS, level)
+
+
+static func in_maze(maze: Dictionary, tile: Vector2i) -> bool:
+	return tile.x >= 0 and tile.y >= 0 and tile.x < maze.size.x and tile.y < maze.size.y
+
+
+## SLIME RIFLE: the tiles the shot crosses: its own, then `reach` tiles straight on, walls and all
+## (it pierces them), stopping early at the maze's outer edge.
+static func rifle_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i, reach: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = [from]
-	out.append_array(line_tiles(maze, from, dir))
+	for i in range(1, reach + 1):
+		if not in_maze(maze, from + dir * i):
+			break
+		out.append(from + dir * i)
 	return out
 
 
-## SLIME SPLAT: where the bomb lands (`from` itself when a wall is right ahead).
-static func lob_tile(maze: Dictionary, from: Vector2i, dir: Vector2i) -> Vector2i:
-	var tiles := line_tiles(maze, from, dir, Economy.SPLAT_RANGE)
-	return tiles[-1] if not tiles.is_empty() else from
+## SLIME SPLAT: where the bomb lands: `reach` tiles ahead over any walls, clamped inside the maze
+## (a wall tile is fine: its 3x3 still bursts).
+static func lob_tile(maze: Dictionary, from: Vector2i, dir: Vector2i, reach: int) -> Vector2i:
+	var to := from + dir * reach
+	return Vector2i(clampi(to.x, 0, maze.size.x - 1), clampi(to.y, 0, maze.size.y - 1))
 
 
 ## SLIME SPLAT: the tiles its burst reveals (floor and wall alike), clipped to the maze.
@@ -168,32 +199,33 @@ static func splatter_seed(maze_seed: int, impact: Vector2i, use: int) -> int:
 	return hash([maze_seed, impact.x, impact.y, use])
 
 
-## SLIMAKAZE: the splatter around `impact`: for every floor tile within KAZE_RADIUS (tile centers),
-## nearest first, a roll against a chance falling from KAZE_CHANCE_NEAR to KAZE_CHANCE_FAR; each hit
+## SLIMAKAZE: the splatter around `impact`: for every floor tile of the maze within `radius` tiles
+## (tile centers; walls in between don't block it, so it reaches the corridors beyond), nearest
+## first, a roll against a chance falling from KAZE_CHANCE_NEAR to KAZE_CHANCE_FAR; each hit
 ## is {tile, offset (px from the tile's center, the goo blob's center), radius (px)}. A blob always
 ## stays inside its tile (|offset| <= 3, radius <= 4). Deterministic for a seed.
-static func splatter(maze: Dictionary, impact: Vector2i, seed_value: int) -> Array[Dictionary]:
+static func splatter(maze: Dictionary, impact: Vector2i, seed_value: int, radius: float) -> Array[Dictionary]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var out: Array[Dictionary] = []
-	var reach := ceili(Economy.KAZE_RADIUS)
+	var reach := ceili(radius)
 	var tiles: Array[Vector2i] = []
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var tile := impact + Vector2i(dx, dy)
-			if Vector2(dx, dy).length() <= Economy.KAZE_RADIUS and not MazeGenerator.is_wall(maze, tile):
+			if Vector2(dx, dy).length() <= radius and not MazeGenerator.is_wall(maze, tile):
 				tiles.append(tile)
 	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		var da := (a - impact).length_squared()
 		var db := (b - impact).length_squared()
 		return da < db or (da == db and (a.y < b.y or (a.y == b.y and a.x < b.x))))
 	for tile in tiles:
-		var t := Vector2(tile - impact).length() / Economy.KAZE_RADIUS
+		var t := Vector2(tile - impact).length() / maxf(radius, 0.001)
 		var roll := rng.randf()
 		var offset := Vector2(rng.randi_range(-3, 3), rng.randi_range(-3, 3))
-		var radius := float(rng.randi_range(3, 4))
+		var blob_radius := float(rng.randi_range(3, 4))
 		if tile == impact or roll < lerpf(Economy.KAZE_CHANCE_NEAR, Economy.KAZE_CHANCE_FAR, t):
-			out.append({tile = tile, offset = offset, radius = radius})
+			out.append({tile = tile, offset = offset, radius = blob_radius})
 	return out
 
 

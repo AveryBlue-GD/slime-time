@@ -4,7 +4,8 @@ extends Node
 ##   coins     the cauldron's COINS tab (no explanation lines)
 ##   tickets   the cauldron's TICKETS tab (the abilities), `confirm` with the BUY confirm open
 ##   level     a story level with the abilities owned (`--abilities=r,s,k`); `--use=rifle|splat|kaze`
-##             fires one at frame USE_FRAME along the longest open line from the start (before/after
+##             fires one at frame USE_FRAME from the start (SLIMAKAZE along the longest open line, RIFLE /
+##             SPLAT across the nearest walls, since they pass over them) (before/after
 ##             shots: same flags, with and without --use). The HUD strip shows top left; `--touch`
 ##             shows the touch buttons.
 ## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_abilities.tscn --story-complete --tickets=60 --shot=tickets --abilities=2,1,0
@@ -52,8 +53,16 @@ func _physics_process(_delta: float) -> void:
 		return
 	var start := Vector2i((game.slime.position / 16.0).floor())
 	var best := Vector2i.RIGHT
+	var best_score := -1
 	for d: Vector2i in MazeGenerator.DIRS:
-		if Abilities.line_tiles(game.maze, start, d).size() > Abilities.line_tiles(game.maze, start, best).size():
+		# SLIMAKAZE: the longest open line (the dash stops at a wall); RIFLE / SPLAT: the line that
+		# crosses walls the soonest while staying inside the maze longest (they pass over walls).
+		var score := Abilities.line_tiles(game.maze, start, d).size() * 100
+		if use != "kaze":
+			var reach := Abilities.rifle_tiles(game.maze, start, d, 14).size()
+			score = reach * 10 + (50 - Abilities.line_tiles(game.maze, start, d).size()) if reach > 4 else 0
+		if score > best_score:
 			best = d
+			best_score = score
 	game.slime.facing = Vector2(best)
 	game.abilities.use(use)

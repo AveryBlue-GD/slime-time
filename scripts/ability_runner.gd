@@ -132,14 +132,18 @@ func flush() -> void:
 # ---------------------------------------------------------------- SLIME RIFLE
 
 func _fire_rifle(tile: Vector2i, dir: Vector2i) -> void:
-	var tiles := Abilities.rifle_tiles(game.maze, tile, dir)
+	var tiles := Abilities.rifle_tiles(game.maze, tile, dir, Abilities.rifle_range(levels.rifle))
 	var lane := (Vector2(tile) + Vector2(0.5, 0.5)) * Abilities.TILE
 	var from := lane
 	if dir.x != 0:
 		from.x = slime.position.x
 	else:
 		from.y = slime.position.y
-	var end := (Vector2(tiles[-1]) + Vector2(0.5, 0.5)) * Abilities.TILE + Vector2(dir) * (Abilities.TILE / 2.0)
+	# It ends near the far edge of its last tile, or in the middle of it when that is a wall (the
+	# maze's outer edge), splashing there.
+	var end := (Vector2(tiles[-1]) + Vector2(0.5, 0.5)) * Abilities.TILE
+	if not game.is_wall_tile(tiles[-1]):
+		end += Vector2(dir) * (Abilities.TILE / 2.0 - 3.0)  # (its 2 px streak stays inside its range)
 	var shot := GooShot.new()
 	shot.runner = self
 	shot.tiles = tiles
@@ -159,7 +163,8 @@ func _shot_tile(tile: Vector2i) -> void:
 
 
 func _shot_hit(end: Vector2, dir: Vector2) -> void:
-	game._paint_cells(end + dir * 2.0, 4.0, true)  # a splash on the wall
+	if game.is_wall_tile(Vector2i((end / Abilities.TILE).floor())):
+		game._paint_cells(end, 4.0, true)  # a splash on the maze's outer wall (out of range: it just bursts)
 	Fx.burst(game, end - dir * 2.0, game.skin_color, 10, 45.0, -dir, 70.0, game.rainbow)
 	_sfx("splat", -9.0, 1.35)
 
@@ -167,7 +172,7 @@ func _shot_hit(end: Vector2, dir: Vector2) -> void:
 # ---------------------------------------------------------------- SLIME SPLAT
 
 func _throw_splat(tile: Vector2i, dir: Vector2i) -> void:
-	var land := Abilities.lob_tile(game.maze, tile, dir)
+	var land := Abilities.lob_tile(game.maze, tile, dir, Abilities.splat_range(levels.splat))
 	var bomb := GooBomb.new()
 	bomb.runner = self
 	bomb.from = slime.position
@@ -246,7 +251,7 @@ func _on_dash_hit(wall_normal: Vector2) -> void:
 	var seed_value := Abilities.splatter_seed(game.maze_seed, impact, _kaze_uses)
 	_kaze_uses += 1
 	var center := slime.position
-	for blob in Abilities.splatter(game.maze, impact, seed_value):
+	for blob in Abilities.splatter(game.maze, impact, seed_value, Abilities.kaze_radius(levels.kaze)):
 		var drop := SplatDrop.new()
 		drop.runner = self
 		drop.tile = blob.tile

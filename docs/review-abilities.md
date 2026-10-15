@@ -54,3 +54,5 @@ Regression tests in `tests/test_abilities.gd` (`_kaze_goal`, `_touch`, `_goal_re
 4. **Fixed.** `Slime.dash` first slides straight sideways onto the target's lane (`_dash_lane`, at dash speed, so within a frame for a 7 px offset), then dashes along it. Tested from 6 px off-lane: there is no forward movement while off-lane.
 5. **Fixed.** The landing, crumble and ricochet shakes now go through `shake()`, so each one restarts the fade over its own span. The crumble keeps the landing's kick. Tested: a wall landing or ricochet right after a SLIMAKAZE shake has span SHAKE_TIME or 0.6 x SHAKE_TIME.
 6. **Fixed.** One rule in every mode: `Abilities.splatter_seed(maze_seed, impact, use)` (the maze, the impact tile and the SLIMAKAZE use index this attempt, never the attempt). Tested: attempt 1 and attempt 4 splatter the same tiles in story and the randomizer.
+
+Follow-up (owner buff, same day): abilities now pass over walls (rifle pierces 8/11/14 tiles, splat lobbed 4/5/6 tiles, SLIMAKAZE splatter 6/7/8 tiles at 90%->40%); the six fixes above still hold. See the spec "Buff" note.
