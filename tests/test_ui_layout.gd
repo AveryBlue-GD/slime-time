@@ -257,6 +257,9 @@ func _pause_and_restart() -> void:
 		if kind == "random":
 			game.random_seed = 4294967295
 			game.seed_level = 7
+		var hud: CanvasLayer = game.hud
+		var had_story: bool = hud.story_label.visible
+		_check(hud.area_label.visible, "%s: the area name shows at the level start" % kind)
 		game.pause_menu.open()
 		await _frames(2)
 		var menu: CanvasLayer = game.pause_menu
@@ -267,14 +270,31 @@ func _pause_and_restart() -> void:
 			_check(seed_b.size.x == 100.0 and _text_w(seed_b) <= 92.0, "pause: a 10-digit SEED fits its 100 px button (%s: %s px)" % [seed_b.text, _text_w(seed_b)])
 		_check(not game.hud.area_label.visible and not game.hud.story_label.visible, "pause (%s): the area texts are hidden under it" % kind)
 		menu.resume()
+		_check_area_back(hud, had_story, "pause (%s) RESUME" % kind)
 		if kind == "story":
+			_check(had_story, "story: the story line shows at the level start")
 			game.restart_prompt.open()
 			await _frames(2)
 			_check_screen(game.restart_prompt.get_child(0), "restart prompt")
 			_check_stack_panel(_first(game.restart_prompt, "Panel"), game.restart_prompt.buttons[0].get_parent(), "restart prompt")
+			_check(not hud.area_label.visible and not hud.story_label.visible, "restart prompt: the area texts are hidden under it")
 			game.restart_prompt.close()
+			_check_area_back(hud, had_story, "restart prompt CANCEL")
+			# Once the fade has ended, closing a menu brings nothing back.
+			hud._area_tween.custom_step(10.0)
+			game.pause_menu.open()
+			game.pause_menu.resume()
+			_check(not hud.area_label.visible and not hud.story_label.visible, "pause after the fade: the area texts stay gone")
 		paused = false
 		game.free()
+
+
+## A menu opened over the level start and closed again: the area name (and the story line, if it
+## was up) show again at full alpha, and fade later (at least AREA_RESHOW_TIME from now).
+func _check_area_back(hud: CanvasLayer, story: bool, tag: String) -> void:
+	_check(hud.area_label.visible and hud.area_label.modulate.a == 1.0 and hud.story_label.visible == story,
+		tag + ": the area texts are back (area %s, story %s)" % [hud.area_label.visible, hud.story_label.visible])
+	_check(hud._area_tween != null and hud._area_tween.is_valid(), tag + ": their fade is still to come")
 
 
 ## A panel holding a VBox stack: PANEL_PAD above the first and below the last visible child.

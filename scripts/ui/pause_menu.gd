@@ -137,8 +137,8 @@ func open() -> void:
 	seed_button.visible = random
 	seed_edit.visible = false
 	var hud: Node = game.get("hud")
-	if hud and hud.has_method("hide_area_texts"):
-		hud.hide_area_texts()  # (frozen mid-fade, they would show through around PAUSED)
+	if hud and hud.has_method("cover_area_texts"):
+		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
 	# The panel fits the stack: PANEL_PAD above the first button and below the last one.
@@ -165,6 +165,9 @@ func open() -> void:
 func resume() -> void:
 	visible = false
 	get_tree().paused = false
+	var hud: Node = get_parent().get("hud")
+	if hud and hud.has_method("uncover_area_texts"):
+		hud.uncover_area_texts()
 	UIKit.unlock_focus(_focus_lock)
 	if is_instance_valid(_return_focus) and _return_focus.is_visible_in_tree():
 		_return_focus.grab_focus()  # e.g. the dry-up / win choice that had it

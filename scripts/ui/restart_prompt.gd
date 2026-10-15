@@ -48,8 +48,8 @@ func open() -> void:
 	visible = true
 	get_tree().paused = true
 	var hud: Node = game.get("hud") if game else null
-	if hud and hud.has_method("hide_area_texts"):
-		hud.hide_area_texts()  # (frozen mid-fade, they would show through around RESTART?)
+	if hud and hud.has_method("cover_area_texts"):
+		hud.cover_area_texts()  # (they would show through around RESTART?; back on close)
 	buttons[0].grab_focus()
 	if _focus_lock.is_empty():  # the level's other controls can't take focus meanwhile
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
@@ -58,6 +58,9 @@ func open() -> void:
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	var hud: Node = game.get("hud") if game else null
+	if hud and hud.has_method("uncover_area_texts"):
+		hud.uncover_area_texts()
 	UIKit.unlock_focus(_focus_lock)
 
 

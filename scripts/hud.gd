@@ -13,6 +13,8 @@ const POD_MARGIN := 3
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
 const AREA_NAME_TIME := 2.0
+## The area texts show at least this long again after a pause or restart prompt closes over them.
+const AREA_RESHOW_TIME := 1.0
 ## Where the area name sits (its line box top): under the timer, between the second-row pods.
 const AREA_TOP := 20
 ## In a randomizer maze: clear of the two-line attempt pod.
@@ -45,6 +47,8 @@ var area_label: Label
 ## A story line under the area name (see Story.level_line).
 var story_label: Label
 var _area_tween: Tween
+## How long the current area texts hold before their fade (see show_area_name).
+var _area_hold := 0.0
 ## Where the area name goes when nothing is in its way (AREA_TOP, or under the attempt pod).
 var _area_base := float(AREA_TOP)
 var _message_panel: PanelContainer
@@ -784,11 +788,17 @@ func show_area_name(text: String, story_line := "") -> void:
 	story_label.visible = story_line != ""
 	story_label.modulate.a = 1.0
 	_place_area_texts()
+	_area_hold = AREA_NAME_TIME + (1.0 if story_line != "" else 0.0)
+	_fade_area_texts(_area_hold)
+
+
+## Holds the area texts for `hold` seconds, then fades them out.
+func _fade_area_texts(hold: float) -> void:
 	if _area_tween:
 		_area_tween.kill()
 	var tween := create_tween()
 	_area_tween = tween
-	tween.tween_interval(AREA_NAME_TIME + (1.0 if story_line != "" else 0.0))
+	tween.tween_interval(hold)
 	tween.tween_property(area_label, "modulate:a", 0.0, 0.8)
 	tween.parallel().tween_property(story_label, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(func() -> void:
@@ -853,8 +863,30 @@ func _pods_changed() -> void:
 		_place_area_texts()
 
 
-## Hides the area name and story line at once (a pause or restart prompt opened over them, or the
-## run ended: they would show through or under the panel).
+## A pause menu or the restart prompt opened over the area name and story line: they hide while it
+## is open (they would show through around its panel). Their fade, paused with the tree, is kept for
+## uncover_area_texts.
+func cover_area_texts() -> void:
+	area_label.visible = false
+	story_label.visible = false
+
+
+## The pause menu or restart prompt closed: the area texts come back if they were still up, at full
+## alpha and for the rest of their hold, but at least AREA_RESHOW_TIME so they can be read again.
+func uncover_area_texts() -> void:
+	if _area_tween == null or not _area_tween.is_valid() or not _area_tween.is_running():
+		return
+	var hold := maxf(_area_hold - _area_tween.get_total_elapsed_time(), AREA_RESHOW_TIME)
+	area_label.visible = true
+	area_label.modulate.a = 1.0
+	story_label.visible = story_label.text != ""
+	story_label.modulate.a = 1.0
+	_place_area_texts()
+	_fade_area_texts(hold)
+
+
+## Hides the area name and story line for good (the run ended: the result panel can reach up to
+## them).
 func hide_area_texts() -> void:
 	if _area_tween:
 		_area_tween.kill()
