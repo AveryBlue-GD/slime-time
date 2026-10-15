@@ -2,10 +2,7 @@
 
 Run from the project root:  python tools/make_ui_art.py
 
-- button_normal/hover/pressed/disabled.png : 10x10 nine-slice buttons (outline, top highlight,
-  2 px bottom bevel; pressed has the bevel at the top instead, so the face looks pushed in).
-  Patch margins: 2 left/right, 2 top, 3 bottom (see UIKit.make_theme).
-- panel.png : 12x12 nine-slice framed panel (outline, inner rim, soft top light), 4 px margins.
+(Buttons and panels are drawn by GooBox/UIKit styleboxes; the old button_*.png and panel.png sheets were unused and removed.)
 - hud_pod.png : 8x8 nine-slice, a lighter-weight translucent panel for the HUD, 3 px margins.
 - icon_drop / icon_clock / icon_lock / icon_check.png : 8x8 icons in white/grey shades so the
   game can tint them (the drop takes the skin color, the rest the text color); icon_coin.png and icon_ticket.png (a notched voucher) are
@@ -38,71 +35,7 @@ PAL.update({
     "2": (150, 150, 150, 255),
 })
 
-BUTTONS = {
-    "normal": [
-        ".kkkkkkkk.",
-        "khhhhhhhhk",
-        "kffffffffk",
-        "kffffffffk",
-        "kffffffffk",
-        "kffffffffk",
-        "kffffffffk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        ".kkkkkkkk.",
-    ],
-    "hover": [
-        ".kkkkkkkk.",
-        "kAAAAAAAAk",
-        "kaaaaaaaak",
-        "kaaaaaaaak",
-        "kaaaaaaaak",
-        "kaaaaaaaak",
-        "kaaaaaaaak",
-        "khhhhhhhhk",
-        "khhhhhhhhk",
-        ".kkkkkkkk.",
-    ],
-    "pressed": [
-        ".kkkkkkkk.",
-        "kssssssssk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        "kFFFFFFFFk",
-        ".kkkkkkkk.",
-    ],
-    "disabled": [
-        ".kkkkkkkk.",
-        "kGGGGGGGGk",
-        "kggggggggk",
-        "kggggggggk",
-        "kggggggggk",
-        "kggggggggk",
-        "kggggggggk",
-        "kggggggggk",
-        "kggggggggk",
-        ".kkkkkkkk.",
-    ],
-}
 
-PANEL = [
-    "..kkkkkkkk..",
-    ".krrrrrrrrk.",
-    "krPPPPPPPPrk",
-    "krpppppppprk",
-    "krpppppppprk",
-    "krpppppppprk",
-    "krpppppppprk",
-    "krpppppppprk",
-    "krpppppppprk",
-    "krpppppppprk",
-    ".krrrrrrrrk.",
-    "..kkkkkkkk..",
-]
 
 # Dark outline, light rim with a brighter top edge (the same two-step frame the goo boxes have).
 HUD_POD = [
@@ -241,9 +174,6 @@ WIDGETS = {
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, rows in BUTTONS.items():
-        write_png(OUT / f"button_{name}.png", rows)
-    write_png(OUT / "panel.png", PANEL)
     write_png(OUT / "hud_pod.png", HUD_POD)
     for name, rows in ICONS.items():
         write_png(OUT / f"icon_{name}.png", rows)

@@ -9,11 +9,9 @@ Outputs (all 16x16 tiles/frames):
   (the JSON lists each animation's row, frame count, fps and looping)
 - shadow.png : shadow under the slime while it's in the air
 - chalice_sheet.png : 4 frames of 16x20, a glint sliding along the rim
-- walls.png  : 16 columns (neighbor mask: N=1 E=2 S=4 W=8 set when that neighbor is also wall)
-               x 12 rows (row = damage * 3 + style; damage 0 intact .. 3 broken; style 0 plain, 1 mossy, 2 stained)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
-- fillets.png: 16 columns (same neighbor mask as walls, for a FLOOR tile): a small curved dark
-               fillet in each floor corner where two walls meet, so inner corners look rounded
+(The wall and fillet tile drawing functions here are imported by make_theme_art.py, which writes the
+ per-theme atlases; the unthemed walls.png and fillets.png were unused and are no longer written.)
 """
 import json
 import math
@@ -618,11 +616,6 @@ if __name__ == "__main__":
           f"{sum(len(f) for f, _, _ in anims.values())} frames)")
     write_png(OUT / "shadow.png", SHADOW)
     write_png(OUT / "chalice_sheet.png", atlas([chalice_frames()]))
-    write_png(OUT / "walls.png", atlas([
-        [wall_tile(mask, damage, style, seed=1000 + damage * 300 + style * 50 + mask) for mask in range(16)]
-        for damage in range(4) for style in range(3)
-    ]))
-    write_png(OUT / "fillets.png", atlas([[fillet_tile(mask) for mask in range(16)]]))
     write_png(OUT / "floors.png", atlas([
         [floor_tile(kind, seed=5000 + variant * 20 + i) for i, kind in enumerate(FLOOR_TYPES)]
         for variant in range(4)
