@@ -73,17 +73,37 @@ func _tap_key(code: Key) -> void:
 		Input.flush_buffered_events()
 
 
-## A wall-clock budget check that survives a busy machine: calls `measure` (which does the work and returns its
-## milliseconds) up to `tries` times and passes when the fastest run is within `budget_ms`. A real slowdown makes
-## every run slow and still fails; load from other test jobs only spoils some runs. (A single timing against a
-## tight budget failed whenever test_all.sh ran suites in parallel.)
+## Milliseconds a fixed GDScript workload (_busy_work) takes on an idle dev machine (Apple M3): the yardstick that
+## tells how busy the machine is right now.
+const IDLE_BUSY_MS := 4.75
+
+
+## A fixed CPU workload of the kind the game code does (integer maths, dictionary and array writes).
+func _busy_work() -> float:
+	var t := Time.get_ticks_usec()
+	var acc := 0
+	var d := {}
+	var arr := PackedInt32Array()
+	arr.resize(512)
+	for i in 60000:
+		acc += (i * 7919) % 1013
+		d[i % 512] = acc
+		arr[i % 512] = acc & 255
+	return (Time.get_ticks_usec() - t) / 1000.0
+
+
+## A wall-clock budget check that survives a busy machine. `measure` does the work and returns its milliseconds;
+## up to `tries` times it is run right after _busy_work(), and a run passes when its time, divided by how much slower
+## than idle the machine just was (never below 1), is within `budget_ms`. A real slowdown of the code under test on an
+## idle machine still fails; load from other test jobs (a parallel test_all.sh, even two of them) does not.
 func _check_budget(label: String, budget_ms: float, measure: Callable, tries := 5) -> void:
 	var best := INF
 	for i in tries:
-		best = minf(best, float(measure.call()))
+		var slowdown := maxf(1.0, _busy_work() / IDLE_BUSY_MS)
+		best = minf(best, float(measure.call()) / slowdown)
 		if best <= budget_ms:
 			break
-	_check(best <= budget_ms, "%s (best of up to %d runs: %.1f ms, budget %.0f ms)" % [label, tries, best, budget_ms])
+	_check(best <= budget_ms, "%s (best of up to %d runs, load-adjusted: %.1f ms, budget %.0f ms)" % [label, tries, best, budget_ms])
 
 
 ## Touch events arrive in window pixels; convert from the game's 320x180 view.
