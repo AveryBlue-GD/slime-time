@@ -3,7 +3,7 @@
 Status: **IMPLEMENTED (all four batches, 2026-10-15); core tree REPRICED (tree 3, owner request 2026-10-15): MORE SLIME is the premium track at 80 of the 165 coins (1, 4, 7, 9, 12, 20, 27), SPEED 46 (6, 9, 13, 18), BRIGHTNESS 39 (9, 12, 18); see A2.1, A2.3 "Tree 3" and A2.4; the ticket WORKSHOP (B.2) is DISABLED for now behind `Economy.WORKSHOP_ENABLED := false` (owner request, 2026-10-15): no TICKETS tab, no effects, no WIND tag, no '!', saved levels kept; flip the const to bring it all back**; **ABILITIES v1 (three ticket abilities on the TICKETS tab, 2026-10-15): see "Abilities v1" below**; this file is now the design record. Deviations from the spec are listed in the next section (the long status note below has the batch-by-batch detail). Original status: design spec, 2026-10-14 (game-advisor). **Batch 1 (core tree rework, A2) is built (2026-10-15); batch 2 (hats
 live, store, workshop, cosmetics v1: B.2, C.1-C.3) is built (2026-10-15); batch 3 (Descent, C2) is built (2026-10-15)**;
 **batch 4 (Heat, C3) is built (2026-10-15)**: all four batches are done. Batch 4 decisions where this spec was
-open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 4", and
+open or didn't fit (details: [../archive/handoff-history.md](../archive/handoff-history.md), "Upgrades v2, batch 4", and
 [../level-design.md](../level-design.md) section 10): DIM's base relight is the code's 20 px (as the spec says) and it
 also shrinks the lantern glow x0.6; FOG BITES halves the last fade step (so with DIM 5.4 -> 2.7 s); BRITTLE's "bounce
 slide no longer free" = the knockback slide drains; GROUNDED switched on drops BRITTLE (BRITTLE is greyed out, not
@@ -15,7 +15,7 @@ records/medals (no separate heat records); dev-toggled runs earn no bounty or be
 HUD shows a HEAT n pod with the modifier icons under the level name instead of `HARD  HEAT 6` in the level text; the
 title crown is 5 white-hot flames over the logo; save keys as D.1 plus `[heat] paid`; the autoplay bot stays at heat
 0 (no `--autoplay-heat`); the gate "hard autoplay at heat 10 on L1-3" is met by the test autopilot at heat 10 on all
-10 levels (test_heat) and the 480-run sweep (bench_heat). Batch 3 decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md),
+10 levels (test_heat) and the 480-run sweep (bench_heat). Batch 3 decisions where this spec was open or didn't fit (details: [../archive/handoff-history.md](../archive/handoff-history.md),
 "Upgrades v2, batch 3", and [../level-design.md](../level-design.md) section 9): the portal buttons read RANDOM MAZE /
 DESCENT; floors use the randomizer's size (from the slime capacity; the owner's no-small-mazes rule) instead of
 `1.25 x route + 12` / 14x8; u jitter is clamped to 0.25-0.85; the refill is that of the floor being entered; capacity
@@ -24,7 +24,7 @@ BACKUP BLADDER adds a fixed 25% after SECOND WIND; BLAZE past BRIGHTNESS 3 = rea
 after halving, cap 30; a run that banks 0 uses no paying slot; dev mode pays unsaved (dev-toggled runs 0, carried
 across floors); milestones pay on reaching the floor, outside the daily cap; best floor = floor reached; QUIT TO HUB on
 the boon card = CASH OUT; pick = a tile then DESCEND; Descent ignores the HARD MODE setting. Batch 2
-decisions where this spec was open or didn't fit (details: [../handoff.md](../handoff.md), "Upgrades v2, batch 2"): the
+decisions where this spec was open or didn't fit (details: [../archive/handoff-history.md](../archive/handoff-history.md), "Upgrades v2, batch 2"): the
 SHOP has three sections (HATS / TRAILS / PAPERS) instead of one grid; the workshop rows are 25 px apart from y 24; the
 SECOND WIND HUD sign is a WIND tag under the meter; a TAILOR buy of a non-rainbow hat leaves the rainbow pity alone; dev
 mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per station (wheel / cauldron); MAGNET's
@@ -35,7 +35,7 @@ mode buys free and owns every cosmetic; GOLD trail alpha 185; the "!" shows per 
 (`[upgrades] refund_notice`) until the hub shows it; seed codes accept L 0-10 and clamp 8-10 to 7, 11+ is not a code;
 `--upgrades=` takes new-tree levels. The RECOMMENDED tag and the 1 s light-ring preview on buy were built in the review-fix pass (docs/archive/review-upgrades-b1.md status).
 Measured story check: see [../playtime-estimate.md](../playtime-estimate.md) (upgrades v2 note) and
-[../handoff.md](../handoff.md) (last section). Code is the source of truth for the
+[../archive/handoff-history.md](../archive/handoff-history.md) (last section). Code is the source of truth for the
 current numbers quoted (`scripts/upgrades.gd`, `scripts/progress.gd`, `scripts/game.gd`, `scripts/slime.gd`,
 `scripts/levels.gd`, `scripts/hats.gd`); the difficulty priors come from [../playtime-estimate.md](../playtime-estimate.md)
 and [../level-design.md](../level-design.md) sections 5-7. Background research: [../advisor/roguelike-progression.md](../archive/advisor/roguelike-progression.md),
@@ -93,7 +93,7 @@ Decisions:
 ## Implemented: deviations from this spec
 
 Everything below was built as specified except these (collected from the status note above and the per-batch sections of
-[../handoff.md](../handoff.md); code and `scripts/economy.gd` are the source of truth for numbers):
+[../archive/handoff-history.md](../archive/handoff-history.md); code and `scripts/economy.gd` are the source of truth for numbers):
 
 - **Tree 3 repricing (after batch 4):** the A2.1 prices were changed to MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39 (same lengths, effects and 165 total); tree 2 saves are repriced on load (A2.4); coin counters clamp at 0 on screen; `--upgrades=` without enough coins pads debug coins and `--coins=` works in any flag order.
 - **Batch 1 (coin tree):** tables live in `Economy.COIN_TRACKS`, not `Upgrades.LIST`; the screen shows "now -> next" instead of "NEXT: ..."; old dev wall power p maps to floor(p / 2.5); the refund notice waits in the save until the hub shows it; typed seed levels 8-10 clamp to 7. The RECOMMENDED tag and 1 s light-ring preview were deferred, then built in the review-fix pass.

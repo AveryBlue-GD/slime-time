@@ -1,10 +1,10 @@
 # Slime Time
 
-A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. Your goo trail clears the fog as you glide, but every move costs slime. Find the golden chalice before you dry up! Beat all 10 story levels, then try hard mode and the Randomizer, where a gold ticket is the goal.
+A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. Your goo trail clears the fog as you glide, but every move costs slime. Find the golden chalice before you dry up! Beat all 10 story levels, then try hard mode (with its HEAT challenges), the Randomizer, where a gold ticket is the goal, and DESCENT, a run through chained random floors.
 
 ## How to play it
 
-1. Download **Godot 4.7** (free, standard version) from https://godotengine.org/download
+1. Download **Godot 4.7.2** (free, standard version) from https://godotengine.org/download
 2. Unzip this folder somewhere.
 3. Open Godot, click **Import**, and pick the `project.godot` file in this folder.
 4. Click **Import & Edit**, then press **F5** (or the ▶ button, top right) to play.
@@ -37,8 +37,8 @@ Play the browser version sideways. Touch controls appear automatically:
 - Each level you clear unlocks a new slime color. Beat level 10 for the CHAMELEON color wheel; hard-mode clears unlock solid (non-jelly) versions; 30 gold medals unlock the Stopwatch slime.
 - After the story, the **Randomizer** (portal in the hub) builds a new maze from a seed code; the gold ticket voucher at the end pays 5 tickets on a first try, fewer on retries.
 - The **map table** in the hub keeps a map of every tile you have seen and your fastest route on each story level.
-- Hats are still being designed: the hat wheel says COMING SOON.
+- Tickets (from the Randomizer, DESCENT and HEAT) buy hat wheel spins, cosmetics in the SHOP and, in Randomizer mazes and DESCENT, three one-shot abilities (keys 1, 2, 3). The hats are placeholders for now.
 
 ## Launching from the terminal (macOS / Linux)
 
-`./tools/play.sh` plays with your real save. `--dev` unlocks everything and saves nothing (F1 = full bright, F2 = no drain in a level; fn+F1 / fn+F2 on a Mac). `--story` starts as a player who has beaten the story. `--autoplay [--speed=N]` lets the game play itself. On Windows use `tools\play.ps1` with `-Dev`, `-Story`, `-Autoplay`. Tests: `./tools/test_all.sh`. More in [CLAUDE.md](CLAUDE.md) and [docs/README-docs.md](docs/README-docs.md).
+`./tools/play.sh` plays with your real save. `--dev` unlocks everything and saves nothing (F1 = full bright, F2 = no drain in a level; fn+F1 / fn+F2 on a Mac). `--story` starts as a player who has beaten the story. `--autoplay [--speed=N]` lets the game play itself. On Windows use `tools\play.ps1` with `-Dev`, `-Story`, `-Autoplay`. Tests: `./tools/test_all.sh`. Project notes for contributors: [CLAUDE.md](CLAUDE.md) and [docs/README-docs.md](docs/README-docs.md).

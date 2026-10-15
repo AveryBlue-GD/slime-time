@@ -111,7 +111,7 @@ Story coin keys are `level + cell`, so a v1-3 save's keys name cells of the old 
 - **Hostile values:** wrong-typed version = treated as old (migrated); junk coin lists count 0,
   floods cap at the level's coins; upgrades still clamp to what was earned.
 - A version 4 save loaded in an older build would read the new coin keys against old mazes (not
-  handled, like the v3 note in handoff.md).
+  handled, like the v3 note in archive/handoff-history.md).
 
 Tests: `tests/test_spawn_picker.gd` (odds, min route, determinism, integer-only, pinned picks,
 solvable / chalice / ticket / coins reachable), `tests/test_layout_migration.gd` (partial coins per
@@ -401,7 +401,7 @@ clear; without any clear, every attempt that moved replaces the faint last-attem
 **Cost:** the reveal loops already visit every newly revealed fog cell; each now also writes one byte
 (`survey_tiles[tile] = 1`), and walls one byte the first time each is revealed. Per physics tick: two
 `floori`, a parity test and a `Vector2i` compare (a byte appended when a new cell is entered). No per-frame
-allocation; fog/trail bytes, their order and the rendered frames are unchanged (pixel diff, see handoff).
+allocation; fog/trail bytes, their order and the rendered frames are unchanged (pixel diff, see archive/handoff-history.md).
 
 **Showing it** (`MapView`, maps v3 2026-10-14): a maze diagram in the level's themed palette (paper, ink,
 fog from its tile palette) inside a 4 px frame in the theme's motif (`map_select.THEMED_MAPS = true`, the one
