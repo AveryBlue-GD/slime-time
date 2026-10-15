@@ -10,9 +10,7 @@ const GAME_SCENE := "res://scenes/main.tscn"
 
 const BG := Color8(26, 28, 44)
 const BUTTON := Color8(51, 44, 64)
-const BUTTON_HOVER := Color8(86, 108, 134)
 const BUTTON_PRESSED := Color8(37, 113, 121)
-const BUTTON_DISABLED := Color8(40, 34, 52)
 const TEXT := Color8(244, 244, 244)
 const TEXT_DIM := Color8(148, 176, 194)
 const TEXT_OFF := Color8(86, 108, 134)
@@ -120,6 +118,44 @@ static func add_panel(parent: Control, rect: Rect2) -> Panel:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(panel)
 	return panel
+
+
+## The ticket store's BUY? confirm (hat wheel SHOP, upgrades TICKETS tab), added to `parent`: a dim
+## sheet over the whole screen that swallows clicks and taps (so nothing behind the confirm can be
+## pressed while it's open; the keyboard is locked by lock_focus) and the panel with its text, a
+## price with a ticket icon, and BUY / BACK. Both start hidden. Returns {blocker, panel, label, price,
+## buy, back}.
+static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Callable, price_tint: Color) -> Dictionary:
+	var blocker := ColorRect.new()
+	blocker.color = Color(0, 0, 0, 0.45)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	blocker.visible = false
+	parent.add_child(blocker)
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var panel := add_panel(parent, Rect2(86, 60, 148, 58))
+	panel.visible = false
+	var label := make_label("", 8, TEXT)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.position = Vector2(0, 8)
+	label.size = Vector2(148, 10)
+	panel.add_child(label)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 2)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.position = Vector2(0, 20)
+	row.size = Vector2(148, 10)
+	panel.add_child(row)
+	var price := make_label("", 8, price_tint)
+	row.add_child(price)
+	row.add_child(make_icon("ticket", Color.WHITE))
+	var buy := make_button("BUY", on_buy, Vector2(48, 13))
+	buy.position = Vector2(20, 36)
+	panel.add_child(buy)
+	var back := make_button("BACK", on_back, Vector2(48, 13))
+	back.position = Vector2(80, 36)
+	panel.add_child(back)
+	return {blocker = blocker, panel = panel, label = label, price = price, buy = buy, back = back}
 
 
 ## An 8x8 UI icon ("drop", "clock", "lock", "check").

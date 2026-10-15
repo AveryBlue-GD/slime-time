@@ -379,35 +379,13 @@ func _close_confirm(refocus: bool) -> void:
 
 
 func _build_confirm() -> void:
-	_blocker = ColorRect.new()
-	_blocker.color = Color(0, 0, 0, 0.45)
-	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
-	_blocker.visible = false
-	add_child(_blocker)
-	_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	confirm = UIKit.add_panel(self, Rect2(86, 60, 148, 58))
-	confirm.visible = false
-	confirm_label = UIKit.make_label("", 8, UIKit.TEXT)
-	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	confirm_label.position = Vector2(0, 8)
-	confirm_label.size = Vector2(148, 10)
-	confirm.add_child(confirm_label)
-	var price := HBoxContainer.new()
-	price.alignment = BoxContainer.ALIGNMENT_CENTER
-	price.add_theme_constant_override("separation", 2)
-	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	price.position = Vector2(0, 20)
-	price.size = Vector2(148, 10)
-	confirm.add_child(price)
-	confirm_price = UIKit.make_label("", 8, UIKit.TEXT)
-	price.add_child(confirm_price)
-	price.add_child(UIKit.make_icon("ticket", Color.WHITE))
-	confirm_buy = UIKit.make_button("BUY", _buy_confirmed, Vector2(48, 13))
-	confirm_buy.position = Vector2(20, 36)
-	confirm.add_child(confirm_buy)
-	confirm_back = UIKit.make_button("BACK", close_confirm, Vector2(48, 13))
-	confirm_back.position = Vector2(80, 36)
-	confirm.add_child(confirm_back)
+	var parts := UIKit.add_ticket_confirm(self, _buy_confirmed, close_confirm, UIKit.TEXT)
+	_blocker = parts.blocker
+	confirm = parts.panel
+	confirm_label = parts.label
+	confirm_price = parts.price
+	confirm_buy = parts.buy
+	confirm_back = parts.back
 
 
 ## BRIGHTNESS bought: for 1 s the hint area shows a disc at the old light radius and a ring at the
