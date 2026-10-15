@@ -244,26 +244,10 @@ static func splatter(maze: Dictionary, impact: Vector2i, seed_value: int, radius
 ## The 8x8 icon of ability `id` (cached; BoonIcons' palette).
 static func icon(id: String) -> ImageTexture:
 	if not _icons.has(id):
-		var image := Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
-		image.fill(Color(0, 0, 0, 0))
-		var rows: Array = ART.get(id, [])
-		for y in rows.size():
-			var row: String = rows[y]
-			for x in mini(row.length(), 8):
-				if BoonIcons.PAL.has(row[x]):
-					image.set_pixel(x, y, BoonIcons.PAL[row[x]])
-		_icons[id] = ImageTexture.create_from_image(image)
+		_icons[id] = BoonIcons.paint(ART.get(id, []))
 	return _icons[id]
 
 
 ## A TextureRect with the icon at `scale` x (whole pixels).
 static func make_icon(id: String, scale := 1) -> TextureRect:
-	var rect := TextureRect.new()
-	rect.texture = icon(id)
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	rect.custom_minimum_size = Vector2(8, 8) * scale
-	rect.size = rect.custom_minimum_size
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	return rect
+	return BoonIcons.icon_rect(icon(id), scale)

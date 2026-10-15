@@ -201,6 +201,14 @@ static func eye_points(anim: String, frame: int) -> Array[Vector2i]:
 	return out
 
 
+## Loads the slime sheet's pixels into _sheet_image once (for the body measurements below).
+static func _load_sheet_image() -> void:
+	if _sheet_image == null:
+		_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
+		if _sheet_image.is_compressed():
+			_sheet_image.decompress()
+
+
 ## The body's rows in a frame, top down, as (y, left x, right x): only its largest 4-connected
 ## blob of solid pixels, so loose sparkles (celebrate) and goo flecks (splats) don't count.
 ## (tools/make_hats.py measures the head the same way.)
@@ -212,10 +220,7 @@ static func _body_rows(anim: String, frame: int) -> Array[Vector3i]:
 	var frames := load_sprite_frames()
 	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
 		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
-		if _sheet_image == null:
-			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
-			if _sheet_image.is_compressed():
-				_sheet_image.decompress()
+		_load_sheet_image()
 		var w := int(region.size.x)
 		var h := int(region.size.y)
 		var solid := {}
@@ -264,10 +269,7 @@ static func body_box(anim: String, frame: int) -> Rect2:
 	var box := Rect2(-7, -7, 14, 14)
 	if frames.has_animation(anim) and frame < frames.get_frame_count(anim):
 		var region := (frames.get_frame_texture(anim, frame) as AtlasTexture).region
-		if _sheet_image == null:
-			_sheet_image = preload("res://assets/sprites/slime_sheet.png").get_image()
-			if _sheet_image.is_compressed():
-				_sheet_image.decompress()
+		_load_sheet_image()
 		var found := Rect2()
 		var any := false
 		for y in int(region.size.y):

@@ -34,23 +34,32 @@ static var _cache := {}
 ## The icon of boon `id` (an empty 8x8 for an unknown id).
 static func texture(id: String) -> ImageTexture:
 	if not _cache.has(id):
-		var image := Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
-		image.fill(Color(0, 0, 0, 0))
-		var rows: Array = ART.get(id, [])
-		for y in rows.size():
-			var row: String = rows[y]
-			for x in mini(row.length(), 8):
-				var c: String = row[x]
-				if PAL.has(c):
-					image.set_pixel(x, y, PAL[c])
-		_cache[id] = ImageTexture.create_from_image(image)
+		_cache[id] = paint(ART.get(id, []))
 	return _cache[id]
+
+
+## An 8x8 icon from rows of palette letters (PAL; other characters stay clear). Abilities' icons too.
+static func paint(rows: Array) -> ImageTexture:
+	var image := Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in rows.size():
+		var row: String = rows[y]
+		for x in mini(row.length(), 8):
+			var c: String = row[x]
+			if PAL.has(c):
+				image.set_pixel(x, y, PAL[c])
+	return ImageTexture.create_from_image(image)
 
 
 ## A TextureRect showing the icon at `scale` x (whole pixels).
 static func make(id: String, scale := 1) -> TextureRect:
+	return icon_rect(texture(id), scale)
+
+
+## A TextureRect showing an 8x8 `tex` at `scale` x (whole pixels).
+static func icon_rect(tex: Texture2D, scale := 1) -> TextureRect:
 	var icon := TextureRect.new()
-	icon.texture = texture(id)
+	icon.texture = tex
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_SCALE
 	icon.custom_minimum_size = Vector2(8, 8) * scale

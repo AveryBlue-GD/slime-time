@@ -118,11 +118,7 @@ static func pick(maze: Dictionary, pick_seed: int, kind := -1, route := -1) -> D
 		for i in 3:
 			var k := (rolled + i) % 3
 			var options := cells_of(k, maze.cells)
-			for j in range(options.size() - 1, 0, -1):  # seeded Fisher-Yates, integer draws only
-				var swap := rng.randi_range(0, j)
-				var tmp := options[j]
-				options[j] = options[swap]
-				options[swap] = tmp
+			_shuffle(options, rng)
 			for n in mini(options.size(), limit):
 				var cell := options[n]
 				if route > 0:
@@ -222,11 +218,7 @@ static func pick_farthest_at(maze: Dictionary, pick_seed: int, kind: int, route:
 	var rolled := kind if kind >= 0 and kind <= Kind.ANY else _kind_for_roll(roll)
 	var reach := _Reach.new(maze)
 	var options := cells_of(rolled, maze.cells)
-	for j in range(options.size() - 1, 0, -1):  # seeded Fisher-Yates, integer draws only
-		var swap := rng.randi_range(0, j)
-		var tmp := options[j]
-		options[j] = options[swap]
-		options[swap] = tmp
+	_shuffle(options, rng)
 	for cell in options:
 		if reach.at_least(cell, route) and not reach.at_least(cell, route + 1):
 			var far: Dictionary = farthest(maze, cell)
@@ -234,6 +226,15 @@ static func pick_farthest_at(maze: Dictionary, pick_seed: int, kind: int, route:
 	var fallback := pick(maze, pick_seed, kind, route)
 	fallback.goal_farthest = false
 	return fallback
+
+
+## A seeded Fisher-Yates shuffle of `options` in place (integer draws only).
+static func _shuffle(options: Array[Vector2i], rng: RandomNumberGenerator) -> void:
+	for j in range(options.size() - 1, 0, -1):
+		var swap := rng.randi_range(0, j)
+		var tmp := options[j]
+		options[j] = options[swap]
+		options[swap] = tmp
 
 
 ## Puts a pick into the maze dictionary (start, goal, goal_steps, spawn_kind, spawn_rolled, diameter).

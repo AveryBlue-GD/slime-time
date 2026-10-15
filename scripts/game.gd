@@ -826,9 +826,7 @@ func fog_alpha_at(pos: Vector2) -> float:
 ## Packs one fog cell into RGBA8: r,g = last-lit time; b,a = (first-revealed time + 1) * 2 + is_wall,
 ## both in 1/FOG_TICKS second steps. b,a = 0 means never revealed. fog.gdshader decodes the same way.
 static func _fog_color(lit: float, revealed: float, wall: bool) -> Color:
-	var lit_ticks := clampi(int(lit * FOG_TICKS), 0, 65535)
-	var packed := (clampi(int(revealed * FOG_TICKS), 0, 32766) + 1) * 2 + (1 if wall else 0)
-	return Color8(lit_ticks >> 8, lit_ticks & 255, packed >> 8, packed & 255)
+	return _fog_color_ticks(int(lit * FOG_TICKS), int(revealed * FOG_TICKS), wall)
 
 
 ## Allocation-free field readers for per-cell loops (same packing as _fog_decode).
