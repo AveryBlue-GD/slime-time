@@ -1,0 +1,57 @@
+# Next session: start here
+
+Written 2026-10-16 at the end of a long session, for a fresh Claude Code window. Read this, then `CLAUDE.md`,
+`docs/handoff.md` and `docs/spring-cleaning/decisions.md` (owner decisions D1-D14).
+
+## Where things are
+- **Branch: `spring-cleaning`** (all work pushed). It is NOT merged into `v2` yet - the owner hasn't decided.
+  Tags: `spring-cleaning-baseline` (before), `spring-cleaning-final` (after the 6-phase cleanup), plus phase tags.
+- The spring-cleaning report is `docs/spring-cleaning/FINAL-REPORT.md` (removed / optimized / UI / platforms / issues).
+- Since that report, owner-requested changes on the same branch:
+  - D11 Descent cut from the randomizer for now (`Economy.DESCENT_ENABLED = false`, kept intact).
+  - D12 no upgrade recommendations anywhere (RECOMMENDED tag and "MORE SLIME = MORE" removed).
+  - D13 the level 1-2 tutorial chalice beacon removed (movement/jump glyph hints stay).
+  - D14 opaque skins = normal-mode unlocks and the default; jelly = hard-mode reward.
+  - Intro cutscene: crumbling, irregular floor holes in the crack and fall shots.
+  - A full "bouncy" ricochet was tried and REVERTED (owner: didn't feel good).
+
+## Open tests the owner is trying (both OFF by default, decide keep / tune / revert)
+| Test | Flag | Launch | Doc |
+|---|---|---|---|
+| Soft bounce (short stun, smooth slide along the wall on glancing hits) | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
+| Coin catch (coin tossed up, slime hops to catch, ~1 s dissolve, counter pops after) | `Economy.COIN_CATCH_TEST` | `./tools/play.sh --dev --coincatch` | `docs/spring-cleaning/coin-catch-test.md` |
+Both together: `./tools/play.sh --dev --coincatch --softbounce`. To keep one for everyone, set its constant to `true`
+(and then remove the flag plumbing / test-only paths as a follow-up).
+
+## Other open owner decisions
+- Merge `spring-cleaning` into `v2`?
+- Dense touch button stacks (pause, restart, key rows, shop) reach only 32-40 pt targets on phones.
+- Judge the high-refresh smoothing clips (`docs/spring-cleaning/perf/*.mp4`, local only).
+- Manual Mac fullscreen check: green button / F11, quit, relaunch.
+- Local videos (~105 MB of git-ignored mp4s) and purging old screenshots from git history: keep or remove?
+- Remaining affordability nudges (hub "!" on the hat wheel/cauldron, UPGRADES button after a dry-up): keep?
+- The disabled ticket workshop (`WORKSHOP_ENABLED = false`) and Descent (`DESCENT_ENABLED = false`) stay behind flags.
+
+## How the owner likes to work
+- "launch" = `./tools/play.sh` (REAL save); "launch in dev mode" = `./tools/play.sh --dev`; "story mode" =
+  `--story`; "autoplay" = `--autoplay [--speed=N]`. Run launches in the background and close the previous game first
+  (`pkill -f "Godot.app/Contents/MacOS/Godot.*--unlock-all"` closes only dev launches; a plain launch has no flags, so
+  check before killing - never close the owner's real-save game without saying so).
+- Big tasks: split across the agents in `.claude/agents/` with the best model per job (Opus for design, gameplay feel,
+  reviews, UI/perf/platform; Sonnet for docs/tests/small fixes; Haiku for plain test runs). Each change gets an
+  independent review/QA agent; nobody verifies their own work.
+- New gameplay ideas go behind a flag + debug launch flag first, so the owner can A/B them; revert cleanly if rejected.
+- Commit small steps with explicit `git add <paths>` and the Co-Authored-By line from the session's attribution
+  instruction; push to `origin spring-cleaning`. Pushing is fine (the owner asked for it throughout).
+- Keep replies short; the owner tests in the running game and gives feel-based feedback.
+
+## Gotchas learned the hard way
+- Never touch real saves: tests/tools use throwaway saves; the real one is
+  `~/Library/Application Support/SlimeTime_R1/save.cfg` (fresh-start epoch R1; old saves are never read).
+- `tools/screenshot.sh` clears `.screens/` - parallel agents should capture with `--write-movie` to their own paths.
+- `tools/job_timeout.pl` once overwrote the Godot binary when called with a missing argument (now guarded). If
+  `/Applications/Godot.app/Contents/MacOS/Godot --version` doesn't print `4.7.2.stable.official.ed1daf0bf`, reinstall
+  from https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip
+- Agents running `test_all.sh` at the same time as other agents can see flaky failures; rerun a failing suite alone.
+- Agents sometimes leave background shells/loops running; check `ps` for stray `zsh -c` / `sleep` loops at the end.
+- `./tools/test_all.sh` runs in parallel (~2 min, `-j N`, `JOB_TIMEOUT`); 79 suites, all passing at 2634f3a.

@@ -1,7 +1,8 @@
 # Docs index
 
 Living docs are here; finished reports and superseded plans are in [archive/](archive/). Start with [../CLAUDE.md](../CLAUDE.md)
-(rules, commands, read every session), then [handoff.md](handoff.md).
+(rules, commands, read every session), then [NEXT-SESSION.md](NEXT-SESSION.md) (where the last session left off) and
+[handoff.md](handoff.md).
 
 ## Living docs
 
