@@ -31,6 +31,8 @@ pixels actually drawn (text letters, icon pixels), measured from rendered frames
 | `UIKit.HUD_EDGE` (= `HUD.POD_MARGIN`) | **3** | in-level HUD pods and the hub's ticket pod |
 | `UIKit.TITLE_Y` | **2** | screen titles: line box (0, 2)..(320, 22), 16 px font, body rows 2..15, drips to 19 |
 
+Other locales: `UIKit.bottom_row_y()`, `UIKit.title_top()` / `title_bottom()`, `UIKit.back_size()` (section 10).
+
 - The bottom row: **BACK at (4, 164) 40x13** on every screen (`UIKit.add_back_button(root, on_press)`); the page's own
   action mirrors it at the right edge (HEAT, PAPER, HATS / SKINS / TRAILS, RESET PROGRESS) or sits centred (JELLY,
   RESET KEYS). The title's STORY button uses the same slot.
@@ -203,3 +205,54 @@ with the test overrides / `--platform=ios`); desktop and web use the whole view 
 
 - UI tweens animate modulate/alpha only. The goo wipe is a full-screen shader sheet that hides itself at the end. Any
   future positional tween must end on a whole pixel, at the same position the static layout uses.
+
+## 10. Per-locale sizes and text fitting (i18n, chunk G0)
+
+The constants above are the **English** numbers (also Indonesian, whose metrics are English's, and everything with the
+languages gate off). Every size that follows the text's height has a function in `UIKit` that reads
+`Language.metrics(current locale)` and returns **exactly the constant in English** (checked by
+`tests/test_ui_kit_locale.gd`; English title / settings / level select / upgrades / skins / key controls / hub and the
+BUY? confirm are byte-identical to HEAD in seeded `--write-movie` captures, gate off and on). New code uses the
+functions, never the constants, for anything text-tall.
+
+| Function | English | accented (es pt_BR fr de it pl tr ru, pseudo) | vi | cjk (zh_CN ja ko) | zh_TW | th | hi / ar |
+|---|---|---|---|---|---|---|---|
+| `button_h()` = `tab_h()` | 13 | 15 | 17 | 16 | 18 | 19 | 21 |
+| `button_v_margins()` (top / bottom) | 3 / 3 | 5 / 3 | 7 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 2 / 0 (ar 1 / 1) |
+| `pod_h()` / `pod_h2()` | 14 / 23 | 16 / 25 | 18 / 29 | 17 / 29 | 19 / 33 | 20 / 35 | 22 / 39 |
+| `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 19 / 20 / 19 |
+| `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 1 |
+| `title_top()` .. `title_bottom()` | 2..22 | 8..28 | 12..32 | 2..32 | 2..36 | 2..29 | 2..29 |
+| `bottom_row_y()` (ends on row 176) | 164 | 162 | 160 | 161 | 159 | 158 | 156 |
+| `choice_y()` / `choice_size()` | 153 / 84x13 | 151 / 84x15 | 149 / 84x17 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 145 / 84x21 |
+| `hit_pad()` (hit area stays >= 23) | 5 | 4 | 3 | 4 | 3 | 2 | 1 |
+| `stack_pitch(gap)` | `button_h()` + gap (16 with `GAP_S` in English) | | | | | | |
+
+- **Buttons and pods size themselves**: `make_theme` / `button_style` / `panel_style(true)` carry the locale's margins, so
+  every themed button is at least `button_h()` tall and every one-line pod `pod_h()`, with no per-screen work. With the
+  slimy font the 3 rows under the body stay (drips) and the accents' rows go on top (accents used to land on the goo
+  band of a 13 px button and vanish). A taller script's line box gets 1 / 1, moved down by its `ink_nudge` (Thai,
+  Devanagari: 1) so the letter body is centred (measured: BACK body 0 px off centre in th / hi, 0.5 in ja).
+- **What screens must do**: position from these functions (a 13 px literal or `UIKit.BUTTON_H` used as a pitch is a bug
+  in a taller locale). Gaps stay on the spacing scale (section 3); the extra height comes out of the pitch, never out of
+  a gap below 2 px.
+- **Widths from measured text**: `text_w(text, size)` (no RIDs for the slimy font, so measuring never moves GooBox
+  lumps), `button_w(text, min_w)` = max(min_w, text + 2 x `BUTTON_TEXT_PAD` 4), `button_size`, `back_size()` (BACK,
+  40 wide in English), `tab_widths(texts, min_widths, equal)` (English widths kept; once any tab grows, the whole group
+  takes the widest width, so the row stays symmetric) and `layout_row(controls, widths, from, y, gap, align)`.
+- **Fitting a text: `fit_text(control, box, max_size, max_lines, anchor)`**, in order: as is; a bigger box up to
+  `max_size` growing from `anchor` (centre growth on whole pixels); wrapped onto `max_lines` (word breaks, anywhere
+  for zh / ja, U+200B for Thai); the same font one crisp size down (16 px title -> 8 px; Devanagari 14 -> 12,
+  `Language.SMALLER_FONT_PX`; no smaller size exists for the slimy 8 px font, Arabic, Thai, CJK). Never truncates,
+  never scales by a fraction. `fits == false` means the layout must change (two pages / scroll).
+- **Budgets** (does it fit the safe 320x180?): `content_rect(gap)` (English (4, 26) 312x134, Devanagari (4, 33) 312x119: under the title box,
+  above the bottom row, inside `Platform.safe_rect()`), `stack_h / stack_fits / stack_pages(heights, gap, area_h)` for
+  stacked columns, `row_budget(area_h, row_h, gap)`, `column_budget(area_w, columns, gap)`,
+  `grid_budget(count, columns, area_h, cell_h, gap)` -> rows per page / pages. Switch to a two-page or scrolling
+  layout only when these say it does not fit (tall scripts), so English keeps its single page.
+- **Shared widgets already follow these**: the screen title (`setup_screen`), BACK (`add_back_button`, wider for
+  VOLTAR / ZURÜCK, taller and higher for tall scripts, always ending on row 176), `place_bottom_row` (bottom edge kept),
+  the BUY? confirm (BUY / BACK equal widths from the longer word, panel widened and re-centred, rows on `line_pitch()`),
+  the VOLUME box (`button_h()` tall), TouchButton hit areas (`hit_pad()`).
+- Arabic positions are still mirrored by Godot's RTL layout (absolute positions of children of a mirrored parent);
+  chunk I owns the RTL pass.

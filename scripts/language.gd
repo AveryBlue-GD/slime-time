@@ -77,18 +77,27 @@ const FALLBACK_ORDER := ["zh_CN", "zh_TW", "ja", "ko", "th", "hi", "ar"]
 ## - line_pitch / dense_pitch: the pitch of stacked one-line labels (UIKit.LINE_PITCH / DENSE_PITCH);
 ## - button_h: the smallest button that holds a line with its marks (UIKit.BUTTON_H);
 ## - title_line_h / title_above: the 16 px title's line box and the rows its accents draw above it
-##   (UIKit.TITLE_Y room; the title box is 20 px, so cjk / th / hi titles need chunk G's attention).
+##   (UIKit.title_top / title_h make the room: docs/ui-rules.md section 10);
+## - ink_nudge: rows a line's text box moves down (from centred) inside a button / pod so the
+##   script's letter body sits on the box's middle: Thai and Devanagari keep more empty room under
+##   the body than above it (measured on rendered BACK buttons, --write-movie: th 1 and hi 1 put the
+##   body 0 px off centre; the LANGUAGE screen's INK_NUDGE centres whole names, marks included).
 ## English ("latin") is exactly today's UIKit numbers; only the other groups add head room.
 const METRICS := {
-	"latin": {line_h = 7, ink_above = 0, ink_below = 2, line_pitch = 12, dense_pitch = 11, button_h = 13, title_line_h = 14, title_above = 0},
-	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 15, title_line_h = 14, title_above = 6},
-	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 17, title_line_h = 14, title_above = 10},
-	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0},
-	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0},
-	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0},
-	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0},
-	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0},
+	"latin": {line_h = 7, ink_above = 0, ink_below = 2, line_pitch = 12, dense_pitch = 11, button_h = 13, title_line_h = 14, title_above = 0, ink_nudge = 0},
+	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 15, title_line_h = 14, title_above = 6, ink_nudge = 0},
+	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 17, title_line_h = 14, title_above = 10, ink_nudge = 0},
+	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0, ink_nudge = 0},
+	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0, ink_nudge = 0},
+	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0, ink_nudge = 1},
+	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 1},
+	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 0},
 }
+## A smaller crisp size of a locale's script font (8 px text), for UIKit.fit_text's last step: only
+## where one exists. Devanagari reads at 12 (fonts.md 2.4: "12 minimum"); Noto Kufi Arabic merges
+## dots under 12, Thai has no tested smaller size, and the CJK subsets are the 10 / 12 px builds only
+## (Fusion 10 px draws dense Traditional characters wrongly). The slimy font has no size under 8.
+const SMALLER_FONT_PX := {"hi": 12}
 ## Locales whose text needs the accent head room (es, pt_BR, fr, de, it, pl, tr, ru); id uses no
 ## marks, so it keeps the English numbers.
 const ACCENTED := ["es", "pt_BR", "fr", "de", "it", "ru", "pl", "tr"]
@@ -329,6 +338,24 @@ func native_font(code: String, big := false) -> Font:
 		var variation := FontVariation.new()
 		variation.base_font = base
 		var chain: Array[Font] = [own]
+		variation.fallbacks = chain
+		_native[key] = variation
+	return _native[key]
+
+
+## The slimy 8 px font with `code`'s script at its smaller crisp size (SMALLER_FONT_PX), for text
+## that does not fit at the normal size (UIKit.fit_text); null where no smaller size exists. A
+## FontVariation: the slimy glyphs (Latin, digits) stay exactly as they are.
+func small_font(code: String) -> Font:
+	if not SMALLER_FONT_PX.has(code) or not SCRIPT_FONTS.has(code):
+		return null
+	var key := "%s:small" % code
+	if not _native.has(key):
+		var copy: FontFile = fallback_font(code).duplicate()
+		copy.fixed_size = SMALLER_FONT_PX[code]
+		var variation := FontVariation.new()
+		variation.base_font = load(FONT_PATH)
+		var chain: Array[Font] = [copy]
 		variation.fallbacks = chain
 		_native[key] = variation
 	return _native[key]

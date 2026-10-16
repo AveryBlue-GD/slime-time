@@ -356,6 +356,40 @@ gate-off pixel comparison and every suite. Waiting on fonts.md: D, the button he
 per-locale metrics in G, the CJK subset size (web weight) and whether Vietnamese / Thai need taller
 lines everywhere.
 
+## G: how screens use the helpers (chunk G0, 2026-10-17)
+
+G0 made the shared layer locale-aware (`scripts/ui/ui_kit.gd`, `Language.metrics` + `ink_nudge` +
+`SMALLER_FONT_PX` / `small_font` in `scripts/language.gd`, `TouchButton` hit pad); the rules and the full table are
+[ui-rules.md section 10](../ui-rules.md#10-per-locale-sizes-and-text-fitting-i18n-chunk-g0). Screen agents (G1-G4)
+work only in their own scripts and never edit `ui_kit.gd`:
+
+1. **Replace text-tall constants with the functions**: `UIKit.BUTTON_H` / `TAB_H` -> `button_h()` / `tab_h()`,
+   `POD_H` / `POD_H2` -> `pod_h()` / `pod_h2()`, `LINE_PITCH` / `DENSE_PITCH` / `LINE_SPACING` -> `line_pitch()` /
+   `dense_pitch()` / `line_spacing()`, `TITLE_Y + 20` -> `title_bottom()`, `BOTTOM_ROW_Y` -> `bottom_row_y()`,
+   `CHOICE_Y` / `CHOICE_SIZE` -> `choice_y()` / `choice_size()`, `BACK_SIZE` -> `back_size(text)`, a stack pitch
+   `13 + gap` -> `stack_pitch(gap)`, a text block height `7 + 5 + 7` -> `text_block_h(2)`. English returns the
+   constants, so a pure swap keeps English pixel-identical (prove it with a seeded capture vs HEAD).
+2. **Widths from measured text**: `button_w(text, english_w)`, `tab_widths(texts, english_widths)` + `layout_row` for
+   tab groups (equal widths once one grows), `back_size(text)` for BACK-like buttons (hat wheel close, map view BACK,
+   title STORY). Measure with `text_w` (no RIDs for the slimy font: English goo lumps unchanged).
+3. **A text that may not fit its box**: `fit_text(control, designed_rect, max_size, max_lines, anchor)` after the
+   control is in the themed tree; it grows, wraps, or steps the font down, never truncates. On `fits == false`
+   change the layout (step 4).
+4. **Fixed grids and stacked columns**: ask `grid_budget(count, columns, content_rect().size.y, cell_h, gap)` /
+   `stack_pages(heights, gap)`; one page -> the English layout; more -> a two-page (PREV / NEXT or tabs) or scrolling
+   layout, for the tall scripts only. Never shrink a gap below the spacing scale to squeeze a tall script in.
+5. **Positions follow heights**: buttons and pods now size themselves (theme margins), so anything placed under a
+   button / pod / title must use its real height (`button_h()`, `pod_h()`, `title_bottom()`), not 13 / 14 / 22.
+6. **Measure**: `tests/test_i18n_screens.gd` (now: `grew` ignores the locale's deliberate `grow_h()`), the seeded
+   capture driver approach of G0 (backdrop hidden, drip seed pinned, `--write-movie` to /tmp), ink offsets
+   before / after. Arabic positions stay mirrored until chunk I.
+
+G0 numbers (screens suite, open findings, HEAD -> G0): en 0 -> 0, es 21 -> 22, pt_BR 29 -> 31, fr 40 -> 42, de 26 -> 29,
+it 18 -> 19, ru 13 -> 14, pl 15 -> 16, tr 6 -> 7, ja 316 -> 171, ko 308 -> 157, zh_CN 304 -> 155, zh_TW 368 -> 222,
+th 396 -> 241, vi 6 -> 30, id 7 -> 7, ar 738 -> 602, hi 441 -> 292, pseudo 74 -> 75; total 3126 -> 2132 (overlap
+1594 -> 1633, grew 1024 -> 172, offscreen 508 -> 327). The Latin / vi additions are the accent room now made visible:
+titles 6 / 10 px lower and 15 / 17 px buttons that the screens still place on English pitches.
+
 ## 11. Owner answers (2026-10-16)
 
 - Arabic: **mirror the screen layouts** too (full RTL: menus, tabs, back buttons and HUD sides flip), not only RTL text. Chunk I does the mirroring.

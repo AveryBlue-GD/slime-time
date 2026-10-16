@@ -3,7 +3,7 @@ extends Button
 
 ## The menu button (UIKit.make_button). While touch is in use (UIKit.touch_active: the last pointer
 ## event was a touch, or --touch) its hit area is bigger than its art: the drawn rect grown by
-## UIKit.HIT_PAD on every side (a 13 px button becomes 23 px, about 44 pt on a phone). The grown margin is shared fairly: a point in it belongs to the nearest touch
+## UIKit.hit_pad() on every side (HIT_PAD in English: a 13 px button becomes 23 px, about 44 pt on a phone; a taller script's taller button grows less, to the same 23). The grown margin is shared fairly: a point in it belongs to the nearest touch
 ## target (UIKit.TOUCH_GROUP on the same canvas layer, ties to the lower instance id), and never to
 ## this button when it lies inside another target's drawn rect. So hit areas never overlap and a tap
 ## between two buttons goes to the closer one. Targets kept out of focus by UIKit.lock_focus (behind
@@ -26,10 +26,10 @@ func _has_point(point: Vector2) -> bool:
 
 
 ## True when a touch at `at` (canvas coordinates of this button's layer), outside the drawn rect,
-## belongs to this button: within HIT_PAD of it and nearer to it than to any other target.
+## belongs to this button: within hit_pad() of it and nearer to it than to any other target.
 func claims(at: Vector2) -> bool:
 	var mine := global_rect()
-	if not mine.grow(UIKit.HIT_PAD).has_point(at):
+	if not mine.grow(UIKit.hit_pad()).has_point(at):
 		return false
 	var safe := Platform.safe_rect()
 	if safe != Platform.FULL_VIEW and not safe.has_point(at):

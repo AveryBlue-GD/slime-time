@@ -67,6 +67,10 @@ const HIT_PAD := 5
 const TOUCH_GROUP := "ui_touch_targets"
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
+## Text side margin inside a button (its content margin): a button sized from its text is text + 2x this.
+const BUTTON_TEXT_PAD := 4
+## The Language autoload's script (its static tables: metrics, fonts).
+const Lang := preload("res://scripts/language.gd")
 
 ## True while the player is using touch: the last pointer event was a screen touch or drag (or the
 ## mouse event Godot makes from one); a real mouse turns it off. See note_pointer / touch_active.
@@ -74,6 +78,432 @@ static var touch_in_use := false
 static var _text_material: ShaderMaterial
 static var _tabular_font: FontFile
 static var _drip_scene := -1
+static var _metrics_code := ""
+static var _metrics: Dictionary = {}
+
+
+# ---- Per-locale sizes (docs/ui-rules.md section 10). The constants above are the English (and
+# Indonesian, and gate-off) numbers; every size that follows the text's height comes from these
+# functions, which read Language.metrics(current locale) and return exactly the constant for English.
+
+## The locale whose text is on screen ("en" with the gate off or without the Language autoload).
+static func locale() -> String:
+	var tree := Engine.get_main_loop() as SceneTree
+	var language: Node = tree.root.get_node_or_null("Language") if tree else null
+	if language == null or not language.get("active"):
+		return Lang.SOURCE_LOCALE
+	return language.get("locale")
+
+
+## Language.metrics(locale()): line_h, ink_above, ink_below, line_pitch, dense_pitch, button_h,
+## title_line_h, title_above, ink_nudge, font_px, font_big_px.
+static func metrics() -> Dictionary:
+	var code := locale()
+	if code != _metrics_code or _metrics.is_empty():
+		_metrics_code = code
+		_metrics = Lang.metrics(code)
+	return _metrics
+
+
+## True when the current script's line box is taller than the slimy font's 7 px body (CJK, Thai,
+## Devanagari, Arabic): its buttons, pods and lines grow, and stacked layouts may need two pages.
+static func tall_script() -> bool:
+	return int(metrics().line_h) > TEXT_BODY
+
+
+## One line's box (7 for the slimy font; marks above it and drips below are drawn outside it).
+static func line_h() -> int:
+	return int(metrics().line_h)
+
+
+## Pitch of stacked one-line labels (LINE_PITCH in English).
+static func line_pitch() -> int:
+	return int(metrics().line_pitch)
+
+
+## Pitch of dense lists (DENSE_PITCH in English: coin board, map tiles).
+static func dense_pitch() -> int:
+	return int(metrics().dense_pitch)
+
+
+## The Label line_spacing that gives multi-line labels line_pitch() (LINE_SPACING in English).
+static func line_spacing() -> int:
+	return line_pitch() - line_h()
+
+
+## Height of `lines` lines of 8 px text as a Label lays them out (the line boxes and the spacing
+## between them; drips / marks hang outside): 7 for one English line, 19 for two.
+static func text_block_h(lines: int) -> int:
+	return lines * line_h() + maxi(lines - 1, 0) * line_spacing()
+
+
+## The standard button height (BUTTON_H in English; 15 with accents, 17 Vietnamese, 16 CJK, 18 zh_TW,
+## 19 Thai, 21 Devanagari / Arabic). The theme's button margins make every button at least this tall.
+static func button_h() -> int:
+	return maxi(BUTTON_H, int(metrics().button_h))
+
+
+## How much taller than in English a button / pod / tab is in the current locale.
+static func grow_h() -> int:
+	return button_h() - BUTTON_H
+
+
+## Tab height (TAB_H in English).
+static func tab_h() -> int:
+	return TAB_H + grow_h()
+
+
+## One-line pod height (POD_H in English); two-line pods: pod_h2.
+static func pod_h() -> int:
+	return POD_H + grow_h()
+
+
+static func pod_h2() -> int:
+	return pod_h() + line_pitch() - (POD_H + LINE_PITCH - POD_H2)
+
+
+## Top of the bottom-row buttons: they keep their bottom edge (row 176) whatever their height.
+static func bottom_row_y() -> int:
+	return BOTTOM_ROW_Y + BUTTON_H - button_h()
+
+
+## The result / summary choice row's size and top (same bottom edge as in English).
+static func choice_size() -> Vector2:
+	return Vector2(CHOICE_SIZE.x, button_h())
+
+
+static func choice_y() -> int:
+	return CHOICE_Y + BUTTON_H - button_h()
+
+
+## Pitch of a stack of buttons `gap` apart (16 in English with GAP_S).
+static func stack_pitch(gap := GAP_S) -> int:
+	return button_h() + gap
+
+
+## The title's line box: top (TITLE_Y in English, lower by the accents' head room), height (20 in
+## English: 14 body + 4 drips + 2 shadow; a taller script's title: its line box + the 2 px shadow, its
+## glyphs have no drips and the box holds their descent) and bottom (22 in English: where a page's
+## content may start).
+static func title_top() -> int:
+	return TITLE_Y + int(metrics().title_above)
+
+
+static func title_h() -> int:
+	var line := int(metrics().title_line_h)
+	return 20 if line <= 14 else line + 2
+
+
+static func title_bottom() -> int:
+	return title_top() + title_h()
+
+
+## How far a TouchButton's hit area grows on each side while touch is in use: HIT_PAD in English
+## (13 -> 23 px); a taller button grows less, so its hit area is still 23 px (at least 1 px more).
+static func hit_pad() -> int:
+	return maxi(1, ceili((BUTTON_H + 2 * HIT_PAD - button_h()) / 2.0))
+
+
+## The theme's top / bottom content margins for buttons (x = top, y = bottom): a button's minimum
+## height is its line box plus these, so they make it exactly button_h(). English 3 / 3. With the
+## slimy font the 3 rows under the body stay (drips) and the accents' rows go on top; a taller
+## script's line box (which has its own empty rows) gets 1 / 1, moved down by its ink_nudge.
+static func button_v_margins() -> Vector2i:
+	return _v_margins(button_h(), line_h())
+
+
+## The same for the HUD / hub pods (an 8 px icon or a line, POD_H tall in English: 3 / 3).
+static func pod_v_margins() -> Vector2i:
+	return _v_margins(pod_h(), maxi(8, line_h()))
+
+
+static func _v_margins(total: int, content: int) -> Vector2i:
+	var extra := total - content
+	if line_h() <= TEXT_BODY:
+		return Vector2i(extra - 3, 3)
+	# (a negative content margin means "the style's default" to Godot: the nudge stops at 0 below)
+	var top := mini(extra, extra / 2 + int(metrics().get("ink_nudge", 0)))
+	return Vector2i(top, extra - top)
+
+
+# ---- Measuring and fitting text (docs/ui-rules.md section 10) ----
+
+## The font a Label / Button of `font_size` uses (pixel.fnt, or pixel_big.fnt for FONT_BIG), with
+## the current locale's script fallback on it.
+static func font_for(font_size := FONT) -> Font:
+	return load(Lang.FONT_BIG_PATH if font_size == FONT_BIG else Lang.FONT_PATH)
+
+
+## Width of the widest line of `text` (whole pixels, rounded up), in `font` (default: font_for(size)).
+## The slimy font alone (no script fallback: English, Latin, Cyrillic) is a BMFont without kerning, so
+## its widths are summed glyph advances: no shaped-text buffer is made, so measuring allocates no
+## RenderingServer / TextServer ids (GooBox seeds each box's lumps from its canvas item id; an extra
+## id would move every later button's lumps, and English must stay pixel-identical).
+static func text_w(text: String, font_size := FONT, font: Font = null) -> int:
+	var f := font if font else font_for(font_size)
+	var widest := 0.0
+	var plain := f.fallbacks.is_empty() and f is FontFile
+	for line in text.split("\n"):
+		var w := 0.0
+		if plain:
+			for i in line.length():
+				w += f.get_char_size(line.unicode_at(i), font_size).x
+		else:
+			w = f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		widest = maxf(widest, w)
+	return ceili(widest)
+
+
+## A button's width for `text`: `min_w`, or the text plus BUTTON_TEXT_PAD on each side when that is
+## wider (so the text is centred on a whole pixel). English texts keep their min_w.
+static func button_w(text: String, min_w: int, font_size := FONT, extra := 0) -> int:
+	return maxi(min_w, text_w(text, font_size) + 2 * BUTTON_TEXT_PAD + extra)
+
+
+## A one-line button's size for `text` (button_w x button_h).
+static func button_size(text: String, min_w: int, font_size := FONT) -> Vector2:
+	return Vector2(button_w(text, min_w, font_size), button_h())
+
+
+## BACK's size: BACK_SIZE in English, wider for a longer word (VOLTAR, ZURÜCK...), button_h() tall.
+static func back_size(text := "") -> Vector2:
+	return button_size(text if text != "" else Loc.t("common.back", "BACK"), int(BACK_SIZE.x))
+
+
+## Widths for a group of tabs (or any one-of-many row) from their measured texts: each at least its
+## English width (`min_widths`, one per tab, or one int for all). When any text needs more and
+## `equal` is on, every tab takes the widest width, so the row stays symmetric. English: unchanged.
+static func tab_widths(texts: Array, min_widths: Variant = 40, equal := true) -> Array[int]:
+	var out: Array[int] = []
+	var grew := false
+	for i in texts.size():
+		var min_w: int = min_widths[i] if min_widths is Array else int(min_widths)
+		var w := button_w(String(texts[i]), min_w)
+		grew = grew or w > min_w
+		out.append(w)
+	if equal and grew:
+		var widest: int = out.max()
+		for i in out.size():
+			out[i] = widest
+	return out
+
+
+## Lays `controls` out in a row `gap` apart, sized `widths` x tab_h(), starting at x `from`
+## (align -1), ending at `from` (align 1), or centred on `from` (align 0). Returns the row's rect.
+static func layout_row(controls: Array, widths: Array, from: float, y: float, gap := GAP_M, align := -1) -> Rect2:
+	var total := 0
+	for w: int in widths:
+		total += w
+	total += gap * maxi(controls.size() - 1, 0)
+	var x := from if align < 0 else (from - total if align > 0 else from - roundf(total / 2.0))
+	var h := tab_h()
+	for i in controls.size():
+		var control: Control = controls[i]
+		control.custom_minimum_size = Vector2(widths[i], h)
+		control.size = control.custom_minimum_size
+		control.position = Vector2(x, y)
+		x += widths[i] + gap
+	return Rect2(from if align < 0 else x - gap - total, y, total, h)
+
+
+## Lines `text` takes when wrapped to `width` px in `font` at `font_size` (break at spaces, U+200B,
+## or anywhere for Chinese / Japanese, which have no spaces).
+static func wrapped_lines(text: String, width: float, font_size := FONT, font: Font = null) -> int:
+	var paragraph := TextParagraph.new()
+	paragraph.add_string(text, font if font else font_for(font_size), font_size)
+	paragraph.width = width
+	paragraph.break_flags = TextServer.BREAK_MANDATORY | _wrap_break_flag()
+	return paragraph.get_line_count()
+
+
+## The autowrap mode for the current locale: arbitrary for Chinese / Japanese (no spaces), word
+## otherwise (Thai translations carry U+200B between words).
+static func autowrap_mode() -> TextServer.AutowrapMode:
+	return TextServer.AUTOWRAP_ARBITRARY if locale() in ["zh_CN", "zh_TW", "ja"] else TextServer.AUTOWRAP_WORD_SMART
+
+
+static func _wrap_break_flag() -> int:
+	return TextServer.BREAK_GRAPHEME_BOUND if autowrap_mode() == TextServer.AUTOWRAP_ARBITRARY else TextServer.BREAK_WORD_BOUND
+
+
+## Fits a Label's or Button's text into `box` (its designed rect, in its parent), in this order (never
+## truncating, never scaling by a fraction; docs/ui-rules.md section 10):
+## 1. as it is, if it fits the box;
+## 2. a wider / taller box, up to `max_size` (a 0 component = the box's), growing from its `anchor`
+##    (x: -1 keeps the left edge, 0 the centre (an odd growth shifts the box by the lower half, so it
+##    stays on whole pixels), 1 the right edge; y the same for top / middle / bottom);
+## 3. wrapped onto up to `max_lines` lines, if `max_size` holds them (word breaks; anywhere for Chinese
+##    / Japanese; Thai at its U+200B);
+## 4. the same font one crisp size down: a 16 px title in the 8 px font, or a script's smaller size
+##    where one exists (Language.SMALLER_FONT_PX: Devanagari 14 -> 12), again growing / wrapping.
+## Places the control (position and size). Returns {fits, step ("as is", "grow", "wrap", "smaller"),
+## size, lines, font_size, wrap}. When nothing fits, fits is false and the text is never cut (the box
+## is the largest allowed; a Label may still widen itself to its text): switch that screen to a
+## two-page or scrolling layout (stack_pages / grid_budget). Call it once the control is in the themed
+## tree (it measures with the control's own font, size, margins and line spacing).
+static func fit_text(control: Control, box: Rect2, max_size := Vector2.ZERO, max_lines := 2, anchor := Vector2i(0, 0)) -> Dictionary:
+	var text: String = control.get("text")
+	var start := box.size
+	var limit := Vector2(start.x if max_size.x <= 0 else maxf(max_size.x, start.x), start.y if max_size.y <= 0 else maxf(max_size.y, start.y))
+	var pad := _text_pads(control)
+	var font_size: int = control.get_theme_font_size("font_size")
+	var font: Font = control.get_theme_font("font")
+	var result := _try_fit(control, text, font, font_size, start, limit, pad, max_lines)
+	if not result.fits:
+		var smaller := _smaller_font(font_size)
+		if not smaller.is_empty():
+			var tried := _try_fit(control, text, smaller.font, smaller.size, start, limit, pad, max_lines)
+			if tried.fits:
+				control.add_theme_font_override("font", smaller.font)
+				control.add_theme_font_size_override("font_size", smaller.size)
+				tried.step = "smaller"
+				result = tried
+	_apply_fit(control, result, box, anchor)
+	return result
+
+
+## {font, size} one crisp step down from `font_size` in the current locale, or {} if none.
+static func _smaller_font(font_size: int) -> Dictionary:
+	if font_size == FONT_BIG:
+		return {font = font_for(FONT), size = FONT}
+	var tree := Engine.get_main_loop() as SceneTree
+	var language: Node = tree.root.get_node_or_null("Language") if tree else null
+	if font_size == FONT and language and language.has_method("small_font"):
+		var small: Font = language.small_font(locale())
+		if small:
+			return {font = small, size = FONT}
+	return {}
+
+
+## The room a control's box keeps around its text (x = left + right, y = top + bottom).
+static func _text_pads(control: Control) -> Vector2:
+	var style: StyleBox = control.get_theme_stylebox("normal")
+	if style == null:
+		return Vector2.ZERO
+	return Vector2(style.get_margin(SIDE_LEFT) + style.get_margin(SIDE_RIGHT), style.get_margin(SIDE_TOP) + style.get_margin(SIDE_BOTTOM))
+
+
+static func _try_fit(control: Control, text: String, font: Font, font_size: int, start: Vector2, limit: Vector2,
+		pad: Vector2, max_lines: int) -> Dictionary:
+	var lines := text.count("\n") + 1
+	var spacing: int = control.get_theme_constant("line_spacing") if control is Label else 0
+	var line := font.get_height(font_size)
+	var one_w := float(text_w(text, font_size, font))
+	var need := Vector2(ceilf(one_w + pad.x), ceilf(lines * line + (lines - 1) * spacing + pad.y))
+	var out := {fits = false, step = "as is", size = start, lines = lines, font_size = font_size, wrap = false}
+	if need.x <= start.x and need.y <= start.y:
+		out.fits = true
+		return out
+	if need.x <= limit.x and need.y <= limit.y:
+		out.fits = true
+		out.step = "grow"
+		out.size = Vector2(maxf(start.x, need.x), maxf(start.y, need.y))
+		return out
+	# Wrap: the widest box allowed, as few lines as fit.
+	if max_lines > lines and limit.x - pad.x > 0:
+		var wrapped := wrapped_lines(text, limit.x - pad.x, font_size, font)
+		var wrap_h := ceilf(wrapped * line + (wrapped - 1) * spacing + pad.y)
+		if wrapped <= max_lines and wrap_h <= limit.y:
+			out.fits = true
+			out.step = "wrap"
+			out.wrap = true
+			out.lines = wrapped
+			out.size = Vector2(maxf(start.x, minf(limit.x, need.x)), maxf(start.y, wrap_h))
+			return out
+	out.size = Vector2(minf(limit.x, maxf(start.x, need.x)), minf(limit.y, maxf(start.y, need.y)))
+	return out
+
+
+static func _apply_fit(control: Control, fit: Dictionary, box: Rect2, anchor: Vector2i) -> void:
+	if fit.wrap:
+		if control is Label:
+			(control as Label).autowrap_mode = autowrap_mode()
+		elif control is Button:
+			(control as Button).autowrap_mode = autowrap_mode()
+	var size: Vector2 = fit.size
+	var grow := size - box.size
+	var pos := box.position + Vector2(_anchor_shift(grow.x, anchor.x), _anchor_shift(grow.y, anchor.y))
+	if control is Button:
+		control.custom_minimum_size = Vector2(maxf(control.custom_minimum_size.x, size.x) if grow.x > 0 else minf(control.custom_minimum_size.x, size.x),
+			maxf(control.custom_minimum_size.y, size.y) if grow.y > 0 else minf(control.custom_minimum_size.y, size.y))
+	control.position = pos
+	control.size = size
+
+
+static func _anchor_shift(grow: float, anchor: int) -> float:
+	if anchor < 0 or grow <= 0:
+		return 0.0
+	return -grow if anchor > 0 else -floorf(grow / 2.0)
+
+
+# ---- Layout budgets: does a layout fit the 320x180 safe area? (docs/ui-rules.md section 10) ----
+
+## The safe 320x180 area for content (Platform.safe_rect: the whole view on desktop / web).
+static func safe_rect() -> Rect2:
+	return Platform.safe_rect()
+
+
+## A menu page's content area: under the title box (+ `gap`), above the bottom row (- `gap`), EDGE
+## in from the sides, inside the safe area. English: (4, 26)..(316, 160) with GAP_M.
+static func content_rect(gap := GAP_M, title := true) -> Rect2:
+	var top := (title_bottom() if title else EDGE) + gap
+	var bottom := bottom_row_y() - gap
+	var area := Rect2(EDGE, top, SCREEN.x - 2 * EDGE, bottom - top)
+	return area.intersection(safe_rect())
+
+
+## Height of a column of items `heights` stacked `gap` apart.
+static func stack_h(heights: Array, gap: float) -> float:
+	var h := 0.0
+	for item_h: float in heights:
+		h += item_h
+	return h + gap * maxi(heights.size() - 1, 0)
+
+
+## True when the stacked column fits `area_h` (default: content_rect's height).
+static func stack_fits(heights: Array, gap: float, area_h := -1.0) -> bool:
+	return stack_h(heights, gap) <= (content_rect().size.y if area_h < 0 else area_h)
+
+
+## Splits a stacked column into pages that each fit `area_h` (keeping the order; an item taller than
+## the area gets a page of its own). One page = it fits as it is. Returns arrays of item indexes.
+static func stack_pages(heights: Array, gap: float, area_h := -1.0) -> Array[Array]:
+	var room := content_rect().size.y if area_h < 0 else area_h
+	var pages: Array[Array] = [[]]
+	var used := 0.0
+	for i in heights.size():
+		var h: float = heights[i]
+		var add := h if pages[-1].is_empty() else gap + h
+		if not pages[-1].is_empty() and used + add > room:
+			pages.append([])
+			add = h
+			used = 0.0
+		pages[-1].append(i)
+		used += add
+	return pages
+
+
+## Rows of `row_h` (default button_h()) `gap` apart that fit in `area_h`.
+static func row_budget(area_h: float, row_h := -1.0, gap := GAP_S) -> int:
+	var h := float(button_h()) if row_h < 0 else row_h
+	return maxi(0, floori((area_h + gap) / (h + gap)))
+
+
+## The width each of `columns` columns gets in `area_w` with `gap` between them (whole pixels).
+static func column_budget(area_w: float, columns: int, gap := GAP_L) -> int:
+	return floori((area_w - gap * (columns - 1)) / float(columns))
+
+
+## A fixed grid of `count` cells, `columns` wide, cells `cell_h` tall (default button_h()) and `gap`
+## apart, in `area_h`: {rows (needed), rows_per_page (fit), pages, pitch, h (one page's height),
+## fits (one page)}. Screens use it to page a grid that a taller script no longer fits.
+static func grid_budget(count: int, columns: int, area_h: float, cell_h := -1.0, gap := GAP_S) -> Dictionary:
+	var h := float(button_h()) if cell_h < 0 else cell_h
+	var rows := ceili(count / float(maxi(columns, 1)))
+	var per_page := maxi(1, row_budget(area_h, h, gap))
+	var shown := mini(rows, per_page)
+	return {rows = rows, rows_per_page = per_page, pages = ceili(rows / float(per_page)), pitch = h + gap,
+		h = shown * h + maxi(shown - 1, 0) * gap, fits = rows <= per_page}
 
 
 static func make_theme() -> Theme:
@@ -99,8 +529,8 @@ static func make_theme() -> Theme:
 	theme.set_constant("h_separation", "CheckBox", 4)
 	theme.set_color("font_color", "Label", TEXT)
 	# The font's line box is only the 7 px letter body (the drips hang below it), so lines are
-	# spaced by the drips' 2 px plus the usual gap.
-	theme.set_constant("line_spacing", "Label", LINE_SPACING)
+	# spaced by the drips' 2 px plus the usual gap (a taller script: its own line_pitch, line_spacing()).
+	theme.set_constant("line_spacing", "Label", line_spacing())
 	# A 1 px drop shadow keeps text readable over the drifting backdrop.
 	theme.set_color("font_shadow_color", "Label", Color(BG, 0.9))
 	theme.set_constant("shadow_offset_x", "Label", 1)
@@ -136,9 +566,14 @@ static func make_theme() -> Theme:
 
 
 ## A goo-framed button ("normal", "hover", "pressed" or "disabled"; see GooBox). Hover brightens
-## the goo and pressing darkens the face; the text never moves, so it stays clear of the goo.
+## the goo and pressing darkens the face; the text never moves, so it stays clear of the goo. Its
+## top / bottom content margins (button_v_margins) make a one-line button button_h() tall.
 static func button_style(state: String) -> StyleBox:
-	return GooBox.make_button(state)
+	var box := GooBox.make_button(state)
+	var margins := button_v_margins()
+	box.content_margin_top = margins.x
+	box.content_margin_bottom = margins.y
+	return box
 
 
 ## The goo-framed panel behind groups of buttons and messages (`hud` = the plain, lighter HUD pod).
@@ -157,8 +592,9 @@ static func panel_style(hud := false) -> StyleBox:
 	box.texture_margin_bottom = margin
 	box.content_margin_left = 4  # the frame is two px thick: dark outline + light rim (+ highlight on top)
 	box.content_margin_right = 4
-	box.content_margin_top = 3
-	box.content_margin_bottom = 3
+	var margins := pod_v_margins()  # 3 / 3 in English: a one-line pod is pod_h() tall
+	box.content_margin_top = margins.x
+	box.content_margin_bottom = margins.y
 	return box
 
 
@@ -184,30 +620,41 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	blocker.visible = false
 	parent.add_child(blocker)
 	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var panel := add_panel(parent, Rect2(86, 60, 148, 58))
+	# English: a 148x58 panel at (86, 60): text at 8, price row at 20, BUY / BACK (48x13, 12 apart) at
+	# 36, 9 px under them. A longer BUY / BACK widens both buttons alike (the pair stays symmetric) and
+	# the panel with them; a taller script moves the rows by its line pitch / button height.
+	# i18n: max 40px (button 48 wide, 4 px margins), 1 line
+	var buy_text := Loc.t("common.buy", "BUY")
+	# i18n: max 40px, 1 line
+	var back_text := Loc.t("common.back", "BACK")
+	var button_w: int = tab_widths([buy_text, back_text], 48, true).max()
+	var panel_w := maxi(148, 2 * button_w + GAP_XL + 2 * 20)
+	var line_box := line_h() + TEXT_DRIP + 1
+	var price_y := 8 + line_pitch()
+	var buttons_y := price_y + line_pitch() + GAP_M
+	var panel_h := buttons_y + button_h() + 9
+	var panel := add_panel(parent, Rect2(center_x(panel_w), 60 - floori((panel_h - 58) / 2.0), panel_w, panel_h))
 	panel.visible = false
 	var label := make_label("", FONT, TEXT)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.position = Vector2(0, 8)
-	label.size = Vector2(148, 10)
+	label.size = Vector2(panel_w, line_box)
 	panel.add_child(label)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 2)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.position = Vector2(0, 20)
-	row.size = Vector2(148, 10)
+	row.position = Vector2(0, price_y)
+	row.size = Vector2(panel_w, line_box)
 	panel.add_child(row)
 	var price := make_label("", FONT, price_tint)
 	row.add_child(price)
 	row.add_child(make_icon("ticket", Color.WHITE))
-	# i18n: max 40px (button 48 wide, 4 px margins), 1 line
-	var buy := make_button(Loc.t("common.buy", "BUY"), on_buy, Vector2(48, BUTTON_H))
-	buy.position = Vector2(20, 36)
+	var buy := make_button(buy_text, on_buy, Vector2(button_w, button_h()))
+	buy.position = Vector2(center_x(2 * button_w + GAP_XL, 0, panel_w), buttons_y)
 	panel.add_child(buy)
-	# i18n: max 40px, 1 line
-	var back := make_button(Loc.t("common.back", "BACK"), on_back, Vector2(48, BUTTON_H))
-	back.position = Vector2(buy.position.x + 48 + GAP_XL, 36)
+	var back := make_button(back_text, on_back, Vector2(button_w, button_h()))
+	back.position = Vector2(buy.position.x + button_w + GAP_XL, buttons_y)
 	panel.add_child(back)
 	return {blocker = blocker, panel = panel, label = label, price = price, buy = buy, back = back}
 
@@ -259,8 +706,8 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		root.add_child(label)
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-		label.offset_top = TITLE_Y
-		label.offset_bottom = TITLE_Y + 20
+		label.offset_top = title_top()  # TITLE_Y / TITLE_Y + 20 in English
+		label.offset_bottom = title_bottom()
 		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 2)
@@ -340,21 +787,25 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 	return button
 
 
-## Bottom-left BACK button that returns to the hub (BACK_SIZE at EDGE, BOTTOM_ROW_Y on every screen).
+## Bottom-left BACK button that returns to the hub (BACK_SIZE at EDGE, BOTTOM_ROW_Y on every screen in
+## English; back_size() / bottom_row_y() otherwise: wider for a longer word, taller for a taller
+## script, always ending on row 176).
 static func add_back_button(root: Control, on_press := Callable()) -> Button:
 	var press := on_press if on_press.is_valid() else func() -> void: go(root.get_tree(), HUB_SCENE)
 	# i18n: max 32px (BACK_SIZE 40 wide, 4 px margins), 1 line; on every screen
-	var button := make_button(Loc.t("common.back", "BACK"), press, BACK_SIZE)
+	var text := Loc.t("common.back", "BACK")
+	var button := make_button(text, press, back_size(text))
 	root.add_child(button)
 	place_bottom_row(button, -1)
 	return button
 
 
-## Puts `control` (sized) on the bottom row: side -1 = left edge, 1 = right edge, 0 = centered.
+## Puts `control` (sized) on the bottom row: side -1 = left edge, 1 = right edge, 0 = centered. Its
+## bottom edge is the bottom row's (row 176), so a taller control starts higher (BOTTOM_ROW_Y for 13).
 static func place_bottom_row(control: Control, side: int) -> void:
 	var w := control.size.x
 	var x := float(EDGE) if side < 0 else (SCREEN.x - EDGE - w if side > 0 else center_x(w))
-	control.position = Vector2(x, BOTTOM_ROW_Y)
+	control.position = Vector2(x, BOTTOM_ROW_Y + BUTTON_H - maxf(control.size.y, BUTTON_H))
 
 
 ## The x that centers a box `width` wide on the screen (or in `span` starting at `from`), on a
@@ -463,8 +914,11 @@ static func volume_slider_width(node: Control, total: float) -> float:
 static func make_volume_slider(width := 90.0) -> PanelContainer:
 	var box := PanelContainer.new()
 	var style := GooBox.make_button("normal")
-	style.content_margin_top = 2  # the 10 px slider fills the face between the goo bands
-	style.content_margin_bottom = 1
+	# The 10 px slider fills the face between the goo bands (2 / 1 in English: 13 tall); the box is
+	# button_h() tall like its neighbours, the label's taller line / accents taking the extra rows.
+	var extra := button_h() - maxi(10, line_h())
+	style.content_margin_top = maxi(1, extra - 1)
+	style.content_margin_bottom = extra - maxi(1, extra - 1)
 	style.content_margin_left = 6  # clear of the goo at the sides
 	style.content_margin_right = 6
 	box.add_theme_stylebox_override("panel", style)

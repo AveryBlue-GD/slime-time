@@ -10,25 +10,25 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | locale | budget open | budget accepted | screens open | screens accepted |
 |---|---|---|---|---|
 | en | 0 | 3 | 0 | 67 |
-| es | 4 | 0 | 21 | 66 |
-| pt_BR | 4 | 0 | 29 | 66 |
-| fr | 2 | 0 | 40 | 65 |
-| de | 2 | 2 | 26 | 66 |
-| it | 2 | 0 | 18 | 66 |
-| ru | 1 | 0 | 13 | 65 |
-| pl | 1 | 0 | 15 | 64 |
-| tr | 1 | 0 | 6 | 65 |
-| ja | 0 | 0 | 316 | 63 |
-| ko | 0 | 0 | 308 | 65 |
-| zh_CN | 0 | 0 | 304 | 62 |
-| zh_TW | 0 | 0 | 368 | 64 |
-| th | 0 | 0 | 396 | 63 |
-| vi | 0 | 1 | 6 | 66 |
+| es | 4 | 0 | 22 | 66 |
+| pt_BR | 4 | 0 | 31 | 66 |
+| fr | 2 | 0 | 42 | 65 |
+| de | 2 | 2 | 29 | 66 |
+| it | 2 | 0 | 19 | 66 |
+| ru | 1 | 0 | 14 | 65 |
+| pl | 1 | 0 | 16 | 64 |
+| tr | 1 | 0 | 7 | 65 |
+| ja | 0 | 0 | 171 | 63 |
+| ko | 0 | 0 | 157 | 65 |
+| zh_CN | 0 | 0 | 155 | 62 |
+| zh_TW | 0 | 0 | 222 | 64 |
+| th | 0 | 0 | 241 | 63 |
+| vi | 0 | 1 | 30 | 65 |
 | id | 3 | 0 | 7 | 66 |
-| ar | 0 | 0 | 738 | 9 |
-| hi | 0 | 0 | 441 | 62 |
-| pseudo | 38 | 3 | 74 | 66 |
-| **total** | 58 | 9 | 3126 | 1176 |
+| ar | 0 | 0 | 602 | 9 |
+| hi | 0 | 0 | 292 | 62 |
+| pseudo | 38 | 3 | 75 | 66 |
+| **total** | 58 | 9 | 2132 | 1175 |
 
 ## budget: what was measured
 
@@ -94,7 +94,7 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 
-## screens: open (678 places)
+## screens: open (588 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
@@ -110,31 +110,28 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | descent boon card | boon.greedy.desc_1 | +1 TIX/FLOOR | offscreen | 1: ar | ar +1 تذكرة/طابق: 77x19 vs 96x19 |
 | descent boon card | boon.greedy.desc_1 | +1 TIX/FLOOR | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi +1 टिकट/मंज़िल: 81x19 vs 96x19 (over टंकी -10%) |
 | descent boon card | boon.greedy.desc_2 | TANK -10% | offscreen | 1: ar | ar الخزان -10%: 54x19 vs 96x19 |
-| descent boon card | CanvasLayer20/Control0/Control1/Button8 | CASH OUT +0 | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__ÇÁŚH ÖÜT +0___]: 98x7 vs 98x7 (over English 96x13) |
+| descent boon card | CanvasLayer20/Control0/Control1/Button8 | CASH OUT +0 | grew | 1: pseudo | pseudo [__ÇÁŚH ÖÜT +0___]: 98x7 vs 98x7 (over English 96x13) |
 | descent boon card | CanvasLayer20/Control0/Control1/Button8 | CASH OUT +0 | offscreen | 1: ar | ar اصرف +0: 45x19 vs 88x19 |
-| descent boon card | descent.descend | DESCEND | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 繼續深入: 48x16 vs 88x16 (over English 96x13) |
 | descent boon card | descent.descend | DESCEND | offscreen | 1: ar | ar انزل: 20x19 vs 88x19 |
 | descent boon card | CanvasLayer20/Control0/Control1/HBoxContainer1/Label1 | 100%  NEXT FLOOR +60% | overlap | 1: hi | hi 100%  अगली मंज़िल +60%: 126x19 vs 126x19 (over एक चुनो) |
 | descent boon card | CanvasLayer20/Control0/Control1/HBoxContainer2/Label1 | POT 0 (+0) | offscreen | 1: ar | ar الجرة 0 (+0): 60x19 vs 60x19 |
 | descent boon card | CanvasLayer20/Control0/Control1/Label0 | FLOOR 1 CLEARED | overlap | 4: ja, zh_TW, ar, hi | ja 地下1階クリア: 128x28 vs 320x28 (over 100%  次の階+60%) |
 | descent boon card | descent.pick_one | PICK ONE | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | th เลือก​หนึ่ง​อย่าง: 64x17 vs 320x17 (over CanvasLayer20/Control0/Control1/Button5) |
-| descent summary | descent.new_run | NEW RUN | grew | 8: fr, ja, ko, zh_CN, zh_TW, th, ar, hi | fr NOUVELLE PARTIE: 86x7 vs 86x7 (over English 84x13) |
+| descent summary | descent.new_run | NEW RUN | grew | 1: fr | fr NOUVELLE PARTIE: 86x7 vs 86x7 (over English 84x13) |
 | descent summary | descent.new_run | NEW RUN | offscreen | 1: ar | ar جولة جديدة: 61x19 vs 76x19 |
-| descent summary | result.choice.hub | HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الساحة: 36x19 vs 76x19 (over English 84x13) |
 | descent summary | result.choice.hub | HUB | offscreen | 1: ar | ar الساحة: 36x19 vs 76x19 |
-| hat wheel shop | wheel.tab.wheel | WHEEL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar العجلة: 33x19 vs 36x19 (over English 44x13) |
 | hat wheel shop | wheel.tab.wheel | WHEEL | offscreen | 1: ar | ar العجلة: 33x19 vs 36x19 |
-| hat wheel shop | hub.prompt.shop | SHOP | grew | 9: fr, it, ja, ko, zh_CN, zh_TW, th, ar, hi | fr BOUTIQUE: 46x7 vs 46x7 (over English 44x13) |
+| hat wheel shop | hub.prompt.shop | SHOP | grew | 2: fr, it | fr BOUTIQUE: 46x7 vs 46x7 (over English 44x13) |
 | hat wheel shop | hub.prompt.shop | SHOP | offscreen | 1: ar | ar المتجر: 30x19 vs 36x19 |
-| hat wheel shop | wheel.section.hats | HATS | grew | 8: it, ja, ko, zh_CN, zh_TW, th, ar, hi | it CAPPELLI: 46x7 vs 46x7 (over English 52x13) |
+| hat wheel shop | wheel.section.hats | HATS | grew | 1: it | it CAPPELLI: 46x7 vs 46x7 (over English 52x13) |
 | hat wheel shop | wheel.section.hats | HATS | offscreen | 1: ar | ar قبعات: 31x19 vs 44x19 |
-| hat wheel shop | wheel.section.hats | HATS | overlap | 3: th, ar, hi | ar قبعات: 31x19 vs 44x19 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button1) |
-| hat wheel shop | wheel.section.trails | TRAILS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [TRÁÍŁŚ_]: 46x7 vs 46x7 (over English 52x13) |
+| hat wheel shop | wheel.section.hats | HATS | overlap | 2: ar, hi | ar قبعات: 31x19 vs 44x19 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button1) |
+| hat wheel shop | wheel.section.trails | TRAILS | grew | 1: pseudo | pseudo [TRÁÍŁŚ_]: 46x7 vs 46x7 (over English 52x13) |
 | hat wheel shop | wheel.section.trails | TRAILS | offscreen | 1: ar | ar آثار: 16x19 vs 44x19 |
-| hat wheel shop | wheel.section.trails | TRAILS | overlap | 5: th, th, ar, hi, hi | hi लकीरें: 30x19 vs 44x19 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button0) |
-| hat wheel shop | wheel.section.papers | PAPERS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [PÁPÉRŚ_]: 48x7 vs 48x7 (over English 52x13) |
+| hat wheel shop | wheel.section.trails | TRAILS | overlap | 3: ar, hi, hi | hi लकीरें: 30x19 vs 44x19 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button0) |
+| hat wheel shop | wheel.section.papers | PAPERS | grew | 1: pseudo | pseudo [PÁPÉRŚ_]: 48x7 vs 48x7 (over English 52x13) |
 | hat wheel shop | wheel.section.papers | PAPERS | offscreen | 1: ar | ar أوراق: 28x19 vs 44x19 |
-| hat wheel shop | wheel.section.papers | PAPERS | overlap | 3: th, ar, hi | th กระดาษ: 34x17 vs 44x17 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button1) |
+| hat wheel shop | wheel.section.papers | PAPERS | overlap | 2: ar, hi | hi कागज़: 33x19 vs 44x19 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button1) |
 | hat wheel shop | CanvasLayer23/Control0/Control6/Control8/Control3/Button0/HB | 45 | offscreen | 1: ar | ar 45: 12x19 vs 12x19 |
 | hat wheel shop | CanvasLayer23/Control0/Control6/Control8/Control3/Button0/HB | 45 | overlap | 10: zh_TW, th, th, ar, ar, ar, ar, ar, hi, hi | zh_TW 45: 12x16 vs 12x16 (over CanvasLayer23/Control0/Control6/Control8/Control3/Button2) |
 | hat wheel shop | hat.tophat | TOP HAT | offscreen | 1: ar | ar قبعة عالية: 55x19 vs 55x19 |
@@ -179,13 +176,12 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | hat wheel shop | CanvasLayer23/Control0/Control6/Control8/Label6 | TOP HAT - FROM THE TAILOR | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja シルクハット - 仕立て屋から: 132x14 vs 304x14 (over 仕立て屋は3回まわすと開店（0/3）) |
 | hat wheel shop | CanvasLayer23/Control0/Control6/Control8/Label7 | THE TAILOR OPENS AFTER 3 SPINS (0/3) | offscreen | 1: pseudo | pseudo [__________THÉ TÁÍŁÖR ÖPÉÑŚ ÁF: 322x7 vs 322x10 |
 | hat wheel shop | CanvasLayer23/Control0/Control6/Label2 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 32x19 |
-| hat wheel wheel | wheel.tab.wheel | WHEEL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar العجلة: 33x19 vs 36x19 (over English 44x13) |
 | hat wheel wheel | wheel.tab.wheel | WHEEL | offscreen | 1: ar | ar العجلة: 33x19 vs 36x19 |
-| hat wheel wheel | hub.prompt.shop | SHOP | grew | 9: fr, it, ja, ko, zh_CN, zh_TW, th, ar, hi | fr BOUTIQUE: 46x7 vs 46x7 (over English 44x13) |
+| hat wheel wheel | hub.prompt.shop | SHOP | grew | 2: fr, it | fr BOUTIQUE: 46x7 vs 46x7 (over English 44x13) |
 | hat wheel wheel | hub.prompt.shop | SHOP | offscreen | 1: ar | ar المتجر: 30x19 vs 36x19 |
-| hat wheel wheel | wheel.spin_free | SPIN  FREE | grew | 8: fr, ja, ko, zh_CN, zh_TW, th, ar, hi | fr TOURNER  GRATUIT: 90x7 vs 90x7 (over English 84x13) |
-| hat wheel wheel | wheel.spin_free | SPIN  FREE | offscreen | 3: th, ar, hi | hi घुमाओ  मुफ़्त: 67x19 vs 76x19 |
-| hat wheel wheel | CanvasLayer23/Control0/Control6/Control7/Label0 | 11 HATS TO WIN - F TO SPIN | overlap | 2: th, hi | hi जीतने को 11 टोपियाँ - F से घुम: 168x19 vs 304x19 (over घुमाओ  मुफ़्त) |
+| hat wheel wheel | wheel.spin_free | SPIN  FREE | grew | 1: fr | fr TOURNER  GRATUIT: 90x7 vs 90x7 (over English 84x13) |
+| hat wheel wheel | wheel.spin_free | SPIN  FREE | offscreen | 1: ar | ar أدر  مجانا: 46x19 vs 76x19 |
+| hat wheel wheel | CanvasLayer23/Control0/Control6/Control7/Label0 | 11 HATS TO WIN - F TO SPIN | overlap | 3: zh_TW, th, hi | hi जीतने को 11 टोपियाँ - F से घुम: 168x19 vs 304x19 (over घुमाओ  मुफ़्त) |
 | hat wheel wheel | CanvasLayer23/Control0/Control6/Label2 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 32x19 |
 | hub coin board | CanvasLayer23/Control0/Control1/Label10 | 3 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 3: 6x14 vs 16x14 (over 4) |
 | hub coin board | theme.sandstone | SANDSTONE SANCTUM | offscreen | 1: ar | ar محراب الرمال: 66x19 vs 66x19 |
@@ -243,17 +239,14 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | hub coin board | CanvasLayer23/Control0/Control1/Label8 | 9/9 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 9/9: 18x14 vs 42x28 (over 7/7) |
 | hub coin board | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
 | hub coin board | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label3 | 25/30 | offscreen | 1: ar | ar 25/30: 30x19 vs 30x19 |
-| hub portal | hub.portal.random_maze | RANDOM MAZE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar متاهة عشوائية: 80x19 vs 112x19 (over English 120x13) |
 | hub portal | hub.portal.random_maze | RANDOM MAZE | offscreen | 1: ar | ar متاهة عشوائية: 80x19 vs 112x19 |
 | hub portal | hub.portal.random_maze | RANDOM MAZE | overlap | 2: ar, hi | ar متاهة عشوائية: 80x19 vs 112x19 (over الهبوط) |
-| hub portal | hub.portal.descent | DESCENT | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الهبوط: 37x19 vs 112x19 (over English 120x13) |
 | hub portal | hub.portal.descent | DESCENT | offscreen | 1: ar | ar الهبوط: 37x19 vs 112x19 |
-| hub portal | hub.portal.descent | DESCENT | overlap | 2: th, hi | hi गहराई: 32x19 vs 112x19 (over बेस्ट मंज़िल 1   इनामी रन 2/2) |
-| hub portal | common.back | BACK | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 48x19 (over English 56x13) |
+| hub portal | hub.portal.descent | DESCENT | overlap | 1: hi | hi गहराई: 32x19 vs 112x19 (over बेस्ट मंज़िल 1   इनामी रन 2/2) |
 | hub portal | common.back | BACK | offscreen | 1: ar | ar رجوع: 24x19 vs 48x19 |
-| hub portal | hub.station.random | RANDOMIZER | overlap | 1: hi | hi रैंडमाइज़र: 48x19 vs 180x19 (over रैंडम भूलभुलैया) |
+| hub portal | hub.station.random | RANDOMIZER | overlap | 3: zh_TW, th, hi | zh_TW 隨機模式: 48x16 vs 180x16 (over 隨機迷宮) |
 | hub portal | CanvasLayer23/Control0/Control4/Label5 | PAID RUNS 2/2 | offscreen | 1: pseudo | pseudo [________BÉŚT FŁÖÖR 1   PÁÍĐ R: 253x7 vs 253x10 |
-| hub portal | CanvasLayer23/Control0/Control4/Label5 | PAID RUNS 2/2 | overlap | 1: hi | hi बेस्ट मंज़िल 1   इनामी रन 2/2: 146x19 vs 180x19 (over वापस) |
+| hub portal | CanvasLayer23/Control0/Control4/Label5 | PAID RUNS 2/2 | overlap | 3: zh_TW, th, hi | hi बेस्ट मंज़िल 1   इनामी रन 2/2: 146x19 vs 180x19 (over वापस) |
 | hub portal | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
 | hub portal | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label3 | 25/30 | offscreen | 1: ar | ar 25/30: 30x19 vs 30x19 |
 | hub prompt coins | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
@@ -274,12 +267,10 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | hub prompt wardrobe | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label3 | 25/30 | offscreen | 1: ar | ar 25/30: 30x19 vs 30x19 |
 | hub prompt wheel | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
 | hub prompt wheel | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label3 | 25/30 | offscreen | 1: ar | ar 25/30: 30x19 vs 30x19 |
-| hub quit | hub.station.quit | QUIT | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja やめる: 30x14 vs 48x14 (over English 56x13) |
 | hub quit | hub.station.quit | QUIT | offscreen | 1: ar | ar خروج: 26x19 vs 48x19 |
-| hub quit | common.back | BACK | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 48x19 (over English 56x13) |
 | hub quit | common.back | BACK | offscreen | 1: ar | ar رجوع: 24x19 vs 48x19 |
 | hub quit | hub.quit.title | LEAVE THE HUB? | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar مغادرة الساحة؟: 81x19 vs 160x19 (over ستغلق اللعبة) |
-| hub quit | hub.quit.subtitle | THE GAME CLOSES | overlap | 2: hi, hi | hi गेम बंद हो जाएगा: 87x19 vs 160x19 (over छोड़ो) |
+| hub quit | hub.quit.subtitle | THE GAME CLOSES | overlap | 4: zh_TW, zh_TW, hi, hi | hi गेम बंद हो जाएगा: 87x19 vs 160x19 (over छोड़ो) |
 | hub quit | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
 | hub quit | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label3 | 25/30 | offscreen | 1: ar | ar 25/30: 30x19 vs 30x19 |
 | hub resume | CanvasLayer23/Control0/PanelContainer2/HBoxContainer0/Label1 | 60 | offscreen | 1: ar | ar 60: 12x19 vs 12x19 |
@@ -292,44 +283,31 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | hud L7 hard HEAT 63 | HUD/VBoxContainer2/PanelContainer0/HBoxContainer0/Label0 | LEVEL 7/10  HARD | overlap | 1: pseudo | pseudo [____ŁÉVÉŁ 7/10  HÁRĐ_____]: 149x7 vs 149x7 (over 1:22.0) |
 | hud L8 assisted | HUD/Label4 | - OBSIDIAN OUBLIETTE - | overlap | 2: th, ar | th - หลุม​ขัง​ออบซิเดียน -: 96x17 vs 320x17 (over คุก​ของ​ผู้​ถูก​ลืม แต่​คุณ​น่ะ​ลืม​ไม่​ลง) |
 | hud L8 assisted | story.level_8 | A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE. | offscreen | 1: pseudo | pseudo [_________Á ÇÉŁŁ FÖR THÉ FÖRĞÖ: 380x7 vs 380x10 |
-| key controls | keys.reset | RESET KEYS | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar إعادة الضبط: 63x19 vs 90x19 (over English 98x13) |
-| key controls | keys.reset | RESET KEYS | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar إعادة الضبط: 63x19 vs 90x19 |
-| key controls | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| key controls | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| key controls | GridContainer3/Button1 | W | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja W: 6x14 vs 56x14 (over English 64x13) |
-| key controls | GridContainer3/Button3 | S | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja S: 6x14 vs 56x14 (over English 64x13) |
-| key controls | GridContainer3/Button5 | A | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja A: 6x14 vs 56x14 (over English 64x13) |
-| key controls | GridContainer3/Button7 | D | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja D: 6x14 vs 56x14 (over English 64x13) |
-| key controls | GridContainer3/Button9 | SPACE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja SPACE: 30x14 vs 56x14 (over English 64x13) |
-| key controls | GridContainer3/Button9 | SPACE | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja SPACE: 30x14 vs 56x14 (over 矢印キーで常に移動・ESCかPでポーズ・F11で全画面) |
-| key controls | keys.jump | JUMP (HOLD) | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi कूदो (दबाए रखो): 86x19 vs 86x19 (over ऐरो से हमेशा चलो - ESC या P से पॉज़ - F11 फ़ुलस्क्रीन) |
-| key controls | GridContainer4/Button1 | R | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja R: 6x14 vs 56x14 (over English 64x13) |
+| key controls | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| key controls | GridContainer3/Button9 | SPACE | overlap | 2: ar, hi | ar SPACE: 30x19 vs 56x19 (over الأسهم للحركة - ESC/P إيقاف - F11 ملء الشاشة) |
+| key controls | keys.jump | JUMP (HOLD) | overlap | 2: ar, hi | hi कूदो (दबाए रखो): 86x19 vs 86x19 (over ऐरो से हमेशा चलो - ESC या P से पॉज़ - F11 फ़ुलस्क्रीन) |
 | key controls | GridContainer4/Button1 | R | offscreen | 2: ar, pseudo | ar R: 6x19 vs 56x19 |
-| key controls | GridContainer4/Button3 | F | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja F: 6x14 vs 56x14 (over English 64x13) |
 | key controls | GridContainer4/Button3 | F | offscreen | 2: ar, pseudo | ar F: 6x19 vs 56x19 |
-| key controls | GridContainer4/Button5 | 1 | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 1: 4x14 vs 56x14 (over English 64x13) |
 | key controls | GridContainer4/Button5 | 1 | offscreen | 2: ar, pseudo | ar 1: 4x19 vs 56x19 |
-| key controls | GridContainer4/Button7 | 2 | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 2: 6x14 vs 56x14 (over English 64x13) |
 | key controls | GridContainer4/Button7 | 2 | offscreen | 2: ar, pseudo | ar 2: 6x19 vs 56x19 |
-| key controls | GridContainer4/Button9 | 3 | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 3: 6x14 vs 56x14 (over English 64x13) |
 | key controls | GridContainer4/Button9 | 3 | offscreen | 2: ar, pseudo | ar 3: 6x19 vs 56x19 |
-| key controls | GridContainer4/Button9 | 3 | overlap | 4: ko, zh_TW, th, hi | ko 3: 6x14 vs 56x14 (over 방향키로 항상 이동 - ESC 또는 P 일시정지 - F11 전체 화면) |
+| key controls | GridContainer4/Button9 | 3 | overlap | 1: hi | hi 3: 6x19 vs 56x19 (over ऐरो से हमेशा चलो - ESC या P से पॉज़ - F11 फ़ुलस्क्रीन) |
 | key controls | keys.restart | RESTART LEVEL | offscreen | 1: ar | ar أعد المستوى: 67x19 vs 84x19 |
 | key controls | keys.interact | INTERACT (HUB) | offscreen | 1: ar | ar تفاعل (ساحة): 70x19 vs 84x19 |
 | key controls | ability.rifle.name | SLIME RIFLE | offscreen | 1: ar | ar رشاش سلايم: 69x19 vs 84x19 |
 | key controls | ability.splat.name | SLIME SPLAT | offscreen | 1: ar | ar فرقعة سلايم: 69x19 vs 84x19 |
 | key controls | ability.kaze.name | SLIMAKAZE | offscreen | 1: ar | ar سلايماكازي: 59x19 vs 84x19 |
-| key controls | ability.kaze.name | SLIMAKAZE | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | hi स्लाइमाकाज़े: 62x19 vs 84x19 (over ऐरो से हमेशा चलो - ESC या P से पॉज़ - F11 फ़ुलस्क्रीन) |
+| key controls | ability.kaze.name | SLIMAKAZE | overlap | 1: hi | hi स्लाइमाकाज़े: 62x19 vs 84x19 (over ऐरो से हमेशा चलो - ESC या P से पॉज़ - F11 फ़ुलस्क्रीन) |
+| key controls | settings.controls | CONTROLS | overlap | 2: zh_TW, zh_TW | zh_TW 操作設定: 96x32 vs 320x34 (over W) |
 | key controls | keys.note.desktop_f11 | ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN | offscreen | 1: pseudo | pseudo [__________ÁRRÖWŚ ÁŁWÁÝŚ MÖVÉ : 416x7 vs 416x10 |
-| language | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| level select HEAT panel | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| level select HEAT panel | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| level select HEAT panel | Button8 | HEAT 0 | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 (over English 52x13) |
-| level select HEAT panel | Button8 | HEAT 0 | offscreen | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 |
-| level select HEAT panel | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 12: fr, de, it, ru, pl, tr, th, vi, id, ar, hi, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
+| key controls | keys.note.desktop_f11 | ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN | overlap | 1: ar | ar الأسهم للحركة - ESC/P إيقاف - : 249x19 vs 320x19 (over إعادة الضبط) |
+| language | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x13 (over English 40x13) |
+| level select HEAT panel | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| level select HEAT panel | Button8 | HEAT 0 | grew | 1: pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 (over English 52x13) |
+| level select HEAT panel | Button8 | HEAT 0 | offscreen | 6: zh_TW, th, vi, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 |
+| level select HEAT panel | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 9: fr, de, it, ru, pl, tr, vi, id, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
 | level select HEAT panel | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | offscreen | 1: pseudo | pseudo [________HÁRĐ MÖĐÉ: ÑÉW MÁŻÉŚ,: 361x7 vs 381x16 |
-| level select HEAT panel | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | ja ハードモード：新しい迷路、強化なし、霧が戻る: 220x14 vs 240x16 (over 完了) |
-| level select HEAT panel | heat.done | DONE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 完成: 24x16 vs 42x16 (over English 50x13) |
+| level select HEAT panel | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | overlap | 10: ja, ko, zh_CN, zh_TW, th, th, vi, ar, hi, hi | ja ハードモード：新しい迷路、強化なし、霧が戻る: 220x14 vs 240x16 (over 完了) |
 | level select HEAT panel | heat.done | DONE | offscreen | 1: ar | ar تم: 13x19 vs 42x19 |
 | level select HEAT panel | heatmod.dim.desc | LESS LIGHT, PATHS FADE FASTER | offscreen | 1: ar | ar ضوء أقل، والممرات تبهت أسرع: 159x19 vs 276x20 |
 | level select HEAT panel | Control9/Label3 | HEAT 0/10 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | ja ヒート0/10: 52x14 vs 52x14 (over Control9/Toggle_brittle) |
@@ -384,14 +362,14 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | level select HEAT panel | GridContainer3/Button8/Number | 9 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 9: 12x28 vs 48x28 (over 1:38.8) |
 | level select HEAT panel | GridContainer3/Button9/Label4 | 1:43.6 | overlap | 3: th, ar, hi | th 1:43.6: 26x17 vs 48x17 (over แข่ง​เวลา) |
 | level select HEAT panel | GridContainer3/Button9/Number | 10 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 10: 20x28 vs 48x28 (over 1:43.6) |
-| level select HEAT panel | levels.title | LEVEL SELECT | overlap | 25: ja, ja, ja, ja, ko, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, zh_TW, th, th, th, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x25 (over GridContainer3/Button2) |
-| level select HEAT panel | Label5 | HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10  | overlap | 13: ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, ar, hi, hi | ar أشعل مستويات الوضع الصعب المجت: 228x43 vs 320x43 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
-| level select hard | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| level select hard | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| level select hard | Button8 | HEAT 0 | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 (over English 52x13) |
-| level select hard | Button8 | HEAT 0 | offscreen | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 |
-| level select hard | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 12: fr, de, it, ru, pl, tr, th, vi, id, ar, hi, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
+| level select HEAT panel | levels.title | LEVEL SELECT | overlap | 28: ja, ja, ja, ja, ko, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, zh_TW, th, th, th, vi, vi, vi, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x27 (over GridContainer3/Button2) |
+| level select HEAT panel | Label5 | HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10  | overlap | 10: ja, ko, zh_CN, zh_TW, zh_TW, th, th, ar, hi, hi | ar أشعل مستويات الوضع الصعب المجت: 228x39 vs 320x39 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
+| level select hard | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| level select hard | Button8 | HEAT 0 | grew | 1: pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 (over English 52x13) |
+| level select hard | Button8 | HEAT 0 | offscreen | 6: zh_TW, th, vi, ar, hi, pseudo | pseudo [__HÉÁT 0__]: 64x7 vs 64x7 |
+| level select hard | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 9: fr, de, it, ru, pl, tr, vi, id, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
 | level select hard | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | offscreen | 1: pseudo | pseudo [________HÁRĐ MÖĐÉ: ÑÉW MÁŻÉŚ,: 361x7 vs 381x16 |
+| level select hard | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | overlap | 3: th, ar, hi | th โหมด​ยาก: เขาวงกต​ใหม่ ไม่​มี​: 219x17 vs 239x17 (over กลับ) |
 | level select hard | GridContainer3/Button0/Label4 | 0:19.5 | offscreen | 1: ar | ar 0:19.5: 26x19 vs 48x19 |
 | level select hard | GridContainer3/Button0/Label4 | 0:19.5 | overlap | 3: zh_TW, th, hi | zh_TW 0:19.5: 26x16 vs 48x16 (over GridContainer3/Button5) |
 | level select hard | GridContainer3/Button0/Number | 1 | offscreen | 1: ar | ar 1: 8x25 vs 48x25 |
@@ -419,12 +397,12 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | level select hard | GridContainer3/Button8/Number | 9 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 9: 12x28 vs 48x28 (over 1:38.8) |
 | level select hard | GridContainer3/Button9/Label4 | 1:43.6 | overlap | 1: ar | ar 1:43.6: 26x19 vs 48x19 (over GridContainer3/Button8) |
 | level select hard | GridContainer3/Button9/Number | 10 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 10: 20x28 vs 48x28 (over 1:43.6) |
-| level select hard | levels.title | LEVEL SELECT | overlap | 21: ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x25 (over GridContainer3/Button2) |
-| level select hard | Label5 | HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10  | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar أشعل مستويات الوضع الصعب المجت: 228x43 vs 320x43 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
-| level select normal | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| level select normal | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| level select normal | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 12: fr, de, it, ru, pl, tr, th, vi, id, ar, hi, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
+| level select hard | levels.title | LEVEL SELECT | overlap | 24: ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, vi, vi, vi, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x27 (over GridContainer3/Button2) |
+| level select hard | Label5 | HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10  | overlap | 4: zh_TW, th, ar, hi | ar أشعل مستويات الوضع الصعب المجت: 228x39 vs 320x39 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
+| level select normal | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| level select normal | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | grew | 9: fr, de, it, ru, pl, tr, vi, id, pseudo | fr DIFFICILE : AUTRES LABYS, ZÉRO: 264x7 vs 284x16 (over English 270x16) |
 | level select normal | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | offscreen | 1: pseudo | pseudo [________HÁRĐ MÖĐÉ: ÑÉW MÁŻÉŚ,: 361x7 vs 381x16 |
+| level select normal | levels.hard_mode | HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS | overlap | 3: th, ar, hi | th โหมด​ยาก: เขาวงกต​ใหม่ ไม่​มี​: 219x17 vs 239x17 (over กลับ) |
 | level select normal | GridContainer3/Button0/Label4 | 0:13.8 | offscreen | 1: ar | ar 0:13.8: 26x19 vs 48x19 |
 | level select normal | GridContainer3/Button0/Label4 | 0:13.8 | overlap | 3: zh_TW, th, hi | zh_TW 0:13.8: 26x16 vs 48x16 (over GridContainer3/Button5) |
 | level select normal | GridContainer3/Button0/Number | 1 | offscreen | 1: ar | ar 1: 8x25 vs 48x25 |
@@ -452,11 +430,11 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | level select normal | GridContainer3/Button8/Number | 9 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 9: 12x28 vs 48x28 (over 1:03.6) |
 | level select normal | GridContainer3/Button9/Label4 | 1:06.4 | overlap | 1: ar | ar 1:06.4: 26x19 vs 48x19 (over GridContainer3/Button8) |
 | level select normal | GridContainer3/Button9/Number | 10 | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 10: 20x28 vs 48x28 (over 1:06.4) |
-| level select normal | levels.title | LEVEL SELECT | overlap | 21: ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x25 (over GridContainer3/Button2) |
-| level select normal | Label5 | CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar اجتز مستوى لتفتح التالي / وكل : 199x43 vs 320x43 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
-| map table | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| map table | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| map table | maps.hard | HARD | grew | 13: es, pt_BR, fr, de, it, ru, pl, ja, th, id, ar, hi, pseudo | es DIFÍCIL: 36x7 vs 56x16 (over English 44x16) |
+| level select normal | levels.title | LEVEL SELECT | overlap | 24: ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, vi, vi, vi, ar, ar, ar, hi, hi, hi | ar اختيار المستوى: 108x25 vs 320x27 (over GridContainer3/Button2) |
+| level select normal | Label5 | CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A | overlap | 4: zh_TW, th, ar, hi | ar اجتز مستوى لتفتح التالي / وكل : 199x39 vs 320x39 (over صعب: متاهات أخرى، لا ترقيات، ضباب يعود) |
+| map table | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| map table | common.back | BACK | overlap | 1: ar | ar رجوع: 24x19 vs 32x19 (over GridContainer3/Button9) |
+| map table | maps.hard | HARD | grew | 12: es, pt_BR, fr, de, it, ru, pl, ja, th, id, ar, pseudo | es DIFÍCIL: 36x7 vs 56x16 (over English 44x16) |
 | map table | maps.hard | HARD | offscreen | 2: ar, hi | ar صعب: 26x19 vs 46x19 |
 | map table | theme.dungeon | DARK DUNGEON | offscreen | 1: ar | ar الدهليز الداكن: 74x19 vs 74x19 |
 | map table | theme.dungeon | DARK DUNGEON | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 暗黒ダンジョン: 70x14 vs 70x14 (over 100%) |
@@ -491,13 +469,13 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | map table | GridContainer3/Button8/Label1 | 100% | offscreen | 1: ar | ar 100%: 22x19 vs 22x19 |
 | map table | theme.volcanic | VOLCANIC VAULT | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 火山の奥底: 50x14 vs 50x14 (over 100%) |
 | map table | GridContainer3/Button9/Label1 | 100% | overlap | 1: ar | ar 100%: 22x19 vs 22x19 (over GridContainer3/Button8) |
-| map table | hub.station.map_table | MAP TABLE | overlap | 19: ja, ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, ar, ar, ar, hi, hi, hi | ja 地図テーブル: 120x28 vs 320x28 (over GridContainer3/Button0) |
-| map view | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| map view | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| map view | maps.hard | HARD | grew | 13: es, pt_BR, fr, de, it, ru, pl, ja, th, id, ar, hi, pseudo | es DIFÍCIL: 36x7 vs 56x16 (over English 44x16) |
+| map table | hub.station.map_table | MAP TABLE | overlap | 23: ja, ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, vi, vi, vi, vi, ar, ar, ar, hi, hi, hi | ja 地図テーブル: 120x28 vs 320x30 (over GridContainer3/Button0) |
+| map view | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| map view | common.back | BACK | overlap | 1: ar | ar رجوع: 24x19 vs 32x19 (over GridContainer3/Button9) |
+| map view | maps.hard | HARD | grew | 12: es, pt_BR, fr, de, it, ru, pl, ja, th, id, ar, pseudo | es DIFÍCIL: 36x7 vs 56x16 (over English 44x16) |
 | map view | maps.hard | HARD | offscreen | 2: ar, hi | ar صعب: 26x19 vs 46x19 |
-| map view | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| map view | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
+| map view | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| map view | common.back | BACK | overlap | 1: ar | ar رجوع: 24x19 vs 32x19 (over GridContainer3/Button9) |
 | map view | theme.sandstone | SANDSTONE SANCTUM | offscreen | 1: ar | ar محراب الرمال: 66x19 vs 320x19 |
 | map view | Control7/Label4 | 100% UNCOVERED | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | th สำรวจ​แล้ว 100%: 71x17 vs 224x17 |
 | map view | theme.dungeon | DARK DUNGEON | offscreen | 1: ar | ar الدهليز الداكن: 74x19 vs 74x19 |
@@ -533,181 +511,123 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | map view | GridContainer3/Button8/Label1 | 100% | offscreen | 1: ar | ar 100%: 22x19 vs 22x19 |
 | map view | theme.volcanic | VOLCANIC VAULT | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja 火山の奥底: 50x14 vs 50x14 (over 100%) |
 | map view | GridContainer3/Button9/Label1 | 100% | overlap | 1: ar | ar 100%: 22x19 vs 22x19 (over GridContainer3/Button8) |
-| map view | hub.station.map_table | MAP TABLE | overlap | 19: ja, ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, ar, ar, ar, hi, hi, hi | ja 地図テーブル: 120x28 vs 320x28 (over GridContainer3/Button0) |
+| map view | hub.station.map_table | MAP TABLE | overlap | 23: ja, ja, ja, ja, ko, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, vi, vi, vi, vi, ar, ar, ar, hi, hi, hi | ja 地図テーブル: 120x28 vs 320x30 (over GridContainer3/Button0) |
 | pause descent | HUD/VBoxContainer2/PanelContainer0/HBoxContainer0/Label0 | DESCENT  FLOOR 1 | overlap | 1: pseudo | pseudo [___ĐÉŚÇÉÑT  FŁÖÖR 1____]: 137x7 vs 137x7 (over 0:00.0) |
 | pause descent | HUD/VBoxContainer2/PanelContainer2/HBoxContainer0/Label1 | POT 0 / PAID RUN 1/2 | overlap | 1: pseudo | pseudo [_PÖT 0__] / [____PÁÍĐ RÜÑ 1/2: 119x17 vs 119x17 (over [PÁÜŚÉĐ_]) |
 | pause descent | pause.title | PAUSED | offscreen | 1: ar | ar إيقاف مؤقت: 90x25 vs 320x25 |
 | pause descent | pause.quit_banks | QUITTING BANKS HALF THE POT | offscreen | 1: ar | ar الخروج يصرف نصف الجرة: 128x19 vs 320x19 |
-| pause descent | hub.resume.resume | RESUME | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi जारी रखो: 48x19 vs 92x19 (over English 100x13) |
 | pause descent | hub.resume.resume | RESUME | offscreen | 1: ar | ar استئناف: 43x19 vs 92x19 |
-| pause descent | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 92x14 (over English 100x13) |
 | pause descent | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 92x19 |
-| pause descent | pause.quit_hub | QUIT TO HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi हब पर जाओ: 65x19 vs 92x19 (over English 100x13) |
 | pause descent | pause.quit_hub | QUIT TO HUB | offscreen | 1: ar | ar الساحة: 36x19 vs 92x19 |
-| pause descent | pause.quit_hub | QUIT TO HUB | overlap | 3: zh_TW, th, hi | hi हब पर जाओ: 65x19 vs 92x19 (over छोड़ने पर आधा पॉट मिलेगा) |
+| pause descent | pause.quit_hub | QUIT TO HUB | overlap | 1: hi | hi हब पर जाओ: 65x19 vs 92x19 (over छोड़ने पर आधा पॉट मिलेगा) |
 | pause descent | settings.volume | VOLUME | offscreen | 1: ar | ar الصوت: 33x19 vs 33x19 |
 | pause random | HUD/VBoxContainer2/PanelContainer2/HBoxContainer0/Label1 | ATTEMPT 1 / TIX AVAILABLE 1 | overlap | 1: pseudo | pseudo [_ÁTTÉMPT 1__] / [___TÍX ÁVÁÍŁ: 128x17 vs 128x17 (over [PÁÜŚÉĐ_]) |
 | pause random | pause.title | PAUSED | offscreen | 1: ar | ar إيقاف مؤقت: 90x25 vs 320x25 |
-| pause random | hub.resume.resume | RESUME | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi जारी रखो: 48x19 vs 92x19 (over English 100x13) |
 | pause random | hub.resume.resume | RESUME | offscreen | 1: ar | ar استئناف: 43x19 vs 92x19 |
-| pause random | result.choice.restart | RESTART | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja リスタート: 50x14 vs 92x14 (over English 100x13) |
 | pause random | result.choice.restart | RESTART | offscreen | 1: ar | ar إعادة: 27x19 vs 92x19 |
-| pause random | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 92x14 (over English 100x13) |
 | pause random | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 92x19 |
-| pause random | pause.quit_hub | QUIT TO HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi हब पर जाओ: 65x19 vs 92x19 (over English 100x13) |
-| pause random | pause.quit_hub | QUIT TO HUB | offscreen | 4: zh_TW, th, ar, hi | hi हब पर जाओ: 65x19 vs 92x19 |
-| pause random | PauseMenu/Control0/VBoxContainer3/Button5 | 1453026489-0 | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 시드 1453026489-0: 92x14 vs 92x14 (over English 100x13) |
-| pause random | PauseMenu/Control0/VBoxContainer3/Button5 | 1453026489-0 | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 시드 1453026489-0: 92x14 vs 92x14 |
+| pause random | pause.quit_hub | QUIT TO HUB | offscreen | 1: ar | ar الساحة: 36x19 vs 92x19 |
+| pause random | PauseMenu/Control0/VBoxContainer3/Button5 | 1453026489-0 | offscreen | 4: zh_TW, th, ar, hi | th ซีด 1453026489-0: 85x17 vs 92x17 |
 | pause random | settings.volume | VOLUME | offscreen | 1: ar | ar الصوت: 33x19 vs 33x19 |
 | pause story | pause.title | PAUSED | offscreen | 1: ar | ar إيقاف مؤقت: 90x25 vs 320x25 |
-| pause story | hub.resume.resume | RESUME | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi जारी रखो: 48x19 vs 92x19 (over English 100x13) |
 | pause story | hub.resume.resume | RESUME | offscreen | 1: ar | ar استئناف: 43x19 vs 92x19 |
-| pause story | result.choice.restart | RESTART | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja リスタート: 50x14 vs 92x14 (over English 100x13) |
 | pause story | result.choice.restart | RESTART | offscreen | 1: ar | ar إعادة: 27x19 vs 92x19 |
-| pause story | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 92x14 (over English 100x13) |
 | pause story | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 92x19 |
-| pause story | pause.quit_hub | QUIT TO HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi हब पर जाओ: 65x19 vs 92x19 (over English 100x13) |
-| pause story | pause.quit_hub | QUIT TO HUB | offscreen | 4: zh_TW, th, ar, hi | hi हब पर जाओ: 65x19 vs 92x19 |
+| pause story | pause.quit_hub | QUIT TO HUB | offscreen | 1: ar | ar الساحة: 36x19 vs 92x19 |
 | pause story | settings.volume | VOLUME | offscreen | 1: ar | ar الصوت: 33x19 vs 33x19 |
 | restart prompt | restart.title | RESTART? | offscreen | 1: ar | ar البدء من جديد؟: 109x25 vs 320x25 |
-| restart prompt | result.choice.restart | RESTART | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja リスタート: 50x14 vs 92x14 (over English 100x13) |
 | restart prompt | result.choice.restart | RESTART | offscreen | 1: ar | ar إعادة: 27x19 vs 92x19 |
-| restart prompt | result.choice.upgrades | UPGRADES | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 업그레이드: 50x14 vs 92x14 (over English 100x13) |
 | restart prompt | result.choice.upgrades | UPGRADES | offscreen | 1: ar | ar الترقيات: 41x19 vs 92x19 |
-| restart prompt | common.cancel | CANCEL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja キャンセル: 50x14 vs 92x14 (over English 100x13) |
 | restart prompt | common.cancel | CANCEL | offscreen | 1: ar | ar إلغاء: 24x19 vs 92x19 |
-| result dry-up | result.choice.restart | RESTART | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja リスタート: 50x14 vs 76x14 (over English 84x13) |
-| result dry-up | result.choice.upgrades | UPGRADES | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 도움 받기: 44x14 vs 76x14 (over English 84x13) |
-| result randomizer win | result.choice.replay_maze | REPLAY MAZE | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [_RÉPŁÁÝ MÁŻÉ__]: 88x7 vs 88x7 (over English 84x13) |
-| result randomizer win | result.choice.new_maze | NEW MAZE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi नई भूलभुलैया: 69x19 vs 76x19 (over English 84x13) |
-| result randomizer win | result.choice.hub | HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الساحة: 36x19 vs 76x19 (over English 84x13) |
+| result randomizer win | result.choice.replay_maze | REPLAY MAZE | grew | 1: pseudo | pseudo [_RÉPŁÁÝ MÁŻÉ__]: 88x7 vs 88x7 (over English 84x13) |
 | result win L10 | result.medal.bronze | BRONZE | overlap | 2: ar, hi | ar برونزية: 34x19 vs 34x19 (over رقم قياسي جديد!) |
 | result win L10 | result.best_medal.gold | BEST GOLD | overlap | 2: ar, hi | ar الأفضل: ذهبية: 74x19 vs 74x19 (over رقم قياسي جديد!) |
-| result win L10 | HUD/CenterContainer7/HBoxContainer0/VBoxContainer1/Label1 | 0:00.0 | overlap | 3: zh_TW, ar, hi | hi 0:00.0: 28x19 vs 77x19 (over आगे बढ़ो) |
-| result win L10 | result.choice.replay | REPLAY | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar العب مجددا: 58x19 vs 76x19 (over English 84x13) |
-| result win L10 | result.choice.continue | CONTINUE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi आगे बढ़ो: 46x19 vs 76x19 (over English 84x13) |
-| result win L10 | result.choice.hub | HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الساحة: 36x19 vs 76x19 (over English 84x13) |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/VBoxContainer1/Label1 | 0:00.0 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | th 0:00.0: 28x17 vs 57x17 (over ไป​ต่อ) |
 | result win L3 | result.medal.gold | GOLD | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 金メダル: 40x14 vs 40x14 (over 新記録！) |
 | result win L3 | result.new_best | NEW BEST! | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 自己ベスト！: 60x14 vs 60x14 (over 新記録！) |
-| result win L3 | HUD/CenterContainer7/HBoxContainer0/VBoxContainer1/Label1 | 0:13.6 | overlap | 3: zh_TW, ar, hi | hi 0:13.6: 26x19 vs 77x19 (over अगला लेवल) |
-| result win L3 | result.choice.replay | REPLAY | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar العب مجددا: 58x19 vs 76x19 (over English 84x13) |
-| result win L3 | result.choice.next_level | NEXT LEVEL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi अगला लेवल: 63x19 vs 76x19 (over English 84x13) |
-| result win L3 | result.choice.hub | HUB | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الساحة: 36x19 vs 76x19 (over English 84x13) |
-| settings reset confirm | settings.controls | CONTROLS | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 操作設定: 48x16 vs 112x16 (over English 120x13) |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/VBoxContainer1/Label1 | 0:13.6 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | th 0:13.6: 26x17 vs 57x17 (over ด่าน​ถัดไป) |
 | settings reset confirm | settings.controls | CONTROLS | offscreen | 1: ar | ar التحكم: 35x19 vs 112x19 |
-| settings reset confirm | settings.controls | CONTROLS | overlap | 1: hi | hi कंट्रोल: 31x19 vs 112x19 (over लेवल, रिकॉर्ड, सिक्के, अपग्रेड और / स्किनें हमेशा के लिए मिट) |
-| settings reset confirm | settings.save_code | SAVE CODE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja セーブコード: 60x14 vs 112x14 (over English 120x13) |
 | settings reset confirm | settings.save_code | SAVE CODE | offscreen | 1: ar | ar رمز الحفظ: 51x19 vs 112x19 |
-| settings reset confirm | settings.save_code | SAVE CODE | overlap | 6: zh_TW, th, ar, ar, hi, hi | ar رمز الحفظ: 51x19 vs 112x19 (over Button12) |
+| settings reset confirm | settings.save_code | SAVE CODE | overlap | 9: ja, ko, zh_CN, zh_TW, th, ar, ar, hi, hi | ja セーブコード: 60x14 vs 112x14 (over 全データを消去？) |
 | settings reset confirm | Button12/Label1 | ENGLISH | offscreen | 1: ar | ar العربية: 34x19 vs 34x21 |
-| settings reset confirm | Button12/Label1 | ENGLISH | overlap | 7: ja, ko, zh_CN, zh_TW, zh_TW, th, hi | ja 日本語: 30x14 vs 30x16 (over レベル、記録、コイン、強化、 / スキンが永久に消える) |
-| settings reset confirm | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| settings reset confirm | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| settings reset confirm | settings.reset | RESET PROGRESS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
-| settings reset confirm | settings.reset | RESET PROGRESS | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi प्रगति मिटाओ: 68x19 vs 84x19 |
-| settings reset confirm | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 112x14 (over English 120x13) |
+| settings reset confirm | Button12/Label1 | ENGLISH | overlap | 9: ja, ja, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, hi | ja 日本語: 30x14 vs 30x16 (over キャンセル) |
+| settings reset confirm | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| settings reset confirm | settings.reset | RESET PROGRESS | grew | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
 | settings reset confirm | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 112x19 |
-| settings reset confirm | settings.sound.on | SOUND: ON | overlap | 3: zh_TW, th, hi | hi आवाज़: चालू: 64x19 vs 112x19 (over सारी प्रगति मिटाएँ?) |
-| settings reset confirm | settings.motion.full | MOTION: FULL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الحركة: كاملة: 68x19 vs 112x19 (over English 120x13) |
+| settings reset confirm | settings.sound.on | SOUND: ON | overlap | 2: th, hi | hi आवाज़: चालू: 64x19 vs 112x19 (over सारी प्रगति मिटाएँ?) |
 | settings reset confirm | settings.motion.full | MOTION: FULL | offscreen | 1: ar | ar الحركة: كاملة: 68x19 vs 112x19 |
-| settings reset confirm | settings.motion.full | MOTION: FULL | overlap | 1: zh_TW | zh_TW 動態：完整: 60x16 vs 112x16 (over 清除所有進度？) |
-| settings reset confirm | settings.fog.normal | FOG: NORMAL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi कोहरा: सामान्य: 74x19 vs 112x19 (over English 120x13) |
+| settings reset confirm | settings.motion.full | MOTION: FULL | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 動態：完整: 60x16 vs 112x16 (over 清除所有進度？) |
 | settings reset confirm | settings.fog.normal | FOG: NORMAL | offscreen | 1: ar | ar الضباب: عادي: 67x19 vs 112x19 |
 | settings reset confirm | settings.fog.normal | FOG: NORMAL | overlap | 12: ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, hi, hi | hi कोहरा: सामान्य: 74x19 vs 112x19 (over पक्का) |
-| settings reset confirm | settings.fullscreen.off | FULLSCREEN: OFF | grew | 9: es, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
+| settings reset confirm | settings.fullscreen.off | FULLSCREEN: OFF | grew | 2: es, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
 | settings reset confirm | settings.fullscreen.off | FULLSCREEN: OFF | offscreen | 1: ar | ar ملء الشاشة: معطل: 103x19 vs 112x19 |
-| settings reset confirm | settings.fullscreen.off | FULLSCREEN: OFF | overlap | 3: zh_TW, th, hi | hi फ़ुलस्क्रीन: बंद: 69x19 vs 112x19 (over सारी प्रगति मिटाएँ?) |
-| settings reset confirm | reset.confirm | CONFIRM | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi पक्का: 30x19 vs 62x19 (over English 70x13) |
+| settings reset confirm | settings.fullscreen.off | FULLSCREEN: OFF | overlap | 2: th, hi | hi फ़ुलस्क्रीन: बंद: 69x19 vs 112x19 (over सारी प्रगति मिटाएँ?) |
 | settings reset confirm | reset.confirm | CONFIRM | offscreen | 1: ar | ar تأكيد: 27x19 vs 62x19 |
 | settings reset confirm | reset.confirm | CONFIRM | overlap | 1: ar | ar تأكيد: 27x19 vs 62x19 (over Button12) |
-| settings reset confirm | common.cancel | CANCEL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja キャンセル: 50x14 vs 62x14 (over English 70x13) |
 | settings reset confirm | common.cancel | CANCEL | offscreen | 1: ar | ar إلغاء: 24x19 vs 62x19 |
-| settings reset confirm | common.cancel | CANCEL | overlap | 7: ja, ko, zh_CN, zh_TW, th, vi, hi | ja キャンセル: 50x14 vs 62x14 (over Button12) |
+| settings reset confirm | common.cancel | CANCEL | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | ja キャンセル: 50x14 vs 62x14 (over Button12) |
 | settings reset confirm | reset.title | ERASE ALL PROGRESS? | overlap | 4: ja, ko, zh_CN, zh_TW | ko 모든 진행을 지울까요?: 208x28 vs 320x28 (over 레벨, 기록, 코인, 업그레이드와 / 스킨이 영원히 사라져요) |
-| settings reset confirm | Control15/Label3 | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | overlap | 12: ja, ko, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, hi, hi, hi | zh_TW 關卡、紀錄、金幣、升級和造型 / 都會永久消失: 168x37 vs 320x37 (over Button12) |
-| settings reset confirm | hub.station.settings | SETTINGS | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 設定: 48x32 vs 320x32 (over 更多) |
+| settings reset confirm | Control15/Label3 | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | overlap | 13: ja, ko, zh_CN, zh_TW, zh_TW, zh_TW, th, th, th, vi, hi, hi, hi | zh_TW 關卡、紀錄、金幣、升級和造型 / 都會永久消失: 168x33 vs 320x33 (over Button12) |
+| settings reset confirm | hub.station.settings | SETTINGS | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 設定: 48x32 vs 320x34 (over 更多) |
 | settings reset confirm | settings.options | OPTIONS | offscreen | 1: ar | ar الخيارات: 39x19 vs 39x19 |
-| settings reset confirm | settings.options | OPTIONS | overlap | 2: ar, hi | ar الخيارات: 39x19 vs 39x19 (over الصوت: مفعل) |
+| settings reset confirm | settings.options | OPTIONS | overlap | 3: ja, ar, hi | ja オプション: 50x14 vs 50x14 (over サウンド：オン) |
 | settings reset confirm | settings.more | MORE | offscreen | 1: ar | ar المزيد: 30x19 vs 30x19 |
 | settings reset confirm | settings.more | MORE | overlap | 1: ar | ar المزيد: 30x19 vs 30x19 (over ملء الشاشة: معطل) |
-| settings save code | settings.controls | CONTROLS | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 操作設定: 48x16 vs 112x16 (over English 120x13) |
 | settings save code | settings.controls | CONTROLS | offscreen | 1: ar | ar التحكم: 35x19 vs 112x19 |
-| settings save code | settings.controls | CONTROLS | overlap | 10: es, pt_BR, fr, de, ru, pl, tr, th, hi, pseudo | pseudo [_ÇÖÑTRÖŁŚ_]: 66x7 vs 112x7 (over [ÇÖPÝ]) |
-| settings save code | settings.save_code | SAVE CODE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja セーブコード: 60x14 vs 112x14 (over English 120x13) |
+| settings save code | settings.controls | CONTROLS | overlap | 11: es, pt_BR, fr, de, ru, pl, tr, zh_TW, th, hi, pseudo | pseudo [_ÇÖÑTRÖŁŚ_]: 66x7 vs 112x7 (over [ÇÖPÝ]) |
 | settings save code | settings.save_code | SAVE CODE | offscreen | 1: ar | ar رمز الحفظ: 51x19 vs 112x19 |
 | settings save code | settings.save_code | SAVE CODE | overlap | 7: th, ar, ar, ar, hi, hi, hi | ar رمز الحفظ: 51x19 vs 112x19 (over Button12) |
 | settings save code | Button12/Label1 | ENGLISH | offscreen | 1: ar | ar العربية: 34x19 vs 34x21 |
 | settings save code | Button12/Label1 | ENGLISH | overlap | 9: es, pt_BR, fr, it, ru, pl, id, hi, pseudo | es ESPAÑOL: 42x7 vs 42x15 (over CARGAR) |
-| settings save code | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| settings save code | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| settings save code | settings.reset | RESET PROGRESS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
-| settings save code | settings.reset | RESET PROGRESS | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi प्रगति मिटाओ: 68x19 vs 84x19 |
-| settings save code | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 112x14 (over English 120x13) |
+| settings save code | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| settings save code | settings.reset | RESET PROGRESS | grew | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
 | settings save code | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 112x19 |
 | settings save code | settings.sound.on | SOUND: ON | overlap | 1: ja | ja サウンド：オン: 70x14 vs 112x14 (over セーブコード) |
-| settings save code | settings.motion.full | MOTION: FULL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الحركة: كاملة: 68x19 vs 112x19 (over English 120x13) |
 | settings save code | settings.motion.full | MOTION: FULL | offscreen | 1: ar | ar الحركة: كاملة: 68x19 vs 112x19 |
-| settings save code | settings.fog.normal | FOG: NORMAL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi कोहरा: सामान्य: 74x19 vs 112x19 (over English 120x13) |
 | settings save code | settings.fog.normal | FOG: NORMAL | offscreen | 1: ar | ar الضباب: عادي: 67x19 vs 112x19 |
-| settings save code | settings.fullscreen.off | FULLSCREEN: OFF | grew | 9: es, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
+| settings save code | settings.fullscreen.off | FULLSCREEN: OFF | grew | 2: es, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
 | settings save code | settings.fullscreen.off | FULLSCREEN: OFF | offscreen | 1: ar | ar ملء الشاشة: معطل: 103x19 vs 112x19 |
 | settings save code | settings.fullscreen.off | FULLSCREEN: OFF | overlap | 3: ja, ko, zh_TW | ja 全画面：オフ: 60x14 vs 112x14 (over セーブコード) |
-| settings save code | savecode.close | CLOSE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 閉じる: 30x14 vs 56x14 (over English 64x13) |
 | settings save code | savecode.close | CLOSE | offscreen | 1: ar | ar إغلاق: 29x19 vs 56x19 |
-| settings save code | savecode.copy | COPY | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | th คัด​ลอก: 33x17 vs 56x17 (over English 64x13) |
 | settings save code | savecode.copy | COPY | offscreen | 1: ar | ar نسخ: 22x19 vs 56x19 |
-| settings save code | savecode.paste | PASTE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 貼り付け: 40x14 vs 56x14 (over English 64x13) |
 | settings save code | savecode.paste | PASTE | offscreen | 1: ar | ar لصق: 25x19 vs 56x19 |
-| settings save code | savecode.load | LOAD | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 불러오기: 40x14 vs 56x14 (over English 64x13) |
 | settings save code | savecode.load | LOAD | offscreen | 1: ar | ar تحميل: 32x19 vs 56x19 |
 | settings save code | settings.save_code | SAVE CODE | overlap | 4: ja, ko, zh_CN, zh_TW | ja セーブコード: 120x28 vs 320x28 (over このコードをコピーして進行状況を保管しよう) |
 | settings save code | savecode.copy_hint | COPY THIS CODE TO BACK UP YOUR PROGRESS | overlap | 1: hi | hi प्रगति बचाने के लिए यह कोड कॉप: 199x19 vs 320x19 (over कॉपी) |
-| settings save code | savecode.paste_hint | TO LOAD A SAVE, PASTE ITS CODE HERE | overlap | 5: th, th, hi, hi, hi | hi सेव लोड करने को उसका कोड यहाँ : 221x19 vs 320x19 (over Button12) |
-| settings save code | hub.station.settings | SETTINGS | overlap | 11: ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, ar, hi | ar الإعدادات: 63x25 vs 320x25 (over رمز الحفظ) |
+| settings save code | savecode.paste_hint | TO LOAD A SAVE, PASTE ITS CODE HERE | overlap | 6: zh_TW, th, th, hi, hi, hi | hi सेव लोड करने को उसका कोड यहाँ : 221x19 vs 320x19 (over Button12) |
+| settings save code | hub.station.settings | SETTINGS | overlap | 21: es, pt_BR, fr, de, it, ru, pl, tr, ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, vi, ar, hi, pseudo | de EINSTELLUNGEN: 152x14 vs 320x20 (over SPEICHERCODE) |
 | settings save code | settings.options | OPTIONS | offscreen | 1: ar | ar الخيارات: 39x19 vs 39x19 |
-| settings save code | settings.options | OPTIONS | overlap | 6: es, fr, it, ru, ar, hi | es OPCIONES: 46x7 vs 46x7 (over CÓDIGO DE GUARDADO) |
+| settings save code | settings.options | OPTIONS | overlap | 7: es, fr, it, ru, ja, ar, hi | es OPCIONES: 46x7 vs 46x7 (over CÓDIGO DE GUARDADO) |
 | settings save code | settings.more | MORE | offscreen | 1: ar | ar المزيد: 30x19 vs 30x19 |
 | settings save code | settings.more | MORE | overlap | 1: ar | ar المزيد: 30x19 vs 30x19 (over ملء الشاشة: معطل) |
 | settings save code | settings.volume | VOLUME | overlap | 3: th, ar, hi | th ระดับ​เสียง: 45x17 vs 45x17 (over คัด​ลอก​รหัส​นี้​ไว้​สำรอง​ความ​คืบ​หน้า) |
-| settings | settings.controls | CONTROLS | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 操作設定: 48x16 vs 112x16 (over English 120x13) |
 | settings | settings.controls | CONTROLS | offscreen | 1: ar | ar التحكم: 35x19 vs 112x19 |
-| settings | settings.save_code | SAVE CODE | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja セーブコード: 60x14 vs 112x14 (over English 120x13) |
 | settings | settings.save_code | SAVE CODE | offscreen | 1: ar | ar رمز الحفظ: 51x19 vs 112x19 |
 | settings | settings.save_code | SAVE CODE | overlap | 5: th, ar, ar, hi, hi | ar رمز الحفظ: 51x19 vs 112x19 (over Button12) |
 | settings | Button12/Label1 | ENGLISH | offscreen | 1: ar | ar العربية: 34x19 vs 34x21 |
-| settings | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| settings | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| settings | settings.reset | RESET PROGRESS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
-| settings | settings.reset | RESET PROGRESS | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi प्रगति मिटाओ: 68x19 vs 84x19 |
-| settings | settings.sound.on | SOUND: ON | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja サウンド：オン: 70x14 vs 112x14 (over English 120x13) |
+| settings | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| settings | settings.reset | RESET PROGRESS | grew | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 112x7 vs 112x7 (over English 92x13) |
 | settings | settings.sound.on | SOUND: ON | offscreen | 1: ar | ar الصوت: مفعل: 69x19 vs 112x19 |
-| settings | settings.motion.full | MOTION: FULL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar الحركة: كاملة: 68x19 vs 112x19 (over English 120x13) |
 | settings | settings.motion.full | MOTION: FULL | offscreen | 1: ar | ar الحركة: كاملة: 68x19 vs 112x19 |
-| settings | settings.fog.normal | FOG: NORMAL | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi कोहरा: सामान्य: 74x19 vs 112x19 (over English 120x13) |
 | settings | settings.fog.normal | FOG: NORMAL | offscreen | 1: ar | ar الضباب: عادي: 67x19 vs 112x19 |
-| settings | settings.fullscreen.off | FULLSCREEN: OFF | grew | 9: es, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
+| settings | settings.fullscreen.off | FULLSCREEN: OFF | grew | 2: es, pseudo | es PANTALLA COMPLETA: NO: 118x7 vs 118x7 (over English 120x13) |
 | settings | settings.fullscreen.off | FULLSCREEN: OFF | offscreen | 1: ar | ar ملء الشاشة: معطل: 103x19 vs 112x19 |
-| settings | hub.station.settings | SETTINGS | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 設定: 48x32 vs 320x32 (over 更多) |
+| settings | hub.station.settings | SETTINGS | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 設定: 48x32 vs 320x34 (over 更多) |
 | settings | settings.options | OPTIONS | offscreen | 1: ar | ar الخيارات: 39x19 vs 39x19 |
-| settings | settings.options | OPTIONS | overlap | 2: ar, hi | ar الخيارات: 39x19 vs 39x19 (over الصوت: مفعل) |
+| settings | settings.options | OPTIONS | overlap | 3: ja, ar, hi | ja オプション: 50x14 vs 50x14 (over サウンド：オン) |
 | settings | settings.more | MORE | offscreen | 1: ar | ar المزيد: 30x19 vs 30x19 |
 | settings | settings.more | MORE | overlap | 1: ar | ar المزيد: 30x19 vs 30x19 (over ملء الشاشة: معطل) |
-| title | title.enter_hub | ENTER THE HUB | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__ÉÑTÉR THÉ HÜB__]: 208x14 vs 208x19 (over English 176x25) |
+| title | title.enter_hub | ENTER THE HUB | grew | 5: ja, ko, zh_CN, zh_TW, pseudo | pseudo [__ÉÑTÉR THÉ HÜB__]: 208x14 vs 208x17 (over English 176x25) |
 | title | title.enter_hub | ENTER THE HUB | offscreen | 1: ar | ar ادخل الساحة: 89x25 vs 168x25 |
-| title | title.story | STORY | grew | 15: es, pt_BR, fr, it, tr, ja, ko, zh_CN, zh_TW, th, vi, id, ar, hi, pseudo | es HISTORIA: 44x7 vs 44x7 (over English 40x13) |
-| title | title.story | STORY | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja ストーリー: 50x14 vs 50x14 |
+| title | title.story | STORY | grew | 11: es, pt_BR, fr, it, tr, ja, th, vi, id, hi, pseudo | es HISTORIA: 44x7 vs 44x7 (over English 40x13) |
 | title | Label8 | ESCAPE THE FOG / OR DRY TRYING | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ko 안개를 탈출하라 / 말라비틀어지기 전에: 188x66 vs 320x66 |
-| upgrades abilities | upgrades.tab_coins | COINS | grew | 13: es, pt_BR, de, ru, pl, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es MONEDAS: 42x7 vs 42x7 (over English 40x13) |
+| upgrades abilities | upgrades.tab_coins | COINS | grew | 6: es, pt_BR, de, ru, pl, pseudo | es MONEDAS: 42x7 vs 42x7 (over English 40x13) |
 | upgrades abilities | upgrades.tab_coins | COINS | offscreen | 1: ar | ar نقود: 24x19 vs 32x19 |
-| upgrades abilities | upgrades.tab_tickets | TICKETS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [TÍÇKÉTŚ_]: 52x7 vs 52x7 (over English 52x13) |
+| upgrades abilities | upgrades.tab_tickets | TICKETS | grew | 1: pseudo | pseudo [TÍÇKÉTŚ_]: 52x7 vs 52x7 (over English 52x13) |
 | upgrades abilities | upgrades.tab_tickets | TICKETS | offscreen | 1: ar | ar تذاكر: 26x19 vs 44x19 |
-| upgrades abilities | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| upgrades abilities | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| upgrades abilities | Control7/Button16 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
+| upgrades abilities | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
 | upgrades abilities | Control7/Button16 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
-| upgrades abilities | Control7/Button25 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
 | upgrades abilities | Control7/Button25 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
-| upgrades abilities | Control7/Button7 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
 | upgrades abilities | Control7/Button7 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
 | upgrades abilities | Control7/HBoxContainer17/Label0 | 18 | offscreen | 1: ar | ar 18: 10x19 vs 10x19 |
 | upgrades abilities | Control7/HBoxContainer26/Label0 | 25 | offscreen | 1: ar | ar 25: 12x19 vs 12x19 |
@@ -722,23 +642,16 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | upgrades abilities | ability.rifle.name | SLIME RIFLE | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja スライムライフル: 80x14 vs 80x14 (over ネバネバを撃つ) |
 | upgrades abilities | ability.rifle.desc | SHOOTS GOO | offscreen | 1: ar | ar يطلق الدبق: 61x19 vs 61x19 |
 | upgrades abilities | result.choice.upgrades | UPGRADES | overlap | 3: fr, it, pseudo | fr AMÉLIORATIONS: 148x14 vs 320x20 (over TICKETS) |
-| upgrades coins | upgrades.tab_coins | COINS | grew | 13: es, pt_BR, de, ru, pl, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es MONEDAS: 42x7 vs 42x7 (over English 40x13) |
+| upgrades coins | upgrades.tab_coins | COINS | grew | 6: es, pt_BR, de, ru, pl, pseudo | es MONEDAS: 42x7 vs 42x7 (over English 40x13) |
 | upgrades coins | upgrades.tab_coins | COINS | offscreen | 1: ar | ar نقود: 24x19 vs 32x19 |
-| upgrades coins | upgrades.tab_tickets | TICKETS | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [TÍÇKÉTŚ_]: 52x7 vs 52x7 (over English 52x13) |
+| upgrades coins | upgrades.tab_tickets | TICKETS | grew | 1: pseudo | pseudo [TÍÇKÉTŚ_]: 52x7 vs 52x7 (over English 52x13) |
 | upgrades coins | upgrades.tab_tickets | TICKETS | offscreen | 1: ar | ar تذاكر: 26x19 vs 44x19 |
-| upgrades coins | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| upgrades coins | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| upgrades coins | Control6/Button10 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
+| upgrades coins | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
 | upgrades coins | Control6/Button10 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
-| upgrades coins | Control6/Button18 | - | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja -: 4x14 vs 8x14 (over English 16x13) |
 | upgrades coins | Control6/Button18 | - | offscreen | 1: ar | ar -: 4x19 vs 8x19 |
-| upgrades coins | Control6/Button19 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
 | upgrades coins | Control6/Button19 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
-| upgrades coins | Control6/Button26 | - | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja -: 4x14 vs 8x14 (over English 16x13) |
 | upgrades coins | Control6/Button26 | - | offscreen | 1: ar | ar -: 4x19 vs 8x19 |
-| upgrades coins | Control6/Button27 | + | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja +: 6x14 vs 8x14 (over English 16x13) |
 | upgrades coins | Control6/Button27 | + | offscreen | 1: ar | ar +: 6x19 vs 8x19 |
-| upgrades coins | Control6/Button9 | - | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja -: 4x14 vs 8x14 (over English 16x13) |
 | upgrades coins | Control6/Button9 | - | offscreen | 1: ar | ar -: 4x19 vs 8x19 |
 | upgrades coins | Control6/Label11 | 1 | offscreen | 1: ar | ar 1: 4x19 vs 4x19 |
 | upgrades coins | upgrade.speed | SPEED | offscreen | 1: ar | ar السرعة: 36x19 vs 36x19 |
@@ -748,33 +661,30 @@ Both suites are reporting-only until chunk G sets their `ENFORCE` to true.
 | upgrades coins | Control6/Label28 | 9 | offscreen | 1: ar | ar 9: 6x19 vs 6x19 |
 | upgrades coins | result.choice.upgrades | UPGRADES | overlap | 3: fr, it, pseudo | fr AMÉLIORATIONS: 148x14 vs 320x20 (over TICKETS) |
 | upgrades coins | Label8 | COINS HIDE AT DEAD ENDS IN THE STORY MAZES / TAKE COINS BACK | offscreen | 1: pseudo | pseudo [_______ÇÖÍÑŚ HÍĐÉ ÁT ĐÉÁĐ ÉÑĐ: 330x19 vs 330x21 |
-| victory | victory.title | YOU ESCAPED! | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 你逃出來了！: 144x32 vs 320x32 (over 全部10座迷宮都過關了 /  / 已解鎖：卡魅龍（顏色任你挑）) |
+| upgrades coins | Label8 | COINS HIDE AT DEAD ENDS IN THE STORY MAZES / TAKE COINS BACK | overlap | 2: ar, hi | ar تختبئ العملات في الطرق المسدود: 273x39 vs 320x39 (over رجوع) |
+| victory | victory.title | YOU ESCAPED! | overlap | 4: ja, ko, zh_CN, zh_TW | zh_TW 你逃出來了！: 144x32 vs 320x34 (over 全部10座迷宮都過關了 /  / 已解鎖：卡魅龍（顏色任你挑）) |
 | victory | Label3 | ALL 10 MAZES CLEARED /  / UNLOCKED: CHAMELEON (ANY COLOR YOU | offscreen | 1: pseudo | pseudo [____ÁŁŁ 10 MÁŻÉŚ ÇŁÉÁRÉĐ____]: 323x31 vs 323x31 |
-| victory | victory.pick_color | PICK YOUR COLOR | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pseudo [__PÍÇK ÝÖÜR ÇÖŁÖR__]: 114x7 vs 114x7 (over English 120x13) |
+| victory | victory.pick_color | PICK YOUR COLOR | grew | 1: pseudo | pseudo [__PÍÇK ÝÖÜR ÇÖŁÖR__]: 114x7 vs 114x7 (over English 120x13) |
 | victory | victory.pick_color | PICK YOUR COLOR | offscreen | 1: ar | ar اختر لونك: 47x19 vs 112x19 |
-| victory | hub.station.random | RANDOMIZER | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | ar متاهات عشوائية: 86x19 vs 112x19 (over English 120x13) |
+| victory | hub.station.random | RANDOMIZER | grew | 1: pseudo | pseudo [_RÁÑĐÖMÍŻÉR_]: 77x7 vs 114x7 (over English 120x13) |
 | victory | hub.station.random | RANDOMIZER | offscreen | 1: ar | ar متاهات عشوائية: 86x19 vs 112x19 |
-| victory | result.choice.hub | HUB | grew | 8: ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | ar الساحة: 36x19 vs 112x19 (over English 120x13) |
-| victory | result.choice.hub | HUB | offscreen | 4: zh_TW, th, ar, hi | ar الساحة: 36x19 vs 112x19 |
-| wardrobe hats | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| wardrobe hats | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| wardrobe hats | wheel.section.trails | TRAILS | grew | 12: es, pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es RASTROS: 42x7 vs 42x7 (over English 42x13) |
-| wardrobe hats | wheel.section.trails | TRAILS | offscreen | 10: es, pt_BR, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | es RASTROS: 42x7 vs 42x7 |
-| wardrobe hats | wheel.section.hats | HATS | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | zh_TW 帽子: 48x32 vs 320x32 (over VBoxContainer4/HBoxContainer0/Button3) |
+| victory | result.choice.hub | HUB | grew | 1: pseudo | pseudo [HÜB]: 24x7 vs 114x7 (over English 120x13) |
+| victory | result.choice.hub | HUB | offscreen | 2: ar, hi | ar الساحة: 36x19 vs 112x19 |
+| wardrobe hats | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| wardrobe hats | wheel.section.trails | TRAILS | grew | 5: es, pt_BR, fr, de, pseudo | es RASTROS: 42x7 vs 42x7 (over English 42x13) |
+| wardrobe hats | wheel.section.trails | TRAILS | offscreen | 4: es, pt_BR, ar, pseudo | es RASTROS: 42x7 vs 42x7 |
+| wardrobe hats | wheel.section.hats | HATS | overlap | 9: ja, ko, zh_CN, zh_TW, th, vi, ar, ar, hi | zh_TW 帽子: 48x32 vs 320x34 (over VBoxContainer4/HBoxContainer0/Button3) |
 | wardrobe hats | Label6 | NO HAT  (WEARING) | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar بلا قبعة  (قيد الارتداء): 116x19 vs 320x19 (over اربح القبعات من عجلة الجوائز في الساحة) |
-| wardrobe skins | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| wardrobe skins | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| wardrobe skins | wheel.section.hats | HATS | grew | 12: es, pt_BR, fr, it, pl, ja, ko, zh_CN, zh_TW, th, ar, hi | es GORROS: 36x7 vs 36x7 (over English 40x13) |
-| wardrobe skins | wheel.section.hats | HATS | offscreen | 10: pt_BR, fr, it, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR CHAPÉUS: 42x7 vs 42x7 |
-| wardrobe skins | skins.jelly.off | JELLY: OFF | grew | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar هلام: معطل: 64x19 vs 72x19 (over English 80x13) |
-| wardrobe skins | skins.jelly.off | JELLY: OFF | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar هلام: معطل: 64x19 vs 72x19 |
-| wardrobe skins | skins.page_skins | SKINS | overlap | 10: ja, ja, ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja スキン: 60x28 vs 320x28 (over VBoxContainer3/HBoxContainer0/Button2) |
+| wardrobe skins | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| wardrobe skins | wheel.section.hats | HATS | grew | 7: es, pt_BR, fr, de, it, pl, hi | es GORROS: 36x7 vs 36x7 (over English 40x13) |
+| wardrobe skins | wheel.section.hats | HATS | offscreen | 4: pt_BR, fr, it, ar | pt_BR CHAPÉUS: 42x7 vs 42x7 |
+| wardrobe skins | skins.jelly.off | JELLY: OFF | offscreen | 1: ar | ar هلام: معطل: 64x19 vs 72x19 |
+| wardrobe skins | skins.page_skins | SKINS | overlap | 11: ja, ja, ja, ko, zh_CN, zh_TW, th, vi, ar, ar, hi | ja スキン: 60x28 vs 320x30 (over VBoxContainer3/HBoxContainer0/Button2) |
 | wardrobe skins | Label6 | EMBER  (SELECTED) | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | zh_TW 餘燼  （已選擇）: 92x16 vs 320x16 (over 新關卡會換上你最新的造型) |
-| wardrobe trails | common.back | BACK | grew | 10: pt_BR, fr, de, ja, ko, zh_CN, zh_TW, th, ar, hi | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
-| wardrobe trails | common.back | BACK | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | hi वापस: 29x19 vs 32x19 |
-| wardrobe trails | skins.page_skins | SKINS | grew | 9: pl, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | pl SKÓRKI: 34x7 vs 34x7 (over English 40x13) |
-| wardrobe trails | skins.page_skins | SKINS | offscreen | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar مظاهر: 34x19 vs 34x19 |
-| wardrobe trails | wheel.section.trails | TRAILS | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | zh_TW 軌跡: 48x32 vs 320x32 (over VBoxContainer5/HBoxContainer0/Button3) |
+| wardrobe trails | common.back | BACK | grew | 3: pt_BR, fr, de | pt_BR VOLTAR: 36x7 vs 36x7 (over English 40x13) |
+| wardrobe trails | skins.page_skins | SKINS | grew | 6: pt_BR, fr, de, pl, ar, pseudo | pl SKÓRKI: 34x7 vs 34x7 (over English 40x13) |
+| wardrobe trails | skins.page_skins | SKINS | offscreen | 1: ar | ar مظاهر: 34x19 vs 34x19 |
+| wardrobe trails | wheel.section.trails | TRAILS | overlap | 9: ja, ko, zh_CN, zh_TW, th, vi, ar, ar, hi | zh_TW 軌跡: 48x32 vs 320x34 (over VBoxContainer5/HBoxContainer0/Button3) |
 | wardrobe trails | Label6 | SKIN GOO  (WEARING) | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja スキン色ネバネバ  （着用中）: 138x14 vs 320x14 (over 軌跡は帽子ルーレットのお店で買おう) |
 
 ## screens: accepted in English (the source layout; the same finding in another locale is accepted too)

@@ -12,7 +12,8 @@ extends "res://tests/suite_base.gd"
 ## - overflow: the widest line wider than the label, or than the button's content box (minus its
 ##   style margins and icon);
 ## - clip: the lines taller than the label / button content box;
-## - grew: a button bigger than the same button in English (it grew to fit its text);
+## - grew: a button bigger than the same button in English (it grew to fit its text), beyond the
+##   locale's standard extra height (UIKit.grow_h(): every button is UIKit.button_h() tall, by design);
 ## - offscreen: the text's ink box (or a button) not inside the 320x180 screen (the safe area);
 ## - overlap: a text's ink box over another text or another button (not its own parent / child).
 ## Each finding goes into docs/i18n/fit-report.screens.json + fit-report.md (tests/i18n_report.gd),
@@ -337,7 +338,8 @@ func _scan(state: String, node: Node) -> void:
 			_issue(state, item, "overflow", base)
 		if item.text_h > item.box_h + 0.5:
 			_issue(state, item, "clip", base)
-		if item.control is Button and not base.is_empty() and (item.rect.size.x > base.rect.size.x + 0.5 or item.rect.size.y > base.rect.size.y + 0.5):
+		# (A button may be UIKit.grow_h() taller than in English: the locale's standard button height.)
+		if item.control is Button and not base.is_empty() and (item.rect.size.x > base.rect.size.x + 0.5 or item.rect.size.y > base.rect.size.y + UIKit.grow_h() + 0.5):
 			_issue(state, item, "grew", base, "", "English %dx%d" % [base.rect.size.x, base.rect.size.y])
 		if not SCREEN.encloses(item.ink.grow(-0.01)) or (item.control is Button and not SCREEN.encloses(item.rect)):
 			_issue(state, item, "offscreen", base)
