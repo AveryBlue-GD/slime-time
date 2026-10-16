@@ -54,10 +54,58 @@ static func boon(id: String) -> Dictionary:
 
 
 static func display_name(id: String) -> String:
+	# i18n: boon card title, max 112px, 1 line
+	match id:
+		"gulp":
+			return Loc.t("boon.gulp.name", "BIG GULP")
+		"tank":
+			return Loc.t("boon.tank.name", "DEEP TANK")
+		"feather":
+			return Loc.t("boon.feather.name", "FEATHER LEAP")
+		"rubber":
+			return Loc.t("boon.rubber.name", "RUBBER BODY")
+		"slick":
+			return Loc.t("boon.slick.name", "SLICK")
+		"blaze":
+			return Loc.t("boon.blaze.name", "BLAZE")
+		"sense":
+			return Loc.t("boon.sense.name", "CHALICE SENSE")
+		"bladder":
+			return Loc.t("boon.bladder.name", "BACKUP BLADDER")
+		"thrift":
+			return Loc.t("boon.thrift.name", "THRIFT")
+		"greedy":
+			return Loc.t("boon.greedy.name", "GREEDY GOO")
+		"glass":
+			return Loc.t("boon.glass.name", "GLASS SLIME")
 	return NAMES.get(id, "")
 
 
 static func about(id: String) -> Array:
+	# i18n: boon card text, two fixed lines (desc_1 above desc_2), each max 14 letters / 112px; read as one sentence
+	match id:
+		"gulp":
+			return [Loc.t("boon.gulp.desc_1", "+30% SLIME"), Loc.t("boon.gulp.desc_2", "RIGHT NOW")]
+		"tank":
+			return [Loc.t("boon.tank.desc_1", "TANK +15%"), Loc.t("boon.tank.desc_2", "ALL RUN")]
+		"feather":
+			return [Loc.t("boon.feather.desc_1", "LEAPS COST"), Loc.t("boon.feather.desc_2", "LESS SLIME")]
+		"rubber":
+			return [Loc.t("boon.rubber.desc_1", "SPLATS COST"), Loc.t("boon.rubber.desc_2", "NO SLIME")]
+		"slick":
+			return [Loc.t("boon.slick.desc_1", "GLIDE +15%"), Loc.t("boon.slick.desc_2", "FASTER")]
+		"blaze":
+			return [Loc.t("boon.blaze.desc_1", "WIDER LIGHT"), Loc.t("boon.blaze.desc_2", "+1 BRIGHTNESS")]
+		"sense":
+			return [Loc.t("boon.sense.desc_1", "SEE THE EXIT"), Loc.t("boon.sense.desc_2", "FROM 6 TILES")]
+		"bladder":
+			return [Loc.t("boon.bladder.desc_1", "EMPTY? REFILL"), Loc.t("boon.bladder.desc_2", "TO 25% ONCE")]
+		"thrift":
+			return [Loc.t("boon.thrift.desc_1", "FLOOR REFILLS"), Loc.t("boon.thrift.desc_2", "+15%")]
+		"greedy":
+			return [Loc.t("boon.greedy.desc_1", "+1 TIX/FLOOR"), Loc.t("boon.greedy.desc_2", "TANK -10%")]
+		"glass":
+			return [Loc.t("boon.glass.desc_1", "POT X1.5"), Loc.t("boon.glass.desc_2", "SPLATS X2")]
 	return ABOUT.get(id, ["", ""])
 
 

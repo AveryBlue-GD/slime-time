@@ -75,7 +75,34 @@ static func intro_due(progress: Node) -> bool:
 static func level_line(level: int) -> String:
 	if level < 1 or level > LEVEL_LINES.size():
 		return ""
-	return LEVEL_LINES[level - 1]
+	return level_line_text(level)
+
+
+## Level banner lines, English source (the extractor reads the Loc calls in level_line_text).
+static func level_line_text(level: int) -> String:
+	# i18n: joke under the level name, one line, max 296px. Keep it funny, not literal.
+	match level:
+		1:
+			return Loc.t("story.level_1", "SPLAT. IT IS DAMP. UP IS THAT WAY.")
+		2:
+			return Loc.t("story.level_2", "THE MINERS LEFT IN A HURRY. SO WOULD YOU.")
+		3:
+			return Loc.t("story.level_3", "SOMEONE SWEPT THE SAND. NOT RECENTLY.")
+		4:
+			return Loc.t("story.level_4", "NOT TECHNICALLY SWIMMING. STILL NOT DRY.")
+		5:
+			return Loc.t("story.level_5", "A SLIME IN SLIME. NOBODY WILL NOTICE.")
+		6:
+			return Loc.t("story.level_6", "THE RESIDENTS ARE QUIET. SUSPICIOUSLY.")
+		7:
+			return Loc.t("story.level_7", "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.")
+		8:
+			return Loc.t("story.level_8", "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.")
+		9:
+			return Loc.t("story.level_9", "SO SHINY. DAYLIGHT MUST BE CLOSE.")
+		10:
+			return Loc.t("story.level_10", "HOT. THE WAY OUT IS THE CRATER. RUN.")
+	return ""
 
 
 static func cards(which: String) -> Array[Dictionary]:
@@ -94,6 +121,6 @@ static func length(which: String) -> float:
 static func widest_line() -> float:
 	var font: Font = load("res://assets/fonts/pixel.fnt")
 	var widest := 0.0
-	for line in LEVEL_LINES:
-		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+	for level in range(1, LEVEL_LINES.size() + 1):
+		widest = maxf(widest, font.get_string_size(level_line_text(level), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
 	return widest

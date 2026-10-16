@@ -123,7 +123,33 @@ static func get_hat(id: String) -> Dictionary:
 
 
 static func display_name(id: String) -> String:
-	return NONE_NAME if id == NONE else get_hat(id).get("name", "")
+	# i18n: hat name, max 100px, 1 line; hat wheel and wardrobe
+	match id:
+		"none":
+			return Loc.t("hat.none", "NO HAT")
+		"tophat":
+			return Loc.t("hat.tophat", "TOP HAT")
+		"beanie":
+			return Loc.t("hat.beanie", "BEANIE")
+		"party":
+			return Loc.t("hat.party", "PARTY HAT")
+		"cap":
+			return Loc.t("hat.cap", "BASEBALL CAP")
+		"cowboy":
+			return Loc.t("hat.cowboy", "COWBOY HAT")
+		"chef":
+			return Loc.t("hat.chef", "CHEF HAT")
+		"wizard":
+			return Loc.t("hat.wizard", "WIZARD HAT")
+		"viking":
+			return Loc.t("hat.viking", "VIKING HELMET")
+		"propeller":
+			return Loc.t("hat.propeller", "PROPELLER CAP")
+		"crown":
+			return Loc.t("hat.crown", "CROWN")
+		"rainbow":
+			return Loc.t("hat.rainbow", "RAINBOW HAT")
+	return get_hat(id).get("name", "")
 
 
 ## A hat can be worn once it's been won on the hat wheel (`owned`), and only once hats are out.

@@ -45,7 +45,27 @@ static func for_seed(maze_seed: int) -> String:
 
 
 static func display_name(id: String) -> String:
-	return ALL.get(id, ALL[DUNGEON]).name
+	match id:
+		"mossy":
+			return Loc.t("theme.mossy", "MOSSY MINES")
+		"sandstone":
+			return Loc.t("theme.sandstone", "SANDSTONE SANCTUM")
+		"sunken":
+			return Loc.t("theme.sunken", "SUNKEN SHRINE")
+		"sewers":
+			return Loc.t("theme.sewers", "TOXIC TUNNELS")
+		"catacombs":
+			return Loc.t("theme.catacombs", "CREEPY CATACOMBS")
+		"frozen":
+			return Loc.t("theme.frozen", "FROZEN FORTRESS")
+		"obsidian":
+			return Loc.t("theme.obsidian", "OBSIDIAN OUBLIETTE")
+		"crystal":
+			return Loc.t("theme.crystal", "CRYSTAL CAVERNS")
+		"volcanic":
+			return Loc.t("theme.volcanic", "VOLCANIC VAULT")
+	# i18n: level name, HUD area line and map table; keep the alliteration if the language can
+	return Loc.t("theme.dungeon", "DARK DUNGEON")
 
 
 ## Path of a theme's tile atlas: `kind` is "walls", "floors", "fillets" or "border".

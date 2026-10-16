@@ -35,9 +35,17 @@ static func ids() -> Array[String]:
 
 
 static func display_name(id: String) -> String:
-	for item: Dictionary in LIST:
-		if item.id == id:
-			return item.name
+	match id:
+		"wind":
+			return Loc.t("workshop.wind", "SECOND WIND")
+		"charge":
+			return Loc.t("workshop.charge", "QUICK CHARGE")
+		"sticky":
+			return Loc.t("workshop.sticky", "STICKY")
+		"magnet":
+			return Loc.t("workshop.magnet", "MAGNET")
+		"nose":
+			return Loc.t("workshop.nose", "GOO NOSE")
 	return ""
 
 
@@ -115,23 +123,46 @@ static func nose_reach(level: int) -> float:
 	return value("nose", level, "reach")
 
 
-## The row's effect line: now -> next (or MAXED), e.g. "REFILL AT EMPTY 15% -> 25%".
+## The row's effect line, whole sentences: now -> next (or MAXED), e.g. "REFILL AT EMPTY 15% -> 25%".
 static func effect_text(id: String, level: int) -> String:
 	var maxed := level >= max_level(id)
-	var tail := func(now: String, next: String) -> String: return now + ("  MAXED" if maxed else " -> " + next)
 	match id:
 		"wind":
-			var pct := func(l: int) -> String: return "NONE" if l == 0 else "%d%%" % roundi(wind_refill(l) * 100.0)
-			return "REFILL AT EMPTY " + tail.call(pct.call(level), pct.call(level + 1))
+			var none := Loc.t("workshop.wind.none", "NONE")
+			var now := none if level == 0 else "%d%%" % roundi(wind_refill(level) * 100.0)
+			var next := none if level + 1 == 0 else "%d%%" % roundi(wind_refill(level + 1) * 100.0)
+			# i18n: max 200px, 1 line. {now}/{next} are percentages or NONE; the double space before MAXED is spacing.
+			if maxed:
+				return Loc.t("workshop.wind.maxed", "REFILL AT EMPTY {now}  MAXED", {now = now})
+			return Loc.t("workshop.wind.next", "REFILL AT EMPTY {now} -> {next}", {now = now, next = next})
 		"charge":
-			return "FULL CHARGE " + tail.call("%.2fS" % charge_time(level), "%.2fS" % charge_time(level + 1))
+			var now := "%.2fS" % charge_time(level)
+			var next := "%.2fS" % charge_time(level + 1)
+			# i18n: max 200px, 1 line. {now}/{next} are seconds with the S unit (e.g. 1.20S).
+			if maxed:
+				return Loc.t("workshop.charge.maxed", "FULL CHARGE {now}  MAXED", {now = now})
+			return Loc.t("workshop.charge.next", "FULL CHARGE {now} -> {next}", {now = now, next = next})
 		"sticky":
-			return "SPLAT COST " + tail.call("X%.2f" % splat_factor(level), "X%.2f" % splat_factor(level + 1))
+			var now := "X%.2f" % splat_factor(level)
+			var next := "X%.2f" % splat_factor(level + 1)
+			# i18n: max 200px, 1 line. {now}/{next} are multipliers (e.g. X0.75).
+			if maxed:
+				return Loc.t("workshop.sticky.maxed", "SPLAT COST {now}  MAXED", {now = now})
+			return Loc.t("workshop.sticky.next", "SPLAT COST {now} -> {next}", {now = now, next = next})
 		"magnet":
-			return "COIN REACH " + tail.call("%d PX" % roundi(magnet_reach(level)), "%d PX" % roundi(magnet_reach(level + 1)))
+			var now := "%d PX" % roundi(magnet_reach(level))
+			var next := "%d PX" % roundi(magnet_reach(level + 1))
+			# i18n: max 200px, 1 line. {now}/{next} are distances in pixels (PX unit).
+			if maxed:
+				return Loc.t("workshop.magnet.maxed", "COIN REACH {now}  MAXED", {now = now})
+			return Loc.t("workshop.magnet.next", "COIN REACH {now} -> {next}", {now = now, next = next})
 		"nose":
-			return "GLIMMERS " + tail.call("X%s %d PX" % [_times(nose_rate(level)), roundi(nose_reach(level))],
-				"X%s %d PX" % [_times(nose_rate(level + 1)), roundi(nose_reach(level + 1))])
+			var now := "X%s %d PX" % [_times(nose_rate(level)), roundi(nose_reach(level))]
+			var next := "X%s %d PX" % [_times(nose_rate(level + 1)), roundi(nose_reach(level + 1))]
+			# i18n: max 200px, 1 line. {now}/{next} = glimmer rate multiplier then reach in px (e.g. X1.4 200 PX).
+			if maxed:
+				return Loc.t("workshop.nose.maxed", "GLIMMERS {now}  MAXED", {now = now})
+			return Loc.t("workshop.nose.next", "GLIMMERS {now} -> {next}", {now = now, next = next})
 	return ""
 
 

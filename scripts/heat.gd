@@ -29,6 +29,46 @@ const ABOUT := {
 const ALL := (1 << 6) - 1
 
 
+## The modifier's name for the HEAT panel (translated; NAMES keeps the English source).
+static func display_name(id: String) -> String:
+	# i18n: HEAT modifier toggle label, max 90px, 1 line
+	match id:
+		"dim":
+			return Loc.t("heatmod.dim.name", "DIM")
+		"brittle":
+			return Loc.t("heatmod.brittle.name", "BRITTLE")
+		"fog":
+			return Loc.t("heatmod.fog.name", "FOG BITES")
+		"grounded":
+			return Loc.t("heatmod.grounded.name", "GROUNDED")
+		"thirsty":
+			return Loc.t("heatmod.thirsty.name", "THIRSTY")
+		"race":
+			return Loc.t("heatmod.race.name", "RACE")
+	return NAMES.get(id, "")
+
+
+## The modifier's one-line description for the HEAT panel (translated; numbers are part of the sentence).
+static func about_text(id: String) -> String:
+	# i18n: one line under the toggles, max 280px
+	match id:
+		"dim":
+			return Loc.t("heatmod.dim.desc", "LESS LIGHT, PATHS FADE FASTER")
+		"brittle":
+			return Loc.t("heatmod.brittle.desc", "SPLATS COST DOUBLE, NO FREE SLIDE")
+		"fog":
+			return Loc.t("heatmod.fog.desc", "FOG RETURNS TWICE AS FAST")
+		"grounded":
+			return Loc.t("heatmod.grounded.desc", "NO LEAPS")
+		"thirsty":
+			# 8% is the extra drain rate
+			return Loc.t("heatmod.thirsty.desc", "SLIME DRAINS 8% FASTER")
+		"race":
+			# 1.3 X is the time limit as a multiple of par time
+			return Loc.t("heatmod.race.desc", "BEAT 1.3 X PAR OR DRY UP")
+	return ABOUT.get(id, "")
+
+
 static func bit(id: String) -> int:
 	var i := IDS.find(id)
 	return 0 if i < 0 else 1 << i

@@ -53,6 +53,20 @@ static func full_tree_cost() -> int:
 	return total
 
 
+static func display_name(id: String) -> String:
+	# i18n: upgrade row name, centered on the row, max 120px
+	match id:
+		"slime":
+			return Loc.t("upgrade.slime", "MORE SLIME")
+		"speed":
+			return Loc.t("upgrade.speed", "SPEED")
+		"brightness":
+			return Loc.t("upgrade.brightness", "BRIGHTNESS")
+		"power":
+			return Loc.t("upgrade.power", "WALL POWER")
+	return get_upgrade(id).get("name", "")
+
+
 static func get_upgrade(id: String) -> Dictionary:
 	for upgrade: Dictionary in LIST:
 		if upgrade.id == id:

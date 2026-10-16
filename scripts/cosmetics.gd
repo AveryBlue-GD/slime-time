@@ -89,6 +89,12 @@ static func is_earned(id: String) -> bool:
 
 ## How an earned cosmetic is earned ("" for a sold one).
 static func earned_how(id: String) -> String:
+	# i18n: how an earned trail is unlocked, wardrobe info line, max 200px
+	match id:
+		"abyss":
+			return Loc.t("trail.abyss.unlock", "REACH DESCENT FLOOR 10")
+		"ember":
+			return Loc.t("trail.ember.unlock", "HEAT 7 ON EVERY HARD LEVEL")
 	return get_item(id).get("earned", "")
 
 
@@ -103,10 +109,59 @@ static func ids(kind := "") -> Array[String]:
 
 static func display_name(id: String) -> String:
 	if id == DEFAULT_TRAIL:
-		return DEFAULT_TRAIL_NAME
+		return Loc.t("trail.skin.name", "SKIN GOO")
 	if id == DEFAULT_PAPER:
-		return DEFAULT_PAPER_NAME
+		return Loc.t("paper.parchment", "PARCHMENT")
+	# i18n: wardrobe tile / info line name, max 120px, 1 line
+	match id:
+		"ink":
+			return Loc.t("trail.ink.name", "INK TRAIL")
+		"glow":
+			return Loc.t("trail.glow.name", "GLOW TRAIL")
+		"gold":
+			return Loc.t("trail.gold.name", "GOLD TRAIL")
+		"candy":
+			return Loc.t("trail.candy.name", "CANDY TRAIL")
+		"starry":
+			return Loc.t("trail.starry.name", "STARRY TRAIL")
+		"blueprint":
+			return Loc.t("paper.blueprint", "BLUEPRINT PAPER")
+		"night":
+			return Loc.t("paper.night", "NIGHT PAPER")
+		"goldleaf":
+			return Loc.t("paper.goldleaf", "GOLD LEAF PAPER")
+		"abyss":
+			return Loc.t("trail.abyss.name", "ABYSS TRAIL")
+		"ember":
+			return Loc.t("trail.ember.name", "EMBER TRAIL")
 	return get_item(id).get("name", "")
+
+
+## The one-line description of a trail or paper ("" for the defaults).
+static func about(id: String) -> String:
+	# i18n: wardrobe info line, after the name; max 150px, 1 line, keep it short
+	match id:
+		"ink":
+			return Loc.t("trail.ink.desc", "DEEP INKY GOO")
+		"glow":
+			return Loc.t("trail.glow.desc", "THICK GLOWING GOO")
+		"gold":
+			return Loc.t("trail.gold.desc", "CHALICE GOLD, ANY SKIN")
+		"candy":
+			return Loc.t("trail.candy.desc", "SWEET STRIPES")
+		"starry":
+			return Loc.t("trail.starry.desc", "SPECKLED WITH STARS")
+		"blueprint":
+			return Loc.t("paper.blueprint.desc", "BLUE PAPER, WHITE INK")
+		"night":
+			return Loc.t("paper.night.desc", "DARK PAPER, SKIN INK")
+		"goldleaf":
+			return Loc.t("paper.goldleaf.desc", "CREAM PAPER, GOLD INK")
+		"abyss":
+			return Loc.t("trail.abyss.desc", "DARK GOO, FAINT STARS")
+		"ember":
+			return Loc.t("trail.ember.desc", "GLOWING EMBERS, ANY SKIN")
+	return ""
 
 
 ## Every trail style the player could wear: the default, the sold ones, then the earned ones.

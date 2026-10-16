@@ -114,13 +114,36 @@ static func tinted(color: Color, tint: Color, amount: float) -> Color:
 	return Color.from_hsv(mixed.h, mixed.s, color.v, color.a)
 
 
+## The English names stay in PRESETS / the *_NAME consts (internal, tools); players see these.
 static func display_name(id: String) -> String:
-	if id == CUSTOM:
-		return CUSTOM_NAME
-	if id == RAINBOW:
-		return RAINBOW_NAME
-	if id == STOPWATCH:
-		return STOPWATCH_NAME
+	# i18n: skin name, max 80px, 1 line; used on the skins screen and in the win text
+	match id:
+		"custom":
+			return Loc.t("skin.custom", "CHAMELEON")
+		"rainbow":
+			return Loc.t("skin.rainbow", "RAINBOW")
+		"stopwatch":
+			return Loc.t("skin.stopwatch", "STOPWATCH")
+		"lime":
+			return Loc.t("skin.lime", "LIME")
+		"mint":
+			return Loc.t("skin.mint", "MINT")
+		"lemon":
+			return Loc.t("skin.lemon", "LEMON")
+		"ocean":
+			return Loc.t("skin.ocean", "OCEAN")
+		"grape":
+			return Loc.t("skin.grape", "GRAPE")
+		"crimson":
+			return Loc.t("skin.crimson", "CRIMSON")
+		"frost":
+			return Loc.t("skin.frost", "FROST")
+		"shadow":
+			return Loc.t("skin.shadow", "INKKY")
+		"bubblegum":
+			return Loc.t("skin.bubblegum", "BUBBLEGUM")
+		"ember":
+			return Loc.t("skin.ember", "EMBER")
 	return get_preset(id).get("name", "")
 
 
@@ -138,10 +161,10 @@ static func skin_for_level(level: int) -> String:
 ## Display name of the skin that clearing `level` unlocks ("" if none).
 static func unlocked_by_level(level: int) -> String:
 	if level == Levels.COUNT:
-		return CUSTOM_NAME
+		return display_name(CUSTOM)
 	for preset: Dictionary in PRESETS:
 		if preset.unlock == level:
-			return preset.name
+			return display_name(preset.id)
 	return ""
 
 

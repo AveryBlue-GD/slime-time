@@ -61,11 +61,29 @@ static func _item(id: String) -> Dictionary:
 
 
 static func display_name(id: String) -> String:
+	# i18n: ability name, cauldron row and key list, max 110px
+	match id:
+		"rifle":
+			return Loc.t("ability.rifle.name", "SLIME RIFLE")
+		"splat":
+			return Loc.t("ability.splat.name", "SLIME SPLAT")
+		"kaze":
+			# i18n: pun on kamikaze + slime; keep a pun if the language can
+			return Loc.t("ability.kaze.name", "SLIMAKAZE")
 	return _item(id).get("name", "")
 
 
 ## The short tag shown under the name in the cauldron (2-3 words; the owner wants no long text).
 static func tag(id: String) -> String:
+	# i18n: short tag under the ability name, 2-3 words, max 110px
+	match id:
+		"rifle":
+			return Loc.t("ability.rifle.desc", "SHOOTS GOO")
+		"splat":
+			# 3X3 is the blast size in tiles
+			return Loc.t("ability.splat.desc", "BOMB 3X3")
+		"kaze":
+			return Loc.t("ability.kaze.desc", "WALL DASH")
 	return _item(id).get("tag", "")
 
 
