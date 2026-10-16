@@ -152,7 +152,10 @@ func _check_bottom_row(screen: Control, hard: bool) -> void:
 		rects.append(Rect2(t.position, Vector2(panel.TOGGLE)))
 	rects.append(Rect2(panel.done_button.position, panel.done_button.size))
 	var longest := ""
-	for text: String in Heat.ABOUT.values() + [panel.DEFAULT_ABOUT]:
+	var texts: Array[String] = [panel.default_about()]
+	for heat_id: String in Heat.IDS:
+		texts.append(Heat.about_text(heat_id))
+	for text: String in texts:
 		longest = text if text.length() > longest.length() else longest
 	rects.append(_text_rect(panel.about, longest))  # the longest about line, centered
 	panel.refresh()
