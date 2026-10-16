@@ -11,6 +11,7 @@ only the current locale's fallback installed + `Language.native_font`, `Language
 `tools/i18n_subset_fonts.py` after translations), `tests/test_i18n_glyphs.gd`; `--lang=xx` now beats
 the saved choice (flag > saved > OS > en), the gate-off locale is pinned to `en`, catalogs load from
 `Language.CATALOGS` (no directory listing), `Loc.fill` fills placeholders in one pass.
+**Chunk E (LANGUAGE screen) done 2026-10-17**: see section 6 "As built"; shots in [shots/](shots/).
 Next: B, C1-C4 in parallel. Inputs: [inventory.md](inventory.md) (every
 string, how it is built, the risky spots) and [fonts.md](fonts.md) (font research, written in parallel;
 steps marked **[fonts]** wait for it). Target: English + 17 languages, every player-visible string
@@ -182,6 +183,33 @@ static func languages_on() -> bool:
   order is the list above (fixed, not sorted per locale). Picking one saves it, then reloads the
   screen in the new language. Each button gets the text direction of its own language (`العربية`
   right-to-left inside its button).
+
+**As built (chunk E, 2026-10-17)**: `scenes/language.tscn` + `scripts/ui/language_screen.gd`, the gated
+button in `scripts/ui/controls.gd`, `assets/ui/icon_globe.png` (`tools/make_ui_art.py`, which now keeps an
+unchanged PNG's old bytes), `tests/test_language_screen.gd`.
+- SETTINGS: with the gate on, `_cell(1, 3)` holds a 120 px button with the globe (tinted like the name,
+  rainbow included) and the current language's native name, centred as one group; 13 px tall for Latin /
+  Cyrillic, `Language.metrics(locale).button_h` in a taller script, centred on its row. Gate off: no button,
+  SETTINGS byte-identical (seeded `--write-movie` capture, HEAD vs. this change).
+- The names are `Language.native_name` (`PORTUGUÊS (BR)`, `INDONESIA`: `PORTUGUÊS (BRASIL)` is 100 px and
+  `BAHASA INDONESIA` 90 px, both over the 88 px a 96 px button holds).
+- Grid 3 x 6, 96 px buttons, 8 px column gap (L8 / R8), row-major in `Language.LOCALES` order. **Each row is
+  as tall as its tallest script needs** (`metrics(code).button_h`: 15, 15, 15, 16 CJK, 19 Thai, 21
+  Devanagari; 4 px apart, pitch >= 19) rather than uniform 21 px rows: with Hindi / Thai / Arabic as the UI
+  language, BACK itself needs 17-21 px and uniform rows left no room for it. The grid is centred between the
+  title box (y 22) and BACK; BACK stays at (4, 164), or moves up so a taller BACK still ends on row 176.
+- Every name fits in every locale (no paging needed): buttons use the goo styles with 1 px content margins
+  (`fit_styles`; the 3 px default made a 19 px Devanagari line grow its button to 25), Latin / Cyrillic
+  names use a copy of the slimy font with no fallback (else, with Hindi on, ENGLISH would carry a 19 px line
+  box), the others `Language.native_font`. Thai / Devanagari names shift down (`INK_NUDGE`) so their ink is
+  centred. Arabic is `TEXT_DIRECTION_RTL` inside its button; the grid itself is not mirrored yet (chunk I).
+- Focus: left / right wrap inside a row, up stops at the top row, down from the bottom row goes to BACK, BACK
+  up goes to the bottom row's first button; the current language is selected (`UIKit.set_selected`) and
+  focused. A pick calls `Language.pick` (saves `[settings] language`, also when it is already the current
+  one) and reloads the page when the language changed; BACK / Esc / B go to SETTINGS.
+- Open: the title key `language.title` is new, so `messages.pot` needs `tools/i18n_extract.py --merge` once
+  the translators' files are in; the rest of SETTINGS (and BACK on every other screen) still overflows in
+  th / hi / ar (chunk G); the Arabic stand-in font draws the letters unjoined (fonts.md open item 3).
 
 ## 7. Fonts and fallbacks **[fonts]**
 

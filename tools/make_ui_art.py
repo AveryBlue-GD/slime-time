@@ -7,11 +7,14 @@ Run from the project root:  python tools/make_ui_art.py
 - icon_drop / icon_clock / icon_lock / icon_check.png : 8x8 icons in white/grey shades so the
   game can tint them (the drop takes the skin color, the rest the text color); icon_coin.png and icon_ticket.png (a notched voucher) are
   drawn in gold.
+- icon_globe.png : 8x8 (7x7 ink) globe on the SETTINGS LANGUAGE button (i18n, shown only with the gate on).
 - check_off / check_on.png (9x9) and grabber / grabber_hover.png (5x9): checkbox and slider knob.
 """
+import zlib
 from pathlib import Path
 
-from make_placeholder_art import PAL, write_png
+from make_placeholder_art import PAL
+from make_placeholder_art import write_png as _write_png
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "ui"
 
@@ -110,6 +113,17 @@ ICONS = {
         "..eeee..",
         "........",
     ],
+    "globe": [  # the LANGUAGE button in SETTINGS: outline, the meridian and the equator in full
+        # white over a dimmer sea; tinted like the text next to it
+        "..eee...",
+        ".e2e2e..",
+        "e22e22e.",
+        "eeeeeee.",
+        "e22e22e.",
+        ".e2e2e..",
+        "..eee...",
+        "........",
+    ],
     "check": [
         "........",
         "......ee",
@@ -170,6 +184,29 @@ WIDGETS = {
         ".kkk.",
     ],
 }
+
+
+def _pixels(png: bytes) -> tuple[bytes, bytes]:
+    """(IHDR, decompressed IDAT) of a PNG, to compare images whatever zlib build compressed them."""
+    pos, header, data = 8, b"", b""
+    while pos < len(png):
+        size = int.from_bytes(png[pos:pos + 4], "big")
+        tag, body = png[pos + 4:pos + 8], png[pos + 8:pos + 8 + size]
+        if tag == b"IHDR":
+            header = body
+        elif tag == b"IDAT":
+            data += body
+        pos += 12 + size
+    return header, zlib.decompress(data)
+
+
+def write_png(path: Path, rows: list[str]) -> None:
+    """Writes the PNG, but keeps an existing file's bytes when its pixels are unchanged (zlib builds
+    differ between machines, and the shipped art must stay byte-identical)."""
+    old = path.read_bytes() if path.exists() else None
+    _write_png(path, rows)
+    if old is not None and old != path.read_bytes() and _pixels(old) == _pixels(path.read_bytes()):
+        path.write_bytes(old)
 
 
 if __name__ == "__main__":

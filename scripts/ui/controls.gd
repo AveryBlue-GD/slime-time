@@ -6,6 +6,9 @@ extends Control
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
+## The LANGUAGE page (scripts/ui/language_screen.gd), reached from the gated LANGUAGE button.
+const LANGUAGE_SCENE := "res://scenes/language.tscn"
+const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
 ## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
 ## (web only) the browser refusing to copy, so the code is shown in the browser's own prompt.
 
@@ -25,7 +28,8 @@ static func copy_by_hand_message() -> String:
 
 
 ## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
-## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
+## CONTROLS, SAVE CODE, and (only while Economy.languages_on(), docs/i18n/plan.md section 6) LANGUAGE
+## mirroring FOG. BACK bottom left, the destructive RESET PROGRESS bottom right.
 const COL_W := 120
 const COL_L := 36
 const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
@@ -48,6 +52,8 @@ var reset_confirm: Control
 var confirm_button: Button
 var cancel_button: Button
 var save_code_button: Button
+## The LANGUAGE button (null with the languages gate off): a globe and the current language's own name.
+var language_button: Button
 var code_panel: Control
 ## The save code of your progress (read-only, to copy) and the box to paste a code into.
 var code_out: LineEdit
@@ -91,6 +97,8 @@ func _ready() -> void:
 	# i18n: column buttons, max 112px (button 120 wide, 4 px margins), 1 line
 	controls_button = _column_button(_cell(1, 1), _open_controls, Loc.t("settings.controls", "CONTROLS"))
 	save_code_button = _column_button(_cell(1, 2), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
+	if Economy.languages_on():
+		_build_language_button()
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), 1 line
@@ -119,6 +127,48 @@ func _section(text: String, x: int, y: int) -> void:
 	var label := UIKit.make_label(text, UIKit.FONT, UIKit.TEXT_DIM)
 	label.position = Vector2(x, y)
 	add_child(label)
+
+
+## The LANGUAGE button in the free cell under SAVE CODE: a globe plus the current language's name in
+## its own script (Language.native_name, never translated), so a player stuck in a language they can't
+## read still finds it. As tall as the current script's button (Language.metrics; 13 for Latin),
+## centred on its row. Only built with the gate on.
+func _build_language_button() -> void:
+	var language := LanguageScreen.lang()
+	var code: String = language.locale
+	var h: int = maxi(UIKit.BUTTON_H, int(LanguageScreen.Lang.metrics(code).button_h))
+	var at := _cell(1, 3) - Vector2(0, (h - UIKit.BUTTON_H) / 2)
+	language_button = UIKit.make_button("", _open_language, Vector2(COL_W, h))
+	LanguageScreen.fit_styles(language_button, false)
+	language_button.position = at
+	add_child(language_button)
+	language_button.size = Vector2(COL_W, h)
+	var font: Font = language.native_font(code)
+	var name := LanguageScreen.Lang.native_name(code)
+	var text_w := int(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)
+	# Globe ink (7 px) + 4 px clear + the name (its 1 px leading letter gap inside the label), as one
+	# centred group.
+	var group_w := 7 + 3 + text_w
+	var x := roundi((COL_W - group_w) / 2.0)
+	var globe := UIKit.make_icon("globe")
+	globe.position = Vector2(x, floori((h - 7) / 2.0))
+	language_button.add_child(globe)
+	var label := UIKit.make_label(name)
+	label.add_theme_font_override("font", font)
+	label.text_direction = Control.TEXT_DIRECTION_RTL if code in LanguageScreen.Lang.RTL_LOCALES else Control.TEXT_DIRECTION_LTR
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))  # (button text has no shadow)
+	language_button.add_child(label)
+	# The globe takes the name's color (SkinText recolors the label from the skin, rainbow included).
+	label.theme_changed.connect(func() -> void: globe.modulate = label.get_theme_color("font_color"))
+	globe.modulate = label.get_theme_color("font_color")
+	label.position = Vector2(x + 10, LanguageScreen.INK_NUDGE.get(code, 0))
+	label.size = Vector2(text_w, h)
+	language_button.set_meta("code", code)
+
+
+func _open_language() -> void:
+	UIKit.go(get_tree(), LANGUAGE_SCENE)
 
 
 func _open_controls() -> void:
