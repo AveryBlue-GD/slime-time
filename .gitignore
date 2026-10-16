@@ -22,5 +22,4 @@
 docs/polish-shots/*.avi
 docs/polish-shots/*.mp4
 docs/spring-cleaning/perf/*.mp4
-docs/spring-cleaning/bounce/*.mp4
 __pycache__/

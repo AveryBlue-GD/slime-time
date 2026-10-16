@@ -16,10 +16,6 @@ signal launched(floor_velocity: Vector2, flight_time: float)
 ## Emitted when a SLIMAKAZE dash (Abilities) hits its wall (`wall_normal` points back at the slime).
 signal dash_hit(wall_normal: Vector2)
 
-## Bouncy test (Economy.bouncy_on): a leap bounced off a wall at `contact` (the touch point on the
-## wall); `impact` = its speed into the wall (px/s), `new_dir` = where it flies now.
-signal leap_bounced(contact: Vector2, wall_normal: Vector2, impact: float, new_dir: Vector2)
-
 ## DASH: the SLIMAKAZE ability's straight dash to a wall (set by AbilityRunner through dash()).
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED, DASH }
 
@@ -123,24 +119,6 @@ var _dash_lane := Vector2.ZERO
 var _dash_on_lane := true
 var _dash_speed := 0.0
 var _dash_stun := 0.0
-## Bouncy test state for the current leap (see _fly_bouncy; reset by launch). `leap_bounces` counts
-## its real bounces; `leap_hit_wall` = it touched a wall hard enough to pay the splat penalty.
-var leap_bounces := 0
-var leap_hit_wall := false
-var _bouncy := false
-var _leap_intended := 0.0
-var _speed_share := 1.0
-var _arc_from := 0.0
-var _arc_height := 0.0
-var _squash_left := 0.0
-var _stretch_left := 0.0
-var _grace_left := 0.0
-## The walls bounced off while the grace (BOUNCE_GRACE) runs: a hit parallel to one of them slides.
-var _grace_normals: Array[Vector2] = []
-## Leap distance flown before its first wall contact (what the leap is charged for: the rebound is
-## free, like a splat's knockback slide) and in all.
-var _flown_before_hit := 0.0
-var _flown := 0.0
 
 static var _sprite_frames: SpriteFrames
 ## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
@@ -472,19 +450,6 @@ func launch(charge_value: float) -> void:
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
 	ricochets = 0
-	_bouncy = Economy.bouncy_on()
-	leap_bounces = 0
-	leap_hit_wall = false
-	_leap_intended = _jump_distance
-	_speed_share = 1.0
-	_arc_from = 0.0
-	_arc_height = 3.0 + _jump_distance / TILE * 1.5
-	_squash_left = 0.0
-	_stretch_left = 0.0
-	_grace_left = 0.0
-	_grace_normals.clear()
-	_flown_before_hit = 0.0
-	_flown = 0.0
 	velocity = Vector2.ZERO
 	charge = 0.0
 	state = State.AIRBORNE
@@ -526,10 +491,7 @@ func _physics_process(delta: float) -> void:
 				if not Input.is_action_pressed("jump"):
 					launch(charge)
 		State.AIRBORNE:
-			if _bouncy:
-				_fly_bouncy(delta)
-			else:
-				_fly(delta)
+			_fly(delta)
 		State.DASH:
 			_dash_step(delta)
 		State.STUNNED:
@@ -585,11 +547,7 @@ func _animate() -> void:
 		State.AIRBORNE:
 			var t := _jump_traveled / _jump_distance
 			var jump_name := dir_name(_jump_dir)
-			if _bouncy and _squash_left > 0.0:  # squashed on the wall
-				_show_frame("splat_" + _splat_side, 0.0)
-			elif _bouncy and _stretch_left > 0.0:  # springing off it: the stretched end of the launch
-				_show_frame("launch_" + jump_name, lerpf(1.0, 0.5, _stretch_left / Economy.BOUNCE_STRETCH_TIME))
-			elif t < LAUNCH_SHARE and leap_bounces == 0:
+			if t < LAUNCH_SHARE:
 				_show_frame("launch_" + jump_name, t / LAUNCH_SHARE)
 			else:
 				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
@@ -690,108 +648,6 @@ func _fly(delta: float) -> void:
 		_land(false, Vector2.ZERO)
 
 
-## Bouncy test (Economy.bouncy_on): a leap that hits a wall bounces off it and flies on (_bounce_off)
-## instead of splatting. Up to 3 hits per tick (a corner), each with the rest of the tick's step.
-func _fly_bouncy(delta: float) -> void:
-	_grace_left = maxf(_grace_left - delta, 0.0)
-	if _grace_left <= 0.0:
-		_grace_normals.clear()
-	_stretch_left = maxf(_stretch_left - delta, 0.0)
-	if _squash_left > 0.0:
-		_squash_left -= delta  # held on the wall (the arc holds too)
-		if _squash_left <= 0.0:
-			_stretch_left = Economy.BOUNCE_STRETCH_TIME
-		return
-	var step := minf(JUMP_SPEED * _speed_share * delta, _jump_distance - _jump_traveled)
-	for i in 3:
-		var collision := move_and_collide(_jump_dir * step)
-		var moved := _moved_along(collision, step)
-		if collision and maze_assist and _slip_past_corner(collision):
-			collision = move_and_collide(_jump_dir * (step - moved))
-			moved += _moved_along(collision, step - moved)
-		_jump_traveled += moved
-		_flown += moved
-		if not leap_hit_wall:
-			_flown_before_hit = _flown
-		if not collision:
-			break
-		step = _bounce_off(collision, maxf(step - moved, 0.0))
-		if state != State.AIRBORNE or _squash_left > 0.0 or step <= 0.0:
-			break
-	if state != State.AIRBORNE:
-		return
-	var t := clampf(_jump_traveled / maxf(_jump_distance, 0.001), 0.0, 1.0)
-	sprite.position.y = -roundf(_arc_from * (1.0 - t) + sin(PI * t) * _arc_height)
-	if _jump_traveled >= _jump_distance - 0.001 and _squash_left <= 0.0:
-		_land(false, Vector2.ZERO)
-
-
-## A wall hit mid-leap (bouncy test). A graze, a second touch of a parallel wall within BOUNCE_GRACE
-## (the far wall of a corridor) or a hit past BOUNCE_MAX slides along the wall; otherwise the leap
-## reflects (bounce_dir), loses energy, and squashes on the wall before it springs off. Returns how
-## much of this tick's step is left to move (0 when squashing or done).
-func _bounce_off(collision: KinematicCollision2D, left: float) -> float:
-	var normal := collision.get_normal()
-	var incidence := -_jump_dir.dot(normal)  # cos of the angle to the normal: 1 = head-on
-	var parallel := _grace_normals.any(func(g: Vector2) -> bool: return absf(normal.dot(g)) > 0.7)
-	if incidence <= Economy.BOUNCE_GRAZE_COS or parallel or leap_bounces >= Economy.BOUNCE_MAX:
-		var along := _jump_dir.slide(normal)
-		if along.length() < 0.2:  # wedged against it: the leap ends here
-			_land(false, Vector2.ZERO)
-			return 0.0
-		_scale_leap(along.length())
-		_jump_dir = along.normalized()
-		return left * along.length()
-	var out := bounce_dir(_jump_dir, normal)
-	var share := out.length()
-	var impact := incidence * JUMP_SPEED * _speed_share
-	if not leap_hit_wall:
-		leap_hit_wall = true
-		_flown_before_hit = _flown
-	_splat_side = splat_side(normal)
-	var power := clampf(impact / JUMP_SPEED, 0.0, 1.0)
-	_sfx("bounce", lerpf(Economy.BOUNCE_DB_MIN, Economy.BOUNCE_DB_MAX, power), lerpf(Economy.BOUNCE_PITCH_MIN, Economy.BOUNCE_PITCH_MAX, power))
-	var leftover := (_jump_distance - _jump_traveled) * share
-	if leftover < Economy.BOUNCE_MIN_LEFT:  # spent: it drops off the wall
-		leap_bounced.emit(position - normal * RADIUS, normal, impact, normal)
-		_land(false, Vector2.ZERO)
-		return 0.0
-	leap_bounces += 1
-	var in_grace := not _grace_normals.is_empty()  # the second wall of a corner: one quick double bounce
-	_grace_normals.append(normal)
-	_jump_dir = out / share
-	_speed_share = maxf(_speed_share * share, Economy.BOUNCE_MIN_SPEED_SHARE)
-	_arc_from = -sprite.position.y
-	_arc_height = Economy.BOUNCE_ARC_BASE + leftover / TILE * Economy.BOUNCE_ARC_PER_TILE
-	_jump_distance = leftover
-	_jump_traveled = 0.0
-	var head_on := incidence >= Economy.BOUNCE_HEAD_ON_COS
-	_squash_left = 0.0 if in_grace else (Economy.BOUNCE_HEAD_ON_SQUASH if head_on else Economy.BOUNCE_SQUASH_TIME)
-	_grace_left = Economy.BOUNCE_GRACE + _squash_left
-	Input.vibrate_handheld(25 if head_on else 15)
-	leap_bounced.emit(position - normal * RADIUS, normal, impact, _jump_dir)
-	if in_grace:
-		_stretch_left = Economy.BOUNCE_STRETCH_TIME
-		return left * share  # straight on off the second wall, this tick
-	return 0.0
-
-
-## Bouncy test: the leap's direction `dir` (unit) after hitting a wall with `wall_normal`: the part
-## into the wall comes back x BOUNCE_RESTITUTION (BOUNCE_HEAD_ON_RESTITUTION near head-on), the part
-## along it keeps BOUNCE_TANGENT_KEEP. Not normalized: its length is the energy kept.
-static func bounce_dir(dir: Vector2, wall_normal: Vector2) -> Vector2:
-	var into := wall_normal * dir.dot(wall_normal)
-	var head_on := -dir.dot(wall_normal) >= Economy.BOUNCE_HEAD_ON_COS
-	var restitution := Economy.BOUNCE_HEAD_ON_RESTITUTION if head_on else Economy.BOUNCE_RESTITUTION
-	return (dir - into) * Economy.BOUNCE_TANGENT_KEEP - into * restitution
-
-
-## Bouncy test: what's left of the leap keeps `share` of its distance and speed.
-func _scale_leap(share: float) -> void:
-	_jump_distance = _jump_traveled + (_jump_distance - _jump_traveled) * share
-	_speed_share = maxf(_speed_share * share, Economy.BOUNCE_MIN_SPEED_SHARE)
-
-
 ## How far a flight step actually went along the leap (sideways push-outs from a wall don't count).
 func _moved_along(collision: KinematicCollision2D, step: float) -> float:
 	return clampf(collision.get_travel().dot(_jump_dir), 0.0, step) if collision else step
@@ -821,10 +677,6 @@ func _slip_past_corner(collision: KinematicCollision2D) -> bool:
 func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	sprite.position.y = 0.0
 	last_jump_traveled = _jump_traveled
-	if _bouncy:  # charged for the flight up to the first wall touch; the rebound is free
-		last_jump_traveled = _flown_before_hit
-		_squash_left = 0.0
-		_stretch_left = 0.0
 	if hit_wall:
 		state = State.STUNNED
 		_stun_left = splat_stun
@@ -837,7 +689,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME
 		_sfx("land", -3.0)
-	jump_landed.emit(_leap_intended if _bouncy else _jump_distance, hit_wall, wall_normal)
+	jump_landed.emit(_jump_distance, hit_wall, wall_normal)
 
 
 ## Throws the slime back off the wall it hit (see BOUNCE_FACTOR): the leftover jump distance,
