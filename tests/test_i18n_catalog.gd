@@ -19,7 +19,9 @@ extends "res://tests/suite_base.gd"
 const LOCALE_DIR := "res://locale"
 const TEMPLATE := "res://locale/messages.pot"
 ## Locales whose translation is finished: a missing or fuzzy entry there fails the suite.
-const COMPLETE_LOCALES: Array[String] = []
+const COMPLETE_LOCALES: Array[String] = [
+	"es", "pt_BR", "fr", "de", "it", "ru", "pl", "tr", "ja", "ko", "zh_CN", "zh_TW", "th", "vi", "id", "ar", "hi",
+]
 ## Same table as tools/i18n_extract.py PLURALS: code -> Plural-Forms.
 const PLURAL_FORMS := {
 	"es": "nplurals=2; plural=(n != 1);",

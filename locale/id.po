@@ -1929,6 +1929,13 @@ msgctxt "keys.press_key"
 msgid "PRESS KEY"
 msgstr "TEKAN"
 
+#. max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/language_screen.gd
+msgctxt "language.title"
+msgid "LANGUAGE"
+msgstr "BAHASA"
+
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.1"
 msgid "HEAT UP LEVELS BEATEN ON HARD"
