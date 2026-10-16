@@ -258,7 +258,7 @@ func _build_room() -> void:
 func _build_stations() -> void:
 	var can_quit := Platform.can_quit()  # (desktop only: not the web, iOS or Android)
 	# Clockwise round the room from the back.
-	# i18n: station names are prompt-box labels, max 110px, 1 line
+	# i18n: station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 	_add_station("story", Loc.t("hub.station.story", "STORY - LEVEL {level}", {level = Progress.current_level}), "door", Vector2i(30, 40), 4)  # torches flickering
 	_add_station("maps", Loc.t("hub.station.map_table", "MAP TABLE"), "maptable", Vector2i(30, 36), 4)  # lantern flickering
 	_add_station("upgrades", Loc.t("hub.station.upgrades", "UPGRADES"), "cauldron", Vector2i(30, 28), 4)
@@ -471,7 +471,7 @@ func _show_tree_notice(root: Control) -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", UIKit.line_spacing())
 	tree_notice.add_child(column)
-	# i18n: max 150px each, 1 line each
+	# i18n: max 150px each, grows to 280px (the notice widens, centred), 1 line each
 	for line: Array in [[Loc.t("hub.notice.reworked", "UPGRADES REWORKED"), UIKit.GOLD], [Loc.t("hub.notice.returned", "COINS RETURNED +{count}", {count = returned}), UIKit.TEXT]]:
 		var label := UIKit.make_label(line[0], 8, line[1])
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -926,6 +926,8 @@ func _layout_coin_board() -> void:
 			w = BOARD_SIDE + col_w[0] + BOARD_COLUMN_GAP + col_w[1] + BOARD_SIDE
 			if w <= 320 - 2 * UIKit.EDGE:
 				break
+	# (the total and hint lines span the board: a longer translation widens it too)
+	w = maxf(w, maxf(UIKit.text_w(board_total.text), UIKit.text_w(board_hint.text)) + 2 * UIKit.PANEL_PAD)
 	w = minf(w, 320 - 2 * UIKit.EDGE)
 	board_rect = Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	board_panel.position = board_rect.position
@@ -975,7 +977,7 @@ func open_coin_board() -> void:
 		count.remove_meta(SkinText.DUE)  # (a rainbow color it was due while hidden is stale now)
 		if found < total:
 			count.add_to_group(SkinText.GROUP)
-	# i18n: max 200px, 1 line; the spaces are spacing, not words
+	# i18n: max 200px, grows to 280px (the board widens), 1 line; the spaces are spacing, not words
 	board_total.text = Loc.t("hub.coins.total", "STORY {have}/{total}   IN HAND {hand}", {have = Progress.coins_earned(), total = Levels.total_coins(), hand = maxi(Progress.coins(), 0)})
 	var touch := _touch_controls != null and _touch_controls.visible
 	# i18n: max 200px, 1 line; {key} = a key or pad button name

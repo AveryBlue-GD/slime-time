@@ -137,7 +137,7 @@ static func text_block_h(lines: int) -> int:
 	return lines * line_h() + maxi(lines - 1, 0) * line_spacing()
 
 
-## The standard button height (BUTTON_H in English; 15 with accents, 17 Vietnamese, 16 CJK, 18 zh_TW,
+## The standard button height (BUTTON_H in English; 16 with accents, 18 Vietnamese, 16 CJK, 18 zh_TW,
 ## 19 Thai, 21 Devanagari / Arabic). The theme's button margins make every button at least this tall.
 static func button_h() -> int:
 	return maxi(BUTTON_H, int(metrics().button_h))
@@ -493,10 +493,10 @@ static func checkbox_extra(box: CheckBox) -> int:
 
 
 ## Puts a CheckBox's 9 px box where English has it beside its text: its bottom row 2 rows above the
-## line's baseline (the slimy body's last row). Godot centres the 16 px icon slot and the line box
-## separately; a taller script's line box (its ascent) puts the baseline lower, so the box would sit
-## 2-3 px high (CJK, zh_TW, Thai). English / Latin: no change. Call it once the box is in the themed
-## tree and sized.
+## text's last ink row (the slimy body's last row, ascent - 1; CJK letters reach Language ink_drop
+## lower). Godot centres the 16 px icon slot and the line box separately; a taller script's line box
+## (its ascent) puts the letters lower, so the box sat 1-3 px high (CJK 2, zh_TW 3, Thai 1). English /
+## Latin: no change. Call it once the box is in the themed tree and sized.
 static func align_checkbox(box: CheckBox) -> void:
 	if not tall_script():
 		return
@@ -509,8 +509,8 @@ static func align_checkbox(box: CheckBox) -> void:
 			icon_h = maxi(icon_h, icon.get_height())
 	var box_h := (box.get_theme_icon("unchecked") as Texture2D).get_height()
 	var line_top := floorf((h - font.get_height(FONT)) / 2.0)
-	var baseline := line_top + roundf(font.get_ascent(FONT))
-	var want_top := baseline - 1 - 2 - (box_h - 1)  # (English: 11 - 1 - 2 - 8 = 0)
+	var ink_bottom := line_top + roundf(font.get_ascent(FONT)) - 1 + int(metrics().get("ink_drop", 0))
+	var want_top := ink_bottom - 2 - (box_h - 1)  # (English: 4 + 7 - 1 - 2 - 8 = 0)
 	var top := floorf((h - icon_h) / 2.0)
 	box.add_theme_constant_override("check_v_offset", int(want_top - top))
 
@@ -523,11 +523,24 @@ static func big_button_h(english_h: int) -> int:
 	return maxi(english_h, int(metrics().title_line_h) + int(metrics().get("ink_nudge", 0)))
 
 
-## The rows a locale's accents take above a line of 8 px text in a box laid out for English (0 in
-## English, 2 accented, 4 Vietnamese: the extra top margin of button_v_margins; a taller script's line
-## box holds its marks: 0).
+## The rows a locale's accents need above a line of 8 px text in a box laid out for English, which
+## already keeps the marks' 1 px gap row free (0 in English, 2 accented, 4 Vietnamese: ink_above - 1; a
+## taller script's line box holds its marks: 0). Tiles and panels (no goo lump row over the text).
 static func accent_room() -> int:
-	return 0 if tall_script() else maxi(0, button_v_margins().x - 3)
+	return 0 if tall_script() else maxi(0, int(metrics().ink_above) - 1)
+
+
+## The rows `text`'s marks draw above its line box in the current locale: the locale's ink_above (8 px)
+## or title_above (16 px) when the text has a letter outside ASCII (an accented capital, conservatively
+## any non-ASCII letter), else 0; 0 in a taller script (its line box holds its marks). For room that
+## only a marked line needs (a tagline line under the title's slimes).
+static func ink_above(text: String, font_size := FONT) -> int:
+	if tall_script():
+		return 0
+	for i in text.length():
+		if text.unicode_at(i) > 0x7F:
+			return int(metrics().title_above if font_size == FONT_BIG else metrics().ink_above)
+	return 0
 
 
 ## Where a 7 px digit's body starts in a line box of the current locale's 8 px font: 0 in English and
@@ -559,6 +572,21 @@ static func plain_font(text: String, font_size := FONT, always := false) -> Font
 		if not plain.has_char(text.unicode_at(i)):
 			return null
 	return plain
+
+
+## `text` (one line) broken onto two at the space nearest the middle that keeps both within `room` px
+## (as it is if there is none): a checkbox's or a result line's two balanced lines.
+static func break_line(text: String, room: int) -> String:
+	var best := text
+	var best_w := INF
+	for i in text.length():
+		if text[i] != " ":
+			continue
+		var w := maxi(text_w(text.left(i)), text_w(text.substr(i + 1)))
+		if w <= room and w < best_w:
+			best_w = w
+			best = text.left(i) + "\n" + text.substr(i + 1)
+	return best
 
 
 ## Puts plain_font on `control` (a Label / Button showing digits or arrows) when it applies.
@@ -827,9 +855,9 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	# English: a 148x58 panel at (86, 60): text at 8, price row at 20, BUY / BACK (48x13, 12 apart) at
 	# 36, 9 px under them. A longer BUY / BACK widens both buttons alike (the pair stays symmetric) and
 	# the panel with them; a taller script moves the rows by its line pitch / button height.
-	# i18n: max 40px (button 48 wide, 4 px margins), 1 line
+	# i18n: max 40px (button 48 wide, 4 px margins), grows to 60px (both buttons alike, the panel with them), 1 line
 	var buy_text := Loc.t("common.buy", "BUY")
-	# i18n: max 40px, 1 line
+	# i18n: max 40px, grows to 60px (both buttons alike, the panel with them), 1 line
 	var back_text := Loc.t("common.back", "BACK")
 	var button_w: int = tab_widths([buy_text, back_text], 48, true).max()
 	var panel_w := maxi(148, 2 * button_w + GAP_XL + 2 * 20)
@@ -998,7 +1026,7 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 ## script, always ending on row 176).
 static func add_back_button(root: Control, on_press := Callable()) -> Button:
 	var press := on_press if on_press.is_valid() else func() -> void: go(root.get_tree(), HUB_SCENE)
-	# i18n: max 32px (BACK_SIZE 40 wide, 4 px margins), 1 line; on every screen
+	# i18n: max 32px (BACK_SIZE 40 wide, 4 px margins), grows to 40px (back_size: the button widens), 1 line; on every screen
 	var text := Loc.t("common.back", "BACK")
 	var button := make_button(text, press, back_size(text))
 	note_text_w(button, [text], int(BACK_SIZE.x))

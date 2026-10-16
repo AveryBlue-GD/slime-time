@@ -58,7 +58,7 @@ var _hidden: Array[CanvasItem] = []
 
 
 static func default_about() -> String:
-	# i18n: the line under the toggles, max 224px, 1 line (clipped past that)
+	# i18n: the line under the toggles, max 224px (the English panel); grows to 296px (the wider panel), wraps onto 2 lines there, lines 2
 	return Loc.t("heat.about_default", "WORKS ON LEVELS ALREADY BEATEN ON HARD")
 
 

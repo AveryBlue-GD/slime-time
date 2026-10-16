@@ -120,6 +120,7 @@ func _ready() -> void:
 	hard_box.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - hard_box.size.x,
 		text_line_y() - floorf((hard_box.size.y - UIKit.line_h()) / 2.0))
 	UIKit.note_text_w(hard_box, [hard_box.text], 0, UIKit.FONT, UIKit.checkbox_extra(hard_box))  # (sized to its text)
+	UIKit.align_checkbox(hard_box)
 	UIKit.add_touch_target(hard_box)
 	_build_view()
 	if pages > 1:
@@ -303,7 +304,7 @@ func _build_view() -> void:
 	view_line = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	view_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	view_root.add_child(view_line)
-	# i18n: max 32px, 1 line
+	# i18n: max 32px, grows to 40px (back_size: the button widens), 1 line
 	view_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_view, UIKit.back_size())
 	UIKit.note_text_w(view_back, [view_back.text], int(UIKit.BACK_SIZE.x))
 	view_root.add_child(view_back)

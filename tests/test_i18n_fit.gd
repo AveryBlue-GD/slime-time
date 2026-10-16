@@ -10,14 +10,17 @@ extends "res://tests/suite_base.gd"
 ## Every overflow goes into docs/i18n/fit-report.budget.json + fit-report.md (tests/i18n_report.gd).
 ## An overflow is "accepted" when English itself is over the same budget (the budget note is then the
 ## thing to fix, not the translation).
-## REPORTING ONLY for now: with ENFORCE false the suite passes whatever it finds (it still fails if it
-## can't measure); chunk G (layout hardening) sets ENFORCE to true once the open list is empty.
+## A budget is each call site's `max Npx`, or its `grows to Npx` where the screen widens the box for the
+## text (UIKit sizing helpers, up to the room the layout has), `wraps` where it wraps (_budget_of).
+## ENFORCED (chunk G5) for every locale but Arabic (REPORT_ONLY: reported, never failed; chunk I).
 ## Also runs `tools/i18n_extract.py --check` (catalogs merged, placeholders, casing, no untranslated
 ## entry, no English literal outside Loc in scripts/), so test_all.sh covers it; skipped with a note
 ## when no Python 3 is on the PATH.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_i18n_fit.gd
 
-const ENFORCE := false
+const ENFORCE := true
+## Locales whose findings are reported but do not fail the suite (Arabic: RTL is chunk I).
+const REPORT_ONLY := ["ar"]
 const Lang := preload("res://scripts/language.gd")
 const Report := preload("res://tests/i18n_report.gd")
 const TEMPLATE := "res://locale/messages.pot"
@@ -36,6 +39,7 @@ var test_save := throwaway_save()
 var language: Node
 var _budget := RegEx.create_from_string("max (\\d+) ?px")
 var _lines := RegEx.create_from_string("\\blines (\\d+)\\b")
+var _grows := RegEx.create_from_string("grows to (\\d+) ?px")
 
 
 func _initialize() -> void:
@@ -51,11 +55,9 @@ func _initialize() -> void:
 	var template := Report.po_entries(TEMPLATE)
 	var budgeted: Array[Dictionary] = []
 	for entry in template:
-		var m := _budget.search(entry.notes)
-		if m:
-			var lines := _lines.search(entry.notes)
-			budgeted.append(entry.merged({max_w = int(m.get_string(1)), max_lines = int(lines.get_string(1)) if lines else 0,
-				big = entry.notes.contains("16 px")}))
+		var budget := _budget_of(entry)
+		if not budget.is_empty():
+			budgeted.append(entry.merged(budget))
 	_check(template.size() > 400 and budgeted.size() > 100, "%d template entries, %d with a width budget" % [template.size(), budgeted.size()])
 	var issues: Array = []
 	var english := {}  # ctx -> kinds over budget in English
@@ -68,19 +70,29 @@ func _initialize() -> void:
 			for entry in Report.po_entries("res://locale/%s.po" % code):
 				catalog[entry.ctx + "\u0004" + entry.msgid] = entry
 		for entry in budgeted:
-			var font: Font = load(Lang.FONT_BIG_PATH if entry.big else Lang.FONT_PATH)
-			var size := UIKit.FONT_BIG if entry.big else UIKit.FONT
 			for text in _forms(code, entry, catalog):
+				var font: Font = load(Lang.FONT_BIG_PATH if entry.big else Lang.FONT_PATH)
+				var size := UIKit.FONT_BIG if entry.big else UIKit.FONT
 				measured += 1
 				var filled := Loc.fill(text, SAMPLES)
+				# (a 16 px text that steps down to the 8 px font where it doesn't fit: measured at 8 px then)
+				if entry.big and entry.steps_down and UIKit.text_w(filled, UIKit.FONT_BIG, font) > entry.max_w:
+					font = load(Lang.FONT_PATH)
+					size = UIKit.FONT
 				var widest := 0.0
 				var widest_line := ""
-				for line in filled.split("\n"):
+				var line_count := filled.count("\n") + 1
+				# (a box that wraps: only an unbreakable word can be too wide; the lines are the wrapped ones)
+				var pieces: PackedStringArray = filled.replace("\n", " ").split(" ", false) if entry.wraps else filled.split("\n")
+				for line in pieces:
 					var w := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 					if w > widest:
 						widest = w
 						widest_line = line
-				var line_count := filled.count("\n") + 1
+				if entry.wraps:
+					line_count = 0
+					for line in filled.split("\n"):
+						line_count += UIKit.wrapped_lines(line, entry.max_w, size, font)
 				var found: Array[String] = []
 				if widest > entry.max_w:
 					found.append("overflow")
@@ -111,6 +123,7 @@ func _initialize() -> void:
 	Report.write("budget", issues, {
 		budgets = "%d of %d template entries carry a `max Npx` note" % [budgeted.size(), template.size()],
 		fonts = "pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)",
+		limits = "each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale but %s" % ", ".join(REPORT_ONLY),
 		placeholders = "filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)",
 	})
 	for code: String in Report.LOCALE_ORDER:
@@ -119,10 +132,43 @@ func _initialize() -> void:
 			print("  report %s: %d over budget, e.g. %s (%d > %d px)" % [code, mine.size(), mine[0].key, mine[0].text_w, mine[0].box_w])
 	print("  budget report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
-		_check(open.is_empty(), "every translation fits its width budget (%d open)" % open.size())
+		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
+		_check(failing.is_empty(), "every translation fits its width budget, every locale but %s (%d open)" % [", ".join(REPORT_ONLY), failing.size()])
 	_extractor_check()
 	_result()
 	quit(1 if failures else 0)
+
+
+## `entry`'s width budget from its call sites' hints (`#.` lines): each site's `max Npx`, or the larger
+## `grows to Npx` where that site sizes its box from the text with the UIKit helpers (button_w /
+## tab_widths / fit_text: the room the layout really has); the smallest over the sites. `wraps`: every
+## budgeted site wraps the text inside that width (fit_text / autowrap), so the line count is the wrapped
+## one (against `lines N`, default 2) and only an unbreakable word can overflow. `steps down to 8 px`:
+## a 16 px text measured in the 8 px font where it does not fit at 16 (fit_text's last step). {} without
+## a budget.
+func _budget_of(entry: Dictionary) -> Dictionary:
+	var limit := -1
+	var wraps := true
+	for line: String in entry.note_lines:
+		if line.begins_with("budget:"):
+			continue
+		var m := _budget.search(line)
+		if m == null:
+			continue
+		var w := int(m.get_string(1))
+		var grows := _grows.search(line)
+		if grows:
+			w = maxi(w, int(grows.get_string(1)))
+		limit = w if limit < 0 else mini(limit, w)
+		wraps = wraps and line.contains("wraps")
+	if limit < 0:
+		return {}
+	var lines := _lines.search(entry.notes)
+	var max_lines := int(lines.get_string(1)) if lines else 0
+	if wraps and max_lines == 0:
+		max_lines = 2
+	return {max_w = limit, max_lines = max_lines, big = entry.notes.contains("16 px"), wraps = wraps,
+		steps_down = entry.notes.contains("steps down to 8 px")}
 
 
 ## The texts of `entry` in `code`: English (singular + plural), its pseudo-localized form, or every

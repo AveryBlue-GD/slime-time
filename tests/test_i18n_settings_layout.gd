@@ -181,7 +181,7 @@ func _keys() -> void:
 				left = minf(left, grid.position.x)
 		if left != 320 - right:
 			bad.append("page %d: columns not centred (L%d R%d)" % [p, left, 320 - right])
-		if top < UIKit.title_bottom() + UIKit.GAP_M:
+		if top < UIKit.title_bottom() + UIKit.GAP_S:  # (GAP_M; GAP_S where that keeps the rows on one page)
 			bad.append("page %d: rows start at %d, title ends %d" % [p, top, UIKit.title_bottom()])
 		var note := _rect(page.note)
 		if bottom + UIKit.GAP_M > note.position.y or note.end.y + UIKit.GAP_L > UIKit.bottom_row_y():
@@ -232,7 +232,6 @@ func _title() -> void:
 		bad.append("tagline %d..%d (%d lines), ENTER ends %d" % [top, top + h, lines, enter.end.y])
 	# Each tagline line's ink (its width centred, the 16 px line + accents above / drips below) clear of
 	# the slimes' ink and of STORY.
-	var ink_above := int(UIKit.metrics().title_above)
 	var drips := 0 if UIKit.tall_script() else 2 * UIKit.TEXT_DRIP
 	var line_h := tagline.get_theme_font("font").get_height(UIKit.FONT_BIG)
 	var avoid: Array[Rect2] = [_rect(page.story_button)]
@@ -243,7 +242,8 @@ func _title() -> void:
 	for i in parts.size():
 		var w := UIKit.text_w(parts[i], UIKit.FONT_BIG)
 		var y := top + i * (line_h + tagline.get_theme_constant("line_spacing"))
-		var ink := Rect2(160 - w / 2.0, y - ink_above, w, line_h + ink_above + drips)
+		var above := UIKit.ink_above(parts[i], UIKit.FONT_BIG)  # (accent room only over a line that has marks)
+		var ink := Rect2(160 - w / 2.0, y - above, w, line_h + above + drips)
 		for r in avoid:
 			if ink.intersects(r):
 				bad.append("tagline line %d %s over %s" % [i + 1, ink, r])

@@ -87,7 +87,7 @@ func _draw() -> void:
 			_draw_wasd(top, move_alpha)
 	if leap_alpha > 0.0:
 		var spot := Vector2(0, -23 + bob)
-		# i18n: tutorial keycap on touch screens, max 27px (a 29 px drawn key), 1 line
+		# i18n: tutorial keycap on touch screens, max 27px (a 29 px drawn key), grows to 60px (the key widens), 1 line
 		var leap := Loc.t("tutorial.jump", "JUMP") if _touch() else Platform.prompt_for("jump", _key_text("jump", "SPACE"))  # (pad: A)
 		_draw_key(spot, leap, 29.0, leap_alpha, _touch())
 

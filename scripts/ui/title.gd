@@ -68,7 +68,7 @@ func _ready() -> void:
 	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
 	var fresh: bool = Progress.is_fresh_save()
 	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
-	# i18n: max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
+	# i18n: max 168px, grows to 224px (the button widens, the slimes move out with its ends), 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 	var enter_text := Loc.t("title.play", "PLAY") if fresh else Loc.t("title.enter_hub", "ENTER THE HUB")
 	# English: 176x25 at (72, 84), your slime 20 px beyond each end (x 52 / 268, y 112). A longer text
 	# widens it (still centred, the slimes moving out with its ends); a taller script's 16 px line makes
@@ -133,7 +133,7 @@ func _ready() -> void:
 	# Your slimes 20 px beyond the button's ends, a little low (y 112); when the tagline's first line
 	# would run under them (a line wider than the room between them), they stand level with the button.
 	var slime_y := SLIME_Y + floori((enter_size.y - ENTER_SIZE.y) / 2.0)
-	var line_top := top - int(UIKit.metrics().title_above)
+	var line_top := top - UIKit.ink_above(tagline.text.get_slice("\n", 0), UIKit.FONT_BIG)  # (its marks, if it has any)
 	for i in 2:
 		var x := enter_rect.position.x - SLIME_OUT if i == 0 else enter_rect.end.x + SLIME_OUT
 		previews[i].position = Vector2(x, slime_y)

@@ -530,10 +530,10 @@ func _process(delta: float) -> void:
 func _section_label(id: String) -> String:
 	match id:
 		"hats":
-			return Loc.t("wheel.section.hats", "HATS")  # i18n: max 44px, 1 line
+			return Loc.t("wheel.section.hats", "HATS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
 		"trails":
-			return Loc.t("wheel.section.trails", "TRAILS")  # i18n: max 44px, 1 line
-	return Loc.t("wheel.section.papers", "PAPERS")  # i18n: max 44px, 1 line
+			return Loc.t("wheel.section.trails", "TRAILS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
+	return Loc.t("wheel.section.papers", "PAPERS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
 
 
 ## Shows a SHOP section's tiles: HATS (the TAILOR), TRAILS or PAPERS.

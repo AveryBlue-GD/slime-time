@@ -448,7 +448,7 @@ func _refresh(focus_id := "") -> void:
 	var worn_here: bool = view_jelly == Progress.jelly
 	if not Progress.is_skin_unlocked(id, view_jelly):
 		if id == Skins.STOPWATCH:  # both versions open together
-			# i18n: {count} = medals needed (30), {have}/{count} = progress; status line, max 300px, 1 line
+			# i18n: {count} = medals needed (30), {have}/{count} = progress; status line, max 312px (EDGE to EDGE, centred), 1 line
 			status.text = Loc.n("skins.locked_medals", "LOCKED - EARN ALL {count} MEDALS ({have}/{count})", "LOCKED - EARN ALL {count} MEDALS ({have}/{count})", Progress.medals_max(), {have = Progress.medals_total(false)})
 		elif view_jelly:
 			# i18n: {level} = the level number to clear on hard mode; status line, max 300px, 1 line

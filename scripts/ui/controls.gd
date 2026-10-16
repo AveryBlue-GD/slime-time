@@ -13,17 +13,17 @@ const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
 ## (web only) the browser refusing to copy, so the code is shown in the browser's own prompt.
 
 static func old_code_message() -> String:
-	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	# i18n: status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	return Loc.t("savecode.old_version", "THAT CODE IS FROM AN OLD VERSION")
 
 
 static func copied_message() -> String:
-	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	# i18n: status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	return Loc.t("savecode.copied", "COPIED! KEEP IT SOMEWHERE SAFE")
 
 
 static func copy_by_hand_message() -> String:
-	# i18n: status line in the SAVE CODE panel (web, browser refused to copy), max 260px, 1 line
+	# i18n: status line in the SAVE CODE panel (web, browser refused to copy), max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	return Loc.t("savecode.copy_by_hand", "COPY THE CODE FROM THE POP-UP")
 
 
@@ -122,7 +122,7 @@ func _ready() -> void:
 		_build_language_button()
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
-	# i18n: max 84px (RESET_SIZE 92 wide), 1 line
+	# i18n: max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
 	reset_button = UIKit.make_button(reset_text, _ask_reset, UIKit.button_size(reset_text, int(RESET_SIZE.x)))
 	UIKit.note_text_w(reset_button, [reset_text], int(RESET_SIZE.x))
@@ -236,13 +236,13 @@ func _build_code_panel() -> void:
 	dim.color = Color(UIKit.BG, 0.85)
 	code_panel.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# i18n: panel title, max 270px, 16 px font
+	# i18n: panel title, max 270px, 16 px font; grows to 296px, steps down to 8 px past that
 	var title_text := Loc.t("savecode.title", "SAVE CODE")
-	# i18n: max 270px, 1 line
+	# i18n: max 270px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	var copy_hint := Loc.t("savecode.copy_hint", "COPY THIS CODE TO BACK UP YOUR PROGRESS")
 	# i18n: SAVE CODE panel buttons (COPY, PASTE, LOAD, CLOSE), max 56px (64 wide, 4 px margins), 1 line
 	var copy_text := Loc.t("savecode.copy", "COPY")
-	# i18n: max 270px, 1 line
+	# i18n: max 270px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	var paste_hint := Loc.t("savecode.paste_hint", "TO LOAD A SAVE, PASTE ITS CODE HERE")
 	# i18n: max 56px, 1 line
 	var paste_text := Loc.t("savecode.paste", "PASTE")
@@ -459,7 +459,7 @@ func _web_paste_by_hand() -> void:
 	if text is String and text.strip_edges() != "":
 		_set_pasted(text)
 	else:
-		# i18n: {keys} = CMD+V or CTRL+V; status line, max 260px, 1 line
+		# i18n: {keys} = CMD+V or CTRL+V; status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 		var keys := "CMD+V" if OS.has_feature("web_macos") or OS.has_feature("web_ios") else "CTRL+V"
 		code_status.text = Loc.t("savecode.click_box", "CLICK THE BOX AND PRESS {keys}", {keys = keys})
 
@@ -467,13 +467,13 @@ func _web_paste_by_hand() -> void:
 func _set_pasted(text: String) -> void:
 	text = text.strip_edges()
 	if text == "":
-		# i18n: status line, max 260px, 1 line
+		# i18n: status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 		code_status.text = Loc.t("savecode.nothing_to_paste", "NOTHING TO PASTE - COPY A CODE FIRST")
 		return
 	code_in.text = text
 	code_in.caret_column = text.length()
 	load_armed = false
-	# i18n: status line, max 260px, 1 line
+	# i18n: status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	code_status.text = Loc.t("savecode.pasted", "PASTED - PRESS LOAD") if Progress.read_code(text) != null else _bad_code_message(text)
 	load_button.grab_focus()
 
@@ -598,7 +598,7 @@ func _load_code() -> void:
 		return
 	if not load_armed:
 		load_armed = true
-		# i18n: status line, max 260px, 1 line
+		# i18n: status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 		code_status.text = Loc.t("savecode.replaces", "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN")
 		return
 	Progress.load_code(code_in.text)
@@ -610,7 +610,7 @@ func _load_code() -> void:
 func _bad_code_message(code: String) -> String:
 	if Progress.is_old_code(code):
 		return old_code_message()
-	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	# i18n: status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 	return Loc.t("savecode.bad_code", "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE")
 
 
@@ -629,9 +629,9 @@ func _build_reset_confirm() -> void:
 	# 12 apart) at 108, 9 px under them. Other locales: the same column from the locale's title / line /
 	# button heights, re-centred on the English panel's middle; a wider text widens the panel (up to
 	# PANEL_MAX.x), a longer CONFIRM / CANCEL both buttons alike (UIKit.tab_widths).
-	# i18n: max 256px, 16 px font
+	# i18n: max 256px, 16 px font; grows to 296px, steps down to 8 px past that
 	var title_text := Loc.t("reset.title", "ERASE ALL PROGRESS?")
-	# i18n: two lines, each max 256px
+	# i18n: two lines, each max 256px; the panel grows to 296px, then each wraps onto 2 lines, lines 2
 	var body_text := Loc.lines([Loc.t("reset.body.1", "LEVELS, RECORDS, COINS, UPGRADES AND"), Loc.t("reset.body.2", "SKINS WILL BE GONE FOR GOOD")])
 	# i18n: reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 	var confirm_text := Loc.t("reset.confirm", "CONFIRM")

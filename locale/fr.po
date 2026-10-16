@@ -458,8 +458,8 @@ msgid_plural "NEW JELLY SKIN: {names}"
 msgstr[0] "NOUVEAU SKIN GELÉE : {names}"
 msgstr[1] "NOUVEAUX SKINS GELÉE : {names}"
 
-#. max 296px, 1 line; {name} = the color-picker skin's name
-#. budget: max 296px, lines 1
+#. max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {name} = the color-picker skin's name
+#. budget: max 296px, lines 2
 #: scripts/game.gd
 msgctxt "result.unlocked_custom"
 msgid "UNLOCKED: {name} (ANY COLOR YOU LIKE)!"
@@ -514,7 +514,7 @@ msgid "RESTART"
 msgstr "RECOMMENCER"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
-#. result choice buttons, max 76px each, 1 line
+#. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.new_maze"
@@ -533,7 +533,7 @@ msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "AIDE"
 
-#. result choice buttons, max 76px each, 1 line
+#. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.replay_maze"
@@ -680,7 +680,7 @@ msgctxt "heatmod.race.desc"
 msgid "BEAT 1.3 X PAR OR DRY UP"
 msgstr "BATS 1.3 X LE PAR OU SÈCHE"
 
-#. station names are prompt-box labels, max 110px, 1 line
+#. station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 #. budget: max 110px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.station.story"
@@ -727,14 +727,14 @@ msgctxt "hub.station.wardrobe"
 msgid "SKINS & HATS"
 msgstr "SKINS & CHAPEAUX"
 
-#. max 150px each, 1 line each
+#. max 150px each, grows to 280px (the notice widens, centred), 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.reworked"
 msgid "UPGRADES REWORKED"
 msgstr "AMÉLIORATIONS REVUES"
 
-#. max 150px each, 1 line each
+#. max 150px each, grows to 280px (the notice widens, centred), 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.returned"
@@ -757,9 +757,9 @@ msgid "QUIT"
 msgstr "QUITTER"
 
 # overflow: RETOUR is 36px > 32px; no shorter standard French word for BACK (fits the 40px-wide button with 2px margins)
-#. max 32px, 1 line
-#. max 40px, 1 line
-#. max 32px (BACK_SIZE 40 wide, 4 px margins), 1 line; on every screen
+#. max 32px, grows to 40px (back_size: the button widens), 1 line
+#. max 40px, grows to 60px (both buttons alike, the panel with them), 1 line
+#. max 32px (BACK_SIZE 40 wide, 4 px margins), grows to 40px (back_size: the button widens), 1 line; on every screen
 #. budget: max 32px, lines 1
 #: scripts/hub.gd scripts/ui/hat_wheel.gd scripts/ui/map_select.gd scripts/ui/ui_kit.gd
 msgctxt "common.back"
@@ -831,7 +831,7 @@ msgctxt "hub.resume.banks_half"
 msgid "QUIT RUN BANKS HALF"
 msgstr "ABANDONNER ENCAISSE LA MOITIÉ"
 
-#. max 200px, 1 line; the spaces are spacing, not words
+#. max 200px, grows to 280px (the board widens), 1 line; the spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.coins.total"
@@ -897,14 +897,14 @@ msgctxt "hud.pod.wind"
 msgid "WIND"
 msgstr "REGAIN"
 
-#. slime meter, max 24px
+#. slime meter, max 24px, grows to 40px (the pod widens)
 #. budget: max 24px
 #: scripts/hud.gd
 msgctxt "hud.slime_percent"
 msgid "{percent}%"
 msgstr "{percent}%"
 
-#. HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
+#. HUD coin pod, max 60px, grows to 128px (the pod widens under the timer row), 1 line; {count} = coins still hidden in the level
 #. budget: max 60px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.all_found"
@@ -918,14 +918,14 @@ msgid_plural "{count} LEFT"
 msgstr[0] "ENCORE {count}"
 msgstr[1] "ENCORE {count}"
 
-#. HUD attempt pod, line 1, max 80px; {n} = which try at this maze
+#. HUD attempt pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {n} = which try at this maze
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.attempt"
 msgid "ATTEMPT {n}"
 msgstr "ESSAI {n}"
 
-#. HUD pot pod, line 1, max 80px; {count} = tickets in the pot, {gain} = just added
+#. HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.pot_gain"
@@ -956,14 +956,14 @@ msgctxt "hud.pod.pays_1"
 msgid "PAYS 1"
 msgstr "RAPPORTE 1"
 
-#. HUD pot pod, line 2, max 80px; {slot} of {total} paid runs today
+#. HUD pot pod, line 2, max 80px, grows to 128px (the pod widens under the timer row); {slot} of {total} paid runs today
 #. budget: max 80px, lines 2
 #: scripts/hud.gd
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "PAYÉE {slot}/{total}"
 
-#. HUD pod, max 50px; {heat} = heat level
+#. HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
 #. budget: max 50px
 #: scripts/hud.gd
 msgctxt "hud.pod.heat"
@@ -1000,8 +1000,8 @@ msgctxt "result.heat_best"
 msgid "BEST HEAT {heat}"
 msgstr "RECORD CHALEUR {heat}"
 
-#. result reward line, max 296px, 1 line; {percent} = extra slime, e.g. 25
-#. budget: max 296px, lines 1
+#. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
+#. budget: max 296px, lines 2
 #: scripts/hud.gd
 msgctxt "result.assist_offer"
 msgid "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS"
@@ -1021,8 +1021,8 @@ msgctxt "result.new_best"
 msgid "NEW BEST!"
 msgstr "RECORD BATTU !"
 
-#. result reward line, max 296px, 1 line
-#. budget: max 296px, lines 1
+#. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2
+#. budget: max 296px, lines 2
 #: scripts/hud.gd
 msgctxt "result.seed_paid"
 msgid "SEED ALREADY PAID TODAY - TRY NEW MAZE"
@@ -1035,7 +1035,7 @@ msgctxt "result.ticket_limit"
 msgid "DAILY TICKET LIMIT REACHED"
 msgstr "LIMITE DE TICKETS DU JOUR ATTEINTE"
 
-#. after a ticket icon, max 160px; {n} = which try, {count} = tickets paid
+#. after a ticket icon, max 160px, grows to 270px (the rewards row; past 296 its last text takes a second row); {n} = which try, {count} = tickets paid
 #. budget: max 160px
 #: scripts/hud.gd
 msgctxt "result.ticket_attempt"
@@ -1279,29 +1279,29 @@ msgctxt "theme.dungeon"
 msgid "DARK DUNGEON"
 msgstr "DONJON DES DAMNÉS"
 
-#. tutorial keycap on touch screens, max 27px (a 29 px drawn key), 1 line
+#. tutorial keycap on touch screens, max 27px (a 29 px drawn key), grows to 60px (the key widens), 1 line
 #. budget: max 27px, lines 1
 #: scripts/tutorial_cues.gd
 msgctxt "tutorial.jump"
 msgid "JUMP"
 msgstr "SAUT"
 
-#. status line in the SAVE CODE panel, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.old_version"
 msgid "THAT CODE IS FROM AN OLD VERSION"
 msgstr "CE CODE VIENT D’UNE ANCIENNE VERSION"
 
-#. status line in the SAVE CODE panel, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.copied"
 msgid "COPIED! KEEP IT SOMEWHERE SAFE"
 msgstr "COPIÉ ! GARDE-LE EN LIEU SÛR"
 
-#. status line in the SAVE CODE panel (web, browser refused to copy), max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line in the SAVE CODE panel (web, browser refused to copy), max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_by_hand"
 msgid "COPY THE CODE FROM THE POP-UP"
@@ -1338,22 +1338,22 @@ msgctxt "settings.save_code"
 msgid "SAVE CODE"
 msgstr "CODE DE SAUVEGARDE"
 
-#. max 84px (RESET_SIZE 92 wide), 1 line
+#. max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 #. budget: max 84px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.reset"
 msgid "RESET PROGRESS"
 msgstr "TOUT EFFACER"
 
-#. panel title, max 270px, 16 px font
+#. panel title, max 270px, 16 px font; grows to 296px, steps down to 8 px past that
 #. budget: max 270px
 #: scripts/ui/controls.gd
 msgctxt "savecode.title"
 msgid "SAVE CODE"
 msgstr "CODE DE SAUVEGARDE"
 
-#. max 270px, 1 line
-#. budget: max 270px, lines 1
+#. max 270px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 270px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_hint"
 msgid "COPY THIS CODE TO BACK UP YOUR PROGRESS"
@@ -1366,8 +1366,8 @@ msgctxt "savecode.copy"
 msgid "COPY"
 msgstr "COPIER"
 
-#. max 270px, 1 line
-#. budget: max 270px, lines 1
+#. max 270px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 270px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.paste_hint"
 msgid "TO LOAD A SAVE, PASTE ITS CODE HERE"
@@ -1405,15 +1405,15 @@ msgctxt "savecode.click_box"
 msgid "CLICK THE BOX AND PRESS {keys}"
 msgstr "CLIQUE DANS LA CASE ET FAIS {keys}"
 
-#. status line, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.nothing_to_paste"
 msgid "NOTHING TO PASTE - COPY A CODE FIRST"
 msgstr "RIEN À COLLER - COPIE D’ABORD UN CODE"
 
-#. status line, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.pasted"
 msgid "PASTED - PRESS LOAD"
@@ -1425,36 +1425,36 @@ msgctxt "savecode.prompt_copy"
 msgid "Copy your Slime Time save code:"
 msgstr "Copie ton code de sauvegarde Slime Time :"
 
-#. status line, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.replaces"
 msgid "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"
 msgstr "ÇA REMPLACE TOUT - APPUIE ENCORE SUR CHARGER"
 
-#. status line in the SAVE CODE panel, max 260px, 1 line
-#. budget: max 260px, lines 1
+#. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
+#. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "savecode.bad_code"
 msgid "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
 msgstr "CODE INVALIDE - VÉRIFIE QU’IL EST COMPLET"
 
-#. max 256px, 16 px font
+#. max 256px, 16 px font; grows to 296px, steps down to 8 px past that
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.title"
 msgid "ERASE ALL PROGRESS?"
 msgstr "TOUT EFFACER ?"
 
-#. two lines, each max 256px
-#. budget: max 256px
+#. two lines, each max 256px; the panel grows to 296px, then each wraps onto 2 lines, lines 2
+#. budget: max 256px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "reset.body.1"
 msgid "LEVELS, RECORDS, COINS, UPGRADES AND"
 msgstr "NIVEAUX, RECORDS, PIÈCES, AMÉLIORATIONS"
 
-#. two lines, each max 256px
-#. budget: max 256px
+#. two lines, each max 256px; the panel grows to 296px, then each wraps onto 2 lines, lines 2
+#. budget: max 256px, lines 2
 #: scripts/ui/controls.gd
 msgctxt "reset.body.2"
 msgid "SKINS WILL BE GONE FOR GOOD"
@@ -1731,21 +1731,21 @@ msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
 msgstr "TOURNER  {cost}"
 
-#. max 44px, 1 line
+#. max 44px, grows to 56px (tab_widths: the three alike), 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.hats"
 msgid "HATS"
 msgstr "COIFFES"
 
-#. max 44px, 1 line
+#. max 44px, grows to 56px (tab_widths: the three alike), 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.trails"
 msgid "TRAILS"
 msgstr "TRACES"
 
-#. max 44px, 1 line
+#. max 44px, grows to 56px (tab_widths: the three alike), 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.papers"
@@ -1826,8 +1826,8 @@ msgctxt "wheel.confirm"
 msgid "BUY {name}?"
 msgstr "ACHETER {name} ?"
 
-#. the line under the toggles, max 224px, 1 line (clipped past that)
-#. budget: max 224px, lines 1
+#. the line under the toggles, max 224px (the English panel); grows to 296px (the wider panel), wraps onto 2 lines there, lines 2
+#. budget: max 224px, lines 2
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.about_default"
 msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
@@ -1941,7 +1941,7 @@ msgctxt "keys.note.desktop_f11"
 msgid "ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN"
 msgstr "FLÈCHES ACTIVES - ESC OU P : PAUSE - F11 : PLEIN ÉCRAN"
 
-#. max 56px (key buttons are 64 wide), 1 line
+#. max 56px (key buttons are 64 wide), grows to 120px (button_w: the key buttons widen, one column a page), 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/key_controls.gd
 msgctxt "keys.press_key"
@@ -1982,14 +1982,14 @@ msgctxt "levels.title"
 msgid "LEVEL SELECT"
 msgstr "CHOIX DU NIVEAU"
 
-#. checkbox, max 268px, 1 line
-#. budget: max 268px, lines 1
+#. checkbox, max 268px, grows to 276px, wraps onto 2 lines past that (broken at a space), lines 2
+#. budget: max 268px, lines 2
 #: scripts/ui/level_select.gd
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 msgstr "DIFFICILE : AUTRES LABYS, ZÉRO AMÉLIORATION, BRUME"
 
-#. {points} = the heat total (0-99); max 52px, 1 line
+#. {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
 #. budget: max 52px, lines 1
 #: scripts/ui/level_select.gd
 msgctxt "levels.heat"
@@ -2180,8 +2180,8 @@ msgid_plural "{name} - {price} TIX IN THE SHOP"
 msgstr[0] "{name} - {price} TIX EN BOUTIQUE"
 msgstr[1] "{name} - {price} TIX EN BOUTIQUE"
 
-#. {count} = medals needed (30), {have}/{count} = progress; status line, max 300px, 1 line
-#. budget: max 300px, lines 1
+#. {count} = medals needed (30), {have}/{count} = progress; status line, max 312px (EDGE to EDGE, centred), 1 line
+#. budget: max 312px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_medals"
 msgid "LOCKED - EARN ALL {count} MEDALS ({have}/{count})"
@@ -2249,14 +2249,14 @@ msgctxt "skins.locked_hat"
 msgid "LOCKED - WIN IT ON THE HAT WHEEL"
 msgstr "VERROUILLÉ - À GAGNER À LA ROUE"
 
-#. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
+#. max 168px, grows to 224px (the button widens, the slimes move out with its ends), 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.play"
 msgid "PLAY"
 msgstr "JOUER"
 
-#. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
+#. max 168px, grows to 224px (the button widens, the slimes move out with its ends), 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.enter_hub"
@@ -2282,14 +2282,14 @@ msgctxt "title.tagline.2"
 msgid "OR DRY TRYING"
 msgstr "OU SÈCHE EN ESSAYANT"
 
-#. touch jump button, inside a 38 px circle, max 34px
+#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
 #. budget: max 34px
 #: scripts/ui/touch_controls.gd
 msgctxt "touch.jump"
 msgid "JUMP"
 msgstr "SAUT"
 
-#. max 40px (button 48 wide, 4 px margins), 1 line
+#. max 40px (button 48 wide, 4 px margins), grows to 60px (both buttons alike, the panel with them), 1 line
 #. budget: max 40px, lines 1
 #: scripts/ui/ui_kit.gd
 msgctxt "common.buy"
@@ -2310,15 +2310,15 @@ msgctxt "upgrades.title"
 msgid "UPGRADES"
 msgstr "AMÉLIORATIONS"
 
-#. tab, max 32px (40 wide, 4 px margins), 1 line
+#. tab, max 32px (40 wide, 4 px margins), grows to 48px (tab_widths; the title steps down beside the tabs), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_coins"
 msgid "COINS"
 msgstr "SOUS"
 
-#. tab, max 44px (52 wide, 4 px margins), 1 line
-#. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
+#. tab, max 44px (52 wide, 4 px margins), grows to 56px (tab_widths; the title steps down beside the tabs), 1 line
+#. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), grows to 56px (tab_widths), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tickets"
@@ -2326,7 +2326,7 @@ msgid "TICKETS"
 msgstr "TICKETS"
 
 # overflow: OUTILS is 34px > 32px (tab is hidden while the workshop is off)
-#. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
+#. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), grows to 56px (tab_widths), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tools"
@@ -2363,8 +2363,8 @@ msgctxt "upgrades.hint_coins.2"
 msgid "TAKE COINS BACK OUT ANY TIME"
 msgstr "REPRENDS TES PIÈCES QUAND TU VEUX"
 
-#. bottom hint, max 300px, 1 line
-#. budget: max 300px, lines 1
+#. bottom hint, max 300px; wraps onto 2 lines past that (inside the 312 px column), lines 2
+#. budget: max 300px, lines 2
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets"
 msgid "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
@@ -2412,8 +2412,8 @@ msgctxt "victory.cleared"
 msgid "ALL {count} MAZES CLEARED"
 msgstr "LES {count} LABYRINTHES SONT FINIS"
 
-#. {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
-#. budget: max 296px
+#. {skin} = the custom skin name (see skin.custom), max 296px; wraps onto 2 lines past that, lines 2; the joke is the Henry Ford quote
+#. budget: max 296px, lines 2
 #: scripts/ui/victory.gd
 msgctxt "victory.unlocked"
 msgid "UNLOCKED: {skin} (ANY COLOR YOU LIKE)"

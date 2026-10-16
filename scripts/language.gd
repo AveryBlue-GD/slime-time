@@ -75,20 +75,24 @@ const FALLBACK_ORDER := ["zh_CN", "zh_TW", "ja", "ko", "th", "hi", "ar"]
 ##   its own ascent + descent, which Godot uses for any line that contains one of its glyphs);
 ## - ink_above / ink_below: rows drawn outside that box (accents above, drips / descending marks below);
 ## - line_pitch / dense_pitch: the pitch of stacked one-line labels (UIKit.LINE_PITCH / DENSE_PITCH);
-## - button_h: the smallest button that holds a line with its marks (UIKit.BUTTON_H);
+## - button_h: the smallest button that holds a line with its marks (UIKit.BUTTON_H); with the slimy
+##   font 13 + ink_above, so the highest mark starts under the goo's lump row (row 2), as English capitals
+##   do: a 15 px accented button put acutes on that row and diaereses right under it (ZURÜCK, WRÓĆ);
 ## - title_line_h / title_above: the 16 px title's line box and the rows its accents draw above it
 ##   (UIKit.title_top / title_h make the room: docs/ui-rules.md section 10);
 ## - ink_nudge: rows a line's text box moves down (from centred) inside a button / pod so the
 ##   script's letter body sits on the box's middle: Thai and Devanagari keep more empty room under
 ##   the body than above it (measured on rendered BACK buttons, --write-movie: th 1 and hi 1 put the
-##   body 0 px off centre; the LANGUAGE screen's INK_NUDGE centres whole names, marks included).
+##   body 0 px off centre; the LANGUAGE screen's INK_NUDGE centres whole names, marks included);
+## - ink_drop (CJK only, else 0): rows the script's letters reach below the slimy body's last row
+##   (ascent - 1): the ideographs sit 1 row lower (measured on rendered checkboxes, UIKit.align_checkbox).
 ## English ("latin") is exactly today's UIKit numbers; only the other groups add head room.
 const METRICS := {
 	"latin": {line_h = 7, ink_above = 0, ink_below = 2, line_pitch = 12, dense_pitch = 11, button_h = 13, title_line_h = 14, title_above = 0, ink_nudge = 0},
-	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 15, title_line_h = 14, title_above = 6, ink_nudge = 0},
-	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 17, title_line_h = 14, title_above = 10, ink_nudge = 0},
-	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0, ink_nudge = 0},
-	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0, ink_nudge = 0},
+	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 16, title_line_h = 14, title_above = 6, ink_nudge = 0},
+	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 18, title_line_h = 14, title_above = 10, ink_nudge = 0},
+	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0, ink_nudge = 0, ink_drop = 1},
+	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0, ink_nudge = 0, ink_drop = 1},
 	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0, ink_nudge = 1},
 	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 1},
 	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 0},

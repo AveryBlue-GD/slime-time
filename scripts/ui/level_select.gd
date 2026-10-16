@@ -83,10 +83,10 @@ func _ready() -> void:
 
 	hard_mode_box = CheckBox.new()
 	hard_mode_box.material = UIKit.text_material()
-	# i18n: checkbox, max 268px, 1 line
+	# i18n: checkbox, max 268px, grows to 276px, wraps onto 2 lines past that (broken at a space), lines 2
 	hard_mode_box.text = Loc.t("levels.hard_mode", "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS")
 	if UIKit.text_w(hard_mode_box.text) > _checkbox_text_room():  # (pseudo): two lines, broken at a space
-		hard_mode_box.text = break_line(hard_mode_box.text, _checkbox_text_room())
+		hard_mode_box.text = UIKit.break_line(hard_mode_box.text, _checkbox_text_room())
 		hard_mode_box.add_theme_constant_override("line_spacing", UIKit.line_spacing())
 	hard_mode_box.button_pressed = Progress.hard_mode
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
@@ -138,6 +138,7 @@ func _layout() -> void:
 	info.offset_top = panel.position.y + top_pad
 	info.offset_bottom = info.offset_top + lines_h + 1
 	hard_mode_box.position = Vector2(UIKit.center_x(box.x), info.offset_top + lines_h + UIKit.GAP_L)
+	UIKit.align_checkbox(hard_mode_box)
 	var grid_y := float(UIKit.title_bottom())
 	if pages > 1:
 		grid_y += floorf((panel.position.y - UIKit.GAP_M - UIKit.title_bottom() - TILE.y) / 2.0)
@@ -148,21 +149,6 @@ func _layout() -> void:
 ## and its separation (the theme's 4).
 func _checkbox_text_room() -> int:
 	return int(UIKit.SCREEN.x) - 2 * (UIKit.EDGE + UIKit.GAP_L) - 16 - UIKit.GAP_M
-
-
-## `text` broken onto two lines at the space nearest the middle that keeps both within `room` px (as it
-## is if there is none).
-static func break_line(text: String, room: int) -> String:
-	var best := text
-	var best_w := INF
-	for i in text.length():
-		if text[i] != " ":
-			continue
-		var w := maxi(UIKit.text_w(text.left(i)), UIKit.text_w(text.substr(i + 1)))
-		if w <= room and w < best_w:
-			best_w = w
-			best = text.left(i) + "\n" + text.substr(i + 1)
-	return best
 
 
 ## The page arrows (paged only): < at the left edge and > at the right, centred on the title's line.
@@ -209,7 +195,7 @@ func _tile_input(level: int, event: InputEvent) -> void:
 ## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
 func _refresh_heat() -> void:
 	heat_button.visible = Progress.hard_mode
-	# i18n: {points} = the heat total (0-99); max 52px, 1 line
+	# i18n: {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
 	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})
 	var heat_size := Vector2(UIKit.button_w(heat_button.text, int(HEAT_BUTTON_SIZE.x)), UIKit.button_h())
 	UIKit.note_text_w(heat_button, [heat_button.text], int(HEAT_BUTTON_SIZE.x))

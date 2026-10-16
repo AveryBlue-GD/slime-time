@@ -5,7 +5,8 @@ extends "res://tests/suite_base.gd"
 ## test_ui_layout.gd harness reaches (title, level select normal / hard + HEAT panel, map table + map
 ## view, upgrades both pages, wardrobe pages, settings + save code + reset confirm, key controls,
 ## LANGUAGE, victory, the story intro cards, the hub + each station's prompt + quit / portal / resume /
-## coin board / hat wheel + shop, the HUD on story / hard + HEAT / assisted / randomizer levels, the
+## coin board / hat wheel + shop + the one-time notice, the HUD on story (+ every coin found) / hard + HEAT /
+## assisted / randomizer levels and the Descent pot pod (wide gain / paid-run values), the
 ## win / dry-up / randomizer results with their rewards and choice rows, pause on story / random /
 ## Descent, the restart prompt, the Descent boon card and summary) and measures every visible Label
 ## and Button that shows text, with the font it really uses (the locale's fallback installed):
@@ -229,6 +230,12 @@ func _hub() -> void:
 		await _frames(2)
 		_scan("hat wheel " + tab, hub)
 	hub.free()
+	# The hub's one-time notice (upgrades reworked, coins returned), with a wide count.
+	progress.tree_refund_notice = 888
+	hub = await _open("res://scenes/hub.tscn")
+	_scan("hub notice", hub)
+	hub.free()
+	progress.tree_refund_notice = 0
 
 
 func _hud() -> void:
@@ -245,9 +252,22 @@ func _hud() -> void:
 			game.hud.set_assist(true)
 		await _frames(3)
 		_scan("hud " + c.tag, game)
+		if c.tag == "L1":  # every coin found: the coins-left pod's other text
+			game.hud.set_coins(165, 3, 3)
+			await _frames(2)
+			_scan("hud L1 all found", game)
 		game.free()
 		progress.heat_mods = 0
 		progress.hard_mode = false
+	# Descent: the pot pod with a floor's gain and the paid-run line (wide sample values).
+	seed(20261017)
+	progress.start_descent(77)
+	var descent := await _spawn_game({})
+	await _frames(3)
+	descent.hud.set_pot(888, "", 888, 8)
+	await _frames(2)
+	_scan("hud descent pot", descent)
+	descent.free()
 
 
 func _results() -> void:

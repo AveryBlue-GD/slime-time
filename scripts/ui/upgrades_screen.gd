@@ -122,19 +122,19 @@ func _ready() -> void:
 	var tabs: Array[Button] = []
 	var tab_min: Array[int] = []
 	if workshop_on or abilities_on:  # (one page only with both switched off: no tab bar)
-		# i18n: tab, max 32px (40 wide, 4 px margins), 1 line
+		# i18n: tab, max 32px (40 wide, 4 px margins), grows to 48px (tab_widths; the title steps down beside the tabs), 1 line
 		coins_tab = UIKit.make_button(Loc.t("upgrades.tab_coins", "COINS"), func() -> void: show_page("coins"), Vector2(40, UIKit.tab_h()))
 		add_child(coins_tab)  # (each added as it is made: the goo lumps' seeds follow that order)
 		tabs.append(coins_tab)
 		tab_min.append(40)
 	if abilities_on:
-		# i18n: tab, max 44px (52 wide, 4 px margins), 1 line
+		# i18n: tab, max 44px (52 wide, 4 px margins), grows to 56px (tab_widths; the title steps down beside the tabs), 1 line
 		abilities_tab = UIKit.make_button(Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("abilities"), Vector2(52, UIKit.tab_h()))
 		add_child(abilities_tab)
 		tabs.append(abilities_tab)
 		tab_min.append(52)
 	if workshop_on:
-		# i18n: tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
+		# i18n: tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), grows to 56px (tab_widths), 1 line
 		tickets_tab = UIKit.make_button(Loc.t("upgrades.tab_tools", "TOOLS") if abilities_on else Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("tickets"),
 			Vector2(40 if abilities_on else 52, UIKit.tab_h()))
 		add_child(tickets_tab)
@@ -619,7 +619,7 @@ func _refresh() -> void:
 
 
 static func tickets_hint_text() -> String:
-	# i18n: bottom hint, max 300px, 1 line
+	# i18n: bottom hint, max 300px; wraps onto 2 lines past that (inside the 312 px column), lines 2
 	return Loc.t("upgrades.hint_tickets", "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE")
 
 

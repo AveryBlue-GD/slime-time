@@ -22,7 +22,7 @@ func _ready() -> void:
 	# lines when a translation is wider than TEXT_W; a tall script drops the blank line and keeps a
 	# GAP_M instead, so the slimes and the menu still fit above the bottom row).
 	var cleared := Loc.t("victory.cleared", "ALL {count} MAZES CLEARED", {count = Levels.COUNT})  # i18n: max 296px
-	# i18n: {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
+	# i18n: {skin} = the custom skin name (see skin.custom), max 296px; wraps onto 2 lines past that, lines 2; the joke is the Henry Ford quote
 	var unlocked := Loc.t("victory.unlocked", "UNLOCKED: {skin} (ANY COLOR YOU LIKE)", {skin = Skins.display_name(Skins.CUSTOM)})
 	var tall := UIKit.tall_script()
 	var lines := UIKit.make_label(Loc.lines([cleared, unlocked] if tall else [cleared, "", unlocked]), UIKit.FONT, UIKit.TEXT)

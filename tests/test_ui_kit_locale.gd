@@ -153,8 +153,11 @@ func _widgets(tag: String) -> void:
 func _shared_helpers(code: String) -> void:
 	var m: Dictionary = Lang.metrics(code)
 	var tall: bool = int(m.line_h) > UIKit.TEXT_BODY
-	_check(UIKit.accent_room() == (0 if tall else int(m.ink_above) - (1 if int(m.ink_above) > 0 else 0)) and UIKit.accent_room() == (0 if tall else UIKit.button_v_margins().x - 3),
+	_check(UIKit.accent_room() == (0 if tall else maxi(0, int(m.ink_above) - 1)),
 		"%s: accent_room %d" % [code, UIKit.accent_room()])
+	if not tall:
+		_check(UIKit.button_h() == UIKit.BUTTON_H + int(m.ink_above) and UIKit.button_v_margins().x == 3 + int(m.ink_above),
+			"%s: the slimy font's marks start under the goo's lump row (button %d, top margin %d)" % [code, UIKit.button_h(), UIKit.button_v_margins().x])
 	_check(UIKit.digit_top() == (roundf(UIKit.font_for().get_ascent(UIKit.FONT)) - UIKit.TEXT_BODY if tall else 0.0) and UIKit.digit_top() >= 0,
 		"%s: digit_top %d" % [code, UIKit.digit_top()])
 	_check(UIKit.big_button_h(25) == (maxi(25, int(m.title_line_h) + int(m.get("ink_nudge", 0))) if tall else 25), "%s: big_button_h" % code)

@@ -326,7 +326,7 @@ func set_slime(percent: float) -> void:
 	fill.color = LOW_COLOR if _low else goo_color
 	if not _low:
 		fill.modulate = Color.WHITE
-	label.text = Loc.t("hud.slime_percent", "{percent}%", {percent = ceili(percent)})  # i18n: slime meter, max 24px
+	label.text = Loc.t("hud.slime_percent", "{percent}%", {percent = ceili(percent)})  # i18n: slime meter, max 24px, grows to 40px (the pod widens)
 
 
 ## A column of pods anchored to a top corner, each hugging that side; the right one grows
@@ -407,7 +407,7 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 ## (a coin was just picked up).
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
 	coin_label.text = str(clampi(total, 0, 999))  # never shows a negative balance
-	# i18n: HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
+	# i18n: HUD coin pod, max 60px, grows to 128px (the pod widens under the timer row), 1 line; {count} = coins still hidden in the level
 	var left_text := Loc.t("hud.pod.all_found", "ALL FOUND") if found >= here \
 		else Loc.n("hud.pod.coins_left", "{count} LEFT", "{count} LEFT", here - found)
 	var resized := left_text != coins_left_label.text  # (a wider pod: the area texts check it again)
@@ -432,7 +432,7 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 ## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
 func set_attempt(attempt: int, payout: int, pop := false) -> void:
 	var tix := _tix_line(payout)
-	# i18n: HUD attempt pod, line 1, max 80px; {n} = which try at this maze
+	# i18n: HUD attempt pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {n} = which try at this maze
 	var text := Loc.lines([Loc.t("hud.pod.attempt", "ATTEMPT {n}", {n = mini(attempt, 99)}), tix])
 	if text == attempt_label.text and attempt_pod.visible and not pop:
 		return  # called every frame: only a change touches the label
@@ -473,11 +473,11 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 ## less: PRACTICE (no paid slot left today), NO TICKETS (dev toggles), PAYS 1 (no MORE SLIME). `gain`
 ## > 0 adds "+N" (the floor just cleared). Dim when it pays nothing.
 func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
-	# i18n: HUD pot pod, line 1, max 80px; {count} = tickets in the pot, {gain} = just added
+	# i18n: HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
 	var text := Loc.n("hud.pod.pot_gain", "POT {count} +{gain}", "POT {count} +{gain}", pot, {gain = gain}) if gain > 0 \
 		else Loc.n("hud.pod.pot", "POT {count}", "POT {count}", pot)
 	var why := ""
-	# i18n: HUD pot pod, line 2 (why it pays less), max 80px each
+	# i18n: HUD pot pod, line 2 (why it pays less), max 80px each, grows to 128px (the pod widens under the timer row)
 	match cap:
 		"practice":
 			why = Loc.t("hud.pod.practice", "PRACTICE")
@@ -487,7 +487,7 @@ func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
 			why = Loc.t("hud.pod.pays_1", "PAYS 1")
 		"":
 			if slot > 0:
-				# i18n: HUD pot pod, line 2, max 80px; {slot} of {total} paid runs today
+				# i18n: HUD pot pod, line 2, max 80px, grows to 128px (the pod widens under the timer row); {slot} of {total} paid runs today
 				why = Loc.t("hud.pod.paid_run", "PAID RUN {slot}/{total}", {slot = slot, total = Economy.DESCENT_PAID_PER_DAY})
 	if why != "":
 		text = Loc.lines([text, why])
@@ -592,7 +592,7 @@ func set_heat(heat: int, ids: Array[String]) -> void:
 		row.add_child(heat_label)
 		for id in ids:
 			row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.icon(id))))
-	heat_label.text = Loc.t("hud.pod.heat", "HEAT {heat}", {heat = heat})  # i18n: HUD pod, max 50px; {heat} = heat level
+	heat_label.text = Loc.t("hud.pod.heat", "HEAT {heat}", {heat = heat})  # i18n: HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
 	heat_icons = ids.duplicate()
 	heat_pod.visible = heat > 0
 	_pods_changed()
@@ -692,7 +692,7 @@ func show_rewards(info: Dictionary) -> void:
 	if info.get("dev", false):
 		_reward_label("DEV TOGGLES: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
 	elif info.get("offer", false):
-		# i18n: result reward line, max 296px, 1 line; {percent} = extra slime, e.g. 25
+		# i18n: result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 		_reward_label(Loc.t("result.assist_offer", "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS",
 			{percent = roundi(Progress.ASSIST_BONUS * 100.0)}), MEDAL_OWNED)
 	elif info.get("assisted", false):
@@ -709,14 +709,14 @@ func show_rewards(info: Dictionary) -> void:
 		elif best > tier:
 			_reward_label(_best_medal(best), MEDAL_OWNED)
 	elif info.get("repeat", false):
-		# i18n: result reward line, max 296px, 1 line
+		# i18n: result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2
 		_reward_label(Loc.t("result.seed_paid", "SEED ALREADY PAID TODAY - TRY NEW MAZE"), MEDAL_OWNED)
 	elif info.get("capped", false):
 		_reward_label(Loc.t("result.ticket_limit", "DAILY TICKET LIMIT REACHED"), MEDAL_OWNED)  # i18n: max 296px
 	else:
 		rewards_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
 		if info.has("attempt"):
-			# i18n: after a ticket icon, max 160px; {n} = which try, {count} = tickets paid
+			# i18n: after a ticket icon, max 160px, grows to 270px (the rewards row; past 296 its last text takes a second row); {n} = which try, {count} = tickets paid
 			_reward_label(Loc.n("result.ticket_attempt", "TICKET! ATTEMPT {n} = +{count}", "TICKET! ATTEMPT {n} = +{count}",
 				int(info.tickets), {n = int(info.attempt)}), TICKET_TINT)
 		else:
@@ -728,6 +728,16 @@ func show_rewards(info: Dictionary) -> void:
 	rewards_row.visible = true
 	_wrap_rewards()
 	_queue_fit()
+
+
+## `text` with every line wider than the text column (REWARDS_W) broken onto two balanced lines at a
+## space (a translation; English lines all fit, so English is unchanged).
+static func _break_long(text: String) -> String:
+	var lines := text.split("\n")
+	for i in lines.size():
+		if UIKit.text_w(lines[i]) > REWARDS_W:
+			lines[i] = UIKit.break_line(lines[i], REWARDS_W)
+	return "\n".join(lines)
 
 
 ## A rewards row wider than the text column (a translation) puts its last text on a second centred
@@ -788,7 +798,8 @@ static func _tix_line(payout: int) -> String:
 
 
 func _reward_label(text: String, color: Color) -> void:
-	var l := UIKit.make_label(text, 8, color)
+	var l := UIKit.make_label(_break_long(text), 8, color)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # (two lines when a translation is too long)
 	rewards_row.add_child(l)
 	rewards_texts.append(text)
 
@@ -1065,6 +1076,7 @@ func flash_message(text: String, seconds: float) -> void:
 
 
 func show_message(text: String) -> void:
+	text = _break_long(text)
 	message.text = text
 	_message_text = text
 	message.visible = true

@@ -37,6 +37,9 @@ var key_w := KEY_WIDTH
 var columns_per_page := 2
 var rows_per_page := 5
 var rows_top := ROWS_TOP
+## The rows' gap (ROW_GAP in English; GAP_S where 4 px gaps are what keeps five rows off two pages:
+## pseudo, Vietnamese, whose rows then also start GAP_S under the title's box).
+var row_gap := ROW_GAP
 var note_top := NOTE_TOP
 var note_lines := 1
 var pages := 1
@@ -69,7 +72,7 @@ func _ready() -> void:
 		var rows := GridContainer.new()
 		rows.columns = 2
 		rows.add_theme_constant_override("h_separation", GAP)
-		rows.add_theme_constant_override("v_separation", ROW_GAP)
+		rows.add_theme_constant_override("v_separation", row_gap)
 		add_child(rows)
 		grids.append(rows)
 		for action: String in COLUMNS[c]:
@@ -150,10 +153,15 @@ func _plan() -> void:
 	note_lines = 1 if note_w <= room else 2
 	var count: int = COLUMNS[0].size()
 	var fit := 0
-	for option: Array in [[ROWS_TOP - UIKit.TITLE_Y - 20, NOTE_GAP], [UIKit.GAP_M, NOTE_GAP], [UIKit.GAP_M, UIKit.GAP_L]]:
+	# (gaps close to the scale's next step, one at a time: under the title, over the bottom row, between rows)
+	# (paged anyway: the 4 px rows of the third option)
+	var options := [[ROWS_TOP - UIKit.TITLE_Y - 20, NOTE_GAP, ROW_GAP], [UIKit.GAP_M, NOTE_GAP, ROW_GAP],
+		[UIKit.GAP_M, UIKit.GAP_L, ROW_GAP], [UIKit.GAP_M, UIKit.GAP_L, UIKit.GAP_S], [UIKit.GAP_S, UIKit.GAP_L, UIKit.GAP_S]]
+	for option: Array in options + [options[2]]:
 		rows_top = UIKit.title_bottom() + option[0]
 		note_top = UIKit.bottom_row_y() - option[1] - _note_h(note_lines)
-		fit = UIKit.row_budget(note_top - UIKit.GAP_M - rows_top, UIKit.button_h(), ROW_GAP)
+		row_gap = option[2]
+		fit = UIKit.row_budget(note_top - UIKit.GAP_M - rows_top, UIKit.button_h(), row_gap)
 		if fit >= count:
 			break
 	var row_pages := ceili(count / float(maxi(1, fit)))
@@ -266,4 +274,4 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Every text a key button shows that a player can't change (its own key names are short): PRESS KEY.
 static func press_key_text() -> String:
-	return Loc.t("keys.press_key", "PRESS KEY")  # i18n: max 56px (key buttons are 64 wide), 1 line
+	return Loc.t("keys.press_key", "PRESS KEY")  # i18n: max 56px (key buttons are 64 wide), grows to 120px (button_w: the key buttons widen, one column a page), 1 line

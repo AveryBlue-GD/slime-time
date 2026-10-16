@@ -2149,7 +2149,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	elif first_story_clear:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			# i18n: max 296px, 1 line; {name} = the color-picker skin's name
+			# i18n: max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {name} = the color-picker skin's name
 			lines.append(Loc.t("result.unlocked_custom", "UNLOCKED: {name} (ANY COLOR YOU LIKE)!", {name = Skins.display_name(Skins.CUSTOM)}))
 		elif unlocked != "":
 			# i18n: max 296px, 1 line; {name} = a skin name
@@ -2291,7 +2291,7 @@ func _offer_next_steps() -> void:
 		_open_boon_card()
 		return
 	if is_random():
-		# i18n: result choice buttons, max 76px each, 1 line
+		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 	elif level >= Levels.COUNT:

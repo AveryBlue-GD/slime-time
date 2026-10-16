@@ -7,7 +7,7 @@ extends Control
 ## saves it (lang().pick: the only place [settings] language is written) and reloads this page in
 ## the new language. BACK or Esc / B returns to SETTINGS.
 ## Layout: a 3 x 6 grid of 96 px buttons, 8 px apart (3 x 96 + 2 x 8 = 304, L8 / R8). Each row is as
-## tall as the tallest script in it needs (Lang.metrics(code).button_h: 15 for the accented Latin
+## tall as the tallest script in it needs (Lang.metrics(code).button_h: 16 for the accented Latin
 ## and Cyrillic rows, 16 CJK, 19 Thai, 21 Devanagari), so every name fits in every language; 4 px
 ## between rows (UIKit.GAP_M; GAP_S where the current locale's taller title and BACK leave less room:
 ## row_gap). Uniform rows of 21 would not leave room for a Hindi / Thai / Arabic BACK (as tall as its
