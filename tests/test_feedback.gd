@@ -2,7 +2,7 @@ extends "res://tests/suite_base.gd"
 
 ## Playtest feedback round: R mid-run asks RESTART / UPGRADES / CANCEL (and pauses); a straight
 ## leap that only clips a wall by a pixel or two slips past instead of splatting (a real hit still
-## splats); slimes are jelly by default and JELLY OFF shows solid skins unlocked on hard mode;
+## splats); slimes are opaque by default and JELLY ON shows jelly skins unlocked on hard mode;
 ## RESET PROGRESS waits for CONFIRM, then wipes progress but keeps the settings.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_feedback.gd
 
@@ -71,36 +71,37 @@ func _initialize() -> void:
 	_check(hit.wall, "a leap square into a wall still splats")
 	game.free()
 
-	# --- Jelly by default; JELLY OFF shows the solid skins, which unlock on hard mode
+	# --- Opaque by default; JELLY ON shows the jelly skins, which unlock on hard mode (D14)
 	progress.levels_cleared = 2
 	progress.hard_cleared.clear()
 	progress.selected_skin = Skins.DEFAULT
-	progress.set_jelly(true)
+	progress.set_jelly(false)
 	_check(not progress.is_skin_unlocked("rainbow") and Skins.get_preset("gold").is_empty(), "no gold skin; rainbow locked")
 	var preview := UIKit.make_slime_preview(Color.RED)
-	_check((preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0, "slimes are see-through jelly by default")
+	_check((preview.material as ShaderMaterial).get_shader_parameter("translucency") == 0.0, "slimes are opaque by default")
 	preview.free()
 	var skins: Control = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(skins)
 	await process_frame
-	_check(skins.jelly_button.text == "JELLY: ON" and skins.tiles.size() == 13, "the skins screen has a JELLY switch (13 skins)")
+	_check(skins.jelly_button.text == "JELLY: OFF" and skins.tiles.size() == 13, "the skins screen has a JELLY switch, off (13 skins)")
+	_check(progress.is_skin_unlocked("mint", false), "clearing level 1 unlocks opaque mint")
 	skins.jelly_button.pressed.emit()
-	_check(skins.jelly_button.text == "JELLY: OFF" and not progress.is_skin_unlocked("mint", false),
-		"JELLY OFF shows the solid skins: locked until their level is beaten on hard")
+	_check(skins.jelly_button.text == "JELLY: ON" and not progress.is_skin_unlocked("mint", true),
+		"JELLY ON shows the jelly skins: locked until their level is beaten on hard")
 	skins._on_tile("mint")
-	_check("HARD CLEAR L1" in skins.status.text and progress.jelly, "...it says which hard level unlocks it (%s)" % skins.status.text)
+	_check("JELLY LOCKED - HARD CLEAR L1" in skins.status.text and not progress.jelly, "...it says which hard level unlocks it (%s)" % skins.status.text)
 	progress.hard_cleared.assign([1, 2])
 	skins._on_tile("mint")
-	_check(progress.selected_skin == "mint" and not progress.jelly, "beating the level on hard unlocks it, and picking it wears it solid")
-	var solid := UIKit.make_slime_preview(Color.RED)
-	_check((solid.material as ShaderMaterial).get_shader_parameter("translucency") == 0.0, "...and every slime is solid now")
-	solid.free()
+	_check(progress.selected_skin == "mint" and progress.jelly, "beating the level on hard unlocks it, and picking it wears it as jelly")
+	var jelly_preview := UIKit.make_slime_preview(Color.RED)
+	_check((jelly_preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0, "...and every slime is jelly now")
+	jelly_preview.free()
 	skins.free()
 	game = await _play(2)
 	current_scene = null
-	_check((game.slime.sprite.material as ShaderMaterial).get_shader_parameter("translucency") == 0.0, "the level's slime is solid too")
+	_check((game.slime.sprite.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0, "the level's slime is jelly too")
 	game.free()
-	progress.set_jelly(true)
+	progress.set_jelly(false)
 	progress.hard_cleared.clear()
 
 	# --- RESET PROGRESS needs CONFIRM

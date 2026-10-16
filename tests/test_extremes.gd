@@ -372,7 +372,7 @@ func _settings_combos() -> void:
 	progress.fog_brightness = progress.FOG_DARK
 	progress.set_volume(1.0, false)
 	progress.sound_on = true
-	progress.set_jelly(true)
+	progress.set_jelly(false)  # the default look
 	progress.hard_mode = false
 	for i in 12:
 		progress.toggle_fullscreen()

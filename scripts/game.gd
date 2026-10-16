@@ -2110,9 +2110,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	if level >= Levels.COUNT:
 		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
 	if first_hard_clear:
-		var solid := ", ".join(_skins_unlocked_solid_by(level))
-		if solid != "":
-			text += "\nNEW SOLID SKIN: " + solid
+		var jelly := ", ".join(_skins_unlocked_jelly_by(level))
+		if jelly != "":
+			text += "\nNEW JELLY SKIN: " + jelly
 			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	elif first_story_clear:
 		var unlocked := Skins.unlocked_by_level(level)
@@ -2131,12 +2131,12 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	_finish(true, text)
 
 
-## Skins whose solid (jelly off) version beating `level` on hard mode unlocks.
-func _skins_unlocked_solid_by(level: int) -> Array[String]:
+## Skins whose see-through jelly version beating `level` on hard mode unlocks (D14).
+func _skins_unlocked_jelly_by(level: int) -> Array[String]:
 	var names: Array[String] = []
 	var ids: Array = Skins.PRESETS.map(func(p: Dictionary) -> String: return p.id) + [Skins.CUSTOM, Skins.RAINBOW]
 	for id: String in ids:
-		if Skins.solid_level(id) == level:
+		if Skins.jelly_level(id) == level:
 			names.append(Skins.display_name(id))
 	return names
 

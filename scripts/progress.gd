@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime, `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` tries the slow coin catch (Economy.COIN_CATCH_TEST), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` tries the slow coin catch (Economy.COIN_CATCH_TEST), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -205,9 +205,10 @@ var tree_refund_notice := 0
 ## Set when the upgrades screen was opened from a dry-up: its back button then says PLAY and
 ## returns to the level (not saved).
 var return_to_game := false
-## Jelly (the default): every slime is see-through and collected coins sink in and dissolve.
-## Off = the solid versions of the skins, which unlock on hard mode (saved; skins screen toggle).
-var jelly := true
+## Jelly: every slime is see-through and collected coins sink in and dissolve. Off (the default) =
+## the opaque normal-mode skins; the jelly versions are the hard-mode reward (saved; skins screen
+## toggle; D14).
+var jelly := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 ## Dev toggles (Game.set_dev_bright / set_dev_no_drain; F1 / F2 in a level): kept for the session so
@@ -747,9 +748,12 @@ func _read(file: ConfigFile, from_code := false) -> void:
 	_read_maps(file)
 	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
 	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
-	set_jelly(_bool(file, "skin", "jelly", true))
-	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a solid one no longer earned
-		set_jelly(true)
+	# The saved look is only a wish: what is unlocked is recomputed from the progress above (normal
+	# clears, coins, medals, hard clears) under the current rules (D14: opaque = normal mode, jelly =
+	# hard mode). A look that is not unlocked falls back to that skin's opaque version, then to Lime.
+	set_jelly(_bool(file, "skin", "jelly", false))
+	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a jelly one not earned on hard
+		set_jelly(false)
 		if not is_skin_unlocked(selected_skin):
 			selected_skin = Skins.DEFAULT
 
@@ -1367,7 +1371,7 @@ func enable_dev_mode() -> void:
 ## Debug `--story-complete` (tools/play.sh --story): a player who has beaten the whole story, on
 ## normal AND hard mode, and found every coin, for testing the postgame. Unlike dev mode it is a
 ## plain player state: no dev tools or dev coins (F1/F2 stay off), every level cleared on both modes
-## (randomizer, level select, every jelly and solid skin incl. rainbow), all Levels.total_coins()
+## (randomizer, level select, every opaque and jelly skin incl. rainbow), all Levels.total_coins()
 ## coins found and none spent (upgrades left to buy), story intro/finale and tutorial seen. Best
 ## times: normal levels 1-5 just under par, 6-10 at STORY_SILVER_PACE x par, hard all at that pace;
 ## medals are derived from them (tier_for: gold, silver), so 25/30 normal (the stopwatch skin stays
@@ -1390,7 +1394,7 @@ func enable_story_complete() -> void:
 	hard_cleared.assign(range(1, Levels.COUNT + 1))
 	skin_notices_seen.assign(range(1, Levels.COUNT + 1))
 	selected_skin = Skins.skin_for_level(Levels.COUNT - 1)  # the last first-run skin (level 10's)
-	set_jelly(true)
+	set_jelly(false)  # the default (opaque) look
 	upgrades = {}
 	coins_found = {}
 	best_times = {}
@@ -2327,7 +2331,8 @@ func select_hat(id: String) -> void:
 		save_progress()
 
 
-## Whether skin `id` can be worn: as jelly, or (`jelly_version` false) in its solid version.
+## Whether skin `id` can be worn: opaque (`jelly_version` false, normal-mode unlock) or as jelly
+## (true, its hard-mode unlock); null = in the version worn now.
 func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
 	if dev_tools:
 		return true
@@ -2386,17 +2391,17 @@ func forced_skin_for(level: int) -> String:
 	return Skins.skin_for_level(level - 1) if level > levels_cleared else ""
 
 
-## The very first attempt at a new level equips the skin just earned (it stays equipped, so the
-## menus match it; the player can change it any time after). Returns it, or "" if nothing changed.
+## The very first attempt at a new level equips the skin just earned, opaque (it stays equipped, so
+## the menus match it; the player can change it any time after). Returns it, or "" if nothing changed.
 ## Each level does this once (saved).
 func equip_first_run_skin(level: int) -> String:
 	var skin := forced_skin_for(level)
-	if skin == "" or level in skin_notices_seen or not is_skin_unlocked(skin):
+	if skin == "" or level in skin_notices_seen or not is_skin_unlocked(skin, false):  # (its opaque version)
 		return ""
 	skin_notices_seen.append(level)
-	var changed := selected_skin != skin or not jelly
+	var changed := selected_skin != skin or jelly
 	selected_skin = skin
-	set_jelly(true)
+	set_jelly(false)
 	save_progress()
 	return skin if changed else ""
 
@@ -2411,7 +2416,7 @@ func reset_progress() -> void:
 	randoms_cleared = 0
 	randoms_won = 0
 	selected_skin = Skins.DEFAULT
-	set_jelly(true)
+	set_jelly(false)
 	selected_hat = Hats.NONE
 	hats_owned.clear()
 	custom_color = Color8(239, 125, 47)
@@ -2484,7 +2489,7 @@ func skin_color() -> Color:
 	return Skins.get_preset(id).color
 
 
-## Wears skin `id` as jelly or (`jelly_version` false) solid, if that version is unlocked.
+## Wears skin `id` opaque (`jelly_version` false) or as jelly (true), if that version is unlocked.
 func select_skin(id: String, jelly_version: Variant = null) -> void:
 	var as_jelly: bool = jelly if jelly_version == null else jelly_version
 	if is_skin_unlocked(id, as_jelly):

@@ -1,8 +1,8 @@
 extends Control
 
-## Skin select. Slimes are see-through jelly by default; the JELLY ON / OFF switch shows the same
-## skins in solid form instead, each unlocked by beating its level on hard mode (the jelly ones
-## unlock with the story levels). A tile per skin (locked ones are silhouettes); for the custom
+## Skin select. Slimes are opaque by default (those unlock with the story levels); the JELLY ON / OFF
+## switch shows the same skins as see-through jelly instead, each unlocked by beating its level on
+## hard mode (D14; the stopwatch opens both versions together with all 30 medals). A tile per skin (locked ones are silhouettes); for the custom
 ## skin, once the game is beaten, a color wheel. The page button cycles SKINS -> HATS -> TRAILS:
 ## the hats page has a tile per hat (plus no hat), each shown on a slime in your skin; the TRAILS page
 ## (upgrades v2 batch 2) a tile per goo trail style (the skin's own goo plus the five sold in the
@@ -23,7 +23,7 @@ const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
 const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
-const SOLID_RULE := "SOLID SKINS UNLOCK ON HARD MODE"
+const JELLY_RULE := "JELLY SKINS UNLOCK ON HARD MODE"
 const HATS_RULE := "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
 const TRAILS_RULE := "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
 ## The pages, in the order the page button cycles them.
@@ -41,8 +41,8 @@ var showcase: SkinShowcase
 var skin_text: SkinText
 ## "skins", "hats" or "trails".
 var page := "skins"
-## Which version of the skins the grid shows: jelly (true) or solid.
-var view_jelly := true
+## Which version of the skins the grid shows: jelly (true) or opaque (false, the default).
+var view_jelly := false
 var page_button: Button
 var jelly_button: Button
 var _skin_grid: VBoxContainer
@@ -130,7 +130,7 @@ func _add_to_grid(grid: VBoxContainer, tile: Control) -> void:
 	row.add_child(tile)
 
 
-## (Re)builds the skin tiles for the version on view (jelly or solid).
+## (Re)builds the skin tiles for the version on view (opaque or jelly).
 func _fill_skin_grid() -> void:
 	for child in _skin_grid.get_children():
 		_skin_grid.remove_child(child)
@@ -339,12 +339,12 @@ func _refresh(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_skin
 	var worn_here: bool = view_jelly == Progress.jelly
 	if not Progress.is_skin_unlocked(id, view_jelly):
-		if not view_jelly:
-			status.text = "SOLID LOCKED - HARD CLEAR L%d" % Skins.solid_level(id)
+		if id == Skins.STOPWATCH:  # both versions open together
+			status.text = "LOCKED - EARN ALL %d MEDALS (%d/%d)" % [Progress.medals_max(), Progress.medals_total(false), Progress.medals_max()]
+		elif view_jelly:
+			status.text = "JELLY LOCKED - HARD CLEAR L%d" % Skins.jelly_level(id)
 		elif id == Skins.RAINBOW:
 			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Levels.total_coins()]
-		elif id == Skins.STOPWATCH:
-			status.text = "LOCKED - EARN ALL %d MEDALS (%d/%d)" % [Progress.medals_max(), Progress.medals_total(false), Progress.medals_max()]
 		elif id == Skins.CUSTOM:
 			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
 		else:
@@ -355,7 +355,7 @@ func _refresh(focus_id := "") -> void:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
 		UIKit.set_selected(tiles[tile_id], selected)
 	jelly_button.text = "JELLY: ON" if view_jelly else "JELLY: OFF"
-	_rule.text = SKINS_RULE if view_jelly else SOLID_RULE
+	_rule.text = JELLY_RULE if view_jelly else SKINS_RULE
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
 	custom_panel.visible = custom_ready and page == "skins" and (focus_id == "" or focus_id == Skins.CUSTOM)

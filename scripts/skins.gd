@@ -4,12 +4,12 @@ extends RefCounted
 ## Slime colors. Each preset unlocks once `unlock` levels have been cleared (Lime from the
 ## start, then one per level 1-9). A level's first run is played in the skin the level before it
 ## unlocked, so each one is matched to the next level's theme (see Themes.BY_LEVEL). "custom" (color wheel) unlocks after the final level.
-## "rainbow" unlocks by finding every coin in the story (its solid version, like the custom
+## "rainbow" unlocks by finding every coin in the story (its jelly version, like the custom
 ## color's, by beating level 10 on hard): rainbow bands flow across the slime like a wave, and its
 ## trail cycles through the rainbow.
-## Jelly: slimes are see-through jelly by default. Every skin also comes in a solid version
-## ("JELLY OFF" on the skins screen), unlocked by beating its level on hard mode instead
-## (see solid_level).
+## Opaque (solid) slimes are the normal-mode skins and the default look. Every skin also comes in
+## a see-through jelly version ("JELLY: ON" on the skins screen), the hard-mode reward: unlocked by
+## beating its level on hard mode (see jelly_level). Owner decision D14.
 ## Sprites are drawn in three green goo shades; the palette-swap shader replaces them with
 ## shades derived from the skin's base color, so one sprite sheet serves every skin.
 
@@ -20,7 +20,8 @@ const RAINBOW := "rainbow"
 const RAINBOW_NAME := "RAINBOW"
 ## "stopwatch" unlocks with all 30 normal-mode medals (gold on every level): a pale gold-trimmed
 ## clock-face jelly with a working clock inside (see Stopwatch). Its look is fixed (STOPWATCH_SHADES),
-## so it has no solid/jelly unlock of its own: both versions open together.
+## so it has no opaque/jelly unlock of its own: both versions open together (the one exception
+## to "jelly = hard-mode reward").
 const STOPWATCH := "stopwatch"
 const STOPWATCH_NAME := "STOPWATCH"
 ## Stand-in base color (gold) wherever one color is needed (trail, meter, menu text).
@@ -33,8 +34,9 @@ const STOPWATCH_SHADES := {
 	deep = Color8(226, 164, 40),
 	outline = Color8(122, 74, 16),
 }
-## Whether new slime materials are see-through jelly (kept in step with Progress.jelly).
-static var jelly := true
+## Whether new slime materials are see-through jelly (kept in step with Progress.jelly; off =
+## opaque, the default).
+static var jelly := false
 ## Stand-in base color for the rainbow skin wherever one color is needed.
 const RAINBOW_BASE := Color8(230, 60, 60)
 
@@ -60,30 +62,30 @@ static func get_preset(id: String) -> Dictionary:
 
 
 ## Levels that must be cleared before this skin can be used (the rainbow also needs every coin;
-## its solid version needs this level on hard, see solid_level).
+## its jelly version needs this level on hard, see jelly_level).
 static func unlock_level(id: String) -> int:
 	return Levels.COUNT if id == CUSTOM or id == RAINBOW or id == STOPWATCH else int(get_preset(id).get("unlock", 0))
 
 
-## The hard-mode level that unlocks a skin's solid (jelly off) version: the same level that
+## The hard-mode level that unlocks a skin's see-through jelly version: the same level that
 ## unlocks it normally (the starter Lime needs hard level 1).
-static func solid_level(id: String) -> int:
+static func jelly_level(id: String) -> int:
 	return maxi(unlock_level(id), 1)
 
 
-## Jelly skins unlock with the story levels (the rainbow with every story coin found:
-## `coins_found`); solid ones (`jelly` false) with the same level beaten on hard mode
-## (`hard_cleared` = those levels).
-static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := true, coins_found := 0, all_medals := false) -> bool:
+## Opaque skins (`jelly_version` false) unlock with the story levels (the rainbow with every story
+## coin found: `coins_found`); jelly ones with the same level beaten on hard mode (`hard_cleared` =
+## those levels). The stopwatch opens both together with all 30 medals.
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := false, coins_found := 0, all_medals := false) -> bool:
 	if id != RAINBOW and id != CUSTOM and id != STOPWATCH and get_preset(id).is_empty():
 		return false
 	if id == STOPWATCH:
 		return all_medals
-	if jelly_version and id == RAINBOW:
-		return coins_found >= Levels.total_coins()
 	if jelly_version:
-		return levels_cleared >= unlock_level(id)
-	return solid_level(id) in hard_cleared
+		return jelly_level(id) in hard_cleared
+	if id == RAINBOW:
+		return coins_found >= Levels.total_coins()
+	return levels_cleared >= unlock_level(id)
 
 
 ## The color a level's atmosphere (fog, ambient motes) borrows from a skin: its base color, except

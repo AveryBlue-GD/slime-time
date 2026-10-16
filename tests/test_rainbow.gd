@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
-## Rainbow skin + randomizer shuffle checks: the rainbow unlocks by finding every coin (its solid
-## version by beating it on hard mode), drying up in the randomizer shuffles to a new maze, and
+## Rainbow skin + randomizer shuffle checks: the rainbow unlocks (opaque) by finding every coin (its
+## jelly version by beating level 10 on hard mode, D14), drying up in the randomizer shuffles to a new maze, and
 ## the rainbow skin colors the slime, trail and meter. Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_rainbow.gd
 
@@ -20,12 +20,13 @@ func _initialize() -> void:
 	progress.selected_skin = Skins.DEFAULT
 	progress.randoms_won = 0
 
-	# --- Unlocking: the rainbow comes with finding every coin in the story; its solid version
-	# (like the custom color's) with level 10 beaten on hard mode.
+	# --- Unlocking: the (opaque) rainbow comes with finding every coin in the story; its jelly
+	# version (like the custom color's) with level 10 beaten on hard mode.
 	progress.hard_cleared.clear()
 	progress.coins_found = {}
 	progress.dev_tools = false
 	progress.set_hard_mode(false)
+	progress.set_jelly(false)
 	progress.select_skin(Skins.RAINBOW)
 	_check(progress.selected_skin == Skins.DEFAULT, "rainbow is locked at first")
 	progress.levels_cleared = Levels.COUNT - 1
@@ -47,10 +48,16 @@ func _initialize() -> void:
 	await _physics_frames(3)
 	_check(progress.is_skin_unlocked(Skins.RAINBOW), "the very last coin unlocks the rainbow skin")
 	_check("RAINBOW" in game.hud.message.text, "...and says so (%s)" % game.hud.message.text.replace("\n", " / "))
-	_check(not progress.is_skin_unlocked(Skins.RAINBOW, false), "its solid version still needs level 10 on hard mode")
+	_check(progress.is_skin_unlocked(Skins.RAINBOW, false), "...the opaque rainbow (the normal-mode version)")
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW, true), "its jelly version still needs level 10 on hard mode")
 	progress.hard_cleared.assign([Levels.COUNT])
-	_check(progress.is_skin_unlocked(Skins.RAINBOW, false) and progress.is_skin_unlocked(Skins.CUSTOM, false),
-		"...which unlocks it, like the solid color wheel")
+	_check(progress.is_skin_unlocked(Skins.RAINBOW, true) and progress.is_skin_unlocked(Skins.CUSTOM, true),
+		"...which unlocks it, like the jelly color wheel")
+	progress.coins_found[3].clear()
+	_check(progress.is_skin_unlocked(Skins.RAINBOW, true) and not progress.is_skin_unlocked(Skins.RAINBOW, false),
+		"(mirror) hard level 10 alone opens the jelly rainbow, not the opaque one")
+	for i in Levels.COINS[2]:
+		progress.coins_found[3].append("found%d" % i)
 	progress.hard_cleared.clear()
 	await _stop_running(game)
 

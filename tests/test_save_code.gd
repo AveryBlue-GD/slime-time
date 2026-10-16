@@ -24,8 +24,8 @@ func _initialize() -> void:
 	progress.coins_found = {1: ["2,3", "5,1", "9,3"], 4: ["7,7", "1,9"]}
 	progress.upgrades = {"slime": 2}  # 1 + 4 coins spent of the 5 found
 	progress.custom_color = Color(0.2, 0.6, 0.9)
-	progress.selected_skin = "mint"  # its solid version needs hard level 1, which is beaten
-	progress.set_jelly(false)
+	progress.selected_skin = "mint"  # its jelly version needs hard level 1, which is beaten (D14)
+	progress.set_jelly(true)
 	progress.set_binding("jump", KEY_J)
 	var before: String = progress._write().encode_to_text()
 	var code: String = progress.save_code()
@@ -38,8 +38,8 @@ func _initialize() -> void:
 	_check(progress.load_code(code), "pasting the code loads it")
 	_print_diff(before, progress._write().encode_to_text())
 	_check(_same(progress._write().encode_to_text(), before), "...and everything comes back exactly: levels, records, coins, upgrades, skin, keys")
-	_check(progress.selected_skin == "mint" and not progress.jelly and progress.bindings.jump == KEY_J and progress.upgrade_level("slime") == 2,
-		"...(Mint, solid, J to jump, slime upgrade 2)")
+	_check(progress.selected_skin == "mint" and progress.jelly and progress.bindings.jump == KEY_J and progress.upgrade_level("slime") == 2,
+		"...(Mint, jelly, J to jump, slime upgrade 2)")
 	_check(progress.load_code("  " + code + "\n"), "spaces or a line break around the pasted code are fine")
 
 	# --- Bad codes are refused and change nothing

@@ -8,7 +8,7 @@ extends Node
 ## Prints one line per item; anything off by a pixel or more is marked "<<".
 ## Run (windowed, quietly):
 ## .\tools\screenshot.ps1 -Frames 40 -Scene res://tests/audit_ui.tscn -GameArgs --unlock-all,--audit=res://scenes/level_select.tscn
-## Optional --audit-step=hats|custom|confirm|pause|prompt|win|dry opens a sub-view first.
+## Optional --audit-step=hats|custom|jelly|confirm|pause|prompt|win|dry opens a sub-view first.
 
 const SIZE := Vector2i(320, 180)
 const CAPTURE_FRAME := 25
@@ -57,7 +57,7 @@ func _open_step() -> void:
 			screen.show_page("hats")
 		"custom":
 			screen._on_tile(Skins.CUSTOM)
-		"solid":
+		"jelly":
 			screen._toggle_jelly()
 		"confirm":
 			screen._ask_reset()

@@ -38,7 +38,7 @@ Play the browser version sideways. Touch controls appear automatically:
 - Areas you've explored slowly fog back over, so remember your way.
 - Every level is timed. Your record for each level shows on Level Select; beat it for a NEW RECORD! Clear times also earn bronze, silver and gold medals.
 - Story levels hide coins at dead ends. Spend them at the **cauldron** on upgrades (more slime, speed, brightness); finding all 165 is also how you earn the rainbow slime.
-- Each level you clear unlocks a new slime color. Beat level 10 for the CHAMELEON color wheel; hard-mode clears unlock solid (non-jelly) versions; 30 gold medals unlock the Stopwatch slime.
+- Each level you clear unlocks a new slime color. Beat level 10 for the CHAMELEON color wheel; hard-mode clears unlock see-through jelly versions of the skins (the solid ones are the normal look); 30 gold medals unlock the Stopwatch slime.
 - After the story, the **Randomizer** (portal in the hub) builds a new maze from a seed code; the gold ticket voucher at the end pays 5 tickets on a first try, fewer on retries.
 - The **map table** in the hub keeps a map of every tile you have seen and your fastest route on each story level.
 - Tickets (from the Randomizer, DESCENT and HEAT) buy hat wheel spins, cosmetics in the SHOP and, in Randomizer mazes and DESCENT, three one-shot abilities (keys 1, 2, 3). The hats are placeholders for now.

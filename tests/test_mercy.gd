@@ -97,10 +97,11 @@ func _initialize() -> void:
 	progress.accept_assist(1)
 	game = await _spawn(1, false)
 	var coin: Coin = game.coins[0]
+	var coin_cell: Vector2i = coin.cell  # (an opaque slime, the default, frees the coin on pickup)
 	game.slime.position = coin.position
 	await physics_frame
 	await physics_frame
-	_check(game.assisted and not progress.has_coin(1, coin.cell) and progress.coins_found_in(1) == 0 and game.assisted_coins == 1,
+	_check(game.assisted and not progress.has_coin(1, coin_cell) and progress.coins_found_in(1) == 0 and game.assisted_coins == 1,
 		"an assisted run's coin isn't saved")
 	_check(game.hud.coins_left_label.text == "%d LEFT" % (game.coins_here - 1), "...but the HUD still counts it (%s)" % game.hud.coins_left_label.text)
 	game.free()

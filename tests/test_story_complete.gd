@@ -76,8 +76,9 @@ func _initialize() -> void:
 		skins_ok = skins_ok and progress.is_skin_unlocked(preset.id, true) and progress.is_skin_unlocked(preset.id, false)
 	for id in [Skins.CUSTOM, Skins.RAINBOW]:
 		skins_ok = skins_ok and progress.is_skin_unlocked(id, true) and progress.is_skin_unlocked(id, false)
-	_check(skins_ok and not progress.is_skin_unlocked(Skins.STOPWATCH), "every jelly and solid skin (rainbow too); stopwatch still locked")
+	_check(skins_ok and not progress.is_skin_unlocked(Skins.STOPWATCH), "every opaque and jelly skin (rainbow too); stopwatch still locked")
 	_check(progress.is_skin_unlocked(progress.selected_skin), "the selected skin (%s) is unlocked" % progress.selected_skin)
+	_check(not progress.jelly and not Skins.jelly, "...worn opaque, the default look (D14)")
 
 	# Nothing is written: neither the throwaway file nor the real save.
 	progress.save_progress()

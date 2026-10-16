@@ -29,10 +29,15 @@ func _initialize() -> void:
 	_check(game.skin_color == _color("lime") and not game.hud.message.visible, "level 1 starts in Lime, no notice needed")
 	game.free()
 
-	# Cleared levels 1-2 (earned Mint and Lemon) with Mint on: level 3's first try equips Lemon.
+	# Cleared levels 1-2 (earned Mint and Lemon) with jelly Mint on (hard L1 beaten): level 3's
+	# first try equips Lemon, opaque (the normal-mode version, D14).
 	progress.levels_cleared = 2
-	progress.select_skin("mint")
+	progress.hard_cleared.assign([1])
+	progress.select_skin("mint", true)
+	_check(progress.selected_skin == "mint" and progress.jelly, "(setup: jelly Mint worn)")
 	game = await _spawn_game({level = 3})
+	_check(not progress.jelly and not Skins.jelly, "...the first-run skin is equipped opaque")
+	progress.hard_cleared.clear()
 	_check(game.skin_color == _color("lemon") and progress.selected_skin == "lemon",
 		"level 3 (Sandstone Sanctum)'s first attempt equips Lemon, earned by clearing level 2")
 	_check("NEW SKIN EQUIPPED: LEMON" in game.hud.message.text, "...and says so")

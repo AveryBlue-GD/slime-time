@@ -46,7 +46,7 @@ LB / Y / RB abilities 1 / 2 / 3, LB / RB switch tabs. Glyph art and pad remappin
 - **Randomizer** (after the story): the gold ticket voucher is the goal (payout 5/4/3/2/1 by attempt), seed codes `N-L`.
 - **DESCENT:** chained randomizer-sized floors, boons, a ticket pot (2 paying runs per UTC day; milestones floors 5/10/15/20).
 - **Trail maps** (MAP TABLE): per-level map of every tile seen plus the fastest route (a trial: cost/unlock undecided).
-- Skins (10 presets, rainbow, Stopwatch for 30 gold medals, CHAMELEON; jelly default), 11 placeholder hats (live since upgrades v2
+- Skins (10 presets, rainbow, Stopwatch for 30 gold medals, CHAMELEON; opaque default, jelly = hard-mode reward, D14), 11 placeholder hats (live since upgrades v2
   batch 2), SETTINGS with a separate CONTROLS page and SAVE CODE.
 
 ## Economy (every number in `scripts/economy.gd`; spec: [design/upgrades-v2.md](design/upgrades-v2.md))
@@ -118,7 +118,7 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
 - **Story-complete launch (postgame testing):** `./tools/play.sh --story` (Windows `tools/play.ps1 -Story`; the game
   flag `--story-complete`, `Progress.enable_story_complete`) starts as a player who beat all 10 levels on normal
   AND hard with all 165 coins found and none spent (upgrades left to buy), story intro/finale and tutorial seen,
-  randomizer, level select and every jelly/solid skin (rainbow too) open. Best times: normal 1-5 at 0.95 x par
+  randomizer, level select and every opaque/jelly skin (rainbow too) open, worn opaque. Best times: normal 1-5 at 0.95 x par
   (gold), 6-10 and all hard levels at 1.15 x par (silver); medals derive from them (25/30 normal, 20/30 hard, so
   the stopwatch skin stays locked). Not dev mode: no dev tools, F1/F2 off. Starts from a clean in-memory state:
   the real save is never read or written (throwaway path, saving off). Test: `tests/test_story_complete.gd`.
@@ -131,9 +131,13 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
 - **Hub design:** Don't Starve style round room that rotates with the wheel in the middle; F = interact,
   SPACE = leap; Esc in the hub goes back to the title; the title screen has an ENTER THE HUB button and the tagline
   ESCAPE THE FOG / OR DRY TRYING (no "!").
-- **Rainbow skin:** normal mode unlocks it by finding every story coin; its solid version needs hard level 10
-  (like the custom color's). The color-wheel skin is called CHAMELEON; the shadow skin is "Inkky".
-- **Jelly** (see-through) slimes are the default; solid versions are unlocked by hard-mode clears.
+- **Rainbow skin:** normal mode unlocks it (opaque) by finding every story coin; its jelly version needs hard
+  level 10 (like the custom color's). The color-wheel skin is called CHAMELEON; the shadow skin is "Inkky".
+- **Opaque vs jelly (D14, owner 2026-10-16):** opaque (solid) slimes are the normal-mode skins and the default
+  look; the see-through jelly versions are the hard-mode reward (each unlocked by beating that skin's level on
+  hard, `Skins.jelly_level`). The Stopwatch is the exception: both versions open together with all 30 medals.
+  Loading a save recomputes unlocks under these rules; a locked look falls back to that skin's opaque version,
+  then to Lime. Shots: `docs/spring-cleaning/skins/`.
 - **Hats:** compact (brims 2-3 px past the head); rainbow hat at reduced odds on the wheel.
 - **Commits** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Keeping machines in sync:
   "commit and push" when finishing on one, "pull" when starting on the other.
