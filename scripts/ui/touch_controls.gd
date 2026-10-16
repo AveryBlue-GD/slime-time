@@ -298,8 +298,9 @@ func _draw_controls() -> void:
 	_canvas.draw_circle(JUMP_CENTER, JUMP_RADIUS, Color(color, 0.55) if pressed else dim)
 	_canvas.draw_arc(JUMP_CENTER, JUMP_RADIUS, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	var font := _canvas.get_theme_default_font()
-	var label_width := font.get_string_size("JUMP", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), "JUMP",
+	var jump_text := Loc.t("touch.jump", "JUMP")  # i18n: touch jump button, inside a 38 px circle, max 34px
+	var label_width := font.get_string_size(jump_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), jump_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9 if jump_enabled else 0.35))
 	if not jump_enabled:  # GROUNDED: struck out
 		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6

@@ -181,7 +181,8 @@ func _ready() -> void:
 	var assist_row := _make_pod(left_bar)
 	assist_pod = assist_row.get_parent()
 	assist_row.add_child(UIKit.make_icon("drop", ASSIST_TINT))
-	assist_row.add_child(UIKit.make_label("ASSIST +%d%%" % roundi(Progress.ASSIST_BONUS * 100.0), 8, GOLD))
+	# i18n: HUD pod, max 60px, 1 line; {percent} = extra slime, e.g. 25
+	assist_row.add_child(UIKit.make_label(Loc.t("hud.pod.assist", "ASSIST +{percent}%", {percent = roundi(Progress.ASSIST_BONUS * 100.0)}), 8, GOLD))
 	assist_pod.visible = false
 
 	# SECOND WIND (hidden unless it's on this run).
@@ -189,7 +190,8 @@ func _ready() -> void:
 	wind_pod = wind_row.get_parent()
 	_wind_icon = UIKit.make_icon("drop", WIND_TINT)
 	wind_row.add_child(_wind_icon)
-	wind_row.add_child(UIKit.make_label("WIND", 8, WIND_TINT))
+	# i18n: HUD pod, short for the SECOND WIND upgrade, max 40px, 1 line
+	wind_row.add_child(UIKit.make_label(Loc.t("hud.pod.wind", "WIND"), 8, WIND_TINT))
 	wind_pod.visible = false
 
 	# ABILITIES (hidden unless this run has any).
@@ -313,7 +315,7 @@ func set_slime(percent: float) -> void:
 	fill.color = LOW_COLOR if _low else goo_color
 	if not _low:
 		fill.modulate = Color.WHITE
-	label.text = "%d%%" % ceili(percent)
+	label.text = Loc.t("hud.slime_percent", "{percent}%", {percent = ceili(percent)})  # i18n: slime meter, max 24px
 
 
 ## A column of pods anchored to a top corner, each hugging that side; the right one grows
@@ -394,7 +396,9 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 ## (a coin was just picked up).
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
 	coin_label.text = str(clampi(total, 0, 999))  # never shows a negative balance
-	coins_left_label.text = "ALL FOUND" if found >= here else "%d LEFT" % (here - found)
+	# i18n: HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
+	coins_left_label.text = Loc.t("hud.pod.all_found", "ALL FOUND") if found >= here \
+		else Loc.n("hud.pod.coins_left", "{count} LEFT", "{count} LEFT", here - found)
 	if _coins_left_pod.visible != (here > 0):
 		_coins_left_pod.visible = here > 0
 		_pods_changed()
@@ -412,7 +416,9 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 ## `pop`: the number just changed (a restart): the TIX AVAILABLE line flashes bright twice and
 ## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
 func set_attempt(attempt: int, payout: int, pop := false) -> void:
-	var text := "ATTEMPT %d\nTIX AVAILABLE %d" % [mini(attempt, 99), payout]
+	var tix := _tix_line(payout)
+	# i18n: HUD attempt pod, line 1, max 80px; {n} = which try at this maze
+	var text := Loc.lines([Loc.t("hud.pod.attempt", "ATTEMPT {n}", {n = mini(attempt, 99)}), tix])
 	if text == attempt_label.text and attempt_pod.visible and not pop:
 		return  # called every frame: only a change touches the label
 	attempt_pod.visible = true
@@ -426,7 +432,7 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 	attempt_label.add_theme_color_override("font_color", color)
 	_attempt_icon.modulate = Color.WHITE if payout > 0 else TICKET_DIM
 	# The flash: a bright copy of the second line drawn over it (the first line left blank).
-	_attempt_flash.text = " \nTIX AVAILABLE %d" % payout
+	_attempt_flash.text = Loc.lines([" ", tix])
 	if _attempt_tween:
 		_attempt_tween.kill()
 		_attempt_tween = null
@@ -452,14 +458,24 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 ## less: PRACTICE (no paid slot left today), NO TICKETS (dev toggles), PAYS 1 (no MORE SLIME). `gain`
 ## > 0 adds "+N" (the floor just cleared). Dim when it pays nothing.
 func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
-	var text := "POT %d" % pot
-	if gain > 0:
-		text += " +%d" % gain
-	var why: String = {"practice": "PRACTICE", "dev": "NO TICKETS", "slime": "PAYS 1"}.get(cap, "")
-	if cap == "" and slot > 0:
-		why = "PAID RUN %d/%d" % [slot, Economy.DESCENT_PAID_PER_DAY]
+	# i18n: HUD pot pod, line 1, max 80px; {count} = tickets in the pot, {gain} = just added
+	var text := Loc.n("hud.pod.pot_gain", "POT {count} +{gain}", "POT {count} +{gain}", pot, {gain = gain}) if gain > 0 \
+		else Loc.n("hud.pod.pot", "POT {count}", "POT {count}", pot)
+	var why := ""
+	# i18n: HUD pot pod, line 2 (why it pays less), max 80px each
+	match cap:
+		"practice":
+			why = Loc.t("hud.pod.practice", "PRACTICE")
+		"dev":
+			why = Loc.t("hud.pod.no_tickets", "NO TICKETS")
+		"slime":
+			why = Loc.t("hud.pod.pays_1", "PAYS 1")
+		"":
+			if slot > 0:
+				# i18n: HUD pot pod, line 2, max 80px; {slot} of {total} paid runs today
+				why = Loc.t("hud.pod.paid_run", "PAID RUN {slot}/{total}", {slot = slot, total = Economy.DESCENT_PAID_PER_DAY})
 	if why != "":
-		text += "\n" + why
+		text = Loc.lines([text, why])
 	if text == attempt_label.text and attempt_pod.visible:
 		return
 	attempt_pod.visible = true
@@ -561,7 +577,7 @@ func set_heat(heat: int, ids: Array[String]) -> void:
 		row.add_child(heat_label)
 		for id in ids:
 			row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.icon(id))))
-	heat_label.text = "HEAT %d" % heat
+	heat_label.text = Loc.t("hud.pod.heat", "HEAT {heat}", {heat = heat})  # i18n: HUD pod, max 50px; {heat} = heat level
 	heat_icons = ids.duplicate()
 	heat_pod.visible = heat > 0
 	_pods_changed()
@@ -575,15 +591,17 @@ func show_heat_result(heat: int, result: Dictionary) -> void:
 		child.queue_free()
 	heat_texts.clear()
 	heat_row.add_child(Heat.make_rect(Heat.flame(heat)))
-	_heat_text("HEAT %d" % heat, HEAT_TINT)
+	# i18n: result heat row (one line with icons), max 120px each; {heat} = heat level
+	_heat_text(Loc.t("result.heat", "HEAT {heat}", {heat = heat}), HEAT_TINT)
 	var paid := int(result.get("paid", 0))
 	if paid > 0:
 		heat_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
-		_heat_text("BOUNTY +%d" % paid, TICKET_TINT)
+		# i18n: max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
+		_heat_text(Loc.n("result.heat_bounty", "BOUNTY +{count}", "BOUNTY +{count}", paid), TICKET_TINT)
 	elif result.get("new_best", false):
-		_heat_text("NEW BEST HEAT!", NEW_BEST_COLOR)
+		_heat_text(Loc.t("result.heat_new_best", "NEW BEST HEAT!"), NEW_BEST_COLOR)  # i18n: max 120px
 	elif not result.is_empty():
-		_heat_text("BEST HEAT %d" % int(result.best), MEDAL_OWNED)
+		_heat_text(Loc.t("result.heat_best", "BEST HEAT {heat}", {heat = int(result.best)}), MEDAL_OWNED)  # i18n: max 120px
 	if not heat_row.visible:
 		_message_center.offset_top -= HEAT_ROW_LIFT
 		_message_center.offset_bottom -= HEAT_ROW_LIFT
@@ -653,35 +671,72 @@ func show_rewards(info: Dictionary) -> void:
 	if info.get("dev", false):
 		_reward_label("DEV TOGGLES: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
 	elif info.get("offer", false):
-		_reward_label("ASSIST: +%d%% SLIME, NO MEDALS/TICKETS" % roundi(Progress.ASSIST_BONUS * 100.0), MEDAL_OWNED)
+		# i18n: result reward line, max 296px, 1 line; {percent} = extra slime, e.g. 25
+		_reward_label(Loc.t("result.assist_offer", "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS",
+			{percent = roundi(Progress.ASSIST_BONUS * 100.0)}), MEDAL_OWNED)
 	elif info.get("assisted", false):
-		_reward_label("ASSIST: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
+		_reward_label(Loc.t("result.assisted", "ASSIST: NO MEDALS, RECORDS OR TICKETS"), MEDAL_OWNED)  # i18n: max 296px
 	elif info.has("tier"):
 		var tier: int = info.tier
 		var best: int = info.best
-		var names := ["", "BRONZE", "SILVER", "GOLD"]
 		for i in range(1, 4):
 			var color: Color = TIER_COLORS[tier] if tier >= i else (MEDAL_OWNED if best >= i else MEDAL_OFF)
 			rewards_row.add_child(UIKit.make_icon("medal", color))
-		_reward_label(names[tier], TIER_COLORS[tier])
+		_reward_label(_medal_name(tier), TIER_COLORS[tier])
 		if info.new_best:
-			_reward_label("NEW BEST!", NEW_BEST_COLOR)
+			_reward_label(Loc.t("result.new_best", "NEW BEST!"), NEW_BEST_COLOR)  # i18n: medal row, max 90px
 		elif best > tier:
-			_reward_label("BEST " + names[best], MEDAL_OWNED)
+			_reward_label(_best_medal(best), MEDAL_OWNED)
 	elif info.get("repeat", false):
-		_reward_label("SEED ALREADY PAID TODAY - TRY NEW MAZE", MEDAL_OWNED)
+		# i18n: result reward line, max 296px, 1 line
+		_reward_label(Loc.t("result.seed_paid", "SEED ALREADY PAID TODAY - TRY NEW MAZE"), MEDAL_OWNED)
 	elif info.get("capped", false):
-		_reward_label("DAILY TICKET LIMIT REACHED", MEDAL_OWNED)
+		_reward_label(Loc.t("result.ticket_limit", "DAILY TICKET LIMIT REACHED"), MEDAL_OWNED)  # i18n: max 296px
 	else:
 		rewards_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
 		if info.has("attempt"):
-			_reward_label("TICKET! ATTEMPT %d = +%d" % [info.attempt, info.tickets], TICKET_TINT)
+			# i18n: after a ticket icon, max 160px; {n} = which try, {count} = tickets paid
+			_reward_label(Loc.n("result.ticket_attempt", "TICKET! ATTEMPT {n} = +{count}", "TICKET! ATTEMPT {n} = +{count}",
+				int(info.tickets), {n = int(info.attempt)}), TICKET_TINT)
 		else:
-			_reward_label("+%d TICKETS" % info.tickets, TICKET_TINT)
+			# i18n: after a ticket icon, max 160px; {count} = tickets paid
+			_reward_label(Loc.n("result.tickets", "+{count} TICKETS", "+{count} TICKETS", int(info.tickets)), TICKET_TINT)
 		match info.get("cap", ""):
 			"replay":
-				_reward_label("REPLAYED SEED", MEDAL_OWNED)
+				_reward_label(Loc.t("result.replayed_seed", "REPLAYED SEED"), MEDAL_OWNED)  # i18n: max 120px
 	rewards_row.visible = true
+
+
+## A medal tier's name (1 bronze, 2 silver, 3 gold) on the result's medal row.
+static func _medal_name(tier: int) -> String:
+	# i18n: medal row, max 60px each
+	match tier:
+		1:
+			return Loc.t("result.medal.bronze", "BRONZE")
+		2:
+			return Loc.t("result.medal.silver", "SILVER")
+		3:
+			return Loc.t("result.medal.gold", "GOLD")
+	return ""
+
+
+## The older better tier on the medal row ("BEST GOLD").
+static func _best_medal(tier: int) -> String:
+	# i18n: medal row, max 90px each; the medal name is part of the line so it can agree with "best"
+	match tier:
+		1:
+			return Loc.t("result.best_medal.bronze", "BEST BRONZE")
+		2:
+			return Loc.t("result.best_medal.silver", "BEST SILVER")
+		3:
+			return Loc.t("result.best_medal.gold", "BEST GOLD")
+	return ""
+
+
+## The attempt pod's second line: the tickets a win would pay now.
+static func _tix_line(payout: int) -> String:
+	# i18n: HUD attempt pod, line 2, max 80px; TIX = tickets; {count} = tickets a win pays now
+	return Loc.n("hud.pod.tix_available", "TIX AVAILABLE {count}", "TIX AVAILABLE {count}", payout)
 
 
 func _reward_label(text: String, color: Color) -> void:
@@ -743,7 +798,7 @@ func _build_record_banner() -> void:
 	record_banner.add_child(row)
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 5)  # room for the title's drips (they hang below its line box)
-	var title := _gold_label("NEW RECORD!", 16)
+	var title := _gold_label(Loc.t("result.new_record", "NEW RECORD!"), 16)  # i18n: big 16 px font, max 200px
 	record_time_label = _gold_label("", 8)
 	words.add_child(title)
 	words.add_child(record_time_label)
@@ -781,7 +836,7 @@ func _gold_label(text: String, size: int) -> Label:
 
 ## Shows the area name for a moment, then fades it out.
 func show_area_name(text: String, story_line := "") -> void:
-	area_label.text = "- %s -" % text
+	area_label.text = Loc.t("hud.area.name", "- {name} -", {name = text})  # i18n: {name} = level / area name, max 296px
 	area_label.visible = true
 	area_label.modulate.a = 1.0
 	story_label.text = story_line

@@ -375,13 +375,13 @@ func _ready() -> void:
 		else:
 			level = progress.current_level if progress else 1
 	hard_mode = progress.hard_mode if progress and not descent else false  # Descent: normal rules only
-	var mode_tag := "  HARD" if hard_mode else ""
 	var config: Dictionary
 	if descent:
 		seed_level = clampi(progress.upgrade_level("slime"), 0, Levels.max_slime_level())
 		config = Descent.floor_config(descent_run.seed, descent_run.floor, seed_level)
 		maze = _random_maze(config)
-		hud.set_level_text("DESCENT  FLOOR %d" % descent_run.floor)
+		# i18n: HUD area line, max 200px, 1 line; the two spaces are spacing, not words
+		hud.set_level_text(Loc.t("hud.area.descent", "DESCENT  FLOOR {floor}", {floor = int(descent_run.floor)}))
 	elif is_random():
 		var own_level: int = progress.upgrade_level("slime") if progress else 0
 		seed_level = own_level
@@ -394,12 +394,24 @@ func _ready() -> void:
 		seed_level = clampi(seed_level, 0, Levels.max_slime_level())  # (a stray saved level stays valid)
 		config = Levels.random_config(random_seed, hard_mode, seed_level)
 		maze = _random_maze(config)
-		var level_note := "" if seed_level == own_level or hard_mode else "  CODE LV%d (YOU %d)" % [seed_level, own_level]
-		hud.set_level_text("RANDOM MAZE #%d%s%s" % [(progress.randoms_cleared if progress else 0) + 1, mode_tag, level_note])
+		var maze_n: int = (progress.randoms_cleared if progress else 0) + 1
+		# i18n: HUD area line, max 296px, 1 line; {n} = which random maze this is; double spaces are
+		# spacing, not words. CODE LV{code} = the slime level the maze code was made at, YOU {own} = the player's.
+		if hard_mode:
+			hud.set_level_text(Loc.t("hud.area.random_hard", "RANDOM MAZE #{n}  HARD", {n = maze_n}))
+		elif seed_level != own_level:
+			hud.set_level_text(Loc.t("hud.area.random_code", "RANDOM MAZE #{n}  CODE LV{code} (YOU {own})",
+				{n = maze_n, code = seed_level, own = own_level}))
+		else:
+			hud.set_level_text(Loc.t("hud.area.random", "RANDOM MAZE #{n}", {n = maze_n}))
 	else:
 		config = Levels.get_config(level, hard_mode)
 		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
-		hud.set_level_text("LEVEL %d/%d%s" % [level, Levels.COUNT, mode_tag])
+		# i18n: HUD area line, max 200px, 1 line; the two spaces before HARD are spacing, not words
+		if hard_mode:
+			hud.set_level_text(Loc.t("hud.area.level_hard", "LEVEL {level}/{total}  HARD", {level = level, total = Levels.COUNT}))
+		else:
+			hud.set_level_text(Loc.t("hud.area.level", "LEVEL {level}/{total}", {level = level, total = Levels.COUNT}))
 	maze_seed = int(config.seed)
 	_make_goal()
 	survey_tiles.resize(maze.size.x * maze.size.y)
@@ -454,7 +466,8 @@ func _ready() -> void:
 	hud.set_skin_color(skin_color, rainbow)
 
 	if equipped != "":
-		hud.flash_message("NEW SKIN EQUIPPED: %s" % Skins.display_name(equipped), FORCED_SKIN_NOTICE)
+		# i18n: result-area notice, max 296px, 1 line; {name} = a skin name
+		hud.flash_message(Loc.t("result.skin_equipped", "NEW SKIN EQUIPPED: {name}", {name = Skins.display_name(equipped)}), FORCED_SKIN_NOTICE)
 
 
 	if descent:
@@ -464,7 +477,8 @@ func _ready() -> void:
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	MazeTiles.add_border(border_layer, bedrock_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
 	if descent:
-		hud.show_area_name(Themes.display_name(theme), "FLOOR %d" % descent_run.floor)
+		# i18n: line under the area name, max 296px
+		hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.floor", "FLOOR {floor}", {floor = int(descent_run.floor)}))
 	else:
 		hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
 	_start_ambience()
@@ -1551,7 +1565,7 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if Economy.coin_catch_on():  # coin catch test: the same credit, a slower show (CoinCatch)
 			_catch_coin(coin)
 			if progress.coins_earned() >= Levels.total_coins():
-				hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
+				hud.flash_message(_every_coin_text(), 3.0)
 				_sfx("unlock")
 			continue
 		_sfx("coin", -4.0)
@@ -1561,7 +1575,7 @@ func _pick_up_coins(pos: Vector2) -> void:
 			_fly_coin_in(coin)
 		hud.set_coins(progress.coins(), progress.coins_found_in(level) + assisted_coins, coins_here, true)
 		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
-			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
+			hud.flash_message(_every_coin_text(), 3.0)
 			_sfx("unlock")
 
 
@@ -1880,10 +1894,13 @@ func _announce_floor() -> void:
 	if bonus <= 0:
 		return
 	descent_run.bonus = 0  # shown once
-	var text := "FLOOR %d BONUS +%d TICKETS" % [descent_run.floor, bonus]
+	# i18n: flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
+	var lines := [Loc.n("result.floor_bonus", "FLOOR {floor} BONUS +{count} TICKETS", "FLOOR {floor} BONUS +{count} TICKETS",
+		bonus, {floor = int(descent_run.floor)})]
 	if int(descent_run.floor) == Economy.DESCENT_ABYSS_FLOOR:
-		text += "\nNEW TRAIL: " + Cosmetics.display_name("abyss")
-	hud.flash_message(text, 3.0)
+		# i18n: max 296px, 1 line; {name} = a trail name
+		lines.append(Loc.t("result.new_trail", "NEW TRAIL: {name}", {name = Cosmetics.display_name("abyss")}))
+	hud.flash_message(Loc.lines(lines), 3.0)
 	_sfx("unlock")
 
 
@@ -2054,7 +2071,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		var gain: int = progress.clear_descent_floor(slime_remaining, run_time, dev_toggled) if progress else 0
 		DevLog.log_event(get_tree(), "descent floor cleared", self, "pot+%d" % gain)
-		_finish(true, "FLOOR %d CLEARED" % int(descent_run.get("floor", 1)))
+		# i18n: result title, max 296px, 1 line
+		_finish(true, Loc.t("result.floor_cleared", "FLOOR {floor} CLEARED", {floor = int(descent_run.get("floor", 1))}))
 		return
 	if is_random():
 		# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
@@ -2062,7 +2080,11 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
 		goal.visible = false
 		_sfx("unlock", CHALICE_VOLUME_DB)
-		var random_text := "TICKET CLAIMED!\nTIME " + UIKit.format_time(run_time) + "\nSEED " + Levels.seed_code(random_seed, seed_level)
+		var random_text := Loc.lines([
+			Loc.t("result.ticket_claimed", "TICKET CLAIMED!"),  # i18n: result title, max 296px, 1 line
+			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
+			Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}),  # i18n: max 296px; {code} = a maze code
+		])
 		if progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
@@ -2084,13 +2106,16 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		return
 	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
 	_sfx("chalice", CHALICE_VOLUME_DB)
-	var text := "CHALICE CONSUMED!\nLEVEL %d CLEARED" % level
+	# The result text, one whole translated line per entry (Loc.lines joins them in _finish's call).
+	# i18n: result title lines, max 296px each, 1 line each
+	var lines := [Loc.t("result.chalice", "CHALICE CONSUMED!"),
+		Loc.t("result.level_cleared", "LEVEL {level} CLEARED", {level = level})]
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
 	var first_hard_clear: bool = progress != null and hard_mode and not level in progress.hard_cleared
 	var first_story_clear: bool = progress != null and progress.levels_cleared < level
 	# Records: a first clear just sets the record; only beating an existing one celebrates.
 	var best: float = progress.best_time(level) if progress else -1.0
-	text += "\nTIME " + UIKit.format_time(run_time)
+	var time_line := Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})
 	if progress and _is_running_scene():
 		if heat > 0 and not no_record:  # HEAT: a new best heat pays its bounty tiers (saved with the clear below)
 			heat_result = progress.complete_heat(level, heat, false)
@@ -2106,29 +2131,47 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		hud.show_record(run_time)
 		get_tree().create_timer(0.4).timeout.connect(func() -> void: _sfx("unlock"))
 	elif best >= 0.0:
-		text += "   BEST " + UIKit.format_time(best)
+		# i18n: max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
+		time_line = Loc.t("result.time_best", "TIME {time}   BEST {best}", {time = UIKit.format_time(run_time), best = UIKit.format_time(best)})
+	lines.append(time_line)
 	if level >= Levels.COUNT:
-		text = ("YOU ESCAPED ALL %d MAZES!\n" % Levels.COUNT) + text.get_slice("\n", 2)
+		# The last level: one title line instead of CHALICE CONSUMED / LEVEL n CLEARED (lines 0-1).
+		# i18n: result title, max 296px, 1 line; {count} = number of story levels
+		lines = [Loc.n("result.escaped_all", "YOU ESCAPED ALL {count} MAZE!", "YOU ESCAPED ALL {count} MAZES!", Levels.COUNT), time_line]
 	if first_hard_clear:
-		var jelly := ", ".join(_skins_unlocked_jelly_by(level))
-		if jelly != "":
-			text += "\nNEW JELLY SKIN: " + jelly
+		var jelly := _skins_unlocked_jelly_by(level)
+		if not jelly.is_empty():
+			# i18n: list separator between skin names, e.g. "A, B"
+			var names := Loc.t("common.list_sep", ", ").join(jelly)
+			# i18n: max 296px, 1 line; {names} = one or more skin names; {count} = how many
+			lines.append(Loc.n("result.new_jelly_skin", "NEW JELLY SKIN: {names}", "NEW JELLY SKIN: {names}", jelly.size(), {names = names}))
 			get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	elif first_story_clear:
 		var unlocked := Skins.unlocked_by_level(level)
 		if level >= Levels.COUNT:
-			text += "\nUNLOCKED: " + Skins.CUSTOM_NAME + " (ANY COLOR YOU LIKE)!"
+			# i18n: max 296px, 1 line; {name} = the color-picker skin's name
+			lines.append(Loc.t("result.unlocked_custom", "UNLOCKED: {name} (ANY COLOR YOU LIKE)!", {name = Skins.display_name(Skins.CUSTOM)}))
 		elif unlocked != "":
-			text += "\nNEW SKIN: " + unlocked
+			# i18n: max 296px, 1 line; {name} = a skin name
+			lines.append(Loc.t("result.new_skin", "NEW SKIN: {name}", {name = unlocked}))
 		get_tree().create_timer(0.6).timeout.connect(func() -> void: _sfx("unlock"))
 	if heat_result.get("ember", false):
-		text += "\nNEW TRAIL: " + Cosmetics.display_name("ember")
+		# i18n: max 296px, 1 line; {name} = a trail name
+		lines.append(Loc.t("result.new_trail", "NEW TRAIL: {name}", {name = Cosmetics.display_name("ember")}))
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
 	# The last gold medal: the stopwatch skin (once, saved like the other skin notices).
 	if reward.get("new_best", false) and progress.all_medals() and progress.take_skin_notice(Progress.STOPWATCH_NOTICE):
-		text += "\nALL MEDALS! NEW SKIN: " + Skins.STOPWATCH_NAME
+		# i18n: max 296px, 1 line; {name} = a skin name
+		lines.append(Loc.t("result.all_medals_skin", "ALL MEDALS! NEW SKIN: {name}", {name = Skins.display_name(Skins.STOPWATCH)}))
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
-	_finish(true, text)
+	_finish(true, Loc.lines(lines))
+
+
+## The every-coin notice (both coin paths): the rainbow skin it unlocks.
+func _every_coin_text() -> String:
+	# i18n: flash message, max 296px, 1 line each; {name} = a skin name
+	return Loc.lines([Loc.t("result.every_coin", "EVERY COIN FOUND!"),
+		Loc.t("result.new_skin", "NEW SKIN: {name}", {name = Skins.display_name(Skins.RAINBOW)})])
 
 
 ## Skins whose see-through jelly version beating `level` on hard mode unlocks (D14).
@@ -2148,11 +2191,14 @@ func _dry_up(out_of_time := false) -> void:
 		# The run is over: half the pot is banked (Progress.end_descent), the summary card follows.
 		if progress:
 			progress.end_descent(false, dev_toggled, run_time)
-		_finish(false, "DRIED UP ON FLOOR %d" % int(descent_run.get("floor", 1)))
+		# i18n: result title, max 296px, 1 line
+		_finish(false, Loc.t("result.dried_up_floor", "DRIED UP ON FLOOR {floor}", {floor = int(descent_run.get("floor", 1))}))
 		return
 	if progress and not is_random():
 		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
-	_finish(false, "OUT OF TIME!\nDRIED UP" if out_of_time else "DRIED UP")
+	# i18n: result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
+	var dried := Loc.t("result.dried_up", "DRIED UP")
+	_finish(false, Loc.lines([Loc.t("result.out_of_time", "OUT OF TIME!"), dried]) if out_of_time else dried)
 
 
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
@@ -2197,13 +2243,17 @@ func _offer_retry() -> void:
 		_show_descent_summary()  # a dry-up ends the run: its summary (NEW RUN / HUB)
 		return
 	if is_random():
-		hud.show_choices([["RESTART", retry], ["NEW MAZE", play_next], ["UPGRADES", go_to_upgrades]], 0)
+		# i18n: result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
+		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
+			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
 	elif progress and progress.assist_offered(level):
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
-		hud.show_choices([["RESTART", retry], ["ASSIST", retry_assisted], ["UPGRADES", go_to_upgrades]], 0)
+		# i18n: result choice buttons, max 76px each, 1 line
+		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.assist", "ASSIST"), retry_assisted],
+			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
 		hud.show_rewards({assisted = false, offer = true})
 	else:
-		hud.show_choices([["RESTART", retry], ["UPGRADES", go_to_upgrades]], 0)
+		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
 
 
 ## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).
@@ -2241,11 +2291,15 @@ func _offer_next_steps() -> void:
 		_open_boon_card()
 		return
 	if is_random():
-		hud.show_choices([["REPLAY MAZE", replay], ["NEW MAZE", play_next], ["HUB", go_to_hub]], 1)
+		# i18n: result choice buttons, max 76px each, 1 line
+		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
+			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 	elif level >= Levels.COUNT:
-		hud.show_choices([["REPLAY", replay], ["CONTINUE", play_next], ["HUB", go_to_hub]], 1)
+		hud.show_choices([[Loc.t("result.choice.replay", "REPLAY"), replay], [Loc.t("result.choice.continue", "CONTINUE"), play_next],
+			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 	else:
-		hud.show_choices([["REPLAY", replay], ["NEXT LEVEL", play_next], ["HUB", go_to_hub]], 1)
+		hud.show_choices([[Loc.t("result.choice.replay", "REPLAY"), replay], [Loc.t("result.choice.next_level", "NEXT LEVEL"), play_next],
+			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 
 
 ## Back to the hub, in front of the station this run came from (the archway or the portal).
