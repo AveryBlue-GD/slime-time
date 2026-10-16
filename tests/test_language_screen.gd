@@ -161,6 +161,9 @@ func _layout_every_locale() -> void:
 				bad.append("%s wider than its button minus 4 px margins" % c)
 			if not font.has_char(b.text.unicode_at(0)) and not (font.fallbacks.any(func(f: Font) -> bool: return f.has_char(b.text.unicode_at(0)))):
 				bad.append("%s's font lacks its script" % c)
+			var wrong := _wrong_font_chars(c, font)
+			if wrong != "":
+				bad.append("%s: %s drawn by the wrong font" % [c, wrong])
 			var rtl: bool = c in language.RTL_LOCALES
 			if b.text_direction != (Control.TEXT_DIRECTION_RTL if rtl else Control.TEXT_DIRECTION_LTR):
 				bad.append("%s text direction" % c)
@@ -195,6 +198,43 @@ func _layout_every_locale() -> void:
 		_check(bad.is_empty(), "%s: LANGUAGE page layout %s" % [code, "ok" if bad.is_empty() else str(bad)])
 		_close(page)
 	language.set_locale("en")
+
+
+## The family each script's fallback must come from (tools/i18n_subset_fonts.py names the subsets):
+## Han characters have regional shapes, so 繁體中文 must be drawn by the Traditional (Taiwan) font.
+const SCRIPT_FAMILY := {"zh_CN": "SlimeTime CJK SC", "zh_TW": "SlimeTime CJK TC", "ja": "SlimeTime CJK JP",
+	"ko": "SlimeTime CJK KR", "th": "SlimeTime Thai", "hi": "SlimeTime Devanagari", "ar": "SlimeTime Arabic"}
+
+
+## The characters of `code`'s native name that `font` would draw with another font than the right one:
+## the slimy font (no fallback) for Latin / Cyrillic names, else that locale's own script fallback
+## (its family, at its fixed size) for every character the slimy font lacks. Resolves like Godot does:
+## the font itself (a FontVariation's base), then its fallbacks in order.
+func _wrong_font_chars(code: String, font: Font) -> String:
+	var chain: Array[Font] = [font.base_font if font is FontVariation else font]
+	chain.append_array(font.fallbacks)
+	var own: FontFile = language.fallback_font(code)
+	var out := ""
+	var name: String = language.native_name(code)
+	for i in name.length():
+		var ch := name.unicode_at(i)
+		if name[i] == " ":
+			continue
+		var used: Font = null
+		for f in chain:
+			if f.has_char(ch):
+				used = f
+				break
+		var ok := used != null
+		if own == null:
+			ok = ok and used == chain[0] and font.fallbacks.is_empty()
+		elif not chain[0].has_char(ch):
+			ok = ok and used == own and own.get_font_name() == SCRIPT_FAMILY[code] \
+				and own.fixed_size == int(language.SCRIPT_FONTS[code][1]) \
+				and (code != "zh_TW" or own.fixed_size >= 12)  # 10 px Traditional: 繁 / 體 read as 無 / 罶
+		if not ok:
+			out += name[i]
+	return out
 
 
 func _focus() -> void:

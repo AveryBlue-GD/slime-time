@@ -49,10 +49,12 @@ const FONT_BIG_PATH := "res://assets/fonts/pixel_big.fnt"
 ## translations change); imported with antialiasing / hinting / subpixel off and no system fallback.
 ## The size is the font's fixed_size, so it draws at that exact integer size whatever size the label
 ## asks for: Fusion Pixel 10 px (its native grid; 20 = exactly 2x), Noto Thai / Devanagari drawn
-## 1-bit (no pixel fonts exist for them), Unifont at its native 16 (Arabic stand-in).
+## 1-bit (no pixel fonts exist for them), Unifont at its native 16 (Arabic stand-in). Traditional
+## Chinese uses Fusion's 12 px build (24 = 2x): its 10 px build draws dense Traditional characters on a
+## 9x9 grid where 繁 / 體 read as 無 / 罶 (fonts.md section 0).
 const SCRIPT_FONTS := {
 	"zh_CN": ["res://assets/fonts/cjk/slime_cjk_zh_cn.woff2", 10, 20],
-	"zh_TW": ["res://assets/fonts/cjk/slime_cjk_zh_tw.woff2", 10, 20],
+	"zh_TW": ["res://assets/fonts/cjk/slime_cjk_zh_tw.woff2", 12, 24],
 	"ja": ["res://assets/fonts/cjk/slime_cjk_ja.woff2", 10, 20],
 	"ko": ["res://assets/fonts/cjk/slime_cjk_ko.woff2", 10, 20],
 	"th": ["res://assets/fonts/thai/slime_thai.woff2", 11, 16],
@@ -81,6 +83,7 @@ const METRICS := {
 	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 15, title_line_h = 14, title_above = 6},
 	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 17, title_line_h = 14, title_above = 10},
 	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0},
+	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0},
 	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0},
 	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0},
 	"ar": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 16, title_above = 0},
@@ -250,13 +253,14 @@ func _apply_pseudo(_on: bool) -> void:
 	pass
 
 
-## The metrics group of a locale: "latin" (en, id: today's numbers), "accented", "vi", "cjk", "th", "hi", "ar".
+## The metrics group of a locale: "latin" (en, id: today's numbers), "accented", "vi", "cjk" (zh_CN, ja,
+## ko: Fusion 10 px), "zh_TW" (Fusion 12 px), "th", "hi", "ar".
 static func metrics_group(code: String) -> String:
 	if code in ACCENTED:
 		return "accented"
-	if code in ["zh_CN", "zh_TW", "ja", "ko"]:
+	if code in ["zh_CN", "ja", "ko"]:
 		return "cjk"
-	if code in ["vi", "th", "hi", "ar"]:
+	if code in ["vi", "th", "hi", "ar", "zh_TW"]:
 		return code
 	return "latin"
 

@@ -45,6 +45,11 @@ SOURCES = {
         "sha256": "9e45c7b1dac86704cde5d1d1024c31a7a9303cebd3f6a8ee87f2abd0e3e70319",
         "version": "Fusion Pixel Font 2026.10.16, 10px proportional TTF (GitHub release)",
     },
+    "fusion12": {
+        "url": FUSION_ZIP.replace("10px", "12px"),
+        "sha256": "6dd1c8415c829a94aff70e0d24c9a154037bd9bc42cfea77448eac0a2a81c00f",
+        "version": "Fusion Pixel Font 2026.10.16, 12px proportional TTF (GitHub release)",
+    },
     "noto_thai": {
         "url": "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/"
                "ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf",
@@ -80,7 +85,9 @@ KANA = ranges((0x3040, 0x30FF))
 OUTPUTS = [
     ("cjk/slime_cjk_zh_cn.woff2", "fusion", "fusion-pixel-10px-proportional-zh_hans.ttf", ["zh_CN"], CJK_BASE,
      "SlimeTime CJK SC"),
-    ("cjk/slime_cjk_zh_tw.woff2", "fusion", "fusion-pixel-10px-proportional-zh_tw.ttf", ["zh_TW"], CJK_BASE,
+    # Traditional Chinese uses the 12 px build (Cubic 11's Taiwan glyphs): the 10 px build draws dense
+    # Traditional characters from BoutiqueBitmap9x9's 9x9 grid, where 繁 / 體 (17 / 23 strokes) read as 無 / 罶.
+    ("cjk/slime_cjk_zh_tw.woff2", "fusion12", "fusion-pixel-12px-proportional-zh_tw.ttf", ["zh_TW"], CJK_BASE,
      "SlimeTime CJK TC"),
     ("cjk/slime_cjk_ja.woff2", "fusion", "fusion-pixel-10px-proportional-ja.ttf", ["ja"], CJK_BASE + KANA,
      "SlimeTime CJK JP"),

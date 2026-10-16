@@ -181,24 +181,36 @@ func _coverage() -> void:
 			if not Lang.is_supported(code):
 				continue
 			catalogs += 1
-			var text := po_text(LOCALE_DIR.path_join(file))
+			# Placeholders ({count}, {name}...) are filled in at run time and never drawn as written:
+			# their braces and names are not checked, the literal text around them is.
+			var text := _strip_placeholders(po_text(LOCALE_DIR.path_join(file)))
 			var missing := _missing(code, text)
 			_check(missing == "", "%s.po: every translated character has a glyph %s" % [code, missing])
 			if code == "tr":
-				var bare := _strip_placeholders(text)
+				# Mixed-case entries (browser dialogs, drawn by the browser) may use ı / i; the brand stays English.
+				var bare := _strip_placeholders(po_text(LOCALE_DIR.path_join(file), true)).replace("Slime Time", "")
 				_check(not bare.contains("i") and not bare.contains("ı"),
 					"tr.po writes capitals (İ / I): a lowercase i would draw as I")
 	print("  (%d catalogs checked)" % catalogs)
 
 
-## Every msgstr of a .po file (all plural forms, not the header), escapes resolved.
-static func po_text(path: String) -> String:
+## Every msgstr of a .po file (all plural forms, not the header), escapes resolved. `skip_mixed_case`:
+## leave out the entries whose notes say "mixed case" (browser dialogs, not drawn with our fonts).
+static func po_text(path: String, skip_mixed_case := false) -> String:
 	var out := PackedStringArray()
 	var part := ""  # "msgid", "msgstr" or "" (comments, msgctxt...)
 	var msgid := ""
+	var mixed := false
 	for raw in FileAccess.get_file_as_string(path).split("\n"):
 		var line := raw.strip_edges()
 		var value := line.substr(line.find("\"") + 1).trim_suffix("\"") if line.contains("\"") else ""
+		if line == "":
+			mixed = false
+		elif line.begins_with("#.") and line.contains("mixed case"):
+			mixed = skip_mixed_case
+		if mixed:
+			part = ""
+			continue
 		if line.begins_with("msgid "):
 			part = "msgid"
 			msgid = value
@@ -219,7 +231,7 @@ static func po_text(path: String) -> String:
 
 
 static func _strip_placeholders(text: String) -> String:
-	var regex := RegEx.create_from_string("\\{[a-z_0-9]+\\}")
+	var regex := RegEx.create_from_string("\\{[A-Za-z_][A-Za-z0-9_]*\\}")
 	return regex.sub(text, "", true)
 
 
