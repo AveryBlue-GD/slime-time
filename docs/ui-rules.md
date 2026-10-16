@@ -206,7 +206,7 @@ with the test overrides / `--platform=ios`); desktop and web use the whole view 
 - UI tweens animate modulate/alpha only. The goo wipe is a full-screen shader sheet that hides itself at the end. Any
   future positional tween must end on a whole pixel, at the same position the static layout uses.
 
-## 10. Per-locale sizes and text fitting (i18n, chunks G0-G5)
+## 10. Per-locale sizes and text fitting (i18n, chunks G0-G5, I)
 
 The constants above are the **English** numbers (also Indonesian, whose metrics are English's, and everything with the
 languages gate off). Every size that follows the text's height has a function in `UIKit` that reads
@@ -259,8 +259,7 @@ functions, never the constants, for anything text-tall.
   VOLTAR / ZURÜCK, taller and higher for tall scripts, always ending on row 176), `place_bottom_row` (bottom edge kept),
   the BUY? confirm (BUY / BACK equal widths from the longer word, panel widened and re-centred, rows on `line_pitch()`),
   the VOLUME box (`button_h()` tall), TouchButton hit areas (`hit_pad()`).
-- Arabic positions are still mirrored by Godot's RTL layout (absolute positions of children of a mirrored parent);
-  chunk I owns the RTL pass.
+- Right-to-left (Arabic): every layout is mirrored whole by one mechanism, section 10.2.
 
 ### 10.1 Rules the screens settled on (chunks G1-G4, consolidated in G5)
 
@@ -309,5 +308,55 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
 - **Width budgets for translators**: a `# i18n:` hint's `max Npx` is the English box; where the screen widens the box
   for the text it also says `grows to Npx` (the room the layout has), and `wraps` where the text wraps there (`lines
   N`). `tests/test_i18n_fit.gd` measures every translation against that, `tests/test_i18n_screens.gd` against the real
-  screens; both fail on any open finding outside Arabic (reported only until chunk I).
+  screens; both fail on any open finding in any locale (Arabic included since chunk I).
+
+### 10.2 Right-to-left: mirrored layouts (chunk I)
+
+Owner decision (docs/i18n/plan.md section 11): in Arabic the screens mirror like a native RTL game. One mechanism,
+in `UIKit`, does it for every screen; screen code keeps writing the English (left-to-right) layout.
+
+- **How**: each UI root registers with `UIKit.mirror_root(root)`: `setup_screen` does it for every menu screen; the
+  hub's UI root, the HUD (its CanvasLayer), the pause menu, the restart prompt and the Descent card call it
+  themselves. In an RTL locale the root stays `LAYOUT_DIRECTION_LTR` while it is built and is flipped to RTL at the
+  end of that frame (deferred). Godot then mirrors the whole subtree against each parent's real width (x' = parent_w
+  - x - w: hand-set positions through their offsets, anchors, container order, LEFT / RIGHT alignment, a button's
+  icon side, the bidi base direction of every Label / Button). UIKit also swaps explicit `focus_neighbor_left` /
+  `_right` (arrow keys follow the visual order) and mirrors Node2D sprites under a mirrored control (slime previews,
+  the try-on slimes; art is never flipped). In English / LTR locales / gate off `mirror_root` does nothing.
+- **`project.godot`** sets `internationalization/rendering/root_node_layout_direction = 1` (LTR): the root is left to
+  right in every language, so only registered roots flip, and a control positioned before it is added to the tree
+  (common here) resolves LTR. (Before chunk I such a control took the app locale's RTL with a zero-width parent and
+  stored its offsets mirrored about 0: the off-screen findings of chunk G0.) English behaves exactly as before.
+- **Godot's `position` is visual while RTL**: writing it there is not mirrored. So code that moves or resizes
+  controls after the build (a page / tab switch, a panel opening, a re-fitted text) calls `UIKit.relayout(node)`
+  first: the root drops back to LTR coordinates (reads and writes logical) for the rest of the frame and is mirrored
+  again at its end. `layout_row`, `fit_text`, `wrap_label`, `cover_behind` and `place_bottom_row` call it themselves;
+  the screens call it in their entry points (`show_page`, `show_tab`, `open`, `refresh`...). Anything that only changes
+  text or visibility needs nothing (sizes from minimum sizes keep the logical left edge). A value set every frame
+  (the HUD meter's fill) is set through its offsets (`offset_right`), which are logical in both directions.
+- **Keys**: arrows move focus visually (Godot's geometry + the swapped neighbours). Code that maps a left / right key
+  or LB / RB to previous / next uses `UIKit.reading_dir()` or `UIKit.is_mirrored(control)` (level select page keys,
+  upgrades tabs). A single page button (the wardrobe's) keeps RB = next.
+- **What mirrors**: menus, columns, tab rows (tab order reverses), BACK (bottom right), page arrows (NEXT on the
+  left; the `<` / `>` glyphs are bidi-mirrored by the text server, so each still points away from the screen's
+  middle), HUD pods (meter right, level left; the meter drains toward its outer end), dialogs, the hat wheel's
+  header and SHOP grid, the language grid (ENGLISH top right).
+- **What does not mirror** (deliberately): the game world and the hub room (Node2D, never under a mirror root), the
+  touch controls (thumb placement), text drawn with `draw_string`, the logo, map pictures and the hat wheel's wheel
+  (textures / custom drawing keep their art), numbers and times (LTR runs inside the RTL line), and anything under
+  `UIKit.keep_ltr(item)` (the drifting menu backdrop). Labels outside every mirror root (the rotate hint) take
+  `UIKit.text_direction()` (RTL in Arabic) so punctuation lands right.
+- **Bidi text**: translations carry no control characters. `Loc.fill` (Arabic only, `Loc.isolate_ltr`) wraps each
+  placeholder "word" that comes out without Arabic letters (a number with its sign / unit / slash: `+5`, `30%`,
+  `X1.5`, `1/3`, `(+0)`; a Latin key or pad name) in U+2066 LRI .. U+2069 PDI: it reads LTR as one unit and counts as
+  one neutral word in the Arabic line, so the sign stays before the number and space-separated values (`{a} {b} {c}`
+  pad letters) follow the line's right-to-left order. `UIKit.text_w` / `plain_font` treat bidi controls as
+  zero-width (`UIKit.is_format_char`).
+- **Fitting without a smaller font** (Arabic has none: Kufi merges dots under 12 px): the HEAT toggles draw their
+  icon at 1x before wrapping a name (two-line names would make the panel taller than the screen), and the upgrades
+  ABILITIES rows go on pages (a `1/2` button mirroring BACK) when they don't fit one page.
+- **Tests**: `tests/test_i18n_rtl.gd` (every menu: each control at the mirror of its LTR place, BACK bottom right,
+  tab / tile / arrow order, inside 320x180; dynamic re-layouts; keys; HUD sides; game world and hub room unmirrored;
+  `Loc.fill` isolates); `tests/test_i18n_screens.gd` measures a mirrored text where Godot draws it (alignment and
+  icon side swapped).
 

@@ -79,6 +79,14 @@ Levels: الدهليز الداكن (Dark Dungeon, alliteration kept), مناج�
 
 ## Bidi spots to look at on screen (no control characters inserted)
 
+Resolved in chunk I (2026-10-17, docs/ui-rules.md section 10.2), without changing a translation: the layouts are
+mirrored, and at run time `Loc.fill` wraps every placeholder word that comes out without Arabic letters (a number with
+its sign / unit / slash, a Latin key or pad name) in U+2066 LRI .. U+2069 PDI. Translators still write no control
+characters. On screen now: `+{count}` shows `+5` (sign before the number), `{percent}%` shows `30%`, `X{rate}` shows
+`X1.5`, `{a} {b} {c}` puts A rightmost (like ability 1 in the mirrored HUD pod), `{now} -> {next}` shows the
+arrow mirrored (`<-`, from now on the right to next on the left), and space-separated number runs in the text
+(`لهب 2 4 7 10 يدفع 3 5 7 10`) read right to left. The notes below are the translator's original checklist.
+
 - A leading `+` or `-` before a number in an RTL line shows on the number's right (`30%+`, `888+`): the usual
   look in Arabic UIs, but check `boon.gulp.desc_1`, `hub.notice.returned`, `result.tickets`, `descent.*`.
 - `result.ticket_attempt` (`تذكرة! محاولة {n} = +{count}`) and `levels.info_hard.2` (`لهب 2 4 7 10 يدفع 3 5 7 10`):

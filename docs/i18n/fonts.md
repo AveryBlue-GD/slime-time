@@ -171,7 +171,7 @@ From the Godot docs (gui_using_fonts, class_fontfile), plus our project settings
   - **zh / ja** will not wrap either. Either set `autowrap_mode = AUTOWRAP_ARBITRARY` for those locales (CJK may break between almost any characters) *(general knowledge)*, or insert U+200B between CJK characters at import, skipping positions before closing punctuation (basic kinsoku).
   - **ko, ar, hi** use spaces, so normal word wrap works.
   - Watch: U+00A0 (no-break space) also counts as whitespace in the fallback, so it **will** break. This matters for French « » spacing.
-- Arabic RTL: BiDi and mirroring work, but Godot mirrors only anchors, containers and alignment, not manual positions (internationalizing_games). UIKit places many labels with explicit `Rect2`s, so RTL layout needs its own pass. That is a layout task, not a font task.
+- Arabic RTL: BiDi and mirroring work, but Godot mirrors only anchors, containers and alignment, not manual positions (internationalizing_games). UIKit places many labels with explicit `Rect2`s, so RTL layout needs its own pass. That is a layout task, not a font task. (Done in chunk I: whole roots built LTR and flipped, ui-rules.md section 10.2.)
 
 ### 4.4 Subsetting (fonttools pyftsubset)
 
