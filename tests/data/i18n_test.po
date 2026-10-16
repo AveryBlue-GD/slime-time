@@ -1,0 +1,33 @@
+# Test-only catalog for tests/test_i18n_gate.gd (NOT a game locale: real catalogs live in locale/).
+# Russian plural rules, so the 3-form plural path is exercised.
+msgid ""
+msgstr ""
+"Project-Id-Version: Slime Time i18n gate test\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. test: plain string. max 112px.
+msgctxt "test.portal.random_maze"
+msgid "RANDOM MAZE"
+msgstr "СЛУЧАЙНЫЙ ЛАБИРИНТ"
+
+#. test: the same English text under another key.
+msgctxt "test.other"
+msgid "RANDOM MAZE"
+msgstr "ДРУГОЙ ЛАБИРИНТ"
+
+#. test: named placeholders, order changed.
+msgctxt "test.level"
+msgid "LEVEL {level}/{total}"
+msgstr "{total}:{level} УРОВЕНЬ"
+
+#. test: plural. {count} = hats left.
+msgctxt "test.hats_left"
+msgid "{count} HAT TO WIN"
+msgid_plural "{count} HATS TO WIN"
+msgstr[0] "{count} ШЛЯПА"
+msgstr[1] "{count} ШЛЯПЫ"
+msgstr[2] "{count} ШЛЯП"

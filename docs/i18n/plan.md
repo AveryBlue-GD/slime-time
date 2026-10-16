@@ -1,0 +1,299 @@
+# i18n plan (D15)
+
+Status: **phase 1 (analysis) done; chunk A (plumbing) done 2026-10-16**: `Loc` (`scripts/loc.gd`), the
+`Language` autoload (`scripts/language.gd`; `_install_fonts()`, `_apply_direction()` and `_apply_pseudo()` are
+stubs for chunks D / I / F), `Economy.LANGUAGES_TEST` + `languages_force` / `forced_locale`, `--languages` /
+`--lang=xx`, `Progress.language` (`[settings] language`, written only by `Language.pick`, never in codes),
+auto-translation off at the root and in `UIKit.setup_screen`, `tests/test_i18n_gate.gd` (fixture
+`tests/data/i18n_test.po`). Gate off: title and settings pixel-identical (seeded capture, byte-identical PNGs).
+Next: B, C1-C4, D in parallel. Inputs: [inventory.md](inventory.md) (every
+string, how it is built, the risky spots) and [fonts.md](fonts.md) (font research, written in parallel;
+steps marked **[fonts]** wait for it). Target: English + 17 languages, every player-visible string
+translated, every screen uniform in every language, all behind a gate that leaves today's game
+pixel-identical and its save byte-identical.
+
+Locales (Godot codes): `en` (source), `es` (Latin-American neutral, see style guide), `pt_BR`, `fr`,
+`de`, `it`, `ru`, `pl`, `tr`, `ja`, `ko`, `zh_CN` (Simplified), `zh_TW` (Traditional), `th`, `vi`,
+`id`, `ar` (right-to-left), `hi`; plus the test-only `pseudo`.
+
+## 1. Translation files
+
+**Gettext, one `.po` file per locale**: `locale/<code>.po`, all generated from one template
+`locale/messages.pot`. Why not CSV: Godot's CSV puts every language in one file (columns), so 17
+translators would edit the same file; it also has no plurals, no context and no per-string comments.
+`.po` has all of these, loads natively in Godot 4 (`TranslationPO`, plural forms included) and works
+with Poedit / Weblate / Crowdin if a human reviewer joins later.
+
+- **msgid = the English source text** (with named placeholders), **msgctxt = a stable key** naming
+  where it is shown. Using the English text as the msgid means a missing translation falls back to
+  English for free, and with the gate off (nothing loaded) `tr()` returns exactly today's text.
+- Every entry carries extracted comments the localizer agent reads: the screen, the **width budget
+  in px** (`#. max 76px`), the line budget (`#. lines 2`), what each placeholder is, and pun / tone
+  notes.
+
+```po
+#. hub > portal menu button. max 112px, 1 line.
+msgctxt "hub.portal.random_maze"
+msgid "RANDOM MAZE"
+msgstr "LABERINTO AL AZAR"
+
+#. hat wheel status. {count} = hats still on the wheel. max 200px.
+msgctxt "wheel.hats_left"
+msgid "{count} HAT TO WIN"
+msgid_plural "{count} HATS TO WIN"
+msgstr[0] "QUEDA {count} SOMBRERO"
+msgstr[1] "QUEDAN {count} SOMBREROS"
+```
+
+**Key scheme** (`msgctxt`): `area.thing[.variant]`, lowercase, dots. Areas: `title`, `hub`, `hud`,
+`result` (win / dry-up texts and the choice row), `pause`, `restart`, `settings`, `savecode`, `keys`,
+`levels`, `maps`, `heat`, `skins`, `wheel`, `upgrades`, `workshop`, `ability`, `descent`, `story`,
+`victory`, `touch`, `tutorial`, `common` (BACK, BUY, ON, OFF, CANCEL…) and data names `theme.<id>`,
+`skin.<id>`, `hat.<id>`, `trail.<id>.name` / `.desc` / `.unlock`, `paper.<id>`, `upgrade.<id>`,
+`workshop.<id>`, `ability.<id>.name` / `.desc`, `boon.<id>.name` / `.desc`, `heatmod.<id>.name` /
+`.desc`, `language.<code>` (not translated: each language's own name, see section 6). The same English
+text can appear under two keys (BACK the button vs. a word in a sentence); that is the point of
+`msgctxt`.
+
+Other files: `locale/messages.pot` (generated, never hand-edited), `docs/i18n/style-guide.md` (tone,
+casing, units, puns, register per locale; read by the `localizer` agent),
+`docs/i18n/glossary/<code>.md` (written by each localizer).
+
+## 2. How lookups are wired
+
+- **`scripts/loc.gd`, `class_name Loc`** (static functions, no autoload, so the static data classes
+  `Skins`, `Hats`, `Themes`, `Workshop`… and the tests can call it):
+  - `Loc.t(ctx: String, msgid: String, args := {}) -> String`: `TranslationServer.translate(msgid, ctx)`
+    then `.format(args)` with `{name}` placeholders.
+  - `Loc.n(ctx, singular, plural, count, args := {})`: `TranslationServer.translate_plural(...)`,
+    with `{count}` filled in automatically.
+  - `Loc.lines(parts: Array) -> String`: joins whole translated lines with `\n` (for the win text).
+  - The extractor (chunk B) reads these call sites, so `ctx` and `msgid` must be string literals.
+- **`scripts/language.gd`, autoload `Language`** (added after `Progress` in `project.godot`): only
+  this file talks to `TranslationServer` and the fonts. It loads `locale/*.po` **only when the gate
+  is on**, picks the locale (saved choice, else `--lang`, else the OS locale if supported, else `en`),
+  installs the font fallbacks for that script (section 7), sets the text direction for `ar`,
+  emits `language_changed`, and owns the list of supported locales and their native names.
+- **Godot's auto-translation stays off.** Labels and Buttons translate their own `text` by default
+  once any translation is loaded, which would also hit seeds, typed text and already translated
+  strings. `UIKit.setup_screen`, the HUD, the hub and every autoload set
+  `auto_translate_mode = AUTO_TRANSLATE_MODE_DISABLED` on their root; all translation goes through
+  `Loc`. The `project.godot` translations list (`internationalization/locale/translations`) stays
+  **empty**, so Godot never loads anything on its own (it would otherwise follow the OS locale with
+  the gate off).
+- **Changing language** reloads the current scene (the settings screen) through `UIKit.go`, so every
+  screen rebuilds its text in `_ready` as it does today. Autoloads that hold text (`RotateHint`, the
+  `Transition` overlay, `Language` itself) listen to `language_changed`.
+- **Dev-only text stays English** and is not wrapped: `scripts/autoplay/*`, `dev_log.gd`, the HUD's DEV
+  tags, the pause menu's DEV panel, every `print` / `push_warning`. The extractor has an allowlist
+  for them (section 9, completeness test).
+- **What stays outside the catalog**: OS key names (`OS.get_keycode_string`), pad button names
+  (`A`, `X`, `START`, `LB`…), seeds and save codes, the `SLIME TIME` logo PNG (the brand stays English
+  in every language), numbers.
+- **Numbers**: Western digits and `.` decimals in every language (the slimy font has them, the timer's
+  tabular digits rely on them, and they read fine in all 17 locales including `ar` and `hi`). Units
+  (`S`, `PX`, `X`, `TIX`, `L`, `LV`) go into the strings, so translators can change them.
+
+## 3. Placeholders and plurals
+
+- Placeholders are **named**, `{level}`, `{count}`, `{name}`, `{time}`, `{key}`; `%d` / `%s` never
+  appear in a msgid. Each format call site becomes `Loc.t(ctx, "LEVEL {level}/{total}", {level = n,
+  total = Levels.COUNT})`; English output stays byte-identical.
+- **Every string with a count goes through `Loc.n`**, even when English is the same for 1 and many
+  (`{count} LEFT`, `NEED {count} TICKETS`): Russian / Polish have 3 forms, Arabic 6, the CJK / Thai /
+  Vietnamese / Indonesian locales 1. Each `.po` header sets `Plural-Forms` for its locale.
+- **No sentence fragments**: each risky spot in inventory.md becomes whole strings:
+  - toggles: `"{setting}: {value}"` as its own key (`settings.toggle`), so French can write
+    `{setting} : {value}`; each setting name and value is a key;
+  - workshop effects: `"REFILL AT EMPTY {now} -> {next}"` and `"REFILL AT EMPTY {now}  MAXED"` per
+    upgrade (10 keys) instead of `name + tail`;
+  - area line: one key per combination (`LEVEL {level}/{total}`, `LEVEL {level}/{total}  HARD`,
+    `RANDOM MAZE #{n}`, `…  HARD`, `…  CODE LV{code} (YOU {own})`);
+  - info lines: `"{name} - {status}"`, `"{name}  (WEARING)"` as keys;
+  - win text: built as an array of lines (`result.chalice`, `result.level_cleared`, `result.time`,
+    `result.time_best`, `result.new_skin` …) joined by `Loc.lines`; the last-level branch **replaces
+    a line by its index in the array, not by `get_slice` on the finished text**;
+  - lists (`NEW JELLY SKIN: A, B`): the separator is a key too (`common.list_sep`, `、` in CJK,
+    `، ` in Arabic).
+- Alignment spaces (`STORY {have}/{total}   IN HAND {hand}`) stay inside a single key, with a comment
+  saying the spaces are spacing, not words; where two values must line up, split into two labels.
+- The extractor fails on any msgid with `%`-formats, and the catalog test compares placeholder sets.
+
+## 4. The gate
+
+```gdscript
+## economy.gd, next to SOFT_BOUNCE_TEST / COIN_CATCH_TEST:
+const LANGUAGES_TEST := false
+static var languages_force := -1      # tests and --languages / --lang set it to 1
+static var forced_locale := ""         # --lang=xx (debug builds only)
+
+static func languages_on() -> bool:
+	return LANGUAGES_TEST if languages_force < 0 else languages_force == 1
+```
+
+- `--languages` (debug builds only, parsed in `Progress` with the other flags): `languages_force = 1`,
+  shows the LANGUAGE button, uses the saved choice / OS locale.
+- `--lang=xx` (debug builds only): `languages_force = 1` and `forced_locale = xx` for this run;
+  `--lang=pseudo` turns on pseudo-localization. The forced locale is never written. Like `--skin`,
+  it turns saving off (it is a preview flag).
+- **Gate off**: `Language` loads no translation, adds no font fallback, changes no
+  `layout_direction`, and the settings screen has no LANGUAGE button. `Loc.t` then returns the
+  English msgid formatted, which equals today's string (the wrapping chunks prove this per screen).
+  English is still the locale, so `tr()` cannot pick up the OS language.
+- Release builds ignore `--languages` / `--lang` like every other flag (`Progress.game_args`).
+
+## 5. Where the language is saved
+
+- `[settings] language = "es"` in the save, **written only when the player picked a language in
+  the LANGUAGE screen** (gate on). Not written when the locale only came from the OS or `--lang`.
+- `Progress.language` (string, `""` = never chosen) is read from the save whatever the gate, and
+  written back only when not empty. So gate off + no key = the file is byte-identical, and a save made
+  while the gate was on keeps its key if the gate goes off again.
+- **Not in save codes**: `_write(true)` (save code export) skips `language`, and `load_code` keeps
+  the device's current language. A language is a device preference, and codes stay identical to
+  today's.
+- Web: the same `[settings]` key in `/userfs/SlimeTime_R1/save.cfg`; the web shell reads
+  `navigator.language` for its own strings (section 10, chunk J).
+
+## 6. The LANGUAGE screen
+
+- **Entry**: a `LANGUAGE` button in SETTINGS' right column, row 3 (`_cell(1, 3)`, free today,
+  mirroring FOG on the left), 120x13 like its neighbours, only when `Economy.languages_on()`. It shows
+  a small globe icon (new 8x8 UI icon in `tools/make_ui_art.py`) plus the current language's
+  **native** name, so a player stuck in a language they can't read can still find it.
+- **Screen**: its own scene `scenes/language.tscn` + `scripts/ui/language_screen.gd`, built like
+  `key_controls` (title at the top, standard BACK at (4, 164)). 18 buttons in a grid of **3 columns x 6
+  rows**: buttons 96 px wide with 8 px gaps (3x96 + 2x8 = 304, x from 8), rows from y = 26 with a
+  22 px pitch (6 rows end at y = 158, BACK below). Button height 18 px (not 13) to fit Thai /
+  Devanagari marks and 12 px CJK; **[fonts]** sets the final height. If every script fits in 13 px, a
+  2 x 9 grid of 13 px buttons (pitch 15) also fits.
+- **Each language is written in its own script and name**, never translated:
+  `ENGLISH`, `ESPAÑOL`, `PORTUGUÊS (BR)`, `FRANÇAIS`, `DEUTSCH`, `ITALIANO`, `РУССКИЙ`, `POLSKI`,
+  `TÜRKÇE`, `日本語`, `한국어`, `简体中文`, `繁體中文`, `ไทย`, `TIẾNG VIỆT`, `INDONESIA`, `العربية`,
+  `हिन्दी`. (`BAHASA INDONESIA` is 90 px, just too wide for 88 px inside a 96 px button: use
+  `INDONESIA`, or measure again when the font grows.) So **every fallback font is installed on this
+  screen whatever the current language**, and the CJK subsets must include these names' glyphs.
+- The current language is marked with `UIKit.set_selected`; pad / arrow focus moves in the grid; the
+  order is the list above (fixed, not sorted per locale). Picking one saves it, then reloads the
+  screen in the new language. Each button gets the text direction of its own language (`العربية`
+  right-to-left inside its button).
+
+## 7. Fonts and fallbacks **[fonts]**
+
+- **Primary**: the slimy font (`assets/fonts/pixel.fnt` / `pixel_big.fnt`), extended by
+  `tools/make_font.py` with Latin Extended (es, pt, fr, de, it, pl, tr, vi, id) and Cyrillic (ru),
+  **uppercase forms only** (lowercase keeps mapping to them, as today) plus `İ`, `ẞ` and the
+  Vietnamese stacked accents (these need head room above the 7 px body: fonts.md decides whether the
+  glyph or the line grows). The atlas must stay **one row** of 9 / 18 px glyphs, or
+  `text_drips.gdshader`'s font check (atlas height 9 / 18, width > 200 / 400) changes with it; the
+  tabular copy (`UIKit.tabular_font`) is derived at runtime and follows automatically.
+- **Fallbacks per script**, OFL pixel fonts chosen in fonts.md, under
+  `assets/fonts/<script>/` with their `OFL.txt`: CJK (ja, ko, zh_CN, zh_TW: four subsets or one
+  shared Han subset per region), Thai, Arabic, Devanagari. Nearest filter, antialiasing off, hinting
+  off, subpixel positioning off, `fixed_size_scale_mode = FIXED_SIZE_SCALE_INTEGER_ONLY`, each used
+  only at its native size or an integer multiple of it, baseline-aligned to the slimy font.
+- **Wiring**: `Language` builds the chain once: `pixel.fnt.fallbacks = [<script font for the current
+  locale>, …the rest]` (the current locale's script first, so Han characters pick the right
+  regional shapes for ja vs. zh), and does the same for `pixel_big.fnt` (fallbacks at 2x) and the
+  tabular copy. Because `project.godot`'s `gui/theme/custom_font` and every
+  `UIKit.use_big_font` / `tabular_font` override point at these resources, setting `fallbacks` on them
+  covers the Theme default and every override with no per-screen work. Gate off: no fallbacks added.
+- **Line height**: scripts that need taller lines get a per-locale line spacing / pod height from
+  `Language.metrics()` (one table: body height, drip room, line pitch). UIKit constants
+  (`BUTTON_H`, `POD_H`, `LINE_PITCH`) stay as they are for Latin / Cyrillic, so English stays
+  pixel-identical.
+- **Text server**: shaping for Thai, Arabic and Devanagari needs Godot's **Advanced** text server
+  (ICU / HarfBuzz; the default on desktop and web, verify the web template includes it), and Thai
+  line breaking needs its dictionary data: turn on
+  `internationalization/locale/include_text_server_data` for the export (gate-on builds only if it
+  costs web size; fonts.md / perf to measure).
+- **Subsetting**: `tools/i18n_subset_fonts.py` collects every character used in `locale/*.po` plus
+  the language names, and subsets the CJK fonts (and, if large, the others) to those glyphs, so the
+  web build stays light; re-run after every translation update (a test checks coverage).
+- **RTL (Arabic)**: no hand-reversed strings. The text itself is shaped right-to-left by the text
+  server (Label / Button `text_direction = TEXT_DIRECTION_AUTO`, Arabic-script fonts with shaping).
+  Screen **mirroring**: almost every screen places controls at absolute positions (`position =
+  Vector2(...)`), which `layout_direction = RTL` does not flip; only containers and anchors flip.
+  Plan: phase A = RTL text only (labels right-aligned where they were left-aligned, numbers kept LTR
+  inside the bidi run, layouts unchanged, as many RTL-localized games ship); phase B (optional, owner
+  decides) = a `UIKit.mirror_x()` helper used by layouts that should flip (tabs, back / next, arrows),
+  driven by `Language.is_rtl()`. Never set RTL with the gate off.
+
+## 8. Pseudo-localization
+
+`--lang=pseudo` (debug builds only) and a test locale: Godot's built-in pseudo-localization
+(`TranslationServer.pseudolocalization_enabled`, with `internationalization/pseudolocalization/
+expansion_ratio = 0.4`, `replace_with_accents = true`, `double_vowels = false`, `fake_bidi = false`,
+`prefix = "["`, `suffix = "]"`, `skip_placeholders = true`) applied on top of English. It shows at a
+glance (in screenshots) which text is not going through `Loc` (no brackets, no accents), which boxes
+overflow at +40 % and which glyphs the font is missing. A second run with `fake_bidi = true` previews
+RTL problems before Arabic exists. Set only by `Language`, never by default.
+
+## 9. Tests
+
+New suites (each `RESULT: PASS`, throwaway saves, run in `./tools/test_all.sh`):
+
+1. **`test_i18n_catalog.gd`**: parses `messages.pot` and every `locale/*.po`. Every (msgctxt, msgid)
+   in the template exists in every locale with a non-empty msgstr (missing = fail, with a list);
+   no entries the template lacks; **placeholder sets match** (`{count}` etc., every plural form);
+   no `%d` / `%s`; line breaks within the `#. lines N` budget; plural form count matches the locale's
+   `Plural-Forms`; the `.po` header's `Language` matches the file name.
+2. **`test_i18n_fit.gd`** (static budget): for each locale and `pseudo`, measures every msgstr with
+   the real font chain (`pixel.fnt` + that locale's fallbacks, `get_string_size` at 8 / 16 px,
+   placeholders filled with the widest realistic values, e.g. `{count}` = 888) against the entry's
+   `#. max Npx` budget. Gives translators an exact list of overflows without building any screen.
+3. **`test_i18n_screens.gd`** (in place): for each locale + `pseudo`, sets `Economy.languages_force`
+   and the locale, builds every screen with the harness of `test_ui_layout.gd` (menus, hub prompts,
+   HUD + pods, pause / restart, results, upgrades, wardrobe, wheel, settings, save code, key
+   controls, level select, map table, language screen) and checks on every visible Label / Button:
+   text width ≤ its box minus margins, line count x line height ≤ its height, inside 320x180, no
+   overlaps (reuse `test_ui_layout` helpers), centered text still centered.
+4. **`test_i18n_glyphs.gd`**: every character in every msgstr and every native language name has a
+   glyph in the primary font or that locale's fallback chain (`Font.has_char`), i.e. no tofu.
+5. **`test_i18n_gate.gd`**: gate off: no translation loaded in `TranslationServer`, no fallbacks on
+   the fonts, no LANGUAGE button, `layout_direction` untouched, a save written then read back is
+   byte-identical to one written before the feature (`[settings]` has no `language`), save codes
+   identical; gate on: choosing a language writes `[settings] language`, `--lang` does not, a save
+   code does not contain it, `load_code` keeps the current language.
+6. **Completeness (`test_i18n_extract.gd` or the extractor's `--check`)**: scans `scripts/` for string
+   literals with 2+ capitals that are not inside `Loc.t` / `Loc.n` and not on the dev allowlist
+   (autoplay, dev_log, DEV texts, ids, sprite rows, paths) and fails with their file:line. Keeps new
+   English strings from slipping in untranslated.
+7. **Pixel identity**: before / after screenshots of every screen in English with the gate off,
+   captured with `tools/screenshot.sh` and the phase-3 capture driver, compared byte for byte. Done by
+   every wrapping chunk for its screens, and once more at the end by `qa-tester`.
+
+The ≈126 existing English-text assertions keep running in English and are not changed.
+
+## 10. Implementation chunks
+
+Ordered; chunks on the same line can run in parallel (separate agents, no shared files). Every chunk
+keeps English with the gate off pixel-identical and runs `./tools/test_all.sh`.
+
+| # | Chunk | Owns (files) | Needs |
+|---|---|---|---|
+| A | **Plumbing**: `Loc`, `Language` autoload (no fonts yet: a `_install_fonts()` stub), gate constants, `--languages` / `--lang` parsing, `Progress.language` load / save / code exclusion, `auto_translate_mode` off in `UIKit.setup_screen`, `test_i18n_gate.gd` | `scripts/loc.gd`, `scripts/language.gd`, `scripts/economy.gd`, `scripts/progress.gd`, `project.godot`, `scripts/ui/ui_kit.gd` (setup_screen only), `tests/test_i18n_gate.gd` | – |
+| B | **Extractor**: `tools/i18n_extract.py` (Loc call sites → `messages.pot` with ctx, comments, width budgets from `# i18n: max 76` hints next to the calls; `--merge` updates every `.po`, `--check` = completeness test), empty `locale/<code>.po` x 17 with headers and Plural-Forms, `test_i18n_catalog.gd`, `docs/i18n/style-guide.md` | `tools/i18n_extract.py`, `locale/`, `tests/test_i18n_catalog.gd`, style guide | A (API shape) |
+| C1 | **Wrap data names**: `display_name` and descriptions return `Loc.t` | `themes.gd`, `skins.gd`, `hats.gd`, `cosmetics.gd`, `upgrades.gd`, `workshop.gd` (+ effect-line rewrite), `abilities.gd`, `heat.gd`, `story.gd`, `descent.gd` | A |
+| C2 | **Wrap gameplay text**: area line, pods, rewards, win / dry-up text rebuilt as line arrays, choice row, tutorial cues, touch JUMP | `game.gd`, `hud.gd`, `tutorial_cues.gd`, `ui/touch_controls.gd` | A |
+| C3 | **Wrap hub + overlays**: station names, prompts, quit / portal / resume / coin bag, hat wheel (plural, `id.to_upper()` tabs → keys), Descent card (plural), restart prompt | `hub.gd`, `ui/hat_wheel.gd`, `ui/descent_card.gd`, `ui/restart_prompt.gd` | A |
+| C4 | **Wrap menus**: title, settings + save code (toggle keys, `SLIDER_W` from the measured VOLUME text instead of 54), key controls, level select, map table, heat panel, wardrobe (`page.to_upper()` → keys), upgrades, pause menu, victory, rotate hint (refresh on `language_changed`), `UIKit` BACK / BUY / VOLUME | `ui/title.gd`, `ui/controls.gd`, `ui/key_controls.gd`, `ui/level_select.gd`, `ui/map_select.gd`, `ui/heat_panel.gd`, `ui/skins_screen.gd`, `ui/upgrades_screen.gd`, `ui/pause_menu.gd`, `ui/victory.gd`, `ui/rotate_hint.gd`, `ui/ui_kit.gd` (other than A's lines) | A |
+| D | **Fonts [fonts]**: extend `make_font.py` (Latin Ext + Cyrillic uppercase, one-row atlas), add the OFL fallback fonts + licenses, `tools/i18n_subset_fonts.py`, fill `Language._install_fonts()` and `metrics()`, text server data setting, `test_i18n_glyphs.gd` | `tools/make_font.py`, `assets/fonts/**`, `tools/i18n_subset_fonts.py`, `scripts/language.gd` (font section only, after A), `assets/shaders/text_drips.gdshader` if the atlas check changes, `tests/test_i18n_glyphs.gd` | A, fonts.md; can start alongside C |
+| E | **LANGUAGE screen**: scene + script, globe icon, the gated settings button | `scenes/language.tscn`, `scripts/ui/language_screen.gd`, `tools/make_ui_art.py` (+ icon), `ui/controls.gd` (one gated button; after C4) | A, C4, D |
+| F | **Pseudo + fit tests**: `--lang=pseudo` settings, `test_i18n_fit.gd`, `test_i18n_screens.gd`, extractor `--check` in the test run | `tests/test_i18n_fit.gd`, `tests/test_i18n_screens.gd`, `scripts/language.gd` (pseudo section) | A-E |
+| H | **Translations**: `localizer` agents, one or more locales each, in parallel | `locale/<code>.po`, `docs/i18n/glossary/<code>.md` | B (+ C done so the template is complete), style guide |
+| G | **Layout hardening**: fix every overflow F reports, per screen (shrink-to-fit or wrap or wider box, never truncate; per-locale metrics for tall scripts) | the screen's script (same split as C2-C4, one agent per group) | F, H |
+| I | **RTL (Arabic)**: text direction / alignment per label in UIKit, bidi checks in `test_i18n_screens`, optional mirroring helper (owner decides) | `ui/ui_kit.gd`, screens as needed (after G) | D, H(ar) |
+| J | **Web shell**: its 8 strings localized in JS by `navigator.language` from a small inline table generated from the `.po` files by the extractor, `<html lang>` set; only when the gate ships | `tools/web_shell.html`, extractor | H |
+
+Order: **A → (B, C1, C2, C3, C4, D in parallel) → E → F → H → G → I → J**, then `qa-tester` runs the
+gate-off pixel comparison and every suite. Waiting on fonts.md: D, the button height in E, the
+per-locale metrics in G, the CJK subset size (web weight) and whether Vietnamese / Thai need taller
+lines everywhere.
+
+## 11. Owner answers (2026-10-16)
+
+- Arabic: **mirror the screen layouts** too (full RTL: menus, tabs, back buttons and HUD sides flip), not only RTL text. Chunk I does the mirroring.
+- Names: **translate descriptive names** (levels, hats, upgrades, abilities, trails, papers, e.g. MOSSY MINES, BASEBALL CAP, MORE SLIME, SLIME RIFLE); **keep coined proper names** (Inkky, CHAMELEON, SLIMAKAZE and the game's name) untranslated, transliterated into the script only where the language has no Latin letters. The style guide lists which is which.
+- Spanish: **Latin-American neutral** (`es`), one Spanish only.
+- Web shell: **translate it** (chunk J), choosing the language from `navigator.language`.

@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` tries the slow coin catch (Economy.COIN_CATCH_TEST), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` tries the slow coin catch (Economy.COIN_CATCH_TEST), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run (never saved; `--lang=pseudo` = pseudo-localization), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -229,6 +229,11 @@ var reduce_motion := false
 ## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;
 ## applied at launch on a normal player launch, Platform.remembers_fullscreen). Kept by RESET PROGRESS.
 var fullscreen := false
+## The language the player picked in the LANGUAGE screen (a locale code, "" = never picked; i18n, D15).
+## Read from [settings] language whatever the gate; written back only when not empty, so a save that never
+## had one stays byte-identical. Never in save codes (a device preference): a loaded code keeps it. Set
+## only by Language.pick; kept by RESET PROGRESS.
+var language := ""
 ## Fog brightness: FOG_DARK, FOG_NORMAL (the default look) or FOG_BRIGHT (see Game.fog_look).
 const FOG_DARK := 0
 const FOG_NORMAL := 1
@@ -395,6 +400,13 @@ func _ready() -> void:
 		elif arg == "--coincatch":  # the coin catch test (Economy.COIN_CATCH_TEST, docs/spring-cleaning/coin-catch-test.md)
 			saving_enabled = false
 			Economy.coincatch_force = 1
+		elif arg == "--languages":  # the translations test (Economy.LANGUAGES_TEST, docs/i18n/plan.md)
+			saving_enabled = false
+			Economy.languages_force = 1
+		elif arg.begins_with("--lang="):  # ... with this locale forced for this run (never saved)
+			saving_enabled = false
+			Economy.languages_force = 1
+			Economy.forced_locale = arg.trim_prefix("--lang=")
 		elif arg == "--quiet-window":
 			_after_quiet_start.call_deferred()
 	settle_debug_coins(coins_in_hand)  # after the loop, so the flag order doesn't matter
@@ -709,6 +721,8 @@ func _read(file: ConfigFile, from_code := false) -> void:
 	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
 	fog_brightness = clampi(_int(file, "settings", "fog_brightness", fog_brightness), FOG_DARK, FOG_BRIGHT)
 	fullscreen = _bool(file, "settings", "fullscreen", false)
+	if not from_code:  # a code never brings a language: the device keeps its own
+		language = _locale_code(_string(file, "settings", "language", ""))
 	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
 	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
 	best_times = {}
@@ -1039,6 +1053,13 @@ static func _bool(file: ConfigFile, section: String, key: String, default: bool)
 	return v if typeof(v) == TYPE_BOOL else default
 
 
+## A saved locale code as written by Language.pick ("es", "pt_BR"...), or "" if it doesn't look like one.
+## Whether it is a supported locale is Language's call.
+static func _locale_code(text: String) -> String:
+	var ok := text.length() <= 8 and RegEx.create_from_string("^[a-z]{2,3}(_[A-Z]{2})?$").search(text) != null
+	return text if ok else ""
+
+
 static func _string(file: ConfigFile, section: String, key: String, default: String) -> String:
 	var v: Variant = file.get_value(section, key, default)
 	return v if typeof(v) == TYPE_STRING else default
@@ -1170,6 +1191,8 @@ func _write(for_code := false) -> ConfigFile:
 	file.set_value("settings", "fog_brightness", fog_brightness)
 	if fullscreen:
 		file.set_value("settings", "fullscreen", true)
+	if language != "" and not for_code:
+		file.set_value("settings", "language", language)
 	if heat_mods != 0:
 		file.set_value("settings", "heat_mods", heat_mods)
 	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
@@ -2407,7 +2430,7 @@ func equip_first_run_skin(level: int) -> String:
 
 
 ## Wipes all progress: levels, records, coins, upgrades, skins, hats and randomizer wins. Sound,
-## volume, reduce motion, fog brightness and key bindings are kept (they are preferences).
+## volume, reduce motion, fog brightness, the language and key bindings are kept (they are preferences).
 func reset_progress() -> void:
 	levels_cleared = 0
 	highest_unlocked = 1

@@ -248,6 +248,7 @@ static func icon_ink_rect(icon_name: String) -> Rect2i:
 ## text.
 ## Returns the SkinText node (call its recolor() after changing the skin).
 static func setup_screen(root: Control, title: String) -> SkinText:
+	root.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED  # all text goes through Loc (docs/i18n/plan.md)
 	root.theme = make_theme()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(MenuBackdrop.new())

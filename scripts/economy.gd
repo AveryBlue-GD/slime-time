@@ -223,6 +223,22 @@ const COIN_CATCH_COIN_DB := -4.0
 const COIN_CATCH_FIZZ_DB := -8.0
 
 
+## ---------------------------------------------------------------- LANGUAGES test (i18n, D15)
+## ONE switch for the translations (docs/i18n/plan.md). Off (default): the `Language` autoload loads no
+## translation, adds no font fallback and never touches the text direction, `Loc.t` / `Loc.n` return the
+## English source text (= today's strings), SETTINGS has no LANGUAGE button and nothing new is saved.
+## `--languages` (debug builds only, like every launch flag) sets `languages_force` = 1 (the saved choice
+## or the OS locale); `--lang=xx` also forces locale xx for that run (`forced_locale`, never saved).
+## Tests set both too.
+const LANGUAGES_TEST := false
+static var languages_force := -1
+static var forced_locale := ""
+
+
+static func languages_on() -> bool:
+	return LANGUAGES_TEST if languages_force < 0 else languages_force == 1
+
+
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in
