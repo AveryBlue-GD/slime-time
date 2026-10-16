@@ -206,7 +206,7 @@ with the test overrides / `--platform=ios`); desktop and web use the whole view 
 - UI tweens animate modulate/alpha only. The goo wipe is a full-screen shader sheet that hides itself at the end. Any
   future positional tween must end on a whole pixel, at the same position the static layout uses.
 
-## 10. Per-locale sizes and text fitting (i18n, chunk G0)
+## 10. Per-locale sizes and text fitting (i18n, chunks G0-G5)
 
 The constants above are the **English** numbers (also Indonesian, whose metrics are English's, and everything with the
 languages gate off). Every size that follows the text's height has a function in `UIKit` that reads
@@ -217,22 +217,27 @@ functions, never the constants, for anything text-tall.
 
 | Function | English | accented (es pt_BR fr de it pl tr ru, pseudo) | vi | cjk (zh_CN ja ko) | zh_TW | th | hi / ar |
 |---|---|---|---|---|---|---|---|
-| `button_h()` = `tab_h()` | 13 | 15 | 17 | 16 | 18 | 19 | 21 |
-| `button_v_margins()` (top / bottom) | 3 / 3 | 5 / 3 | 7 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 2 / 0 (ar 1 / 1) |
-| `pod_h()` / `pod_h2()` | 14 / 23 | 16 / 25 | 18 / 29 | 17 / 29 | 19 / 33 | 20 / 35 | 22 / 39 |
+| `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 21 |
+| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 2 / 0 (ar 1 / 1) |
+| `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 22 / 39 |
 | `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 19 / 20 / 19 |
 | `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 1 |
 | `title_top()` .. `title_bottom()` | 2..22 | 8..28 | 12..32 | 2..32 | 2..36 | 2..29 | 2..29 |
-| `bottom_row_y()` (ends on row 176) | 164 | 162 | 160 | 161 | 159 | 158 | 156 |
-| `choice_y()` / `choice_size()` | 153 / 84x13 | 151 / 84x15 | 149 / 84x17 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 145 / 84x21 |
+| `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 156 |
+| `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 145 / 84x21 |
 | `hit_pad()` (hit area stays >= 23) | 5 | 4 | 3 | 4 | 3 | 2 | 1 |
 | `stack_pitch(gap)` | `button_h()` + gap (16 with `GAP_S` in English) | | | | | | |
+| `accent_room()` (marks over a line in a tile / panel) | 0 | 2 | 4 | 0 | 0 | 0 | 0 |
+| `digit_top()` (slimy digits' body under the line top) | 0 | 0 | 0 | 4 | 6 | 5 | 6 |
 
 - **Buttons and pods size themselves**: `make_theme` / `button_style` / `panel_style(true)` carry the locale's margins, so
   every themed button is at least `button_h()` tall and every one-line pod `pod_h()`, with no per-screen work. With the
   slimy font the 3 rows under the body stay (drips) and the accents' rows go on top (accents used to land on the goo
-  band of a 13 px button and vanish). A taller script's line box gets 1 / 1, moved down by its `ink_nudge` (Thai,
-  Devanagari: 1) so the letter body is centred (measured: BACK body 0 px off centre in th / hi, 0.5 in ja).
+  band of a 13 px button and vanish). With the slimy font a button is 13 + the marks' rows (`ink_above`: 3 accented, 5
+  Vietnamese) tall, so the highest mark starts on row 3, under the goo's lump row (row 2), as English capitals do
+  (G5: at 15 px an acute sat on the lump row and a diaeresis right under it: ZURÜCK, WRÓĆ, DŹWIĘK, TÜRKÇE). A taller
+  script's line box gets 1 / 1, moved down by its `ink_nudge` (Thai, Devanagari: 1) so the letter body is centred
+  (measured: BACK body 0 px off centre in th / hi, 0.5 in ja).
 - **What screens must do**: position from these functions (a 13 px literal or `UIKit.BUTTON_H` used as a pitch is a bug
   in a taller locale). Gaps stay on the spacing scale (section 3); the extra height comes out of the pitch, never out of
   a gap below 2 px.
@@ -256,3 +261,53 @@ functions, never the constants, for anything text-tall.
   the VOLUME box (`button_h()` tall), TouchButton hit areas (`hit_pad()`).
 - Arabic positions are still mirrored by Godot's RTL layout (absolute positions of children of a mirrored parent);
   chunk I owns the RTL pass.
+
+### 10.1 Rules the screens settled on (chunks G1-G4, consolidated in G5)
+
+All helpers below live in `UIKit` (one copy; screens never keep private versions) and return the English numbers or do
+nothing in English, so English and the gate-off game stay pixel-identical (seeded `--write-movie` captures).
+
+- **`fit_text` order**: put the control in the themed tree, apply any font / size / line-spacing override, then call
+  `fit_text(control, designed_rect, max_size, max_lines, anchor)`, then place anything that depends on its size. The
+  steps are as is -> grow (from `anchor`, whole pixels) -> wrap (`max_lines`) -> one crisp font size down; the wrapped
+  size holds in the same frame (`fit_text` refreshes the minimum size when it turns autowrap on: no deferred second
+  resize). `wrap_label(label, box)` is the same for a label you already know wraps; `break_line(text, room)` breaks
+  one line into two balanced ones at a space (the level select's checkbox, a result line wider than `REWARDS_W`).
+- **Equal-width groups**: a row or column of one-of-many controls (tabs, the wardrobe's BACK / page button, the
+  settings columns, choice rows, paired dialog buttons, the hat wheel's sections) takes `tab_widths(texts, english_w)`:
+  every member keeps its English width until one text needs more, then all take the widest. Every text the control
+  can show counts (all page titles of the wardrobe's page button, every state of a toggle, PRESS KEY for a key button).
+  Each control sized from text records it with `note_text_w(control, texts, min_w, font_size, extra)`;
+  `tests/test_i18n_screens.gd` recomputes `noted_text_w` and accepts a button wider than in English only when it is
+  exactly that wide (never by node name). A CheckBox's own width is `button_w(text, 0, FONT, checkbox_extra(box))`.
+- **Per-locale paging**: a fixed grid or stacked column that `grid_budget` / `stack_pages` / `row_budget` says does
+  not fit gets pages only in the locales that need them; English keeps its single page. Close the gaps first, one
+  scale step at a time (never below the scale: key controls try ROW_GAP 4, then `GAP_S` 3 between rows), then page.
+  Rows split into balanced pages (map table, key controls: 3 + 2, not 4 + 1). Turning pages: `add_page_arrows(parent, on_step, y, left_x, right_x, w,
+  h, focus)` makes `<` / `>` (`PAGER_W` 20 wide, `PagePrev` / `PageNext`, in `plain_font`), beside the title at
+  `title_arrows_y()` (level select, map table) or either side of a row (the hat wheel's sections, no focus: the
+  keys turn pages past a page's first / last row); `show_page_arrows(arrows, page, pages)` disables the arrow that
+  would leave the pages. A screen whose bottom row has room uses one page button there instead (key controls: `1/2`,
+  BACK's mirror and width). Left / right (level select) or up / down (hat wheel) past a page's edge turn the page too.
+- **Panel-cover rule**: while a modal panel is open in a locale whose layout differs from English, the page's own
+  controls behind it are hidden: `cover_behind(screen, keep, rect)` (only those under `rect` when given: SAVE CODE and
+  RESET panels; all of them: the resized HEAT panel, the opaque map view) and `uncover(list)` on close. That includes
+  the page arrows (they are added last so the other nodes keep their places). English keeps its faint ghosts
+  (byte-identical), because its panels' texts already avoid the page.
+- **Digit rule**: digits-only texts (level numbers, record times, %, +N, counts beside coin / ticket icons) and the
+  page arrows use `plain_font(text)` (`use_plain_font(control)`): the slimy font without the script fallback, whose
+  line box would push the digits 5-7 px down in CJK / Thai / Devanagari. Where a number shares a line with script text
+  (the coin board's counts, the wheel's ticket balance), the slimy digits sit `digit_top()` = ascent - 7 rows under
+  the line top, so an icon beside them moves down by that much.
+- **Accent room**: a tile or panel laid out for English adds `accent_room()` rows (2 accented, 4 Vietnamese) above a
+  line that may carry marks; `ink_above(text, size)` gives a single line's marks (0 for a line without non-ASCII
+  letters), for room only a marked line needs (the title's tagline under its slimes). Marks never sit on a goo
+  band: buttons are 13 + `ink_above` tall (table above).
+- **Checkboxes**: `align_checkbox(box)` puts the 9 px box's bottom row 2 rows over the text's last ink row, as in
+  English (a taller script's line box had it 1-3 px high: CJK 2, zh_TW 3, Thai 1; CJK letters reach `ink_drop` 1 row
+  lower than the slimy body). English: unchanged.
+- **Width budgets for translators**: a `# i18n:` hint's `max Npx` is the English box; where the screen widens the box
+  for the text it also says `grows to Npx` (the room the layout has), and `wraps` where the text wraps there (`lines
+  N`). `tests/test_i18n_fit.gd` measures every translation against that, `tests/test_i18n_screens.gd` against the real
+  screens; both fail on any open finding outside Arabic (reported only until chunk I).
+

@@ -198,7 +198,7 @@ unchanged PNG's old bytes), `tests/test_language_screen.gd`.
 - The names are `Language.native_name` (`PORTUGUÊS (BR)`, `INDONESIA`: `PORTUGUÊS (BRASIL)` is 100 px and
   `BAHASA INDONESIA` 90 px, both over the 88 px a 96 px button holds).
 - Grid 3 x 6, 96 px buttons, 8 px column gap (L8 / R8), row-major in `Language.LOCALES` order. **Each row is
-  as tall as its tallest script needs** (`metrics(code).button_h`: 15, 15, 15, 16 CJK, 19 Thai, 21
+  as tall as its tallest script needs** (`metrics(code).button_h`: 16, 16, 16, 16 CJK, 19 Thai, 21
   Devanagari; 4 px apart, pitch >= 19) rather than uniform 21 px rows: with Hindi / Thai / Arabic as the UI
   language, BACK itself needs 17-21 px and uniform rows left no room for it. The grid is centred between the
   title box (y 22) and BACK; BACK stays at (4, 164), or moves up so a taller BACK still ends on row 176.
@@ -389,6 +389,14 @@ it 18 -> 19, ru 13 -> 14, pl 15 -> 16, tr 6 -> 7, ja 316 -> 171, ko 308 -> 157, 
 th 396 -> 241, vi 6 -> 30, id 7 -> 7, ar 738 -> 602, hi 441 -> 292, pseudo 74 -> 75; total 3126 -> 2132 (overlap
 1594 -> 1633, grew 1024 -> 172, offscreen 508 -> 327). The Latin / vi additions are the accent room now made visible:
 titles 6 / 10 px lower and 15 / 17 px buttons that the screens still place on English pitches.
+
+**G5 (consolidation, 2026-10-17)**: the private copies the screen chunks wrote now live once in `UIKit`
+(`accent_room`, `digit_top`, `plain_font` / `use_plain_font`, `wrap_label`, `break_line`, `add_page_arrows` /
+`show_page_arrows` / `title_arrows_y`, `cover_behind` / `uncover`, `big_button_h`, `ink_above`, `align_checkbox`);
+`fit_text` wraps in the same frame. Controls sized from their text record it (`note_text_w`), so
+`test_i18n_screens` accepts exactly that growth by measurement; both fit suites are enforced for every locale but
+`ar`. Slimy-font buttons are 13 + `ink_above` tall (16 accented, 18 Vietnamese) so marks clear the goo's lump row.
+Budget hints say `grows to Npx` / `wraps` where the screen widens or wraps the box. Rules: ui-rules.md section 10.1.
 
 ## 11. Owner answers (2026-10-16)
 
