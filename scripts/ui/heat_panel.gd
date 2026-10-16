@@ -22,8 +22,6 @@ const TITLE_GAP := 5
 const ICON_SCALE := 2
 const OFF_TINT := Color(0.55, 0.55, 0.62)
 const HEAT_TINT := Color8(255, 170, 90)
-## (English source; the panel shows `default_about()`.)
-const DEFAULT_ABOUT := "WORKS ON LEVELS ALREADY BEATEN ON HARD"
 
 var toggles := {}
 var title: Label
@@ -91,7 +89,7 @@ func _make_toggle(id: String) -> Button:
 	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
 	icon.position = Vector2(5, 8) + (cell * ICON_SCALE / 2.0).floor()
 	button.add_child(icon)
-	var name_label := UIKit.make_label(Heat.NAMES[id], UIKit.FONT, UIKit.TEXT)
+	var name_label := UIKit.make_label(Heat.display_name(id), UIKit.FONT, UIKit.TEXT)
 	name_label.name = "Name"
 	name_label.position = Vector2(26, 7)
 	button.add_child(name_label)
@@ -107,8 +105,8 @@ func _make_toggle(id: String) -> Button:
 	check.name = "Check"
 	check.position = Vector2(TOGGLE.x - 13, TOGGLE.y - 13)
 	button.add_child(check)
-	button.focus_entered.connect(func() -> void: about.text = Heat.ABOUT[id])
-	button.mouse_entered.connect(func() -> void: about.text = Heat.ABOUT[id])
+	button.focus_entered.connect(func() -> void: about.text = Heat.about_text(id))
+	button.mouse_entered.connect(func() -> void: about.text = Heat.about_text(id))
 	return button
 
 
@@ -117,7 +115,7 @@ func _flip(id: String) -> void:
 	if Heat.blocked(mask, id):
 		return
 	Progress.set_heat_mods(Heat.toggle(mask, id))
-	about.text = Heat.ABOUT[id]
+	about.text = Heat.about_text(id)
 	refresh()
 
 

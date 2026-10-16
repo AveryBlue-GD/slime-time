@@ -11,7 +11,7 @@ func _ready() -> void:
 		Loc.t("victory.cleared", "ALL {count} MAZES CLEARED", {count = Levels.COUNT}),  # i18n: max 296px
 		"",
 		# i18n: {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
-		Loc.t("victory.unlocked", "UNLOCKED: {skin} (ANY COLOR YOU LIKE)", {skin = Skins.CUSTOM_NAME}),
+		Loc.t("victory.unlocked", "UNLOCKED: {skin} (ANY COLOR YOU LIKE)", {skin = Skins.display_name(Skins.CUSTOM)}),
 	]), UIKit.FONT, UIKit.TEXT)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(lines)

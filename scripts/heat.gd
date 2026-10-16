@@ -16,15 +16,15 @@ extends RefCounted
 
 ## Modifier ids in bit order (bit i = 1 << i in the saved mask).
 const IDS: Array[String] = ["dim", "brittle", "fog", "grounded", "thirsty", "race"]
-const NAMES := {dim = "DIM", brittle = "BRITTLE", fog = "FOG BITES", grounded = "GROUNDED", thirsty = "THIRSTY", race = "RACE"}
+const NAMES := {dim = "DIM", brittle = "BRITTLE", fog = "FOG BITES", grounded = "GROUNDED", thirsty = "THIRSTY", race = "RACE"}  # i18n: ignore (English source; shown via display_name)
 ## One line each for the HEAT panel (under the toggles, for the focused one).
 const ABOUT := {
-	dim = "LESS LIGHT, PATHS FADE FASTER",
-	brittle = "SPLATS COST DOUBLE, NO FREE SLIDE",
-	fog = "FOG RETURNS TWICE AS FAST",
-	grounded = "NO LEAPS",
-	thirsty = "SLIME DRAINS 8% FASTER",
-	race = "BEAT 1.3 X PAR OR DRY UP",
+	dim = "LESS LIGHT, PATHS FADE FASTER",  # i18n: ignore (English source; shown via display_name)
+	brittle = "SPLATS COST DOUBLE, NO FREE SLIDE",  # i18n: ignore (English source; shown via display_name)
+	fog = "FOG RETURNS TWICE AS FAST",  # i18n: ignore (English source; shown via display_name)
+	grounded = "NO LEAPS",  # i18n: ignore (English source; shown via display_name)
+	thirsty = "SLIME DRAINS 8% FASTER",  # i18n: ignore (English source; shown via display_name)
+	race = "BEAT 1.3 X PAR OR DRY UP",  # i18n: ignore (English source; shown via display_name)
 }
 const ALL := (1 << 6) - 1
 

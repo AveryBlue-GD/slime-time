@@ -27,10 +27,10 @@ func _initialize() -> void:
 
 	# Both versions of mint unlocked: the toggle swaps in place.
 	var screen := await _open()
-	_check(screen.jelly_button.text == "JELLY: OFF" and screen._rule.text == screen.SKINS_RULE, "the screen opens on the opaque skins")
+	_check(screen.jelly_button.text == "JELLY: OFF" and screen._rule.text == screen.rule_text("skins"), "the screen opens on the opaque skins")
 	screen.jelly_button.pressed.emit()
 	_check(progress.selected_skin == "mint" and progress.jelly and Skins.jelly == true, "both unlocked: JELLY ON wears jelly mint")
-	_check(screen.jelly_button.text == "JELLY: ON" and screen._rule.text == screen.JELLY_RULE, "JELLY label and rule flip (%s)" % screen._rule.text)
+	_check(screen.jelly_button.text == "JELLY: ON" and screen._rule.text == screen.rule_text("jelly"), "JELLY label and rule flip (%s)" % screen._rule.text)
 	_check((screen.big_preview.material as ShaderMaterial).get_shader_parameter("translucency") == 1.0, "...previews jelly")
 	screen.jelly_button.pressed.emit()
 	_check(progress.selected_skin == "mint" and not progress.jelly, "...and back to opaque mint")

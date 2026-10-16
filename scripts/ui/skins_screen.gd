@@ -22,11 +22,6 @@ const RULE_TOP := 100
 const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
-## (English source texts of the tip lines; the screen shows `skins_rule()` and the like. The tests compare.)
-const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
-const JELLY_RULE := "JELLY SKINS UNLOCK ON HARD MODE"
-const HATS_RULE := "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
-const TRAILS_RULE := "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
 ## The tip line of a page. i18n: one line, max 300px.
 static func rule_text(which: String) -> String:
 	match which:
@@ -94,7 +89,7 @@ func _ready() -> void:
 			_add_to_grid(_trail_grid, _make_trail_tile(id))
 
 	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
-	_rule = _centered_label(SKINS_RULE, UIKit.TEXT_DIM, RULE_TOP)
+	_rule = _centered_label(rule_text("skins"), UIKit.TEXT_DIM, RULE_TOP)
 	_build_custom_panel()
 	showcase = SkinShowcase.new()
 	add_child(showcase)

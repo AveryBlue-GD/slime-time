@@ -2529,6 +2529,11 @@ msgid "SPLAT COST {now} -> {next}"
 msgstr ""
 
 #: scripts/workshop.gd
+msgctxt "workshop.px"
+msgid "{n} PX"
+msgstr ""
+
+#: scripts/workshop.gd
 msgctxt "workshop.magnet.maxed"
 msgid "COIN REACH {now}  MAXED"
 msgstr ""
@@ -2536,6 +2541,11 @@ msgstr ""
 #: scripts/workshop.gd
 msgctxt "workshop.magnet.next"
 msgid "COIN REACH {now} -> {next}"
+msgstr ""
+
+#: scripts/workshop.gd
+msgctxt "workshop.nose.value"
+msgid "X{rate} {reach} PX"
 msgstr ""
 
 #: scripts/workshop.gd

@@ -6,13 +6,8 @@ extends Control
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
-## What the SAVE CODE panel says about a code from an older build (it never loads). These three are
-## the English source texts (the tests compare against them, gate off); the screen shows them through
-## `old_code_message()` / `copied_message()` / `copy_by_hand_message()`.
-const OLD_CODE_MESSAGE := "THAT CODE IS FROM AN OLD VERSION"
-const COPIED_MESSAGE := "COPIED! KEEP IT SOMEWHERE SAFE"
-## Web only, when the browser refuses to copy: the code is shown in the browser's own prompt.
-const COPY_BY_HAND_MESSAGE := "COPY THE CODE FROM THE POP-UP"
+## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
+## (web only) the browser refusing to copy, so the code is shown in the browser's own prompt.
 
 static func old_code_message() -> String:
 	# i18n: status line in the SAVE CODE panel, max 260px, 1 line

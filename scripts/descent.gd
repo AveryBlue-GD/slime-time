@@ -26,23 +26,23 @@ extends RefCounted
 ## The boons in table order (picker / HUD order).
 const IDS: Array[String] = ["gulp", "tank", "feather", "rubber", "slick", "blaze", "sense", "bladder", "thrift", "greedy", "glass"]
 const NAMES := {
-	"gulp": "BIG GULP", "tank": "DEEP TANK", "feather": "FEATHER LEAP", "rubber": "RUBBER BODY",
-	"slick": "SLICK", "blaze": "BLAZE", "sense": "CHALICE SENSE", "bladder": "BACKUP BLADDER",
-	"thrift": "THRIFT", "greedy": "GREEDY GOO", "glass": "GLASS SLIME",
+	"gulp": "BIG GULP", "tank": "DEEP TANK", "feather": "FEATHER LEAP", "rubber": "RUBBER BODY",  # i18n: ignore (English source; shown via display_name)
+	"slick": "SLICK", "blaze": "BLAZE", "sense": "CHALICE SENSE", "bladder": "BACKUP BLADDER",  # i18n: ignore (English source; shown via display_name)
+	"thrift": "THRIFT", "greedy": "GREEDY GOO", "glass": "GLASS SLIME",  # i18n: ignore (English source; shown via display_name)
 }
 ## Two short lines each (at most 14 letters a line: they fit a boon tile).
 const ABOUT := {
-	"gulp": ["+30% SLIME", "RIGHT NOW"],
-	"tank": ["TANK +15%", "ALL RUN"],
-	"feather": ["LEAPS COST", "LESS SLIME"],
-	"rubber": ["SPLATS COST", "NO SLIME"],
-	"slick": ["GLIDE +15%", "FASTER"],
-	"blaze": ["WIDER LIGHT", "+1 BRIGHTNESS"],
-	"sense": ["SEE THE EXIT", "FROM 6 TILES"],
-	"bladder": ["EMPTY? REFILL", "TO 25% ONCE"],
-	"thrift": ["FLOOR REFILLS", "+15%"],
-	"greedy": ["+1 TIX/FLOOR", "TANK -10%"],
-	"glass": ["POT X1.5", "SPLATS X2"],
+	"gulp": ["+30% SLIME", "RIGHT NOW"],  # i18n: ignore (English source; shown via display_name)
+	"tank": ["TANK +15%", "ALL RUN"],  # i18n: ignore (English source; shown via display_name)
+	"feather": ["LEAPS COST", "LESS SLIME"],  # i18n: ignore (English source; shown via display_name)
+	"rubber": ["SPLATS COST", "NO SLIME"],  # i18n: ignore (English source; shown via display_name)
+	"slick": ["GLIDE +15%", "FASTER"],  # i18n: ignore (English source; shown via display_name)
+	"blaze": ["WIDER LIGHT", "+1 BRIGHTNESS"],  # i18n: ignore (English source; shown via display_name)
+	"sense": ["SEE THE EXIT", "FROM 6 TILES"],  # i18n: ignore (English source; shown via display_name)
+	"bladder": ["EMPTY? REFILL", "TO 25% ONCE"],  # i18n: ignore (English source; shown via display_name)
+	"thrift": ["FLOOR REFILLS", "+15%"],  # i18n: ignore (English source; shown via display_name)
+	"greedy": ["+1 TIX/FLOOR", "TANK -10%"],  # i18n: ignore (English source; shown via display_name)
+	"glass": ["POT X1.5", "SPLATS X2"],  # i18n: ignore (English source; shown via display_name)
 }
 const SEED_SALT := 0x2d5c1
 const OFFER_SALT := 0x6b0f3

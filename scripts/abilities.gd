@@ -30,9 +30,9 @@ static func allowed_in(game: Node) -> bool:
 	return game.is_random() or game.descent
 
 const LIST := [
-	{id = "rifle", name = "SLIME RIFLE", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},
-	{id = "splat", name = "SLIME SPLAT", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},
-	{id = "kaze", name = "SLIMAKAZE", tag = "WALL DASH", action = "ability_kaze", key = KEY_3},
+	{id = "rifle", name = "SLIME RIFLE", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},  # i18n: ignore (English source; shown via display_name)
+	{id = "splat", name = "SLIME SPLAT", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
+	{id = "kaze", name = "SLIMAKAZE", tag = "WALL DASH", action = "ability_kaze", key = KEY_3},  # i18n: ignore (English source; shown via display_name)
 ]
 
 ## 8x8 icons in the boon icons' palette letters (BoonIcons.PAL): the goo shot streaking into a wall,

@@ -509,7 +509,7 @@ func _describe(id: String) -> void:
 		else:
 			status_line.text = Loc.t("wheel.no_luck", "NO LUCK NEEDED (COUNTS AS A SPIN)")
 		return
-	status.text = Loc.t("wheel.item_info", "{name} - {about}", {name = Cosmetics.display_name(id), about = Cosmetics.get_item(id).get("about", "")})
+	status.text = Loc.t("wheel.item_info", "{name} - {about}", {name = Cosmetics.display_name(id), about = Cosmetics.about(id)})
 	if Progress.owns_cosmetic(id):
 		status_line.text = Loc.t("wheel.take_off", "PRESS TO TAKE IT OFF") if _worn(id) else Loc.t("wheel.wear", "PRESS TO WEAR IT")
 	elif Progress.cosmetic_price(id) > Progress.tickets:

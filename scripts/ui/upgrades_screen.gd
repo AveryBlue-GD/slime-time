@@ -215,7 +215,7 @@ func show_page(which: String) -> void:
 ## cost. Every row looks the same (no tag on any track, D12).
 func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	UIKit.add_panel(parent, Rect2(10, y - 2, 300, ROW_HEIGHT - 3))
-	var name_label := UIKit.make_label(upgrade.name, UIKit.FONT, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
+	var name_label := UIKit.make_label(Upgrades.display_name(upgrade.id), UIKit.FONT, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
 	name_label.position = Vector2(18, y + 6)
 	parent.add_child(name_label)
 	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y + 3)
@@ -238,10 +238,10 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	var icon := Abilities.make_icon(item.id, 2)
 	icon.position = Vector2(17, y + 3)
 	ability_page.add_child(icon)
-	var name_label := UIKit.make_label(item.name, UIKit.FONT, UIKit.TEXT)
+	var name_label := UIKit.make_label(Abilities.display_name(item.id), UIKit.FONT, UIKit.TEXT)
 	name_label.position = Vector2(40, y + 2)
 	ability_page.add_child(name_label)
-	var tag := UIKit.make_label(item.tag, UIKit.FONT, UIKit.TEXT_DIM)
+	var tag := UIKit.make_label(Abilities.tag(item.id), UIKit.FONT, UIKit.TEXT_DIM)
 	tag.position = Vector2(40, y + 13)
 	ability_page.add_child(tag)
 	var pips := _make_pips(ability_page, Abilities.max_level(item.id), y + 5)
@@ -263,7 +263,7 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 ## A workshop row: name, effect now -> next, 3 pips, + and the price with the ticket icon.
 func _make_ticket_row(item: Dictionary, y: int) -> void:
 	UIKit.add_panel(ticket_page, Rect2(10, y - 2, 300, TICKET_ROW_HEIGHT - 2))
-	var name_label := UIKit.make_label(item.name, UIKit.FONT, UIKit.TEXT)
+	var name_label := UIKit.make_label(Workshop.display_name(item.id), UIKit.FONT, UIKit.TEXT)
 	name_label.position = Vector2(18, y + 1)
 	ticket_page.add_child(name_label)
 	var about := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)

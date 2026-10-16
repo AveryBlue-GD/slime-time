@@ -58,7 +58,7 @@ func _initialize() -> void:
 	screen._open_codes()
 	_check(screen.code_panel.visible and screen.code_out.text == progress.save_code(), "SAVE CODE shows your code to copy")
 	screen._copy_code()
-	_check(screen.code_status.text == screen.COPIED_MESSAGE and screen.code_out.get_selected_text() == screen.code_out.text, "COPY copies the code and says so")
+	_check(screen.code_status.text == screen.copied_message() and screen.code_out.get_selected_text() == screen.code_out.text, "COPY copies the code and says so")
 	var js: String = screen.web_copy_js(code)
 	_check(js.ends_with("})(\"%s\")" % code) and "execCommand('copy')" in js, "the web copy script carries the code as a JS string")
 	_check(screen.web_copy_js("a\"b\\c\n</script>").ends_with("})(%s)" % JSON.stringify("a\"b\\c\n</script>")), "the web copy script escapes odd text")

@@ -15,11 +15,11 @@ extends RefCounted
 ##   GOO NOSE     fog glimmers x1.4 / x1.8 / x2.3 as often, reaching 200 / 240 / 300 px (160)
 
 const LIST := [
-	{id = "wind", name = "SECOND WIND"},
-	{id = "charge", name = "QUICK CHARGE"},
-	{id = "sticky", name = "STICKY"},
-	{id = "magnet", name = "MAGNET"},
-	{id = "nose", name = "GOO NOSE"},
+	{id = "wind", name = "SECOND WIND"},  # i18n: ignore (English source; shown via display_name)
+	{id = "charge", name = "QUICK CHARGE"},  # i18n: ignore (English source; shown via display_name)
+	{id = "sticky", name = "STICKY"},  # i18n: ignore (English source; shown via display_name)
+	{id = "magnet", name = "MAGNET"},  # i18n: ignore (English source; shown via display_name)
+	{id = "nose", name = "GOO NOSE"},  # i18n: ignore (English source; shown via display_name)
 ]
 
 
@@ -150,15 +150,15 @@ static func effect_text(id: String, level: int) -> String:
 				return Loc.t("workshop.sticky.maxed", "SPLAT COST {now}  MAXED", {now = now})
 			return Loc.t("workshop.sticky.next", "SPLAT COST {now} -> {next}", {now = now, next = next})
 		"magnet":
-			var now := "%d PX" % roundi(magnet_reach(level))
-			var next := "%d PX" % roundi(magnet_reach(level + 1))
+			var now := Loc.t("workshop.px", "{n} PX", {n = roundi(magnet_reach(level))})
+			var next := Loc.t("workshop.px", "{n} PX", {n = roundi(magnet_reach(level + 1))})
 			# i18n: max 200px, 1 line. {now}/{next} are distances in pixels (PX unit).
 			if maxed:
 				return Loc.t("workshop.magnet.maxed", "COIN REACH {now}  MAXED", {now = now})
 			return Loc.t("workshop.magnet.next", "COIN REACH {now} -> {next}", {now = now, next = next})
 		"nose":
-			var now := "X%s %d PX" % [_times(nose_rate(level)), roundi(nose_reach(level))]
-			var next := "X%s %d PX" % [_times(nose_rate(level + 1)), roundi(nose_reach(level + 1))]
+			var now := Loc.t("workshop.nose.value", "X{rate} {reach} PX", {rate = _times(nose_rate(level)), reach = roundi(nose_reach(level))})
+			var next := Loc.t("workshop.nose.value", "X{rate} {reach} PX", {rate = _times(nose_rate(level + 1)), reach = roundi(nose_reach(level + 1))})
 			# i18n: max 200px, 1 line. {now}/{next} = glimmer rate multiplier then reach in px (e.g. X1.4 200 PX).
 			if maxed:
 				return Loc.t("workshop.nose.maxed", "GLIMMERS {now}  MAXED", {now = now})

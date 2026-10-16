@@ -30,9 +30,6 @@ const INFO_RECT := Rect2(14, 113, 292, 48)
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
 ## The flame badge's top-left corner on a hard tile (7x9; the medal pips mirror it at the top right).
 const FLAME_POS := Vector2(5, 5)
-## (English source texts, kept for the tests; the screen shows `info_text()`.)
-const INFO_NORMAL := "CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN"
-const INFO_HARD := "HEAT UP LEVELS BEATEN ON HARD\nHEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
 const HEAT_BUTTON_SIZE := Vector2(52, UIKit.BUTTON_H)
 
 

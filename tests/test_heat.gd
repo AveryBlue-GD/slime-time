@@ -56,7 +56,7 @@ func _table() -> void:
 	var expect := {dim = 1, brittle = 1, fog = 2, grounded = 2, thirsty = 2, race = 3}
 	for id: String in expect:
 		_check(Heat.heat_of(id) == expect[id], "%s is heat %d" % [id, expect[id]])
-		_check(Heat.NAMES.has(id) and Heat.ABOUT.has(id) and Heat.icon(id).get_size() == (Vector2(8, 8) if id == "race" else Vector2(9, 9)), "%s has a name, an about line and a 9x9 icon (RACE 8x8: an even pod)" % id)
+		_check(Heat.display_name(id) != "" and Heat.about_text(id) != "" and Heat.icon(id).get_size() == (Vector2(8, 8) if id == "race" else Vector2(9, 9)), "%s has a name, an about line and a 9x9 icon (RACE 8x8: an even pod)" % id)
 	var masks := Heat.masks()
 	var top := 0
 	for mask in masks:
@@ -204,7 +204,7 @@ func _level_select() -> void:
 	await process_frame
 	var panel: Control = screen.heat_panel
 	_check(screen.heat_button.visible and screen.heat_button.text == "HEAT 0", "hard mode: a HEAT 0 button")
-	_check(screen.info.text == screen.INFO_HARD, "hard mode: the info lines name the bounties")
+	_check(screen.info.text == screen.info_text(true), "hard mode: the info lines name the bounties")
 	screen.heat_button.grab_focus()
 	await _key(KEY_ENTER)
 	_check(panel.visible and panel.toggles["dim"].has_focus(), "Enter opens the panel, focus on DIM")
@@ -212,7 +212,7 @@ func _level_select() -> void:
 	await _key(KEY_ENTER)
 	_check(progress.heat_mods == Heat.bit("dim") and panel.title.text == "HEAT 1/10" and panel.toggles["dim"].get_node("Check").visible, "Enter on DIM turns it on: HEAT 1/10")
 	await _key(KEY_RIGHT)
-	_check(panel.toggles["brittle"].has_focus() and panel.about.text == Heat.ABOUT.brittle, "arrows move between toggles; the about line follows")
+	_check(panel.toggles["brittle"].has_focus() and panel.about.text == Heat.about_text("brittle"), "arrows move between toggles; the about line follows")
 	await _key(KEY_ENTER)
 	await _click(panel.toggles["grounded"])
 	_check(progress.heat_mods == Heat.bit("dim") | Heat.bit("grounded") and panel.toggles["brittle"].disabled, "GROUNDED drops BRITTLE and greys it out (%d)" % progress.heat_mods)
@@ -235,7 +235,7 @@ func _level_select() -> void:
 	_check(flame != null and flame.texture == Heat.flame(10) and screen.level_buttons[1].get_node("Flame").texture == Heat.flame(4) and screen.level_buttons[2].get_node_or_null("Flame") == null, "tile flames show the best heat tier")
 	screen.hard_mode_box.button_pressed = false
 	await process_frame
-	_check(not screen.heat_button.visible and screen.level_buttons[0].get_node_or_null("Flame") == null and screen.info.text == screen.INFO_NORMAL, "normal mode: no HEAT button, no flames")
+	_check(not screen.heat_button.visible and screen.level_buttons[0].get_node_or_null("Flame") == null and screen.info.text == screen.info_text(false), "normal mode: no HEAT button, no flames")
 	current_scene = null
 	screen.free()
 	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()

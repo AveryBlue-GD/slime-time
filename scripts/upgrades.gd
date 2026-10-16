@@ -9,10 +9,10 @@ extends RefCounted
 ## "power" (breaking walls) is a dev-only experiment: shown and applied only in dev mode.
 
 const LIST := [
-	{id = "slime", name = "MORE SLIME"},
-	{id = "speed", name = "SPEED"},
-	{id = "brightness", name = "BRIGHTNESS"},
-	{id = "power", name = "WALL POWER", dev = true},
+	{id = "slime", name = "MORE SLIME"},  # i18n: ignore (English source; shown via display_name)
+	{id = "speed", name = "SPEED"},  # i18n: ignore (English source; shown via display_name)
+	{id = "brightness", name = "BRIGHTNESS"},  # i18n: ignore (English source; shown via display_name)
+	{id = "power", name = "WALL POWER", dev = true},  # i18n: ignore (English source; shown via display_name)
 ]
 
 

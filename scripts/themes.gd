@@ -14,16 +14,16 @@ const DEFAULT_FOG_DEEP := Color(0.078, 0.078, 0.133, 1.0)
 const DEFAULT_FOG_MIST := Color(0.247, 0.239, 0.341, 1.0)
 
 const ALL := {
-	"dungeon": {name = "DARK DUNGEON"},
-	"mossy": {name = "MOSSY MINES", fog = [Color8(12, 24, 18), Color8(42, 66, 50)]},
-	"sandstone": {name = "SANDSTONE SANCTUM", fog = [Color8(30, 22, 20), Color8(90, 72, 58)]},
-	"sunken": {name = "SUNKEN SHRINE", fog = [Color8(8, 20, 30), Color8(36, 70, 84)]},
-	"sewers": {name = "TOXIC TUNNELS", fog = [Color8(24, 26, 8), Color8(98, 106, 30)]},
-	"catacombs": {name = "CREEPY CATACOMBS", fog = [Color8(24, 20, 18), Color8(74, 66, 60)]},
-	"frozen": {name = "FROZEN FORTRESS", fog = [Color8(14, 20, 38), Color8(72, 98, 134)]},
-	"obsidian": {name = "OBSIDIAN OUBLIETTE", fog = [Color8(6, 6, 12), Color8(34, 36, 58)]},
-	"crystal": {name = "CRYSTAL CAVERNS", fog = [Color8(20, 10, 34), Color8(78, 50, 110)]},
-	"volcanic": {name = "VOLCANIC VAULT", fog = [Color8(28, 10, 10), Color8(90, 36, 28)]},
+	"dungeon": {name = "DARK DUNGEON"},  # i18n: ignore (English source; shown via display_name)
+	"mossy": {name = "MOSSY MINES", fog = [Color8(12, 24, 18), Color8(42, 66, 50)]},  # i18n: ignore (English source; shown via display_name)
+	"sandstone": {name = "SANDSTONE SANCTUM", fog = [Color8(30, 22, 20), Color8(90, 72, 58)]},  # i18n: ignore (English source; shown via display_name)
+	"sunken": {name = "SUNKEN SHRINE", fog = [Color8(8, 20, 30), Color8(36, 70, 84)]},  # i18n: ignore (English source; shown via display_name)
+	"sewers": {name = "TOXIC TUNNELS", fog = [Color8(24, 26, 8), Color8(98, 106, 30)]},  # i18n: ignore (English source; shown via display_name)
+	"catacombs": {name = "CREEPY CATACOMBS", fog = [Color8(24, 20, 18), Color8(74, 66, 60)]},  # i18n: ignore (English source; shown via display_name)
+	"frozen": {name = "FROZEN FORTRESS", fog = [Color8(14, 20, 38), Color8(72, 98, 134)]},  # i18n: ignore (English source; shown via display_name)
+	"obsidian": {name = "OBSIDIAN OUBLIETTE", fog = [Color8(6, 6, 12), Color8(34, 36, 58)]},  # i18n: ignore (English source; shown via display_name)
+	"crystal": {name = "CRYSTAL CAVERNS", fog = [Color8(20, 10, 34), Color8(78, 50, 110)]},  # i18n: ignore (English source; shown via display_name)
+	"volcanic": {name = "VOLCANIC VAULT", fog = [Color8(28, 10, 10), Color8(90, 36, 28)]},  # i18n: ignore (English source; shown via display_name)
 }
 
 ## One per story level, getting stranger the deeper you go.

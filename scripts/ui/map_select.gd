@@ -27,8 +27,6 @@ const GRID_POS := Vector2(4, 21)
 const THUMB_POS := Vector2(4, 3)
 ## Where the map may be drawn in the view.
 const MAP_AREA := Rect2i(2, 13, 316, 149)
-## (English source; the screen shows `hint_text()`.)
-const HINT := "PLAY TO FILL THEM IN"
 ## The themed maps (each level's map and tile picture in its own palette with a themed frame,
 ## MapView's `theme`). The one switch: false = the plain parchment style everywhere.
 const THEMED_MAPS := true

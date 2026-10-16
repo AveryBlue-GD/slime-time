@@ -455,7 +455,7 @@ func _test_screen() -> void:
 	if screen == null:
 		return
 	await _physics_frames(2)
-	_check(screen.hint_label.text == screen.HINT and progress.maps_hint_seen, "the first opening shows the hint line")
+	_check(screen.hint_label.text == screen.hint_text() and progress.maps_hint_seen, "the first opening shows the hint line")
 	_check(screen.tiles.size() == 10 and screen.tiles[0].disabled and not screen.tiles[1].disabled and not screen.tiles[2].disabled and screen.tiles[3].disabled,
 		"tiles: unsurveyed levels are locked (1, 4), surveyed ones open (2, 3)")
 	_check(screen.tiles[2].get_meta("percent") == 100 and screen.tiles[1].get_meta("percent") < 30, "...with their survey %% (%d, %d)" % [screen.tiles[1].get_meta("percent"), screen.tiles[2].get_meta("percent")])

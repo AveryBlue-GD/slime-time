@@ -128,10 +128,10 @@ func _initialize() -> void:
 	for attempt in 2:  # LOAD twice: an old code never arms or loads
 		screen.code_in.text = old_codes["a SLIME1- code from a pre-release build"]
 		screen._load_code()
-	_check(screen.code_status.text == screen.OLD_CODE_MESSAGE and not screen.load_armed and progress._write().encode_to_text() == snapshot,
+	_check(screen.code_status.text == screen.old_code_message() and not screen.load_armed and progress._write().encode_to_text() == snapshot,
 		"LOAD on a SLIME1- code says %s and loads nothing" % screen.code_status.text)
 	screen._set_pasted(old_codes["an old code re-labelled SLIME2-"])  # what a paste into the web page hands over
-	_check(screen.code_status.text == screen.OLD_CODE_MESSAGE, "web paste of an old code says %s" % screen.code_status.text)
+	_check(screen.code_status.text == screen.old_code_message(), "web paste of an old code says %s" % screen.code_status.text)
 	screen._set_pasted("SLIME2-garbage")
 	_check("DOESN'T WORK" in screen.code_status.text, "a broken code still says %s" % screen.code_status.text)
 	screen._set_pasted(code)

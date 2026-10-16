@@ -17,7 +17,7 @@ static var available := true
 ## How much each missed spin fattens the rainbow hat's wedge.
 const PITY_STEP := 0.15
 const NONE := "none"
-const NONE_NAME := "NO HAT"
+const NONE_NAME := "NO HAT"  # i18n: ignore (English source; shown via display_name)
 ## Each hat is drawn at five fitted widths (rows of hats.png) to fit the slime as it squashes and
 ## stretches (NARROW: stretched into a leap; NORMAL; BROAD: a little squashed; WIDE: squashed flat
 ## to charge or land; SQUEEZED: pressed sideways against a wall in a splat), plus LOOSE, its own
@@ -37,18 +37,18 @@ const FLOW_STEPS := 12
 static var _flow_frames := {}
 
 const LIST := [
-	{id = "tophat", name = "TOP HAT", column = 0},
-	{id = "beanie", name = "BEANIE", column = 1},
-	{id = "party", name = "PARTY HAT", column = 2},
-	{id = "cap", name = "BASEBALL CAP", column = 3},
-	{id = "cowboy", name = "COWBOY HAT", column = 4},
-	{id = "chef", name = "CHEF HAT", column = 5},
-	{id = "wizard", name = "WIZARD HAT", column = 6},
-	{id = "viking", name = "VIKING HELMET", column = 7},
-	{id = "propeller", name = "PROPELLER CAP", column = 8},
-	{id = "crown", name = "CROWN", column = 9},
+	{id = "tophat", name = "TOP HAT", column = 0},  # i18n: ignore (English source; shown via display_name)
+	{id = "beanie", name = "BEANIE", column = 1},  # i18n: ignore (English source; shown via display_name)
+	{id = "party", name = "PARTY HAT", column = 2},  # i18n: ignore (English source; shown via display_name)
+	{id = "cap", name = "BASEBALL CAP", column = 3},  # i18n: ignore (English source; shown via display_name)
+	{id = "cowboy", name = "COWBOY HAT", column = 4},  # i18n: ignore (English source; shown via display_name)
+	{id = "chef", name = "CHEF HAT", column = 5},  # i18n: ignore (English source; shown via display_name)
+	{id = "wizard", name = "WIZARD HAT", column = 6},  # i18n: ignore (English source; shown via display_name)
+	{id = "viking", name = "VIKING HELMET", column = 7},  # i18n: ignore (English source; shown via display_name)
+	{id = "propeller", name = "PROPELLER CAP", column = 8},  # i18n: ignore (English source; shown via display_name)
+	{id = "crown", name = "CROWN", column = 9},  # i18n: ignore (English source; shown via display_name)
 	# The rare one: a thin wedge on the wheel, and its colors flow (assets/shaders/rainbow_hat.gdshader).
-	{id = "rainbow", name = "RAINBOW HAT", column = 10, weight = 0.3, flows = true},
+	{id = "rainbow", name = "RAINBOW HAT", column = 10, weight = 0.3, flows = true},  # i18n: ignore (English source; shown via display_name)
 ]
 
 

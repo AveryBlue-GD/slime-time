@@ -33,16 +33,16 @@ const FINALE: Array[Dictionary] = [
 
 ## One line under the area name when a level starts (story levels 1-10, bottom to top).
 const LEVEL_LINES: Array[String] = [
-	"SPLAT. IT IS DAMP. UP IS THAT WAY.",
-	"THE MINERS LEFT IN A HURRY. SO WOULD YOU.",
-	"SOMEONE SWEPT THE SAND. NOT RECENTLY.",
-	"NOT TECHNICALLY SWIMMING. STILL NOT DRY.",
-	"A SLIME IN SLIME. NOBODY WILL NOTICE.",
-	"THE RESIDENTS ARE QUIET. SUSPICIOUSLY.",
-	"COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.",
-	"A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.",
-	"SO SHINY. DAYLIGHT MUST BE CLOSE.",
-	"HOT. THE WAY OUT IS THE CRATER. RUN.",
+	"SPLAT. IT IS DAMP. UP IS THAT WAY.",  # i18n: ignore (English source; shown via display_name)
+	"THE MINERS LEFT IN A HURRY. SO WOULD YOU.",  # i18n: ignore (English source; shown via display_name)
+	"SOMEONE SWEPT THE SAND. NOT RECENTLY.",  # i18n: ignore (English source; shown via display_name)
+	"NOT TECHNICALLY SWIMMING. STILL NOT DRY.",  # i18n: ignore (English source; shown via display_name)
+	"A SLIME IN SLIME. NOBODY WILL NOTICE.",  # i18n: ignore (English source; shown via display_name)
+	"THE RESIDENTS ARE QUIET. SUSPICIOUSLY.",  # i18n: ignore (English source; shown via display_name)
+	"COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.",  # i18n: ignore (English source; shown via display_name)
+	"A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.",  # i18n: ignore (English source; shown via display_name)
+	"SO SHINY. DAYLIGHT MUST BE CLOSE.",  # i18n: ignore (English source; shown via display_name)
+	"HOT. THE WAY OUT IS THE CRATER. RUN.",  # i18n: ignore (English source; shown via display_name)
 ]
 
 

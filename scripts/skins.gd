@@ -15,15 +15,15 @@ extends RefCounted
 
 const DEFAULT := "lime"
 const CUSTOM := "custom"
-const CUSTOM_NAME := "CHAMELEON"
+const CUSTOM_NAME := "CHAMELEON"  # i18n: ignore (English source; shown via display_name)
 const RAINBOW := "rainbow"
-const RAINBOW_NAME := "RAINBOW"
+const RAINBOW_NAME := "RAINBOW"  # i18n: ignore (English source; shown via display_name)
 ## "stopwatch" unlocks with all 30 normal-mode medals (gold on every level): a pale gold-trimmed
 ## clock-face jelly with a working clock inside (see Stopwatch). Its look is fixed (STOPWATCH_SHADES),
 ## so it has no opaque/jelly unlock of its own: both versions open together (the one exception
 ## to "jelly = hard-mode reward").
 const STOPWATCH := "stopwatch"
-const STOPWATCH_NAME := "STOPWATCH"
+const STOPWATCH_NAME := "STOPWATCH"  # i18n: ignore (English source; shown via display_name)
 ## Stand-in base color (gold) wherever one color is needed (trail, meter, menu text).
 const STOPWATCH_BASE := Color8(240, 190, 60)
 const STOPWATCH_SHADES := {
@@ -41,16 +41,16 @@ static var jelly := false
 const RAINBOW_BASE := Color8(230, 60, 60)
 
 const PRESETS := [
-	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},           # 1 Dark Dungeon
-	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 1},           # 2 Mossy Mines: lichen
-	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 2},         # 3 Sandstone Sanctum: sun
-	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 3},         # 4 Sunken Shrine
-	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 4},         # 5 Toxic Tunnels: toxic ooze
-	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 5},      # 6 Creepy Catacombs: blood
-	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 6},        # 7 Frozen Fortress
-	{id = "shadow", name = "INKKY", color = Color8(84, 70, 110), unlock = 7},        # 8 Obsidian Oubliette
-	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 8},  # 9 Crystal Caverns
-	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},         # 10 Volcanic Vault: molten
+	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},  # i18n: ignore (English source); 1 Dark Dungeon
+	{id = "mint", name = "MINT", color = Color8(80, 220, 190), unlock = 1},  # i18n: ignore (English source); 2 Mossy Mines: lichen
+	{id = "lemon", name = "LEMON", color = Color8(236, 206, 58), unlock = 2},  # i18n: ignore (English source); 3 Sandstone Sanctum: sun
+	{id = "ocean", name = "OCEAN", color = Color8(59, 120, 220), unlock = 3},  # i18n: ignore (English source); 4 Sunken Shrine
+	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 4},  # i18n: ignore (English source); 5 Toxic Tunnels: toxic ooze
+	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 5},  # i18n: ignore (English source); 6 Creepy Catacombs: blood
+	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 6},  # i18n: ignore (English source); 7 Frozen Fortress
+	{id = "shadow", name = "INKKY", color = Color8(84, 70, 110), unlock = 7},  # i18n: ignore (English source); 8 Obsidian Oubliette
+	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 8},  # i18n: ignore (English source); 9 Crystal Caverns
+	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},  # i18n: ignore (English source); 10 Volcanic Vault: molten
 ]
 
 

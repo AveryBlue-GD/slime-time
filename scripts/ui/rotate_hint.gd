@@ -33,7 +33,7 @@ func _ready() -> void:
 	visible = false
 	var language := get_node_or_null("/root/Language")
 	if language:
-		language.language_changed.connect(func() -> void: _text.text = _message())
+		language.language_changed.connect(func(_locale: String) -> void: _text.text = _message())
 	_update.call_deferred()
 	# Every input event, before any node: menus grow their touch hit areas only while touch is in use.
 	get_tree().root.window_input.connect(UIKit.note_pointer)

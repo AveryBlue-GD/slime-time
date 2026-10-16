@@ -19,22 +19,22 @@ const TRAIL := "trail"
 const PAPER := "paper"
 const DEFAULT_TRAIL := "skin"
 const DEFAULT_PAPER := "parchment"
-const DEFAULT_TRAIL_NAME := "SKIN GOO"
-const DEFAULT_PAPER_NAME := "PARCHMENT"
+const DEFAULT_TRAIL_NAME := "SKIN GOO"  # i18n: ignore (English source; shown via display_name)
+const DEFAULT_PAPER_NAME := "PARCHMENT"  # i18n: ignore (English source; shown via display_name)
 
 const LIST := [
-	{id = "ink", kind = TRAIL, name = "INK TRAIL", about = "DEEP INKY GOO"},
-	{id = "glow", kind = TRAIL, name = "GLOW TRAIL", about = "THICK GLOWING GOO"},
-	{id = "gold", kind = TRAIL, name = "GOLD TRAIL", about = "CHALICE GOLD, ANY SKIN"},
-	{id = "candy", kind = TRAIL, name = "CANDY TRAIL", about = "SWEET STRIPES"},
-	{id = "starry", kind = TRAIL, name = "STARRY TRAIL", about = "SPECKLED WITH STARS"},
-	{id = "blueprint", kind = PAPER, name = "BLUEPRINT PAPER", about = "BLUE PAPER, WHITE INK"},
-	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},
-	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},
+	{id = "ink", kind = TRAIL, name = "INK TRAIL", about = "DEEP INKY GOO"},  # i18n: ignore (English source; shown via display_name)
+	{id = "glow", kind = TRAIL, name = "GLOW TRAIL", about = "THICK GLOWING GOO"},  # i18n: ignore (English source; shown via display_name)
+	{id = "gold", kind = TRAIL, name = "GOLD TRAIL", about = "CHALICE GOLD, ANY SKIN"},  # i18n: ignore (English source; shown via display_name)
+	{id = "candy", kind = TRAIL, name = "CANDY TRAIL", about = "SWEET STRIPES"},  # i18n: ignore (English source; shown via display_name)
+	{id = "starry", kind = TRAIL, name = "STARRY TRAIL", about = "SPECKLED WITH STARS"},  # i18n: ignore (English source; shown via display_name)
+	{id = "blueprint", kind = PAPER, name = "BLUEPRINT PAPER", about = "BLUE PAPER, WHITE INK"},  # i18n: ignore (English source; shown via display_name)
+	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},  # i18n: ignore (English source; shown via display_name)
+	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
-	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},
+	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
 	# Earned on HEAT (batch 4): every hard level cleared at heat Economy.HEAT_EMBER+.
-	{id = "ember", kind = TRAIL, name = "EMBER TRAIL", about = "GLOWING EMBERS, ANY SKIN", earned = "HEAT 7 ON EVERY HARD LEVEL"},
+	{id = "ember", kind = TRAIL, name = "EMBER TRAIL", about = "GLOWING EMBERS, ANY SKIN", earned = "HEAT 7 ON EVERY HARD LEVEL"},  # i18n: ignore (English source; shown via display_name)
 ]
 
 ## Trail looks: the goo alpha (0-255) of a painted cell, and the trail halo strength (game.gd TRAIL_GLOW).
