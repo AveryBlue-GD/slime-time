@@ -260,8 +260,11 @@ class StageArt extends Node2D:
 	var goo: Dictionary
 	var pops: Array[Dictionary] = []  # pictogram bubbles: {icon, who, at, life, think}
 	var cracks: Array[Dictionary] = []
-	var chunks: Array[Dictionary] = []
+	var pieces: Array[Dictionary] = []  # the slabs of floor that break in the crack shot
 	var layers: Array[Dictionary] = []
+	var corridor_hole: Dictionary  # the crumbled hole in the corridor floor atop the fall
+	var corridor_rim: Dictionary
+	var lava_lips: Array[PackedVector2Array] = []
 
 	func _ready() -> void:
 		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
@@ -272,7 +275,15 @@ class StageArt extends Node2D:
 		goo = Skins.shades(Progress.skin_color())
 		for i in Themes.BY_LEVEL.size():
 			var id: String = Themes.BY_LEVEL[Themes.BY_LEVEL.size() - 1 - i]
-			layers.append({id = id, name = Themes.display_name(id), pal = THEME_PAL.get(id, THEME_PAL["dungeon"])})
+			var pal: Dictionary = THEME_PAL.get(id, THEME_PAL["dungeon"])
+			layers.append({id = id, name = Themes.display_name(id), pal = pal, rim = _rim_colors(id, pal), hole = _make_hole(7100 + i * 37, 16)})
+		corridor_hole = _make_hole(7777, 30)
+		for k in 2:
+			var lip := PackedVector2Array()
+			for p: Vector2 in (LAVA_LIP_L if k == 0 else LAVA_LIP_R):
+				lip.append(Vector2(-p.x if k == 0 else p.x, p.y))
+			lava_lips.append(lip)
+		corridor_rim = _rim_colors("", {k = VOID, x = WARM[4], w = WARM[3], W = WARM[2], z = WARM[1]})
 
 	# --- Timeline ----------------------------------------------------------------------------
 
@@ -282,7 +293,7 @@ class StageArt extends Node2D:
 		parts.clear()
 		pops.clear()
 		cracks.clear()
-		chunks.clear()
+		pieces.clear()
 		shake = 0.0
 		bounce = 0.0
 		bounce_v = 0.0
@@ -539,6 +550,18 @@ class StageArt extends Node2D:
 					var p := _crack_reach(cracks[rng.randi_range(0, cracks.size() - 1)])
 					if p.x > 0:
 						_dust(p, 1)
+				# Rim slabs crumbling off in dust and pebbles, and loose bits trickling off the rim.
+				for piece in pieces:
+					if piece.at > BREAK_AT + 0.1 and _at(prev, now, piece.at):
+						_dust(piece.top[1], 2)
+						for k in 3:
+							_pebble(piece.center + Vector2(rng.randf_range(-4, 4), rng.randf_range(-2, 2)), Vector2(rng.randf_range(-12, 12), rng.randf_range(-20, 10)), rng)
+				for i in _every(prev, now, 0.08, BREAK_AT + 0.1, 3.8):
+					var piece: Dictionary = pieces[rng.randi_range(0, pieces.size() - 1)]
+					var side: Dictionary = piece.sides[rng.randi_range(0, 2)]
+					if now >= piece.at and not _fallen(side.other):
+						var pts: PackedVector2Array = side.pts
+						_pebble(pts[rng.randi_range(0, pts.size() - 1)] + Vector2(0, 1), Vector2(rng.randf_range(-8, 8), rng.randf_range(0, 20)), rng)
 				for i in _every(prev, now, 0.09, 0.8, 3.4):
 					_part({p = Vector2(rng.randf_range(70, 230), 52.0), v = Vector2(0, rng.randf_range(10, 40)), g = 300.0,
 						life = 1.0, c = Color8(70, 62, 84), s = 1.0 if rng.randf() < 0.6 else 2.0})
@@ -1287,27 +1310,162 @@ class StageArt extends Node2D:
 
 	# --- Crack --------------------------------------------------------------------------------
 
+	## The floor that breaks under the slime: a seeded lattice of slabs in perspective, BREAK_XS
+	## columns (x at the far edge, spreading toward the viewer like the floor's seams) by BREAK_YS
+	## rows, jittered, with jagged shared edges. The edges are the cracks that spread first (from
+	## under the slime outward, plus hairlines running off the rim); from BREAK_AT the slabs sag and
+	## drop: the middle under the slime first, then the rim crumbling away piece by piece (a slab
+	## only drops once the one in front of it has gone, and some rim slabs stay put, cracked).
+	const BREAK_XS := [126.0, 137.0, 148.0, 160.0, 172.0, 183.0, 192.0]
+	const BREAK_YS := [112.0, 121.0, 131.0, 152.0]
+	const BREAK_AT := 2.35
+	const VOID := Color8(6, 4, 10)
+	## The hole's glow from the lava far, far below: [top y, color, dithered].
+	const GLOW_BANDS := [[126.0, Color8(36, 12, 12), true], [130.0, Color8(36, 12, 12), false],
+		[136.0, Color8(80, 24, 14), true], [140.0, Color8(80, 24, 14), false]]
+
+	static func _floor_x(x: float, y: float) -> float:
+		return 160.0 + (x - 160.0) * (1.0 + 0.8 * (y - FLOOR_Y) / 38.0)
+
 	func _make_cracks() -> void:
 		var r := RandomNumberGenerator.new()
 		r.seed = 4242
-		var specs := [
-			[Vector2(160, FLOOR_Y), Vector2(161, STAGE_BOTTOM), 0.75, 0.9],
-			[Vector2(160, FLOOR_Y), Vector2(124, FLOOR_Y + 2), 0.8, 0.8],
-			[Vector2(160, FLOOR_Y), Vector2(198, FLOOR_Y + 1), 0.85, 0.75],
-			[Vector2(158, FLOOR_Y + 9), Vector2(130, STAGE_BOTTOM), 1.4, 0.7],
-			[Vector2(162, FLOOR_Y + 7), Vector2(192, STAGE_BOTTOM), 1.5, 0.7],
-			[Vector2(140, FLOOR_Y + 1), Vector2(128, FLOOR_Y + 16), 1.8, 0.4],
-			[Vector2(180, FLOOR_Y + 1), Vector2(196, FLOOR_Y + 18), 1.9, 0.4],
-		]
-		for spec in specs:
-			var a: Vector2 = spec[0]
-			var b: Vector2 = spec[1]
+		var nx := BREAK_XS.size()
+		var ny := BREAK_YS.size()
+		var cols := nx - 1
+		var v: Array[Vector2] = []  # lattice corners, v[j * nx + i]
+		for j in ny:
+			for i in nx:
+				var bx: float = BREAK_XS[i]
+				var mid := bx >= 148.0 and bx <= 172.0
+				var y: float = BREAK_YS[j]
+				if j > 0:
+					y += r.randi_range(-2, 2)
+				elif not mid:
+					y += r.randi_range(2, 5)  # a ragged strip of floor stays along the wall
+				var jit := 0 if mid and j == 0 else r.randi_range(-2, 2)
+				v.append(Vector2(roundf(_floor_x(bx + jit, y)), y))
+		var jag := func(a: Vector2, b: Vector2, n: int, amt: int) -> PackedVector2Array:
 			var pts := PackedVector2Array([a])
-			for i in range(1, 6):
-				var normal := (b - a).normalized().orthogonal()
-				pts.append((a.lerp(b, i / 6.0) + normal * r.randf_range(-3, 3)).round())
+			var normal := (b - a).normalized().orthogonal()
+			for k in range(1, n + 1):
+				var p := (a.lerp(b, float(k) / (n + 1)) + normal * r.randi_range(-amt, amt)).round()
+				pts.append(Vector2(p.x, maxf(p.y, FLOOR_Y)))
 			pts.append(b)
-			cracks.append({pts = pts, t0 = spec[2], dur = spec[3]})
+			return pts
+		var cell := func(i: int, j: int) -> int:
+			return j * cols + i if i >= 0 and i < cols and j >= 0 and j < ny - 1 else -1
+		var origin := Vector2(160, FLOOR_Y)
+		var h_edge := {}  # Vector2i(i, j): v(i, j) -> v(i + 1, j)
+		var v_edge := {}  # Vector2i(i, j): v(i, j) -> v(i, j + 1)
+		var wall_foot := {}
+		for j in ny:
+			for i in nx:
+				var a := v[j * nx + i]
+				if i < cols:
+					var b := v[j * nx + i + 1]
+					var pts: PackedVector2Array
+					if j == 0 and a.y == FLOOR_Y and b.y == FLOOR_Y:
+						# The wall's foot: its bottom bricks crumble too, in notches up into the wall.
+						pts = PackedVector2Array([a])
+						for k in range(1, 5):
+							pts.append(Vector2(roundf(lerpf(a.x, b.x, k / 5.0)), FLOOR_Y - r.randi_range(0, 2)))
+						pts.append(b)
+						wall_foot[Vector2i(i, j)] = true
+					else:
+						pts = jag.call(a, b, 3 if j == 0 else 2, 2)
+					h_edge[Vector2i(i, j)] = pts
+					_add_crack(pts, origin, cell.call(i, j - 1), cell.call(i, j), j > 0 and j < ny - 1, r)
+				if j < ny - 1:
+					v_edge[Vector2i(i, j)] = jag.call(a, v[(j + 1) * nx + i], 2, 2)
+					_add_crack(v_edge[Vector2i(i, j)], origin, cell.call(i - 1, j), cell.call(i, j), j == ny - 2, r)
+		# Hairline cracks running off the rim into the floor that stays.
+		for spec in [[0, 0, -11.0, 3.0], [0, 1, -14.0, 4.0], [0, 2, -9.0, 6.0], [nx - 1, 0, 8.0, 3.0], [nx - 1, 1, 10.0, 5.0], [nx - 1, 2, 9.0, 6.0]]:
+			var a := v[spec[1] * nx + spec[0]]
+			var pts: PackedVector2Array = jag.call(a, a + Vector2(spec[2], spec[3]), 2, 1)
+			cracks.append({pts = pts, t0 = 1.75 + r.randf() * 0.3, dur = 0.35, a = -1, b = -1, minor = false})
+		# The slabs, their fall times and their rims.
+		for j in ny - 1:
+			for i in cols:
+				var top: PackedVector2Array = h_edge[Vector2i(i, j)]
+				var right: PackedVector2Array = v_edge[Vector2i(i + 1, j)]
+				var bottom: PackedVector2Array = h_edge[Vector2i(i, j + 1)].duplicate()
+				bottom.reverse()
+				var left: PackedVector2Array = v_edge[Vector2i(i, j)].duplicate()
+				left.reverse()
+				var poly := top.duplicate()
+				poly.append_array(right.slice(1))
+				poly.append_array(bottom.slice(1))
+				poly.append_array(left.slice(1, left.size() - 1))
+				var outline := poly.duplicate()
+				outline.append(poly[0])
+				var under := PackedVector2Array()
+				for p in poly:
+					under.append(p + Vector2(0, 3))
+				var center := Vector2.ZERO
+				for p in poly:
+					center += p
+				center /= poly.size()
+				var glow: Array[Dictionary] = []
+				for band in GLOW_BANDS:
+					var y0: float = band[0]
+					var clip := PackedVector2Array([Vector2(60, y0), Vector2(260, y0), Vector2(260, 200), Vector2(60, 200)])
+					for part: PackedVector2Array in Geometry2D.intersect_polygons(poly, clip):
+						var uv := PackedVector2Array()
+						if band[2]:
+							for p in part:
+								uv.append(p * 0.5)
+						glow.append({poly = part, c = band[1], uv = uv})
+				# Rims: the broken faces of the floor left round the hole once this slab is gone.
+				var sides: Array[Dictionary] = []
+				var specs := [[top, Vector2(0, 3), cell.call(i, j - 1), 0], [left, Vector2(2, 1), cell.call(i - 1, j), 1],
+					[right, Vector2(-2, 1), cell.call(i + 1, j), 2], [bottom, Vector2.ZERO, cell.call(i, j + 1), 3]]
+				for s in specs:
+					var pts: PackedVector2Array = s[0]
+					var faces: Array[PackedVector2Array] = []
+					var wall: bool = s[3] == 0 and wall_foot.has(Vector2i(i, j))
+					if s[1] != Vector2.ZERO and not wall:
+						var face := pts.duplicate()
+						for k in range(pts.size() - 1, -1, -1):
+							var wobble := Vector2(0, r.randi_range(-1, 1)) if s[3] == 0 and k > 0 and k < pts.size() - 1 else Vector2.ZERO
+							face.append(pts[k] + s[1] + wobble)
+						for part: PackedVector2Array in Geometry2D.intersect_polygons(face, poly):
+							faces.append(part)
+					sides.append({pts = pts, faces = faces, other = s[2], kind = s[3], dark = wall or s[3] == 3})
+				pieces.append({poly = poly, outline = outline, under = under, top = top, center = center, glow = glow,
+					sides = sides, at = INF, vx = signf(center.x - 160.0) * -r.randf_range(2.0, 10.0)})
+		# Fall order: the middle first, then the rim; front to back within a column, so a falling
+		# slab never passes over floor that is still there.
+		for i in cols:
+			var drop := r.randf() < 0.75 or i in [2, 3]
+			for j in range(ny - 2, -1, -1):
+				var at := BREAK_AT + (ny - 2 - j) * 0.02
+				if i == 1 or i == cols - 2:
+					at += 0.06 + r.randf() * 0.05
+				elif i == 0 or i == cols - 1:
+					at += 0.2 + r.randf() * 0.75
+					if r.randf() < 0.3:
+						drop = false  # this rim slab (and the ones behind it) holds
+				if j < ny - 2:
+					at = maxf(at, pieces[(j + 1) * cols + i].at + 0.04)
+				pieces[j * cols + i].at = at if drop else INF
+
+	## A crack along `pts` between slabs a and b (-1 = none), growing from its end nearer `origin`.
+	## Minor ones (between slabs, across the spokes) only split open just before the floor goes.
+	func _add_crack(pts: PackedVector2Array, origin: Vector2, a: int, b: int, minor: bool, r: RandomNumberGenerator) -> void:
+		var grow := pts.duplicate()
+		if grow[grow.size() - 1].distance_to(origin) < grow[0].distance_to(origin):
+			grow.reverse()
+		var length := 0.0
+		for k in grow.size() - 1:
+			length += grow[k].distance_to(grow[k + 1])
+		var t0 := minf(0.75 + grow[0].distance_to(origin) * 0.02, 1.95)
+		if minor:
+			t0 = 1.85 + r.randf() * 0.25
+		cracks.append({pts = grow, t0 = t0, dur = clampf(0.1 + length * 0.012, 0.15, 0.3), a = a, b = b, minor = minor})
+
+	func _fallen(i: int) -> bool:
+		return i >= 0 and t >= pieces[i].at
 
 	## The corridor ends in a solid wall right of the slime (cornered): big torch-lit blocks, a
 	## perspective edge where it meets the floor, and a heap of rubble at its foot.
@@ -1360,45 +1518,40 @@ class StageArt extends Node2D:
 	func _break_floor() -> void:
 		var r := RandomNumberGenerator.new()
 		r.seed = 99
-		var edges := [124.0, 141.0, 161.0, 179.0, 198.0]
-		for k in 4:
-			var x0: float = edges[k]
-			var x1: float = edges[k + 1]
-			var shape := PackedVector2Array([Vector2(x0, FLOOR_Y + r.randi_range(0, 1)), Vector2(x1, FLOOR_Y + r.randi_range(0, 2)),
-				Vector2(x1 - r.randi_range(0, 4), FLOOR_Y + 12 + r.randi_range(0, 8)), Vector2(x0 + (x1 - x0) * 0.5, FLOOR_Y + 22 + r.randi_range(0, 6)),
-				Vector2(x0 + r.randi_range(0, 4), FLOOR_Y + 10 + r.randi_range(0, 8))])
-			chunks.append({shape = shape, at = t, vx = r.randf_range(-14, 14), delay = r.randf_range(0.0, 0.14)})
 		for i in 16:
-			_dust(Vector2(r.randf_range(124, 198), FLOOR_Y), 1)
-		for i in 10:
-			_part({p = Vector2(r.randf_range(126, 196), FLOOR_Y + r.randf_range(0, 20)), v = Vector2(r.randf_range(-30, 30), r.randf_range(-60, 0)),
-				g = 420.0, life = 1.4, c = WARM[2], s = 2.0})
+			_dust(Vector2(r.randf_range(128, 192), FLOOR_Y + r.randi_range(0, 4)), 1)
+		for i in 12:
+			_pebble(Vector2(r.randf_range(140, 180), FLOOR_Y + r.randf_range(0, 18)), Vector2(r.randf_range(-30, 30), r.randf_range(-60, 0)), r)
+
+	## A loose bit of floor tumbling into the hole (behind the slime).
+	func _pebble(p: Vector2, v: Vector2, r: RandomNumberGenerator) -> void:
+		_part({p = p.round(), v = v, g = 420.0, life = r.randf_range(0.7, 1.3), c = WARM[r.randi_range(1, 3)],
+			s = 1.0 if r.randf() < 0.6 else 2.0, back = true})
 
 	func _draw_crack() -> void:
 		_draw_corridor(_crack_scroll(), _heroes())
 		_draw_dead_end()
-		if t >= 2.35:
-			# The floor is gone: the void below, faintly lit by lava far, far down.
-			draw_colored_polygon(PackedVector2Array([Vector2(124, FLOOR_Y), Vector2(198, FLOOR_Y + 1), Vector2(196, FLOOR_Y + 18),
-				Vector2(192, STAGE_BOTTOM + 4), Vector2(130, STAGE_BOTTOM + 4), Vector2(128, FLOOR_Y + 16)]), Color8(6, 4, 10))
-			draw_texture_rect(checker, Rect2(132, FLOOR_Y + 14, 58, 4), true, Color8(36, 12, 12))
-			draw_rect(Rect2(132, FLOOR_Y + 18, 58, 40), Color8(36, 12, 12))
-			draw_texture_rect(checker, Rect2(136, FLOOR_Y + 24, 50, 4), true, Color8(80, 24, 14))
-			draw_rect(Rect2(136, FLOOR_Y + 28, 50, 40), Color8(80, 24, 14))
-			for chunk in chunks:
-				var age: float = maxf(t - chunk.at - chunk.delay, 0.0)
-				var off := Vector2(roundf(chunk.vx * age), roundf(300.0 * age * age))
-				if off.y > 60:
+		if t >= BREAK_AT:
+			# The void where slabs have gone, faintly lit by lava far, far down.
+			for piece in pieces:
+				if t >= piece.at:
+					draw_colored_polygon(piece.poly, VOID)
+					for g: Dictionary in piece.glow:
+						draw_colored_polygon(g.poly, g.c, g.uv, checker if g.uv.size() > 0 else null)
+			# The broken edges of the floor round it: the far rim's torn face (lit along its top),
+			# the side walls' faces, and a dark lip on the near side.
+			for piece in pieces:
+				if t < piece.at:
 					continue
-				var shape := PackedVector2Array()
-				for p: Vector2 in chunk.shape:
-					shape.append(p + off)
-				draw_colored_polygon(shape, WARM[2])
-				draw_line(shape[0], shape[1], WARM[4], 1.0)
-				draw_line(shape[1], shape[2], WARM[1], 1.0)
-			return
+				for side: Dictionary in piece.sides:
+					if _fallen(side.other):
+						continue
+					var face: Color = WARM[1] if side.kind == 2 else WARM[2]
+					for f: PackedVector2Array in side.faces:
+						draw_colored_polygon(f, face)
+					draw_polyline(side.pts, INK if side.dark else WARM[4], 1.0)
 		for crack in cracks:
-			if t < crack.t0:
+			if t < crack.t0 or (t >= BREAK_AT and (_fallen(crack.a) or _fallen(crack.b))):
 				continue
 			var pts: PackedVector2Array = crack.pts
 			var reach := clampf((t - crack.t0) / crack.dur, 0.0, 1.0) * (pts.size() - 1)
@@ -1407,8 +1560,23 @@ class StageArt extends Node2D:
 					break
 				var a := pts[i]
 				var b := a.lerp(pts[i + 1], minf(reach - i, 1.0)).round()
-				draw_line(a + Vector2(0, 1), b + Vector2(0, 1), WARM[4], 1.0)  # the lit lip under the crack
+				if not crack.minor:
+					draw_line(a + Vector2(0, 1), b + Vector2(0, 1), WARM[4], 1.0)  # the lit lip under the crack
 				draw_line(a, b, INK, 1.0)
+		# The slabs dropping away: a sag, then down, showing their broken front face.
+		for piece in pieces:
+			if t < piece.at:
+				continue
+			var age: float = t - piece.at
+			var off := Vector2(roundf(piece.vx * age), 1.0 + roundf(220.0 * age * age))
+			if off.y > 70.0:
+				continue
+			draw_set_transform(off)
+			draw_colored_polygon(piece.under, WARM[1])
+			draw_colored_polygon(piece.poly, WARM[clampi(_light_band(piece.center), 2, 3)])
+			draw_polyline(piece.top, WARM[4], 1.0)
+			draw_polyline(piece.outline, Color(INK, 0.6), 1.0)
+			draw_set_transform(Vector2.ZERO)
 
 	# --- Fall: a cross-section of the mountain ------------------------------------------------
 
@@ -1460,7 +1628,7 @@ class StageArt extends Node2D:
 			draw_rect(Rect2(160 - hw, -62, hw * 2, 32), WARM[1])
 			draw_rect(Rect2(160 - hw, -30, hw * 2, 30), WARM[2])
 			draw_rect(Rect2(160 - hw, -30, hw * 2, 2), WARM[4])
-			draw_rect(Rect2(146, -30, 28, 30), Color8(6, 4, 10))
+			_draw_rim(corridor_hole, -30.0, corridor_rim, 0.0 if screen.calm else t)
 			_halo(self, Vector2(136, -52), 26, FLAME_HOT, 0.06)
 			_hero(self, Vector2(134, -30), 0, 0.0, 0.4, 1.0, SIL, true, true, true)
 			_hero(self, Vector2(116, -30), 1, 0.0, 0.2, 1.0, SIL, true, true, false)
@@ -1559,34 +1727,167 @@ class StageArt extends Node2D:
 		if layer.id == "volcanic":
 			_draw_lava_front(pal, room)
 		if i < layers.size() - 1:
-			_draw_hole(layer.id, pal, slab_y)
+			_draw_hole(layer, slab_y)
+
+	## Solid rock never reaches into CLEAR_L..CLEAR_R: the slime's body as it sways down the shaft.
+	const CLEAR_L := 149
+	const CLEAR_R := 171
+	const HOLE_KEYS := ["gap", "lit", "face_l", "face_r", "shade", "crack", "crack_lit", "stone_lit", "crumb"]
+
+	## A crumbled opening through a slab `h` px thick, seeded so every playback is the same. Per row,
+	## where the gap starts and ends (jagged: a crumbled-off top corner, an overhanging lip with an
+	## undercut below it, a ragged underside), plus the rects that dress it (lit ledges, broken
+	## faces, cracks running off the rim, a loose stone, crumbs hanging under it) and the pebbles and
+	## dust puffs falling off it. x is stage x, y is from the slab's top. Solid pixels never reach
+	## CLEAR_L..CLEAR_R; built once, drawn as plain rects.
+	static func _make_hole(seed: int, h: int) -> Dictionary:
+		var r := RandomNumberGenerator.new()
+		r.seed = seed
+		var hole := {h = h, pebbles = [], dust = []}
+		for key in HOLE_KEYS:
+			hole[key] = [] as Array[Rect2]
+		var edges: Array[PackedInt32Array] = [PackedInt32Array(), PackedInt32Array()]  # first gap x / first solid x
+		for side in 2:
+			var most := 3 if side == 0 else 2  # how far rock may jut toward the middle
+			var lip := r.randi_range(3, h - 8)
+			var walk := r.randi_range(-2, 0)
+			for y in h:
+				if r.randf() < 0.5:
+					walk = clampi(walk + r.randi_range(-2, 2), -4, most - 1)
+				var inset := walk
+				if y == 0:
+					inset = -r.randi_range(3, 5)  # the top corner crumbled away
+				elif y == 1:
+					inset = mini(walk, -r.randi_range(1, 3))
+				elif y == lip:
+					inset = most  # an overhanging lip ...
+				elif y == lip + 1:
+					inset = most - 1
+				elif y >= lip + 2 and y <= lip + 3:
+					inset = -r.randi_range(2, 4)  # ... undercut below it
+					walk = inset
+				if y >= h - 2:
+					inset = mini(inset, walk) - r.randi_range(1, 2)  # a ragged underside
+				inset = clampi(inset, -5, most)
+				edges[side].append(int(HOLE_L) + inset if side == 0 else int(HOLE_R) - inset)
+		var el := edges[0]
+		var er := edges[1]
+		hole.top_l = el[0]
+		hole.top_r = er[0]
+		hole.bottom_l = el[h - 1]
+		hole.bottom_r = er[h - 1]
+		# The gap, row by row (equal rows merged).
+		var y0 := 0
+		for y in range(1, h + 1):
+			if y == h or el[y] != el[y0] or er[y] != er[y0]:
+				hole.gap.append(Rect2(el[y0], y0, er[y0] - el[y0], y - y0))
+				y0 = y
+		# Chips out of the slab's top near the rim.
+		for side in 2:
+			var w := r.randi_range(1, 3)
+			var x := el[0] - r.randi_range(4, 8) - w if side == 0 else er[0] + r.randi_range(3, 7)
+			hole.gap.append(Rect2(x, 0, w, r.randi_range(1, 2)))
+		# The broken faces: lit where rock juts out under open air, shaded under overhangs.
+		for y in h:
+			for side in 2:
+				var e: int = el[y] if side == 0 else er[y]
+				var prev: int = (el[y - 1] if side == 0 else er[y - 1]) if y > 0 else e
+				var juts := (e > prev) if side == 0 else (e < prev)
+				if juts:
+					hole.lit.append(Rect2(mini(e, prev), y, absi(e - prev), 1))
+				hole[("face_l" if side == 0 else "face_r")].append(Rect2(e - 1 if side == 0 else e, y, 1, 1))
+				if y + 1 < h:
+					var below: int = el[y + 1] if side == 0 else er[y + 1]
+					if (below < e) if side == 0 else (below > e):
+						hole.shade.append(Rect2(mini(e, below), y, absi(e - below), 1))
+		# Cracks running off the rim into the slab: one along it, one up to the top (a loose corner).
+		for side in 2:
+			var dir := -1 if side == 0 else 1
+			for k in 2:
+				var y := r.randi_range(3, h - 4) if k == 0 else r.randi_range(3, mini(6, h - 4))
+				var x: int = (el[y] - 1 if side == 0 else er[y])
+				for step in r.randi_range(4, 9 if h < 20 else 14):
+					x += dir
+					if k == 1:
+						if r.randf() < 0.55:
+							y -= 1
+						if y < 0:
+							break
+					elif r.randf() < 0.4:
+						y = clampi(y + r.randi_range(-1, 1), 2, h - 3)
+					hole.crack.append(Rect2(x, y, 1, 1))
+					if k == 0:
+						hole.crack_lit.append(Rect2(x, y + 1, 1, 1))
+		# A loose stone at the rim on one side: seams round it, its top catching the light.
+		var ss := r.randi_range(0, 1)
+		var sy := r.randi_range(4, h - 5)
+		var se: int = el[sy] if ss == 0 else er[sy]
+		var sx := se - 5 if ss == 0 else se + 1
+		var seam_x := sx - 1 if ss == 0 else sx + 4
+		hole.crack.append(Rect2(sx - (1 if ss == 0 else 0), sy - 1, 5, 1))
+		hole.crack.append(Rect2(seam_x, sy, 1, 3))
+		hole.stone_lit.append(Rect2(sx, sy, 4, 1))
+		# Crumbs hanging off the underside and pebbles dropping from it, clear of the shaft.
+		for side in 2:
+			var e: int = el[h - 1] if side == 0 else er[h - 1]
+			var x := e - r.randi_range(2, 4) if side == 0 else e + r.randi_range(0, 2)
+			hole.crumb.append(Rect2(x, h, 2, 1))
+			hole.crumb.append(Rect2(x + (1 if side == 0 else 0), h + 1, 1, 1))
+			for k in 2:
+				var px := clampi(e + r.randi_range(-3, 1), 141, CLEAR_L - 2) if side == 0 else clampi(e + r.randi_range(-1, 3), CLEAR_R + 1, 178)
+				hole.pebbles.append({x = px, phase = r.randf(), speed = r.randf_range(0.55, 0.95), s = 1 + int(r.randf() < 0.4)})
+			hole.dust.append({x = (el[0] - 2 if side == 0 else er[0] + 1), y = -1, phase = r.randf()})
+			hole.dust.append({x = (e - 3 if side == 0 else e + 2), y = h + 1, phase = r.randf()})
+		return hole
+
+	## The rim's colors from a theme palette (the Volcanic Vault's glow red-hot).
+	static func _rim_colors(id: String, pal: Dictionary) -> Dictionary:
+		if id == "volcanic":
+			return {gap = pal.k, lit = pal.B, face_l = pal.d, face_r = Color8(200, 70, 24), shade = Color8(120, 40, 20),
+				crack = pal.d, crack_lit = Color8(120, 40, 20), stone_lit = pal.d, crumb = Color8(200, 70, 24),
+				pebble = FLAME_HOT, pebble_lit = pal.B, dust = Color8(120, 100, 120)}
+		return {gap = pal.k, lit = pal.x, face_l = pal.w, face_r = pal.z, shade = pal.z.lerp(pal.k, 0.45),
+			crack = pal.k, crack_lit = pal.w, stone_lit = pal.w, crumb = pal.z, pebble = pal.W, pebble_lit = pal.x, dust = pal.w}
+
+	## Draws a hole from _make_hole with its top at `top_y`.
+	func _draw_rim(hole: Dictionary, top_y: float, c: Dictionary, tt: float) -> void:
+		for key in HOLE_KEYS:
+			var col: Color = c[key]
+			for rect: Rect2 in hole[key]:
+				draw_rect(Rect2(rect.position.x, top_y + rect.position.y, rect.size.x, rect.size.y), col)
+		var h: float = hole.h
+		for p: Dictionary in hole.pebbles:
+			var u := fposmod(tt * p.speed + p.phase, 1.0)
+			var y := top_y + h + roundf(u * u * 40.0)
+			var a := 1.0 if u < 0.75 else (1.0 - u) * 4.0
+			draw_rect(Rect2(p.x, y, p.s, p.s), Color(c.pebble, a))
+			draw_rect(Rect2(p.x, y, 1, 1), Color(c.pebble_lit, a))
+		for d: Dictionary in hole.dust:
+			var u := fposmod(tt * 0.8 + d.phase, 1.0)
+			var spread := roundf(u * 3.0)
+			var col := Color(c.dust, 0.5 * (1.0 - u))
+			draw_rect(Rect2(d.x - spread, top_y + d.y - roundf(u * 3.0), 2, 1), col)
+			draw_rect(Rect2(d.x + spread + 1, top_y + d.y - roundf(u * 2.0) - 1, 1, 1), col)
 
 	## The opening in a floor slab: a dark broken-edged gap through the slab's cut, then the
 	## theme's own lip (glowing crust, crystals, an open grate, ice, a mine collar, sand, water...).
-	func _draw_hole(id: String, pal: Dictionary, slab_y: float) -> void:
+	func _draw_hole(layer: Dictionary, slab_y: float) -> void:
 		var tt := 0.0 if screen.calm else t
-		var gap := PackedVector2Array([Vector2(HOLE_L - 1, slab_y), Vector2(HOLE_R + 1, slab_y), Vector2(HOLE_R - 1, slab_y + 5),
-			Vector2(HOLE_R + 2, slab_y + 10), Vector2(HOLE_R - 1, slab_y + 16), Vector2(HOLE_L + 1, slab_y + 16), Vector2(HOLE_L - 3, slab_y + 9),
-			Vector2(HOLE_L + 1, slab_y + 4)])
-		draw_colored_polygon(gap, pal.k)
-		# The broken faces of the cut, lit from above.
-		draw_rect(Rect2(HOLE_L - 3, slab_y - 1, 3, 1), pal.x)
-		draw_rect(Rect2(HOLE_R + 1, slab_y - 1, 2, 1), pal.x)
-		draw_line(Vector2(HOLE_L - 1, slab_y + 1), Vector2(HOLE_L + 1, slab_y + 4), pal.w, 1.0)
-		draw_line(Vector2(HOLE_R, slab_y + 1), Vector2(HOLE_R - 1, slab_y + 5), pal.W.lerp(pal.k, 0.5), 1.0)
+		var id: String = layer.id
+		var pal: Dictionary = layer.pal
+		var hole: Dictionary = layer.hole
+		_draw_rim(hole, slab_y, layer.rim, tt)
+		var top_l: float = hole.top_l  # first open x at the top of the slab, left
+		var top_r: float = hole.top_r  # first rock x at the top, right
 		match id:
 			"volcanic":
-				# Crust split open: red-hot edges and cracks glowing out from them.
+				# Crust split open: the rim and its cracks glow red-hot (_rim_colors), the corners pulse.
 				_halo(self, Vector2(160, slab_y + 2), 22.0, pal.d, 0.05)
-				draw_line(Vector2(HOLE_L - 1, slab_y), Vector2(HOLE_L + 1, slab_y + 4), pal.B, 1.0)
-				draw_line(Vector2(HOLE_L + 1, slab_y + 4), Vector2(HOLE_L - 3, slab_y + 9), pal.d, 1.0)
-				draw_line(Vector2(HOLE_R + 1, slab_y), Vector2(HOLE_R - 1, slab_y + 5), pal.B, 1.0)
-				draw_line(Vector2(HOLE_R - 1, slab_y + 5), Vector2(HOLE_R + 2, slab_y + 10), pal.d, 1.0)
 				var pulse := 0.5 + 0.5 * sin(tt * 5.0)
-				draw_rect(Rect2(HOLE_L - 2, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
-				draw_rect(Rect2(HOLE_R + 1, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
+				draw_rect(Rect2(top_l - 2, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
+				draw_rect(Rect2(top_r, slab_y, 2, 1), Color(pal.B, 0.6 + 0.4 * pulse))
 			"crystal":
-				for x in [HOLE_L - 4.0, HOLE_L - 8.0, HOLE_R + 4.0, HOLE_R + 8.0]:
+				for x in [top_l - 3.0, top_l - 7.0, top_r + 3.0, top_r + 7.0]:
 					var h := 7.0 if absf(x - 160) < 18 else 4.0
 					var lean := -2.0 if x < 160 else 2.0
 					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y), Vector2(x + 2, slab_y), Vector2(x + lean, slab_y - h)]), pal.v)
@@ -1594,26 +1895,28 @@ class StageArt extends Node2D:
 				_halo(self, Vector2(160, slab_y), 18.0, pal.v, 0.04)
 			"obsidian":
 				# The oubliette's grate hangs open from its hinge.
-				var hx := HOLE_L - 2.0
+				var hx := top_l - 2.0
 				draw_rect(Rect2(hx, slab_y - 1, 3, 2), Color8(90, 86, 110))
 				for k in 4:
 					draw_rect(Rect2(hx - 1 + (k % 2), slab_y + 1 + k * 5, 2, 4), Color8(60, 56, 80))
 				draw_rect(Rect2(hx - 1, slab_y + 1, 1, 20), Color8(104, 98, 128))
 			"frozen":
-				for x in [HOLE_L - 2.0, HOLE_L - 6.0, HOLE_L - 10.0, HOLE_R + 2.0, HOLE_R + 6.0, HOLE_R + 10.0]:
+				var bl: float = hole.bottom_l
+				var br: float = hole.bottom_r
+				for x in [bl - 3.0, bl - 7.0, bl - 11.0, br + 2.0, br + 6.0, br + 10.0]:
 					var h := 3.0 + int(absf(x - 160)) % 4
 					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y + 16), Vector2(x + 2, slab_y + 16), Vector2(x, slab_y + 16 + h)]), pal.x)
-				for x in [HOLE_L - 3.0, HOLE_R + 2.0]:
+				for x in [top_l - 3.0, top_r + 2.0]:
 					draw_colored_polygon(PackedVector2Array([Vector2(x - 2, slab_y), Vector2(x + 2, slab_y), Vector2(x, slab_y - 4)]), pal.x)
 			"catacombs":
-				draw_rect(Rect2(HOLE_L - 9, slab_y - 3, 6, 3), pal.w)
-				draw_rect(Rect2(HOLE_L - 9, slab_y - 3, 6, 1), pal.x)
-				draw_colored_polygon(PackedVector2Array([Vector2(HOLE_R + 2, slab_y), Vector2(HOLE_R + 11, slab_y - 4), Vector2(HOLE_R + 12, slab_y - 2), Vector2(HOLE_R + 4, slab_y + 1)]), pal.w)
+				draw_rect(Rect2(top_l - 9, slab_y - 3, 6, 3), pal.w)
+				draw_rect(Rect2(top_l - 9, slab_y - 3, 6, 1), pal.x)
+				draw_colored_polygon(PackedVector2Array([Vector2(top_r, slab_y), Vector2(top_r + 9, slab_y - 4), Vector2(top_r + 10, slab_y - 2), Vector2(top_r + 2, slab_y + 1)]), pal.w)
 			"sewers", "sunken", "sandstone":
 				# Whatever lies on the floor spills over both lips and pours down the shaft's walls.
 				var stuff: Color = pal.d if id != "sandstone" else pal.w
 				var shine: Color = pal.B if id != "sandstone" else pal.x
-				for side in [HOLE_L - 1.0, HOLE_R]:
+				for side in [top_l, top_r - 2.0]:
 					draw_rect(Rect2(side, slab_y - 1, 2, 22), stuff)
 					for k in 3:
 						var yy := fposmod(k * 7.0 + tt * 40.0, 20.0)
@@ -1622,11 +1925,11 @@ class StageArt extends Node2D:
 					draw_rect(Rect2(side + 2, slab_y + 22, 1, 1), shine)
 			"mossy":
 				# A mine shaft's timber collar and a ladder down its wall.
-				for x in [HOLE_L - 4.0, HOLE_R + 1.0]:
+				for x in [top_l - 4.0, top_r]:
 					draw_rect(Rect2(x, slab_y - 6, 3, 22), Color8(92, 64, 40))
 					draw_rect(Rect2(x, slab_y - 6, 1, 22), Color8(140, 100, 60))
-				draw_rect(Rect2(HOLE_L - 8, slab_y - 7, 9, 2), Color8(110, 78, 46))
-				draw_rect(Rect2(HOLE_R, slab_y - 7, 9, 2), Color8(110, 78, 46))
+				draw_rect(Rect2(top_l - 8, slab_y - 7, 9, 2), Color8(110, 78, 46))
+				draw_rect(Rect2(top_r - 1, slab_y - 7, 9, 2), Color8(110, 78, 46))
 
 	func _draw_dressing(id: String, pal: Dictionary, r: Rect2) -> void:
 		var floor_y := r.end.y
@@ -1780,6 +2083,13 @@ class StageArt extends Node2D:
 				draw_rect(Rect2(x0, yy, span * 0.5, 1), Color(pal.B, 0.14 + 0.05 * (k % 2)))
 				draw_rect(Rect2(x0 + span * 0.5 + 3, yy + 1, span * 0.4, 1), Color(pal.B, 0.12))
 
+	## The basalt lips' outlines, from the inner face's foot (x outward from the hole, y up):
+	## left, then right (mirrored), each with its own broken top.
+	const LAVA_LIP_L := [Vector2(0, 2), Vector2(0, -9), Vector2(1, -10), Vector2(2, -12), Vector2(4, -12), Vector2(6, -13),
+		Vector2(8, -12), Vector2(9, -10), Vector2(9, 2)]
+	const LAVA_LIP_R := [Vector2(0, 2), Vector2(0, -11), Vector2(1, -12), Vector2(3, -14), Vector2(5, -12), Vector2(7, -12),
+		Vector2(8, -11), Vector2(9, -11), Vector2(9, 2)]
+
 	## The pools themselves, the lips holding them and the crust around the hole, drawn over the slab.
 	func _draw_lava_front(pal: Dictionary, r: Rect2) -> void:
 		var tt := 0.0 if screen.calm else t
@@ -1808,18 +2118,24 @@ class StageArt extends Node2D:
 				draw_rect(Rect2(bx, surface - 1, 3 if b < 0.9 else 1, 1), FLAME)
 		# Rock lips walling the pools off from the hole: the slime drops between them. Each is a
 		# stack of basalt blocks, glowing on the side facing its pool.
-		for side in [-1.0, 1.0]:
+		# Their tops and inner faces are broken and uneven (LAVA_LIPS, mirrored for the right one).
+		for k in 2:
+			var side := -1.0 if k == 0 else 1.0
 			var inner := HOLE_L - 1.0 if side < 0 else HOLE_R + 1.0
 			var x0 := inner - 9.0 if side < 0 else inner
-			draw_rect(Rect2(x0, floor_y - 10, 9, 12), pal.W)
-			draw_rect(Rect2(x0 + 1, floor_y - 12, 7, 2), pal.W)
-			draw_rect(Rect2(x0 + 1, floor_y - 12, 7, 1), pal.w)
+			var lip: PackedVector2Array = lava_lips[k]
+			draw_set_transform(Vector2(inner, floor_y))
+			draw_colored_polygon(lip, pal.W)
+			draw_polyline(lip.slice(1, 7), pal.w, 1.0)
+			draw_set_transform(Vector2.ZERO)
 			draw_rect(Rect2(x0 + 2, floor_y - 6, 6, 1), pal.z)
 			var hot_x := x0 if side < 0 else x0 + 8.0
 			draw_rect(Rect2(hot_x, floor_y - 10, 1, 12), FLAME_HOT)
 			draw_rect(Rect2(hot_x + (1.0 if side < 0 else -1.0), floor_y - 10, 1, 12), Color(FLAME_HOT, 0.35))
+			# The broken inner face, in shadow, with a chip knocked out of it.
 			var cool_x := x0 + 8.0 if side < 0 else x0
-			draw_rect(Rect2(cool_x, floor_y - 10, 1, 12), pal.k)
+			draw_rect(Rect2(cool_x, floor_y - 8, 1, 10), pal.k)
+			draw_rect(Rect2(cool_x - side, floor_y - (5.0 if k == 0 else 7.0), 1, 2), pal.k)
 
 	func _draw_fall_front(canvas: CanvasItem) -> void:
 		if screen.calm:
@@ -1843,6 +2159,9 @@ class StageArt extends Node2D:
 
 	# --- Splat --------------------------------------------------------------------------------
 
+	const SPLAT_HOLE := [Rect2(151, 13, 5, 1), Rect2(159, 13, 6, 1), Rect2(149, 14, 21, 1), Rect2(147, 15, 25, 1),
+		Rect2(149, 16, 9, 1), Rect2(160, 16, 10, 1), Rect2(153, 17, 3, 1), Rect2(164, 17, 2, 1)]
+
 	func _draw_splat() -> void:
 		_draw_room()
 		# A little moss: the Dark Dungeon's own art.
@@ -1854,7 +2173,8 @@ class StageArt extends Node2D:
 		var shaft := Color(Color8(170, 190, 230), 0.07)
 		draw_colored_polygon(PackedVector2Array([Vector2(150, 14), Vector2(170, 14), Vector2(196, 120), Vector2(124, 120)]), shaft)
 		draw_colored_polygon(PackedVector2Array([Vector2(154, 14), Vector2(166, 14), Vector2(182, 120), Vector2(138, 120)]), shaft)
-		draw_rect(Rect2(148, 14, 24, 3), Color8(210, 222, 240))
+		for rect: Rect2 in SPLAT_HOLE:  # the hole far above, its crumbled edge against the light
+			draw_rect(rect, Color8(210, 222, 240))
 		for i in 12:
 			var age := fposmod(t * 0.08 + i * 0.083, 1.0)
 			var p := Vector2(150 + fposmod(i * 37.0, 22.0) + age * 10.0 * sin(i), 18 + age * 100.0)
@@ -2012,7 +2332,8 @@ class StageArt extends Node2D:
 			lights.append(Vector3(hero.tip.x, hero.tip.y, (34.0 if hero.kind == 2 else 70.0) * _flicker(hero.kind)))
 		_draw_room()
 		draw_colored_polygon(PackedVector2Array([Vector2(154, 14), Vector2(166, 14), Vector2(182, 120), Vector2(138, 120)]), Color(Color8(170, 190, 230), 0.06))
-		draw_rect(Rect2(148, 14, 24, 3), Color8(210, 222, 240))
+		for rect: Rect2 in SPLAT_HOLE:  # the hole far above, its crumbled edge against the light
+			draw_rect(rect, Color8(210, 222, 240))
 		# The puddle they found.
 		draw_rect(Rect2(156, 119, 18, 2), goo.dark)
 		draw_rect(Rect2(158, 118, 13, 2), goo.mid)
