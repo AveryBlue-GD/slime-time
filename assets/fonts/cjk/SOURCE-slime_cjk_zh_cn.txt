@@ -1,0 +1,5 @@
+slime_cjk_zh_cn.woff2: a subset of Fusion Pixel Font 2026.10.16, 10px proportional TTF (GitHub release)
+Downloaded from https://github.com/TakWolf/fusion-pixel-font/releases/download/2026.10.16/fusion-pixel-font-10px-proportional-ttf-v2026.10.16.zip
+sha256 9e45c7b1dac86704cde5d1d1024c31a7a9303cebd3f6a8ee87f2abd0e3e70319
+Built by tools/i18n_subset_fonts.py (301 characters requested, 285 in the font). Renamed to "SlimeTime CJK SC" (OFL: modified version).
+License: see the OFL / LICENSE files in this folder.

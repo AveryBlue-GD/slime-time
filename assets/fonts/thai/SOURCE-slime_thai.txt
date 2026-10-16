@@ -1,0 +1,5 @@
+slime_thai.woff2: a subset of Noto Sans Thai (google/fonts @ 8b0a1d0), variable, instanced to wght 400 / wdth 100
+Downloaded from https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf
+sha256 5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8
+Built by tools/i18n_subset_fonts.py (264 characters requested, 190 in the font). Renamed to "SlimeTime Thai" (OFL: modified version).
+License: see the OFL / LICENSE files in this folder.

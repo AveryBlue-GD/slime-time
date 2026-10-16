@@ -29,11 +29,20 @@ void fragment() {
 	// The font atlases: one row of glyphs 9 px tall (7 px letters + 2 px of drips), or 18 at 2x.
 	bool small_font = abs(atlas.y - 9.0) < 0.5 && atlas.x > 200.0;
 	bool big_font = abs(atlas.y - 18.0) < 0.5 && atlas.x > 400.0;
-	if (small_font || big_font) {
+	// The i18n page (pixel_ext.png, tools/make_font.py): 5 rows of accent room above the same 7 + 2,
+	// 14 px tall (28 at 2x). Marks under the baseline (cedilla, ogonek, dot below) are drawn in the
+	// body shade, brighter than the baked drips, so they are kept, and no drip grows under them.
+	bool ext_small = abs(atlas.y - 14.0) < 0.5 && atlas.x > 200.0;
+	bool ext_big = abs(atlas.y - 28.0) < 0.5 && atlas.x > 400.0;
+	bool ext = ext_small || ext_big;
+	big_font = big_font || ext_big;
+	if (small_font || big_font || ext) {
 		float unit = big_font ? 2.0 : 1.0;
+		float top = ext ? 5.0 : 0.0;
 		vec2 px = UV * atlas;
-		float row = floor(px.y / unit);
-		if (row >= 7.0) {
+		float row = floor(px.y / unit) - top;
+		bool mark = ext && row >= 7.0 && texture(TEXTURE, UV).a > 0.5 && texture(TEXTURE, UV).r > 0.75;
+		if (row >= 7.0 && !mark) {
 			// Where this glyph's atlas origin lands on screen: the same for every pixel of one
 			// letter, different for each letter drawn. The shadow copy (dark, 1 px right on the
 			// small font) uses the letter's own place, so its drips match.
@@ -42,10 +51,18 @@ void fragment() {
 				origin -= 1.0;
 			}
 			float column = floor(px.x / unit);
-			float bottom = texture(TEXTURE, vec2(px.x, (6.5 * unit)) / atlas).a;
+			float bottom = texture(TEXTURE, vec2(px.x, ((top + 6.5) * unit)) / atlas).a;
 			// A lone bottom pixel: nothing beside it on the letter's bottom row.
-			bool lone = texture(TEXTURE, vec2(px.x - unit, 6.5 * unit) / atlas).a < 0.5
-				&& texture(TEXTURE, vec2(px.x + unit, 6.5 * unit) / atlas).a < 0.5;
+			bool lone = texture(TEXTURE, vec2(px.x - unit, (top + 6.5) * unit) / atlas).a < 0.5
+				&& texture(TEXTURE, vec2(px.x + unit, (top + 6.5) * unit) / atlas).a < 0.5;
+			// No drip in a column that carries a mark under the baseline.
+			if (ext) {
+				vec4 under1 = texture(TEXTURE, vec2(px.x, (top + 7.5) * unit) / atlas);
+				vec4 under2 = texture(TEXTURE, vec2(px.x, (top + 8.5) * unit) / atlas);
+				if ((under1.a > 0.5 && under1.r > 0.75) || (under2.a > 0.5 && under2.r > 0.75)) {
+					bottom = 0.0;
+				}
+			}
 			float r = hash(vec2(column + fract(seed * 0.618) * 97.0, origin + seed));
 			float drip_len = lone ? (r < 0.015 ? 2.0 : (r < 0.06 ? 1.0 : 0.0))
 				: (r < 0.08 ? 2.0 : (r < 0.3 ? 1.0 : 0.0));

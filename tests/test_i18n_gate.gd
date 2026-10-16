@@ -4,7 +4,7 @@ extends "res://tests/suite_base.gd"
 ## in TranslationServer, Loc returns the English source text, auto-translation is off, a save gets no
 ## [settings] language and the Language autoload refuses to save one. Gate on (languages_force = 1, a test
 ## catalog tests/data/i18n_test.po): Loc.t translates by context, named placeholders survive reordering,
-## plurals follow the catalog's Plural-Forms, the locale choice order is saved > --lang > OS > en, only a
+## plurals follow the catalog's Plural-Forms, the locale choice order is --lang > saved > OS > en, only a
 ## pick writes [settings] language, save codes never carry it and load_code keeps the device's language.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 60000 -s res://tests/test_i18n_gate.gd
 
@@ -42,6 +42,9 @@ func _gate_off() -> void:
 	_check(not language.active and language.loaded_catalogs().is_empty(), "gate off: Language loaded nothing")
 	_check(TranslationServer.get_loaded_locales().is_empty(), "gate off: TranslationServer has no translation")
 	_check(language.locale == "en" and not language.is_rtl(), "gate off: English, left to right")
+	_check(TranslationServer.get_locale() == "en", "gate off: the TranslationServer locale is pinned to English")
+	_check(not language.fonts_installed() and (load("res://assets/fonts/pixel.fnt") as Font).fallbacks.is_empty(),
+		"gate off: no font fallback")
 	_check(root.auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED, "Godot's auto-translation is off at the root")
 	var menu := Control.new()
 	UIKit.setup_screen(menu, "SETTINGS")
@@ -57,6 +60,11 @@ func _gate_off() -> void:
 	_check(Loc.n("test.need", "NEED {count} FOR {name}", "NEED {count} FOR {name}", 4, {name = "CAP"}) == "NEED 4 FOR CAP",
 		"Loc.n fills {count} and the other args")
 	_check(Loc.lines(["A", "B C", 3]) == "A\nB C\n3" and Loc.lines([]) == "", "Loc.lines joins whole lines")
+	_check(Loc.t("test.inject", "{name} HAS {count}", {name = "{count}", count = 5}) == "{count} HAS 5",
+		"a placeholder value is inserted once, never filled in again")
+	_check(Loc.n("test.inject", "{count} {name}", "{count} {name}", 2, {name = "{count}"}) == "2 {count}",
+		"... also in Loc.n")
+	_check(Loc.t("test.braces", "{a} {b {} }{a}", {a = "X"}) == "X {b {} }X", "unknown placeholders and lone braces stay")
 	language.enable()
 	_check(not language.active and TranslationServer.get_loaded_locales().is_empty(), "gate off: enable() does nothing")
 	language.set_locale("ru")
@@ -109,8 +117,8 @@ func _choice_order() -> void:
 	_check(language.codes().size() == 18 and language.codes()[0] == "en", "18 supported locales, English first")
 	_check(language.native_name("ru") == "РУССКИЙ" and language.native_name("ja") == "日本語"
 		and language.native_name("xx") == "", "native names in their own script")
-	_check(language.choose_locale("de", "fr", "es_MX") == "de", "a saved choice wins")
-	_check(language.choose_locale("", "fr", "es_MX") == "fr", "then --lang")
+	_check(language.choose_locale("de", "fr", "es_MX") == "fr", "an explicit --lang wins")
+	_check(language.choose_locale("de", "", "es_MX") == "de", "then the saved choice")
 	_check(language.choose_locale("", "pseudo", "es_MX") == "pseudo", "--lang=pseudo is accepted")
 	_check(language.choose_locale("xx", "yy", "es_MX") == "es", "then the OS locale's language")
 	_check(language.choose_locale("", "", "sv_SE") == "en", "else English")
@@ -118,6 +126,8 @@ func _choice_order() -> void:
 		and language.match_os_locale("zh-TW") == "zh_TW" and language.match_os_locale("zh_Hans_CN") == "zh_CN"
 		and language.match_os_locale("zh") == "zh_CN" and language.match_os_locale("de-AT") == "de"
 		and language.match_os_locale("") == "", "OS locales map to supported ones")
+	_check(language.match_os_locale("in_ID") == "id" and language.match_os_locale("in") == "id",
+		"legacy codes (Android's in_ID) are standardized first")
 
 
 func _gate_on() -> void:
@@ -168,7 +178,10 @@ func _save_gate_on() -> void:
 	_check(progress.language == "fr", "the saved choice reads back")
 	Economy.forced_locale = "es"
 	language.enable()
-	_check(language.locale == "fr", "gate on: the saved choice beats --lang")
+	_check(language.locale == "es" and progress.language == "fr", "gate on: an explicit --lang beats the saved choice (not saved)")
+	Economy.forced_locale = ""
+	language.enable()
+	_check(language.locale == "fr", "gate on: without --lang the saved choice is used")
 
 
 func _cleanup() -> void:

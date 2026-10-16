@@ -6,7 +6,12 @@ stubs for chunks D / I / F), `Economy.LANGUAGES_TEST` + `languages_force` / `for
 `--lang=xx`, `Progress.language` (`[settings] language`, written only by `Language.pick`, never in codes),
 auto-translation off at the root and in `UIKit.setup_screen`, `tests/test_i18n_gate.gd` (fixture
 `tests/data/i18n_test.po`). Gate off: title and settings pixel-identical (seeded capture, byte-identical PNGs).
-Next: B, C1-C4, D in parallel. Inputs: [inventory.md](inventory.md) (every
+**Chunk D (fonts) done 2026-10-17**: see [fonts.md](fonts.md) section 0 (slimy font page 1, fallbacks,
+only the current locale's fallback installed + `Language.native_font`, `Language.metrics`, rerun
+`tools/i18n_subset_fonts.py` after translations), `tests/test_i18n_glyphs.gd`; `--lang=xx` now beats
+the saved choice (flag > saved > OS > en), the gate-off locale is pinned to `en`, catalogs load from
+`Language.CATALOGS` (no directory listing), `Loc.fill` fills placeholders in one pass.
+Next: B, C1-C4 in parallel. Inputs: [inventory.md](inventory.md) (every
 string, how it is built, the risky spots) and [fonts.md](fonts.md) (font research, written in parallel;
 steps marked **[fonts]** wait for it). Target: English + 17 languages, every player-visible string
 translated, every screen uniform in every language, all behind a gate that leaves today's game
@@ -71,7 +76,7 @@ casing, units, puns, register per locale; read by the `localizer` agent),
   - The extractor (chunk B) reads these call sites, so `ctx` and `msgid` must be string literals.
 - **`scripts/language.gd`, autoload `Language`** (added after `Progress` in `project.godot`): only
   this file talks to `TranslationServer` and the fonts. It loads `locale/*.po` **only when the gate
-  is on**, picks the locale (saved choice, else `--lang`, else the OS locale if supported, else `en`),
+  is on**, picks the locale (`--lang`, else the saved choice, else the OS locale if supported, else `en`),
   installs the font fallbacks for that script (section 7), sets the text direction for `ar`,
   emits `language_changed`, and owns the list of supported locales and their native names.
 - **Godot's auto-translation stays off.** Labels and Buttons translate their own `text` by default

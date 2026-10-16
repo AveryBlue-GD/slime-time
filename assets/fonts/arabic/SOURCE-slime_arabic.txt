@@ -1,0 +1,5 @@
+slime_arabic.woff2: a subset of GNU Unifont 18.0.01 OTF (unifoundry.com, the official release; OFL-1.1 of the dual license)
+Downloaded from https://unifoundry.com/pub/unifont/unifont-18.0.01/font-builds/unifont-18.0.01.otf
+sha256 88d0a14d4aa9a96419720b39ba5da921a59560d76d4ec7d523acc06ed85cd3c2
+Built by tools/i18n_subset_fonts.py (1221 characters requested, 1221 in the font). Renamed to "SlimeTime Arabic" (OFL: modified version).
+License: see the OFL / LICENSE files in this folder.

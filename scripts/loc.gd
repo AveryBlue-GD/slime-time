@@ -13,7 +13,7 @@ class_name Loc
 ## The translation of `msgid` in context `ctx`, with `{name}` placeholders filled from `args`.
 static func t(ctx: String, msgid: String, args := {}) -> String:
 	var text := String(TranslationServer.translate(msgid, ctx)) if Economy.languages_on() else msgid
-	return text.format(args) if not args.is_empty() else text
+	return fill(text, args) if not args.is_empty() else text
 
 
 ## A counted string: the plural form for `count` in the current language ({count} is filled in
@@ -27,7 +27,37 @@ static func n(ctx: String, singular: String, plural: String, count: int, args :=
 	var all := args.duplicate()
 	if not all.has("count"):
 		all["count"] = count
-	return text.format(all)
+	return fill(text, all)
+
+
+## Fills `{name}` placeholders from `args` in ONE pass over `text`: a value is inserted as is, never
+## searched again (String.format replaces key after key, so a value containing "{count}" would be
+## filled in by a later key). Unknown placeholders and lone braces stay as written.
+static func fill(text: String, args: Dictionary) -> String:
+	if args.is_empty() or not text.contains("{"):
+		return text
+	var values := {}  # by String key (callers pass {level = 3} style keys or Strings)
+	for key: Variant in args:
+		values[str(key)] = args[key]
+	var out := PackedStringArray()
+	var at := 0
+	while true:
+		var open := text.find("{", at)
+		if open < 0:
+			break
+		var close := text.find("}", open + 1)
+		if close < 0:
+			break
+		var key := text.substr(open + 1, close - open - 1)
+		if values.has(key):
+			out.append(text.substr(at, open - at))
+			out.append(str(values[key]))
+			at = close + 1
+		else:
+			out.append(text.substr(at, open + 1 - at))
+			at = open + 1
+	out.append(text.substr(at))
+	return "".join(out)
 
 
 ## Whole translated lines joined by line breaks (the win text and other multi-line blocks: each line
