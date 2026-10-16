@@ -1,6 +1,6 @@
 # i18n plan (D15)
 
-Status: **phase 1 (analysis) done; chunk A (plumbing) done 2026-10-16**: `Loc` (`scripts/loc.gd`), the
+Status: **all chunks A-J done (2026-10-17); gate OFF (`Economy.LANGUAGES_TEST`), open owner items in [../handoff.md](../handoff.md) task 8.** History: **phase 1 (analysis) done; chunk A (plumbing) done 2026-10-16**: `Loc` (`scripts/loc.gd`), the
 `Language` autoload (`scripts/language.gd`; `_install_fonts()`, `_apply_direction()` and `_apply_pseudo()` are
 stubs for chunks D / I / F), `Economy.LANGUAGES_TEST` + `languages_force` / `forced_locale`, `--languages` /
 `--lang=xx`, `Progress.language` (`[settings] language`, written only by `Language.pick`, never in codes),

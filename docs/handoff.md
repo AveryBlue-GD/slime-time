@@ -38,6 +38,14 @@ each phase has a report and an independent QA review in [spring-cleaning/](sprin
 **Pad layout (D4):** left stick (8 directions) / D-pad move, A leap and menu accept, X use, B back, START pause, VIEW restart,
 LB / Y / RB abilities 1 / 2 / 3, LB / RB switch tabs. Glyph art and pad remapping are later work.
 
+## Localization (D15, chunks A-J done 2026-10-17, OFF by default)
+
+English + 17 locales (es, pt_BR, fr, de, it, ru, pl, tr, ja, ko, zh_CN, zh_TW, th, vi, id, ar, hi) behind `Economy.LANGUAGES_TEST := false`;
+with the gate off the game and save are unchanged (English pixel-identical). `Loc` (`scripts/loc.gd`) + `Language` autoload, `locale/*.po`,
+LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web shell strings. Plan and as-built notes: [i18n/plan.md](i18n/plan.md),
+[fonts](i18n/fonts.md), [style guide](i18n/style-guide.md), UI rules [ui-rules.md section 10](ui-rules.md), fit reports in `i18n/`. Try it:
+`./tools/play.sh --dev --languages`, `--lang=xx`, `--lang=pseudo`.
+
 ## Modes
 
 - **Story:** 10 themed levels, coins at dead ends (165 in all), 1-3 tier time medals, wordless finale.
@@ -67,7 +75,7 @@ LB / Y / RB abilities 1 / 2 / 3, LB / RB switch tabs. Glyph art and pad remappin
 
 - Launch: `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain), `--story`
   (postgame state), `--autoplay [--speed=N]` (F10 stops), `--scene res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`.
-- Tests: `./tools/test_all.sh [-j N] [suite ...]` (76 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
+- Tests: `./tools/test_all.sh [-j N] [suite ...]` (91 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
   (`-j 1` = one at a time, about 5 minutes; `JOB_TIMEOUT=sec` kills a hung job, default 600); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
   [spring-cleaning/phase2-tests.md](spring-cleaning/phase2-tests.md)). One suite:
   `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
@@ -95,7 +103,7 @@ are in the repo (they need SDKs, a keystore, a Team ID, GodotSteam): the presets
 (bundle id, icons, Android / iOS / Steam steps, low-end profiling, store pages) are in
 [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md). The Windows build zip and itch promo images are out
 of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-end PCs and low-to-mid mobile, smooth scaling to
-120/144/240 Hz, English only. Perf notes: [perf/](perf/).
+120/144/240 Hz; English only until the languages ship (open item 8). Perf notes: [perf/](perf/).
 
 ## Open tasks and open questions
 
@@ -110,6 +118,14 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
    the 60 / 144 Hz captures for interpolation (D5, kept meanwhile), a touch layout with larger pitch for dense stacks
    ([phase3-ui.md](spring-cleaning/phase3-ui.md) remaining issues), a manual check on the Mac that the remembered fullscreen
    follows the green button / F11 across a relaunch, pad glyphs and remapping.
+8. **Localization, owner calls (D15):**
+   a. Ship the languages: flip `Economy.LANGUAGES_TEST` and `LANGUAGES_ENABLED` in `tools/web_shell.html` together (`python3 tools/i18n_extract.py --check` enforces they match).
+   b. Native-speaker review of every locale; doubts are listed in `docs/i18n/glossary/<locale>.md` (esp. ar, hi, th).
+   c. Fonts: Arabic uses Noto Kufi Arabic; the pixel bitmap-font option's license is unconfirmed. Thai / Hindi use non-pixel Noto fonts drawn without antialiasing.
+   d. Not verified: a real web export with the .po files and fonts, the web shell in a browser, touch / gamepad on real devices with mirrored Arabic.
+   e. Two pre-existing English issues, left alone to keep English pixel-identical: the keyboard tutorial key shows "SPAC" (SPACE cut off in its 29 px key, `tutorial_cues.gd`); the random-maze level pod "RANDOM MAZE #n CODE..." overlaps the timer.
+   f. "+1 TICKETS" English singular (owner's call).
+   g. The LANGUAGE screen's accented rows are 1 px taller in English (gate-on-only screen).
 
 ## Decisions and standing preferences
 

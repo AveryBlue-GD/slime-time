@@ -1,7 +1,7 @@
 # Next session: start here
 
 Written 2026-10-16 at the end of a long session, for a fresh Claude Code window. Read this, then `CLAUDE.md`,
-`docs/handoff.md` and `docs/spring-cleaning/decisions.md` (owner decisions D1-D14).
+`docs/handoff.md` and `docs/spring-cleaning/decisions.md` (owner decisions D1-D15; D15 = localization).
 
 ## Where things are
 - **Branch: `spring-cleaning`** (all work pushed). It is NOT merged into `v2` yet - the owner hasn't decided.
@@ -14,6 +14,11 @@ Written 2026-10-16 at the end of a long session, for a fresh Claude Code window.
   - D14 opaque skins = normal-mode unlocks and the default; jelly = hard-mode reward.
   - Intro cutscene: crumbling, irregular floor holes in the crack and fall shots.
   - A full "bouncy" ricochet was tried and REVERTED (owner: didn't feel good).
+
+## Localization (D15), done through chunk J, OFF by default
+English + 17 languages on branch `spring-cleaning` (plan/as-built: `docs/i18n/plan.md`; fonts, style guide, per-locale glossaries, fit reports beside it).
+Try: `./tools/play.sh --dev --languages` (saved language or OS locale; LANGUAGE screen in settings), `./tools/play.sh --dev --lang=ar` (any locale, not saved), `--lang=pseudo`.
+Gate: `Economy.LANGUAGES_TEST`. Open items (a-g) are in `docs/handoff.md` open task 8: ship decision, native review (ar, hi, th), font licenses, unverified web/device checks, two old English layout bugs, ticket singular, 1 px row height.
 
 ## Open tests the owner is trying (both OFF by default, decide keep / tune / revert)
 | Test | Flag | Launch | Doc |
@@ -54,4 +59,4 @@ Both together: `./tools/play.sh --dev --coincatch --softbounce`. To keep one for
   from https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip
 - Agents running `test_all.sh` at the same time as other agents can see flaky failures; rerun a failing suite alone.
 - Agents sometimes leave background shells/loops running; check `ps` for stray `zsh -c` / `sleep` loops at the end.
-- `./tools/test_all.sh` runs in parallel (~2 min, `-j N`, `JOB_TIMEOUT`); 79 suites, all passing at 2634f3a.
+- `./tools/test_all.sh` runs in parallel (~2 min, `-j N`, `JOB_TIMEOUT`); 91 suites.
