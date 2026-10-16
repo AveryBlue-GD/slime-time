@@ -85,7 +85,7 @@ Decisions:
   + and the price with the ticket icon; + opens a BUY <NAME> <N>? confirm (not refundable); locked until the first
   ticket; the hint names the keys. The HUD shows a pod under the meter with each owned ability's icon and its uses as
   pips. The COINS tab lost its effect lines (owner: "don't give explanations"): one line per track (name, bar, - / +,
-  cost / MAX), RECOMMENDED under MORE SLIME's name until maxed; the BRIGHTNESS buy picture has no text.
+  cost / MAX), no tag on any track (the RECOMMENDED tag under MORE SLIME was removed, owner decision D12); the BRIGHTNESS buy picture has no text.
 - **Saves:** `[abilities] rifle/splat/kaze` (0-3, clamped, written only when > 0), the three keys under `[controls]`;
   RESET PROGRESS clears the levels (keys are preferences). No SAVE_VERSION bump (all optional with defaults).
 - **Sounds:** `goo_shot`, `goo_lob`, `goo_burst`, `kaze` (tools/make_sounds.py; existing WAVs unchanged).
@@ -282,8 +282,8 @@ L9 SLIME 6 -> L10 saving for SLIME 7 (27), bought on the first coin hunt after t
 **Typical buy order during the campaign** (coins found on the way, median: 3, 8, 12, 18, 25, 34, 45, 57, 74 before
 levels 2-10): L2 SLIME 1 -> L3 SLIME 2 -> L4 SLIME 3 -> (L5 saving) -> L6 SLIME 4 -> L7 SLIME 5 -> L8 SLIME 6 ->
 L9 SLIME 7 (max) -> L10 SPEED 1. Post-story coin hunts (~71 coins left) buy SPEED 2-4 and BRIGHTNESS 1-3. The
-cauldron should mark MORE SLIME as RECOMMENDED until it is maxed (a dim tag), because skipping it is the model's
-biggest risk for normal mode.
+cauldron marked MORE SLIME as RECOMMENDED until maxed (skipping it is the model's biggest risk for normal mode);
+removed 2026-10-16 (owner decision D12: the game never recommends an upgrade).
 
 ### A2.4 Migration of in-epoch saves (old 10-level tracks)
 

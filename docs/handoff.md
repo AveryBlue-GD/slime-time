@@ -13,7 +13,7 @@ portal, settings signpost, hat wheel, wardrobe).
 
 ## Spring cleaning (2026-10-15 / 16, branch `spring-cleaning`)
 
-A five-phase studio cleanup, no change to the economy, balance, save version / epoch or cutscenes. Owner decisions D1-D11:
+A five-phase studio cleanup, no change to the economy, balance, save version / epoch or cutscenes. Owner decisions D1-D12:
 [spring-cleaning/decisions.md](spring-cleaning/decisions.md); baseline numbers: [spring-cleaning/baseline.md](spring-cleaning/baseline.md);
 each phase has a report and an independent QA review in [spring-cleaning/](spring-cleaning/).
 

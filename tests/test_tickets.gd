@@ -154,8 +154,8 @@ func _initialize() -> void:
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
-	_check(game.reward.tickets == 1 and "TICKET! ATTEMPT 1 = +1" in game.hud.rewards_texts and "MORE SLIME = MORE" in game.hud.rewards_texts,
-		"no slime upgrade: a first-try win pays 1, and the screen says why")
+	_check(game.reward.tickets == 1 and game.hud.rewards_texts == ["TICKET! ATTEMPT 1 = +1"],
+		"no slime upgrade: a first-try win pays 1, and no line nudges toward an upgrade (D12) (%s)" % [game.hud.rewards_texts])
 	await _stop(game)
 	progress.reset_progress()
 	progress.day_override = 30000

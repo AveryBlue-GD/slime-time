@@ -882,7 +882,7 @@ func _store() -> void:
 	for node in screen.coin_page.find_children("*", "Label", true, false):
 		texts.append((node as Label).text)
 	var plain := texts.all(func(t: String) -> bool: return not ("->" in t or " PX" in t or "SLIME X" in t.to_upper() or "AREA" in t))
-	_check(plain and "RECOMMENDED" in texts and "MORE SLIME" in texts, "COINS: names, bars, costs and the RECOMMENDED tag only (%s)" % [texts])
+	_check(plain and not "RECOMMENDED" in texts and "MORE SLIME" in texts, "COINS: names, bars and costs only, no RECOMMENDED tag (D12) (%s)" % [texts])
 	screen.free()
 	script.set("open_tab", "coins")
 

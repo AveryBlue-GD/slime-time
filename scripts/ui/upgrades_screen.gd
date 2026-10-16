@@ -3,8 +3,8 @@ extends Control
 ## The cauldron: tabs COINS | TICKETS (upgrades v2, docs/design/upgrades-v2.md C.3 and "Abilities v1").
 ## COINS: the upgrade tree, one line per upgrade (owner: no explanations, just let them be): its name,
 ## its level as one uniform bar of fat pips (7 / 4 / 3), - / + to take a coin level back out or put
-## one in at any time, and the next level's cost (MAX when maxed). MORE SLIME carries a small
-## RECOMMENDED tag under its name until maxed. Buying BRIGHTNESS flashes a 1 s light-ring picture
+## one in at any time, and the next level's cost (MAX when maxed). No row is recommended or marked
+## (owner, D12: the game never nudges toward an upgrade). Buying BRIGHTNESS flashes a 1 s light-ring picture
 ## (no text). Dev-only upgrades (wall power) only appear in dev mode. Tracks: Economy.COIN_TRACKS.
 ## TICKETS (Economy.ABILITIES_ENABLED): the three ABILITIES (Abilities), a row each with its icon,
 ## name, a 2-3 word tag, level pips, + and the price with the ticket icon (not refundable: a BUY /
@@ -88,7 +88,6 @@ var _confirm_lock := {}
 var _buy_guarded := false
 ## The dim tag on the MORE SLIME row (shown until it is maxed) and the 1 s BRIGHTNESS light-ring
 ## preview (null when not showing).
-var recommended: Label
 var preview: Control
 
 
@@ -216,7 +215,7 @@ func show_page(which: String) -> void:
 
 
 ## A COINS row on one line, everything centered on the panel's middle (y + 9.5): name, bar, - / +,
-## cost. MORE SLIME's name moves up while its RECOMMENDED tag shows under it (_refresh).
+## cost. Every row looks the same (no tag on any track, D12).
 func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	UIKit.add_panel(parent, Rect2(10, y - 2, 300, ROW_HEIGHT - 3))
 	var name_label := UIKit.make_label(upgrade.name, UIKit.FONT, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
@@ -232,10 +231,6 @@ func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	cost.position = Vector2(COST_X, y + 6)
 	parent.add_child(cost)
-	if upgrade.id == "slime":  # A2.3: the model's biggest risk is skipping MORE SLIME
-		recommended = UIKit.make_label("RECOMMENDED", UIKit.FONT, Color(UIKit.TEXT_DIM, 0.75))
-		recommended.position = Vector2(18, y + 11)
-		parent.add_child(recommended)
 	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, name = name_label, y = y}
 
 
@@ -484,9 +479,6 @@ func _refresh() -> void:
 		var shade := Color.WHITE if abilities_open else Color(1, 1, 1, 0.5)
 		row.icon.modulate = shade
 		row.tag.modulate = shade
-	recommended.visible = Progress.upgrade_level("slime") < Upgrades.max_level("slime")
-	if rows.has("slime"):  # the name sits over the tag while it shows, else on the row's middle
-		rows.slime.name.position.y = rows.slime.y + (1 if recommended.visible else 6)
 	if page == "abilities":
 		hint.text = ability_hint() if abilities_open else TICKETS_LOCKED
 	else:

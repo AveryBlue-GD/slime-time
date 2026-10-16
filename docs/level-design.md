@@ -281,10 +281,10 @@ it overlaps nothing. The single-line form did not fit at 320x180 (it ran into th
 **Payout** (`Progress.random_payout`): attempt 1 = 5 tickets, 2 = 4, 3 = 3, 4 = 2, 5th or later =
 1. Kept safeguards: 5 paying wins per UTC day (forward-only rollover; 25 tickets a day at most); a
 seed that already paid today pays 0; a typed or replayed seed pays at most 1 (REPLAYED SEED); no
-MORE SLIME bought = at most 1 (MORE SLIME = MORE); assisted or dev-toggled runs pay 0; dev mode and
+MORE SLIME bought = at most 1 (no reason line shown: the game never nudges toward an upgrade, D12); assisted or dev-toggled runs pay 0; dev mode and
 debug runs never save. The result row: ticket icon + `TICKET! ATTEMPT 2 = +4` (+ the cap reason),
-or DAILY TICKET LIMIT REACHED / SEED ALREADY PAID TODAY / ASSIST / DEV TOGGLES; MORE SLIME = MORE shows only
-when the no-upgrade cap really cut the payout. Removed: the optional ticket pickup (`TicketSpawn`, `TicketPickup`,
+or DAILY TICKET LIMIT REACHED / SEED ALREADY PAID TODAY / ASSIST / DEV TOGGLES (the no-MORE-SLIME cap shows no
+reason, D12; the old MORE SLIME = MORE line is gone). Removed: the optional ticket pickup (`TicketSpawn`, `TicketPickup`,
 FIND IT / FOUND / NONE HERE pod, TICKET FOUND / NO TICKET IN THIS MAZE text) and the old payout
 (win 1, pickup +2, under par +1).
 

@@ -641,7 +641,8 @@ func set_vignette(on: bool) -> void:
 ## won this run, dim gold up to an older better tier, dark for the rest), the tier name and NEW BEST
 ## when it raised the saved one. `info` is Progress.record_clear's result. A randomizer win shows
 ## the ticket vouchers it paid ({tickets, attempt, cap}: "TICKET! ATTEMPT 2 = +4", plus why when
-## capped to 1: cap "replay" = REPLAYED SEED, "slime" = MORE SLIME = MORE); `capped` says the day's
+## capped to 1: cap "replay" = REPLAYED SEED; cap "slime" (no MORE SLIME bought) shows no reason line,
+## since the game never nudges toward an upgrade, D12); `capped` says the day's
 ## limit is used up, `repeat` that this seed already paid today.
 ## An assisted run says it earns nothing instead.
 func show_rewards(info: Dictionary) -> void:
@@ -680,8 +681,6 @@ func show_rewards(info: Dictionary) -> void:
 		match info.get("cap", ""):
 			"replay":
 				_reward_label("REPLAYED SEED", MEDAL_OWNED)
-			"slime":
-				_reward_label("MORE SLIME = MORE", MEDAL_OWNED)
 	rewards_row.visible = true
 
 

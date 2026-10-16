@@ -342,11 +342,8 @@ func _screen_layout() -> void:
 				names.append("%s %s" % [id, key])
 			ok = ok and (row.cost.text == "MAX") == (level >= Upgrades.max_level(id))
 			ok = ok and (row.cost.text == "MAX" or row.cost.text == str(Upgrades.cost(id, level)))
-		if screen.recommended.visible:
-			var tag: Control = screen.recommended
-			boxes.append(Rect2(tag.position, tag.size.max(tag.get_combined_minimum_size())))
-			names.append("RECOMMENDED tag")
-		ok = ok and screen.recommended.visible == (progress.upgrade_level("slime") < Upgrades.max_level("slime"))
+		for id in tracks:  # D12: every name sits on its row's middle (no tag pushes one up)
+			ok = ok and screen.rows[id].name.position.y == screen.rows[id].y + 6
 		var overlap := ""
 		for i in boxes.size():
 			if not Rect2(10, 20, 300, 150).encloses(boxes[i]):
@@ -365,7 +362,7 @@ func _screen_layout() -> void:
 	_check(not UpgradesScreenScript().has_method("effect_text"), "no effect lines on the COINS rows (owner: no explanations)")
 
 
-## The RECOMMENDED tag follows MORE SLIME; buying BRIGHTNESS shows the 1 s light-ring preview.
+## No upgrade is recommended (D12); buying BRIGHTNESS shows the 1 s light-ring preview.
 func _preview() -> void:
 	progress.dev_tools = false
 	progress.upgrades = {}
@@ -375,7 +372,8 @@ func _preview() -> void:
 	var screen: Control = load("res://scenes/upgrades.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(screen.recommended.visible, "MORE SLIME carries the RECOMMENDED tag until maxed")
+	_check(not "recommended" in screen and not _texts(screen).any(func(t: String) -> bool: return "RECOMMEND" in t),
+		"no RECOMMENDED tag or any other upgrade nudge on the screen (D12)")
 	screen.rows.brightness.plus.pressed.emit()
 	await process_frame
 	_check(screen.preview != null and not screen.hint.visible and progress.upgrade_level("brightness") == 1
@@ -384,12 +382,16 @@ func _preview() -> void:
 	for i in 75:
 		await process_frame
 	_check(screen.preview == null and screen.hint.visible, "...which is gone after about a second")
-	progress.upgrades = {slime = 7}
-	screen.show_page("coins")
-	_check(not screen.recommended.visible, "the tag is gone once MORE SLIME is maxed")
 	screen.free()
 	progress.upgrades = {}
 	progress.coins_found = {}
+
+
+func _texts(node: Node) -> Array:
+	var out := []
+	for label in node.find_children("*", "Label", true, false):
+		out.append((label as Label).text)
+	return out
 
 
 func UpgradesScreenScript() -> GDScript:

@@ -36,7 +36,7 @@ func _ready() -> void:
 			var screen: Control = load("res://scenes/skins.tscn").instantiate()
 			add_child(screen)
 			screen.show_page.call_deferred("trails")
-		"coins", "brightness":  # the COINS tab (RECOMMENDED tag); `brightness` buys a level for the 1 s ring
+		"coins", "brightness":  # the COINS tab (names, bars, costs); `brightness` buys a level for the 1 s ring
 			var cauldron: Control = load("res://scenes/upgrades.tscn").instantiate()
 			add_child(cauldron)
 			if shot == "brightness":

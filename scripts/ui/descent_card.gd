@@ -285,7 +285,7 @@ func show_summary(result: Dictionary) -> void:
 		"dev":
 			why = "  DEV TOGGLES"
 		"slime":
-			why = "  MORE SLIME = MORE"
+			why = ""  # no MORE SLIME bought: capped, but no reason line that nudges toward an upgrade (D12)
 		_:
 			if not cashed and pot > 0:
 				why = "  HALF THE POT (%d)" % pot
