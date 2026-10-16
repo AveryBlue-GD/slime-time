@@ -17,7 +17,7 @@ extends Node
 signal language_changed(locale: String)
 
 const SOURCE_LOCALE := "en"
-## The test-only pseudo-localization locale (`--lang=pseudo`; chunk F fills in its settings).
+## The test-only pseudo-localization locale (`--lang=pseudo`; see _apply_pseudo / Loc.pseudolocalize).
 const PSEUDO := "pseudo"
 const LOCALE_DIR := "res://locale"
 ## Supported locales in the LANGUAGE screen's order (fixed, never sorted per locale), each with its
@@ -132,8 +132,11 @@ static func is_supported(code: String) -> bool:
 	return code in codes()
 
 
-## A locale's own name in its own script ("" if unsupported).
+## A locale's own name in its own script ("" if unsupported; the test-only pseudo locale shows itself
+## pseudo-localized).
 static func native_name(code: String) -> String:
+	if code == PSEUDO:
+		return Loc.pseudolocalize("PSEUDO")
 	for entry: Array in LOCALES:
 		if entry[0] == code:
 			return entry[1]
@@ -192,6 +195,7 @@ func disable() -> void:
 	if active and _locale_before != "":
 		TranslationServer.set_locale(_locale_before)
 	_uninstall_fonts()
+	_apply_pseudo(false)
 	active = false
 	locale = SOURCE_LOCALE
 
@@ -249,15 +253,17 @@ func _load_catalogs() -> void:
 			load_catalog(path)
 
 
-## STUB (chunk F, docs/i18n/plan.md section 8): pseudo-localization settings for `--lang=pseudo`.
-func _apply_pseudo(_on: bool) -> void:
-	pass
+## Pseudo-localization for `--lang=pseudo` (docs/i18n/plan.md section 8): English through
+## Loc.pseudolocalize (accented, ~40 % longer, bracketed, placeholders kept). The flag lives in Loc
+## because Loc does every lookup; only this autoload sets it.
+func _apply_pseudo(on: bool) -> void:
+	Loc.pseudo = on
 
 
 ## The metrics group of a locale: "latin" (en, id: today's numbers), "accented", "vi", "cjk" (zh_CN, ja,
 ## ko: Fusion 10 px), "zh_TW" (Fusion 12 px), "th", "hi", "ar".
 static func metrics_group(code: String) -> String:
-	if code in ACCENTED:
+	if code in ACCENTED or code == PSEUDO:
 		return "accented"
 	if code in ["zh_CN", "ja", "ko"]:
 		return "cjk"

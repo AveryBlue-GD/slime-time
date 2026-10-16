@@ -8,11 +8,31 @@ class_name Loc
 ## - Never build a sentence out of fragments: whole sentences with placeholders, plurals via `n`.
 ## - Gate off (Economy.languages_on() false): the English msgid, formatted, i.e. exactly today's text.
 ##   Gate on: TranslationServer (the catalogs the `Language` autoload loaded), falling back to English.
+## - Pseudo-localization (`--lang=pseudo`, tests; docs/i18n/plan.md section 8): `pseudo` is set only by
+##   Language._apply_pseudo. Every looked-up text then becomes its English source with accented letters,
+##   about 40 % longer (padding included) and bracketed per line, `[_ÉXÁMPŁÉ_]`, placeholders kept as
+##   written, so text that bypasses Loc (no brackets), boxes that overflow at +40 % and clipped lines
+##   show at a glance. Not Godot's built-in pseudolocalization: that one accents `{count}` too (it only
+##   skips %-formats) and uses letters (Ĥ, ή, combining marks) the slimy font doesn't have.
+
+## True while the pseudo locale is on (Language sets it; never with the gate off).
+static var pseudo := false
+## Pseudo-localization: how much longer each line gets (brackets + padding), and the letters swapped
+## for accented ones the slimy font has (uppercase and lowercase map to the same glyph).
+const PSEUDO_EXPANSION := 0.4
+const PSEUDO_PAD := "_"
+const PSEUDO_ACCENTS := {
+	"A": "Á", "C": "Ç", "D": "Đ", "E": "É", "G": "Ğ", "I": "Í", "L": "Ł", "N": "Ñ", "O": "Ö", "S": "Ś", "U": "Ü",
+	"Y": "Ý", "Z": "Ż", "a": "á", "c": "ç", "d": "đ", "e": "é", "g": "ğ", "i": "í", "l": "ł", "n": "ñ", "o": "ö",
+	"s": "ś", "u": "ü", "y": "ý", "z": "ż",
+}
 
 
 ## The translation of `msgid` in context `ctx`, with `{name}` placeholders filled from `args`.
 static func t(ctx: String, msgid: String, args := {}) -> String:
 	var text := String(TranslationServer.translate(msgid, ctx)) if Economy.languages_on() else msgid
+	if pseudo:
+		text = pseudolocalize(text)
 	return fill(text, args) if not args.is_empty() else text
 
 
@@ -24,6 +44,8 @@ static func n(ctx: String, singular: String, plural: String, count: int, args :=
 		text = String(TranslationServer.translate_plural(singular, plural, count, ctx))
 	else:
 		text = singular if count == 1 else plural
+	if pseudo:
+		text = pseudolocalize(text)
 	var all := args.duplicate()
 	if not all.has("count"):
 		all["count"] = count
@@ -67,3 +89,31 @@ static func lines(parts: Array) -> String:
 	for part: Variant in parts:
 		out.append(str(part))
 	return "\n".join(out)
+
+
+## The pseudo-localized form of `text` (see `pseudo`): per line, letters accented, `{placeholders}`
+## kept, padded so the line is PSEUDO_EXPANSION longer (brackets count), wrapped in [ ].
+static func pseudolocalize(text: String) -> String:
+	var out := PackedStringArray()
+	for line in text.split("\n"):
+		out.append(_pseudo_line(line))
+	return "\n".join(out)
+
+
+static func _pseudo_line(line: String) -> String:
+	if line == "":
+		return line
+	var body := PackedStringArray()
+	var i := 0
+	while i < line.length():
+		if line[i] == "{":
+			var close := line.find("}", i + 1)
+			if close > i:
+				body.append(line.substr(i, close - i + 1))
+				i = close + 1
+				continue
+		body.append(PSEUDO_ACCENTS.get(line[i], line[i]))
+		i += 1
+	var pad := maxi(0, ceili(line.length() * PSEUDO_EXPANSION) - 2)
+	var left := PSEUDO_PAD.repeat(pad / 2)
+	return "[" + left + "".join(body) + PSEUDO_PAD.repeat(pad - pad / 2) + "]"
