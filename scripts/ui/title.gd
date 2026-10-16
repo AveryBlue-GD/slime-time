@@ -6,7 +6,6 @@ extends Control
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
-const TAGLINE := "ESCAPE THE FOG\nOR DRY TRYING"
 ## The scenes the first title of a session loads before its first frame (the boot screen still
 ## shows), so the first change to each one doesn't stall under the goo wipe (the first level of a
 ## session froze the wipe for 180-330 ms on the M3, several seconds on a phone; the hub and the story
@@ -65,18 +64,21 @@ func _ready() -> void:
 	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
 	var fresh: bool = Progress.is_fresh_save()
 	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
-	enter_button = UIKit.make_button("PLAY" if fresh else "ENTER THE HUB", _play if fresh else _enter, Vector2(176, 25))
+	# i18n: max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
+	var enter_text := Loc.t("title.play", "PLAY") if fresh else Loc.t("title.enter_hub", "ENTER THE HUB")
+	enter_button = UIKit.make_button(enter_text, _play if fresh else _enter, Vector2(176, 25))
 	enter_button.add_theme_font_size_override("font_size", UIKit.FONT_BIG)
 	UIKit.use_big_font(enter_button, 16)
 	enter_button.position = Vector2(72, 84)
 	add_child(enter_button)
 	enter_button.grab_focus()
 	# The story intro again: a small button in the bottom-left corner, beside the tagline.
-	story_button = UIKit.make_button("STORY", _replay_story, UIKit.BACK_SIZE)
+	story_button = UIKit.make_button(Loc.t("title.story", "STORY"), _replay_story, UIKit.BACK_SIZE)
 	add_child(story_button)
 	UIKit.place_bottom_row(story_button, -1)
 
-	var tagline := UIKit.make_label(TAGLINE, UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
+	# i18n: tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
+	var tagline := UIKit.make_label(Loc.lines([Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "OR DRY TRYING")]), UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING * 2)
 	add_child(tagline)

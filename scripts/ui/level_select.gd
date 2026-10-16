@@ -30,13 +30,28 @@ const INFO_RECT := Rect2(14, 113, 292, 48)
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
 ## The flame badge's top-left corner on a hard tile (7x9; the medal pips mirror it at the top right).
 const FLAME_POS := Vector2(5, 5)
+## (English source texts, kept for the tests; the screen shows `info_text()`.)
 const INFO_NORMAL := "CLEAR A LEVEL TO UNLOCK THE NEXT\nEACH CLEAR ALSO UNLOCKS A NEW SKIN"
 const INFO_HARD := "HEAT UP LEVELS BEATEN ON HARD\nHEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
 const HEAT_BUTTON_SIZE := Vector2(52, UIKit.BUTTON_H)
 
 
+## The two help lines under the tiles.
+static func info_text(hard: bool) -> String:
+	# i18n: two lines, each max 300px; the numbers are the heat levels and ticket payouts (Heat.BOUNTIES), keep them
+	if hard:
+		return Loc.lines([
+			Loc.t("levels.info_hard.1", "HEAT UP LEVELS BEATEN ON HARD"),
+			Loc.t("levels.info_hard.2", "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"),
+		])
+	return Loc.lines([
+		Loc.t("levels.info_normal.1", "CLEAR A LEVEL TO UNLOCK THE NEXT"),
+		Loc.t("levels.info_normal.2", "EACH CLEAR ALSO UNLOCKS A NEW SKIN"),
+	])
+
+
 func _ready() -> void:
-	skin_text = UIKit.setup_screen(self, "LEVEL SELECT")
+	skin_text = UIKit.setup_screen(self, Loc.t("levels.title", "LEVEL SELECT"))  # i18n: max 296px, 16 px font
 	grid = GridContainer.new()
 	grid.columns = 5
 	grid.position = GRID_POS
@@ -48,7 +63,7 @@ func _ready() -> void:
 	level_buttons[Progress.current_level - 1].grab_focus()
 
 	UIKit.add_panel(self, INFO_RECT)  # wide enough that the checkbox text clears the goo
-	info = UIKit.make_label(INFO_HARD if Progress.hard_mode else INFO_NORMAL, UIKit.FONT, UIKit.TEXT_DIM)
+	info = UIKit.make_label(info_text(Progress.hard_mode), UIKit.FONT, UIKit.TEXT_DIM)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(info)
 	info.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -57,7 +72,8 @@ func _ready() -> void:
 
 	hard_mode_box = CheckBox.new()
 	hard_mode_box.material = UIKit.text_material()
-	hard_mode_box.text = "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
+	# i18n: checkbox, max 268px, 1 line
+	hard_mode_box.text = Loc.t("levels.hard_mode", "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS")
 	hard_mode_box.button_pressed = Progress.hard_mode
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
@@ -80,8 +96,9 @@ func _ready() -> void:
 ## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
 func _refresh_heat() -> void:
 	heat_button.visible = Progress.hard_mode
-	heat_button.text = "HEAT %d" % Heat.points(Progress.heat_mods)
-	info.text = INFO_HARD if Progress.hard_mode else INFO_NORMAL
+	# i18n: {points} = the heat total (0-99); max 52px, 1 line
+	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})
+	info.text = info_text(Progress.hard_mode)
 	if not Progress.hard_mode and heat_panel.visible:
 		heat_panel.close()
 

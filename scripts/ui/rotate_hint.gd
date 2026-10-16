@@ -5,6 +5,7 @@ extends CanvasLayer
 ## (so a first-launch story or a level doesn't run on unseen behind it) and the cover takes the taps.
 
 var _cover: Control
+var _text: Label
 var _last_size := Vector2i(-1, -1)
 ## Whether the tree was already paused (e.g. the pause menu was open) when the cover came up, and
 ## the scene it came up over: put back as it was when the phone is turned sideways again.
@@ -23,15 +24,29 @@ func _ready() -> void:
 	bg.color = UIKit.BG
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_cover.add_child(bg)
-	var text := UIKit.make_label("ROTATE YOUR DEVICE\n\nSLIME TIME IS PLAYED SIDEWAYS", UIKit.FONT, UIKit.GOLD)
+	var text := UIKit.make_label(_message(), UIKit.FONT, UIKit.GOLD)
+	_text = text
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cover.add_child(text)
 	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	var language := get_node_or_null("/root/Language")
+	if language:
+		language.language_changed.connect(func() -> void: _text.text = _message())
 	_update.call_deferred()
 	# Every input event, before any node: menus grow their touch hit areas only while touch is in use.
 	get_tree().root.window_input.connect(UIKit.note_pointer)
+
+
+## The cover's text (rebuilt when the language changes: this node lives across scenes).
+static func _message() -> String:
+	# i18n: 2 text lines + a blank line, each max 300px, centered; "SLIME TIME" is the brand
+	return Loc.lines([
+		Loc.t("rotate.title", "ROTATE YOUR DEVICE"),
+		"",
+		Loc.t("rotate.body", "SLIME TIME IS PLAYED SIDEWAYS"),
+	])
 
 
 ## The window size is checked every frame: with the `viewport` stretch mode the root viewport

@@ -22,6 +22,7 @@ const TITLE_GAP := 5
 const ICON_SCALE := 2
 const OFF_TINT := Color(0.55, 0.55, 0.62)
 const HEAT_TINT := Color8(255, 170, 90)
+## (English source; the panel shows `default_about()`.)
 const DEFAULT_ABOUT := "WORKS ON LEVELS ALREADY BEATEN ON HARD"
 
 var toggles := {}
@@ -31,6 +32,11 @@ var about: Label
 var done_button: Button
 var _saved_focus := {}
 var _return_focus: Control
+
+
+static func default_about() -> String:
+	# i18n: the line under the toggles, max 224px, 1 line (clipped past that)
+	return Loc.t("heat.about_default", "WORKS ON LEVELS ALREADY BEATEN ON HARD")
 
 
 func _ready() -> void:
@@ -58,16 +64,17 @@ func _ready() -> void:
 		add_child(button)
 		toggles[id] = button
 
-	about = UIKit.make_label(DEFAULT_ABOUT, UIKit.FONT, UIKit.TEXT_DIM)
+	about = UIKit.make_label(default_about(), UIKit.FONT, UIKit.TEXT_DIM)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	about.clip_text = true  # (keeps the label at the panel's width: the text centers on the panel)
 	about.position = Vector2(RECT.position.x, ABOUT_Y)
 	about.size = Vector2(RECT.size.x, 9)
 	add_child(about)
 
-	done_button = UIKit.make_button("DONE", close, Vector2(50, UIKit.BUTTON_H))
+	# i18n: max 42px (50 wide, 4 px margins), 1 line
+	done_button = UIKit.make_button(Loc.t("heat.done", "DONE"), close, Vector2(50, UIKit.BUTTON_H))
 	done_button.position = Vector2(roundf(RECT.get_center().x - 25.0), DONE_Y)
-	done_button.focus_entered.connect(func() -> void: about.text = DEFAULT_ABOUT)
+	done_button.focus_entered.connect(func() -> void: about.text = default_about())
 	add_child(done_button)
 	refresh()
 
@@ -92,7 +99,7 @@ func _make_toggle(id: String) -> Button:
 	flame.name = "Flame"
 	flame.position = Vector2(26, 19)
 	button.add_child(flame)
-	var points := UIKit.make_label("+%d" % Heat.heat_of(id), UIKit.FONT, HEAT_TINT)
+	var points := UIKit.make_label(Loc.t("heat.points", "+{points}", {points = Heat.heat_of(id)}), UIKit.FONT, HEAT_TINT)
 	points.name = "Points"
 	points.position = Vector2(35, 20)
 	button.add_child(points)
@@ -131,7 +138,8 @@ func refresh() -> void:
 		button.get_node("Name").modulate = tint
 		button.get_node("Points").modulate = tint
 	var heat := Heat.points(mask)
-	title.text = "HEAT %d/%d" % [heat, Economy.HEAT_MAX]
+	# i18n: panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
+	title.text = Loc.t("heat.title", "HEAT {points}/{max}", {points = heat, max = Economy.HEAT_MAX})
 	title_flame.texture = Heat.flame(heat)
 	# Flame + gap + text ink centered on the panel as one group (the label's ink starts 1 px in).
 	var width: float = title.get_theme_font("font").get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x

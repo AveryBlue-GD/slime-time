@@ -27,6 +27,7 @@ const GRID_POS := Vector2(4, 21)
 const THUMB_POS := Vector2(4, 3)
 ## Where the map may be drawn in the view.
 const MAP_AREA := Rect2i(2, 13, 316, 149)
+## (English source; the screen shows `hint_text()`.)
 const HINT := "PLAY TO FILL THEM IN"
 ## The themed maps (each level's map and tile picture in its own palette with a themed frame,
 ## MapView's `theme`). The one switch: false = the plain parchment style everywhere.
@@ -56,8 +57,13 @@ var view_paper: Button
 var _focus_lock := {}
 
 
+static func hint_text() -> String:
+	# i18n: first-visit hint at the bottom, max 224px, 1 line
+	return Loc.t("maps.hint", "PLAY TO FILL THEM IN")
+
+
 func _ready() -> void:
-	skin_text = UIKit.setup_screen(self, "MAP TABLE")
+	skin_text = UIKit.setup_screen(self, Loc.t("maps.title", "MAP TABLE"))  # i18n: max 296px, 16 px font
 	hard = Progress.hard_mode
 	grid = GridContainer.new()
 	grid.columns = 2
@@ -67,14 +73,15 @@ func _ready() -> void:
 	add_child(grid)
 	back_button = UIKit.add_back_button(self)
 	# The bottom bar's line: centered on the screen (48..271, like the map view's), on BACK's baseline.
-	hint_label = UIKit.add_label(self, HINT if not Progress.maps_hint_seen else "", Rect2(48, UIKit.BOTTOM_ROW_Y + 3, 224, 10),
+	hint_label = UIKit.add_label(self, hint_text() if not Progress.maps_hint_seen else "", Rect2(48, UIKit.BOTTOM_ROW_Y + 3, 224, 10),
 		8, UIKit.TEXT_DIM)
 	if not Progress.maps_hint_seen:  # once: the first time the table is opened
 		Progress.maps_hint_seen = true
 		Progress.save_progress()
 	hard_box = CheckBox.new()
 	hard_box.material = UIKit.text_material()
-	hard_box.text = "HARD"
+	# i18n: checkbox, max 60px, 1 line
+	hard_box.text = Loc.t("maps.hard", "HARD")
 	hard_box.button_pressed = hard
 	hard_box.toggled.connect(func(on: bool) -> void:
 		hard = on
@@ -179,14 +186,16 @@ func _build_view() -> void:
 	view_root.add_child(view_line)
 	view_line.position = Vector2(48, UIKit.BOTTOM_ROW_Y + 3)
 	view_line.size = Vector2(224, 10)
-	view_back = UIKit.make_button("BACK", close_view, UIKit.BACK_SIZE)
+	# i18n: max 32px, 1 line
+	view_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_view, UIKit.BACK_SIZE)
 	view_root.add_child(view_back)
 	UIKit.place_bottom_row(view_back, -1)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:  # the select's tiles stay out of reach
 		view_back.set_focus_neighbor(side, view_back.get_path_to(view_back))
 	view_back.focus_next = view_back.get_path_to(view_back)  # Tab / Shift+Tab too
 	view_back.focus_previous = view_back.get_path_to(view_back)
-	view_paper = UIKit.make_button("PAPER", cycle_paper, Vector2(44, UIKit.BUTTON_H))
+	# i18n: max 36px (44 wide, 4 px margins), 1 line
+	view_paper = UIKit.make_button(Loc.t("maps.paper", "PAPER"), cycle_paper, Vector2(44, UIKit.BUTTON_H))
 	view_root.add_child(view_paper)
 	UIKit.place_bottom_row(view_paper, 1)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
@@ -235,10 +244,16 @@ func open_view(level: int) -> void:
 	view_map.texture = ImageTexture.create_from_image(image)
 	view_map.size = Vector2(image.get_size())
 	view_map.position = Vector2(MAP_AREA.position + (MAP_AREA.size - image.get_size()) / 2)
-	view_title.text = Themes.display_name(Themes.for_level(level)) + ("  HARD" if hard else "")
-	view_line.text = "%d%% UNCOVERED" % roundi(Survey.completeness(survey, maze) * 100.0)
+	var theme_name := Themes.display_name(Themes.for_level(level))
+	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
+	# i18n: {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
+	view_title.text = Loc.t("maps.view_title_hard", "{name}  HARD", {name = theme_name}) if hard else theme_name
 	if paper != "" and paper != Cosmetics.DEFAULT_PAPER:
-		view_line.text += "  " + Cosmetics.display_name(paper)
+		# i18n: {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line
+		view_line.text = Loc.t("maps.uncovered_paper", "{percent}% UNCOVERED  {paper}", {percent = percent, paper = Cosmetics.display_name(paper)})
+	else:
+		# i18n: {percent} = 0-100; the line under the map, max 296px, 1 line
+		view_line.text = Loc.t("maps.uncovered", "{percent}% UNCOVERED", {percent = percent})
 	# PAPER shows once a paper is owned; BACK and PAPER then lead to each other (and nowhere else).
 	view_paper.visible = owned_papers().size() > 1 and themed
 	var to_paper := view_back.get_path_to(view_paper if view_paper.visible else view_back)

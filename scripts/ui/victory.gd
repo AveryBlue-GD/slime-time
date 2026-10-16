@@ -6,8 +6,13 @@ var buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "YOU ESCAPED!")
-	var lines := UIKit.make_label("ALL %d MAZES CLEARED\n\nUNLOCKED: %s (ANY COLOR YOU LIKE)" % [Levels.COUNT, Skins.CUSTOM_NAME], UIKit.FONT, UIKit.TEXT)
+	UIKit.setup_screen(self, Loc.t("victory.title", "YOU ESCAPED!"))  # i18n: max 296px, 16 px font
+	var lines := UIKit.make_label(Loc.lines([
+		Loc.t("victory.cleared", "ALL {count} MAZES CLEARED", {count = Levels.COUNT}),  # i18n: max 296px
+		"",
+		# i18n: {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
+		Loc.t("victory.unlocked", "UNLOCKED: {skin} (ANY COLOR YOU LIKE)", {skin = Skins.CUSTOM_NAME}),
+	]), UIKit.FONT, UIKit.TEXT)
 	lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(lines)
 	lines.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -37,11 +42,11 @@ func _ready() -> void:
 	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	add_child(menu)
 	buttons = [
-		UIKit.make_button("PICK YOUR COLOR", func() -> void: _choose_custom()),
-		UIKit.make_button("RANDOMIZER", func() -> void:
+		UIKit.make_button(Loc.t("victory.pick_color", "PICK YOUR COLOR"), func() -> void: _choose_custom()),
+		UIKit.make_button(Loc.t("victory.randomizer", "RANDOMIZER"), func() -> void:
 			Progress.start_random()
 			UIKit.go(get_tree(), UIKit.GAME_SCENE)),
-		UIKit.make_button("HUB", func() -> void: UIKit.go(get_tree(), UIKit.HUB_SCENE)),
+		UIKit.make_button(Loc.t("victory.hub", "HUB"), func() -> void: UIKit.go(get_tree(), UIKit.HUB_SCENE)),
 	]
 	for button in buttons:
 		menu.add_child(button)

@@ -5,11 +5,6 @@ extends Control
 ## returns to SETTINGS. Two columns: moving and leaping on the left; restart, the hub's use key and the
 ## three ticket ABILITIES on the right.
 
-const ACTION_NAMES := {
-	move_up = "MOVE UP", move_down = "MOVE DOWN", move_left = "MOVE LEFT", move_right = "MOVE RIGHT",
-	jump = "JUMP (HOLD)", restart = "RESTART LEVEL", interact = "INTERACT (HUB)",
-	ability_rifle = "SLIME RIFLE", ability_splat = "SLIME SPLAT", ability_kaze = "SLIMAKAZE",
-}
 ## The actions in each column, top to bottom.
 const COLUMNS := [["move_up", "move_down", "move_left", "move_right", "jump"],
 	["restart", "interact", "ability_rifle", "ability_splat", "ability_kaze"]]
@@ -29,8 +24,24 @@ var back_button: Button
 var note: Label
 
 
+## The label of a rebindable action. i18n: max 76px (labels are 84 wide), 1 line.
+static func action_name(action: String) -> String:
+	match action:
+		"move_up": return Loc.t("keys.move_up", "MOVE UP")
+		"move_down": return Loc.t("keys.move_down", "MOVE DOWN")
+		"move_left": return Loc.t("keys.move_left", "MOVE LEFT")
+		"move_right": return Loc.t("keys.move_right", "MOVE RIGHT")
+		"jump": return Loc.t("keys.jump", "JUMP (HOLD)")
+		"restart": return Loc.t("keys.restart", "RESTART LEVEL")
+		"interact": return Loc.t("keys.interact", "INTERACT (HUB)")
+		"ability_rifle": return Loc.t("keys.ability_rifle", "SLIME RIFLE")
+		"ability_splat": return Loc.t("keys.ability_splat", "SLIME SPLAT")
+		"ability_kaze": return Loc.t("keys.ability_kaze", "SLIMAKAZE")  # pun: slime + kamikaze
+	return action
+
+
 func _ready() -> void:
-	UIKit.setup_screen(self, "CONTROLS")
+	UIKit.setup_screen(self, Loc.t("keys.title", "CONTROLS"))  # i18n: max 296px, 16 px font
 	var width := 2 * (LABEL_WIDTH + GAP + KEY_WIDTH) + COLUMN_GAP
 	for c in COLUMNS.size():
 		var rows := GridContainer.new()
@@ -40,7 +51,7 @@ func _ready() -> void:
 		rows.add_theme_constant_override("v_separation", 4)
 		add_child(rows)
 		for action: String in COLUMNS[c]:
-			var label := UIKit.make_label(ACTION_NAMES[action])
+			var label := UIKit.make_label(action_name(action))
 			label.custom_minimum_size = Vector2(LABEL_WIDTH, UIKit.BUTTON_H)
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			rows.add_child(label)
@@ -62,7 +73,8 @@ func _ready() -> void:
 	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	note.offset_top = 140
 	note.offset_bottom = 150
-	reset_keys_button = UIKit.make_button("RESET KEYS", _on_reset, Vector2(98, UIKit.BUTTON_H))
+	# i18n: max 90px (98 wide, 4 px margins), 1 line
+	reset_keys_button = UIKit.make_button(Loc.t("keys.reset", "RESET KEYS"), _on_reset, Vector2(98, UIKit.BUTTON_H))
 	add_child(reset_keys_button)
 	UIKit.place_bottom_row(reset_keys_button, 0)
 	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)
@@ -71,12 +83,17 @@ func _ready() -> void:
 ## The fixed controls, for the device in use: the gamepad layout after pad input (not remappable yet), else the
 ## keys that always work (browsers keep Esc in fullscreen, so there P; F11 only where fullscreen exists).
 static func note_text() -> String:
+	# i18n: footer, one line, max 300px; pad button names (A X START B) stay as printed on the pad
 	if Platform.using_pad():
-		return "PAD: A LEAP - X USE - START PAUSE - B BACK"
-	var pause_keys := "P PAUSES" if Platform.is_web() else "ESC OR P PAUSES"
+		return Loc.t("keys.note.pad", "PAD: A LEAP - X USE - START PAUSE - B BACK")
+	# i18n: footer, one line, max 300px; the key names (ESC, P, F11) are the keyboard's, not translated
 	if not Platform.has_window_fullscreen():
-		return "ARROWS ALWAYS MOVE - %s" % pause_keys
-	return "ARROWS ALWAYS MOVE - %s - F11 FULLSCREEN" % pause_keys
+		if Platform.is_web():
+			return Loc.t("keys.note.web", "ARROWS ALWAYS MOVE - P PAUSES")
+		return Loc.t("keys.note.desktop", "ARROWS ALWAYS MOVE - ESC OR P PAUSES")
+	if Platform.is_web():
+		return Loc.t("keys.note.web_f11", "ARROWS ALWAYS MOVE - P PAUSES - F11 FULLSCREEN")
+	return Loc.t("keys.note.desktop_f11", "ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN")
 
 
 func _back() -> void:
@@ -91,7 +108,7 @@ func _refresh() -> void:
 func _start_rebind(action: String) -> void:
 	waiting_for = action
 	_refresh()
-	key_buttons[action].text = "PRESS KEY"
+	key_buttons[action].text = Loc.t("keys.press_key", "PRESS KEY")  # i18n: max 56px (key buttons are 64 wide), 1 line
 
 
 func _on_reset() -> void:

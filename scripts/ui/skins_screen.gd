@@ -22,10 +22,28 @@ const RULE_TOP := 100
 const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
+## (English source texts of the tip lines; the screen shows `skins_rule()` and the like. The tests compare.)
 const SKINS_RULE := "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 const JELLY_RULE := "JELLY SKINS UNLOCK ON HARD MODE"
 const HATS_RULE := "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
 const TRAILS_RULE := "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+## The tip line of a page. i18n: one line, max 300px.
+static func rule_text(which: String) -> String:
+	match which:
+		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
+		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
+		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
+	return Loc.t("skins.rule_skins", "NEW LEVELS EQUIP YOUR NEWEST SKIN")
+
+
+## A page's name, for the screen title and the page button. i18n: title max 296px (16 px font), button max 32px (40 wide, 4 px margins).
+static func page_title(which: String) -> String:
+	match which:
+		"hats": return Loc.t("skins.page_hats", "HATS")
+		"trails": return Loc.t("skins.page_trails", "TRAILS")
+	return Loc.t("skins.page_skins", "SKINS")
+
+
 ## The pages, in the order the page button cycles them.
 const PAGES := ["skins", "hats", "trails"]
 
@@ -53,9 +71,9 @@ var _rule: Label
 
 
 func _ready() -> void:
-	skin_text = UIKit.setup_screen(self, "SKINS")
+	skin_text = UIKit.setup_screen(self, page_title("skins"))
 	for child in get_children():
-		if child is Label and child.text == "SKINS":
+		if child is Label and child.text == page_title("skins"):
 			_title = child
 	view_jelly = Progress.jelly
 	# A fresh random color on the wheel every visit (any hue, never washed out).
@@ -85,7 +103,7 @@ func _ready() -> void:
 	# Bottom row: BACK and HATS the same width at the same distance from each edge, the jelly
 	# switch centered between them.
 	var back := UIKit.add_back_button(self)
-	page_button = UIKit.make_button("HATS", func() -> void: show_page(PAGES[(PAGES.find(page) + 1) % PAGES.size()]), back.custom_minimum_size)
+	page_button = UIKit.make_button(page_title("hats"), func() -> void: show_page(PAGES[(PAGES.find(page) + 1) % PAGES.size()]), back.custom_minimum_size)
 	page_button.position = Vector2(320 - back.position.x - back.custom_minimum_size.x, back.position.y)
 	add_child(page_button)
 	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, UIKit.BUTTON_H))
@@ -155,16 +173,16 @@ func show_page(which: String) -> void:
 	_hat_grid.visible = hats
 	_trail_grid.visible = trails
 	jelly_button.visible = page == "skins"
-	_title.text = page.to_upper()
-	page_button.text = PAGES[(PAGES.find(page) + 1) % PAGES.size()].to_upper()
+	_title.text = page_title(page)
+	page_button.text = page_title(PAGES[(PAGES.find(page) + 1) % PAGES.size()])
 	if hats:
-		_rule.text = HATS_RULE
+		_rule.text = rule_text("hats")
 		custom_panel.visible = false
 		showcase.visible = false
 		_refresh_hats()
 		hat_tiles[Progress.selected_hat].grab_focus()
 	elif trails:
-		_rule.text = TRAILS_RULE
+		_rule.text = rule_text("trails")
 		custom_panel.visible = false
 		showcase.visible = false
 		_refresh_trails()
@@ -263,12 +281,18 @@ func _on_trail_tile(id: String) -> void:
 func _refresh_trails(focus_id := "") -> void:
 	var id: String = focus_id if focus_id != "" else Progress.trail_style
 	if Progress.owns_cosmetic(id):
-		status.text = Cosmetics.display_name(id) + ("  (WEARING)" if id == Progress.trail_style else "")
+		# i18n: {name} = the trail's name; status line, max 300px, 1 line. The two spaces are spacing.
+		if id == Progress.trail_style:
+			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Cosmetics.display_name(id)})
+		else:
+			status.text = Cosmetics.display_name(id)
 	else:
 		if Cosmetics.is_earned(id):
-			status.text = "%s - %s" % [Cosmetics.display_name(id), Cosmetics.earned_how(id)]
+			# i18n: {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
+			status.text = Loc.t("skins.name_how", "{name} - {how}", {name = Cosmetics.display_name(id), how = Cosmetics.earned_how(id)})
 		else:
-			status.text = "%s - %d TIX IN THE SHOP" % [Cosmetics.display_name(id), Cosmetics.price(id)]
+			# i18n: {name} = the trail's name, {price} = tickets; max 300px, 1 line
+			status.text = Loc.n("skins.name_price", "{name} - {price} TIX IN THE SHOP", "{name} - {price} TIX IN THE SHOP", Cosmetics.price(id), {name = Cosmetics.display_name(id), price = Cosmetics.price(id)})
 	for tile_id: String in trail_tiles:
 		UIKit.set_selected(trail_tiles[tile_id], tile_id == Progress.trail_style)
 
@@ -340,22 +364,32 @@ func _refresh(focus_id := "") -> void:
 	var worn_here: bool = view_jelly == Progress.jelly
 	if not Progress.is_skin_unlocked(id, view_jelly):
 		if id == Skins.STOPWATCH:  # both versions open together
-			status.text = "LOCKED - EARN ALL %d MEDALS (%d/%d)" % [Progress.medals_max(), Progress.medals_total(false), Progress.medals_max()]
+			# i18n: {count} = medals needed (30), {have}/{count} = progress; status line, max 300px, 1 line
+			status.text = Loc.n("skins.locked_medals", "LOCKED - EARN ALL {count} MEDALS ({have}/{count})", "LOCKED - EARN ALL {count} MEDALS ({have}/{count})", Progress.medals_max(), {have = Progress.medals_total(false)})
 		elif view_jelly:
-			status.text = "JELLY LOCKED - HARD CLEAR L%d" % Skins.jelly_level(id)
+			# i18n: {level} = the level number to clear on hard mode; status line, max 300px, 1 line
+			status.text = Loc.t("skins.locked_jelly", "JELLY LOCKED - HARD CLEAR L{level}", {level = Skins.jelly_level(id)})
 		elif id == Skins.RAINBOW:
-			status.text = "LOCKED - FIND EVERY COIN (%d/%d)" % [Progress.coins_earned(), Levels.total_coins()]
+			# i18n: {have}/{count} = coins found / in the game; status line, max 300px, 1 line
+			status.text = Loc.n("skins.locked_coins", "LOCKED - FIND EVERY COIN ({have}/{count})", "LOCKED - FIND EVERY COIN ({have}/{count})", Levels.total_coins(), {have = Progress.coins_earned()})
 		elif id == Skins.CUSTOM:
-			status.text = "LOCKED - BEAT ALL %d LEVELS" % Levels.COUNT
+			# i18n: {count} = number of levels (10); status line, max 300px, 1 line
+			status.text = Loc.n("skins.locked_levels", "LOCKED - BEAT ALL {count} LEVELS", "LOCKED - BEAT ALL {count} LEVELS", Levels.COUNT)
 		else:
-			status.text = "LOCKED - CLEAR LEVEL %d" % Skins.unlock_level(id)
+			# i18n: {level} = a level number; status line, max 300px, 1 line
+			status.text = Loc.t("skins.locked_level", "LOCKED - CLEAR LEVEL {level}", {level = Skins.unlock_level(id)})
 	else:
-		status.text = Skins.display_name(id) + ("  (SELECTED)" if worn_here and id == Progress.selected_skin else "")
+		if worn_here and id == Progress.selected_skin:
+			# i18n: {name} = the skin's name; status line, max 300px, 1 line. The two spaces are spacing.
+			status.text = Loc.t("skins.selected", "{name}  (SELECTED)", {name = Skins.display_name(id)})
+		else:
+			status.text = Skins.display_name(id)
 	for tile_id: String in tiles:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
 		UIKit.set_selected(tiles[tile_id], selected)
-	jelly_button.text = "JELLY: ON" if view_jelly else "JELLY: OFF"
-	_rule.text = JELLY_RULE if view_jelly else SKINS_RULE
+	# i18n: max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
+	jelly_button.text = Loc.t("skins.jelly.on", "JELLY: ON") if view_jelly else Loc.t("skins.jelly.off", "JELLY: OFF")
+	_rule.text = rule_text("jelly" if view_jelly else "skins")
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
 	custom_panel.visible = custom_ready and page == "skins" and (focus_id == "" or focus_id == Skins.CUSTOM)
@@ -368,9 +402,14 @@ func _refresh(focus_id := "") -> void:
 func _refresh_hats(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_hat
 	if Progress.is_hat_unlocked(id):
-		status.text = Hats.display_name(id) + ("  (WEARING)" if id == Progress.selected_hat else "")
+		if id == Progress.selected_hat:
+			# i18n: {name} = the hat's name; status line, max 300px, 1 line. The two spaces are spacing.
+			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Hats.display_name(id)})
+		else:
+			status.text = Hats.display_name(id)
 	else:
-		status.text = "LOCKED - WIN IT ON THE HAT WHEEL"
+		# i18n: status line, max 300px, 1 line
+		status.text = Loc.t("skins.locked_hat", "LOCKED - WIN IT ON THE HAT WHEEL")
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		UIKit.set_selected(tile, tile_id == Progress.selected_hat)

@@ -201,10 +201,12 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	var price := make_label("", FONT, price_tint)
 	row.add_child(price)
 	row.add_child(make_icon("ticket", Color.WHITE))
-	var buy := make_button("BUY", on_buy, Vector2(48, BUTTON_H))
+	# i18n: max 40px (button 48 wide, 4 px margins), 1 line
+	var buy := make_button(Loc.t("common.buy", "BUY"), on_buy, Vector2(48, BUTTON_H))
 	buy.position = Vector2(20, 36)
 	panel.add_child(buy)
-	var back := make_button("BACK", on_back, Vector2(48, BUTTON_H))
+	# i18n: max 40px, 1 line
+	var back := make_button(Loc.t("common.back", "BACK"), on_back, Vector2(48, BUTTON_H))
 	back.position = Vector2(buy.position.x + 48 + GAP_XL, 36)
 	panel.add_child(back)
 	return {blocker = blocker, panel = panel, label = label, price = price, buy = buy, back = back}
@@ -341,7 +343,8 @@ static func make_button(text: String, on_press: Callable, min_size := Vector2(0,
 ## Bottom-left BACK button that returns to the hub (BACK_SIZE at EDGE, BOTTOM_ROW_Y on every screen).
 static func add_back_button(root: Control, on_press := Callable()) -> Button:
 	var press := on_press if on_press.is_valid() else func() -> void: go(root.get_tree(), HUB_SCENE)
-	var button := make_button("BACK", press, BACK_SIZE)
+	# i18n: max 32px (BACK_SIZE 40 wide, 4 px margins), 1 line; on every screen
+	var button := make_button(Loc.t("common.back", "BACK"), press, BACK_SIZE)
 	root.add_child(button)
 	place_bottom_row(button, -1)
 	return button
@@ -446,6 +449,15 @@ static func unlock_focus(saved: Dictionary) -> void:
 	saved.clear()
 
 
+## The slider width that makes a VOLUME box `total` px wide: the box is 6 + label + 6 + slider + 6
+## (margins and separation = 18 px), the label measured in `node`'s theme font so a longer
+## translation takes its room from the slider, not from the box.
+static func volume_slider_width(node: Control, total: float) -> float:
+	var font: Font = node.get_theme_font("font", "Label")
+	var label_w := font.get_string_size(Loc.t("settings.volume", "VOLUME"), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT).x
+	return total - 18.0 - ceilf(label_w)
+
+
 ## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level),
 ## inside a goo-framed box like a button's (the slider is the box's "slider" meta).
 static func make_volume_slider(width := 90.0) -> PanelContainer:
@@ -460,7 +472,8 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	var row := HBoxContainer.new()
 	box.add_child(row)
 	row.add_theme_constant_override("separation", 6)
-	var label := make_label("VOLUME", FONT, TEXT_DIM)
+	# i18n: max 60px, 1 line (the slider shrinks to fit: Controls measures it)
+	var label := make_label(Loc.t("settings.volume", "VOLUME"), FONT, TEXT_DIM)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var slider := HSlider.new()

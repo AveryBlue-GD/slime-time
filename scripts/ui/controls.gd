@@ -6,11 +6,28 @@ extends Control
 ## RESET PROGRESS, which asks for a CONFIRM before wiping the save.
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
-## What the SAVE CODE panel says about a code from an older build (it never loads).
+## What the SAVE CODE panel says about a code from an older build (it never loads). These three are
+## the English source texts (the tests compare against them, gate off); the screen shows them through
+## `old_code_message()` / `copied_message()` / `copy_by_hand_message()`.
 const OLD_CODE_MESSAGE := "THAT CODE IS FROM AN OLD VERSION"
 const COPIED_MESSAGE := "COPIED! KEEP IT SOMEWHERE SAFE"
 ## Web only, when the browser refuses to copy: the code is shown in the browser's own prompt.
 const COPY_BY_HAND_MESSAGE := "COPY THE CODE FROM THE POP-UP"
+
+static func old_code_message() -> String:
+	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	return Loc.t("savecode.old_version", "THAT CODE IS FROM AN OLD VERSION")
+
+
+static func copied_message() -> String:
+	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	return Loc.t("savecode.copied", "COPIED! KEEP IT SOMEWHERE SAFE")
+
+
+static func copy_by_hand_message() -> String:
+	# i18n: status line in the SAVE CODE panel (web, browser refused to copy), max 260px, 1 line
+	return Loc.t("savecode.copy_by_hand", "COPY THE CODE FROM THE POP-UP")
+
 
 ## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
 ## CONTROLS, SAVE CODE. BACK bottom left, the destructive RESET PROGRESS bottom right.
@@ -21,8 +38,8 @@ const FIRST_ROW := 38
 const ROW_STEP := 20
 ## RESET PROGRESS on the bottom row, mirroring BACK (its text + the 4 px margins, even).
 const RESET_SIZE := Vector2(92, UIKit.BUTTON_H)
-## The VOLUME box is 6 + "VOLUME" + 6 + slider + 6 wide, which must equal COL_W (as in the pause menu).
-const SLIDER_W := COL_W - 54
+## The VOLUME box is 6 + label + 6 + slider + 6 wide, which must equal COL_W: the slider width is
+## UIKit.volume_slider_width (measured from the translated label).
 
 var sound_button: Button
 var volume_slider: HSlider
@@ -58,11 +75,12 @@ var _focus_lock := {}
 
 
 func _ready() -> void:
-	UIKit.setup_screen(self, "SETTINGS")
-	_section("OPTIONS", COL_L, FIRST_ROW - 11)
-	_section("MORE", COL_R, FIRST_ROW - 11)
+	UIKit.setup_screen(self, Loc.t("settings.title", "SETTINGS"))  # i18n: max 296px, 16 px font
+	# i18n: column headings, max 120px, 1 line
+	_section(Loc.t("settings.options", "OPTIONS"), COL_L, FIRST_ROW - 11)
+	_section(Loc.t("settings.more", "MORE"), COL_R, FIRST_ROW - 11)
 	sound_button = _column_button(_cell(0, 0), _toggle_sound)
-	var volume_row := UIKit.make_volume_slider(SLIDER_W)
+	var volume_row := UIKit.make_volume_slider(UIKit.volume_slider_width(self, COL_W))
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
 	volume_row.position = _cell(0, 1)
 	volume_row.custom_minimum_size = Vector2(COL_W, UIKit.BUTTON_H)
@@ -75,11 +93,13 @@ func _ready() -> void:
 	_refresh_sound()
 	_refresh_display_options()
 
-	controls_button = _column_button(_cell(1, 1), _open_controls, "CONTROLS")
-	save_code_button = _column_button(_cell(1, 2), _open_codes, "SAVE CODE")
+	# i18n: column buttons, max 112px (button 120 wide, 4 px margins), 1 line
+	controls_button = _column_button(_cell(1, 1), _open_controls, Loc.t("settings.controls", "CONTROLS"))
+	save_code_button = _column_button(_cell(1, 2), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
-	reset_button = UIKit.make_button("RESET PROGRESS", _ask_reset, RESET_SIZE)
+	# i18n: max 84px (RESET_SIZE 92 wide), 1 line
+	reset_button = UIKit.make_button(Loc.t("settings.reset", "RESET PROGRESS"), _ask_reset, RESET_SIZE)
 	add_child(reset_button)
 	UIKit.place_bottom_row(reset_button, 1)
 	sound_button.grab_focus()
@@ -123,32 +143,39 @@ func _build_code_panel() -> void:
 	code_panel.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(code_panel, Rect2(12, 14, 296, 150))
-	_panel_label(code_panel, UIKit.make_label("SAVE CODE", UIKit.FONT_BIG, UIKit.GOLD), 20, 40)
+	# i18n: panel title, max 270px, 16 px font
+	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.title", "SAVE CODE"), UIKit.FONT_BIG, UIKit.GOLD), 20, 40)
 	# Each line sits one line pitch (12) over the row it describes; 10 px between the two sections.
-	_panel_label(code_panel, UIKit.make_label("COPY THIS CODE TO BACK UP YOUR PROGRESS", UIKit.FONT, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
+	# i18n: max 270px, 1 line
+	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.copy_hint", "COPY THIS CODE TO BACK UP YOUR PROGRESS"), UIKit.FONT, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
 	code_out = _code_box(true)
 	code_out.position = Vector2(24, 58)
-	copy_button = UIKit.make_button("COPY", _copy_code, Vector2(64, UIKit.BUTTON_H))
+	# i18n: SAVE CODE panel buttons (COPY, PASTE, LOAD, CLOSE), max 56px (64 wide, 4 px margins), 1 line
+	copy_button = UIKit.make_button(Loc.t("savecode.copy", "COPY"), _copy_code, Vector2(64, UIKit.BUTTON_H))
 	copy_button.position = Vector2(232, 58)
 	code_panel.add_child(copy_button)
-	_panel_label(code_panel, UIKit.make_label("TO LOAD A SAVE, PASTE ITS CODE HERE", UIKit.FONT, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
+	# i18n: max 270px, 1 line
+	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.paste_hint", "TO LOAD A SAVE, PASTE ITS CODE HERE"), UIKit.FONT, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
 	code_in = _code_box(false)
 	code_in.position = Vector2(24, 93)
 	code_in.custom_minimum_size = Vector2(136, UIKit.BUTTON_H)  # (before size: a size under the old minimum won't stick)
 	code_in.size = Vector2(136, UIKit.BUTTON_H)
-	paste_button = UIKit.make_button("PASTE", _paste_code, Vector2(64, UIKit.BUTTON_H))
+	# i18n: max 56px, 1 line
+	paste_button = UIKit.make_button(Loc.t("savecode.paste", "PASTE"), _paste_code, Vector2(64, UIKit.BUTTON_H))
 	paste_button.position = Vector2(164, 93)
 	code_panel.add_child(paste_button)
 	code_in.placeholder_text = Progress.SAVE_CODE_PREFIX + "..."
 	code_in.text_changed.connect(func(_text: String) -> void:
 		load_armed = false
 		code_status.text = "")
-	load_button = UIKit.make_button("LOAD", _load_code, Vector2(64, UIKit.BUTTON_H))
+	# i18n: max 56px, 1 line
+	load_button = UIKit.make_button(Loc.t("savecode.load", "LOAD"), _load_code, Vector2(64, UIKit.BUTTON_H))
 	load_button.position = Vector2(232, 93)
 	code_panel.add_child(load_button)
 	code_status = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
 	_panel_label(code_panel, code_status, 114, 124)
-	var close := UIKit.make_button("CLOSE", _close_codes, Vector2(64, UIKit.BUTTON_H))
+	# i18n: max 56px, 1 line
+	var close := UIKit.make_button(Loc.t("savecode.close", "CLOSE"), _close_codes, Vector2(64, UIKit.BUTTON_H))
 	close.position = Vector2(128, 140)
 	code_panel.add_child(close)
 
@@ -205,22 +232,26 @@ func _paste_code() -> void:
 
 
 func _web_paste_by_hand() -> void:
-	var text = JavaScriptBridge.get_interface("window").prompt("Paste your Slime Time save code:", "")
+	var text = JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_paste", "Paste your Slime Time save code:"), "")  # i18n: browser dialog, mixed case, any width
 	if text is String and text.strip_edges() != "":
 		_set_pasted(text)
 	else:
-		code_status.text = "CLICK THE BOX AND PRESS %s" % ("CMD+V" if OS.has_feature("web_macos") or OS.has_feature("web_ios") else "CTRL+V")
+		# i18n: {keys} = CMD+V or CTRL+V; status line, max 260px, 1 line
+		var keys := "CMD+V" if OS.has_feature("web_macos") or OS.has_feature("web_ios") else "CTRL+V"
+		code_status.text = Loc.t("savecode.click_box", "CLICK THE BOX AND PRESS {keys}", {keys = keys})
 
 
 func _set_pasted(text: String) -> void:
 	text = text.strip_edges()
 	if text == "":
-		code_status.text = "NOTHING TO PASTE - COPY A CODE FIRST"
+		# i18n: status line, max 260px, 1 line
+		code_status.text = Loc.t("savecode.nothing_to_paste", "NOTHING TO PASTE - COPY A CODE FIRST")
 		return
 	code_in.text = text
 	code_in.caret_column = text.length()
 	load_armed = false
-	code_status.text = "PASTED - PRESS LOAD" if Progress.read_code(text) != null else _bad_code_message(text)
+	# i18n: status line, max 260px, 1 line
+	code_status.text = Loc.t("savecode.pasted", "PASTED - PRESS LOAD") if Progress.read_code(text) != null else _bad_code_message(text)
 	load_button.grab_focus()
 
 
@@ -275,7 +306,7 @@ func _copy_code() -> void:
 		_web_copy(code_out.text)
 		return
 	DisplayServer.clipboard_set(code_out.text)
-	code_status.text = COPIED_MESSAGE
+	code_status.text = copied_message()
 
 
 ## Copying in a browser. On itch the game runs in a cross-origin iframe without the
@@ -286,20 +317,20 @@ func _copy_code() -> void:
 ## the browser's own prompt shows the code selected, ready to copy by hand.
 func _web_copy(text: String) -> void:
 	if JavaScriptBridge.eval(web_copy_js(text), true):
-		code_status.text = COPIED_MESSAGE
+		code_status.text = copied_message()
 		return
 	var clipboard = JavaScriptBridge.get_interface("navigator").clipboard
 	if clipboard == null or not clipboard.writeText:
 		_web_copy_by_hand(text)
 		return
-	_web_copy_done = JavaScriptBridge.create_callback(func(_args: Array) -> void: code_status.text = COPIED_MESSAGE)
+	_web_copy_done = JavaScriptBridge.create_callback(func(_args: Array) -> void: code_status.text = copied_message())
 	_web_copy_failed = JavaScriptBridge.create_callback(func(_args: Array) -> void: _web_copy_by_hand(text))
 	clipboard.writeText(text).then(_web_copy_done).catch(_web_copy_failed)
 
 
 func _web_copy_by_hand(text: String) -> void:
-	code_status.text = COPY_BY_HAND_MESSAGE
-	JavaScriptBridge.get_interface("window").prompt("Copy your Slime Time save code:", text)
+	code_status.text = copy_by_hand_message()
+	JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_copy", "Copy your Slime Time save code:"), text)  # i18n: browser dialog, mixed case, any width
 
 
 ## The script `_web_copy` runs: copies `text` through a hidden, selected text box and gives the
@@ -332,7 +363,8 @@ func _load_code() -> void:
 		return
 	if not load_armed:
 		load_armed = true
-		code_status.text = "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"
+		# i18n: status line, max 260px, 1 line
+		code_status.text = Loc.t("savecode.replaces", "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN")
 		return
 	Progress.load_code(code_in.text)
 	UIKit.go(get_tree(), UIKit.TITLE_SCENE)  # start fresh with the loaded save
@@ -341,7 +373,10 @@ func _load_code() -> void:
 ## Why a code won't load: one from an older version of the game (progress from before the public
 ## release never carries over) or a broken / cut-off one.
 func _bad_code_message(code: String) -> String:
-	return OLD_CODE_MESSAGE if Progress.is_old_code(code) else "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
+	if Progress.is_old_code(code):
+		return old_code_message()
+	# i18n: status line in the SAVE CODE panel, max 260px, 1 line
+	return Loc.t("savecode.bad_code", "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE")
 
 
 ## The "are you sure?" panel for RESET PROGRESS: nothing is wiped until CONFIRM is clicked.
@@ -356,12 +391,15 @@ func _build_reset_confirm() -> void:
 	reset_confirm.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(reset_confirm, Rect2(24, 48, 272, 82))
-	_centered_label(UIKit.make_label("ERASE ALL PROGRESS?", UIKit.FONT_BIG, UIKit.GOLD), 54, 74)
-	_centered_label(UIKit.make_label("LEVELS, RECORDS, COINS, UPGRADES AND\nSKINS WILL BE GONE FOR GOOD", UIKit.FONT, UIKit.TEXT_DIM), 78, 98)
-	confirm_button = UIKit.make_button("CONFIRM", _reset, Vector2(70, UIKit.BUTTON_H))
+	# i18n: max 256px, 16 px font
+	_centered_label(UIKit.make_label(Loc.t("reset.title", "ERASE ALL PROGRESS?"), UIKit.FONT_BIG, UIKit.GOLD), 54, 74)
+	# i18n: two lines, each max 256px
+	_centered_label(UIKit.make_label(Loc.lines([Loc.t("reset.body.1", "LEVELS, RECORDS, COINS, UPGRADES AND"), Loc.t("reset.body.2", "SKINS WILL BE GONE FOR GOOD")]), UIKit.FONT, UIKit.TEXT_DIM), 78, 98)
+	# i18n: reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
+	confirm_button = UIKit.make_button(Loc.t("reset.confirm", "CONFIRM"), _reset, Vector2(70, UIKit.BUTTON_H))
 	confirm_button.position = Vector2(84, 108)
 	reset_confirm.add_child(confirm_button)
-	cancel_button = UIKit.make_button("CANCEL", _cancel_reset, Vector2(70, UIKit.BUTTON_H))
+	cancel_button = UIKit.make_button(Loc.t("common.cancel", "CANCEL"), _cancel_reset, Vector2(70, UIKit.BUTTON_H))
 	cancel_button.position = Vector2(confirm_button.position.x + 70 + UIKit.GAP_XL, 108)  # 166
 	reset_confirm.add_child(cancel_button)
 
@@ -393,7 +431,11 @@ func _reset() -> void:
 
 ## Keeps the fullscreen label right whether it was toggled here or with F11.
 func _process(_delta: float) -> void:
-	fullscreen_button.text = "FULLSCREEN: " + ("ON" if Progress.is_fullscreen() else "OFF")
+	# i18n: max 112px, 1 line; the two states are whole strings
+	if Progress.is_fullscreen():
+		fullscreen_button.text = Loc.t("settings.fullscreen.on", "FULLSCREEN: ON")
+	else:
+		fullscreen_button.text = Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF")
 
 
 func _toggle_sound() -> void:
@@ -415,12 +457,26 @@ func _cycle_fog() -> void:
 
 
 func _refresh_display_options() -> void:
-	motion_button.text = "MOTION: " + ("LESS" if Progress.reduce_motion else "FULL")
-	fog_button.text = "FOG: " + ["DARK", "NORMAL", "BRIGHT"][Progress.fog_brightness]
+	# i18n: max 112px, 1 line; every state is a whole string
+	if Progress.reduce_motion:
+		motion_button.text = Loc.t("settings.motion.less", "MOTION: LESS")
+	else:
+		motion_button.text = Loc.t("settings.motion.full", "MOTION: FULL")
+	match Progress.fog_brightness:
+		0:
+			fog_button.text = Loc.t("settings.fog.dark", "FOG: DARK")
+		1:
+			fog_button.text = Loc.t("settings.fog.normal", "FOG: NORMAL")
+		_:
+			fog_button.text = Loc.t("settings.fog.bright", "FOG: BRIGHT")
 
 
 func _refresh_sound() -> void:
-	sound_button.text = "SOUND: " + ("ON" if Progress.sound_on else "OFF")
+	# i18n: max 112px, 1 line; the two states are whole strings
+	if Progress.sound_on:
+		sound_button.text = Loc.t("settings.sound.on", "SOUND: ON")
+	else:
+		sound_button.text = Loc.t("settings.sound.off", "SOUND: OFF")
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -44,7 +44,8 @@ func _ready() -> void:
 	dim.color = Color(UIKit.BG, 0.75)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
-	var title := UIKit.make_label("PAUSED", UIKit.FONT_BIG, UIKit.GOLD)
+	# i18n: max 110px, 16 px font
+	var title := UIKit.make_label(Loc.t("pause.title", "PAUSED"), UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
 	title.size = Vector2(320, 20)
@@ -57,16 +58,16 @@ func _ready() -> void:
 	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(menu)
 	sound_button = UIKit.make_button("", _toggle_sound)
-	restart_button = UIKit.make_button("RESTART", _restart)
+	restart_button = UIKit.make_button(Loc.t("pause.restart", "RESTART"), _restart)
 	buttons = [
-		UIKit.make_button("RESUME", resume),
+		UIKit.make_button(Loc.t("pause.resume", "RESUME"), resume),
 		restart_button,
 		sound_button,
-		UIKit.make_button("QUIT TO HUB", _quit),
+		UIKit.make_button(Loc.t("pause.quit_hub", "QUIT TO HUB"), _quit),
 	]
 	for button in buttons:
 		menu.add_child(button)
-	volume_row = UIKit.make_volume_slider(46.0)  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
+	volume_row = UIKit.make_volume_slider(UIKit.volume_slider_width(root, COLUMN_W))  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	seed_button = UIKit.make_button("", _edit_seed)
@@ -75,7 +76,7 @@ func _ready() -> void:
 	seed_edit = LineEdit.new()
 	seed_edit.custom_minimum_size = Vector2(100, UIKit.BUTTON_H)
 	seed_edit.max_length = 13
-	seed_edit.placeholder_text = "NEW SEED"
+	seed_edit.placeholder_text = Loc.t("pause.new_seed", "NEW SEED")  # i18n: max 92px, 1 line
 	seed_edit.add_theme_font_size_override("font_size", UIKit.FONT)
 	seed_edit.material = UIKit.text_material()
 	UIKit.add_touch_target(seed_edit)
@@ -148,7 +149,8 @@ func open() -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if descent and progress and progress.descent_active():
 		descent_note.visible = true
-		descent_note.text = "QUITTING CASHES OUT THE POT" if game.won else "QUITTING BANKS HALF THE POT"
+		# i18n: max 300px, 1 line, under the panel
+		descent_note.text = Loc.t("pause.quit_cashes", "QUITTING CASHES OUT THE POT") if game.won else Loc.t("pause.quit_banks", "QUITTING BANKS HALF THE POT")
 	if random:
 		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true
@@ -185,7 +187,8 @@ func _refocus() -> void:
 ## button's 4 px text margins (a 10-digit seed: "SEED 4294967295-7" is 102 px).
 func seed_text(code: String) -> String:
 	var font: Font = seed_button.get_theme_font("font")
-	var text := "SEED " + code
+	# i18n: {code} = a seed code like 123-4 (up to 17 chars); max 92px, else the code alone is shown
+	var text := Loc.t("pause.seed", "SEED {code}", {code = code})
 	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > COLUMN_W - 8:
 		return code
 	return text
@@ -258,7 +261,11 @@ func _toggle_sound() -> void:
 
 func _refresh_sound() -> void:
 	var progress := get_node_or_null("/root/Progress")
-	sound_button.text = "SOUND: " + ("ON" if not progress or progress.sound_on else "OFF")
+	# i18n: max 92px, 1 line; the two states are whole strings
+	if not progress or progress.sound_on:
+		sound_button.text = Loc.t("settings.sound.on", "SOUND: ON")
+	else:
+		sound_button.text = Loc.t("settings.sound.off", "SOUND: OFF")
 
 
 func _unhandled_input(event: InputEvent) -> void:

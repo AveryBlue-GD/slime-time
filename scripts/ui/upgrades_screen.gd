@@ -38,18 +38,12 @@ const PIPS_RIGHT := 222
 const MINUS_X := 226
 const PLUS_X := 246
 const COST_X := 266
-const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
 ## The ABILITIES page's hint: its keys (read from the bindings; the pad buttons after pad input, the on-screen
 ## buttons on touch) and where they work (randomizer mazes and Descent only). See ability_hint.
-const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES"
-const ABILITIES_HINT_PAD := "PAD %s %s %s - RANDOM MAZES"
-const ABILITIES_HINT_TOUCH := "TAP THEIR BUTTONS - RANDOM MAZES"
-const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
 ## Presses of a buy closer together than this are ignored (a double tap). Timed on the engine's
 ## clock (a SceneTreeTimer), so it plays out the same in fixed-fps runs on a loaded machine.
 const BUY_GUARD_TIME := 0.3
 const PREVIEW_TIME := 1.0
-const TICKETS_LOCKED := "EARN TICKETS IN THE RANDOMIZER FIRST"
 ## The tab the next opening shows ("coins", "abilities" or, with the workshop on, "tickets"), for that one opening (demos and tests set
 ## it); the hub's cauldron always opens on COINS.
 static var open_tab := "coins"
@@ -95,7 +89,7 @@ func _ready() -> void:
 	var workshop_on := Economy.workshop_on()
 	var abilities_on := Economy.abilities_on()
 	# (three tabs need the title's room)
-	skin_text = UIKit.setup_screen(self, "" if workshop_on and abilities_on else "UPGRADES")
+	skin_text = UIKit.setup_screen(self, "" if workshop_on and abilities_on else Loc.t("upgrades.title", "UPGRADES"))  # i18n: title max 200px, 16 px font
 	var coin_pod := PanelContainer.new()
 	coin_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
 	add_child(coin_pod)
@@ -117,15 +111,18 @@ func _ready() -> void:
 
 	# The tabs, top left (mirroring the pod).
 	if workshop_on or abilities_on:  # (one page only with both switched off: no tab bar)
-		coins_tab = UIKit.make_button("COINS", func() -> void: show_page("coins"), Vector2(40, UIKit.TAB_H))
+		# i18n: tab, max 32px (40 wide, 4 px margins), 1 line
+		coins_tab = UIKit.make_button(Loc.t("upgrades.tab_coins", "COINS"), func() -> void: show_page("coins"), Vector2(40, UIKit.TAB_H))
 		coins_tab.position = Vector2(4, 4)
 		add_child(coins_tab)
 	if abilities_on:
-		abilities_tab = UIKit.make_button("TICKETS", func() -> void: show_page("abilities"), Vector2(52, UIKit.TAB_H))
+		# i18n: tab, max 44px (52 wide, 4 px margins), 1 line
+		abilities_tab = UIKit.make_button(Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("abilities"), Vector2(52, UIKit.TAB_H))
 		abilities_tab.position = Vector2(46, 4)
 		add_child(abilities_tab)
 	if workshop_on:
-		tickets_tab = UIKit.make_button("TOOLS" if abilities_on else "TICKETS", func() -> void: show_page("tickets"),
+		# i18n: tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
+		tickets_tab = UIKit.make_button(Loc.t("upgrades.tab_tools", "TOOLS") if abilities_on else Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("tickets"),
 			Vector2(40 if abilities_on else 52, UIKit.TAB_H))
 		tickets_tab.position = Vector2(100 if abilities_on else 46, 4)
 		add_child(tickets_tab)
@@ -161,7 +158,7 @@ func _ready() -> void:
 	hint.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	back = UIKit.add_back_button(self)
 	if Progress.return_to_game:  # came here from a dry-up: go straight back into the level
-		back.text = "PLAY"
+		back.text = Loc.t("upgrades.play", "PLAY")  # i18n: replaces BACK, max 32px, 1 line
 		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
 		back.pressed.connect(_leave)
 	if workshop_on or abilities_on:
@@ -322,7 +319,8 @@ func _buy_workshop(id: String) -> void:
 	_confirm_id = id
 	_confirm_kind = "workshop"
 	var next_level: int = Progress.workshop_level(id) + 1
-	confirm_label.text = "BUY %s %d?" % [Workshop.display_name(id), next_level]
+	# i18n: {name} = an upgrade name, {level} = the level being bought; max 140px, 1 line
+	confirm_label.text = Loc.t("upgrades.buy_confirm", "BUY {name} {level}?", {name = Workshop.display_name(id), level = next_level})
 	confirm_price.text = str(Progress.workshop_cost(id))
 	confirm.visible = true
 	_blocker.visible = true
@@ -339,7 +337,8 @@ func _buy_ability(id: String) -> void:
 		return
 	_confirm_id = id
 	_confirm_kind = "ability"
-	confirm_label.text = "BUY %s %d?" % [Abilities.display_name(id), Progress.ability_level(id) + 1]
+	# i18n: {name} = an ability name, {level} = the level being bought; max 140px, 1 line
+	confirm_label.text = Loc.t("upgrades.buy_confirm", "BUY {name} {level}?", {name = Abilities.display_name(id), level = Progress.ability_level(id) + 1})
 	confirm_price.text = str(Progress.ability_cost(id))
 	confirm.visible = true
 	_blocker.visible = true
@@ -453,7 +452,7 @@ func _refresh() -> void:
 		var level: int = Progress.upgrade_level(id)
 		_color_pips(row.pips, level, skin)
 		var maxed := level >= Upgrades.max_level(id)
-		row.cost.text = "MAX" if maxed else "%d" % Upgrades.cost(id, level)
+		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else "%d" % Upgrades.cost(id, level)
 		row.plus.disabled = maxed or Progress.coins() < Upgrades.cost(id, level)
 		row.minus.disabled = level <= 0
 	var open: bool = Progress.workshop_open()
@@ -462,7 +461,7 @@ func _refresh() -> void:
 		var level: int = Progress.workshop_level(id)
 		_color_pips(row.pips, level, skin)
 		var maxed := level >= Workshop.max_level(id)
-		row.cost.text = "MAX" if maxed else "%d" % Progress.workshop_cost(id)
+		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else "%d" % Progress.workshop_cost(id)
 		row.icon.visible = not maxed
 		row.plus.disabled = not Progress.can_buy_workshop(id)
 		row.about.text = Workshop.effect_text(id, level)
@@ -473,16 +472,32 @@ func _refresh() -> void:
 		var level: int = Progress.ability_level(id)
 		_color_pips(row.pips, level, skin)
 		var maxed := level >= Abilities.max_level(id)
-		row.cost.text = "MAX" if maxed else "%d" % Progress.ability_cost(id)
+		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else "%d" % Progress.ability_cost(id)
 		row.ticket.visible = not maxed
 		row.plus.disabled = not Progress.can_buy_ability(id)
 		var shade := Color.WHITE if abilities_open else Color(1, 1, 1, 0.5)
 		row.icon.modulate = shade
 		row.tag.modulate = shade
 	if page == "abilities":
-		hint.text = ability_hint() if abilities_open else TICKETS_LOCKED
+		hint.text = ability_hint() if abilities_open else tickets_locked_text()
+	elif tickets:
+		hint.text = tickets_hint_text() if open else tickets_locked_text()
 	else:
-		hint.text = (TICKETS_HINT if open else TICKETS_LOCKED) if tickets else COINS_HINT
+		# i18n: two lines, each max 300px
+		hint.text = Loc.lines([
+			Loc.t("upgrades.hint_coins.1", "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"),
+			Loc.t("upgrades.hint_coins.2", "TAKE COINS BACK OUT ANY TIME"),
+		])
+
+
+static func tickets_hint_text() -> String:
+	# i18n: bottom hint, max 300px, 1 line
+	return Loc.t("upgrades.hint_tickets", "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE")
+
+
+static func tickets_locked_text() -> String:
+	# i18n: bottom hint, max 300px, 1 line
+	return Loc.t("upgrades.hint_tickets_locked", "EARN TICKETS IN THE RANDOMIZER FIRST")
 
 
 ## The ABILITIES hint for the device in use (Platform.last_input): keys, pad buttons or the touch buttons.
@@ -492,10 +507,13 @@ static func ability_hint() -> String:
 		var action := Abilities.action(id)
 		keys.append(Platform.prompt_for(action, Progress.key_name(Progress.bindings.get(action, 0))))
 	if Platform.using_pad():
-		return ABILITIES_HINT_PAD % keys
+		# i18n: {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
+		return Loc.t("upgrades.hint_pad", "PAD {a} {b} {c} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2]})
 	if UIKit.touch_active() or Platform.is_mobile_native():
-		return ABILITIES_HINT_TOUCH
-	return ABILITIES_HINT % keys
+		# i18n: bottom hint, max 300px, 1 line
+		return Loc.t("upgrades.hint_touch", "TAP THEIR BUTTONS - RANDOM MAZES")
+	# i18n: {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
+	return Loc.t("upgrades.hint_keys", "KEYS {a} {b} {c} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2]})
 
 
 func _color_pips(pips: Array, level: int, skin: Color) -> void:
