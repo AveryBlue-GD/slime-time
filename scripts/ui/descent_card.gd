@@ -17,15 +17,13 @@ extends CanvasLayer
 const TILE := Vector2(96, 78)
 const TILE_Y := 47.0
 const TILE_XS: Array[float] = [10.0, 112.0, 214.0]
-## The buttons: 13 px tall on the result rows' line (UIKit.CHOICE_Y); the card's two take the tile
-## width (one under each outer tile), the summary's two are the standard choice row.
-const BUTTON_Y := float(UIKit.CHOICE_Y)
+## The buttons: button_h() tall on the result rows' line (UIKit.choice_y()); the card's two take the
+## tile width (one under each outer tile), the summary's two are the standard choice row.
 const BUTTON := Vector2(96, UIKit.BUTTON_H)
-## The boon tiles' content (icon, name, two lines, HAVE n): its top row, and lower when no tile in
-## the row has a HAVE line (then the three lines sit centered in the tile).
-const TILE_TOP := 7.0
-const TILE_TOP_SHORT := 13.0
 const DIM := Color(0.06, 0.06, 0.1, 0.82)
+## A tile face's side room (BUTTON_TEXT_PAD), and the room the 1x icon takes before the name (8 + GAP_S).
+const FACE_PAD := 4.0
+const INLINE_ICON := 11.0
 
 var game: Node
 var root: Control
@@ -49,6 +47,8 @@ var new_run_button: Button
 var hub_button: Button
 var _skin_text: SkinText
 var _group := ButtonGroup.new()
+## PICK ONE shows on the status line (until a pick) instead of over the tiles: a taller script.
+var _pick_in_status := false
 
 
 func _ready() -> void:
@@ -104,11 +104,11 @@ func _build_boons() -> void:
 		boons_root.add_child(tile)
 		tiles.append(tile)
 	status = _centered(boons_root, "", 8, UIKit.TEXT_DIM, 133.0)
-	cash_button = UIKit.make_button(Loc.t("descent.cash_out", "CASH OUT"), _on_cash_out, BUTTON)
-	cash_button.position = Vector2(TILE_XS[0], BUTTON_Y)
+	cash_button = UIKit.make_button(Loc.t("descent.cash_out", "CASH OUT"), _on_cash_out, Vector2(BUTTON.x, UIKit.button_h()))
+	cash_button.position = Vector2(TILE_XS[0], UIKit.choice_y())
 	boons_root.add_child(cash_button)
-	descend_button = UIKit.make_button(Loc.t("descent.descend", "DESCEND"), _on_descend, BUTTON)
-	descend_button.position = Vector2(TILE_XS[2], BUTTON_Y)
+	descend_button = UIKit.make_button(Loc.t("descent.descend", "DESCEND"), _on_descend, Vector2(BUTTON.x, UIKit.button_h()))
+	descend_button.position = Vector2(TILE_XS[2], UIKit.choice_y())
 	boons_root.add_child(descend_button)
 	# Focus: the tiles in a row; down from any tile to the buttons; up back to the tiles.
 	for i in tiles.size():
@@ -156,19 +156,11 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 			pot_label.text = Loc.t("descent.pot_slime", "POT {pot} (+{gain})  PAYS 1", pot_args)
 		_:
 			pot_label.text = Loc.t("descent.pot", "POT {pot} (+{gain})", pot_args)
-	var top := TILE_TOP_SHORT
-	for id in tile_ids:
-		if _have_note(id, run.get("boons", {})) != "":
-			top = TILE_TOP
-	for i in tiles.size():
-		var tile := tiles[i]
-		tile.button_pressed = false
-		for child in tile.get_children():
-			child.queue_free()
-		tile.visible = i < tile_ids.size()
-		if tile.visible:
-			_fill_tile(tile, tile_ids[i], run.get("boons", {}), top)
+	_fit_card_buttons()
+	_layout_boons(run.get("boons", {}))
 	status.text = ""
+	if _pick_in_status:
+		status.text = Loc.t("descent.pick_one", "PICK ONE")
 	_skin_text.recolor()
 	if not tiles.is_empty() and tiles[0].visible:
 		tiles[0].grab_focus()
@@ -176,19 +168,194 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 		descend_button.grab_focus()
 
 
-## A tile's face: the icon (2x), the name, two short lines and how many are held (stacking boons).
-func _fill_tile(tile: Button, id: String, held: Dictionary, top := TILE_TOP) -> void:
-	var icon := BoonIcons.make(id, 2)
-	icon.position = Vector2((TILE.x - 16) / 2.0, top)
-	tile.add_child(icon)
-	var name_label := UIKit.make_label(Descent.display_name(id), UIKit.FONT, UIKit.GOLD)
-	_span(tile, name_label, top + 21.0)
+## The boon card's rows from the top: the title, the meter / pot line, PICK ONE, the tiles, the status
+## line and the buttons (UIKit.choice_y(), ending on the choice rows' line). English: title 4, info 27,
+## PICK ONE 37, tiles 47 (78 tall), status 133, buttons 153. A taller script's lines take more room:
+## gaps of GAP_XS, PICK ONE shown on the status line until a pick, the tiles as tall as what is left.
+## Each tile's face: its content centred in the tile, every tile starting on the same row: the 2x icon
+## over the lines (English), or (when that is too tall) the 1x icon over them, or in front of the name
+## (the lines on dense_pitch()), and if even that is too tall the script's smaller font.
+func _layout_boons(held: Dictionary) -> void:
+	var tall := UIKit.tall_script()
+	var line := UIKit.line_h()
+	var box_h := maxi(10, line)
+	var gap := UIKit.GAP_XS if tall else 3
+	var title_h := UIKit.title_h()
+	var info_y := 4.0 + title_h + gap
+	_pick_in_status = tall
+	var tiles_y := info_y + line + gap if tall else TILE_Y
+	var buttons_y := float(UIKit.choice_y())
+	var status_y := minf(133.0, buttons_y - gap - line) if tall else minf(133.0, buttons_y - 4.0 - line)
+	var tile_h := status_y - gap - tiles_y if tall else TILE.y
+	_set_y(title, 4.0, title_h)
+	if meter_label.get_parent().position.y != info_y:
+		meter_label.get_parent().position.y = info_y
+		pot_label.get_parent().position.y = info_y
+	var pick := boons_root.get_node("PickHint") as Label
+	pick.visible = not _pick_in_status
+	_set_y(pick, info_y + 10.0, box_h)
+	_set_y(status, status_y, box_h)
+	# The faces: try each style until every tile's content fits its height.
+	var styles := ["icon over", "small icon over", "icon inline", "smaller"]
+	# (the slimy font's marks above and drips below must stay inside the tile; a taller script's line
+	# box holds its own)
+	var m := UIKit.metrics()
+	var ink := 0.0 if tall else float(m.get("ink_above", 0)) + float(m.get("ink_below", 0))
+	var style := ""
+	var font: Font = null
+	var content := 0.0
+	var best := {}
+	for each: String in styles:
+		if tall and each == "icon over":
+			continue  # (a taller script's four lines never fit under a 2x icon)
+		var each_font: Font = null
+		if each == "smaller":
+			var language: Node = get_node_or_null("/root/Language")
+			each_font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
+			if each_font == null:
+				continue
+		var h := 0.0
+		for id in tile_ids:
+			h = maxf(h, _face_h(id, held, each, each_font))
+		if best.is_empty() or h < best.h:
+			best = {style = each, font = each_font, h = h}
+		if h + ink <= tile_h:
+			best = {style = each, font = each_font, h = h}
+			break
+	style = best.style
+	font = best.font
+	content = best.h
+	var top := floorf((tile_h - content) / 2.0)
+	for i in tiles.size():
+		var tile := tiles[i]
+		tile.button_pressed = false
+		for child in tile.get_children():
+			child.queue_free()
+		tile.visible = i < tile_ids.size()
+		if tile.size.y != tile_h or tile.position.y != tiles_y:
+			tile.custom_minimum_size = Vector2(TILE.x, tile_h)
+			tile.size = tile.custom_minimum_size
+			tile.position.y = tiles_y
+		if tile.visible:
+			_fill_tile(tile, tile_ids[i], held, top, style, font)
+
+
+## Sets a label's top and height (only when they change: setting them shapes the text at once, and the
+## English card must make its RIDs in the same order as before).
+func _set_y(label: Label, y: float, h: float) -> void:
+	if label.position.y != y:
+		label.position.y = y
+	if label.size.y != h:
+		label.size.y = h
+
+
+## The face's lines: the name, the two short lines and HAVE n (if any).
+func _face_texts(id: String, held: Dictionary) -> Array[String]:
 	var lines: Array = Descent.about(id)
-	_span(tile, UIKit.make_label(lines[0], UIKit.FONT, UIKit.TEXT), top + 33.0)
-	_span(tile, UIKit.make_label(lines[1], UIKit.FONT, UIKit.TEXT), top + 45.0)
+	var out: Array[String] = [Descent.display_name(id), lines[0], lines[1]]
 	var note := _have_note(id, held)
 	if note != "":
-		_span(tile, UIKit.make_label(note, UIKit.FONT, UIKit.TEXT_DIM), top + 57.0)
+		out.append(note)
+	return out
+
+
+## How many lines `text` takes in a tile (two when it is wider than the tile's text room).
+func _lines_of(text: String, font: Font, first: bool, style: String) -> int:
+	var room := _text_room(first, style)
+	var w := UIKit.text_w(text, UIKit.FONT, font) if font else UIKit.text_w(text)
+	return 1 if w <= room else UIKit.wrapped_lines(text, room, UIKit.FONT, font)
+
+
+## The width a face's line may take (the name loses the inline icon's room).
+func _text_room(first: bool, style: String) -> float:
+	return TILE.x - 2 * FACE_PAD - (INLINE_ICON if first and _inline(style) else 0.0)
+
+
+func _inline(style: String) -> bool:
+	return style == "icon inline" or style == "smaller"
+
+
+## Line heights / pitch for a face style.
+func _face_metrics(style: String, font: Font) -> Vector2:
+	if style == "smaller" and font:
+		var h := font.get_height(UIKit.FONT)
+		return Vector2(h, h)
+	if style == "icon over":
+		return Vector2(UIKit.line_h(), UIKit.line_pitch())
+	return Vector2(UIKit.line_h(), UIKit.dense_pitch())
+
+
+## The room the icon takes above the lines: the 2x icon and a 5 px gap, the 1x icon and GAP_S, or none.
+func _icon_room(style: String) -> float:
+	return 21.0 if style == "icon over" else (8.0 + UIKit.GAP_S if style == "small icon over" else 0.0)
+
+
+## The height of a tile's content in `style` (English: 52 without HAVE, 64 with it).
+func _face_h(id: String, held: Dictionary, style: String, font: Font) -> float:
+	var m := _face_metrics(style, font)
+	var h := _icon_room(style)
+	var texts := _face_texts(id, held)
+	for i in texts.size():
+		var n := _lines_of(texts[i], font, i == 0, style)
+		h += n * m.x + (n - 1) * (m.y - m.x)
+		if i < texts.size() - 1:
+			h += m.y - m.x
+	return h
+
+
+## A tile's face from row `top`: the icon (2x or 1x over the lines, or 1x before the name), the name,
+## two short lines and how many are held (stacking boons), each centred, wrapped onto two lines if wider.
+func _fill_tile(tile: Button, id: String, held: Dictionary, top: float, style := "icon over", font: Font = null) -> void:
+	var m := _face_metrics(style, font)
+	var texts := _face_texts(id, held)
+	var y := top
+	if not _inline(style):
+		var scale := 2 if style == "icon over" else 1
+		var icon := BoonIcons.make(id, scale)
+		icon.position = Vector2((TILE.x - 8 * scale) / 2.0, top)
+		tile.add_child(icon)
+		y += _icon_room(style)
+	for i in texts.size():
+		var label := UIKit.make_label(texts[i], UIKit.FONT, [UIKit.GOLD, UIKit.TEXT, UIKit.TEXT, UIKit.TEXT_DIM][i])
+		if font:
+			label.add_theme_font_override("font", font)
+		var n := _lines_of(texts[i], font, i == 0, style)
+		var room := _text_room(i == 0, style)
+		if i == 0 and _inline(style):
+			# The 1x icon in front of the name (on its first line), the pair centred.
+			var w := minf(UIKit.text_w(texts[i], UIKit.FONT, font) if font else UIKit.text_w(texts[i]), room)
+			var x := floorf((TILE.x - INLINE_ICON - w) / 2.0)
+			var icon := BoonIcons.make(id, 1)
+			icon.position = Vector2(x, y + floorf((m.x - 8.0) / 2.0))
+			tile.add_child(icon)
+			_span(tile, label, y, n, m, Rect2(x + INLINE_ICON, 0, w, 0))
+		elif n > 1:
+			_span(tile, label, y, n, m, Rect2(FACE_PAD, 0, room, 0))
+		else:
+			_span(tile, label, y, n, m)
+		y += n * m.x + (n - 1) * (m.y - m.x) + (m.y - m.x)
+
+
+func _span(tile: Control, label: Label, y: float, lines := 1, m := Vector2(7, 12), span := Rect2()) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if lines > 1:  # (before it is in the tree: its minimum width is then never its one-line width)
+		label.autowrap_mode = UIKit.autowrap_mode()
+		label.add_theme_constant_override("line_spacing", int(m.y - m.x))
+	tile.add_child(label)  # (sized once in the tree: off it the label measures with the default font)
+	label.position = Vector2(span.position.x if span.size.x > 0 else 0.0, y)
+	var h := maxf(10, lines * m.x + (lines - 1) * (m.y - m.x)) if lines > 1 or m.x > 7 else 10.0
+	label.size = Vector2(span.size.x if span.size.x > 0 else TILE.x, h)
+
+
+## CASH OUT / DESCEND: under the outer tiles, 96 wide in English, equal widths from the longer text
+## (growing inward), button_h() tall on the choice rows' line.
+func _fit_card_buttons() -> void:
+	var widths := UIKit.tab_widths([cash_button.text, descend_button.text], int(BUTTON.x))
+	if widths[0] != int(cash_button.custom_minimum_size.x):
+		for b: Button in [cash_button, descend_button]:
+			b.custom_minimum_size = Vector2(widths[0], UIKit.button_h())
+			b.size = b.custom_minimum_size
+		descend_button.position.x = TILE_XS[2] + TILE.x - widths[0]
 
 
 ## "HAVE n/max" for a stacking boon (or "HAVE n" for an unlimited one already held), else "".
@@ -200,13 +367,6 @@ func _have_note(id: String, held: Dictionary) -> String:
 	elif top <= 0 and have > 0:
 		return Loc.t("descent.have", "HAVE {have}", {have = have})
 	return ""
-
-
-func _span(tile: Control, label: Label, y: float) -> void:
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tile.add_child(label)  # (sized once in the tree: off it the label measures with the default font)
-	label.position = Vector2(0, y)
-	label.size = Vector2(TILE.x, 10)
 
 
 func _on_tile(i: int) -> void:
@@ -244,16 +404,20 @@ func _build_summary() -> void:
 	summary_panel = UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))  # (fitted in show_summary)
 	summary_title = _centered(summary_root, Loc.t("descent.run_over", "RUN OVER"), 16, UIKit.GOLD, 8.0)
 	summary_lines = VBoxContainer.new()
-	summary_lines.add_theme_constant_override("separation", UIKit.LINE_SPACING)  # a 12 px line pitch
+	summary_lines.add_theme_constant_override("separation", UIKit.line_spacing())  # a line_pitch() pitch (12 in English)
 	summary_lines.position = Vector2(40, 38)
 	summary_lines.custom_minimum_size = Vector2(240, 0)
 	summary_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.add_child(summary_lines)
-	new_run_button = UIKit.make_button(Loc.t("descent.new_run", "NEW RUN"), _on_new_run, UIKit.CHOICE_SIZE)
-	new_run_button.position = Vector2(160 - UIKit.CHOICE_GAP / 2 - UIKit.CHOICE_SIZE.x, BUTTON_Y)
+	# NEW RUN / HUB: the choice row (CHOICE_SIZE in English; equal widths from the longer word, the
+	# pair centred CHOICE_GAP apart, its bottom edge on the choice rows' line).
+	var texts := [Loc.t("descent.new_run", "NEW RUN"), Loc.t("descent.hub", "HUB")]
+	var w: int = UIKit.tab_widths(texts, int(UIKit.CHOICE_SIZE.x))[0]
+	new_run_button = UIKit.make_button(texts[0], _on_new_run, Vector2(w, UIKit.button_h()))
+	new_run_button.position = Vector2(160 - UIKit.CHOICE_GAP / 2 - w, UIKit.choice_y())
 	summary_root.add_child(new_run_button)
-	hub_button = UIKit.make_button(Loc.t("descent.hub", "HUB"), _on_hub, UIKit.CHOICE_SIZE)
-	hub_button.position = Vector2(160 + UIKit.CHOICE_GAP / 2, BUTTON_Y)
+	hub_button = UIKit.make_button(texts[1], _on_hub, Vector2(w, UIKit.button_h()))
+	hub_button.position = Vector2(160 + UIKit.CHOICE_GAP / 2, UIKit.choice_y())
 	summary_root.add_child(hub_button)
 	for b: Button in [new_run_button, hub_button]:
 		var other: Button = hub_button if b == new_run_button else new_run_button
@@ -340,12 +504,13 @@ func _fit_summary() -> void:
 			continue
 		lines_height += child.get_combined_minimum_size().y
 		count += 1
-	lines_height += maxf(count - 1, 0) * UIKit.LINE_SPACING
+	lines_height += maxf(count - 1, 0) * UIKit.line_spacing()
 	var panel_h := UIKit.PANEL_PAD * 2 + lines_height
-	const TITLE_BLOCK := 26.0  # the 16 px title (14 rows), its 4 px drips and a 8 px gap
-	var block_top := floorf((BUTTON_Y - 4.0 - (TITLE_BLOCK + panel_h)) / 2.0)
+	# The title's box (16 px: 14 rows + 4 px drips + 2 shadow in English) and a 6 px gap: 26.
+	var title_block := UIKit.title_h() + 6.0
+	var block_top := floorf((UIKit.choice_y() - 4.0 - (title_block + panel_h)) / 2.0)
 	summary_title.position.y = block_top
-	summary_panel.position.y = block_top + TITLE_BLOCK
+	summary_panel.position.y = block_top + title_block
 	summary_panel.size.y = panel_h
 	summary_lines.position.y = summary_panel.position.y + UIKit.PANEL_PAD
 	summary_lines.size.y = 0
@@ -382,7 +547,7 @@ func _centered(parent: Control, text: String, font_size: int, color: Color, y: f
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(label)
 	label.position = Vector2(0, y)
-	label.size = Vector2(320, 20 if font_size == 16 else 10)
+	label.size = Vector2(320, UIKit.title_h() if font_size == 16 else maxi(10, UIKit.line_h()))
 	return label
 
 

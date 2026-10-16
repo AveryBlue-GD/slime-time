@@ -67,8 +67,18 @@ const POOL_SIZE := Vector2i(68, 32)
 const FLICKER := ["story", "maps", "upgrades"]
 const FPS := 6.0
 const PROMPT_Y := 156.0
+## The prompt's height in English (one 7 px line in the goo frame): its bottom edge is PROMPT_Y + this.
+const PROMPT_H := 18.0
 ## Where the coin bag's board sits on screen.
 const BOARD := Rect2(52, 8, 216, 164)
+## Its title's top and the room under the hint (inside the panel); the count column's box (English);
+## the gap between its two columns (when ten rows don't fit the height).
+const BOARD_TOP := 7.0
+const BOARD_BOTTOM := 12.0
+const BOARD_COUNT_W := 42.0
+const BOARD_COLUMN_GAP := 8.0
+## Two columns: their inset from the panel's sides.
+const BOARD_SIDE := 7.0
 ## The trapdoor's confirm panel.
 ## Both dialogs follow docs/ui-rules.md: content PANEL_PAD (8) inside the top and bottom edges,
 ## 13 px buttons, 12 px line pitch, centered on the screen.
@@ -77,6 +87,10 @@ const QUIT_PANEL := Rect2(80, 63, 160, 54)
 const PORTAL_PANEL := Rect2(70, 45, 180, 89)
 ## A saved DESCENT run's prompt (three lines, RESUME / QUIT RUN).
 const RESUME_PANEL := Rect2(80, 57, 160, 66)
+## The confirm panels' buttons: this far in from the panel's sides; the gap between the last line's
+## box and the buttons (4 px under the drips in English).
+const DIALOG_INSET := 16.0
+const DIALOG_GAP := 6.0
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
 ## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
@@ -131,11 +145,25 @@ var coin_board: Control
 var board_rows: Array[Label] = []
 var board_total: Label
 var board_hint: Label
+var board_panel: Panel
+var board_title: Label
+var board_numbers: Array[Label] = []
+var board_names: Array[Label] = []
+var board_icons: Array[TextureRect] = []
+## Where the board is in the current language (BOARD in English).
+var board_rect := BOARD
 ## The prize wheel overlay (WHEEL | SHOP).
 var hat_wheel: HatWheel
 ## The trapdoor's confirm panel (a dim layer, the panel, QUIT and BACK).
 var quit_menu: Control
 var quit_button: Button
+## Where the dialogs' panels are in the current language (QUIT_PANEL / PORTAL_PANEL / RESUME_PANEL in
+## English; wider or taller for a longer text or a taller script).
+var quit_rect := QUIT_PANEL
+var resume_rect := RESUME_PANEL
+var resume_panel: Panel
+var portal_panel: Panel
+var portal_title: Label
 var back_button: Button
 ## The portal's mode choice (upgrades v2 batch 3): RANDOM MAZE (the randomizer as before), DESCENT
 ## (a run of floors, Descent) with its best floor and today's paying runs, BACK. Esc = BACK.
@@ -441,7 +469,7 @@ func _show_tree_notice(root: Control) -> void:
 	tree_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(tree_notice)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", UIKit.LINE_SPACING)
+	column.add_theme_constant_override("separation", UIKit.line_spacing())
 	tree_notice.add_child(column)
 	# i18n: max 150px each, 1 line each
 	for line: Array in [[Loc.t("hub.notice.reworked", "UPGRADES REWORKED"), UIKit.GOLD], [Loc.t("hub.notice.returned", "COINS RETURNED +{count}", {count = returned}), UIKit.TEXT]]:
@@ -470,19 +498,64 @@ func _build_quit_menu(root: Control) -> void:
 	dim.color = Color(0, 0, 0, 0.45)
 	quit_menu.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(quit_menu, QUIT_PANEL)
-	var top := QUIT_PANEL.position.y + UIKit.PANEL_PAD
-	UIKit.add_label(quit_menu, Loc.t("hub.quit.title", "LEAVE THE HUB?"), Rect2(QUIT_PANEL.position.x, top, QUIT_PANEL.size.x, 10), 8, UIKit.GOLD)
-	UIKit.add_label(quit_menu, Loc.t("hub.quit.subtitle", "THE GAME CLOSES"), Rect2(QUIT_PANEL.position.x, top + UIKit.LINE_PITCH, QUIT_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
-	var buttons_y := QUIT_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
-	quit_button = UIKit.make_button(Loc.t("hub.quit.button", "QUIT"), _confirm_quit, Vector2(56, UIKit.BUTTON_H))
-	quit_button.position = Vector2(QUIT_PANEL.position.x + 16, buttons_y)
+	var panel := UIKit.add_panel(quit_menu, QUIT_PANEL)
+	var lines: Array[Label] = [
+		UIKit.add_label(quit_menu, Loc.t("hub.quit.title", "LEAVE THE HUB?"), Rect2(), 8, UIKit.GOLD),
+		UIKit.add_label(quit_menu, Loc.t("hub.quit.subtitle", "THE GAME CLOSES"), Rect2(), 8, UIKit.TEXT_DIM),
+	]
+	quit_button = UIKit.make_button(Loc.t("hub.quit.button", "QUIT"), _confirm_quit, Vector2(56, UIKit.button_h()))
 	quit_menu.add_child(quit_button)
-	back_button = UIKit.make_button(Loc.t("common.back", "BACK"), close_quit_menu, Vector2(56, UIKit.BUTTON_H))
-	back_button.position = Vector2(QUIT_PANEL.end.x - 16 - 56, buttons_y)
+	back_button = UIKit.make_button(Loc.t("common.back", "BACK"), close_quit_menu, Vector2(56, UIKit.button_h()))
 	quit_menu.add_child(back_button)
+	quit_rect = _layout_pair_dialog(panel, QUIT_PANEL, lines, [quit_button, back_button])
 	quit_button.focus_next = quit_button.get_path_to(back_button)
 	back_button.focus_next = back_button.get_path_to(quit_button)
+
+
+## Lays out a centered confirm panel (the trapdoor's, the saved run's): `lines` on line_pitch()
+## PANEL_PAD from the top, DIALOG_GAP, then the button pair DIALOG_INSET in from the sides (equal
+## widths from the longer word). English: exactly `english` (QUIT_PANEL / RESUME_PANEL); a longer
+## text widens the panel, a taller script makes it taller (docs/ui-rules.md section 10). Returns
+## the panel's rect.
+func _layout_pair_dialog(panel: Panel, english: Rect2, lines: Array[Label], buttons: Array[Button]) -> Rect2:
+	var widths := UIKit.tab_widths([buttons[0].text, buttons[1].text], 56)
+	var w := maxf(english.size.x, 2 * DIALOG_INSET + widths[0] + widths[1] + DIALOG_INSET)
+	w = maxf(w, _widest(lines) + 2 * UIKit.PANEL_PAD)
+	var h := UIKit.PANEL_PAD * 2 + (lines.size() - 1) * UIKit.line_pitch() + UIKit.line_h() + DIALOG_GAP + UIKit.button_h()
+	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
+	panel.position = rect.position
+	panel.size = rect.size
+	_stack_lines(lines, rect, rect.position.y + UIKit.PANEL_PAD)
+	var buttons_y := rect.end.y - UIKit.PANEL_PAD - UIKit.button_h()
+	for i in buttons.size():
+		var b := buttons[i]
+		b.custom_minimum_size = Vector2(widths[i], UIKit.button_h())
+		b.size = b.custom_minimum_size
+		b.position = Vector2(rect.position.x + DIALOG_INSET if i == 0 else rect.end.x - DIALOG_INSET - widths[i], buttons_y)
+	return rect
+
+
+## Puts `lines` (one-line labels) one line_pitch() apart from `top`, spanning `rect`'s width.
+func _stack_lines(lines: Array[Label], rect: Rect2, top: float) -> void:
+	for i in lines.size():
+		lines[i].position = Vector2(rect.position.x, top + i * UIKit.line_pitch())
+		lines[i].size = Vector2(rect.size.x, maxi(10, UIKit.line_h()))
+
+
+## Where a 7 px digit's body starts in a line box of the current locale's font (0 in English; lower
+## in a taller script's box, whose ascent is taller): icons beside numbers line up with them.
+func _digit_top() -> float:
+	if not UIKit.tall_script():
+		return 0.0  # (asking the font would allocate its size cache: English must keep its RIDs)
+	return roundf(UIKit.font_for().get_ascent(UIKit.FONT)) - UIKit.TEXT_BODY
+
+
+## The widest text among `labels` (measured).
+func _widest(labels: Array[Label]) -> float:
+	var w := 0
+	for label in labels:
+		w = maxi(w, UIKit.text_w(label.text))
+	return w
 
 
 func open_quit_menu() -> void:
@@ -518,22 +591,16 @@ func _build_portal_menu(root: Control) -> void:
 	dim.color = Color(0, 0, 0, 0.45)
 	portal_menu.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(portal_menu, PORTAL_PANEL)
-	# Title, the two modes (pitch 16), the info line, BACK: gaps of 4 / 3 / 3 / 4 px between the
-	# text drips and the buttons, PANEL_PAD above and below.
-	var top := PORTAL_PANEL.position.y + UIKit.PANEL_PAD
-	UIKit.add_label(portal_menu, Loc.t("hub.portal.title", "RANDOMIZER"), Rect2(PORTAL_PANEL.position.x, top, PORTAL_PANEL.size.x, 10), 8, UIKit.GOLD)
-	var x := UIKit.center_x(120, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x)
-	maze_button = UIKit.make_button(Loc.t("hub.portal.random_maze", "RANDOM MAZE"), _start_random_maze, Vector2(120, UIKit.BUTTON_H))
-	maze_button.position = Vector2(x, top + 13)
+	portal_panel = UIKit.add_panel(portal_menu, PORTAL_PANEL)
+	portal_title = UIKit.add_label(portal_menu, Loc.t("hub.portal.title", "RANDOMIZER"), Rect2(), 8, UIKit.GOLD)
+	maze_button = UIKit.make_button(Loc.t("hub.portal.random_maze", "RANDOM MAZE"), _start_random_maze, Vector2(120, UIKit.button_h()))
 	portal_menu.add_child(maze_button)
-	descent_button = UIKit.make_button(Loc.t("hub.portal.descent", "DESCENT"), _start_descent, Vector2(120, UIKit.BUTTON_H))
-	descent_button.position = Vector2(x, top + 29)
+	descent_button = UIKit.make_button(Loc.t("hub.portal.descent", "DESCENT"), _start_descent, Vector2(120, UIKit.button_h()))
 	portal_menu.add_child(descent_button)
-	portal_info = UIKit.add_label(portal_menu, "", Rect2(PORTAL_PANEL.position.x, top + 47, PORTAL_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
-	portal_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_portal_menu, Vector2(56, UIKit.BUTTON_H))
-	portal_back.position = Vector2(UIKit.center_x(56, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x), PORTAL_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H)
+	portal_info = UIKit.add_label(portal_menu, "", Rect2(), 8, UIKit.TEXT_DIM)
+	portal_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_portal_menu, Vector2(56, UIKit.button_h()))
 	portal_menu.add_child(portal_back)
+	_layout_portal_menu()
 	var order: Array[Button] = [maze_button, descent_button, portal_back]
 	for i in order.size():
 		var b := order[i]
@@ -545,6 +612,35 @@ func _build_portal_menu(root: Control) -> void:
 		b.focus_next = b.focus_neighbor_bottom
 
 
+## Title, the two modes (stack_pitch apart), the info line, BACK: gaps of 6 / 3 / 5 / 6 px between
+## the lines' boxes and the buttons (4 / 3 / 3 / 4 below the drips in English), PANEL_PAD above and
+## below; PORTAL_PANEL in English, wider for a longer text, taller for a taller script.
+func _layout_portal_menu() -> void:
+	var line := UIKit.line_h()
+	var bh := UIKit.button_h()
+	var mode_w: int = UIKit.tab_widths([maze_button.text, descent_button.text], 120)[0]
+	var back_w := UIKit.button_w(portal_back.text, 56)
+	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
+	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
+	var h := UIKit.PANEL_PAD * 2 + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
+	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
+	portal_panel.position = rect.position
+	portal_panel.size = rect.size
+	var y := rect.position.y + UIKit.PANEL_PAD
+	_stack_lines([portal_title], rect, y)
+	y += line + 6
+	for b: Button in [maze_button, descent_button]:
+		b.custom_minimum_size = Vector2(mode_w, bh)
+		b.size = b.custom_minimum_size
+		b.position = Vector2(UIKit.center_x(mode_w, rect.position.x, rect.size.x), y)
+		y += bh + UIKit.GAP_S
+	y += 5 - UIKit.GAP_S
+	_stack_lines([portal_info], rect, y)
+	portal_back.custom_minimum_size = Vector2(back_w, bh)
+	portal_back.size = portal_back.custom_minimum_size
+	portal_back.position = Vector2(UIKit.center_x(back_w, rect.position.x, rect.size.x), rect.end.y - UIKit.PANEL_PAD - bh)
+
+
 func open_portal_menu() -> void:
 	var best: int = Progress.descent_best_floor
 	var left: int = Progress.descent_paid_left()
@@ -554,6 +650,7 @@ func open_portal_menu() -> void:
 		portal_info.text = Loc.t("hub.portal.info_best", "BEST FLOOR {best}   PAID RUNS {left}/{total}", paid)
 	else:
 		portal_info.text = Loc.t("hub.portal.info", "PAID RUNS {left}/{total}", paid)
+	_layout_portal_menu()  # (the info line's width can widen the panel)
 	portal_menu.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -609,25 +706,24 @@ func _build_resume_menu(root: Control) -> void:
 	dim.color = Color(0, 0, 0, 0.45)
 	resume_menu.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(resume_menu, RESUME_PANEL)
-	var top := RESUME_PANEL.position.y + UIKit.PANEL_PAD
+	resume_panel = UIKit.add_panel(resume_menu, RESUME_PANEL)
 	for i in 3:
 		var color: Color = [UIKit.GOLD, UIKit.TEXT, UIKit.TEXT_DIM][i]
-		resume_lines.append(UIKit.add_label(resume_menu, "", Rect2(RESUME_PANEL.position.x, top + i * UIKit.LINE_PITCH, RESUME_PANEL.size.x, 10), 8, color))
-	var buttons_y := RESUME_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
-	resume_button = UIKit.make_button(Loc.t("hub.resume.resume", "RESUME"), _resume_descent, Vector2(56, UIKit.BUTTON_H))
-	resume_button.position = Vector2(RESUME_PANEL.position.x + 16, buttons_y)
+		resume_lines.append(UIKit.add_label(resume_menu, "", Rect2(), 8, color))
+	resume_button = UIKit.make_button(Loc.t("hub.resume.resume", "RESUME"), _resume_descent, Vector2(56, UIKit.button_h()))
 	resume_menu.add_child(resume_button)
-	resume_quit = UIKit.make_button(Loc.t("hub.resume.quit_run", "QUIT RUN"), _quit_saved_descent, Vector2(56, UIKit.BUTTON_H))
-	resume_quit.position = Vector2(RESUME_PANEL.end.x - 16 - 56, buttons_y)
+	resume_quit = UIKit.make_button(Loc.t("hub.resume.quit_run", "QUIT RUN"), _quit_saved_descent, Vector2(56, UIKit.button_h()))
 	resume_menu.add_child(resume_quit)
+	resume_rect = _layout_pair_dialog(resume_panel, RESUME_PANEL, resume_lines, [resume_button, resume_quit])
 	_link_resume_buttons(false)
 
 
 ## RESUME <-> QUIT RUN; with the floor's resume spent (D9) RESUME is hidden and QUIT RUN, centred, links to itself.
 func _link_resume_buttons(spent: bool) -> void:
 	resume_button.visible = not spent
-	resume_quit.position.x = UIKit.center_x(56, RESUME_PANEL.position.x, RESUME_PANEL.size.x) if spent else RESUME_PANEL.end.x - 16 - 56
+	resume_rect = _layout_pair_dialog(resume_panel, RESUME_PANEL, resume_lines, [resume_button, resume_quit])
+	if spent:
+		resume_quit.position.x = UIKit.center_x(resume_quit.size.x, resume_rect.position.x, resume_rect.size.x)
 	for b: Button in [resume_button, resume_quit]:
 		var other := b if spent else (resume_quit if b == resume_button else resume_button)
 		b.focus_next = b.get_path_to(other)
@@ -654,6 +750,7 @@ func open_resume_menu() -> void:
 	else:
 		resume_lines[1].text = Loc.t("hub.resume.floor", "FLOOR {floor} - POT {pot}", floor_args)
 		resume_lines[2].text = Loc.t("hub.resume.banks_half", "QUIT RUN BANKS HALF")
+	_link_resume_buttons(spent)  # (again: the lines' widths can widen the panel)
 	resume_menu.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -698,7 +795,7 @@ func _build_ticket_pod(root: Control) -> void:
 	ticket_pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(ticket_pod)
 	ticket_pod.position = Vector2(UIKit.hud_edge())
-	ticket_pod.custom_minimum_size.y = UIKit.POD_H
+	ticket_pod.custom_minimum_size.y = UIKit.pod_h()
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 3)
 	ticket_pod.add_child(row)
@@ -733,12 +830,14 @@ func _build_coin_board(root: Control) -> void:
 	coin_board.visible = false
 	root.add_child(coin_board)
 	coin_board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(coin_board, Rect2(BOARD.position, BOARD.size))
-	var title := UIKit.make_label(Loc.t("hub.station.coins", "COIN BAG"), 8, UIKit.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(BOARD.position.x, BOARD.position.y + 7)
-	title.size = Vector2(BOARD.size.x, 10)
-	coin_board.add_child(title)
+	board_panel = UIKit.add_panel(coin_board, Rect2(BOARD.position, BOARD.size))
+	board_title = UIKit.make_label(Loc.t("hub.station.coins", "COIN BAG"), 8, UIKit.GOLD)
+	board_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# (placed as in English while they are made, then fitted by _layout_coin_board: sizing a label
+	# shapes its text, and the English board must allocate in the same order to keep its goo)
+	board_title.position = Vector2(BOARD.position.x, BOARD.position.y + 7)
+	board_title.size = Vector2(BOARD.size.x, 10)
+	coin_board.add_child(board_title)
 	for i in Levels.COUNT:
 		var y := BOARD.position.y + 21 + i * 11
 		var number := UIKit.make_label(str(i + 1), 8, UIKit.TEXT_DIM)
@@ -746,9 +845,11 @@ func _build_coin_board(root: Control) -> void:
 		coin_board.add_child(number)
 		number.position = Vector2(BOARD.position.x + 7, y)
 		number.size = Vector2(16, 10)
+		board_numbers.append(number)
 		var name_label := UIKit.make_label(Themes.display_name(Themes.BY_LEVEL[i]), 8, UIKit.TEXT)
 		name_label.position = Vector2(BOARD.position.x + 29, y)
 		coin_board.add_child(name_label)
+		board_names.append(name_label)
 		var count := UIKit.make_label("", 8, UIKit.TEXT)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		count.position = Vector2(BOARD.end.x - 68, y)
@@ -757,6 +858,7 @@ func _build_coin_board(root: Control) -> void:
 		var icon := UIKit.make_icon("coin", Color.WHITE)
 		icon.position = Vector2(BOARD.end.x - 22, y)
 		coin_board.add_child(icon)
+		board_icons.append(icon)
 		board_rows.append(count)
 	board_total = UIKit.make_label("", 8, UIKit.TEXT)
 	board_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -769,6 +871,100 @@ func _build_coin_board(root: Control) -> void:
 	hint.size = Vector2(BOARD.size.x, 10)
 	coin_board.add_child(hint)
 	board_hint = hint
+	_layout_coin_board()
+
+
+## The board: the title, a row per level (number, name, coins found / total, coin icon), the story
+## total and the close hint, centered on the screen. English: BOARD, one column on DENSE_PITCH. A
+## longer text widens it (up to the safe width); when the ten rows don't fit the screen's height on
+## dense_pitch() (the taller scripts), the levels go in two columns of five, sized to their texts
+## (names in the script's smaller size if the two columns are still too wide).
+func _layout_coin_board() -> void:
+	var line := UIKit.line_h()
+	var dense := UIKit.dense_pitch()
+	var box_h := maxi(10, line)
+	var max_h := 180.0 - 2 * UIKit.EDGE
+	var count_w := 0
+	for i in Levels.COUNT:
+		count_w = maxi(count_w, UIKit.text_w(board_rows[i].text if board_rows[i].text != "" else "%d/%d" % [Levels.COINS[i], Levels.COINS[i]]))
+	# One column (English): the rows from 21 below the top, the total 2 under the last row's pitch,
+	# the hint a line_pitch() under it, 12 below.
+	var rows := Levels.COUNT
+	var after_title := 7.0
+	var columns := 1
+	var content := BOARD_TOP + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
+	if content + UIKit.GAP_M > max_h:  # (the room under the hint may shrink to GAP_M first)
+		columns = 2
+		rows = ceili(Levels.COUNT / 2.0)
+		after_title = UIKit.GAP_M
+		content = BOARD_TOP + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
+	var h := minf(max_h, content + BOARD_BOTTOM)
+	# Widths: number box, name, count box, coin icon; English one column: 7 | 16 | 6 | name ... | 42 | 4 | 8 | 14.
+	var w := BOARD.size.x
+	var col_w: Array[float] = []
+	var num_w: Array[int] = []
+	if columns == 1:
+		var names := 0
+		for label in board_names:
+			names = maxi(names, UIKit.text_w(label.text))
+		w = maxf(w, 29 + names + 4 + BOARD_COUNT_W + 4 + 8 + 14)
+	else:
+		for small in [false, true]:
+			if small:
+				var language: Node = get_node_or_null("/root/Language")
+				var font: Font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
+				if font == null:
+					break
+				for label in board_names:
+					label.add_theme_font_override("font", font)
+			col_w.clear()
+			num_w.clear()
+			for c in 2:
+				var names := 0
+				var last := mini((c + 1) * rows, Levels.COUNT)
+				for i in range(c * rows, last):
+					names = maxi(names, UIKit.text_w(board_names[i].text, UIKit.FONT, board_names[i].get_theme_font("font")))
+				num_w.append(UIKit.text_w(str(last)))
+				col_w.append(num_w[c] + UIKit.GAP_S + names + UIKit.GAP_M + count_w + UIKit.GAP_M + 8)
+			w = BOARD_SIDE + col_w[0] + BOARD_COLUMN_GAP + col_w[1] + BOARD_SIDE
+			if w <= 320 - 2 * UIKit.EDGE:
+				break
+	w = minf(w, 320 - 2 * UIKit.EDGE)
+	board_rect = Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
+	board_panel.position = board_rect.position
+	board_panel.size = board_rect.size
+	var top := board_rect.position.y
+	board_title.position = Vector2(board_rect.position.x, top + BOARD_TOP)
+	board_title.size = Vector2(w, box_h)
+	var rows_y := top + BOARD_TOP + line + after_title
+	for i in Levels.COUNT:
+		var c := i / rows
+		var y := rows_y + (i % rows) * dense
+		if columns == 1:  # (English)
+			var left := board_rect.position.x + 7
+			board_numbers[i].position = Vector2(left, y)
+			board_numbers[i].size = Vector2(16, box_h)
+			board_names[i].position = Vector2(left + 22, y)
+			board_rows[i].position = Vector2(board_rect.end.x - 68, y)
+			board_rows[i].size = Vector2(BOARD_COUNT_W, box_h)
+			board_icons[i].position = Vector2(board_rect.end.x - 22, y)
+		else:
+			# A column: number (right-aligned in the widest number's width), name, count (right-aligned), coin.
+			var left := board_rect.position.x + BOARD_SIDE + (0.0 if c == 0 else col_w[0] + BOARD_COLUMN_GAP)
+			var right := left + col_w[c]
+			board_numbers[i].position = Vector2(left, y)
+			board_numbers[i].size = Vector2(num_w[c], box_h)
+			board_names[i].position = Vector2(left + num_w[c] + UIKit.GAP_S, y)
+			board_rows[i].position = Vector2(right - 8 - UIKit.GAP_M - count_w, y)
+			board_rows[i].size = Vector2(count_w, box_h)
+			# (the coin on the digits' 7 px body, which sits on the line's baseline in a taller script)
+			board_icons[i].position = Vector2(right - 8, y + _digit_top())
+			board_names[i].size = Vector2(0, box_h)
+	var total_y := rows_y + (rows - 1) * dense + dense + 2
+	board_total.position = Vector2(board_rect.position.x, total_y)
+	board_total.size = Vector2(w, box_h)
+	board_hint.position = Vector2(board_rect.position.x, total_y + UIKit.line_pitch())
+	board_hint.size = Vector2(w, box_h)
 
 
 func open_coin_board() -> void:
@@ -790,6 +986,7 @@ func open_coin_board() -> void:
 		board_hint.text = Loc.t("hub.coins.close_touch", "TAP JUMP TO CLOSE")
 	else:
 		board_hint.text = Loc.t("hub.coins.close_key", "{key} TO CLOSE", {key = Platform.prompt_for("ui_cancel", Progress.key_name(Progress.bindings.interact))})
+	_layout_coin_board()  # (the texts' widths can widen it)
 	coin_board.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -1131,8 +1328,10 @@ func _show_prompt(note := "") -> void:
 	prompt.reset_size()
 	var size := prompt.get_combined_minimum_size()
 	prompt.size = size
-	# Centered at the bottom, its goo drops clear of the screen edge.
-	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), PROMPT_Y)
+	# Centered at the bottom, its goo drops clear of the screen edge: its bottom edge stays where the
+	# English prompt's is (a taller script's prompt starts higher), inside the safe area.
+	var bottom := minf(PROMPT_Y + PROMPT_H, UIKit.safe_rect().end.y - 6.0)
+	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), bottom - size.y)
 
 
 func _station(id: String) -> Dictionary:

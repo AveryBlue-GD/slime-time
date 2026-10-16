@@ -5,6 +5,9 @@ extends CanvasLayer
 ## the upgrades screen's PLAY button comes back to the level) or CANCEL (also Esc or R again).
 ## Pauses the game while it's open.
 
+## The title's top (its box is UIKit.title_h() tall: 20 in English).
+const TITLE_Y := 30.0
+
 var buttons: Array[Button] = []
 var game: Node
 var _focus_lock := {}
@@ -22,23 +25,32 @@ func _ready() -> void:
 	dim.color = Color(UIKit.BG, 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
-	# Three 13 px buttons 3 apart, PANEL_PAD above and below (like the pause menu).
-	UIKit.add_panel(root, Rect2(100, 60 - UIKit.PANEL_PAD, 120, UIKit.PANEL_PAD * 2 + 3 * UIKit.BUTTON_H + 2 * UIKit.GAP_S))
+	# Three buttons (button_h() tall, GAP_S apart, as wide as the longest word needs: 100 in English)
+	# in a panel PANEL_PAD around them, 2 px under the title's box (RESTART? at y 30; the panel then
+	# starts at 52 in English, lower under a taller script's title).
 	# i18n: title max 150px; buttons max 96px, 1 line each
-	var title := UIKit.make_label(Loc.t("restart.title", "RESTART?"), UIKit.FONT_BIG, UIKit.GOLD)
+	var title_text := Loc.t("restart.title", "RESTART?")
+	var texts := [Loc.t("restart.restart", "RESTART"), Loc.t("restart.upgrades", "UPGRADES"), Loc.t("common.cancel", "CANCEL")]
+	var button_w := 100
+	for text: String in texts:
+		button_w = UIKit.button_w(text, button_w)
+	var panel_top := TITLE_Y + UIKit.title_h() + 2
+	var panel_w := button_w + 2 * 10
+	UIKit.add_panel(root, Rect2(UIKit.center_x(panel_w), panel_top, panel_w, UIKit.PANEL_PAD * 2 + 3 * UIKit.button_h() + 2 * UIKit.GAP_S))
+	var title := UIKit.make_label(title_text, UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(0, 30)
-	title.size = Vector2(320, 20)
+	title.position = Vector2(0, TITLE_Y)
+	title.size = Vector2(320, UIKit.title_h())
 	root.add_child(title)
 	var menu := VBoxContainer.new()
-	menu.position = Vector2(110, 60)
-	menu.custom_minimum_size = Vector2(100, 0)
+	menu.position = Vector2(UIKit.center_x(button_w), panel_top + UIKit.PANEL_PAD)
+	menu.custom_minimum_size = Vector2(button_w, 0)
 	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(menu)
 	buttons = [
-		UIKit.make_button(Loc.t("restart.restart", "RESTART"), _restart),
-		UIKit.make_button(Loc.t("restart.upgrades", "UPGRADES"), _upgrades),
-		UIKit.make_button(Loc.t("common.cancel", "CANCEL"), close),
+		UIKit.make_button(texts[0], _restart, Vector2(0, UIKit.button_h())),
+		UIKit.make_button(texts[1], _upgrades, Vector2(0, UIKit.button_h())),
+		UIKit.make_button(texts[2], close, Vector2(0, UIKit.button_h())),
 	]
 	for button in buttons:
 		menu.add_child(button)
