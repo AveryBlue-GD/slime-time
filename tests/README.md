@@ -16,7 +16,7 @@ Everything under `tests/` is one of four kinds. Only the first kind is run by `.
 - Added in the spring cleaning: `test_platform` (Platform seam: Android back, background pause, safe areas, fullscreen sync, mobile
   home icon; `Platform.override` / `safe_area_override` simulate phones), `test_gamepad` (the fixed pad layout with real joypad events),
   `test_interpolation` (physics interpolation changes no run result), `test_ui_layout` / `test_ui_touch` (the rules of
-  [docs/ui-rules.md](../docs/ui-rules.md) on every screen), `test_descent_resume` (Descent run saved / resumed, one resume per floor).
+  [docs/ui-rules.md](../docs/ui-rules.md) on every screen), `test_descent_resume` (Descent run saved / resumed, one resume per floor), `test_descent_off` (Descent cut, D11: direct random maze, save kept byte-identical, ABYSS hidden).
 - `JOB_TIMEOUT=sec` (default 600) kills a hung job (and only its own process group, `tools/job_timeout.pl`) and reports `<label> TIMEOUT`; Ctrl-C keeps
   the logs and prints where. A suite name that matches no suite fails the run. Each job removes its own `dev_attempts_<pid>.log` and throwaway saves,
   and `test_all.sh` sweeps those of dead pids at the start (it prints how many); only those name patterns, never `save.cfg` / `dev_attempts.log`.

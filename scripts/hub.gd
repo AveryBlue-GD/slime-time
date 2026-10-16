@@ -572,6 +572,10 @@ func _start_random_maze() -> void:
 	if not portal_menu.visible:
 		return
 	portal_menu.visible = false
+	_begin_random_maze()
+
+
+func _begin_random_maze() -> void:
 	Progress.start_random()
 	_leave(_station("random"), UIKit.GAME_SCENE)
 
@@ -1092,7 +1096,7 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = "LOCKED"
-	elif near.id == "random" and Progress.descent_best_floor > 0:
+	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
 		prompt_key.text = "BEST FLOOR %d" % Progress.descent_best_floor  # Descent's record
 	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
 		prompt_key.text = "SHOP"  # every hat won: the overlay opens on its SHOP
@@ -1135,7 +1139,10 @@ func _use(station: Dictionary) -> void:
 			_leave(station, "res://scenes/controls.tscn")
 		"random":
 			if Progress.is_randomizer_unlocked():
-				open_portal_menu()  # RANDOM MAZE or DESCENT
+				if Economy.descent_on():
+					open_portal_menu()  # RANDOM MAZE or DESCENT
+				else:
+					_begin_random_maze()  # Descent is cut (D11): straight into a random maze
 			else:
 				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
 		"wheel":

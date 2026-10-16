@@ -13,7 +13,7 @@ portal, settings signpost, hat wheel, wardrobe).
 
 ## Spring cleaning (2026-10-15 / 16, branch `spring-cleaning`)
 
-A five-phase studio cleanup, no change to the economy, balance, save version / epoch or cutscenes. Owner decisions D1-D10:
+A five-phase studio cleanup, no change to the economy, balance, save version / epoch or cutscenes. Owner decisions D1-D11:
 [spring-cleaning/decisions.md](spring-cleaning/decisions.md); baseline numbers: [spring-cleaning/baseline.md](spring-cleaning/baseline.md);
 each phase has a report and an independent QA review in [spring-cleaning/](spring-cleaning/).
 
@@ -58,6 +58,10 @@ LB / Y / RB abilities 1 / 2 / 3, LB / RB switch tabs. Glyph art and pad remappin
   randomizer mazes and Descent, never in story/hard/HEAT: `Abilities.allowed_in`).
 - The ticket **workshop** (SECOND WIND, QUICK CHARGE, ...) is switched OFF (`Economy.WORKSHOP_ENABLED := false`); saved levels are
   kept, flipping the const restores it.
+- **DESCENT** is switched OFF too (D11, `Economy.DESCENT_ENABLED := false`, test hook `Economy.descent_force`; reason: too hard to
+  first-try even one level). The randomizer portal goes straight into a random maze, no resume prompt, nothing mentions it, ABYSS is
+  hidden unless owned; a saved `[descent_run]`, stats and milestones are kept untouched, and flipping the const restores it all.
+  Descent suites force it on; `test_descent_off` covers the off behaviour. (Mentions of Descent in this file describe it when on.)
 
 ## Build, test, launch
 

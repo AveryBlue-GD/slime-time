@@ -437,6 +437,10 @@ bits and 2,000-move routes everywhere); cap 65,536.
 
 ## 9. DESCENT floors (upgrades v2 batch 3, 2026-10-15)
 
+> **Status (D11, 2026-10-16): switched OFF.** Descent is cut from the randomizer for now (`Economy.DESCENT_ENABLED := false`):
+> the portal starts a random maze directly, no run can start or resume, ABYSS is hidden unless owned. Everything below is kept
+> intact and describes the behaviour when the flag is on (tests force `Economy.descent_force = 1`); a saved run and the stats stay in the save.
+
 Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C2. Code: `scripts/descent.gd` (`Descent`: rules, no
 nodes), `scripts/economy.gd` (`DESCENT_*`, `BOONS`: every number), `scripts/progress.gd` (the run in memory,
 daily cap, milestones, records, `[descent]`), `game.gd` (floors, carry-over, drops, boons), `scripts/ui/descent_card.gd`

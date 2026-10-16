@@ -110,6 +110,22 @@ const WORKSHOP := {
 ## SECOND WIND refills the meter over this many seconds.
 const WIND_REFILL_TIME := 0.4
 
+## ---------------------------------------------------------------- DESCENT on / off (decision D11)
+## ONE switch for the whole DESCENT run. Off (cut from the randomizer for now: too hard to first-try
+## even one level): the randomizer portal starts a RANDOM MAZE directly (no mode menu), no run can start
+## or resume (Progress.start_descent / resume_descent do nothing), no saved-run prompt, nothing in the
+## hub, HUD or help text mentions it, and the ABYSS trail is hidden unless already owned. A saved
+## [descent_run], [descent] stats and milestones are KEPT in the save untouched and come back when
+## this is true again. `descent_force` (-1 follow the const, 0 off, 1 on) is a test hook, like
+## `workshop_force`.
+const DESCENT_ENABLED := false
+static var descent_force := -1
+
+
+static func descent_on() -> bool:
+	return DESCENT_ENABLED if descent_force < 0 else descent_force == 1
+
+
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in

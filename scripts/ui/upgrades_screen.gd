@@ -41,9 +41,9 @@ const COST_X := 266
 const COINS_HINT := "COINS HIDE AT DEAD ENDS IN THE STORY MAZES\nTAKE COINS BACK OUT ANY TIME"
 ## The ABILITIES page's hint: its keys (read from the bindings; the pad buttons after pad input, the on-screen
 ## buttons on touch) and where they work (randomizer mazes and Descent only). See ability_hint.
-const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES + DESCENT"
-const ABILITIES_HINT_PAD := "PAD %s %s %s - RANDOM MAZES + DESCENT"
-const ABILITIES_HINT_TOUCH := "TAP THEIR BUTTONS - RANDOM MAZES + DESCENT"
+const ABILITIES_HINT := "KEYS %s %s %s - RANDOM MAZES"
+const ABILITIES_HINT_PAD := "PAD %s %s %s - RANDOM MAZES"
+const ABILITIES_HINT_TOUCH := "TAP THEIR BUTTONS - RANDOM MAZES"
 const TICKETS_HINT := "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
 ## Presses of a buy closer together than this are ignored (a double tap). Timed on the engine's
 ## clock (a SceneTreeTimer), so it plays out the same in fixed-fps runs on a loaded machine.

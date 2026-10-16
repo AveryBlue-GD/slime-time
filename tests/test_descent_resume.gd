@@ -16,6 +16,7 @@ var save_file := ""
 
 
 func _initialize() -> void:
+	Economy.descent_force = 1  # Descent is switched off in the game (D11); this suite tests it
 	await process_frame
 	progress = root.get_node("Progress")
 	save_file = throwaway_save()

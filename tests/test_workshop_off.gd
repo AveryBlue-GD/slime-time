@@ -129,12 +129,14 @@ func _games() -> void:
 		"randomizer: SECOND WIND never fires, the payout stays %d and the attempt step 1" % before)
 	game.free()
 	_state()
+	Economy.descent_force = 1  # (Descent itself is off in the game; this checks the workshop inside it)
 	progress.start_descent(4242)
 	game = MAIN.instantiate()
 	root.add_child(game)
 	await physics_frame
 	await physics_frame
 	_check(_inert(game), "descent: inert (boons are separate and still on)")
+	Economy.descent_force = -1
 	game.free()
 	progress.hard_mode = false
 	await process_frame

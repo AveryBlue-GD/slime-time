@@ -1625,6 +1625,8 @@ const DESCENT_FLOOR_MAX := 999
 ## Starts a new DESCENT run (seed 0 = a random run seed) on floor 1 with a full meter. Any run in
 ## progress is dropped (it never banked).
 func start_descent(run_seed := 0) -> void:
+	if not Economy.descent_on():
+		return  # cut for now (Economy.DESCENT_ENABLED, D11)
 	if descent_resume_pending():
 		quit_saved_descent()  # (a saved run is banked as a quit, never silently dropped)
 	mode = MODE_DESCENT
@@ -1735,7 +1737,7 @@ func _snapshot_descent() -> void:
 
 ## True when a saved run waits to be resumed (or quit): the hub asks on arrival and at the portal's DESCENT.
 func descent_resume_pending() -> bool:
-	return not descent_resume.is_empty() and not descent_active()
+	return Economy.descent_on() and not descent_resume.is_empty() and not descent_active()
 
 
 ## True when the saved run is mid-floor and that floor was already resumed DESCENT_RESUMES_PER_FLOOR times (D9):
@@ -1750,6 +1752,8 @@ func descent_resume_spent() -> bool:
 ## its boon card with the same offers. False when none is saved, or when its floor's one resume is spent (D9).
 ## Nothing is paid by resuming; a mid-floor resume is counted and saved at once (one per floor, D9).
 func resume_descent() -> bool:
+	if not Economy.descent_on():
+		return false
 	if descent_resume_spent() or not _load_saved_descent():
 		return false
 	if int(descent_run.cleared) < int(descent_run.floor):
@@ -1775,10 +1779,17 @@ func _load_saved_descent() -> bool:
 ## QUIT RUN on the resume prompt: the saved run banks as quitting it from the pause menu would (half the pot
 ## mid-floor, the whole pot on the boon card) and is gone. Returns end_descent's result ({} if none was saved).
 func quit_saved_descent() -> Dictionary:
+	if not Economy.descent_on():
+		return {}  # the saved run stays untouched while Descent is off
 	if not _load_saved_descent():
 		return {}
 	var on_boon_card := int(descent_run.cleared) >= int(descent_run.floor)
 	return end_descent(on_boon_card)
+
+
+## False for a cosmetic the player should not see at all: ABYSS while Descent is off, unless already owned.
+func cosmetic_visible(id: String) -> bool:
+	return id != "abyss" or Economy.descent_on() or id in cosmetics_owned
 
 
 ## True once earned cosmetic `id` has been earned (ABYSS: Descent floor DESCENT_ABYSS_FLOOR reached;

@@ -20,6 +20,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.descent_force = 1  # Descent is switched off in the game (D11); this suite tests it
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run

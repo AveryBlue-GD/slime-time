@@ -72,7 +72,8 @@ func _ready() -> void:
 		_add_to_grid(_hat_grid, _make_hat_tile(id))
 	_trail_grid = _make_grid()
 	for id in Cosmetics.trail_ids():
-		_add_to_grid(_trail_grid, _make_trail_tile(id))
+		if Progress.cosmetic_visible(id):  # ABYSS is hidden while Descent is off, unless owned
+			_add_to_grid(_trail_grid, _make_trail_tile(id))
 
 	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
 	_rule = _centered_label(SKINS_RULE, UIKit.TEXT_DIM, RULE_TOP)
