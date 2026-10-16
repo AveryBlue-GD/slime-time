@@ -93,7 +93,7 @@ func _build_boons() -> void:
 	pot_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
 	pot_label = UIKit.make_label("", UIKit.FONT, UIKit.GOLD)
 	pot_row.add_child(pot_label)
-	var pick := _centered(boons_root, "PICK ONE", 8, UIKit.TEXT_DIM, 37.0)
+	var pick := _centered(boons_root, Loc.t("descent.pick_one", "PICK ONE"), 8, UIKit.TEXT_DIM, 37.0)
 	pick.name = "PickHint"
 	for i in TILE_XS.size():
 		var tile := UIKit.make_button("", _on_tile.bind(i), TILE)
@@ -104,10 +104,10 @@ func _build_boons() -> void:
 		boons_root.add_child(tile)
 		tiles.append(tile)
 	status = _centered(boons_root, "", 8, UIKit.TEXT_DIM, 133.0)
-	cash_button = UIKit.make_button("CASH OUT", _on_cash_out, BUTTON)
+	cash_button = UIKit.make_button(Loc.t("descent.cash_out", "CASH OUT"), _on_cash_out, BUTTON)
 	cash_button.position = Vector2(TILE_XS[0], BUTTON_Y)
 	boons_root.add_child(cash_button)
-	descend_button = UIKit.make_button("DESCEND", _on_descend, BUTTON)
+	descend_button = UIKit.make_button(Loc.t("descent.descend", "DESCEND"), _on_descend, BUTTON)
 	descend_button.position = Vector2(TILE_XS[2], BUTTON_Y)
 	boons_root.add_child(descend_button)
 	# Focus: the tiles in a row; down from any tile to the buttons; up back to the tiles.
@@ -136,16 +136,26 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 	picked = ""
 	tile_ids.assign(offers)
 	var floor_no: int = run.get("floor", 1)
-	title.text = "FLOOR %d CLEARED" % floor_no
+	title.text = Loc.t("descent.floor_cleared", "FLOOR {floor} CLEARED", {floor = floor_no})
 	var refill := Descent.floor_refill(floor_no + 1, run.get("boons", {}))
-	meter_label.text = "%d%%  NEXT FLOOR +%d%%" % [ceili(float(run.get("meter", 0.0))), roundi(refill)]
+	meter_label.text = Loc.t("descent.meter", "{now}%  NEXT FLOOR +{next}%", {now = ceili(float(run.get("meter", 0.0))), next = roundi(refill)})
 	var practice := ""
 	var progress: Node = get_node_or_null("/root/Progress")
 	if progress:
 		var due: Dictionary = progress.descent_payout(true)
-		practice = {"practice": "  PRACTICE", "dev": "  NO TICKETS", "slime": "  PAYS 1"}.get(due.cap, "")
-		cash_button.text = "CASH OUT +%d" % due.tickets
-	pot_label.text = "POT %d (+%d)%s" % [int(run.get("pot", 0)), int(run.get("gain", 0)), practice]
+		practice = str(due.cap)
+		cash_button.text = Loc.t("descent.cash_out_gain", "CASH OUT +{count}", {count = due.tickets})
+	# i18n: pot pod, max 130px, 1 line; the spaces are spacing, not words
+	var pot_args := {pot = int(run.get("pot", 0)), gain = int(run.get("gain", 0))}
+	match practice:
+		"practice":
+			pot_label.text = Loc.t("descent.pot_practice", "POT {pot} (+{gain})  PRACTICE", pot_args)
+		"dev":
+			pot_label.text = Loc.t("descent.pot_dev", "POT {pot} (+{gain})  NO TICKETS", pot_args)
+		"slime":
+			pot_label.text = Loc.t("descent.pot_slime", "POT {pot} (+{gain})  PAYS 1", pot_args)
+		_:
+			pot_label.text = Loc.t("descent.pot", "POT {pot} (+{gain})", pot_args)
 	var top := TILE_TOP_SHORT
 	for id in tile_ids:
 		if _have_note(id, run.get("boons", {})) != "":
@@ -186,9 +196,9 @@ func _have_note(id: String, held: Dictionary) -> String:
 	var top: int = int(Descent.boon(id).get("max", 1))
 	var have := Descent.held(held, id)
 	if top > 1:
-		return "HAVE %d/%d" % [have, top]
+		return Loc.t("descent.have_max", "HAVE {have}/{max}", {have = have, max = top})
 	elif top <= 0 and have > 0:
-		return "HAVE %d" % have
+		return Loc.t("descent.have", "HAVE {have}", {have = have})
 	return ""
 
 
@@ -204,13 +214,13 @@ func _on_tile(i: int) -> void:
 		return
 	picked = tile_ids[i]
 	tiles[i].button_pressed = true
-	status.text = Descent.display_name(picked) + "  -  DESCEND?"
+	status.text = Loc.t("descent.confirm", "{name}  -  DESCEND?", {name = Descent.display_name(picked)})
 	descend_button.grab_focus()
 
 
 func _on_descend() -> void:
 	if picked == "":
-		status.text = "PICK A BOON FIRST"
+		status.text = Loc.t("descent.pick_first", "PICK A BOON FIRST")
 		if not tiles.is_empty():
 			tiles[0].grab_focus()
 		return
@@ -232,17 +242,17 @@ func _build_summary() -> void:
 	summary_root.visible = false
 	root.add_child(summary_root)
 	summary_panel = UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))  # (fitted in show_summary)
-	summary_title = _centered(summary_root, "RUN OVER", 16, UIKit.GOLD, 8.0)
+	summary_title = _centered(summary_root, Loc.t("descent.run_over", "RUN OVER"), 16, UIKit.GOLD, 8.0)
 	summary_lines = VBoxContainer.new()
 	summary_lines.add_theme_constant_override("separation", UIKit.LINE_SPACING)  # a 12 px line pitch
 	summary_lines.position = Vector2(40, 38)
 	summary_lines.custom_minimum_size = Vector2(240, 0)
 	summary_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.add_child(summary_lines)
-	new_run_button = UIKit.make_button("NEW RUN", _on_new_run, UIKit.CHOICE_SIZE)
+	new_run_button = UIKit.make_button(Loc.t("descent.new_run", "NEW RUN"), _on_new_run, UIKit.CHOICE_SIZE)
 	new_run_button.position = Vector2(160 - UIKit.CHOICE_GAP / 2 - UIKit.CHOICE_SIZE.x, BUTTON_Y)
 	summary_root.add_child(new_run_button)
-	hub_button = UIKit.make_button("HUB", _on_hub, UIKit.CHOICE_SIZE)
+	hub_button = UIKit.make_button(Loc.t("descent.hub", "HUB"), _on_hub, UIKit.CHOICE_SIZE)
 	hub_button.position = Vector2(160 + UIKit.CHOICE_GAP / 2, BUTTON_Y)
 	summary_root.add_child(hub_button)
 	for b: Button in [new_run_button, hub_button]:
@@ -263,13 +273,22 @@ func show_summary(result: Dictionary) -> void:
 		child.queue_free()
 	var floor_no: int = result.get("floor", 1)
 	var cashed: bool = result.get("cashed", false)
-	summary_title.text = "CASHED OUT" if cashed else "RUN OVER"
-	_line("CLEARED %d FLOORS" % int(result.get("cleared", 0)) if cashed else "DRIED UP ON FLOOR %d" % floor_no, UIKit.TEXT)
-	var best_text := "BEST FLOOR %d" % int(result.get("best_floor", floor_no))
-	_line(best_text + ("   NEW BEST!" if result.get("new_best", false) else ""), UIKit.GOLD if result.get("new_best", false) else UIKit.TEXT_DIM)
-	var time_text := "TIME " + UIKit.format_time(float(result.get("time", 0.0)))
+	summary_title.text = Loc.t("descent.cashed_out", "CASHED OUT") if cashed else Loc.t("descent.run_over", "RUN OVER")
+	# i18n: summary lines, max 200px, 1 line each; the spaces are spacing, not words
+	if cashed:
+		_line(Loc.n("descent.cleared", "CLEARED {count} FLOOR", "CLEARED {count} FLOORS", int(result.get("cleared", 0))), UIKit.TEXT)
+	else:
+		_line(Loc.t("descent.dried_up", "DRIED UP ON FLOOR {floor}", {floor = floor_no}), UIKit.TEXT)
+	var best_args := {floor = int(result.get("best_floor", floor_no))}
+	if result.get("new_best", false):
+		_line(Loc.t("descent.best_new", "BEST FLOOR {floor}   NEW BEST!", best_args), UIKit.GOLD)
+	else:
+		_line(Loc.t("descent.best", "BEST FLOOR {floor}", best_args), UIKit.TEXT_DIM)
+	var time_args := {time = UIKit.format_time(float(result.get("time", 0.0)))}
+	var time_text := Loc.t("descent.time", "TIME {time}", time_args)
 	if int(result.get("slot", 0)) > 0:  # the day's paid slot the run used (taken on floor 1)
-		time_text += "   PAID RUN %d/%d" % [int(result.slot), Economy.DESCENT_PAID_PER_DAY]
+		time_args.merge({slot = int(result.slot), total = Economy.DESCENT_PAID_PER_DAY})
+		time_text = Loc.t("descent.time_paid", "TIME {time}   PAID RUN {slot}/{total}", time_args)
 	_line(time_text, UIKit.TEXT_DIM)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -278,21 +297,24 @@ func show_summary(result: Dictionary) -> void:
 	var tickets: int = result.get("tickets", 0)
 	row.add_child(UIKit.make_icon("ticket", Color.WHITE if tickets > 0 else Color(0.55, 0.55, 0.6)))
 	var pot: int = result.get("pot", 0)
-	var why := ""
+	var ticket_text := ""
+	# i18n: ticket row, max 200px, 1 line; the leading spaces are spacing, not words
 	match result.get("cap", ""):
 		"practice":
-			why = "  PRACTICE (%d PAID RUNS A DAY)" % Economy.DESCENT_PAID_PER_DAY
+			ticket_text = Loc.n("descent.tickets_practice", "+{count} TICKET  PRACTICE ({paid} PAID RUNS A DAY)", "+{count} TICKETS  PRACTICE ({paid} PAID RUNS A DAY)", tickets, {paid = Economy.DESCENT_PAID_PER_DAY})
 		"dev":
-			why = "  DEV TOGGLES"
+			ticket_text = Loc.n("descent.tickets", "+{count} TICKET", "+{count} TICKETS", tickets) + "  DEV TOGGLES"  # dev-only: stays English
 		"slime":
-			why = ""  # no MORE SLIME bought: capped, but no reason line that nudges toward an upgrade (D12)
+			ticket_text = Loc.n("descent.tickets", "+{count} TICKET", "+{count} TICKETS", tickets)  # no MORE SLIME bought: capped, but no reason line that nudges toward an upgrade (D12)
 		_:
 			if not cashed and pot > 0:
-				why = "  HALF THE POT (%d)" % pot
-	row.add_child(UIKit.make_label("+%d %s%s" % [tickets, "TICKET" if tickets == 1 else "TICKETS", why], UIKit.FONT, Color8(255, 226, 150) if tickets > 0 else UIKit.TEXT_DIM))
+				ticket_text = Loc.n("descent.tickets_half", "+{count} TICKET  HALF THE POT ({pot})", "+{count} TICKETS  HALF THE POT ({pot})", tickets, {pot = pot})
+			else:
+				ticket_text = Loc.n("descent.tickets", "+{count} TICKET", "+{count} TICKETS", tickets)
+	row.add_child(UIKit.make_label(ticket_text, UIKit.FONT, Color8(255, 226, 150) if tickets > 0 else UIKit.TEXT_DIM))
 	summary_lines.add_child(row)
 	for bonus: Array in result.get("bonuses", []):
-		_line("FLOOR %d BONUS +%d" % [bonus[0], bonus[1]], UIKit.GOLD)
+		_line(Loc.t("descent.bonus", "FLOOR {floor} BONUS +{count}", {floor = bonus[0], count = bonus[1]}), UIKit.GOLD)
 	var held: Dictionary = result.get("boons", {})
 	if not held.is_empty():
 		var strip := HBoxContainer.new()

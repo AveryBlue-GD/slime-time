@@ -24,7 +24,8 @@ func _ready() -> void:
 	root.add_child(dim)
 	# Three 13 px buttons 3 apart, PANEL_PAD above and below (like the pause menu).
 	UIKit.add_panel(root, Rect2(100, 60 - UIKit.PANEL_PAD, 120, UIKit.PANEL_PAD * 2 + 3 * UIKit.BUTTON_H + 2 * UIKit.GAP_S))
-	var title := UIKit.make_label("RESTART?", UIKit.FONT_BIG, UIKit.GOLD)
+	# i18n: title max 150px; buttons max 96px, 1 line each
+	var title := UIKit.make_label(Loc.t("restart.title", "RESTART?"), UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(0, 30)
 	title.size = Vector2(320, 20)
@@ -35,9 +36,9 @@ func _ready() -> void:
 	menu.add_theme_constant_override("separation", UIKit.GAP_S)
 	root.add_child(menu)
 	buttons = [
-		UIKit.make_button("RESTART", _restart),
-		UIKit.make_button("UPGRADES", _upgrades),
-		UIKit.make_button("CANCEL", close),
+		UIKit.make_button(Loc.t("restart.restart", "RESTART"), _restart),
+		UIKit.make_button(Loc.t("restart.upgrades", "UPGRADES"), _upgrades),
+		UIKit.make_button(Loc.t("common.cancel", "CANCEL"), close),
 	]
 	for button in buttons:
 		menu.add_child(button)

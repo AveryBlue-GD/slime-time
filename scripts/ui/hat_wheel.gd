@@ -126,7 +126,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var panel := UIKit.add_panel(self, PANEL)
 	panel.show_behind_parent = true  # the wheel is drawn by this control, over its panel
-	title = _label("HAT WHEEL", UIKit.GOLD, HEADER_Y + 3)  # on the tabs' text baseline
+	title = _label(Loc.t("wheel.title", "HAT WHEEL"), UIKit.GOLD, HEADER_Y + 3)  # on the tabs' text baseline
 	# The ticket balance, top right of the panel.
 	balance = UIKit.make_label("", UIKit.FONT, TICKET_TINT)
 	balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -136,20 +136,20 @@ func _ready() -> void:
 	_balance_icon = UIKit.make_icon("ticket", Color.WHITE)
 	_balance_icon.position = Vector2(PANEL.end.x - HEADER_INSET - 8, HEADER_Y + 3)  # mirrors the WHEEL tab's inset
 	add_child(_balance_icon)
-	wheel_tab = UIKit.make_button("WHEEL", func() -> void: show_tab("wheel"), Vector2(44, UIKit.TAB_H))
+	wheel_tab = UIKit.make_button(Loc.t("wheel.tab.wheel", "WHEEL"), func() -> void: show_tab("wheel"), Vector2(44, UIKit.TAB_H))
 	wheel_tab.position = Vector2(PANEL.position.x + HEADER_INSET, HEADER_Y)
 	add_child(wheel_tab)
-	shop_tab = UIKit.make_button("SHOP", func() -> void: show_tab("shop"), Vector2(44, UIKit.TAB_H))
+	shop_tab = UIKit.make_button(Loc.t("wheel.tab.shop", "SHOP"), func() -> void: show_tab("shop"), Vector2(44, UIKit.TAB_H))
 	shop_tab.position = Vector2(PANEL.position.x + HEADER_INSET + 44 + 2, HEADER_Y)
 	add_child(shop_tab)
-	close_button = UIKit.make_button("BACK", func() -> void: close_requested.emit(), Vector2(44, UIKit.TAB_H))
+	close_button = UIKit.make_button(Loc.t("common.back", "BACK"), func() -> void: close_requested.emit(), Vector2(44, UIKit.TAB_H))
 	close_button.position = Vector2(320 - shop_tab.position.x - 44, HEADER_Y)  # the SHOP tab's mirror
 	close_button.visible = false
 	add_child(close_button)
 
 	wheel_page = _page()
 	result = _label("", UIKit.TEXT, 146, wheel_page)
-	spin_button = UIKit.make_button("SPIN", _on_spin_pressed, Vector2(84, UIKit.BUTTON_H))
+	spin_button = UIKit.make_button(Loc.t("wheel.spin", "SPIN"), _on_spin_pressed, Vector2(84, UIKit.BUTTON_H))
 	spin_button.position = Vector2(roundf(CENTER.x - 42), 158)
 	spin_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	wheel_page.add_child(spin_button)
@@ -157,7 +157,7 @@ func _ready() -> void:
 	shop_page = _page()
 	var x := roundf(CENTER.x - (3 * 52 + 2 * 4) / 2.0)
 	for id: String in SECTIONS:
-		var button := UIKit.make_button(id.to_upper(), func() -> void: show_section(id), Vector2(52, UIKit.TAB_H))
+		var button := UIKit.make_button(_section_label(id), func() -> void: show_section(id), Vector2(52, UIKit.TAB_H))
 		button.position = Vector2(x, 28)
 		x += 56
 		shop_page.add_child(button)
@@ -231,7 +231,7 @@ func show_tab(which: String, focus := true) -> void:
 	var shop := tab == "shop"
 	wheel_page.visible = not shop
 	shop_page.visible = shop
-	title.text = "SHOP" if shop else "HAT WHEEL"
+	title.text = Loc.t("wheel.tab.shop", "SHOP") if shop else Loc.t("wheel.title", "HAT WHEEL")
 	for pair: Array in [[wheel_tab, not shop], [shop_tab, shop]]:
 		UIKit.set_selected(pair[0], pair[1])
 	if shop:
@@ -281,28 +281,31 @@ func _refresh_wheel() -> void:
 	var can: bool = Progress.can_spin_hats() and not spinning
 	var cost: int = Progress.spin_cost()
 	if Progress.hats_left().is_empty() and _won == "":
-		result.text = "EVERY HAT WON! NEW LOOKS IN THE SHOP"
+		result.text = Loc.t("wheel.all_won", "EVERY HAT WON! NEW LOOKS IN THE SHOP")
 	elif spinning:
 		result.text = "..."
 	elif _won != "":
-		result.text = "YOU WON THE %s!" % Hats.display_name(_won)
+		result.text = Loc.t("wheel.won", "YOU WON THE {name}!", {name = Hats.display_name(_won)})
 	elif not Hats.available and not Progress.dev_tools:
-		result.text = "THE WHEEL IS RESTING"
+		result.text = Loc.t("wheel.resting", "THE WHEEL IS RESTING")
 	elif not can:
-		result.text = "NEED %d TICKETS TO SPIN" % cost
+		result.text = Loc.n("wheel.need_to_spin", "NEED {count} TICKET TO SPIN", "NEED {count} TICKETS TO SPIN", cost)
 	else:
-		result.text = "%d HAT%s TO WIN" % [hats.size(), "" if hats.size() == 1 else "S"] \
-			+ ("" if _spin_key == "" else " - %s TO SPIN" % _spin_key)  # (touch: no key, the SPIN button)
+		# (touch: no key, the SPIN button)
+		if _spin_key == "":
+			result.text = Loc.n("wheel.hats_left", "{count} HAT TO WIN", "{count} HATS TO WIN", hats.size())
+		else:
+			result.text = Loc.n("wheel.hats_left_key", "{count} HAT TO WIN - {key} TO SPIN", "{count} HATS TO WIN - {key} TO SPIN", hats.size(), {key = _spin_key})
 	_show_try_on(_won if not spinning else "")  # the hat you just won, on you
 	spin_button.disabled = not can
 	if Progress.hats_left().is_empty():
-		spin_button.text = "SPIN"
+		spin_button.text = Loc.t("wheel.spin", "SPIN")
 		spin_button.icon = null
 	elif cost == 0:
-		spin_button.text = "SPIN  FREE"
+		spin_button.text = Loc.t("wheel.spin_free", "SPIN  FREE")
 		spin_button.icon = null
 	else:
-		spin_button.text = "SPIN  %d" % cost
+		spin_button.text = Loc.t("wheel.spin_cost", "SPIN  {cost}", {cost = cost})
 		spin_button.icon = load(UIKit.UI_DIR + "icon_ticket.png")
 	# A disabled button never takes the keyboard (arrows skip it): the tabs while the wheel turns, SPIN
 	# when it can't spin (mid-spin it keeps the focus it has).
@@ -402,6 +405,16 @@ func _process(delta: float) -> void:
 
 # ---------------------------------------------------------------- the SHOP
 
+## The SHOP section tab's label (the internal ids stay English).
+func _section_label(id: String) -> String:
+	match id:
+		"hats":
+			return Loc.t("wheel.section.hats", "HATS")  # i18n: max 44px, 1 line
+		"trails":
+			return Loc.t("wheel.section.trails", "TRAILS")  # i18n: max 44px, 1 line
+	return Loc.t("wheel.section.papers", "PAPERS")  # i18n: max 44px, 1 line
+
+
 ## Shows a SHOP section's tiles: HATS (the TAILOR), TRAILS or PAPERS.
 func show_section(which: String, focus := true) -> void:
 	section = which
@@ -420,8 +433,8 @@ func show_section(which: String, focus := true) -> void:
 	balance.text = str(Progress.tickets)
 	if ids.is_empty():
 		_show_try_on("")
-		status.text = "EVERY HAT IS YOURS"
-		status_line.text = "WEAR THEM IN THE WARDROBE"
+		status.text = Loc.t("wheel.all_yours", "EVERY HAT IS YOURS")
+		status_line.text = Loc.t("wheel.wear_wardrobe", "WEAR THEM IN THE WARDROBE")
 	else:
 		_describe(ids[0])
 	if focus:
@@ -467,13 +480,13 @@ func _make_tile(id: String) -> Button:
 	right.size = Vector2(40, 9)
 	tile.add_child(right)
 	if not _is_hat(id) and Progress.owns_cosmetic(id):
-		right.add_child(UIKit.make_label("WORN" if _worn(id) else "OWNED", UIKit.FONT, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
+		right.add_child(UIKit.make_label(Loc.t("wheel.worn", "WORN") if _worn(id) else Loc.t("wheel.owned", "OWNED"), UIKit.FONT, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
 		if _worn(id):
 			UIKit.set_selected(tile, true)
 	else:
 		var price := _price_of(id)
 		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open())
-		right.add_child(UIKit.make_label("FREE" if price == 0 else str(price), UIKit.FONT, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
+		right.add_child(UIKit.make_label(Loc.t("wheel.free", "FREE") if price == 0 else str(price), UIKit.FONT, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
 		if price > 0:
 			right.add_child(UIKit.make_icon("ticket", Color.WHITE if affordable else Color(0.55, 0.55, 0.6)))
 	tile.focus_entered.connect(func() -> void: _describe(id))
@@ -487,22 +500,22 @@ func _describe(id: String) -> void:
 	_show_preview(id)
 	_show_try_on(id if _is_hat(id) else "")
 	if _is_hat(id):
-		status.text = Hats.display_name(id) + " - FROM THE TAILOR"
+		status.text = Loc.t("wheel.from_tailor", "{name} - FROM THE TAILOR", {name = Hats.display_name(id)})
 		if not Progress.tailor_open():
-			status_line.text = "THE TAILOR OPENS AFTER %d SPINS (%d/%d)" % [Economy.TAILOR_AFTER_SPINS,
-				mini(Progress.spins, Economy.TAILOR_AFTER_SPINS), Economy.TAILOR_AFTER_SPINS]
+			status_line.text = Loc.n("wheel.tailor_opens", "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})", "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})",
+				Economy.TAILOR_AFTER_SPINS, {have = mini(Progress.spins, Economy.TAILOR_AFTER_SPINS)})
 		elif Progress.tailor_price(id) > Progress.tickets:
-			status_line.text = "NEED %d TICKETS" % Progress.tailor_price(id)
+			status_line.text = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", Progress.tailor_price(id))
 		else:
-			status_line.text = "NO LUCK NEEDED (COUNTS AS A SPIN)"
+			status_line.text = Loc.t("wheel.no_luck", "NO LUCK NEEDED (COUNTS AS A SPIN)")
 		return
-	status.text = "%s - %s" % [Cosmetics.display_name(id), Cosmetics.get_item(id).get("about", "")]
+	status.text = Loc.t("wheel.item_info", "{name} - {about}", {name = Cosmetics.display_name(id), about = Cosmetics.get_item(id).get("about", "")})
 	if Progress.owns_cosmetic(id):
-		status_line.text = "PRESS TO TAKE IT OFF" if _worn(id) else "PRESS TO WEAR IT"
+		status_line.text = Loc.t("wheel.take_off", "PRESS TO TAKE IT OFF") if _worn(id) else Loc.t("wheel.wear", "PRESS TO WEAR IT")
 	elif Progress.cosmetic_price(id) > Progress.tickets:
-		status_line.text = "NEED %d TICKETS" % Progress.cosmetic_price(id)
+		status_line.text = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", Progress.cosmetic_price(id))
 	else:
-		status_line.text = "PRESS TO BUY"
+		status_line.text = Loc.t("wheel.buy", "PRESS TO BUY")
 
 
 func _show_preview(id: String) -> void:
@@ -585,7 +598,7 @@ func _on_tile(id: String) -> void:
 
 func open_confirm(id: String) -> void:
 	_confirm_id = id
-	confirm_label.text = "BUY %s?" % _name_of(id)
+	confirm_label.text = Loc.t("wheel.confirm", "BUY {name}?", {name = _name_of(id)})
 	confirm_price.text = str(_price_of(id))
 	confirm.visible = true
 	_blocker.visible = true

@@ -230,16 +230,17 @@ func _build_room() -> void:
 func _build_stations() -> void:
 	var can_quit := Platform.can_quit()  # (desktop only: not the web, iOS or Android)
 	# Clockwise round the room from the back.
-	_add_station("story", "STORY - LEVEL %d" % Progress.current_level, "door", Vector2i(30, 40), 4)  # torches flickering
-	_add_station("maps", "MAP TABLE", "maptable", Vector2i(30, 36), 4)  # lantern flickering
-	_add_station("upgrades", "UPGRADES", "cauldron", Vector2i(30, 28), 4)
+	# i18n: station names are prompt-box labels, max 110px, 1 line
+	_add_station("story", Loc.t("hub.station.story", "STORY - LEVEL {level}", {level = Progress.current_level}), "door", Vector2i(30, 40), 4)  # torches flickering
+	_add_station("maps", Loc.t("hub.station.map_table", "MAP TABLE"), "maptable", Vector2i(30, 36), 4)  # lantern flickering
+	_add_station("upgrades", Loc.t("hub.station.upgrades", "UPGRADES"), "cauldron", Vector2i(30, 28), 4)
 	if can_quit:
-		_add_station("quit", "QUIT", "hatch", Vector2i(28, 18), 4, true)
-	_add_station("coins", "COIN BAG", "coinbag", Vector2i(24, 26), 4)
-	_add_station("random", "RANDOMIZER", "portal", Vector2i(30, 40), 6)
-	_add_station("settings", "SETTINGS", "signpost", Vector2i(24, 34), 6)
-	_add_station("wheel", "HAT WHEEL", "wheel", Vector2i(32, 40), 24)
-	_add_station("wardrobe", "SKINS & HATS", "wardrobe", Vector2i(28, 40), 5)
+		_add_station("quit", Loc.t("hub.station.quit", "QUIT"), "hatch", Vector2i(28, 18), 4, true)
+	_add_station("coins", Loc.t("hub.station.coins", "COIN BAG"), "coinbag", Vector2i(24, 26), 4)
+	_add_station("random", Loc.t("hub.station.random", "RANDOMIZER"), "portal", Vector2i(30, 40), 6)
+	_add_station("settings", Loc.t("hub.station.settings", "SETTINGS"), "signpost", Vector2i(24, 34), 6)
+	_add_station("wheel", Loc.t("hub.station.wheel", "HAT WHEEL"), "wheel", Vector2i(32, 40), 24)
+	_add_station("wardrobe", Loc.t("hub.station.wardrobe", "SKINS & HATS"), "wardrobe", Vector2i(28, 40), 5)
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
@@ -442,7 +443,8 @@ func _show_tree_notice(root: Control) -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", UIKit.LINE_SPACING)
 	tree_notice.add_child(column)
-	for line: Array in [["UPGRADES REWORKED", UIKit.GOLD], ["COINS RETURNED +%d" % returned, UIKit.TEXT]]:
+	# i18n: max 150px each, 1 line each
+	for line: Array in [[Loc.t("hub.notice.reworked", "UPGRADES REWORKED"), UIKit.GOLD], [Loc.t("hub.notice.returned", "COINS RETURNED +{count}", {count = returned}), UIKit.TEXT]]:
 		var label := UIKit.make_label(line[0], 8, line[1])
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(label)
@@ -470,13 +472,13 @@ func _build_quit_menu(root: Control) -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(quit_menu, QUIT_PANEL)
 	var top := QUIT_PANEL.position.y + UIKit.PANEL_PAD
-	UIKit.add_label(quit_menu, "LEAVE THE HUB?", Rect2(QUIT_PANEL.position.x, top, QUIT_PANEL.size.x, 10), 8, UIKit.GOLD)
-	UIKit.add_label(quit_menu, "THE GAME CLOSES", Rect2(QUIT_PANEL.position.x, top + UIKit.LINE_PITCH, QUIT_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
+	UIKit.add_label(quit_menu, Loc.t("hub.quit.title", "LEAVE THE HUB?"), Rect2(QUIT_PANEL.position.x, top, QUIT_PANEL.size.x, 10), 8, UIKit.GOLD)
+	UIKit.add_label(quit_menu, Loc.t("hub.quit.subtitle", "THE GAME CLOSES"), Rect2(QUIT_PANEL.position.x, top + UIKit.LINE_PITCH, QUIT_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
 	var buttons_y := QUIT_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
-	quit_button = UIKit.make_button("QUIT", _confirm_quit, Vector2(56, UIKit.BUTTON_H))
+	quit_button = UIKit.make_button(Loc.t("hub.quit.button", "QUIT"), _confirm_quit, Vector2(56, UIKit.BUTTON_H))
 	quit_button.position = Vector2(QUIT_PANEL.position.x + 16, buttons_y)
 	quit_menu.add_child(quit_button)
-	back_button = UIKit.make_button("BACK", close_quit_menu, Vector2(56, UIKit.BUTTON_H))
+	back_button = UIKit.make_button(Loc.t("common.back", "BACK"), close_quit_menu, Vector2(56, UIKit.BUTTON_H))
 	back_button.position = Vector2(QUIT_PANEL.end.x - 16 - 56, buttons_y)
 	quit_menu.add_child(back_button)
 	quit_button.focus_next = quit_button.get_path_to(back_button)
@@ -520,16 +522,16 @@ func _build_portal_menu(root: Control) -> void:
 	# Title, the two modes (pitch 16), the info line, BACK: gaps of 4 / 3 / 3 / 4 px between the
 	# text drips and the buttons, PANEL_PAD above and below.
 	var top := PORTAL_PANEL.position.y + UIKit.PANEL_PAD
-	UIKit.add_label(portal_menu, "RANDOMIZER", Rect2(PORTAL_PANEL.position.x, top, PORTAL_PANEL.size.x, 10), 8, UIKit.GOLD)
+	UIKit.add_label(portal_menu, Loc.t("hub.portal.title", "RANDOMIZER"), Rect2(PORTAL_PANEL.position.x, top, PORTAL_PANEL.size.x, 10), 8, UIKit.GOLD)
 	var x := UIKit.center_x(120, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x)
-	maze_button = UIKit.make_button("RANDOM MAZE", _start_random_maze, Vector2(120, UIKit.BUTTON_H))
+	maze_button = UIKit.make_button(Loc.t("hub.portal.random_maze", "RANDOM MAZE"), _start_random_maze, Vector2(120, UIKit.BUTTON_H))
 	maze_button.position = Vector2(x, top + 13)
 	portal_menu.add_child(maze_button)
-	descent_button = UIKit.make_button("DESCENT", _start_descent, Vector2(120, UIKit.BUTTON_H))
+	descent_button = UIKit.make_button(Loc.t("hub.portal.descent", "DESCENT"), _start_descent, Vector2(120, UIKit.BUTTON_H))
 	descent_button.position = Vector2(x, top + 29)
 	portal_menu.add_child(descent_button)
 	portal_info = UIKit.add_label(portal_menu, "", Rect2(PORTAL_PANEL.position.x, top + 47, PORTAL_PANEL.size.x, 10), 8, UIKit.TEXT_DIM)
-	portal_back = UIKit.make_button("BACK", close_portal_menu, Vector2(56, UIKit.BUTTON_H))
+	portal_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_portal_menu, Vector2(56, UIKit.BUTTON_H))
 	portal_back.position = Vector2(UIKit.center_x(56, PORTAL_PANEL.position.x, PORTAL_PANEL.size.x), PORTAL_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H)
 	portal_menu.add_child(portal_back)
 	var order: Array[Button] = [maze_button, descent_button, portal_back]
@@ -546,7 +548,12 @@ func _build_portal_menu(root: Control) -> void:
 func open_portal_menu() -> void:
 	var best: int = Progress.descent_best_floor
 	var left: int = Progress.descent_paid_left()
-	portal_info.text = ("BEST FLOOR %d   " % best if best > 0 else "") + "PAID RUNS %d/%d" % [left, Economy.DESCENT_PAID_PER_DAY]
+	# i18n: max 170px, 1 line; the spaces are spacing, not words
+	var paid := {left = left, total = Economy.DESCENT_PAID_PER_DAY, best = best}
+	if best > 0:
+		portal_info.text = Loc.t("hub.portal.info_best", "BEST FLOOR {best}   PAID RUNS {left}/{total}", paid)
+	else:
+		portal_info.text = Loc.t("hub.portal.info", "PAID RUNS {left}/{total}", paid)
 	portal_menu.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -608,10 +615,10 @@ func _build_resume_menu(root: Control) -> void:
 		var color: Color = [UIKit.GOLD, UIKit.TEXT, UIKit.TEXT_DIM][i]
 		resume_lines.append(UIKit.add_label(resume_menu, "", Rect2(RESUME_PANEL.position.x, top + i * UIKit.LINE_PITCH, RESUME_PANEL.size.x, 10), 8, color))
 	var buttons_y := RESUME_PANEL.end.y - UIKit.PANEL_PAD - UIKit.BUTTON_H
-	resume_button = UIKit.make_button("RESUME", _resume_descent, Vector2(56, UIKit.BUTTON_H))
+	resume_button = UIKit.make_button(Loc.t("hub.resume.resume", "RESUME"), _resume_descent, Vector2(56, UIKit.BUTTON_H))
 	resume_button.position = Vector2(RESUME_PANEL.position.x + 16, buttons_y)
 	resume_menu.add_child(resume_button)
-	resume_quit = UIKit.make_button("QUIT RUN", _quit_saved_descent, Vector2(56, UIKit.BUTTON_H))
+	resume_quit = UIKit.make_button(Loc.t("hub.resume.quit_run", "QUIT RUN"), _quit_saved_descent, Vector2(56, UIKit.BUTTON_H))
 	resume_quit.position = Vector2(RESUME_PANEL.end.x - 16 - 56, buttons_y)
 	resume_menu.add_child(resume_quit)
 	_link_resume_buttons(false)
@@ -638,9 +645,15 @@ func open_resume_menu() -> void:
 	var on_card := int(run.cleared) >= int(run.floor)
 	var spent: bool = Progress.descent_resume_spent()
 	_link_resume_buttons(spent)
-	resume_lines[0].text = "FLOOR ALREADY RESUMED" if spent else "DESCENT RUN SAVED"
-	resume_lines[1].text = ("FLOOR %d CLEARED" if on_card else "FLOOR %d") % int(run.floor) + " - POT %d" % int(run.pot)
-	resume_lines[2].text = "QUIT RUN CASHES OUT" if on_card else "QUIT RUN BANKS HALF"
+	# i18n: max 150px each, 1 line each
+	var floor_args := {floor = int(run.floor), pot = int(run.pot)}
+	resume_lines[0].text = Loc.t("hub.resume.spent", "FLOOR ALREADY RESUMED") if spent else Loc.t("hub.resume.saved", "DESCENT RUN SAVED")
+	if on_card:
+		resume_lines[1].text = Loc.t("hub.resume.floor_cleared", "FLOOR {floor} CLEARED - POT {pot}", floor_args)
+		resume_lines[2].text = Loc.t("hub.resume.cashes_out", "QUIT RUN CASHES OUT")
+	else:
+		resume_lines[1].text = Loc.t("hub.resume.floor", "FLOOR {floor} - POT {pot}", floor_args)
+		resume_lines[2].text = Loc.t("hub.resume.banks_half", "QUIT RUN BANKS HALF")
 	resume_menu.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -721,7 +734,7 @@ func _build_coin_board(root: Control) -> void:
 	root.add_child(coin_board)
 	coin_board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UIKit.add_panel(coin_board, Rect2(BOARD.position, BOARD.size))
-	var title := UIKit.make_label("COIN BAG", 8, UIKit.GOLD)
+	var title := UIKit.make_label(Loc.t("hub.station.coins", "COIN BAG"), 8, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(BOARD.position.x, BOARD.position.y + 7)
 	title.size = Vector2(BOARD.size.x, 10)
@@ -769,9 +782,14 @@ func open_coin_board() -> void:
 		count.remove_meta(SkinText.DUE)  # (a rainbow color it was due while hidden is stale now)
 		if found < total:
 			count.add_to_group(SkinText.GROUP)
-	board_total.text = "STORY %d/%d   IN HAND %d" % [Progress.coins_earned(), Levels.total_coins(), maxi(Progress.coins(), 0)]
+	# i18n: max 200px, 1 line; the spaces are spacing, not words
+	board_total.text = Loc.t("hub.coins.total", "STORY {have}/{total}   IN HAND {hand}", {have = Progress.coins_earned(), total = Levels.total_coins(), hand = maxi(Progress.coins(), 0)})
 	var touch := _touch_controls != null and _touch_controls.visible
-	board_hint.text = "TAP JUMP TO CLOSE" if touch else "%s TO CLOSE" % Platform.prompt_for("ui_cancel", Progress.key_name(Progress.bindings.interact))
+	# i18n: max 200px, 1 line; {key} = a key or pad button name
+	if touch:
+		board_hint.text = Loc.t("hub.coins.close_touch", "TAP JUMP TO CLOSE")
+	else:
+		board_hint.text = Loc.t("hub.coins.close_key", "{key} TO CLOSE", {key = Platform.prompt_for("ui_cancel", Progress.key_name(Progress.bindings.interact))})
 	coin_board.visible = true
 	prompt.visible = false
 	slime.frozen = true
@@ -789,7 +807,7 @@ func close_coin_board() -> void:
 
 ## The key that uses things here, as shown in hints (TAP JUMP on a touchscreen, X on a gamepad).
 func _use_key() -> String:
-	return "TAP JUMP" if _touch() else Platform.prompt_for("interact", Progress.key_name(Progress.bindings.interact))
+	return Loc.t("hub.prompt.tap_jump", "TAP JUMP") if _touch() else Platform.prompt_for("interact", Progress.key_name(Progress.bindings.interact))
 
 
 ## True while the touch controls are in use here.
@@ -1063,7 +1081,7 @@ func _update_near() -> void:
 				best_gap = gap
 				best = station
 		if best.is_empty() and _gap_to(rotor.position + Vector2(0, -2), ROTOR_RADIUS) < USE_GAP:
-			best = {id = "rotor", name = "ROTATE"}
+			best = {id = "rotor", name = Loc.t("hub.prompt.rotate", "ROTATE")}
 	if best == near:
 		return
 	near = best
@@ -1095,14 +1113,14 @@ func _show_prompt(note := "") -> void:
 	if note != "":
 		prompt_key.text = note
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
-		prompt_key.text = "LOCKED"
+		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
 	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
-		prompt_key.text = "BEST FLOOR %d" % Progress.descent_best_floor  # Descent's record
+		prompt_key.text = Loc.t("hub.prompt.best_floor", "BEST FLOOR {floor}", {floor = Progress.descent_best_floor})  # Descent's record
 	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
-		prompt_key.text = "SHOP"  # every hat won: the overlay opens on its SHOP
+		prompt_key.text = Loc.t("hub.prompt.shop", "SHOP")  # every hat won: the overlay opens on its SHOP
 	elif near.id == "wheel":
 		var cost: int = Progress.spin_cost()  # the next spin's price, with the ticket icon
-		prompt_key.text = "FREE" if cost == 0 else str(cost)
+		prompt_key.text = Loc.t("hub.prompt.free", "FREE") if cost == 0 else str(cost)
 		price = cost > 0
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
@@ -1144,7 +1162,7 @@ func _use(station: Dictionary) -> void:
 				else:
 					_begin_random_maze()  # Descent is cut (D11): straight into a random maze
 			else:
-				_deny("BEAT ALL %d LEVELS" % Levels.COUNT)
+				_deny(Loc.t("hub.prompt.beat_all", "BEAT ALL {count} LEVELS", {count = Levels.COUNT}))
 		"wheel":
 			open_hat_wheel()
 		"coins":
