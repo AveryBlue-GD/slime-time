@@ -174,6 +174,55 @@ const SOFT_BOUNCE_HEAD_KNOCK_MAX := 16.0
 const SOFT_BOUNCE_HEAD_DECEL := 520.0
 
 
+## ---------------------------------------------------------------- COIN CATCH test (owner A/B, 2026-10-16)
+## ONE switch for the slower, readable coin pickup (docs/spring-cleaning/coin-catch-test.md). Off
+## (default): today's pickup (the coin sound, the coin flies in / dissolves, the HUD counts it at once).
+## On (CoinCatch, scripts/coin_catch.gd): the touched coin is tossed up over the slime with a glint and
+## a gold sparkle, the slime squashes and hops to catch it (a cosmetic sprite offset only: the body,
+## controls, collisions, timer and meter never notice), then the coin dissolves slowly inside it and
+## the HUD's coin counter pops up by one at the end. The coin is credited and saved at touch time
+## exactly as today; only the show is later. `--coincatch` (debug builds only, like every launch flag)
+## sets `coincatch_force` = 1; tests set it too.
+const COIN_CATCH_TEST := false
+static var coincatch_force := -1
+
+
+static func coin_catch_on() -> bool:
+	return COIN_CATCH_TEST if coincatch_force < 0 else coincatch_force == 1
+
+
+## The slime's hop (seconds): an anticipation squash, the hop itself (up and down, at most
+## COIN_CATCH_HOP_PX whole px), then a landing squash. The coin is caught COIN_CATCH_CATCH_SHARE of
+## the way through the hop (just past its top).
+const COIN_CATCH_SQUASH_TIME := 0.14
+const COIN_CATCH_HOP_TIME := 0.34
+const COIN_CATCH_LAND_TIME := 0.16
+const COIN_CATCH_HOP_PX := 5.0
+const COIN_CATCH_CATCH_SHARE := 0.6
+## The toss: the coin arcs up to this many px above the slime's center (12-20 looks right), spinning
+## this many times faster than it idles, trailing a few gold sparkles.
+const COIN_CATCH_TOSS_HEIGHT := 18.0
+const COIN_CATCH_TOSS_SPIN := 3.0
+const COIN_CATCH_SPARKLES := 6
+## A coin touched while a hop is under way joins it if at least this long (s) is left before its catch;
+## otherwise the hop starts over for it.
+const COIN_CATCH_MIN_TOSS := 0.16
+## The dissolve (s) inside the slime: a jelly slime shows the coin sinking and fizzing smaller with
+## bubbles rising; a solid one swallows it into its surface with a glint and a goo ripple.
+const COIN_CATCH_DISSOLVE_TIME := 1.0
+const COIN_CATCH_BUBBLES := 8
+const COIN_CATCH_RIPPLE_TIME := 0.45
+const COIN_CATCH_RIPPLE_PX := 8.0
+## Reduce Motion: no toss, no hop: the coin dissolves where it lies, a little slower.
+const COIN_CATCH_CALM_TIME := 1.2
+## At most this many coins animate at once; one more finishes the oldest at once (its counter pop).
+const COIN_CATCH_MAX := 3
+## Sounds: the coin sound at the catch (today's, at today's volume) and a soft low fizz (coin_fizz)
+## when the dissolve ends and the counter pops.
+const COIN_CATCH_COIN_DB := -4.0
+const COIN_CATCH_FIZZ_DB := -8.0
+
+
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in

@@ -204,6 +204,10 @@ SOUNDS = {
     "coin": lambda: mix(sizzle(0.8, 0.42, seed=51),
                         metal_ring((540, 1310, 2090), 0.55, 0.12, droop=0.25),
                         [0.0] * int(0.06 * RATE) + gurgle(0.6, 22, 700, 1500, 0.06, seed=52)),
+    # Coin catch test: the coin's last bit melting away inside the slime: a soft, low fizz of small
+    # bubbles over a dull sinking blup (quiet and dark, no metal).
+    "coin_fizz": lambda: mix(bloop(170, 95, 0.32, 0.22, wobble=0.05, wobble_rate=11, attack=0.02, release=0.2),
+                             gurgle(0.45, 10, 260, 520, 0.08, seed=71, falling=True)),
     # Upgrade bought: the slime swells with power (a low wobbling surge), a climbing phrase of
     # round tones settles on a held note with a soft ring on top, and bubbles rise through it.
     # The upgrades screen pitches it up a little per level bought.

@@ -132,6 +132,11 @@ var _soft_decel := 0.0
 ## The stun's full length (the splat frames run over it) and the recover animation after it.
 var _stun_total := SPLAT_STUN
 var _recover_after := RECOVER_ANIM_TIME
+## Coin catch test (Economy.coin_catch_on, CoinCatch): a purely cosmetic hop of the SPRITE (never the
+## body): seconds into it (< 0 = none) and the whole px it lifts the sprite this tick (added on top of
+## whatever the tick set, taken off again at the start of the next one).
+var catch_t := -1.0
+var _hop_px := 0.0
 
 static var _sprite_frames: SpriteFrames
 ## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
@@ -411,6 +416,7 @@ func finish_dash() -> void:
 		return
 	position = _dash_target
 	sprite.position.y = 0.0
+	_hop_px = 0.0  # (called from outside a tick too: no catch hop left to take off)
 	state = State.STUNNED
 	_stun_left = _dash_stun
 	_stun_total = _dash_stun
@@ -445,6 +451,7 @@ func stop_dash() -> void:
 		return
 	state = State.GLIDE
 	sprite.position.y = 0.0
+	_hop_px = 0.0
 	velocity = Vector2.ZERO
 
 
@@ -452,12 +459,15 @@ func play_dry_up() -> void:
 	_sfx_stop("charge")
 	_sfx("dry")
 	_special_anim = "dry"
+	cancel_catch_hop()
 	sprite.play("dry")
 
 
 func play_celebrate() -> void:
 	_special_anim = "celebrate"
 	sprite.position.y = 0.0
+	_hop_px = 0.0
+	catch_t = -1.0
 	sprite.play("celebrate")
 
 
@@ -480,6 +490,9 @@ func launch(charge_value: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _hop_px != 0.0:
+		sprite.position.y += _hop_px  # last tick's catch hop off: the tick sees only its own offsets
+		_hop_px = 0.0
 	var input := Vector2.ZERO
 	if not frozen:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -541,6 +554,70 @@ func _physics_process(delta: float) -> void:
 	if _drips.emitting:
 		_drips.direction = -velocity.normalized()
 	_animate()
+	if catch_t >= 0.0:
+		_catch_hop_step(delta)
+
+
+## Coin catch test: the time from a hop's start to its catch moment, and its full length (s).
+static func catch_moment() -> float:
+	return Economy.COIN_CATCH_SQUASH_TIME + Economy.COIN_CATCH_HOP_TIME * Economy.COIN_CATCH_CATCH_SHARE
+
+
+static func catch_hop_length() -> float:
+	return Economy.COIN_CATCH_SQUASH_TIME + Economy.COIN_CATCH_HOP_TIME + Economy.COIN_CATCH_LAND_TIME
+
+
+## Coin catch test: starts the little hop that catches a tossed coin (or joins the one under way when
+## its catch is still COIN_CATCH_MIN_TOSS s off or more). Returns the seconds until the catch.
+## Purely cosmetic: only the sprite moves (and its frames change while gliding).
+func catch_hop() -> float:
+	var left := catch_moment() - catch_t
+	if catch_t >= 0.0 and left >= Economy.COIN_CATCH_MIN_TOSS:
+		return left
+	catch_t = 0.0
+	return catch_moment()
+
+
+## Ends a catch hop at once (a win, a dry-up, tests); the sprite drops back to where the tick put it.
+func cancel_catch_hop() -> void:
+	sprite.position.y += _hop_px
+	_hop_px = 0.0
+	catch_t = -1.0
+
+
+## How high (whole px) the catch hop lifts the sprite `t` s in: a sine up and down over the hop.
+static func catch_lift(t: float) -> float:
+	var hop_t := t - Economy.COIN_CATCH_SQUASH_TIME
+	if hop_t <= 0.0 or hop_t >= Economy.COIN_CATCH_HOP_TIME:
+		return 0.0
+	return roundf(sin(PI * hop_t / Economy.COIN_CATCH_HOP_TIME) * Economy.COIN_CATCH_HOP_PX)
+
+
+func _catch_hop_step(delta: float) -> void:
+	catch_t += delta
+	if catch_t >= catch_hop_length() or _special_anim != "":
+		catch_t = -1.0
+		return
+	_hop_px = catch_lift(catch_t)
+	sprite.position.y -= _hop_px
+
+
+## The catch hop's frames while gliding (squash, stretch up, airborne, landing squash), facing the way
+## it moves. False when no hop is on (the usual animation plays).
+func _catch_frames() -> bool:
+	if catch_t < 0.0 or catch_t >= catch_hop_length():
+		return false
+	var way := dir_name(velocity) if velocity.length() > IDLE_SPEED else dir_name(facing)
+	var hop_t := catch_t - Economy.COIN_CATCH_SQUASH_TIME
+	if hop_t < 0.0:
+		_show_frame("charge_" + way, lerpf(0.3, 0.9, catch_t / Economy.COIN_CATCH_SQUASH_TIME))
+	elif hop_t < Economy.COIN_CATCH_HOP_TIME * 0.25:
+		_show_frame("launch_" + way, hop_t / (Economy.COIN_CATCH_HOP_TIME * 0.25))
+	elif hop_t < Economy.COIN_CATCH_HOP_TIME:
+		_show_frame("air_" + way, (hop_t / Economy.COIN_CATCH_HOP_TIME - 0.25) / 0.75)
+	else:
+		_show_frame("land_" + way, (hop_t - Economy.COIN_CATCH_HOP_TIME) / Economy.COIN_CATCH_LAND_TIME)
+	return true
 
 
 ## Picks the animation (and, for state-driven ones, the exact frame) for the current state.
@@ -556,7 +633,9 @@ func _animate() -> void:
 	var facing_name := dir_name(facing)
 	match state:
 		State.GLIDE:
-			if _recover_anim_left > 0.0:
+			if _catch_frames():
+				pass  # coin catch test: the hop's own frames
+			elif _recover_anim_left > 0.0:
 				_play("recover")
 			elif _land_anim_left > 0.0:
 				_show_frame("land_" + facing_name, 1.0 - _land_anim_left / LAND_ANIM_TIME)

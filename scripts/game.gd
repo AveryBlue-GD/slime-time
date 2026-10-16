@@ -281,6 +281,8 @@ var motes: Ambient
 var hat: Hat
 ## Coins still waiting in this story level (see Coin; never in randomizer mazes).
 var coins: Array[Coin] = []
+## Coin catch test: the coin shows still running (oldest first; see _catch_coin).
+var coin_catches: Array[CoinCatch] = []
 ## How many coins this level hides in total.
 var coins_here := 0
 ## The goal touching which wins: the chalice in a story level, the TicketGoal in a randomizer maze
@@ -1546,6 +1548,12 @@ func _pick_up_coins(pos: Vector2) -> void:
 		progress.collect_coin(level, coin.cell, assisted)
 		if assisted:
 			assisted_coins += 1
+		if Economy.coin_catch_on():  # coin catch test: the same credit, a slower show (CoinCatch)
+			_catch_coin(coin)
+			if progress.coins_earned() >= Levels.total_coins():
+				hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
+				_sfx("unlock")
+			continue
 		_sfx("coin", -4.0)
 		if progress.jelly:
 			coin.dissolve_into(slime, Skins.shades(skin_color).light)  # seen sinking into the body
@@ -1555,6 +1563,41 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if progress.coins_earned() >= Levels.total_coins():  # the very last coin: the rainbow skin
 			hud.flash_message("EVERY COIN FOUND!\nNEW SKIN: " + Skins.RAINBOW_NAME, 3.0)
 			_sfx("unlock")
+
+
+## Coin catch test: the coin's show (tossed up, caught, dissolved), already counted in the save. The
+## HUD counter holds the coins still dissolving back and pops up by one as each one finishes.
+func _catch_coin(coin: Coin) -> void:
+	while coin_catches.size() >= Economy.COIN_CATCH_MAX:
+		coin_catches[0].finish()  # too many at once: the oldest finishes now
+	var calm: bool = progress.reduce_motion
+	if calm:
+		_sfx("coin", Economy.COIN_CATCH_COIN_DB)  # no toss to catch: the sound at once
+	var catch := CoinCatch.begin(slime, coin, progress.jelly, calm, Skins.shades(skin_color).light, rainbow,
+		[0.0, -3.0, 3.0][coin_catches.size() % 3])
+	catch.done.connect(_on_coin_caught)
+	coin_catches.append(catch)
+	_show_coins()
+
+
+func _on_coin_caught(catch: CoinCatch) -> void:
+	coin_catches.erase(catch)
+	_show_coins(true)
+	if not finished:
+		_sfx("coin_fizz", Economy.COIN_CATCH_FIZZ_DB)
+
+
+## Ends every coin catch at once (a win or a dry-up): the counter shows the full count.
+func _end_coin_catches() -> void:
+	for catch in coin_catches.duplicate():
+		catch.finish()
+	slime.cancel_catch_hop()
+
+
+## The HUD's coin pods: the balance and this level's count, less the coins still dissolving.
+func _show_coins(pop := false) -> void:
+	var showing := coin_catches.size()
+	hud.set_coins(progress.coins() - showing, progress.coins_found_in(level) + assisted_coins - showing, coins_here, pop)
 
 
 ## A solid slime has no see-through body: the coin glides into it, then pops.
@@ -2117,6 +2160,7 @@ func _dry_up(out_of_time := false) -> void:
 ## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
 func _finish(did_win: bool, text: String) -> void:
 	finished = true
+	_end_coin_catches()
 	won = did_win
 	if did_win:
 		survey_goal = true

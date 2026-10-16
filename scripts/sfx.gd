@@ -4,7 +4,7 @@ extends Node
 ## Each sound gets a few players so quick repeats overlap instead of cutting each other off.
 ## Muted when Progress.sound_on is false.
 
-const SOUNDS: Array[String] = ["squish", "charge", "jump", "land", "splat", "chalice", "unlock", "dry", "click", "pause", "coin", "crumble", "jingle", "upgrade", "heartbeat", "lowwarn", "whoosh", "crack", "clank", "sunrise", "huh", "grumble", "goo_shot", "goo_lob", "goo_burst", "kaze"]
+const SOUNDS: Array[String] = ["squish", "charge", "jump", "land", "splat", "chalice", "unlock", "dry", "click", "pause", "coin", "crumble", "jingle", "upgrade", "heartbeat", "lowwarn", "whoosh", "crack", "clank", "sunrise", "huh", "grumble", "goo_shot", "goo_lob", "goo_burst", "kaze", "coin_fizz"]
 const VOICES := 3
 
 ## Sounds that vary a little each time (+/- this share of pitch, and +/- VARY_DB in volume), so

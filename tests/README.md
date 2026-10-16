@@ -48,7 +48,7 @@ Each script's header comment lists its options (`--shot=`, `--skin=`, `--attempt
 | `demo_record_run`, `demo_record`, `demo_rewards` | a win with NEW RECORD / medal / ticket rewards and the REPLAY / NEXT buttons |
 | `demo_dry`, `demo_pause`, `demo_prompt`, `demo_quitmenu`, `demo_reset`, `demo_wipe` | single menu / HUD states (dry-up buttons, pause menu, R prompt, trapdoor confirm, reset confirm, goo wipe) |
 | `demo_level_select`, `demo_maps`, `demo_hats`, `demo_wheel`, `demo_store`, `demo_hubskin`, `demo_stopwatch`, `demo_medal_skins`, `demo_hat_audit`, `demo_hat_hops` | level select, map table, hats page, hat wheel, ticket store / trails, skins, stopwatch skin, the hat contact sheets and hat hops |
-| `demo_abilities`, `demo_descent`, `demo_heat`, `demo_attempts`, `demo_random_ticket`, `demo_brightness`, `demo_cues`, `demo_edge`, `demo_jump`, `demo_jelly`, `demo_touch_hint`, `demo_soft_bounce` | feature scenarios (soft bounce test clip, abilities, Descent, HEAT, attempt pod, randomizer ticket, light radius, level 1 cues, maze edge, charged leap, jelly coins, touch hint) |
+| `demo_abilities`, `demo_descent`, `demo_heat`, `demo_attempts`, `demo_random_ticket`, `demo_brightness`, `demo_cues`, `demo_edge`, `demo_jump`, `demo_jelly`, `demo_touch_hint`, `demo_soft_bounce`, `demo_coin_catch` | feature scenarios (soft bounce test clip, coin catch test clip, abilities, Descent, HEAT, attempt pod, randomizer ticket, light radius, level 1 cues, maze edge, charged leap, jelly coins, touch hint) |
 | `demo_overview` | level-design top-down view of a whole maze (needs a window: `-- --level=5 [--hard] [--out=PATH]`) |
 
 ## 3. Tools that are not suites
