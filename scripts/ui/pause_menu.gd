@@ -10,6 +10,15 @@ const PANEL_X := 100
 const PANEL_W := 120
 const COLUMN_W := 100
 const MENU_TOP := 63
+## PAUSED's line box top (30 in English: under the HUD's first row of pods), and the gap from its box
+## to the panel (MENU_TOP = 30 + 20 + 5 + PANEL_PAD).
+const TITLE_Y := 30
+const TITLE_TO_PANEL := 5
+## The Descent note's line top (150 in English), and the lowest row anything may reach.
+const NOTE_Y := 150
+const BOTTOM := 176
+## Two columns (a taller script's buttons that no longer fit one column): COLUMN_W each, GAP_L apart.
+const COLUMN_GAP := UIKit.GAP_L
 
 var buttons: Array[Button] = []
 var sound_button: Button
@@ -30,6 +39,10 @@ var drain_button: Button
 ## resume. And the level's controls kept out of focus while the menu is open (UIKit.lock_focus).
 var _return_focus: Control
 var _focus_lock := {}
+var _title: Label
+var _menu: GridContainer
+var _last_row: VBoxContainer
+var _last_index := 0
 
 
 func _ready() -> void:
@@ -47,16 +60,20 @@ func _ready() -> void:
 	# i18n: max 110px, 16 px font
 	var title := UIKit.make_label(Loc.t("pause.title", "PAUSED"), UIKit.FONT_BIG, UIKit.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(0, 30)
-	title.size = Vector2(320, 20)
+	title.position = Vector2(0, _title_y())
+	title.size = Vector2(320, UIKit.title_h())
 	root.add_child(title)
+	_title = title
 
 	_panel = UIKit.add_panel(root, Rect2(PANEL_X, MENU_TOP - UIKit.PANEL_PAD, PANEL_W, 0))
-	var menu := VBoxContainer.new()
+	var menu := GridContainer.new()
+	menu.columns = 1
 	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
 	menu.custom_minimum_size = Vector2(COLUMN_W, 0)
-	menu.add_theme_constant_override("separation", UIKit.GAP_S)
+	menu.add_theme_constant_override("v_separation", UIKit.GAP_S)
+	menu.add_theme_constant_override("h_separation", COLUMN_GAP)
 	root.add_child(menu)
+	_menu = menu
 	sound_button = UIKit.make_button("", _toggle_sound)
 	restart_button = UIKit.make_button(Loc.t("pause.restart", "RESTART"), _restart)
 	buttons = [
@@ -74,7 +91,7 @@ func _ready() -> void:
 	seed_button.visible = false
 	menu.add_child(seed_button)
 	seed_edit = LineEdit.new()
-	seed_edit.custom_minimum_size = Vector2(100, UIKit.BUTTON_H)
+	seed_edit.custom_minimum_size = Vector2(100, UIKit.button_h())
 	seed_edit.max_length = 13
 	seed_edit.placeholder_text = Loc.t("pause.new_seed", "NEW SEED")  # i18n: max 92px, 1 line
 	seed_edit.add_theme_font_size_override("font_size", UIKit.FONT)
@@ -86,7 +103,7 @@ func _ready() -> void:
 	menu.add_child(seed_edit)
 	descent_note = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	descent_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	descent_note.position = Vector2(0, 150)
+	descent_note.position = Vector2(0, NOTE_Y)
 	descent_note.size = Vector2(320, 10)
 	descent_note.visible = false
 	root.add_child(descent_note)
@@ -142,15 +159,13 @@ func open() -> void:
 		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
-	# The panel fits the stack: PANEL_PAD above the first button and below the last one.
-	var count := 5 + (1 if random else 0) - (1 if descent else 0)
-	_panel.size.y = UIKit.PANEL_PAD * 2 + count * UIKit.BUTTON_H + (count - 1) * UIKit.GAP_S
 	descent_note.visible = false
 	var progress := get_node_or_null("/root/Progress")
 	if descent and progress and progress.descent_active():
 		descent_note.visible = true
 		# i18n: max 300px, 1 line, under the panel
 		descent_note.text = Loc.t("pause.quit_cashes", "QUITTING CASHES OUT THE POT") if game.won else Loc.t("pause.quit_banks", "QUITTING BANKS HALF THE POT")
+	_layout(5 + (1 if random else 0) - (1 if descent else 0), hud)
 	if random:
 		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true
@@ -162,6 +177,101 @@ func open() -> void:
 	if _focus_lock.is_empty():
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
 	_sfx("pause")
+
+
+## Lays the menu out for `count` buttons (docs/ui-rules.md section 10): PAUSED, then the panel
+## PANEL_PAD around the stack, in one column at MENU_TOP in English; a taller script whose column no
+## longer fits above the bottom row (and the Descent note) gets two columns of COLUMN_W on a wider
+## panel. PAUSED keeps clear of the HUD pods beside it (a long translation steps down to the 8 px
+## font), and the Descent note sits at NOTE_Y or GAP_M under the panel.
+func _layout(count: int, hud: Node) -> void:
+	var title_y := _title_slot(hud)
+	var menu_top := title_y + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD  # MENU_TOP in English
+	var note_h := UIKit.line_h() + int(UIKit.metrics().ink_below) + int(UIKit.metrics().ink_above) + UIKit.GAP_M if descent_note.visible else 0
+	var columns := 1
+	if menu_top + _stack_h(count, 1) + UIKit.PANEL_PAD > BOTTOM - note_h:
+		columns = 2
+	_menu.columns = columns
+	# Two columns and an odd count: the last button sits alone, centred under the pairs (_last_row).
+	if _last_row and _last_row.get_child_count() > 0:
+		var back_in: Control = _last_row.get_child(0)
+		_last_row.remove_child(back_in)
+		_menu.add_child(back_in)
+		_menu.move_child(back_in, _last_index)
+	if _last_row:
+		_last_row.visible = false
+	if columns == 2 and count % 2 == 1:
+		if _last_row == null:  # (made only when needed: a new node made earlier would reseed every goo lump after it)
+			_last_row = VBoxContainer.new()
+			_menu.get_parent().add_child(_last_row)
+		var shown := _menu.get_children().filter(func(c: Node) -> bool: return (c as Control).visible)
+		var last: Control = shown[-1]
+		_last_index = last.get_index()
+		_menu.remove_child(last)
+		_last_row.add_child(last)
+		_last_row.visible = true
+	var width := COLUMN_W * columns + COLUMN_GAP * (columns - 1)
+	var panel_w := PANEL_W + width - COLUMN_W
+	var panel_x := UIKit.center_x(panel_w)  # PANEL_X in English
+	# A wider panel keeps GAP_XS under the HUD pods it would reach (when the bottom has the room).
+	if hud and hud.has_method("pod_rects"):
+		var lowest := 0.0
+		for pod: Rect2 in hud.pod_rects():
+			if pod.position.x < panel_x + panel_w and pod.end.x > panel_x:
+				lowest = maxf(lowest, pod.end.y + UIKit.GAP_XS)
+		var room := BOTTOM - note_h - UIKit.PANEL_PAD - _stack_h(count, columns)
+		if menu_top - UIKit.PANEL_PAD < lowest and lowest + UIKit.PANEL_PAD <= room:
+			menu_top = int(lowest) + UIKit.PANEL_PAD
+	_menu.position = Vector2(panel_x + (panel_w - width) / 2.0, menu_top)
+	_menu.custom_minimum_size = Vector2(width, 0) if columns == 1 else Vector2.ZERO
+	for child in _menu.get_children():
+		(child as Control).custom_minimum_size.x = COLUMN_W if columns > 1 else (child as Control).custom_minimum_size.x
+	_menu.size = Vector2.ZERO
+	if _last_row and _last_row.visible:
+		var rows := ceili(count / 2.0)
+		_last_row.position = Vector2(UIKit.center_x(COLUMN_W), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
+		_last_row.size = Vector2(COLUMN_W, UIKit.button_h())
+	_panel.position = Vector2(panel_x, menu_top - UIKit.PANEL_PAD)
+	_panel.size = Vector2(panel_w, UIKit.PANEL_PAD * 2 + _stack_h(count, columns))
+	var panel_bottom := int(_panel.position.y + _panel.size.y)
+	descent_note.position.y = clampi(maxi(NOTE_Y, panel_bottom + UIKit.GAP_M + int(UIKit.metrics().ink_above)), 0,
+		BOTTOM - UIKit.line_h() - int(UIKit.metrics().ink_below))
+	_title.position = Vector2(0, title_y)
+	_title.size = Vector2(UIKit.SCREEN.x, UIKit.title_h())
+
+
+## PAUSED's line box top: _title_y(), or GAP_XS under the HUD pods beside it when the title (a long
+## translation, or a pod grown by one) would not fit between their columns.
+func _title_slot(hud: Node) -> int:
+	var y := _title_y()
+	if hud == null or not hud.has_method("pod_rects"):
+		return y
+	var pods: Array[Rect2] = hud.pod_rects()
+	var title_w := UIKit.text_w(_title.text, UIKit.FONT_BIG)
+	var above := int(UIKit.metrics().title_above)  # (the accents' rows over the line box)
+	for i in pods.size():  # (each step moves under one more pod)
+		var margin := 0.0
+		var lowest := float(y)
+		for pod: Rect2 in pods:
+			if pod.position.y < y + UIKit.title_h() and pod.end.y + UIKit.GAP_XS > y - above:
+				var left := pod.get_center().x < UIKit.SCREEN.x / 2.0
+				margin = maxf(margin, pod.end.x + UIKit.GAP_XS if left else UIKit.SCREEN.x - pod.position.x + UIKit.GAP_XS)
+				lowest = maxf(lowest, pod.end.y + UIKit.GAP_XS + above)
+		if title_w <= UIKit.SCREEN.x - 2.0 * margin:
+			return y
+		y = int(lowest)
+	return y
+
+
+## The button stack's height for `count` buttons in `columns` columns.
+func _stack_h(count: int, columns: int) -> int:
+	var rows := ceili(count / float(columns))
+	return rows * UIKit.button_h() + (rows - 1) * UIKit.GAP_S
+
+
+## PAUSED's line box top: TITLE_Y, lower by the title's accent room.
+func _title_y() -> int:
+	return TITLE_Y + UIKit.title_top() - UIKit.TITLE_Y
 
 
 func resume() -> void:

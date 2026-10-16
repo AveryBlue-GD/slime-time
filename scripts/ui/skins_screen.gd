@@ -101,10 +101,95 @@ func _ready() -> void:
 	page_button = UIKit.make_button(page_title("hats"), func() -> void: show_page(PAGES[(PAGES.find(page) + 1) % PAGES.size()]), back.custom_minimum_size)
 	page_button.position = Vector2(320 - back.position.x - back.custom_minimum_size.x, back.position.y)
 	add_child(page_button)
-	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, UIKit.BUTTON_H))
+	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, UIKit.button_h()))
 	jelly_button.position = Vector2((320 - 80) / 2, back.position.y)
 	add_child(jelly_button)
+	_layout(back)
 	show_page("skins")
+
+
+## Fits the page to the locale's text sizes (docs/ui-rules.md section 10), the first step that fits:
+## 0 = the English layout (title, grid, status + rule lines, the stage above the bottom row);
+## 1 = the title in the 8 px font (its row shrinks);
+## 2 = also JELLY moves to the top-left corner (the title on its text line) and the stage drops onto
+##     the bottom row between BACK and the page button (ending on row 176, like them);
+## 3 = also the status and rule lines in the script's smaller crisp font (Devanagari 12 px).
+## The bottom row: BACK and the page button keep one width (BACK's, or the longest page name's).
+## English metrics keep the source layout untouched.
+func _layout(back: Button) -> void:
+	var metrics := UIKit.metrics()
+	var above := int(metrics.ink_above)
+	var below := int(metrics.ink_below)
+	if UIKit.button_h() == UIKit.BUTTON_H:
+		return  # English metrics (en, id, the gate off): the source layout as built (TRAILS grows its button 2 px there)
+	var w: int = UIKit.tab_widths([back.text, page_title("skins"), page_title("hats"), page_title("trails")], int(back.custom_minimum_size.x))[0]
+	if w != int(back.custom_minimum_size.x):
+		back.custom_minimum_size.x = w
+		back.size.x = w
+	page_button.custom_minimum_size.x = w
+	page_button.size.x = w
+	page_button.position.x = UIKit.SCREEN.x - UIKit.EDGE - w
+	var jelly_w := UIKit.tab_widths([_jelly_text(true), _jelly_text(false)], 80)[0]
+	var small: Font = null
+	var language := get_node_or_null("/root/Language")
+	if language and language.has_method("small_font"):
+		small = language.small_font(UIKit.locale())
+	var stage_x := roundf((UIKit.SCREEN.x - SkinShowcase.STAGE_SIZE.x) / 2.0)
+	var plan := {}
+	for step in 4:
+		if step == 3 and small == null:
+			break
+		if step >= 2 and UIKit.EDGE + w + UIKit.GAP_XS > stage_x:
+			break  # (BACK / the page button too wide to flank the stage)
+		var line := int(small.get_height(UIKit.FONT)) if step == 3 else UIKit.line_h()
+		var pitch := line if step == 3 else UIKit.dense_pitch()
+		var title_y := UIKit.title_top()
+		var title_bottom := UIKit.title_bottom()  # (22 in English)
+		if step >= 1:
+			title_y = UIKit.TITLE_Y + above if step == 1 else UIKit.EDGE + UIKit.button_v_margins().x
+			title_bottom = title_y + UIKit.line_h() + below + 2  # (2: the title's shadow)
+		var grid_top := title_bottom + 1  # GRID_TOP in English
+		if step >= 2:
+			grid_top = maxi(title_bottom, UIKit.EDGE + UIKit.button_h()) + UIKit.GAP_XS
+		var status_top := grid_top + _grid_h() + GRID_GAP + above  # STATUS_TOP in English
+		var rule_top := status_top + pitch  # RULE_TOP
+		var rule_end := rule_top + line + below
+		var stage_top := rule_end + GRID_GAP  # CUSTOM_TOP
+		var fits := stage_top + int(SkinShowcase.STAGE_SIZE.y) + UIKit.GAP_S <= UIKit.bottom_row_y()
+		if step >= 2:
+			stage_top = int(UIKit.SCREEN.y) - 4 - int(SkinShowcase.STAGE_SIZE.y)  # (row 176, the bottom row's edge)
+			fits = rule_end + UIKit.GAP_S <= stage_top
+		plan = {step = step, title_y = title_y, grid_top = grid_top, status_top = status_top, rule_top = rule_top, stage_top = stage_top}
+		if fits:
+			break
+	if plan.is_empty():
+		return
+	if plan.step >= 1:
+		_title.add_theme_font_override("font", UIKit.font_for(UIKit.FONT))
+		_title.add_theme_font_size_override("font_size", UIKit.FONT)
+		_title.offset_top = plan.title_y
+		_title.offset_bottom = plan.title_y + UIKit.line_h()
+	for grid: Control in [_skin_grid, _hat_grid, _trail_grid]:
+		grid.position.y = plan.grid_top
+	for pair: Array in [[status, plan.status_top], [_rule, plan.rule_top]]:
+		var label: Label = pair[0]
+		label.offset_top = pair[1]
+		label.offset_bottom = pair[1] + 10
+		if plan.step == 3:
+			label.add_theme_font_override("font", small)
+	showcase.position.y = plan.stage_top
+	custom_panel.position.y = plan.stage_top
+	jelly_button.custom_minimum_size.x = jelly_w
+	jelly_button.size.x = jelly_w
+	if plan.step >= 2:
+		jelly_button.position = Vector2(UIKit.EDGE, UIKit.EDGE)
+	else:
+		jelly_button.position.x = UIKit.center_x(jelly_w)
+
+
+## The tall grid's height (two rows of tiles: the skins and the hats).
+func _grid_h() -> int:
+	return 2 * int(TILE_SIZE.y) + GRID_GAP
 
 
 ## A label centered across the screen, `top` = its top edge.
@@ -382,8 +467,7 @@ func _refresh(focus_id := "") -> void:
 	for tile_id: String in tiles:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
 		UIKit.set_selected(tiles[tile_id], selected)
-	# i18n: max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
-	jelly_button.text = Loc.t("skins.jelly.on", "JELLY: ON") if view_jelly else Loc.t("skins.jelly.off", "JELLY: OFF")
+	jelly_button.text = _jelly_text(view_jelly)
 	_rule.text = rule_text("jelly" if view_jelly else "skins")
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
@@ -391,6 +475,12 @@ func _refresh(focus_id := "") -> void:
 	showcase.visible = page == "skins" and not custom_panel.visible
 	if custom_ready:
 		wheel.value = 1.0
+
+
+## The JELLY switch's text for either state (its width is measured from both, _layout).
+static func _jelly_text(on: bool) -> String:
+	# i18n: max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
+	return Loc.t("skins.jelly.on", "JELLY: ON") if on else Loc.t("skins.jelly.off", "JELLY: OFF")
 
 
 ## The hats page's status line (for `focus_id`, or the worn hat) and tile highlights.

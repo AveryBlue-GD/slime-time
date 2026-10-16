@@ -15,6 +15,8 @@ const FADE_SPEED := 3.0
 ## glide, as the trail, drips and sounds start) still plays the full fade instead of skipping it.
 const MAX_FADE_STEP := 1.0 / 30.0
 const KEY := 9.0
+## Room kept each side of a translated key word that widens its key (_draw_key).
+const KEY_PAD := 2.0
 const KEY_FILL := Color8(26, 28, 44)
 const KEY_EDGE := Color8(244, 244, 244)
 
@@ -87,7 +89,7 @@ func _draw() -> void:
 		var spot := Vector2(0, -23 + bob)
 		# i18n: tutorial keycap on touch screens, max 27px (a 29 px drawn key), 1 line
 		var leap := Loc.t("tutorial.jump", "JUMP") if _touch() else Platform.prompt_for("jump", _key_text("jump", "SPACE"))  # (pad: A)
-		_draw_key(spot, leap, 29.0, leap_alpha)
+		_draw_key(spot, leap, 29.0, leap_alpha, _touch())
 
 
 func _draw_wasd(top: Vector2, alpha: float) -> void:
@@ -114,18 +116,32 @@ func _draw_arrow(tip_center: Vector2, dir: Vector2, color: Color) -> void:
 		draw_rect(Rect2((back - side * half).round(), Vector2.ONE + side * (half * 2.0)), color)
 
 
-func _draw_key(center_top: Vector2, text: String, width: float, alpha: float) -> void:
-	var rect := Rect2((center_top - Vector2(floorf(width / 2.0), 0.0)).round(), Vector2(width, KEY))
+func _draw_key(center_top: Vector2, text: String, width: float, alpha: float, fit := false) -> void:
+	var font := ThemeDB.fallback_font
+	var arrow: bool = text in ["UP", "DOWN", "LEFT", "RIGHT"]
+	# `fit`: a translated word (the touch JUMP key) wider or taller than the key widens / heightens it,
+	# never cut: KEY_PAD clear each side, its line box inside the 1 px edge. The key grows upward, so
+	# its bottom stays clear of the slime. (The slimy font's 7 px line keeps the English 9 px key.)
+	# The key names (W A S D, SPACE: the OS's, untranslated) keep the source 29 / 9 px keys.
+	var line_h := font.get_height(8)
+	var height := KEY if not fit or line_h <= UIKit.TEXT_BODY else line_h + 2.0
+	if fit:
+		var text_w := ceilf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+		if text_w + 2.0 * KEY_PAD > width:
+			width = text_w + 2.0 * KEY_PAD + float(int(text_w + width) % 2)  # (same parity: centred on whole pixels)
+	var top := center_top - Vector2(floorf(width / 2.0), height - KEY)
+	var rect := Rect2(top.round(), Vector2(width, height))
 	draw_rect(rect, Color(KEY_EDGE, alpha))
 	draw_rect(rect.grow(-1.0), Color(KEY_FILL, alpha))
 	var center := rect.position + rect.size / 2.0
-	match text:
-		"UP", "DOWN", "LEFT", "RIGHT":
-			var dir := {"UP": Vector2.UP, "DOWN": Vector2.DOWN, "LEFT": Vector2.LEFT, "RIGHT": Vector2.RIGHT}[text] as Vector2
-			_draw_arrow(center.floor() + dir, dir, Color(KEY_EDGE, alpha))
-		_:
-			var font := ThemeDB.fallback_font
-			draw_string(font, Vector2(rect.position.x, rect.position.y + 7.0), text, HORIZONTAL_ALIGNMENT_CENTER, width, 8, Color(KEY_EDGE, alpha))
+	if arrow:
+		var dir := {"UP": Vector2.UP, "DOWN": Vector2.DOWN, "LEFT": Vector2.LEFT, "RIGHT": Vector2.RIGHT}[text] as Vector2
+		_draw_arrow(center.floor() + dir, dir, Color(KEY_EDGE, alpha))
+	else:
+		# The English baseline 7 px under the key's top; a taller script's line box fills the key's
+		# inside (moved down by its ink_nudge, like the buttons' text).
+		var baseline := 7.0 if height == KEY else 1.0 + font.get_ascent(8) + float(UIKit.metrics().get("ink_nudge", 0))
+		draw_string(font, Vector2(rect.position.x, rect.position.y + baseline), text, HORIZONTAL_ALIGNMENT_CENTER, width, 8, Color(KEY_EDGE, alpha))
 
 
 ## The label of the key bound to an action ("W", "SPACE", "UP"...), or the default.

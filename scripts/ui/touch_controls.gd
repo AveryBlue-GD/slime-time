@@ -26,6 +26,8 @@ const JOY_HOME := Vector2(40, 140)
 ## Mirrors the joystick's home (40, 140): both 40 px in from their side edge, on one center line.
 const JUMP_CENTER := Vector2(280, 140)
 const JUMP_RADIUS := 19.0
+## Room kept between the JUMP word's ink and the ring (jump_radius grows the circle to keep it).
+const JUMP_TEXT_CLEAR := 2.0
 const PAUSE_RECT := Rect2(302, 35, 15, 13)
 ## Where the pause button really is: PAUSE_RECT, moved down under the randomizer's taller attempt
 ## pod by game.gd (`pause_rect.position.y = PAUSE_Y_RANDOM`).
@@ -80,6 +82,8 @@ func _ready() -> void:
 	# A phone whose safe area cuts into the view: pause follows the HUD pods in (UIKit.hud_edge).
 	var shift := UIKit.hud_edge() - Vector2i(UIKit.HUD_EDGE, UIKit.HUD_EDGE)
 	pause_rect.position += Vector2(-shift.x, shift.y)
+	# ...and under the two rows of pods as they grow for a taller script (pod_h(): POD_H in English).
+	pause_rect.position.y += 2 * (UIKit.pod_h() - UIKit.POD_H)
 	_canvas = Control.new()
 	_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -176,9 +180,10 @@ func _touch_up(index: int, pos: Vector2) -> void:
 
 ## Where the floating joystick appears for a thumb at `pos`: whole inside the screen (and the safe area: never
 ## in an iPhone's home-indicator strip or under a notch, Platform.safe_rect), 12 px clear of the top.
-## PAUSE_Y_RANDOM, moved down with the HUD pods where a phone's safe area pushes them (UIKit.hud_edge).
+## PAUSE_Y_RANDOM, moved down with the HUD pods where a phone's safe area pushes them (UIKit.hud_edge),
+## and as they grow for a taller script (pod_h / pod_h2).
 func pause_y_random() -> float:
-	return PAUSE_Y_RANDOM + UIKit.hud_edge().y - UIKit.HUD_EDGE
+	return PAUSE_Y_RANDOM + UIKit.hud_edge().y - UIKit.HUD_EDGE + UIKit.pod_h() - UIKit.POD_H + UIKit.pod_h2() - UIKit.POD_H2
 
 
 func joystick_center_for(pos: Vector2) -> Vector2:
@@ -283,6 +288,22 @@ func _release_all() -> void:
 		_canvas.queue_redraw()
 
 
+## The JUMP circle's radius: JUMP_RADIUS, larger only when a translated word (`text_w` wide, its line
+## `line_h` tall) would come within JUMP_TEXT_CLEAR of the ring (LOMPAT): never cut, never scaled.
+static func jump_radius(text_w: float, line_h: float) -> float:
+	var corner := Vector2(text_w / 2.0 + JUMP_TEXT_CLEAR, minf(line_h, float(UIKit.TEXT_BODY + 2)) / 2.0)
+	return maxf(JUMP_RADIUS, ceilf(corner.length() + 1.0))
+
+
+## The baseline under JUMP_CENTER that centres the word's line box on it: 3 for the slimy font's
+## 7 px line (English); a taller script's box (ascent / height) is centred, plus its ink_nudge.
+static func jump_baseline(font: Font) -> float:
+	var line_h := font.get_height(8)
+	if line_h <= UIKit.TEXT_BODY:
+		return 3.0
+	return 3.0 + (font.get_ascent(8) - UIKit.TEXT_BODY) - floorf((line_h - UIKit.TEXT_BODY) / 2.0) + float(UIKit.metrics().get("ink_nudge", 0))
+
+
 func _draw_controls() -> void:
 	if menu_open:
 		return  # (a hub panel is open: its buttons take the taps)
@@ -295,15 +316,16 @@ func _draw_controls() -> void:
 		Color(color, 0.85 if _joy_touch != -1 else 0.5))
 	# Jump button.
 	var pressed := _jump_touch != -1
-	_canvas.draw_circle(JUMP_CENTER, JUMP_RADIUS, Color(color, 0.55) if pressed else dim)
-	_canvas.draw_arc(JUMP_CENTER, JUMP_RADIUS, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	var font := _canvas.get_theme_default_font()
 	var jump_text := Loc.t("touch.jump", "JUMP")  # i18n: touch jump button, inside a 38 px circle, max 34px
 	var label_width := font.get_string_size(jump_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, 3)).round(), jump_text,
+	var radius := jump_radius(label_width, font.get_height(8))
+	_canvas.draw_circle(JUMP_CENTER, radius, Color(color, 0.55) if pressed else dim)
+	_canvas.draw_arc(JUMP_CENTER, radius, 0.0, TAU, 32, Color(color, 0.8), 1.0)
+	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, jump_baseline(font))).round(), jump_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9 if jump_enabled else 0.35))
 	if not jump_enabled:  # GROUNDED: struck out
-		var d := Vector2(JUMP_RADIUS, JUMP_RADIUS) * 0.6
+		var d := Vector2(radius, radius) * 0.6
 		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
 	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used.
 	for i in abilities.size():

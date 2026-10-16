@@ -122,6 +122,16 @@ var _message_center: CenterContainer
 ## The result panel moves up by this when the HEAT line adds a row, so its bottom stays clear of
 ## the NEW RECORD! banner (13 = the row's 9 px + the 4 px gap).
 const HEAT_ROW_LIFT := 13
+var _lift := 0
+## The rewards row's widest English layout; a wider translation wraps its last text (_wrap_rewards).
+const REWARDS_W := 296
+var _rewards_row2: HBoxContainer
+## The result text as shown in English layout (show_message); _fit_result may pair its lines.
+var _message_text := ""
+const MESSAGE_PAIR_GAP := "   "
+var _fit_queued := false
+var _banner_words: BoxContainer
+var _banner_title: Label
 var countdown := -1.0
 const HEAT_TINT := Color8(255, 170, 90)
 const RACE_LOW := 10.0
@@ -250,15 +260,16 @@ func _ready() -> void:
 
 	area_label = _make_label(SkinText.ROLE_DIM)
 	area_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	area_label.offset_top = AREA_TOP
-	area_label.offset_bottom = AREA_TOP + 10
+	_area_base = _area_top()
+	area_label.offset_top = _area_base
+	area_label.offset_bottom = _area_base + 10
 	area_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	area_label.visible = false
 	add_child(area_label)
 	story_label = _make_label(SkinText.ROLE_DIM)
 	story_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	story_label.offset_top = AREA_TOP + STORY_GAP
-	story_label.offset_bottom = AREA_TOP + STORY_GAP + 10
+	story_label.offset_top = _area_base + _story_gap()
+	story_label.offset_bottom = _area_base + _story_gap() + 10
 	story_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	story_label.visible = false
 	add_child(story_label)
@@ -346,7 +357,7 @@ func _make_pod(bar: BoxContainer) -> HBoxContainer:
 	pod.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Every one-line pod is POD_H tall (an 8 px icon sets it; text-only pods match), so pods in a
 	# row share their bottom edge and the mirrored second-row pods start on the same row.
-	pod.custom_minimum_size.y = UIKit.POD_H
+	pod.custom_minimum_size.y = UIKit.pod_h()
 	if bar:
 		bar.add_child(pod)
 		var right := bar.grow_horizontal == Control.GROW_DIRECTION_BEGIN
@@ -397,10 +408,14 @@ func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -
 func set_coins(total: int, found: int, here: int, pop := false) -> void:
 	coin_label.text = str(clampi(total, 0, 999))  # never shows a negative balance
 	# i18n: HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
-	coins_left_label.text = Loc.t("hud.pod.all_found", "ALL FOUND") if found >= here \
+	var left_text := Loc.t("hud.pod.all_found", "ALL FOUND") if found >= here \
 		else Loc.n("hud.pod.coins_left", "{count} LEFT", "{count} LEFT", here - found)
+	var resized := left_text != coins_left_label.text  # (a wider pod: the area texts check it again)
+	coins_left_label.text = left_text
 	if _coins_left_pod.visible != (here > 0):
 		_coins_left_pod.visible = here > 0
+		resized = true
+	if resized:
 		_pods_changed()
 	if pop:
 		coin_label.add_theme_color_override("font_color", GOLD)
@@ -423,9 +438,9 @@ func set_attempt(attempt: int, payout: int, pop := false) -> void:
 		return  # called every frame: only a change touches the label
 	attempt_pod.visible = true
 	# The two-line pod reaches down to y 40: the area name moves under it instead of under the timer.
-	_area_base = AREA_TOP_UNDER_ATTEMPT
-	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
-	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
+	_area_base = _area_top_under_attempt()
+	area_label.offset_top = _area_base
+	area_label.offset_bottom = _area_base + 10
 	attempt_label.text = text
 	_pods_changed()
 	var color := TICKET_TINT if payout > 0 else MEDAL_OWNED
@@ -479,11 +494,11 @@ func set_pot(pot: int, cap: String, gain := 0, slot := 0) -> void:
 	if text == attempt_label.text and attempt_pod.visible:
 		return
 	attempt_pod.visible = true
-	_area_base = AREA_TOP_UNDER_ATTEMPT
-	area_label.offset_top = AREA_TOP_UNDER_ATTEMPT
-	area_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + 10
-	story_label.offset_top = AREA_TOP_UNDER_ATTEMPT + UIKit.LINE_PITCH  # the floor number under the area name
-	story_label.offset_bottom = AREA_TOP_UNDER_ATTEMPT + UIKit.LINE_PITCH + 10
+	_area_base = _area_top_under_attempt()
+	area_label.offset_top = _area_base
+	area_label.offset_bottom = _area_base + 10
+	story_label.offset_top = _area_base + UIKit.line_pitch()  # the floor number under the area name
+	story_label.offset_bottom = _area_base + UIKit.line_pitch() + 10
 	attempt_label.text = text
 	_pods_changed()
 	var pays := cap == "" or cap == "slime"
@@ -605,7 +620,9 @@ func show_heat_result(heat: int, result: Dictionary) -> void:
 	if not heat_row.visible:
 		_message_center.offset_top -= HEAT_ROW_LIFT
 		_message_center.offset_bottom -= HEAT_ROW_LIFT
+		_lift = HEAT_ROW_LIFT
 	heat_row.visible = true
+	_queue_fit()
 
 
 func _heat_text(text: String, color: Color) -> void:
@@ -667,6 +684,10 @@ func show_rewards(info: Dictionary) -> void:
 	hide_area_texts()  # the result panel can reach up to them
 	for child in rewards_row.get_children():
 		child.queue_free()
+	if _rewards_row2:
+		for child in _rewards_row2.get_children():
+			child.queue_free()
+		_rewards_row2.visible = false
 	rewards_texts.clear()
 	if info.get("dev", false):
 		_reward_label("DEV TOGGLES: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
@@ -705,6 +726,33 @@ func show_rewards(info: Dictionary) -> void:
 			"replay":
 				_reward_label(Loc.t("result.replayed_seed", "REPLAYED SEED"), MEDAL_OWNED)  # i18n: max 120px
 	rewards_row.visible = true
+	_wrap_rewards()
+	_queue_fit()
+
+
+## A rewards row wider than the text column (a translation) puts its last text on a second centred
+## row under it, so the result panel never reaches the screen's sides.
+func _wrap_rewards() -> void:
+	var items := rewards_row.get_children().filter(func(c: Node) -> bool: return not c.is_queued_for_deletion())
+	var labels := items.filter(func(c: Node) -> bool: return c is Label)
+	if labels.size() < 2:
+		return
+	var width := float(rewards_row.get_theme_constant("separation") * (items.size() - 1))
+	for item: Control in items:
+		width += UIKit.text_w((item as Label).text) if item is Label else item.get_combined_minimum_size().x
+	if width <= REWARDS_W:
+		return
+	if _rewards_row2 == null:
+		_rewards_row2 = HBoxContainer.new()
+		_rewards_row2.alignment = BoxContainer.ALIGNMENT_CENTER
+		_rewards_row2.add_theme_constant_override("separation", 6)
+		_rewards_row2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rewards_row.get_parent().add_child(_rewards_row2)
+		rewards_row.get_parent().move_child(_rewards_row2, rewards_row.get_index() + 1)
+	var last: Label = labels[-1]
+	rewards_row.remove_child(last)
+	_rewards_row2.add_child(last)
+	_rewards_row2.visible = true
 
 
 ## A medal tier's name (1 bronze, 2 silver, 3 gold) on the result's medal row.
@@ -749,6 +797,7 @@ func _reward_label(text: String, color: Color) -> void:
 func show_record(seconds: float) -> void:
 	record_time_label.text = UIKit.format_time(seconds)
 	record_banner.visible = true
+	_queue_fit()
 
 
 ## Shows a row of buttons, each [text, Callable]; button `focus` (default: the last) gets
@@ -759,11 +808,15 @@ func show_choices(options: Array, focus := -1) -> void:
 	for child in row.get_children():
 		child.queue_free()
 	choice_buttons.clear()
-	for option: Array in options:
-		var button := UIKit.make_button(option[0], option[1], UIKit.CHOICE_SIZE)
+	# One width for the row (CHOICE_SIZE in English), from the longest translation.
+	var widths := UIKit.tab_widths(options.map(func(o: Array) -> String: return o[0]), int(UIKit.CHOICE_SIZE.x))
+	for i in options.size():
+		var option: Array = options[i]
+		var button := UIKit.make_button(option[0], option[1], Vector2(widths[i], UIKit.choice_size().y))
 		row.add_child(button)
 		choice_buttons.append(button)
 	_choice_root.visible = true
+	_queue_fit()
 	_skin_text.recolor()
 	choice_buttons[focus].grab_focus()
 
@@ -777,8 +830,8 @@ func _build_choice_row() -> void:
 	add_child(_choice_root)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	center.offset_top = UIKit.CHOICE_Y - 1
-	center.offset_bottom = UIKit.CHOICE_Y + UIKit.BUTTON_H + 2
+	center.offset_top = UIKit.choice_y() - 1
+	center.offset_bottom = UIKit.choice_y() + UIKit.button_h() + 2
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_choice_root.add_child(center)
 	var row := HBoxContainer.new()
@@ -796,9 +849,12 @@ func _build_record_banner() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	record_banner.add_child(row)
-	var words := VBoxContainer.new()
+	var words := BoxContainer.new()  # (vertical; one row in the compact banner, _set_banner_compact)
+	words.vertical = true
 	words.add_theme_constant_override("separation", 5)  # room for the title's drips (they hang below its line box)
+	_banner_words = words
 	var title := _gold_label(Loc.t("result.new_record", "NEW RECORD!"), 16)  # i18n: big 16 px font, max 200px
+	_banner_title = title
 	record_time_label = _gold_label("", 8)
 	words.add_child(title)
 	words.add_child(record_time_label)
@@ -840,6 +896,7 @@ func show_area_name(text: String, story_line := "") -> void:
 	area_label.visible = true
 	area_label.modulate.a = 1.0
 	story_label.text = story_line
+	_wrap_story_line()
 	story_label.visible = story_line != ""
 	story_label.modulate.a = 1.0
 	_place_area_texts()
@@ -871,7 +928,7 @@ func _place_area_texts() -> void:
 	area_label.offset_top = y
 	area_label.offset_bottom = y + 10
 	if story_label.text != "":
-		var story_top := y + (UIKit.LINE_PITCH if attempt_pod.visible else STORY_GAP)
+		var story_top := y + (UIKit.line_pitch() if attempt_pod.visible else _story_gap())
 		story_top = _clear_y(story_label, story_top, pods)
 		story_label.offset_top = story_top
 		story_label.offset_bottom = story_top + 10
@@ -880,14 +937,18 @@ func _place_area_texts() -> void:
 ## The first line top from `top` down at which `label`'s centered text clears every rect in `pods`.
 func _clear_y(label: Label, top: float, pods: Array[Rect2]) -> float:
 	var width: float = label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var lines := label.text.count("\n") + 1  # (a story line broken by _wrap_story_line)
 	var x := roundf((UIKit.SCREEN.x - width) / 2.0)
+	var metrics := UIKit.metrics()
+	var above := float(metrics.ink_above)
+	var tall := float(UIKit.text_block_h(lines) + int(metrics.ink_below))  # line boxes + drips (TEXT_BODY + TEXT_DRIP in English)
 	var moved := true
 	while moved:
 		moved = false
-		var ink := Rect2(x, top, width, UIKit.TEXT_BODY + UIKit.TEXT_DRIP).grow(TEXT_CLEARANCE)
+		var ink := Rect2(x, top - above, width, above + tall).grow(TEXT_CLEARANCE)
 		for pod in pods:
 			if ink.intersects(pod):
-				top = pod.end.y + TEXT_CLEARANCE
+				top = pod.end.y + TEXT_CLEARANCE + above
 				moved = true
 	return top
 
@@ -953,6 +1014,18 @@ func hide_area_texts() -> void:
 
 func set_level_text(text: String) -> void:
 	level_label.text = text
+	# A translation too long for the room right of the timer pod wraps onto two lines there (the pod
+	# grows down, never over the timer); English names always fit on one.
+	var timer_pod := time_label.get_parent().get_parent() as Control
+	var timer_right := (UIKit.SCREEN.x + timer_pod.get_combined_minimum_size().x) / 2.0
+	var pod := level_label.get_parent().get_parent() as Control
+	var style := pod.get_theme_stylebox("panel")
+	var room := floorf(UIKit.SCREEN.x - UIKit.hud_edge().x - timer_right - UIKit.GAP_XS - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT))
+	var wide := UIKit.locale() != UIKit.Lang.SOURCE_LOCALE and UIKit.text_w(text) > room  # (English: the source layout)
+	if wide:
+		level_label.text = wrap_text(text, room)
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if wide else HORIZONTAL_ALIGNMENT_LEFT
+	_pods_changed()
 
 
 func set_skin_color(color: Color, rainbow := false) -> void:
@@ -992,7 +1065,152 @@ func flash_message(text: String, seconds: float) -> void:
 
 func show_message(text: String) -> void:
 	message.text = text
+	_message_text = text
 	message.visible = true
+	_queue_fit()
+
+
+## The result screen in a taller script (docs/ui-rules.md section 10): English keeps its source
+## layout (the message panel centred in rows 20..140, the record banner at 109..150, the choice row
+## at CHOICE_Y). Where a taller line makes those collide, the panel is centred in the room between the
+## HUD pods above it and the banner (or choice row) below; the banner sits CHOICE_GAP_Y over the choice
+## row; then, only while the panel still does not fit, the banner goes compact (NEW RECORD! and the
+## time on one 8 px line between 1x chalices) and the panel's rows pack GAP_XS apart. Nothing scales.
+func _queue_fit() -> void:
+	if not _fit_queued:
+		_fit_queued = true
+		_fit_result.call_deferred()
+
+
+func _fit_result() -> void:
+	_fit_queued = false
+	if UIKit.button_h() == UIKit.BUTTON_H or not message.visible:
+		return  # (English metrics: the source layout as built)
+	var metrics := UIKit.metrics()
+	var choices := _choice_root.visible
+	var below := float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40)
+	# The banner: GAP_S over the choice row (150 = 153 - 3 in English), as tall as its words.
+	_banner_words.add_theme_constant_override("separation", int(metrics.ink_below) + 3)
+	_set_banner_compact(false)
+	if record_banner.visible:
+		_place_banner(below)
+		below = record_banner.offset_top
+	(_message_panel.get_child(0) as BoxContainer).add_theme_constant_override("separation", 4)
+	message.text = _message_text
+	var top := _panel_top()
+	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top and record_banner.visible:
+		_set_banner_compact(true)
+		_place_banner(float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40))
+		below = record_banner.offset_top
+	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top:
+		(_message_panel.get_child(0) as BoxContainer).add_theme_constant_override("separation", UIKit.GAP_XS)
+	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top:
+		message.text = _pair_lines(_message_text)
+		top = _panel_top()
+	_message_center.offset_top = top
+	_message_center.offset_bottom = below - UIKit.GAP_XS - UIKit.SCREEN.y
+
+
+## The result lines after the first (the title) paired up, MESSAGE_PAIR_GAP apart, wherever two fit
+## the text column: "TIME 0:00.0   SEED 123-4" (the last step for a tall script's result panel).
+static func _pair_lines(text: String) -> String:
+	var lines := text.split("\n")
+	var out: Array[String] = [lines[0]]
+	var i := 1
+	while i < lines.size():
+		var pair := lines[i] + MESSAGE_PAIR_GAP + lines[i + 1] if i + 1 < lines.size() else ""
+		if pair != "" and UIKit.text_w(pair) <= REWARDS_W:
+			out.append(pair)
+			i += 2
+		else:
+			out.append(lines[i])
+			i += 1
+	return "\n".join(out)
+
+
+## The highest row the result panel may start on: GAP_XS under every HUD pod its columns would cross
+## (the English 20, less a heat row's lift, at the most).
+func _panel_top() -> float:
+	var width := _message_panel.get_combined_minimum_size().x
+	var span := Rect2((UIKit.SCREEN.x - width) / 2.0, 0, width, 1)
+	var top := 20.0 - _lift
+	for pod: Rect2 in pod_rects():
+		if pod.position.x < span.end.x and pod.end.x > span.position.x:
+			top = maxf(top, pod.end.y + UIKit.GAP_XS)
+	return top
+
+
+## The record banner's rows: ending GAP_S over `above` (the choice row), as tall as its contents.
+func _place_banner(above: float) -> void:
+	var row := record_banner.get_child(0) as Control
+	var h := row.get_combined_minimum_size().y if not _banner_words.vertical else maxf(41.0, row.get_combined_minimum_size().y)
+	record_banner.offset_bottom = above - UIKit.GAP_S
+	record_banner.offset_top = record_banner.offset_bottom - h
+
+
+## Compact banner: the title in the 8 px font beside the time, the chalices at 1x.
+func _set_banner_compact(on: bool) -> void:
+	_banner_words.vertical = not on
+	_banner_title.add_theme_font_size_override("font_size", 8 if on else 16)
+	if on:
+		_banner_title.add_theme_font_override("font", UIKit.font_for(UIKit.FONT))
+	else:
+		UIKit.use_big_font(_banner_title, 16)
+	for chalice in _chalices:
+		chalice.custom_minimum_size = CHALICE_FRAME * (1 if on else 2)
+
+
+## The area name's line top under the timer pod (AREA_TOP in English): lower by a taller pod and by
+## the line's accent room.
+func _area_top() -> int:
+	return AREA_TOP + UIKit.pod_h() - UIKit.POD_H + int(UIKit.metrics().ink_above)
+
+
+## The same under the two-line attempt / pot pod (AREA_TOP_UNDER_ATTEMPT in English).
+func _area_top_under_attempt() -> int:
+	return AREA_TOP_UNDER_ATTEMPT + UIKit.pod_h() - UIKit.POD_H + UIKit.pod_h2() - UIKit.POD_H2 + int(UIKit.metrics().ink_above)
+
+
+## The story line's distance under the area name (STORY_GAP in English): a taller line pitch and the
+## accent room above the story line come on top.
+func _story_gap() -> int:
+	return STORY_GAP + UIKit.line_pitch() - UIKit.LINE_PITCH + int(UIKit.metrics().ink_above)
+
+
+## A story line wider than the screen's text column (EDGE in from each side) wraps onto two centred
+## lines in that column (a translation; English lines are all shorter).
+func _wrap_story_line() -> void:
+	var column := UIKit.SCREEN.x - 2.0 * UIKit.EDGE
+	if story_label.text != "" and UIKit.text_w(story_label.text) > column:
+		story_label.text = wrap_text(story_label.text, column)
+
+
+## `text` broken onto lines no wider than `width` (at spaces, U+200B for Thai, or between any two
+## characters for Chinese / Japanese), each line as full as it goes: explicit line breaks, so the
+## label's size is known before any container sorts (an autowrapping label in a bar is not).
+static func wrap_text(text: String, width: float) -> String:
+	var parts_at_gap := text.split("  ", false)  # the texts' own separator first ("LEVEL 7/10  HARD")
+	if parts_at_gap.size() == 2 and UIKit.text_w(parts_at_gap[0]) <= width and UIKit.text_w(parts_at_gap[1].strip_edges()) <= width:
+		return parts_at_gap[0].strip_edges() + "\n" + parts_at_gap[1].strip_edges()
+	var anywhere := UIKit.autowrap_mode() == TextServer.AUTOWRAP_ARBITRARY
+	var parts: Array[String] = []
+	var word := ""
+	for i in text.length():  # parts keep their break: "WORD " / "WORD\u200b" / one CJK character
+		var ch := text[i]
+		word += ch
+		if anywhere or ch == " " or ch == "\u200b":
+			parts.append(word)
+			word = ""
+	if word != "":
+		parts.append(word)
+	var lines: Array[String] = [""]
+	for part in parts:
+		if lines[-1] != "" and UIKit.text_w((lines[-1] + part).strip_edges()) > width:
+			lines[-1] = lines[-1].strip_edges()
+			lines.append("")
+		lines[-1] += part
+	lines[-1] = lines[-1].strip_edges()
+	return "\n".join(lines)
 
 
 func _make_label(role := SkinText.ROLE_TEXT) -> Label:
@@ -1001,7 +1219,7 @@ func _make_label(role := SkinText.ROLE_TEXT) -> Label:
 	l.set_meta("role", role)
 	l.add_to_group(SkinText.GROUP)
 	l.add_theme_font_size_override("font_size", 8)
-	l.add_theme_constant_override("line_spacing", UIKit.LINE_SPACING)
+	l.add_theme_constant_override("line_spacing", UIKit.line_spacing())
 	l.add_theme_color_override("font_shadow_color", Color(FRAME_COLOR, 0.9))
 	l.add_theme_constant_override("shadow_offset_x", 1)
 	l.add_theme_constant_override("shadow_offset_y", 1)

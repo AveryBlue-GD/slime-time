@@ -44,6 +44,14 @@ const COST_X := 266
 ## clock (a SceneTreeTimer), so it plays out the same in fixed-fps runs on a loaded machine.
 const BUY_GUARD_TIME := 0.3
 const PREVIEW_TIME := 1.0
+## Row layouts per locale (docs/ui-rules.md section 10), from _plan_coins / _plan_abilities: the
+## English numbers (panel 23 / 27 tall, 26 / 30 apart from row 26) unless a taller script needs the
+## room: the panels hug their buttons closer (insets down to GAP_XS), the ABILITIES hint moves onto
+## the bottom row beside BACK, and only then a smaller crisp font (Devanagari 12 px).
+var _coin_plan := {}
+var _ability_plan := {}
+## Insets tried from the panel's edge to its buttons / text, roomiest first (5 = English COINS).
+const INSETS := [5, 4, 3, 2]
 ## The tab the next opening shows ("coins", "abilities" or, with the workshop on, "tickets"), for that one opening (demos and tests set
 ## it); the hub's cauldron always opens on COINS.
 static var open_tab := "coins"
@@ -99,7 +107,7 @@ func _ready() -> void:
 	coin_pod.offset_left = -UIKit.EDGE
 	coin_pod.offset_right = -UIKit.EDGE
 	coin_pod.offset_top = UIKit.EDGE
-	coin_pod.custom_minimum_size.y = UIKit.POD_H
+	coin_pod.custom_minimum_size.y = UIKit.pod_h()
 	var coin_row := HBoxContainer.new()
 	coin_row.add_theme_constant_override("separation", UIKit.GAP_S)
 	coin_pod.add_child(coin_row)
@@ -109,32 +117,46 @@ func _ready() -> void:
 	coin_label = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
 	coin_row.add_child(coin_label)
 
-	# The tabs, top left (mirroring the pod).
+	# The tabs, top left (mirroring the pod), GAP_XS apart: COINS 40 and TICKETS 52 wide in English,
+	# each wider for a longer translation (UIKit.tab_widths).
+	var tabs: Array[Button] = []
+	var tab_min: Array[int] = []
 	if workshop_on or abilities_on:  # (one page only with both switched off: no tab bar)
 		# i18n: tab, max 32px (40 wide, 4 px margins), 1 line
-		coins_tab = UIKit.make_button(Loc.t("upgrades.tab_coins", "COINS"), func() -> void: show_page("coins"), Vector2(40, UIKit.TAB_H))
-		coins_tab.position = Vector2(4, 4)
-		add_child(coins_tab)
+		coins_tab = UIKit.make_button(Loc.t("upgrades.tab_coins", "COINS"), func() -> void: show_page("coins"), Vector2(40, UIKit.tab_h()))
+		add_child(coins_tab)  # (each added as it is made: the goo lumps' seeds follow that order)
+		tabs.append(coins_tab)
+		tab_min.append(40)
 	if abilities_on:
 		# i18n: tab, max 44px (52 wide, 4 px margins), 1 line
-		abilities_tab = UIKit.make_button(Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("abilities"), Vector2(52, UIKit.TAB_H))
-		abilities_tab.position = Vector2(46, 4)
+		abilities_tab = UIKit.make_button(Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("abilities"), Vector2(52, UIKit.tab_h()))
 		add_child(abilities_tab)
+		tabs.append(abilities_tab)
+		tab_min.append(52)
 	if workshop_on:
 		# i18n: tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
 		tickets_tab = UIKit.make_button(Loc.t("upgrades.tab_tools", "TOOLS") if abilities_on else Loc.t("upgrades.tab_tickets", "TICKETS"), func() -> void: show_page("tickets"),
-			Vector2(40 if abilities_on else 52, UIKit.TAB_H))
-		tickets_tab.position = Vector2(100 if abilities_on else 46, 4)
+			Vector2(40 if abilities_on else 52, UIKit.tab_h()))
 		add_child(tickets_tab)
+		tabs.append(tickets_tab)
+		tab_min.append(40 if abilities_on else 52)
+	if not tabs.is_empty():
+		# (equal = false: the English tabs already differ, 40 / 52; each grows to its own text, which
+		# leaves the title the most room)
+		var row := UIKit.layout_row(tabs, UIKit.tab_widths(tabs.map(func(b: Button) -> String: return b.text), tab_min, false),
+			UIKit.EDGE, UIKit.EDGE, UIKit.GAP_XS)
+		if workshop_on and abilities_on:  # (the third tab keeps its English place, 100)
+			tickets_tab.position.x = maxf(tickets_tab.position.x, 100)
+		_fit_title(row.end.x + UIKit.GAP_M)
 
 	coin_page = _make_page()
-	var y := ROW_TOP
-	for upgrade: Dictionary in Upgrades.LIST:
-		if upgrade.get("dev", false) and not Progress.dev_tools:
-			continue
+	var coin_list := Upgrades.LIST.filter(func(u: Dictionary) -> bool: return not u.get("dev", false) or Progress.dev_tools)
+	_plan_coins(coin_list.size())
+	var y: int = _coin_plan.top + 2  # (ROW_TOP in English: the row's "y" is 2 under its panel's top)
+	for upgrade: Dictionary in coin_list:
 		_make_row(coin_page, upgrade, y)
-		y += ROW_HEIGHT
-	_rows_bottom["coins"] = y - 5
+		y += _coin_plan.pitch
+	_rows_bottom["coins"] = y - 2 - UIKit.GAP_S
 
 	if workshop_on:
 		ticket_page = _make_page()
@@ -146,11 +168,12 @@ func _ready() -> void:
 
 	if abilities_on:
 		ability_page = _make_page()
-		y = ABILITY_ROW_TOP
+		_plan_abilities(Abilities.LIST.size())
+		y = _ability_plan.top + 2  # (ABILITY_ROW_TOP in English)
 		for item: Dictionary in Abilities.LIST:
 			_make_ability_row(item, y)
-			y += ABILITY_ROW_HEIGHT
-		_rows_bottom["abilities"] = y - 5
+			y += _ability_plan.pitch
+		_rows_bottom["abilities"] = y - 2 - UIKit.GAP_S
 
 	hint = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -165,6 +188,104 @@ func _ready() -> void:
 		_build_confirm()
 	show_page(open_tab)
 	open_tab = "coins"  # (one opening only)
+
+
+## Plans the COINS rows: `count` panels from the content area's top, each a button_h() row with
+## the largest inset (INSETS) that leaves room for the two-line hint under them; failing all, the
+## tightest rows and the hint in the smaller font (UIKit.fit_text, _place_hint).
+func _plan_coins(count: int) -> void:
+	var area := UIKit.content_rect()
+	var hint_h := _hint_h(2)
+	for inset: int in INSETS:
+		var panel_h := UIKit.button_h() + 2 * inset
+		_coin_plan = {top = int(area.position.y), inset = inset, panel_h = panel_h, pitch = panel_h + UIKit.GAP_S, hint_small = false}
+		if count * panel_h + (count - 1) * UIKit.GAP_S + UIKit.GAP_M + hint_h <= area.size.y:
+			return
+	_coin_plan.hint_small = true
+
+
+## Plans the ABILITIES rows (icon, name over tag, pips, +): English insets 4 / 5 around the name and
+## tag; then 2 / 2; then the one-line hint on the bottom row (centred, clear of BACK); then the name
+## and tag in the script's smaller crisp font.
+func _plan_abilities(count: int) -> void:
+	var area := UIKit.content_rect()
+	var back_room := UIKit.SCREEN.x - 2.0 * (UIKit.EDGE + UIKit.back_size().x + UIKit.GAP_M)
+	var hint_w := maxf(UIKit.text_w(ability_hint()), UIKit.text_w(tickets_locked_text()))
+	var small: Font = null
+	var language := get_node_or_null("/root/Language")
+	if language and language.has_method("small_font"):
+		small = language.small_font(UIKit.locale())
+	var above := int(UIKit.metrics().ink_above)  # (accents over the name and drips under the tag: inside the panel too)
+	var below := int(UIKit.metrics().ink_below)
+	var steps := [[4 + above, 5, false, false], [2 + above, 2 + below, false, false], [2 + above, 2 + below, true, false], [2 + above, 2 + below, true, true]]
+	for step: Array in steps:
+		if step[2] and hint_w > back_room or step[3] and small == null:
+			continue
+		var line := float(small.get_height(UIKit.FONT)) if step[3] else float(UIKit.line_h())
+		var tag_pitch := int(line) if step[3] else UIKit.dense_pitch()
+		var block_h := int(line) + tag_pitch  # name + tag: 7 + 11 = 18 in English
+		var panel_h: int = block_h + step[0] + step[1]
+		_ability_plan = {top = int(area.position.y), inset_top = step[0], panel_h = panel_h, pitch = panel_h + UIKit.GAP_S,
+			block_h = block_h, tag_pitch = tag_pitch, small_font = small if step[3] else null, hint_in_row = step[2]}
+		var need := count * panel_h + (count - 1) * UIKit.GAP_S + (0 if step[2] else UIKit.GAP_M + _hint_h(1))
+		if need <= area.size.y:
+			return
+
+
+## Height of `lines` hint lines with the marks drawn outside their line boxes.
+func _hint_h(lines: int) -> int:
+	return UIKit.text_block_h(lines) + int(UIKit.metrics().ink_above) + int(UIKit.metrics().ink_below)
+
+
+## The level bar's top under a button's top: centred on it (3 in English).
+func _bar_offset() -> int:
+	return floori((UIKit.button_h() - BAR_HEIGHT) / 2.0)
+
+
+## The title centred between the tab row and its mirror on the right (the balance pod is narrower):
+## a translation wider than that room steps down to the 8 px font on the tabs' text line.
+func _fit_title(left: float) -> void:
+	var title: Label = null
+	for child in get_children():
+		if child is Label and child.get_theme_font_size("font_size") == UIKit.FONT_BIG:
+			title = child
+	if title == null:
+		return
+	var room := Rect2(left, UIKit.title_top(), UIKit.SCREEN.x - 2.0 * left, UIKit.title_h())
+	if UIKit.text_w(title.text, UIKit.FONT_BIG) <= room.size.x:
+		return
+	var fit := UIKit.fit_text(title, room, Vector2.ZERO, 1)
+	if fit.font_size == UIKit.FONT:
+		title.position.y = UIKit.EDGE + UIKit.button_v_margins().x
+		title.size.y = UIKit.line_h()
+
+
+## The hint under the page's rows, centred between their last panel and the bottom row (two lines
+## on COINS, one on TICKETS / ABILITIES), or on the bottom row itself (_ability_plan.hint_in_row).
+func _place_hint() -> void:
+	hint.remove_theme_font_override("font")
+	if page == "abilities" and _ability_plan.get("hint_in_row", false):
+		hint.offset_top = UIKit.bottom_row_y() + UIKit.button_v_margins().x
+		hint.offset_bottom = hint.offset_top + UIKit.line_h() + 2
+		return
+	var lines := 1 if page != "coins" else 2
+	# A translated line wider than the text column (EDGE in from each side) wraps inside it.
+	var column := UIKit.SCREEN.x - 2.0 * UIKit.EDGE
+	var wide := UIKit.text_w(hint.text) > column
+	hint.autowrap_mode = UIKit.autowrap_mode() if wide else TextServer.AUTOWRAP_OFF
+	hint.offset_left = UIKit.EDGE if wide else 0.0
+	hint.offset_right = -UIKit.EDGE if wide else 0.0
+	if wide:
+		lines = UIKit.wrapped_lines(hint.text, column)
+	var hint_height := UIKit.text_block_h(lines)  # 7 / 7 + LINE_SPACING + 7 in English
+	if page == "coins" and _coin_plan.get("hint_small", false):
+		var small: Font = get_node("/root/Language").small_font(UIKit.locale())
+		if small:
+			hint.add_theme_font_override("font", small)
+			hint_height = lines * int(small.get_height(UIKit.FONT)) + (lines - 1) * UIKit.line_spacing()
+	var rows_bottom: int = _rows_bottom[page]
+	hint.offset_top = rows_bottom + floori((UIKit.bottom_row_y() - rows_bottom - hint_height) / 2.0)
+	hint.offset_bottom = hint.offset_top + hint_height + 2
 
 
 func _make_page() -> Control:
@@ -192,12 +313,6 @@ func show_page(which: String) -> void:
 		if pair[0] != null:
 			UIKit.set_selected(pair[0], page == pair[1])
 	pod_icon.texture = load(UIKit.UI_DIR + ("icon_ticket.png" if tickets else "icon_coin.png"))
-	# Centered between the last row's panel and the bottom buttons (COINS: two lines, 7 + LINE_SPACING
-	# + 7 px; TICKETS: one line).
-	var hint_height := 7 if tickets else 14 + UIKit.LINE_SPACING
-	var rows_bottom: int = _rows_bottom[page]
-	hint.offset_top = rows_bottom + floori((164 - rows_bottom - hint_height) / 2.0)
-	hint.offset_bottom = hint.offset_top + hint_height + 2
 	_refresh()
 	var first: Button = null
 	if page == "abilities":
@@ -214,19 +329,22 @@ func show_page(which: String) -> void:
 ## A COINS row on one line, everything centered on the panel's middle (y + 9.5): name, bar, - / +,
 ## cost. Every row looks the same (no tag on any track, D12).
 func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
-	UIKit.add_panel(parent, Rect2(10, y - 2, 300, ROW_HEIGHT - 3))
+	var inset: int = _coin_plan.inset
+	UIKit.add_panel(parent, Rect2(10, y - 2, 300, _coin_plan.panel_h))
+	var button_y := y - 2 + inset  # (y + 3 in English)
+	var text_y := button_y + UIKit.button_v_margins().x  # the buttons' text line (y + 6 in English)
 	var name_label := UIKit.make_label(Upgrades.display_name(upgrade.id), UIKit.FONT, UIKit.GOLD if upgrade.get("dev", false) else UIKit.TEXT)
-	name_label.position = Vector2(18, y + 6)
+	name_label.position = Vector2(18, text_y)
 	parent.add_child(name_label)
-	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), y + 3)
-	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, UIKit.BUTTON_H))
-	minus.position = Vector2(MINUS_X, y + 3)
+	var pips := _make_pips(parent, Upgrades.max_level(upgrade.id), button_y + _bar_offset() - 3)
+	var minus := UIKit.make_button("-", func() -> void: _change(upgrade.id, false), Vector2(16, UIKit.button_h()))
+	minus.position = Vector2(MINUS_X, button_y)
 	parent.add_child(minus)
-	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, UIKit.BUTTON_H))
-	plus.position = Vector2(PLUS_X, y + 3)
+	var plus := UIKit.make_button("+", func() -> void: _change(upgrade.id, true), Vector2(16, UIKit.button_h()))
+	plus.position = Vector2(PLUS_X, button_y)
 	parent.add_child(plus)
 	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
-	cost.position = Vector2(COST_X, y + 6)
+	cost.position = Vector2(COST_X, text_y)
 	parent.add_child(cost)
 	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, name = name_label, y = y}
 
@@ -234,24 +352,31 @@ func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 ## An ABILITIES row: the icon (2x), name over its short tag, 3 pips, + and the price with the ticket
 ## icon.
 func _make_ability_row(item: Dictionary, y: int) -> void:
-	UIKit.add_panel(ability_page, Rect2(10, y - 2, 300, ABILITY_ROW_HEIGHT - 3))
+	var plan := _ability_plan
+	UIKit.add_panel(ability_page, Rect2(10, y - 2, 300, plan.panel_h))
+	var name_y: int = y - 2 + plan.inset_top  # the name over its tag (y + 2 in English), the block's middle row:
+	var block_h: int = plan.block_h
 	var icon := Abilities.make_icon(item.id, 2)
-	icon.position = Vector2(17, y + 3)
+	icon.position = Vector2(17, name_y + floori((block_h - 16) / 2.0))  # (y + 3)
 	ability_page.add_child(icon)
 	var name_label := UIKit.make_label(Abilities.display_name(item.id), UIKit.FONT, UIKit.TEXT)
-	name_label.position = Vector2(40, y + 2)
+	name_label.position = Vector2(40, name_y)
 	ability_page.add_child(name_label)
 	var tag := UIKit.make_label(Abilities.tag(item.id), UIKit.FONT, UIKit.TEXT_DIM)
-	tag.position = Vector2(40, y + 13)
+	tag.position = Vector2(40, name_y + plan.tag_pitch)  # (y + 13)
 	ability_page.add_child(tag)
-	var pips := _make_pips(ability_page, Abilities.max_level(item.id), y + 5)
-	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, UIKit.BUTTON_H))
-	plus.position = Vector2(PLUS_X, y + 5)
+	if plan.small_font != null:  # (Devanagari's smaller crisp size: the rows fit the page)
+		for label: Label in [name_label, tag]:
+			label.add_theme_font_override("font", plan.small_font)
+	var button_y := name_y + ceili((block_h - UIKit.button_h()) / 2.0)  # (y + 5)
+	var pips := _make_pips(ability_page, Abilities.max_level(item.id), button_y + _bar_offset() - 3)
+	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, UIKit.button_h()))
+	plus.position = Vector2(PLUS_X, button_y)
 	ability_page.add_child(plus)
 	var price := HBoxContainer.new()
 	price.add_theme_constant_override("separation", 2)
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	price.position = Vector2(COST_X, y + 8)  # the price text on the + button's text row (y + 8)
+	price.position = Vector2(COST_X, button_y + UIKit.button_v_margins().x)  # the price text on the + button's text row (y + 8)
 	ability_page.add_child(price)
 	var cost := UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	price.add_child(cost)
@@ -488,6 +613,7 @@ func _refresh() -> void:
 			Loc.t("upgrades.hint_coins.1", "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"),
 			Loc.t("upgrades.hint_coins.2", "TAKE COINS BACK OUT ANY TIME"),
 		])
+	_place_hint()
 
 
 static func tickets_hint_text() -> String:
