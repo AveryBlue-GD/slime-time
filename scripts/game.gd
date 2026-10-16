@@ -1378,7 +1378,15 @@ func _flush_textures() -> void:
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * jump_cost_factor
 	_paint_goo(slime.position, LANDING_RADIUS)
-	if hit_wall:
+	if hit_wall and slime.last_hit_glancing:  # soft bounce test: the same penalty, a soft touch
+		splats += 1
+		last_jump_cost += splat_penalty(intended_distance) * splat_factor
+		_stain_wall(slime.position, wall_normal)
+		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, Economy.SOFT_BOUNCE_DROPLETS,
+			Economy.SOFT_BOUNCE_DROPLET_SPEED, wall_normal, 70.0, rainbow)
+		_damage_wall(slime.position, wall_normal,
+			inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
+	elif hit_wall:
 		splats += 1
 		last_jump_cost += splat_penalty(intended_distance) * splat_factor
 		_stain_wall(slime.position, wall_normal)

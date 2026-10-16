@@ -126,6 +126,54 @@ static func descent_on() -> bool:
 	return DESCENT_ENABLED if descent_force < 0 else descent_force == 1
 
 
+## ---------------------------------------------------------------- SOFT BOUNCE test (owner A/B, 2026-10-16)
+## ONE switch for the softer wall hit (docs/spring-cleaning/soft-bounce-test.md). Off (default): a leap
+## that hits a wall splats as always (0.3 s stun, ricocheting knockback slide). On (Slime._soft_hit):
+## a GLANCING hit (more than ~20 deg off head-on) squashes on the wall for a moment, then the slime
+## slides on smoothly ALONG the wall with part of its speed and eases to a stop (no ricochets, no
+## camera kick, a soft high 'plap'); a HEAD-ON hit keeps the splat with a shorter stun and a shorter,
+## straight knockback. The slime cost and splat penalty are exactly today's; both slides are free,
+## like today's knockback. `--softbounce` (debug builds only, like every launch flag) sets
+## `softbounce_force` = 1; tests set it too.
+const SOFT_BOUNCE_TEST := false
+static var softbounce_force := -1
+
+
+static func soft_bounce_on() -> bool:
+	return SOFT_BOUNCE_TEST if softbounce_force < 0 else softbounce_force == 1
+
+
+## A hit at least this square-on (cos of the angle between the leap and the wall's normal; cos 20 deg
+## = 0.94) is head-on: a splat. Anything shallower glances off.
+const SOFT_BOUNCE_HEAD_ON_COS := 0.94
+## Glancing hit: the slime holds squashed on the wall this long (s), stunned this long in all (never
+## longer than the STICKY-shortened splat stun), then slides along the wall at SOFT_BOUNCE_SPEED_SHARE
+## of the leap's speed along the wall, braking evenly to a stop after SOFT_BOUNCE_SLIDE_PER_LEFT of the
+## leap distance still left, clamped to SOFT_BOUNCE_SLIDE_MIN..MAX px. A wall ahead ends the slide
+## (an inside corner: it just stops there).
+const SOFT_BOUNCE_SQUASH := 0.05
+const SOFT_BOUNCE_GLANCE_STUN := 0.1
+const SOFT_BOUNCE_SPEED_SHARE := 0.6
+const SOFT_BOUNCE_SLIDE_PER_LEFT := 0.35
+const SOFT_BOUNCE_SLIDE_MIN := 16.0
+const SOFT_BOUNCE_SLIDE_MAX := 32.0
+## The glancing 'plap': the splat sound, quieter and higher.
+const SOFT_BOUNCE_PLAP_DB := -9.0
+const SOFT_BOUNCE_PLAP_PITCH := 1.45
+## Goo droplets off the contact point on a glancing hit (count, speed px/s).
+const SOFT_BOUNCE_DROPLETS := 6
+const SOFT_BOUNCE_DROPLET_SPEED := 35.0
+## Head-on hit: stun (s, never longer than the splat stun), the recover animation after it (s; today
+## Slime.RECOVER_ANIM_TIME 0.15), and a straight knockback of SOFT_BOUNCE_HEAD_KNOCK x today's distance
+## (Slime.BOUNCE_FACTOR x the leap left), at most SOFT_BOUNCE_HEAD_KNOCK_MAX px, braking at
+## SOFT_BOUNCE_HEAD_DECEL px/s^2 (today's glide friction is 260: twice that is a snappier stop).
+const SOFT_BOUNCE_HEAD_STUN := 0.18
+const SOFT_BOUNCE_HEAD_RECOVER := 0.1
+const SOFT_BOUNCE_HEAD_KNOCK := 0.5
+const SOFT_BOUNCE_HEAD_KNOCK_MAX := 16.0
+const SOFT_BOUNCE_HEAD_DECEL := 520.0
+
+
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in

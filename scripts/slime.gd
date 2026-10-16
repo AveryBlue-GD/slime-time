@@ -119,6 +119,19 @@ var _dash_lane := Vector2.ZERO
 var _dash_on_lane := true
 var _dash_speed := 0.0
 var _dash_stun := 0.0
+## Soft bounce test (Economy.soft_bounce_on, read at launch; see _soft_hit). `last_hit_glancing`: the
+## latest wall hit glanced off (the game then skips the splat's shake and big burst).
+var last_hit_glancing := false
+var _soft := false
+## The current knockback is a soft slide (_soft_step: straight, braking evenly, no ricochets): first
+## held still `_soft_hold_left` s (the squash), then `_soft_vel`, braking at `_soft_decel` px/s^2.
+var _soft_slide := false
+var _soft_hold_left := 0.0
+var _soft_vel := Vector2.ZERO
+var _soft_decel := 0.0
+## The stun's full length (the splat frames run over it) and the recover animation after it.
+var _stun_total := SPLAT_STUN
+var _recover_after := RECOVER_ANIM_TIME
 
 static var _sprite_frames: SpriteFrames
 ## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
@@ -384,6 +397,8 @@ func dash(target: Vector2, dir: Vector2, speed: float, stun: float) -> void:
 	velocity = Vector2.ZERO
 	charge = 0.0
 	knocked_back = false
+	_soft_slide = false
+	_soft_hold_left = 0.0
 	_jump_buffer_left = 0.0
 	state = State.DASH
 	_sfx_stop("charge")
@@ -398,6 +413,8 @@ func finish_dash() -> void:
 	sprite.position.y = 0.0
 	state = State.STUNNED
 	_stun_left = _dash_stun
+	_stun_total = _dash_stun
+	_recover_after = RECOVER_ANIM_TIME
 	_splat_side = splat_side(-_jump_dir)
 	velocity = Vector2.ZERO
 	_hit_stop(1.0)
@@ -450,6 +467,10 @@ func launch(charge_value: float) -> void:
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
 	ricochets = 0
+	_soft = Economy.soft_bounce_on()
+	last_hit_glancing = false
+	_soft_slide = false
+	_soft_hold_left = 0.0
 	velocity = Vector2.ZERO
 	charge = 0.0
 	state = State.AIRBORNE
@@ -499,10 +520,12 @@ func _physics_process(delta: float) -> void:
 			_stun_left -= delta
 			if _stun_left <= 0.0:
 				state = State.GLIDE
-				_recover_anim_left = RECOVER_ANIM_TIME
+				_recover_anim_left = _recover_after
 
-	if knocked_back and (state == State.GLIDE and (input != Vector2.ZERO or velocity.length() < KNOCKBACK_END_SPEED)):
+	if knocked_back and _soft_hold_left <= 0.0 \
+			and (state == State.GLIDE and (input != Vector2.ZERO or velocity.length() < KNOCKBACK_END_SPEED)):
 		knocked_back = false
+		_soft_slide = false
 	_squish_left -= delta
 	if state == State.GLIDE and velocity.length() > IDLE_SPEED and _squish_left <= 0.0:
 		_squish_left = SQUISH_INTERVAL * max_speed / maxf(velocity.length(), 1.0)
@@ -552,7 +575,7 @@ func _animate() -> void:
 			else:
 				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
 		State.STUNNED:
-			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / maxf(splat_stun, 0.001))
+			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / maxf(_stun_total, 0.001))
 		State.DASH:
 			_show_frame("air_" + dir_name(_jump_dir), 0.5)
 
@@ -573,6 +596,9 @@ func _show_frame(anim: String, progress: float) -> void:
 
 
 func _glide(input: Vector2, delta: float) -> void:
+	if _soft_slide and knocked_back and input == Vector2.ZERO:
+		_soft_step(delta)
+		return
 	if input != Vector2.ZERO:
 		velocity = velocity.move_toward(input * max_speed, acceleration * delta)
 		if maze_assist:
@@ -677,9 +703,16 @@ func _slip_past_corner(collision: KinematicCollision2D) -> bool:
 func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 	sprite.position.y = 0.0
 	last_jump_traveled = _jump_traveled
-	if hit_wall:
+	if hit_wall and _soft:
+		state = State.STUNNED
+		_splat_side = splat_side(wall_normal)
+		_soft_hit(wall_normal)
+	elif hit_wall:
 		state = State.STUNNED
 		_stun_left = splat_stun
+		_stun_total = splat_stun
+		_recover_after = RECOVER_ANIM_TIME
+		_soft_slide = false
 		_splat_side = splat_side(wall_normal)
 		_knock_back(wall_normal)
 		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))
@@ -699,6 +732,65 @@ func _knock_back(wall_normal: Vector2) -> void:
 	velocity = wall_bounce(_jump_dir * sqrt(2.0 * friction * leftover), wall_normal)
 	knocked_back = velocity.length() > KNOCKBACK_END_SPEED
 	_bounce_fx_left = BOUNCE_FX_GAP
+
+
+## Soft bounce test (Economy.soft_bounce_on): a wall hit mid-leap. Within ~20 deg of head-on
+## (SOFT_BOUNCE_HEAD_ON_COS) it is a splat with a shorter stun and a short knockback straight off the
+## wall; shallower, it glances: a quick squash on the wall, then a smooth slide along it that brakes
+## evenly to a stop (SOFT_BOUNCE_SLIDE_*). Either way the slide is a knockback (free, like today's)
+## moved by _soft_step, which never bounces.
+func _soft_hit(wall_normal: Vector2) -> void:
+	var leftover := maxf(_jump_distance - _jump_traveled, 0.0)
+	velocity = Vector2.ZERO
+	_soft_slide = true
+	knocked_back = true
+	_bounce_fx_left = BOUNCE_FX_GAP
+	if -_jump_dir.dot(wall_normal) >= Economy.SOFT_BOUNCE_HEAD_ON_COS:
+		last_hit_glancing = false
+		_stun_total = minf(splat_stun, Economy.SOFT_BOUNCE_HEAD_STUN)
+		_recover_after = Economy.SOFT_BOUNCE_HEAD_RECOVER
+		var dist := minf(leftover * BOUNCE_FACTOR * Economy.SOFT_BOUNCE_HEAD_KNOCK, Economy.SOFT_BOUNCE_HEAD_KNOCK_MAX)
+		_soft_decel = Economy.SOFT_BOUNCE_HEAD_DECEL
+		_soft_vel = wall_normal * sqrt(2.0 * _soft_decel * dist)
+		_soft_hold_left = 0.0
+		velocity = _soft_vel
+		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))
+		_sfx("splat")
+		Input.vibrate_handheld(60)
+	else:
+		last_hit_glancing = true
+		_stun_total = minf(splat_stun, Economy.SOFT_BOUNCE_GLANCE_STUN)
+		_recover_after = 0.0  # straight on into the glide frames: it never stopped moving
+		var along := _jump_dir.slide(wall_normal)
+		var speed := JUMP_SPEED * along.length() * Economy.SOFT_BOUNCE_SPEED_SHARE
+		var dist := clampf(leftover * Economy.SOFT_BOUNCE_SLIDE_PER_LEFT, Economy.SOFT_BOUNCE_SLIDE_MIN, Economy.SOFT_BOUNCE_SLIDE_MAX)
+		_soft_vel = along.normalized() * speed
+		_soft_decel = speed * speed / (2.0 * dist)
+		_soft_hold_left = Economy.SOFT_BOUNCE_SQUASH
+		_sfx("splat", Economy.SOFT_BOUNCE_PLAP_DB, Economy.SOFT_BOUNCE_PLAP_PITCH)
+		Input.vibrate_handheld(20)
+	_stun_left = _stun_total
+
+
+## Soft bounce test: one tick of a soft slide (see _soft_hit). Holds still through the squash, then
+## glides on, braking evenly; anything in the way ahead (a corner) ends it on the spot. Walls beside
+## it only slide it (move_and_slide), so a corridor never rattles.
+func _soft_step(delta: float) -> void:
+	if _soft_hold_left > 0.0:
+		_soft_hold_left -= delta
+		velocity = Vector2.ZERO
+		if _soft_hold_left > 0.0:
+			return
+		velocity = _soft_vel
+	var dir := velocity.normalized()
+	velocity = velocity.move_toward(Vector2.ZERO, _soft_decel * delta)
+	if velocity == Vector2.ZERO:
+		return
+	move_and_slide()
+	for i in get_slide_collision_count():
+		if get_slide_collision(i).get_normal().dot(dir) < -0.5:
+			velocity = Vector2.ZERO
+			return
 
 
 ## Holds the sprite for a moment on impact (`power` 0-1), unless Reduce Motion is on.
