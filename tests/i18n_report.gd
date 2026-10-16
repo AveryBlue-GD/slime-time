@@ -135,7 +135,7 @@ static func render_md() -> String:
 	lines.append("box, the 320x180 screen and its neighbours). Do not edit: rerun the suites. Machine-readable lists:")
 	lines.append("`fit-report.budget.json`, `fit-report.screens.json`. **Open** = a layout to fix or a translation to shorten;")
 	lines.append("**accepted** = also so in English (the source layout), or listed as known-acceptable in the suite.")
-	lines.append("Both suites are enforced (`ENFORCE`): any open finding fails them, except in Arabic (reported only until chunk I's RTL pass).")
+	lines.append("Both suites are enforced (`ENFORCE`) for every locale: any open finding fails them (Arabic too since chunk I's right-to-left mirroring).")
 	lines.append("")
 	var data := {}
 	for kind: String in KINDS:

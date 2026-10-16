@@ -181,9 +181,12 @@ func _tile_input(level: int, event: InputEvent) -> void:
 		return
 	var i := level - 1
 	var step := 0
-	if event.is_action_pressed("ui_right") and i % PAGE_SIZE == PAGE_SIZE - 1 and i + 1 < level_buttons.size():
+	# (the row reads right to left in a mirrored layout: there the left key leads on to the next page)
+	var on := "ui_left" if UIKit.is_mirrored(level_buttons[i]) else "ui_right"
+	var back := "ui_right" if on == "ui_left" else "ui_left"
+	if event.is_action_pressed(on) and i % PAGE_SIZE == PAGE_SIZE - 1 and i + 1 < level_buttons.size():
 		step = 1
-	elif event.is_action_pressed("ui_left") and i % PAGE_SIZE == 0 and i > 0:
+	elif event.is_action_pressed(back) and i % PAGE_SIZE == 0 and i > 0:
 		step = -1
 	if step == 0:
 		return
@@ -194,6 +197,7 @@ func _tile_input(level: int, event: InputEvent) -> void:
 
 ## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
 func _refresh_heat() -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	heat_button.visible = Progress.hard_mode
 	# i18n: {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
 	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})

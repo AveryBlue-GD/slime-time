@@ -17,6 +17,20 @@ class_name Loc
 
 ## True while the pseudo locale is on (Language sets it; never with the gate off).
 static var pseudo := false
+## True in a right-to-left locale (Arabic; Language._apply_direction sets it, never with the gate off).
+## `fill` then wraps every placeholder "word" that comes out without right-to-left letters (a number with
+## its sign / unit / slash: +5, 30%, X1.5, 1/3, (+0); a Latin key or pad name) in a left-to-right isolate,
+## U+2066 LRI .. U+2069 PDI (Unicode bidi algorithm, UAX #9): inside it reads left to right as one unit
+## (the + stays before the number, % after it), and to the Arabic line around it it is one neutral word,
+## so space-separated values follow the line's right-to-left order (the pad letters {a} {b} {c} line up
+## with the mirrored ability row; "{now} -> {next}" shows the arrow pointing from now to next). The
+## translation itself is never changed, and Arabic values (names) are inserted as they are.
+static var isolate_ltr := false
+const LRI := "\u2066"
+const PDI := "\u2069"
+## Characters that end a placeholder's word on either side (besides spaces and Arabic letters).
+const WORD_BREAKS := "،؛؟!"
+
 ## Pseudo-localization: how much longer each line gets (brackets + padding), and the letters swapped
 ## for accented ones the slimy font has (uppercase and lowercase map to the same glyph).
 const PSEUDO_EXPANSION := 0.4
@@ -61,6 +75,13 @@ static func fill(text: String, args: Dictionary) -> String:
 	var values := {}  # by String key (callers pass {level = 3} style keys or Strings)
 	for key: Variant in args:
 		values[str(key)] = args[key]
+	if isolate_ltr:
+		return _fill_isolated(text, values)
+	return _fill_values(text, values)
+
+
+## fill's one pass, with the values already keyed by String.
+static func _fill_values(text: String, values: Dictionary) -> String:
 	var out := PackedStringArray()
 	var at := 0
 	while true:
@@ -80,6 +101,65 @@ static func fill(text: String, args: Dictionary) -> String:
 			at = open + 1
 	out.append(text.substr(at))
 	return "".join(out)
+
+
+## fill in a right-to-left locale (isolate_ltr): the text cut into the "words" around its known
+## placeholders (no spaces, no Arabic letters, none of WORD_BREAKS) and the rest; each word filled and,
+## when the result has no Arabic letter but a digit or a Latin / Cyrillic letter, isolated (LRI .. PDI).
+static func _fill_isolated(text: String, values: Dictionary) -> String:
+	var spans: Array[Vector2i] = []  # [from, to) of each word that holds a known placeholder
+	var at := 0
+	while true:
+		var open := text.find("{", at)
+		if open < 0:
+			break
+		var close := text.find("}", open + 1)
+		if close < 0:
+			break
+		if not values.has(text.substr(open + 1, close - open - 1)):
+			at = open + 1
+			continue
+		var from := open
+		while from > 0 and _glues(text.unicode_at(from - 1)):
+			from -= 1
+		var to := close + 1
+		while to < text.length() and _glues(text.unicode_at(to)):
+			to += 1
+		if not spans.is_empty() and from <= spans[-1].y:
+			spans[-1].y = maxi(spans[-1].y, to)
+		else:
+			spans.append(Vector2i(from, to))
+		at = close + 1
+	var out := PackedStringArray()
+	var done := 0
+	for span in spans:
+		out.append(_fill_values(text.substr(done, span.x - done), values))
+		var word := _fill_values(text.substr(span.x, span.y - span.x), values)
+		out.append(LRI + word + PDI if _reads_ltr(word) else word)
+		done = span.y
+	out.append(_fill_values(text.substr(done), values))
+	return "".join(out)
+
+
+## True for a character that belongs to a placeholder's word (not a space, an Arabic letter or a break).
+static func _glues(code: int) -> bool:
+	return code > 0x20 and not _is_arabic(code) and not char(code) in WORD_BREAKS
+
+
+static func _is_arabic(code: int) -> bool:
+	return (code >= 0x0590 and code <= 0x08FF) or (code >= 0xFB1D and code <= 0xFDFF) or (code >= 0xFE70 and code <= 0xFEFF)
+
+
+## True when `word` has no right-to-left letter but a digit or a Latin / Cyrillic letter.
+static func _reads_ltr(word: String) -> bool:
+	var ltr := false
+	for i in word.length():
+		var code := word.unicode_at(i)
+		if _is_arabic(code):
+			return false
+		if (code >= 0x30 and code <= 0x39) or (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) or (code >= 0xC0 and code < 0x0590):
+			ltr = true
+	return ltr
 
 
 ## Whole translated lines joined by line breaks (the win text and other multi-line blocks: each line

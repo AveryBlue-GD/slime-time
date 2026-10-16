@@ -247,7 +247,8 @@ static func text_w(text: String, font_size := FONT, font: Font = null) -> int:
 		var w := 0.0
 		if plain:
 			for i in line.length():
-				w += f.get_char_size(line.unicode_at(i), font_size).x
+				if not is_format_char(line.unicode_at(i)):  # (bidi isolates draw nothing)
+					w += f.get_char_size(line.unicode_at(i), font_size).x
 		else:
 			w = f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		widest = maxf(widest, w)
@@ -291,6 +292,8 @@ static func tab_widths(texts: Array, min_widths: Variant = 40, equal := true) ->
 ## Lays `controls` out in a row `gap` apart, sized `widths` x tab_h(), starting at x `from`
 ## (align -1), ending at `from` (align 1), or centred on `from` (align 0). Returns the row's rect.
 static func layout_row(controls: Array, widths: Array, from: float, y: float, gap := GAP_M, align := -1) -> Rect2:
+	if not controls.is_empty():
+		relayout(controls[0])  # (right-to-left: placed in LTR coordinates, mirrored at the frame's end)
 	var total := 0
 	for w: int in widths:
 		total += w
@@ -417,6 +420,7 @@ static func _try_fit(control: Control, text: String, font: Font, font_size: int,
 
 
 static func _apply_fit(control: Control, fit: Dictionary, box: Rect2, anchor: Vector2i) -> void:
+	relayout(control)  # (right-to-left: placed in LTR coordinates, mirrored at the frame's end)
 	if fit.wrap:
 		if control is Label:
 			(control as Label).autowrap_mode = autowrap_mode()
@@ -569,9 +573,15 @@ static func plain_font(text: String, font_size := FONT, always := false) -> Font
 		plain.fallbacks = none
 		_plain_fonts[base.resource_path] = weakref(plain)  # (kept while a control uses it)
 	for i in text.length():
-		if not plain.has_char(text.unicode_at(i)):
+		if not plain.has_char(text.unicode_at(i)) and not is_format_char(text.unicode_at(i)):
 			return null
 	return plain
+
+
+## True for an invisible bidi / joining control (Loc.fill's isolates U+2066..U+2069, marks, embeddings,
+## zero-width space): the text server draws nothing for it, in any font.
+static func is_format_char(code: int) -> bool:
+	return (code >= 0x200B and code <= 0x200F) or (code >= 0x202A and code <= 0x202E) or (code >= 0x2066 and code <= 0x2069)
 
 
 ## `text` (one line) broken onto two at the space nearest the middle that keeps both within `room` px
@@ -600,6 +610,7 @@ static func use_plain_font(control: Control, font_size := FONT) -> void:
 ## updated before it is sized (a label sized while its minimum is still the one-line width, or the
 ## default font's, keeps that width).
 static func wrap_label(label: Label, box: Vector2) -> void:
+	relayout(label)
 	label.autowrap_mode = autowrap_mode()
 	label.update_minimum_size()
 	label.size = box
@@ -646,6 +657,7 @@ static func title_arrows_y() -> int:
 ## Skips the drifting backdrop, anything in `keep` and what is already hidden. Returns what it hid
 ## (uncover shows it again). English keeps its ghosts (pixel-identical): callers skip it there.
 static func cover_behind(screen: Node, keep: Array, rect := Rect2()) -> Array[CanvasItem]:
+	relayout(screen)  # (the rect and the controls' positions in the same, LTR, coordinates)
 	var hidden: Array[CanvasItem] = []
 	for child in screen.get_children():
 		var item := child as CanvasItem
@@ -666,6 +678,188 @@ static func uncover(hidden: Array) -> void:
 		if is_instance_valid(item):
 			(item as CanvasItem).visible = true
 	hidden.clear()
+
+
+# ---- Right-to-left mirroring (chunk I, docs/ui-rules.md section 10.2) ----
+# Every screen is laid out by hand in LEFT-TO-RIGHT coordinates (the English layout code, unchanged).
+# In a right-to-left language (Language.is_rtl: Arabic) each UI root registers with mirror_root: it
+# stays LTR while the screen builds, and at the end of that frame (deferred) it is flipped to
+# Control.LAYOUT_DIRECTION_RTL. Godot then mirrors the whole subtree against each parent's real width
+# (x' = parent_w - x - w: absolute positions through their offsets, anchors, container order, label /
+# button alignment and the bidi base direction of every text), so BACK lands bottom right, tabs and
+# columns reverse, page arrows swap sides and HUD pods swap corners with no per-screen arithmetic.
+# Godot's `position` is VISUAL while RTL (setting it there is not mirrored), so code that moves or
+# resizes controls after the build (a page / tab switch, a panel opening, a pod resizing) calls
+# relayout(node) first: the root goes back to LTR for the rest of the frame (reads and writes are
+# logical again) and is mirrored again at its end. Not mirrored, deliberately: the game world and the
+# hub room (Node2D, never under a mirror root), the touch controls (thumb placement), text drawn with
+# draw_string, and anything under keep_ltr (digits-only clocks, the map drawings). Node2D sprites
+# placed inside a mirrored Control (slime previews) are mirrored with it; explicit focus neighbours swap
+# left / right so the arrow keys follow the visual order. With the gate off or in an LTR language
+# none of this runs: mirror_root / relayout return at once (English stays pixel-identical).
+
+## Meta on a mirror root: {mirrored, pending}. On a Node2D under it: its [LTR x, mirrored x].
+const MIRROR_META := "rtl_mirror"
+const MIRROR_X_META := "rtl_x"
+## Meta on a control whose subtree is never mirrored (keep_ltr).
+const KEEP_LTR_META := "rtl_keep"
+
+
+## True while the current language is written right to left (Arabic; never with the gate off).
+static func rtl() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	var language: Node = tree.root.get_node_or_null("Language") if tree else null
+	return language != null and language.has_method("is_rtl") and language.is_rtl()
+
+
+## -1 / 1 as the reading direction goes: 1 in English, -1 in a right-to-left language. For code that
+## turns a left / right key into a logical step (previous / next page): `step * reading_dir()`.
+static func reading_dir() -> int:
+	return -1 if rtl() else 1
+
+
+## Registers `root` (a screen's root Control, or a CanvasLayer whose Control children are the roots) to
+## be mirrored in a right-to-left language once it is built (see the section comment). Nothing in LTR.
+static func mirror_root(root: Node) -> void:
+	if not rtl() or root == null:
+		return
+	root.set_meta(MIRROR_META, {mirrored = false, pending = false})
+	for target in _direction_targets(root):
+		target.layout_direction = Control.LAYOUT_DIRECTION_LTR
+	_queue_mirror(root)
+
+
+## Call before moving / resizing controls under a mirror root after its build (or reading their
+## positions to place others): the root is back in LTR (logical) coordinates for the rest of this frame
+## and mirrored again at its end. Nothing in LTR or outside a mirror root.
+static func relayout(node: Node) -> void:
+	var root := mirror_root_of(node)
+	if root == null:
+		return
+	var state: Dictionary = root.get_meta(MIRROR_META)
+	if state.mirrored:
+		_set_mirrored(root, false)
+	_queue_mirror(root)
+
+
+## Mirrors a mirror root now (tests, captures; normally deferred to the end of the frame).
+static func mirror_now(node: Node) -> void:
+	var root := mirror_root_of(node)
+	if root:
+		_mirror_deferred(root)
+
+
+## The mirror root `node` is in (itself or an ancestor), or null.
+static func mirror_root_of(node: Node) -> Node:
+	var at := node
+	while at != null:
+		if at.has_meta(MIRROR_META):
+			return at
+		at = at.get_parent()
+	return null
+
+
+## True when `control` is drawn mirrored (under a mirror root that is flipped right now).
+static func is_mirrored(control: Control) -> bool:
+	return control != null and control.is_layout_rtl()
+
+
+## The base text direction for a Label / Button OUTSIDE a mirror root (an autoload overlay): right to
+## left in a right-to-left language, so punctuation and Latin words / numbers inside an Arabic line land
+## where an Arabic reader expects them. Inherited (the default) otherwise; mirrored roots inherit RTL.
+static func text_direction() -> Control.TextDirection:
+	return Control.TEXT_DIRECTION_RTL if rtl() else Control.TEXT_DIRECTION_INHERITED
+
+
+## Keeps `item` and everything under it left to right in a mirrored screen (a Control's own box is not
+## moved either): an animated stage, a map drawing, a drawn widget whose input maps to its drawing.
+## Nothing in LTR.
+static func keep_ltr(item: CanvasItem) -> void:
+	if not rtl():
+		return
+	if item is Control:
+		(item as Control).layout_direction = Control.LAYOUT_DIRECTION_LTR
+	item.set_meta(KEEP_LTR_META, true)
+
+
+static func _direction_targets(root: Node) -> Array[Control]:
+	var out: Array[Control] = []
+	if root is Control:
+		out.append(root)
+	else:
+		for child in root.get_children():
+			if child is Control:
+				out.append(child)
+	return out
+
+
+static func _queue_mirror(root: Node) -> void:
+	var state: Dictionary = root.get_meta(MIRROR_META)
+	if state.pending:
+		return
+	state.pending = true
+	_mirror_deferred.bind(root).call_deferred()
+
+
+static func _mirror_deferred(root: Node) -> void:
+	if not is_instance_valid(root) or not root.has_meta(MIRROR_META):
+		return
+	var state: Dictionary = root.get_meta(MIRROR_META)
+	state.pending = false
+	if not state.mirrored and rtl():
+		_set_mirrored(root, true)
+
+
+## Flips `root` to RTL (on) or back to LTR (off): the layout direction (Godot mirrors the positions),
+## then what Godot does not mirror by itself: explicit left / right focus neighbours, Node2D children.
+static func _set_mirrored(root: Node, on: bool) -> void:
+	var state: Dictionary = root.get_meta(MIRROR_META)
+	state.mirrored = on
+	for target in _direction_targets(root):
+		target.layout_direction = Control.LAYOUT_DIRECTION_RTL if on else Control.LAYOUT_DIRECTION_LTR
+		_mirror_extras(target, on)
+
+
+static func _mirror_extras(node: Node, on: bool) -> void:
+	for child in node.get_children():
+		if child.has_meta(KEEP_LTR_META):
+			continue
+		var control := child as Control
+		if control:
+			var left := control.focus_neighbor_left
+			var right := control.focus_neighbor_right
+			if left != right:
+				control.focus_neighbor_left = right
+				control.focus_neighbor_right = left
+			_mirror_extras(control, on)
+		elif child is Node2D:
+			_mirror_node2d(child as Node2D, (node as Control).size.x if node is Control else 0.0, on)
+
+
+## A sprite inside a mirrored Control: its x mirrored about the parent's width (sprites are centred on
+## their position); the sprites under it (a hat, the try-on group's slimes) about their parent's origin,
+## so the group lands mirrored as a whole. Art is never flipped. Off: back to the LTR x it had, unless the
+## screen moved it meanwhile (a sprite that follows another each frame catches up by itself).
+static func _mirror_node2d(node: Node2D, parent_w: float, on: bool) -> void:
+	_mirror_x(node, parent_w, on)
+	for child in node.get_children():
+		if child is Node2D and not child.has_meta(KEEP_LTR_META):
+			_mirror_node2d(child as Node2D, 0.0, on)
+		elif child is Control and not child.has_meta(KEEP_LTR_META):
+			_mirror_extras(child, on)
+
+
+static func _mirror_x(node: Node2D, parent_w: float, on: bool) -> void:
+	if on:
+		var x := node.position.x
+		var mirrored := parent_w - x
+		node.set_meta(MIRROR_X_META, [x, mirrored])
+		node.position.x = mirrored
+	elif node.has_meta(MIRROR_X_META):
+		var xs: Array = node.get_meta(MIRROR_X_META)
+		if is_equal_approx(node.position.x, xs[1]):
+			node.position.x = xs[0]
+		node.remove_meta(MIRROR_X_META)
 
 
 # ---- Layout budgets: does a layout fit the 320x180 safe area? (docs/ui-rules.md section 10) ----
@@ -934,7 +1128,9 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 	root.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED  # all text goes through Loc (docs/i18n/plan.md)
 	root.theme = make_theme()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_child(MenuBackdrop.new())
+	var backdrop := MenuBackdrop.new()
+	root.add_child(backdrop)
+	keep_ltr(backdrop)  # (the drifting maze is a backdrop, not a layout: never mirrored)
 	if title != "":
 		var label := make_label(title, FONT_BIG, GOLD)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -945,6 +1141,7 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 2)
+	mirror_root(root)  # (right-to-left languages only: flipped once the screen is built)
 	return add_skin_text(root)
 
 
@@ -1038,6 +1235,7 @@ static func add_back_button(root: Control, on_press := Callable()) -> Button:
 ## Puts `control` (sized) on the bottom row: side -1 = left edge, 1 = right edge, 0 = centered. Its
 ## bottom edge is the bottom row's (row 176), so a taller control starts higher (BOTTOM_ROW_Y for 13).
 static func place_bottom_row(control: Control, side: int) -> void:
+	relayout(control)  # (right-to-left: side -1 ends up on the right, mirrored at the frame's end)
 	var w := control.size.x
 	var x := float(EDGE) if side < 0 else (SCREEN.x - EDGE - w if side > 0 else center_x(w))
 	control.position = Vector2(x, BOTTOM_ROW_Y + BUTTON_H - maxf(control.size.y, BUTTON_H))

@@ -449,6 +449,7 @@ func _build_ui() -> void:
 		_refresh_tickets())
 	_show_tree_notice(root)
 	UIKit.add_skin_text(root)
+	UIKit.mirror_root(root)  # (right-to-left languages: flipped once built, docs/ui-rules.md 10.2)
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
 	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
@@ -639,6 +640,7 @@ func _layout_portal_menu() -> void:
 
 
 func open_portal_menu() -> void:
+	UIKit.relayout(portal_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var best: int = Progress.descent_best_floor
 	var left: int = Progress.descent_paid_left()
 	# i18n: max 170px, 1 line; the spaces are spacing, not words
@@ -734,6 +736,7 @@ func _link_resume_buttons(spent: bool) -> void:
 func open_resume_menu() -> void:
 	if not Progress.descent_resume_pending() or quit_menu.visible or portal_menu.visible or hat_wheel.visible or coin_board.visible:
 		return
+	UIKit.relayout(resume_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var run: Dictionary = Progress.descent_resume
 	var on_card := int(run.cleared) >= int(run.floor)
 	var spent: bool = Progress.descent_resume_spent()
@@ -967,6 +970,7 @@ func _layout_coin_board() -> void:
 
 
 func open_coin_board() -> void:
+	UIKit.relayout(coin_board)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	for i in Levels.COUNT:
 		var found: int = Progress.coins_found_in(i + 1)
 		var total: int = Levels.COINS[i]

@@ -361,6 +361,7 @@ func cycle_paper() -> void:
 
 ## Shows the map of `level` (current mode). Does nothing for a locked level.
 func open_view(level: int) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var survey: Dictionary = Progress.survey_for(level, hard)
 	if survey.is_empty():
 		return

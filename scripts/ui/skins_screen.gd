@@ -250,6 +250,7 @@ func _fill_skin_grid() -> void:
 
 ## Switches between the skins, hats and trails pages.
 func show_page(which: String) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	page = which
 	var hats := page == "hats"
 	var trails := page == "trails"

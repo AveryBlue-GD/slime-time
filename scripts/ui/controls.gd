@@ -510,6 +510,7 @@ func _close_codes() -> void:
 ## taller or longer locale the panel's texts grow over them, and text over ghost text reads as clutter.
 ## English keeps its ghost (its captures stay byte-identical): its panels' texts already avoid the page.
 func _cover_page(panel: Control) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	UIKit.uncover(_covered)
 	if panel == null or UIKit.locale() == LanguageScreen.Lang.SOURCE_LOCALE:
 		return

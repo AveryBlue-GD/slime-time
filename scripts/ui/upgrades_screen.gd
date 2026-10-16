@@ -50,6 +50,11 @@ const PREVIEW_TIME := 1.0
 ## the bottom row beside BACK, and only then a smaller crisp font (Devanagari 12 px).
 var _coin_plan := {}
 var _ability_plan := {}
+## ABILITIES paged (a script whose rows don't fit one page: Arabic): each row's nodes, the page shown, the
+## page button (BACK's mirror on the bottom row, 1/2). Empty / null on one page (English and most locales).
+var _ability_row_nodes: Array[Array] = []
+var _ability_page_index := 0
+var ability_page_button: Button
 ## Insets tried from the panel's edge to its buttons / text, roomiest first (5 = English COINS).
 const INSETS := [5, 4, 3, 2]
 ## The tab the next opening shows ("coins", "abilities" or, with the workshop on, "tickets"), for that one opening (demos and tests set
@@ -172,10 +177,13 @@ func _ready() -> void:
 		ability_page = _make_page()
 		_plan_abilities(Abilities.LIST.size())
 		y = _ability_plan.top + 2  # (ABILITY_ROW_TOP in English)
-		for item: Dictionary in Abilities.LIST:
-			_make_ability_row(item, y)
-			y += _ability_plan.pitch
-		_rows_bottom["abilities"] = y - 2 - UIKit.GAP_S
+		var per_page: int = _ability_plan.get("per_page", Abilities.LIST.size())
+		for i in Abilities.LIST.size():
+			var before := ability_page.get_child_count()
+			_make_ability_row(Abilities.LIST[i], _ability_plan.top + 2 + (i % per_page) * _ability_plan.pitch)
+			if _ability_plan.has("pages"):
+				_ability_row_nodes.append(ability_page.get_children().slice(before))
+		_rows_bottom["abilities"] = _ability_plan.top + mini(per_page, Abilities.LIST.size()) * _ability_plan.pitch - UIKit.GAP_S
 
 	hint = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -186,6 +194,14 @@ func _ready() -> void:
 		back.text = Loc.t("upgrades.play", "PLAY")  # i18n: replaces BACK, max 32px, 1 line
 		back.pressed.disconnect(back.pressed.get_connections()[-1].callable)
 		back.pressed.connect(_leave)
+	if _ability_plan.get("pages", 1) > 1:
+		ability_page_button = UIKit.make_button(_ability_page_text(), func() -> void: _show_ability_page(_ability_page_index + 1),
+			back.custom_minimum_size)
+		UIKit.note_text_w(ability_page_button, [back.text], int(UIKit.BACK_SIZE.x))  # (BACK's mirror)
+		add_child(ability_page_button)
+		ability_page_button.size = ability_page_button.custom_minimum_size
+		UIKit.place_bottom_row(ability_page_button, 1)
+		_show_ability_page(0, false)
 	if workshop_on or abilities_on:
 		_build_confirm()
 	show_page(open_tab)
@@ -232,6 +248,13 @@ func _plan_abilities(count: int) -> void:
 		var need := count * panel_h + (count - 1) * UIKit.GAP_S + (0 if step[2] else UIKit.GAP_M + _hint_h(1))
 		if need <= area.size.y:
 			return
+	# None fits (a tall script with no smaller size: Arabic): the 2 / 2 rows on pages (docs/ui-rules.md
+	# section 10.1, per-locale paging), the hint under each page's rows, a page button on the bottom row.
+	var panel_h := UIKit.dense_pitch() + UIKit.line_h() + 4 + above + below
+	var per_page := UIKit.row_budget(area.size.y - UIKit.GAP_M - _hint_h(1), panel_h, UIKit.GAP_S)
+	_ability_plan = {top = int(area.position.y), inset_top = 2 + above, panel_h = panel_h, pitch = panel_h + UIKit.GAP_S,
+		block_h = UIKit.line_h() + UIKit.dense_pitch(), tag_pitch = UIKit.dense_pitch(), small_font = null, hint_in_row = false,
+		per_page = maxi(1, per_page), pages = ceili(count / float(maxi(1, per_page)))}
 
 
 ## Height of `lines` hint lines with the marks drawn outside their line boxes.
@@ -290,6 +313,24 @@ func _place_hint() -> void:
 	hint.offset_bottom = hint.offset_top + hint_height + 2
 
 
+## ABILITIES on pages (_plan_abilities): shows page `index` (wrapping) and its rows only, the page button's
+## n/m, and focuses the page's first + (unless `focus` is off).
+func _show_ability_page(index: int, focus := true) -> void:
+	var pages: int = _ability_plan.get("pages", 1)
+	_ability_page_index = posmod(index, pages)
+	for i in _ability_row_nodes.size():
+		for node: CanvasItem in _ability_row_nodes[i]:
+			node.visible = i / int(_ability_plan.per_page) == _ability_page_index
+	ability_page_button.text = _ability_page_text()
+	if focus:
+		var first: Button = ability_rows[Abilities.LIST[_ability_page_index * int(_ability_plan.per_page)].id].plus
+		(first if Progress.abilities_open() and first.focus_mode != Control.FOCUS_NONE else ability_page_button).grab_focus()
+
+
+func _ability_page_text() -> String:
+	return "%d/%d" % [_ability_page_index + 1, int(_ability_plan.get("pages", 1))]
+
+
 func _make_page() -> Control:
 	var page_root := Control.new()
 	page_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -301,6 +342,7 @@ func _make_page() -> Control:
 ## Shows the COINS or TICKETS tab and focuses its first + (or the TICKETS tab, while the workshop
 ## is still shut).
 func show_page(which: String) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	if which == "tickets" and ticket_page == null or which == "abilities" and ability_page == null \
 			or not which in ["coins", "tickets", "abilities"]:
 		which = "coins"
@@ -315,10 +357,13 @@ func show_page(which: String) -> void:
 		if pair[0] != null:
 			UIKit.set_selected(pair[0], page == pair[1])
 	pod_icon.texture = load(UIKit.UI_DIR + ("icon_ticket.png" if tickets else "icon_coin.png"))
+	if ability_page_button != null:
+		ability_page_button.visible = page == "abilities"
 	_refresh()
 	var first: Button = null
 	if page == "abilities":
-		first = ability_rows[Abilities.LIST[0].id].plus if Progress.abilities_open() else abilities_tab
+		var shown := _ability_page_index * int(_ability_plan.get("per_page", 0))
+		first = ability_rows[Abilities.LIST[shown].id].plus if Progress.abilities_open() else abilities_tab
 	elif tickets:
 		first = ticket_rows[Workshop.LIST[0].id].plus if Progress.workshop_open() else tickets_tab
 	elif not rows.is_empty():
@@ -668,7 +713,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif (event.is_action_pressed("tab_next") or event.is_action_pressed("tab_prev")) and (confirm == null or not confirm.visible):
 		var tabs := _tab_pages()  # LB / RB on a gamepad: the previous / next tab
 		if tabs.size() > 1:
-			var step := 1 if event.is_action_pressed("tab_next") else -1
+			# (RB = the tab to the right: in a right-to-left layout the tabs are mirrored, so that is the previous one)
+			var step := (1 if event.is_action_pressed("tab_next") else -1) * UIKit.reading_dir()
 			show_page(tabs[(tabs.find(page) + step + tabs.size()) % tabs.size()])
 			get_viewport().set_input_as_handled()
 

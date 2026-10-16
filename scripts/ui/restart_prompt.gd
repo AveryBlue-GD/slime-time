@@ -56,6 +56,7 @@ func _ready() -> void:
 		menu.add_child(button)
 		UIKit.note_text_w(button, texts, 100)
 	UIKit.add_skin_text(root)
+	UIKit.mirror_root(root)  # (right-to-left languages: flipped once built, docs/ui-rules.md 10.2)
 
 
 func open() -> void:

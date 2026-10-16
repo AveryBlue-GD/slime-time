@@ -209,6 +209,9 @@ func disable() -> void:
 		TranslationServer.set_locale(_locale_before)
 	_uninstall_fonts()
 	_apply_pseudo(false)
+	Loc.isolate_ltr = false
+	if active and is_inside_tree():
+		get_tree().root.set_layout_direction(Window.LAYOUT_DIRECTION_INHERITED)
 	active = false
 	locale = SOURCE_LOCALE
 
@@ -395,7 +398,15 @@ func _uninstall_fonts() -> void:
 	_fonts_installed = false
 
 
-## STUB (chunk I, docs/i18n/plan.md section 7 "RTL" + owner answer: full mirroring): the text and
-## layout direction for right-to-left locales (is_rtl). Never called with the gate off.
+## The layout direction (chunk I, docs/ui-rules.md section 10.2). Godot would make the whole tree right
+## to left for an RTL locale by itself (the root follows the app locale), which mirrors anchors and
+## containers but not the hand-set positions every screen uses, so the root is pinned LEFT TO RIGHT in
+## every language: only the UI roots registered with UIKit.mirror_root flip (whole, against their real
+## widths), and the game world, the touch controls and the autoload overlays never do. Never called with
+## the gate off (the root is then left as it is).
 func _apply_direction() -> void:
-	pass
+	if not active:
+		return
+	Loc.isolate_ltr = is_rtl()  # (numbers / Latin names in an Arabic line: Loc.fill's bidi isolates)
+	if is_inside_tree():
+		get_tree().root.set_layout_direction(Window.LAYOUT_DIRECTION_LTR)

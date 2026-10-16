@@ -112,6 +112,7 @@ func _ready() -> void:
 	if progress and progress.dev_tools:
 		_build_dev_panel(root)
 	UIKit.add_skin_text(root)
+	UIKit.mirror_root(root)  # (right-to-left languages: flipped once built, docs/ui-rules.md 10.2)
 
 
 func _build_dev_panel(root: Control) -> void:
@@ -149,6 +150,7 @@ func _refresh_dev() -> void:
 
 
 func open() -> void:
+	UIKit.relayout(_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	visible = true
 	var game := get_parent()
 	var random: bool = game.has_method("is_random") and game.is_random()

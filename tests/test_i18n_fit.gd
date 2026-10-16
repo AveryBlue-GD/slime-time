@@ -12,15 +12,15 @@ extends "res://tests/suite_base.gd"
 ## thing to fix, not the translation).
 ## A budget is each call site's `max Npx`, or its `grows to Npx` where the screen widens the box for the
 ## text (UIKit sizing helpers, up to the room the layout has), `wraps` where it wraps (_budget_of).
-## ENFORCED (chunk G5) for every locale but Arabic (REPORT_ONLY: reported, never failed; chunk I).
+## ENFORCED for every locale (chunk G5; Arabic since chunk I).
 ## Also runs `tools/i18n_extract.py --check` (catalogs merged, placeholders, casing, no untranslated
 ## entry, no English literal outside Loc in scripts/), so test_all.sh covers it; skipped with a note
 ## when no Python 3 is on the PATH.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_i18n_fit.gd
 
 const ENFORCE := true
-## Locales whose findings are reported but do not fail the suite (Arabic: RTL is chunk I).
-const REPORT_ONLY := ["ar"]
+## Locales whose findings are reported but do not fail the suite (none since chunk I).
+const REPORT_ONLY: Array[String] = []
 const Lang := preload("res://scripts/language.gd")
 const Report := preload("res://tests/i18n_report.gd")
 const TEMPLATE := "res://locale/messages.pot"
@@ -123,7 +123,7 @@ func _initialize() -> void:
 	Report.write("budget", issues, {
 		budgets = "%d of %d template entries carry a `max Npx` note" % [budgeted.size(), template.size()],
 		fonts = "pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)",
-		limits = "each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale but %s" % ", ".join(REPORT_ONLY),
+		limits = "each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale%s" % ("" if REPORT_ONLY.is_empty() else " but " + ", ".join(REPORT_ONLY)),
 		placeholders = "filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)",
 	})
 	for code: String in Report.LOCALE_ORDER:
@@ -133,7 +133,8 @@ func _initialize() -> void:
 	print("  budget report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
 		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
-		_check(failing.is_empty(), "every translation fits its width budget, every locale but %s (%d open)" % [", ".join(REPORT_ONLY), failing.size()])
+		_check(failing.is_empty(), "every translation fits its width budget in every locale (%d open%s)" % [failing.size(),
+			"" if REPORT_ONLY.is_empty() else ", reported only: " + ", ".join(REPORT_ONLY)])
 	_extractor_check()
 	_result()
 	quit(1 if failures else 0)

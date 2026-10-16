@@ -65,6 +65,7 @@ func _ready() -> void:
 	_build_boons()
 	_build_summary()
 	_skin_text = UIKit.add_skin_text(root)
+	UIKit.mirror_root(root)  # (right-to-left languages: flipped once built, docs/ui-rules.md 10.2)
 	visible = false
 
 
@@ -129,6 +130,7 @@ func _build_boons() -> void:
 
 ## Shows the boon card for `run` (Progress.descent_run, its floor just cleared) with `offers`.
 func show_boons(run: Dictionary, offers: Array) -> void:
+	UIKit.relayout(root)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	visible = true
 	_hide_hud()
 	boons_root.visible = true
@@ -432,6 +434,7 @@ func _build_summary() -> void:
 
 ## Shows the end of the run: `result` = Progress.end_descent's.
 func show_summary(result: Dictionary) -> void:
+	UIKit.relayout(root)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	visible = true
 	_hide_hud()
 	boons_root.visible = false

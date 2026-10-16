@@ -25,14 +25,15 @@ extends "res://tests/suite_base.gd"
 ## "accepted" when English shows the same thing at the same node (the source layout), or when it is on
 ## the KNOWN list below. Node ids are stable paths (names, or Class + index for generated nodes).
 ## Not measured: text drawn with draw_string (tutorial key caps, the touch JUMP button), textures.
-## ENFORCED (chunk G5) for every locale but Arabic: an open finding in any other locale fails the suite.
-## Arabic (REPORT_ONLY) is still reported, never failed: its right-to-left layout is chunk I's.
+## ENFORCED for every locale (chunk G5; Arabic since chunk I's right-to-left mirroring): an open finding fails
+## the suite. A mirrored (RTL) control's text is measured where Godot draws it: LEFT / RIGHT alignment and a
+## button's icon side swap in a right-to-left layout.
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_i18n_screens.gd
 
 const ENFORCE := true
-## Locales whose findings are reported but do not fail the suite (Arabic: RTL is chunk I).
-const REPORT_ONLY := ["ar"]
+## Locales whose findings are reported but do not fail the suite (none since chunk I).
+const REPORT_ONLY: Array[String] = []
 const Lang := preload("res://scripts/language.gd")
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)
@@ -95,7 +96,7 @@ func _initialize() -> void:
 	Report.write("screens", issues, {
 		states = "%d screen / overlay / HUD states per locale" % states_seen.size(),
 		deliberate_widths = "buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): " + ", ".join(counts),
-		enforced = "every locale but %s (reported only: RTL is chunk I)" % ", ".join(REPORT_ONLY),
+		enforced = "every locale" if REPORT_ONLY.is_empty() else "every locale but %s" % ", ".join(REPORT_ONLY),
 		measured = "every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size",
 		not_measured = "draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell",
 	})
@@ -106,7 +107,8 @@ func _initialize() -> void:
 	print("  screens report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
 		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
-		_check(failing.is_empty(), "every text fits its box in every locale but %s (%d open)" % [", ".join(REPORT_ONLY), failing.size()])
+		_check(failing.is_empty(), "every text fits its box in every locale (%d open%s)" % [failing.size(),
+			"" if REPORT_ONLY.is_empty() else ", reported only: " + ", ".join(REPORT_ONLY)])
 		if not failing.is_empty():
 			for i: Dictionary in failing.slice(0, 20):
 				print("    open %s | %s | %s | %s | %s" % [i.locale, i.screen, i.node, i.kind, i.text.left(30)])
@@ -457,10 +459,19 @@ func _measure(screen: Node, control: Control) -> Dictionary:
 				box.size.y - style.get_margin(SIDE_TOP) - style.get_margin(SIDE_BOTTOM))
 		if button.icon:
 			var icon_w := float(button.icon.get_width()) + float(button.get_theme_constant("h_separation"))
-			box.position.x += icon_w if button.icon_alignment != HORIZONTAL_ALIGNMENT_RIGHT else 0.0
+			var icon_right := button.icon_alignment == HORIZONTAL_ALIGNMENT_RIGHT
+			if control.is_layout_rtl() and button.icon_alignment != HORIZONTAL_ALIGNMENT_CENTER:
+				icon_right = not icon_right  # (Godot swaps the icon's side in a right-to-left layout)
+			box.position.x += icon_w if not icon_right else 0.0
 			box.size.x -= icon_w
 	if wraps:
 		text_box_w = maxf(widest, box.size.x)  # wrapped lines fill the box (or the long word sticks out)
+	if control.is_layout_rtl():
+		# (Godot draws LEFT-aligned text on the right in a right-to-left layout, and RIGHT on the left)
+		if align == HORIZONTAL_ALIGNMENT_LEFT:
+			align = HORIZONTAL_ALIGNMENT_RIGHT
+		elif align == HORIZONTAL_ALIGNMENT_RIGHT:
+			align = HORIZONTAL_ALIGNMENT_LEFT
 	var x := box.position.x
 	match align:
 		HORIZONTAL_ALIGNMENT_CENTER:

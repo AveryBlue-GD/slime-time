@@ -180,6 +180,7 @@ func _place_grids() -> void:
 
 ## Shows page `which` (0 on one page): its rows, both columns or (one column per page) one of them.
 func show_page(which: int) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	page = which
 	var row_pages := pages / (3 - columns_per_page)
 	var first_row := (page % row_pages) * rows_per_page

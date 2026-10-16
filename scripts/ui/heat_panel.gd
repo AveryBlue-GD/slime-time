@@ -148,7 +148,7 @@ static func about_texts() -> Array[String]:
 func _geometry() -> Dictionary:
 	var g := {rect = RECT, toggle = Vector2(TOGGLE), title_y = RECT.position.y + UIKit.PANEL_PAD, grid_y = GRID_Y,
 		about_y = ABOUT_Y, about_lines = 1, done_y = DONE_Y, icon_x = ICON_X, name_x = NAME_X, name_y = 7, name_lines = 1,
-		name_font = null, points_y = 20}
+		name_font = null, points_y = 20, icon_scale = ICON_SCALE}
 	if english:
 		return g
 	var tall := UIKit.tall_script()
@@ -158,11 +158,20 @@ func _geometry() -> Dictionary:
 	g.icon_x = ICON_X - SHIFT_X / 2
 	g.name_x = NAME_X - SHIFT_X
 	var room: float = toggle_w - g.name_x - NAME_PAD
-	# The names: one line; else the script's smaller size (Devanagari); else two lines.
+	# The names: one line; else the script's smaller size (Devanagari); else the icons at 1x, which leaves the
+	# name 9 px more (Arabic: no smaller size, and two-line names would make the panel taller than the
+	# screen); else two lines.
 	var name_h := lh
 	var widest := 0
 	for id in Heat.IDS:
 		widest = maxi(widest, UIKit.text_w(Heat.display_name(id)))
+	var language_node := get_tree().root.get_node_or_null("Language")
+	var has_small: bool = language_node != null and language_node.has_method("small_font") and language_node.small_font(UIKit.locale()) != null
+	var name_x_1x: int = g.icon_x + 9 + (g.name_x - g.icon_x - 9 * ICON_SCALE)
+	if widest > room and not has_small and widest <= toggle_w - name_x_1x - NAME_PAD:
+		g.icon_scale = 1
+		g.name_x = name_x_1x
+		room = toggle_w - g.name_x - NAME_PAD
 	if widest > room:
 		var language := get_tree().root.get_node_or_null("Language")
 		var small: Font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
@@ -206,10 +215,11 @@ func _make_toggle(id: String) -> Button:
 	button.size = toggle_size
 	var icon := Heat.make_rect(Heat.icon(id))
 	icon.name = "Icon"
-	icon.scale = Vector2(ICON_SCALE, ICON_SCALE)
-	# Centered in an 18x18 cell (RACE's art is 8x8, the others 9x9), the cell centred on the toggle's height.
+	var scale: int = _geo.icon_scale
+	icon.scale = Vector2(scale, scale)
+	# Centered in an 18x18 cell (9x9 at 1x; RACE's art is 8x8, the others 9x9), the cell centred on the toggle's height.
 	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
-	icon.position = Vector2(_geo.icon_x, floorf((toggle_size.y - 18.0) / 2.0)) + (cell * ICON_SCALE / 2.0).floor()
+	icon.position = Vector2(_geo.icon_x, floorf((toggle_size.y - 9.0 * scale) / 2.0)) + (cell * scale / 2.0).floor()
 	button.add_child(icon)
 	var name_label := UIKit.make_label(Heat.display_name(id), UIKit.FONT, UIKit.TEXT)
 	name_label.name = "Name"
@@ -247,6 +257,7 @@ func _flip(id: String) -> void:
 ## Redraws every toggle from Progress.heat_mods (on: full color + a check; off: greyed; BRITTLE
 ## disabled while GROUNDED is on) and the total.
 func refresh() -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var mask: int = Progress.heat_mods
 	for id: String in toggles:
 		var button: Button = toggles[id]

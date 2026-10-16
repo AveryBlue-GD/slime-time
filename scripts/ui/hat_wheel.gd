@@ -326,6 +326,7 @@ func back() -> bool:
 
 ## Switches between the WHEEL and the SHOP and focuses something on it.
 func show_tab(which: String, focus := true) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	if spinning:
 		return
 	tab = which
@@ -348,6 +349,7 @@ func show_tab(which: String, focus := true) -> void:
 ## The key named in the WHEEL's "TO SPIN" hint changed (the player switched between keys, pad and touch):
 ## only the hint text is redone (nothing is rebuilt, so the focus stays where it is).
 func set_spin_key(spin_key: String) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	_spin_key = spin_key
 	if tab == "wheel" and not spinning:
 		_refresh_wheel()
@@ -355,6 +357,7 @@ func set_spin_key(spin_key: String) -> void:
 
 ## Shows the header's BACK (touch: there is no Esc / B to close the overlay).
 func show_close(on: bool) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	close_button.visible = on
 	_place_title()
 
@@ -380,6 +383,7 @@ func _place_title() -> void:
 ## SHOP when every hat is already won; focus inside). Right after a win the won hat stays where it
 ## landed, lit up under the pointer, until the next spin takes it off.
 func refresh(spin_key: String, opening := false) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	_spin_key = spin_key
 	if opening:
 		_won = ""
@@ -395,6 +399,7 @@ func refresh(spin_key: String, opening := false) -> void:
 
 
 func _refresh_wheel() -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	if _won == "" and not spinning:  # (mid-spin the won hat stays on until it has landed)
 		hats = Progress.hats_left()
 	balance.text = str(Progress.tickets)
@@ -538,6 +543,7 @@ func _section_label(id: String) -> String:
 
 ## Shows a SHOP section's tiles: HATS (the TAILOR), TRAILS or PAPERS.
 func show_section(which: String, focus := true) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	if which != section:
 		page = 0
 	section = which
@@ -639,6 +645,7 @@ func _show_page(which: int, ids: Array[String]) -> void:
 ## Turns the SHOP grid `delta` pages on (PREV / NEXT, or the keys past the first / last row), focus
 ## on the first tile of the new page (or the tile in `column` of its first / last row).
 func _turn_page(delta: int, column := -1) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var ids := _section_ids()
 	var to := clampi(page + delta, 0, pages - 1)
 	if to == page:
@@ -748,6 +755,7 @@ func _make_tile(id: String) -> Button:
 ## The two status lines for item `id`: its name and what pressing it does (or why it can't), and
 ## its picture (trails and papers).
 func _describe(id: String) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	_describe_texts(id)
 	_fit_status_lines()
 
@@ -925,6 +933,7 @@ func _on_tile(id: String) -> void:
 
 
 func open_confirm(id: String) -> void:
+	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	_confirm_id = id
 	confirm_label.text = Loc.t("wheel.confirm", "BUY {name}?", {name = _name_of(id)})
 	confirm_price.text = str(_price_of(id))

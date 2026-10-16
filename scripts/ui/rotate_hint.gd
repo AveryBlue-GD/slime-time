@@ -28,12 +28,15 @@ func _ready() -> void:
 	_text = text
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	text.text_direction = UIKit.text_direction()  # (an overlay outside every mirror root)
 	_cover.add_child(text)
 	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 	var language := get_node_or_null("/root/Language")
 	if language:
-		language.language_changed.connect(func(_locale: String) -> void: _text.text = _message())
+		language.language_changed.connect(func(_locale: String) -> void:
+			_text.text = _message()
+			_text.text_direction = UIKit.text_direction())
 	_update.call_deferred()
 	# Every input event, before any node: menus grow their touch hit areas only while touch is in use.
 	get_tree().root.window_input.connect(UIKit.note_pointer)

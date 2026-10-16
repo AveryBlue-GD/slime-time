@@ -93,6 +93,10 @@ restart={
 ]
 }
 
+[internationalization]
+
+rendering/root_node_layout_direction=1
+
 [physics]
 
 common/physics_interpolation=true

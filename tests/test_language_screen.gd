@@ -172,9 +172,11 @@ func _layout_every_locale() -> void:
 			if b.get_meta("selected", false):
 				selected.append(c)
 			if i > 0 and i % PageScript.COLUMNS != 0:
+				# (reading order: left to right, or right to left in a mirrored (RTL) page, docs/ui-rules.md 10.2)
 				var prev: Button = page.buttons[codes[i - 1]]
-				if b.position.y != prev.position.y or b.position.x != prev.position.x + PageScript.BUTTON_W + PageScript.COL_GAP:
-					bad.append("%s not right of %s" % [c, codes[i - 1]])
+				var step := (PageScript.BUTTON_W + PageScript.COL_GAP) * UIKit.reading_dir()
+				if b.position.y != prev.position.y or b.position.x != prev.position.x + step:
+					bad.append("%s not %s of %s" % [c, "left" if step < 0 else "right", codes[i - 1]])
 		# Overlaps and gaps (>= 2 px between any two buttons, BACK included).
 		var back: Button = page.back_button
 		var back_rect := Rect2(back.global_position, back.size)
@@ -188,7 +190,8 @@ func _layout_every_locale() -> void:
 		var right := 320 - grid.end.x
 		if left != right or grid.size.x != 304:
 			bad.append("grid not symmetric (L%d R%d W%d)" % [left, right, grid.size.x])
-		if back_rect.position.x != UIKit.EDGE or back_rect.end.y > UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H \
+		var back_x := UIKit.SCREEN.x - UIKit.EDGE - back_rect.size.x if UIKit.rtl() else float(UIKit.EDGE)  # (bottom right when mirrored)
+		if back_rect.position.x != back_x or back_rect.end.y > UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H \
 				or back_rect.position.y > UIKit.BOTTOM_ROW_Y or back.get_combined_minimum_size().y > back.size.y:
 			bad.append("BACK misplaced %s" % back_rect)
 		if grid.position.y < UIKit.TITLE_Y + 20:

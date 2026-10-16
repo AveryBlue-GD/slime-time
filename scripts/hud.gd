@@ -317,11 +317,14 @@ func _ready() -> void:
 	_skin_text = SkinText.new()
 	_skin_text.theme_owner = _choice_root
 	add_child(_skin_text)
+	UIKit.mirror_root(self)  # (right-to-left languages: the pods swap corners, docs/ui-rules.md 10.2)
 
 
 func set_slime(percent: float) -> void:
-	fill.size.x = roundf(BAR_SIZE.x * clampf(percent, 0.0, 100.0) / 100.0)
-	_shine.size.x = fill.size.x
+	# (through the right offset, i.e. from the bar's start: in a mirrored HUD the fill hangs from the
+	# right end and drains toward it, where setting its size would keep its visual left edge)
+	fill.offset_right = fill.offset_left + roundf(BAR_SIZE.x * clampf(percent, 0.0, 100.0) / 100.0)
+	_shine.offset_right = _shine.offset_left + fill.size.x
 	_low = percent < LOW_PERCENT
 	fill.color = LOW_COLOR if _low else goo_color
 	if not _low:
