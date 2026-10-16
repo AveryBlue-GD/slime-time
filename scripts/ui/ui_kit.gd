@@ -340,7 +340,9 @@ static func _wrap_break_flag() -> int:
 ## size, lines, font_size, wrap}. When nothing fits, fits is false and the text is never cut (the box
 ## is the largest allowed; a Label may still widen itself to its text): switch that screen to a
 ## two-page or scrolling layout (stack_pages / grid_budget). Call it once the control is in the themed
-## tree (it measures with the control's own font, size, margins and line spacing).
+## tree (it measures with the control's own font, size, margins and line spacing), after any font /
+## line-spacing override and before anything is placed from its size: the wrap and the new size take
+## effect at once, in the same frame (no deferred second resize).
 static func fit_text(control: Control, box: Rect2, max_size := Vector2.ZERO, max_lines := 2, anchor := Vector2i(0, 0)) -> Dictionary:
 	var text: String = control.get("text")
 	var start := box.size
@@ -420,6 +422,9 @@ static func _apply_fit(control: Control, fit: Dictionary, box: Rect2, anchor: Ve
 			(control as Label).autowrap_mode = autowrap_mode()
 		elif control is Button:
 			(control as Button).autowrap_mode = autowrap_mode()
+		# (Godot does not refresh a Label's / Button's minimum size when only its autowrap changes: it
+		# would still be the one-line width this frame and clamp the size below; refresh it now)
+		control.update_minimum_size()
 	var size: Vector2 = fit.size
 	var grow := size - box.size
 	var pos := box.position + Vector2(_anchor_shift(grow.x, anchor.x), _anchor_shift(grow.y, anchor.y))
@@ -434,6 +439,205 @@ static func _anchor_shift(grow: float, anchor: int) -> float:
 	if anchor < 0 or grow <= 0:
 		return 0.0
 	return -grow if anchor > 0 else -floorf(grow / 2.0)
+
+
+# ---- Shared per-locale helpers (chunk G5: one copy of what the screen chunks G1-G4 each wrote) ----
+
+## Meta key of note_text_w.
+const TEXT_W_META := "ui_text_w"
+## Page arrows' width (< / > beside a title or a row).
+const PAGER_W := 20
+## Fallback-free copies of the slimy fonts, by path, weakly held (see plain_font).
+static var _plain_fonts := {}
+
+
+## Records that `control`'s width comes from button_w(text, min_w, font_size, extra) over `texts`: its
+## own text alone, an equal-width group's texts (tab_widths), or every text it can show (a key button
+## sized for PRESS KEY). Changes nothing on screen; tests/test_i18n_screens.gd recomputes noted_text_w
+## and accepts a button wider than in English when it is exactly that wide (never by node name).
+static func note_text_w(control: Control, texts: Array, min_w: int, font_size := FONT, extra := 0) -> void:
+	var strings := PackedStringArray()
+	for text: Variant in texts:
+		strings.append(String(text))
+	control.set_meta(TEXT_W_META, {texts = strings, min_w = min_w, font_size = font_size, extra = extra})
+
+
+## The width the sizing helpers give `control` now, from its note_text_w note (in the current locale):
+## the widest button_w of the noted texts. -1 without a note, or when the control's own text would not
+## fit that width.
+static func noted_text_w(control: Control) -> int:
+	if not control.has_meta(TEXT_W_META):
+		return -1
+	var note: Dictionary = control.get_meta(TEXT_W_META)
+	var w := 0
+	for text: String in note.texts:
+		w = maxi(w, button_w(text, note.min_w, note.font_size, note.extra))
+	if button_w(String(control.get("text")), note.min_w, note.font_size, note.extra) > w:
+		return -1
+	return w
+
+
+## A CheckBox's width past its text, as button_w's `extra` (note_text_w(box, [text], 0, FONT,
+## checkbox_extra(box))): Godot reserves the widest of all its check / radio icons (the default
+## theme's 16 px radio icons, not our 9 px box) plus the theme's 4 px separation (no style margins).
+static func checkbox_extra(box: CheckBox) -> int:
+	var icon_w := 0
+	for icon_name: String in ["checked", "unchecked", "radio_checked", "radio_unchecked", "checked_disabled",
+			"unchecked_disabled", "radio_checked_disabled", "radio_unchecked_disabled"]:
+		var icon := box.get_theme_icon(icon_name)
+		if icon:
+			icon_w = maxi(icon_w, icon.get_width())
+	var style := box.get_theme_stylebox("normal")
+	var margins := int(style.get_minimum_size().x) if style else 0
+	return icon_w + box.get_theme_constant("h_separation") + margins - 2 * BUTTON_TEXT_PAD
+
+
+## Puts a CheckBox's 9 px box where English has it beside its text: its bottom row 2 rows above the
+## line's baseline (the slimy body's last row). Godot centres the 16 px icon slot and the line box
+## separately; a taller script's line box (its ascent) puts the baseline lower, so the box would sit
+## 2-3 px high (CJK, zh_TW, Thai). English / Latin: no change. Call it once the box is in the themed
+## tree and sized.
+static func align_checkbox(box: CheckBox) -> void:
+	if not tall_script():
+		return
+	var font: Font = box.get_theme_font("font")
+	var h := maxf(box.size.y, box.get_combined_minimum_size().y)
+	var icon_h := 0
+	for icon_name: String in ["checked", "unchecked", "radio_checked", "radio_unchecked"]:
+		var icon := box.get_theme_icon(icon_name)
+		if icon:
+			icon_h = maxi(icon_h, icon.get_height())
+	var box_h := (box.get_theme_icon("unchecked") as Texture2D).get_height()
+	var line_top := floorf((h - font.get_height(FONT)) / 2.0)
+	var baseline := line_top + roundf(font.get_ascent(FONT))
+	var want_top := baseline - 1 - 2 - (box_h - 1)  # (English: 11 - 1 - 2 - 8 = 0)
+	var top := floorf((h - icon_h) / 2.0)
+	box.add_theme_constant_override("check_v_offset", int(want_top - top))
+
+
+## A 16 px button's height (the title's ENTER): `english_h` with the slimy font; a taller script's 16 px
+## line box plus its ink nudge when that is taller (its glyphs have no drips under them).
+static func big_button_h(english_h: int) -> int:
+	if not tall_script():
+		return english_h
+	return maxi(english_h, int(metrics().title_line_h) + int(metrics().get("ink_nudge", 0)))
+
+
+## The rows a locale's accents take above a line of 8 px text in a box laid out for English (0 in
+## English, 2 accented, 4 Vietnamese: the extra top margin of button_v_margins; a taller script's line
+## box holds its marks: 0).
+static func accent_room() -> int:
+	return 0 if tall_script() else maxi(0, button_v_margins().x - 3)
+
+
+## Where a 7 px digit's body starts in a line box of the current locale's 8 px font: 0 in English and
+## with accents; in a taller script's box (CJK, Thai, Devanagari, Arabic) the slimy digits sit
+## ascent - 7 px down, so an icon beside a number moves down with them.
+static func digit_top() -> float:
+	if not tall_script():
+		return 0.0  # (asking the font would allocate its size cache: English must keep its RIDs)
+	return roundf(font_for().get_ascent(FONT)) - TEXT_BODY
+
+
+## The slimy font WITHOUT the locale's script fallback, for digits-only texts (level numbers, times,
+## percents, +N, the page arrows): Font.get_height counts every fallback, so a taller script would make
+## their labels taller and push the digits down (they never use a fallback glyph). Null (no change)
+## with no fallback installed (English; `always`: a fallback-free copy anyway, for text drawn beside
+## another script's) or when `text` needs a glyph the slimy font lacks.
+static func plain_font(text: String, font_size := FONT, always := false) -> Font:
+	var base: FontFile = load(Lang.FONT_BIG_PATH if font_size == FONT_BIG else Lang.FONT_PATH)
+	if base.fallbacks.is_empty() and not always:
+		return null
+	var held: WeakRef = _plain_fonts.get(base.resource_path)
+	var plain: FontFile = held.get_ref() if held else null
+	if plain == null:
+		plain = base.duplicate()
+		var none: Array[Font] = []
+		plain.fallbacks = none
+		_plain_fonts[base.resource_path] = weakref(plain)  # (kept while a control uses it)
+	for i in text.length():
+		if not plain.has_char(text.unicode_at(i)):
+			return null
+	return plain
+
+
+## Puts plain_font on `control` (a Label / Button showing digits or arrows) when it applies.
+static func use_plain_font(control: Control, font_size := FONT) -> void:
+	var font := plain_font(String(control.get("text")), font_size)
+	if font:
+		control.add_theme_font_override("font", font)
+
+
+## Wraps `label` (already in the themed tree) to `box`: the locale's autowrap, then its minimum size
+## updated before it is sized (a label sized while its minimum is still the one-line width, or the
+## default font's, keeps that width).
+static func wrap_label(label: Label, box: Vector2) -> void:
+	label.autowrap_mode = autowrap_mode()
+	label.update_minimum_size()
+	label.size = box
+
+
+## Page arrows for a layout a locale pages (docs/ui-rules.md section 10, paging): < at `left_x` and >
+## ending at `right_x`, `w` x `h` (h -1: button_h()) on row `y`, added to `parent` (last, so the other
+## nodes keep their places), in plain_font (the arrows sit on the line as in English), named PagePrev /
+## PageNext. `on_step` gets -1 / 1. Returns [prev, next]; show_page_arrows sets their state.
+static func add_page_arrows(parent: Node, on_step: Callable, y: float, left_x: float, right_x: float, w := PAGER_W,
+		h := -1, focus := true) -> Array[Button]:
+	var size := Vector2(w, button_h() if h < 0 else h)
+	var arrows: Array[Button] = []
+	for step: int in [-1, 1]:
+		var arrow := make_button("<" if step < 0 else ">", func() -> void: on_step.call(step), size)
+		arrow.name = "PagePrev" if step < 0 else "PageNext"
+		if not focus:
+			arrow.focus_mode = Control.FOCUS_NONE
+		parent.add_child(arrow)
+		use_plain_font(arrow)
+		arrow.size = size
+		arrow.position = Vector2(left_x if step < 0 else right_x - w, y)
+		arrows.append(arrow)
+	return arrows
+
+
+## The arrows' state on page `page` of `pages`: the arrow that would leave the pages disabled (their
+## visibility stays the caller's: a panel may be covering them).
+static func show_page_arrows(arrows: Array, page: int, pages: int) -> void:
+	for i in arrows.size():
+		(arrows[i] as Button).disabled = page <= 0 if i == 0 else page >= pages - 1
+
+
+## The top of page arrows beside a screen's title: centred on its letters (the 14 px body, or a taller
+## script's line).
+static func title_arrows_y() -> int:
+	var body := maxi(14, int(metrics().get("title_line_h", 14)))
+	return title_top() + floori((body - button_h()) / 2.0)
+
+
+## The panel-cover rule (docs/ui-rules.md section 10): while a modal panel is open in a locale whose
+## layout differs from English, the screen's own controls behind it are hidden (only those whose rect
+## meets `rect`, when it has an area), so the panel's texts never sit over the page's ghost texts.
+## Skips the drifting backdrop, anything in `keep` and what is already hidden. Returns what it hid
+## (uncover shows it again). English keeps its ghosts (pixel-identical): callers skip it there.
+static func cover_behind(screen: Node, keep: Array, rect := Rect2()) -> Array[CanvasItem]:
+	var hidden: Array[CanvasItem] = []
+	for child in screen.get_children():
+		var item := child as CanvasItem
+		if item == null or item is MenuBackdrop or item in keep or not item.visible:
+			continue
+		if rect.has_area():
+			var control := item as Control
+			if control == null or not Rect2(control.position, control.size).intersects(rect):
+				continue
+		item.visible = false
+		hidden.append(item)
+	return hidden
+
+
+## Shows what cover_behind hid again and empties the list.
+static func uncover(hidden: Array) -> void:
+	for item: Variant in hidden:
+		if is_instance_valid(item):
+			(item as CanvasItem).visible = true
+	hidden.clear()
 
 
 # ---- Layout budgets: does a layout fit the 320x180 safe area? (docs/ui-rules.md section 10) ----
@@ -656,6 +860,8 @@ static func add_ticket_confirm(parent: Control, on_buy: Callable, on_back: Calla
 	var back := make_button(back_text, on_back, Vector2(button_w, button_h()))
 	back.position = Vector2(buy.position.x + button_w + GAP_XL, buttons_y)
 	panel.add_child(back)
+	for b: Button in [buy, back]:
+		note_text_w(b, [buy_text, back_text], 48)
 	return {blocker = blocker, panel = panel, label = label, price = price, buy = buy, back = back}
 
 
@@ -795,6 +1001,7 @@ static func add_back_button(root: Control, on_press := Callable()) -> Button:
 	# i18n: max 32px (BACK_SIZE 40 wide, 4 px margins), 1 line; on every screen
 	var text := Loc.t("common.back", "BACK")
 	var button := make_button(text, press, back_size(text))
+	note_text_w(button, [text], int(BACK_SIZE.x))
 	root.add_child(button)
 	place_bottom_row(button, -1)
 	return button

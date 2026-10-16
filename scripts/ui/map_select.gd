@@ -39,9 +39,8 @@ const THEMED_MAPS := true
 ## The tile text's left edge (after the picture) and the room kept right of it.
 const TEXT_X := 43
 const TEXT_PAD := 4
-## Rows of tiles in the English layout, the page arrows' width.
+## Rows of tiles in the English layout.
 const ROWS := 5
-const PAGER_W := 20
 ## Between the grid's last row and the bottom row (English: 159 -> 164).
 const BOTTOM_GAP := 5
 const LevelSelect := preload("res://scripts/ui/level_select.gd")
@@ -120,20 +119,13 @@ func _ready() -> void:
 	hard_box.size = hard_box.get_combined_minimum_size()
 	hard_box.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - hard_box.size.x,
 		text_line_y() - floorf((hard_box.size.y - UIKit.line_h()) / 2.0))
+	UIKit.note_text_w(hard_box, [hard_box.text], 0, UIKit.FONT, UIKit.checkbox_extra(hard_box))  # (sized to its text)
 	UIKit.add_touch_target(hard_box)
 	_build_view()
 	if pages > 1:
 		_add_pager()
 	_fill_grid()
 	_focus_tile(Progress.current_level)
-
-
-## Wraps `label` (in the themed tree) to `box`: set once there, as a label sized before it keeps the
-## default font's (or the unwrapped text's) larger minimum size.
-static func wrap_label(label: Label, box: Vector2) -> void:
-	label.autowrap_mode = UIKit.autowrap_mode()
-	label.update_minimum_size()
-	label.size = box
 
 
 ## The top of the bottom row's text line: BACK's text (BOTTOM_ROW_Y + 3 in English).
@@ -152,7 +144,7 @@ static func bottom_line_rect(back: Control) -> Rect2:
 ## and the rows per page: five (one page) when they fit between the title and the bottom row, else
 ## balanced pages (three rows, then two).
 func _layout_tiles() -> void:
-	_name_y = 3 + LevelSelect.accent_room()
+	_name_y = 3 + UIKit.accent_room()
 	var room := TILE_SIZE.x - TEXT_X - TEXT_PAD
 	_name_lines = 1
 	for level in range(1, Levels.COUNT + 1):
@@ -169,16 +161,10 @@ func _layout_tiles() -> void:
 
 ## The page arrows (paged only): < at the left edge and > at the right, centred on the title's line.
 func _add_pager() -> void:
-	page_prev = UIKit.make_button("<", func() -> void: _flip(-1), Vector2(PAGER_W, UIKit.button_h()))
-	page_prev.name = "PagePrev"
-	page_next = UIKit.make_button(">", func() -> void: _flip(1), Vector2(PAGER_W, UIKit.button_h()))
-	page_next.name = "PageNext"
-	for arrow: Button in [page_prev, page_next]:
-		add_child(arrow)  # (last: the other nodes keep their places; hidden with the select under the view)
-		LevelSelect.use_plain_font(arrow)
-	var y := LevelSelect.pager_y()
-	page_prev.position = Vector2(UIKit.EDGE, y)
-	page_next.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - PAGER_W, y)
+	# (added last: the other nodes keep their places; hidden with the select under the view)
+	var arrows := UIKit.add_page_arrows(self, _flip, UIKit.title_arrows_y(), UIKit.EDGE, UIKit.SCREEN.x - UIKit.EDGE)
+	page_prev = arrows[0]
+	page_next = arrows[1]
 
 
 func _flip(step: int) -> void:
@@ -213,8 +199,7 @@ func _show_page(index: int) -> void:
 		if at < levels.size():
 			grid.move_child(tiles[levels[at] - 1], i)
 	if page_prev:
-		page_prev.disabled = page == 0
-		page_next.disabled = page == pages - 1
+		UIKit.show_page_arrows([page_prev, page_next], page, pages)
 
 
 ## (Re)builds the 10 tiles for the current mode.
@@ -231,7 +216,7 @@ func _fill_grid() -> void:
 		grid.add_child(tiles[(i % 2) * rows + i / 2])
 	if _name_lines > 1:  # a name longer than the tile wraps (every tile keeps room for two lines)
 		for tile in tiles:
-			wrap_label(tile.get_meta("name_label"), Vector2(TILE_SIZE.x - TEXT_X - TEXT_PAD, UIKit.text_block_h(2)))
+			UIKit.wrap_label(tile.get_meta("name_label"), Vector2(TILE_SIZE.x - TEXT_X - TEXT_PAD, UIKit.text_block_h(2)))
 	if pages > 1:
 		_show_page(page)
 	if skin_text:
@@ -257,7 +242,7 @@ func _make_tile(level: int) -> Button:
 	var percent_label := UIKit.make_label("%d%%" % percent, UIKit.FONT, UIKit.TEXT_OFF if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
 	percent_label.position = Vector2(TEXT_X, _percent_y)  # the dense two-line pitch under the name
 	button.add_child(percent_label)
-	LevelSelect.use_plain_font(percent_label)
+	UIKit.use_plain_font(percent_label)
 	var route := 0
 	if not locked and not (survey.moves as PackedByteArray).is_empty():
 		route = 2 if survey.clear else 1
@@ -320,6 +305,7 @@ func _build_view() -> void:
 	view_root.add_child(view_line)
 	# i18n: max 32px, 1 line
 	view_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_view, UIKit.back_size())
+	UIKit.note_text_w(view_back, [view_back.text], int(UIKit.BACK_SIZE.x))
 	view_root.add_child(view_back)
 	UIKit.place_bottom_row(view_back, -1)
 	var line := bottom_line_rect(view_back)
@@ -332,6 +318,7 @@ func _build_view() -> void:
 	# i18n: max 36px (44 wide, 4 px margins), 1 line
 	var paper_text := Loc.t("maps.paper", "PAPER")
 	view_paper = UIKit.make_button(paper_text, cycle_paper, Vector2(UIKit.button_w(paper_text, 44), UIKit.button_h()))
+	UIKit.note_text_w(view_paper, [paper_text], 44)
 	view_root.add_child(view_paper)
 	UIKit.place_bottom_row(view_paper, 1)
 	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
@@ -342,7 +329,7 @@ func _build_view() -> void:
 
 ## The view's name line: 3 px from the top (lower by a Vietnamese capital's stacked marks).
 static func view_title_y() -> int:
-	return maxi(3, 1 + LevelSelect.accent_room())
+	return maxi(3, 1 + UIKit.accent_room())
 
 
 ## The map's area: 3 px under the name line to 2 px over the bottom row, 2 px from the sides
@@ -416,10 +403,7 @@ func open_view(level: int) -> void:
 	if _focus_lock.is_empty():  # the hidden select (tiles, HARD, BACK) can't take focus meanwhile
 		_focus_lock = UIKit.lock_focus(self, view_root)
 		# ...and is hidden: the view is opaque over all of it (nothing on screen changes)
-		for child in get_children():
-			if child != view_root and child is CanvasItem and (child as CanvasItem).visible:
-				(child as CanvasItem).visible = false
-				_hidden.append(child)
+		_hidden = UIKit.cover_behind(self, [view_root])
 	skin_text.recolor.call_deferred()
 
 
@@ -429,10 +413,7 @@ func close_view() -> void:
 	viewing = false
 	view_root.visible = false
 	view_map.texture = null
-	for child in _hidden:
-		if is_instance_valid(child):
-			child.visible = true
-	_hidden.clear()
+	UIKit.uncover(_hidden)
 	UIKit.unlock_focus(_focus_lock)
 	_focus_tile(viewed_level)
 

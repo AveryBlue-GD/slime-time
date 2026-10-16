@@ -122,7 +122,10 @@ func _layout(back: Button) -> void:
 	var below := int(metrics.ink_below)
 	if UIKit.button_h() == UIKit.BUTTON_H:
 		return  # English metrics (en, id, the gate off): the source layout as built (TRAILS grows its button 2 px there)
-	var w: int = UIKit.tab_widths([back.text, page_title("skins"), page_title("hats"), page_title("trails")], int(back.custom_minimum_size.x))[0]
+	var bottom_texts := [back.text, page_title("skins"), page_title("hats"), page_title("trails")]
+	var w: int = UIKit.tab_widths(bottom_texts, int(back.custom_minimum_size.x))[0]
+	for b: Button in [back, page_button]:
+		UIKit.note_text_w(b, bottom_texts, int(back.custom_minimum_size.x))
 	if w != int(back.custom_minimum_size.x):
 		back.custom_minimum_size.x = w
 		back.size.x = w
@@ -181,6 +184,7 @@ func _layout(back: Button) -> void:
 	custom_panel.position.y = plan.stage_top
 	jelly_button.custom_minimum_size.x = jelly_w
 	jelly_button.size.x = jelly_w
+	UIKit.note_text_w(jelly_button, [_jelly_text(true), _jelly_text(false)], 80)
 	if plan.step >= 2:
 		jelly_button.position = Vector2(UIKit.EDGE, UIKit.EDGE)
 	else:

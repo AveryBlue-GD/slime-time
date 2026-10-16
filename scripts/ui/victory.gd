@@ -83,6 +83,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
+		UIKit.note_text_w(button, texts, MENU_W)
 	buttons[0].grab_focus()
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:

@@ -54,6 +54,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
+		UIKit.note_text_w(button, texts, 100)
 	UIKit.add_skin_text(root)
 
 

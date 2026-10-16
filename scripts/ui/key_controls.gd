@@ -78,6 +78,8 @@ func _ready() -> void:
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			rows.add_child(label)
 			var button := UIKit.make_button("", func() -> void: _start_rebind(action), Vector2(key_w, UIKit.button_h()))
+			if columns_per_page == 1:  # (one column per page: as wide as PRESS KEY needs, whatever key it shows)
+				UIKit.note_text_w(button, [press_key_text()], KEY_WIDTH)
 			rows.add_child(button)
 			key_buttons[action] = button
 	_place_grids()
@@ -108,12 +110,14 @@ func _ready() -> void:
 	# i18n: max 90px (98 wide, 4 px margins), 1 line
 	var reset_text := Loc.t("keys.reset", "RESET KEYS")
 	reset_keys_button = UIKit.make_button(reset_text, _on_reset, UIKit.button_size(reset_text, 98))
+	UIKit.note_text_w(reset_keys_button, [reset_text], 98)
 	add_child(reset_keys_button)
 	reset_keys_button.size = reset_keys_button.custom_minimum_size
 	UIKit.place_bottom_row(reset_keys_button, 0)
 	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)
 	if pages > 1:
 		page_button = UIKit.make_button(_page_text(), func() -> void: show_page((page + 1) % pages), back_button.custom_minimum_size)
+		UIKit.note_text_w(page_button, [back_button.text], int(UIKit.BACK_SIZE.x))  # (BACK's mirror)
 		add_child(page_button)
 		page_button.size = page_button.custom_minimum_size
 		UIKit.place_bottom_row(page_button, 1)

@@ -145,6 +145,8 @@ func _ready() -> void:
 		# leaves the title the most room)
 		var row := UIKit.layout_row(tabs, UIKit.tab_widths(tabs.map(func(b: Button) -> String: return b.text), tab_min, false),
 			UIKit.EDGE, UIKit.EDGE, UIKit.GAP_XS)
+		for i in tabs.size():
+			UIKit.note_text_w(tabs[i], [tabs[i].text], tab_min[i])
 		if workshop_on and abilities_on:  # (the third tab keeps its English place, 100)
 			tickets_tab.position.x = maxf(tickets_tab.position.x, 100)
 		_fit_title(row.end.x + UIKit.GAP_M)

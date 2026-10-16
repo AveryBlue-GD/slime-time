@@ -58,7 +58,7 @@ var heading_y := FIRST_ROW - 11
 var first_row := FIRST_ROW
 var row_step := ROW_STEP
 ## The page's controls a panel hid while it is open (_cover_page): see there.
-var _covered: Array[Control] = []
+var _covered: Array[CanvasItem] = []
 
 var sound_button: Button
 var volume_slider: HSlider
@@ -125,6 +125,7 @@ func _ready() -> void:
 	# i18n: max 84px (RESET_SIZE 92 wide), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
 	reset_button = UIKit.make_button(reset_text, _ask_reset, UIKit.button_size(reset_text, int(RESET_SIZE.x)))
+	UIKit.note_text_w(reset_button, [reset_text], int(RESET_SIZE.x))
 	add_child(reset_button)
 	reset_button.size = reset_button.custom_minimum_size
 	UIKit.place_bottom_row(reset_button, 1)
@@ -160,6 +161,7 @@ func _cell(column: int, row: int) -> Vector2:
 
 func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
 	var button := UIKit.make_button(text, on_press, Vector2(col_w, UIKit.button_h()))
+	UIKit.note_text_w(button, column_texts(), COL_W)  # (both columns one width: every text they can show)
 	button.position = at
 	add_child(button)
 	return button
@@ -508,20 +510,10 @@ func _close_codes() -> void:
 ## taller or longer locale the panel's texts grow over them, and text over ghost text reads as clutter.
 ## English keeps its ghost (its captures stay byte-identical): its panels' texts already avoid the page.
 func _cover_page(panel: Control) -> void:
-	for control in _covered:
-		if is_instance_valid(control):
-			control.visible = true
-	_covered.clear()
+	UIKit.uncover(_covered)
 	if panel == null or UIKit.locale() == LanguageScreen.Lang.SOURCE_LOCALE:
 		return
-	var rect: Rect2 = panel.get_meta("panel_rect")
-	for child in get_children():
-		var control := child as Control
-		if control == null or control is MenuBackdrop or control == code_panel or control == reset_confirm or not control.visible:
-			continue
-		if Rect2(control.position, control.size).intersects(rect):
-			control.visible = false
-			_covered.append(control)
+	_covered = UIKit.cover_behind(self, [code_panel, reset_confirm], panel.get_meta("panel_rect"))
 
 
 func _lock_page(panel: Control) -> void:
@@ -666,6 +658,8 @@ func _build_reset_confirm() -> void:
 	confirm_button.position = Vector2(UIKit.center_x(pair_w), buttons_y)  # 84 in English
 	reset_confirm.add_child(confirm_button)
 	cancel_button = UIKit.make_button(cancel_text, _cancel_reset, Vector2(button_w, UIKit.button_h()))
+	for b: Button in [confirm_button, cancel_button]:
+		UIKit.note_text_w(b, [confirm_text, cancel_text], 70)
 	cancel_button.position = Vector2(confirm_button.position.x + button_w + UIKit.GAP_XL, buttons_y)  # 166
 	reset_confirm.add_child(cancel_button)
 

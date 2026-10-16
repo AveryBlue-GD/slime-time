@@ -12,25 +12,32 @@ extends "res://tests/suite_base.gd"
 ## - overflow: the widest line wider than the label, or than the button's content box (minus its
 ##   style margins and icon);
 ## - clip: the lines taller than the label / button content box;
-## - grew: a button bigger than the same button in English (it grew to fit its text), beyond the
-##   locale's standard extra height (UIKit.grow_h(): every button is UIKit.button_h() tall, by design);
+## - grew: a button bigger than the same button in English beyond what the UIKit sizing helpers give
+##   for its text in that locale (_growth: a width UIKit.noted_text_w recomputes from the texts the
+##   screen sized it for, i.e. button_w / back_size / tab_widths / an equal-width group; a height of
+##   the locale's button_h, plus a line pitch per extra line, or big_button_h for 16 px buttons). Such
+##   deliberate widening is not a finding (counted per locale in the report's notes); accepted by
+##   measurement only, never by node name;
 ## - offscreen: the text's ink box (or a button) not inside the 320x180 screen (the safe area);
 ## - overlap: a text's ink box over another text or another button (not its own parent / child).
 ## Each finding goes into docs/i18n/fit-report.screens.json + fit-report.md (tests/i18n_report.gd),
 ## "accepted" when English shows the same thing at the same node (the source layout), or when it is on
 ## the KNOWN list below. Node ids are stable paths (names, or Class + index for generated nodes).
 ## Not measured: text drawn with draw_string (tutorial key caps, the touch JUMP button), textures.
-## REPORTING ONLY for now: with ENFORCE false the suite passes whatever it finds (it still fails if a
-## screen can't be built or measured); chunk G (layout hardening) sets ENFORCE to true.
+## ENFORCED (chunk G5) for every locale but Arabic: an open finding in any other locale fails the suite.
+## Arabic (REPORT_ONLY) is still reported, never failed: its right-to-left layout is chunk I's.
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_i18n_screens.gd
 
-const ENFORCE := false
+const ENFORCE := true
+## Locales whose findings are reported but do not fail the suite (Arabic: RTL is chunk I).
+const REPORT_ONLY := ["ar"]
 const Lang := preload("res://scripts/language.gd")
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)
 ## Known-acceptable findings in every locale: [state prefix, node id substring, kind, reason].
-## Empty so far: everything English shows is accepted already; chunk G adds the deliberate exceptions.
+## Empty: everything English shows is accepted already, and deliberate widening is measured (_growth),
+## not listed by node.
 const KNOWN := []
 
 var progress: Node
@@ -44,6 +51,9 @@ var english_issues := {}
 var keys_by_text := {}
 var states_seen := {}
 var _code := ""
+## Per locale: buttons wider than in English exactly as the UIKit sizing helpers make them for their
+## text (not findings; counted in the report's notes).
+var deliberate := {}
 
 
 func _initialize() -> void:
@@ -77,8 +87,14 @@ func _initialize() -> void:
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	var open := issues.filter(func(i: Dictionary) -> bool: return not i.acceptable)
+	var counts := PackedStringArray()
+	for code: String in Report.LOCALE_ORDER:
+		if deliberate.has(code):
+			counts.append("%s %d" % [code, deliberate[code]])
 	Report.write("screens", issues, {
 		states = "%d screen / overlay / HUD states per locale" % states_seen.size(),
+		deliberate_widths = "buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): " + ", ".join(counts),
+		enforced = "every locale but %s (reported only: RTL is chunk I)" % ", ".join(REPORT_ONLY),
 		measured = "every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size",
 		not_measured = "draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell",
 	})
@@ -88,7 +104,11 @@ func _initialize() -> void:
 			print("  report %s: %d open (e.g. %s %s %s)" % [code, mine.size(), mine[0].screen, mine[0].kind, mine[0].text.left(24)])
 	print("  screens report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
-		_check(open.is_empty(), "every text fits its box in every locale (%d open)" % open.size())
+		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
+		_check(failing.is_empty(), "every text fits its box in every locale but %s (%d open)" % [", ".join(REPORT_ONLY), failing.size()])
+		if not failing.is_empty():
+			for i: Dictionary in failing.slice(0, 20):
+				print("    open %s | %s | %s | %s | %s" % [i.locale, i.screen, i.node, i.kind, i.text.left(30)])
 	_result()
 	quit(1 if failures else 0)
 
@@ -339,8 +359,12 @@ func _scan(state: String, node: Node) -> void:
 		if item.text_h > item.box_h + 0.5:
 			_issue(state, item, "clip", base)
 		# (A button may be UIKit.grow_h() taller than in English: the locale's standard button height.)
-		if item.control is Button and not base.is_empty() and (item.rect.size.x > base.rect.size.x + 0.5 or item.rect.size.y > base.rect.size.y + UIKit.grow_h() + 0.5):
-			_issue(state, item, "grew", base, "", "English %dx%d" % [base.rect.size.x, base.rect.size.y])
+		if item.control is Button and not base.is_empty():
+			var grew := _growth(item, base)
+			if grew == "deliberate":
+				deliberate[_code] = deliberate.get(_code, 0) + 1
+			elif grew != "":
+				_issue(state, item, "grew", base, "", "English %dx%d" % [base.rect.size.x, base.rect.size.y])
 		if not SCREEN.encloses(item.ink.grow(-0.01)) or (item.control is Button and not SCREEN.encloses(item.rect)):
 			_issue(state, item, "offscreen", base)
 	# Overlaps: a text's ink over another text's ink or over another button (never its own parent / child).
@@ -435,6 +459,35 @@ func _measure(screen: Node, control: Control) -> Dictionary:
 	item.text_h = text_h
 	item.box_h = box.size.y
 	return item
+
+
+## How a button compares with its English twin: "" (not bigger), "deliberate" (sized for its text by
+## the UIKit helpers: its width exactly what UIKit.noted_text_w recomputes from the texts it was sized for
+## (button_w / back_size / tab_widths / an equal-width group), its height the locale's button_h, a
+## multi-line text's extra line pitches or a 16 px button's big_button_h), or "grew" (anything else).
+## Accepted by measurement only, never by node name: a width the helpers would not give stays open.
+func _growth(item: Dictionary, base: Dictionary) -> String:
+	var control: Button = item.control
+	var scale := control.get_global_transform_with_canvas().get_scale()
+	var w: float = item.rect.size.x / scale.x
+	var h: float = item.rect.size.y / scale.y
+	var base_w: float = base.rect.size.x / scale.x
+	var base_h: float = base.rect.size.y / scale.y
+	var allowed_h := base_h + UIKit.grow_h()
+	var lines := control.text.count("\n") + 1
+	if control.autowrap_mode != TextServer.AUTOWRAP_OFF:
+		lines = maxi(lines, UIKit.wrapped_lines(control.text, item.box_w, control.get_theme_font_size("font_size"), control.get_theme_font("font")))
+	allowed_h += (lines - 1) * UIKit.line_pitch()
+	if control.get_theme_font_size("font_size") == UIKit.FONT_BIG:
+		allowed_h = maxf(allowed_h, UIKit.big_button_h(int(base_h)))
+	var wider := w > base_w + 0.5
+	var taller := h > allowed_h + 0.5
+	if not wider and not taller:
+		return ""
+	if taller:
+		return "grew"
+	var noted := UIKit.noted_text_w(control)
+	return "deliberate" if noted > 0 and absf(w - noted) < 0.5 else "grew"
 
 
 func _issue(state: String, item: Dictionary, kind: String, base: Dictionary, other_id := "", other := "") -> void:

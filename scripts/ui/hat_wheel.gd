@@ -170,7 +170,7 @@ func _ready() -> void:
 	balance.size = Vector2(32, maxi(10, UIKit.line_h()))
 	add_child(balance)
 	_balance_icon = UIKit.make_icon("ticket", Color.WHITE)
-	_balance_icon.position = Vector2(PANEL.end.x - HEADER_INSET - 8, text_y + _digit_top())  # mirrors the WHEEL tab's inset
+	_balance_icon.position = Vector2(PANEL.end.x - HEADER_INSET - 8, text_y + UIKit.digit_top())  # mirrors the WHEEL tab's inset
 	add_child(_balance_icon)
 	# WHEEL | SHOP: 44 wide in English, equal widths from the longer word; the touch BACK as wide as
 	# the SHOP tab (or its own word), mirroring it.
@@ -184,6 +184,9 @@ func _ready() -> void:
 	shop_tab.position = Vector2(PANEL.position.x + HEADER_INSET + tab_w[0] + 2, HEADER_Y)
 	add_child(shop_tab)
 	close_button = UIKit.make_button(tab_texts[2], func() -> void: close_requested.emit(), Vector2(close_w, UIKit.tab_h()))
+	for tab: Button in [wheel_tab, shop_tab]:
+		UIKit.note_text_w(tab, tab_texts.slice(0, 2), 44)
+	UIKit.note_text_w(close_button, [tab_texts[2]], tab_w[1])
 	close_button.position = Vector2(320 - shop_tab.position.x - close_w, HEADER_Y)  # the SHOP tab's mirror
 	close_button.visible = false
 	add_child(close_button)
@@ -212,6 +215,7 @@ func _ready() -> void:
 	for i in SECTIONS.size():
 		var id: String = SECTIONS[i]
 		var button := UIKit.make_button(section_texts[i], func() -> void: show_section(id), Vector2(section_w[i], UIKit.tab_h()))
+		UIKit.note_text_w(button, section_texts, 52)
 		button.position = Vector2(x, sections_y)
 		x += section_w[i] + UIKit.GAP_M
 		shop_page.add_child(button)
@@ -266,14 +270,6 @@ func _compact() -> bool:
 	return UIKit.grow_h() > 0
 
 
-## Where a 7 px digit's body starts in a line box of the current locale's font (0 in English; lower
-## in a taller script's box, whose ascent is taller): icons beside numbers line up with them.
-func _digit_top() -> float:
-	if not UIKit.tall_script():
-		return 0.0  # (asking the font would allocate its size cache: English must keep its RIDs)
-	return roundf(UIKit.font_for().get_ascent(UIKit.FONT)) - UIKit.TEXT_BODY
-
-
 ## The wheel page: SPIN ends on row SPIN_BOTTOM, the result line 5 above its top, and the wheel
 ## (flapper to rim) fills what is left between the header and the result line: CENTER / RADIUS in
 ## English, a smaller wheel under a taller script's header and result line.
@@ -295,6 +291,7 @@ func _fit_spin_button() -> void:
 	if spin_button.icon:
 		extra = spin_button.icon.get_width() + spin_button.get_theme_constant("h_separation")
 	var w := UIKit.button_w(spin_button.text, 84, UIKit.FONT, extra)
+	UIKit.note_text_w(spin_button, [spin_button.text], 84, UIKit.FONT, extra)
 	if w != int(spin_button.custom_minimum_size.x):
 		spin_button.custom_minimum_size = Vector2(w, UIKit.button_h())
 		spin_button.size = spin_button.custom_minimum_size
@@ -558,7 +555,7 @@ func show_section(which: String, focus := true) -> void:
 		_grid.add_child(tile)
 		if tile.has_meta("wrap_name"):
 			var wrap: Array = tile.get_meta("wrap_name")
-			(wrap[0] as Label).size = wrap[1]
+			UIKit.wrap_label(wrap[0], wrap[1])
 		shop_tiles[ids[i]] = tile
 	_show_page(mini(page, pages - 1), ids)
 	balance.text = str(Progress.tickets)
@@ -620,13 +617,11 @@ func _right_w(id: String) -> int:
 
 ## PREV / NEXT either side of the section row (made the first time a section needs two pages).
 func _make_page_arrows() -> void:
-	prev_page = UIKit.make_button("<", func() -> void: _turn_page(-1), Vector2(UIKit.button_w("<", 20), UIKit.tab_h()))
-	next_page = UIKit.make_button(">", func() -> void: _turn_page(1), Vector2(UIKit.button_w(">", 20), UIKit.tab_h()))
-	for arrow: Button in [prev_page, next_page]:
-		arrow.focus_mode = Control.FOCUS_NONE  # (the keys turn pages from the grid's first / last row)
-		shop_page.add_child(arrow)
-	prev_page.position = Vector2(grid_left[0], sections_rect.position.y)
-	next_page.position = Vector2(grid_left[1] + tile_size.x - next_page.custom_minimum_size.x, sections_rect.position.y)
+	# (no focus: the keys turn pages from the grid's first / last row)
+	var arrows := UIKit.add_page_arrows(shop_page, func(step: int) -> void: _turn_page(step), sections_rect.position.y,
+		grid_left[0], grid_left[1] + tile_size.x, UIKit.PAGER_W, UIKit.tab_h(), false)
+	prev_page = arrows[0]
+	next_page = arrows[1]
 
 
 ## Shows page `which` of the section's tiles (the others hidden) and the arrows that lead on.
@@ -637,8 +632,7 @@ func _show_page(which: int, ids: Array[String]) -> void:
 	if prev_page != null:
 		prev_page.visible = pages > 1
 		next_page.visible = pages > 1
-		prev_page.disabled = page == 0
-		next_page.disabled = page >= pages - 1
+		UIKit.show_page_arrows([prev_page, next_page], page, pages)
 	_link_page_edges(ids)
 
 
@@ -841,10 +835,7 @@ func _fit_status(label: Label, top: float, lines: int) -> void:
 			label.size = Vector2(PANEL.size.x, line_box)
 		return
 	label.add_theme_constant_override("line_spacing", UIKit.line_spacing())
-	var fit := UIKit.fit_text(label, Rect2(CENTER.x - room / 2.0, top, room, line_box), Vector2(room, UIKit.text_block_h(maxi(lines, 2))), maxi(lines, 2), Vector2i(0, -1))
-	if fit.wrap:
-		# (the label's minimum width is still its one-line width until its deferred update: size it again then)
-		label.set_deferred("size", fit.size)
+	UIKit.fit_text(label, Rect2(CENTER.x - room / 2.0, top, room, line_box), Vector2(room, UIKit.text_block_h(maxi(lines, 2))), maxi(lines, 2), Vector2i(0, -1))
 
 
 func _show_preview(id: String) -> void:

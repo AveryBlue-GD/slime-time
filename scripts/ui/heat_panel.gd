@@ -91,7 +91,7 @@ func _ready() -> void:
 		add_child(button)
 		toggles[id] = button
 		if _geo.name_lines > 1:  # (sized once in the themed tree: sized before, it keeps the default font's width)
-			MapSelect.wrap_label(button.get_node("Name"), Vector2(toggle_size.x - _geo.name_x - NAME_PAD, UIKit.text_block_h(2)))
+			UIKit.wrap_label(button.get_node("Name"), Vector2(toggle_size.x - _geo.name_x - NAME_PAD, UIKit.text_block_h(2)))
 
 	about = UIKit.make_label(default_about(), UIKit.FONT, UIKit.TEXT_DIM)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -111,6 +111,7 @@ func _ready() -> void:
 	var done_text := Loc.t("heat.done", "DONE")
 	var done_w := UIKit.button_w(done_text, 50)
 	done_button = UIKit.make_button(done_text, close, Vector2(done_w, UIKit.button_h()))
+	UIKit.note_text_w(done_button, [done_text], 50)
 	done_button.position = Vector2(roundf(rect.get_center().x - done_w / 2.0), _geo.done_y)
 	done_button.focus_entered.connect(func() -> void: about.text = default_about())
 	add_child(done_button)
@@ -224,7 +225,7 @@ func _make_toggle(id: String) -> Button:
 	points.name = "Points"
 	points.position = Vector2(_geo.name_x + POINTS_X - NAME_X, _geo.points_y)
 	button.add_child(points)
-	LevelSelect.use_plain_font(points)
+	UIKit.use_plain_font(points)
 	var check := UIKit.make_icon("check", UIKit.GOLD)
 	check.name = "Check"
 	check.position = Vector2(toggle_size.x - 13, toggle_size.y - 13)
@@ -281,10 +282,7 @@ func open(screen: Control, return_to: Control) -> void:
 	visible = true
 	_saved_focus = UIKit.lock_focus(screen, self)
 	if not english:  # the resized panel: the screen behind is hidden (its title, tiles, lines, buttons)
-		for child in screen.get_children():
-			if child != self and child is CanvasItem and not child is MenuBackdrop and (child as CanvasItem).visible:
-				(child as CanvasItem).visible = false
-				_hidden.append(child)
+		_hidden = UIKit.cover_behind(screen, [self])
 	toggles[Heat.IDS[0]].grab_focus()
 
 
@@ -292,10 +290,7 @@ func close() -> void:
 	if not visible:
 		return
 	visible = false
-	for child in _hidden:
-		if is_instance_valid(child):
-			child.visible = true
-	_hidden.clear()
+	UIKit.uncover(_hidden)
 	UIKit.unlock_focus(_saved_focus)
 	if is_instance_valid(_return_focus) and _return_focus.is_visible_in_tree():
 		_return_focus.grab_focus()

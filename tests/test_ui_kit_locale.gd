@@ -9,6 +9,10 @@ extends "res://tests/suite_base.gd"
 ##   word (text + 2x4 px) and ends on row 176; the BUY? confirm's two buttons are equal, fit their words,
 ##   sit symmetric in a panel centred on the screen, under the price row; the title's line box fits its
 ##   box; the hit pad keeps a 23 px hit area.
+## - the shared helpers (chunk G5): accent_room / digit_top / big_button_h per locale, plain_font only
+##   with a script fallback, note_text_w / noted_text_w (a width the helpers give, an own text that would
+##   not fit), checkbox_extra = Godot's CheckBox chrome, page arrows (names, places, plain font, state),
+##   cover_behind / uncover, wrap_label;
 ## - fit_text: as is / grow (centred on a whole pixel) / wrap / smaller font (Devanagari 12) / no fit
 ##   (text never cut); tab_widths, stack_pages, grid_budget, row_budget arithmetic.
 ## Throwaway save; the real save is never read or written.
@@ -38,6 +42,7 @@ func _initialize() -> void:
 			_english_numbers(code)
 		_sizes(code)
 		await _widgets(code)
+		await _shared_helpers(code)
 	language.set_locale("en")
 	_fit_helpers_latin()
 	await _fit_text_cases()
@@ -145,6 +150,55 @@ func _widgets(tag: String) -> void:
 	screen.free()
 
 
+func _shared_helpers(code: String) -> void:
+	var m: Dictionary = Lang.metrics(code)
+	var tall: bool = int(m.line_h) > UIKit.TEXT_BODY
+	_check(UIKit.accent_room() == (0 if tall else int(m.ink_above) - (1 if int(m.ink_above) > 0 else 0)) and UIKit.accent_room() == (0 if tall else UIKit.button_v_margins().x - 3),
+		"%s: accent_room %d" % [code, UIKit.accent_room()])
+	_check(UIKit.digit_top() == (roundf(UIKit.font_for().get_ascent(UIKit.FONT)) - UIKit.TEXT_BODY if tall else 0.0) and UIKit.digit_top() >= 0,
+		"%s: digit_top %d" % [code, UIKit.digit_top()])
+	_check(UIKit.big_button_h(25) == (maxi(25, int(m.title_line_h) + int(m.get("ink_nudge", 0))) if tall else 25), "%s: big_button_h" % code)
+	var has_fallback := not (load(Lang.FONT_PATH) as Font).fallbacks.is_empty()
+	var plain := UIKit.plain_font("0")
+	_check((plain != null) == has_fallback and (plain == null or (plain.fallbacks.is_empty() and plain.get_height(UIKit.FONT) == UIKit.TEXT_BODY))
+		and UIKit.plain_font("", UIKit.FONT, true) != null, "%s: plain_font only with a script fallback, 7 px tall" % code)
+	var screen := Control.new()
+	root.add_child(screen)
+	UIKit.setup_screen(screen, "")
+	var b := UIKit.make_button("ABCDEFGHIJKL", func() -> void: pass, Vector2(UIKit.button_w("ABCDEFGHIJKL", 40), UIKit.button_h()))
+	screen.add_child(b)
+	UIKit.note_text_w(b, ["AB", "ABCDEFGHIJKL"], 40)
+	_check(UIKit.noted_text_w(b) == UIKit.text_w("ABCDEFGHIJKL") + 8, "%s: noted_text_w = the widest button_w of the noted texts" % code)
+	b.text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	_check(UIKit.noted_text_w(b) == -1, "%s: noted_text_w -1 when the shown text would not fit" % code)
+	var box := CheckBox.new()
+	box.text = "HARD"
+	screen.add_child(box)
+	_check(int(box.get_combined_minimum_size().x) == UIKit.button_w(box.text, 0, UIKit.FONT, UIKit.checkbox_extra(box)),
+		"%s: checkbox_extra matches the CheckBox's own width (%s)" % [code, box.get_combined_minimum_size()])
+	var steps: Array[int] = []
+	var arrows := UIKit.add_page_arrows(screen, func(step: int) -> void: steps.append(step), UIKit.title_arrows_y(), UIKit.EDGE, UIKit.SCREEN.x - UIKit.EDGE)
+	arrows[0].pressed.emit()
+	arrows[1].pressed.emit()
+	UIKit.show_page_arrows(arrows, 0, 2)
+	_check(arrows[0].name == "PagePrev" and arrows[1].name == "PageNext" and steps == [-1, 1] and arrows[0].position == Vector2(UIKit.EDGE, UIKit.title_arrows_y())
+		and arrows[1].position.x + arrows[1].size.x == UIKit.SCREEN.x - UIKit.EDGE and arrows[0].size == Vector2(UIKit.PAGER_W, UIKit.button_h())
+		and arrows[0].disabled and not arrows[1].disabled and (arrows[0].get_theme_font("font").fallbacks.is_empty()),
+		"%s: page arrows (< > at the edges, steps -1 / 1, plain font, first page)" % code)
+	var panel := Control.new()
+	screen.add_child(panel)
+	var hidden := UIKit.cover_behind(screen, [panel], Rect2(0, 0, 40, 40))
+	_check(hidden.has(arrows[0]) and not hidden.has(arrows[1]) and not arrows[0].visible and arrows[1].visible and panel.visible,
+		"%s: cover_behind hides only what is under the rect" % code)
+	UIKit.uncover(hidden)
+	_check(arrows[0].visible and hidden.is_empty(), "%s: uncover shows it again" % code)
+	var label := UIKit.add_label(screen, "ABCDE FGHIJ KLMNO", Rect2(0, 100, 200, 7))
+	UIKit.wrap_label(label, Vector2(40, UIKit.text_block_h(3)))
+	_check(label.size == Vector2(40, UIKit.text_block_h(3)) and label.autowrap_mode == UIKit.autowrap_mode(), "%s: wrap_label sizes at once" % code)
+	screen.free()
+	await process_frame
+
+
 func _fit_helpers_latin() -> void:
 	_check(str(UIKit.tab_widths(["COINS", "TICKETS"], [40, 52])) == "[40, 52]", "tab_widths: English tabs keep their widths")
 	var grown := UIKit.tab_widths(["MONEDAS", "BOLETOS"], [40, 52])
@@ -179,6 +233,8 @@ func _fit_text_cases() -> void:
 	r = UIKit.fit_text(c, Rect2(10, 10, 40, 7), Vector2(60, UIKit.text_block_h(2)), 2)
 	_check(r.fits and r.step == "wrap" and r.lines == 2 and c.autowrap_mode != TextServer.AUTOWRAP_OFF and c.size.y == UIKit.text_block_h(2)
 		and c.text == "ABCDE FGHIJ", "fit_text: wraps onto 2 lines (%s, %s)" % [r, c.size])
+	_check(c.size == r.size and c.position == Vector2(10 - floorf((r.size.x - 40) / 2.0), 10 - floorf((r.size.y - 7) / 2.0)),
+		"fit_text: the wrapped size holds in the same frame, no deferred resize (%s vs %s)" % [c.size, r.size])
 	# No fit: nothing cut, fits false.
 	var d := UIKit.add_label(screen, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", Rect2(10, 30, 40, 7))
 	r = UIKit.fit_text(d, Rect2(10, 30, 40, 7), Vector2(60, 7), 1)

@@ -93,12 +93,14 @@ func _ready() -> void:
 	var enter_size := Vector2(UIKit.button_w(enter_text, int(ENTER_SIZE.x), UIKit.FONT_BIG), enter_height())
 	var enter_rect := Rect2(UIKit.center_x(enter_size.x), ENTER_Y, enter_size.x, enter_size.y)
 	enter_button.custom_minimum_size = enter_size
+	UIKit.note_text_w(enter_button, [enter_text], int(ENTER_SIZE.x), UIKit.FONT_BIG)
 	enter_button.position = enter_rect.position
 	add_child(enter_button)
 	enter_button.grab_focus()
 	# The story intro again: a small button in the bottom-left corner, beside the tagline (BACK's size).
 	var story_text := Loc.t("title.story", "STORY")
 	story_button = UIKit.make_button(story_text, _replay_story, UIKit.back_size(story_text))
+	UIKit.note_text_w(story_button, [story_text], int(UIKit.BACK_SIZE.x))
 	add_child(story_button)
 	UIKit.place_bottom_row(story_button, -1)
 
@@ -148,9 +150,7 @@ func _ready() -> void:
 ## that is taller: its line box already holds the room around its glyphs, so its button keeps no other
 ## margins (_slim_styles) and grows only as much as its line (CJK 28, Traditional Chinese 32).
 static func enter_height() -> int:
-	if not UIKit.tall_script():
-		return int(ENTER_SIZE.y)
-	return maxi(int(ENTER_SIZE.y), int(UIKit.metrics().title_line_h) + int(UIKit.metrics().get("ink_nudge", 0)))
+	return UIKit.big_button_h(int(ENTER_SIZE.y))
 
 
 ## The button's goo looks with no top / bottom content margin (the ink nudge on top), see enter_height.

@@ -813,6 +813,7 @@ func show_choices(options: Array, focus := -1) -> void:
 	for i in options.size():
 		var option: Array = options[i]
 		var button := UIKit.make_button(option[0], option[1], Vector2(widths[i], UIKit.choice_size().y))
+		UIKit.note_text_w(button, options.map(func(o: Array) -> String: return o[0]), int(UIKit.CHOICE_SIZE.x))
 		row.add_child(button)
 		choice_buttons.append(button)
 	_choice_root.visible = true

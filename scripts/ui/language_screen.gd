@@ -93,9 +93,7 @@ func name_font(code: String) -> Font:
 	if lang().fallback_font(code) != null:
 		return lang().native_font(code)
 	if _plain_font == null:
-		_plain_font = (load(Lang.FONT_PATH) as FontFile).duplicate()
-		var none: Array[Font] = []
-		_plain_font.fallbacks = none
+		_plain_font = UIKit.plain_font("", UIKit.FONT, true) as FontFile  # (kept: the cache holds it weakly)
 	return _plain_font
 
 

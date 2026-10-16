@@ -351,6 +351,8 @@ func _span(tile: Control, label: Label, y: float, lines := 1, m := Vector2(7, 12
 ## (growing inward), button_h() tall on the choice rows' line.
 func _fit_card_buttons() -> void:
 	var widths := UIKit.tab_widths([cash_button.text, descend_button.text], int(BUTTON.x))
+	for b: Button in [cash_button, descend_button]:
+		UIKit.note_text_w(b, [cash_button.text, descend_button.text], int(BUTTON.x))
 	if widths[0] != int(cash_button.custom_minimum_size.x):
 		for b: Button in [cash_button, descend_button]:
 			b.custom_minimum_size = Vector2(widths[0], UIKit.button_h())
@@ -420,6 +422,7 @@ func _build_summary() -> void:
 	hub_button.position = Vector2(160 + UIKit.CHOICE_GAP / 2, UIKit.choice_y())
 	summary_root.add_child(hub_button)
 	for b: Button in [new_run_button, hub_button]:
+		UIKit.note_text_w(b, texts, int(UIKit.CHOICE_SIZE.x))
 		var other: Button = hub_button if b == new_run_button else new_run_button
 		b.focus_neighbor_left = b.get_path_to(other)
 		b.focus_neighbor_right = b.get_path_to(other)

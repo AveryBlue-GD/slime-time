@@ -519,6 +519,8 @@ func _build_quit_menu(root: Control) -> void:
 ## the panel's rect.
 func _layout_pair_dialog(panel: Panel, english: Rect2, lines: Array[Label], buttons: Array[Button]) -> Rect2:
 	var widths := UIKit.tab_widths([buttons[0].text, buttons[1].text], 56)
+	for b in buttons:
+		UIKit.note_text_w(b, [buttons[0].text, buttons[1].text], 56)
 	var w := maxf(english.size.x, 2 * DIALOG_INSET + widths[0] + widths[1] + DIALOG_INSET)
 	w = maxf(w, _widest(lines) + 2 * UIKit.PANEL_PAD)
 	var h := UIKit.PANEL_PAD * 2 + (lines.size() - 1) * UIKit.line_pitch() + UIKit.line_h() + DIALOG_GAP + UIKit.button_h()
@@ -540,14 +542,6 @@ func _stack_lines(lines: Array[Label], rect: Rect2, top: float) -> void:
 	for i in lines.size():
 		lines[i].position = Vector2(rect.position.x, top + i * UIKit.line_pitch())
 		lines[i].size = Vector2(rect.size.x, maxi(10, UIKit.line_h()))
-
-
-## Where a 7 px digit's body starts in a line box of the current locale's font (0 in English; lower
-## in a taller script's box, whose ascent is taller): icons beside numbers line up with them.
-func _digit_top() -> float:
-	if not UIKit.tall_script():
-		return 0.0  # (asking the font would allocate its size cache: English must keep its RIDs)
-	return roundf(UIKit.font_for().get_ascent(UIKit.FONT)) - UIKit.TEXT_BODY
 
 
 ## The widest text among `labels` (measured).
@@ -620,6 +614,9 @@ func _layout_portal_menu() -> void:
 	var bh := UIKit.button_h()
 	var mode_w: int = UIKit.tab_widths([maze_button.text, descent_button.text], 120)[0]
 	var back_w := UIKit.button_w(portal_back.text, 56)
+	for b: Button in [maze_button, descent_button]:
+		UIKit.note_text_w(b, [maze_button.text, descent_button.text], 120)
+	UIKit.note_text_w(portal_back, [portal_back.text], 56)
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
 	var h := UIKit.PANEL_PAD * 2 + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
@@ -958,7 +955,7 @@ func _layout_coin_board() -> void:
 			board_rows[i].position = Vector2(right - 8 - UIKit.GAP_M - count_w, y)
 			board_rows[i].size = Vector2(count_w, box_h)
 			# (the coin on the digits' 7 px body, which sits on the line's baseline in a taller script)
-			board_icons[i].position = Vector2(right - 8, y + _digit_top())
+			board_icons[i].position = Vector2(right - 8, y + UIKit.digit_top())
 			board_names[i].size = Vector2(0, box_h)
 	var total_y := rows_y + (rows - 1) * dense + dense + 2
 	board_total.position = Vector2(board_rect.position.x, total_y)

@@ -44,13 +44,8 @@ const FLAME_POS := Vector2(5, 5)
 const HEAT_BUTTON_SIZE := Vector2(52, UIKit.BUTTON_H)
 ## The info lines' top under the panel's top edge (English; the accents' room is added on top).
 const INFO_PAD := 5
-## Tiles per page when paged (one row) and the page arrows' width.
+## Tiles per page when paged (one row).
 const PAGE_SIZE := 5
-const PAGER_W := 20
-const Lang := preload("res://scripts/language.gd")
-
-## Fallback-free copies of the slimy fonts, by path, weakly held (see plain_font).
-static var _plain_fonts := {}
 
 
 ## The two help lines under the tiles.
@@ -99,6 +94,7 @@ func _ready() -> void:
 		_fill_grid()  # show that mode's record times
 		_refresh_heat())
 	add_child(hard_mode_box)
+	UIKit.note_text_w(hard_mode_box, [hard_mode_box.text], 0, UIKit.FONT, UIKit.checkbox_extra(hard_mode_box))  # (sized to its text)
 	UIKit.add_touch_target(hard_mode_box)
 	UIKit.add_back_button(self)
 	# HEAT (hard mode only): bottom right, mirroring BACK (placed by _refresh_heat: its width follows its text).
@@ -125,7 +121,7 @@ func _layout() -> void:
 		hard_mode_box.update_minimum_size()
 		hard_mode_box.custom_minimum_size.y = UIKit.text_block_h(2) + 2 * UIKit.GAP_M
 	var box := hard_mode_box.get_combined_minimum_size()
-	var top_pad := INFO_PAD + accent_room()
+	var top_pad := INFO_PAD + UIKit.accent_room()
 	var lines_h := UIKit.text_block_h(2)
 	# The checkbox's text keeps 4 px of its box under it (4.5 in English) off the panel's bottom goo.
 	var box_text_h := UIKit.text_block_h(hard_mode_box.text.count("\n") + 1)
@@ -146,12 +142,6 @@ func _layout() -> void:
 	if pages > 1:
 		grid_y += floorf((panel.position.y - UIKit.GAP_M - UIKit.title_bottom() - TILE.y) / 2.0)
 	grid.position = Vector2(GRID_POS.x, grid_y)
-
-
-## The rows a locale's accents take above a line of 8 px text (0 in English, 2 accented, 4 Vietnamese;
-## the taller scripts' line boxes hold their marks).
-static func accent_room() -> int:
-	return 0 if UIKit.tall_script() else maxi(0, UIKit.button_v_margins().x - 3)
 
 
 ## The widest the checkbox's text may be: the screen less EDGE and GAP_L each side, the box icon (16)
@@ -175,52 +165,11 @@ static func break_line(text: String, room: int) -> String:
 	return best
 
 
-## Digits-only texts (level numbers, record times, percents, +N) in the slimy font WITHOUT the
-## locale's script fallback: Font.get_height counts every fallback, so a taller script would make these
-## labels taller and push the digits down (they never use a fallback glyph). Null (no change) with no
-## fallback installed (English) or when `text` needs a glyph the slimy font lacks.
-static func plain_font(text: String, font_size := UIKit.FONT) -> Font:
-	var base: FontFile = load(Lang.FONT_BIG_PATH if font_size == UIKit.FONT_BIG else Lang.FONT_PATH)
-	if base.fallbacks.is_empty():
-		return null
-	var held: WeakRef = _plain_fonts.get(base.resource_path)
-	var plain: FontFile = held.get_ref() if held else null
-	if plain == null:
-		plain = base.duplicate()
-		var none: Array[Font] = []
-		plain.fallbacks = none
-		_plain_fonts[base.resource_path] = weakref(plain)  # (kept while a label uses it)
-	for i in text.length():
-		if not plain.has_char(text.unicode_at(i)):
-			return null
-	return plain
-
-
-## Puts plain_font on `control` when it applies.
-static func use_plain_font(control: Control, font_size := UIKit.FONT) -> void:
-	var font := plain_font(String(control.get("text")), font_size)
-	if font:
-		control.add_theme_font_override("font", font)
-
-
 ## The page arrows (paged only): < at the left edge and > at the right, centred on the title's line.
 func _add_pager() -> void:
-	page_prev = UIKit.make_button("<", func() -> void: _flip(-1), Vector2(PAGER_W, UIKit.button_h()))
-	page_prev.name = "PagePrev"
-	page_next = UIKit.make_button(">", func() -> void: _flip(1), Vector2(PAGER_W, UIKit.button_h()))
-	page_next.name = "PageNext"
-	for arrow: Button in [page_prev, page_next]:
-		add_child(arrow)
-		use_plain_font(arrow)
-	var y := pager_y()
-	page_prev.position = Vector2(UIKit.EDGE, y)
-	page_next.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - PAGER_W, y)
-
-
-## The page arrows' top: centred on the title's letters (its 14 px body, or a taller script's line).
-static func pager_y() -> int:
-	var body := maxi(14, int(UIKit.metrics().get("title_line_h", 14)))
-	return UIKit.title_top() + floori((body - UIKit.button_h()) / 2.0)
+	var arrows := UIKit.add_page_arrows(self, _flip, UIKit.title_arrows_y(), UIKit.EDGE, UIKit.SCREEN.x - UIKit.EDGE)
+	page_prev = arrows[0]
+	page_next = arrows[1]
 
 
 func _flip(step: int) -> void:
@@ -237,8 +186,7 @@ func _show_page(index: int) -> void:
 		return
 	for i in level_buttons.size():
 		level_buttons[i].visible = i / PAGE_SIZE == page
-	page_prev.disabled = page == 0
-	page_next.disabled = page == pages - 1
+	UIKit.show_page_arrows([page_prev, page_next], page, pages)
 
 
 ## Left / right past the row's end flip the page (paged only).
@@ -264,6 +212,7 @@ func _refresh_heat() -> void:
 	# i18n: {points} = the heat total (0-99); max 52px, 1 line
 	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})
 	var heat_size := Vector2(UIKit.button_w(heat_button.text, int(HEAT_BUTTON_SIZE.x)), UIKit.button_h())
+	UIKit.note_text_w(heat_button, [heat_button.text], int(HEAT_BUTTON_SIZE.x))
 	heat_button.custom_minimum_size = heat_size
 	heat_button.size = heat_size
 	UIKit.place_bottom_row(heat_button, 1)
@@ -282,7 +231,7 @@ func _fill_grid() -> void:
 	for child in grid.get_children():
 		child.queue_free()
 	level_buttons.clear()
-	var plain := plain_font("0") != null
+	var plain := UIKit.plain_font("0") != null
 	for level in range(1, Levels.COUNT + 1):
 		var button := _make_tile(level)
 		grid.add_child(button)
@@ -310,7 +259,7 @@ func _make_tile(level: int) -> Button:
 	# The 16 px font's line box is exactly its 14 px letter body (see CLAUDE.md), so the digits
 	# fill rows NUMBER_Y..NUMBER_Y + 13; the glyph cells have no empty columns, so the horizontal
 	# centering is exact.
-	use_plain_font(number, UIKit.FONT_BIG)  # (a script fallback's line box would push the digits down)
+	UIKit.use_plain_font(number, UIKit.FONT_BIG)  # (a script fallback's line box would push the digits down)
 	number.size = Vector2(TILE.x, 14)
 	number.set_meta("box", Vector2(TILE.x, 14))
 	number.position = Vector2(0, NUMBER_Y)
@@ -344,7 +293,7 @@ func _make_tile(level: int) -> Button:
 		# clip_text drops the label's minimum width (52 px here, wider than the tile, which pushed
 		# the centered text right); the 9 px height (7 + 2 drip rows) keeps its drips unclipped.
 		status.clip_text = true
-		use_plain_font(status)
+		UIKit.use_plain_font(status)
 		status.size = Vector2(TILE.x, 9)
 		status.set_meta("box", Vector2(TILE.x, 9))
 		status.position = Vector2(0, STATUS_Y)
