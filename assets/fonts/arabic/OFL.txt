@@ -1,15 +1,8 @@
-GNU Unifont
-https://unifoundry.com/unifont/index.html
-Copyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver,
-David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.
-(the copyright notice in the font's own name table)
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)
 
-Since Unifont 13.0.04 the fonts are dual-licensed: GNU GPL 2+ with the GNU font embedding exception,
-OR the SIL Open Font License 1.1. Slime Time uses Unifont under the SIL OFL 1.1, copied below from
-unifont-18.0.01/OFL-1.1.txt in the official release tarball.
-
-The SIL Open Font License version 1.1 is copied below, and is also
-available with a FAQ at http://scripts.sil.org/OFL.
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+https://scripts.sil.org/OFL
 
 
 -----------------------------------------------------------

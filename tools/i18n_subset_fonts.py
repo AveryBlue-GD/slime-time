@@ -13,8 +13,7 @@ the font yet. tests/test_i18n_glyphs.gd fails (listing the characters) when that
 What goes into each subset: every character of the msgstr texts of the locales the font serves (NFC),
 the native language names (Language.LOCALES in scripts/language.gd: the LANGUAGE screen shows them all,
 whatever the current language), and a safe base set per script (ASCII, the script's whole Unicode block
-for Thai / Arabic / Devanagari incl. Arabic presentation forms, which HarfBuzz uses to join Unifont's
-letters; CJK punctuation, kana for ja, full-width forms). Layout features are kept (Thai / Devanagari
+for Thai / Arabic / Devanagari; CJK punctuation, kana for ja, full-width forms). Layout features are kept (Thai / Devanagari
 shaping), hinting is dropped (Godot draws them with hinting off), output is WOFF2.
 
 Sources: downloaded once from the official releases (pinned version + sha256), cached outside the
@@ -62,10 +61,11 @@ SOURCES = {
         "sha256": "14ec4af41f27482216d1c2229f417ff9b1425e1babb014e57d1d40d03229853e",
         "version": "Noto Sans Devanagari (google/fonts @ 2bc5d43), variable, instanced to wght 400 / wdth 100",
     },
-    "unifont": {
-        "url": "https://unifoundry.com/pub/unifont/unifont-18.0.01/font-builds/unifont-18.0.01.otf",
-        "sha256": "88d0a14d4aa9a96419720b39ba5da921a59560d76d4ec7d523acc06ed85cd3c2",
-        "version": "GNU Unifont 18.0.01 OTF (unifoundry.com, the official release; OFL-1.1 of the dual license)",
+    "noto_kufi": {
+        "url": "https://raw.githubusercontent.com/google/fonts/eb4f2fde9aa730c58ba547d2def669066b6ad87e/"
+               "ofl/notokufiarabic/NotoKufiArabic%5Bwght%5D.ttf",
+        "sha256": "494f6b61469d7a02a2d63f0fc4930bb007388d8cfe551de5eb98354e100889f3",
+        "version": "Noto Kufi Arabic (google/fonts @ eb4f2fd), variable, instanced to wght 400",
     },
 }
 
@@ -78,9 +78,14 @@ ASCII = ranges((0x20, 0x7E))
 CJK_BASE = ASCII + ranges((0x3000, 0x303F), (0xFF01, 0xFF5E), (0x2018, 0x201D), (0x2026, 0x2026), (0x00B7, 0x00B7))
 KANA = ranges((0x3040, 0x30FF))
 
+## Arabic letters, harakat, digits and punctuation (not the whole block: its Quranic marks reach far
+## above the letters and would set the line box, see FIT_VMETRICS).
+ARABIC_BASE = ranges((0x060C, 0x060C), (0x061B, 0x061B), (0x061F, 0x061F), (0x0621, 0x0652), (0x0660, 0x066D),
+                     (0x0670, 0x0670), (0x200B, 0x200F), (0x25CC, 0x25CC))
+
 ## Every output font: (path under assets/fonts, source, member in the source zip, locales whose
 ## translations it covers, base characters, family name). LAYOUT_SCRIPTS keeps only that script's
-## OpenType layout tables: a font that advertises another script (Unifont lists Thai) would be picked
+## OpenType layout tables: a font that advertises another script (Unifont, the old Arabic stand-in, listed Thai) would be picked
 ## by Godot's fallback for that script's marks and draw nothing.
 OUTPUTS = [
     ("cjk/slime_cjk_zh_cn.woff2", "fusion", "fusion-pixel-10px-proportional-zh_hans.ttf", ["zh_CN"], CJK_BASE,
@@ -97,16 +102,43 @@ OUTPUTS = [
      "SlimeTime Thai"),
     ("devanagari/slime_devanagari.woff2", "noto_deva", None, ["hi"],
      ASCII + ranges((0x0900, 0x097F), (0x200B, 0x200D), (0x25CC, 0x25CC), (0x20B9, 0x20B9)), "SlimeTime Devanagari"),
-    ("arabic/slime_arabic.woff2", "unifont", None, ["ar"],
-     ASCII + ranges((0x0600, 0x06FF), (0xFB50, 0xFDFF), (0xFE70, 0xFEFF), (0x200B, 0x200F)), "SlimeTime Arabic"),
+    ("arabic/slime_arabic.woff2", "noto_kufi", None, ["ar"],
+     ASCII + ARABIC_BASE, "SlimeTime Arabic"),
 ]
 
 
 LAYOUT_SCRIPTS = {
     "noto_thai": ["thai", "DFLT", "latn"],
     "noto_deva": ["deva", "dev2", "DFLT", "latn"],
-    "unifont": ["arab", "DFLT", "latn"],
+    "noto_kufi": ["arab", "DFLT", "latn"],
 }
+
+
+## Sources whose vertical metrics are cut down to the ink of the glyphs actually kept. Noto Kufi Arabic's
+## ascender / descender (1282 / -615 per 1000) make room for stacked Quranic marks: drawn at 12 px that is
+## a 24 px line box for 13 px of letters. The subset keeps none of those marks, so its hhea / typo / win
+## metrics become the subset's own glyph bounds (every kept glyph, ligatures and harakat included, so
+## nothing draws outside the line box). Godot uses them for every line holding an Arabic glyph.
+FIT_VMETRICS = {"noto_kufi"}
+
+
+def fit_vmetrics(font) -> tuple[int, int]:
+    """Sets the font's ascender / descender to its glyphs' ink bounds; returns them (font units)."""
+    from fontTools.pens.boundsPen import BoundsPen
+    glyphs = font.getGlyphSet()
+    top, bottom = 0, 0
+    for name in font.getGlyphOrder():
+        pen = BoundsPen(glyphs)
+        glyphs[name].draw(pen)
+        if pen.bounds:
+            bottom = min(bottom, pen.bounds[1])
+            top = max(top, pen.bounds[3])
+    top, bottom = int(round(top)), int(round(bottom))
+    hhea, os2 = font["hhea"], font["OS/2"]
+    hhea.ascent, hhea.descent, hhea.lineGap = top, bottom, 0
+    os2.sTypoAscender, os2.sTypoDescender, os2.sTypoLineGap = top, bottom, 0
+    os2.usWinAscent, os2.usWinDescent = top, -bottom
+    return top, bottom
 
 
 def fetch(source: str, cache: Path) -> bytes:
@@ -174,7 +206,8 @@ def build(cache: Path, check_only: bool) -> int:
             data = zips[source].read(member)
         font = TTFont(io.BytesIO(data))
         if "fvar" in font:
-            font = instancer.instantiateVariableFont(font, {"wght": 400, "wdth": 100})
+            axes = {axis.axisTag for axis in font["fvar"].axes}
+            font = instancer.instantiateVariableFont(font, {k: v for k, v in {"wght": 400, "wdth": 100}.items() if k in axes})
         cmap = font.getBestCmap()
         chars = wanted(locales, base)
         needed = set()
@@ -204,6 +237,9 @@ def build(cache: Path, check_only: bool) -> int:
         subsetter = subset.Subsetter(options)
         subsetter.populate(unicodes=[ord(c) for c in chars])
         subsetter.subset(font)
+        if source in FIT_VMETRICS:
+            top, bottom = fit_vmetrics(font)
+            print(f"{rel}: vertical metrics fitted to the ink: ascender {top}, descender {bottom}")
         name = font["name"]
         for record in list(name.names):
             if record.nameID in (1, 4, 16, 21):

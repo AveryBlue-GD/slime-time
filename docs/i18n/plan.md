@@ -209,7 +209,7 @@ unchanged PNG's old bytes), `tests/test_language_screen.gd`.
   one) and reloads the page when the language changed; BACK / Esc / B go to SETTINGS.
 - Open: the title key `language.title` is new, so `messages.pot` needs `tools/i18n_extract.py --merge` once
   the translators' files are in; the rest of SETTINGS (and BACK on every other screen) still overflows in
-  th / hi / ar (chunk G); the Arabic stand-in font draws the letters unjoined (fonts.md open item 3).
+  th / hi / ar (chunk G); the Arabic stand-in font drew the letters unjoined: fixed 2026-10-17 with Noto Kufi Arabic 12 px (fonts.md section 0).
 
 ## 7. Fonts and fallbacks **[fonts]**
 

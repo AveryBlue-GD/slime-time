@@ -54,6 +54,7 @@ func _initialize() -> void:
 	_installed()
 	_coverage()
 	_metrics()
+	_arabic_joining()
 	language.disable()
 	Economy.languages_force = -1
 	Economy.forced_locale = ""
@@ -251,3 +252,39 @@ func _metrics() -> void:
 		var title := int(maxf(14.0, big.get_ascent(16)) + big.get_descent(16))
 		_check(m.line_h == line and m.title_line_h == title and m.line_pitch > m.line_h and m.button_h >= m.line_h + 2,
 			"%s metrics match the font: line %d (table %d), title %d (table %d)" % [code, line, m.line_h, title, m.title_line_h])
+
+
+## Arabic letters must join (fonts.md: the Unifont stand-in drew them isolated). Shapes each word with
+## the Arabic fallback through the primary (Advanced) text server and compares it with each of its
+## letters shaped alone: a joined word uses contextual glyphs (initial / medial / final forms from the
+## font's GSUB) that no isolated letter uses.
+func _arabic_joining() -> void:
+	var ts := TextServerManager.get_primary_interface()
+	_check(ts.has_feature(TextServer.FEATURE_SHAPING) and ts.has_feature(TextServer.FEATURE_BIDI_LAYOUT),
+		"the text server shapes text and lays out bidi (Advanced)")
+	var font: Font = language.native_font("ar")
+	var size := int(Lang.metrics("ar").font_px)
+	for word: String in ["العربية", "رجوع", "اللغة"]:
+		var isolated := {}
+		for i in word.length():
+			for index in _glyph_indices(ts, word[i], font, size):
+				isolated[index] = true
+		var contextual := 0
+		var glyphs := _glyph_indices(ts, word, font, size)
+		for index in glyphs:
+			if not isolated.has(index):
+				contextual += 1
+		var letters := word.length()
+		_check(contextual >= letters - 2,
+			"Arabic joins: %s uses %d contextual glyphs for %d letters (%d glyphs)" % [word, contextual, letters, glyphs.size()])
+
+
+static func _glyph_indices(ts: TextServer, text: String, font: Font, size: int) -> Array[int]:
+	var rid := ts.create_shaped_text(TextServer.DIRECTION_RTL)
+	ts.shaped_text_add_string(rid, text, font.get_rids(), size, {}, "ar")
+	var out: Array[int] = []
+	for glyph: Dictionary in ts.shaped_text_get_glyphs(rid):
+		if glyph.get("index", 0) != 0:
+			out.append(glyph.index)
+	ts.free_rid(rid)
+	return out

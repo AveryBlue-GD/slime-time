@@ -49,7 +49,8 @@ const FONT_BIG_PATH := "res://assets/fonts/pixel_big.fnt"
 ## translations change); imported with antialiasing / hinting / subpixel off and no system fallback.
 ## The size is the font's fixed_size, so it draws at that exact integer size whatever size the label
 ## asks for: Fusion Pixel 10 px (its native grid; 20 = exactly 2x), Noto Thai / Devanagari drawn
-## 1-bit (no pixel fonts exist for them), Unifont at its native 16 (Arabic stand-in). Traditional
+## 1-bit (no pixel fonts exist for them), Noto Kufi Arabic 12 (titles 16) drawn 1-bit and shaped by
+## HarfBuzz (contextual forms from its GSUB; subset metrics fitted to its ink). Traditional
 ## Chinese uses Fusion's 12 px build (24 = 2x): its 10 px build draws dense Traditional characters on a
 ## 9x9 grid where 繁 / 體 read as 無 / 罶 (fonts.md section 0).
 const SCRIPT_FONTS := {
@@ -59,7 +60,7 @@ const SCRIPT_FONTS := {
 	"ko": ["res://assets/fonts/cjk/slime_cjk_ko.woff2", 10, 20],
 	"th": ["res://assets/fonts/thai/slime_thai.woff2", 11, 16],
 	"hi": ["res://assets/fonts/devanagari/slime_devanagari.woff2", 14, 18],
-	"ar": ["res://assets/fonts/arabic/slime_arabic.woff2", 16, 16],
+	"ar": ["res://assets/fonts/arabic/slime_arabic.woff2", 12, 16],
 }
 ## Only the CURRENT locale's fallback goes on the shared slimy fonts: Godot's Font.get_ascent /
 ## get_height include every fallback, so a tall unused fallback (Devanagari, 19 px) would push every
@@ -86,7 +87,7 @@ const METRICS := {
 	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0},
 	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0},
 	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0},
-	"ar": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 16, title_above = 0},
+	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0},
 }
 ## Locales whose text needs the accent head room (es, pt_BR, fr, de, it, pl, tr, ru); id uses no
 ## marks, so it keeps the English numbers.
