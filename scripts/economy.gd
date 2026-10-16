@@ -126,6 +126,65 @@ static func descent_on() -> bool:
 	return DESCENT_ENABLED if descent_force < 0 else descent_force == 1
 
 
+## ---------------------------------------------------------------- BOUNCY test (owner A/B, 2026-10-16)
+## ONE switch for the bouncier leap (docs/spring-cleaning/bounce-test.md). Off (default): a leap that
+## hits a wall splats as always (stun, knockback slide). On: a wall hit mid-leap reflects the leap
+## (Slime._bounce_off) and the slime flies on, airborne, with a squash on the wall, a stretch off it,
+## a boing, goo spray and a small camera kick in the new direction. The splat penalty is still paid
+## once per leap that touches a wall; the rebound flight is free, like today's knockback slide.
+## `--bouncy` (debug builds only, like every launch flag) sets `bouncy_force` = 1; tests set it too.
+const BOUNCY_TEST := false
+static var bouncy_force := -1
+
+
+static func bouncy_on() -> bool:
+	return BOUNCY_TEST if bouncy_force < 0 else bouncy_force == 1
+
+
+## The leap as a unit vector into a wall with normal n: the part into the wall comes back x
+## BOUNCE_RESTITUTION (x BOUNCE_HEAD_ON_RESTITUTION when the hit is within ~20 deg of head-on,
+## cos >= BOUNCE_HEAD_ON_COS), the part along it keeps BOUNCE_TANGENT_KEEP. The leap's leftover
+## distance and its speed scale by the length of the result (energy lost).
+const BOUNCE_RESTITUTION := 0.75
+const BOUNCE_TANGENT_KEEP := 0.95
+const BOUNCE_HEAD_ON_COS := 0.94
+const BOUNCE_HEAD_ON_RESTITUTION := 0.5
+## A touch shallower than this (cos of the angle to the normal) only slides along the wall: no bounce,
+## no effects, no penalty.
+const BOUNCE_GRAZE_COS := 0.15
+## Fewer px of leap left than this after a hit: the slime drops off the wall (lands) instead of a micro-hop.
+const BOUNCE_MIN_LEFT := 6.0
+## At most this many bounces per leap; later hits slide along the wall (no endless ping-pong).
+const BOUNCE_MAX := 4
+## For this long after a bounce (s), a hit on a wall parallel to one bounced off (|n . that n| > 0.7:
+## the same wall again, or the facing wall of a 1-tile corridor) slides instead of bouncing, so a
+## diagonal leap in a corridor taps once and then zips along it. An inside corner (perpendicular
+## walls) bounces twice, pinball style: the second one at once (no second squash hold).
+const BOUNCE_GRACE := 0.12
+## Squash: the slime holds on the wall this long (s; head-on longer), showing its splat frames; then
+## stretch: the launch frames for BOUNCE_STRETCH_TIME as it springs off.
+const BOUNCE_SQUASH_TIME := 0.05
+const BOUNCE_HEAD_ON_SQUASH := 0.1
+const BOUNCE_STRETCH_TIME := 0.1
+## The rebound never flies slower than this share of Slime.JUMP_SPEED.
+const BOUNCE_MIN_SPEED_SHARE := 0.45
+## The rebound's hop height: BOUNCE_ARC_BASE + BOUNCE_ARC_PER_TILE per tile of rebound (px).
+const BOUNCE_ARC_BASE := 2.0
+const BOUNCE_ARC_PER_TILE := 1.0
+## Feedback, scaled by the impact (speed into the wall / Slime.JUMP_SPEED, 0-1): the boing's pitch
+## and volume, the camera kick (px, in the bounce direction; none with Reduce Motion) and shake, the
+## goo spray.
+const BOUNCE_PITCH_MIN := 0.85
+const BOUNCE_PITCH_MAX := 1.3
+const BOUNCE_DB_MIN := -12.0
+const BOUNCE_DB_MAX := -2.0
+const BOUNCE_KICK := 3.0
+const BOUNCE_SHAKE := 1.0
+const BOUNCE_SHAKE_TIME := 0.18
+const BOUNCE_BURST_MIN := 6
+const BOUNCE_BURST_MAX := 14
+
+
 ## ---------------------------------------------------------------- tickets: ABILITIES (Abilities v1)
 ## Three active abilities bought with tickets in the cauldron's TICKETS tab (docs/design/upgrades-v2.md
 ## "Abilities v1"; names, icons and aiming in scripts/abilities.gd, the in-level effects in

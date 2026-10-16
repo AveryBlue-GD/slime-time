@@ -484,6 +484,7 @@ func _ready() -> void:
 	goal.body_entered.connect(_on_goal_body_entered)
 	slime.jump_landed.connect(_on_jump_landed)
 	slime.bounced.connect(_on_bounced)
+	slime.leap_bounced.connect(_on_leap_bounced)
 	restart_prompt = RestartPrompt.new()
 	restart_prompt.game = self
 	add_child(restart_prompt)
@@ -1387,6 +1388,10 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 		Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, 18, 70.0, wall_normal, 70.0, rainbow)
 		_damage_wall(slime.position, wall_normal,
 			inverse_lerp(Slime.jump_distance_for(0.0), Slime.jump_distance_for(100.0), intended_distance))
+	elif slime.leap_hit_wall:  # bouncy test: a leap that bounced off a wall still pays the splat penalty, once
+		splats += 1
+		last_jump_cost += splat_penalty(intended_distance) * splat_factor
+		Fx.burst(self, slime.position, skin_color, 8, 30.0, Vector2.UP, 180.0, rainbow)
 	else:
 		Fx.burst(self, slime.position, skin_color, 10, 35.0, Vector2.UP, 180.0, rainbow)
 	last_slime_pos = slime.position
@@ -1976,6 +1981,18 @@ func _on_bounced(wall_normal: Vector2, impact: float) -> void:
 	Fx.burst(self, slime.position - wall_normal * Slime.RADIUS, skin_color, int(lerpf(4, 12, power)), lerpf(25.0, 60.0, power), wall_normal, 70.0, rainbow)
 	if power > 0.3:
 		shake(lerpf(1.0, SHAKE_MAX - 1.0, power), SHAKE_TIME * 0.6, -wall_normal * roundf(lerpf(1.0, KICK_MAX - 1.0, power)))
+
+
+## Bouncy test (Economy.bouncy_on): a leap bounced off a wall: goo sprays off the contact point and
+## stains the wall, and the camera gets a small kick in the bounce direction (shake() is skipped with
+## Reduce Motion). The sound, squash and stretch are the slime's own.
+func _on_leap_bounced(contact: Vector2, wall_normal: Vector2, impact: float, new_dir: Vector2) -> void:
+	var power := clampf(impact / Slime.JUMP_SPEED, 0.0, 1.0)
+	_stain_wall(slime.position, wall_normal)
+	Fx.burst(self, contact, skin_color, int(lerpf(Economy.BOUNCE_BURST_MIN, Economy.BOUNCE_BURST_MAX, power)),
+		lerpf(30.0, 70.0, power), wall_normal, 60.0, rainbow)
+	shake(Economy.BOUNCE_SHAKE * power, Economy.BOUNCE_SHAKE_TIME, (new_dir * maxf(1.0, roundf(Economy.BOUNCE_KICK * power))).round())
+	_damage_wall(slime.position, wall_normal, power * 0.5)
 
 
 func _on_goal_body_entered(body: Node2D) -> void:

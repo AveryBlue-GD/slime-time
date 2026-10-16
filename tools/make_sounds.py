@@ -261,6 +261,12 @@ SOUNDS = {
     "kaze": lambda: mix(bloop(220, 30, 0.6, 0.55, wobble=0.14, wobble_rate=14, release=0.35),
                         wet_thud(0.5, 0.55, seed=104, release=0.35), crunch(0.25, 0.3, seed=105),
                         gurgle(0.8, 18, 200, 800, 0.2, seed=106, falling=True)),
+    # Bouncy leap test (Economy.BOUNCY_TEST): a rubbery boing off a wall: a soft wet slap, a quick
+    # springy rise and a wobbling fall, with a bubble on top. The slime pitches it up with the impact.
+    "bounce": lambda: mix(wet_thud(0.06, 0.28, seed=111, release=0.05),
+                          seq(bloop(160, 360, 0.05, 0.42, release=0.01, shape="tri"),
+                              bloop(360, 210, 0.13, 0.36, wobble=0.1, wobble_rate=28, release=0.09, shape="tri")),
+                          bubble(520, 0.04, 0.12)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }

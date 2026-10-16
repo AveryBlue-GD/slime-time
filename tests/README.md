@@ -2,7 +2,7 @@
 
 Everything under `tests/` is one of four kinds. Only the first kind is run by `./tools/test_all.sh`.
 
-## 1. Suites: `test_*.gd` (76) run by `./tools/test_all.sh`
+## 1. Suites: `test_*.gd` (78) run by `./tools/test_all.sh`
 
 - `./tools/test_all.sh` runs every suite headless, in parallel (`-j N`, default 3/4 of the cores; `-j 1` = one at a time),
   prints `suites: N failed: 0`. `./tools/test_all.sh test_coins test_hats` runs just those; `TIMES=1` lists the slowest jobs;
@@ -16,7 +16,7 @@ Everything under `tests/` is one of four kinds. Only the first kind is run by `.
 - Added in the spring cleaning: `test_platform` (Platform seam: Android back, background pause, safe areas, fullscreen sync, mobile
   home icon; `Platform.override` / `safe_area_override` simulate phones), `test_gamepad` (the fixed pad layout with real joypad events),
   `test_interpolation` (physics interpolation changes no run result), `test_ui_layout` / `test_ui_touch` (the rules of
-  [docs/ui-rules.md](../docs/ui-rules.md) on every screen), `test_descent_resume` (Descent run saved / resumed, one resume per floor), `test_descent_off` (Descent cut, D11: direct random maze, save kept byte-identical, ABYSS hidden).
+  [docs/ui-rules.md](../docs/ui-rules.md) on every screen), `test_descent_resume` (Descent run saved / resumed, one resume per floor), `test_descent_off` (Descent cut, D11: direct random maze, save kept byte-identical, ABYSS hidden), `test_bouncy` (the bouncy leap test behind `Economy.BOUNCY_TEST`: reflection math, corridor / corner bounces, cost, determinism, Reduce Motion, a 100+ leap fuzz).
 - `JOB_TIMEOUT=sec` (default 600) kills a hung job (and only its own process group, `tools/job_timeout.pl`) and reports `<label> TIMEOUT`; Ctrl-C keeps
   the logs and prints where. A suite name that matches no suite fails the run. Each job removes its own `dev_attempts_<pid>.log` and throwaway saves,
   and `test_all.sh` sweeps those of dead pids at the start (it prints how many); only those name patterns, never `save.cfg` / `dev_attempts.log`.
@@ -48,12 +48,12 @@ Each script's header comment lists its options (`--shot=`, `--skin=`, `--attempt
 | `demo_record_run`, `demo_record`, `demo_rewards` | a win with NEW RECORD / medal / ticket rewards and the REPLAY / NEXT buttons |
 | `demo_dry`, `demo_pause`, `demo_prompt`, `demo_quitmenu`, `demo_reset`, `demo_wipe` | single menu / HUD states (dry-up buttons, pause menu, R prompt, trapdoor confirm, reset confirm, goo wipe) |
 | `demo_level_select`, `demo_maps`, `demo_hats`, `demo_wheel`, `demo_store`, `demo_hubskin`, `demo_stopwatch`, `demo_medal_skins`, `demo_hat_audit`, `demo_hat_hops` | level select, map table, hats page, hat wheel, ticket store / trails, skins, stopwatch skin, the hat contact sheets and hat hops |
-| `demo_abilities`, `demo_descent`, `demo_heat`, `demo_attempts`, `demo_random_ticket`, `demo_brightness`, `demo_cues`, `demo_edge`, `demo_jump`, `demo_jelly`, `demo_touch_hint` | feature scenarios (abilities, Descent, HEAT, attempt pod, randomizer ticket, light radius, level 1 cues, maze edge, charged leap, jelly coins, touch hint) |
+| `demo_abilities`, `demo_descent`, `demo_heat`, `demo_attempts`, `demo_random_ticket`, `demo_brightness`, `demo_cues`, `demo_edge`, `demo_jump`, `demo_bounce`, `demo_jelly`, `demo_touch_hint` | feature scenarios (abilities, Descent, HEAT, attempt pod, randomizer ticket, light radius, level 1 cues, maze edge, charged leap, wall hits now vs `--bouncy`, jelly coins, touch hint) |
 | `demo_overview` | level-design top-down view of a whole maze (needs a window: `-- --level=5 [--hard] [--out=PATH]`) |
 
 ## 3. Tools that are not suites
 
-- `audit_ui` (UI symmetry audit), `bench_heat` (HEAT winnability sweep, ~480 runs), `bench_random_size` (randomizer size benchmark).
+- `audit_ui` (UI symmetry audit), `bench_heat` (HEAT winnability sweep, ~480 runs), `bench_random_size` (randomizer size benchmark), `bench_bounce` (wall hits during a leap, bouncy test off vs on: speeds, stun, slide, cost).
 - `qa_poc_*.gd`, `qa_soak.gd`: QA proofs of concept and the long soak / leak driver; `qa_poc_disk_full` is also run by `test_save_robust`.
 - Promo renders live in `tools/promo/` (`cover.tscn`, `jump_shot.tscn`, `make_promo.sh/.ps1`); re-render only when asked.
 
