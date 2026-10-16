@@ -12,364 +12,364 @@ msgstr ""
 #: scripts/abilities.gd
 msgctxt "ability.rifle.name"
 msgid "SLIME RIFLE"
-msgstr ""
+msgstr "СЛИЗЕМЁТ"
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.name"
 msgid "SLIME SPLAT"
-msgstr ""
+msgstr "СЛИЗЕБОМБА"
 
 #. pun on kamikaze + slime; keep a pun if the language can
 #: scripts/abilities.gd
 msgctxt "ability.kaze.name"
 msgid "SLIMAKAZE"
-msgstr ""
+msgstr "СЛАЙМАКАДЗЕ"
 
 #: scripts/abilities.gd
 msgctxt "ability.rifle.desc"
 msgid "SHOOTS GOO"
-msgstr ""
+msgstr "СТРЕЛЯЕТ СЛИЗЬЮ"
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.desc"
 msgid "BOMB 3X3"
-msgstr ""
+msgstr "ВЗРЫВ 3X3"
 
 #: scripts/abilities.gd
 msgctxt "ability.kaze.desc"
 msgid "WALL DASH"
-msgstr ""
+msgstr "РЫВОК В СТЕНУ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
 msgid "REACH DESCENT FLOOR 10"
-msgstr ""
+msgstr "10 ЭТАЖ В СПУСКЕ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.unlock"
 msgid "HEAT 7 ON EVERY HARD LEVEL"
-msgstr ""
+msgstr "ЖАР 7 НА КАЖДОМ СЛОЖНОМ УРОВНЕ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.skin.name"
 msgid "SKIN GOO"
-msgstr ""
+msgstr "СЛИЗЬ ПОД СКИН"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.parchment"
 msgid "PARCHMENT"
-msgstr ""
+msgstr "ПЕРГАМЕНТ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ink.name"
 msgid "INK TRAIL"
-msgstr ""
+msgstr "ЧЕРНИЛЬНЫЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.glow.name"
 msgid "GLOW TRAIL"
-msgstr ""
+msgstr "СИЯЮЩИЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.gold.name"
 msgid "GOLD TRAIL"
-msgstr ""
+msgstr "ЗОЛОТОЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.candy.name"
 msgid "CANDY TRAIL"
-msgstr ""
+msgstr "КОНФЕТНЫЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.starry.name"
 msgid "STARRY TRAIL"
-msgstr ""
+msgstr "ЗВЁЗДНЫЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.blueprint"
 msgid "BLUEPRINT PAPER"
-msgstr ""
+msgstr "СИНЬКА"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.night"
 msgid "NIGHT PAPER"
-msgstr ""
+msgstr "НОЧНАЯ БУМАГА"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.goldleaf"
 msgid "GOLD LEAF PAPER"
-msgstr ""
+msgstr "СУСАЛЬНОЕ ЗОЛОТО"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.name"
 msgid "ABYSS TRAIL"
-msgstr ""
+msgstr "СЛЕД БЕЗДНЫ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.name"
 msgid "EMBER TRAIL"
-msgstr ""
+msgstr "ТЛЕЮЩИЙ СЛЕД"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ink.desc"
 msgid "DEEP INKY GOO"
-msgstr ""
+msgstr "ГУСТАЯ ЧЕРНИЛЬНАЯ СЛИЗЬ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.glow.desc"
 msgid "THICK GLOWING GOO"
-msgstr ""
+msgstr "ГУСТАЯ СВЕТЯЩАЯСЯ СЛИЗЬ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.gold.desc"
 msgid "CHALICE GOLD, ANY SKIN"
-msgstr ""
+msgstr "ЗОЛОТО КУБКА, ЛЮБОЙ СКИН"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.candy.desc"
 msgid "SWEET STRIPES"
-msgstr ""
+msgstr "СЛАДКИЕ ПОЛОСКИ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.starry.desc"
 msgid "SPECKLED WITH STARS"
-msgstr ""
+msgstr "В ЗВЁЗДНУЮ КРАПИНКУ"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.blueprint.desc"
 msgid "BLUE PAPER, WHITE INK"
-msgstr ""
+msgstr "СИНЯЯ БУМАГА, БЕЛЫЕ ЧЕРНИЛА"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.night.desc"
 msgid "DARK PAPER, SKIN INK"
-msgstr ""
+msgstr "ТЁМНАЯ БУМАГА, ЧЕРНИЛА СКИНА"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.goldleaf.desc"
 msgid "CREAM PAPER, GOLD INK"
-msgstr ""
+msgstr "КРЕМОВАЯ БУМАГА, ЗОЛОТЫЕ ЧЕРНИЛА"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
-msgstr ""
+msgstr "ТЁМНАЯ СЛИЗЬ, ТУСКЛЫЕ ЗВЁЗДЫ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.desc"
 msgid "GLOWING EMBERS, ANY SKIN"
-msgstr ""
+msgstr "ТЛЕЮЩИЕ УГЛИ, ЛЮБОЙ СКИН"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.name"
 msgid "BIG GULP"
-msgstr ""
+msgstr "БОЛЬШОЙ ГЛОТОК"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.name"
 msgid "DEEP TANK"
-msgstr ""
+msgstr "ГЛУБОКИЙ БАК"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.name"
 msgid "FEATHER LEAP"
-msgstr ""
+msgstr "ЛЁГКИЙ ПРЫЖОК"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.name"
 msgid "RUBBER BODY"
-msgstr ""
+msgstr "РЕЗИНОВОЕ ТЕЛО"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.name"
 msgid "SLICK"
-msgstr ""
+msgstr "СКОЛЬЗКИЙ"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.name"
 msgid "BLAZE"
-msgstr ""
+msgstr "ПЛАМЯ"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.name"
 msgid "CHALICE SENSE"
-msgstr ""
+msgstr "ЧУТЬЁ НА КУБОК"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.name"
 msgid "BACKUP BLADDER"
-msgstr ""
+msgstr "ЗАПАСНОЙ ПУЗЫРЬ"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.name"
 msgid "THRIFT"
-msgstr ""
+msgstr "ЭКОНОМИЯ"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.name"
 msgid "GREEDY GOO"
-msgstr ""
+msgstr "ЖАДНАЯ СЛИЗЬ"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.name"
 msgid "GLASS SLIME"
-msgstr ""
+msgstr "СТЕКЛЯННЫЙ СЛАЙМ"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_1"
 msgid "+30% SLIME"
-msgstr ""
+msgstr "+30% СЛИЗИ"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_2"
 msgid "RIGHT NOW"
-msgstr ""
+msgstr "СРАЗУ ЖЕ"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_1"
 msgid "TANK +15%"
-msgstr ""
+msgstr "БАК +15%"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_2"
 msgid "ALL RUN"
-msgstr ""
+msgstr "ВЕСЬ ЗАБЕГ"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.desc_1"
 msgid "LEAPS COST"
-msgstr ""
+msgstr "ПРЫЖКИ ТРАТЯТ"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.desc_2"
 msgid "LESS SLIME"
-msgstr ""
+msgstr "МЕНЬШЕ СЛИЗИ"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.desc_1"
 msgid "SPLATS COST"
-msgstr ""
+msgstr "ШЛЕПКИ НЕ"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.desc_2"
 msgid "NO SLIME"
-msgstr ""
+msgstr "ТРАТЯТ СЛИЗЬ"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_1"
 msgid "GLIDE +15%"
-msgstr ""
+msgstr "СКОЛЬЖЕНИЕ"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_2"
 msgid "FASTER"
-msgstr ""
+msgstr "+15% БЫСТРЕЕ"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.desc_1"
 msgid "WIDER LIGHT"
-msgstr ""
+msgstr "ШИРЕ СВЕТ"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.desc_2"
 msgid "+1 BRIGHTNESS"
-msgstr ""
+msgstr "+1 ЯРКОСТЬ"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.desc_1"
 msgid "SEE THE EXIT"
-msgstr ""
+msgstr "ВИДНО ВЫХОД"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.desc_2"
 msgid "FROM 6 TILES"
-msgstr ""
+msgstr "ЗА 6 КЛЕТОК"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.desc_1"
 msgid "EMPTY? REFILL"
-msgstr ""
+msgstr "ПУСТО? ДОЛИВ"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.desc_2"
 msgid "TO 25% ONCE"
-msgstr ""
+msgstr "ДО 25%, 1 РАЗ"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.desc_1"
 msgid "FLOOR REFILLS"
-msgstr ""
+msgstr "ДОЛИВ ЗА ЭТАЖ"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.desc_2"
 msgid "+15%"
-msgstr ""
+msgstr "+15%"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_1"
 msgid "+1 TIX/FLOOR"
-msgstr ""
+msgstr "+1 БИЛ./ЭТАЖ"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_2"
 msgid "TANK -10%"
-msgstr ""
+msgstr "БАК -10%"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.desc_1"
 msgid "POT X1.5"
-msgstr ""
+msgstr "БАНК X1.5"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.desc_2"
 msgid "SPLATS X2"
-msgstr ""
+msgstr "ШЛЕПКИ X2"
 
 #. HUD area line, max 200px, 1 line; the two spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/game.gd
 msgctxt "hud.area.descent"
 msgid "DESCENT  FLOOR {floor}"
-msgstr ""
+msgstr "СПУСК  ЭТАЖ {floor}"
 
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
-msgstr ""
+msgstr "ЛАБИРИНТ #{n}  СЛОЖНО"
 
 #: scripts/game.gd
 msgctxt "hud.area.random_code"
 msgid "RANDOM MAZE #{n}  CODE LV{code} (YOU {own})"
-msgstr ""
+msgstr "ЛАБИРИНТ #{n}  КОД УР.{code} (ТВОЙ {own})"
 
 #: scripts/game.gd
 msgctxt "hud.area.random"
 msgid "RANDOM MAZE #{n}"
-msgstr ""
+msgstr "СЛУЧАЙНЫЙ ЛАБИРИНТ #{n}"
 
 #: scripts/game.gd
 msgctxt "hud.area.level_hard"
 msgid "LEVEL {level}/{total}  HARD"
-msgstr ""
+msgstr "УРОВЕНЬ {level}/{total}  СЛОЖНО"
 
 #: scripts/game.gd
 msgctxt "hud.area.level"
 msgid "LEVEL {level}/{total}"
-msgstr ""
+msgstr "УРОВЕНЬ {level}/{total}"
 
 #. result-area notice, max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.skin_equipped"
 msgid "NEW SKIN EQUIPPED: {name}"
-msgstr ""
+msgstr "НАДЕТ НОВЫЙ СКИН: {name}"
 
 #. line under the area name, max 296px
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "hud.area.floor"
 msgid "FLOOR {floor}"
-msgstr ""
+msgstr "ЭТАЖ {floor}"
 
 #. flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
 #. budget: max 296px, lines 1
@@ -377,63 +377,63 @@ msgstr ""
 msgctxt "result.floor_bonus"
 msgid "FLOOR {floor} BONUS +{count} TICKETS"
 msgid_plural "FLOOR {floor} BONUS +{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "БОНУС ЭТАЖА {floor}: +{count} БИЛЕТ"
+msgstr[1] "БОНУС ЭТАЖА {floor}: +{count} БИЛЕТА"
+msgstr[2] "БОНУС ЭТАЖА {floor}: +{count} БИЛЕТОВ"
 
 #. max 296px, 1 line; {name} = a trail name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.new_trail"
 msgid "NEW TRAIL: {name}"
-msgstr ""
+msgstr "НОВЫЙ СЛЕД: {name}"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.floor_cleared"
 msgid "FLOOR {floor} CLEARED"
-msgstr ""
+msgstr "ЭТАЖ {floor} ПРОЙДЕН"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.ticket_claimed"
 msgid "TICKET CLAIMED!"
-msgstr ""
+msgstr "БИЛЕТ ПОЛУЧЕН!"
 
 #. max 296px; {time} = M:SS.cc
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "result.time"
 msgid "TIME {time}"
-msgstr ""
+msgstr "ВРЕМЯ {time}"
 
 #. max 296px; {code} = a maze code
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "result.seed"
 msgid "SEED {code}"
-msgstr ""
+msgstr "СИД {code}"
 
 #. result title lines, max 296px each, 1 line each
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.chalice"
 msgid "CHALICE CONSUMED!"
-msgstr ""
+msgstr "КУБОК ПОГЛОЩЁН!"
 
 #: scripts/game.gd
 msgctxt "result.level_cleared"
 msgid "LEVEL {level} CLEARED"
-msgstr ""
+msgstr "УРОВЕНЬ {level} ПРОЙДЕН"
 
 #. max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.time_best"
 msgid "TIME {time}   BEST {best}"
-msgstr ""
+msgstr "ВРЕМЯ {time}   РЕКОРД {best}"
 
 #. result title, max 296px, 1 line; {count} = number of story levels
 #. budget: max 296px, lines 1
@@ -441,15 +441,15 @@ msgstr ""
 msgctxt "result.escaped_all"
 msgid "YOU ESCAPED ALL {count} MAZE!"
 msgid_plural "YOU ESCAPED ALL {count} MAZES!"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ПОБЕГ УДАЛСЯ! ПРОЙДЕН {count} ЛАБИРИНТ!"
+msgstr[1] "ПОБЕГ УДАЛСЯ! ПРОЙДЕНО {count} ЛАБИРИНТА!"
+msgstr[2] "ПОБЕГ УДАЛСЯ! ПРОЙДЕНО {count} ЛАБИРИНТОВ!"
 
 #. list separator between skin names, e.g. "A, B"
 #: scripts/game.gd
 msgctxt "common.list_sep"
 msgid ", "
-msgstr ""
+msgstr ", "
 
 #. max 296px, 1 line; {names} = one or more skin names; {count} = how many
 #. budget: max 296px, lines 1
@@ -457,56 +457,56 @@ msgstr ""
 msgctxt "result.new_jelly_skin"
 msgid "NEW JELLY SKIN: {names}"
 msgid_plural "NEW JELLY SKIN: {names}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "НОВЫЙ ЖЕЛЕЙНЫЙ СКИН: {names}"
+msgstr[1] "НОВЫЕ ЖЕЛЕЙНЫЕ СКИНЫ: {names}"
+msgstr[2] "НОВЫЕ ЖЕЛЕЙНЫЕ СКИНЫ: {names}"
 
 #. max 296px, 1 line; {name} = the color-picker skin's name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.unlocked_custom"
 msgid "UNLOCKED: {name} (ANY COLOR YOU LIKE)!"
-msgstr ""
+msgstr "ОТКРЫТ {name}: ЛЮБОЙ ЦВЕТ НА ВЫБОР!"
 
 #. max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.new_skin"
 msgid "NEW SKIN: {name}"
-msgstr ""
+msgstr "НОВЫЙ СКИН: {name}"
 
 #. max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.all_medals_skin"
 msgid "ALL MEDALS! NEW SKIN: {name}"
-msgstr ""
+msgstr "ВСЕ МЕДАЛИ! НОВЫЙ СКИН: {name}"
 
 #. flash message, max 296px, 1 line each; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.every_coin"
 msgid "EVERY COIN FOUND!"
-msgstr ""
+msgstr "ВСЕ МОНЕТЫ НАЙДЕНЫ!"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up_floor"
 msgid "DRIED UP ON FLOOR {floor}"
-msgstr ""
+msgstr "ВЫСОХ НА ЭТАЖЕ {floor}"
 
 #. result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up"
 msgid "DRIED UP"
-msgstr ""
+msgstr "ВЫСОХ"
 
 #: scripts/game.gd
 msgctxt "result.out_of_time"
 msgid "OUT OF TIME!"
-msgstr ""
+msgstr "ВРЕМЯ ВЫШЛО!"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 76px each, 1 line
@@ -514,7 +514,7 @@ msgstr ""
 #: scripts/game.gd
 msgctxt "result.choice.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "ЗАНОВО"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 76px each, 1 line
@@ -522,242 +522,242 @@ msgstr ""
 #: scripts/game.gd
 msgctxt "result.choice.new_maze"
 msgid "NEW MAZE"
-msgstr ""
+msgstr "ЕЩЁ ЛАБИРИНТ"
 
 #: scripts/game.gd
 msgctxt "result.choice.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "УЛУЧШЕНИЯ"
 
 #. result choice buttons, max 76px each, 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.assist"
 msgid "ASSIST"
-msgstr ""
+msgstr "ФОРА"
 
 #. result choice buttons, max 76px each, 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.replay_maze"
 msgid "REPLAY MAZE"
-msgstr ""
+msgstr "ПОВТОРИТЬ"
 
 #: scripts/game.gd
 msgctxt "result.choice.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ХАБ"
 
 #: scripts/game.gd
 msgctxt "result.choice.replay"
 msgid "REPLAY"
-msgstr ""
+msgstr "ПОВТОР"
 
 #: scripts/game.gd
 msgctxt "result.choice.continue"
 msgid "CONTINUE"
-msgstr ""
+msgstr "ДАЛЕЕ"
 
 #: scripts/game.gd
 msgctxt "result.choice.next_level"
 msgid "NEXT LEVEL"
-msgstr ""
+msgstr "ДАЛЬШЕ"
 
 #: scripts/hats.gd
 msgctxt "hat.none"
 msgid "NO HAT"
-msgstr ""
+msgstr "БЕЗ ШЛЯПЫ"
 
 #: scripts/hats.gd
 msgctxt "hat.tophat"
 msgid "TOP HAT"
-msgstr ""
+msgstr "ЦИЛИНДР"
 
 #: scripts/hats.gd
 msgctxt "hat.beanie"
 msgid "BEANIE"
-msgstr ""
+msgstr "ШАПОЧКА"
 
 #: scripts/hats.gd
 msgctxt "hat.party"
 msgid "PARTY HAT"
-msgstr ""
+msgstr "КОЛПАЧОК"
 
 #: scripts/hats.gd
 msgctxt "hat.cap"
 msgid "BASEBALL CAP"
-msgstr ""
+msgstr "БЕЙСБОЛКА"
 
 #: scripts/hats.gd
 msgctxt "hat.cowboy"
 msgid "COWBOY HAT"
-msgstr ""
+msgstr "КОВБОЙСКАЯ ШЛЯПА"
 
 #: scripts/hats.gd
 msgctxt "hat.chef"
 msgid "CHEF HAT"
-msgstr ""
+msgstr "ПОВАРСКОЙ КОЛПАК"
 
 #: scripts/hats.gd
 msgctxt "hat.wizard"
 msgid "WIZARD HAT"
-msgstr ""
+msgstr "ШЛЯПА МАГА"
 
 #: scripts/hats.gd
 msgctxt "hat.viking"
 msgid "VIKING HELMET"
-msgstr ""
+msgstr "ШЛЕМ ВИКИНГА"
 
 #: scripts/hats.gd
 msgctxt "hat.propeller"
 msgid "PROPELLER CAP"
-msgstr ""
+msgstr "КЕПКА С ПРОПЕЛЛЕРОМ"
 
 #: scripts/hats.gd
 msgctxt "hat.crown"
 msgid "CROWN"
-msgstr ""
+msgstr "КОРОНА"
 
 #: scripts/hats.gd
 msgctxt "hat.rainbow"
 msgid "RAINBOW HAT"
-msgstr ""
+msgstr "РАДУЖНАЯ ШЛЯПА"
 
 #: scripts/heat.gd
 msgctxt "heatmod.dim.name"
 msgid "DIM"
-msgstr ""
+msgstr "ПОЛУМРАК"
 
 #: scripts/heat.gd
 msgctxt "heatmod.brittle.name"
 msgid "BRITTLE"
-msgstr ""
+msgstr "ХРУПКОСТЬ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.fog.name"
 msgid "FOG BITES"
-msgstr ""
+msgstr "ТУМАН КУСАЕТСЯ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.grounded.name"
 msgid "GROUNDED"
-msgstr ""
+msgstr "НА ЗЕМЛЕ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.thirsty.name"
 msgid "THIRSTY"
-msgstr ""
+msgstr "ЖАЖДА"
 
 #: scripts/heat.gd
 msgctxt "heatmod.race.name"
 msgid "RACE"
-msgstr ""
+msgstr "ГОНКА"
 
 #: scripts/heat.gd
 msgctxt "heatmod.dim.desc"
 msgid "LESS LIGHT, PATHS FADE FASTER"
-msgstr ""
+msgstr "МЕНЬШЕ СВЕТА, СЛЕДЫ ГАСНУТ БЫСТРЕЕ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.brittle.desc"
 msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
-msgstr ""
+msgstr "ШЛЕПКИ ВДВОЕ ДОРОЖЕ, БЕЗ СКОЛЬЖЕНИЯ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.fog.desc"
 msgid "FOG RETURNS TWICE AS FAST"
-msgstr ""
+msgstr "ТУМАН ВОЗВРАЩАЕТСЯ ВДВОЕ БЫСТРЕЕ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.grounded.desc"
 msgid "NO LEAPS"
-msgstr ""
+msgstr "БЕЗ ПРЫЖКОВ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.thirsty.desc"
 msgid "SLIME DRAINS 8% FASTER"
-msgstr ""
+msgstr "СЛИЗЬ УХОДИТ НА 8% БЫСТРЕЕ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.race.desc"
 msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr ""
+msgstr "УЛОЖИСЬ В 1.3 X НОРМЫ ИЛИ ВЫСОХНИ"
 
 #. station names are prompt-box labels, max 110px, 1 line
 #. budget: max 110px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.station.story"
 msgid "STORY - LEVEL {level}"
-msgstr ""
+msgstr "СЮЖЕТ - УРОВЕНЬ {level}"
 
 #: scripts/hub.gd
 msgctxt "hub.station.map_table"
 msgid "MAP TABLE"
-msgstr ""
+msgstr "СТОЛ С КАРТАМИ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "УЛУЧШЕНИЯ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.quit"
 msgid "QUIT"
-msgstr ""
+msgstr "ВЫХОД"
 
 #: scripts/hub.gd
 msgctxt "hub.station.coins"
 msgid "COIN BAG"
-msgstr ""
+msgstr "МЕШОК МОНЕТ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.random"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "РАНДОМАЙЗЕР"
 
 #: scripts/hub.gd
 msgctxt "hub.station.settings"
 msgid "SETTINGS"
-msgstr ""
+msgstr "НАСТРОЙКИ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.wheel"
 msgid "HAT WHEEL"
-msgstr ""
+msgstr "КОЛЕСО ШЛЯП"
 
 #: scripts/hub.gd
 msgctxt "hub.station.wardrobe"
 msgid "SKINS & HATS"
-msgstr ""
+msgstr "СКИНЫ И ШЛЯПЫ"
 
 #. max 150px each, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.reworked"
 msgid "UPGRADES REWORKED"
-msgstr ""
+msgstr "УЛУЧШЕНИЯ ПЕРЕДЕЛАНЫ"
 
 #. max 150px each, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.returned"
 msgid "COINS RETURNED +{count}"
-msgstr ""
+msgstr "ВОЗВРАТ МОНЕТ +{count}"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.title"
 msgid "LEAVE THE HUB?"
-msgstr ""
+msgstr "ПОКИНУТЬ ХАБ?"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.subtitle"
 msgid "THE GAME CLOSES"
-msgstr ""
+msgstr "ИГРА ЗАКРОЕТСЯ"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.button"
 msgid "QUIT"
-msgstr ""
+msgstr "ВЫЙТИ"
 
 #. max 32px, 1 line
 #. max 40px, 1 line
@@ -766,167 +766,167 @@ msgstr ""
 #: scripts/hub.gd scripts/ui/hat_wheel.gd scripts/ui/map_select.gd scripts/ui/ui_kit.gd
 msgctxt "common.back"
 msgid "BACK"
-msgstr ""
+msgstr "НАЗАД"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.title"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "РАНДОМАЙЗЕР"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.random_maze"
 msgid "RANDOM MAZE"
-msgstr ""
+msgstr "СЛУЧАЙНЫЙ ЛАБИРИНТ"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.descent"
 msgid "DESCENT"
-msgstr ""
+msgstr "СПУСК"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info_best"
 msgid "BEST FLOOR {best}   PAID RUNS {left}/{total}"
-msgstr ""
+msgstr "ЛУЧШИЙ ЭТАЖ {best}   ПЛАТНЫХ ЗАБЕГОВ {left}/{total}"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info"
 msgid "PAID RUNS {left}/{total}"
-msgstr ""
+msgstr "ПЛАТНЫХ ЗАБЕГОВ {left}/{total}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.resume"
 msgid "RESUME"
-msgstr ""
+msgstr "ДАЛЕЕ"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.quit_run"
 msgid "QUIT RUN"
-msgstr ""
+msgstr "СДАТЬСЯ"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.spent"
 msgid "FLOOR ALREADY RESUMED"
-msgstr ""
+msgstr "ЭТАЖ УЖЕ ВОЗОБНОВЛЯЛИ"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.saved"
 msgid "DESCENT RUN SAVED"
-msgstr ""
+msgstr "ЗАБЕГ СПУСКА СОХРАНЁН"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.floor_cleared"
 msgid "FLOOR {floor} CLEARED - POT {pot}"
-msgstr ""
+msgstr "ЭТАЖ {floor} ПРОЙДЕН - БАНК {pot}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.cashes_out"
 msgid "QUIT RUN CASHES OUT"
-msgstr ""
+msgstr "СДАТЬСЯ = ЗАБРАТЬ БАНК"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.floor"
 msgid "FLOOR {floor} - POT {pot}"
-msgstr ""
+msgstr "ЭТАЖ {floor} - БАНК {pot}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.banks_half"
 msgid "QUIT RUN BANKS HALF"
-msgstr ""
+msgstr "СДАТЬСЯ = ПОЛБАНКА"
 
 #. max 200px, 1 line; the spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.coins.total"
 msgid "STORY {have}/{total}   IN HAND {hand}"
-msgstr ""
+msgstr "СЮЖЕТ {have}/{total}   НА РУКАХ {hand}"
 
 #: scripts/hub.gd
 msgctxt "hub.coins.close_touch"
 msgid "TAP JUMP TO CLOSE"
-msgstr ""
+msgstr "ПРЫГ - ЗАКРЫТЬ"
 
 #: scripts/hub.gd
 msgctxt "hub.coins.close_key"
 msgid "{key} TO CLOSE"
-msgstr ""
+msgstr "{key} - ЗАКРЫТЬ"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.tap_jump"
 msgid "TAP JUMP"
-msgstr ""
+msgstr "ЖМИ ПРЫГ"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.rotate"
 msgid "ROTATE"
-msgstr ""
+msgstr "ПОВЕРНУТЬ"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
-msgstr ""
+msgstr "ЗАКРЫТО"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.best_floor"
 msgid "BEST FLOOR {floor}"
-msgstr ""
+msgstr "ЛУЧШИЙ ЭТАЖ {floor}"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.shop"
 msgid "SHOP"
-msgstr ""
+msgstr "ЛАВКА"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.free"
 msgid "FREE"
-msgstr ""
+msgstr "БЕСПЛАТНО"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
-msgstr ""
+msgstr "ПРОЙДИ ВСЕ УРОВНИ ({count})"
 
 #. HUD pod, max 60px, 1 line; {percent} = extra slime, e.g. 25
 #. budget: max 60px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.assist"
 msgid "ASSIST +{percent}%"
-msgstr ""
+msgstr "ФОРА +{percent}%"
 
 #. HUD pod, short for the SECOND WIND upgrade, max 40px, 1 line
 #. budget: max 40px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.wind"
 msgid "WIND"
-msgstr ""
+msgstr "ВДОХ"
 
 #. slime meter, max 24px
 #. budget: max 24px
 #: scripts/hud.gd
 msgctxt "hud.slime_percent"
 msgid "{percent}%"
-msgstr ""
+msgstr "{percent}%"
 
 #. HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
 #. budget: max 60px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.all_found"
 msgid "ALL FOUND"
-msgstr ""
+msgstr "ВСЕ ТУТ"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.coins_left"
 msgid "{count} LEFT"
 msgid_plural "{count} LEFT"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ЕЩЁ {count}"
+msgstr[1] "ЕЩЁ {count}"
+msgstr[2] "ЕЩЁ {count}"
 
 #. HUD attempt pod, line 1, max 80px; {n} = which try at this maze
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.attempt"
 msgid "ATTEMPT {n}"
-msgstr ""
+msgstr "ПОПЫТКА {n}"
 
 #. HUD pot pod, line 1, max 80px; {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
@@ -934,53 +934,53 @@ msgstr ""
 msgctxt "hud.pod.pot_gain"
 msgid "POT {count} +{gain}"
 msgid_plural "POT {count} +{gain}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "БАНК {count} +{gain}"
+msgstr[1] "БАНК {count} +{gain}"
+msgstr[2] "БАНК {count} +{gain}"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.pot"
 msgid "POT {count}"
 msgid_plural "POT {count}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "БАНК {count}"
+msgstr[1] "БАНК {count}"
+msgstr[2] "БАНК {count}"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.practice"
 msgid "PRACTICE"
-msgstr ""
+msgstr "ПРАКТИКА"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.no_tickets"
 msgid "NO TICKETS"
-msgstr ""
+msgstr "БЕЗ БИЛЕТОВ"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.pays_1"
 msgid "PAYS 1"
-msgstr ""
+msgstr "ДАЁТ 1"
 
 #. HUD pot pod, line 2, max 80px; {slot} of {total} paid runs today
 #. budget: max 80px, lines 2
 #: scripts/hud.gd
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
-msgstr ""
+msgstr "ЗАБЕГ {slot}/{total}"
 
 #. HUD pod, max 50px; {heat} = heat level
 #. budget: max 50px
 #: scripts/hud.gd
 msgctxt "hud.pod.heat"
 msgid "HEAT {heat}"
-msgstr ""
+msgstr "ЖАР {heat}"
 
 #. result heat row (one line with icons), max 120px each; {heat} = heat level
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat"
 msgid "HEAT {heat}"
-msgstr ""
+msgstr "ЖАР {heat}"
 
 #. max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
 #. budget: max 120px
@@ -988,58 +988,58 @@ msgstr ""
 msgctxt "result.heat_bounty"
 msgid "BOUNTY +{count}"
 msgid_plural "BOUNTY +{count}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "НАГРАДА +{count}"
+msgstr[1] "НАГРАДА +{count}"
+msgstr[2] "НАГРАДА +{count}"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat_new_best"
 msgid "NEW BEST HEAT!"
-msgstr ""
+msgstr "НОВЫЙ РЕКОРД ЖАРА!"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat_best"
 msgid "BEST HEAT {heat}"
-msgstr ""
+msgstr "РЕКОРД ЖАРА {heat}"
 
 #. result reward line, max 296px, 1 line; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 1
 #: scripts/hud.gd
 msgctxt "result.assist_offer"
 msgid "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS"
-msgstr ""
+msgstr "ФОРА: +{percent}% СЛИЗИ, БЕЗ МЕДАЛЕЙ/БИЛЕТОВ"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "result.assisted"
 msgid "ASSIST: NO MEDALS, RECORDS OR TICKETS"
-msgstr ""
+msgstr "ФОРА: БЕЗ МЕДАЛЕЙ, РЕКОРДОВ И БИЛЕТОВ"
 
 #. medal row, max 90px
 #. budget: max 90px
 #: scripts/hud.gd
 msgctxt "result.new_best"
 msgid "NEW BEST!"
-msgstr ""
+msgstr "НОВЫЙ РЕКОРД!"
 
 #. result reward line, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/hud.gd
 msgctxt "result.seed_paid"
 msgid "SEED ALREADY PAID TODAY - TRY NEW MAZE"
-msgstr ""
+msgstr "СИД УЖЕ ОПЛАЧЕН СЕГОДНЯ - ВОЗЬМИ НОВЫЙ"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "result.ticket_limit"
 msgid "DAILY TICKET LIMIT REACHED"
-msgstr ""
+msgstr "ДНЕВНОЙ ЛИМИТ БИЛЕТОВ ИСЧЕРПАН"
 
 #. after a ticket icon, max 160px; {n} = which try, {count} = tickets paid
 #. budget: max 160px
@@ -1047,9 +1047,9 @@ msgstr ""
 msgctxt "result.ticket_attempt"
 msgid "TICKET! ATTEMPT {n} = +{count}"
 msgid_plural "TICKET! ATTEMPT {n} = +{count}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "БИЛЕТ! ПОПЫТКА {n} = +{count}"
+msgstr[1] "БИЛЕТ! ПОПЫТКА {n} = +{count}"
+msgstr[2] "БИЛЕТ! ПОПЫТКА {n} = +{count}"
 
 #. after a ticket icon, max 160px; {count} = tickets paid
 #. budget: max 160px
@@ -1057,46 +1057,46 @@ msgstr[2] ""
 msgctxt "result.tickets"
 msgid "+{count} TICKETS"
 msgid_plural "+{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "+{count} БИЛЕТ"
+msgstr[1] "+{count} БИЛЕТА"
+msgstr[2] "+{count} БИЛЕТОВ"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.replayed_seed"
 msgid "REPLAYED SEED"
-msgstr ""
+msgstr "ПОВТОР СИДА"
 
 #: scripts/hud.gd
 msgctxt "result.medal.bronze"
 msgid "BRONZE"
-msgstr ""
+msgstr "БРОНЗА"
 
 #: scripts/hud.gd
 msgctxt "result.medal.silver"
 msgid "SILVER"
-msgstr ""
+msgstr "СЕРЕБРО"
 
 #: scripts/hud.gd
 msgctxt "result.medal.gold"
 msgid "GOLD"
-msgstr ""
+msgstr "ЗОЛОТО"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.bronze"
 msgid "BEST BRONZE"
-msgstr ""
+msgstr "РЕКОРД: БРОНЗА"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.silver"
 msgid "BEST SILVER"
-msgstr ""
+msgstr "РЕКОРД: СЕРЕБРО"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.gold"
 msgid "BEST GOLD"
-msgstr ""
+msgstr "РЕКОРД: ЗОЛОТО"
 
 #. HUD attempt pod, line 2, max 80px; TIX = tickets; {count} = tickets a win pays now
 #. budget: max 80px, lines 2
@@ -1104,1083 +1104,1083 @@ msgstr ""
 msgctxt "hud.pod.tix_available"
 msgid "TIX AVAILABLE {count}"
 msgid_plural "TIX AVAILABLE {count}"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ПРИЗ {count} БИЛ."
+msgstr[1] "ПРИЗ {count} БИЛ."
+msgstr[2] "ПРИЗ {count} БИЛ."
 
 #. big 16 px font, max 200px
 #. budget: max 200px
 #: scripts/hud.gd
 msgctxt "result.new_record"
 msgid "NEW RECORD!"
-msgstr ""
+msgstr "НОВЫЙ РЕКОРД!"
 
 #. {name} = level / area name, max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "hud.area.name"
 msgid "- {name} -"
-msgstr ""
+msgstr "- {name} -"
 
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
-msgstr ""
+msgstr "ХАМЕЛЕОН"
 
 #: scripts/skins.gd
 msgctxt "skin.rainbow"
 msgid "RAINBOW"
-msgstr ""
+msgstr "РАДУГА"
 
 #: scripts/skins.gd
 msgctxt "skin.stopwatch"
 msgid "STOPWATCH"
-msgstr ""
+msgstr "СЕКУНДОМЕР"
 
 #: scripts/skins.gd
 msgctxt "skin.lime"
 msgid "LIME"
-msgstr ""
+msgstr "ЛАЙМ"
 
 #: scripts/skins.gd
 msgctxt "skin.mint"
 msgid "MINT"
-msgstr ""
+msgstr "МЯТА"
 
 #: scripts/skins.gd
 msgctxt "skin.lemon"
 msgid "LEMON"
-msgstr ""
+msgstr "ЛИМОН"
 
 #: scripts/skins.gd
 msgctxt "skin.ocean"
 msgid "OCEAN"
-msgstr ""
+msgstr "ОКЕАН"
 
 #: scripts/skins.gd
 msgctxt "skin.grape"
 msgid "GRAPE"
-msgstr ""
+msgstr "ВИНОГРАД"
 
 #: scripts/skins.gd
 msgctxt "skin.crimson"
 msgid "CRIMSON"
-msgstr ""
+msgstr "КАРМИН"
 
 #: scripts/skins.gd
 msgctxt "skin.frost"
 msgid "FROST"
-msgstr ""
+msgstr "ИНЕЙ"
 
 #: scripts/skins.gd
 msgctxt "skin.shadow"
 msgid "INKKY"
-msgstr ""
+msgstr "ИНККИ"
 
 #: scripts/skins.gd
 msgctxt "skin.bubblegum"
 msgid "BUBBLEGUM"
-msgstr ""
+msgstr "ЖВАЧКА"
 
 #: scripts/skins.gd
 msgctxt "skin.ember"
 msgid "EMBER"
-msgstr ""
+msgstr "УГОЛЁК"
 
 #: scripts/story.gd
 msgctxt "story.level_1"
 msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
-msgstr ""
+msgstr "ШЛЁП. СЫРОВАТО. НАВЕРХ - ТУДА."
 
 #: scripts/story.gd
 msgctxt "story.level_2"
 msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
-msgstr ""
+msgstr "ШАХТЁРЫ УХОДИЛИ В СПЕШКЕ. И НЕ ЗРЯ."
 
 #: scripts/story.gd
 msgctxt "story.level_3"
 msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
-msgstr ""
+msgstr "КТО-ТО ПОДМЕТАЛ ПЕСОК. ДАВНО."
 
 #: scripts/story.gd
 msgctxt "story.level_4"
 msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
-msgstr ""
+msgstr "ФОРМАЛЬНО НЕ ПЛАВАНИЕ. НО И НЕ СУХО."
 
 #: scripts/story.gd
 msgctxt "story.level_5"
 msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
-msgstr ""
+msgstr "СЛАЙМ В СЛИЗИ. НИКТО НЕ ЗАМЕТИТ."
 
 #: scripts/story.gd
 msgctxt "story.level_6"
 msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
-msgstr ""
+msgstr "ЖИЛЬЦЫ ПОМАЛКИВАЮТ. ПОДОЗРИТЕЛЬНО."
 
 #: scripts/story.gd
 msgctxt "story.level_7"
 msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
-msgstr ""
+msgstr "ХОЛОДАЕТ. СЛАЙМ НЕ ДРОЖИТ. ОН КОЛЫШЕТСЯ."
 
 #: scripts/story.gd
 msgctxt "story.level_8"
 msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
-msgstr ""
+msgstr "КАМЕРА ДЛЯ ЗАБЫТЫХ. ТЕБЯ ЗАБЫТЬ НЕЛЬЗЯ."
 
 #: scripts/story.gd
 msgctxt "story.level_9"
 msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
-msgstr ""
+msgstr "КАК БЛЕСТИТ. ДО СВЕТА РУКОЙ ПОДАТЬ."
 
 #: scripts/story.gd
 msgctxt "story.level_10"
 msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
-msgstr ""
+msgstr "ЖАРКО. ВЫХОД - ЧЕРЕЗ КРАТЕР. БЕГИ."
 
 #: scripts/themes.gd
 msgctxt "theme.mossy"
 msgid "MOSSY MINES"
-msgstr ""
+msgstr "МШИСТЫЕ ШАХТЫ"
 
 #: scripts/themes.gd
 msgctxt "theme.sandstone"
 msgid "SANDSTONE SANCTUM"
-msgstr ""
+msgstr "ПЕСЧАНОЕ СВЯТИЛИЩЕ"
 
 #: scripts/themes.gd
 msgctxt "theme.sunken"
 msgid "SUNKEN SHRINE"
-msgstr ""
+msgstr "ЗАТОПЛЕННЫЙ ХРАМ"
 
 #: scripts/themes.gd
 msgctxt "theme.sewers"
 msgid "TOXIC TUNNELS"
-msgstr ""
+msgstr "ТОКСИЧНЫЕ ТОННЕЛИ"
 
 #: scripts/themes.gd
 msgctxt "theme.catacombs"
 msgid "CREEPY CATACOMBS"
-msgstr ""
+msgstr "КОШМАРНЫЕ КАТАКОМБЫ"
 
 #: scripts/themes.gd
 msgctxt "theme.frozen"
 msgid "FROZEN FORTRESS"
-msgstr ""
+msgstr "ЗАМЁРЗШАЯ ЗАСТАВА"
 
 #: scripts/themes.gd
 msgctxt "theme.obsidian"
 msgid "OBSIDIAN OUBLIETTE"
-msgstr ""
+msgstr "ОБСИДИАНОВЫЙ ОСТРОГ"
 
 #: scripts/themes.gd
 msgctxt "theme.crystal"
 msgid "CRYSTAL CAVERNS"
-msgstr ""
+msgstr "КРИСТАЛЬНЫЕ ПЕЩЕРЫ"
 
 #: scripts/themes.gd
 msgctxt "theme.volcanic"
 msgid "VOLCANIC VAULT"
-msgstr ""
+msgstr "ВУЛКАНИЧЕСКИЙ СКЛЕП"
 
 #. level name, HUD area line and map table; keep the alliteration if the language can
 #: scripts/themes.gd
 msgctxt "theme.dungeon"
 msgid "DARK DUNGEON"
-msgstr ""
+msgstr "ТЁМНАЯ ТЕМНИЦА"
 
 #. tutorial keycap on touch screens, max 27px (a 29 px drawn key), 1 line
 #. budget: max 27px, lines 1
 #: scripts/tutorial_cues.gd
 msgctxt "tutorial.jump"
 msgid "JUMP"
-msgstr ""
+msgstr "ПРЫГ"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.old_version"
 msgid "THAT CODE IS FROM AN OLD VERSION"
-msgstr ""
+msgstr "ЭТОТ КОД ИЗ СТАРОЙ ВЕРСИИ"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copied"
 msgid "COPIED! KEEP IT SOMEWHERE SAFE"
-msgstr ""
+msgstr "СКОПИРОВАНО! СПРЯЧЬ В НАДЁЖНОЕ МЕСТО"
 
 #. status line in the SAVE CODE panel (web, browser refused to copy), max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_by_hand"
 msgid "COPY THE CODE FROM THE POP-UP"
-msgstr ""
+msgstr "СКОПИРУЙ КОД ИЗ ОКНА"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/controls.gd
 msgctxt "settings.title"
 msgid "SETTINGS"
-msgstr ""
+msgstr "НАСТРОЙКИ"
 
 #. column headings, max 120px, 1 line
 #. budget: max 120px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.options"
 msgid "OPTIONS"
-msgstr ""
+msgstr "ПАРАМЕТРЫ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.more"
 msgid "MORE"
-msgstr ""
+msgstr "ЕЩЁ"
 
 #. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
 #. budget: max 112px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.controls"
 msgid "CONTROLS"
-msgstr ""
+msgstr "УПРАВЛЕНИЕ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.save_code"
 msgid "SAVE CODE"
-msgstr ""
+msgstr "КОД СОХРАНЕНИЯ"
 
 #. max 84px (RESET_SIZE 92 wide), 1 line
 #. budget: max 84px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.reset"
 msgid "RESET PROGRESS"
-msgstr ""
+msgstr "СБРОСИТЬ ВСЁ"
 
 #. panel title, max 270px, 16 px font
 #. budget: max 270px
 #: scripts/ui/controls.gd
 msgctxt "savecode.title"
 msgid "SAVE CODE"
-msgstr ""
+msgstr "КОД СОХРАНЕНИЯ"
 
 #. max 270px, 1 line
 #. budget: max 270px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_hint"
 msgid "COPY THIS CODE TO BACK UP YOUR PROGRESS"
-msgstr ""
+msgstr "СКОПИРУЙ КОД, ЧТОБЫ СБЕРЕЧЬ ПРОГРЕСС"
 
 #. SAVE CODE panel buttons (COPY, PASTE, LOAD, CLOSE), max 56px (64 wide, 4 px margins), 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy"
 msgid "COPY"
-msgstr ""
+msgstr "КОПИЯ"
 
 #. max 270px, 1 line
 #. budget: max 270px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.paste_hint"
 msgid "TO LOAD A SAVE, PASTE ITS CODE HERE"
-msgstr ""
+msgstr "ЧТОБЫ ЗАГРУЗИТЬСЯ, ВСТАВЬ КОД СЮДА"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.paste"
 msgid "PASTE"
-msgstr ""
+msgstr "ВСТАВИТЬ"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.load"
 msgid "LOAD"
-msgstr ""
+msgstr "ЗАГРУЗКА"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.close"
 msgid "CLOSE"
-msgstr ""
+msgstr "ЗАКРЫТЬ"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
 msgctxt "savecode.prompt_paste"
 msgid "Paste your Slime Time save code:"
-msgstr ""
+msgstr "Вставь код сохранения Slime Time:"
 
 #: scripts/ui/controls.gd
 msgctxt "savecode.click_box"
 msgid "CLICK THE BOX AND PRESS {keys}"
-msgstr ""
+msgstr "НАЖМИ НА ПОЛЕ И {keys}"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.nothing_to_paste"
 msgid "NOTHING TO PASTE - COPY A CODE FIRST"
-msgstr ""
+msgstr "НЕЧЕГО ВСТАВЛЯТЬ - СНАЧАЛА СКОПИРУЙ КОД"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.pasted"
 msgid "PASTED - PRESS LOAD"
-msgstr ""
+msgstr "ВСТАВЛЕНО - ЖМИ ЗАГРУЗКУ"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
 msgctxt "savecode.prompt_copy"
 msgid "Copy your Slime Time save code:"
-msgstr ""
+msgstr "Скопируй код сохранения Slime Time:"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.replaces"
 msgid "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"
-msgstr ""
+msgstr "ПРОГРЕСС ЗАМЕНИТСЯ - ЖМИ ЗАГРУЗКУ ЕЩЁ РАЗ"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.bad_code"
 msgid "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
-msgstr ""
+msgstr "КОД НЕ РАБОТАЕТ - ПРОВЕРЬ, ЧТО ОН ЦЕЛИКОМ"
 
 #. max 256px, 16 px font
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.title"
 msgid "ERASE ALL PROGRESS?"
-msgstr ""
+msgstr "СТЕРЕТЬ ПРОГРЕСС?"
 
 #. two lines, each max 256px
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.body.1"
 msgid "LEVELS, RECORDS, COINS, UPGRADES AND"
-msgstr ""
+msgstr "УРОВНИ, РЕКОРДЫ, МОНЕТЫ, УЛУЧШЕНИЯ И"
 
 #. two lines, each max 256px
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.body.2"
 msgid "SKINS WILL BE GONE FOR GOOD"
-msgstr ""
+msgstr "СКИНЫ ИСЧЕЗНУТ НАВСЕГДА"
 
 #. reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 #. budget: max 62px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "reset.confirm"
 msgid "CONFIRM"
-msgstr ""
+msgstr "СТЕРЕТЬ"
 
 #: scripts/ui/controls.gd scripts/ui/restart_prompt.gd
 msgctxt "common.cancel"
 msgid "CANCEL"
-msgstr ""
+msgstr "ОТМЕНА"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fullscreen.on"
 msgid "FULLSCREEN: ON"
-msgstr ""
+msgstr "ПОЛНЫЙ ЭКРАН: ВКЛ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fullscreen.off"
 msgid "FULLSCREEN: OFF"
-msgstr ""
+msgstr "ПОЛНЫЙ ЭКРАН: ВЫКЛ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.less"
 msgid "MOTION: LESS"
-msgstr ""
+msgstr "ДВИЖЕНИЕ: МЕНЬШЕ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.full"
 msgid "MOTION: FULL"
-msgstr ""
+msgstr "ДВИЖЕНИЕ: ВСЁ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.dark"
 msgid "FOG: DARK"
-msgstr ""
+msgstr "ТУМАН: ТЁМНЫЙ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.normal"
 msgid "FOG: NORMAL"
-msgstr ""
+msgstr "ТУМАН: ОБЫЧНЫЙ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.bright"
 msgid "FOG: BRIGHT"
-msgstr ""
+msgstr "ТУМАН: СВЕТЛЫЙ"
 
 #: scripts/ui/controls.gd scripts/ui/pause_menu.gd
 msgctxt "settings.sound.on"
 msgid "SOUND: ON"
-msgstr ""
+msgstr "ЗВУК: ВКЛ"
 
 #: scripts/ui/controls.gd scripts/ui/pause_menu.gd
 msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
-msgstr ""
+msgstr "ЗВУК: ВЫКЛ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_one"
 msgid "PICK ONE"
-msgstr ""
+msgstr "ВЫБЕРИ ОДИН"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cash_out"
 msgid "CASH OUT"
-msgstr ""
+msgstr "ЗАБРАТЬ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.descend"
 msgid "DESCEND"
-msgstr ""
+msgstr "ВНИЗ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.floor_cleared"
 msgid "FLOOR {floor} CLEARED"
-msgstr ""
+msgstr "ЭТАЖ {floor} ПРОЙДЕН"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.meter"
 msgid "{now}%  NEXT FLOOR +{next}%"
-msgstr ""
+msgstr "{now}%  ЭТАЖ НИЖЕ +{next}%"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cash_out_gain"
 msgid "CASH OUT +{count}"
-msgstr ""
+msgstr "ЗАБРАТЬ +{count}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_practice"
 msgid "POT {pot} (+{gain})  PRACTICE"
-msgstr ""
+msgstr "БАНК {pot} (+{gain})  ПРАКТИКА"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_dev"
 msgid "POT {pot} (+{gain})  NO TICKETS"
-msgstr ""
+msgstr "БАНК {pot} (+{gain})  БЕЗ БИЛЕТОВ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_slime"
 msgid "POT {pot} (+{gain})  PAYS 1"
-msgstr ""
+msgstr "БАНК {pot} (+{gain})  ДАЁТ 1"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot"
 msgid "POT {pot} (+{gain})"
-msgstr ""
+msgstr "БАНК {pot} (+{gain})"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.have_max"
 msgid "HAVE {have}/{max}"
-msgstr ""
+msgstr "ЕСТЬ {have}/{max}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.have"
 msgid "HAVE {have}"
-msgstr ""
+msgstr "ЕСТЬ {have}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.confirm"
 msgid "{name}  -  DESCEND?"
-msgstr ""
+msgstr "{name}  -  ВНИЗ?"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_first"
 msgid "PICK A BOON FIRST"
-msgstr ""
+msgstr "СНАЧАЛА ВЫБЕРИ ДАР"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.run_over"
 msgid "RUN OVER"
-msgstr ""
+msgstr "ЗАБЕГ ОКОНЧЕН"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.new_run"
 msgid "NEW RUN"
-msgstr ""
+msgstr "НОВЫЙ ЗАБЕГ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ХАБ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cashed_out"
 msgid "CASHED OUT"
-msgstr ""
+msgstr "БАНК ЗАБРАН"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cleared"
 msgid "CLEARED {count} FLOOR"
 msgid_plural "CLEARED {count} FLOORS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ПРОЙДЕН {count} ЭТАЖ"
+msgstr[1] "ПРОЙДЕНО {count} ЭТАЖА"
+msgstr[2] "ПРОЙДЕНО {count} ЭТАЖЕЙ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.dried_up"
 msgid "DRIED UP ON FLOOR {floor}"
-msgstr ""
+msgstr "ВЫСОХ НА ЭТАЖЕ {floor}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.best_new"
 msgid "BEST FLOOR {floor}   NEW BEST!"
-msgstr ""
+msgstr "ЛУЧШИЙ ЭТАЖ {floor}   НОВЫЙ РЕКОРД!"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.best"
 msgid "BEST FLOOR {floor}"
-msgstr ""
+msgstr "ЛУЧШИЙ ЭТАЖ {floor}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.time"
 msgid "TIME {time}"
-msgstr ""
+msgstr "ВРЕМЯ {time}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.time_paid"
 msgid "TIME {time}   PAID RUN {slot}/{total}"
-msgstr ""
+msgstr "ВРЕМЯ {time}   ПЛАТНЫЙ ЗАБЕГ {slot}/{total}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets_practice"
 msgid "+{count} TICKET  PRACTICE ({paid} PAID RUNS A DAY)"
 msgid_plural "+{count} TICKETS  PRACTICE ({paid} PAID RUNS A DAY)"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "+{count} БИЛЕТ  ПРАКТИКА (ПЛАТНЫХ В ДЕНЬ: {paid})"
+msgstr[1] "+{count} БИЛЕТА  ПРАКТИКА (ПЛАТНЫХ В ДЕНЬ: {paid})"
+msgstr[2] "+{count} БИЛЕТОВ  ПРАКТИКА (ПЛАТНЫХ В ДЕНЬ: {paid})"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets"
 msgid "+{count} TICKET"
 msgid_plural "+{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "+{count} БИЛЕТ"
+msgstr[1] "+{count} БИЛЕТА"
+msgstr[2] "+{count} БИЛЕТОВ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets_half"
 msgid "+{count} TICKET  HALF THE POT ({pot})"
 msgid_plural "+{count} TICKETS  HALF THE POT ({pot})"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "+{count} БИЛЕТ  ПОЛБАНКА ({pot})"
+msgstr[1] "+{count} БИЛЕТА  ПОЛБАНКА ({pot})"
+msgstr[2] "+{count} БИЛЕТОВ  ПОЛБАНКА ({pot})"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.bonus"
 msgid "FLOOR {floor} BONUS +{count}"
-msgstr ""
+msgstr "БОНУС ЭТАЖА {floor}: +{count}"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.title"
 msgid "HAT WHEEL"
-msgstr ""
+msgstr "КОЛЕСО ШЛЯП"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tab.wheel"
 msgid "WHEEL"
-msgstr ""
+msgstr "КОЛЕСО"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tab.shop"
 msgid "SHOP"
-msgstr ""
+msgstr "ЛАВКА"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin"
 msgid "SPIN"
-msgstr ""
+msgstr "КРУТИ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.all_won"
 msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
-msgstr ""
+msgstr "ВСЕ ШЛЯПЫ ВЫИГРАНЫ! НОВИНКИ В ЛАВКЕ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.won"
 msgid "YOU WON THE {name}!"
-msgstr ""
+msgstr "ТВОЙ ПРИЗ: {name}!"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
-msgstr ""
+msgstr "КОЛЕСО ОТДЫХАЕТ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.need_to_spin"
 msgid "NEED {count} TICKET TO SPIN"
 msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "НУЖЕН {count} БИЛЕТ, ЧТОБЫ КРУТИТЬ"
+msgstr[1] "НУЖНО {count} БИЛЕТА, ЧТОБЫ КРУТИТЬ"
+msgstr[2] "НУЖНО {count} БИЛЕТОВ, ЧТОБЫ КРУТИТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.hats_left"
 msgid "{count} HAT TO WIN"
 msgid_plural "{count} HATS TO WIN"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ОСТАЛАСЬ {count} ШЛЯПА"
+msgstr[1] "ОСТАЛОСЬ {count} ШЛЯПЫ"
+msgstr[2] "ОСТАЛОСЬ {count} ШЛЯП"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.hats_left_key"
 msgid "{count} HAT TO WIN - {key} TO SPIN"
 msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ОСТАЛАСЬ {count} ШЛЯПА - {key}: КРУТИТЬ"
+msgstr[1] "ОСТАЛОСЬ {count} ШЛЯПЫ - {key}: КРУТИТЬ"
+msgstr[2] "ОСТАЛОСЬ {count} ШЛЯП - {key}: КРУТИТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_free"
 msgid "SPIN  FREE"
-msgstr ""
+msgstr "КРУТИ  ДАРОМ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
-msgstr ""
+msgstr "КРУТИ  {cost}"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.hats"
 msgid "HATS"
-msgstr ""
+msgstr "ШЛЯПЫ"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.trails"
 msgid "TRAILS"
-msgstr ""
+msgstr "СЛЕДЫ"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.papers"
 msgid "PAPERS"
-msgstr ""
+msgstr "БУМАГА"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.all_yours"
 msgid "EVERY HAT IS YOURS"
-msgstr ""
+msgstr "ВСЕ ШЛЯПЫ ТВОИ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.wear_wardrobe"
 msgid "WEAR THEM IN THE WARDROBE"
-msgstr ""
+msgstr "НАДЕВАЙ ИХ В ГАРДЕРОБЕ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.worn"
 msgid "WORN"
-msgstr ""
+msgstr "НАДЕТО"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.owned"
 msgid "OWNED"
-msgstr ""
+msgstr "ЕСТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.free"
 msgid "FREE"
-msgstr ""
+msgstr "БЕСПЛАТНО"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.from_tailor"
 msgid "{name} - FROM THE TAILOR"
-msgstr ""
+msgstr "{name} - ОТ ПОРТНОГО"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tailor_opens"
 msgid "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})"
 msgid_plural "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ПОРТНОЙ ОТКРОЕТСЯ ПОСЛЕ {count} ВРАЩЕНИЯ ({have}/{count})"
+msgstr[1] "ПОРТНОЙ ОТКРОЕТСЯ ПОСЛЕ {count} ВРАЩЕНИЙ ({have}/{count})"
+msgstr[2] "ПОРТНОЙ ОТКРОЕТСЯ ПОСЛЕ {count} ВРАЩЕНИЙ ({have}/{count})"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.need"
 msgid "NEED {count} TICKET"
 msgid_plural "NEED {count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "НУЖЕН {count} БИЛЕТ"
+msgstr[1] "НУЖНО {count} БИЛЕТА"
+msgstr[2] "НУЖНО {count} БИЛЕТОВ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.no_luck"
 msgid "NO LUCK NEEDED (COUNTS AS A SPIN)"
-msgstr ""
+msgstr "УДАЧА НЕ НУЖНА (ЗАСЧИТЫВАЕТСЯ КАК ВРАЩЕНИЕ)"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.item_info"
 msgid "{name} - {about}"
-msgstr ""
+msgstr "{name} - {about}"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.take_off"
 msgid "PRESS TO TAKE IT OFF"
-msgstr ""
+msgstr "НАЖМИ, ЧТОБЫ СНЯТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.wear"
 msgid "PRESS TO WEAR IT"
-msgstr ""
+msgstr "НАЖМИ, ЧТОБЫ НАДЕТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.buy"
 msgid "PRESS TO BUY"
-msgstr ""
+msgstr "НАЖМИ, ЧТОБЫ КУПИТЬ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.confirm"
 msgid "BUY {name}?"
-msgstr ""
+msgstr "КУПИТЬ {name}?"
 
 #. the line under the toggles, max 224px, 1 line (clipped past that)
 #. budget: max 224px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.about_default"
 msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
-msgstr ""
+msgstr "ДЛЯ УРОВНЕЙ, ПРОЙДЕННЫХ НА СЛОЖНОМ"
 
 #. max 42px (50 wide, 4 px margins), 1 line
 #. budget: max 42px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.done"
 msgid "DONE"
-msgstr ""
+msgstr "ГОТОВО"
 
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.points"
 msgid "+{points}"
-msgstr ""
+msgstr "+{points}"
 
 #. panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
 #. budget: max 120px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.title"
 msgid "HEAT {points}/{max}"
-msgstr ""
+msgstr "ЖАР {points}/{max}"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_up"
 msgid "MOVE UP"
-msgstr ""
+msgstr "ВВЕРХ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_down"
 msgid "MOVE DOWN"
-msgstr ""
+msgstr "ВНИЗ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_left"
 msgid "MOVE LEFT"
-msgstr ""
+msgstr "ВЛЕВО"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_right"
 msgid "MOVE RIGHT"
-msgstr ""
+msgstr "ВПРАВО"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.jump"
 msgid "JUMP (HOLD)"
-msgstr ""
+msgstr "ПРЫЖОК (ДЕРЖИ)"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.restart"
 msgid "RESTART LEVEL"
-msgstr ""
+msgstr "ЗАНОВО"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.interact"
 msgid "INTERACT (HUB)"
-msgstr ""
+msgstr "ДЕЙСТВИЕ (ХАБ)"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_rifle"
 msgid "SLIME RIFLE"
-msgstr ""
+msgstr "СЛИЗЕМЁТ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_splat"
 msgid "SLIME SPLAT"
-msgstr ""
+msgstr "СЛИЗЕБОМБА"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_kaze"
 msgid "SLIMAKAZE"
-msgstr ""
+msgstr "СЛАЙМАКАДЗЕ"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/key_controls.gd
 msgctxt "keys.title"
 msgid "CONTROLS"
-msgstr ""
+msgstr "УПРАВЛЕНИЕ"
 
 #. max 90px (98 wide, 4 px margins), 1 line
 #. budget: max 90px, lines 1
 #: scripts/ui/key_controls.gd
 msgctxt "keys.reset"
 msgid "RESET KEYS"
-msgstr ""
+msgstr "СБРОС КЛАВИШ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.pad"
 msgid "PAD: A LEAP - X USE - START PAUSE - B BACK"
-msgstr ""
+msgstr "ПАД: A ПРЫЖОК - X ДЕЙСТВИЕ - START ПАУЗА - B НАЗАД"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.web"
 msgid "ARROWS ALWAYS MOVE - P PAUSES"
-msgstr ""
+msgstr "СТРЕЛКИ ДВИГАЮТ ВСЕГДА - P ПАУЗА"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.desktop"
 msgid "ARROWS ALWAYS MOVE - ESC OR P PAUSES"
-msgstr ""
+msgstr "СТРЕЛКИ ДВИГАЮТ ВСЕГДА - ESC ИЛИ P ПАУЗА"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.web_f11"
 msgid "ARROWS ALWAYS MOVE - P PAUSES - F11 FULLSCREEN"
-msgstr ""
+msgstr "СТРЕЛКИ ДВИГАЮТ ВСЕГДА - P ПАУЗА - F11 ПОЛНЫЙ ЭКРАН"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.desktop_f11"
 msgid "ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN"
-msgstr ""
+msgstr "СТРЕЛКИ ДВИГАЮТ ВСЕГДА - ESC ИЛИ P ПАУЗА - F11 ЭКРАН"
 
 #. max 56px (key buttons are 64 wide), 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/key_controls.gd
 msgctxt "keys.press_key"
 msgid "PRESS KEY"
-msgstr ""
+msgstr "НАЖМИ"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.1"
 msgid "HEAT UP LEVELS BEATEN ON HARD"
-msgstr ""
+msgstr "ЖАР ДЛЯ УРОВНЕЙ, ПРОЙДЕННЫХ НА СЛОЖНОМ"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.2"
 msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-msgstr ""
+msgstr "ЖАР 2 4 7 10 ДАЁТ 3 5 7 10 БИЛЕТОВ РАЗОВО"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.1"
 msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
-msgstr ""
+msgstr "ПРОЙДИ УРОВЕНЬ, ЧТОБЫ ОТКРЫТЬ СЛЕДУЮЩИЙ"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.2"
 msgid "EACH CLEAR ALSO UNLOCKS A NEW SKIN"
-msgstr ""
+msgstr "КАЖДЫЙ УРОВЕНЬ ДАЁТ ЕЩЁ И НОВЫЙ СКИН"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/level_select.gd
 msgctxt "levels.title"
 msgid "LEVEL SELECT"
-msgstr ""
+msgstr "ВЫБОР УРОВНЯ"
 
 #. checkbox, max 268px, 1 line
 #. budget: max 268px, lines 1
 #: scripts/ui/level_select.gd
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
-msgstr ""
+msgstr "СЛОЖНО: ИНЫЕ КАРТЫ, БЕЗ ПРОКАЧКИ, ТУМАН ВЕРНЁТСЯ"
 
 #. {points} = the heat total (0-99); max 52px, 1 line
 #. budget: max 52px, lines 1
 #: scripts/ui/level_select.gd
 msgctxt "levels.heat"
 msgid "HEAT {points}"
-msgstr ""
+msgstr "ЖАР {points}"
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.hint"
 msgid "PLAY TO FILL THEM IN"
-msgstr ""
+msgstr "ИГРАЙ, ЧТОБЫ ЗАПОЛНИТЬ ИХ"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/map_select.gd
 msgctxt "maps.title"
 msgid "MAP TABLE"
-msgstr ""
+msgstr "СТОЛ С КАРТАМИ"
 
 #. checkbox, max 60px, 1 line
 #. budget: max 60px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.hard"
 msgid "HARD"
-msgstr ""
+msgstr "СЛОЖНО"
 
 #. max 36px (44 wide, 4 px margins), 1 line
 #. budget: max 36px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.paper"
 msgid "PAPER"
-msgstr ""
+msgstr "ФОН"
 
 #. {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.view_title_hard"
 msgid "{name}  HARD"
-msgstr ""
+msgstr "{name}  СЛОЖНО"
 
 #. {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.uncovered_paper"
 msgid "{percent}% UNCOVERED  {paper}"
-msgstr ""
+msgstr "ОТКРЫТО {percent}%  {paper}"
 
 #. {percent} = 0-100; the line under the map, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.uncovered"
 msgid "{percent}% UNCOVERED"
-msgstr ""
+msgstr "ОТКРЫТО {percent}%"
 
 #. max 110px, 16 px font
 #. budget: max 110px
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.title"
 msgid "PAUSED"
-msgstr ""
+msgstr "ПАУЗА"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "ЗАНОВО"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.resume"
 msgid "RESUME"
-msgstr ""
+msgstr "ПРОДОЛЖИТЬ"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_hub"
 msgid "QUIT TO HUB"
-msgstr ""
+msgstr "В ХАБ"
 
 #. max 92px, 1 line
 #. budget: max 92px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.new_seed"
 msgid "NEW SEED"
-msgstr ""
+msgstr "НОВЫЙ СИД"
 
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_cashes"
 msgid "QUITTING CASHES OUT THE POT"
-msgstr ""
+msgstr "ВЫХОД ЗАБЕРЁТ БАНК"
 
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_banks"
 msgid "QUITTING BANKS HALF THE POT"
-msgstr ""
+msgstr "ВЫХОД СОХРАНИТ ПОЛБАНКА"
 
 #. {code} = a seed code like 123-4 (up to 17 chars); max 92px, else the code alone is shown
 #. budget: max 92px
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.seed"
 msgid "SEED {code}"
-msgstr ""
+msgstr "СИД {code}"
 
 #. title max 150px; buttons max 96px, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.title"
 msgid "RESTART?"
-msgstr ""
+msgstr "ЗАНОВО?"
 
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "ЗАНОВО"
 
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "УЛУЧШЕНИЯ"
 
 #: scripts/ui/rotate_hint.gd
 msgctxt "rotate.title"
 msgid "ROTATE YOUR DEVICE"
-msgstr ""
+msgstr "ПОВЕРНИ УСТРОЙСТВО"
 
 #: scripts/ui/rotate_hint.gd
 msgctxt "rotate.body"
 msgid "SLIME TIME IS PLAYED SIDEWAYS"
-msgstr ""
+msgstr "В SLIME TIME ИГРАЮТ ГОРИЗОНТАЛЬНО"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_jelly"
 msgid "JELLY SKINS UNLOCK ON HARD MODE"
-msgstr ""
+msgstr "ЖЕЛЕЙНЫЕ СКИНЫ ОТКРЫВАЕТ СЛОЖНЫЙ РЕЖИМ"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_hats"
 msgid "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
-msgstr ""
+msgstr "ШЛЯПЫ ВЫИГРЫВАЮТ НА КОЛЕСЕ ПРИЗОВ В ХАБЕ"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_trails"
 msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
-msgstr ""
+msgstr "СЛЕДЫ ПРОДАЮТСЯ В ЛАВКЕ У КОЛЕСА ПРИЗОВ"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_skins"
 msgid "NEW LEVELS EQUIP YOUR NEWEST SKIN"
-msgstr ""
+msgstr "НА НОВЫЙ УРОВЕНЬ - САМЫЙ НОВЫЙ СКИН"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_hats"
 msgid "HATS"
-msgstr ""
+msgstr "ШЛЯПЫ"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_trails"
 msgid "TRAILS"
-msgstr ""
+msgstr "СЛЕДЫ"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_skins"
 msgid "SKINS"
-msgstr ""
+msgstr "СКИНЫ"
 
 #. {name} = the hat's name; status line, max 300px, 1 line. The two spaces are spacing.
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr ""
+msgstr "{name}  (НА ТЕБЕ)"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.name_how"
 msgid "{name} - {how}"
-msgstr ""
+msgstr "{name} - {how}"
 
 #. {name} = the trail's name, {price} = tickets; max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2188,9 +2188,9 @@ msgstr ""
 msgctxt "skins.name_price"
 msgid "{name} - {price} TIX IN THE SHOP"
 msgid_plural "{name} - {price} TIX IN THE SHOP"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "{name} - {price} БИЛЕТ В ЛАВКЕ"
+msgstr[1] "{name} - {price} БИЛЕТА В ЛАВКЕ"
+msgstr[2] "{name} - {price} БИЛЕТОВ В ЛАВКЕ"
 
 #. {count} = medals needed (30), {have}/{count} = progress; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2198,16 +2198,16 @@ msgstr[2] ""
 msgctxt "skins.locked_medals"
 msgid "LOCKED - EARN ALL {count} MEDALS ({have}/{count})"
 msgid_plural "LOCKED - EARN ALL {count} MEDALS ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ЗАКРЫТО - СОБЕРИ ВСЕ МЕДАЛИ ({have}/{count})"
+msgstr[1] "ЗАКРЫТО - СОБЕРИ ВСЕ МЕДАЛИ ({have}/{count})"
+msgstr[2] "ЗАКРЫТО - СОБЕРИ ВСЕ МЕДАЛИ ({have}/{count})"
 
 #. {level} = the level number to clear on hard mode; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_jelly"
 msgid "JELLY LOCKED - HARD CLEAR L{level}"
-msgstr ""
+msgstr "ЖЕЛЕ ЗАКРЫТО - ПРОЙДИ УР. {level} НА СЛОЖНОМ"
 
 #. {have}/{count} = coins found / in the game; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2215,9 +2215,9 @@ msgstr ""
 msgctxt "skins.locked_coins"
 msgid "LOCKED - FIND EVERY COIN ({have}/{count})"
 msgid_plural "LOCKED - FIND EVERY COIN ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ЗАКРЫТО - НАЙДИ ВСЕ МОНЕТЫ ({have}/{count})"
+msgstr[1] "ЗАКРЫТО - НАЙДИ ВСЕ МОНЕТЫ ({have}/{count})"
+msgstr[2] "ЗАКРЫТО - НАЙДИ ВСЕ МОНЕТЫ ({have}/{count})"
 
 #. {count} = number of levels (10); status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2225,134 +2225,136 @@ msgstr[2] ""
 msgctxt "skins.locked_levels"
 msgid "LOCKED - BEAT ALL {count} LEVELS"
 msgid_plural "LOCKED - BEAT ALL {count} LEVELS"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "ЗАКРЫТО - ПРОЙДИ ВСЕ УРОВНИ ({count})"
+msgstr[1] "ЗАКРЫТО - ПРОЙДИ ВСЕ УРОВНИ ({count})"
+msgstr[2] "ЗАКРЫТО - ПРОЙДИ ВСЕ УРОВНИ ({count})"
 
 #. {level} = a level number; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_level"
 msgid "LOCKED - CLEAR LEVEL {level}"
-msgstr ""
+msgstr "ЗАКРЫТО - ПРОЙДИ УРОВЕНЬ {level}"
 
 #. {name} = the skin's name; status line, max 300px, 1 line. The two spaces are spacing.
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
-msgstr ""
+msgstr "{name}  (ВЫБРАН)"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.jelly.on"
 msgid "JELLY: ON"
-msgstr ""
+msgstr "ЖЕЛЕ: ВКЛ"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.jelly.off"
 msgid "JELLY: OFF"
-msgstr ""
+msgstr "ЖЕЛЕ: ВЫКЛ"
 
 #. status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_hat"
 msgid "LOCKED - WIN IT ON THE HAT WHEEL"
-msgstr ""
+msgstr "ЗАКРЫТО - ВЫИГРАЙ НА КОЛЕСЕ ШЛЯП"
 
 #. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.play"
 msgid "PLAY"
-msgstr ""
+msgstr "ИГРАТЬ"
 
 #. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.enter_hub"
 msgid "ENTER THE HUB"
-msgstr ""
+msgstr "ВОЙТИ В ХАБ"
 
 #: scripts/ui/title.gd
 msgctxt "title.story"
 msgid "STORY"
-msgstr ""
+msgstr "СЮЖЕТ"
 
 #. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
 msgctxt "title.tagline.1"
 msgid "ESCAPE THE FOG"
-msgstr ""
+msgstr "СБЕГИ ИЗ ТУМАНА"
 
 #. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
 msgctxt "title.tagline.2"
 msgid "OR DRY TRYING"
-msgstr ""
+msgstr "ИЛИ ВЫСОХНИ В ПУТИ"
 
 #. touch jump button, inside a 38 px circle, max 34px
 #. budget: max 34px
 #: scripts/ui/touch_controls.gd
 msgctxt "touch.jump"
 msgid "JUMP"
-msgstr ""
+msgstr "ПРЫГ"
 
 #. max 40px (button 48 wide, 4 px margins), 1 line
 #. budget: max 40px, lines 1
 #: scripts/ui/ui_kit.gd
 msgctxt "common.buy"
 msgid "BUY"
-msgstr ""
+msgstr "КУПИТЬ"
 
 #. max 60px, 1 line (the slider shrinks to fit: Controls measures it)
 #. budget: max 60px, lines 1
 #: scripts/ui/ui_kit.gd
 msgctxt "settings.volume"
 msgid "VOLUME"
-msgstr ""
+msgstr "ГРОМКОСТЬ"
 
 #. title max 200px, 16 px font
 #. budget: max 200px
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.title"
 msgid "UPGRADES"
-msgstr ""
+msgstr "УЛУЧШЕНИЯ"
 
+# overflow: МОНЕТЫ is 35 px in a 32 px tab (40 wide); no natural 5-letter word, tab needs ~4 px more
 #. tab, max 32px (40 wide, 4 px margins), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_coins"
 msgid "COINS"
-msgstr ""
+msgstr "МОНЕТЫ"
 
+# overflow: БИЛЕТЫ is 35 px; fits the 52 px tab, 3 px over when it sits in the 40 px slot
 #. tab, max 44px (52 wide, 4 px margins), 1 line
 #. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tickets"
 msgid "TICKETS"
-msgstr ""
+msgstr "БИЛЕТЫ"
 
 #. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tools"
 msgid "TOOLS"
-msgstr ""
+msgstr "ВЕЩИ"
 
 #. replaces BACK, max 32px, 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.play"
 msgid "PLAY"
-msgstr ""
+msgstr "ПУСК"
 
 #. {name} = an upgrade name, {level} = the level being bought; max 140px, 1 line
 #. {name} = an ability name, {level} = the level being bought; max 140px, 1 line
@@ -2360,200 +2362,200 @@ msgstr ""
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.buy_confirm"
 msgid "BUY {name} {level}?"
-msgstr ""
+msgstr "КУПИТЬ {name} {level}?"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.max"
 msgid "MAX"
-msgstr ""
+msgstr "МАКС"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_coins.1"
 msgid "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"
-msgstr ""
+msgstr "МОНЕТЫ ПРЯЧУТСЯ В ТУПИКАХ СЮЖЕТНЫХ ЛАБИРИНТОВ"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_coins.2"
 msgid "TAKE COINS BACK OUT ANY TIME"
-msgstr ""
+msgstr "МОНЕТЫ МОЖНО ЗАБРАТЬ НАЗАД В ЛЮБОЙ МОМЕНТ"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets"
 msgid "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
-msgstr ""
+msgstr "БИЛЕТЫ - ИЗ РАНДОМАЙЗЕРА, НЕ В СЛОЖНОМ РЕЖИМЕ"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets_locked"
 msgid "EARN TICKETS IN THE RANDOMIZER FIRST"
-msgstr ""
+msgstr "СНАЧАЛА ЗАРАБОТАЙ БИЛЕТЫ В РАНДОМАЙЗЕРЕ"
 
 #. {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_pad"
 msgid "PAD {a} {b} {c} - RANDOM MAZES"
-msgstr ""
+msgstr "ПАД {a} {b} {c} - СЛУЧАЙНЫЕ ЛАБИРИНТЫ"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_touch"
 msgid "TAP THEIR BUTTONS - RANDOM MAZES"
-msgstr ""
+msgstr "ЖМИ ИХ КНОПКИ - СЛУЧАЙНЫЕ ЛАБИРИНТЫ"
 
 #. {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_keys"
 msgid "KEYS {a} {b} {c} - RANDOM MAZES"
-msgstr ""
+msgstr "КЛАВИШИ {a} {b} {c} - СЛУЧАЙНЫЕ ЛАБИРИНТЫ"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.title"
 msgid "YOU ESCAPED!"
-msgstr ""
+msgstr "ПОБЕГ УДАЛСЯ!"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.cleared"
 msgid "ALL {count} MAZES CLEARED"
-msgstr ""
+msgstr "ВСЕ ЛАБИРИНТЫ ПРОЙДЕНЫ: {count}"
 
 #. {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.unlocked"
 msgid "UNLOCKED: {skin} (ANY COLOR YOU LIKE)"
-msgstr ""
+msgstr "ОТКРЫТ {skin}: ЛЮБОЙ ЦВЕТ НА ВЫБОР"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.pick_color"
 msgid "PICK YOUR COLOR"
-msgstr ""
+msgstr "ВЫБЕРИ ЦВЕТ"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.randomizer"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "РАНДОМАЙЗЕР"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ХАБ"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.slime"
 msgid "MORE SLIME"
-msgstr ""
+msgstr "БОЛЬШЕ СЛИЗИ"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.speed"
 msgid "SPEED"
-msgstr ""
+msgstr "СКОРОСТЬ"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.brightness"
 msgid "BRIGHTNESS"
-msgstr ""
+msgstr "ЯРКОСТЬ"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.power"
 msgid "WALL POWER"
-msgstr ""
+msgstr "СТЕНОБОЙ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind"
 msgid "SECOND WIND"
-msgstr ""
+msgstr "ВТОРОЕ ДЫХАНИЕ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge"
 msgid "QUICK CHARGE"
-msgstr ""
+msgstr "БЫСТРЫЙ ЗАРЯД"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky"
 msgid "STICKY"
-msgstr ""
+msgstr "ЛИПКОСТЬ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet"
 msgid "MAGNET"
-msgstr ""
+msgstr "МАГНИТ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose"
 msgid "GOO NOSE"
-msgstr ""
+msgstr "СЛИЗИСТЫЙ НЮХ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.none"
 msgid "NONE"
-msgstr ""
+msgstr "НЕТ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.maxed"
 msgid "REFILL AT EMPTY {now}  MAXED"
-msgstr ""
+msgstr "ДОЛИВ ПРИ НУЛЕ {now}  МАКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.next"
 msgid "REFILL AT EMPTY {now} -> {next}"
-msgstr ""
+msgstr "ДОЛИВ ПРИ НУЛЕ {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge.maxed"
 msgid "FULL CHARGE {now}  MAXED"
-msgstr ""
+msgstr "ПОЛНЫЙ ЗАРЯД {now}  МАКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge.next"
 msgid "FULL CHARGE {now} -> {next}"
-msgstr ""
+msgstr "ПОЛНЫЙ ЗАРЯД {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky.maxed"
 msgid "SPLAT COST {now}  MAXED"
-msgstr ""
+msgstr "ЦЕНА ШЛЕПКА {now}  МАКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky.next"
 msgid "SPLAT COST {now} -> {next}"
-msgstr ""
+msgstr "ЦЕНА ШЛЕПКА {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.px"
 msgid "{n} PX"
-msgstr ""
+msgstr "{n} ПКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet.maxed"
 msgid "COIN REACH {now}  MAXED"
-msgstr ""
+msgstr "РАДИУС МОНЕТ {now}  МАКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet.next"
 msgid "COIN REACH {now} -> {next}"
-msgstr ""
+msgstr "РАДИУС МОНЕТ {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.value"
 msgid "X{rate} {reach} PX"
-msgstr ""
+msgstr "X{rate} {reach} ПКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.maxed"
 msgid "GLIMMERS {now}  MAXED"
-msgstr ""
+msgstr "ПРОБЛЕСКИ {now}  МАКС"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.next"
 msgid "GLIMMERS {now} -> {next}"
-msgstr ""
+msgstr "ПРОБЛЕСКИ {now} -> {next}"

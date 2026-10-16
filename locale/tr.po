@@ -12,364 +12,364 @@ msgstr ""
 #: scripts/abilities.gd
 msgctxt "ability.rifle.name"
 msgid "SLIME RIFLE"
-msgstr ""
+msgstr "BALÇIK TÜFEĞİ"
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.name"
 msgid "SLIME SPLAT"
-msgstr ""
+msgstr "BALÇIK BOMBASI"
 
 #. pun on kamikaze + slime; keep a pun if the language can
 #: scripts/abilities.gd
 msgctxt "ability.kaze.name"
 msgid "SLIMAKAZE"
-msgstr ""
+msgstr "SLIMAKAZE"
 
 #: scripts/abilities.gd
 msgctxt "ability.rifle.desc"
 msgid "SHOOTS GOO"
-msgstr ""
+msgstr "BALÇIK FIŞKIRTIR"
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.desc"
 msgid "BOMB 3X3"
-msgstr ""
+msgstr "BOMBA 3X3"
 
 #: scripts/abilities.gd
 msgctxt "ability.kaze.desc"
 msgid "WALL DASH"
-msgstr ""
+msgstr "DUVARA DALIŞ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
 msgid "REACH DESCENT FLOOR 10"
-msgstr ""
+msgstr "İNİŞTE 10. KATA ULAŞ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.unlock"
 msgid "HEAT 7 ON EVERY HARD LEVEL"
-msgstr ""
+msgstr "HER ZOR SEVİYEDE ISI 7"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.skin.name"
 msgid "SKIN GOO"
-msgstr ""
+msgstr "KILIK BALÇIĞI"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.parchment"
 msgid "PARCHMENT"
-msgstr ""
+msgstr "PARŞÖMEN"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ink.name"
 msgid "INK TRAIL"
-msgstr ""
+msgstr "MÜREKKEP İZİ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.glow.name"
 msgid "GLOW TRAIL"
-msgstr ""
+msgstr "IŞILTILI İZ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.gold.name"
 msgid "GOLD TRAIL"
-msgstr ""
+msgstr "ALTIN İZ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.candy.name"
 msgid "CANDY TRAIL"
-msgstr ""
+msgstr "ŞEKER İZİ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.starry.name"
 msgid "STARRY TRAIL"
-msgstr ""
+msgstr "YILDIZLI İZ"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.blueprint"
 msgid "BLUEPRINT PAPER"
-msgstr ""
+msgstr "OZALİT KAĞIDI"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.night"
 msgid "NIGHT PAPER"
-msgstr ""
+msgstr "GECE KAĞIDI"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.goldleaf"
 msgid "GOLD LEAF PAPER"
-msgstr ""
+msgstr "ALTIN VARAK"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.name"
 msgid "ABYSS TRAIL"
-msgstr ""
+msgstr "UÇURUM İZİ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.name"
 msgid "EMBER TRAIL"
-msgstr ""
+msgstr "KOR İZİ"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ink.desc"
 msgid "DEEP INKY GOO"
-msgstr ""
+msgstr "KOYU MÜREKKEPLİ BALÇIK"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.glow.desc"
 msgid "THICK GLOWING GOO"
-msgstr ""
+msgstr "KALIN, IŞILDAYAN BALÇIK"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.gold.desc"
 msgid "CHALICE GOLD, ANY SKIN"
-msgstr ""
+msgstr "KADEH ALTINI, HER KILIK"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.candy.desc"
 msgid "SWEET STRIPES"
-msgstr ""
+msgstr "TATLI ÇİZGİLER"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.starry.desc"
 msgid "SPECKLED WITH STARS"
-msgstr ""
+msgstr "YILDIZ BENEKLİ"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.blueprint.desc"
 msgid "BLUE PAPER, WHITE INK"
-msgstr ""
+msgstr "MAVİ KAĞIT, BEYAZ MÜREKKEP"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.night.desc"
 msgid "DARK PAPER, SKIN INK"
-msgstr ""
+msgstr "KOYU KAĞIT, KILIK MÜREKKEBİ"
 
 #: scripts/cosmetics.gd
 msgctxt "paper.goldleaf.desc"
 msgid "CREAM PAPER, GOLD INK"
-msgstr ""
+msgstr "KREM KAĞIT, ALTIN MÜREKKEP"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
-msgstr ""
+msgstr "KOYU BALÇIK, SÖNÜK YILDIZLAR"
 
 #: scripts/cosmetics.gd
 msgctxt "trail.ember.desc"
 msgid "GLOWING EMBERS, ANY SKIN"
-msgstr ""
+msgstr "PARLAYAN KORLAR, HER KILIK"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.name"
 msgid "BIG GULP"
-msgstr ""
+msgstr "BÜYÜK YUDUM"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.name"
 msgid "DEEP TANK"
-msgstr ""
+msgstr "DERİN TANK"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.name"
 msgid "FEATHER LEAP"
-msgstr ""
+msgstr "TÜY SIÇRAMA"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.name"
 msgid "RUBBER BODY"
-msgstr ""
+msgstr "LASTİK GÖVDE"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.name"
 msgid "SLICK"
-msgstr ""
+msgstr "KAYGAN"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.name"
 msgid "BLAZE"
-msgstr ""
+msgstr "ALEV"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.name"
 msgid "CHALICE SENSE"
-msgstr ""
+msgstr "KADEH SEZGİSİ"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.name"
 msgid "BACKUP BLADDER"
-msgstr ""
+msgstr "YEDEK KESE"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.name"
 msgid "THRIFT"
-msgstr ""
+msgstr "TUTUMLULUK"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.name"
 msgid "GREEDY GOO"
-msgstr ""
+msgstr "AÇGÖZLÜ BALÇIK"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.name"
 msgid "GLASS SLIME"
-msgstr ""
+msgstr "CAM BALÇIK"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_1"
 msgid "+30% SLIME"
-msgstr ""
+msgstr "+%30 BALÇIK"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_2"
 msgid "RIGHT NOW"
-msgstr ""
+msgstr "HEMEN ŞİMDİ"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_1"
 msgid "TANK +15%"
-msgstr ""
+msgstr "TANK +%15"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_2"
 msgid "ALL RUN"
-msgstr ""
+msgstr "TÜM TUR"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.desc_1"
 msgid "LEAPS COST"
-msgstr ""
+msgstr "SIÇRAMALAR"
 
 #: scripts/descent.gd
 msgctxt "boon.feather.desc_2"
 msgid "LESS SLIME"
-msgstr ""
+msgstr "AZ BALÇIK YER"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.desc_1"
 msgid "SPLATS COST"
-msgstr ""
+msgstr "ÇARPMALAR"
 
 #: scripts/descent.gd
 msgctxt "boon.rubber.desc_2"
 msgid "NO SLIME"
-msgstr ""
+msgstr "BALÇIK YEMEZ"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_1"
 msgid "GLIDE +15%"
-msgstr ""
+msgstr "KAYMA +%15"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_2"
 msgid "FASTER"
-msgstr ""
+msgstr "DAHA HIZLI"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.desc_1"
 msgid "WIDER LIGHT"
-msgstr ""
+msgstr "GENİŞ IŞIK"
 
 #: scripts/descent.gd
 msgctxt "boon.blaze.desc_2"
 msgid "+1 BRIGHTNESS"
-msgstr ""
+msgstr "+1 PARLAKLIK"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.desc_1"
 msgid "SEE THE EXIT"
-msgstr ""
+msgstr "ÇIKIŞI GÖR"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.desc_2"
 msgid "FROM 6 TILES"
-msgstr ""
+msgstr "6 KARE ÖTEDEN"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.desc_1"
 msgid "EMPTY? REFILL"
-msgstr ""
+msgstr "BOŞ MU? DOLUM"
 
 #: scripts/descent.gd
 msgctxt "boon.bladder.desc_2"
 msgid "TO 25% ONCE"
-msgstr ""
+msgstr "%25, BİR KEZ"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.desc_1"
 msgid "FLOOR REFILLS"
-msgstr ""
+msgstr "KAT DOLUMU"
 
 #: scripts/descent.gd
 msgctxt "boon.thrift.desc_2"
 msgid "+15%"
-msgstr ""
+msgstr "+%15"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_1"
 msgid "+1 TIX/FLOOR"
-msgstr ""
+msgstr "+1 BİLET/KAT"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_2"
 msgid "TANK -10%"
-msgstr ""
+msgstr "TANK -%10"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.desc_1"
 msgid "POT X1.5"
-msgstr ""
+msgstr "KASA X1.5"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.desc_2"
 msgid "SPLATS X2"
-msgstr ""
+msgstr "ÇARPMA X2"
 
 #. HUD area line, max 200px, 1 line; the two spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/game.gd
 msgctxt "hud.area.descent"
 msgid "DESCENT  FLOOR {floor}"
-msgstr ""
+msgstr "İNİŞ  KAT {floor}"
 
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
-msgstr ""
+msgstr "RASTGELE LABİRENT #{n}  ZOR"
 
 #: scripts/game.gd
 msgctxt "hud.area.random_code"
 msgid "RANDOM MAZE #{n}  CODE LV{code} (YOU {own})"
-msgstr ""
+msgstr "LABİRENT #{n}  KOD SV{code} (SEN {own})"
 
 #: scripts/game.gd
 msgctxt "hud.area.random"
 msgid "RANDOM MAZE #{n}"
-msgstr ""
+msgstr "RASTGELE LABİRENT #{n}"
 
 #: scripts/game.gd
 msgctxt "hud.area.level_hard"
 msgid "LEVEL {level}/{total}  HARD"
-msgstr ""
+msgstr "SEVİYE {level}/{total}  ZOR"
 
 #: scripts/game.gd
 msgctxt "hud.area.level"
 msgid "LEVEL {level}/{total}"
-msgstr ""
+msgstr "SEVİYE {level}/{total}"
 
 #. result-area notice, max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.skin_equipped"
 msgid "NEW SKIN EQUIPPED: {name}"
-msgstr ""
+msgstr "YENİ KILIK GİYİLDİ: {name}"
 
 #. line under the area name, max 296px
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "hud.area.floor"
 msgid "FLOOR {floor}"
-msgstr ""
+msgstr "KAT {floor}"
 
 #. flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
 #. budget: max 296px, lines 1
@@ -377,62 +377,62 @@ msgstr ""
 msgctxt "result.floor_bonus"
 msgid "FLOOR {floor} BONUS +{count} TICKETS"
 msgid_plural "FLOOR {floor} BONUS +{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KAT {floor} BONUSU +{count} BİLET"
+msgstr[1] "KAT {floor} BONUSU +{count} BİLET"
 
 #. max 296px, 1 line; {name} = a trail name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.new_trail"
 msgid "NEW TRAIL: {name}"
-msgstr ""
+msgstr "YENİ İZ: {name}"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.floor_cleared"
 msgid "FLOOR {floor} CLEARED"
-msgstr ""
+msgstr "KAT {floor} GEÇİLDİ"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.ticket_claimed"
 msgid "TICKET CLAIMED!"
-msgstr ""
+msgstr "BİLET ALINDI!"
 
 #. max 296px; {time} = M:SS.cc
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "result.time"
 msgid "TIME {time}"
-msgstr ""
+msgstr "SÜRE {time}"
 
 #. max 296px; {code} = a maze code
 #. budget: max 296px
 #: scripts/game.gd
 msgctxt "result.seed"
 msgid "SEED {code}"
-msgstr ""
+msgstr "TOHUM {code}"
 
 #. result title lines, max 296px each, 1 line each
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.chalice"
 msgid "CHALICE CONSUMED!"
-msgstr ""
+msgstr "KADEH YUTULDU!"
 
 #: scripts/game.gd
 msgctxt "result.level_cleared"
 msgid "LEVEL {level} CLEARED"
-msgstr ""
+msgstr "SEVİYE {level} GEÇİLDİ"
 
 #. max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.time_best"
 msgid "TIME {time}   BEST {best}"
-msgstr ""
+msgstr "SÜRE {time}   REKOR {best}"
 
 #. result title, max 296px, 1 line; {count} = number of story levels
 #. budget: max 296px, lines 1
@@ -440,14 +440,14 @@ msgstr ""
 msgctxt "result.escaped_all"
 msgid "YOU ESCAPED ALL {count} MAZE!"
 msgid_plural "YOU ESCAPED ALL {count} MAZES!"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{count} LABİRENTİN HEPSİNDEN KAÇTIN!"
+msgstr[1] "{count} LABİRENTİN HEPSİNDEN KAÇTIN!"
 
 #. list separator between skin names, e.g. "A, B"
 #: scripts/game.gd
 msgctxt "common.list_sep"
 msgid ", "
-msgstr ""
+msgstr ", "
 
 #. max 296px, 1 line; {names} = one or more skin names; {count} = how many
 #. budget: max 296px, lines 1
@@ -455,55 +455,55 @@ msgstr ""
 msgctxt "result.new_jelly_skin"
 msgid "NEW JELLY SKIN: {names}"
 msgid_plural "NEW JELLY SKIN: {names}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "YENİ JÖLE KILIK: {names}"
+msgstr[1] "YENİ JÖLE KILIKLAR: {names}"
 
 #. max 296px, 1 line; {name} = the color-picker skin's name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.unlocked_custom"
 msgid "UNLOCKED: {name} (ANY COLOR YOU LIKE)!"
-msgstr ""
+msgstr "AÇILDI: {name} (İSTEDİĞİN HER RENK)!"
 
 #. max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.new_skin"
 msgid "NEW SKIN: {name}"
-msgstr ""
+msgstr "YENİ KILIK: {name}"
 
 #. max 296px, 1 line; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.all_medals_skin"
 msgid "ALL MEDALS! NEW SKIN: {name}"
-msgstr ""
+msgstr "TÜM MADALYALAR! YENİ KILIK: {name}"
 
 #. flash message, max 296px, 1 line each; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.every_coin"
 msgid "EVERY COIN FOUND!"
-msgstr ""
+msgstr "TÜM SİKKELER BULUNDU!"
 
 #. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up_floor"
 msgid "DRIED UP ON FLOOR {floor}"
-msgstr ""
+msgstr "KURUDUN: KAT {floor}"
 
 #. result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up"
 msgid "DRIED UP"
-msgstr ""
+msgstr "KURUDUN"
 
 #: scripts/game.gd
 msgctxt "result.out_of_time"
 msgid "OUT OF TIME!"
-msgstr ""
+msgstr "SÜRE DOLDU!"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 76px each, 1 line
@@ -511,7 +511,7 @@ msgstr ""
 #: scripts/game.gd
 msgctxt "result.choice.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "YENİDEN"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 76px each, 1 line
@@ -519,242 +519,242 @@ msgstr ""
 #: scripts/game.gd
 msgctxt "result.choice.new_maze"
 msgid "NEW MAZE"
-msgstr ""
+msgstr "YENİ LABİRENT"
 
 #: scripts/game.gd
 msgctxt "result.choice.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "GELİŞTİR"
 
 #. result choice buttons, max 76px each, 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.assist"
 msgid "ASSIST"
-msgstr ""
+msgstr "YARDIM"
 
 #. result choice buttons, max 76px each, 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.replay_maze"
 msgid "REPLAY MAZE"
-msgstr ""
+msgstr "TEKRAR OYNA"
 
 #: scripts/game.gd
 msgctxt "result.choice.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ÜS"
 
 #: scripts/game.gd
 msgctxt "result.choice.replay"
 msgid "REPLAY"
-msgstr ""
+msgstr "TEKRAR"
 
 #: scripts/game.gd
 msgctxt "result.choice.continue"
 msgid "CONTINUE"
-msgstr ""
+msgstr "DEVAM"
 
 #: scripts/game.gd
 msgctxt "result.choice.next_level"
 msgid "NEXT LEVEL"
-msgstr ""
+msgstr "SONRAKİ"
 
 #: scripts/hats.gd
 msgctxt "hat.none"
 msgid "NO HAT"
-msgstr ""
+msgstr "ŞAPKASIZ"
 
 #: scripts/hats.gd
 msgctxt "hat.tophat"
 msgid "TOP HAT"
-msgstr ""
+msgstr "SİLİNDİR ŞAPKA"
 
 #: scripts/hats.gd
 msgctxt "hat.beanie"
 msgid "BEANIE"
-msgstr ""
+msgstr "BERE"
 
 #: scripts/hats.gd
 msgctxt "hat.party"
 msgid "PARTY HAT"
-msgstr ""
+msgstr "PARTİ ŞAPKASI"
 
 #: scripts/hats.gd
 msgctxt "hat.cap"
 msgid "BASEBALL CAP"
-msgstr ""
+msgstr "BEYZBOL ŞAPKASI"
 
 #: scripts/hats.gd
 msgctxt "hat.cowboy"
 msgid "COWBOY HAT"
-msgstr ""
+msgstr "KOVBOY ŞAPKASI"
 
 #: scripts/hats.gd
 msgctxt "hat.chef"
 msgid "CHEF HAT"
-msgstr ""
+msgstr "AŞÇI ŞAPKASI"
 
 #: scripts/hats.gd
 msgctxt "hat.wizard"
 msgid "WIZARD HAT"
-msgstr ""
+msgstr "BÜYÜCÜ ŞAPKASI"
 
 #: scripts/hats.gd
 msgctxt "hat.viking"
 msgid "VIKING HELMET"
-msgstr ""
+msgstr "VİKİNG MİĞFERİ"
 
 #: scripts/hats.gd
 msgctxt "hat.propeller"
 msgid "PROPELLER CAP"
-msgstr ""
+msgstr "PERVANELİ ŞAPKA"
 
 #: scripts/hats.gd
 msgctxt "hat.crown"
 msgid "CROWN"
-msgstr ""
+msgstr "TAÇ"
 
 #: scripts/hats.gd
 msgctxt "hat.rainbow"
 msgid "RAINBOW HAT"
-msgstr ""
+msgstr "GÖKKUŞAĞI ŞAPKASI"
 
 #: scripts/heat.gd
 msgctxt "heatmod.dim.name"
 msgid "DIM"
-msgstr ""
+msgstr "LOŞ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.brittle.name"
 msgid "BRITTLE"
-msgstr ""
+msgstr "KIRILGAN"
 
 #: scripts/heat.gd
 msgctxt "heatmod.fog.name"
 msgid "FOG BITES"
-msgstr ""
+msgstr "ISIRAN SİS"
 
 #: scripts/heat.gd
 msgctxt "heatmod.grounded.name"
 msgid "GROUNDED"
-msgstr ""
+msgstr "YERE BAĞLI"
 
 #: scripts/heat.gd
 msgctxt "heatmod.thirsty.name"
 msgid "THIRSTY"
-msgstr ""
+msgstr "SUSUZ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.race.name"
 msgid "RACE"
-msgstr ""
+msgstr "YARIŞ"
 
 #: scripts/heat.gd
 msgctxt "heatmod.dim.desc"
 msgid "LESS LIGHT, PATHS FADE FASTER"
-msgstr ""
+msgstr "DAHA AZ IŞIK, İZLER DAHA HIZLI SOLAR"
 
 #: scripts/heat.gd
 msgctxt "heatmod.brittle.desc"
 msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
-msgstr ""
+msgstr "ÇARPMALAR İKİ KAT, BEDAVA KAYMA YOK"
 
 #: scripts/heat.gd
 msgctxt "heatmod.fog.desc"
 msgid "FOG RETURNS TWICE AS FAST"
-msgstr ""
+msgstr "SİS İKİ KAT HIZLI GERİ GELİR"
 
 #: scripts/heat.gd
 msgctxt "heatmod.grounded.desc"
 msgid "NO LEAPS"
-msgstr ""
+msgstr "SIÇRAMA YOK"
 
 #: scripts/heat.gd
 msgctxt "heatmod.thirsty.desc"
 msgid "SLIME DRAINS 8% FASTER"
-msgstr ""
+msgstr "BALÇIK %8 DAHA HIZLI BİTER"
 
 #: scripts/heat.gd
 msgctxt "heatmod.race.desc"
 msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr ""
+msgstr "1.3 X HEDEF SÜREDE BİTİR YA DA KURU"
 
 #. station names are prompt-box labels, max 110px, 1 line
 #. budget: max 110px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.station.story"
 msgid "STORY - LEVEL {level}"
-msgstr ""
+msgstr "HİKAYE - SEVİYE {level}"
 
 #: scripts/hub.gd
 msgctxt "hub.station.map_table"
 msgid "MAP TABLE"
-msgstr ""
+msgstr "HARİTA MASASI"
 
 #: scripts/hub.gd
 msgctxt "hub.station.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "GELİŞTİRMELER"
 
 #: scripts/hub.gd
 msgctxt "hub.station.quit"
 msgid "QUIT"
-msgstr ""
+msgstr "ÇIKIŞ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.coins"
 msgid "COIN BAG"
-msgstr ""
+msgstr "SİKKE KESESİ"
 
 #: scripts/hub.gd
 msgctxt "hub.station.random"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "RASTGELE"
 
 #: scripts/hub.gd
 msgctxt "hub.station.settings"
 msgid "SETTINGS"
-msgstr ""
+msgstr "AYARLAR"
 
 #: scripts/hub.gd
 msgctxt "hub.station.wheel"
 msgid "HAT WHEEL"
-msgstr ""
+msgstr "ŞAPKA ÇARKI"
 
 #: scripts/hub.gd
 msgctxt "hub.station.wardrobe"
 msgid "SKINS & HATS"
-msgstr ""
+msgstr "KILIK & ŞAPKA"
 
 #. max 150px each, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.reworked"
 msgid "UPGRADES REWORKED"
-msgstr ""
+msgstr "GELİŞTİRMELER YENİLENDİ"
 
 #. max 150px each, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.notice.returned"
 msgid "COINS RETURNED +{count}"
-msgstr ""
+msgstr "SİKKELER İADE +{count}"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.title"
 msgid "LEAVE THE HUB?"
-msgstr ""
+msgstr "ÜSTEN ÇIKILSIN MI?"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.subtitle"
 msgid "THE GAME CLOSES"
-msgstr ""
+msgstr "OYUN KAPANIR"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.button"
 msgid "QUIT"
-msgstr ""
+msgstr "ÇIK"
 
 #. max 32px, 1 line
 #. max 40px, 1 line
@@ -763,166 +763,166 @@ msgstr ""
 #: scripts/hub.gd scripts/ui/hat_wheel.gd scripts/ui/map_select.gd scripts/ui/ui_kit.gd
 msgctxt "common.back"
 msgid "BACK"
-msgstr ""
+msgstr "GERİ"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.title"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "RASTGELE"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.random_maze"
 msgid "RANDOM MAZE"
-msgstr ""
+msgstr "RASTGELE LABİRENT"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.descent"
 msgid "DESCENT"
-msgstr ""
+msgstr "İNİŞ"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info_best"
 msgid "BEST FLOOR {best}   PAID RUNS {left}/{total}"
-msgstr ""
+msgstr "EN İYİ KAT {best}   ÜCRETLİ TUR {left}/{total}"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info"
 msgid "PAID RUNS {left}/{total}"
-msgstr ""
+msgstr "ÜCRETLİ TUR {left}/{total}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.resume"
 msgid "RESUME"
-msgstr ""
+msgstr "DEVAM ET"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.quit_run"
 msgid "QUIT RUN"
-msgstr ""
+msgstr "BIRAK"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.spent"
 msgid "FLOOR ALREADY RESUMED"
-msgstr ""
+msgstr "BU KATA ZATEN DEVAM EDİLDİ"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.saved"
 msgid "DESCENT RUN SAVED"
-msgstr ""
+msgstr "İNİŞ TURU KAYDEDİLDİ"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.floor_cleared"
 msgid "FLOOR {floor} CLEARED - POT {pot}"
-msgstr ""
+msgstr "KAT {floor} GEÇİLDİ - KASA {pot}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.cashes_out"
 msgid "QUIT RUN CASHES OUT"
-msgstr ""
+msgstr "BIRAKIRSAN KASA SENİN"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.floor"
 msgid "FLOOR {floor} - POT {pot}"
-msgstr ""
+msgstr "KAT {floor} - KASA {pot}"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.banks_half"
 msgid "QUIT RUN BANKS HALF"
-msgstr ""
+msgstr "BIRAKIRSAN KASANIN YARISI"
 
 #. max 200px, 1 line; the spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.coins.total"
 msgid "STORY {have}/{total}   IN HAND {hand}"
-msgstr ""
+msgstr "HİKAYE {have}/{total}   ELDE {hand}"
 
 #: scripts/hub.gd
 msgctxt "hub.coins.close_touch"
 msgid "TAP JUMP TO CLOSE"
-msgstr ""
+msgstr "KAPATMAK İÇİN ZIPLA'YA DOKUN"
 
 #: scripts/hub.gd
 msgctxt "hub.coins.close_key"
 msgid "{key} TO CLOSE"
-msgstr ""
+msgstr "KAPATMAK İÇİN {key}"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.tap_jump"
 msgid "TAP JUMP"
-msgstr ""
+msgstr "ZIPLA'YA DOKUN"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.rotate"
 msgid "ROTATE"
-msgstr ""
+msgstr "DÖNDÜR"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
-msgstr ""
+msgstr "KİLİTLİ"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.best_floor"
 msgid "BEST FLOOR {floor}"
-msgstr ""
+msgstr "EN İYİ KAT {floor}"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.shop"
 msgid "SHOP"
-msgstr ""
+msgstr "DÜKKAN"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.free"
 msgid "FREE"
-msgstr ""
+msgstr "BEDAVA"
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
-msgstr ""
+msgstr "{count} SEVİYENİN HEPSİNİ GEÇ"
 
 #. HUD pod, max 60px, 1 line; {percent} = extra slime, e.g. 25
 #. budget: max 60px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.assist"
 msgid "ASSIST +{percent}%"
-msgstr ""
+msgstr "EK +%{percent}"
 
 #. HUD pod, short for the SECOND WIND upgrade, max 40px, 1 line
 #. budget: max 40px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.wind"
 msgid "WIND"
-msgstr ""
+msgstr "NEFES"
 
 #. slime meter, max 24px
 #. budget: max 24px
 #: scripts/hud.gd
 msgctxt "hud.slime_percent"
 msgid "{percent}%"
-msgstr ""
+msgstr "%{percent}"
 
 #. HUD coin pod, max 60px, 1 line; {count} = coins still hidden in the level
 #. budget: max 60px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.all_found"
 msgid "ALL FOUND"
-msgstr ""
+msgstr "HEPSİ VAR"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.coins_left"
 msgid "{count} LEFT"
 msgid_plural "{count} LEFT"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{count} KALDI"
+msgstr[1] "{count} KALDI"
 
 #. HUD attempt pod, line 1, max 80px; {n} = which try at this maze
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
 msgctxt "hud.pod.attempt"
 msgid "ATTEMPT {n}"
-msgstr ""
+msgstr "DENEME {n}"
 
 #. HUD pot pod, line 1, max 80px; {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
@@ -930,51 +930,51 @@ msgstr ""
 msgctxt "hud.pod.pot_gain"
 msgid "POT {count} +{gain}"
 msgid_plural "POT {count} +{gain}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KASA {count} +{gain}"
+msgstr[1] "KASA {count} +{gain}"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.pot"
 msgid "POT {count}"
 msgid_plural "POT {count}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KASA {count}"
+msgstr[1] "KASA {count}"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.practice"
 msgid "PRACTICE"
-msgstr ""
+msgstr "ANTRENMAN"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.no_tickets"
 msgid "NO TICKETS"
-msgstr ""
+msgstr "BİLET YOK"
 
 #: scripts/hud.gd
 msgctxt "hud.pod.pays_1"
 msgid "PAYS 1"
-msgstr ""
+msgstr "1 VERİR"
 
 #. HUD pot pod, line 2, max 80px; {slot} of {total} paid runs today
 #. budget: max 80px, lines 2
 #: scripts/hud.gd
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
-msgstr ""
+msgstr "TUR {slot}/{total}"
 
 #. HUD pod, max 50px; {heat} = heat level
 #. budget: max 50px
 #: scripts/hud.gd
 msgctxt "hud.pod.heat"
 msgid "HEAT {heat}"
-msgstr ""
+msgstr "ISI {heat}"
 
 #. result heat row (one line with icons), max 120px each; {heat} = heat level
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat"
 msgid "HEAT {heat}"
-msgstr ""
+msgstr "ISI {heat}"
 
 #. max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
 #. budget: max 120px
@@ -982,57 +982,57 @@ msgstr ""
 msgctxt "result.heat_bounty"
 msgid "BOUNTY +{count}"
 msgid_plural "BOUNTY +{count}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "ÖDÜL +{count}"
+msgstr[1] "ÖDÜL +{count}"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat_new_best"
 msgid "NEW BEST HEAT!"
-msgstr ""
+msgstr "YENİ ISI REKORU!"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.heat_best"
 msgid "BEST HEAT {heat}"
-msgstr ""
+msgstr "EN İYİ ISI {heat}"
 
 #. result reward line, max 296px, 1 line; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 1
 #: scripts/hud.gd
 msgctxt "result.assist_offer"
 msgid "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS"
-msgstr ""
+msgstr "YARDIM: +%{percent} BALÇIK, MADALYA/BİLET YOK"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "result.assisted"
 msgid "ASSIST: NO MEDALS, RECORDS OR TICKETS"
-msgstr ""
+msgstr "YARDIM: MADALYA, REKOR VE BİLET YOK"
 
 #. medal row, max 90px
 #. budget: max 90px
 #: scripts/hud.gd
 msgctxt "result.new_best"
 msgid "NEW BEST!"
-msgstr ""
+msgstr "YENİ REKOR!"
 
 #. result reward line, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/hud.gd
 msgctxt "result.seed_paid"
 msgid "SEED ALREADY PAID TODAY - TRY NEW MAZE"
-msgstr ""
+msgstr "TOHUM BUGÜN ZATEN ÖDENDİ - YENİ LABİRENT DENE"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "result.ticket_limit"
 msgid "DAILY TICKET LIMIT REACHED"
-msgstr ""
+msgstr "GÜNLÜK BİLET SINIRI DOLDU"
 
 #. after a ticket icon, max 160px; {n} = which try, {count} = tickets paid
 #. budget: max 160px
@@ -1040,8 +1040,8 @@ msgstr ""
 msgctxt "result.ticket_attempt"
 msgid "TICKET! ATTEMPT {n} = +{count}"
 msgid_plural "TICKET! ATTEMPT {n} = +{count}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "BİLET! DENEME {n} = +{count}"
+msgstr[1] "BİLET! DENEME {n} = +{count}"
 
 #. after a ticket icon, max 160px; {count} = tickets paid
 #. budget: max 160px
@@ -1049,45 +1049,45 @@ msgstr[1] ""
 msgctxt "result.tickets"
 msgid "+{count} TICKETS"
 msgid_plural "+{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "+{count} BİLET"
+msgstr[1] "+{count} BİLET"
 
 #. max 120px
 #. budget: max 120px
 #: scripts/hud.gd
 msgctxt "result.replayed_seed"
 msgid "REPLAYED SEED"
-msgstr ""
+msgstr "TEKRAR OYNANAN TOHUM"
 
 #: scripts/hud.gd
 msgctxt "result.medal.bronze"
 msgid "BRONZE"
-msgstr ""
+msgstr "BRONZ"
 
 #: scripts/hud.gd
 msgctxt "result.medal.silver"
 msgid "SILVER"
-msgstr ""
+msgstr "GÜMÜŞ"
 
 #: scripts/hud.gd
 msgctxt "result.medal.gold"
 msgid "GOLD"
-msgstr ""
+msgstr "ALTIN"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.bronze"
 msgid "BEST BRONZE"
-msgstr ""
+msgstr "EN İYİ: BRONZ"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.silver"
 msgid "BEST SILVER"
-msgstr ""
+msgstr "EN İYİ: GÜMÜŞ"
 
 #: scripts/hud.gd
 msgctxt "result.best_medal.gold"
 msgid "BEST GOLD"
-msgstr ""
+msgstr "EN İYİ: ALTIN"
 
 #. HUD attempt pod, line 2, max 80px; TIX = tickets; {count} = tickets a win pays now
 #. budget: max 80px, lines 2
@@ -1095,1073 +1095,1073 @@ msgstr ""
 msgctxt "hud.pod.tix_available"
 msgid "TIX AVAILABLE {count}"
 msgid_plural "TIX AVAILABLE {count}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KAZANÇ {count}"
+msgstr[1] "KAZANÇ {count}"
 
 #. big 16 px font, max 200px
 #. budget: max 200px
 #: scripts/hud.gd
 msgctxt "result.new_record"
 msgid "NEW RECORD!"
-msgstr ""
+msgstr "YENİ REKOR!"
 
 #. {name} = level / area name, max 296px
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "hud.area.name"
 msgid "- {name} -"
-msgstr ""
+msgstr "- {name} -"
 
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
-msgstr ""
+msgstr "CHAMELEON"
 
 #: scripts/skins.gd
 msgctxt "skin.rainbow"
 msgid "RAINBOW"
-msgstr ""
+msgstr "GÖKKUŞAĞI"
 
 #: scripts/skins.gd
 msgctxt "skin.stopwatch"
 msgid "STOPWATCH"
-msgstr ""
+msgstr "KRONOMETRE"
 
 #: scripts/skins.gd
 msgctxt "skin.lime"
 msgid "LIME"
-msgstr ""
+msgstr "MİSKET"
 
 #: scripts/skins.gd
 msgctxt "skin.mint"
 msgid "MINT"
-msgstr ""
+msgstr "NANE"
 
 #: scripts/skins.gd
 msgctxt "skin.lemon"
 msgid "LEMON"
-msgstr ""
+msgstr "LİMON"
 
 #: scripts/skins.gd
 msgctxt "skin.ocean"
 msgid "OCEAN"
-msgstr ""
+msgstr "OKYANUS"
 
 #: scripts/skins.gd
 msgctxt "skin.grape"
 msgid "GRAPE"
-msgstr ""
+msgstr "ÜZÜM"
 
 #: scripts/skins.gd
 msgctxt "skin.crimson"
 msgid "CRIMSON"
-msgstr ""
+msgstr "KIZIL"
 
 #: scripts/skins.gd
 msgctxt "skin.frost"
 msgid "FROST"
-msgstr ""
+msgstr "AYAZ"
 
 #: scripts/skins.gd
 msgctxt "skin.shadow"
 msgid "INKKY"
-msgstr ""
+msgstr "INKKY"
 
 #: scripts/skins.gd
 msgctxt "skin.bubblegum"
 msgid "BUBBLEGUM"
-msgstr ""
+msgstr "SAKIZ"
 
 #: scripts/skins.gd
 msgctxt "skin.ember"
 msgid "EMBER"
-msgstr ""
+msgstr "KOR"
 
 #: scripts/story.gd
 msgctxt "story.level_1"
 msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
-msgstr ""
+msgstr "ŞAP. BURASI NEMLİ. YUKARISI ŞU TARAF."
 
 #: scripts/story.gd
 msgctxt "story.level_2"
 msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
-msgstr ""
+msgstr "MADENCİLER ACELEYLE GİTMİŞ. SEN DE GİDERDİN."
 
 #: scripts/story.gd
 msgctxt "story.level_3"
 msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
-msgstr ""
+msgstr "BİRİ KUMU SÜPÜRMÜŞ. EPEY ÖNCE."
 
 #: scripts/story.gd
 msgctxt "story.level_4"
 msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
-msgstr ""
+msgstr "TEKNİK OLARAK YÜZME SAYILMAZ. YİNE DE ISLAK."
 
 #: scripts/story.gd
 msgctxt "story.level_5"
 msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
-msgstr ""
+msgstr "BALÇIKTA BİR BALÇIK. KİMSE FARK ETMEZ."
 
 #: scripts/story.gd
 msgctxt "story.level_6"
 msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
-msgstr ""
+msgstr "SAKİNLER SESSİZ. ŞÜPHE ÇEKECEK KADAR."
 
 #: scripts/story.gd
 msgctxt "story.level_7"
 msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
-msgstr ""
+msgstr "HAVA SOĞUDU. BALÇIK TİTREMEZ. PELTE GİBİ SALLANIR."
 
 #: scripts/story.gd
 msgctxt "story.level_8"
 msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
-msgstr ""
+msgstr "UNUTULANLAR İÇİN BİR HÜCRE. SEN UNUTULMAZSIN."
 
 #: scripts/story.gd
 msgctxt "story.level_9"
 msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
-msgstr ""
+msgstr "NE PARLAK. GÜN IŞIĞI YAKIN OLMALI."
 
 #: scripts/story.gd
 msgctxt "story.level_10"
 msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
-msgstr ""
+msgstr "SICAK. ÇIKIŞ KRATERDEN. KOŞ."
 
 #: scripts/themes.gd
 msgctxt "theme.mossy"
 msgid "MOSSY MINES"
-msgstr ""
+msgstr "YOSUNLU MADENLER"
 
 #: scripts/themes.gd
 msgctxt "theme.sandstone"
 msgid "SANDSTONE SANCTUM"
-msgstr ""
+msgstr "KUMTAŞI MABEDİ"
 
 #: scripts/themes.gd
 msgctxt "theme.sunken"
 msgid "SUNKEN SHRINE"
-msgstr ""
+msgstr "BATIK TAPINAK"
 
 #: scripts/themes.gd
 msgctxt "theme.sewers"
 msgid "TOXIC TUNNELS"
-msgstr ""
+msgstr "TOKSİK TÜNELLER"
 
 #: scripts/themes.gd
 msgctxt "theme.catacombs"
 msgid "CREEPY CATACOMBS"
-msgstr ""
+msgstr "KORKUNÇ KATAKOMPLAR"
 
 #: scripts/themes.gd
 msgctxt "theme.frozen"
 msgid "FROZEN FORTRESS"
-msgstr ""
+msgstr "BUZ KALESİ"
 
 #: scripts/themes.gd
 msgctxt "theme.obsidian"
 msgid "OBSIDIAN OUBLIETTE"
-msgstr ""
+msgstr "OBSİDYEN HÜCRE"
 
 #: scripts/themes.gd
 msgctxt "theme.crystal"
 msgid "CRYSTAL CAVERNS"
-msgstr ""
+msgstr "KRİSTAL MAĞARALAR"
 
 #: scripts/themes.gd
 msgctxt "theme.volcanic"
 msgid "VOLCANIC VAULT"
-msgstr ""
+msgstr "VOLKANİK MAHZEN"
 
 #. level name, HUD area line and map table; keep the alliteration if the language can
 #: scripts/themes.gd
 msgctxt "theme.dungeon"
 msgid "DARK DUNGEON"
-msgstr ""
+msgstr "KARANLIK ZİNDAN"
 
 #. tutorial keycap on touch screens, max 27px (a 29 px drawn key), 1 line
 #. budget: max 27px, lines 1
 #: scripts/tutorial_cues.gd
 msgctxt "tutorial.jump"
 msgid "JUMP"
-msgstr ""
+msgstr "ZIPLA"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.old_version"
 msgid "THAT CODE IS FROM AN OLD VERSION"
-msgstr ""
+msgstr "BU KOD ESKİ BİR SÜRÜMDEN"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copied"
 msgid "COPIED! KEEP IT SOMEWHERE SAFE"
-msgstr ""
+msgstr "KOPYALANDI! GÜVENLİ BİR YERDE SAKLA"
 
 #. status line in the SAVE CODE panel (web, browser refused to copy), max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_by_hand"
 msgid "COPY THE CODE FROM THE POP-UP"
-msgstr ""
+msgstr "KODU AÇILAN PENCEREDEN KOPYALA"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/controls.gd
 msgctxt "settings.title"
 msgid "SETTINGS"
-msgstr ""
+msgstr "AYARLAR"
 
 #. column headings, max 120px, 1 line
 #. budget: max 120px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.options"
 msgid "OPTIONS"
-msgstr ""
+msgstr "SEÇENEKLER"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.more"
 msgid "MORE"
-msgstr ""
+msgstr "DİĞER"
 
 #. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
 #. budget: max 112px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.controls"
 msgid "CONTROLS"
-msgstr ""
+msgstr "KONTROLLER"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.save_code"
 msgid "SAVE CODE"
-msgstr ""
+msgstr "KAYIT KODU"
 
 #. max 84px (RESET_SIZE 92 wide), 1 line
 #. budget: max 84px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.reset"
 msgid "RESET PROGRESS"
-msgstr ""
+msgstr "HER ŞEYİ SİL"
 
 #. panel title, max 270px, 16 px font
 #. budget: max 270px
 #: scripts/ui/controls.gd
 msgctxt "savecode.title"
 msgid "SAVE CODE"
-msgstr ""
+msgstr "KAYIT KODU"
 
 #. max 270px, 1 line
 #. budget: max 270px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy_hint"
 msgid "COPY THIS CODE TO BACK UP YOUR PROGRESS"
-msgstr ""
+msgstr "İLERLEMENİ YEDEKLEMEK İÇİN BU KODU KOPYALA"
 
 #. SAVE CODE panel buttons (COPY, PASTE, LOAD, CLOSE), max 56px (64 wide, 4 px margins), 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.copy"
 msgid "COPY"
-msgstr ""
+msgstr "KOPYALA"
 
 #. max 270px, 1 line
 #. budget: max 270px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.paste_hint"
 msgid "TO LOAD A SAVE, PASTE ITS CODE HERE"
-msgstr ""
+msgstr "KAYIT YÜKLEMEK İÇİN KODU BURAYA YAPIŞTIR"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.paste"
 msgid "PASTE"
-msgstr ""
+msgstr "YAPIŞTIR"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.load"
 msgid "LOAD"
-msgstr ""
+msgstr "YÜKLE"
 
 #. max 56px, 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.close"
 msgid "CLOSE"
-msgstr ""
+msgstr "KAPAT"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
 msgctxt "savecode.prompt_paste"
 msgid "Paste your Slime Time save code:"
-msgstr ""
+msgstr "Slime Time kayıt kodunu yapıştır:"
 
 #: scripts/ui/controls.gd
 msgctxt "savecode.click_box"
 msgid "CLICK THE BOX AND PRESS {keys}"
-msgstr ""
+msgstr "KUTUYA TIKLA VE {keys} BAS"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.nothing_to_paste"
 msgid "NOTHING TO PASTE - COPY A CODE FIRST"
-msgstr ""
+msgstr "YAPIŞTIRILACAK BİR ŞEY YOK - ÖNCE KODU KOPYALA"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.pasted"
 msgid "PASTED - PRESS LOAD"
-msgstr ""
+msgstr "YAPIŞTIRILDI - YÜKLE'YE BAS"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
 msgctxt "savecode.prompt_copy"
 msgid "Copy your Slime Time save code:"
-msgstr ""
+msgstr "Slime Time kayıt kodunu kopyala:"
 
 #. status line, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.replaces"
 msgid "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"
-msgstr ""
+msgstr "BU, İLERLEMENİN YERİNE GEÇER - YİNE YÜKLE'YE BAS"
 
 #. status line in the SAVE CODE panel, max 260px, 1 line
 #. budget: max 260px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.bad_code"
 msgid "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE"
-msgstr ""
+msgstr "BU KOD ÇALIŞMIYOR - EKSİK OLMADIĞINA BAK"
 
 #. max 256px, 16 px font
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.title"
 msgid "ERASE ALL PROGRESS?"
-msgstr ""
+msgstr "HER ŞEY SİLİNSİN Mİ?"
 
 #. two lines, each max 256px
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.body.1"
 msgid "LEVELS, RECORDS, COINS, UPGRADES AND"
-msgstr ""
+msgstr "SEVİYELER, REKORLAR, SİKKELER, GELİŞTİRMELER VE"
 
 #. two lines, each max 256px
 #. budget: max 256px
 #: scripts/ui/controls.gd
 msgctxt "reset.body.2"
 msgid "SKINS WILL BE GONE FOR GOOD"
-msgstr ""
+msgstr "KILIKLAR SONSUZA DEK SİLİNECEK"
 
 #. reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 #. budget: max 62px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "reset.confirm"
 msgid "CONFIRM"
-msgstr ""
+msgstr "ONAYLA"
 
 #: scripts/ui/controls.gd scripts/ui/restart_prompt.gd
 msgctxt "common.cancel"
 msgid "CANCEL"
-msgstr ""
+msgstr "İPTAL"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fullscreen.on"
 msgid "FULLSCREEN: ON"
-msgstr ""
+msgstr "TAM EKRAN: AÇIK"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fullscreen.off"
 msgid "FULLSCREEN: OFF"
-msgstr ""
+msgstr "TAM EKRAN: KAPALI"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.less"
 msgid "MOTION: LESS"
-msgstr ""
+msgstr "HAREKET: AZ"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.full"
 msgid "MOTION: FULL"
-msgstr ""
+msgstr "HAREKET: TAM"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.dark"
 msgid "FOG: DARK"
-msgstr ""
+msgstr "SİS: KARANLIK"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.normal"
 msgid "FOG: NORMAL"
-msgstr ""
+msgstr "SİS: NORMAL"
 
 #: scripts/ui/controls.gd
 msgctxt "settings.fog.bright"
 msgid "FOG: BRIGHT"
-msgstr ""
+msgstr "SİS: PARLAK"
 
 #: scripts/ui/controls.gd scripts/ui/pause_menu.gd
 msgctxt "settings.sound.on"
 msgid "SOUND: ON"
-msgstr ""
+msgstr "SES: AÇIK"
 
 #: scripts/ui/controls.gd scripts/ui/pause_menu.gd
 msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
-msgstr ""
+msgstr "SES: KAPALI"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_one"
 msgid "PICK ONE"
-msgstr ""
+msgstr "BİRİNİ SEÇ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cash_out"
 msgid "CASH OUT"
-msgstr ""
+msgstr "KASAYI AL"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.descend"
 msgid "DESCEND"
-msgstr ""
+msgstr "İN"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.floor_cleared"
 msgid "FLOOR {floor} CLEARED"
-msgstr ""
+msgstr "KAT {floor} GEÇİLDİ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.meter"
 msgid "{now}%  NEXT FLOOR +{next}%"
-msgstr ""
+msgstr "%{now}  SONRAKİ KAT +%{next}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cash_out_gain"
 msgid "CASH OUT +{count}"
-msgstr ""
+msgstr "KASAYI AL +{count}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_practice"
 msgid "POT {pot} (+{gain})  PRACTICE"
-msgstr ""
+msgstr "KASA {pot} (+{gain})  ANTRENMAN"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_dev"
 msgid "POT {pot} (+{gain})  NO TICKETS"
-msgstr ""
+msgstr "KASA {pot} (+{gain})  BİLET YOK"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot_slime"
 msgid "POT {pot} (+{gain})  PAYS 1"
-msgstr ""
+msgstr "KASA {pot} (+{gain})  1 VERİR"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pot"
 msgid "POT {pot} (+{gain})"
-msgstr ""
+msgstr "KASA {pot} (+{gain})"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.have_max"
 msgid "HAVE {have}/{max}"
-msgstr ""
+msgstr "ELDE {have}/{max}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.have"
 msgid "HAVE {have}"
-msgstr ""
+msgstr "ELDE {have}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.confirm"
 msgid "{name}  -  DESCEND?"
-msgstr ""
+msgstr "{name}  -  İNİLSİN Mİ?"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_first"
 msgid "PICK A BOON FIRST"
-msgstr ""
+msgstr "ÖNCE BİR LÜTUF SEÇ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.run_over"
 msgid "RUN OVER"
-msgstr ""
+msgstr "TUR BİTTİ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.new_run"
 msgid "NEW RUN"
-msgstr ""
+msgstr "YENİ TUR"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ÜS"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cashed_out"
 msgid "CASHED OUT"
-msgstr ""
+msgstr "KASA ALINDI"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.cleared"
 msgid "CLEARED {count} FLOOR"
 msgid_plural "CLEARED {count} FLOORS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{count} KAT GEÇİLDİ"
+msgstr[1] "{count} KAT GEÇİLDİ"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.dried_up"
 msgid "DRIED UP ON FLOOR {floor}"
-msgstr ""
+msgstr "KURUDUN: KAT {floor}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.best_new"
 msgid "BEST FLOOR {floor}   NEW BEST!"
-msgstr ""
+msgstr "EN İYİ KAT {floor}   YENİ REKOR!"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.best"
 msgid "BEST FLOOR {floor}"
-msgstr ""
+msgstr "EN İYİ KAT {floor}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.time"
 msgid "TIME {time}"
-msgstr ""
+msgstr "SÜRE {time}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.time_paid"
 msgid "TIME {time}   PAID RUN {slot}/{total}"
-msgstr ""
+msgstr "SÜRE {time}   ÜCRETLİ TUR {slot}/{total}"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets_practice"
 msgid "+{count} TICKET  PRACTICE ({paid} PAID RUNS A DAY)"
 msgid_plural "+{count} TICKETS  PRACTICE ({paid} PAID RUNS A DAY)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "+{count} BİLET  ANTRENMAN (GÜNDE {paid} ÜCRETLİ TUR)"
+msgstr[1] "+{count} BİLET  ANTRENMAN (GÜNDE {paid} ÜCRETLİ TUR)"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets"
 msgid "+{count} TICKET"
 msgid_plural "+{count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "+{count} BİLET"
+msgstr[1] "+{count} BİLET"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.tickets_half"
 msgid "+{count} TICKET  HALF THE POT ({pot})"
 msgid_plural "+{count} TICKETS  HALF THE POT ({pot})"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "+{count} BİLET  KASANIN YARISI ({pot})"
+msgstr[1] "+{count} BİLET  KASANIN YARISI ({pot})"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.bonus"
 msgid "FLOOR {floor} BONUS +{count}"
-msgstr ""
+msgstr "KAT {floor} BONUSU +{count}"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.title"
 msgid "HAT WHEEL"
-msgstr ""
+msgstr "ŞAPKA ÇARKI"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tab.wheel"
 msgid "WHEEL"
-msgstr ""
+msgstr "ÇARK"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tab.shop"
 msgid "SHOP"
-msgstr ""
+msgstr "DÜKKAN"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin"
 msgid "SPIN"
-msgstr ""
+msgstr "ÇEVİR"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.all_won"
 msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
-msgstr ""
+msgstr "TÜM ŞAPKALAR KAZANILDI! DÜKKANDA YENİ ŞEYLER VAR"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.won"
 msgid "YOU WON THE {name}!"
-msgstr ""
+msgstr "{name} ARTIK SENİN!"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
-msgstr ""
+msgstr "ÇARK DİNLENİYOR"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.need_to_spin"
 msgid "NEED {count} TICKET TO SPIN"
 msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
+msgstr[1] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.hats_left"
 msgid "{count} HAT TO WIN"
 msgid_plural "{count} HATS TO WIN"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KAZANILACAK {count} ŞAPKA"
+msgstr[1] "KAZANILACAK {count} ŞAPKA"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.hats_left_key"
 msgid "{count} HAT TO WIN - {key} TO SPIN"
 msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KAZANILACAK {count} ŞAPKA - ÇEVİRMEK İÇİN {key}"
+msgstr[1] "KAZANILACAK {count} ŞAPKA - ÇEVİRMEK İÇİN {key}"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_free"
 msgid "SPIN  FREE"
-msgstr ""
+msgstr "ÇEVİR  BEDAVA"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
-msgstr ""
+msgstr "ÇEVİR  {cost}"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.hats"
 msgid "HATS"
-msgstr ""
+msgstr "ŞAPKA"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.trails"
 msgid "TRAILS"
-msgstr ""
+msgstr "İZLER"
 
 #. max 44px, 1 line
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.section.papers"
 msgid "PAPERS"
-msgstr ""
+msgstr "KAĞIT"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.all_yours"
 msgid "EVERY HAT IS YOURS"
-msgstr ""
+msgstr "TÜM ŞAPKALAR SENİN"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.wear_wardrobe"
 msgid "WEAR THEM IN THE WARDROBE"
-msgstr ""
+msgstr "ONLARI GARDIROPTA GİY"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.worn"
 msgid "WORN"
-msgstr ""
+msgstr "GİYİLİ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.owned"
 msgid "OWNED"
-msgstr ""
+msgstr "SENDE"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.free"
 msgid "FREE"
-msgstr ""
+msgstr "BEDAVA"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.from_tailor"
 msgid "{name} - FROM THE TAILOR"
-msgstr ""
+msgstr "{name} - TERZİDEN"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.tailor_opens"
 msgid "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})"
 msgid_plural "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "TERZİ {count} ÇEVİRMEDEN SONRA AÇILIR ({have}/{count})"
+msgstr[1] "TERZİ {count} ÇEVİRMEDEN SONRA AÇILIR ({have}/{count})"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.need"
 msgid "NEED {count} TICKET"
 msgid_plural "NEED {count} TICKETS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{count} BİLET GEREK"
+msgstr[1] "{count} BİLET GEREK"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.no_luck"
 msgid "NO LUCK NEEDED (COUNTS AS A SPIN)"
-msgstr ""
+msgstr "ŞANSA GEREK YOK (ÇEVİRME SAYILIR)"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.item_info"
 msgid "{name} - {about}"
-msgstr ""
+msgstr "{name} - {about}"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.take_off"
 msgid "PRESS TO TAKE IT OFF"
-msgstr ""
+msgstr "ÇIKARMAK İÇİN BAS"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.wear"
 msgid "PRESS TO WEAR IT"
-msgstr ""
+msgstr "GİYMEK İÇİN BAS"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.buy"
 msgid "PRESS TO BUY"
-msgstr ""
+msgstr "SATIN ALMAK İÇİN BAS"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.confirm"
 msgid "BUY {name}?"
-msgstr ""
+msgstr "{name} ALINSIN MI?"
 
 #. the line under the toggles, max 224px, 1 line (clipped past that)
 #. budget: max 224px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.about_default"
 msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
-msgstr ""
+msgstr "ZORDA GEÇİLEN SEVİYELERDE GEÇERLİ"
 
 #. max 42px (50 wide, 4 px margins), 1 line
 #. budget: max 42px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.done"
 msgid "DONE"
-msgstr ""
+msgstr "TAMAM"
 
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.points"
 msgid "+{points}"
-msgstr ""
+msgstr "+{points}"
 
 #. panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
 #. budget: max 120px, lines 1
 #: scripts/ui/heat_panel.gd
 msgctxt "heat.title"
 msgid "HEAT {points}/{max}"
-msgstr ""
+msgstr "ISI {points}/{max}"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_up"
 msgid "MOVE UP"
-msgstr ""
+msgstr "YUKARI"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_down"
 msgid "MOVE DOWN"
-msgstr ""
+msgstr "AŞAĞI"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_left"
 msgid "MOVE LEFT"
-msgstr ""
+msgstr "SOLA"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_right"
 msgid "MOVE RIGHT"
-msgstr ""
+msgstr "SAĞA"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.jump"
 msgid "JUMP (HOLD)"
-msgstr ""
+msgstr "ZIPLA (BASILI)"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.restart"
 msgid "RESTART LEVEL"
-msgstr ""
+msgstr "BAŞTAN AL"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.interact"
 msgid "INTERACT (HUB)"
-msgstr ""
+msgstr "ETKİLEŞİM (ÜS)"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_rifle"
 msgid "SLIME RIFLE"
-msgstr ""
+msgstr "BALÇIK TÜFEĞİ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_splat"
 msgid "SLIME SPLAT"
-msgstr ""
+msgstr "BALÇIK BOMBASI"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_kaze"
 msgid "SLIMAKAZE"
-msgstr ""
+msgstr "SLIMAKAZE"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/key_controls.gd
 msgctxt "keys.title"
 msgid "CONTROLS"
-msgstr ""
+msgstr "KONTROLLER"
 
 #. max 90px (98 wide, 4 px margins), 1 line
 #. budget: max 90px, lines 1
 #: scripts/ui/key_controls.gd
 msgctxt "keys.reset"
 msgid "RESET KEYS"
-msgstr ""
+msgstr "TUŞLARI SIFIRLA"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.pad"
 msgid "PAD: A LEAP - X USE - START PAUSE - B BACK"
-msgstr ""
+msgstr "PAD: A SIÇRA - X KULLAN - START MOLA - B GERİ"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.web"
 msgid "ARROWS ALWAYS MOVE - P PAUSES"
-msgstr ""
+msgstr "OKLAR HEP ÇALIŞIR - P MOLA VERİR"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.desktop"
 msgid "ARROWS ALWAYS MOVE - ESC OR P PAUSES"
-msgstr ""
+msgstr "OKLAR HEP ÇALIŞIR - ESC YA DA P MOLA VERİR"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.web_f11"
 msgid "ARROWS ALWAYS MOVE - P PAUSES - F11 FULLSCREEN"
-msgstr ""
+msgstr "OKLAR HEP ÇALIŞIR - P MOLA VERİR - F11 TAM EKRAN"
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.note.desktop_f11"
 msgid "ARROWS ALWAYS MOVE - ESC OR P PAUSES - F11 FULLSCREEN"
-msgstr ""
+msgstr "OKLAR HEP ÇALIŞIR - ESC YA DA P MOLA - F11 TAM EKRAN"
 
 #. max 56px (key buttons are 64 wide), 1 line
 #. budget: max 56px, lines 1
 #: scripts/ui/key_controls.gd
 msgctxt "keys.press_key"
 msgid "PRESS KEY"
-msgstr ""
+msgstr "TUŞA BAS"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.1"
 msgid "HEAT UP LEVELS BEATEN ON HARD"
-msgstr ""
+msgstr "ZORDA GEÇİLEN SEVİYELERİ ISIT"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.2"
 msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-msgstr ""
+msgstr "ISI 2 4 7 10 BİR KEZ 3 5 7 10 BİLET VERİR"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.1"
 msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
-msgstr ""
+msgstr "SONRAKİNİ AÇMAK İÇİN BİR SEVİYE GEÇ"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.2"
 msgid "EACH CLEAR ALSO UNLOCKS A NEW SKIN"
-msgstr ""
+msgstr "HER GEÇİŞ YENİ BİR KILIK DA AÇAR"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/level_select.gd
 msgctxt "levels.title"
 msgid "LEVEL SELECT"
-msgstr ""
+msgstr "SEVİYE SEÇ"
 
 #. checkbox, max 268px, 1 line
 #. budget: max 268px, lines 1
 #: scripts/ui/level_select.gd
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
-msgstr ""
+msgstr "ZOR MOD: YENİ LABİRENT, GELİŞTİRME YOK, SİS DÖNER"
 
 #. {points} = the heat total (0-99); max 52px, 1 line
 #. budget: max 52px, lines 1
 #: scripts/ui/level_select.gd
 msgctxt "levels.heat"
 msgid "HEAT {points}"
-msgstr ""
+msgstr "ISI {points}"
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.hint"
 msgid "PLAY TO FILL THEM IN"
-msgstr ""
+msgstr "DOLDURMAK İÇİN OYNA"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/map_select.gd
 msgctxt "maps.title"
 msgid "MAP TABLE"
-msgstr ""
+msgstr "HARİTA MASASI"
 
 #. checkbox, max 60px, 1 line
 #. budget: max 60px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.hard"
 msgid "HARD"
-msgstr ""
+msgstr "ZOR"
 
 #. max 36px (44 wide, 4 px margins), 1 line
 #. budget: max 36px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.paper"
 msgid "PAPER"
-msgstr ""
+msgstr "KAĞIT"
 
 #. {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.view_title_hard"
 msgid "{name}  HARD"
-msgstr ""
+msgstr "{name}  ZOR"
 
 #. {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.uncovered_paper"
 msgid "{percent}% UNCOVERED  {paper}"
-msgstr ""
+msgstr "%{percent} AÇILDI  {paper}"
 
 #. {percent} = 0-100; the line under the map, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/ui/map_select.gd
 msgctxt "maps.uncovered"
 msgid "{percent}% UNCOVERED"
-msgstr ""
+msgstr "%{percent} AÇILDI"
 
 #. max 110px, 16 px font
 #. budget: max 110px
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.title"
 msgid "PAUSED"
-msgstr ""
+msgstr "MOLA"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "YENİDEN"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.resume"
 msgid "RESUME"
-msgstr ""
+msgstr "DEVAM"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_hub"
 msgid "QUIT TO HUB"
-msgstr ""
+msgstr "ÜSSE DÖN"
 
 #. max 92px, 1 line
 #. budget: max 92px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.new_seed"
 msgid "NEW SEED"
-msgstr ""
+msgstr "YENİ TOHUM"
 
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_cashes"
 msgid "QUITTING CASHES OUT THE POT"
-msgstr ""
+msgstr "ÇIKARSAN KASAYI ALIRSIN"
 
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_banks"
 msgid "QUITTING BANKS HALF THE POT"
-msgstr ""
+msgstr "ÇIKARSAN KASANIN YARISINI ALIRSIN"
 
 #. {code} = a seed code like 123-4 (up to 17 chars); max 92px, else the code alone is shown
 #. budget: max 92px
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.seed"
 msgid "SEED {code}"
-msgstr ""
+msgstr "TOHUM {code}"
 
 #. title max 150px; buttons max 96px, 1 line each
 #. budget: max 150px, lines 1
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.title"
 msgid "RESTART?"
-msgstr ""
+msgstr "YENİDEN Mİ?"
 
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.restart"
 msgid "RESTART"
-msgstr ""
+msgstr "YENİDEN"
 
 #: scripts/ui/restart_prompt.gd
 msgctxt "restart.upgrades"
 msgid "UPGRADES"
-msgstr ""
+msgstr "GELİŞTİR"
 
 #: scripts/ui/rotate_hint.gd
 msgctxt "rotate.title"
 msgid "ROTATE YOUR DEVICE"
-msgstr ""
+msgstr "CİHAZINI DÖNDÜR"
 
 #: scripts/ui/rotate_hint.gd
 msgctxt "rotate.body"
 msgid "SLIME TIME IS PLAYED SIDEWAYS"
-msgstr ""
+msgstr "SLIME TIME YATAY OYNANIR"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_jelly"
 msgid "JELLY SKINS UNLOCK ON HARD MODE"
-msgstr ""
+msgstr "JÖLE KILIKLAR ZOR MODDA AÇILIR"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_hats"
 msgid "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
-msgstr ""
+msgstr "ŞAPKALARI ÜSTEKİ ÖDÜL ÇARKINDA KAZAN"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_trails"
 msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
-msgstr ""
+msgstr "İZLERİ ÖDÜL ÇARKININ DÜKKANINDAN AL"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_skins"
 msgid "NEW LEVELS EQUIP YOUR NEWEST SKIN"
-msgstr ""
+msgstr "YENİ SEVİYEDE EN YENİ KILIK GİYİLİR"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_hats"
 msgid "HATS"
-msgstr ""
+msgstr "ŞAPKA"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_trails"
 msgid "TRAILS"
-msgstr ""
+msgstr "İZLER"
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_skins"
 msgid "SKINS"
-msgstr ""
+msgstr "KILIK"
 
 #. {name} = the hat's name; status line, max 300px, 1 line. The two spaces are spacing.
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr ""
+msgstr "{name}  (GİYİLİ)"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.name_how"
 msgid "{name} - {how}"
-msgstr ""
+msgstr "{name} - {how}"
 
 #. {name} = the trail's name, {price} = tickets; max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2169,8 +2169,8 @@ msgstr ""
 msgctxt "skins.name_price"
 msgid "{name} - {price} TIX IN THE SHOP"
 msgid_plural "{name} - {price} TIX IN THE SHOP"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{name} - DÜKKANDA {price} BİLET"
+msgstr[1] "{name} - DÜKKANDA {price} BİLET"
 
 #. {count} = medals needed (30), {have}/{count} = progress; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2178,15 +2178,15 @@ msgstr[1] ""
 msgctxt "skins.locked_medals"
 msgid "LOCKED - EARN ALL {count} MEDALS ({have}/{count})"
 msgid_plural "LOCKED - EARN ALL {count} MEDALS ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KİLİTLİ - {count} MADALYANIN HEPSİNİ KAZAN ({have}/{count})"
+msgstr[1] "KİLİTLİ - {count} MADALYANIN HEPSİNİ KAZAN ({have}/{count})"
 
 #. {level} = the level number to clear on hard mode; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_jelly"
 msgid "JELLY LOCKED - HARD CLEAR L{level}"
-msgstr ""
+msgstr "JÖLE KİLİTLİ - ZORDA {level}. SEVİYEYİ GEÇ"
 
 #. {have}/{count} = coins found / in the game; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2194,8 +2194,8 @@ msgstr ""
 msgctxt "skins.locked_coins"
 msgid "LOCKED - FIND EVERY COIN ({have}/{count})"
 msgid_plural "LOCKED - FIND EVERY COIN ({have}/{count})"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KİLİTLİ - TÜM SİKKELERİ BUL ({have}/{count})"
+msgstr[1] "KİLİTLİ - TÜM SİKKELERİ BUL ({have}/{count})"
 
 #. {count} = number of levels (10); status line, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2203,111 +2203,111 @@ msgstr[1] ""
 msgctxt "skins.locked_levels"
 msgid "LOCKED - BEAT ALL {count} LEVELS"
 msgid_plural "LOCKED - BEAT ALL {count} LEVELS"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "KİLİTLİ - {count} SEVİYENİN HEPSİNİ GEÇ"
+msgstr[1] "KİLİTLİ - {count} SEVİYENİN HEPSİNİ GEÇ"
 
 #. {level} = a level number; status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_level"
 msgid "LOCKED - CLEAR LEVEL {level}"
-msgstr ""
+msgstr "KİLİTLİ - {level}. SEVİYEYİ GEÇ"
 
 #. {name} = the skin's name; status line, max 300px, 1 line. The two spaces are spacing.
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
-msgstr ""
+msgstr "{name}  (SEÇİLİ)"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.jelly.on"
 msgid "JELLY: ON"
-msgstr ""
+msgstr "JÖLE: AÇIK"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.jelly.off"
 msgid "JELLY: OFF"
-msgstr ""
+msgstr "JÖLE: KAPALI"
 
 #. status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.locked_hat"
 msgid "LOCKED - WIN IT ON THE HAT WHEEL"
-msgstr ""
+msgstr "KİLİTLİ - ŞAPKA ÇARKINDA KAZAN"
 
 #. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.play"
 msgid "PLAY"
-msgstr ""
+msgstr "OYNA"
 
 #. max 168px, 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
 #. budget: max 168px, lines 1
 #: scripts/ui/title.gd
 msgctxt "title.enter_hub"
 msgid "ENTER THE HUB"
-msgstr ""
+msgstr "ÜSSE GİR"
 
 #: scripts/ui/title.gd
 msgctxt "title.story"
 msgid "STORY"
-msgstr ""
+msgstr "HİKAYE"
 
 #. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
 msgctxt "title.tagline.1"
 msgid "ESCAPE THE FOG"
-msgstr ""
+msgstr "SİSTEN KAÇ"
 
 #. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
 msgctxt "title.tagline.2"
 msgid "OR DRY TRYING"
-msgstr ""
+msgstr "YOKSA KURURSUN"
 
 #. touch jump button, inside a 38 px circle, max 34px
 #. budget: max 34px
 #: scripts/ui/touch_controls.gd
 msgctxt "touch.jump"
 msgid "JUMP"
-msgstr ""
+msgstr "ZIPLA"
 
 #. max 40px (button 48 wide, 4 px margins), 1 line
 #. budget: max 40px, lines 1
 #: scripts/ui/ui_kit.gd
 msgctxt "common.buy"
 msgid "BUY"
-msgstr ""
+msgstr "AL"
 
 #. max 60px, 1 line (the slider shrinks to fit: Controls measures it)
 #. budget: max 60px, lines 1
 #: scripts/ui/ui_kit.gd
 msgctxt "settings.volume"
 msgid "VOLUME"
-msgstr ""
+msgstr "SES DÜZEYİ"
 
 #. title max 200px, 16 px font
 #. budget: max 200px
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.title"
 msgid "UPGRADES"
-msgstr ""
+msgstr "GELİŞTİRMELER"
 
 #. tab, max 32px (40 wide, 4 px margins), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_coins"
 msgid "COINS"
-msgstr ""
+msgstr "SİKKE"
 
 #. tab, max 44px (52 wide, 4 px margins), 1 line
 #. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
@@ -2315,21 +2315,21 @@ msgstr ""
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tickets"
 msgid "TICKETS"
-msgstr ""
+msgstr "BİLET"
 
 #. tab, TOOLS max 32px (40 wide) or TICKETS max 44px (52 wide), 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.tab_tools"
 msgid "TOOLS"
-msgstr ""
+msgstr "ARAÇ"
 
 #. replaces BACK, max 32px, 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.play"
 msgid "PLAY"
-msgstr ""
+msgstr "OYNA"
 
 #. {name} = an upgrade name, {level} = the level being bought; max 140px, 1 line
 #. {name} = an ability name, {level} = the level being bought; max 140px, 1 line
@@ -2337,200 +2337,200 @@ msgstr ""
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.buy_confirm"
 msgid "BUY {name} {level}?"
-msgstr ""
+msgstr "{name} {level} ALINSIN MI?"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.max"
 msgid "MAX"
-msgstr ""
+msgstr "MAKS"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_coins.1"
 msgid "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"
-msgstr ""
+msgstr "SİKKELER HİKAYE LABİRENTLERİNİN ÇIKMAZLARINDA"
 
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_coins.2"
 msgid "TAKE COINS BACK OUT ANY TIME"
-msgstr ""
+msgstr "SİKKELERİ İSTEDİĞİN AN GERİ AL"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets"
 msgid "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
-msgstr ""
+msgstr "BİLETLER RASTGELE'DEN - ZOR MODDA KAPALI"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets_locked"
 msgid "EARN TICKETS IN THE RANDOMIZER FIRST"
-msgstr ""
+msgstr "ÖNCE RASTGELE'DE BİLET KAZAN"
 
 #. {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_pad"
 msgid "PAD {a} {b} {c} - RANDOM MAZES"
-msgstr ""
+msgstr "PAD {a} {b} {c} - RASTGELE LABİRENTLER"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_touch"
 msgid "TAP THEIR BUTTONS - RANDOM MAZES"
-msgstr ""
+msgstr "DÜĞMELERİNE DOKUN - RASTGELE LABİRENTLER"
 
 #. {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_keys"
 msgid "KEYS {a} {b} {c} - RANDOM MAZES"
-msgstr ""
+msgstr "TUŞLAR {a} {b} {c} - RASTGELE LABİRENTLER"
 
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.title"
 msgid "YOU ESCAPED!"
-msgstr ""
+msgstr "KAÇTIN!"
 
 #. max 296px
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.cleared"
 msgid "ALL {count} MAZES CLEARED"
-msgstr ""
+msgstr "{count} LABİRENTİN HEPSİ GEÇİLDİ"
 
 #. {skin} = the custom skin name (see skin.custom), max 296px; the joke is the Henry Ford quote
 #. budget: max 296px
 #: scripts/ui/victory.gd
 msgctxt "victory.unlocked"
 msgid "UNLOCKED: {skin} (ANY COLOR YOU LIKE)"
-msgstr ""
+msgstr "AÇILDI: {skin} (İSTEDİĞİN HER RENK)"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.pick_color"
 msgid "PICK YOUR COLOR"
-msgstr ""
+msgstr "RENGİNİ SEÇ"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.randomizer"
 msgid "RANDOMIZER"
-msgstr ""
+msgstr "RASTGELE"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.hub"
 msgid "HUB"
-msgstr ""
+msgstr "ÜS"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.slime"
 msgid "MORE SLIME"
-msgstr ""
+msgstr "DAHA ÇOK BALÇIK"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.speed"
 msgid "SPEED"
-msgstr ""
+msgstr "HIZ"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.brightness"
 msgid "BRIGHTNESS"
-msgstr ""
+msgstr "PARLAKLIK"
 
 #: scripts/upgrades.gd
 msgctxt "upgrade.power"
 msgid "WALL POWER"
-msgstr ""
+msgstr "DUVAR GÜCÜ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind"
 msgid "SECOND WIND"
-msgstr ""
+msgstr "İKİNCİ NEFES"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge"
 msgid "QUICK CHARGE"
-msgstr ""
+msgstr "HIZLI ŞARJ"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky"
 msgid "STICKY"
-msgstr ""
+msgstr "YAPIŞKAN"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet"
 msgid "MAGNET"
-msgstr ""
+msgstr "MIKNATIS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose"
 msgid "GOO NOSE"
-msgstr ""
+msgstr "BALÇIK BURNU"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.none"
 msgid "NONE"
-msgstr ""
+msgstr "YOK"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.maxed"
 msgid "REFILL AT EMPTY {now}  MAXED"
-msgstr ""
+msgstr "BOŞKEN DOLUM {now}  MAKS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.wind.next"
 msgid "REFILL AT EMPTY {now} -> {next}"
-msgstr ""
+msgstr "BOŞKEN DOLUM {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge.maxed"
 msgid "FULL CHARGE {now}  MAXED"
-msgstr ""
+msgstr "TAM ŞARJ {now}  MAKS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.charge.next"
 msgid "FULL CHARGE {now} -> {next}"
-msgstr ""
+msgstr "TAM ŞARJ {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky.maxed"
 msgid "SPLAT COST {now}  MAXED"
-msgstr ""
+msgstr "ÇARPMA BEDELİ {now}  MAKS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.sticky.next"
 msgid "SPLAT COST {now} -> {next}"
-msgstr ""
+msgstr "ÇARPMA BEDELİ {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.px"
 msgid "{n} PX"
-msgstr ""
+msgstr "{n} PX"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet.maxed"
 msgid "COIN REACH {now}  MAXED"
-msgstr ""
+msgstr "SİKKE MENZİLİ {now}  MAKS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.magnet.next"
 msgid "COIN REACH {now} -> {next}"
-msgstr ""
+msgstr "SİKKE MENZİLİ {now} -> {next}"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.value"
 msgid "X{rate} {reach} PX"
-msgstr ""
+msgstr "X{rate} {reach} PX"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.maxed"
 msgid "GLIMMERS {now}  MAXED"
-msgstr ""
+msgstr "PARILTILAR {now}  MAKS"
 
 #: scripts/workshop.gd
 msgctxt "workshop.nose.next"
 msgid "GLIMMERS {now} -> {next}"
-msgstr ""
+msgstr "PARILTILAR {now} -> {next}"
