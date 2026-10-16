@@ -510,5 +510,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		UIKit.go(get_tree(), UIKit.HUB_SCENE)
 	elif event.is_action_pressed("tab_next") or event.is_action_pressed("tab_prev"):
 		var step := 1 if event.is_action_pressed("tab_next") else -1  # LB / RB: the previous / next page
+		step *= UIKit.reading_dir()  # (mirrored: RB goes to the tab on the visual left)
 		show_page(PAGES[(PAGES.find(page) + step + PAGES.size()) % PAGES.size()])
 		get_viewport().set_input_as_handled()

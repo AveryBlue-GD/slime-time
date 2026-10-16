@@ -736,6 +736,8 @@ func show_rewards(info: Dictionary) -> void:
 ## `text` with every line wider than the text column (REWARDS_W) broken onto two balanced lines at a
 ## space (a translation; English lines all fit, so English is unchanged).
 static func _break_long(text: String) -> String:
+	if UIKit.locale() == UIKit.Lang.SOURCE_LOCALE:
+		return text
 	var lines := text.split("\n")
 	for i in lines.size():
 		if UIKit.text_w(lines[i]) > REWARDS_W:
@@ -1196,6 +1198,8 @@ func _story_gap() -> int:
 ## A story line wider than the screen's text column (EDGE in from each side) wraps onto two centred
 ## lines in that column (a translation; English lines are all shorter).
 func _wrap_story_line() -> void:
+	if UIKit.locale() == UIKit.Lang.SOURCE_LOCALE:
+		return
 	var column := UIKit.SCREEN.x - 2.0 * UIKit.EDGE
 	if story_label.text != "" and UIKit.text_w(story_label.text) > column:
 		story_label.text = wrap_text(story_label.text, column)

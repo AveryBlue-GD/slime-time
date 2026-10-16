@@ -438,32 +438,20 @@ const I18N_TABLE = {
  }
 };
 // i18n-table:end
-// Best match for navigator.languages, first preference first: zh-TW / zh-HK / zh-Hant -> zh_TW, other
-// zh -> zh_CN, any pt -> pt_BR, legacy "in" -> id, otherwise the primary subtag; no match -> English.
+// The first browser preference only (as the game does): zh-TW / zh-HK / zh-Hant -> zh_TW, other zh ->
+// zh_CN, any pt -> pt_BR, es-* -> es, legacy "in" -> id, otherwise the primary subtag; no match -> English.
 function slimeTimeLocale() {
-	const tags = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || 'en'];
-	for (let i = 0; i < tags.length; i++) {
-		const parts = String(tags[i]).toLowerCase().replace(/_/g, '-').split('-');
-		let primary = parts[0];
-		if (primary === 'en') {
-			return 'en';
-		}
-		if (primary === 'in') {
-			primary = 'id';
-		}
-		let code = primary;
-		if (primary === 'zh') {
-			const rest = parts.slice(1);
-			const trad = rest.indexOf('hant') >= 0 || rest.indexOf('tw') >= 0 || rest.indexOf('hk') >= 0 || rest.indexOf('mo') >= 0;
-			code = trad ? 'zh_TW' : 'zh_CN';
-		} else if (primary === 'pt') {
-			code = 'pt_BR';
-		}
-		if (Object.prototype.hasOwnProperty.call(I18N_TABLE, code)) {
-			return code;
-		}
+	const first = (navigator.languages && navigator.languages.length) ? navigator.languages[0] : navigator.language;
+	const parts = String(first || 'en').toLowerCase().replace(/_/g, '-').split('-');
+	let code = parts[0] === 'in' ? 'id' : parts[0];
+	if (code === 'zh') {
+		const rest = parts.slice(1);
+		const trad = rest.indexOf('hant') >= 0 || rest.indexOf('tw') >= 0 || rest.indexOf('hk') >= 0 || rest.indexOf('mo') >= 0;
+		code = trad ? 'zh_TW' : 'zh_CN';
+	} else if (code === 'pt') {
+		code = 'pt_BR';
 	}
-	return 'en';
+	return Object.prototype.hasOwnProperty.call(I18N_TABLE, code) ? code : 'en';
 }
 const SLIME_LOCALE = LANGUAGES_ENABLED ? slimeTimeLocale() : 'en';
 function T(key) {

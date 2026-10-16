@@ -189,6 +189,17 @@ func _dynamic() -> void:
 	await _frames(2)
 	_check(_button(upgrades, Loc.t("common.back", "BACK")).get_global_rect().end.x == UIKit.SCREEN.x - UIKit.EDGE, "ar: upgrades back on COINS: BACK still right")
 	upgrades.free()
+	# Skins: RB (tab_next) steps the logical page by reading direction (mirrored: back one).
+	var skins: Control = await _open("res://scenes/skins.tscn")
+	var start_page: String = skins.page
+	var pages: Array = skins.PAGES
+	var action := InputEventAction.new()
+	action.action = "tab_next"
+	action.pressed = true
+	skins._unhandled_input(action)
+	await _frames(1)
+	_check(skins.page == pages[(pages.find(start_page) - 1 + pages.size()) % pages.size()], "ar: skins RB moves to the tab on the visual left")
+	skins.free()
 	# The HEAT panel opened over the hard level select (positions set at open time).
 	progress.hard_mode = true
 	var ls: Control = await _open("res://scenes/level_select.tscn")
