@@ -5,7 +5,7 @@ extends "res://tests/suite_base.gd"
 ## keyboard or with the touch controls (real InputEventScreenTouch / ScreenDrag events through
 ## TouchControls, as on a phone), with the controls shown from the start (--touch / web UI) or
 ## only after the first touch; the screen is really cleared once a fade ends (one last redraw),
-## the chalice beacon too, even when a long frame (a phone browser's hitch on the first glide) lands mid-fade, and both
+## even when a long frame (a phone browser's hitch on the first glide) lands mid-fade, and both
 ## cues are stored in tutorial_seen. Nothing is written to disk.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_touch_cues.gd
 
@@ -38,7 +38,7 @@ func _initialize() -> void:
 			"%s: touch fades the move/jump cues in the same frames as keys (%s vs %s)" % [ui, touch, keys])
 
 	for device: String in ["keys", "touch"]:
-		await _beacon_case(device)
+		await _no_beacon_case(device)
 	await _hitch_case()
 	_result()
 	quit(1 if failures else 0)
@@ -95,25 +95,15 @@ func _run(device: String, force_touch: bool, mode: String) -> Vector2i:
 	return Vector2i(move_frames, leap_frames + 3)
 
 
-## The chalice beacon (after standing still) goes on a move by either device and is cleared too.
-func _beacon_case(device: String) -> void:
+## With both cues already seen, standing still for ages or a dry-up draws nothing (no chalice beacon).
+func _no_beacon_case(device: String) -> void:
 	await _start_level(device == "touch", Progress.TUTORIAL_MOVE | Progress.TUTORIAL_LEAP)
 	await _physics_frames(10)
-	cues.idle = TutorialCues.IDLE_FOR_BEACON + 1.0
-	await _physics_frames(60)
-	_check(cues.beacon_alpha > 0.3 and cues.drawn_alpha > 0.3, "beacon, %s: shows after standing still" % device)
-	var dir := StartDirs.open_dir(game.maze, game.maze.start)
-	if device == "touch":
-		_send_touch(0, Vector2(50, 130), true)
-		_send_drag(0, Vector2(50, 130) + Vector2(dir) * 16.0)
-	else:
-		_key(StartDirs.action(dir), true)
-	var frames := await _until_cleared(func() -> bool: return cues.beacon_alpha == 0.0)
-	_check(frames > 0, "beacon, %s: a move fades it and it is cleared off the screen (%d frames)" % [device, frames])
-	if device == "touch":
-		_send_touch(0, Vector2(50, 130), false)
-	else:
-		_key(StartDirs.action(dir), false)
+	cues.idle = 600.0
+	progress.dry_ups[1] = 3
+	await _physics_frames(90)
+	_check(cues.drawn_alpha == 0.0 and cues.move_alpha == 0.0 and cues.leap_alpha == 0.0,
+		"no beacon, %s: nothing is drawn after a long idle and a dry-up" % device)
 	await _end_level()
 
 
@@ -167,7 +157,7 @@ func _end_level() -> void:
 
 ## Physics frames until `faded` holds and the last drawn frame shows nothing (0 = never).
 func _until_cleared(faded: Callable) -> int:
-	for i in FADE_FRAMES * 2 + 30:  # (the beacon fades at half speed)
+	for i in FADE_FRAMES * 2 + 30:
 		await physics_frame
 		if faded.call() and cues.drawn_alpha == 0.0:
 			return i + 1

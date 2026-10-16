@@ -2,8 +2,8 @@ extends "res://tests/suite_base.gd"
 
 ## Flow round: a fresh save's title plays level 1 (PLAY), existing saves keep ENTER THE HUB; a
 ## dry-up retries quickly and keeps the same randomizer maze; levels 1-2 teach wordlessly (input
-## glyph until the first move, SPACE key after wandering without a leap, a chalice beacon after
-## idling or a dry-up), each remembered in the save.
+## glyph until the first move, SPACE key after wandering without a leap; no chalice beacon even after
+## long idling or a dry-up), each remembered in the save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 30000 -s res://tests/test_flow.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -75,10 +75,7 @@ func _initialize() -> void:
 				cues = child
 	_check(cues != null, "level 1 has the teaching cues")
 	await _physics_frames(30)
-	_check(cues.move_alpha > 0.3 and cues.beacon_alpha == 0.0, "an input glyph shows at the start, no beacon yet")
-	cues.idle = TutorialCues.IDLE_FOR_BEACON + 1.0
-	await _physics_frames(40)
-	_check(cues.beacon_alpha > 0.0, "idling long enough shows the chalice beacon")
+	_check(cues.move_alpha > 0.3, "an input glyph shows at the start")
 	game.slime.position += Vector2(8, 0)
 	await _physics_frames(5)
 	_check(cues.idle < 1.0, "moving resets the idle timer")
@@ -93,14 +90,11 @@ func _initialize() -> void:
 	game.slime.state = Slime.State.GLIDE
 	await _physics_frames(40)
 	_check(cues.leap_alpha == 0.0 and progress.has_seen_tutorial(Progress.TUTORIAL_LEAP), "charging a leap fades it for good")
-	# a dry-up on the level brings the beacon back without waiting
-	cues.idle = 0.0
+	# no beacon: a long idle and a dry-up on the level draw nothing once both cues are spent
+	cues.idle = 600.0
 	progress.dry_ups[1] = 1
-	await _physics_frames(40)
-	_check(cues.beacon_alpha > 0.0, "a dry-up on the level shows the beacon")
-	game.goal.visible = true
-	await _physics_frames(80)
-	_check(cues.beacon_alpha == 0.0, "the beacon is gone once the chalice is in view")
+	await _physics_frames(90)
+	_check(cues.drawn_alpha == 0.0 and cues.move_alpha == 0.0 and cues.leap_alpha == 0.0, "no beacon after a long idle and a dry-up (level 1)")
 	cues.queue_redraw()
 	await _physics_frames(2)
 	current_scene = null

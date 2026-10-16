@@ -88,7 +88,7 @@ dots = route; see its header for the command).
   maze's longest route. With the old rule, a 60% route would have used only ~51% of the meter; now
   every perfect run uses 85% whatever the spawn class. This is a little tighter than before on
   average (old routes were 75-100% of the longest, so a perfect run used 64-85%).
-- Tickets (`TicketSpawn`, retired in section 6), par, medals, the tutorial cues and beacon, the camera, the hat and the
+- Tickets (`TicketSpawn`, retired in section 6), par, medals, the tutorial cues, the camera, the hat and the
   fog reveal all read `maze.start` / `maze.goal`, so they follow the real start; nothing assumed
   the corner except some tests (now using `tests/start_dirs.gd`).
 

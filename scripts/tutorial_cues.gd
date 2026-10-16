@@ -5,12 +5,9 @@ extends Node2D
 ## - a pulsing input glyph (the real keys, or a d-pad on touch screens) until the first move, and
 ##   a SPACE / JUMP key once the slime has wandered a while without ever leaping; each fades on
 ##   first use and never comes back (saved in Progress.tutorial_seen)
-## - a faint gold chevron pointing toward the chalice, after the slime has stood still for a
-##   while or after a dry-up on this level; it vanishes once the chalice is in view
 ## Not used on hard mode or the randomizer. A child of the slime, so it follows it.
 
 const MAX_LEVEL := 2
-const IDLE_FOR_BEACON := 6.0
 const WANDER_FOR_LEAP := 48.0
 const LEAP_PAUSE := 1.0
 const FADE_SPEED := 3.0
@@ -20,15 +17,12 @@ const MAX_FADE_STEP := 1.0 / 30.0
 const KEY := 9.0
 const KEY_FILL := Color8(26, 28, 44)
 const KEY_EDGE := Color8(244, 244, 244)
-const GOLD := Color8(255, 205, 117)
-const BEACON_DISTANCE := 26.0
 
 var game: Node
 var slime: Slime
 var progress: Node
 var move_alpha := 0.0
 var leap_alpha := 0.0
-var beacon_alpha := 0.0
 var idle := 0.0
 var wandered := 0.0
 var _last := Vector2.ZERO
@@ -72,15 +66,8 @@ func _process(delta: float) -> void:
 	move_alpha = move_toward(move_alpha, 1.0 if live and not _moved else 0.0, fade)
 	var want_leap: bool = live and _moved and not _leapt and wandered >= WANDER_FOR_LEAP and idle >= LEAP_PAUSE
 	leap_alpha = move_toward(leap_alpha, 1.0 if want_leap else 0.0, fade)
-	beacon_alpha = move_toward(beacon_alpha, 1.0 if live and _beacon_wanted() else 0.0, fade * 0.5)
-	if move_alpha > 0.0 or leap_alpha > 0.0 or beacon_alpha > 0.0 or drawn_alpha > 0.0:
+	if move_alpha > 0.0 or leap_alpha > 0.0 or drawn_alpha > 0.0:
 		queue_redraw()  # (including the one clearing redraw after the last fade step)
-
-
-func _beacon_wanted() -> bool:
-	if game.goal.visible:
-		return false
-	return idle >= IDLE_FOR_BEACON or int(progress.dry_ups.get(game.level, 0)) > 0
 
 
 func _touch() -> bool:
@@ -88,7 +75,7 @@ func _touch() -> bool:
 
 
 func _draw() -> void:
-	drawn_alpha = maxf(move_alpha, maxf(leap_alpha, beacon_alpha))
+	drawn_alpha = maxf(move_alpha, leap_alpha)
 	var bob := -1.0 if fmod(_time, 0.9) < 0.45 else 0.0  # a stepped 1 px pulse
 	if move_alpha > 0.0:
 		var top := Vector2(0, -33 + bob)
@@ -100,8 +87,6 @@ func _draw() -> void:
 		var spot := Vector2(0, -23 + bob)
 		var leap := "JUMP" if _touch() else Platform.prompt_for("jump", _key_text("jump", "SPACE"))  # (pad: A)
 		_draw_key(spot, leap, 29.0, leap_alpha)
-	if beacon_alpha > 0.0:
-		_draw_beacon(beacon_alpha * (0.7 if bob < 0.0 else 0.5))
 
 
 func _draw_wasd(top: Vector2, alpha: float) -> void:
@@ -151,16 +136,3 @@ func _key_text(action: String, fallback: String) -> String:
 			return label if label != "" else fallback
 	return fallback
 
-
-## A small gold chevron on the straight line toward the chalice (not along the path).
-func _draw_beacon(alpha: float) -> void:
-	var dir: Vector2 = (game.goal.position - slime.position).normalized()
-	if dir == Vector2.ZERO:
-		return
-	var perp := Vector2(-dir.y, dir.x)
-	var center := dir * BEACON_DISTANCE
-	var tip := (center + dir * 3.0).round()
-	var left := (center - dir * 2.0 + perp * 3.0).round()
-	var right := (center - dir * 2.0 - perp * 3.0).round()
-	draw_colored_polygon(PackedVector2Array([tip, right, left]), Color(GOLD, alpha))
-	draw_rect(Rect2((center - dir * 6.0).round(), Vector2.ONE), Color(GOLD, alpha * 0.8))

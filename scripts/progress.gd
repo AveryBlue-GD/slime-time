@@ -57,7 +57,7 @@ var tutorial_seen := 0
 var story_seen := 0
 const STORY_INTRO := 1
 const STORY_FINALE := 2
-## Dry-ups per story level since it was last cleared (not saved); drives the chalice beacon.
+## Dry-ups per story level since it was last cleared (not saved); drives the mercy assist.
 var dry_ups := {}
 ## Story level the game scene loads next.
 var current_level := 1
