@@ -30,15 +30,35 @@ static func copy_by_hand_message() -> String:
 ## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
 ## CONTROLS, SAVE CODE, and (only while Economy.languages_on(), docs/i18n/plan.md section 6) LANGUAGE
 ## mirroring FOG. BACK bottom left, the destructive RESET PROGRESS bottom right.
+## English: columns COL_W wide at x COL_L / COL_R, headings HEADING_GAP under the title's line box (y 27),
+## rows ROW_GAP apart from FIRST_ROW (38, 58, 78, 98). Other locales (_plan_page, docs/ui-rules.md
+## section 10): both columns widen alike when a text needs it (staying centred), rows follow the
+## locale's button_h() / line_h() under its title_bottom(), and the row gap closes to GAP_M / GAP_S only
+## when the four rows would not end above the bottom row otherwise (Devanagari).
 const COL_W := 120
 const COL_L := 36
 const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
 const FIRST_ROW := 38
 const ROW_STEP := 20
+const HEADING_GAP := 5
+const ROW_GAP := ROW_STEP - UIKit.BUTTON_H  # 7
 ## RESET PROGRESS on the bottom row, mirroring BACK (its text + the 4 px margins, even).
 const RESET_SIZE := Vector2(92, UIKit.BUTTON_H)
-## The VOLUME box is 6 + label + 6 + slider + 6 wide, which must equal COL_W: the slider width is
+## The VOLUME box is 6 + label + 6 + slider + 6 wide, which must equal the column: the slider width is
 ## UIKit.volume_slider_width (measured from the translated label).
+## The panels (SAVE CODE, RESET confirm): text keeps PANEL_TEXT_PAD from the panel's sides, and a panel
+## stays inside the screen's EDGE (at most 312 wide, 172 tall).
+const PANEL_TEXT_PAD := UIKit.PANEL_PAD
+const PANEL_MAX := Vector2(320 - 2 * UIKit.EDGE, 180 - 2 * UIKit.EDGE)
+
+## This locale's page grid (_plan_page; the constants above in English).
+var col_w := COL_W
+var col_x: Array[int] = [COL_L, COL_R]
+var heading_y := FIRST_ROW - 11
+var first_row := FIRST_ROW
+var row_step := ROW_STEP
+## The page's controls a panel hid while it is open (_cover_page): see there.
+var _covered: Array[Control] = []
 
 var sound_button: Button
 var volume_slider: HSlider
@@ -77,15 +97,16 @@ var _focus_lock := {}
 
 func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("settings.title", "SETTINGS"))  # i18n: max 296px, 16 px font
+	_plan_page()
 	# i18n: column headings, max 120px, 1 line
-	_section(Loc.t("settings.options", "OPTIONS"), COL_L, FIRST_ROW - 11)
-	_section(Loc.t("settings.more", "MORE"), COL_R, FIRST_ROW - 11)
+	_section(Loc.t("settings.options", "OPTIONS"), col_x[0], heading_y)
+	_section(Loc.t("settings.more", "MORE"), col_x[1], heading_y)
 	sound_button = _column_button(_cell(0, 0), _toggle_sound)
-	var volume_row := UIKit.make_volume_slider(UIKit.volume_slider_width(self, COL_W))
+	var volume_row := UIKit.make_volume_slider(UIKit.volume_slider_width(self, col_w))
 	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
 	volume_row.position = _cell(0, 1)
-	volume_row.custom_minimum_size = Vector2(COL_W, UIKit.BUTTON_H)
-	volume_row.size = Vector2(COL_W, UIKit.BUTTON_H)
+	volume_row.custom_minimum_size = Vector2(col_w, UIKit.button_h())
+	volume_row.size = Vector2(col_w, UIKit.button_h())
 	volume_slider = volume_row.get_meta("slider")
 	motion_button = _column_button(_cell(0, 2), _toggle_motion)
 	fog_button = _column_button(_cell(0, 3), _cycle_fog)
@@ -102,21 +123,43 @@ func _ready() -> void:
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), 1 line
-	reset_button = UIKit.make_button(Loc.t("settings.reset", "RESET PROGRESS"), _ask_reset, RESET_SIZE)
+	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
+	reset_button = UIKit.make_button(reset_text, _ask_reset, UIKit.button_size(reset_text, int(RESET_SIZE.x)))
 	add_child(reset_button)
+	reset_button.size = reset_button.custom_minimum_size
 	UIKit.place_bottom_row(reset_button, 1)
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
 
 
+## This locale's grid (English: the constants). Columns: COL_W, or every text + its 4 px margins when
+## one needs more (both columns alike, the pair re-centred: Spanish PANTALLA COMPLETA). Rows: the
+## headings HEADING_GAP under the title's line box, the first row 4 px under a heading's line, rows
+## ROW_GAP apart; GAP_M, then GAP_S, when four rows would not end GAP_M above the bottom row.
+func _plan_page() -> void:
+	var widest := 0
+	for text in column_texts():
+		widest = maxi(widest, UIKit.text_w(text))
+	col_w = maxi(COL_W, widest + 2 * UIKit.BUTTON_TEXT_PAD)
+	var left := int(UIKit.center_x(2 * col_w + UIKit.GAP_L))
+	col_x = [left, left + col_w + UIKit.GAP_L]
+	heading_y = UIKit.title_bottom() + HEADING_GAP
+	first_row = heading_y + UIKit.line_h() + UIKit.GAP_M
+	var bottom := UIKit.bottom_row_y() - UIKit.GAP_M
+	for gap: int in [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]:
+		row_step = UIKit.button_h() + gap
+		if first_row + 3 * row_step + UIKit.button_h() <= bottom:
+			break
+
+
 ## Top-left corner of a grid cell (column 0 = left, 1 = right).
 func _cell(column: int, row: int) -> Vector2:
-	return Vector2(COL_R if column == 1 else COL_L, FIRST_ROW + row * ROW_STEP)
+	return Vector2(col_x[column], first_row + row * row_step)
 
 
 func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
-	var button := UIKit.make_button(text, on_press, Vector2(COL_W, UIKit.BUTTON_H))
+	var button := UIKit.make_button(text, on_press, Vector2(col_w, UIKit.button_h()))
 	button.position = at
 	add_child(button)
 	return button
@@ -131,25 +174,25 @@ func _section(text: String, x: int, y: int) -> void:
 
 ## The LANGUAGE button in the free cell under SAVE CODE: a globe plus the current language's name in
 ## its own script (Language.native_name, never translated), so a player stuck in a language they can't
-## read still finds it. As tall as the current script's button (Language.metrics; 13 for Latin),
-## centred on its row. Only built with the gate on.
+## read still finds it. As tall as the current script's button (UIKit.button_h(); 13 for Latin), on its
+## row like the other column buttons. Only built with the gate on.
 func _build_language_button() -> void:
 	var language := LanguageScreen.lang()
 	var code: String = language.locale
-	var h: int = maxi(UIKit.BUTTON_H, int(LanguageScreen.Lang.metrics(code).button_h))
-	var at := _cell(1, 3) - Vector2(0, (h - UIKit.BUTTON_H) / 2)
-	language_button = UIKit.make_button("", _open_language, Vector2(COL_W, h))
+	var h: int = maxi(UIKit.button_h(), int(LanguageScreen.Lang.metrics(code).button_h))
+	var at := _cell(1, 3)
+	language_button = UIKit.make_button("", _open_language, Vector2(col_w, h))
 	LanguageScreen.fit_styles(language_button, false)
 	language_button.position = at
 	add_child(language_button)
-	language_button.size = Vector2(COL_W, h)
+	language_button.size = Vector2(col_w, h)
 	var font: Font = language.native_font(code)
 	var name := LanguageScreen.Lang.native_name(code)
 	var text_w := int(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)
 	# Globe ink (7 px) + 4 px clear + the name (its 1 px leading letter gap inside the label), as one
 	# centred group.
 	var group_w := 7 + 3 + text_w
-	var x := roundi((COL_W - group_w) / 2.0)
+	var x := roundi((col_w - group_w) / 2.0)
 	var globe := UIKit.make_icon("globe")
 	globe.position = Vector2(x, floori((h - 7) / 2.0))
 	language_button.add_child(globe)
@@ -177,6 +220,10 @@ func _open_controls() -> void:
 
 ## The SAVE CODE panel: your progress as a code to copy, and a box to paste a code into and load.
 ## Loading asks for a second press, since it replaces the progress you have.
+## English: a 296x150 panel at (12, 14): the title at 20, each hint one line pitch (12) over the row it
+## describes (code box + COPY at 58, code box + PASTE + LOAD at 93, 10 px between the two sections), the
+## status line at 114, CLOSE at 140, 11 px under it. Other locales: the same column from the locale's
+## title / line / button heights (_code_layout), re-centred on the English panel's middle.
 func _build_code_panel() -> void:
 	code_panel = Control.new()
 	code_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -187,54 +234,182 @@ func _build_code_panel() -> void:
 	dim.color = Color(UIKit.BG, 0.85)
 	code_panel.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(code_panel, Rect2(12, 14, 296, 150))
 	# i18n: panel title, max 270px, 16 px font
-	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.title", "SAVE CODE"), UIKit.FONT_BIG, UIKit.GOLD), 20, 40)
-	# Each line sits one line pitch (12) over the row it describes; 10 px between the two sections.
+	var title_text := Loc.t("savecode.title", "SAVE CODE")
 	# i18n: max 270px, 1 line
-	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.copy_hint", "COPY THIS CODE TO BACK UP YOUR PROGRESS"), UIKit.FONT, UIKit.TEXT_DIM), 58 - UIKit.LINE_PITCH, 58 - 2)
-	code_out = _code_box(true)
-	code_out.position = Vector2(24, 58)
+	var copy_hint := Loc.t("savecode.copy_hint", "COPY THIS CODE TO BACK UP YOUR PROGRESS")
 	# i18n: SAVE CODE panel buttons (COPY, PASTE, LOAD, CLOSE), max 56px (64 wide, 4 px margins), 1 line
-	copy_button = UIKit.make_button(Loc.t("savecode.copy", "COPY"), _copy_code, Vector2(64, UIKit.BUTTON_H))
-	copy_button.position = Vector2(232, 58)
-	code_panel.add_child(copy_button)
+	var copy_text := Loc.t("savecode.copy", "COPY")
 	# i18n: max 270px, 1 line
-	_panel_label(code_panel, UIKit.make_label(Loc.t("savecode.paste_hint", "TO LOAD A SAVE, PASTE ITS CODE HERE"), UIKit.FONT, UIKit.TEXT_DIM), 93 - UIKit.LINE_PITCH, 93 - 2)
-	code_in = _code_box(false)
-	code_in.position = Vector2(24, 93)
-	code_in.custom_minimum_size = Vector2(136, UIKit.BUTTON_H)  # (before size: a size under the old minimum won't stick)
-	code_in.size = Vector2(136, UIKit.BUTTON_H)
+	var paste_hint := Loc.t("savecode.paste_hint", "TO LOAD A SAVE, PASTE ITS CODE HERE")
 	# i18n: max 56px, 1 line
-	paste_button = UIKit.make_button(Loc.t("savecode.paste", "PASTE"), _paste_code, Vector2(64, UIKit.BUTTON_H))
-	paste_button.position = Vector2(164, 93)
+	var paste_text := Loc.t("savecode.paste", "PASTE")
+	# i18n: max 56px, 1 line
+	var load_text := Loc.t("savecode.load", "LOAD")
+	# i18n: max 56px, 1 line
+	var close_text := Loc.t("savecode.close", "CLOSE")
+	var plan := _code_layout(title_text, [copy_hint, paste_hint])
+	var top: int = plan.rect.position.y
+	var tops: Array = plan.tops
+	var row_h := UIKit.button_h()
+	code_panel.set_meta("panel_rect", plan.rect)
+	UIKit.add_panel(code_panel, plan.rect)
+	var title := UIKit.make_label(title_text, plan.title_size, UIKit.GOLD)
+	_panel_label(code_panel, title, top + tops[0], top + tops[0] + plan.heights[0])
+	# Each line sits one line pitch (12) over the row it describes; 10 px between the two sections.
+	_panel_text(code_panel, copy_hint, UIKit.TEXT_DIM, plan, top + tops[1], plan.heights[1])
+	code_out = _code_box(true)
+	code_out.position = Vector2(24, top + tops[2])
+	copy_button = UIKit.make_button(copy_text, _copy_code, Vector2(64, row_h))
+	copy_button.position = Vector2(232, top + tops[2])
+	code_panel.add_child(copy_button)
+	_panel_text(code_panel, paste_hint, UIKit.TEXT_DIM, plan, top + tops[3], plan.heights[3])
+	code_in = _code_box(false)
+	code_in.position = Vector2(24, top + tops[4])
+	code_in.custom_minimum_size = Vector2(136, row_h)  # (before size: a size under the old minimum won't stick)
+	code_in.size = Vector2(136, row_h)
+	paste_button = UIKit.make_button(paste_text, _paste_code, Vector2(64, row_h))
+	paste_button.position = Vector2(164, top + tops[4])
 	code_panel.add_child(paste_button)
 	code_in.placeholder_text = Progress.SAVE_CODE_PREFIX + "..."
 	code_in.text_changed.connect(func(_text: String) -> void:
 		load_armed = false
 		code_status.text = "")
-	# i18n: max 56px, 1 line
-	load_button = UIKit.make_button(Loc.t("savecode.load", "LOAD"), _load_code, Vector2(64, UIKit.BUTTON_H))
-	load_button.position = Vector2(232, 93)
+	load_button = UIKit.make_button(load_text, _load_code, Vector2(64, row_h))
+	load_button.position = Vector2(232, top + tops[4])
 	code_panel.add_child(load_button)
-	code_status = UIKit.make_label("", UIKit.FONT, UIKit.TEXT)
-	_panel_label(code_panel, code_status, 114, 124)
-	# i18n: max 56px, 1 line
-	var close := UIKit.make_button(Loc.t("savecode.close", "CLOSE"), _close_codes, Vector2(64, UIKit.BUTTON_H))
-	close.position = Vector2(128, 140)
+	code_status = _panel_text(code_panel, "", UIKit.TEXT, plan, top + tops[5], plan.heights[5])
+	var close := UIKit.make_button(close_text, _close_codes, Vector2(64, row_h))
+	close.position = Vector2(128, top + tops[6])
 	code_panel.add_child(close)
+
+
+## The SAVE CODE panel's column for this locale: {rect, tops (of title, hint, row, hint, row, status,
+## CLOSE from the panel's top), heights, title_size, font (the hints' / status's font, null = theme),
+## lines (a text's lines: 2 where it is wider than the panel's text width), text_w}. English: the
+## numbers above. The panel widens (up to PANEL_MAX.x) for a wider text, which wraps onto two lines
+## when even that is too narrow. When the column is taller than PANEL_MAX.y, its gaps close to the
+## spacing scale (status / CLOSE, bottom pad, the sections, status, title), then the hints and status
+## take the script's smaller crisp size (Language.small_font: Devanagari 12 px), then the title the 8 px
+## font (UIKit.fit_text's steps; never a fractional scale).
+func _code_layout(title_text: String, hints: Array) -> Dictionary:
+	var widest := UIKit.text_w(title_text, UIKit.FONT_BIG)
+	var line_widest := 0
+	for text: String in hints + status_texts():
+		line_widest = maxi(line_widest, UIKit.text_w(text))
+	var panel_w := clampi(maxi(widest, line_widest) + 2 * PANEL_TEXT_PAD, 296, int(PANEL_MAX.x))
+	var text_w := panel_w - 2 * PANEL_TEXT_PAD
+	var hint_lines := 1
+	for text: String in hints:
+		if UIKit.text_w(text) > text_w:
+			hint_lines = 2
+	var status_lines := 1
+	for text in status_texts():
+		if UIKit.text_w(text) > text_w:
+			status_lines = 2
+	var small := _small_font()
+	var plan := {}
+	for step in 3:
+		if step == 1 and small == null:
+			continue
+		var font: Font = small if step >= 1 else null
+		var title_size := UIKit.FONT if step == 2 or widest > text_w else UIKit.FONT_BIG
+		var title_h := UIKit.title_h() if title_size == UIKit.FONT_BIG else _text_box(1, UIKit.TEXT_DRIP + 1, null)
+		var hint_h := _text_box(hint_lines, UIKit.TEXT_DRIP + 1, font)
+		var heights := [title_h, hint_h, UIKit.button_h(), hint_h, UIKit.button_h(), _text_box(status_lines, UIKit.TEXT_DRIP + 1, font), UIKit.button_h()]
+		var top_pad := 6 + int(UIKit.metrics().title_above)
+		var gaps := [[top_pad, top_pad], [6, UIKit.GAP_M], [2, 2], [10, UIKit.GAP_M], [2, 2], [8, UIKit.GAP_M], [16, UIKit.GAP_M], [11, UIKit.GAP_L]]
+		var column := stack_column(heights, gaps, [6, 7, 3, 5, 1], int(PANEL_MAX.y))
+		plan = {tops = column.tops, heights = heights, title_size = title_size, font = font, text_w = text_w,
+			lines = {hint = hint_lines, status = status_lines}, h = column.h}
+		if column.fits:
+			break
+	var h: int = plan.h
+	var y := clampi(14 - floori((h - 150) / 2.0), UIKit.EDGE, int(UIKit.SCREEN.y) - UIKit.EDGE - h)
+	plan.rect = Rect2(UIKit.center_x(panel_w), y, panel_w, h)
+	return plan
+
+
+## The current script's smaller crisp font (Language.small_font), or null.
+func _small_font() -> Font:
+	var language := get_node_or_null("/root/Language")
+	if language == null or not language.get("active"):
+		return null
+	return language.small_font(UIKit.locale())
+
+
+## The height a panel text of `lines` lines takes in `font` (null = the theme's): its line boxes and
+## spacing, plus `extra` rows (the drips) for the slimy font's 7 px body (a taller script's line box
+## holds its own marks).
+static func _text_box(lines: int, extra: int, font: Font) -> int:
+	if font == null:
+		return UIKit.text_block_h(lines) + (0 if UIKit.tall_script() else extra)
+	var line := ceili(font.get_height(UIKit.FONT))
+	return lines * line + (lines - 1) * UIKit.line_spacing()
+
+
+## Lays a panel's column out: `heights` top to bottom, `gaps[i]` = [gap, smallest gap] before item i
+## (gaps[0] the top pad, the last one the bottom pad). While the column is taller than `max_h`, the
+## gaps listed in `shrink_order` close towards their smallest, one after the other, only as far as
+## needed. Returns {tops (each item's top), h (the whole column, pads included), fits}.
+static func stack_column(heights: Array, gaps: Array, shrink_order: Array, max_h: int) -> Dictionary:
+	var g: Array[int] = []
+	var total := 0
+	for pair: Array in gaps:
+		g.append(int(pair[0]))
+		total += int(pair[0])
+	for item_h: int in heights:
+		total += item_h
+	for i: int in shrink_order:
+		if total <= max_h:
+			break
+		var cut := mini(g[i] - int(gaps[i][1]), total - max_h)
+		g[i] -= cut
+		total -= cut
+	var tops: Array[int] = []
+	var y := 0
+	for i in heights.size():
+		y += g[i]
+		tops.append(y)
+		y += int(heights[i])
+	return {tops = tops, h = total, fits = total <= max_h}
+
+
+## A centred panel text (hint / status) at `top`, `h` tall: in the plan's font, wrapped inside the
+## panel's text width when the plan gave it two lines.
+func _panel_text(parent: Control, text: String, color: Color, plan: Dictionary, top: int, h: int) -> Label:
+	var label := UIKit.make_label(text, UIKit.FONT, color)
+	if plan.font != null:
+		label.add_theme_font_override("font", plan.font)
+	_panel_label(parent, label, top, top + h)
+	if h > _text_box(1, UIKit.TEXT_DRIP + 1, plan.font):
+		label.autowrap_mode = UIKit.autowrap_mode()
+		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM  # (a one-line text stays over its row)
+		var side: float = plan.rect.position.x + PANEL_TEXT_PAD
+		label.offset_left = side
+		label.offset_right = -side
+	return label
 
 
 func _code_box(read_only: bool) -> LineEdit:
 	var box := LineEdit.new()
-	box.custom_minimum_size = Vector2(204, UIKit.BUTTON_H)
+	box.custom_minimum_size = Vector2(204, UIKit.button_h())
 	box.editable = not read_only
 	box.select_all_on_focus = read_only
 	box.add_theme_font_size_override("font_size", UIKit.FONT)
 	box.material = UIKit.text_material()
 	code_panel.add_child(box)
+	if UIKit.tall_script():
+		# A taller script's line box (the code itself is in the slimy glyphs) + the well's 2 / 1 margins
+		# would be 1 px taller than the buttons beside it: 1 / 1 keeps the box button_h() tall.
+		for slot: String in ["normal", "read_only", "focus"]:
+			var well := box.get_theme_stylebox(slot).duplicate() as StyleBox
+			var extra := maxi(0, UIKit.button_h() - UIKit.line_h())
+			well.content_margin_top = ceili(extra / 2.0)
+			well.content_margin_bottom = extra - ceili(extra / 2.0)
+			box.add_theme_stylebox_override(slot, well)
 	# Sized once in the themed tree (sized before, it keeps the default font's 22 px height).
-	box.size = Vector2(204, UIKit.BUTTON_H)
+	box.size = Vector2(204, UIKit.button_h())
 	UIKit.add_touch_target(box)
 	return box
 
@@ -253,6 +428,7 @@ func _open_codes() -> void:
 	code_status.text = ""
 	load_armed = false
 	code_panel.visible = true
+	_cover_page(code_panel)
 	_listen_for_web_paste()
 	copy_button.grab_focus()
 	_lock_page(code_panel)
@@ -322,8 +498,30 @@ func _exit_tree() -> void:
 
 func _close_codes() -> void:
 	code_panel.visible = false
+	_cover_page(null)
 	UIKit.unlock_focus(_focus_lock)
 	save_code_button.grab_focus()
+
+
+## While a panel is open, the page's own controls under its rect are hidden (null `panel`: shown again).
+## The panel's face is 92 % opaque over a 85 % dim, so they would only show as a faint ghost; in a
+## taller or longer locale the panel's texts grow over them, and text over ghost text reads as clutter.
+## English keeps its ghost (its captures stay byte-identical): its panels' texts already avoid the page.
+func _cover_page(panel: Control) -> void:
+	for control in _covered:
+		if is_instance_valid(control):
+			control.visible = true
+	_covered.clear()
+	if panel == null or UIKit.locale() == LanguageScreen.Lang.SOURCE_LOCALE:
+		return
+	var rect: Rect2 = panel.get_meta("panel_rect")
+	for child in get_children():
+		var control := child as Control
+		if control == null or control is MenuBackdrop or control == code_panel or control == reset_confirm or not control.visible:
+			continue
+		if Rect2(control.position, control.size).intersects(rect):
+			control.visible = false
+			_covered.append(control)
 
 
 func _lock_page(panel: Control) -> void:
@@ -435,17 +633,40 @@ func _build_reset_confirm() -> void:
 	dim.color = Color(UIKit.BG, 0.85)
 	reset_confirm.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	UIKit.add_panel(reset_confirm, Rect2(24, 48, 272, 82))
+	# English: a 272x82 panel at (24, 48): the title at 54, the two lines at 78, CONFIRM / CANCEL (70 wide,
+	# 12 apart) at 108, 9 px under them. Other locales: the same column from the locale's title / line /
+	# button heights, re-centred on the English panel's middle; a wider text widens the panel (up to
+	# PANEL_MAX.x), a longer CONFIRM / CANCEL both buttons alike (UIKit.tab_widths).
 	# i18n: max 256px, 16 px font
-	_centered_label(UIKit.make_label(Loc.t("reset.title", "ERASE ALL PROGRESS?"), UIKit.FONT_BIG, UIKit.GOLD), 54, 74)
+	var title_text := Loc.t("reset.title", "ERASE ALL PROGRESS?")
 	# i18n: two lines, each max 256px
-	_centered_label(UIKit.make_label(Loc.lines([Loc.t("reset.body.1", "LEVELS, RECORDS, COINS, UPGRADES AND"), Loc.t("reset.body.2", "SKINS WILL BE GONE FOR GOOD")]), UIKit.FONT, UIKit.TEXT_DIM), 78, 98)
+	var body_text := Loc.lines([Loc.t("reset.body.1", "LEVELS, RECORDS, COINS, UPGRADES AND"), Loc.t("reset.body.2", "SKINS WILL BE GONE FOR GOOD")])
 	# i18n: reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
-	confirm_button = UIKit.make_button(Loc.t("reset.confirm", "CONFIRM"), _reset, Vector2(70, UIKit.BUTTON_H))
-	confirm_button.position = Vector2(84, 108)
+	var confirm_text := Loc.t("reset.confirm", "CONFIRM")
+	var cancel_text := Loc.t("common.cancel", "CANCEL")
+	var button_w: int = UIKit.tab_widths([confirm_text, cancel_text], 70, true).max()
+	var pair_w := 2 * button_w + UIKit.GAP_XL
+	var widest := maxi(maxi(UIKit.text_w(title_text, UIKit.FONT_BIG), UIKit.text_w(body_text)), pair_w)
+	var panel_w := clampi(widest + 2 * PANEL_TEXT_PAD, 272, int(PANEL_MAX.x))
+	# A title wider than the widest panel's text: the 8 px font (UIKit.fit_text's smaller step).
+	var title_size := UIKit.FONT_BIG if UIKit.text_w(title_text, UIKit.FONT_BIG) <= panel_w - 2 * PANEL_TEXT_PAD else UIKit.FONT
+	var title_h := UIKit.title_h() if title_size == UIKit.FONT_BIG else _text_box(1, UIKit.TEXT_DRIP + 1, null)
+	var top_pad := 6 + int(UIKit.metrics().title_above)
+	var heights := [title_h, _text_box(2, 1, null), UIKit.button_h()]
+	var column := stack_column(heights, [[top_pad, top_pad], [4, UIKit.GAP_XS], [10, UIKit.GAP_M], [9, UIKit.GAP_L]], [2, 1], int(PANEL_MAX.y))
+	var h: int = column.h
+	var rect := Rect2(UIKit.center_x(panel_w), 48 - floori((h - 82) / 2.0), panel_w, h)
+	var top := int(rect.position.y)
+	reset_confirm.set_meta("panel_rect", rect)
+	UIKit.add_panel(reset_confirm, rect)
+	_centered_label(UIKit.make_label(title_text, title_size, UIKit.GOLD), top + column.tops[0], top + column.tops[0] + heights[0])
+	_centered_label(UIKit.make_label(body_text, UIKit.FONT, UIKit.TEXT_DIM), top + column.tops[1], top + column.tops[1] + heights[1])
+	var buttons_y: int = top + column.tops[2]
+	confirm_button = UIKit.make_button(confirm_text, _reset, Vector2(button_w, UIKit.button_h()))
+	confirm_button.position = Vector2(UIKit.center_x(pair_w), buttons_y)  # 84 in English
 	reset_confirm.add_child(confirm_button)
-	cancel_button = UIKit.make_button(Loc.t("common.cancel", "CANCEL"), _cancel_reset, Vector2(70, UIKit.BUTTON_H))
-	cancel_button.position = Vector2(confirm_button.position.x + 70 + UIKit.GAP_XL, 108)  # 166
+	cancel_button = UIKit.make_button(cancel_text, _cancel_reset, Vector2(button_w, UIKit.button_h()))
+	cancel_button.position = Vector2(confirm_button.position.x + button_w + UIKit.GAP_XL, buttons_y)  # 166
 	reset_confirm.add_child(cancel_button)
 
 
@@ -459,12 +680,14 @@ func _centered_label(label: Label, top: int, bottom: int) -> void:
 
 func _ask_reset() -> void:
 	reset_confirm.visible = true
+	_cover_page(reset_confirm)
 	cancel_button.grab_focus()  # the safe choice is the default
 	_lock_page(reset_confirm)
 
 
 func _cancel_reset() -> void:
 	reset_confirm.visible = false
+	_cover_page(null)
 	UIKit.unlock_focus(_focus_lock)
 	reset_button.grab_focus()
 
@@ -532,3 +755,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cancel_reset()
 		else:
 			UIKit.go(get_tree(), UIKit.HUB_SCENE)
+
+
+## Every text a column button can show (each state is a whole string), for the column width.
+static func column_texts() -> Array[String]:
+	return [Loc.t("settings.sound.on", "SOUND: ON"), Loc.t("settings.sound.off", "SOUND: OFF"),
+		Loc.t("settings.motion.less", "MOTION: LESS"), Loc.t("settings.motion.full", "MOTION: FULL"),
+		Loc.t("settings.fog.dark", "FOG: DARK"), Loc.t("settings.fog.normal", "FOG: NORMAL"),
+		Loc.t("settings.fog.bright", "FOG: BRIGHT"), Loc.t("settings.fullscreen.on", "FULLSCREEN: ON"),
+		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.controls", "CONTROLS"),
+		Loc.t("settings.save_code", "SAVE CODE")]
+
+
+## Every status line the SAVE CODE panel can show (for its width).
+static func status_texts() -> Array[String]:
+	return [old_code_message(), copied_message(), copy_by_hand_message(),
+		Loc.t("savecode.click_box", "CLICK THE BOX AND PRESS {keys}", {keys = "CTRL+V"}),
+		Loc.t("savecode.nothing_to_paste", "NOTHING TO PASTE - COPY A CODE FIRST"),
+		Loc.t("savecode.pasted", "PASTED - PRESS LOAD"),
+		Loc.t("savecode.replaces", "THIS REPLACES YOUR PROGRESS - PRESS LOAD AGAIN"),
+		Loc.t("savecode.bad_code", "THAT CODE DOESN'T WORK - CHECK IT'S ALL THERE")]

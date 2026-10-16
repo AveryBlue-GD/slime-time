@@ -119,14 +119,16 @@ func _settings_button() -> void:
 		var right := button.position.x + button.size.x - ink_r
 		_check(absf(left - right) <= 1.0, "globe + name are centred as one group (%d / %d)" % [left, right])
 	_close(settings)
-	# In a tall script the button grows to that script's button height, centred on its row.
+	# In a tall script the button grows to that script's button height, on its row like its neighbours
+	# (the rows follow UIKit.button_h(): i18n chunk G2).
 	language.set_locale("hi")
 	settings = await _open(SETTINGS)
 	button = settings.language_button
 	var h := int(language.metrics("hi").button_h)
 	_check(button.size.y == h and button.get_combined_minimum_size().y <= h, "Hindi: the button is %d tall and its name fits" % h)
-	_check(absf(button.position.y + h / 2.0 - (settings._cell(1, 3).y + UIKit.BUTTON_H / 2.0)) <= 0.5,
-		"... centred on its row")
+	_check(button.position == settings._cell(1, 3) and button.size.x == settings.fog_button.size.x
+		and button.position.y == settings.fog_button.position.y and button.size.y == settings.fog_button.size.y,
+		"... on its row, level with FOG and as big")
 	_close(settings)
 	language.set_locale("en")
 

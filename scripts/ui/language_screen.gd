@@ -9,9 +9,11 @@ extends Control
 ## Layout: a 3 x 6 grid of 96 px buttons, 8 px apart (3 x 96 + 2 x 8 = 304, L8 / R8). Each row is as
 ## tall as the tallest script in it needs (Lang.metrics(code).button_h: 15 for the accented Latin
 ## and Cyrillic rows, 16 CJK, 19 Thai, 21 Devanagari), so every name fits in every language; 4 px
-## between rows (UIKit.GAP_M). Uniform rows of 21 would not leave room for a Hindi / Thai / Arabic BACK
-## (as tall as its own script's button) under them. The grid is centred between the title's line box
-## and the bottom row; BACK stays at (4, 164), or moves up so a taller BACK still ends on row 176.
+## between rows (UIKit.GAP_M; GAP_S where the current locale's taller title and BACK leave less room:
+## row_gap). Uniform rows of 21 would not leave room for a Hindi / Thai / Arabic BACK (as tall as its
+## own script's button) under them. The grid is centred between the title's line box
+## (UIKit.title_bottom()) and BACK, the standard one (UIKit.add_back_button: (4, 164) in English, wider
+## for a longer word, taller and higher for a taller script, always ending on row 176).
 ## Names in a script the slimy font has are drawn with a copy of it WITHOUT the current locale's
 ## fallback (with Hindi on, pixel.fnt's line box is Devanagari's 19 px and ENGLISH would need 21).
 
@@ -24,10 +26,8 @@ const COLUMNS := 3
 const BUTTON_W := 96
 const COL_GAP := UIKit.GAP_L
 const ROW_GAP := UIKit.GAP_M
-## The space the grid is centred in starts under the title's line box.
+## The space the grid is centred in starts under the title's line box (English: 22).
 const AREA_TOP := UIKit.TITLE_Y + 20
-## The last row interactive art may use (docs/ui-rules.md section 8): BACK's bottom edge.
-const BOTTOM_EDGE := UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H
 
 ## Thai and Devanagari keep empty descent room under most letters, so their ink sits above the line
 ## box's centre; their buttons move the text down by shifting this much content margin from the
@@ -67,13 +67,24 @@ static func row_heights() -> Array[int]:
 	return out
 
 
-## The grid's rect: centred on the screen, and vertically between AREA_TOP and `back_top`.
-static func grid_rect(back_top: float = UIKit.BOTTOM_ROW_Y) -> Rect2:
+## The grid's rect: centred on the screen, and vertically between the title's line box and `back_top`.
+static func grid_rect(back_top: float = UIKit.bottom_row_y()) -> Rect2:
 	var w := COLUMNS * BUTTON_W + (COLUMNS - 1) * COL_GAP
+	var gap := row_gap(back_top)
+	var h := (row_count() - 1) * gap
+	for row_h in row_heights():
+		h += row_h
+	var top := UIKit.title_bottom()  # AREA_TOP in English
+	return Rect2(UIKit.center_x(w), UIKit.center_x(h, top, back_top - top), w, h)
+
+
+## The gap between rows: ROW_GAP, or GAP_S when the grid would not keep ROW_GAP clear of the title's
+## line box and of BACK (the current locale's taller title / BACK: Traditional Chinese, Devanagari, vi).
+static func row_gap(back_top: float = UIKit.bottom_row_y()) -> int:
 	var h := (row_count() - 1) * ROW_GAP
 	for row_h in row_heights():
 		h += row_h
-	return Rect2(UIKit.center_x(w), UIKit.center_x(h, AREA_TOP, back_top - AREA_TOP), w, h)
+	return ROW_GAP if h + 2 * ROW_GAP <= back_top - UIKit.title_bottom() else UIKit.GAP_S
 
 
 ## The font a language's name is drawn in: its script's fallback over the slimy font
@@ -91,8 +102,8 @@ func name_font(code: String) -> Font:
 func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("language.title", "LANGUAGE"))  # i18n: max 296px, 16 px font
 	back_button = UIKit.add_back_button(self, _back)  # (back to SETTINGS)
-	_fit_back()
 	grid = grid_rect(back_button.position.y)
+	var gap := row_gap(back_button.position.y)
 	var heights := row_heights()
 	var codes := Lang.codes()
 	var y := grid.position.y
@@ -111,24 +122,11 @@ func _ready() -> void:
 		button.size = Vector2(BUTTON_W, h)
 		button.position = Vector2(grid.position.x + (i % COLUMNS) * (BUTTON_W + COL_GAP), y)
 		if i % COLUMNS == COLUMNS - 1:
-			y += h + ROW_GAP
+			y += h + gap
 		buttons[code] = button
 	_link_focus(codes)
 	var current: Button = buttons.get(lang().locale, buttons[codes[0]])
 	current.grab_focus()
-
-
-## BACK in a script taller than the slimy font (its text in the current language): the slim styles
-## (fit_styles) and the height its line needs (Language.metrics button_h, or more if the line box is
-## taller), moved up so it still ends on BOTTOM_EDGE. Untouched (40x13 at 4, 164) for Latin / Cyrillic.
-func _fit_back() -> void:
-	if back_button.get_combined_minimum_size().y <= UIKit.BUTTON_H:
-		return
-	fit_styles(back_button, false)  # (no nudge: BACK in Hindi has no marks above the line)
-	var h := maxi(int(Lang.metrics(lang().locale).button_h), int(back_button.get_combined_minimum_size().y))
-	back_button.custom_minimum_size = Vector2(UIKit.BACK_SIZE.x, h)
-	back_button.size = back_button.custom_minimum_size
-	back_button.position.y = mini(UIKit.BOTTOM_ROW_Y, BOTTOM_EDGE - h)
 
 
 ## The button's goo styles with 1 px content margins above and below instead of 3: a button's minimum
