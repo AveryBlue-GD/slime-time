@@ -2518,3 +2518,77 @@ msgstr "반짝임 {now}  최대"
 msgctxt "workshop.nose.next"
 msgid "GLIMMERS {now} -> {next}"
 msgstr "반짝임 {now} -> {next}"
+
+#. Shown inside the game canvas when the browser has no canvas support. In a browser font, mixed case, not the pixel font.
+#: tools/web_shell.html
+msgctxt "web.canvas"
+msgid "Your browser does not support the canvas tag."
+msgstr "브라우저가 canvas 태그를 지원하지 않아요."
+
+#. Bar at the top of the page. In a browser font, mixed case. SETTINGS and SAVE CODE are the game's own menu names: write them exactly as in this language's settings.title and settings.save_code.
+#: tools/web_shell.html
+msgctxt "web.storage"
+msgid "Your browser is blocking storage for this game, so your progress won't be kept when you leave. Allow cookies and site data for this page, or back up with SETTINGS > SAVE CODE."
+msgstr "브라우저가 이 게임의 저장소를 막고 있어서, 페이지를 나가면 진행 상황이 남지 않아요. 이 페이지의 쿠키와 사이트 데이터를 허용하거나 설정 > 저장 코드로 백업하세요."
+
+#. Button that dismisses the storage bar. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.ok"
+msgid "OK"
+msgstr "확인"
+
+#. Cover shown when the browser resets WebGL; the newline separates the two sentences. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.lost"
+msgid ""
+"The graphics stopped working (the browser reset WebGL).\n"
+"Your progress is saved."
+msgstr ""
+"그래픽이 멈췄어요 (브라우저가 WebGL을 초기화했어요).\n"
+"진행 상황은 저장되어 있어요."
+
+#. Button on the WebGL cover; reloads the page. In a browser font, mixed case; match the game's own RELOAD-style buttons (caps where the script has them).
+#: tools/web_shell.html
+msgctxt "web.reload"
+msgid "RELOAD"
+msgstr "새로고침"
+
+#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep SLIME TIME and the browser names in Latin letters.
+#: tools/web_shell.html
+msgctxt "web.unsupported"
+msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
+msgstr "Slime Time은 이 브라우저에서 실행할 수 없어요. 최신 Chrome, Firefox, Edge, Safari를 써 보세요 (iPhone/iPad: iOS 15 이상)."
+
+#. Shown when WebGL 2 or another feature is missing; followed by web.details and the list of missing features. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.no_webgl"
+msgid ""
+"Slime Time can't run in this browser.\n"
+"It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
+msgstr ""
+"Slime Time은 이 브라우저에서 실행할 수 없어요.\n"
+"WebGL 2가 필요해요. 최신 Chrome, Firefox, Edge, Safari를 써 보고 (iPhone/iPad: iOS 15 이상), 하드웨어 가속이 켜져 있는지 확인하세요."
+
+#. Heading above the technical details (English engine messages). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.details"
+msgid "Details:"
+msgstr "자세한 내용:"
+
+#. Introduces a list of missing browser features (their names stay English). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.missing_features"
+msgid "The following features required to run Godot projects on the Web are missing:"
+msgstr "웹에서 Godot 프로젝트를 실행하는 데 필요한 다음 기능이 없어요:"
+
+#. First line of the start-failure notice, followed by a blank line and the engine's English error text. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.start_failed"
+msgid "Slime Time couldn't start. Reloading the page usually helps."
+msgstr "Slime Time을 시작하지 못했어요. 페이지를 새로고침하면 대개 해결돼요."
+
+#. Shown when the engine fails without any message. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.unknown_error"
+msgid "An unknown error occurred."
+msgstr "알 수 없는 오류가 발생했어요."

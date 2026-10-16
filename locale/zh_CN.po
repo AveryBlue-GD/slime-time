@@ -2518,3 +2518,77 @@ msgstr "闪光 {now}  已满级"
 msgctxt "workshop.nose.next"
 msgid "GLIMMERS {now} -> {next}"
 msgstr "闪光 {now} -> {next}"
+
+#. Shown inside the game canvas when the browser has no canvas support. In a browser font, mixed case, not the pixel font.
+#: tools/web_shell.html
+msgctxt "web.canvas"
+msgid "Your browser does not support the canvas tag."
+msgstr "你的浏览器不支持 canvas 标签。"
+
+#. Bar at the top of the page. In a browser font, mixed case. SETTINGS and SAVE CODE are the game's own menu names: write them exactly as in this language's settings.title and settings.save_code.
+#: tools/web_shell.html
+msgctxt "web.storage"
+msgid "Your browser is blocking storage for this game, so your progress won't be kept when you leave. Allow cookies and site data for this page, or back up with SETTINGS > SAVE CODE."
+msgstr "你的浏览器正在阻止本游戏使用存储，所以离开后进度不会保留。请允许本页使用 Cookie 和网站数据，或用 设置 > 存档码 备份。"
+
+#. Button that dismisses the storage bar. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.ok"
+msgid "OK"
+msgstr "确定"
+
+#. Cover shown when the browser resets WebGL; the newline separates the two sentences. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.lost"
+msgid ""
+"The graphics stopped working (the browser reset WebGL).\n"
+"Your progress is saved."
+msgstr ""
+"画面停止工作了（浏览器重置了 WebGL）。\n"
+"你的进度已保存。"
+
+#. Button on the WebGL cover; reloads the page. In a browser font, mixed case; match the game's own RELOAD-style buttons (caps where the script has them).
+#: tools/web_shell.html
+msgctxt "web.reload"
+msgid "RELOAD"
+msgstr "重新加载"
+
+#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep SLIME TIME and the browser names in Latin letters.
+#: tools/web_shell.html
+msgctxt "web.unsupported"
+msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
+msgstr "Slime Time 无法在此浏览器中运行。请试试最新版的 Chrome、Firefox、Edge 或 Safari（iPhone/iPad：iOS 15 或更高版本）。"
+
+#. Shown when WebGL 2 or another feature is missing; followed by web.details and the list of missing features. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.no_webgl"
+msgid ""
+"Slime Time can't run in this browser.\n"
+"It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
+msgstr ""
+"Slime Time 无法在此浏览器中运行。\n"
+"它需要 WebGL 2：请试试最新版的 Chrome、Firefox、Edge 或 Safari（iPhone/iPad：iOS 15 或更高版本），并确认已开启硬件加速。"
+
+#. Heading above the technical details (English engine messages). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.details"
+msgid "Details:"
+msgstr "详细信息："
+
+#. Introduces a list of missing browser features (their names stay English). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.missing_features"
+msgid "The following features required to run Godot projects on the Web are missing:"
+msgstr "缺少在网页上运行 Godot 项目所需的以下功能："
+
+#. First line of the start-failure notice, followed by a blank line and the engine's English error text. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.start_failed"
+msgid "Slime Time couldn't start. Reloading the page usually helps."
+msgstr "Slime Time 无法启动。通常重新加载页面就能解决。"
+
+#. Shown when the engine fails without any message. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.unknown_error"
+msgid "An unknown error occurred."
+msgstr "发生了未知错误。"

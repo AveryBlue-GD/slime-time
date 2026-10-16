@@ -184,7 +184,8 @@ func _coverage() -> void:
 			catalogs += 1
 			# Placeholders ({count}, {name}...) are filled in at run time and never drawn as written:
 			# their braces and names are not checked, the literal text around them is.
-			var text := _strip_placeholders(po_text(LOCALE_DIR.path_join(file)))
+			# Entries marked "mixed case" (the web shell's, drawn by the browser) are left out.
+			var text := _strip_placeholders(po_text(LOCALE_DIR.path_join(file), true))
 			var missing := _missing(code, text)
 			_check(missing == "", "%s.po: every translated character has a glyph %s" % [code, missing])
 			if code == "tr":

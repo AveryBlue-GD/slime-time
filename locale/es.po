@@ -2544,3 +2544,77 @@ msgstr "DESTELLOS {now}  AL MÁXIMO"
 msgctxt "workshop.nose.next"
 msgid "GLIMMERS {now} -> {next}"
 msgstr "DESTELLOS {now} -> {next}"
+
+#. Shown inside the game canvas when the browser has no canvas support. In a browser font, mixed case, not the pixel font.
+#: tools/web_shell.html
+msgctxt "web.canvas"
+msgid "Your browser does not support the canvas tag."
+msgstr "Tu navegador no admite la etiqueta canvas."
+
+#. Bar at the top of the page. In a browser font, mixed case. SETTINGS and SAVE CODE are the game's own menu names: write them exactly as in this language's settings.title and settings.save_code.
+#: tools/web_shell.html
+msgctxt "web.storage"
+msgid "Your browser is blocking storage for this game, so your progress won't be kept when you leave. Allow cookies and site data for this page, or back up with SETTINGS > SAVE CODE."
+msgstr "Tu navegador está bloqueando el almacenamiento de este juego, así que tu progreso no se conservará al salir. Permite las cookies y los datos del sitio en esta página, o haz una copia con AJUSTES > CÓDIGO DE GUARDADO."
+
+#. Button that dismisses the storage bar. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.ok"
+msgid "OK"
+msgstr "OK"
+
+#. Cover shown when the browser resets WebGL; the newline separates the two sentences. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.lost"
+msgid ""
+"The graphics stopped working (the browser reset WebGL).\n"
+"Your progress is saved."
+msgstr ""
+"Los gráficos han dejado de funcionar (el navegador reinició WebGL).\n"
+"Tu progreso está guardado."
+
+#. Button on the WebGL cover; reloads the page. In a browser font, mixed case; match the game's own RELOAD-style buttons (caps where the script has them).
+#: tools/web_shell.html
+msgctxt "web.reload"
+msgid "RELOAD"
+msgstr "RECARGAR"
+
+#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep SLIME TIME and the browser names in Latin letters.
+#: tools/web_shell.html
+msgctxt "web.unsupported"
+msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
+msgstr "Slime Time no puede ejecutarse en este navegador. Prueba con una versión actual de Chrome, Firefox, Edge o Safari (iPhone/iPad: iOS 15 o posterior)."
+
+#. Shown when WebGL 2 or another feature is missing; followed by web.details and the list of missing features. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.no_webgl"
+msgid ""
+"Slime Time can't run in this browser.\n"
+"It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
+msgstr ""
+"Slime Time no puede ejecutarse en este navegador.\n"
+"Necesita WebGL 2: prueba con una versión actual de Chrome, Firefox, Edge o Safari (iPhone/iPad: iOS 15 o posterior) y comprueba que la aceleración por hardware esté activada."
+
+#. Heading above the technical details (English engine messages). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.details"
+msgid "Details:"
+msgstr "Detalles:"
+
+#. Introduces a list of missing browser features (their names stay English). In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.missing_features"
+msgid "The following features required to run Godot projects on the Web are missing:"
+msgstr "Faltan las siguientes funciones necesarias para ejecutar proyectos de Godot en la web:"
+
+#. First line of the start-failure notice, followed by a blank line and the engine's English error text. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.start_failed"
+msgid "Slime Time couldn't start. Reloading the page usually helps."
+msgstr "Slime Time no pudo iniciarse. Suele bastar con recargar la página."
+
+#. Shown when the engine fails without any message. In a browser font, mixed case.
+#: tools/web_shell.html
+msgctxt "web.unknown_error"
+msgid "An unknown error occurred."
+msgstr "Se ha producido un error desconocido."

@@ -33,6 +33,12 @@ Usage (from the repo root or anywhere):
   python3 tools/i18n_extract.py --web-json [--out FILE]
                                              the web shell's string table (chunk J): {locale: {key: text}} for
                                              every entry whose ctx starts with "web.", English as fallback.
+  python3 tools/i18n_extract.py --web-embed  rewrite the generated I18N_TABLE block of tools/web_shell.html (also
+                                             done by --merge). The English source of the "web.*" strings is the
+                                             I18N_EN block of that file (`// i18n:` comment above a one-line
+                                             `'web.key': 'text',`); --check fails when the embedded table is out
+                                             of date or when its LANGUAGES_ENABLED differs from
+                                             Economy.LANGUAGES_TEST in scripts/economy.gd (flip both together).
 
 Hints for translators go in `# i18n:` comments, trailing on a line of the call or on the comment lines right
 above it (they apply to every call that starts on the next code line):
@@ -420,7 +426,116 @@ def extract(root: str, probs: Problems) -> tuple[dict[str, Entry], list[tuple[st
         loose = [x for x in loose if not (x[0] == rel and x[1] in dev_lines)]
     for e in entries.values():
         _budgets(e)
+    extract_web(root, entries, probs)
     return entries, [x for x in loose if x[1] > 0]
+
+
+WEB_SHELL = "tools/web_shell.html"
+WEB_SRC_RE = re.compile(r"^\s*'(web\.[a-z0-9_.]+)':\s*'((?:[^'\\]|\\.)*)',?\s*$")
+JS_ESC = re.compile(r"\\(.)")
+
+
+def _js_unescape(s: str) -> str:
+    return JS_ESC.sub(lambda m: "\n" if m.group(1) == "n" else m.group(1), s)
+
+
+def extract_web(root: str, entries: dict[str, Entry], probs: Problems) -> None:
+    """The web shell's strings: lines between `// i18n-source:begin` and `// i18n-source:end` in
+    tools/web_shell.html, each with the `// i18n:` comment lines right above it."""
+    path = os.path.join(root, WEB_SHELL)
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    inside = False
+    hints: list[str] = []
+    for n, line in enumerate(lines, 1):
+        t = line.strip()
+        if t == "// i18n-source:begin":
+            inside = True
+            continue
+        if t == "// i18n-source:end":
+            inside = False
+            continue
+        if not inside:
+            continue
+        if t.startswith("// i18n:"):
+            hints.append(_js_unescape(t[len("// i18n:"):].strip()))
+            continue
+        m = WEB_SRC_RE.match(line)
+        if not m:
+            if t:
+                probs.err(f"{WEB_SHELL}:{n}: not a `'web.key': 'text',` line inside the i18n-source block")
+            hints = []
+            continue
+        ctx, msgid = m.group(1), _js_unescape(m.group(2))
+        where = f"{WEB_SHELL}:{n}"
+        _check_call(where, ctx, msgid, None, None, "t", probs)
+        _add(entries, Entry(ctx, msgid, None, [""], comments=hints, refs=[WEB_SHELL]), where, probs)
+        e = entries[ctx]
+        _budgets(e)
+        hints = []
+
+
+def web_table(entries: dict[str, Entry], locale_dir: str, with_en: bool, fallback: bool) -> dict[str, dict[str, str]]:
+    table: dict[str, dict[str, str]] = {}
+    if with_en:
+        table["en"] = {e.ctx: e.msgid for e in entries.values() if e.ctx.startswith("web.")}
+    for code in LOCALES:
+        path = os.path.join(locale_dir, f"{code}.po")
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            po = parse_po(fh.read(), path)
+        row = {e.ctx: (e.msgstr[0] if e.translated() else e.msgid)
+               for e in po.entries if e.ctx.startswith("web.") and (fallback or e.translated())}
+        if row:
+            table[code] = row
+    return table
+
+
+TABLE_BEGIN, TABLE_END = "// i18n-table:begin", "// i18n-table:end"
+
+
+def embed_web(root: str, entries: dict[str, Entry]) -> tuple[str, str] | None:
+    """(current html, html with the I18N_TABLE block regenerated), or None without a web shell."""
+    path = os.path.join(root, WEB_SHELL)
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        html = fh.read()
+    a, b = html.find(TABLE_BEGIN), html.find(TABLE_END)
+    if a < 0 or b < a:
+        return html, html
+    table = web_table(entries, os.path.join(root, "locale"), with_en=False, fallback=False)
+    js = json.dumps(table, ensure_ascii=False, sort_keys=True, indent=1)
+    js = js.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029").replace("</", "<\\/")
+    block = f"{TABLE_BEGIN}\nconst I18N_TABLE = {js};\n"
+    return html, html[:a] + block + html[b:]
+
+
+def check_web(root: str, entries: dict[str, Entry], probs: Problems) -> None:
+    got = embed_web(root, entries)
+    if got is None:
+        return
+    html, fresh = got
+    if TABLE_BEGIN not in html or TABLE_END not in html:
+        probs.err(f"{WEB_SHELL}: the i18n-table:begin / end markers are missing")
+        return
+    if html != fresh:
+        probs.err(f"{WEB_SHELL}: the embedded I18N_TABLE is out of date (run tools/i18n_extract.py --merge)")
+    m = re.search(r"^const LANGUAGES_ENABLED = (true|false);", html, re.M)
+    eco = os.path.join(root, "scripts", "economy.gd")
+    if not m:
+        probs.err(f"{WEB_SHELL}: `const LANGUAGES_ENABLED = true|false;` is missing")
+    elif os.path.exists(eco):
+        with open(eco, encoding="utf-8") as fh:
+            g = re.search(r"^const LANGUAGES_TEST\s*:?=\s*(true|false)", fh.read(), re.M)
+        if not g:
+            probs.err("scripts/economy.gd: `const LANGUAGES_TEST := true|false` not found")
+        elif g.group(1) != m.group(1):
+            probs.err(f"{WEB_SHELL}: LANGUAGES_ENABLED = {m.group(1)} but Economy.LANGUAGES_TEST = {g.group(1)} "
+                      f"(they must flip together)")
 
 
 def _check_call(where: str, ctx: str, msgid: str, plural: str | None, keys: set[str] | None, fn: str,
@@ -865,6 +980,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--partial", action="store_true")
     ap.add_argument("--no-code-scan", action="store_true")
     ap.add_argument("--web-json", action="store_true")
+    ap.add_argument("--web-embed", action="store_true")
     ap.add_argument("--out", default="")
     ap.add_argument("--self-test", action="store_true", help="run the extractor's own tests in a temp folder")
     a = ap.parse_args(argv)
@@ -878,16 +994,7 @@ def main(argv: list[str]) -> int:
     pot = build_pot(entries)
 
     if a.web_json:
-        table: dict[str, dict[str, str]] = {"en": {e.ctx: e.msgid for e in entries.values()
-                                                  if e.ctx.startswith("web.")}}
-        for code in LOCALES:
-            path = os.path.join(locale_dir, f"{code}.po")
-            if not os.path.exists(path):
-                continue
-            with open(path, encoding="utf-8") as fh:
-                po = parse_po(fh.read(), path)
-            table[code] = {e.ctx: (e.msgstr[0] if e.translated() else e.msgid)
-                           for e in po.entries if e.ctx.startswith("web.")}
+        table = web_table(entries, locale_dir, with_en=True, fallback=True)
         text = json.dumps(table, ensure_ascii=False, sort_keys=True, indent=1) + "\n"
         if a.out:
             with open(a.out, "w", encoding="utf-8") as fh:
@@ -909,6 +1016,7 @@ def main(argv: list[str]) -> int:
                 probs.err(f"locale/{code}.po is missing (run tools/i18n_extract.py --merge)")
                 continue
             check_po(code, path, entries, probs, a.partial)
+        check_web(root, entries, probs)
         if not a.no_code_scan:
             code_scan(root, loose, probs)
         for n in probs.notes:
@@ -926,6 +1034,8 @@ def main(argv: list[str]) -> int:
     os.makedirs(locale_dir, exist_ok=True)
     _write_if_changed(pot_path, pot)
     print(f"locale/messages.pot: {len(entries)} strings")
+    if a.web_embed and not a.merge:
+        _embed_to_file(root, entries)
     if a.merge:
         for code in LOCALES:
             path = os.path.join(locale_dir, f"{code}.po")
@@ -935,6 +1045,7 @@ def main(argv: list[str]) -> int:
                     old = parse_po(fh.read(), path)
             _write_if_changed(path, merge(entries, code, old))
         print(f"merged {len(LOCALES)} locales")
+        _embed_to_file(root, entries)
     return 0
 
 
@@ -1057,6 +1168,13 @@ var g := "node_name"
         ok(code == 0 and out.lstrip().startswith("{"), "--web-json writes a JSON table")
     print("SELF-TEST:", "PASS" if not fails else f"FAIL ({len(fails)})")
     return 1 if fails else 0
+
+
+def _embed_to_file(root: str, entries: dict[str, Entry]) -> None:
+    got = embed_web(root, entries)
+    if got is not None and got[0] != got[1]:
+        _write_if_changed(os.path.join(root, WEB_SHELL), got[1])
+        print(f"{WEB_SHELL}: I18N_TABLE updated")
 
 
 def _write_if_changed(path: str, text: str) -> None:

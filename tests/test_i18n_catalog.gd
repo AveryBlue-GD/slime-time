@@ -69,8 +69,23 @@ func _initialize() -> void:
 		_check_file(code, catalogs[code], template)
 	_godot_plural_rules()
 	_fallback_to_english(template, catalogs)
+	_web_shell_gate()
 	_result()
 	quit(1 if failures else 0)
+
+
+## The web shell (tools/web_shell.html, chunk J) has its own copy of the gate: it must match
+## Economy.LANGUAGES_TEST, and its generated table must hold the web.* strings.
+func _web_shell_gate() -> void:
+	var html := FileAccess.get_file_as_string("res://tools/web_shell.html")
+	var rx := RegEx.create_from_string("(?m)^const LANGUAGES_ENABLED = (true|false);")
+	var m := rx.search(html)
+	_check(m != null, "web shell: const LANGUAGES_ENABLED exists")
+	if m != null:
+		_check(m.get_string(1) == str(Economy.LANGUAGES_TEST).to_lower(),
+			"web shell: LANGUAGES_ENABLED mirrors Economy.LANGUAGES_TEST (flip both together)")
+	_check(html.contains("// i18n-table:begin") and html.contains("'web.storage'") and html.contains('"web.storage"'),
+		"web shell: English source and generated table are both in the page")
 
 
 ## The test's locale table is Language's list minus English, and locale/ holds exactly those .po files.

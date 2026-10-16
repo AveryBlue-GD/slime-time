@@ -163,10 +163,15 @@ def po_texts(code: str) -> str:
     if not path.exists():
         return ""
     out, current = [], None
+    skip = False  # the web shell's "web.*" entries are drawn by the browser's own fonts, not ours
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
+        if line.startswith("msgctxt "):
+            skip = line.startswith('msgctxt "web.')
         m = re.match(r'msgstr(\[\d+\])?\s+"(.*)"$', line)
-        if m:
+        if m and skip:
+            current = None
+        elif m:
             current = [m.group(2)]
             out.append(current)
         elif line.startswith('"') and current is not None:
