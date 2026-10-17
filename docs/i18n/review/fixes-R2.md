@@ -41,3 +41,31 @@ English: all 73 states byte-identical to before.
 
 `tests/test_ui_kit_locale.gd` and `tests/test_language_screen.gd` pinned hi `button_h()` to METRICS 21; they now
 expect the trimmed line's 22 (the LANGUAGE screen rows keep 21).
+
+## Follow-up: Arabic bottom row (closes the open ar item above)
+
+Same rule as Devanagari, from the Language METRICS ink rows: `UIKit.button_h()` adds `UIKit.bottom_ink_room()`
+(the rows a taller script's line box lacks for `BOTTOM_INK_ROOM`, 1 clear row + the border, under its `ink_bottom`):
+hi 2 (trimmed line, unchanged 22), ar 1. Arabic buttons / tabs / pills / VOLUME boxes 21 -> 22, margins 2 / 0 ->
+2 / 1, pods 22 -> 23; first ink row stays 3; the LANGUAGE screen's rows keep METRICS 21. English byte-identical.
+
+| measure (ar, --measure-boxes, every button / box of every state) | before | after |
+|---|---|---|
+| clear rows between the last ink and the bottom border (min) | 0 (21 px: settings MORE, wheel shop tiles, results NEXT) | 1 (22 px) |
+| settings MORE / وضع ملء الشاشة: last ink / border | row 19 / 20 | row 19, row 20 clear, border 21 |
+| goo-ink gate (ar, en) | 0 | 0 |
+
+Knock-on, checked on every ar capture (settings, pause, hub prompts, upgrades, wardrobe, HEAT panel, LANGUAGE,
+results, boon card, save code): nothing clips or overlaps (box rects on screen, no sibling overlaps).
+- Wardrobe: the JELLY corner (EDGE + 22 + GAP_XS) pushes the grid to row 28 and no 16 px-title plan fitted (the
+  title fell to 8 px). New last 16 px plan `flush` (skins_screen.gd): the stage's frame on the bottom-row
+  buttons' bottom border (row 176) instead of the row over it (175); only Arabic takes it, the other 18
+  locales' wardrobe captures are byte-identical. Rule line ink ends 127, stage 129 (1 clear row).
+  `tests/test_i18n_game_layout.gd` (not this pass's file) skips ar; its stage bound `end.y <= 176` would need
+  `bottom_row_y() + button_h()` (177, the buttons' end) for the flush plan if ar is added there.
+- Wheel shop: grid top 58 -> 60, room 68 -> 66 < 70 for three 22 px rows: two rows per page (pages already
+  existed), as Devanagari.
+
+Tests: `test_i18n_f1_marks` drops `BOTTOM_ROW_OPEN` (every taller script enforced), `test_ui_kit_locale` checks
+`button_h()` from the ink rows for every locale, `test_i18n_r2_layout` pins ar 22 (2 / 1) and the wardrobe plan /
+stage rows. Shots: `docs/i18n/shots/fixes-R2/ar-dots_*_{before,after}.png` (3x).

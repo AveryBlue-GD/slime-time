@@ -18,8 +18,6 @@ extends "res://tests/suite_base.gd"
 
 const Report := preload("res://tests/i18n_report.gd")
 const Lang := preload("res://scripts/language.gd")
-## Taller scripts whose last ink row is still on the row over a button's bottom border (see _margins).
-const BOTTOM_ROW_OPEN := ["ar"]
 
 var progress: Node
 var language: Node
@@ -65,9 +63,9 @@ func _margins(code: String) -> void:
 	_check(int(style.content_margin_top) == p.x and int(style.content_margin_bottom) == p.y, "%s: panel_style carries them" % code)
 	_check(UIKit.panel_text_top() == maxi(UIKit.PANEL_PAD, p.x), "%s: panel_text_top %d" % [code, UIKit.panel_text_top()])
 	# The bottom border rows (fix pass R2): a taller script's last ink keeps 1 clear row over the button's
-	# bottom border (h - 1), as English's drips do; Devanagari's trimmed line sat on the row over it (21 px).
-	# Arabic's lowest dots still reach h - 2 (21 px, 2 / 0): open, docs/i18n/review/fixes-R2.md.
-	if UIKit.tall_script() and not code in BOTTOM_ROW_OPEN:
+	# bottom border (h - 1), as English's drips do; Devanagari's trimmed line sat on the row over it (21 px),
+	# Arabic's lowest dots too (21 px, 2 / 0): both 22 now (docs/i18n/review/fixes-R2.md).
+	if UIKit.tall_script():
 		_check(b.x + int(m.ink_bottom) <= bh - 1 - UIKit.BOTTOM_INK_ROOM,
 			"%s: button %d: last ink row %d, 1 clear row over the bottom border" % [code, bh, b.x + int(m.ink_bottom)])
 	if code == "en":

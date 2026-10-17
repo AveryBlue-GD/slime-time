@@ -223,16 +223,16 @@ functions, never the constants, for anything text-tall.
 
 | Function | English | accented (es pt_BR fr de it pl tr ru, pseudo) | vi | cjk (zh_CN ja ko) | zh_TW | th | hi / ar |
 |---|---|---|---|---|---|---|---|
-| `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 22 (ar 21) |
-| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 3 / 2 (ar 2 / 0) |
+| `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 22 |
+| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 3 / 2 (ar 2 / 1) |
 | `panel_v_margins()` (`panel_style()`: one line in a goo panel) | 6 / 5 | 9 / 5 | 11 / 5 | 3 / 2 | 3 / 1 | 5 / 1 | 6 / 3 (ar 5 / 2) |
 | `panel_text_top()` (first line in a hand-laid panel) | 8 | 9 | 11 | 8 | 8 | 8 | 8 |
-| `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 23 / 40 (ar 22 / 39) |
+| `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 23 / 40 |
 | `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 17 / 20 / 19 (ar 19 / 20 / 19) |
 | `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 3 (ar 1) |
 | `title_top()` .. `title_bottom()` | 2..22 | 8..28 | 12..32 | 2..32 | 2..36 | 2..29 | 2..29 |
-| `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 155 (ar 156) |
-| `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 144 / 84x22 (ar 145 / 84x21) |
+| `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 155 |
+| `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 144 / 84x22 |
 | `hit_pad()` (hit area stays >= 23) | 5 | 4 | 3 | 4 | 3 | 2 | 1 (hi 1: 24) |
 | `stack_pitch(gap)` | `button_h()` + gap (16 with `GAP_S` in English) | | | | | | |
 | `accent_room()` (marks over a line in a tile / panel) | 0 | 2 | 4 | 0 | 0 | 0 | 0 |

@@ -7,7 +7,8 @@ extends "res://tests/suite_base.gd"
 ##   right, over the toggle's frame); a one-line name keeps NAME_ROOM_PAD more than BUTTON_TEXT_PAD from
 ##   the edge wherever two lines fit (es NIEBLA VORAZ: 2 clear columns);
 ## - Devanagari buttons: 22 px, margins 3 / 2 (the lowest marks 1 clear row over the bottom border), the
-##   LANGUAGE screen's row metric unchanged (21: the untrimmed native name);
+##   LANGUAGE screen's row metric unchanged (21: the untrimmed native name); Arabic 22 px, 2 / 1 (the
+##   lowest dots 1 clear row over the border; 21, 2 / 0 before), its LANGUAGE row metric 21 too;
 ## - map view: the name line's first ink (its marks) on row 3 or lower for every level and mode, the map
 ##   area under that line; English: MAP_AREA and row 3 for every map;
 ## - map table: every one-line tile name within name_room() (NAME_WRAP_PAD more than TEXT_PAD), and a name
@@ -15,6 +16,9 @@ extends "res://tests/suite_base.gd"
 ## - settings: the VOLUME slider at least VOLUME_SLIDER_MIN wherever the columns fit (de LAUTSTÄRKE: 42);
 ##   the SAVE CODE / RESET titles in the 16 px font in every Latin-script locale (pseudo: 8 px before),
 ##   a two-line RESET title's lines each inside the panel's text room.
+## - wardrobe (ar 22 px buttons): the 16 px title kept (the flush plan: the stage's frame on the bottom row
+##   buttons' bottom border, row 176, not 175; the other locales keep 175), the rule line's deepest ink 1+
+##   clear row over it.
 ## English pinned: the HEAT icons' drawn rects, MAP_AREA, the settings columns and slider (66 px).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_r2_layout.gd
@@ -48,6 +52,7 @@ func _initialize() -> void:
 		await _heat_panel()
 		await _maps()
 		await _settings()
+		await _wardrobe()
 	language.set_locale("en")
 	language.disable()
 	Economy.languages_force = -1
@@ -79,14 +84,33 @@ func _buttons() -> void:
 	var m := UIKit.metrics()
 	var b := UIKit.button_v_margins()
 	var bh := UIKit.button_h()
-	if UIKit.tall_script() and Lang.LINE_TRIM.has(_code):
+	if UIKit.tall_script():
 		_check(b.x + int(m.ink_bottom) <= bh - 1 - UIKit.BOTTOM_INK_ROOM and b.x + int(m.ink_top) >= UIKit.GOO_INK_ROW,
-			_tag("trimmed line: ink rows %d .. %d in a %d px button, 1 clear row over the border" % [b.x + int(m.ink_top), b.x + int(m.ink_bottom), bh]))
+			_tag("tall script: ink rows %d .. %d in a %d px button, 1 clear row over the border" % [b.x + int(m.ink_top), b.x + int(m.ink_bottom), bh]))
 	if _code == "hi":
 		_check(bh == 22 and b == Vector2i(3, 2) and int(Lang.metrics("hi").button_h) == 21,
 			_tag("Devanagari button 22 (3 / 2), the LANGUAGE row metric 21 (%d, %s)" % [bh, b]))
+	if _code == "ar":
+		_check(bh == 22 and b == Vector2i(2, 1) and int(Lang.metrics("ar").button_h) == 21,
+			_tag("Arabic button 22 (2 / 1), the LANGUAGE row metric 21 (%d, %s)" % [bh, b]))
 	if _code == "en":
 		_check(bh == 13 and b == Vector2i(3, 3), _tag("English button unchanged"))
+
+
+# ------------------------------------------------------------------ wardrobe
+
+func _wardrobe() -> void:
+	var skins := await _open("res://scenes/skins.tscn")
+	var plan: Dictionary = skins.layout_plan
+	if _code == "ar":
+		_check(skins._title.get_theme_font_size("font_size") == UIKit.FONT_BIG and plan.get("big", false), _tag("wardrobe: the 16 px title (plan %s)" % plan))
+	if plan.get("low", false):
+		var stage_end := int(skins.showcase.position.y + SkinShowcase.STAGE_SIZE.y)
+		var want := UIKit.bottom_row_y() + UIKit.button_h() if plan.get("flush", false) else int(UIKit.SCREEN.y) - 4
+		_check(stage_end == want, _tag("wardrobe: the stage's frame ends on row %d (flush %s: the buttons' %d)" % [stage_end - 1, plan.get("flush", false), UIKit.bottom_row_y() + UIKit.button_h() - 1]))
+		_check(int(plan.rule_end) + 1 <= int(plan.stage_top), _tag("wardrobe: rule ink ends %d, 1+ clear row over the stage (%d)" % [plan.rule_end - 1, plan.stage_top]))
+	skins.queue_free()
+	await _frames(1)
 
 
 # ------------------------------------------------------------------ HEAT panel

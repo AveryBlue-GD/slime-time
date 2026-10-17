@@ -146,16 +146,24 @@ static func text_block_h(lines: int) -> int:
 
 
 ## The standard button height (BUTTON_H in English; 16 with accents, 18 Vietnamese, 16 CJK, 18 zh_TW,
-## 19 Thai, 21 Arabic, 22 Devanagari). The theme's button margins make every button at least this tall.
+## 19 Thai, 22 Arabic and Devanagari). The theme's button margins make every button at least this tall.
 static func button_h() -> int:
 	var m := metrics()
-	# (a taller script's line starts on row GOO_INK_ROW - ink_top, clear of the goo: Devanagari 3 + 17; a line
-	# box trimmed to its ink (Language.LINE_TRIM, Devanagari) ends on its lowest marks: 1 clear row and the
-	# bottom border under it, + 2, as under English's drips, fix pass R2)
+	# (a taller script's line starts on row GOO_INK_ROW - ink_top, clear of the goo: Devanagari 3 + 17; under
+	# its last ink row (Language ink_bottom) 1 clear row and the bottom border, BOTTOM_INK_ROOM, as under
+	# English's drips: the rows its line box lacks for that are added, Devanagari's trimmed line + 2 = 22 (fix
+	# pass R2), Arabic's lowest dots (ink row 17 of 19) + 1 = 22 (they sat on the row over the border at 21))
 	var room := 0
 	if int(m.line_h) > TEXT_BODY:
-		room = int(m.line_h) + maxi(0, GOO_INK_ROW - int(m.get("ink_top", 0))) + (BOTTOM_INK_ROOM if Lang.LINE_TRIM.has(locale()) else 0)
+		room = int(m.line_h) + maxi(0, GOO_INK_ROW - int(m.get("ink_top", 0))) + bottom_ink_room()
 	return maxi(BUTTON_H, maxi(int(m.button_h), room))
+
+
+## Rows a taller script's button adds under its line box so its last ink (Language ink_bottom) keeps
+## BOTTOM_INK_ROOM (1 clear row, the bottom border) under it: Devanagari 2, Arabic 1, others 0.
+static func bottom_ink_room() -> int:
+	var m := metrics()
+	return maxi(0, int(m.get("ink_bottom", 0)) + 1 + BOTTOM_INK_ROOM - int(m.line_h))
 
 
 ## How much taller than in English a button / pod / tab is in the current locale.
@@ -224,8 +232,8 @@ static func hit_pad() -> int:
 ## slimy font the 3 rows under the body stay (drips) and the accents' rows go on top; a taller
 ## script's line box (which has its own empty rows) gets 1 / 1, moved down by its ink_nudge, and never
 ## less on top than puts its highest ink (Language ink_top) on row GOO_INK_ROW, under the goo's lump row
-## (Devanagari: 3 / 2, its matras ink the line box's first row and its lowest marks the last: 22 px keeps 1
-## clear row under them over the bottom border, as under English's drips).
+## (Devanagari: 3 / 2, its matras ink the line box's first row and its lowest marks the last; Arabic 2 / 1:
+## 22 px keeps 1 clear row under the lowest marks / dots over the bottom border, as under English's drips).
 static func button_v_margins() -> Vector2i:
 	var margins := _v_margins(button_h(), line_h())
 	if tall_script():

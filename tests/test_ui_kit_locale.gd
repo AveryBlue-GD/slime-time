@@ -69,10 +69,12 @@ func _english_numbers(tag: String) -> void:
 ## Numbers that must hold in every locale.
 func _sizes(code: String) -> void:
 	var m: Dictionary = Lang.metrics(code)
-	# (a line box trimmed to its ink adds the clear row and the border under its lowest marks: Devanagari 22,
-	# fix pass R2; the LANGUAGE screen's native-name rows keep the metric)
-	var trimmed := UIKit.line_h() + UIKit.GOO_INK_ROW - int(m.ink_top) + UIKit.BOTTOM_INK_ROOM if Lang.LINE_TRIM.has(code) else 0
-	_check(UIKit.button_h() == maxi(int(m.button_h), trimmed), "%s: button_h %d = metrics (trimmed line %d)" % [code, UIKit.button_h(), trimmed])
+	# (a taller script's line adds the rows its line box lacks for 1 clear row and the border under its last
+	# ink: Devanagari's trimmed line 22, fix pass R2, Arabic 22; the LANGUAGE screen's native-name rows keep the metric)
+	var inked := 0
+	if UIKit.tall_script():
+		inked = UIKit.line_h() + maxi(0, UIKit.GOO_INK_ROW - int(m.ink_top)) + maxi(0, int(m.ink_bottom) + 1 + UIKit.BOTTOM_INK_ROOM - UIKit.line_h())
+	_check(UIKit.button_h() == maxi(int(m.button_h), inked), "%s: button_h %d = metrics (inked line %d)" % [code, UIKit.button_h(), inked])
 	_check(UIKit.button_h() + 2 * UIKit.hit_pad() >= UIKit.BUTTON_H + 2 * UIKit.HIT_PAD,
 		"%s: hit area %d px tall (>= 23)" % [code, UIKit.button_h() + 2 * UIKit.hit_pad()])
 	_check(UIKit.bottom_row_y() + UIKit.button_h() == UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H, "%s: the bottom row still ends on row 176" % code)

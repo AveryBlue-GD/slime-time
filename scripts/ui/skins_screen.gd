@@ -114,7 +114,9 @@ func _ready() -> void:
 ## button (ending on row 176, like them) and JELLY in the top-left corner; then the gaps one scale step
 ## closer (GAP_S -> GAP_XS: tile rows, grid to status, rule to stage); then the status / rule lines in
 ## the script's smaller crisp font (Devanagari 12 px); then (snug) the rule line's deepest possible ink
-## one row over the stage (Arabic); only then the same steps with the title in the 8 px font. Every
+## one row over the stage; then (flush) the stage one row lower, its frame on the bottom-row buttons' bottom
+## border (row 176) instead of the row over it (Arabic's 22 px buttons, fix pass R2: the JELLY corner pushes
+## the grid down one row); only then the same steps with the title in the 8 px font. Every
 ## line is placed by its ink (Language ink_top / ink_bottom; the title by its glyphs, the rule line by
 ## its texts' glyphs in a taller script) and no two line boxes overlap, so a taller script's empty
 ## line-box rows don't count as room, and no text inks the stage's frame.
@@ -126,6 +128,7 @@ const _PLANS := [
 	{big = true, low = true, tight = true, small = false},
 	{big = true, low = true, tight = true, small = true},
 	{big = true, low = true, tight = true, small = false, snug = true},
+	{big = true, low = true, tight = true, small = false, snug = true, flush = true},
 	{big = false, low = false, tight = false, small = false},
 	{big = false, low = true, tight = false, small = false},
 	{big = false, low = true, tight = true, small = false},
@@ -175,7 +178,8 @@ func _layout(back: Button) -> void:
 		rule_last = mini(ink_bottom, UIKit.ink_rows(rules, _rule.get_theme_font("font")).y)
 	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
 	var stage_h := int(SkinShowcase.STAGE_SIZE.y)
-	var low_stage_top := int(UIKit.SCREEN.y) - 4 - stage_h  # (row 176, the bottom row's edge)
+	var low_stage_top := int(UIKit.SCREEN.y) - 4 - stage_h  # (its frame on row 175, over the bottom row's edge)
+	var flush_stage_top := UIKit.bottom_row_y() + UIKit.button_h() - stage_h  # (its frame on row 176, as the buttons')
 	var plan := {}
 	for option: Dictionary in _PLANS:
 		if option.small and small == null:
@@ -228,7 +232,7 @@ func _layout(back: Button) -> void:
 		var stage_top := rule_end + GRID_GAP  # CUSTOM_TOP
 		var fits := stage_top + stage_h + UIKit.GAP_S <= UIKit.bottom_row_y()
 		if option.low:
-			stage_top = low_stage_top
+			stage_top = flush_stage_top if option.get("flush", false) else low_stage_top
 			# (snug: the rule line's lowest possible ink, Language ink_bottom, one clear row over the stage:
 			# Arabic, whose rule lines ink 2-3 rows less than the deepest tail any translation has)
 			fits = rule_end + (1 if option.get("snug", false) else gap) <= stage_top
