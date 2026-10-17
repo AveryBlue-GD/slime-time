@@ -122,7 +122,7 @@ func _keys() -> void:
 	var rows_h: int = page.rows_per_page * UIKit.button_h() + (page.rows_per_page - 1) * page.row_gap
 	var rows_end: int = page.rows_top + rows_h
 	var note: Label = page.note
-	var marks: int = Title.mark_rows(note.text)
+	var marks: int = UIKit.mark_rows(note.text)
 	var above := note.offset_top - marks - rows_end
 	var below := UIKit.bottom_row_y() - note.offset_bottom
 	# GAP_M under the rows' ink and GAP_L over the bottom row, or centred between them (+-1) where the room is
@@ -151,10 +151,10 @@ func _title() -> void:
 	var h := int(enter.size.y)
 	var top := int(_line_top(enter, float(UIKit.metrics().title_line_h)))
 	if UIKit.tall_script():
-		var ink: int = top + int(Title.BIG_INK_TOP.get(_code, UIKit.GOO_INK_ROW))
+		var ink: int = top + int(UIKit.BIG_INK_TOP.get(_code, UIKit.GOO_INK_ROW))
 		_check(ink >= UIKit.GOO_INK_ROW, _tag("title: ENTER's glyphs from row %d" % ink))
 	else:
-		var marks: int = Title.mark_rows(enter.text, UIKit.FONT_BIG)
+		var marks: int = UIKit.mark_rows(enter.text, UIKit.FONT_BIG)
 		_check(top - marks >= UIKit.GOO_INK_ROW and top + Title.BIG_LINE_INK + Title.ENTER_TEXT_BOTTOM <= h and top >= Title.ENTER_TEXT_TOP,
 			_tag("title: ENTER's line on row %d of %d (marks %d): ink from row %d, drips over the outline" % [top, h, marks, top - marks]))
 	if _code in Lang.GAP_LOCALES:
@@ -209,7 +209,7 @@ func _language() -> void:
 		var button: Button = page.buttons[code]
 		var h := int(button.size.y)
 		var line := int(_line_top(button, UIKit.TEXT_BODY))
-		var marks: int = Title.mark_rows(Lang.native_name(code))
+		var marks: int = UIKit.mark_rows(Lang.native_name(code))
 		if line != top or line - marks < UIKit.GOO_INK_ROW or line + UIKit.TEXT_BODY + UIKit.TEXT_DRIP > h - 1:
 			bad.append("%s line %d marks %d in %d" % [code, line, marks, h])
 		var row: int = i / page.COLUMNS

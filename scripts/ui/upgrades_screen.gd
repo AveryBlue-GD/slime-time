@@ -259,7 +259,7 @@ func _plan_abilities(count: int) -> void:
 		for item: Dictionary in Abilities.LIST:
 			texts.append(Abilities.display_name(item.id))
 			texts.append(Abilities.tag(item.id))
-		var ink := ink_rows(texts, small)
+		var ink := UIKit.ink_rows(texts, small)
 		var line := int(small.get_height(UIKit.FONT))
 		var top := UIKit.PANEL_INK_TOP - ink.x
 		var bottom := maxi(0, UIKit.PANEL_INK_BOTTOM + ink.y - line)  # (the tag's last ink on h - 4)
@@ -286,31 +286,6 @@ func _plan_abilities(count: int) -> void:
 	_ability_plan = {top = int(area.position.y), inset_top = margins.x, panel_h = panel_h, pitch = panel_h + UIKit.GAP_S, gap = UIKit.GAP_S,
 		block_h = UIKit.line_h() + UIKit.dense_pitch(), tag_pitch = UIKit.dense_pitch(), small_font = null, hint_in_row = false,
 		per_page = maxi(1, per_page), pages = ceili(count / float(maxi(1, per_page)))}
-
-
-## The first and last rows `texts` ink in `font` (8 px), from the line's top: the shaped glyphs' bitmaps
-## less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them. (A local helper: Language keeps
-## ink_top / ink_bottom for the 8 px font only, not for the smaller crisp size; skins_screen.gd keeps the same helper.)
-static func ink_rows(texts: Array[String], font: Font) -> Vector2i:
-	var ts := TextServerManager.get_primary_interface()
-	var top := 99
-	var bottom := -99
-	for text in texts:
-		var shaped := TextLine.new()
-		shaped.add_string(text, font, UIKit.FONT)
-		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
-		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
-			if g.font_rid == RID() or g.index == 0:
-				continue
-			var fixed: int = ts.font_get_fixed_size(g.font_rid)
-			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT, 0)
-			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
-			if gs.y <= 2:
-				continue
-			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y) + 1
-			top = mini(top, y0)
-			bottom = maxi(bottom, y0 + int(gs.y) - 3)
-	return Vector2i(top, bottom) if bottom >= top else Vector2i(0, int(font.get_height(UIKit.FONT)) - 1)
 
 
 ## Height of `lines` hint lines with the marks drawn outside their line boxes.

@@ -48,6 +48,7 @@ func _initialize() -> void:
 		quit(2)
 		return
 	Economy.descent_force = 1  # Descent is switched off in the game; its screens are still captured
+	Hats.frozen_flow_step = 0  # (the rainbow hat's clock-driven hue: same pixels and RIDs every run)
 	await process_frame
 	progress = root.get_node("Progress")
 	language = root.get_node("Language")
@@ -87,6 +88,7 @@ func _initialize() -> void:
 	Economy.languages_force = -1
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
+	Hats.frozen_flow_step = -1
 	_result()
 	quit(1 if failures else 0)
 

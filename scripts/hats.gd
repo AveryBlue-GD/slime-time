@@ -87,8 +87,15 @@ static func material_for(id: String) -> Material:
 	return mat
 
 
+## A fixed step for the reviewer captures (tests/capture_i18n.gd; -1: the clock's). The clock's step
+## makes a new texture whenever it turns, so a capture run's later RIDs (GooBox lumps) depended on timing.
+static var frozen_flow_step := -1
+
+
 ## Which of the FLOW_STEPS hue turns the flowing hat shows now (the shader's, from the clock).
 static func flow_step() -> int:
+	if frozen_flow_step >= 0:
+		return frozen_flow_step
 	return int(floor(Time.get_ticks_msec() / 1000.0 * FLOW_SPEED * FLOW_STEPS)) % FLOW_STEPS
 
 

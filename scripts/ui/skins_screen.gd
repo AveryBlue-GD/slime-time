@@ -162,7 +162,7 @@ func _layout(back: Button) -> void:
 	var titles: Array[String] = []
 	for which: String in PAGES:
 		titles.append(page_title(which))
-	var big_end := _title_ink_end(titles)  # (the 16 px title's last inked row, its shadow included)
+	var big_end := UIKit.title_ink_end(titles, _title.get_theme_font("font"))  # (the 16 px title's last inked row, its shadow included)
 	if UIKit.tall_script():  # (its line box ends there too: no text box over the grid)
 		big_end = maxi(big_end, UIKit.title_top() + int(_title.get_theme_font("font").get_height(UIKit.FONT_BIG)) - 2)
 	# The rule line's last inked row: the script's ink_bottom, or in a taller script the rule texts' own
@@ -172,7 +172,7 @@ func _layout(back: Button) -> void:
 		var rules: Array[String] = []
 		for which: String in ["skins", "jelly", "hats", "trails"]:
 			rules.append(rule_text(which))
-		rule_last = mini(ink_bottom, ink_rows(rules, _rule.get_theme_font("font")).y)
+		rule_last = mini(ink_bottom, UIKit.ink_rows(rules, _rule.get_theme_font("font")).y)
 	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
 	var stage_h := int(SkinShowcase.STAGE_SIZE.y)
 	var low_stage_top := int(UIKit.SCREEN.y) - 4 - stage_h  # (row 176, the bottom row's edge)
@@ -273,64 +273,6 @@ func _layout(back: Button) -> void:
 		jelly_button.position = Vector2(UIKit.EDGE, UIKit.EDGE)
 	else:
 		jelly_button.position.x = UIKit.center_x(jelly_w)
-
-
-## The last row the 16 px title inks (its 2 px shadow included) at title_top(), for any of `texts`:
-## the slimy font's box (title_bottom() - 1: 21 in English, its drips and shadow); a taller script's
-## glyphs end well above their line box (CJK 20 px: row 27 of 2..32), measured from the shaped glyphs'
-## bitmaps (less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them). (A local helper: UIKit
-## has none for the 16 px title's ink.)
-const _TITLE_SLIMY_END := 19  # (a slimy letter in the 16 px title: 14 rows, 4 of drips, the shadow's 2, from row 0)
-
-
-func _title_ink_end(texts: Array[String]) -> int:
-	if not UIKit.tall_script():
-		return UIKit.title_bottom() - 1
-	var font: Font = _title.get_theme_font("font")
-	var slimy: RID = font.get_rids()[0]
-	var ts := TextServerManager.get_primary_interface()
-	var end := UIKit.title_top()
-	for text in texts:
-		var shaped := TextLine.new()
-		shaped.add_string(text, font, UIKit.FONT_BIG)
-		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
-		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
-			if g.font_rid == RID() or g.index == 0:
-				continue
-			if g.font_rid == slimy:
-				end = maxi(end, UIKit.title_top() + _TITLE_SLIMY_END)
-				continue
-			var fixed: int = ts.font_get_fixed_size(g.font_rid)
-			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT_BIG, 0)
-			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
-			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y)
-			end = maxi(end, UIKit.title_top() + y0 + int(gs.y))  # (the bitmap less its padding row, + the 2 px shadow)
-	return end
-
-
-## The first and last rows `texts` ink in `font` (8 px), from the line's top: the shaped glyphs' bitmaps
-## less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them. (A local helper: Language keeps
-## ink_top / ink_bottom for the 8 px font only, not for the smaller crisp size; the same helper as the upgrades screen's.)
-static func ink_rows(texts: Array[String], font: Font) -> Vector2i:
-	var ts := TextServerManager.get_primary_interface()
-	var top := 99
-	var bottom := -99
-	for text in texts:
-		var shaped := TextLine.new()
-		shaped.add_string(text, font, UIKit.FONT)
-		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
-		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
-			if g.font_rid == RID() or g.index == 0:
-				continue
-			var fixed: int = ts.font_get_fixed_size(g.font_rid)
-			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT, 0)
-			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
-			if gs.y <= 2:
-				continue
-			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y) + 1
-			top = mini(top, y0)
-			bottom = maxi(bottom, y0 + int(gs.y) - 3)
-	return Vector2i(top, bottom) if bottom >= top else Vector2i(0, int(font.get_height(UIKit.FONT)) - 1)
 
 
 ## The tall grid's height (two rows of tiles: the skins and the hats).

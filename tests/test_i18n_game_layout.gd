@@ -162,7 +162,7 @@ func _wardrobe() -> void:
 		var titles: Array[String] = []
 		for which: String in skins.PAGES:
 			titles.append(skins.page_title(which))
-		var title_end := title.end.y if not UIKit.tall_script() else float(skins._title_ink_end(titles) + 1)
+		var title_end := title.end.y if not UIKit.tall_script() else float(UIKit.title_ink_end(titles, skins._title.get_theme_font("font")) + 1)
 		_ok(title_end <= g.position.y and g.end.y <= status.position.y and status.end.y <= rule.position.y,
 			"wardrobe title, grid, status, rule in order", "%s %s %s %s" % [title, g, status, rule])
 		if UIKit.button_h() != UIKit.BUTTON_H:  # (English: TRAILS grows its 40 px button by 2 px, the source layout)

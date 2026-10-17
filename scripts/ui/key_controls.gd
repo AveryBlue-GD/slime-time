@@ -194,7 +194,7 @@ func _plan() -> void:
 ## instead, at least GAP_M over the bottom row (Vietnamese: five rows fill the room, and the note's stacked
 ## marks sat on the last key's goo drops). Ink counted: the note's own marks over its line, its drips under it.
 func _spread(paged: bool) -> void:
-	var marks: int = load("res://scripts/ui/title.gd").mark_rows(note_text())  # (this line's own marks)
+	var marks: int = UIKit.mark_rows(note_text())  # (this line's own marks)
 	var rows_h := rows_per_page * UIKit.button_h() + (rows_per_page - 1) * row_gap
 	if paged:
 		rows_top = UIKit.title_bottom() + floori((note_top - marks - UIKit.title_bottom() - rows_h) / 2.0)

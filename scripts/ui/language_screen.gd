@@ -22,8 +22,6 @@ extends Control
 const Lang := preload("res://scripts/language.gd")
 const SETTINGS_SCENE := "res://scenes/controls.tscn"
 const SCENE := "res://scenes/language.tscn"
-## title.gd, for its mark_rows (loaded when used: it names autoloads, a preload would compile it early).
-const TITLE_SCRIPT := "res://scripts/ui/title.gd"
 const COLUMNS := 3
 const BUTTON_W := 96
 const COL_GAP := UIKit.GAP_L
@@ -166,7 +164,7 @@ static func name_top(code: String, row: int) -> int:
 		var other: String = codes[i]
 		if Lang.metrics_group(other) in ["cjk", "zh_TW", "th", "hi", "ar"]:
 			continue
-		var marks: int = load(TITLE_SCRIPT).mark_rows(Lang.native_name(other))
+		var marks: int = UIKit.mark_rows(Lang.native_name(other))
 		var ink_h := marks + UIKit.TEXT_BODY + UIKit.TEXT_DRIP
 		var room := h - 2 * UIKit.GOO_INK_ROW + 2  # (rows 3 .. h - 2: English's 13 px button holds 9)
 		top = maxi(top, UIKit.GOO_INK_ROW + floori((room - ink_h) / 2.0) + marks)

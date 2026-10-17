@@ -23,9 +23,10 @@ a language (or one screen across languages) in a single image. Part of localizat
 ## Reproducibility
 Fixed 60 fps, the global RNG seeded (20261017) before every screen opens (same maze, SEED text), the
 drifting menu backdrop (maze and mist; the flat background stays) hidden unless `--keep-backdrop`. Each state is
-frozen (its scene's processing off) while it is rendered and checked, and the text drips use one fixed seed, so two
-runs of the same build give the same pixels (the hat wheel's wheel still differs by a few dozen pixels); compare
-builds pixel by pixel with that. The hub's physics is held while its station prompts are shown (it would hide them).
+frozen (its scene's processing off) while it is rendered and checked, the text drips use one fixed seed and the
+rainbow hat's clock-driven hue is held on step 0 (`Hats.frozen_flow_step`: its per-step textures used to shift every
+later RID, so the RID-seeded goo lumps of the states after the hat wheel changed between runs), so two runs of the same
+build give the same pixels in every state; compare builds pixel by pixel with that. The hub's physics is held while its station prompts are shown (it would hide them).
 
 ## Goo-ink check (fix pass F1)
 Every captured state is rendered twice more, all texts transparent and then only the Labels' shadows: the pixels

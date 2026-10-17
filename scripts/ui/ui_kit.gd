@@ -618,6 +618,142 @@ static func has_mark(code: int) -> bool:
 	return marked
 
 
+# ---- Ink of shaped text (docs/ui-rules.md 10.1 "Ink-based placement"; one copy for every screen) ----
+
+## A taller script's 16 px glyphs: the first row they ink under the line box's top, where it is less than
+## GOO_INK_ROW (measured with tools/i18n_capture.sh --measure-boxes: Devanagari's matras 1; the others
+## start lower: CJK 6, Thai 4, Arabic 5). The title's ENTER puts that row on GOO_INK_ROW.
+const BIG_INK_TOP := {"hi": 1}
+## A slimy letter in the 16 px title: 14 rows, 4 of drips and the shadow's 2, from the line's row 0.
+const TITLE_SLIMY_END := 19
+
+
+## The first and last rows `texts` ink in `font` at `font_size`, from the line's top: the shaped glyphs'
+## bitmaps less the font cache's 1 px padding, as tests/test_i18n_f1_marks.gd reads them (Language keeps
+## ink_top / ink_bottom for the 8 px font only, not for a smaller crisp size: the upgrades ABILITIES rows,
+## the wardrobe's rule line). With `drips`, a glyph of the slimy font (a bitmap font: no padding, its cell
+## holds the 2 drip rows under the letter) ends on its cell's last row: the drips a slimy digit hangs
+## under a taller script's line (zh_TW `3X3`: 1 row under the hanzi; Devanagari's small font 1 row
+## under the measured line).
+static func ink_rows(texts: Array[String], font: Font, font_size := FONT, drips := false) -> Vector2i:
+	var ts := TextServerManager.get_primary_interface()
+	var slimy: RID = font.get_rids()[0] if drips else RID()
+	var top := 99
+	var bottom := -99
+	for text in texts:
+		var shaped := TextLine.new()
+		shaped.add_string(text, font, font_size)
+		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
+		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
+			if g.font_rid == RID() or g.index == 0:
+				continue
+			var fixed: int = ts.font_get_fixed_size(g.font_rid)
+			var size := Vector2i(fixed if fixed > 0 else font_size, 0)
+			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
+			if gs.y <= 2:
+				continue
+			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y) + 1
+			top = mini(top, y0)
+			bottom = maxi(bottom, y0 + int(gs.y) - (2 if g.font_rid == slimy else 3))
+	return Vector2i(top, bottom) if bottom >= top else Vector2i(0, int(font.get_height(font_size)) - 1)
+
+
+## How many rows `text`'s last ink (drips included) reaches under what a layout assumed for its line
+## (`assumed_bottom`, line-relative: Language ink_bottom, or ink_rows of the line's texts), in `font`
+## (default: the locale's 8 px font); 0 in English and wherever the assumption holds. Only a taller
+## script's line can hang a slimy drip under its own ink (zh_TW digits: 1).
+static func drip_excess(text: String, assumed_bottom: int, font: Font = null) -> int:
+	if not tall_script() or text == "":
+		return 0
+	var texts: Array[String] = [text]
+	return maxi(0, ink_rows(texts, font if font else font_for(), FONT, true).y - assumed_bottom)
+
+
+## The rows the slimy font's marks over `text` reach above its line box at `font_size` (Й: 3 at 8 px,
+## 6 at 16; 0 for a text without marks). Read from the 8 px font's i18n page, where each glyph has
+## EXT_MARK_ROWS rows over the letter (the 16 px font is the same art at 2x). (ink_above gives the
+## locale's tallest marks, not the text's own.)
+static func mark_rows(text: String, font_size := FONT) -> int:
+	var font: FontFile = load(Lang.FONT_PATH)
+	var size := Vector2i(FONT, 0)
+	var rows := 0
+	var page: Image = null
+	for i in text.length():
+		var code := text.unicode_at(i)
+		if code <= 0x7F or not has_mark(code) or not font.get_glyph_list(0, size).has(code) \
+				or font.get_glyph_texture_idx(0, size, code) != 1:
+			continue
+		if page == null:
+			page = font.get_texture_image(0, size, 1)
+		var uv := font.get_glyph_uv_rect(0, size, code)
+		for y in EXT_MARK_ROWS:
+			var inked := false
+			for x in range(int(uv.position.x), int(uv.end.x)):
+				inked = inked or page.get_pixel(x, int(uv.position.y) + y).a > 0.5
+			if inked:
+				rows = maxi(rows, EXT_MARK_ROWS - y)
+				break
+	return rows * (2 if font_size == FONT_BIG else 1)
+
+
+## How far a button's text should move right so its ink is centred (fix pass F3b): Chinese, Japanese
+## and Korean glyphs start at their left edge and keep their spacing on the right (Hangul 2 px a
+## syllable), so a centred CJK line sat 1-2 px left of the middle (ストーリー ink 1 / 3 px from the
+## fill, 허브로 가기 34 / 38). Measured from the shaped glyphs' bitmaps (each with the font cache's
+## 1 px padding); 0 in every other locale (the slimy font's own 1 px leading gap is English's look).
+static func ink_shift(text: String, font_size: int) -> int:
+	if not locale() in Lang.GAP_LOCALES:
+		return 0
+	var font: Font = font_for(font_size)
+	var server := TextServerManager.get_primary_interface()
+	var shaped := server.create_shaped_text()
+	server.shaped_text_add_string(shaped, text, font.get_rids(), font_size)
+	var x := 0.0
+	var first := INF
+	var last := -INF
+	for glyph: Dictionary in server.shaped_text_get_glyphs(shaped):
+		var rid: RID = glyph.font_rid
+		if rid.is_valid() and int(glyph.index) != 0:
+			var size: Vector2 = server.font_get_glyph_size(rid, Vector2i(font_size, 0), glyph.index)
+			if size.x > 2.0:  # (a bitmap of more than its padding)
+				var left: float = x + glyph.offset.x + server.font_get_glyph_offset(rid, Vector2i(font_size, 0), glyph.index).x
+				first = minf(first, left + 1.0)
+				last = maxf(last, left + size.x - 1.0)
+		x += glyph.advance
+	server.free_rid(shaped)
+	if first == INF:
+		return 0
+	return floori(((x - last) - first) / 2.0)
+
+
+## The last row the 16 px screen title inks (its 2 px shadow included) at title_top(), for any of
+## `texts` in the title's `font`: the slimy font's box (title_bottom() - 1: 21 in English, its drips and
+## shadow); a taller script's glyphs end well above their line box (CJK 20 px: row 27 of 2..32),
+## measured from the shaped glyphs' bitmaps (less their 1 px padding).
+static func title_ink_end(texts: Array[String], font: Font) -> int:
+	if not tall_script():
+		return title_bottom() - 1
+	var slimy: RID = font.get_rids()[0]
+	var ts := TextServerManager.get_primary_interface()
+	var end := title_top()
+	for text in texts:
+		var shaped := TextLine.new()
+		shaped.add_string(text, font, FONT_BIG)
+		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
+		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
+			if g.font_rid == RID() or g.index == 0:
+				continue
+			if g.font_rid == slimy:
+				end = maxi(end, title_top() + TITLE_SLIMY_END)
+				continue
+			var fixed: int = ts.font_get_fixed_size(g.font_rid)
+			var size := Vector2i(fixed if fixed > 0 else FONT_BIG, 0)
+			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
+			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y)
+			end = maxi(end, title_top() + y0 + int(gs.y))  # (the bitmap less its padding row, + the 2 px shadow)
+	return end
+
+
 ## Where a 7 px digit's body starts in a line box of the current locale's 8 px font: 0 in English and
 ## with accents; in a taller script's box (CJK, Thai, Devanagari, Arabic) the slimy digits sit
 ## ascent - 7 px down, so an icon beside a number moves down with them.
