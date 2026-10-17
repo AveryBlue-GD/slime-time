@@ -171,7 +171,7 @@ func _shared_helpers(code: String) -> void:
 	var b := UIKit.make_button("ABCDEFGHIJKL", func() -> void: pass, Vector2(UIKit.button_w("ABCDEFGHIJKL", 40), UIKit.button_h()))
 	screen.add_child(b)
 	UIKit.note_text_w(b, ["AB", "ABCDEFGHIJKL"], 40)
-	_check(UIKit.noted_text_w(b) == UIKit.text_w("ABCDEFGHIJKL") + 8, "%s: noted_text_w = the widest button_w of the noted texts" % code)
+	_check(UIKit.noted_text_w(b) == UIKit.text_w("ABCDEFGHIJKL") + 2 * UIKit.BUTTON_TEXT_PAD, "%s: noted_text_w = the widest button_w of the noted texts" % code)
 	b.text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	_check(UIKit.noted_text_w(b) == -1, "%s: noted_text_w -1 when the shown text would not fit" % code)
 	var box := CheckBox.new()

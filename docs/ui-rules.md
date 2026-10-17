@@ -114,7 +114,9 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 
 - GooBox frame; centred on the screen (`L == R`) or on its parent area.
 - **Content inset `UIKit.PANEL_PAD` = 8** at the top (to the first text's top row or the first button) and at the bottom
-  (from the last button's bottom edge, or the last text line's drips). Applied to: pause and restart stacks, hub quit and
+  (from the last button's bottom edge, or the last text line's drips). A first line with marks starts at
+  `UIKit.panel_text_top()` instead (9 accented, 11 Vietnamese: the marks start on row 6, clear of the band and lumps,
+  rows 0-4); a PanelContainer gets the same from `panel_style()` (section 10.1, "No ink on the goo"). Applied to: pause and restart stacks, hub quit and
   portal dialogs, HEAT panel, Descent summary (which fits its panel to its lines). The BUY? and RESET confirms use 8 / 9.
 - Modal: a dim sheet that takes clicks, plus `UIKit.lock_focus`. A modal over the in-level HUD hides the HUD texts that
   would show through (`HUD.hide_area_texts()` from pause and restart; the Descent card hides the HUD layer).
@@ -128,6 +130,10 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
   cell the art overhangs by 1 px, so the pod stays 14.
 - Content ink pads equal on both sides (HUD timer 4 / 4, upgrades balance 4 / 4, hub prompt 8 / 8: the prompt's left
   content margin is 1 less to absorb the font's leading letter gap).
+- The hub prompt is a goo panel (`panel_style`): its top room follows its line's marks (`panel_v_margins(text)`); a
+  prompt taller than English's 18 keeps English's top row 156 by growing down, its bottom edge to 3 rows above the
+  safe area's bottom (its drops stay on screen), then up. The hub's ticket pod fades out while the coin board is open
+  (it sat on the board's frame; faded, not hidden, so its labels don't re-shape and move later goo lumps).
 - The area name (y 20, or 44 under the randomizer's attempt pod) and the story line (15 under it; 12 in Descent) are
   placed by `HUD._place_area_texts`: each line moves down until its text, drips included, is 2 px clear of every visible
   pod. They re-place whenever a pod shows or hides.
@@ -218,10 +224,12 @@ functions, never the constants, for anything text-tall.
 | Function | English | accented (es pt_BR fr de it pl tr ru, pseudo) | vi | cjk (zh_CN ja ko) | zh_TW | th | hi / ar |
 |---|---|---|---|---|---|---|---|
 | `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 21 |
-| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 2 / 0 (ar 1 / 1) |
+| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 3 / 1 (ar 2 / 0) |
+| `panel_v_margins()` (`panel_style()`: one line in a goo panel) | 6 / 5 | 9 / 5 | 11 / 5 | 3 / 2 | 3 / 1 | 5 / 1 | 6 / 3 (ar 5 / 2) |
+| `panel_text_top()` (first line in a hand-laid panel) | 8 | 9 | 11 | 8 | 8 | 8 | 8 |
 | `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 22 / 39 |
-| `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 19 / 20 / 19 |
-| `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 1 |
+| `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 17 / 20 / 19 (ar 19 / 20 / 19) |
+| `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 3 (ar 1) |
 | `title_top()` .. `title_bottom()` | 2..22 | 8..28 | 12..32 | 2..32 | 2..36 | 2..29 | 2..29 |
 | `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 156 |
 | `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 145 / 84x21 |
@@ -242,7 +250,10 @@ functions, never the constants, for anything text-tall.
   in a taller locale). Gaps stay on the spacing scale (section 3); the extra height comes out of the pitch, never out of
   a gap below 2 px.
 - **Widths from measured text**: `text_w(text, size)` (no RIDs for the slimy font, so measuring never moves GooBox
-  lumps), `button_w(text, min_w)` = max(min_w, text + 2 x `BUTTON_TEXT_PAD` 4), `button_size`, `back_size()` (BACK,
+  lumps), `button_w(text, min_w)` = max(min_w, text + 2 x `BUTTON_TEXT_PAD` 5: one more than the style's 4 px
+  content margin, because the slimy letters keep their 1 px gap on the left only and the shadow falls right, so a
+  grown button keeps 3 clear columns left of its ink and 2 right of its shadow; at 4 MONEDAS / VOLTAR / BOUTIQUE put
+  the last letter's shadow on the right goo lump column), `button_size`, `back_size()` (BACK,
   40 wide in English), `tab_widths(texts, min_widths, equal)` (English widths kept; once any tab grows, the whole group
   takes the widest width, so the row stays symmetric) and `layout_row(controls, widths, from, y, gap, align)`.
 - **Fitting a text: `fit_text(control, box, max_size, max_lines, anchor)`**, in order: as is; a bigger box up to
@@ -299,9 +310,29 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   (the coin board's counts, the wheel's ticket balance), the slimy digits sit `digit_top()` = ascent - 7 rows under
   the line top, so an icon beside them moves down by that much.
 - **Accent room**: a tile or panel laid out for English adds `accent_room()` rows (2 accented, 4 Vietnamese) above a
-  line that may carry marks; `ink_above(text, size)` gives a single line's marks (0 for a line without non-ASCII
-  letters), for room only a marked line needs (the title's tagline under its slimes). Marks never sit on a goo
+  line that may carry marks; `ink_above(text, size)` gives a single line's marks (0 for a line whose letters have no
+  mark: ASCII, and since F1 also the unmarked Cyrillic / Latin letters, `has_mark(code)` reads the slimy font's i18n
+  page), for room only a marked line needs (the title's tagline under its slimes). Marks never sit on a goo
   band: buttons are 13 + `ink_above` tall (table above).
+- **No ink on the goo (fix pass F1)**: every script's 8 px ink extent is in `Language.METRICS` as `ink_top` /
+  `ink_bottom` (line-relative rows: English 0 .. 8 with the drips, accented -3, Vietnamese -5, CJK 3 .. 12, zh_TW
+  3 .. 13, Thai 1 .. 14, Devanagari 0 .. 16, Arabic 1 .. 17; measured on every rendered button with
+  `tools/i18n_capture.sh --measure-boxes`, checked against every glyph of every translation by
+  `tests/test_i18n_f1_marks.gd`). From them: a button's line starts where its first inked row lands on
+  `GOO_INK_ROW` 3 (under the lump row, as English capitals; `button_v_margins`), a goo panel's where it lands on
+  `PANEL_INK_TOP` 6 and its last ink on h - `PANEL_INK_BOTTOM` 4 (`panel_style()` / `panel_v_margins(text)`, English
+  6 / 5; with `text`, only the marks that line has: the hub's station prompt), and a hand-laid panel's first line at
+  `panel_text_top()` (PANEL_PAD 8, 9 accented, 11 Vietnamese; the hub's quit / portal / resume dialogs). Devanagari's
+  8 px line box is trimmed to its ink (`Language.LINE_TRIM`: 19 -> 17, no translation inks the descent's last 2 rows),
+  so its 21 px buttons hold the line from row 3 (3 / 1). The check: `tools/i18n_capture.sh` renders every state twice
+  more (texts hidden, shadows hidden) and counts glyph ink (letters, marks, drips; shadows apart) inside each visible
+  goo box's band / lump rows (`OUT/json/goo_ink_<locale>.json`, summary line "goo-ink check"). English's own findings
+  (the LANGUAGE screen's native names, the upgrades ability rows) are the floor: no locale may add to them.
+- **Script gap (CJK)**: in ja / ko / zh_CN / zh_TW, `Loc.t` / `Loc.n` put U+2007 (`Loc.SCRIPT_GAP`, no line break) after
+  a slimy character (digit, Latin letter, `% ) ] ! ?`) that a CJK letter follows, and the slimy fonts get a 1 px (2 px
+  at 16) glyph for it (`Language._apply_script_gap`): the slimy letters keep their 1 px gap on the left only and the
+  CJK glyphs start at their left edge, so `12階`, `第1关`, `按F转动`, `1층` had 0 px between number and letter. Not in
+  any other locale, never in the translations themselves.
 - **Checkboxes**: `align_checkbox(box)` puts the 9 px box's bottom row 2 rows over the text's last ink row, as in
   English (a taller script's line box had it 1-3 px high: CJK 2, zh_TW 3, Thai 1; CJK letters reach `ink_drop` 1 row
   lower than the slimy body). English: unchanged.
@@ -351,7 +382,9 @@ in `UIKit`, does it for every screen; screen code keeps writing the English (lef
   `X1.5`, `1/3`, `(+0)`; a Latin key or pad name) in U+2066 LRI .. U+2069 PDI: it reads LTR as one unit and counts as
   one neutral word in the Arabic line, so the sign stays before the number and space-separated values (`{a} {b} {c}`
   pad letters) follow the line's right-to-left order. `UIKit.text_w` / `plain_font` treat bidi controls as
-  zero-width (`UIKit.is_format_char`).
+  zero-width (`UIKit.is_format_char`). Signed numbers written in a translation itself (`+30%`, `-10%`, `(+0)`, `10%`:
+  no placeholder) get the same isolate from `Loc.t` / `Loc.n` (`Loc.isolate_signed`, fix pass F1), so the sign and the
+  % stay where an Arabic reader expects them (they drew `1+` and `%10-`).
 - **Fitting without a smaller font** (Arabic has none: Kufi merges dots under 12 px): the HEAT toggles draw their
   icon at 1x before wrapping a name (two-line names would make the panel taller than the screen), and the upgrades
   ABILITIES rows go on pages (a `1/2` button mirroring BACK) when they don't fit one page.

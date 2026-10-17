@@ -121,64 +121,64 @@ func _initialize() -> void:
 func _all_states() -> void:
 	seed(20261017)
 	var title := await _open("res://scenes/title.tscn")
-	_scan("title", title)
+	await _scan("title", title)
 	title.free()
 
 	for hard in [false, true]:
 		progress.hard_mode = hard
 		var ls := await _open("res://scenes/level_select.tscn")
-		_scan("level select " + ("hard" if hard else "normal"), ls)
+		await _scan("level select " + ("hard" if hard else "normal"), ls)
 		if hard:
 			ls.heat_panel.open(ls, ls.heat_button)
 			await _frames(2)
-			_scan("level select HEAT panel", ls)
+			await _scan("level select HEAT panel", ls)
 			ls.heat_panel.close()
 		ls.free()
 	progress.hard_mode = false
 
 	var maps := await _open("res://scenes/maps.tscn")
-	_scan("map table", maps)
+	await _scan("map table", maps)
 	maps.open_view(3)
 	await _frames(2)
-	_scan("map view", maps)
+	await _scan("map view", maps)
 	maps.free()
 
 	for page in ["coins", "abilities"]:
 		var upg := await _open("res://scenes/upgrades.tscn")
 		upg.show_page(page)
 		await _frames(2)
-		_scan("upgrades " + page, upg)
+		await _scan("upgrades " + page, upg)
 		upg.free()
 
 	var skins := await _open("res://scenes/skins.tscn")
 	for page: String in skins.PAGES:
 		skins.show_page(page)
 		await _frames(2)
-		_scan("wardrobe " + page, skins)
+		await _scan("wardrobe " + page, skins)
 	skins.free()
 
 	var settings := await _open("res://scenes/controls.tscn")
-	_scan("settings", settings)
+	await _scan("settings", settings)
 	settings._open_codes()
 	await _frames(2)
-	_scan("settings save code", settings)
+	await _scan("settings save code", settings)
 	settings.free()
 	settings = await _open("res://scenes/controls.tscn")
 	settings._ask_reset()
 	await _frames(2)
-	_scan("settings reset confirm", settings)
+	await _scan("settings reset confirm", settings)
 	settings.free()
 
 	var keys := await _open("res://scenes/key_controls.tscn")
-	_scan("key controls", keys)
+	await _scan("key controls", keys)
 	keys.free()
 
 	var lang_page := await _open("res://scenes/language.tscn")
-	_scan("language", lang_page)
+	await _scan("language", lang_page)
 	lang_page.free()
 
 	var victory := await _open("res://scenes/victory.tscn")
-	_scan("victory", victory)
+	await _scan("victory", victory)
 	victory.free()
 
 	Story.mode = "intro"
@@ -186,7 +186,7 @@ func _all_states() -> void:
 	for i in story.cards.size():
 		story.show_card(i)
 		await _frames(2)
-		_scan("story intro card %d" % i, story)
+		await _scan("story intro card %d" % i, story)
 	story.free()
 
 	await _hub()
@@ -198,44 +198,48 @@ func _all_states() -> void:
 
 func _hub() -> void:
 	var hub := await _open("res://scenes/hub.tscn")
-	_scan("hub", hub)
+	await _scan("hub", hub)
+	# (the hub's physics would put `near` back to where the slime stands, hiding the prompt before it is
+	# measured: held meanwhile)
+	hub.set_physics_process(false)
 	for station: Dictionary in hub.stations:
 		hub.near = station
 		hub._show_prompt()
-		await _frames(1)
-		_scan("hub prompt " + station.id, hub)
+		await _frames(2)
+		await _scan("hub prompt " + station.id, hub)
 	hub.near = {}
 	hub._show_prompt()
+	hub.set_physics_process(true)
 	hub.open_quit_menu()
 	await _frames(2)
-	_scan("hub quit", hub)
+	await _scan("hub quit", hub)
 	hub.close_quit_menu()
 	hub.open_portal_menu()
 	await _frames(2)
-	_scan("hub portal", hub)
+	await _scan("hub portal", hub)
 	hub.close_portal_menu()
 	progress.descent_resume = {seed = 5, floor = 12, cleared = 11, meter = 50.0, boons = {}, bladders = 0, pot = 30, time = 600.0,
 		wind_used = false, slot = 1, bonuses = [], new_best = false, best_before = 0}
 	hub.open_resume_menu()
 	await _frames(2)
-	_scan("hub resume", hub)
+	await _scan("hub resume", hub)
 	hub.close_resume_menu()
 	progress.descent_resume = {}
 	hub.open_coin_board()
 	await _frames(2)
-	_scan("hub coin board", hub)
+	await _scan("hub coin board", hub)
 	hub.close_coin_board()
 	hub.open_hat_wheel()
 	await _frames(2)
 	for tab in ["wheel", "shop"]:
 		hub.hat_wheel.show_tab(tab)
 		await _frames(2)
-		_scan("hat wheel " + tab, hub)
+		await _scan("hat wheel " + tab, hub)
 	hub.free()
 	# The hub's one-time notice (upgrades reworked, coins returned), with a wide count.
 	progress.tree_refund_notice = 888
 	hub = await _open("res://scenes/hub.tscn")
-	_scan("hub notice", hub)
+	await _scan("hub notice", hub)
 	hub.free()
 	progress.tree_refund_notice = 0
 
@@ -253,11 +257,11 @@ func _hud() -> void:
 		if c.get("assist", false):
 			game.hud.set_assist(true)
 		await _frames(3)
-		_scan("hud " + c.tag, game)
+		await _scan("hud " + c.tag, game)
 		if c.tag == "L1":  # every coin found: the coins-left pod's other text
 			game.hud.set_coins(165, 3, 3)
 			await _frames(2)
-			_scan("hud L1 all found", game)
+			await _scan("hud L1 all found", game)
 		game.free()
 		progress.heat_mods = 0
 		progress.hard_mode = false
@@ -268,7 +272,7 @@ func _hud() -> void:
 	await _frames(3)
 	descent.hud.set_pot(888, "", 888, 8)
 	await _frames(2)
-	_scan("hud descent pot", descent)
+	await _scan("hud descent pot", descent)
 	descent.free()
 
 
@@ -280,14 +284,14 @@ func _results() -> void:
 	game.hud.show_record(13.6)
 	game._offer_next_steps()
 	await _frames(3)
-	_scan("result win L3", game)
+	await _scan("result win L3", game)
 	game.free()
 	game = await _start({level = 10})
 	game._on_goal_body_entered(game.slime)
 	game.hud.show_rewards({tier = 1, best = 3, new_best = false})
 	game._offer_next_steps()
 	await _frames(3)
-	_scan("result win L10", game)
+	await _scan("result win L10", game)
 	game.free()
 	# Dried up three times on a level: the assist offer.
 	game = await _start({level = 4})
@@ -295,14 +299,14 @@ func _results() -> void:
 	game.hud.show_rewards({offer = true})
 	game._offer_retry()
 	await _frames(3)
-	_scan("result dry-up", game)
+	await _scan("result dry-up", game)
 	game.free()
 	game = await _start({random = true})
 	game._on_goal_body_entered(game.slime)
 	game.hud.show_rewards({tickets = 4, attempt = 2, cap = "replay"})
 	game._offer_next_steps()
 	await _frames(3)
-	_scan("result randomizer win", game)
+	await _scan("result randomizer win", game)
 	game.free()
 
 
@@ -317,12 +321,12 @@ func _pause_and_restart() -> void:
 			game = await _start({level = 3} if kind == "story" else {random = true})
 		game.pause_menu.open()
 		await _frames(2)
-		_scan("pause " + kind, game)
+		await _scan("pause " + kind, game)
 		game.pause_menu.resume()
 		if kind == "story":
 			game.restart_prompt.open()
 			await _frames(2)
-			_scan("restart prompt", game)
+			await _scan("restart prompt", game)
 			game.restart_prompt.close()
 		paused = false
 		game.free()
@@ -334,10 +338,10 @@ func _descent() -> void:
 	var game := await _spawn_game({})
 	game._ensure_card().show_boons(progress.descent_run, progress.descent_offers())
 	await _frames(2)
-	_scan("descent boon card", game)
+	await _scan("descent boon card", game)
 	game.descent_card.show_summary({floor = 2, cleared = 1, best_floor = 2, time = 61.0, tickets = 1, pot = 2, boons = {"gulp": 1}})
 	await _frames(2)
-	_scan("descent summary", game)
+	await _scan("descent summary", game)
 	game.free()
 
 

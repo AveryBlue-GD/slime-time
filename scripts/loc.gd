@@ -28,6 +28,16 @@ static var pseudo := false
 static var isolate_ltr := false
 const LRI := "\u2066"
 const PDI := "\u2069"
+## True in Chinese / Japanese / Korean (Language._apply_script_gap sets it, never with the gate off):
+## `t` / `n` then put SCRIPT_GAP between a slimy-font character (a digit, a Latin key letter, %) and a
+## following CJK letter. The slimy glyphs keep their 1 px letter gap on the left only, and the CJK
+## glyphs start at their own left edge, so `12階`, `第1关`, `按F转动`, `1층` read as one blob (0 px
+## between them); the gap gives them the 1 px the slimy letters keep between themselves (fix pass F1).
+## The translations are never changed: the gap is added to the finished text.
+static var cjk_gap := false
+## U+2007 FIGURE SPACE: no line break at it (a counter stays with its number), and the slimy fonts get a
+## 1 px (2 px at 16) glyph for it while a CJK locale is on (Language._apply_script_gap).
+const SCRIPT_GAP := "\u2007"
 ## Characters that end a placeholder's word on either side (besides spaces and Arabic letters).
 const WORD_BREAKS := "،؛؟!"
 
@@ -47,7 +57,10 @@ static func t(ctx: String, msgid: String, args := {}) -> String:
 	var text := String(TranslationServer.translate(msgid, ctx)) if Economy.languages_on() else msgid
 	if pseudo:
 		text = pseudolocalize(text)
-	return fill(text, args) if not args.is_empty() else text
+	if isolate_ltr:
+		text = isolate_signed(text)
+	text = fill(text, args) if not args.is_empty() else text
+	return space_scripts(text) if cjk_gap else text
 
 
 ## A counted string: the plural form for `count` in the current language ({count} is filled in
@@ -60,10 +73,13 @@ static func n(ctx: String, singular: String, plural: String, count: int, args :=
 		text = singular if count == 1 else plural
 	if pseudo:
 		text = pseudolocalize(text)
+	if isolate_ltr:
+		text = isolate_signed(text)
 	var all := args.duplicate()
 	if not all.has("count"):
 		all["count"] = count
-	return fill(text, all)
+	text = fill(text, all)
+	return space_scripts(text) if cjk_gap else text
 
 
 ## Fills `{name}` placeholders from `args` in ONE pass over `text`: a value is inserted as is, never
@@ -160,6 +176,81 @@ static func _reads_ltr(word: String) -> bool:
 		if (code >= 0x30 and code <= 0x39) or (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) or (code >= 0xC0 and code < 0x0590):
 			ltr = true
 	return ltr
+
+
+## `text` with SCRIPT_GAP after every slimy-font character (ASCII letter, digit or % ) ! ?) that is
+## followed by a Chinese / Japanese / Korean letter (see cjk_gap). Nothing else changes.
+static func space_scripts(text: String) -> String:
+	var out := PackedStringArray()
+	var from := 0
+	for i in range(1, text.length()):
+		if _is_cjk(text.unicode_at(i)) and _slimy_end(text.unicode_at(i - 1)):
+			out.append(text.substr(from, i - from))
+			out.append(SCRIPT_GAP)
+			from = i
+	if out.is_empty():
+		return text
+	out.append(text.substr(from))
+	return "".join(out)
+
+
+## A character the slimy font draws that ends a run before a CJK letter: digits, Latin letters, % ) ] ! ?
+static func _slimy_end(code: int) -> bool:
+	return (code >= 0x30 and code <= 0x39) or (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) \
+		or code in [0x25, 0x29, 0x5D, 0x21, 0x3F]
+
+
+## A CJK letter (kana, ideographs, Hangul syllables / jamo); not CJK punctuation, which keeps its own room.
+static func _is_cjk(code: int) -> bool:
+	return (code >= 0x3040 and code <= 0x30FF) or (code >= 0x31F0 and code <= 0x31FF) or (code >= 0x3400 and code <= 0x4DBF) \
+		or (code >= 0x4E00 and code <= 0x9FFF) or (code >= 0xF900 and code <= 0xFAFF) or (code >= 0xAC00 and code <= 0xD7AF) \
+		or (code >= 0x1100 and code <= 0x11FF) or (code >= 0x3130 and code <= 0x318F)
+
+
+## In a right-to-left locale (isolate_ltr): every signed number written in the translation itself (not a
+## placeholder: `+1 تذكرة`, `الخزان -10%`, `+30%`) wrapped in LRI .. PDI like fill's placeholders, so the
+## bidi algorithm keeps the sign before the number and the % after it (it drew `1+` and `%10-`). A word
+## counts when it is a sign, digits (with . , / x X) and an optional %, or digits and a %; placeholders
+## and words already isolated are left alone.
+static func isolate_signed(text: String) -> String:
+	var out := PackedStringArray()
+	var at := 0
+	var i := 0
+	var n := text.length()
+	while i < n:
+		var code := text.unicode_at(i)
+		var starts := (code == 0x2B or code == 0x2D or code == 0x2212) and i + 1 < n and _is_digit(text.unicode_at(i + 1))
+		starts = starts or (_is_digit(code) and (i == 0 or not _glues_number(text.unicode_at(i - 1))))
+		if not starts or (i > 0 and text.unicode_at(i - 1) == LRI.unicode_at(0)):
+			i += 1
+			continue
+		var j := i + 1
+		while j < n and (_is_digit(text.unicode_at(j)) or (text[j] in ".,/xX" and j + 1 < n and _is_digit(text.unicode_at(j + 1)))):
+			j += 1
+		var percent := j < n and text[j] == "%"
+		if percent:
+			j += 1
+		var signed := code == 0x2B or code == 0x2D or code == 0x2212
+		var ends := j >= n or not _glues_number(text.unicode_at(j))
+		if (signed or percent) and ends and not (j < n and text[j] == "}"):
+			out.append(text.substr(at, i - at))
+			out.append(LRI + text.substr(i, j - i) + PDI)
+			at = j
+		i = j
+	if out.is_empty():
+		return text
+	out.append(text.substr(at))
+	return "".join(out)
+
+
+static func _is_digit(code: int) -> bool:
+	return code >= 0x30 and code <= 0x39
+
+
+## A character that makes a number part of a longer word (a placeholder's braces, Latin letters, digits).
+static func _glues_number(code: int) -> bool:
+	return _is_digit(code) or code == 0x7B or code == 0x7D or (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) \
+		or code == 0x2B or code == 0x2D or code == 0x25
 
 
 ## Whole translated lines joined by line breaks (the win text and other multi-line blocks: each line

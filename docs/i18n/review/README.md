@@ -4,7 +4,7 @@
 a language (or one screen across languages) in a single image. Part of localization D15 (see `../plan.md`).
 
 ```
-./tools/i18n_capture.sh [--locales en,de,...|all] [--states slug,...|all] [--out DIR] [-j N] [--keep-backdrop] [--no-sheets]
+./tools/i18n_capture.sh [--locales en,de,...|all] [--states slug,...|all] [--out DIR] [-j N] [--keep-backdrop] [--measure-boxes] [--no-sheets]
 ```
 
 - Default out: `build/i18n-shots/` (git-ignored through `/build/`). Never `.screens/` (screenshot.sh clears it; the script refuses it).
@@ -21,9 +21,21 @@ a language (or one screen across languages) in a single image. Part of localizat
 - `OUT/missing_glyphs.json`: findings of the missing-glyph check; `OUT/logs/<locale>.log`: Godot output.
 
 ## Reproducibility
-Fixed 60 fps, the global RNG seeded (20261017) before every screen opens (same maze, SEED text and text drips), the
-drifting menu backdrop (maze and mist; the flat background stays) hidden unless `--keep-backdrop`.
-Game scenes (HUD, results) are not fully deterministic frame to frame if something animates; re-run to confirm.
+Fixed 60 fps, the global RNG seeded (20261017) before every screen opens (same maze, SEED text), the
+drifting menu backdrop (maze and mist; the flat background stays) hidden unless `--keep-backdrop`. Each state is
+frozen (its scene's processing off) while it is rendered and checked, and the text drips use one fixed seed, so two
+runs of the same build give the same pixels (the hat wheel's wheel still differs by a few dozen pixels); compare
+builds pixel by pixel with that. The hub's physics is held while its station prompts are shown (it would hide them).
+
+## Goo-ink check (fix pass F1)
+Every captured state is rendered twice more, all texts transparent and then only the Labels' shadows: the pixels
+that change are the texts' glyph ink (letters, marks, drips; shadows apart). For every visible goo box (GooBox:
+buttons, tabs, panels, pills; boxes covered by a later one skipped) the ink inside its rect but in its band zone
+(outline + band + the deepest its lumps reach, at the top, bottom and sides) is counted, and the ink right on one
+of its goo pixels. `OUT/json/goo_ink_<locale>.json` lists each box with ink there (`zone`, `on_goo` pixels, the rows);
+the run prints "goo-ink check (glyph ink px on goo / in band rows)" per locale. `--measure-boxes` also writes each
+box's ink extent (`OUT/json/box_ink_<locale>.json`: box-relative first / last ink column and row), the numbers the
+Language METRICS ink_top / ink_bottom come from.
 
 ## Missing-glyph check
 For every visible Label / Button with text, each character (spaces, controls and invisible bidi / joiner marks are skipped)

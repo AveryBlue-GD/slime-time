@@ -67,8 +67,11 @@ const HIT_PAD := 5
 const TOUCH_GROUP := "ui_touch_targets"
 ## Pixel-art UI pieces from tools/make_ui_art.py.
 const UI_DIR := "res://assets/ui/"
-## Text side margin inside a button (its content margin): a button sized from its text is text + 2x this.
-const BUTTON_TEXT_PAD := 4
+## Room each side of a button's text when the button is sized from its text (button_w): text + 2x this.
+## 5, one more than the style's 4 px content margin: the slimy letters keep their 1 px gap on the left
+## only and the shadow falls right, so at text + 2 x 4 the last letter's shadow sat on the right goo lump
+## column (MONEDAS, MÜNZEN, VOLTAR, BOUTIQUE, TOURNER  GRATUIT); now 3 clear columns left, 2 right.
+const BUTTON_TEXT_PAD := 5
 ## The Language autoload's script (its static tables: metrics, fonts).
 const Lang := preload("res://scripts/language.gd")
 
@@ -80,6 +83,11 @@ static var _tabular_font: FontFile
 static var _drip_scene := -1
 static var _metrics_code := ""
 static var _metrics: Dictionary = {}
+## has_mark's cache (code -> bool) and the slimy font's i18n page (pixel_ext.png), whose glyphs have
+## EXT_MARK_ROWS rows of marks above the letter.
+static var _marked := {}
+static var _ext_page: Image
+const EXT_MARK_ROWS := 5
 
 
 # ---- Per-locale sizes (docs/ui-rules.md section 10). The constants above are the English (and
@@ -140,7 +148,10 @@ static func text_block_h(lines: int) -> int:
 ## The standard button height (BUTTON_H in English; 16 with accents, 18 Vietnamese, 16 CJK, 18 zh_TW,
 ## 19 Thai, 21 Devanagari / Arabic). The theme's button margins make every button at least this tall.
 static func button_h() -> int:
-	return maxi(BUTTON_H, int(metrics().button_h))
+	var m := metrics()
+	# (a taller script's line starts on row GOO_INK_ROW - ink_top, clear of the goo: Devanagari 3 + 19)
+	var room := int(m.line_h) + maxi(0, GOO_INK_ROW - int(m.get("ink_top", 0))) if int(m.line_h) > TEXT_BODY else 0
+	return maxi(BUTTON_H, maxi(int(m.button_h), room))
 
 
 ## How much taller than in English a button / pod / tab is in the current locale.
@@ -207,9 +218,15 @@ static func hit_pad() -> int:
 ## The theme's top / bottom content margins for buttons (x = top, y = bottom): a button's minimum
 ## height is its line box plus these, so they make it exactly button_h(). English 3 / 3. With the
 ## slimy font the 3 rows under the body stay (drips) and the accents' rows go on top; a taller
-## script's line box (which has its own empty rows) gets 1 / 1, moved down by its ink_nudge.
+## script's line box (which has its own empty rows) gets 1 / 1, moved down by its ink_nudge, and never
+## less on top than puts its highest ink (Language ink_top) on row GOO_INK_ROW, under the goo's lump row
+## (Devanagari: 3 / 1, its matras ink the line box's first row).
 static func button_v_margins() -> Vector2i:
-	return _v_margins(button_h(), line_h())
+	var margins := _v_margins(button_h(), line_h())
+	if tall_script():
+		var top := clampi(GOO_INK_ROW - int(metrics().get("ink_top", 0)), margins.x, button_h() - line_h())
+		margins = Vector2i(top, button_h() - line_h() - top)
+	return margins
 
 
 ## The same for the HUD / hub pods (an 8 px icon or a line, POD_H tall in English: 3 / 3).
@@ -224,6 +241,36 @@ static func _v_margins(total: int, content: int) -> Vector2i:
 	# (a negative content margin means "the style's default" to Godot: the nudge stops at 0 below)
 	var top := mini(extra, extra / 2 + int(metrics().get("ink_nudge", 0)))
 	return Vector2i(top, extra - top)
+
+
+## The first row a button's text may ink (row 0 = its outline, 1 the goo band, 2 the lumps): English
+## capitals start here; marks and taller scripts' letters too (button_v_margins).
+const GOO_INK_ROW := 3
+## A goo panel's (panel_style) first and last text rows: 6 (clear of the band and its lumps, rows 0-4, by
+## one row) and h - PANEL_INK_BOTTOM (the drips end over the bottom band's lumps, as in English).
+const PANEL_INK_TOP := 6
+const PANEL_INK_BOTTOM := 4
+
+
+## Where the first line of 8 px text goes in a hand-laid goo panel (add_panel + labels): PANEL_PAD
+## below its top edge, or lower when the locale's marks would reach the band (panel_v_margins: 9
+## accented, 11 Vietnamese). English 8. The panel grows by the difference.
+static func panel_text_top() -> int:
+	return maxi(PANEL_PAD, panel_v_margins().x)
+
+
+## A goo panel's top / bottom content margins for one line of 8 px text in the current locale (x =
+## top, y = bottom): its highest ink (marks: Language ink_top) on row PANEL_INK_TOP, its lowest
+## (drips, descending marks) on row h - PANEL_INK_BOTTOM. English 6 / 5; accented 9 / 5; Vietnamese
+## 11 / 5; CJK 3 / 2, Traditional Chinese 3 / 1, Thai 5 / 1, Devanagari 6 / 3, Arabic 5 / 2. With `text`
+## (the line the panel will show), the slimy font's top is only as high as that line's marks need.
+static func panel_v_margins(text: Variant = null) -> Vector2i:
+	var m := metrics()
+	var top := PANEL_INK_TOP - int(m.get("ink_top", 0))
+	if text != null and not tall_script():  # (only the marks `text` has: English's 6 for a line without any)
+		top = PANEL_INK_TOP + ink_above(String(text))
+	var bottom := int(m.get("ink_bottom", TEXT_BODY + TEXT_DRIP - 1)) + PANEL_INK_BOTTOM - line_h()
+	return Vector2i(maxi(0, top), maxi(0, bottom))
 
 
 # ---- Measuring and fitting text (docs/ui-rules.md section 10) ----
@@ -542,9 +589,33 @@ static func ink_above(text: String, font_size := FONT) -> int:
 	if tall_script():
 		return 0
 	for i in text.length():
-		if text.unicode_at(i) > 0x7F:
+		if text.unicode_at(i) > 0x7F and has_mark(text.unicode_at(i)):
 			return int(metrics().title_above if font_size == FONT_BIG else metrics().ink_above)
 	return 0
+
+
+## True when the slimy font's glyph for `code` inks above the line box (an accent, a breve, a dot: the
+## i18n page's 5 rows over the letter, tools/make_font.py); false for ASCII and for letters drawn without
+## marks (most Cyrillic: МЕШОК, СЛЕДЫ need no room). Read once per character from the font's own image.
+static func has_mark(code: int) -> bool:
+	if code <= 0x7F:
+		return false
+	if _marked.has(code):
+		return _marked[code]
+	var font: FontFile = load(Lang.FONT_PATH)
+	var size := Vector2i(FONT, 0)
+	var marked := false
+	if font.get_glyph_list(0, size).has(code) and font.get_glyph_texture_idx(0, size, code) == 1:
+		if _ext_page == null:
+			_ext_page = font.get_texture_image(0, size, 1)
+		var uv := font.get_glyph_uv_rect(0, size, code)
+		for y in range(int(uv.position.y), int(uv.position.y) + EXT_MARK_ROWS):
+			for x in range(int(uv.position.x), int(uv.end.x)):
+				marked = marked or _ext_page.get_pixel(x, y).a > 0.5
+	else:
+		marked = not font.get_glyph_list(0, size).has(code)  # (another font draws it: assume marks)
+	_marked[code] = marked
+	return marked
 
 
 ## Where a 7 px digit's body starts in a line box of the current locale's 8 px font: 0 in English and
@@ -1006,8 +1077,9 @@ static func button_style(state: String) -> StyleBox:
 static func panel_style(hud := false) -> StyleBox:
 	if not hud:
 		var goo := GooBox.make_panel()
-		goo.content_margin_top = 6  # below the goo band and its lumps
-		goo.content_margin_bottom = 5
+		var margins := panel_v_margins()  # (6 / 5 in English: below the goo band and its lumps, marks included)
+		goo.content_margin_top = margins.x
+		goo.content_margin_bottom = margins.y
 		return goo
 	var box := StyleBoxTexture.new()
 	box.texture = load(UI_DIR + "hud_pod.png")
@@ -1352,6 +1424,10 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	var extra := button_h() - maxi(10, line_h())
 	style.content_margin_top = maxi(1, extra - 1)
 	style.content_margin_bottom = extra - maxi(1, extra - 1)
+	if line_h() >= 10:  # (a taller script's label is the tallest thing in the box: a button's margins)
+		var margins := button_v_margins()
+		style.content_margin_top = margins.x
+		style.content_margin_bottom = margins.y
 	style.content_margin_left = 6  # clear of the goo at the sides
 	style.content_margin_right = 6
 	box.add_theme_stylebox_override("panel", style)

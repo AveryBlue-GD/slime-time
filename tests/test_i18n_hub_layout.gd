@@ -66,8 +66,13 @@ func _hub(english: bool) -> void:
 		hub.near = station
 		hub._show_prompt()
 		var r := _rect(hub.prompt)
-		_check(SCREEN.encloses(r) and r.end.y == hub.PROMPT_Y + hub.PROMPT_H and absf(r.get_center().x - 160.0) <= 0.5,
-			"%s: prompt %s centred, inside the screen, bottom edge on row %d" % [_code, station.id, hub.PROMPT_Y + hub.PROMPT_H])
+		# (English's bottom edge, row 174; a taller prompt grows down first, to 3 rows above the screen's
+		# bottom, keeping its top on English's row 156 as long as it can, then up)
+		var bottom: float = hub.PROMPT_Y + hub.PROMPT_H
+		if r.size.y > hub.PROMPT_H:
+			bottom = minf(hub.PROMPT_Y + r.size.y, 180.0 - hub.PROMPT_LOW)
+		_check(SCREEN.encloses(r) and r.end.y == bottom and r.end.y + 2 <= 180.0 and absf(r.get_center().x - 160.0) <= 0.5,
+			"%s: prompt %s centred, inside the screen (its drops too), bottom edge on row %d" % [_code, station.id, bottom])
 	hub.near = {}
 	hub._show_prompt()
 

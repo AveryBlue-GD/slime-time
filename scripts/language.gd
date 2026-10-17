@@ -75,7 +75,9 @@ const FALLBACK_ORDER := ["zh_CN", "zh_TW", "ja", "ko", "th", "hi", "ar"]
 ##   its own ascent + descent, which Godot uses for any line that contains one of its glyphs);
 ## - ink_above / ink_below: rows drawn outside that box (accents above, drips / descending marks below);
 ## - line_pitch / dense_pitch: the pitch of stacked one-line labels (UIKit.LINE_PITCH / DENSE_PITCH);
-## - button_h: the smallest button that holds a line with its marks (UIKit.BUTTON_H); with the slimy
+## - button_h: the smallest button that holds a line with its marks (UIKit.BUTTON_H; UIKit.button_h()
+##   also keeps the line's first inked row, ink_top, on row 3: Devanagari's matras ink the line box's
+##   first row, so its buttons are 3 + 19 = 22 there; the LANGUAGE screen's rows use this number); with the slimy
 ##   font 13 + ink_above, so the highest mark starts under the goo's lump row (row 2), as English capitals
 ##   do: a 15 px accented button put acutes on that row and diaereses right under it (ZURÜCK, WRÓĆ);
 ## - title_line_h / title_above: the 16 px title's line box and the rows its accents draw above it
@@ -86,22 +88,36 @@ const FALLBACK_ORDER := ["zh_CN", "zh_TW", "ja", "ko", "th", "hi", "ar"]
 ##   body 0 px off centre; the LANGUAGE screen's INK_NUDGE centres whole names, marks included);
 ## - ink_drop (CJK only, else 0): rows the script's letters reach below the slimy body's last row
 ##   (ascent - 1): the ideographs sit 1 row lower (measured on rendered checkboxes, UIKit.align_checkbox).
+## - ink_top / ink_bottom: the first and last rows the script's 8 px text inks, from the line box's top
+##   (row 0 = the line top; negative = marks above it; the slimy font's drips included: English 0 .. 8),
+##   measured on every rendered button of every state (tools/i18n_capture.sh --measure-boxes, fix pass
+##   F1) and checked against every glyph of every translation (tests/test_i18n_f1_marks.gd; Arabic's
+##   tanwin / shadda over a lam-alef, حسنًا, ink row 1). UIKit keeps that ink off the goo with them: a button's line starts where its ink_top lands on
+##   row 3 (under the lump row, as English capitals), a goo panel's where it lands on row 6 and ends with
+##   its ink_bottom on the panel's row h - 4 (English's 6 / 5 content margins).
 ## English ("latin") is exactly today's UIKit numbers; only the other groups add head room.
 const METRICS := {
-	"latin": {line_h = 7, ink_above = 0, ink_below = 2, line_pitch = 12, dense_pitch = 11, button_h = 13, title_line_h = 14, title_above = 0, ink_nudge = 0},
-	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 16, title_line_h = 14, title_above = 6, ink_nudge = 0},
-	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 18, title_line_h = 14, title_above = 10, ink_nudge = 0},
-	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0, ink_nudge = 0, ink_drop = 1},
-	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0, ink_nudge = 0, ink_drop = 1},
-	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0, ink_nudge = 1},
-	"hi": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 1},
-	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 0},
+	"latin": {line_h = 7, ink_above = 0, ink_below = 2, line_pitch = 12, dense_pitch = 11, button_h = 13, title_line_h = 14, title_above = 0, ink_nudge = 0, ink_top = 0, ink_bottom = 8},
+	"accented": {line_h = 7, ink_above = 3, ink_below = 2, line_pitch = 12, dense_pitch = 12, button_h = 16, title_line_h = 14, title_above = 6, ink_nudge = 0, ink_top = -3, ink_bottom = 8},
+	"vi": {line_h = 7, ink_above = 5, ink_below = 2, line_pitch = 14, dense_pitch = 14, button_h = 18, title_line_h = 14, title_above = 10, ink_nudge = 0, ink_top = -5, ink_bottom = 8},
+	"cjk": {line_h = 14, ink_above = 0, ink_below = 0, line_pitch = 15, dense_pitch = 14, button_h = 16, title_line_h = 28, title_above = 0, ink_nudge = 0, ink_drop = 1, ink_top = 3, ink_bottom = 12},
+	"zh_TW": {line_h = 16, ink_above = 0, ink_below = 0, line_pitch = 17, dense_pitch = 16, button_h = 18, title_line_h = 32, title_above = 0, ink_nudge = 0, ink_drop = 1, ink_top = 3, ink_bottom = 13},
+	"th": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 18, dense_pitch = 17, button_h = 19, title_line_h = 25, title_above = 0, ink_nudge = 1, ink_top = 1, ink_bottom = 14},
+	"hi": {line_h = 17, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 1, ink_top = 0, ink_bottom = 16},
+	"ar": {line_h = 19, ink_above = 0, ink_below = 0, line_pitch = 20, dense_pitch = 19, button_h = 21, title_line_h = 25, title_above = 0, ink_nudge = 0, ink_top = 1, ink_bottom = 17},
 }
 ## A smaller crisp size of a locale's script font (8 px text), for UIKit.fit_text's last step: only
 ## where one exists. Devanagari reads at 12 (fonts.md 2.4: "12 minimum"); Noto Kufi Arabic merges
 ## dots under 12, Thai has no tested smaller size, and the CJK subsets are the 10 / 12 px builds only
 ## (Fusion 10 px draws dense Traditional characters wrongly). The slimy font has no size under 8.
 const SMALLER_FONT_PX := {"hi": 12}
+## Rows of a script's 8 px fallback line box (its descent) that no glyph of any translation inks, trimmed
+## off the line box (FontFile extra spacing) where the room matters: Noto Sans Devanagari 14 px has a
+## 19 px box (ascent 13, descent 6) but its lowest marks (ु ू ृ) end 3 rows under the baseline (every hi
+## msgstr shaped, fix pass F1), so its line is 17: a 21 px button then holds the line from row 3, its
+## upper matras under the goo's lump row (they inked the lump row at 2 / 0 margins). The LANGUAGE
+## screen's native name keeps the untrimmed font (native_font), as do the smaller size and the titles.
+const LINE_TRIM := {"hi": 2}
 ## Locales whose text needs the accent head room (es, pt_BR, fr, de, it, pl, tr, ru); id uses no
 ## marks, so it keeps the English numbers.
 const ACCENTED := ["es", "pt_BR", "fr", "de", "it", "ru", "pl", "tr"]
@@ -116,6 +132,7 @@ var _locale_before := ""
 var _fallbacks := {}
 var _native := {}
 var _fonts_installed := false
+var _gap_glyph := false
 ## Held so the fonts stay loaded with their fallbacks: a resource nobody references is freed and the
 ## next load() would bring it back without them (pixel_big.fnt is only held while a title is shown).
 var _held_fonts: Array[Font] = []
@@ -210,6 +227,8 @@ func disable() -> void:
 	_uninstall_fonts()
 	_apply_pseudo(false)
 	Loc.isolate_ltr = false
+	Loc.cjk_gap = false
+	_set_gap_glyph(false)
 	if active and is_inside_tree():
 		get_tree().root.set_layout_direction(Window.LAYOUT_DIRECTION_INHERITED)
 	active = false
@@ -240,6 +259,7 @@ func set_locale(code: String) -> void:
 	TranslationServer.set_locale(SOURCE_LOCALE if code == PSEUDO else code)
 	_apply_pseudo(code == PSEUDO)
 	_install_fonts()
+	_apply_script_gap()
 	_apply_direction()
 	if changed:
 		language_changed.emit(locale)
@@ -322,11 +342,28 @@ func fallback_font(code: String, big := false) -> FontFile:
 	return _fallbacks[code][1 if big else 0]
 
 
+## The font `code`'s 8 px text uses after the slimy glyphs: fallback_font, or where LINE_TRIM trims its
+## line box, a copy of it whose size cache has that much less descent (the same glyphs, a shorter line;
+## Font.get_height and every shaped line agree, unlike a FontVariation's spacing in a fallback chain).
+func line_font(code: String) -> FontFile:
+	var own := fallback_font(code)
+	if own == null or not LINE_TRIM.has(code):
+		return own
+	var key := "%s:line" % code
+	if not _native.has(key):
+		var trimmed: FontFile = own.duplicate()
+		var descent := trimmed.get_descent(8)  # (makes the fixed size's cache entry)
+		for size: Vector2i in trimmed.get_size_cache_list(0):
+			trimmed.set_cache_descent(0, size.x, descent - int(LINE_TRIM[code]))
+		_native[key] = trimmed
+	return _native[key]
+
+
 ## The fonts that must cover `code`'s text: its fallback (if any). With the slimy font in front, this
 ## is the chain the glyph test checks for each locale.
 func font_chain(code: String, big := false) -> Array[Font]:
 	var chain: Array[Font] = []
-	var own := fallback_font(code, big)
+	var own: Font = fallback_font(code, true) if big else line_font(code)
 	if own:
 		chain.append(own)
 	return chain
@@ -366,6 +403,36 @@ func small_font(code: String) -> Font:
 		variation.fallbacks = chain
 		_native[key] = variation
 	return _native[key]
+
+
+## Locales whose letters (CJK) follow the slimy digits / Latin letters with no gap (Loc.cjk_gap).
+const GAP_LOCALES := ["ja", "ko", "zh_CN", "zh_TW"]
+
+
+## Chinese / Japanese / Korean: Loc puts Loc.SCRIPT_GAP between a slimy character and a CJK letter, and
+## the slimy fonts get a glyph for it, 1 px wide (2 px in the 16 px font): the gap the slimy letters keep
+## between themselves (fix pass F1, docs/ui-rules.md section 10.1). Every other locale: neither.
+func _apply_script_gap() -> void:
+	var on := active and locale in GAP_LOCALES
+	Loc.cjk_gap = on
+	_set_gap_glyph(on)
+
+
+## Adds (on) or removes the SCRIPT_GAP glyph of pixel.fnt / pixel_big.fnt / UIKit's tabular copy: no
+## image, an advance of one font pixel.
+func _set_gap_glyph(on: bool) -> void:
+	if on == _gap_glyph:
+		return
+	_gap_glyph = on
+	var gap := Loc.SCRIPT_GAP.unicode_at(0)
+	for font: FontFile in [load(FONT_PATH), load(FONT_BIG_PATH), UIKit.tabular_font()]:
+		var size: Vector2i = font.get_size_cache_list(0)[0]
+		if on:
+			font.set_glyph_advance(0, size.x, gap, Vector2(size.x / 8, 0))
+			font.set_glyph_size(0, size, gap, Vector2.ZERO)
+			font.set_glyph_texture_idx(0, size, gap, -1)
+		else:
+			font.remove_glyph(0, size, gap)
 
 
 ## True while the fallbacks are on the slimy fonts (never with the gate off).

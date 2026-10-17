@@ -247,7 +247,7 @@ func _metrics() -> void:
 		"accent head room only for the accented locales (3 rows, Vietnamese 5)")
 	for code: String in Lang.SCRIPT_FONTS:
 		var m: Dictionary = Lang.metrics(code)
-		var font: FontFile = language.fallback_font(code)
+		var font: FontFile = language.line_font(code)  # (the installed 8 px fallback: Devanagari's trimmed line box)
 		var big: FontFile = language.fallback_font(code, true)
 		var line := int(maxf(7.0, font.get_ascent(8)) + font.get_descent(8))
 		var title := int(maxf(14.0, big.get_ascent(16)) + big.get_descent(16))

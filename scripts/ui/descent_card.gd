@@ -538,7 +538,7 @@ func _fit_summary() -> void:
 			lines_height += child.get_combined_minimum_size().y
 	lines_height += maxf(count - 1, 0) * UIKit.line_spacing()
 	# The first line's marks (KHÔ CẠN Ở TẦNG) go under the panel's goo lump row, not on it.
-	var marks := float(UIKit.accent_room() if UIKit.ink_above(first) > 0 else 0)
+	var marks := float(UIKit.panel_text_top() - UIKit.PANEL_PAD if UIKit.ink_above(first) > 0 else 0)
 	var panel_h := UIKit.PANEL_PAD * 2 + lines_height + marks
 	var panel_x := roundf((UIKit.SCREEN.x - panel_w) / 2.0)
 	if summary_panel.position.x != panel_x or summary_panel.size.x != panel_w:

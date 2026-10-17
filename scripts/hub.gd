@@ -69,6 +69,9 @@ const FPS := 6.0
 const PROMPT_Y := 156.0
 ## The prompt's height in English (one 7 px line in the goo frame): its bottom edge is PROMPT_Y + this.
 const PROMPT_H := 18.0
+## A taller prompt's bottom edge may come down to this far above the safe area's bottom (its goo drops,
+## 2 rows under the box, stay on screen).
+const PROMPT_LOW := 3.0
 ## Where the coin bag's board sits on screen.
 const BOARD := Rect2(52, 8, 216, 164)
 ## Its title's top and the room under the hint (inside the panel); the count column's box (English);
@@ -77,8 +80,10 @@ const BOARD_TOP := 7.0
 const BOARD_BOTTOM := 12.0
 const BOARD_COUNT_W := 42.0
 const BOARD_COLUMN_GAP := 8.0
-## Two columns: their inset from the panel's sides.
+## Two columns: their inset from the panel's sides, and the room between a row's number box and its name
+## (English's one column: the 16 px number box ends 6 px before the name).
 const BOARD_SIDE := 7.0
+const BOARD_NAME_GAP := 6
 ## The trapdoor's confirm panel.
 ## Both dialogs follow docs/ui-rules.md: content PANEL_PAD (8) inside the top and bottom edges,
 ## 13 px buttons, 12 px line pitch, centered on the screen.
@@ -336,6 +341,10 @@ func _add_body(at: Vector2, radius: float, moving: bool) -> AnimatableBody2D:
 	return null
 
 
+## The prompt's goo frame (its top margin follows the shown line's marks, _show_prompt).
+var _prompt_style: StyleBox
+
+
 ## The stations and the rotor share one skin material (all the same parameters, never changed
 ## per station).
 var _station_material: ShaderMaterial
@@ -408,9 +417,9 @@ func _build_ui() -> void:
 	layer.add_child(root)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prompt = PanelContainer.new()
-	var prompt_style := UIKit.panel_style()  # goo-framed, like the menus
-	prompt_style.content_margin_left -= 1  # the 1 px letter gap left of the name: ink pads 8 / 8
-	prompt.add_theme_stylebox_override("panel", prompt_style)
+	_prompt_style = UIKit.panel_style()  # goo-framed, like the menus
+	_prompt_style.content_margin_left -= 1  # the 1 px letter gap left of the name: ink pads 8 / 8
+	prompt.add_theme_stylebox_override("panel", _prompt_style)
 	prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(prompt)
 	var row := HBoxContainer.new()
@@ -524,11 +533,12 @@ func _layout_pair_dialog(panel: Panel, english: Rect2, lines: Array[Label], butt
 		UIKit.note_text_w(b, [buttons[0].text, buttons[1].text], 56)
 	var w := maxf(english.size.x, 2 * DIALOG_INSET + widths[0] + widths[1] + DIALOG_INSET)
 	w = maxf(w, _widest(lines) + 2 * UIKit.PANEL_PAD)
-	var h := UIKit.PANEL_PAD * 2 + (lines.size() - 1) * UIKit.line_pitch() + UIKit.line_h() + DIALOG_GAP + UIKit.button_h()
+	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the first line's marks' rows)
+	var h := text_top + UIKit.PANEL_PAD + (lines.size() - 1) * UIKit.line_pitch() + UIKit.line_h() + DIALOG_GAP + UIKit.button_h()
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	panel.position = rect.position
 	panel.size = rect.size
-	_stack_lines(lines, rect, rect.position.y + UIKit.PANEL_PAD)
+	_stack_lines(lines, rect, rect.position.y + text_top)
 	var buttons_y := rect.end.y - UIKit.PANEL_PAD - UIKit.button_h()
 	for i in buttons.size():
 		var b := buttons[i]
@@ -620,11 +630,12 @@ func _layout_portal_menu() -> void:
 	UIKit.note_text_w(portal_back, [portal_back.text], 56)
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
-	var h := UIKit.PANEL_PAD * 2 + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
+	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
+	var h := text_top + UIKit.PANEL_PAD + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	portal_panel.position = rect.position
 	portal_panel.size = rect.size
-	var y := rect.position.y + UIKit.PANEL_PAD
+	var y := rect.position.y + text_top
 	_stack_lines([portal_title], rect, y)
 	y += line + 6
 	for b: Button in [maze_button, descent_button]:
@@ -892,12 +903,14 @@ func _layout_coin_board() -> void:
 	var rows := Levels.COUNT
 	var after_title := 7.0
 	var columns := 1
-	var content := BOARD_TOP + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
+	# (a title with marks starts lower by their rows, so they keep off the goo band: accent_room)
+	var title_top := BOARD_TOP + (UIKit.accent_room() if UIKit.ink_above(board_title.text) > 0 else 0)
+	var content := title_top + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
 	if content + UIKit.GAP_M > max_h:  # (the room under the hint may shrink to GAP_M first)
 		columns = 2
 		rows = ceili(Levels.COUNT / 2.0)
 		after_title = UIKit.GAP_M
-		content = BOARD_TOP + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
+		content = title_top + line + after_title + rows * dense + 2 + UIKit.line_pitch() + line
 	var h := minf(max_h, content + BOARD_BOTTOM)
 	# Widths: number box, name, count box, coin icon; English one column: 7 | 16 | 6 | name ... | 42 | 4 | 8 | 14.
 	var w := BOARD.size.x
@@ -925,7 +938,7 @@ func _layout_coin_board() -> void:
 				for i in range(c * rows, last):
 					names = maxi(names, UIKit.text_w(board_names[i].text, UIKit.FONT, board_names[i].get_theme_font("font")))
 				num_w.append(UIKit.text_w(str(last)))
-				col_w.append(num_w[c] + UIKit.GAP_S + names + UIKit.GAP_M + count_w + UIKit.GAP_M + 8)
+				col_w.append(num_w[c] + BOARD_NAME_GAP + names + UIKit.GAP_M + count_w + UIKit.GAP_M + 8)
 			w = BOARD_SIDE + col_w[0] + BOARD_COLUMN_GAP + col_w[1] + BOARD_SIDE
 			if w <= 320 - 2 * UIKit.EDGE:
 				break
@@ -936,9 +949,9 @@ func _layout_coin_board() -> void:
 	board_panel.position = board_rect.position
 	board_panel.size = board_rect.size
 	var top := board_rect.position.y
-	board_title.position = Vector2(board_rect.position.x, top + BOARD_TOP)
+	board_title.position = Vector2(board_rect.position.x, top + title_top)
 	board_title.size = Vector2(w, box_h)
-	var rows_y := top + BOARD_TOP + line + after_title
+	var rows_y := top + title_top + line + after_title
 	for i in Levels.COUNT:
 		var c := i / rows
 		var y := rows_y + (i % rows) * dense
@@ -956,7 +969,7 @@ func _layout_coin_board() -> void:
 			var right := left + col_w[c]
 			board_numbers[i].position = Vector2(left, y)
 			board_numbers[i].size = Vector2(num_w[c], box_h)
-			board_names[i].position = Vector2(left + num_w[c] + UIKit.GAP_S, y)
+			board_names[i].position = Vector2(left + num_w[c] + BOARD_NAME_GAP, y)
 			board_rows[i].position = Vector2(right - 8 - UIKit.GAP_M - count_w, y)
 			board_rows[i].size = Vector2(count_w, box_h)
 			# (the coin on the digits' 7 px body, which sits on the line's baseline in a taller script)
@@ -992,6 +1005,9 @@ func open_coin_board() -> void:
 	_layout_coin_board()  # (the texts' widths can widen it)
 	coin_board.visible = true
 	prompt.visible = false
+	# (the pod would sit on the board's top-left frame; the board shows the coins. Faded, not hidden: shown
+	# again, its labels would shape their text anew and move every later goo box's lumps)
+	ticket_pod.modulate.a = 0.0
 	slime.frozen = true
 	_sfx("coin", 0.8)
 	for child in coin_board.get_parent().get_children():
@@ -1001,6 +1017,7 @@ func open_coin_board() -> void:
 
 func close_coin_board() -> void:
 	coin_board.visible = false
+	ticket_pod.modulate.a = 1.0
 	slime.frozen = false
 	_show_prompt()
 
@@ -1328,12 +1345,21 @@ func _show_prompt(note := "") -> void:
 	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id)
 	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
+	# (the goo's top room is the marks this line has: a line without any sits as in English)
+	var margins := UIKit.panel_v_margins(prompt_name.text + prompt_key.text)
+	if _prompt_style.content_margin_top != margins.x or _prompt_style.content_margin_bottom != margins.y:
+		_prompt_style.content_margin_top = margins.x
+		_prompt_style.content_margin_bottom = margins.y
 	prompt.reset_size()
 	var size := prompt.get_combined_minimum_size()
 	prompt.size = size
-	# Centered at the bottom, its goo drops clear of the screen edge: its bottom edge stays where the
-	# English prompt's is (a taller script's prompt starts higher), inside the safe area.
+	# Centered at the bottom, its goo drops clear of the screen edge: its bottom edge where the English
+	# prompt's is; a taller prompt (accents, a taller script) first grows down, to PROMPT_LOW above the
+	# safe area's bottom (its drops still inside), then up, so it keeps clear of the stations' sprites
+	# (the coin bag's corner) as far as it can.
 	var bottom := minf(PROMPT_Y + PROMPT_H, UIKit.safe_rect().end.y - 6.0)
+	if size.y > PROMPT_H:
+		bottom = maxf(bottom, minf(PROMPT_Y + size.y, UIKit.safe_rect().end.y - PROMPT_LOW))
 	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), bottom - size.y)
 
 
