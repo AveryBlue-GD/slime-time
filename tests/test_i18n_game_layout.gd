@@ -12,7 +12,9 @@ extends "res://tests/suite_base.gd"
 ##   bottom row (or on the bottom row, clear of BACK), never past the screen's sides.
 ## - Wardrobe: top to bottom without overlaps: title, grid, status line, rule line, stage (the stage
 ##   above the bottom row, or on it between BACK and the page button with JELLY in the top-left
-##   corner); BACK and the page button one width, mirrored, fitting their words; everything on screen.
+##   corner; when BACK / the page button are too wide to flank it, the page button top right, JELLY's
+##   mirror, fix pass F3a); BACK and the page button one width, mirrored, fitting their words; a taller
+##   script's 16 px title by its glyphs' ink over the grid; everything on screen.
 ## - Victory: the text block, the slimes and the menu in that order, the menu ending by row 176 and
 ##   wide enough for its words.
 ## - Pause: PAUSED above the panel and clear of the HUD pods; the buttons inside the panel (one column,
@@ -116,7 +118,9 @@ func _upgrades() -> void:
 			var p: Rect2 = panels[i]
 			_ok(area.grow(0.5).encloses(p), "upgrades panels in the content area", str(p))
 			if i > 0:
-				_ok(p.position.y - (panels[i - 1] as Rect2).end.y == UIKit.GAP_S, "upgrades panels GAP_S apart")
+				# (ABILITIES: GAP_XS where GAP_S leaves no room for the clean rows, fix pass F3a)
+				var gap: int = UIKit.GAP_S if page == "coins" else int(upg._ability_plan.get("gap", UIKit.GAP_S))
+				_ok(p.position.y - (panels[i - 1] as Rect2).end.y == gap, "upgrades panels GAP_S apart")
 		var rows: Dictionary = upg.rows if page == "coins" else upg.ability_rows
 		var r := 0
 		for id: String in rows:
@@ -133,7 +137,7 @@ func _upgrades() -> void:
 		_ok(not hint.intersects(back) and not hint.intersects(panels[-1]), "upgrades hint clear of BACK and the rows", "%s %s %s" % [hint, back, panels[-1]])
 		_ok(_fits(upg.back), "upgrades BACK fits its word")
 		if _code == "en":
-			_ok((panels[0] as Rect2).position.y == 26 and (panels[1] as Rect2).position.y - (panels[0] as Rect2).position.y == (26 if page == "coins" else 30),
+			_ok((panels[0] as Rect2).position.y == 26 and (panels[1] as Rect2).position.y - (panels[0] as Rect2).position.y == (26 if page == "coins" else 33),  # (ABILITIES: 30 px rows since fix pass F3a, the tags' drips off the goo)
 				"upgrades English rows pinned")
 		upg.free()
 	for name in ["upgrades tabs GAP_XS apart", "upgrades tab fits its word", "upgrades pod top right", "upgrades title clear of the tabs and pod",
@@ -154,10 +158,18 @@ func _wardrobe() -> void:
 		var rule := _text_rect(skins._rule)
 		var back := _rect(skins.get_children().filter(func(c: Node) -> bool: return c is Button and c.text == Loc.t("common.back", "BACK"))[0])
 		var page_b := _rect(skins.page_button)
-		_ok(title.end.y <= g.position.y and g.end.y <= status.position.y and status.end.y <= rule.position.y,
+		# (a taller script's 16 px title: its glyphs' ink, not its line box's empty rows, over the grid: fix pass F3a)
+		var titles: Array[String] = []
+		for which: String in skins.PAGES:
+			titles.append(skins.page_title(which))
+		var title_end := title.end.y if not UIKit.tall_script() else float(skins._title_ink_end(titles) + 1)
+		_ok(title_end <= g.position.y and g.end.y <= status.position.y and status.end.y <= rule.position.y,
 			"wardrobe title, grid, status, rule in order", "%s %s %s %s" % [title, g, status, rule])
 		if UIKit.button_h() != UIKit.BUTTON_H:  # (English: TRAILS grows its 40 px button by 2 px, the source layout)
-			_ok(back.size == page_b.size and back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
+			if skins.layout_plan.get("top_page", false):  # (fix pass F3a: the page button top right, JELLY's mirror; BACK its own width)
+				_ok(back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE and page_b.position.y == UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
+			else:
+				_ok(back.size == page_b.size and back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
 		_ok(_fits(skins.page_button), "wardrobe page button fits its word", skins.page_button.text)
 		for r: Rect2 in [title, g, status, rule, back, page_b]:
 			_ok(SCREEN.encloses(r), "wardrobe on screen", str(r))

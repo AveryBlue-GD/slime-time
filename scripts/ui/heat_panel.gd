@@ -83,15 +83,16 @@ func _ready() -> void:
 	add_child(title)
 	title.position = Vector2(rect.position.x, _geo.title_y)
 
-	var left := rect.position.x + floorf((rect.size.x - (toggle_size.x * 3 + GAP * 2)) / 2.0)
+	var across: int = _geo.across
+	var left := rect.position.x + floorf((rect.size.x - (toggle_size.x * 3 + across * 2)) / 2.0)
 	for i in Heat.IDS.size():
 		var id: String = Heat.IDS[i]
 		var button := _make_toggle(id)
-		button.position = Vector2(left + (i % 3) * (toggle_size.x + GAP), _geo.grid_y + (i / 3) * (toggle_size.y + GAP))
+		button.position = Vector2(left + (i % 3) * (toggle_size.x + across), _geo.grid_y + (i / 3) * (toggle_size.y + GAP))
 		add_child(button)
 		toggles[id] = button
 		if _geo.name_lines > 1:  # (sized once in the themed tree: sized before, it keeps the default font's width)
-			UIKit.wrap_label(button.get_node("Name"), Vector2(toggle_size.x - _geo.name_x - NAME_PAD, UIKit.text_block_h(2)))
+			UIKit.wrap_label(button.get_node("Name"), Vector2(toggle_size.x - _geo.name_x - UIKit.BUTTON_TEXT_PAD, UIKit.text_block_h(2)))
 
 	about = UIKit.make_label(default_about(), UIKit.FONT, UIKit.TEXT_DIM)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -148,30 +149,31 @@ static func about_texts() -> Array[String]:
 func _geometry() -> Dictionary:
 	var g := {rect = RECT, toggle = Vector2(TOGGLE), title_y = RECT.position.y + UIKit.PANEL_PAD, grid_y = GRID_Y,
 		about_y = ABOUT_Y, about_lines = 1, done_y = DONE_Y, icon_x = ICON_X, name_x = NAME_X, name_y = 7, name_lines = 1,
-		name_font = null, points_y = 20, icon_scale = ICON_SCALE}
+		name_font = null, points_y = 20, icon_scale = ICON_SCALE, one_x = [], across = GAP, name_x_1x = NAME_X, room_1x = 0}
 	if english:
 		return g
 	var tall := UIKit.tall_script()
 	var lh := UIKit.line_h()
 	var width := UIKit.SCREEN.x - 2 * UIKit.EDGE
-	var toggle_w := floorf((width - 2 * UIKit.PANEL_PAD - 2 * GAP) / 3.0)
+	# (the toggles GAP_XS apart across, one scale step closer than English's GAP: 1 px more each, fix pass F3a)
+	var toggle_w := floorf((width - 2 * UIKit.PANEL_PAD - 2 * UIKit.GAP_XS) / 3.0)
+	g.across = UIKit.GAP_XS
 	g.icon_x = ICON_X - SHIFT_X / 2
-	g.name_x = NAME_X - SHIFT_X
-	var room: float = toggle_w - g.name_x - NAME_PAD
-	# The names: one line; else the script's smaller size (Devanagari); else the icons at 1x, which leaves the
-	# name 9 px more (Arabic: no smaller size, and two-line names would make the panel taller than the
-	# screen); else two lines.
+	# (right-to-left: the Kufi letters have no side bearing, so the name keeps 1 px more from its icon)
+	g.name_x = NAME_X - SHIFT_X + (1 if UIKit.rtl() else 0)
+	# The name's room: up to BUTTON_TEXT_PAD from the toggle's right edge, so the shadow keeps 2 clear
+	# columns from the frame (NAME_PAD 4 left NIEBLA VORAZ / कटखना कोहरा 1 px from it).
+	var pad := UIKit.BUTTON_TEXT_PAD
+	var room: float = toggle_w - g.name_x - pad
+	var name_x_1x: int = g.name_x - 9 * (ICON_SCALE - 1)
+	# The names: one line; else the script's smaller size (Devanagari); else two lines when the panel still
+	# fits the screen; else (Arabic: no smaller size, two-line names would make the panel taller than the
+	# screen) the icon at 1x only in the toggles whose name needs its 9 px (fix pass F3a: every toggle's
+	# icon dropped to 1x, and in French / Polish before two lines were tried); else two lines.
 	var name_h := lh
 	var widest := 0
 	for id in Heat.IDS:
 		widest = maxi(widest, UIKit.text_w(Heat.display_name(id)))
-	var language_node := get_tree().root.get_node_or_null("Language")
-	var has_small: bool = language_node != null and language_node.has_method("small_font") and language_node.small_font(UIKit.locale()) != null
-	var name_x_1x: int = g.icon_x + 9 + (g.name_x - g.icon_x - 9 * ICON_SCALE)
-	if widest > room and not has_small and widest <= toggle_w - name_x_1x - NAME_PAD:
-		g.icon_scale = 1
-		g.name_x = name_x_1x
-		room = toggle_w - g.name_x - NAME_PAD
 	if widest > room:
 		var language := get_tree().root.get_node_or_null("Language")
 		var small: Font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
@@ -182,10 +184,16 @@ func _geometry() -> Dictionary:
 		if small and small_widest <= room:
 			g.name_font = small
 			name_h = ceili(small.get_height(UIKit.FONT))
+		elif _panel_h(UIKit.text_block_h(2), tall) > UIKit.SCREEN.y - 2 * UIKit.EDGE and widest <= toggle_w - name_x_1x - pad:
+			for id in Heat.IDS:
+				if UIKit.text_w(Heat.display_name(id)) > room:
+					g.one_x.append(id)
 		else:
 			g.name_lines = 2
 			name_h = UIKit.text_block_h(2)
-	g.name_y = 4 if tall else 7
+	g.name_x_1x = name_x_1x
+	g.room_1x = toggle_w - name_x_1x - pad
+	g.name_y = 4 if tall else maxi(7, UIKit.GOO_INK_ROW - int(UIKit.metrics().get("ink_top", 0)))  # (Vietnamese marks under the lump row: 8)
 	g.points_y = g.name_y + name_h + (2 if tall else 6)
 	g.toggle = Vector2(toggle_w, g.points_y + 14)
 	var about_lines := 1
@@ -198,7 +206,7 @@ func _geometry() -> Dictionary:
 	var grid_y := title_y + lh + 4
 	var about_y := grid_y + 2 * int(g.toggle.y) + GAP + UIKit.GAP_L
 	var done_y := about_y + UIKit.text_block_h(about_lines) + UIKit.GAP_L + (0 if tall else UIKit.TEXT_DRIP + 1)
-	var h := done_y + UIKit.button_h() + UIKit.PANEL_PAD
+	var h := done_y + UIKit.button_h() + UIKit.PANEL_PAD  # (= _panel_h)
 	var top := maxi(UIKit.HUD_EDGE - 1, floori((UIKit.SCREEN.y - h) / 2.0))
 	g.rect = Rect2(UIKit.EDGE, top, width, h)
 	g.title_y = top + title_y
@@ -208,6 +216,18 @@ func _geometry() -> Dictionary:
 	return g
 
 
+## The locale panel's height with names `name_h` tall (as _geometry lays it out).
+func _panel_h(name_h: int, tall: bool) -> int:
+	var lh := UIKit.line_h()
+	var toggle_h := (4 if tall else 7) + name_h + (2 if tall else 6) + 14
+	var about_lines := 1
+	for text in about_texts():
+		if UIKit.text_w(text) > UIKit.SCREEN.x - 2 * UIKit.EDGE - 2 * UIKit.PANEL_PAD:
+			about_lines = 2
+	return UIKit.PANEL_PAD + lh + 4 + 2 * toggle_h + GAP + UIKit.GAP_L + UIKit.text_block_h(about_lines) + UIKit.GAP_L \
+		+ (0 if tall else UIKit.TEXT_DRIP + 1) + UIKit.button_h() + UIKit.PANEL_PAD
+
+
 ## A modifier's toggle: its icon at 2x on the left, the name, and its heat (a flame + "+N") under it.
 func _make_toggle(id: String) -> Button:
 	var button := UIKit.make_button("", func() -> void: _flip(id), toggle_size)
@@ -215,7 +235,9 @@ func _make_toggle(id: String) -> Button:
 	button.size = toggle_size
 	var icon := Heat.make_rect(Heat.icon(id))
 	icon.name = "Icon"
-	var scale: int = _geo.icon_scale
+	var one_x: bool = id in _geo.one_x
+	var scale: int = 1 if one_x else _geo.icon_scale
+	var name_x: int = _geo.name_x_1x if one_x else _geo.name_x
 	icon.scale = Vector2(scale, scale)
 	# Centered in an 18x18 cell (9x9 at 1x; RACE's art is 8x8, the others 9x9), the cell centred on the toggle's height.
 	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
@@ -223,17 +245,17 @@ func _make_toggle(id: String) -> Button:
 	button.add_child(icon)
 	var name_label := UIKit.make_label(Heat.display_name(id), UIKit.FONT, UIKit.TEXT)
 	name_label.name = "Name"
-	name_label.position = Vector2(_geo.name_x, _geo.name_y)
+	name_label.position = Vector2(name_x, _geo.name_y)
 	button.add_child(name_label)
 	if _geo.name_font:
 		name_label.add_theme_font_override("font", _geo.name_font)
 	var flame := Heat.make_rect(Heat.flame(Economy.HEAT_TIERS[0]))
 	flame.name = "Flame"
-	flame.position = Vector2(_geo.name_x, _geo.points_y - 1)
+	flame.position = Vector2(name_x, _geo.points_y - 1)
 	button.add_child(flame)
 	var points := UIKit.make_label(Loc.t("heat.points", "+{points}", {points = Heat.heat_of(id)}), UIKit.FONT, HEAT_TINT)
 	points.name = "Points"
-	points.position = Vector2(_geo.name_x + POINTS_X - NAME_X, _geo.points_y)
+	points.position = Vector2(name_x + POINTS_X - NAME_X, _geo.points_y)
 	button.add_child(points)
 	UIKit.use_plain_font(points)
 	var check := UIKit.make_icon("check", UIKit.GOLD)

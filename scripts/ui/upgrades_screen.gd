@@ -183,7 +183,7 @@ func _ready() -> void:
 			_make_ability_row(Abilities.LIST[i], _ability_plan.top + 2 + (i % per_page) * _ability_plan.pitch)
 			if _ability_plan.has("pages"):
 				_ability_row_nodes.append(ability_page.get_children().slice(before))
-		_rows_bottom["abilities"] = _ability_plan.top + mini(per_page, Abilities.LIST.size()) * _ability_plan.pitch - UIKit.GAP_S
+		_rows_bottom["abilities"] = _ability_plan.top + mini(per_page, Abilities.LIST.size()) * _ability_plan.pitch - int(_ability_plan.gap)
 
 	hint = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -222,39 +222,95 @@ func _plan_coins(count: int) -> void:
 	_coin_plan.hint_small = true
 
 
-## Plans the ABILITIES rows (icon, name over tag, pips, +): English insets 4 / 5 around the name and
-## tag; then 2 / 2; then the one-line hint on the bottom row (centred, clear of BACK); then the name
-## and tag in the script's smaller crisp font.
+## Plans the ABILITIES rows (icon, name over tag, pips, +), the first that fits (fix pass F3a: the lines
+## placed by their ink, Language ink_top / ink_bottom, so none touches the panel's goo): the name's ink
+## from row PANEL_INK_TOP (6, under the band's lumps) and the tag's last ink one row over the bottom
+## lumps (panel_v_margins + 1: English 6 / 6, a 30 px panel; it was 27, the name on the lump row and the
+## tag's drips on the bottom lumps); then the hint on the bottom row (centred, clear of BACK); then the
+## rows GAP_XS apart (one scale step closer); then the tag's last ink on the h - PANEL_INK_BOTTOM row
+## (panel_style's own rule); then the name's ink from row 5, the first under the lumps (Thai); then the
+## old compact 2 / 2 insets; then the name and tag in the script's
+## smaller crisp font (by its ink, measured on the rows' texts); then the clean rows on pages. The line
+## boxes never overlap (the tag a dense_pitch() under the name).
 func _plan_abilities(count: int) -> void:
 	var area := UIKit.content_rect()
 	var back_room := UIKit.SCREEN.x - 2.0 * (UIKit.EDGE + UIKit.back_size().x + UIKit.GAP_M)
-	var hint_w := maxf(UIKit.text_w(ability_hint()), UIKit.text_w(tickets_locked_text()))
+	var hint_fits_row := maxf(UIKit.text_w(ability_hint()), UIKit.text_w(tickets_locked_text())) <= back_room
 	var small: Font = null
 	var language := get_node_or_null("/root/Language")
 	if language and language.has_method("small_font"):
 		small = language.small_font(UIKit.locale())
-	var above := int(UIKit.metrics().ink_above)  # (accents over the name and drips under the tag: inside the panel too)
-	var below := int(UIKit.metrics().ink_below)
-	var steps := [[4 + above, 5, false, false], [2 + above, 2 + below, false, false], [2 + above, 2 + below, true, false], [2 + above, 2 + below, true, true]]
-	for step: Array in steps:
-		if step[2] and hint_w > back_room or step[3] and small == null:
+	var m := UIKit.metrics()
+	var margins := UIKit.panel_v_margins()  # (one line's ink from PANEL_INK_TOP to h - PANEL_INK_BOTTOM)
+	var above := int(m.ink_above)
+	var below := int(m.ink_below)
+	# {top, bottom (insets), row (the hint on the bottom row), gap (between the rows), small (font)}
+	var steps: Array[Dictionary] = [
+		{top = margins.x, bottom = margins.y + 1, row = false, gap = UIKit.GAP_S},
+		{top = margins.x, bottom = margins.y + 1, row = true, gap = UIKit.GAP_S},
+		{top = margins.x, bottom = margins.y + 1, row = true, gap = UIKit.GAP_XS},
+		{top = margins.x, bottom = margins.y, row = true, gap = UIKit.GAP_S},
+		{top = margins.x, bottom = margins.y, row = true, gap = UIKit.GAP_XS},
+		{top = margins.x - 1, bottom = margins.y, row = true, gap = UIKit.GAP_XS},  # (ink from row 5, right under the lumps: Thai)
+		{top = 2 + above, bottom = 2 + below, row = true, gap = UIKit.GAP_S},
+	]
+	if small:  # (its line box, the ink measured on the rows' own texts: Devanagari 12 px 0 .. 12 of 16)
+		var texts: Array[String] = []
+		for item: Dictionary in Abilities.LIST:
+			texts.append(Abilities.display_name(item.id))
+			texts.append(Abilities.tag(item.id))
+		var ink := ink_rows(texts, small)
+		var line := int(small.get_height(UIKit.FONT))
+		var top := UIKit.PANEL_INK_TOP - ink.x
+		var bottom := maxi(0, UIKit.PANEL_INK_BOTTOM + ink.y - line)  # (the tag's last ink on h - 4)
+		for gap: int in [UIKit.GAP_S, UIKit.GAP_XS]:
+			steps.append({top = top, bottom = bottom + 1, row = true, gap = gap, small = true})
+			steps.append({top = top, bottom = bottom, row = true, gap = gap, small = true})
+	for step: Dictionary in steps:
+		if step.row and not hint_fits_row:
 			continue
-		var line := float(small.get_height(UIKit.FONT)) if step[3] else float(UIKit.line_h())
-		var tag_pitch := int(line) if step[3] else UIKit.dense_pitch()
-		var block_h := int(line) + tag_pitch  # name + tag: 7 + 11 = 18 in English
-		var panel_h: int = block_h + step[0] + step[1]
-		_ability_plan = {top = int(area.position.y), inset_top = step[0], panel_h = panel_h, pitch = panel_h + UIKit.GAP_S,
-			block_h = block_h, tag_pitch = tag_pitch, small_font = small if step[3] else null, hint_in_row = step[2]}
-		var need := count * panel_h + (count - 1) * UIKit.GAP_S + (0 if step[2] else UIKit.GAP_M + _hint_h(1))
+		var on_small: bool = step.get("small", false)
+		var line := int(small.get_height(UIKit.FONT)) if on_small else UIKit.line_h()
+		var tag_pitch := line if on_small else UIKit.dense_pitch()
+		var block_h := line + tag_pitch  # name + tag: 7 + 11 = 18 in English
+		var panel_h: int = block_h + step.top + step.bottom
+		_ability_plan = {top = int(area.position.y), inset_top = step.top, panel_h = panel_h, pitch = panel_h + step.gap, gap = step.gap,
+			block_h = block_h, tag_pitch = tag_pitch, small_font = small if on_small else null, hint_in_row = step.row}
+		var need: int = count * panel_h + (count - 1) * step.gap + (0 if step.row else UIKit.GAP_M + _hint_h(1))
 		if need <= area.size.y:
 			return
-	# None fits (a tall script with no smaller size: Arabic): the 2 / 2 rows on pages (docs/ui-rules.md
+	# None fits (a tall script with no smaller size: Arabic): the clean rows on pages (docs/ui-rules.md
 	# section 10.1, per-locale paging), the hint under each page's rows, a page button on the bottom row.
-	var panel_h := UIKit.dense_pitch() + UIKit.line_h() + 4 + above + below
+	var panel_h := margins.x + UIKit.line_h() + UIKit.dense_pitch() + margins.y + 1
 	var per_page := UIKit.row_budget(area.size.y - UIKit.GAP_M - _hint_h(1), panel_h, UIKit.GAP_S)
-	_ability_plan = {top = int(area.position.y), inset_top = 2 + above, panel_h = panel_h, pitch = panel_h + UIKit.GAP_S,
+	_ability_plan = {top = int(area.position.y), inset_top = margins.x, panel_h = panel_h, pitch = panel_h + UIKit.GAP_S, gap = UIKit.GAP_S,
 		block_h = UIKit.line_h() + UIKit.dense_pitch(), tag_pitch = UIKit.dense_pitch(), small_font = null, hint_in_row = false,
 		per_page = maxi(1, per_page), pages = ceili(count / float(maxi(1, per_page)))}
+
+
+## The first and last rows `texts` ink in `font` (8 px), from the line's top: the shaped glyphs' bitmaps
+## less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them. (A local helper: Language keeps
+## ink_top / ink_bottom for the 8 px font only, not for the smaller crisp size; skins_screen.gd keeps the same helper.)
+static func ink_rows(texts: Array[String], font: Font) -> Vector2i:
+	var ts := TextServerManager.get_primary_interface()
+	var top := 99
+	var bottom := -99
+	for text in texts:
+		var shaped := TextLine.new()
+		shaped.add_string(text, font, UIKit.FONT)
+		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
+		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
+			if g.font_rid == RID() or g.index == 0:
+				continue
+			var fixed: int = ts.font_get_fixed_size(g.font_rid)
+			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT, 0)
+			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
+			if gs.y <= 2:
+				continue
+			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y) + 1
+			top = mini(top, y0)
+			bottom = maxi(bottom, y0 + int(gs.y) - 3)
+	return Vector2i(top, bottom) if bottom >= top else Vector2i(0, int(font.get_height(UIKit.FONT)) - 1)
 
 
 ## Height of `lines` hint lines with the marks drawn outside their line boxes.
@@ -277,8 +333,22 @@ func _fit_title(left: float) -> void:
 	if title == null:
 		return
 	var room := Rect2(left, UIKit.title_top(), UIKit.SCREEN.x - 2.0 * left, UIKit.title_h())
-	if UIKit.text_w(title.text, UIKit.FONT_BIG) <= room.size.x:
+	var w := UIKit.text_w(title.text, UIKit.FONT_BIG)
+	if w <= room.size.x:
 		return
+	# Wider than the room centred between the tabs and their mirror: the 16 px title keeps its size,
+	# moved off the centre just enough to clear the tabs, up to GAP_M from the balance pod (as wide as its
+	# count with one digit more; fix pass F3a: AMÉLIORATIONS, POTENZIAMENTI, ULEPSZENIA, GELİŞTİRMELER,
+	# УЛУЧШЕНИЯ dropped to the 8 px font)
+	var style := UIKit.panel_style(true)
+	var digits := maxi(UIKit.text_w(str(maxi(Progress.coins(), 0))), UIKit.text_w(str(maxi(Progress.tickets, 0)))) + UIKit.text_w("0")
+	var pod_w := style.get_margin(SIDE_LEFT) + style.get_margin(SIDE_RIGHT) + 8 + UIKit.GAP_S + digits
+	var to := UIKit.SCREEN.x - UIKit.EDGE - pod_w - UIKit.GAP_M
+	for from: float in [left - UIKit.GAP_M + UIKit.GAP_L, left]:  # (GAP_L from the tabs where it fits, else GAP_M)
+		if w <= to - from:
+			title.position.x = clampf(UIKit.center_x(w), from, to - w)
+			title.size.x = w
+			return
 	var fit := UIKit.fit_text(title, room, Vector2.ZERO, 1)
 	if fit.font_size == UIKit.FONT:
 		title.position.y = UIKit.EDGE + UIKit.button_v_margins().x

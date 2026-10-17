@@ -206,6 +206,7 @@ func _ready() -> void:
 	_spawn_slime()
 	_build_ui()
 	_place_all()
+	_fit_tree_notice()
 	_update_near()
 	if Progress.descent_resume_pending():
 		open_resume_menu.call_deferred()
@@ -475,7 +476,10 @@ func _show_tree_notice(root: Control) -> void:
 	if returned <= 0:
 		return
 	tree_notice = PanelContainer.new()
-	tree_notice.add_theme_stylebox_override("panel", UIKit.panel_style())
+	var notice_style := UIKit.panel_style()
+	if UIKit.tall_script():  # (two lines of a taller script: its last line's lowest ink 1 row clear of the lumps, zh_TW)
+		notice_style.content_margin_bottom += 1
+	tree_notice.add_theme_stylebox_override("panel", notice_style)
 	tree_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(tree_notice)
 	var column := VBoxContainer.new()
@@ -495,6 +499,48 @@ func _show_tree_notice(root: Control) -> void:
 	fade.tween_interval(TREE_NOTICE_TIME)
 	fade.tween_property(tree_notice, "modulate:a", 0.0, 0.5)
 	fade.tween_callback(tree_notice.hide)
+
+
+## The notice is as wide as its lines; wider than the room between the stations on its rows (a long
+## translation: pseudo's notice covered the cabinet and the chair), each line that is too wide breaks
+## onto two at the space that balances them, so the notice keeps between the stations (fix pass F3a),
+## and it moves up to stay clear of the wheel. The station straight behind it (across the centre)
+## doesn't count (the English notice covers its foot too). English: unchanged (it fits).
+func _fit_tree_notice() -> void:
+	if tree_notice == null:
+		return
+	var box := Rect2(tree_notice.position, tree_notice.size)
+	var left := 0.0
+	var right := 320.0
+	for station: Dictionary in stations:
+		if station.flat:
+			continue
+		var sprite: Sprite2D = station.sprite
+		var r := Rect2(sprite.position + sprite.offset, Vector2(station.size))
+		if r.end.y <= box.position.y or r.position.y >= box.end.y:
+			continue
+		if r.end.x <= 160.0:
+			left = maxf(left, r.end.x + UIKit.GAP_S)
+		elif r.position.x >= 160.0:
+			right = minf(right, r.position.x - UIKit.GAP_S)
+	var room := 2.0 * minf(160.0 - left, right - 160.0)
+	var wheel_top := rotor.position.y + rotor.offset.y
+	if box.size.x <= room:
+		if box.end.y > wheel_top - UIKit.GAP_S:  # (a taller script's two lines reached the wheel: hi, ar)
+			tree_notice.position.y = maxf(UIKit.EDGE, wheel_top - UIKit.GAP_S - box.size.y)
+		return
+	var style := tree_notice.get_theme_stylebox("panel")
+	var text_room := int(room - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT))
+	for label: Label in tree_notice.get_child(0).get_children():
+		if UIKit.text_w(label.text) > text_room:
+			label.text = UIKit.break_line(label.text, text_room)
+	tree_notice.reset_size()
+	var size := tree_notice.get_combined_minimum_size()
+	tree_notice.size = size
+	# (taller now: it rises as far as it must to end GAP_S over the wheel in the middle, over the station
+	# straight behind it, never above the HUD row)
+	var y := clampf(wheel_top - UIKit.GAP_S - size.y, UIKit.EDGE, box.position.y)
+	tree_notice.position = Vector2(roundf((320.0 - size.x) / 2.0), roundf(y))
 
 
 ## The trapdoor's confirm panel: LEAVE THE HUB? with QUIT and BACK (BACK has the focus, so a
@@ -967,13 +1013,17 @@ func _layout_coin_board() -> void:
 			# A column: number (right-aligned in the widest number's width), name, count (right-aligned), coin.
 			var left := board_rect.position.x + BOARD_SIDE + (0.0 if c == 0 else col_w[0] + BOARD_COLUMN_GAP)
 			var right := left + col_w[c]
-			board_numbers[i].position = Vector2(left, y)
+			# (CJK: the hanzi / kana ink reaches ink_drop 1 row lower than the slimy digits' body, so the
+			# number, the count and its coin go 1 row down to share the name's middle: zh_TW's digits sat
+			# 1.5 px over it, fix pass F3a; 0 in every other script)
+			var drop := int(UIKit.metrics().get("ink_drop", 0))
+			board_numbers[i].position = Vector2(left, y + drop)
 			board_numbers[i].size = Vector2(num_w[c], box_h)
 			board_names[i].position = Vector2(left + num_w[c] + BOARD_NAME_GAP, y)
-			board_rows[i].position = Vector2(right - 8 - UIKit.GAP_M - count_w, y)
+			board_rows[i].position = Vector2(right - 8 - UIKit.GAP_M - count_w, y + drop)
 			board_rows[i].size = Vector2(count_w, box_h)
 			# (the coin on the digits' 7 px body, which sits on the line's baseline in a taller script)
-			board_icons[i].position = Vector2(right - 8, y + UIKit.digit_top())
+			board_icons[i].position = Vector2(right - 8, y + drop + UIKit.digit_top())
 			board_names[i].size = Vector2(0, box_h)
 	var total_y := rows_y + (rows - 1) * dense + dense + 2
 	board_total.position = Vector2(board_rect.position.x, total_y)

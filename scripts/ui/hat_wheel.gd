@@ -373,7 +373,10 @@ func _place_title() -> void:
 	title.visible = w <= to - from
 	var span := Vector2(PANEL.position.x, PANEL.size.x)
 	if (centred < from or centred + w > to) and title.visible:
-		span = Vector2(from, to - from)
+		# (as near the centre as the tabs let it: moved just clear of them, not centred in the room left,
+		# which put ROUE À CHAPEAUX 44 px right of the centre: fix pass F3a)
+		var near := from - UIKit.GAP_M + UIKit.GAP_L  # (GAP_L clear of the tabs where it fits)
+		span = Vector2(clampf(centred, near if w <= to - near else from, to - w), w)
 	if title.position.x != span.x or title.size.x != span.y:
 		title.position.x = span.x
 		title.size.x = span.y
@@ -590,6 +593,10 @@ func _fit_grid(ids: Array[String]) -> void:
 	# (up to GRID_MIN_INSET from the panel's sides before a name has to wrap)
 	var max_w := floorf((PANEL.size.x - 2 * GRID_MIN_INSET - GRID_GAP) / 2.0)
 	var need := TILE_PAD + name_w + NAME_GAP + right_w + TILE_PAD
+	# (a tile that grows anyway keeps GAP_L between its longest name and the price where the panel has
+	# the room: КЕПКА С ПРОПЕЛЛЕРОМ read as one string with 45 at 3 px, fix pass F3a)
+	if need > TILE.x and need - NAME_GAP + UIKit.GAP_L <= max_w:
+		need += UIKit.GAP_L - NAME_GAP
 	_two_line_names = need > max_w
 	tile_size = Vector2(clampf(need, TILE.x, max_w), UIKit.button_h() + (UIKit.line_pitch() if _two_line_names else 0))
 	var left := roundf(CENTER.x - (2 * tile_size.x + GRID_GAP) / 2.0)
@@ -713,7 +720,9 @@ func _make_tile(id: String) -> Button:
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), tile_size)
 	var name_label := UIKit.make_label(_name_of(id), UIKit.FONT, UIKit.TEXT)
 	var text_y := UIKit.button_v_margins().x  # (3 in English: the tile's text rows)
-	name_label.position = Vector2(TILE_PAD, text_y)
+	# (right-to-left: the Kufi letters have no side bearing, the slimy font's 1 px is on the left, so
+	# the right-aligned name keeps 1 px more from the tile's inner border: 3 clear columns, as English's left)
+	name_label.position = Vector2(TILE_PAD + (1 if UIKit.rtl() else 0), text_y)
 	tile.add_child(name_label)
 	var right_w := maxf(40, _right_w(id))
 	if _two_line_names:  # (wrapped into the room left of the price, sized once in the tree: show_section)
@@ -732,7 +741,9 @@ func _make_tile(id: String) -> Button:
 		right.position = Vector2(tile_size.x - TILE_PAD - right_w, y if UIKit.tall_script() else y - 1)
 		right.size = Vector2(right_w, line if UIKit.tall_script() else 9)
 	else:
-		right.position = Vector2(TILE.x - 4 - 40, 2)
+		# (the price on the name's text row: text_y - 1 like the branch above; 2 in English. It sat on
+		# row 2 in every locale, 3-4 px over an accented locale's name: fix pass F3a)
+		right.position = Vector2(TILE.x - 4 - 40, text_y - 1)
 		right.size = Vector2(40, 9)
 	tile.add_child(right)
 	if not _is_hat(id) and Progress.owns_cosmetic(id):

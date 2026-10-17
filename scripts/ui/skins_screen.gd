@@ -108,18 +108,37 @@ func _ready() -> void:
 	show_page("skins")
 
 
-## Fits the page to the locale's text sizes (docs/ui-rules.md section 10), the first step that fits:
-## 0 = the English layout (title, grid, status + rule lines, the stage above the bottom row);
-## 1 = the title in the 8 px font (its row shrinks);
-## 2 = also JELLY moves to the top-left corner (the title on its text line) and the stage drops onto
-##     the bottom row between BACK and the page button (ending on row 176, like them);
-## 3 = also the status and rule lines in the script's smaller crisp font (Devanagari 12 px).
+## Fits the page to the locale's text sizes (docs/ui-rules.md section 10), the first plan that fits
+## (_PLANS, in order): the 16 px title first (fix pass F3a: it used to drop to the 8 px font first),
+## with the stage in its English place; then the stage on the bottom row between BACK and the page
+## button (ending on row 176, like them) and JELLY in the top-left corner; then the gaps one scale step
+## closer (GAP_S -> GAP_XS: tile rows, grid to status, rule to stage); then the status / rule lines in
+## the script's smaller crisp font (Devanagari 12 px); then (snug) the rule line's deepest possible ink
+## one row over the stage (Arabic); only then the same steps with the title in the 8 px font. Every
+## line is placed by its ink (Language ink_top / ink_bottom; the title by its glyphs, the rule line by
+## its texts' glyphs in a taller script) and no two line boxes overlap, so a taller script's empty
+## line-box rows don't count as room, and no text inks the stage's frame.
 ## The bottom row: BACK and the page button keep one width (BACK's, or the longest page name's).
 ## English metrics keep the source layout untouched.
+const _PLANS := [
+	{big = true, low = false, tight = false, small = false},
+	{big = true, low = true, tight = false, small = false},
+	{big = true, low = true, tight = true, small = false},
+	{big = true, low = true, tight = true, small = true},
+	{big = true, low = true, tight = true, small = false, snug = true},
+	{big = false, low = false, tight = false, small = false},
+	{big = false, low = true, tight = false, small = false},
+	{big = false, low = true, tight = true, small = false},
+	{big = false, low = true, tight = true, small = true},
+]
+## The page button's least width when it leaves the bottom row (BACK's English width).
+const _PAGE_MIN_W := 40
+## The plan the layout took (an entry of _PLANS plus its rows; empty in English), for the layout tests.
+var layout_plan := {}
+
+
 func _layout(back: Button) -> void:
 	var metrics := UIKit.metrics()
-	var above := int(metrics.ink_above)
-	var below := int(metrics.ink_below)
 	if UIKit.button_h() == UIKit.BUTTON_H:
 		return  # English metrics (en, id, the gate off): the source layout as built (TRAILS grows its button 2 px there)
 	var bottom_texts := [back.text, page_title("skins"), page_title("hats"), page_title("trails")]
@@ -138,57 +157,180 @@ func _layout(back: Button) -> void:
 	if language and language.has_method("small_font"):
 		small = language.small_font(UIKit.locale())
 	var stage_x := roundf((UIKit.SCREEN.x - SkinShowcase.STAGE_SIZE.x) / 2.0)
+	var ink_top := int(metrics.get("ink_top", 0))
+	var ink_bottom := int(metrics.get("ink_bottom", UIKit.TEXT_BODY + UIKit.TEXT_DRIP - 1))
+	var titles: Array[String] = []
+	for which: String in PAGES:
+		titles.append(page_title(which))
+	var big_end := _title_ink_end(titles)  # (the 16 px title's last inked row, its shadow included)
+	if UIKit.tall_script():  # (its line box ends there too: no text box over the grid)
+		big_end = maxi(big_end, UIKit.title_top() + int(_title.get_theme_font("font").get_height(UIKit.FONT_BIG)) - 2)
+	# The rule line's last inked row: the script's ink_bottom, or in a taller script the rule texts' own
+	# glyphs (Arabic: 15 of the 17 any translation reaches), measured as the upgrades screen does (ink_rows).
+	var rule_last := ink_bottom
+	if UIKit.tall_script():
+		var rules: Array[String] = []
+		for which: String in ["skins", "jelly", "hats", "trails"]:
+			rules.append(rule_text(which))
+		rule_last = mini(ink_bottom, ink_rows(rules, _rule.get_theme_font("font")).y)
+	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
+	var stage_h := int(SkinShowcase.STAGE_SIZE.y)
+	var low_stage_top := int(UIKit.SCREEN.y) - 4 - stage_h  # (row 176, the bottom row's edge)
 	var plan := {}
-	for step in 4:
-		if step == 3 and small == null:
-			break
-		if step >= 2 and UIKit.EDGE + w + UIKit.GAP_XS > stage_x:
-			break  # (BACK / the page button too wide to flank the stage)
-		var line := int(small.get_height(UIKit.FONT)) if step == 3 else UIKit.line_h()
-		var pitch := line if step == 3 else UIKit.dense_pitch()
+	for option: Dictionary in _PLANS:
+		if option.small and small == null:
+			continue
+		# BACK / the page button too wide to flank the stage: the page button goes to the top-right corner
+		# (JELLY's mirror) and the stage beside BACK (centred if it can be, else as near as it fits)
+		var top_page: bool = option.low and UIKit.EDGE + w + UIKit.GAP_XS > stage_x
+		var low_x := stage_x
+		if top_page:
+			low_x = maxf(stage_x, UIKit.EDGE + UIKit.back_size().x + UIKit.GAP_XS)
+			if low_x + SkinShowcase.STAGE_SIZE.x > UIKit.SCREEN.x - UIKit.EDGE:
+				continue
+		var gap := UIKit.GAP_XS if option.tight else GRID_GAP
 		var title_y := UIKit.title_top()
-		var title_bottom := UIKit.title_bottom()  # (22 in English)
-		if step >= 1:
-			title_y = UIKit.TITLE_Y + above if step == 1 else UIKit.EDGE + UIKit.button_v_margins().x
-			title_bottom = title_y + UIKit.line_h() + below + 2  # (2: the title's shadow)
-		var grid_top := title_bottom + 1  # GRID_TOP in English
-		if step >= 2:
-			grid_top = maxi(title_bottom, UIKit.EDGE + UIKit.button_h()) + UIKit.GAP_XS
-		var status_top := grid_top + _grid_h() + GRID_GAP + above  # STATUS_TOP in English
+		var title_end := big_end  # (English: 21, so the grid starts on GRID_TOP 23)
+		if not option.big:
+			var above := int(metrics.ink_above)
+			title_y = UIKit.TITLE_Y + above if not option.low else UIKit.EDGE + UIKit.button_v_margins().x
+			title_end = title_y + UIKit.line_h() + int(metrics.ink_below) + 1  # (+ the shadow's 2 rows, less 1)
+		var grid_top := title_end + 2  # (one clear row under the title's shadow)
+		if option.big and option.low:
+			# JELLY in the top-left corner (and the page button in the top-right one), beside the title: the
+			# title clear of them (JELLY: the skins page's title; the page button: every page's)
+			var title_w := UIKit.text_w(page_title("skins"), UIKit.FONT_BIG)
+			if UIKit.center_x(title_w) < UIKit.EDGE + jelly_w + UIKit.GAP_M:
+				continue
+			var clear := true
+			for text in titles:
+				var tw := UIKit.text_w(text, UIKit.FONT_BIG)
+				clear = clear and (not top_page or UIKit.center_x(tw) + tw <= UIKit.SCREEN.x - UIKit.EDGE - page_w - UIKit.GAP_M)
+			if not clear:
+				continue
+		if option.low:
+			grid_top = maxi(grid_top, UIKit.EDGE + UIKit.button_h() + UIKit.GAP_XS)
+		var line := UIKit.line_h()
+		var pitch := UIKit.dense_pitch()
+		var first := ink_top  # (the line's first / last inked rows, from its top)
+		var last := ink_bottom
+		if option.small:
+			line = int(small.get_height(UIKit.FONT))
+			pitch = line
+			first = 0
+			last = line - 1
+		else:
+			last = rule_last
+		var grid_end := grid_top + 2 * int(TILE_SIZE.y) + gap
+		var status_top := maxi(grid_end, grid_end + gap - first)  # STATUS_TOP in English (the marks' rows over it; its box under the grid)
 		var rule_top := status_top + pitch  # RULE_TOP
-		var rule_end := rule_top + line + below
+		var rule_end := rule_top + last + 1
 		var stage_top := rule_end + GRID_GAP  # CUSTOM_TOP
-		var fits := stage_top + int(SkinShowcase.STAGE_SIZE.y) + UIKit.GAP_S <= UIKit.bottom_row_y()
-		if step >= 2:
-			stage_top = int(UIKit.SCREEN.y) - 4 - int(SkinShowcase.STAGE_SIZE.y)  # (row 176, the bottom row's edge)
-			fits = rule_end + UIKit.GAP_S <= stage_top
-		plan = {step = step, title_y = title_y, grid_top = grid_top, status_top = status_top, rule_top = rule_top, stage_top = stage_top}
+		var fits := stage_top + stage_h + UIKit.GAP_S <= UIKit.bottom_row_y()
+		if option.low:
+			stage_top = low_stage_top
+			# (snug: the rule line's lowest possible ink, Language ink_bottom, one clear row over the stage:
+			# Arabic, whose rule lines ink 2-3 rows less than the deepest tail any translation has)
+			fits = rule_end + (1 if option.get("snug", false) else gap) <= stage_top
+		fits = fits and rule_top + line <= stage_top  # (the line box over the stage too)
+		plan = option.merged({top_page = top_page, stage_x = low_x if option.low else stage_x, title_y = title_y, grid_top = grid_top, gap = gap, status_top = status_top, rule_top = rule_top,
+			rule_end = rule_end, stage_top = stage_top, fits = fits})
 		if fits:
 			break
 	if plan.is_empty():
 		return
-	if plan.step >= 1:
+	layout_plan = plan
+	if not plan.big:
 		_title.add_theme_font_override("font", UIKit.font_for(UIKit.FONT))
 		_title.add_theme_font_size_override("font_size", UIKit.FONT)
 		_title.offset_top = plan.title_y
 		_title.offset_bottom = plan.title_y + UIKit.line_h()
 	for grid: Control in [_skin_grid, _hat_grid, _trail_grid]:
 		grid.position.y = plan.grid_top
+		if plan.gap != GRID_GAP:
+			grid.add_theme_constant_override("separation", plan.gap)
 	for pair: Array in [[status, plan.status_top], [_rule, plan.rule_top]]:
 		var label: Label = pair[0]
 		label.offset_top = pair[1]
 		label.offset_bottom = pair[1] + 10
-		if plan.step == 3:
+		if plan.small:
 			label.add_theme_font_override("font", small)
-	showcase.position.y = plan.stage_top
+	showcase.position = Vector2(plan.stage_x, plan.stage_top)
 	custom_panel.position.y = plan.stage_top
+	if plan.top_page:  # (BACK keeps its own width; the page button, its page names', top right)
+		var back_w := int(UIKit.back_size().x)
+		back.custom_minimum_size.x = back_w
+		back.size.x = back_w
+		UIKit.note_text_w(back, [back.text], int(UIKit.BACK_SIZE.x))
+		page_button.custom_minimum_size.x = page_w
+		page_button.size.x = page_w
+		page_button.position = Vector2(UIKit.SCREEN.x - UIKit.EDGE - page_w, UIKit.EDGE)
+		UIKit.note_text_w(page_button, titles, _PAGE_MIN_W)
 	jelly_button.custom_minimum_size.x = jelly_w
 	jelly_button.size.x = jelly_w
 	UIKit.note_text_w(jelly_button, [_jelly_text(true), _jelly_text(false)], 80)
-	if plan.step >= 2:
+	if plan.low:
 		jelly_button.position = Vector2(UIKit.EDGE, UIKit.EDGE)
 	else:
 		jelly_button.position.x = UIKit.center_x(jelly_w)
+
+
+## The last row the 16 px title inks (its 2 px shadow included) at title_top(), for any of `texts`:
+## the slimy font's box (title_bottom() - 1: 21 in English, its drips and shadow); a taller script's
+## glyphs end well above their line box (CJK 20 px: row 27 of 2..32), measured from the shaped glyphs'
+## bitmaps (less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them). (A local helper: UIKit
+## has none for the 16 px title's ink.)
+const _TITLE_SLIMY_END := 19  # (a slimy letter in the 16 px title: 14 rows, 4 of drips, the shadow's 2, from row 0)
+
+
+func _title_ink_end(texts: Array[String]) -> int:
+	if not UIKit.tall_script():
+		return UIKit.title_bottom() - 1
+	var font: Font = _title.get_theme_font("font")
+	var slimy: RID = font.get_rids()[0]
+	var ts := TextServerManager.get_primary_interface()
+	var end := UIKit.title_top()
+	for text in texts:
+		var shaped := TextLine.new()
+		shaped.add_string(text, font, UIKit.FONT_BIG)
+		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
+		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
+			if g.font_rid == RID() or g.index == 0:
+				continue
+			if g.font_rid == slimy:
+				end = maxi(end, UIKit.title_top() + _TITLE_SLIMY_END)
+				continue
+			var fixed: int = ts.font_get_fixed_size(g.font_rid)
+			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT_BIG, 0)
+			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
+			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y)
+			end = maxi(end, UIKit.title_top() + y0 + int(gs.y))  # (the bitmap less its padding row, + the 2 px shadow)
+	return end
+
+
+## The first and last rows `texts` ink in `font` (8 px), from the line's top: the shaped glyphs' bitmaps
+## less their 1 px padding, as tests/test_i18n_f1_marks.gd reads them. (A local helper: Language keeps
+## ink_top / ink_bottom for the 8 px font only, not for the smaller crisp size; the same helper as the upgrades screen's.)
+static func ink_rows(texts: Array[String], font: Font) -> Vector2i:
+	var ts := TextServerManager.get_primary_interface()
+	var top := 99
+	var bottom := -99
+	for text in texts:
+		var shaped := TextLine.new()
+		shaped.add_string(text, font, UIKit.FONT)
+		var ascent := ts.shaped_text_get_ascent(shaped.get_rid())
+		for g: Dictionary in ts.shaped_text_get_glyphs(shaped.get_rid()):
+			if g.font_rid == RID() or g.index == 0:
+				continue
+			var fixed: int = ts.font_get_fixed_size(g.font_rid)
+			var size := Vector2i(fixed if fixed > 0 else UIKit.FONT, 0)
+			var gs: Vector2 = ts.font_get_glyph_size(g.font_rid, size, g.index)
+			if gs.y <= 2:
+				continue
+			var y0 := int(ascent + g.offset.y + ts.font_get_glyph_offset(g.font_rid, size, g.index).y) + 1
+			top = mini(top, y0)
+			bottom = maxi(bottom, y0 + int(gs.y) - 3)
+	return Vector2i(top, bottom) if bottom >= top else Vector2i(0, int(font.get_height(UIKit.FONT)) - 1)
 
 
 ## The tall grid's height (two rows of tiles: the skins and the hats).
