@@ -1,0 +1,38 @@
+# Reviewing every screen in every language
+
+`./tools/i18n_capture.sh` captures every screen / overlay / HUD state in every locale so a reviewer can scan
+a language (or one screen across languages) in a single image. Part of localization D15 (see `../plan.md`).
+
+```
+./tools/i18n_capture.sh [--locales en,de,...|all] [--states slug,...|all] [--out DIR] [-j N] [--keep-backdrop] [--no-sheets]
+```
+
+- Default out: `build/i18n-shots/` (git-ignored through `/build/`). Never `.screens/` (screenshot.sh clears it; the script refuses it).
+- Locales: `en`, the 17 translations, `pseudo` (default all 19). One Godot process per locale, `-j N` in parallel (default 6).
+- States: the 56 states `tests/test_i18n_screens.gd` builds (title, level select, upgrades, wardrobe, settings, hub and its
+  overlays, HUD cases, results, pause, Descent ...). Names are slugs, e.g. `hub-prompt-hats`, `hud-l7-hard-heat-63`;
+  the full list is in `OUT/json/states_<locale>.json`.
+- Runs need a window (not headless); a window per process flashes briefly. Do not kill other Godot processes.
+
+## Output
+- `OUT/<locale>/<state>.png`: the raw 320x180 frame (also `.raw/*.rgbz`, a sidecar the sheet builder reads fast).
+- `OUT/sheets/locale_<locale>.png`: all states of one language, labeled, 2x nearest upscale.
+- `OUT/sheets/state_<slug>.png`: one state in every language.
+- `OUT/missing_glyphs.json`: findings of the missing-glyph check; `OUT/logs/<locale>.log`: Godot output.
+
+## Reproducibility
+Fixed 60 fps, the global RNG seeded (20261017) before every screen opens (same maze, SEED text and text drips), the
+drifting menu backdrop (maze and mist; the flat background stays) hidden unless `--keep-backdrop`.
+Game scenes (HUD, results) are not fully deterministic frame to frame if something animates; re-run to confirm.
+
+## Missing-glyph check
+For every visible Label / Button with text, each character (spaces, controls and invisible bidi / joiner marks are skipped)
+is looked up with `Font.has_char` on the font the control really uses (`get_theme_font("font")`, the locale's fallback
+chain installed). Each finding: locale, state, node id, text, the missing characters and code points. Empty
+`findings` means every drawn character resolves. Not covered: text drawn with `draw_string`, textures, the web shell.
+
+## How it works
+`tests/capture_i18n.gd` extends `tests/test_i18n_screens.gd` and overrides `_scan` (save the frame + check glyphs) and `_open`
+(seed + hide backdrop), so the state builders are shared, not copied; adding a state to the test adds it here.
+`tools/i18n_contact_sheet.py` (`merge`, `sheets`) is dependency-free Python. Throwaway save only; the real save is untouched
+(the script prints its md5 before and after).
