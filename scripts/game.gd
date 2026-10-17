@@ -198,6 +198,9 @@ var _painted_spans := PackedInt32Array()
 var _painted_row0 := 0
 var _painted_radius := -1.0
 var last_slime_pos: Vector2
+## Where the slime spawned, until it first moves off it (then the HUD's intro texts stop keeping clear of
+## that spot: hud.release_player_rect).
+var _spawn_at := Vector2.INF
 ## Distance traveled since the last glimmer, the distance the next one comes at, and where the
 ## slime was last frame (for measuring).
 var glimmer_travel := 0.0
@@ -497,6 +500,7 @@ func _ready() -> void:
 	slime.position = MazeGenerator.cell_center(maze.start, TILE)
 	slime.reset_physics_interpolation()  # placed, not moved: never drawn sweeping in from (0, 0)
 	last_slime_pos = slime.position
+	_spawn_at = slime.position
 	_glimmer_from = slime.position
 	_next_glimmer = _glimmer_gap()
 	goal.position = MazeGenerator.cell_center(maze.goal, TILE)
@@ -588,6 +592,9 @@ func is_random() -> bool:
 func _physics_process(delta: float) -> void:
 	elapsed += delta
 	var pos := slime.position
+	if _spawn_at != Vector2.INF and pos != _spawn_at:
+		_spawn_at = Vector2.INF
+		hud.release_player_rect()  # (the intro texts' slime room was for the spawn spot only)
 	_relight(pos)
 	if finished:
 		return
@@ -2234,6 +2241,7 @@ func _finish(did_win: bool, text: String) -> void:
 	_commit_survey()
 	slime.frozen = true
 	touch_controls.hide_controls()
+	hud.result_slime_rect = _slime_screen_rect()  # (a re-fitted result panel covers or clears the slime)
 	hud.show_message(text)
 	level_finished.emit(did_win)
 	if not _is_running_scene():

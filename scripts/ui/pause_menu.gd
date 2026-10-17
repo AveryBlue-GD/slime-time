@@ -9,6 +9,10 @@ extends CanvasLayer
 const PANEL_X := 100
 const PANEL_W := 120
 const COLUMN_W := 100
+## The VOLUME box's rows past its label and slider: 6 + label + 6 + slider + 6 (UIKit.volume_slider_width).
+const VOLUME_BOX_EXTRA := 18
+## English's SEED text cutoff: the column less its 4 px text margins (kept from before BUTTON_TEXT_PAD).
+const SEED_TEXT_MAX_EN := COLUMN_W - 8
 const MENU_TOP := 63
 ## PAUSED's line box top (30 in English: under the HUD's first row of pods), and the gap from its box
 ## to the panel (MENU_TOP = 30 + 20 + 5 + PANEL_PAD).
@@ -16,6 +20,9 @@ const TITLE_Y := 30
 const TITLE_TO_PANEL := 5
 ## The Descent note's line top (150 in English), and the lowest row anything may reach.
 const NOTE_Y := 150
+## English's rows from the Descent panel's bottom edge (four buttons: row 132) to the note's first ink
+## (row 150): every language keeps them (a footnote, not a line squeezed under the panel's lumps).
+const NOTE_ROOM := NOTE_Y - (MENU_TOP + 3 * UIKit.GAP_S + 4 * UIKit.BUTTON_H + UIKit.PANEL_PAD)
 const BOTTOM := 176
 ## Two columns (a taller script's buttons that no longer fit one column): COLUMN_W each, GAP_L apart.
 const COLUMN_GAP := UIKit.GAP_L
@@ -23,6 +30,9 @@ const COLUMN_GAP := UIKit.GAP_L
 var buttons: Array[Button] = []
 var sound_button: Button
 var volume_row: PanelContainer
+## The button column's width: COLUMN_W, or wider for a VOLUME label that would leave the slider shorter
+## than English's (fix pass R1, as the settings columns in R2: LAUTSTÄRKE left 22 px of slider).
+var _col_w := COLUMN_W
 var seed_button: Button
 var seed_edit: LineEdit
 var _panel: Panel
@@ -65,11 +75,12 @@ func _ready() -> void:
 	root.add_child(title)
 	_title = title
 
+	_col_w = _column_w(root)
 	_panel = UIKit.add_panel(root, Rect2(PANEL_X, MENU_TOP - UIKit.PANEL_PAD, PANEL_W, 0))
 	var menu := GridContainer.new()
 	menu.columns = 1
 	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
-	menu.custom_minimum_size = Vector2(COLUMN_W, 0)
+	menu.custom_minimum_size = Vector2(_col_w, 0)
 	menu.add_theme_constant_override("v_separation", UIKit.GAP_S)
 	menu.add_theme_constant_override("h_separation", COLUMN_GAP)
 	root.add_child(menu)
@@ -84,7 +95,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
-	volume_row = UIKit.make_volume_slider(UIKit.volume_slider_width(root, COLUMN_W))  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
+	volume_row = UIKit.make_volume_slider(UIKit.volume_slider_width(root, _col_w))  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	seed_button = UIKit.make_button("", _edit_seed)
@@ -185,7 +196,11 @@ func open() -> void:
 ## PANEL_PAD around the stack, in one column at MENU_TOP in English; a taller script whose column no
 ## longer fits above the bottom row (and the Descent note) gets two columns of COLUMN_W on a wider
 ## panel. PAUSED keeps clear of the HUD pods beside it (a long translation steps down to the 8 px
-## font), and the Descent note sits at NOTE_Y or GAP_M under the panel.
+## font), and the Descent note sits at NOTE_Y or NOTE_ROOM under the panel (its first ink). With the
+## note, PAUSED's room over its line box is its own letters' marks (PAUSE, PAUSA: none), not the
+## locale's; where one column still leaves the note less than NOTE_ROOM, the panel goes TITLE_TO_PANEL
+## under the title's ink instead of its line box, then a taller script's title rises until its first
+## ink is on TITLE_Y (English's first ink row; CJK: 6 empty rows on top), then two columns.
 func _layout(count: int, hud: Node) -> void:
 	var title_y := _title_slot(hud)
 	var menu_top := title_y + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD  # MENU_TOP in English
@@ -193,6 +208,26 @@ func _layout(count: int, hud: Node) -> void:
 	var columns := 1
 	if menu_top + _stack_h(count, 1) + UIKit.PANEL_PAD > BOTTOM - note_h:
 		columns = 2
+	elif descent_note.visible:
+		var ink := _note_ink()
+		var lowest_panel_end := BOTTOM - NOTE_ROOM + ink.x - ink.y  # (the note's last ink on BOTTOM at the most)
+		var title_texts: Array[String] = [_title.text]
+		var font := _title.get_theme_font("font")
+		var own := _title_slot(hud, true)
+		var plans: Array[Vector2i] = [Vector2i(own, own + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD)]
+		# (the title's last ink row, its shadow included, under its line top)
+		var ink_end := UIKit.title_ink_end(title_texts, font) - UIKit.title_top()
+		plans.append(Vector2i(own, own + ink_end + 1 + TITLE_TO_PANEL + UIKit.PANEL_PAD))
+		if UIKit.tall_script():
+			var lifted := _title_slot(hud, true, UIKit.ink_rows(title_texts, font, UIKit.FONT_BIG).x)
+			plans.append(Vector2i(lifted, lifted + ink_end + 1 + TITLE_TO_PANEL + UIKit.PANEL_PAD))
+		columns = 2
+		for plan in plans:
+			if plan.y + _stack_h(count, 1) + UIKit.PANEL_PAD <= lowest_panel_end:
+				title_y = plan.x
+				menu_top = plan.y
+				columns = 1
+				break
 	_menu.columns = columns
 	# Two columns and an odd count: the last button sits alone, centred under the pairs (_last_row).
 	if _last_row and _last_row.get_child_count() > 0:
@@ -212,7 +247,7 @@ func _layout(count: int, hud: Node) -> void:
 		_menu.remove_child(last)
 		_last_row.add_child(last)
 		_last_row.visible = true
-	var width := COLUMN_W * columns + COLUMN_GAP * (columns - 1)
+	var width := _col_w * columns + COLUMN_GAP * (columns - 1)
 	var panel_w := PANEL_W + width - COLUMN_W
 	var panel_x := UIKit.center_x(panel_w)  # PANEL_X in English
 	# A wider panel keeps GAP_XS under the HUD pods it would reach (when the bottom has the room).
@@ -227,30 +262,45 @@ func _layout(count: int, hud: Node) -> void:
 	_menu.position = Vector2(panel_x + (panel_w - width) / 2.0, menu_top)
 	_menu.custom_minimum_size = Vector2(width, 0) if columns == 1 else Vector2.ZERO
 	for child in _menu.get_children():
-		(child as Control).custom_minimum_size.x = COLUMN_W if columns > 1 else (child as Control).custom_minimum_size.x
+		(child as Control).custom_minimum_size.x = _col_w if columns > 1 else (child as Control).custom_minimum_size.x
+		if _col_w > COLUMN_W and child is Button:  # (wider than English for the VOLUME box: noted, docs/ui-rules.md 10.1)
+			UIKit.note_text_w(child, [(child as Button).text], _col_w)
 	_menu.size = Vector2.ZERO
 	if _last_row and _last_row.visible:
 		var rows := ceili(count / 2.0)
-		_last_row.position = Vector2(UIKit.center_x(COLUMN_W), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
-		_last_row.size = Vector2(COLUMN_W, UIKit.button_h())
+		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
+		_last_row.size = Vector2(_col_w, UIKit.button_h())
 	_panel.position = Vector2(panel_x, menu_top - UIKit.PANEL_PAD)
 	_panel.size = Vector2(panel_w, UIKit.PANEL_PAD * 2 + _stack_h(count, columns))
 	var panel_bottom := int(_panel.position.y + _panel.size.y)
-	descent_note.position.y = clampi(maxi(NOTE_Y, panel_bottom + UIKit.GAP_M + int(UIKit.metrics().ink_above)), 0,
-		BOTTOM - UIKit.line_h() - int(UIKit.metrics().ink_below))
+	var note_ink := _note_ink()
+	descent_note.position.y = clampi(maxi(NOTE_Y, panel_bottom + NOTE_ROOM - note_ink.x), 0, BOTTOM - note_ink.y)
 	_title.position = Vector2(0, title_y)
 	_title.size = Vector2(UIKit.SCREEN.x, UIKit.title_h())
 
 
+## The Descent note's first and last inked rows from its line top: the marks its own letters carry over
+## the line box and the drips under it (slimy font), or the script's ink (Language ink_top / ink_bottom).
+func _note_ink() -> Vector2i:
+	var m := UIKit.metrics()
+	if UIKit.tall_script():
+		return Vector2i(int(m.ink_top), int(m.ink_bottom))
+	return Vector2i(-UIKit.ink_above(descent_note.text), UIKit.line_h() + int(m.ink_below) - 1)
+
+
 ## PAUSED's line box top: _title_y(), or GAP_XS under the HUD pods beside it when the title (a long
-## translation, or a pod grown by one) would not fit between their columns.
-func _title_slot(hud: Node) -> int:
-	var y := _title_y()
+## translation, or a pod grown by one) would not fit between their columns. With `own_marks`, the title's
+## own marks set its room over the line box (UIKit.mark_rows: 0 for PAUSE) instead of the locale's; `lift`
+## raises the line box by that many of its empty top rows (a taller script's glyphs start under its top).
+func _title_slot(hud: Node, own_marks := false, lift := 0) -> int:
+	var above := int(UIKit.metrics().title_above)  # (the accents' rows over the line box)
+	if own_marks and not UIKit.tall_script():
+		above = UIKit.mark_rows(_title.text, UIKit.FONT_BIG)
+	var y := _title_y() - int(UIKit.metrics().title_above) + above - lift
 	if hud == null or not hud.has_method("pod_rects"):
 		return y
 	var pods: Array[Rect2] = hud.pod_rects()
 	var title_w := UIKit.text_w(_title.text, UIKit.FONT_BIG)
-	var above := int(UIKit.metrics().title_above)  # (the accents' rows over the line box)
 	for i in pods.size():  # (each step moves under one more pod)
 		var margin := 0.0
 		var lowest := float(y)
@@ -263,6 +313,15 @@ func _title_slot(hud: Node) -> int:
 			return y
 		y = int(lowest)
 	return y
+
+
+## The button column's width (COLUMN_W in English): wide enough for the VOLUME label and a slider as long
+## as English's (COLUMN_W - VOLUME_BOX_EXTRA - VOLUME), while two such columns still fit inside EDGE.
+func _column_w(root: Control) -> int:
+	var english := COLUMN_W - VOLUME_BOX_EXTRA - ceili(UIKit.font_for(UIKit.FONT).get_string_size("VOLUME", HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)  # i18n: ignore (English's label, measured for its slider length)
+	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W)))
+	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - COLUMN_GAP) / 2.0)
+	return clampi(VOLUME_BOX_EXTRA + label + english, COLUMN_W, widest)
 
 
 ## The button stack's height for `count` buttons in `columns` columns.
@@ -296,15 +355,23 @@ func _refocus() -> void:
 
 
 ## The SEED button's text: "SEED 123-4", or just the code when that would not fit the column with
-## UIKit.BUTTON_TEXT_PAD on each side (a 10-digit seed: "SEED 4294967295-7" is 102 px; `시드 1453026489-0`
-## filled the button to 1 clear column each side).
+## the button's text margins: English keeps its 4 px each side (SEED_TEXT_MAX_EN, 92 px), a translation
+## UIKit.BUTTON_TEXT_PAD (90 px; `시드 1453026489-0` filled the button to 1 clear column each side).
+## A 10-digit seed: "SEED 4294967295-7" is 102 px, so it shows the code alone in every language.
 func seed_text(code: String) -> String:
 	var font: Font = seed_button.get_theme_font("font")
 	# i18n: {code} = a seed code like 123-4 (up to 17 chars); max 92px, else the code alone is shown
 	var text := Loc.t("pause.seed", "SEED {code}", {code = code})
-	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > COLUMN_W - 2 * UIKit.BUTTON_TEXT_PAD:
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > seed_text_max():
 		return code
 	return text
+
+
+## The widest SEED text that still shows "SEED": English's old 92 px, a translation's 90 px.
+static func seed_text_max() -> int:
+	if UIKit.locale() == UIKit.Lang.SOURCE_LOCALE:
+		return SEED_TEXT_MAX_EN
+	return COLUMN_W - 2 * UIKit.BUTTON_TEXT_PAD
 
 
 ## The seed button: swaps to a box holding the seed (selected, so it can be copied) to type over.

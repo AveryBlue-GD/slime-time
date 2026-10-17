@@ -24,7 +24,8 @@ const AREA_TOP_UNDER_ATTEMPT := 44
 const STORY_GAP := 15
 ## Clear space kept between the area name / story line (drips included) and any HUD pod.
 const TEXT_CLEARANCE := 2
-## The same beside a pod (a text on a pod's rows): closer than this the line reads as part of the pod.
+## The same beside a pod (a text on a pod's rows) in a translation: closer than this the line reads as
+## part of the pod. English keeps TEXT_CLEARANCE there too (its source layout, side_clearance()).
 const TEXT_SIDE_CLEARANCE := UIKit.GAP_XL
 const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
@@ -56,6 +57,10 @@ var _area_base := float(AREA_TOP)
 ## The player slime's rect on screen as the level starts (game.gd, set_player_rect; empty = none): the
 ## area texts keep clear of it so the intro never covers the slime.
 var player_rect := Rect2()
+## True while the slime is still on that spot (game.gd release_player_rect once it moves): only then do
+## the texts' placements use player_rect; a later re-placement (a pod change, the pause menu or the
+## restart prompt closing) keeps them where they are unless a pod now reaches them (never back up).
+var player_rect_live := false
 var _message_panel: PanelContainer
 var _message_style: StyleBox
 ## The panel's own top margin (panel_style), and the English one (under the goo band and its lumps): a
@@ -129,6 +134,9 @@ var heat_row: HBoxContainer
 var heat_texts: Array[String] = []
 var _clock_icon: TextureRect
 var _message_center: CenterContainer
+## The player slime's screen rect as the run ends (game.gd, before the result shows; empty = unknown): a
+## translation's re-fitted result panel covers it whole or keeps clear of it (_slime_room), as English's does.
+var result_slime_rect := Rect2()
 ## The result panel moves up by this when the HEAT line adds a row, so its bottom stays clear of
 ## the NEW RECORD! banner (13 = the row's 9 px + the 4 px gap).
 const HEAT_ROW_LIFT := 13
@@ -297,6 +305,11 @@ func _ready() -> void:
 	_message_style = UIKit.panel_style()
 	_message_margin_top = _message_style.content_margin_top
 	_message_panel.add_theme_stylebox_override("panel", _message_style)
+	# (a translation's fit reads the panel's size; its rows settle a frame later, when a long line wraps:
+	# fit again once the panel has its real size, so the slime room uses it)
+	_message_panel.resized.connect(func() -> void:
+		if is_instance_valid(message) and message.visible and UIKit.button_h() != UIKit.BUTTON_H and result_slime_rect.has_area():
+			_queue_fit())
 	_message_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	message_center.add_child(_message_panel)
 	var message_box := VBoxContainer.new()
@@ -989,6 +1002,16 @@ func _fade_area_texts(hold: float) -> void:
 ## and a text that still lands on the slime goes on under it.
 func _place_area_texts() -> void:
 	var pods := pod_rects()
+	if player_rect.has_area() and not player_rect_live:
+		# (mid-level: the slime has left its spawn, so the texts stay put, moving only down off a pod)
+		var y := _clear_y(area_label, area_label.offset_top, pods)
+		area_label.offset_top = y
+		area_label.offset_bottom = y + 10
+		if story_label.text != "":
+			var story_top := _clear_y(story_label, maxf(story_label.offset_top, y + (UIKit.line_pitch() if attempt_pod.visible else _story_gap())), pods)
+			story_label.offset_top = story_top
+			story_label.offset_bottom = story_top + 10
+		return
 	var ys := _stack_ys(_area_base, pods)
 	if _hits_player(ys):
 		var under_timer := _stack_ys(float(_area_top()), pods)
@@ -1014,32 +1037,52 @@ func _stack_ys(top: float, pods: Array[Rect2]) -> Array[float]:
 	return [y, story_top]
 
 
-## True when the area name or story line at the line tops `ys` would touch the player's rect.
+## True when the area name or story line at the line tops `ys` would touch the player's rect (by the
+## rows the text really inks: a taller script's line box keeps empty rows over and under its letters).
 func _hits_player(ys: Array[float]) -> bool:
 	if not player_rect.has_area():
 		return false
-	if _ink_rect(area_label, ys[0]).intersects(player_rect):
+	if _ink_rect(area_label, ys[0], true).intersects(player_rect):
 		return true
-	return story_label.text != "" and _ink_rect(story_label, ys[1]).intersects(player_rect)
+	return story_label.text != "" and _ink_rect(story_label, ys[1], true).intersects(player_rect)
 
 
 ## The player slime's screen rect (from game.gd once the camera is placed): the area texts move clear.
 func set_player_rect(rect: Rect2) -> void:
 	player_rect = rect
+	player_rect_live = rect.has_area()
 	if area_label.visible:
 		_place_area_texts()
 
 
+## The slime has left the spot set_player_rect gave (game.gd): later placements no longer use it.
+func release_player_rect() -> void:
+	player_rect_live = false
+
+
+## TEXT_SIDE_CLEARANCE, or in English TEXT_CLEARANCE (its source layout: 2 px beside a pod as under it).
+static func side_clearance() -> int:
+	return TEXT_CLEARANCE if UIKit.locale() == UIKit.Lang.SOURCE_LOCALE else TEXT_SIDE_CLEARANCE
+
+
 ## `label`'s centred text at line top `top`: marks above and drips below included, TEXT_CLEARANCE
-## around it (TEXT_SIDE_CLEARANCE on the sides).
-func _ink_rect(label: Label, top: float) -> Rect2:
+## around it (side_clearance() on the sides). With `ink`, a taller script's text by the rows its glyphs
+## ink (UIKit.ink_rows, slimy drips included) instead of its line boxes (Thai: rows 1..14 of 17).
+func _ink_rect(label: Label, top: float, ink := false) -> Rect2:
 	var width: float = label.get_theme_font("font").get_string_size(_widest_line(label.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var lines := label.text.count("\n") + 1  # (a story line broken by _wrap_story_line)
 	var x := roundf((UIKit.SCREEN.x - width) / 2.0)
 	var metrics := UIKit.metrics()
 	var above := float(metrics.ink_above)
 	var tall := float(UIKit.text_block_h(lines) + int(metrics.ink_below))  # line boxes + drips (TEXT_BODY + TEXT_DRIP in English)
-	return Rect2(x, top - above, width, above + tall).grow_individual(TEXT_SIDE_CLEARANCE, TEXT_CLEARANCE, TEXT_SIDE_CLEARANCE, TEXT_CLEARANCE)
+	if ink and UIKit.tall_script():
+		var texts: Array[String] = []
+		texts.assign(label.text.split("\n"))
+		var rows := UIKit.ink_rows(texts, label.get_theme_font("font"), UIKit.FONT, true)
+		above = -float(rows.x)
+		tall = float(UIKit.text_block_h(lines) - UIKit.line_h() + rows.y + 1)
+	var side := float(side_clearance())
+	return Rect2(x, top - above, width, above + tall).grow_individual(side, TEXT_CLEARANCE, side, TEXT_CLEARANCE)
 
 
 static func _widest_line(text: String) -> String:
@@ -1208,6 +1251,7 @@ func _fit_result() -> void:
 	if UIKit.button_h() == UIKit.BUTTON_H or not message.visible:
 		return  # (English metrics: the source layout as built)
 	var metrics := UIKit.metrics()
+	_message_panel.custom_minimum_size.x = 0  # (_cover_sides may widen it again below)
 	var choices := _choice_root.visible
 	var bottom := float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40)
 	var below := bottom
@@ -1243,8 +1287,94 @@ func _fit_result() -> void:
 		var ink_top := _banner_ink_top()
 		if top + floorf((below - UIKit.GAP_XS - top - h) / 2.0) + h > ink_top - UIKit.GAP_XS:
 			below = ink_top
-	_message_center.offset_top = top
-	_message_center.offset_bottom = below - UIKit.GAP_XS - UIKit.SCREEN.y
+	# The slime: covered whole or clear (_slime_room), never peeking over or under the panel; within the
+	# room down to GAP_XS over the banner title's own marks. Where neither fits, the panel's rows pack
+	# GAP_XS apart, then it may end right on the slime's rect (its 1 px margin: zh_TW L3, the slime
+	# between the panel and NEW RECORD!, the panel under the timer pod).
+	var room_end := below - UIKit.GAP_XS
+	if record_banner.visible:
+		room_end = minf(room_end, _banner_ink_top() - UIKit.GAP_XS)
+	_cover_sides(top, room_end)
+	var y := _slime_room(top, room_end)
+	if is_inf(y) and box.get_theme_constant("separation") > UIKit.GAP_XS:
+		box.add_theme_constant_override("separation", UIKit.GAP_XS)
+		y = _slime_room(top, room_end)
+		if is_inf(y):
+			box.add_theme_constant_override("separation", 4)
+	if is_inf(y):
+		y = _slime_room(top, room_end, 0)
+		if is_inf(y) and box.get_theme_constant("separation") > UIKit.GAP_XS:
+			box.add_theme_constant_override("separation", UIKit.GAP_XS)
+			y = _slime_room(top, room_end, 0)
+			if is_inf(y):
+				box.add_theme_constant_override("separation", 4)
+	if is_nan(y) or is_inf(y):
+		_message_center.offset_top = top
+		_message_center.offset_bottom = below - UIKit.GAP_XS - UIKit.SCREEN.y
+	else:
+		_message_center.offset_top = y
+		_message_center.offset_bottom = y + _panel_size().y - UIKit.SCREEN.y
+
+
+## The result panel's size as it will be laid out: its rows' width + the style's side margins, or the
+## width _cover_sides gave it (read from the parts: the panel's own cached minimum size can lag a frame
+## behind a custom_minimum_size just set).
+func _panel_size() -> Vector2:
+	var box := _message_panel.get_child(0) as Control
+	var natural := box.get_combined_minimum_size().x + _message_style.content_margin_left + _message_style.content_margin_right
+	return Vector2(maxf(natural, _message_panel.custom_minimum_size.x), _message_panel.get_combined_minimum_size().y)
+
+
+## A slime under one of the result panel's sides (the camera at a maze edge: ko / zh_TW dry-up, the panel
+## narrower than English's): the panel widens, centred, to cover it whole with GAP_XS beside it (as
+## English's wider panel does), when that still fits the screen inside EDGE.
+func _cover_sides(top: float, bottom: float) -> void:
+	var s := result_slime_rect
+	var size := _panel_size()
+	var x := floorf((UIKit.SCREEN.x - size.x) / 2.0)
+	var body := s.grow(-1.0)
+	var centred := top + floorf((bottom - top - size.y) / 2.0)
+	if not s.has_area() or centred > body.position.y or centred + size.y < body.end.y:
+		return  # (no slime, or it is not on the panel's rows: nothing a wider panel would cover)
+	var under_side := (body.position.x < x and body.end.x > x) or (body.position.x < x + size.x and body.end.x > x + size.x)
+	if not under_side:
+		return
+	var half := maxf(UIKit.SCREEN.x / 2.0 - body.position.x, body.end.x - UIKit.SCREEN.x / 2.0) + UIKit.GAP_XS
+	var want := 2.0 * ceilf(half)
+	if want <= UIKit.SCREEN.x - 2.0 * UIKit.EDGE:
+		_message_panel.custom_minimum_size.x = want
+
+
+## The result panel's top when, centred between `top` and `bottom`, it would cover only part of the player
+## slime (its top peeking over the panel, or a sliver between the panel and the banner): the nearest row
+## from which it covers the slime whole, else clears it by GAP_XS above or below, inside the same room
+## (ja / ko / pt_BR randomizer win, zh_TW L3 win). NAN: the centred place is fine; INF: nothing fits.
+## `gap`: the rows kept between the panel and the slime's rect when clearing it.
+func _slime_room(top: float, bottom: float, gap := UIKit.GAP_XS) -> float:
+	var s := result_slime_rect
+	var size := _panel_size()
+	var x := floorf((UIKit.SCREEN.x - size.x) / 2.0)
+	if not s.has_area() or s.position.x >= x + size.x or s.end.x <= x:
+		return NAN
+	var centred := top + floorf((bottom - top - size.y) / 2.0)
+	var body := s.grow(-1.0)  # (the slime's ink: the rect keeps 1 px round it; covering it covers the slime)
+	var crosses := centred < s.end.y and centred + size.y > s.position.y
+	var inside := body.position.x >= x and body.end.x <= x + size.x  # (a slime under a panel side: never covered whole)
+	var covers := inside and centred <= body.position.y and centred + size.y >= body.end.y
+	if not crosses or covers:
+		return NAN
+	var low := bottom - size.y  # (the lowest top that still ends by `bottom`)
+	var best := INF
+	# (in order of preference on a tie: covering, clear above, clear below)
+	for span: Vector2 in [Vector2(maxf(top, body.end.y - size.y), minf(low, body.position.y) if inside else -INF),
+			Vector2(top, minf(low, s.position.y - gap - size.y)),
+			Vector2(maxf(top, s.end.y + gap), low)]:
+		if span.x > span.y:
+			continue
+		var y := clampf(centred, span.x, span.y)
+		if is_inf(best) or absf(y - centred) < absf(best - centred):
+			best = y
+	return best
 
 
 ## The result lines after the first (the title) paired up, MESSAGE_PAIR_GAP apart, wherever two fit

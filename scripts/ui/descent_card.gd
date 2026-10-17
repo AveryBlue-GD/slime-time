@@ -29,6 +29,10 @@ const DIM := Color(0.06, 0.06, 0.1, 0.82)
 ## stripes; wider lines wrap), and the room the 1x icon takes before the name (8 + GAP_S).
 const FACE_PAD := float(UIKit.GAP_L)
 const INLINE_ICON := 11.0
+## Locales whose 16 px title draws its digits in the script's own font: zh_TW's 24 px hanzi stand 22 rows
+## (10..31), the slimy 16 px digit 14 (16..29), so `第1層過關` read with a half-height 1 (fix pass R1; the
+## 20 px CJK fonts' hanzi match the slimy digit's height).
+const OWN_DIGIT_LOCALES: Array[String] = ["zh_TW"]
 
 var game: Node
 var root: Control
@@ -144,6 +148,7 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 	tile_ids.assign(offers)
 	var floor_no: int = run.get("floor", 1)
 	title.text = Loc.t("descent.floor_cleared", "FLOOR {floor} CLEARED", {floor = floor_no})
+	_own_digits(title)
 	var refill := Descent.floor_refill(floor_no + 1, run.get("boons", {}))
 	meter_label.text = Loc.t("descent.meter", "{now}%  NEXT FLOOR +{next}%", {now = ceili(float(run.get("meter", 0.0))), next = roundi(refill)})
 	var practice := ""
@@ -182,6 +187,10 @@ func show_boons(run: Dictionary, offers: Array) -> void:
 ## Each tile's face: its content centred in the tile, every tile starting on the same row: the 2x icon
 ## over the lines (English), or (when that is too tall) the 1x icon over them, or in front of the name
 ## (the lines on dense_pitch()), and if even that is too tall the script's smaller font.
+## Before giving up the 2x icon, a face too tall for the 78 px tile (pl NOS DO / KIELICHA / WIDZISZ /
+## WYJŚCIE / Z 6 PÓL, vi, fr / it / de five-line faces) gets the rows PICK ONE took: PICK ONE goes on
+## the status line until a pick (as in a taller script) and the tiles start under the meter / pot line,
+## as tall as the room down to the status line (fix pass R1).
 func _layout_boons(held: Dictionary) -> void:
 	var tall := UIKit.tall_script()
 	var line := UIKit.line_h()
@@ -193,14 +202,29 @@ func _layout_boons(held: Dictionary) -> void:
 	var marks := float(UIKit.ink_above(title.text, UIKit.FONT_BIG))
 	var title_y := TITLE_Y + marks
 	var info_y := title_y + title_h + gap
-	_pick_in_status = tall
-	var tiles_y := info_y + line + gap if tall else TILE_Y + marks
 	var buttons_y := float(UIKit.choice_y())
 	# (the tiles and the status line move down with the title, into the room over the buttons; the tiles
 	# give up only the rows that are not there, keeping 4 clear rows over the status line's marks)
 	var status_y := minf(133.0, buttons_y - gap - line) if tall else minf(133.0 + marks, buttons_y - 4.0 - line)
-	var tile_h := status_y - gap - tiles_y if tall \
-		else minf(TILE.y, status_y - 4.0 - float(UIKit.metrics().get("ink_above", 0)) - tiles_y)
+	var m := UIKit.metrics()
+	# (the slimy font's marks above and drips below must stay inside the tile; a taller script's line
+	# box holds its own)
+	var ink := 0.0 if tall else float(m.get("ink_above", 0)) + float(m.get("ink_below", 0))
+	# The tiles' row: under PICK ONE (English), or under the meter / pot line with PICK ONE on the status
+	# line (a taller script; a face that needs it for its 2x icon).
+	_pick_in_status = tall
+	var tiles_y := info_y + line + gap if tall else TILE_Y + marks
+	var tile_h := status_y - gap - tiles_y if tall else minf(TILE.y, status_y - 4.0 - float(m.get("ink_above", 0)) - tiles_y)
+	var best := _face_style(held, tile_h, ink)
+	if not tall and best.rank > 0:
+		var high := info_y + line + gap
+		var high_h := status_y - 4.0 - float(m.get("ink_above", 0)) - high
+		var higher := _face_style(held, high_h, ink)
+		if higher.rank < best.rank:
+			best = higher
+			_pick_in_status = true
+			tiles_y = high
+			tile_h = high_h
 	_set_y(title, title_y, title_h)
 	if meter_label.get_parent().position.y != info_y:
 		meter_label.get_parent().position.y = info_y
@@ -209,36 +233,9 @@ func _layout_boons(held: Dictionary) -> void:
 	pick.visible = not _pick_in_status
 	_set_y(pick, info_y + 10.0, box_h)
 	_set_y(status, status_y, box_h)
-	# The faces: try each style until every tile's content fits its height.
-	var styles := ["icon over", "small icon over", "icon inline", "smaller"]
-	# (the slimy font's marks above and drips below must stay inside the tile; a taller script's line
-	# box holds its own)
-	var m := UIKit.metrics()
-	var ink := 0.0 if tall else float(m.get("ink_above", 0)) + float(m.get("ink_below", 0))
-	var style := ""
-	var font: Font = null
-	var content := 0.0
-	var best := {}
-	for each: String in styles:
-		if tall and each == "icon over":
-			continue  # (a taller script's four lines never fit under a 2x icon)
-		var each_font: Font = null
-		if each == "smaller":
-			var language: Node = get_node_or_null("/root/Language")
-			each_font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
-			if each_font == null:
-				continue
-		var h := 0.0
-		for id in tile_ids:
-			h = maxf(h, _face_h(id, held, each, each_font))
-		if best.is_empty() or h < best.h:
-			best = {style = each, font = each_font, h = h}
-		if h + ink <= tile_h:
-			best = {style = each, font = each_font, h = h}
-			break
-	style = best.style
-	font = best.font
-	content = best.h
+	var style: String = best.style
+	var font: Font = best.font
+	var content: float = best.h
 	var top := floorf((tile_h - content) / 2.0)
 	if not tall:  # (a face that nearly fills the tile: its first line's marks stay under the goo lumps, row 3+)
 		var above := float(m.get("ink_above", 0))
@@ -255,6 +252,49 @@ func _layout_boons(held: Dictionary) -> void:
 			tile.position.y = tiles_y
 		if tile.visible:
 			_fill_tile(tile, tile_ids[i], held, top, style, font)
+
+
+## The first face style whose content (+ `ink`, the marks and drips past its line boxes) fits a tile
+## `tile_h` tall: {style, font, h, rank (its place in the order; 9 when none fits: the smallest then)}.
+func _face_style(held: Dictionary, tile_h: float, ink: float) -> Dictionary:
+	var styles := ["icon over", "small icon over", "icon inline", "smaller"]
+	var best := {}
+	for rank in styles.size():
+		var each: String = styles[rank]
+		if UIKit.tall_script() and each == "icon over":
+			continue  # (a taller script's four lines never fit under a 2x icon)
+		var each_font: Font = null
+		if each == "smaller":
+			var language: Node = get_node_or_null("/root/Language")
+			each_font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
+			if each_font == null:
+				continue
+		var h := 0.0
+		for id in tile_ids:
+			h = maxf(h, _face_h(id, held, each, each_font))
+		if best.is_empty() or h < best.h:
+			best = {style = each, font = each_font, h = h, rank = 9}
+		if h + ink <= tile_h:
+			return {style = each, font = each_font, h = h, rank = rank}
+	return best
+
+
+## A 16 px title in OWN_DIGIT_LOCALES: its script's font in front of the slimy one, so the digits are
+## the script font's (as tall as its letters), without the slimy digit's script gap (Loc.SCRIPT_GAP).
+func _own_digits(label: Label) -> void:
+	var language: Node = get_node_or_null("/root/Language")
+	if not UIKit.locale() in OWN_DIGIT_LOCALES or language == null or not language.has_method("fallback_font"):
+		return
+	var own: Font = language.fallback_font(UIKit.locale(), true)
+	if own == null:
+		return
+	if not label.has_theme_font_override("font") or not label.get_theme_font("font") is FontVariation:
+		var variation := FontVariation.new()
+		variation.base_font = own
+		var chain: Array[Font] = [UIKit.font_for(UIKit.FONT_BIG)]
+		variation.fallbacks = chain
+		label.add_theme_font_override("font", variation)
+	label.text = label.text.replace(Loc.SCRIPT_GAP, "")
 
 
 ## Sets a label's top and height (only when they change: setting them shapes the text at once, and the
@@ -280,7 +320,29 @@ func _face_texts(id: String, held: Dictionary) -> Array[String]:
 func _lines_of(text: String, font: Font, first: bool, style: String) -> int:
 	var room := _text_room(first, style)
 	var w := UIKit.text_w(text, UIKit.FONT, font) if font else UIKit.text_w(text)
-	return 1 if w <= room else UIKit.wrapped_lines(text, room, UIKit.FONT, font)
+	if w <= room:
+		return 1
+	var kept := _keep_slashes(text, font, room)
+	return kept.count("\n") + 1 if kept != "" else UIKit.wrapped_lines(text, room, UIKit.FONT, font)
+
+
+## A line with a slash run (`+1 TIKET/LANTAI`, `+1 BIL./PIĘTRO`) too wide for `room`, broken at its spaces
+## only, so the run stays whole (`+1` / `TIKET/LANTAI`: word wrapping breaks after a slash, which reads
+## as a typo); "" when the text has no slash, or a part would still be wider than `room`, or the script
+## wraps anywhere (zh / ja).
+func _keep_slashes(text: String, font: Font, room: float) -> String:
+	if not "/" in text or UIKit.autowrap_mode() != TextServer.AUTOWRAP_WORD_SMART:
+		return ""
+	var lines: Array[String] = []
+	for word in text.split(" ", false):
+		var joined := word if lines.is_empty() else lines[-1] + " " + word
+		if not lines.is_empty() and (UIKit.text_w(joined, UIKit.FONT, font) if font else UIKit.text_w(joined)) <= room:
+			lines[-1] = joined
+		else:
+			if (UIKit.text_w(word, UIKit.FONT, font) if font else UIKit.text_w(word)) > room:
+				return ""
+			lines.append(word)
+	return "\n".join(lines) if lines.size() > 1 else ""
 
 
 ## The width a face's line may take (the name loses the inline icon's room).
@@ -338,6 +400,9 @@ func _fill_tile(tile: Button, id: String, held: Dictionary, top: float, style :=
 			label.add_theme_font_override("font", font)
 		var n := _lines_of(texts[i], font, i == 0, style)
 		var room := _text_room(i == 0, style)
+		var kept := _keep_slashes(texts[i], font, room) if n > 1 else ""
+		if kept != "":
+			label.text = kept  # (broken at its spaces: no autowrap after the slash)
 		if i == 0 and _inline(style):
 			# The 1x icon in front of the name (on its first line), the pair centred.
 			var w := minf(UIKit.text_w(texts[i], UIKit.FONT, font) if font else UIKit.text_w(texts[i]), room)
@@ -356,7 +421,8 @@ func _fill_tile(tile: Button, id: String, held: Dictionary, top: float, style :=
 func _span(tile: Control, label: Label, y: float, lines := 1, m := Vector2(7, 12), span := Rect2()) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if lines > 1:  # (before it is in the tree: its minimum width is then never its one-line width)
-		label.autowrap_mode = UIKit.autowrap_mode()
+		if not "\n" in label.text:
+			label.autowrap_mode = UIKit.autowrap_mode()
 		label.add_theme_constant_override("line_spacing", int(m.y - m.x))
 	tile.add_child(label)  # (sized once in the tree: off it the label measures with the default font)
 	label.position = Vector2(span.position.x if span.size.x > 0 else 0.0, y)

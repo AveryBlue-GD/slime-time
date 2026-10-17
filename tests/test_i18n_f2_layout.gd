@@ -6,7 +6,7 @@ extends "res://tests/suite_base.gd"
 ## controls' rects and their texts' line boxes (+ marks above, drips below):
 ## - HUD (L1, L10, L7 hard HEAT 63, L8 assisted, randomizer, Descent pot): the area name and story line
 ##   clear of the player slime's drawn body (from the slime's own canvas position), TEXT_CLEARANCE under /
-##   TEXT_SIDE_CLEARANCE beside every pod, on screen; the level pod GAP_L clear of the timer pod (English's
+##   side_clearance() beside every pod (English 2, fix pass R1), on screen; the level pod GAP_L clear of the timer pod (English's
 ##   RANDOM MAZE #n  CODE LVx (YOU y) included), each wrapped line within the room.
 ## - Results: the first panel line's marks start under the goo band's lump row (5 rows under the panel's
 ##   top); a text-only last row keeps 2 clear rows over the bottom band's lumps; the big NEW RECORD! banner
@@ -107,9 +107,9 @@ func _hud() -> void:
 			var tag := "%s %s" % [label.text.left(16), ink]
 			_ok(SCREEN.encloses(ink), "hud area texts on screen", tag)
 			_ok(not ink.intersects(body), "hud area texts clear of the player slime", "%s slime %s (%s)" % [tag, body, c])
-			var spaced := ink.grow_individual(Hud.TEXT_SIDE_CLEARANCE - 1, Hud.TEXT_CLEARANCE - 1, Hud.TEXT_SIDE_CLEARANCE - 1, Hud.TEXT_CLEARANCE - 1)
+			var spaced := ink.grow_individual(Hud.side_clearance() - 1, Hud.TEXT_CLEARANCE - 1, Hud.side_clearance() - 1, Hud.TEXT_CLEARANCE - 1)
 			for pod: Rect2 in hud.pod_rects():
-				_ok(not spaced.intersects(pod), "hud area texts clear of the pods (beside them by TEXT_SIDE_CLEARANCE)", "%s pod %s" % [tag, pod])
+				_ok(not spaced.intersects(pod), "hud area texts clear of the pods (beside them by side_clearance())", "%s pod %s" % [tag, pod])
 		if _code == "en":
 			_pin_english_hud(c, hud)
 		game.free()

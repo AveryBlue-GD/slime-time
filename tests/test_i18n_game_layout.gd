@@ -32,6 +32,10 @@ const Report := preload("res://tests/i18n_report.gd")
 const TouchControls := preload("res://scripts/ui/touch_controls.gd")
 const SCREEN := Rect2(0, 0, 320, 180)
 const BOTTOM := 176.0
+## The wardrobe's 16 px title, a taller script: the last row its glyphs ink over the three pages (the
+## title's body + its 2 px shadow), measured on the rendered captures (CJK 25 + 2, zh_TW 29 + 2, Thai /
+## Devanagari 18 + 2, Arabic 22 + 2).
+const TITLE_INK_END := {"ja": 27, "ko": 27, "zh_CN": 27, "zh_TW": 31, "th": 20, "hi": 20, "ar": 24}
 
 var progress: Node
 var language: Node
@@ -114,13 +118,23 @@ func _upgrades() -> void:
 		var page_root: Control = upg.coin_page if page == "coins" else upg.ability_page
 		var panels := page_root.get_children().filter(func(c: Node) -> bool: return c is Panel).map(func(c: Control) -> Rect2: return _rect(c))
 		var area := UIKit.content_rect()
+		# The gap the rows must keep, from what is on screen (not from the plan): GAP_S whenever this page's
+		# rows at their measured height, GAP_S apart, still fit the content area with the hint under them
+		# (GAP_M + its lines) or on the bottom row; GAP_XS only where they do not (fix pass F3a, ABILITIES).
+		var want_gap := UIKit.GAP_S
+		if page == "abilities" and not panels.is_empty():
+			var row_h: float = (panels[0] as Rect2).size.y
+			var hint_r := _text_rect(upg.hint)
+			var hint_in_row: bool = hint_r.position.y >= _rect(upg.back).position.y - 1
+			var need := panels.size() * row_h + (panels.size() - 1) * UIKit.GAP_S + (0.0 if hint_in_row else UIKit.GAP_M + hint_r.size.y)
+			if need > area.size.y:
+				want_gap = UIKit.GAP_XS
 		for i in panels.size():
 			var p: Rect2 = panels[i]
 			_ok(area.grow(0.5).encloses(p), "upgrades panels in the content area", str(p))
 			if i > 0:
-				# (ABILITIES: GAP_XS where GAP_S leaves no room for the clean rows, fix pass F3a)
-				var gap: int = UIKit.GAP_S if page == "coins" else int(upg._ability_plan.get("gap", UIKit.GAP_S))
-				_ok(p.position.y - (panels[i - 1] as Rect2).end.y == gap, "upgrades panels GAP_S apart")
+				_ok(p.position.y - (panels[i - 1] as Rect2).end.y == want_gap, "upgrades panels GAP_S apart (GAP_XS only where GAP_S rows do not fit)",
+					"%s gap %d want %d" % [page, p.position.y - (panels[i - 1] as Rect2).end.y, want_gap])
 		var rows: Dictionary = upg.rows if page == "coins" else upg.ability_rows
 		var r := 0
 		for id: String in rows:
@@ -143,7 +157,7 @@ func _upgrades() -> void:
 				"upgrades English rows pinned")
 		upg.free()
 	for name in ["upgrades tabs GAP_XS apart", "upgrades tab fits its word", "upgrades pod top right", "upgrades title clear of the tabs and pod",
-			"upgrades panels in the content area", "upgrades panels GAP_S apart", "upgrades + inside its panel", "upgrades name inside its panel",
+			"upgrades panels in the content area", "upgrades panels GAP_S apart (GAP_XS only where GAP_S rows do not fit)", "upgrades + inside its panel", "upgrades name inside its panel",
 			"upgrades tag under the name, inside its panel", "upgrades hint on screen", "upgrades hint clear of BACK and the rows", "upgrades BACK fits its word"]:
 		_report(name)
 
@@ -164,7 +178,14 @@ func _wardrobe() -> void:
 		var titles: Array[String] = []
 		for which: String in skins.PAGES:
 			titles.append(skins.page_title(which))
-		var title_end := title.end.y if not UIKit.tall_script() else float(UIKit.title_ink_end(titles, skins._title.get_theme_font("font")) + 1)
+		# (a taller script's title: its last inked row, the 2 px shadow included, measured on the rendered
+		# wardrobe titles (tools/i18n_capture.sh, all three pages) and pinned per script, R1)
+		var title_end := title.end.y
+		if UIKit.tall_script():
+			var pinned: int = TITLE_INK_END[_code]
+			_ok(UIKit.title_ink_end(titles, skins._title.get_theme_font("font")) == pinned, "wardrobe title ink end as measured",
+				"%d measured %d" % [UIKit.title_ink_end(titles, skins._title.get_theme_font("font")), pinned])
+			title_end = pinned + 1.0
 		_ok(title_end <= g.position.y and g.end.y <= status.position.y and status.end.y <= rule.position.y,
 			"wardrobe title, grid, status, rule in order", "%s %s %s %s" % [title, g, status, rule])
 		if UIKit.button_h() != UIKit.BUTTON_H:  # (English: TRAILS grows its 40 px button by 2 px, the source layout)
@@ -187,7 +208,7 @@ func _wardrobe() -> void:
 				_ok(g.position.y == 23 and skins.status.offset_top == 89 and skins._rule.offset_top == 100 and stage.position.y == 112 and jelly.position == Vector2(120, 164),
 					"wardrobe English rects pinned")
 	skins.free()
-	for name in ["wardrobe title, grid, status, rule in order", "wardrobe BACK / page button mirrored, one width", "wardrobe page button fits its word",
+	for name in ["wardrobe title, grid, status, rule in order", "wardrobe title ink end as measured", "wardrobe BACK / page button mirrored, one width", "wardrobe page button fits its word",
 			"wardrobe on screen", "wardrobe stage under the rule line, by row 176", "wardrobe stage clear of the buttons",
 			"wardrobe JELLY clear of the grid and title", "wardrobe JELLY fits its word"]:
 		_report(name)
