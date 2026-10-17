@@ -155,9 +155,14 @@ func _plan() -> void:
 		for action: String in column:
 			widest = maxi(widest, UIKit.text_w(action_name(action)))
 	var key_min := UIKit.button_w(press_key_text(), 0)
-	label_w = maxi(LABEL_WIDTH, widest)
-	key_w = KEY_WIDTH
 	var room := int(UIKit.SCREEN.x) - 2 * UIKit.EDGE
+	# The widest label keeps GAP_L from its key (SALTAR (MANTÉN) was GAP 4 from SPACE and read as one
+	# string) where the keys can narrow for it and both columns still fit; else GAP. English: its labels are
+	# all GAP_L + shorter than LABEL_WIDTH, unchanged.
+	label_w = maxi(LABEL_WIDTH, widest + UIKit.GAP_L - GAP)
+	if 2 * (label_w + GAP + key_min) + COLUMN_GAP > room:
+		label_w = maxi(LABEL_WIDTH, widest)
+	key_w = KEY_WIDTH
 	columns_per_page = 2
 	if 2 * (label_w + GAP + key_w) + COLUMN_GAP > room:
 		key_w = maxi(key_min, (room - COLUMN_GAP) / 2 - GAP - label_w)

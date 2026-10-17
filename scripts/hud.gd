@@ -765,9 +765,17 @@ func _drip_room() -> void:
 		else:
 			icons = maxf(icons, child.get_combined_minimum_size().y)
 	# (a one-line text beside an 8 px medal / ticket icon is centred clear of the band; a taller script's
-	# line box holds its own descent: no drips)
+	# line box holds its own descent: no drips, but a slimy digit in it hangs its drips under the line's
+	# ink: zh_TW `第2次 = +4` 1 row, onto the bottom lumps; the row grows by that much)
 	if h > icons and not UIKit.tall_script():
 		last.custom_minimum_size.y = h + REWARDS_DRIP_ROOM
+	elif UIKit.tall_script():
+		var excess := 0
+		for child: Control in last.get_children():
+			if child is Label and not child.is_queued_for_deletion():
+				excess = maxi(excess, UIKit.drip_excess((child as Label).text, int(UIKit.metrics().ink_bottom)))
+		if excess > 0:
+			last.custom_minimum_size.y = h + excess
 
 
 ## `text` with every line wider than the text column (REWARDS_W) broken onto two balanced lines at a
@@ -1229,6 +1237,12 @@ func _fit_result() -> void:
 		_set_banner_compact(true)
 		_place_banner(bottom)
 		below = record_banner.offset_top
+	# (the banner title's marks over its line box: a panel centred down onto them ends GAP_XS over them)
+	if record_banner.visible:
+		var h := _message_panel.get_combined_minimum_size().y
+		var ink_top := _banner_ink_top()
+		if top + floorf((below - UIKit.GAP_XS - top - h) / 2.0) + h > ink_top - UIKit.GAP_XS:
+			below = ink_top
 	_message_center.offset_top = top
 	_message_center.offset_bottom = below - UIKit.GAP_XS - UIKit.SCREEN.y
 
@@ -1260,6 +1274,17 @@ func _panel_top() -> float:
 		if pod.position.x < span.end.x and pod.end.x > span.position.x:
 			top = maxf(top, pod.end.y + UIKit.GAP_XS)
 	return top
+
+
+## The record banner's first inked row: its top, or its title's line top less the marks its letters carry
+## over the line box where they reach higher (pseudo `[_ÑÉW RÉÇÖRĐ!__]` at 16 px: 6 rows, on the panel's
+## bottom goo above it).
+func _banner_ink_top() -> float:
+	var row := record_banner.get_child(0) as Control
+	var banner_h := record_banner.offset_bottom - record_banner.offset_top
+	var title_top := record_banner.offset_top + floorf((banner_h - row.get_combined_minimum_size().y) / 2.0)  # (the row centred, the title on its top)
+	var marks := UIKit.mark_rows(_banner_title.text, UIKit.FONT_BIG if _banner_words.vertical else UIKit.FONT)  # (its own marks)
+	return minf(record_banner.offset_top, title_top - marks)
 
 
 ## The record banner's rows: ending GAP_S over `above` (the choice row), as tall as its contents.

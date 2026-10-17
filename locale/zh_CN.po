@@ -2142,7 +2142,7 @@ msgstr "皮肤"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr "{name}  （使用中）"
+msgstr "{name} （使用中）"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2202,7 +2202,7 @@ msgstr "未解锁 - 通关第{level}关"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
-msgstr "{name}  （已选择）"
+msgstr "{name} （已选择）"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1

@@ -129,7 +129,9 @@ func _upgrades() -> void:
 			_ok(p.encloses(_rect(row.plus)), "upgrades + inside its panel", "%s %s" % [_rect(row.plus), p])
 			_ok(p.encloses(_text_rect(row.name)), "upgrades name inside its panel", "%s %s" % [_text_rect(row.name), p])
 			if row.has("tag"):
-				_ok(p.encloses(_text_rect(row.tag)) and not _text_rect(row.tag).intersects(_text_rect(row.name)), "upgrades tag under the name, inside its panel")
+				# (a tag lifted over its name's empty rows by its slimy drips, leftover pass: only those rows may overlap)
+				var lifted := maxf(0.0, row.name.position.y + float(upg._ability_plan.tag_pitch) - row.tag.position.y)
+				_ok(p.encloses(_text_rect(row.tag)) and not _text_rect(row.tag).grow_side(SIDE_TOP, -lifted).intersects(_text_rect(row.name)), "upgrades tag under the name, inside its panel")
 			r += 1
 		var hint := _text_rect(upg.hint)
 		var back := _rect(upg.back)

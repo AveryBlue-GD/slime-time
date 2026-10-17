@@ -514,13 +514,25 @@ func _close_codes() -> void:
 ## While a panel is open, the page's own controls under its rect are hidden (null `panel`: shown again).
 ## The panel's face is 92 % opaque over a 85 % dim, so they would only show as a faint ghost; in a
 ## taller or longer locale the panel's texts grow over them, and text over ghost text reads as clutter.
-## English keeps its ghost (its captures stay byte-identical): its panels' texts already avoid the page.
+## English keeps its ghost: its panels' texts already avoid the page; only a label of the page whose
+## box reaches the panel's goo band rows is hidden (the SETTINGS title's drips showed through SAVE CODE's
+## top band: 4 px); the buttons' ghosts over the RESET panel stay as they were.
 func _cover_page(panel: Control) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	UIKit.uncover(_covered)
-	if panel == null or UIKit.locale() == LanguageScreen.Lang.SOURCE_LOCALE:
+	if panel == null:
 		return
-	_covered = UIKit.cover_behind(self, [code_panel, reset_confirm], panel.get_meta("panel_rect"))
+	var rect: Rect2 = panel.get_meta("panel_rect")
+	if UIKit.locale() == LanguageScreen.Lang.SOURCE_LOCALE:
+		var band := Vector2(rect.size.x, UIKit.PANEL_INK_TOP)
+		for child in get_children():
+			var label := child as Label
+			if label and label.visible and (Rect2(label.position, label.size).intersects(Rect2(rect.position, band))
+					or Rect2(label.position, label.size).intersects(Rect2(rect.end - band, band))):
+				label.visible = false
+				_covered.append(label)
+		return
+	_covered = UIKit.cover_behind(self, [code_panel, reset_confirm], rect)
 
 
 func _lock_page(panel: Control) -> void:

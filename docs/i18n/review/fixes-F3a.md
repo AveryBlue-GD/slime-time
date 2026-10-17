@@ -80,7 +80,7 @@ and HEAT panel take the locale paths below, so it changes there too.)
   test_i18n_f2_layout, test_i18n_rtl, test_i18n_levels_layout, test_i18n_hub_layout, test_i18n_fit,
   test_ui_layout, test_heat, test_level_tiles and the full `./tools/test_all.sh`.
 
-## Helpers missing in UIKit (local copies, for a later move)
+## Helpers missing in UIKit (moved since: leftover pass, `UIKit.title_ink_end` / `UIKit.ink_rows`)
 - `skins_screen._title_ink_end(texts)`: the 16 px title's last inked row from its shaped glyphs.
 - `upgrades_screen.ink_rows(texts, font)` and the same in `skins_screen.ink_rows`: 8 px ink rows of given
   texts in a font (the smaller crisp size has no Language ink metrics).

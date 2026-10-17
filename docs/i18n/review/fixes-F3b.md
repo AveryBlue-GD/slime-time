@@ -80,7 +80,7 @@ English settings / key controls / title / map tile rects.
 - `tests/test_i18n_settings_layout.gd`: the CONTROLS note keeps GAP_M (was GAP_L) over the bottom row, the room the
   centred Vietnamese note has; `test_i18n_f3b_layout.gd` asks GAP_L wherever the note is not centred.
 
-## Local helpers (UIKit has none for these)
+## Local helpers (moved to UIKit since: leftover pass, `UIKit.mark_rows` / `ink_shift` / `BIG_INK_TOP`)
 
 `title.gd`: `mark_rows(text, size)` (a text's own mark rows, from the font's i18n page; `UIKit.ink_above` gives the
 locale's tallest), `ink_shift(text, size)` (CJK ink centring), `BIG_INK_TOP`. The LANGUAGE screen and the key controls

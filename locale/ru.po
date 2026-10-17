@@ -611,7 +611,7 @@ msgstr "ШЛЕМ ВИКИНГА"
 #: scripts/hats.gd
 msgctxt "hat.propeller"
 msgid "PROPELLER CAP"
-msgstr "КЕПКА С ПРОПЕЛЛЕРОМ"
+msgstr "КЕПКА-ПРОПЕЛЛЕР"
 
 #: scripts/hats.gd
 msgctxt "hat.crown"

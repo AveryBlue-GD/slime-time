@@ -441,6 +441,23 @@ func _make_row(parent: Control, upgrade: Dictionary, y: int) -> void:
 	rows[upgrade.id] = {pips = pips, minus = minus, plus = plus, cost = cost, name = name_label, y = y}
 
 
+## A taller script's tag whose own ink (a slimy digit's drips under it: zh_TW `3X3爆破`, hi `बम 3X3`)
+## comes nearer the panel's bottom lumps than one clear row (its last ink over row h - PANEL_INK_BOTTOM - 1)
+## goes up by the rows it is over, as far as its line box's empty top rows allow (2 clear rows kept
+## under the name's ink): the plan places lines by the script's ink, these digits drip 1-2 rows past it.
+static func _lift_tag(tag: Label, name_label: Label, panel_end: int, font: Font) -> void:
+	var f: Font = font if font else UIKit.font_for()
+	var texts: Array[String] = [tag.text]
+	var tag_ink := UIKit.ink_rows(texts, f, UIKit.FONT, true)
+	var over := int(tag.position.y) + tag_ink.y - (panel_end - UIKit.PANEL_INK_BOTTOM - 1)
+	if over <= 0:
+		return
+	texts = [name_label.text]
+	var name_ink := UIKit.ink_rows(texts, f, UIKit.FONT, true)
+	var room := (int(tag.position.y) + tag_ink.x - 1) - (int(name_label.position.y) + name_ink.y) - 3
+	tag.position.y -= clampi(over, 0, maxi(room, 0))
+
+
 ## An ABILITIES row: the icon (2x), name over its short tag, 3 pips, + and the price with the ticket
 ## icon.
 func _make_ability_row(item: Dictionary, y: int) -> void:
@@ -460,6 +477,8 @@ func _make_ability_row(item: Dictionary, y: int) -> void:
 	if plan.small_font != null:  # (Devanagari's smaller crisp size: the rows fit the page)
 		for label: Label in [name_label, tag]:
 			label.add_theme_font_override("font", plan.small_font)
+	if UIKit.tall_script():
+		_lift_tag(tag, name_label, y - 2 + int(plan.panel_h), plan.small_font)
 	var button_y := name_y + ceili((block_h - UIKit.button_h()) / 2.0)  # (y + 5)
 	var pips := _make_pips(ability_page, Abilities.max_level(item.id), button_y + _bar_offset() - 3)
 	var plus := UIKit.make_button("+", func() -> void: _buy_ability(item.id), Vector2(16, UIKit.button_h()))

@@ -295,13 +295,14 @@ func _refocus() -> void:
 		buttons[0].grab_focus()
 
 
-## The SEED button's text: "SEED 123-4", or just the code when that would not fit the column with the
-## button's 4 px text margins (a 10-digit seed: "SEED 4294967295-7" is 102 px).
+## The SEED button's text: "SEED 123-4", or just the code when that would not fit the column with
+## UIKit.BUTTON_TEXT_PAD on each side (a 10-digit seed: "SEED 4294967295-7" is 102 px; `시드 1453026489-0`
+## filled the button to 1 clear column each side).
 func seed_text(code: String) -> String:
 	var font: Font = seed_button.get_theme_font("font")
 	# i18n: {code} = a seed code like 123-4 (up to 17 chars); max 92px, else the code alone is shown
 	var text := Loc.t("pause.seed", "SEED {code}", {code = code})
-	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > COLUMN_W - 8:
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > COLUMN_W - 2 * UIKit.BUTTON_TEXT_PAD:
 		return code
 	return text
 

@@ -339,9 +339,8 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   8 px line box is trimmed to its ink (`Language.LINE_TRIM`: 19 -> 17, no translation inks the descent's last 2 rows),
   so its 21 px buttons hold the line from row 3 (3 / 1). The check: `tools/i18n_capture.sh` renders every state twice
   more (texts hidden, shadows hidden) and counts glyph ink (letters, marks, drips; shadows apart) inside each visible
-  goo box's band / lump rows (`OUT/json/goo_ink_<locale>.json`, summary line "goo-ink check"). English's own findings
-  (the upgrades ability rows; the SAVE CODE panel's 2 px; the LANGUAGE screen's native names until F3b) are the
-  floor: no locale may add to them.
+  goo box's band / lump rows (`OUT/json/goo_ink_<locale>.json`, summary line "goo-ink check"). Since the leftover pass
+  there are none in any locale (English's SAVE CODE panel and upgrades rows, the LANGUAGE names fixed): the gate below.
 - **Text lines on the screens (fix pass F3b)**, every one a no-op in English except the LANGUAGE screen:
   - A label beside a button in a row takes the button's text line: the key controls' action labels get the theme's
     `button_v_margins()` as an empty style's margins (centred on the taller row they sat 2 px over the key text with
@@ -364,6 +363,49 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   - Key controls note: `NOTE_GAP` over the bottom row (English); when that leaves it closer to the rows than to the
     bottom row it is centred between them, never less than `GAP_L` over the bottom row (Vietnamese fills the room:
     its stacked marks reach the last key row's bottom edge beside the keys).
+- **Screen rules of fix pass F3a** (wardrobe, upgrades, hat wheel, HEAT panel, hub), each a no-op in English except the
+  upgrades ABILITIES rows:
+  - **Keep the 16 px title by making room**: a screen tries its 16 px title with the layout's other steps first (the
+    wardrobe's stage on the bottom row, gaps one scale step closer, the smaller crisp font for body lines) and only then
+    the 8 px font.
+  - **Off-centre title**: a 16 px title wider than the room centred between the header items moves only as far as it
+    must, `GAP_L` clear of the tabs (`GAP_M` if that does not fit), never centred in the leftover room (upgrades, hat
+    wheel).
+  - **Ink-based placement in a taller script**: line positions come from Language `ink_top` / `ink_bottom` (a 16 px
+    title from its shaped glyphs, `UIKit.title_ink_end`; a smaller crisp size from `UIKit.ink_rows`), so a line box's
+    empty rows are not counted as gaps. Line boxes never overlap (`test_i18n_screens`), except by rows neither line
+    inks (an ABILITIES tag lifted over its name's empty rows, below).
+  - **Two-line rows in goo panels** (ABILITIES): the first line's ink from row `PANEL_INK_TOP` 6, the last line's ink
+    1 row over the bottom lumps (h - 5); fallbacks in order: the hint on the bottom row, rows `GAP_XS` apart, the last
+    ink on h - 4, the first ink on row 5, the old 2 / 2 insets, the smaller font, pages.
+  - **Name next to a price / icon**: in a right-to-left layout a name keeps 1 px more from its border / icon (Kufi has
+    no side bearing); a price label sits on its name's text row (box top - 1, as English); a tile grown for a longer
+    name keeps `GAP_L` between its longest name and the price where the panel has the room.
+  - **Toggle name fitting** (HEAT): one line (up to `BUTTON_TEXT_PAD` from the edge) -> the smaller font -> two lines
+    if the panel still fits the screen -> the 1x icon only in the toggles whose name needs it.
+  - **Mixed digit rows in CJK**: digits beside CJK names go `ink_drop` (1) rows down (the coin board).
+- **Leftover pass rules** (docs/i18n/review/leftovers.md), no-ops in English except the SAVE CODE panel:
+  - **A slimy character's drips count as the line's ink**: in a taller script the slimy digits / Latin letters hang their
+    2 drip rows below the script's own ink (zh_TW `3X3`, `第2次 = +4`: 1 row past `ink_bottom` 13; Devanagari's small
+    font, Thai 1-2 rows). `UIKit.ink_rows(texts, font, size, true)` measures a text with them (the slimy bitmap
+    font's cells hold the drip rows, no cache padding); `UIKit.drip_excess(text, assumed_bottom)` is how far a line
+    reaches past what a layout assumed. A result panel's last row grows by it; an ABILITIES tag nearer the bottom
+    lumps than h - 5 rises by it into its own empty top rows (2 clear rows kept under the name's ink).
+  - **A panel over a 16 px title keeps clear of that title's own marks**: the result panel, centred down onto the
+    record banner, ends `GAP_XS` over the banner title's marks (`UIKit.mark_rows(text, 16)`: 6 rows for `Ñ`), not
+    only over its line box; where it is clear of them it stays where it was.
+  - **The widest label beside a control keeps `GAP_L`**: the key controls' label column widens so the longest action
+    label ends `GAP_L` before its key, where the keys can narrow for it (`button_w(PRESS KEY)`) and both columns still
+    fit; else the column `GAP` (4).
+  - **A text that may not fit its fixed-width button keeps `BUTTON_TEXT_PAD`** on each side before the button shows
+    its shorter form (the pause SEED button: `SEED 123-4`, else the code alone).
+  - **English panel ghosts**: a modal panel in English hides the page labels whose box reaches its goo band rows
+    (`PANEL_INK_TOP` rows at the top and bottom of its rect: the SETTINGS title under SAVE CODE's top band); the
+    page's buttons and the other labels keep their faint ghosts.
+- **Rendered goo-ink gate**: `./tools/i18n_capture.sh --gate` (needs a window; docs/i18n/review/README.md) fails on any
+  glyph ink inside a goo box's band / lump rows in any state of any locale, English included, other than the accepted
+  exceptions listed in `tools/i18n_goo_ink_allow.txt` (none), and on an incomplete capture. Run it after any change
+  to a screen's text layout, fonts or Language metrics; the headless suites check the same rules from the layout.
 - **Script gap (CJK)**: in ja / ko / zh_CN / zh_TW, `Loc.t` / `Loc.n` put U+2007 (`Loc.SCRIPT_GAP`, no line break) after
   a slimy character (digit, Latin letter, `% ) ] ! ?`) that a CJK letter follows, and the slimy fonts get a 1 px (2 px
   at 16) glyph for it (`Language._apply_script_gap`): the slimy letters keep their 1 px gap on the left only and the
