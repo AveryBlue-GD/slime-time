@@ -29,7 +29,7 @@ with 888: every entry is inside its `max Npx` budget.
 | random maze | 随机迷宫 | |
 | RESUME / CONTINUE | 回到游戏 (pause) / 回到本局 (hub Descent resume, pairs with 结束本局) / 前进 (after level 10) | 继续 avoided on buttons: its 纟 radicals fill in at 10 px (review F4); `hub.resume.spent` 本层已回来过一次 |
 | (WEARING) | （使用中） | shared by hats and trails, so not 佩戴; also simpler glyphs |
-| DESCENT / DESCEND | 深入 / 继续深入 | |
+| DESCENT / DESCEND | 深入 / 深入下层 | DESCEND was 继续深入: 继 has the same 纟 radicals that fill in at 10 px as 继续 (F4); 深入下层 "go deeper, to the floor below" keeps 深入 and uses glyphs already in the subset (R4) |
 | boon | 增益 | |
 | seed | 种子 | |
 | save code | 存档码 | |
@@ -100,4 +100,4 @@ Abilities: 黏液步枪, 黏液爆弹, 史莱玛卡兹. Heat modifiers: 昏暗, 
 13. `language.title` (LANGUAGE screen, new in code, not yet in messages.pot) is already translated: 语言.
 10. **RANDOMIZER = 随机关卡** and **RESUME = 回到游戏 / 回到本局** (fix pass F4): chosen for legibility at 10 px over
     随机模式 / 继续; 关卡 is also "level", so check 随机关卡 reads as the randomizer portal and not one level.
-    DESCEND still says 继续深入 (not flagged; 继 is the same dense glyph).
+    DESCEND said 继续深入 until R4 (继 is the same dense glyph); now 深入下层, and 继 is used nowhere on a button.

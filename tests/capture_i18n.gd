@@ -1,7 +1,7 @@
 extends "res://tests/test_i18n_screens.gd"
 
 ## Reviewer capture driver (docs/i18n/review/README.md; run it through ./tools/i18n_capture.sh).
-## Not a test (the name does not match test_*.gd, so tools/test_all.sh skips it). It reuses the 53
+## Not a test (the name does not match test_*.gd, so tools/test_all.sh skips it). It reuses the
 ## screen / overlay / HUD state builders of tests/test_i18n_screens.gd by extending that suite and
 ## overriding only what happens at each state: `_scan` (instead of measuring text it saves the rendered
 ## frame and checks every character against the font chain the control really uses) and `_open` (re-seeds
@@ -92,6 +92,37 @@ func _initialize() -> void:
 	GooBox.seed_ids.clear()
 	_result()
 	quit(1 if failures else 0)
+
+
+## The suite's states, then the story texts a reviewer must see that the suite's states do not show
+## whole: the story is told by the level banners' lines (Story.level_line, the only story text; the intro
+## and finale shots are wordless, tests/test_story.gd), so every story level's banner is captured as the
+## level starts ("story line L1" .. "L10": the area name and its line fully shown, before their fade), and
+## each intro / finale shot on its Reduce Motion still (the suite's "story intro card N" is the shot's first
+## frame, mostly dark), so a reviewer can see that no shot draws text in any locale.
+func _all_states() -> void:
+	await super._all_states()
+	for level in range(1, Story.LEVEL_LINES.size() + 1):
+		var game := await _start({level = level})
+		await _frames(3)
+		_check(game.hud.story_label.visible and game.hud.story_label.modulate.a == 1.0 and game.hud.story_label.text != "",
+			"%s: story line L%d shown whole at y %d, %d line(s), area name y %d (%s)" % [locale_code, level,
+			game.hud.story_label.offset_top, game.hud.story_label.text.count("\n") + 1, game.hud.area_label.offset_top,
+			game.hud.story_label.text.c_escape()])
+		await _scan("story line L%d" % level, game)
+		game.free()
+	progress.hard_mode = false
+	progress.heat_mods = 0
+	for which in ["intro", "finale"]:
+		Story.mode = which
+		var story := await _open("res://scenes/story.tscn")
+		story.leave_on_finish = false
+		story.calm = true  # (Reduce Motion: show_card freezes the shot on its still; _process no longer steps it)
+		for i in story.cards.size():
+			story.show_card(i)
+			await _frames(1)
+			await _scan("story %s card %d still" % [which, i], story)
+		story.free()
 
 
 ## Every screen is opened with the same RNG state: the text drips (UIKit's per-scene shader seed) and

@@ -1519,7 +1519,7 @@ msgstr "兑现"
 #: scripts/ui/descent_card.gd
 msgctxt "descent.descend"
 msgid "DESCEND"
-msgstr "继续深入"
+msgstr "深入下层"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.floor_cleared"
@@ -1569,7 +1569,7 @@ msgstr "已有 {have}"
 #: scripts/ui/descent_card.gd
 msgctxt "descent.confirm"
 msgid "{name}  -  DESCEND?"
-msgstr "{name}  -  继续深入？"
+msgstr "{name}  -  深入下层？"
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_first"

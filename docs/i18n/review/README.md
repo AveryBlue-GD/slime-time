@@ -10,7 +10,9 @@ a language (or one screen across languages) in a single image. Part of localizat
 - Default out: `build/i18n-shots/` (git-ignored through `/build/`). Never `.screens/` (screenshot.sh clears it; the script refuses it).
 - Locales: `en`, the 17 translations, `pseudo` (default all 19). One Godot process per locale, `-j N` in parallel (default 6).
 - States: the 56 states `tests/test_i18n_screens.gd` builds (title, level select, upgrades, wardrobe, settings, hub and its
-  overlays, HUD cases, results, pause, Descent ...). Names are slugs, e.g. `hub-prompt-hats`, `hud-l7-hard-heat-63`;
+  overlays, HUD cases, results, pause, Descent ...), then 17 of the capture's own (73 in all): `story-line-l1` .. `-l10`
+  (every story level's banner line fully shown) and `story-intro-card-N-still` / `story-finale-card-N-still` (each wordless
+  story shot on its Reduce Motion still); results in `captions.md`. Names are slugs, e.g. `hub-prompt-hats`, `hud-l7-hard-heat-63`;
   the full list is in `OUT/json/states_<locale>.json`.
 - Runs need a window (not headless); a window per process flashes briefly. Do not kill other Godot processes.
 
@@ -60,4 +62,6 @@ chain installed). Each finding: locale, state, node id, text, the missing charac
 `tests/capture_i18n.gd` extends `tests/test_i18n_screens.gd` and overrides `_scan` (save the frame + check glyphs) and `_open`
 (seed + hide backdrop), so the state builders are shared, not copied; adding a state to the test adds it here.
 `tools/i18n_contact_sheet.py` (`merge`, `sheets`) is dependency-free Python. Throwaway save only; the real save is untouched
-(the script prints its md5 before and after).
+(the script prints its md5 before and after, and exits 3 if it changed). The save is looked up in the macOS
+(`~/Library/Application Support/SlimeTime_R1`) and Linux (`${XDG_DATA_HOME:-~/.local/share}/SlimeTime_R1`) user dirs;
+when neither exists the check is skipped with a note.

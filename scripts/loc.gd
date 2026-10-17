@@ -211,7 +211,8 @@ static func _is_cjk(code: int) -> bool:
 ## placeholder: `+1 تذكرة`, `الخزان -10%`, `+30%`) wrapped in LRI .. PDI like fill's placeholders, so the
 ## bidi algorithm keeps the sign before the number and the % after it (it drew `1+` and `%10-`). A word
 ## counts when it is a sign, digits (with . , / x X) and an optional %, or digits and a %; placeholders
-## and words already isolated are left alone.
+## and words already isolated are left alone. A sign right after a digit, Latin letter, brace, sign or %
+## is a dash inside a word (`10-20%`, `A-1`), not the start of a signed number: such words are left whole.
 static func isolate_signed(text: String) -> String:
 	var out := PackedStringArray()
 	var at := 0
@@ -219,8 +220,9 @@ static func isolate_signed(text: String) -> String:
 	var n := text.length()
 	while i < n:
 		var code := text.unicode_at(i)
-		var starts := (code == 0x2B or code == 0x2D or code == 0x2212) and i + 1 < n and _is_digit(text.unicode_at(i + 1))
-		starts = starts or (_is_digit(code) and (i == 0 or not _glues_number(text.unicode_at(i - 1))))
+		var free := i == 0 or not _glues_number(text.unicode_at(i - 1))
+		var starts := free and (code == 0x2B or code == 0x2D or code == 0x2212) and i + 1 < n and _is_digit(text.unicode_at(i + 1))
+		starts = starts or (_is_digit(code) and free)
 		if not starts or (i > 0 and text.unicode_at(i - 1) == LRI.unicode_at(0)):
 			i += 1
 			continue

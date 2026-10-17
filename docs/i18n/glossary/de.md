@@ -38,6 +38,7 @@ Widths measured with `assets/fonts/pixel.fnt` (sum of advances, `{x}` = 888, big
 | wardrobe | KLEIDERSCHRANK | |
 | tailor | SCHNEIDER | |
 | shop | SHOP | |
+| story (mode) | STORY | kept like LEVEL / SHOP / UPGRADES (gaming loanword): `title.story`, `hub.station.story`, `hub.coins.total`; open owner question (re-review low), not an oversight |
 | trail | SPUR | |
 | paper (map) | PAPIER | |
 | spin | DREHEN / DREH | `GRATIS DREHEN` on the 84 px button |

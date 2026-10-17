@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Captures every screen / overlay / HUD state (the 53 of tests/test_i18n_screens.gd) in every locale,
+# Captures every screen / overlay / HUD state (the states of tests/test_i18n_screens.gd plus the story lines and stills of tests/capture_i18n.gd) in every locale,
 # checks every visible text for missing glyphs, and builds contact sheets (docs/i18n/review/README.md).
 # Usage: ./tools/i18n_capture.sh [--locales en,de,...|all] [--states slug,...|all] [--out DIR] [-j N] [--keep-backdrop] [--measure-boxes] [--no-sheets] [--gate]
 # --gate: exit 1 when the goo-ink check finds glyph ink on a goo band in any state of any locale, other than the
 # accepted exceptions in tools/i18n_goo_ink_allow.txt (docs/i18n/review/README.md "Goo-ink gate"), or a locale
 # captured fewer states than the suite builds.
+# Exit 3 when the real save's md5 changed during the run (it must never be touched).
 # Output (default build/i18n-shots/, git-ignored): <locale>/<state>.png, sheets/, missing_glyphs.json, logs/.
 set -e
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -42,8 +43,15 @@ fi
 [ "$states" != "all" ] && extra+=("--states=$states")
 case "$out" in /*) ;; *) out="$PWD/$out" ;; esac
 case "$out" in *"/.screens"*) echo "refusing to write into .screens/ (screenshot.sh clears it)" >&2; exit 2 ;; esac
-save="$HOME/Library/Application Support/SlimeTime_R1/save.cfg"
-before=""; [ -f "$save" ] && before="$(md5 -q "$save" 2>/dev/null || md5sum "$save" | cut -d' ' -f1)"
+# The real save (project.godot: use_custom_user_dir, SlimeTime_R1): macOS, Linux ($XDG_DATA_HOME or ~/.local/share).
+# Its md5 is compared before / after; a change fails the run. Absent on this machine: a note, nothing to compare.
+save=""
+for cand in "$HOME/Library/Application Support/SlimeTime_R1/save.cfg" "${XDG_DATA_HOME:-$HOME/.local/share}/SlimeTime_R1/save.cfg"; do
+    [ -f "$cand" ] && { save="$cand"; break; }
+done
+md5of() { md5 -q "$1" 2>/dev/null || md5sum "$1" | cut -d' ' -f1; }
+before=""; [ -n "$save" ] && before="$(md5of "$save")"
+[ -z "$save" ] && echo "real save not found (macOS / Linux SlimeTime_R1 user dir): md5 check skipped"
 start=$SECONDS
 mkdir -p "$out/logs" "$out/json"
 for l in ${locales//,/ }; do rm -rf "$out/$l"; rm -f "$out/json/missing_$l.json" "$out/json/states_$l.json"; done
@@ -84,7 +92,18 @@ if gate:
     print("goo-ink gate: " + ("FAIL" if unexpected or short else "PASS"))
     sys.exit(1 if unexpected or short else 0)
 PY
-after=""; [ -f "$save" ] && after="$(md5 -q "$save" 2>/dev/null || md5sum "$save" | cut -d' ' -f1)"
-echo "real save md5 before/after: ${before:-none} / ${after:-none} $([ "$before" = "$after" ] && echo '(unchanged)' || echo '(CHANGED!)')"
+if [ -n "$save" ]; then
+    after=""; [ -f "$save" ] && after="$(md5of "$save")"
+    if [ "$before" = "$after" ]; then
+        echo "real save md5 before/after: $before / $after (unchanged)"
+    else
+        echo "real save md5 before/after: $before / ${after:-gone} (CHANGED!) $save" >&2
+        status=3
+    fi
+else
+    for cand in "$HOME/Library/Application Support/SlimeTime_R1/save.cfg" "${XDG_DATA_HOME:-$HOME/.local/share}/SlimeTime_R1/save.cfg"; do
+        [ -f "$cand" ] && { echo "real save created during the run: $cand (CHANGED!)" >&2; status=3; }
+    done
+fi
 echo "total $((SECONDS - start))s -> $out"
 exit $status
