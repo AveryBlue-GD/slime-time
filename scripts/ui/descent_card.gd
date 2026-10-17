@@ -16,13 +16,18 @@ extends CanvasLayer
 
 const TILE := Vector2(96, 78)
 const TILE_Y := 47.0
+## The FLOOR n CLEARED title's line top (its capitals' ink from row 4).
+const TITLE_Y := 4.0
 const TILE_XS: Array[float] = [10.0, 112.0, 214.0]
 ## The buttons: button_h() tall on the result rows' line (UIKit.choice_y()); the card's two take the
 ## tile width (one under each outer tile), the summary's two are the standard choice row.
 const BUTTON := Vector2(96, UIKit.BUTTON_H)
+## The summary panel's English width (x 40..280); a wider translated line widens it (_fit_summary).
+const SUMMARY_W := 240.0
 const DIM := Color(0.06, 0.06, 0.1, 0.82)
-## A tile face's side room (BUTTON_TEXT_PAD), and the room the 1x icon takes before the name (8 + GAP_S).
-const FACE_PAD := 4.0
+## A tile face's side room (GAP_L: a line as wide as the room keeps the panel inset clear of the tile's
+## stripes; wider lines wrap), and the room the 1x icon takes before the name (8 + GAP_S).
+const FACE_PAD := float(UIKit.GAP_L)
 const INLINE_ICON := 11.0
 
 var game: Node
@@ -76,7 +81,7 @@ func _build_boons() -> void:
 	boons_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	boons_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(boons_root)
-	title = _centered(boons_root, "", 16, UIKit.GOLD, 4.0)
+	title = _centered(boons_root, "", 16, UIKit.GOLD, TITLE_Y)
 	# The meter carried + the next floor's refill on the left, the pot on the right.
 	var info := HBoxContainer.new()
 	info.add_theme_constant_override("separation", 3)
@@ -183,13 +188,20 @@ func _layout_boons(held: Dictionary) -> void:
 	var box_h := maxi(10, line)
 	var gap := UIKit.GAP_XS if tall else 3
 	var title_h := UIKit.title_h()
-	var info_y := 4.0 + title_h + gap
+	# A title with marks (ÉTAGE, CONCLUÍDO, ЭТАЖ) starts lower by them, so they draw from row 4 as the
+	# English capitals do (not cut by the top of the screen); everything under it moves down with it.
+	var marks := float(UIKit.ink_above(title.text, UIKit.FONT_BIG))
+	var title_y := TITLE_Y + marks
+	var info_y := title_y + title_h + gap
 	_pick_in_status = tall
-	var tiles_y := info_y + line + gap if tall else TILE_Y
+	var tiles_y := info_y + line + gap if tall else TILE_Y + marks
 	var buttons_y := float(UIKit.choice_y())
-	var status_y := minf(133.0, buttons_y - gap - line) if tall else minf(133.0, buttons_y - 4.0 - line)
-	var tile_h := status_y - gap - tiles_y if tall else TILE.y
-	_set_y(title, 4.0, title_h)
+	# (the tiles and the status line move down with the title, into the room over the buttons; the tiles
+	# give up only the rows that are not there, keeping 4 clear rows over the status line's marks)
+	var status_y := minf(133.0, buttons_y - gap - line) if tall else minf(133.0 + marks, buttons_y - 4.0 - line)
+	var tile_h := status_y - gap - tiles_y if tall \
+		else minf(TILE.y, status_y - 4.0 - float(UIKit.metrics().get("ink_above", 0)) - tiles_y)
+	_set_y(title, title_y, title_h)
 	if meter_label.get_parent().position.y != info_y:
 		meter_label.get_parent().position.y = info_y
 		pot_label.get_parent().position.y = info_y
@@ -228,6 +240,9 @@ func _layout_boons(held: Dictionary) -> void:
 	font = best.font
 	content = best.h
 	var top := floorf((tile_h - content) / 2.0)
+	if not tall:  # (a face that nearly fills the tile: its first line's marks stay under the goo lumps, row 3+)
+		var above := float(m.get("ink_above", 0))
+		top = maxf(top, minf(above + float(UIKit.GAP_S), tile_h - content - float(m.get("ink_below", 0)) - float(UIKit.GAP_S)))
 	for i in tiles.size():
 		var tile := tiles[i]
 		tile.button_pressed = false
@@ -405,12 +420,12 @@ func _build_summary() -> void:
 	summary_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.visible = false
 	root.add_child(summary_root)
-	summary_panel = UIKit.add_panel(summary_root, Rect2(40, 28, 240, 116))  # (fitted in show_summary)
+	summary_panel = UIKit.add_panel(summary_root, Rect2((UIKit.SCREEN.x - SUMMARY_W) / 2.0, 28, SUMMARY_W, 116))  # (fitted in show_summary)
 	summary_title = _centered(summary_root, Loc.t("descent.run_over", "RUN OVER"), 16, UIKit.GOLD, 8.0)
 	summary_lines = VBoxContainer.new()
 	summary_lines.add_theme_constant_override("separation", UIKit.line_spacing())  # a line_pitch() pitch (12 in English)
-	summary_lines.position = Vector2(40, 38)
-	summary_lines.custom_minimum_size = Vector2(240, 0)
+	summary_lines.position = Vector2((UIKit.SCREEN.x - SUMMARY_W) / 2.0, 38)
+	summary_lines.custom_minimum_size = Vector2(SUMMARY_W, 0)
 	summary_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	summary_root.add_child(summary_lines)
 	# NEW RUN / HUB: the choice row (CHOICE_SIZE in English; equal widths from the longer word, the
@@ -505,21 +520,61 @@ func show_summary(result: Dictionary) -> void:
 func _fit_summary() -> void:
 	var lines_height := 0.0
 	var count := 0
+	var first := ""
+	var widest := 0.0
 	for child: Control in summary_lines.get_children():
 		if child.is_queued_for_deletion():
 			continue
-		lines_height += child.get_combined_minimum_size().y
+		if count == 0 and child is Label:
+			first = (child as Label).text
+		widest = maxf(widest, child.get_combined_minimum_size().x)
 		count += 1
+	# A line wider than the English panel's text room (a translation) widens the panel, centred, up to
+	# the screen's text column; one still wider breaks onto two lines.
+	var panel_w := clampf(widest + 2 * UIKit.GAP_L, SUMMARY_W, UIKit.SCREEN.x - 2 * UIKit.EDGE)
+	_fit_rows(panel_w - 2 * UIKit.GAP_L)
+	for child: Control in summary_lines.get_children():
+		if not child.is_queued_for_deletion():
+			lines_height += child.get_combined_minimum_size().y
 	lines_height += maxf(count - 1, 0) * UIKit.line_spacing()
-	var panel_h := UIKit.PANEL_PAD * 2 + lines_height
+	# The first line's marks (KHÔ CẠN Ở TẦNG) go under the panel's goo lump row, not on it.
+	var marks := float(UIKit.accent_room() if UIKit.ink_above(first) > 0 else 0)
+	var panel_h := UIKit.PANEL_PAD * 2 + lines_height + marks
+	var panel_x := roundf((UIKit.SCREEN.x - panel_w) / 2.0)
+	if summary_panel.position.x != panel_x or summary_panel.size.x != panel_w:
+		summary_panel.position.x = panel_x
+		summary_panel.size.x = panel_w
+		summary_lines.position.x = panel_x
+		summary_lines.custom_minimum_size.x = panel_w
 	# The title's box (16 px: 14 rows + 4 px drips + 2 shadow in English) and a 6 px gap: 26.
 	var title_block := UIKit.title_h() + 6.0
 	var block_top := floorf((UIKit.choice_y() - 4.0 - (title_block + panel_h)) / 2.0)
 	summary_title.position.y = block_top
 	summary_panel.position.y = block_top + title_block
 	summary_panel.size.y = panel_h
-	summary_lines.position.y = summary_panel.position.y + UIKit.PANEL_PAD
+	summary_lines.position.y = summary_panel.position.y + UIKit.PANEL_PAD + marks
 	summary_lines.size.y = 0
+
+
+## Breaks every summary text wider than `room` onto two balanced lines (centred); the ticket row's
+## text keeps its icon beside its first line.
+func _fit_rows(room: float) -> void:
+	for child: Control in summary_lines.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child.get_combined_minimum_size().x <= room:
+			continue
+		var label: Label = child as Label
+		var extra := 0.0
+		if label == null:
+			for part in child.get_children():
+				if part is Label:
+					label = part
+				elif part is Control:
+					extra += (part as Control).get_combined_minimum_size().x + float(child.get_theme_constant("separation"))
+		if label and not "\n" in label.text:
+			label.text = UIKit.break_line(label.text, int(room - extra))
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 ## The HUD's pods would show through the card's dim sheet under its title and pot line: hidden while

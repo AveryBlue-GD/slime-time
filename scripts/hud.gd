@@ -24,6 +24,8 @@ const AREA_TOP_UNDER_ATTEMPT := 44
 const STORY_GAP := 15
 ## Clear space kept between the area name / story line (drips included) and any HUD pod.
 const TEXT_CLEARANCE := 2
+## The same beside a pod (a text on a pod's rows): closer than this the line reads as part of the pod.
+const TEXT_SIDE_CLEARANCE := UIKit.GAP_XL
 const FRAME_COLOR := Color8(26, 28, 44)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
@@ -51,7 +53,15 @@ var _area_tween: Tween
 var _area_hold := 0.0
 ## Where the area name goes when nothing is in its way (AREA_TOP, or under the attempt pod).
 var _area_base := float(AREA_TOP)
+## The player slime's rect on screen as the level starts (game.gd, set_player_rect; empty = none): the
+## area texts keep clear of it so the intro never covers the slime.
+var player_rect := Rect2()
 var _message_panel: PanelContainer
+var _message_style: StyleBox
+## The panel's own top margin (panel_style), and the English one (under the goo band and its lumps): a
+## first line with marks starts at least accent_room() lower than that.
+var _message_margin_top := 0.0
+const MESSAGE_TEXT_TOP := 6.0
 var time_label: Label
 ## Coins in hand (top bar, beside the slime meter), and coins still to find in this story level
 ## (top bar, beside the level name; hidden in randomizer mazes, which have none).
@@ -125,6 +135,8 @@ const HEAT_ROW_LIFT := 13
 var _lift := 0
 ## The rewards row's widest English layout; a wider translation wraps its last text (_wrap_rewards).
 const REWARDS_W := 296
+## Rows kept under a text-only rewards row (the panel's last line) so its drips clear the goo band.
+const REWARDS_DRIP_ROOM := 3
 var _rewards_row2: HBoxContainer
 ## The result text as shown in English layout (show_message); _fit_result may pair its lines.
 var _message_text := ""
@@ -282,7 +294,9 @@ func _ready() -> void:
 	message_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(message_center)
 	_message_panel = PanelContainer.new()
-	_message_panel.add_theme_stylebox_override("panel", UIKit.panel_style())
+	_message_style = UIKit.panel_style()
+	_message_margin_top = _message_style.content_margin_top
+	_message_panel.add_theme_stylebox_override("panel", _message_style)
 	_message_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	message_center.add_child(_message_panel)
 	var message_box := VBoxContainer.new()
@@ -730,7 +744,30 @@ func show_rewards(info: Dictionary) -> void:
 				_reward_label(Loc.t("result.replayed_seed", "REPLAYED SEED"), MEDAL_OWNED)  # i18n: max 120px
 	rewards_row.visible = true
 	_wrap_rewards()
+	_drip_room()
 	_queue_fit()
+
+
+## The panel's last rewards row, when its text is taller than its icons (text only, or a wrapped text
+## beside the medals): its drips would sit on the bottom goo band, so it keeps REWARDS_DRIP_ROOM rows
+## under its line box.
+func _drip_room() -> void:
+	rewards_row.custom_minimum_size.y = 0
+	var last := _rewards_row2 if _rewards_row2 and _rewards_row2.visible else rewards_row
+	last.custom_minimum_size.y = 0
+	var h := 0.0
+	var icons := 0.0
+	for child: Control in last.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child is Label:
+			h = maxf(h, child.get_combined_minimum_size().y)
+		else:
+			icons = maxf(icons, child.get_combined_minimum_size().y)
+	# (a one-line text beside an 8 px medal / ticket icon is centred clear of the band; a taller script's
+	# line box holds its own descent: no drips)
+	if h > icons and not UIKit.tall_script():
+		last.custom_minimum_size.y = h + REWARDS_DRIP_ROOM
 
 
 ## `text` with every line wider than the text column (REWARDS_W) broken onto two balanced lines at a
@@ -937,32 +974,81 @@ func _fade_area_texts(hold: float) -> void:
 
 ## Moves the area name and the story line down (each as a whole line) until their text, drips
 ## included, is TEXT_CLEARANCE clear of every pod showing in the top corners (the HEAT pod, an
-## ASSIST or DEV tag, a long line under the coin pods). Pods are measured by their minimum sizes, so
-## it works before the bars have sorted.
+## ASSIST or DEV tag, a long line under the coin pods; TEXT_SIDE_CLEARANCE beside one). Pods are
+## measured by their minimum sizes, so it works before the bars have sorted.
+## The player slime (player_rect) is kept clear too: when the pods push a text onto it, the texts first
+## go back up under the timer (the story levels' place: the name only clears the attempt pod sideways),
+## and a text that still lands on the slime goes on under it.
 func _place_area_texts() -> void:
 	var pods := pod_rects()
-	var y := _clear_y(area_label, _area_base, pods)
-	area_label.offset_top = y
-	area_label.offset_bottom = y + 10
+	var ys := _stack_ys(_area_base, pods)
+	if _hits_player(ys):
+		var under_timer := _stack_ys(float(_area_top()), pods)
+		if not _hits_player(under_timer):
+			ys = under_timer
+		elif player_rect.has_area():
+			var with_player := pods.duplicate()
+			with_player.append(player_rect)
+			ys = _stack_ys(minf(_area_base, float(_area_top())), with_player)
+	area_label.offset_top = ys[0]
+	area_label.offset_bottom = ys[0] + 10
 	if story_label.text != "":
-		var story_top := y + (UIKit.line_pitch() if attempt_pod.visible else _story_gap())
+		story_label.offset_top = ys[1]
+		story_label.offset_bottom = ys[1] + 10
+
+
+## The area name's and story line's line tops from `top` (each clear of every rect in `pods`).
+func _stack_ys(top: float, pods: Array[Rect2]) -> Array[float]:
+	var y := _clear_y(area_label, top, pods)
+	var story_top := y + (UIKit.line_pitch() if attempt_pod.visible else _story_gap())
+	if story_label.text != "":
 		story_top = _clear_y(story_label, story_top, pods)
-		story_label.offset_top = story_top
-		story_label.offset_bottom = story_top + 10
+	return [y, story_top]
 
 
-## The first line top from `top` down at which `label`'s centered text clears every rect in `pods`.
-func _clear_y(label: Label, top: float, pods: Array[Rect2]) -> float:
-	var width: float = label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+## True when the area name or story line at the line tops `ys` would touch the player's rect.
+func _hits_player(ys: Array[float]) -> bool:
+	if not player_rect.has_area():
+		return false
+	if _ink_rect(area_label, ys[0]).intersects(player_rect):
+		return true
+	return story_label.text != "" and _ink_rect(story_label, ys[1]).intersects(player_rect)
+
+
+## The player slime's screen rect (from game.gd once the camera is placed): the area texts move clear.
+func set_player_rect(rect: Rect2) -> void:
+	player_rect = rect
+	if area_label.visible:
+		_place_area_texts()
+
+
+## `label`'s centred text at line top `top`: marks above and drips below included, TEXT_CLEARANCE
+## around it (TEXT_SIDE_CLEARANCE on the sides).
+func _ink_rect(label: Label, top: float) -> Rect2:
+	var width: float = label.get_theme_font("font").get_string_size(_widest_line(label.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var lines := label.text.count("\n") + 1  # (a story line broken by _wrap_story_line)
 	var x := roundf((UIKit.SCREEN.x - width) / 2.0)
 	var metrics := UIKit.metrics()
 	var above := float(metrics.ink_above)
 	var tall := float(UIKit.text_block_h(lines) + int(metrics.ink_below))  # line boxes + drips (TEXT_BODY + TEXT_DRIP in English)
+	return Rect2(x, top - above, width, above + tall).grow_individual(TEXT_SIDE_CLEARANCE, TEXT_CLEARANCE, TEXT_SIDE_CLEARANCE, TEXT_CLEARANCE)
+
+
+static func _widest_line(text: String) -> String:
+	var widest := ""
+	for line in text.split("\n"):
+		if UIKit.text_w(line) > UIKit.text_w(widest):
+			widest = line
+	return widest
+
+
+## The first line top from `top` down at which `label`'s centered text clears every rect in `pods`.
+func _clear_y(label: Label, top: float, pods: Array[Rect2]) -> float:
+	var above := float(UIKit.metrics().ink_above)
 	var moved := true
 	while moved:
 		moved = false
-		var ink := Rect2(x, top - above, width, above + tall).grow(TEXT_CLEARANCE)
+		var ink := _ink_rect(label, top)
 		for pod in pods:
 			if ink.intersects(pod):
 				top = pod.end.y + TEXT_CLEARANCE + above
@@ -1031,16 +1117,25 @@ func hide_area_texts() -> void:
 
 func set_level_text(text: String) -> void:
 	level_label.text = text
-	# A translation too long for the room right of the timer pod wraps onto two lines there (the pod
-	# grows down, never over the timer); English names always fit on one.
+	# A name too long for the room right of the timer pod (GAP_L clear of it) wraps onto two lines
+	# there (the pod grows down, never over or against the timer): a translation, or English's longest
+	# RANDOM MAZE #n  CODE LVx (YOU y).
 	var timer_pod := time_label.get_parent().get_parent() as Control
 	var timer_right := (UIKit.SCREEN.x + timer_pod.get_combined_minimum_size().x) / 2.0
 	var pod := level_label.get_parent().get_parent() as Control
 	var style := pod.get_theme_stylebox("panel")
-	var room := floorf(UIKit.SCREEN.x - UIKit.hud_edge().x - timer_right - UIKit.GAP_XS - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT))
-	var wide := UIKit.locale() != UIKit.Lang.SOURCE_LOCALE and UIKit.text_w(text) > room  # (English: the source layout)
+	var room := floorf(UIKit.SCREEN.x - UIKit.hud_edge().x - timer_right - UIKit.GAP_L - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT))
+	var wide := UIKit.text_w(text) > room
 	if wide:
-		level_label.text = wrap_text(text, room)
+		# At the text's own double space (LEVEL 7/10 / HARD), else at the space that balances the two
+		# lines (LABIRINTO / ALEATÓRIO #1, never a lone #1), else as full as each line goes (CJK).
+		var halves := text.split("  ", false)
+		var wrapped := wrap_text(text, room)
+		if not (halves.size() == 2 and wrapped == halves[0].strip_edges() + "\n" + halves[1].strip_edges()):
+			var balanced := UIKit.break_line(text, int(room))
+			if balanced != text:
+				wrapped = balanced
+		level_label.text = wrapped
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if wide else HORIZONTAL_ALIGNMENT_LEFT
 	_pods_changed()
 
@@ -1106,25 +1201,34 @@ func _fit_result() -> void:
 		return  # (English metrics: the source layout as built)
 	var metrics := UIKit.metrics()
 	var choices := _choice_root.visible
-	var below := float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40)
+	var bottom := float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40)
+	var below := bottom
+	# The first line's marks go under the goo band's lump row, not on it (docs/ui-rules.md 10.1).
+	var first := _message_text.split("\n")[0]
+	# (at least the English 6 + the locale's accent room; a panel_style that already keeps that room adds nothing)
+	var room := UIKit.accent_room() if UIKit.ink_above(first) > 0 else 0
+	_message_style.content_margin_top = maxf(_message_margin_top, MESSAGE_TEXT_TOP + room)
 	# The banner: GAP_S over the choice row (150 = 153 - 3 in English), as tall as its words.
 	_banner_words.add_theme_constant_override("separation", int(metrics.ink_below) + 3)
 	_set_banner_compact(false)
 	if record_banner.visible:
 		_place_banner(below)
 		below = record_banner.offset_top
-	(_message_panel.get_child(0) as BoxContainer).add_theme_constant_override("separation", 4)
+	var box := _message_panel.get_child(0) as BoxContainer
+	box.add_theme_constant_override("separation", 4)
 	message.text = _message_text
 	var top := _panel_top()
-	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top and record_banner.visible:
-		_set_banner_compact(true)
-		_place_banner(float(UIKit.choice_y() if choices else int(UIKit.SCREEN.y) - 40))
-		below = record_banner.offset_top
+	# Too tall for the room: the panel's rows pack GAP_XS apart, then its lines pair up, and only then
+	# does the record banner go compact (the big NEW RECORD! is kept wherever the panel can make room).
 	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top:
-		(_message_panel.get_child(0) as BoxContainer).add_theme_constant_override("separation", UIKit.GAP_XS)
+		box.add_theme_constant_override("separation", UIKit.GAP_XS)
 	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top:
 		message.text = _pair_lines(_message_text)
 		top = _panel_top()
+	if _message_panel.get_combined_minimum_size().y > below - UIKit.GAP_XS - top and record_banner.visible:
+		_set_banner_compact(true)
+		_place_banner(bottom)
+		below = record_banner.offset_top
 	_message_center.offset_top = top
 	_message_center.offset_bottom = below - UIKit.GAP_XS - UIKit.SCREEN.y
 

@@ -119,16 +119,9 @@ func _draw_arrow(tip_center: Vector2, dir: Vector2, color: Color) -> void:
 func _draw_key(center_top: Vector2, text: String, width: float, alpha: float, fit := false) -> void:
 	var font := ThemeDB.fallback_font
 	var arrow: bool = text in ["UP", "DOWN", "LEFT", "RIGHT"]
-	# `fit`: a translated word (the touch JUMP key) wider or taller than the key widens / heightens it,
-	# never cut: KEY_PAD clear each side, its line box inside the 1 px edge. The key grows upward, so
-	# its bottom stays clear of the slime. (The slimy font's 7 px line keeps the English 9 px key.)
-	# The key names (W A S D, SPACE: the OS's, untranslated) keep the source 29 / 9 px keys.
-	var line_h := font.get_height(8)
-	var height := KEY if not fit or line_h <= UIKit.TEXT_BODY else line_h + 2.0
-	if fit:
-		var text_w := ceilf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
-		if text_w + 2.0 * KEY_PAD > width:
-			width = text_w + 2.0 * KEY_PAD + float(int(text_w + width) % 2)  # (same parity: centred on whole pixels)
+	var key := key_size(font, text, width, fit)
+	width = key.x
+	var height := key.y
 	var top := center_top - Vector2(floorf(width / 2.0), height - KEY)
 	var rect := Rect2(top.round(), Vector2(width, height))
 	draw_rect(rect, Color(KEY_EDGE, alpha))
@@ -142,6 +135,22 @@ func _draw_key(center_top: Vector2, text: String, width: float, alpha: float, fi
 		# inside (moved down by its ink_nudge, like the buttons' text).
 		var baseline := 7.0 if height == KEY else 1.0 + font.get_ascent(8) + float(UIKit.metrics().get("ink_nudge", 0))
 		draw_string(font, Vector2(rect.position.x, rect.position.y + baseline), text, HORIZONTAL_ALIGNMENT_CENTER, width, 8, Color(KEY_EDGE, alpha))
+
+
+## A key cap's size for `text` (`width` wide as designed, KEY tall). A word wider than the key (SPACE,
+## a long OS key name, the translated touch JUMP) widens it, never cut, centred on the same pixel. `fit`
+## (the translated touch JUMP): KEY_PAD clear each side, and a script taller than the slimy font's
+## 7 px line heightens it (its line box inside the 1 px edge; the key grows upward, so its bottom stays
+## clear of the slime). A key name (W A S D, SPACE: the OS's, untranslated) keeps the 9 px height and
+## widens only once its text would touch the key's 1 px edge, so the 9 px W A S D keys keep their size.
+static func key_size(font: Font, text: String, width: float, fit := false) -> Vector2:
+	var line_h := font.get_height(8)
+	var height := KEY if not fit or line_h <= UIKit.TEXT_BODY else line_h + 2.0
+	if not text in ["UP", "DOWN", "LEFT", "RIGHT"]:
+		var text_w := ceilf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+		if text_w + 2.0 * KEY_PAD > width if fit else text_w > width - 2.0:
+			width = text_w + 2.0 * KEY_PAD + float(int(text_w + width) % 2)  # (same parity: centred on whole pixels)
+	return Vector2(width, height)
 
 
 ## The label of the key bound to an action ("W", "SPACE", "UP"...), or the default.

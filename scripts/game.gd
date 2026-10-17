@@ -315,6 +315,10 @@ var wall_health := {}
 ## Art theme id (see Themes): one per story level, random per randomizer maze.
 var theme := Themes.DUNGEON
 var _look_ahead := Vector2.ZERO
+## The slime's drawn body around its position (15 x 12 px of ink, a squash or the shadow 1 px more), and
+## the room a hat takes over its head (Hats.HEAD: up to 11 rows): the area texts keep clear of them.
+const SLIME_SCREEN_HALF := Vector2(9, 8)
+const HAT_SCREEN_H := 11.0
 ## The pixel-locked camera (see _set_pixel_cam): on, its eased position, and "start it on the slime".
 var _pixel_cam := false
 var _cam_smooth := Vector2.ZERO
@@ -518,6 +522,7 @@ func _ready() -> void:
 	camera.limit_bottom = maze.size.y * TILE + edge
 	camera.reset_smoothing()
 	_cam_fresh = true
+	hud.set_player_rect(_slime_screen_rect())  # (the level's name and story line keep clear of the slime)
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
@@ -737,6 +742,20 @@ func _update_ambience(delta: float) -> void:
 	ambient_event_player.volume_db = randf_range(AMBIENT_EVENT_DB.x, AMBIENT_EVENT_DB.y) + AMBIENT_EVENT_TRIM.get(theme, 0.0)
 	ambient_event_player.pitch_scale = randf_range(0.9, 1.08)
 	ambient_event_player.play()
+
+
+## The slime's rect on screen (with its hat) where the camera starts a level: centred on the slime,
+## held inside the camera's limits as Camera2D does (no zoom, no offset at the start).
+func _slime_screen_rect() -> Rect2:
+	var view := UIKit.SCREEN
+	var corner := slime.global_position - view / 2.0
+	corner.x = maxf(minf(corner.x, camera.limit_right - view.x), camera.limit_left)
+	corner.y = maxf(minf(corner.y, camera.limit_bottom - view.y), camera.limit_top)
+	var at := (slime.global_position - corner).round()
+	var body := Rect2(at - SLIME_SCREEN_HALF, SLIME_SCREEN_HALF * 2.0)
+	if hat:  # a hat sits on the head and can stand HAT_SCREEN_H over it
+		body = body.merge(Rect2(at.x - SLIME_SCREEN_HALF.x - 4.0, at.y - SLIME_SCREEN_HALF.y - HAT_SCREEN_H, SLIME_SCREEN_HALF.x * 2.0 + 8.0, HAT_SCREEN_H))
+	return body
 
 
 ## Eases the camera ahead of the slime in the direction it's gliding.
