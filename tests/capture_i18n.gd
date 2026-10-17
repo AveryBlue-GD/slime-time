@@ -89,6 +89,7 @@ func _initialize() -> void:
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	Hats.frozen_flow_step = -1
+	GooBox.seed_ids.clear()
 	_result()
 	quit(1 if failures else 0)
 
@@ -127,6 +128,7 @@ func _scan(state: String, node: Node) -> void:  # (a coroutine here: the suite a
 	node.process_mode = Node.PROCESS_MODE_DISABLED
 	if UIKit._text_material:
 		UIKit._text_material.set_shader_parameter("seed", float(SEED % 10000))
+	_stable_lumps()
 	var img := await _render()
 	if img == null or img.is_empty():
 		push_error("capture_i18n: no frame for %s" % state)
@@ -140,6 +142,24 @@ func _scan(state: String, node: Node) -> void:  # (a coroutine here: the suite a
 	await _goo_ink_frozen(state, node, img)
 	captured.append(slug)
 	node.process_mode = mode
+
+
+## Every goo box's lumps seeded from its place in the tree (child indices from the root), not from its
+## canvas item's RID: the RID counter depends on everything built before (an extra text shaped, a node
+## hidden), which moved the lumps of every later state; with this a build is compared state by state.
+func _stable_lumps() -> void:
+	GooBox.seed_ids.clear()
+	var stack: Array[Array] = [[root, "r"]]
+	while not stack.is_empty():
+		var top: Array = stack.pop_back()
+		var n: Node = top[0]
+		var path: String = top[1]
+		var item := n as CanvasItem
+		if item:
+			GooBox.seed_ids[item.get_canvas_item().get_id()] = hash(path)
+			item.queue_redraw()
+		for i in n.get_child_count():
+			stack.append([n.get_child(i), "%s/%d" % [path, i]])
 
 
 static func slugify(state: String) -> String:

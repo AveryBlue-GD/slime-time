@@ -1,0 +1,3 @@
+# Accepted goo-ink findings for ./tools/i18n_capture.sh --gate: one per line, "<locale> <state-slug> <box id>"
+# (as in OUT/json/goo_ink_<locale>.json), a "#" comment after it saying why. Empty since the leftover pass
+# (docs/i18n/review/leftovers.md): every state of every locale has 0 glyph ink px on a goo band.

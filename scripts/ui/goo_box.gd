@@ -21,6 +21,10 @@ static var _themes: Array[WeakRef] = []
 ## (and their WeakRef objects) stay bounded however many screens are opened.
 const PRUNE_EVERY := 32
 static var _registered := 0
+## Lump seeds by canvas item id, for the reviewer captures only (tests/capture_i18n.gd: each box's place in
+## the tree instead of its RID, so a state's lumps do not change when an earlier state allocated one RID
+## more or less). Empty in the game: every box seeded from its RID, as always.
+static var seed_ids := {}
 
 ## Dried-up goo for disabled buttons.
 const DRIED := {
@@ -182,7 +186,7 @@ func _draw(item: RID, rect: Rect2) -> void:
 	if w < 6 or h < 6:
 		return
 	_drawn[item] = true
-	var key := Vector3i(item.get_id(), w, h)
+	var key := Vector3i(seed_ids.get(item.get_id(), item.get_id()), w, h)
 	var layout: Array = _layouts.get(key, [])
 	if layout.is_empty():
 		if _layouts.size() >= MAX_LAYOUTS:
@@ -213,7 +217,7 @@ func _draw(item: RID, rect: Rect2) -> void:
 ## the final grid into horizontal runs of one shade. Offsets are from the box's top-left corner.
 func _layout(item_id: int, w: int, h: int) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([item_id, w, h])
+	rng.seed = hash([seed_ids.get(item_id, item_id), w, h])
 	var pixels := PackedInt32Array()
 	var put := func(px: int, py: int, shade: int) -> void:
 		pixels.append(px)
