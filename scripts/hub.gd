@@ -198,6 +198,10 @@ var _time := 0.0
 var tree_notice: PanelContainer
 ## Seconds the tree notice stays up before it fades.
 const TREE_NOTICE_TIME := 5.0
+## The notice's narrowest side padding (it is PANEL_PAD): the goo panel's side band and lumps take its
+## first 4 columns, so 5 keeps the text's ink 1 clear column off the lumps, as the panel's rows keep 1 clear
+## row over its bottom lumps (fix pass R3; 4 had the last digit on the right lump).
+const NOTICE_MIN_PAD := UIKit.GAP_M + 1
 
 
 func _ready() -> void:
@@ -502,34 +506,42 @@ func _show_tree_notice(root: Control) -> void:
 
 
 ## The notice is as wide as its lines; wider than the room between the stations on its rows (a long
-## translation: pseudo's notice covered the cabinet and the chair), each line that is too wide breaks
-## onto two at the space that balances them, so the notice keeps between the stations (fix pass F3a),
-## and it moves up to stay clear of the wheel. The station straight behind it (across the centre)
-## doesn't count (the English notice covers its foot too). English: unchanged (it fits).
+## translation: pseudo's notice covered the cabinet and the chair), it first narrows its side padding
+## (PANEL_PAD down to NOTICE_MIN_PAD) and, where the room on the two sides differs, sits off the centre;
+## then the same with the stations GAP_XS (not GAP_S) clear (fix pass R3: es / pt_BR / fr / it / de / id /
+## ru / tr keep two lines); failing that, each line that is too wide breaks onto two at the space that
+## balances them (fix pass F3a) and it moves up to stay clear of the wheel. The room is measured on the
+## stations' ink in their resting frame; an idle animation that would reach under the notice (the
+## wardrobe's door swing) waits until the notice has faded. The station straight behind it (across the
+## centre) doesn't count (the English notice covers its foot too). English: unchanged (it fits).
 func _fit_tree_notice() -> void:
 	if tree_notice == null:
 		return
 	var box := Rect2(tree_notice.position, tree_notice.size)
-	var left := 0.0
-	var right := 320.0
-	for station: Dictionary in stations:
-		if station.flat:
-			continue
-		var sprite: Sprite2D = station.sprite
-		var r := Rect2(sprite.position + sprite.offset, Vector2(station.size))
-		if r.end.y <= box.position.y or r.position.y >= box.end.y:
-			continue
-		if r.end.x <= 160.0:
-			left = maxf(left, r.end.x + UIKit.GAP_S)
-		elif r.position.x >= 160.0:
-			right = minf(right, r.position.x - UIKit.GAP_S)
-	var room := 2.0 * minf(160.0 - left, right - 160.0)
 	var wheel_top := rotor.position.y + rotor.offset.y
+	var side := _notice_room(int(box.position.y), int(wheel_top - UIKit.GAP_S), UIKit.GAP_S)
+	var room := 2.0 * minf(160.0 - side.x, side.y - 160.0)
 	if box.size.x <= room:
 		if box.end.y > wheel_top - UIKit.GAP_S:  # (a taller script's two lines reached the wheel: hi, ar)
 			tree_notice.position.y = maxf(UIKit.EDGE, wheel_top - UIKit.GAP_S - box.size.y)
+		_hold_anims_under_notice()  # (fr / it: the open door would come 1 column from the box; English: none)
 		return
 	var style := tree_notice.get_theme_stylebox("panel")
+	var text_w := box.size.x - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT)
+	for gap: int in [UIKit.GAP_S, UIKit.GAP_XS]:
+		var free := _notice_room(int(box.position.y), int(wheel_top - UIKit.GAP_S), gap)
+		for pad: int in range(UIKit.PANEL_PAD - 1, NOTICE_MIN_PAD - 1, -1):  # (8 fit no more: 7 .. 5)
+			var w := text_w + 2 * pad
+			if w > free.y - free.x:
+				continue
+			style.content_margin_left = pad
+			style.content_margin_right = pad
+			tree_notice.reset_size()
+			tree_notice.size = tree_notice.get_combined_minimum_size()
+			var x := clampf(roundf((320.0 - w) / 2.0), free.x, free.y - w)
+			tree_notice.position = Vector2(x, minf(box.position.y, wheel_top - UIKit.GAP_S - tree_notice.size.y))
+			_hold_anims_under_notice()
+			return
 	var text_room := int(room - style.get_margin(SIDE_LEFT) - style.get_margin(SIDE_RIGHT))
 	for label: Label in tree_notice.get_child(0).get_children():
 		if UIKit.text_w(label.text) > text_room:
@@ -541,6 +553,63 @@ func _fit_tree_notice() -> void:
 	# straight behind it, never above the HUD row)
 	var y := clampf(wheel_top - UIKit.GAP_S - size.y, UIKit.EDGE, box.position.y)
 	tree_notice.position = Vector2(roundf((320.0 - size.x) / 2.0), roundf(y))
+	_hold_anims_under_notice()
+
+
+## The free columns for the notice on screen rows `top` .. `bottom`: Vector2(left, right), `gap` columns
+## clear of the ink of every station left / right of the centre in its resting frame (frame 0; every frame
+## of a looping station). The station straight behind (across the centre) doesn't count.
+func _notice_room(top: int, bottom: int, gap: int) -> Vector2:
+	var left := 0.0
+	var right := 320.0
+	for station: Dictionary in stations:
+		if station.flat:
+			continue
+		var frames: Array = [0] if not station.anims.is_empty() else range(maxi(1, station.frames))
+		var cols := _station_ink_cols(station, top, bottom, frames)
+		if cols.y < 160.0:
+			left = maxf(left, cols.y + 1.0 + gap)
+		elif cols.x >= 160.0:
+			right = minf(right, cols.x - gap)
+	return Vector2(left, right)
+
+
+## Postpones each station idle animation whose frames would reach within GAP_XS of the notice (the
+## wardrobe's door swinging open toward it) until the notice has faded. English: nothing is held.
+func _hold_anims_under_notice() -> void:
+	var box := Rect2(tree_notice.position, tree_notice.size)
+	for station: Dictionary in stations:
+		if station.flat:
+			continue
+		for anim: Dictionary in station.anims:
+			var frames: Array = range(maxi(1, station.frames))
+			if anim.has("seq"):
+				frames = anim.seq.map(func(step: Array) -> int: return step[0])
+			var cols := _station_ink_cols(station, int(box.position.y), int(box.end.y), frames)
+			if cols.x > cols.y or (cols.x <= 160.0 and cols.y >= 160.0):
+				continue
+			if cols.y + UIKit.GAP_XS >= box.position.x and cols.x - UIKit.GAP_XS < box.end.x:
+				anim.next = maxf(anim.next, _time + TREE_NOTICE_TIME + 0.5)
+
+
+## A station's ink columns on screen rows `top` .. `bottom` (end excluded) over `frames` of its current
+## view: Vector2(first x, last x), (INF, -INF) when it has no ink on those rows.
+func _station_ink_cols(station: Dictionary, top: int, bottom: int, frames: Array) -> Vector2:
+	var sprite: Sprite2D = station.sprite
+	var size: Vector2i = station.size
+	var origin := (sprite.position + sprite.offset).round()
+	var image := sprite.texture.get_image()
+	var row: int = 0 if station.flat else station.view
+	var cols := Vector2(INF, -INF)
+	for frame: int in frames:
+		for y in range(maxi(top - int(origin.y), 0), mini(bottom - int(origin.y), size.y)):
+			for x in size.x:
+				var at := Vector2i(frame * size.x + x, row * size.y + y)
+				if at.x >= image.get_width() or at.y >= image.get_height() or image.get_pixelv(at).a <= 0.0:
+					continue
+				var screen_x := origin.x + (size.x - 1 - x if sprite.flip_h else x)
+				cols = Vector2(minf(cols.x, screen_x), maxf(cols.y, screen_x))
+	return cols
 
 
 ## The trapdoor's confirm panel: LEAVE THE HUB? with QUIT and BACK (BACK has the focus, so a

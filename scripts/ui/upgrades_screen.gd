@@ -339,23 +339,54 @@ func _place_hint() -> void:
 		hint.offset_bottom = hint.offset_top + UIKit.line_h() + 2
 		return
 	var lines := 1 if page != "coins" else 2
-	# A translated line wider than the text column (EDGE in from each side) wraps inside it.
+	# A translated line wider than the text column (EDGE in from each side) breaks onto two at the space
+	# that balances them (fix pass R3: the autowrap left one word alone on the second line, pseudo's
+	# COINS note); a line with no such space (CJK, Thai) wraps inside the column.
 	var column := UIKit.SCREEN.x - 2.0 * UIKit.EDGE
+	if UIKit.text_w(hint.text) > column:
+		var broken: Array[String] = []
+		for line in hint.text.split("\n"):
+			broken.append(UIKit.break_line(line, int(column)) if UIKit.text_w(line) > column else line)
+		hint.text = "\n".join(broken)
 	var wide := UIKit.text_w(hint.text) > column
 	hint.autowrap_mode = UIKit.autowrap_mode() if wide else TextServer.AUTOWRAP_OFF
 	hint.offset_left = UIKit.EDGE if wide else 0.0
 	hint.offset_right = -UIKit.EDGE if wide else 0.0
 	if wide:
 		lines = UIKit.wrapped_lines(hint.text, column)
+	else:
+		lines = maxi(lines, hint.text.count("\n") + 1)
 	var hint_height := UIKit.text_block_h(lines)  # 7 / 7 + LINE_SPACING + 7 in English
+	var font: Font = UIKit.font_for()
+	var line_h := UIKit.line_h()
 	if page == "coins" and _coin_plan.get("hint_small", false):
 		var small: Font = get_node("/root/Language").small_font(UIKit.locale())
 		if small:
 			hint.add_theme_font_override("font", small)
-			hint_height = lines * int(small.get_height(UIKit.FONT)) + (lines - 1) * UIKit.line_spacing()
+			font = small
+			line_h = int(small.get_height(UIKit.FONT))
+			hint_height = lines * line_h + (lines - 1) * UIKit.line_spacing()
 	var rows_bottom: int = _rows_bottom[page]
 	hint.offset_top = rows_bottom + floori((UIKit.bottom_row_y() - rows_bottom - hint_height) / 2.0)
+	if page == "coins" and UIKit.tall_script():
+		_clear_hint_of_rows(font, line_h, lines, rows_bottom)
 	hint.offset_bottom = hint.offset_top + hint_height + 2
+
+
+## A taller script's COINS hint, centred by its line boxes, can start its ink right under the last row's
+## drips (Devanagari's upper matras: 1 clear row, then 0 with the 22 px rows of fix pass R2): it moves down
+## until its first ink is GAP_XS clear rows under the drips (the panel's outline on row `rows_bottom`, its
+## drips on the next), as far as its last ink stays GAP_XS clear over the bottom row (fix pass R3).
+func _clear_hint_of_rows(font: Font, line_h: int, lines: int, rows_bottom: int) -> void:
+	var texts := hint.text.split("\n")
+	if texts.size() != lines:  # (wrapped by the label: no line of its own to measure)
+		return
+	var first := int(hint.offset_top) + UIKit.ink_rows([texts[0]], font).x
+	var last := int(hint.offset_top) + (lines - 1) * (line_h + UIKit.line_spacing()) + UIKit.ink_rows([texts[-1]], font).y
+	var want := rows_bottom + 2 + UIKit.GAP_XS
+	var room := (UIKit.bottom_row_y() - 1 - UIKit.GAP_XS) - last
+	if first < want:
+		hint.offset_top += clampi(want - first, 0, maxi(room, 0))
 
 
 ## ABILITIES on pages (_plan_abilities): shows page `index` (wrapping) and its rows only, the page button's

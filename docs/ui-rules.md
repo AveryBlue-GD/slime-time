@@ -402,6 +402,19 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   - **English panel ghosts**: a modal panel in English hides the page labels whose box reaches its goo band rows
     (`PANEL_INK_TOP` rows at the top and bottom of its rect: the SETTINGS title under SAVE CODE's top band); the
     page's buttons and the other labels keep their faint ghosts.
+- **Fix pass R3 rules** (docs/i18n/review/fixes-R3.md), no-ops in English:
+  - **A one-off panel between props is measured on their ink**: the hub notice's room is the columns `GAP_S` clear of
+    the side stations' ink in their resting frame on the notice's rows (not their sprite frames); a wider notice first
+    narrows its side padding from `PANEL_PAD` down to 5 (`NOTICE_MIN_PAD`: the goo's side band and lumps take 4
+    columns, so its text keeps 1 clear column off the lumps, as a panel's rows keep 1 clear row over its bottom lumps)
+    and sits off the centre where the two sides differ (as far as it must), then the same `GAP_XS` clear of the
+    stations, and only then breaks a line. An idle animation that would reach within `GAP_XS` of it (the wardrobe's
+    door) waits until the notice has faded.
+  - **A hint under goo rows keeps `GAP_XS` clear rows under their drips by its ink** (a taller script: Devanagari's
+    upper matras under the last COINS row), not by its line box; it moves down as far as its last ink stays `GAP_XS`
+    over the bottom row.
+  - **A wrapped note breaks at the balanced space** (`UIKit.break_line`) where its language spaces its words: no
+    one-word line under a full one (the COINS notes; CJK / Thai keep the autowrap).
 - **Rendered goo-ink gate**: `./tools/i18n_capture.sh --gate` (needs a window; docs/i18n/review/README.md) fails on any
   glyph ink inside a goo box's band / lump rows in any state of any locale, English included, other than the accepted
   exceptions listed in `tools/i18n_goo_ink_allow.txt` (none), and on an incomplete capture. Run it after any change
@@ -431,7 +444,9 @@ in `UIKit`, does it for every screen; screen code keeps writing the English (lef
   - x - w: hand-set positions through their offsets, anchors, container order, LEFT / RIGHT alignment, a button's
   icon side, the bidi base direction of every Label / Button). UIKit also swaps explicit `focus_neighbor_left` /
   `_right` (arrow keys follow the visual order) and mirrors Node2D sprites under a mirrored control (slime previews,
-  the try-on slimes; art is never flipped). In English / LTR locales / gate off `mirror_root` does nothing.
+  the try-on slimes; art is never flipped). The wardrobe's try-on stage, which places its slime every frame, mirrors
+  the routine itself (`SkinShowcase`: x' = w - x, each east / west step plays the sheet's west / east animation;
+  fix pass R3), so it starts at the stage's right end and splats into its right edge. In English / LTR locales / gate off `mirror_root` does nothing.
 - **`project.godot`** sets `internationalization/rendering/root_node_layout_direction = 1` (LTR): the root is left to
   right in every language, so only registered roots flip, and a control positioned before it is added to the tree
   (common here) resolves LTR. (Before chunk I such a control took the app locale's RTL with a zero-width parent and

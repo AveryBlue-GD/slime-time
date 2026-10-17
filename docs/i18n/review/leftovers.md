@@ -22,15 +22,16 @@ pseudo). Rules: `docs/ui-rules.md` 10.1 "Leftover pass rules", "Rendered goo-ink
 | ko, zh_CN | pause-random | `시드 1453026489-0` / `种子 …` filling the 100 px SEED button (L4 R4) | the long form needs BUTTON_TEXT_PAD each side, else the code alone (as English for a 10-digit seed): L4 R4 -> L17 R16 |
 | zh_CN, zh_TW | wardrobe-* | `{name}  （…）`: two spaces before the full-width bracket (ja got one in F4) | one space: name to bracket 14 -> 10 (zh_CN), 16 -> 12 (zh_TW) clear columns; the rest is the bracket's own bearing |
 
+Later fixed (fix pass R3, docs/i18n/review/fixes-R3.md): ar A5, the wardrobe's try-on slime, is no longer accepted here: ui-rules 10.2 mirrors the try-on slimes' positions (the art itself is never flipped), so the stage's routine now runs mirrored in Arabic (starts at the right end, x' = 220 - x, east / west animations swapped).
+
 Goo-ink check (glyph ink px on goo / in band rows), before -> after: en 0/4 -> 0, zh_TW 1/1 -> 0, pseudo 18/8 -> 0;
 every other locale 0 -> 0. `./tools/i18n_capture.sh --gate` now passes with an empty `tools/i18n_goo_ink_allow.txt`.
 
 ## Not errors (left as they are)
 
 - hi H10 (Latin runs `ESC` / `P` / `F11` dropped in Hindi lines): the slimy and Devanagari fonts share one baseline by design; raising the slimy glyphs would move every mixed line.
-- ar A5 (the wardrobe's try-on slime not mirrored): game art, deliberately never flipped (ui-rules 10.2 "What does not mirror").
 - ko title tagline 를 / 틀 / 출: the squeeze is inside the 10 px Fusion bitmaps (ㄹ over ㅡ rows touching) at 2x; 2 px glyph spacing on the tagline (tried, FontVariation `spacing_glyph`) leaves the syllables as drawn, so only another font or wording would change it (a native's call).
-- vi / zh_TW ABILITIES hint on the bottom row: centred and clear of BACK (vi 20, zh_TW 63 clear columns), not crowded; it is the plan step that keeps the rows on one page.
+- vi / zh_TW ABILITIES hint on the bottom row: centred and clear of BACK (vi 20, zh_TW 63 clear columns), not crowded; it is the plan step that keeps the rows on one page. Since F3a's taller rows ja / ko / zh_CN take the same documented step (ui-rules 10.1 "Two-line rows in goo panels"): hint centre 159-159.5, 26 / 30 / 61 clear columns from BACK (fix pass R3).
 - vi / zh_TW wardrobe rule line over the bottom-row stage: 5 (vi) / 2 (zh_TW) clear rows over the stage's frame, the F3a rule's 2.
 - hi H9 (REPLAY / COINS padding): every button in every locale keeps 4+ columns from its edge to its ink (English's own minimum, `--measure-boxes`).
 - ar / hi result-win-l3 compact banner: their four tall lines do not fit with the big banner even with paired lines (F2 COMPACT_OK).

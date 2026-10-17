@@ -196,13 +196,14 @@ func _hub() -> void:
 	var box := _rect(notice)
 	var wheel_top: float = hub.rotor.position.y + hub.rotor.offset.y
 	var clear := true
-	for station: Dictionary in hub.stations:
+	for station: Dictionary in hub.stations:  # (by their resting ink since fix pass R3: test_i18n_r3_layout)
 		if station.flat:
 			continue
-		var r := Rect2(station.sprite.position + station.sprite.offset, Vector2(station.size))
-		if r.position.x < 160.0 and r.end.x > 160.0:
-			continue  # (the station straight behind it)
-		clear = clear and not r.intersects(box)
+		var rest: Array = [0] if not station.anims.is_empty() else range(maxi(1, station.frames))
+		var cols: Vector2 = hub._station_ink_cols(station, int(box.position.y), int(box.end.y), rest)
+		if cols.x > cols.y or (cols.x <= 160.0 and cols.y >= 160.0):
+			continue  # (no ink on its rows, or the station straight behind it)
+		clear = clear and (cols.y < box.position.x or cols.x >= box.end.x)
 	_check(clear and box.end.y <= wheel_top, _tag("hub notice %s clear of the stations and the wheel (top %d)" % [box, wheel_top]))
 	hub.free()
 	progress.tree_refund_notice = 0

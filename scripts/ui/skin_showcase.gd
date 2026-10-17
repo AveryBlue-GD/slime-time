@@ -3,7 +3,9 @@ extends Panel
 
 ## The skins screen's preview stage: a double-size slime in the clicked skin acting out a loop —
 ## it idles, glides, charges a leap, lands and celebrates, then leaps back into the left edge and
-## splats. Locked skins play it as a silhouette.
+## splats. Locked skins play it as a silhouette. In a right-to-left language the routine runs mirrored
+## (docs/ui-rules.md 10.2: the try-on slime's position mirrors, the art never flips): it starts at the
+## right end, and each east / west step plays the sheet's own west / east animation.
 
 const STAGE_SIZE := Vector2(220, 48)
 ## Where the slime's center sits when it's on the floor (stage coordinates).
@@ -81,6 +83,7 @@ func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock 
 		slime.queue_free()
 	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly, clock)
 	add_child(slime)
+	UIKit.keep_ltr(slime)  # (placed mirrored by _pose every frame, not by UIKit's one-off Node2D mirror)
 	if locked:
 		slime.modulate = Color(0, 0, 0, 0.85)
 	_time = 0.0
@@ -100,12 +103,30 @@ func _pose() -> void:
 	for step: Array in ROUTINE:
 		if t < step[1] or step == ROUTINE[-1]:
 			var progress := clampf(t / step[1], 0.0, 1.0)
-			_show(step[0], progress)
+			var mirrored := _mirrored()
+			_show(_mirror_anim(step[0]) if mirrored else step[0], progress)
 			var x: float = lerpf(step[2], step[3], progress)
+			if mirrored:
+				x = STAGE_SIZE.x - x
 			var lift: float = step[4] * sin(progress * PI)
 			slime.position = Vector2(roundf(x), roundf(FLOOR_Y - lift))
 			return
 		t -= step[1]
+
+
+## True when the stage is drawn mirrored (an RTL language, under a mirror root). Not is_mirrored():
+## a relayout drops the root to LTR until the frame's end, and the slime must not jump for that frame.
+func _mirrored() -> bool:
+	return UIKit.rtl() and UIKit.mirror_root_of(self) != null
+
+
+## The routine's animation for the mirrored stage: east <-> west (the sheet has both; art never flips).
+static func _mirror_anim(anim: String) -> String:
+	if anim.ends_with("_e"):
+		return anim.trim_suffix("_e") + "_w"
+	if anim.ends_with("_w"):
+		return anim.trim_suffix("_w") + "_e"
+	return anim
 
 
 ## What the stopwatch's clock does at routine time `t`: runs while gliding, whirls while charging
