@@ -299,6 +299,19 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   keys turn pages past a page's first / last row); `show_page_arrows(arrows, page, pages)` disables the arrow that
   would leave the pages. A screen whose bottom row has room uses one page button there instead (key controls: `1/2`,
   BACK's mirror and width). Left / right (level select) or up / down (hat wheel) past a page's edge turn the page too.
+  Keys past the edge (fix pass F3b, the two grids side by side): the **level select** (one row of five a page)
+  turns on right from a page's last tile to the next page's first, left from its first back to the previous page's
+  last. The **map table** (two columns a page, read down the left column, then the right) turns on right from the
+  right column to the same row of the next page's left column, left from the left column to the same row of the
+  previous page's right column (the last row it has when that page is shorter); a locked target hands the focus to
+  that page's nearest open tile, else to the arrow that turned it; up / down never turn. In a mirrored layout
+  (Arabic) the reading direction's key leads on in both (`UIKit.is_mirrored`: left turns on). A tile that is not on
+  a page's edge moves the focus as usual.
+  **A paged grid's rows are centred** (+-1 px) in the room between the title's line box and what is under them, the
+  first (fuller) page's rows; the second page starts on the same row: the level select between the title and the
+  info panel, the map table between the title's shadow row and `BOTTOM_GAP` over the bottom row, the key controls'
+  rows between the title and the note (fix pass F3b: three rows left a 24-40 px band under them, CJK / zh_TW / Thai /
+  Devanagari). One page (English) keeps its place.
 - **Panel-cover rule**: while a modal panel is open in a locale whose layout differs from English, the page's own
   controls behind it are hidden: `cover_behind(screen, keep, rect)` (only those under `rect` when given: SAVE CODE and
   RESET panels; all of them: the resized HEAT panel, the opaque map view) and `uncover(list)` on close. That includes
@@ -327,7 +340,30 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   so its 21 px buttons hold the line from row 3 (3 / 1). The check: `tools/i18n_capture.sh` renders every state twice
   more (texts hidden, shadows hidden) and counts glyph ink (letters, marks, drips; shadows apart) inside each visible
   goo box's band / lump rows (`OUT/json/goo_ink_<locale>.json`, summary line "goo-ink check"). English's own findings
-  (the LANGUAGE screen's native names, the upgrades ability rows) are the floor: no locale may add to them.
+  (the upgrades ability rows; the SAVE CODE panel's 2 px; the LANGUAGE screen's native names until F3b) are the
+  floor: no locale may add to them.
+- **Text lines on the screens (fix pass F3b)**, every one a no-op in English except the LANGUAGE screen:
+  - A label beside a button in a row takes the button's text line: the key controls' action labels get the theme's
+    `button_v_margins()` as an empty style's margins (centred on the taller row they sat 2 px over the key text with
+    accents, 3 Vietnamese, 1 Thai / Devanagari). A button's hand-placed text (the settings LANGUAGE button's globe +
+    name) goes on row `button_v_margins().x` in the button's own font, the globe on the letter body.
+  - ENTER (16 px): the line from row 5 (English), lower by that text's own marks (title.gd `mark_rows`: Й 6 rows at
+    16 px) so they start on `GOO_INK_ROW`; the button grows to keep 1 row (its outline) under the drips (the accents'
+    8 px theme margins had put the 16 px drips on the outline). A taller script: its glyphs' first inked row
+    (`BIG_INK_TOP`, Devanagari 1) on `GOO_INK_ROW`.
+  - CJK button text is centred on its ink (title ENTER / STORY: title.gd `ink_shift`, the glyphs' bitmaps): CJK
+    glyphs start at their left edge and keep their spacing on the right (Hangul 2 px), so a centred line sat 1-2 px
+    left.
+  - LANGUAGE screen: each slimy-font name's ink (marks + body + 2 drip rows) centred between rows `GOO_INK_ROW` and
+    h - 2, a row's slimy names on one line (the lowest); scripts in their own fonts keep 1 / 1 + `INK_NUDGE`.
+    ENGLISH moved 2 px down (row 6, beside ESPAÑOL / PORTUGUÊS).
+  - Level select info lines: `INFO_PAD` 5 in English; where the locale's ink reaches over the line box (marks) or a
+    taller script inks the line box's first row (Devanagari), the first ink goes on `PANEL_INK_TOP` (6).
+  - Map tiles: the name's first ink on `GOO_INK_ROW` (6 accented, 8 Vietnamese); the % line (digits) at English's
+    `DENSE_PITCH` under the name's last line with the slimy font, so the accented tiles keep 41 px (3 rows a page).
+  - Key controls note: `NOTE_GAP` over the bottom row (English); when that leaves it closer to the rows than to the
+    bottom row it is centred between them, never less than `GAP_L` over the bottom row (Vietnamese fills the room:
+    its stacked marks reach the last key row's bottom edge beside the keys).
 - **Script gap (CJK)**: in ja / ko / zh_CN / zh_TW, `Loc.t` / `Loc.n` put U+2007 (`Loc.SCRIPT_GAP`, no line break) after
   a slimy character (digit, Latin letter, `% ) ] ! ?`) that a CJK letter follows, and the slimy fonts get a 1 px (2 px
   at 16) glyph for it (`Language._apply_script_gap`): the slimy letters keep their 1 px gap on the left only and the

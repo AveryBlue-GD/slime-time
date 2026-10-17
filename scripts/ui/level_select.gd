@@ -121,11 +121,13 @@ func _layout() -> void:
 		hard_mode_box.update_minimum_size()
 		hard_mode_box.custom_minimum_size.y = UIKit.text_block_h(2) + 2 * UIKit.GAP_M
 	var box := hard_mode_box.get_combined_minimum_size()
-	var top_pad := INFO_PAD + UIKit.accent_room()
+	var top_pad := info_top()
 	var lines_h := UIKit.text_block_h(2)
 	# The checkbox's text keeps 4 px of its box under it (4.5 in English) off the panel's bottom goo.
 	var box_text_h := UIKit.text_block_h(hard_mode_box.text.count("\n") + 1)
 	var panel_h := top_pad + lines_h + UIKit.GAP_L + int(box.y) + maxi(0, UIKit.GAP_M - floori((box.y - box_text_h) / 2.0))
+	if "\n" in hard_mode_box.text and not UIKit.tall_script():
+		panel_h += 1  # (two slimy lines: the last one's drips end 4 rows over the bottom edge, as one line's do, not on its band)
 	var panel_bottom := UIKit.bottom_row_y() - GRID_GAP
 	var two_rows_h := 2 * TILE.y + GRID_GAP
 	pages = 1 if UIKit.title_bottom() + two_rows_h + UIKit.GAP_M + panel_h <= panel_bottom else ceili(Levels.COUNT / float(PAGE_SIZE))
@@ -143,6 +145,19 @@ func _layout() -> void:
 	if pages > 1:
 		grid_y += floorf((panel.position.y - UIKit.GAP_M - UIKit.title_bottom() - TILE.y) / 2.0)
 	grid.position = Vector2(GRID_POS.x, grid_y)
+
+
+## The info lines' line top under the panel's top edge: INFO_PAD in English (its capitals on row 5).
+## Where the locale's ink reaches over the line box (marks: Language ink_top -3 accented, -5 Vietnamese)
+## or a taller script inks its line box's first row (Devanagari's matras), the first ink goes on
+## UIKit.PANEL_INK_TOP, one clear row under the panel's band and lumps (rows 0-4), as in every goo
+## panel (fix pass F3b: accents on the lump row 4, matras right under the drips). English, CJK, Thai,
+## Arabic: INFO_PAD as before (their ink starts lower in the line box).
+static func info_top() -> int:
+	var ink_top := int(UIKit.metrics().get("ink_top", 0))
+	if ink_top == 0 and not UIKit.tall_script():
+		return INFO_PAD
+	return maxi(INFO_PAD + UIKit.accent_room(), UIKit.PANEL_INK_TOP - ink_top)
 
 
 ## The widest the checkbox's text may be: the screen less EDGE and GAP_L each side, the box icon (16)

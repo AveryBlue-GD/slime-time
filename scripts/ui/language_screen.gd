@@ -22,6 +22,8 @@ extends Control
 const Lang := preload("res://scripts/language.gd")
 const SETTINGS_SCENE := "res://scenes/controls.tscn"
 const SCENE := "res://scenes/language.tscn"
+## title.gd, for its mark_rows (loaded when used: it names autoloads, a preload would compile it early).
+const TITLE_SCRIPT := "res://scripts/ui/title.gd"
 const COLUMNS := 3
 const BUTTON_W := 96
 const COL_GAP := UIKit.GAP_L
@@ -115,7 +117,7 @@ func _ready() -> void:
 		button.text_direction = Control.TEXT_DIRECTION_RTL if code in Lang.RTL_LOCALES else Control.TEXT_DIRECTION_LTR
 		button.set_meta("code", code)
 		UIKit.set_selected(button, code == lang().locale)
-		fit_styles(button, code == lang().locale, INK_NUDGE.get(code, 0))
+		fit_styles(button, code == lang().locale, INK_NUDGE.get(code, 0), name_top(code, row))
 		add_child(button)
 		button.size = Vector2(BUTTON_W, h)
 		button.position = Vector2(grid.position.x + (i % COLUMNS) * (BUTTON_W + COL_GAP), y)
@@ -133,15 +135,42 @@ func _ready() -> void:
 ## past the row. The row height (Lang.metrics button_h) already leaves the goo its room. Same
 ## looks as UIKit.make_button / UIKit.set_selected. `nudge`: INK_NUDGE (the bottom margin may go
 ## below 0, which only lets the text box reach 1 px into the goo band it never draws on).
-static func fit_styles(button: Button, selected: bool, nudge := 0) -> void:
+## `top` (>= 0): a slimy-font name's line top instead (name_top), the rest of the row under it.
+static func fit_styles(button: Button, selected: bool, nudge := 0, top := -1) -> void:
+	var h := int(maxf(button.size.y, button.custom_minimum_size.y))
 	for slot: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		var look := "pressed" if slot == "hover_pressed" else slot
 		if selected and slot in ["normal", "hover"]:
 			look = "selected"
 		var box := UIKit.button_style(look)
-		box.content_margin_top = 1 + nudge
-		box.content_margin_bottom = 1 - nudge
+		box.content_margin_top = 1 + nudge if top < 0 else top
+		box.content_margin_bottom = 1 - nudge if top < 0 else h - top - UIKit.TEXT_BODY
 		button.add_theme_stylebox_override(slot, box)
+
+
+## Where a name drawn in the slimy font (Latin, Cyrillic: no script fallback) starts its line in a row
+## `row` tall-rows button, or -1 for a script drawn in its own font (CJK, Thai, Arabic, Devanagari: their
+## line box centred with fit_styles' 1 / 1 and INK_NUDGE, as before). Fix pass F3b: a name's ink, its
+## marks (mark_rows) over the 7 px body and the 2 drip rows under it, is centred between the goo's lump
+## rows (first ink on UIKit.GOO_INK_ROW at the highest, the drips' last row 2 over the bottom edge, as
+## a 13 px English button); the row's slimy names share the lowest such line top (one baseline a row).
+## The marks used to start on rows 1-2 (the band and lumps: Ñ, Ê, Й, Ü, Ế) with 1 / 1 margins. This
+## moves ENGLISH (row 1: beside ESPAÑOL / PORTUGUÊS) 2 px down, in English too.
+static func name_top(code: String, row: int) -> int:
+	if Lang.metrics_group(code) in ["cjk", "zh_TW", "th", "hi", "ar"]:
+		return -1
+	var h: int = row_heights()[row]
+	var codes := Lang.codes()
+	var top := 0
+	for i in range(row * COLUMNS, mini((row + 1) * COLUMNS, codes.size())):
+		var other: String = codes[i]
+		if Lang.metrics_group(other) in ["cjk", "zh_TW", "th", "hi", "ar"]:
+			continue
+		var marks: int = load(TITLE_SCRIPT).mark_rows(Lang.native_name(other))
+		var ink_h := marks + UIKit.TEXT_BODY + UIKit.TEXT_DRIP
+		var room := h - 2 * UIKit.GOO_INK_ROW + 2  # (rows 3 .. h - 2: English's 13 px button holds 9)
+		top = maxi(top, UIKit.GOO_INK_ROW + floori((room - ink_h) / 2.0) + marks)
+	return top
 
 
 ## Arrows / D-pad / stick: left and right wrap inside a row, up stops at the top row, down from the

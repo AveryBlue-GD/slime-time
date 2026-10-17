@@ -97,7 +97,7 @@ func _ready() -> void:
 	_layout_tiles()
 	grid = GridContainer.new()
 	grid.columns = 2
-	grid.position = Vector2(GRID_POS.x, UIKit.title_bottom() - 1)  # GRID_POS: the title's shadow row
+	grid.position = Vector2(GRID_POS.x, grid_top())  # GRID_POS (the title's shadow row) on one page
 	grid.add_theme_constant_override("h_separation", UIKit.GAP_XS)
 	grid.add_theme_constant_override("v_separation", UIKit.GAP_XS)
 	add_child(grid)
@@ -147,19 +147,41 @@ static func bottom_line_rect(back: Control) -> Rect2:
 ## and the rows per page: five (one page) when they fit between the title and the bottom row, else
 ## balanced pages (three rows, then two).
 func _layout_tiles() -> void:
-	_name_y = 3 + UIKit.accent_room()
+	# (the name's first ink on UIKit.GOO_INK_ROW, under the tile's lump row, as English capitals: its
+	# marks' rows lower with accents (6) and in Vietnamese (8); fix pass F3b, they were on the lump row)
+	_name_y = maxi(3, UIKit.GOO_INK_ROW - int(UIKit.metrics().get("ink_top", 0)))
 	var room := TILE_SIZE.x - TEXT_X - TEXT_PAD
 	_name_lines = 1
 	for level in range(1, Levels.COUNT + 1):
 		if UIKit.text_w(Themes.display_name(Themes.for_level(level))) > room:
 			_name_lines = 2
-	_percent_y = _name_y + (_name_lines - 1) * UIKit.line_pitch() + UIKit.dense_pitch()
+	# (the % line is digits in the slimy font, never marked: English's dense pitch under the name's last
+	# line, 2 clear rows under its drips, whatever the locale's pitch (accented 12) keeps for marks)
+	var percent_pitch := UIKit.DENSE_PITCH if not UIKit.tall_script() else UIKit.dense_pitch()
+	_percent_y = _name_y + (_name_lines - 1) * UIKit.line_pitch() + percent_pitch
 	tile_size = Vector2(TILE_SIZE.x, maxf(TILE_SIZE.y, _percent_y + TILE_SIZE.y - 3 - UIKit.DENSE_PITCH))
 	# From the grid's top to BOTTOM_GAP over the bottom row (138 px in English: five rows exactly).
-	var area := UIKit.bottom_row_y() - BOTTOM_GAP - (UIKit.title_bottom() - 1)
-	var fit := UIKit.grid_budget(Levels.COUNT, 2, area, tile_size.y, UIKit.GAP_XS)
+	var fit := UIKit.grid_budget(Levels.COUNT, 2, grid_area_h(), tile_size.y, UIKit.GAP_XS)
 	pages = fit.pages
 	rows_per_page = ceili(ROWS / float(pages))
+
+
+## The room for the grid: from the title's shadow row to BOTTOM_GAP over the bottom row.
+static func grid_area_h() -> int:
+	return UIKit.bottom_row_y() - BOTTOM_GAP - (UIKit.title_bottom() - 1)
+
+
+## The grid's top: the title's shadow row (GRID_POS: English's five rows fill the room exactly). On
+## pages, a page's rows are centred between there and BOTTOM_GAP over the bottom row (the first page's,
+## the fuller one; the second page's rows start on the same row), as the level select centres its paged
+## row: three rows used to leave the band under them empty (Thai 26 px, CJK 24, Devanagari 38).
+func grid_top() -> int:
+	var top := UIKit.title_bottom() - 1
+	if pages < 2:
+		return top
+	var area := grid_area_h()
+	var rows_h := rows_per_page * int(tile_size.y) + (rows_per_page - 1) * UIKit.GAP_XS
+	return top + floori((area - rows_h) / 2.0)
 
 
 ## The page arrows (paged only): < at the left edge and > at the right, centred on the title's line.

@@ -184,7 +184,8 @@ func _keys() -> void:
 		if top < UIKit.title_bottom() + UIKit.GAP_S:  # (GAP_M; GAP_S where that keeps the rows on one page)
 			bad.append("page %d: rows start at %d, title ends %d" % [p, top, UIKit.title_bottom()])
 		var note := _rect(page.note)
-		if bottom + UIKit.GAP_M > note.position.y or note.end.y + UIKit.GAP_L > UIKit.bottom_row_y():
+		# (GAP_L over the bottom row, GAP_M where the note is centred in less room: Vietnamese, fix pass F3b)
+		if bottom + UIKit.GAP_M > note.position.y or note.end.y + UIKit.GAP_M > UIKit.bottom_row_y():
 			bad.append("page %d: rows end %d, note %s, bottom row %d" % [p, bottom, note, UIKit.bottom_row_y()])
 		var note_w := UIKit.text_w(page.note.text)
 		if page.note_lines == 1 and note_w > 320 - 2 * UIKit.EDGE:

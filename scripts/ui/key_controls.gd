@@ -79,6 +79,7 @@ func _ready() -> void:
 			var label := UIKit.make_label(action_name(action))
 			label.custom_minimum_size = Vector2(label_w, UIKit.button_h())
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			_level_with_keys(label)
 			rows.add_child(label)
 			var button := UIKit.make_button("", func() -> void: _start_rebind(action), Vector2(key_w, UIKit.button_h()))
 			if columns_per_page == 1:  # (one column per page: as wide as PRESS KEY needs, whatever key it shows)
@@ -127,6 +128,21 @@ func _ready() -> void:
 	show_page(0)
 
 
+## An action label on the key button's text line: the theme puts a button's line UIKit.button_v_margins()
+## under its top (under the accents' rows, the drip rows kept below), while a label centres it on the
+## row, which left the labels 2 px (accented, Thai), 3 px (Vietnamese) or 1 px (Devanagari) above the
+## key text beside them (fix pass F3b). The same margins as an empty style; English (3 / 3, the centre
+## already): no change.
+static func _level_with_keys(label: Label) -> void:
+	var margins := UIKit.button_v_margins()
+	if margins.x == floori((UIKit.button_h() - UIKit.line_h()) / 2.0):
+		return
+	var style := StyleBoxEmpty.new()
+	style.content_margin_top = margins.x
+	style.content_margin_bottom = margins.y
+	label.add_theme_stylebox_override("normal", style)
+
+
 ## The note's height on `lines` lines (English: 10, the 7 px line and its drips).
 static func _note_h(lines: int) -> int:
 	return UIKit.text_block_h(lines) + (0 if UIKit.tall_script() else UIKit.TEXT_DRIP + 1)
@@ -167,6 +183,27 @@ func _plan() -> void:
 	var row_pages := ceili(count / float(maxi(1, fit)))
 	rows_per_page = ceili(count / float(row_pages))
 	pages = row_pages * (3 - columns_per_page)
+	_spread(row_pages > 1)
+
+
+## Where the rows and the note go in the room the plan left (fix pass F3b). English keeps the note
+## NOTE_GAP over the bottom row (29 px under the rows, 14 over BACK). Rows on pages (3 + 2) leave a band
+## under the first page's rows: they are centred between the title's line box and the note, as the
+## level select centres its one paged row. When the note would sit closer to the rows than to the bottom
+## row (the accented locales' taller rows: 3 px under them, 14 over BACK), it is centred between the two
+## instead, at least GAP_M over the bottom row (Vietnamese: five rows fill the room, and the note's stacked
+## marks sat on the last key's goo drops). Ink counted: the note's own marks over its line, its drips under it.
+func _spread(paged: bool) -> void:
+	var marks: int = load("res://scripts/ui/title.gd").mark_rows(note_text())  # (this line's own marks)
+	var rows_h := rows_per_page * UIKit.button_h() + (rows_per_page - 1) * row_gap
+	if paged:
+		rows_top = UIKit.title_bottom() + floori((note_top - marks - UIKit.title_bottom() - rows_h) / 2.0)
+		return
+	var rows_end := rows_top + rows_h
+	var note_end := note_top + _note_h(note_lines)
+	if note_top - marks - rows_end < UIKit.bottom_row_y() - note_end:
+		var centred := rows_end + marks + floori((UIKit.bottom_row_y() - rows_end - marks - _note_h(note_lines)) / 2.0)
+		note_top = mini(centred, UIKit.bottom_row_y() - UIKit.GAP_M - _note_h(note_lines))  # (GAP_M over the bottom row at least)
 
 
 ## Where the column grids sit: both side by side (one column per page: the same centred place).

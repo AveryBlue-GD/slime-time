@@ -241,8 +241,17 @@ func _maps() -> void:
 	var ms := await _open("res://scenes/maps.tscn")
 	var english := UIKit.locale() == "en"
 	var grid := _rect(ms.grid)
-	_check(grid.position.y == UIKit.title_bottom() - 1 and grid.end.y <= UIKit.bottom_row_y() - ms.BOTTOM_GAP and grid.position.x == UIKit.EDGE
+	_check(grid.position.y >= UIKit.title_bottom() - 1 and grid.end.y <= UIKit.bottom_row_y() - ms.BOTTOM_GAP and grid.position.x == UIKit.EDGE
 		and grid.end.x == 320 - UIKit.EDGE, _tag("map table: the grid under the title, over the bottom row (%s)" % grid))
+	# One page: from the title's shadow row (English's five rows fill the room). On pages (fix pass F3b): the
+	# first page's rows centred in that room (+-0.5 px), not leaving the band under them empty.
+	var room := Rect2(0, UIKit.title_bottom() - 1, 320, ms.grid_area_h())
+	var gap_above := grid.position.y - room.position.y
+	var gap_below := room.end.y - grid.end.y
+	if ms.pages == 1:
+		_check(grid.position.y == UIKit.title_bottom() - 1, _tag("map table: one page from the title's shadow row (%s)" % grid))
+	else:
+		_check(gap_above >= 0 and absf(gap_above - gap_below) <= 1.0, _tag("map table: the paged rows centred between the title and the bottom row (%d / %d)" % [gap_above, gap_below]))
 	if english:
 		_check(ms.tile_size == ms.TILE_SIZE and grid.position == Vector2(4, 21) and ms.pages == 1, _tag("map table: the English tiles and grid"))
 	var visible_rows := 0

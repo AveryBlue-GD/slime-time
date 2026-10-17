@@ -188,15 +188,21 @@ func _build_language_button() -> void:
 	language_button.position = at
 	add_child(language_button)
 	language_button.size = Vector2(col_w, h)
-	var font: Font = language.native_font(code)
+	# (the current language's name: in the font every other button's text uses, so its line sits where theirs do)
+	var font: Font = UIKit.font_for() if code == UIKit.locale() else language.native_font(code)
 	var name := LanguageScreen.Lang.native_name(code)
 	var text_w := int(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)
 	# Globe ink (7 px) + 4 px clear + the name (its 1 px leading letter gap inside the label), as one
 	# centred group.
 	var group_w := 7 + 3 + text_w
 	var x := roundi((col_w - group_w) / 2.0)
+	# The name's line box where the theme puts every button's text (UIKit.button_v_margins: under the
+	# accents' rows, the 3 drip rows kept below), so it shares the column's baseline (centred on the box
+	# it sat 2 px high with accents, 3 in Vietnamese: fix pass F3b). The globe on the letter body (the
+	# line box with the slimy font; centred on the button in a taller script, as before).
+	var line_top := UIKit.button_v_margins().x if h == UIKit.button_h() else floori((h - UIKit.line_h()) / 2.0)
 	var globe := UIKit.make_icon("globe")
-	globe.position = Vector2(x, floori((h - 7) / 2.0))
+	globe.position = Vector2(x, line_top if not UIKit.tall_script() else floori((h - 7) / 2.0))
 	language_button.add_child(globe)
 	var label := UIKit.make_label(name)
 	label.add_theme_font_override("font", font)
@@ -207,8 +213,8 @@ func _build_language_button() -> void:
 	# The globe takes the name's color (SkinText recolors the label from the skin, rainbow included).
 	label.theme_changed.connect(func() -> void: globe.modulate = label.get_theme_color("font_color"))
 	globe.modulate = label.get_theme_color("font_color")
-	label.position = Vector2(x + 10, LanguageScreen.INK_NUDGE.get(code, 0))
-	label.size = Vector2(text_w, h)
+	label.position = Vector2(x + 10, line_top)
+	label.size = Vector2(text_w, UIKit.line_h())
 	language_button.set_meta("code", code)
 
 
