@@ -85,3 +85,6 @@ Abilities: スライムライフル, スライムボム, スライマカゼ. Upg
 - `wheel.tab.wheel` 抽選 vs the title 帽子ルーレット: the tab is too narrow (36 px) for ルーレット.
 - `hud.area.random_code` is 226 px with 888 fills, the same as English, over the 200 px area budget.
 - New `language.title` (LANGUAGE) is not in messages.pot yet: suggest 言語.
+- Fix pass F4: `hub.notice.returned` コイン返却 +{count} (space before the sign); `skins.selected` / `skins.wearing`
+  keep one space before the full-width bracket (the bracket's own bearing is the second). Not changed: 報酬枠
+  (dense at 10 px, review ja.md) is used in 7 strings; a simpler term (チケット枠?) is a glossary decision for a native.

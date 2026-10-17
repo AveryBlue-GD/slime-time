@@ -84,3 +84,4 @@ Widths measured with `assets/fonts/pixel.fnt` (sum of advances, `{x}` = 888, big
 - `wheel.worn` AN, `wheel.owned` DEINS: very short, confirm they read well next to the item.
 - `language.title` (SPRACHE) is filled for the new key that the working-tree code has but the committed
   messages.pot does not yet.
+- Fix pass F4: `skins.wearing` is (AKTIV), not (AUFGESETZT): the key is shared by hats and trails.

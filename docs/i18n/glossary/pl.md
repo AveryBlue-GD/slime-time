@@ -85,3 +85,4 @@ Widths measured with `assets/fonts/pixel.fnt` (sum of advances, `{x}` = 888, big
 - `skins.locked_medals` "WSZYSTKIE {count} MEDALI" (genitive after 5+) is colloquial but common.
 - `language.title` (JĘZYK) is filled for the new key that the working-tree code has but the committed
   messages.pot does not yet.
+- Fix pass F4: `skins.wearing` is (W UŻYCIU), not (NA GŁOWIE): the key is shared by hats and trails.

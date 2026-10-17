@@ -25,8 +25,10 @@ with 888: every entry is inside its `max Npx` budget.
 | HEAT | 热度 | |
 | upgrade(s) | 升级 | |
 | hub | 大厅 | |
-| randomizer | 随机模式 | station, portal title, victory button |
+| randomizer | 随机关卡 | station, portal title, victory button, upgrade hints (was 随机模式: 模 is a blot at 10 px, review F4) |
 | random maze | 随机迷宫 | |
+| RESUME / CONTINUE | 回到游戏 (pause) / 回到本局 (hub Descent resume, pairs with 结束本局) / 前进 (after level 10) | 继续 avoided on buttons: its 纟 radicals fill in at 10 px (review F4); `hub.resume.spent` 本层已回来过一次 |
+| (WEARING) | （使用中） | shared by hats and trails, so not 佩戴; also simpler glyphs |
 | DESCENT / DESCEND | 深入 / 继续深入 | |
 | boon | 增益 | |
 | seed | 种子 | |
@@ -96,3 +98,6 @@ Abilities: 黏液步枪, 黏液爆弹, 史莱玛卡兹. Heat modifiers: 昏暗, 
 11. **PAID RUN = 有奖局** and **DESCENT = 深入**: functional choices, Descent is switched off today.
 12. **GOO NOSE = 黏液鼻**: the pun is lost (workshop is switched off).
 13. `language.title` (LANGUAGE screen, new in code, not yet in messages.pot) is already translated: 语言.
+10. **RANDOMIZER = 随机关卡** and **RESUME = 回到游戏 / 回到本局** (fix pass F4): chosen for legibility at 10 px over
+    随机模式 / 继续; 关卡 is also "level", so check 随机关卡 reads as the randomizer portal and not one level.
+    DESCEND still says 继续深入 (not flagged; 继 is the same dense glyph).

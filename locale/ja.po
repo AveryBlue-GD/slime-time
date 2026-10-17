@@ -736,7 +736,7 @@ msgstr "強化システムを刷新"
 #: scripts/hub.gd
 msgctxt "hub.notice.returned"
 msgid "COINS RETURNED +{count}"
-msgstr "コイン返却+{count}"
+msgstr "コイン返却 +{count}"
 
 #: scripts/hub.gd
 msgctxt "hub.quit.title"
@@ -2142,7 +2142,7 @@ msgstr "スキン"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr "{name}  （着用中）"
+msgstr "{name} （着用中）"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2202,7 +2202,7 @@ msgstr "ロック中 - レベル{level}をクリア"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
-msgstr "{name}  （選択中）"
+msgstr "{name} （選択中）"
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1

@@ -82,3 +82,4 @@ no string over its budget.
 - `hub.station.quit` `बाहर जाओ` vs the dialog button `छोड़ो`.
 - `wheel.won` written as `जीत लिया: {name}!` to avoid gender agreement with the hat name.
 - `pot` = `पॉट` everywhere (loanword) only because `गुल्लक` overflowed the 80 px HUD pod.
+- hi: `skins.wearing` (पहनी है) is feminine (a topi) but is also shown for trails; a native should pick a neutral form (fix pass F4 note).

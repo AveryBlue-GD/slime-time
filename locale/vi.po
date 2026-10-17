@@ -2142,7 +2142,7 @@ msgstr "SKIN"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr "{name}  (ĐANG ĐỘI)"
+msgstr "{name}  (ĐANG DÙNG)"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1

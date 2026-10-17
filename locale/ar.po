@@ -218,17 +218,17 @@ msgstr "سلايم زجاجي"
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_1"
 msgid "+30% SLIME"
-msgstr "+30% سلايم"
+msgstr "30% سلايم"
 
 #: scripts/descent.gd
 msgctxt "boon.gulp.desc_2"
 msgid "RIGHT NOW"
-msgstr "فورا"
+msgstr "إضافي فورا"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_1"
 msgid "TANK +15%"
-msgstr "الخزان +15%"
+msgstr "خزان أكبر 15%"
 
 #: scripts/descent.gd
 msgctxt "boon.tank.desc_2"
@@ -258,7 +258,7 @@ msgstr "بلا سلايم"
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_1"
 msgid "GLIDE +15%"
-msgstr "انزلاق +15%"
+msgstr "انزلاق 15%"
 
 #: scripts/descent.gd
 msgctxt "boon.slick.desc_2"
@@ -273,7 +273,7 @@ msgstr "ضوء أوسع"
 #: scripts/descent.gd
 msgctxt "boon.blaze.desc_2"
 msgid "+1 BRIGHTNESS"
-msgstr "+1 سطوع"
+msgstr "سطوع أعلى"
 
 #: scripts/descent.gd
 msgctxt "boon.sense.desc_1"
@@ -303,17 +303,17 @@ msgstr "تعبئة الطوابق"
 #: scripts/descent.gd
 msgctxt "boon.thrift.desc_2"
 msgid "+15%"
-msgstr "+15%"
+msgstr "أكثر 15%"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_1"
 msgid "+1 TIX/FLOOR"
-msgstr "+1 تذكرة/طابق"
+msgstr "تذكرة/طابق"
 
 #: scripts/descent.gd
 msgctxt "boon.greedy.desc_2"
 msgid "TANK -10%"
-msgstr "الخزان -10%"
+msgstr "خزان أقل 10%"
 
 #: scripts/descent.gd
 msgctxt "boon.glass.desc_1"
@@ -690,7 +690,7 @@ msgstr "السلايم ينفد أسرع بنسبة 8%"
 #: scripts/heat.gd
 msgctxt "heatmod.race.desc"
 msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr "اخرج قبل 1.3 X الوقت المعياري أو تجف"
+msgstr "اخرج قبل 1.3 ضعف الوقت المعياري أو تجف"
 
 #. station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 #. budget: max 110px, lines 1
@@ -2140,7 +2140,7 @@ msgstr "استئناف"
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_hub"
 msgid "QUIT TO HUB"
-msgstr "الساحة"
+msgstr "عودة للساحة"
 
 #. max 92px, 1 line
 #. budget: max 92px, lines 1
@@ -2392,7 +2392,7 @@ msgstr "شراء"
 #: scripts/ui/ui_kit.gd
 msgctxt "settings.volume"
 msgid "VOLUME"
-msgstr "الصوت"
+msgstr "علو الصوت"
 
 #. title max 200px, 16 px font
 #. budget: max 200px

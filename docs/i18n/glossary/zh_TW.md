@@ -97,3 +97,4 @@ Abilities: 黏液步槍, 黏液爆彈, 史萊瑪卡茲. Heat modifiers: 昏暗, 
 9. **skin = 造型** (Taiwan usage) everywhere, including `NEW JELLY SKIN` 新果凍造型.
 10. **PAID RUN = 有獎局**, **DESCENT = 深入**: functional choices, Descent is switched off today.
 11. `language.title` (LANGUAGE screen, new in code, not yet in messages.pot) is already translated: 語言.
+12. `skins.wearing` = （使用中） (fix pass F4): the key is shared by hats and trails, so not 戴著.

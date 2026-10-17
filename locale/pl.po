@@ -2180,7 +2180,7 @@ msgstr "SKÓRKI"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr "{name}  (NA GŁOWIE)"
+msgstr "{name}  (W UŻYCIU)"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1

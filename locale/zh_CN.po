@@ -550,7 +550,7 @@ msgstr "重玩"
 #: scripts/game.gd
 msgctxt "result.choice.continue"
 msgid "CONTINUE"
-msgstr "继续"
+msgstr "前进"
 
 #: scripts/game.gd
 msgctxt "result.choice.next_level"
@@ -707,7 +707,7 @@ msgstr "钱袋"
 #: scripts/hub.gd
 msgctxt "hub.station.random"
 msgid "RANDOMIZER"
-msgstr "随机模式"
+msgstr "随机关卡"
 
 #: scripts/hub.gd
 msgctxt "hub.station.settings"
@@ -765,7 +765,7 @@ msgstr "返回"
 #: scripts/hub.gd
 msgctxt "hub.portal.title"
 msgid "RANDOMIZER"
-msgstr "随机模式"
+msgstr "随机关卡"
 
 #: scripts/hub.gd
 msgctxt "hub.portal.random_maze"
@@ -790,7 +790,7 @@ msgstr "有奖局 {left}/{total}"
 #: scripts/hub.gd
 msgctxt "hub.resume.resume"
 msgid "RESUME"
-msgstr "继续"
+msgstr "回到本局"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.quit_run"
@@ -800,7 +800,7 @@ msgstr "结束本局"
 #: scripts/hub.gd
 msgctxt "hub.resume.spent"
 msgid "FLOOR ALREADY RESUMED"
-msgstr "本层已经继续过了"
+msgstr "本层已回来过一次"
 
 #: scripts/hub.gd
 msgctxt "hub.resume.saved"
@@ -2040,7 +2040,7 @@ msgstr "重新开始"
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.resume"
 msgid "RESUME"
-msgstr "继续"
+msgstr "回到游戏"
 
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_hub"
@@ -2142,7 +2142,7 @@ msgstr "皮肤"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
 msgid "{name}  (WEARING)"
-msgstr "{name}  （佩戴中）"
+msgstr "{name}  （使用中）"
 
 #. {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2343,14 +2343,14 @@ msgstr "金币随时可以取回"
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets"
 msgid "TICKETS FROM THE RANDOMIZER - OFF IN HARD MODE"
-msgstr "奖券来自随机模式 - 困难模式中无效"
+msgstr "奖券来自随机关卡 - 困难模式中无效"
 
 #. bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_tickets_locked"
 msgid "EARN TICKETS IN THE RANDOMIZER FIRST"
-msgstr "先在随机模式中赢取奖券"
+msgstr "先在随机关卡中赢取奖券"
 
 #. {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
@@ -2402,7 +2402,7 @@ msgstr "挑选你的颜色"
 #: scripts/ui/victory.gd
 msgctxt "victory.randomizer"
 msgid "RANDOMIZER"
-msgstr "随机模式"
+msgstr "随机关卡"
 
 #: scripts/ui/victory.gd
 msgctxt "victory.hub"

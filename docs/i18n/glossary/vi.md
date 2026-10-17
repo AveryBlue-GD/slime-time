@@ -87,3 +87,4 @@ Kept names: `INKKY`, `CHAMELEON`, `SLIMAKAZE` letter for letter. Units: `S`, `PX
 - Tight spots: `HỖ TRỢ +{percent}%` HUD pod is 57 px with 2 digits (budget 60, English is the same);
   `TIẾP TỤC` on the 56 px RESUME button; heat modifier names in 84 px toggles.
 - `MẤT LƯỚT MIỄN PHÍ` (brittle: "no free slide"): unsure what "free slide" refers to in game.
+- Fix pass F4: `skins.wearing` is (ĐANG DÙNG), not (ĐANG ĐỘI, "on the head"): the key is shared by hats and trails.

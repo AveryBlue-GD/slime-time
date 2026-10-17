@@ -102,13 +102,22 @@ arrow mirrored (`<-`, from now on the right to next on the left), and space-sepa
 - `->` in `workshop.*.next` relies on bidi mirroring (`>` shows as `<` in RTL) so the arrow points from the
   current value (right) to the next one (left).
 
+- Fix pass F4: literal signed numbers outside placeholders (boon lines, which never pass through `Loc.fill`) drew
+  their sign on the wrong side (`1+`, `%10-`). They are reworded without a sign, no control characters (U+2066 /
+  U+2069 in a msgstr fail tests/test_i18n_glyphs.gd: the fonts have no glyph for them): `30% سلايم / إضافي فورا`,
+  `خزان أكبر 15%`, `انزلاق 15% / أسرع`, `سطوع أعلى`, `تعبئة الطوابق / أكثر 15%`, `تذكرة/طابق / خزان أقل 10%`; the
+  race HEAT line says `1.3 ضعف` instead of `1.3 X`. Unsigned `25%`, `8%`, `3X3`, `X1.5`, `X2` read right as they are.
+  Boon lines must stay within 80 px (96 px tile minus 2 x 8 px; the source note's 112 px is too generous).
+
 ## Width notes (measured, placeholders = 888)
 
 - Over budget only with the synthetic 888 fill: `hud.pod.paid_run` (94 / 80; English is 90 too),
   `upgrades.buy_confirm` (142 / 140 with a long name). `upgrades.tab_tickets` is 40 px against the shared
   32 px budget line, but the TICKETS tab is 44 wide (as in English).
 - Shortened to fit: NEXT LEVEL = `التالي`, REPLAY MAZE = `العب مجددا`, PRESS KEY = `اضغط`, QUIT TO HUB =
-  `الساحة` (pause button), hard-mode checkbox `صعب: متاهات أخرى، لا ترقيات، ضباب يعود`, key notes
+  `عودة للساحة` (pause button, fix pass F4: was `الساحة`, the same as the HUB button; `العودة إلى الساحة` fills the
+  97 px button and widens the pause panel), VOLUME = `علو الصوت` (F4: was `الصوت`, the same as SOUND; `مستوى الصوت`
+  76 px and `شدة الصوت` 62 px are over the 60 px budget), hard-mode checkbox `صعب: متاهات أخرى، لا ترقيات، ضباب يعود`, key notes
   `الأسهم للحركة` (drops "always"), `hud.area.random_code` drops `عشوائية`.
 
 ## Doubts for a native reviewer
@@ -125,3 +134,5 @@ arrow mirrored (`<-`, from now on the right to next on the left), and space-sepa
   `ملتصق بالأرض`, top hat = `قبعة عالية`.
 - `مفعل / معطل` for every ON / OFF; `الذراع` for the gamepad (`يد التحكم` is the longer alternative).
 - Gender of the hidden `{name}`: status lines avoid agreement (`(قيد الارتداء)`, `(مختار)`, `اضغط للبس`).
+- Fix pass F4 wording: `تذكرة/طابق` drops the explicit "+1" (a ticket per floor, extra implied by the boon), and
+  `خزان أقل 10%` / `خزان أكبر 15%` are UI shorthand for "a tank 10% smaller / 15% bigger"; `علو الصوت` for VOLUME.
