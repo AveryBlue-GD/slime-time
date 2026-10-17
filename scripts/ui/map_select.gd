@@ -23,9 +23,11 @@ extends Control
 ## Other languages (docs/ui-rules.md section 10): the tiles grow with the locale's lines (the name
 ## under the accents' room, two lines for a name longer than the tile, the % under it), the grid starts
 ## under title_bottom, and when five rows no longer fit above the bottom row the tiles go on two pages
-## (three rows, then two; < and > beside the title flip them). The bottom row's line and HARD keep
+## (three rows, then two; < and > beside the title flip them, and so do left / right past a page's outer
+## column, mirrored in a right-to-left layout). The bottom row's line and HARD keep
 ## BACK's text line; the view's name line and the map area follow the line height, its BACK / PAPER
-## their text. While a map is viewed the select behind the opaque view is hidden. English: unchanged.
+## their text, and a % line too long to fit between them drops the paper's name. While a map is viewed
+## the select behind the opaque view is hidden. English: unchanged.
 
 ## Two columns of tiles 2 apart, EDGE (4) from both screen edges.
 const TILE_SIZE := Vector2(155, 26)
@@ -178,6 +180,44 @@ func _flip(step: int) -> void:
 				break
 
 
+## Left / right past a page's outer column turn the page (paged only), onto the same row of the page's
+## column next to it; the reading direction's key leads on (a mirrored layout reads right to left: there
+## the left key does).
+func _tile_input(level: int, event: InputEvent) -> void:
+	if pages < 2 or not (event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right")):
+		return
+	var tile := tiles[level - 1]
+	var on := "ui_left" if UIKit.is_mirrored(tile) else "ui_right"
+	var levels := page_levels(page)
+	var rows := ceili(levels.size() / 2.0)
+	var at := levels.find(level)
+	var column := 0 if at < rows else 1
+	var step := 0
+	if event.is_action_pressed(on) and column == 1 and page < pages - 1:
+		step = 1
+	elif not event.is_action_pressed(on) and column == 0 and page > 0:
+		step = -1
+	if step == 0:
+		return
+	tile.accept_event()
+	_show_page(page + step)
+	var next := page_levels(page)
+	var next_rows := ceili(next.size() / 2.0)
+	var first := 0 if step > 0 else next_rows  # the first column going on, the last going back
+	var count := next_rows if step > 0 else next.size() - next_rows
+	var target: Button = tiles[next[first + mini(at - column * rows, count - 1)] - 1]
+	if target.disabled:  # locked: the page's nearest open tile, else the arrow that turned the page
+		target = null
+		for i in next.size():
+			var other: Button = tiles[next[(first + i) % next.size()] - 1]
+			if not other.disabled:
+				target = other
+				break
+	if target == null:
+		target = page_next if step > 0 and not page_next.disabled else page_prev
+	target.grab_focus()
+
+
 ## The levels on page `index`, in reading order: the left column top to bottom, then the right.
 func page_levels(index: int) -> Array[int]:
 	var per := rows_per_page * 2
@@ -229,6 +269,8 @@ func _fill_grid() -> void:
 ## and whether it holds a route.
 func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: open_view(level), tile_size)
+	if pages > 1:
+		button.gui_input.connect(func(event: InputEvent) -> void: _tile_input(level, event))
 	var survey: Dictionary = Progress.survey_for(level, hard)
 	var maze: Dictionary = Levels.story_maze(level, hard) if not survey.is_empty() else {}
 	var locked := survey.is_empty() or not Survey.fits(survey, maze)
@@ -385,12 +427,15 @@ func open_view(level: int) -> void:
 	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
 	# i18n: {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
 	view_title.text = Loc.t("maps.view_title_hard", "{name}  HARD", {name = theme_name}) if hard else theme_name
+	var with_paper := ""
 	if paper != "" and paper != Cosmetics.DEFAULT_PAPER:
 		# i18n: {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line
-		view_line.text = Loc.t("maps.uncovered_paper", "{percent}% UNCOVERED  {paper}", {percent = percent, paper = Cosmetics.display_name(paper)})
-	else:
-		# i18n: {percent} = 0-100; the line under the map, max 296px, 1 line
-		view_line.text = Loc.t("maps.uncovered", "{percent}% UNCOVERED", {percent = percent})
+		with_paper = Loc.t("maps.uncovered_paper", "{percent}% UNCOVERED  {paper}", {percent = percent, paper = Cosmetics.display_name(paper)})
+	# i18n: {percent} = 0-100; the line under the map, max 296px, 1 line
+	view_line.text = Loc.t("maps.uncovered", "{percent}% UNCOVERED", {percent = percent})
+	# (between BACK and PAPER: a paper's line too long for the room keeps just the %, the paper shows on the map)
+	if with_paper != "" and UIKit.text_w(with_paper) <= bottom_line_rect(view_back).size.x:
+		view_line.text = with_paper
 	# PAPER shows once a paper is owned; BACK and PAPER then lead to each other (and nowhere else).
 	view_paper.visible = owned_papers().size() > 1 and themed
 	var to_paper := view_back.get_path_to(view_paper if view_paper.visible else view_back)
