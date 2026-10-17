@@ -29,6 +29,8 @@ const SCREEN := Rect2(0, 0, 320, 180)
 var progress: Node
 var language: Node
 var _code := ""
+## The locales whose CONTROLS note is centred nearer than GAP_L over the bottom row (_keys).
+var _centred_notes := {}
 
 
 func _initialize() -> void:
@@ -50,6 +52,7 @@ func _initialize() -> void:
 		await _keys()
 		await _title()
 		await _language_page()
+	_check(_centred_notes.keys() == ["vi", "pseudo"], "CONTROLS: the note closer than GAP_L to the bottom row (centred) only in Vietnamese and pseudo (%s)" % [_centred_notes.keys()])
 	language.set_locale("en")
 	language.disable()
 	Economy.languages_force = -1
@@ -184,9 +187,17 @@ func _keys() -> void:
 		if top < UIKit.title_bottom() + UIKit.GAP_S:  # (GAP_M; GAP_S where that keeps the rows on one page)
 			bad.append("page %d: rows start at %d, title ends %d" % [p, top, UIKit.title_bottom()])
 		var note := _rect(page.note)
-		# (GAP_L over the bottom row, GAP_M where the note is centred in less room: Vietnamese, fix pass F3b)
-		if bottom + UIKit.GAP_M > note.position.y or note.end.y + UIKit.GAP_M > UIKit.bottom_row_y():
-			bad.append("page %d: rows end %d, note %s, bottom row %d" % [p, bottom, note, UIKit.bottom_row_y()])
+		# GAP_L over the bottom row; GAP_M only where the note is centred between the rows and the bottom row
+		# (fix pass F3b: Vietnamese and pseudo, their marks over the last key's goo): as near to the rows' bottom
+		# (its own marks counted) as to the bottom row. English pinned below (NOTE_GAP).
+		var below := UIKit.bottom_row_y() - note.end.y
+		var above := note.position.y - UIKit.mark_rows(page.note.text) - bottom
+		var centred := below < UIKit.GAP_L and below >= UIKit.GAP_M and absf(above - below) <= 1.0
+		if bottom + UIKit.GAP_M > note.position.y or (below < UIKit.GAP_L and not centred):
+			bad.append("page %d: rows end %d, note %s (%d over the bottom row %d, %d under the rows)" % [p, bottom, note, below,
+				UIKit.bottom_row_y(), above])
+		if centred:
+			_centred_notes[_code] = true
 		var note_w := UIKit.text_w(page.note.text)
 		if page.note_lines == 1 and note_w > 320 - 2 * UIKit.EDGE:
 			bad.append("note %d wide on one line" % note_w)
@@ -200,7 +211,8 @@ func _keys() -> void:
 	if (page.page_button != null) != (page.pages > 1):
 		bad.append("page button")
 	if _code == "en" and (_rect(page.key_buttons.move_up) != Rect2(92, 30, 64, 13) or _rect(page.key_buttons.restart) != Rect2(252, 30, 64, 13) \
-			or _rect(page.key_buttons.jump).position.y != 98 or _rect(page.note).position.y != 140):
+			or _rect(page.key_buttons.jump).position.y != 98 or _rect(page.note).position.y != 140 \
+			or UIKit.bottom_row_y() - _rect(page.note).end.y != page.NOTE_GAP):
 		bad.append("English CONTROLS moved: %s %s" % [_rect(page.key_buttons.move_up), _rect(page.note)])
 	_check(bad.is_empty(), "%s: CONTROLS (%d page%s) %s" % [_code, page.pages, "" if page.pages == 1 else "s", "ok" if bad.is_empty() else str(bad)])
 	page.free()

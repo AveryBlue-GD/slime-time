@@ -115,7 +115,9 @@ const SMALLER_FONT_PX := {"hi": 12}
 ## off the line box (FontFile extra spacing) where the room matters: Noto Sans Devanagari 14 px has a
 ## 19 px box (ascent 13, descent 6) but its lowest marks (ु ू ृ) end 3 rows under the baseline (every hi
 ## msgstr shaped, fix pass F1), so its line is 17: a 21 px button then holds the line from row 3, its
-## upper matras under the goo's lump row (they inked the lump row at 2 / 0 margins). The LANGUAGE
+## upper matras under the goo's lump row (they inked the lump row at 2 / 0 margins). A trimmed line ends on
+## its lowest marks (ु ू), so UIKit.button_h adds the clear row and the border under it: 22 (3 / 2, fix pass
+## R2; at 21, 3 / 1, they sat on the row over the bottom border and their shadow on it). The LANGUAGE
 ## screen's native name keeps the untrimmed font (native_font), as do the smaller size and the titles.
 const LINE_TRIM := {"hi": 2}
 ## Locales whose text needs the accent head room (es, pt_BR, fr, de, it, pl, tr, ru); id uses no

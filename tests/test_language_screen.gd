@@ -124,7 +124,7 @@ func _settings_button() -> void:
 	language.set_locale("hi")
 	settings = await _open(SETTINGS)
 	button = settings.language_button
-	var h := int(language.metrics("hi").button_h)
+	var h := maxi(UIKit.button_h(), int(language.metrics("hi").button_h))  # (22: the settings rows' height, fix pass R2)
 	_check(button.size.y == h and button.get_combined_minimum_size().y <= h, "Hindi: the button is %d tall and its name fits" % h)
 	_check(button.position == settings._cell(1, 3) and button.size.x == settings.fog_button.size.x
 		and button.position.y == settings.fog_button.position.y and button.size.y == settings.fog_button.size.y,

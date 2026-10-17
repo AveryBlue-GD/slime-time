@@ -223,17 +223,17 @@ functions, never the constants, for anything text-tall.
 
 | Function | English | accented (es pt_BR fr de it pl tr ru, pseudo) | vi | cjk (zh_CN ja ko) | zh_TW | th | hi / ar |
 |---|---|---|---|---|---|---|---|
-| `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 21 |
-| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 3 / 1 (ar 2 / 0) |
+| `button_h()` = `tab_h()` | 13 | 16 | 18 | 16 | 18 | 19 | 22 (ar 21) |
+| `button_v_margins()` (top / bottom) | 3 / 3 | 6 / 3 | 8 / 3 | 1 / 1 | 1 / 1 | 2 / 0 | 3 / 2 (ar 2 / 0) |
 | `panel_v_margins()` (`panel_style()`: one line in a goo panel) | 6 / 5 | 9 / 5 | 11 / 5 | 3 / 2 | 3 / 1 | 5 / 1 | 6 / 3 (ar 5 / 2) |
 | `panel_text_top()` (first line in a hand-laid panel) | 8 | 9 | 11 | 8 | 8 | 8 | 8 |
-| `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 22 / 39 |
+| `pod_h()` / `pod_h2()` | 14 / 23 | 17 / 26 | 19 / 30 | 17 / 29 | 19 / 33 | 20 / 35 | 23 / 40 (ar 22 / 39) |
 | `line_h()` / `line_pitch()` / `dense_pitch()` | 7 / 12 / 11 | 7 / 12 / 12 | 7 / 14 / 14 | 14 / 15 / 14 | 16 / 17 / 16 | 17 / 18 / 17 | 17 / 20 / 19 (ar 19 / 20 / 19) |
 | `line_spacing()` (Label theme) | 5 | 5 | 7 | 1 | 1 | 1 | 3 (ar 1) |
 | `title_top()` .. `title_bottom()` | 2..22 | 8..28 | 12..32 | 2..32 | 2..36 | 2..29 | 2..29 |
-| `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 156 |
-| `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 145 / 84x21 |
-| `hit_pad()` (hit area stays >= 23) | 5 | 4 | 3 | 4 | 3 | 2 | 1 |
+| `bottom_row_y()` (ends on row 176) | 164 | 161 | 159 | 161 | 159 | 158 | 155 (ar 156) |
+| `choice_y()` / `choice_size()` | 153 / 84x13 | 150 / 84x16 | 148 / 84x18 | 150 / 84x16 | 148 / 84x18 | 147 / 84x19 | 144 / 84x22 (ar 145 / 84x21) |
+| `hit_pad()` (hit area stays >= 23) | 5 | 4 | 3 | 4 | 3 | 2 | 1 (hi 1: 24) |
 | `stack_pitch(gap)` | `button_h()` + gap (16 with `GAP_S` in English) | | | | | | |
 | `accent_room()` (marks over a line in a tile / panel) | 0 | 2 | 4 | 0 | 0 | 0 | 0 |
 | `digit_top()` (slimy digits' body under the line top) | 0 | 0 | 0 | 4 | 6 | 5 | 6 |
@@ -337,7 +337,9 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   6 / 5; with `text`, only the marks that line has: the hub's station prompt), and a hand-laid panel's first line at
   `panel_text_top()` (PANEL_PAD 8, 9 accented, 11 Vietnamese; the hub's quit / portal / resume dialogs). Devanagari's
   8 px line box is trimmed to its ink (`Language.LINE_TRIM`: 19 -> 17, no translation inks the descent's last 2 rows),
-  so its 21 px buttons hold the line from row 3 (3 / 1). The check: `tools/i18n_capture.sh` renders every state twice
+  so its buttons hold the line from row 3; a trimmed line ends on its lowest marks (ु ू), so `button_h()` adds
+  `BOTTOM_INK_ROOM` (1 clear row + the border) under it: 22 px, 3 / 2 (fix pass R2; at 21 the marks sat on the row
+  over the border, their shadow on it). The LANGUAGE screen keeps `Language.METRICS` 21 (the untrimmed native name). The check: `tools/i18n_capture.sh` renders every state twice
   more (texts hidden, shadows hidden) and counts glyph ink (letters, marks, drips; shadows apart) inside each visible
   goo box's band / lump rows (`OUT/json/goo_ink_<locale>.json`, summary line "goo-ink check"). Since the leftover pass
   there are none in any locale (English's SAVE CODE panel and upgrades rows, the LANGUAGE names fixed): the gate below.
@@ -415,6 +417,25 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
     over the bottom row.
   - **A wrapped note breaks at the balanced space** (`UIKit.break_line`) where its language spaces its words: no
     one-word line under a full one (the COINS notes; CJK / Thai keep the autowrap).
+- **Fix pass R2 rules** (docs/i18n/review/fixes-R2.md), no-ops in English:
+  - **A script's lowest marks keep 1 clear row over a button's bottom border** (`UIKit.BOTTOM_INK_ROOM`: the row, then
+    the border on h - 1), as English's drips do; `tests/test_i18n_f1_marks.gd` checks `ink_bottom` against it for every
+    taller script (Arabic's lowest dots still on h - 2: open, fixes-R2.md).
+  - **A scaled control mirrors at its drawn size**: a right-to-left layout mirrors by `size` (x' = parent_w - x - w;
+    `scale` is not counted), so a control drawn at 2x is kept out of the mirroring (`UIKit.keep_ltr`) and placed at
+    x' = W - x - texture_w * scale itself (the HEAT panel's icons; LTR untouched).
+  - **A name filling its room to `BUTTON_TEXT_PAD` takes two lines where they fit**: the HEAT toggles' one-line names
+    keep `NAME_ROOM_PAD` (`GAP_S`) more where the panel fits two-line names and the script has no smaller size (es
+    NIEBLA VORAZ, 2 -> 5+ clear columns); the map tiles' names wrap past `name_room()` (`TEXT_PAD` + `GAP_S`: ru / fr
+    1 -> 8+ columns to the tile's inset bar).
+  - **An 8 px name line over art starts its marks on row 3** (the map view's `view_title_y(text)`: 3 + that line's own
+    `mark_rows`; the map area follows it, so a marked name costs the map its rows: one size step on the maps that need
+    144+ rows, fixes-R2.md).
+  - **A slider keeps English's length**: the settings columns widen (both, re-centred) until the VOLUME slider is
+    `VOLUME_SLIDER_MIN` (66) beside its label, while they fit the screen's `EDGE`.
+  - **A 16 px panel title too wide for the panel takes two 16 px lines** broken at the balanced space
+    (`controls.gd two_lines`, the second line `big_line_spacing()` under the first: drips, shadow and its marks), and
+    a too-tall column closes its gaps one more scale step (`GAP_S`) before a title drops to the 8 px font.
 - **Rendered goo-ink gate**: `./tools/i18n_capture.sh --gate` (needs a window; docs/i18n/review/README.md) fails on any
   glyph ink inside a goo box's band / lump rows in any state of any locale, English included, other than the accepted
   exceptions listed in `tools/i18n_goo_ink_allow.txt` (none), and on an incomplete capture. Run it after any change

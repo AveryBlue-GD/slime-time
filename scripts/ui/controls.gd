@@ -45,7 +45,11 @@ const ROW_GAP := ROW_STEP - UIKit.BUTTON_H  # 7
 ## RESET PROGRESS on the bottom row, mirroring BACK (its text + the 4 px margins, even).
 const RESET_SIZE := Vector2(92, UIKit.BUTTON_H)
 ## The VOLUME box is 6 + label + 6 + slider + 6 wide, which must equal the column: the slider width is
-## UIKit.volume_slider_width (measured from the translated label).
+## UIKit.volume_slider_width (measured from the translated label). A longer label widens both columns
+## (as a longer button text does) so the slider keeps English's length, VOLUME_SLIDER_MIN (fix pass R2:
+## LAUTSTÄRKE left the German slider 42 px), while the two columns fit the screen's EDGE.
+const VOLUME_SLIDER_MIN := 66
+const VOLUME_BOX_EXTRA := 18
 ## The panels (SAVE CODE, RESET confirm): text keeps PANEL_TEXT_PAD from the panel's sides, and a panel
 ## stays inside the screen's EDGE (at most 312 wide, 172 tall).
 const PANEL_TEXT_PAD := UIKit.PANEL_PAD
@@ -57,6 +61,8 @@ var col_x: Array[int] = [COL_L, COL_R]
 var heading_y := FIRST_ROW - 11
 var first_row := FIRST_ROW
 var row_step := ROW_STEP
+## The column width the VOLUME label + a VOLUME_SLIDER_MIN slider need (_plan_page).
+var volume_col_w := COL_W
 ## The page's controls a panel hid while it is open (_cover_page): see there.
 var _covered: Array[CanvasItem] = []
 
@@ -135,7 +141,8 @@ func _ready() -> void:
 
 
 ## This locale's grid (English: the constants). Columns: COL_W, or every text + its 4 px margins when
-## one needs more (both columns alike, the pair re-centred: Spanish PANTALLA COMPLETA). Rows: the
+## one needs more (both columns alike, the pair re-centred: Spanish PANTALLA COMPLETA), or the VOLUME
+## label + a VOLUME_SLIDER_MIN slider (German LAUTSTÄRKE). Rows: the
 ## headings HEADING_GAP under the title's line box, the first row 4 px under a heading's line, rows
 ## ROW_GAP apart; GAP_M, then GAP_S, when four rows would not end GAP_M above the bottom row.
 func _plan_page() -> void:
@@ -143,6 +150,11 @@ func _plan_page() -> void:
 	for text in column_texts():
 		widest = maxi(widest, UIKit.text_w(text))
 	col_w = maxi(COL_W, widest + 2 * UIKit.BUTTON_TEXT_PAD)
+	var label_w := ceili(COL_W - VOLUME_BOX_EXTRA - UIKit.volume_slider_width(self, COL_W))  # (the VOLUME label)
+	var volume_col := VOLUME_BOX_EXTRA + label_w + VOLUME_SLIDER_MIN
+	var max_col := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - UIKit.GAP_L) / 2.0)
+	volume_col_w = mini(volume_col, max_col)
+	col_w = maxi(col_w, volume_col_w)
 	var left := int(UIKit.center_x(2 * col_w + UIKit.GAP_L))
 	col_x = [left, left + col_w + UIKit.GAP_L]
 	heading_y = UIKit.title_bottom() + HEADING_GAP
@@ -161,7 +173,8 @@ func _cell(column: int, row: int) -> Vector2:
 
 func _column_button(at: Vector2, on_press: Callable, text := "") -> Button:
 	var button := UIKit.make_button(text, on_press, Vector2(col_w, UIKit.button_h()))
-	UIKit.note_text_w(button, column_texts(), COL_W)  # (both columns one width: every text they can show)
+	# (both columns one width: every text they can show, or the VOLUME box's)
+	UIKit.note_text_w(button, column_texts(), maxi(COL_W, volume_col_w))
 	button.position = at
 	add_child(button)
 	return button
@@ -298,8 +311,8 @@ func _build_code_panel() -> void:
 ## numbers above. The panel widens (up to PANEL_MAX.x) for a wider text, which wraps onto two lines
 ## when even that is too narrow. When the column is taller than PANEL_MAX.y, its gaps close to the
 ## spacing scale (status / CLOSE, bottom pad, the sections, status, title), then the hints and status
-## take the script's smaller crisp size (Language.small_font: Devanagari 12 px), then the title the 8 px
-## font (UIKit.fit_text's steps; never a fractional scale).
+## take the script's smaller crisp size (Language.small_font: Devanagari 12 px), then the gaps close one
+## step more (GAP_S), then the title takes the 8 px font (UIKit.fit_text's steps; never a fractional scale).
 func _code_layout(title_text: String, hints: Array) -> Dictionary:
 	var widest := UIKit.text_w(title_text, UIKit.FONT_BIG)
 	var line_widest := 0
@@ -317,16 +330,20 @@ func _code_layout(title_text: String, hints: Array) -> Dictionary:
 			status_lines = 2
 	var small := _small_font()
 	var plan := {}
-	for step in 3:
+	# Steps: 0 the theme's font; 1 the smaller crisp font for the hints / status; 2 also the column's gaps
+	# one scale step closer (GAP_S, fix pass R2: "keep the 16 px title by making room", the pseudo
+	# locale's two-line hints dropped its title to 8 px); 3 the title in the 8 px font.
+	for step in 4:
 		if step == 1 and small == null:
 			continue
 		var font: Font = small if step >= 1 else null
-		var title_size := UIKit.FONT if step == 2 or widest > text_w else UIKit.FONT_BIG
+		var title_size := UIKit.FONT if step == 3 or widest > text_w else UIKit.FONT_BIG
 		var title_h := UIKit.title_h() if title_size == UIKit.FONT_BIG else _text_box(1, UIKit.TEXT_DRIP + 1, null)
 		var hint_h := _text_box(hint_lines, UIKit.TEXT_DRIP + 1, font)
 		var heights := [title_h, hint_h, UIKit.button_h(), hint_h, UIKit.button_h(), _text_box(status_lines, UIKit.TEXT_DRIP + 1, font), UIKit.button_h()]
 		var top_pad := 6 + int(UIKit.metrics().title_above)
-		var gaps := [[top_pad, top_pad], [6, UIKit.GAP_M], [2, 2], [10, UIKit.GAP_M], [2, 2], [8, UIKit.GAP_M], [16, UIKit.GAP_M], [11, UIKit.GAP_L]]
+		var near := UIKit.GAP_S if step == 2 else UIKit.GAP_M
+		var gaps := [[top_pad, top_pad], [6, near], [2, 2], [10, near], [2, 2], [8, near], [16, near], [11, UIKit.GAP_L]]
 		var column := stack_column(heights, gaps, [6, 7, 3, 5, 1], int(PANEL_MAX.y))
 		plan = {tops = column.tops, heights = heights, title_size = title_size, font = font, text_w = text_w,
 			lines = {hint = hint_lines, status = status_lines}, h = column.h}
@@ -659,18 +676,41 @@ func _build_reset_confirm() -> void:
 	var pair_w := 2 * button_w + UIKit.GAP_XL
 	var widest := maxi(maxi(UIKit.text_w(title_text, UIKit.FONT_BIG), UIKit.text_w(body_text)), pair_w)
 	var panel_w := clampi(widest + 2 * PANEL_TEXT_PAD, 272, int(PANEL_MAX.x))
-	# A title wider than the widest panel's text: the 8 px font (UIKit.fit_text's smaller step).
-	var title_size := UIKit.FONT_BIG if UIKit.text_w(title_text, UIKit.FONT_BIG) <= panel_w - 2 * PANEL_TEXT_PAD else UIKit.FONT
+	# A title wider than the widest panel's text: two 16 px lines (fix pass R2: the 16 px title kept, as on
+	# every other screen), else the 8 px font (UIKit.fit_text's smaller step).
+	var text_room := panel_w - 2 * PANEL_TEXT_PAD
+	var title_size := UIKit.FONT_BIG
+	var title_lines := 1
+	var title_spacing := big_line_spacing()
+	if UIKit.text_w(title_text, UIKit.FONT_BIG) > text_room:
+		var split := two_lines(title_text, UIKit.FONT_BIG)
+		title_lines = 2
+		if UIKit.tall_script() or split == "" or UIKit.text_w(split, UIKit.FONT_BIG) > text_room:
+			title_size = UIKit.FONT
+			title_lines = 1
+		else:
+			title_text = split
 	var title_h := UIKit.title_h() if title_size == UIKit.FONT_BIG else _text_box(1, UIKit.TEXT_DRIP + 1, null)
+	if title_lines == 2:
+		title_h += int(UIKit.metrics().title_line_h) + title_spacing
 	var top_pad := 6 + int(UIKit.metrics().title_above)
 	var heights := [title_h, _text_box(2, 1, null), UIKit.button_h()]
 	var column := stack_column(heights, [[top_pad, top_pad], [4, UIKit.GAP_XS], [10, UIKit.GAP_M], [9, UIKit.GAP_L]], [2, 1], int(PANEL_MAX.y))
+	if title_lines == 2 and not column.fits:  # (the 8 px title after all)
+		title_size = UIKit.FONT
+		title_lines = 1
+		title_h = _text_box(1, UIKit.TEXT_DRIP + 1, null)
+		heights[0] = title_h
+		column = stack_column(heights, [[top_pad, top_pad], [4, UIKit.GAP_XS], [10, UIKit.GAP_M], [9, UIKit.GAP_L]], [2, 1], int(PANEL_MAX.y))
 	var h: int = column.h
 	var rect := Rect2(UIKit.center_x(panel_w), 48 - floori((h - 82) / 2.0), panel_w, h)
 	var top := int(rect.position.y)
 	reset_confirm.set_meta("panel_rect", rect)
 	UIKit.add_panel(reset_confirm, rect)
-	_centered_label(UIKit.make_label(title_text, title_size, UIKit.GOLD), top + column.tops[0], top + column.tops[0] + heights[0])
+	var title := UIKit.make_label(title_text, title_size, UIKit.GOLD)
+	_centered_label(title, top + column.tops[0], top + column.tops[0] + heights[0])
+	if title_lines == 2:  # (the second line under the first's drips and over its own marks)
+		title.add_theme_constant_override("line_spacing", title_spacing)
 	_centered_label(UIKit.make_label(body_text, UIKit.FONT, UIKit.TEXT_DIM), top + column.tops[1], top + column.tops[1] + heights[1])
 	var buttons_y: int = top + column.tops[2]
 	confirm_button = UIKit.make_button(confirm_text, _reset, Vector2(button_w, UIKit.button_h()))
@@ -681,6 +721,28 @@ func _build_reset_confirm() -> void:
 		UIKit.note_text_w(b, [confirm_text, cancel_text], 70)
 	cancel_button.position = Vector2(confirm_button.position.x + button_w + UIKit.GAP_XL, buttons_y)  # 166
 	reset_confirm.add_child(cancel_button)
+
+
+## `text` broken at the space that makes its two lines the most even (each line centred), or "" when it
+## has no space.
+static func two_lines(text: String, font_size := UIKit.FONT) -> String:
+	var words := text.split(" ")
+	var best := ""
+	var best_w := INF
+	for i in range(1, words.size()):
+		var a := " ".join(words.slice(0, i))
+		var b := " ".join(words.slice(i))
+		var w := maxf(UIKit.text_w(a, font_size), UIKit.text_w(b, font_size))
+		if w < best_w:
+			best_w = w
+			best = a + "\n" + b
+	return best
+
+
+## The line spacing of a two-line 16 px panel title: the first line's drips and shadow (6 rows) and the
+## second line's marks (title_above) between the two line boxes.
+static func big_line_spacing() -> int:
+	return 2 * UIKit.TEXT_DRIP + 2 + int(UIKit.metrics().title_above)
 
 
 func _centered_label(label: Label, top: int, bottom: int) -> void:

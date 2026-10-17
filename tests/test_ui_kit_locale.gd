@@ -69,7 +69,10 @@ func _english_numbers(tag: String) -> void:
 ## Numbers that must hold in every locale.
 func _sizes(code: String) -> void:
 	var m: Dictionary = Lang.metrics(code)
-	_check(UIKit.button_h() == m.button_h, "%s: button_h %d = metrics" % [code, UIKit.button_h()])
+	# (a line box trimmed to its ink adds the clear row and the border under its lowest marks: Devanagari 22,
+	# fix pass R2; the LANGUAGE screen's native-name rows keep the metric)
+	var trimmed := UIKit.line_h() + UIKit.GOO_INK_ROW - int(m.ink_top) + UIKit.BOTTOM_INK_ROOM if Lang.LINE_TRIM.has(code) else 0
+	_check(UIKit.button_h() == maxi(int(m.button_h), trimmed), "%s: button_h %d = metrics (trimmed line %d)" % [code, UIKit.button_h(), trimmed])
 	_check(UIKit.button_h() + 2 * UIKit.hit_pad() >= UIKit.BUTTON_H + 2 * UIKit.HIT_PAD,
 		"%s: hit area %d px tall (>= 23)" % [code, UIKit.button_h() + 2 * UIKit.hit_pad()])
 	_check(UIKit.bottom_row_y() + UIKit.button_h() == UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H, "%s: the bottom row still ends on row 176" % code)

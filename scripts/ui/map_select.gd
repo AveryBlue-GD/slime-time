@@ -35,12 +35,19 @@ const GRID_POS := Vector2(4, 21)
 const THUMB_POS := Vector2(4, 3)
 ## Where the map may be drawn in the view.
 const MAP_AREA := Rect2i(2, 13, 316, 149)
+## The view's name line: its first ink row (see view_title_y).
+const VIEW_TITLE_INK := 3
 ## The themed maps (each level's map and tile picture in its own palette with a themed frame,
 ## MapView's `theme`). The one switch: false = the plain parchment style everywhere.
 const THEMED_MAPS := true
 ## The tile text's left edge (after the picture) and the room kept right of it.
 const TEXT_X := 43
 const TEXT_PAD := 4
+## A name wraps when it is wider than the tile's text room less this (fix pass R2): a name that filled
+## the room to its last column (ru ПЕСЧАНОЕ СВЯТИЛИЩЕ, fr SANCTUAIRE DE SABLE) drew its shadow 1 px from
+## the tile's inset bar; with GAP_S more its ink keeps >= 4 clear columns to the bar (English's longest
+## names keep 8-9 and never wrap).
+const NAME_WRAP_PAD := UIKit.GAP_S
 ## Rows of tiles in the English layout.
 const ROWS := 5
 ## Between the grid's last row and the bottom row (English: 159 -> 164).
@@ -150,7 +157,7 @@ func _layout_tiles() -> void:
 	# (the name's first ink on UIKit.GOO_INK_ROW, under the tile's lump row, as English capitals: its
 	# marks' rows lower with accents (6) and in Vietnamese (8); fix pass F3b, they were on the lump row)
 	_name_y = maxi(3, UIKit.GOO_INK_ROW - int(UIKit.metrics().get("ink_top", 0)))
-	var room := TILE_SIZE.x - TEXT_X - TEXT_PAD
+	var room := name_room()
 	_name_lines = 1
 	for level in range(1, Levels.COUNT + 1):
 		if UIKit.text_w(Themes.display_name(Themes.for_level(level))) > room:
@@ -164,6 +171,11 @@ func _layout_tiles() -> void:
 	var fit := UIKit.grid_budget(Levels.COUNT, 2, grid_area_h(), tile_size.y, UIKit.GAP_XS)
 	pages = fit.pages
 	rows_per_page = ceili(ROWS / float(pages))
+
+
+## The widest a tile's name may be on one line (wider names wrap onto two).
+static func name_room() -> int:
+	return int(TILE_SIZE.x) - TEXT_X - TEXT_PAD - NAME_WRAP_PAD
 
 
 ## The room for the grid: from the title's shadow row to BOTTOM_GAP over the bottom row.
@@ -279,7 +291,7 @@ func _fill_grid() -> void:
 		grid.add_child(tiles[(i % 2) * rows + i / 2])
 	if _name_lines > 1:  # a name longer than the tile wraps (every tile keeps room for two lines)
 		for tile in tiles:
-			UIKit.wrap_label(tile.get_meta("name_label"), Vector2(TILE_SIZE.x - TEXT_X - TEXT_PAD, UIKit.text_block_h(2)))
+			UIKit.wrap_label(tile.get_meta("name_label"), Vector2(name_room(), UIKit.text_block_h(2)))
 	if pages > 1:
 		_show_page(page)
 	if skin_text:
@@ -392,15 +404,19 @@ func _build_view() -> void:
 	view_paper.focus_previous = view_paper.get_path_to(view_back)
 
 
-## The view's name line: 3 px from the top (lower by a Vietnamese capital's stacked marks).
-static func view_title_y() -> int:
-	return maxi(3, 1 + UIKit.accent_room())
+## The view's name line (`title`: the text it shows): its first ink on row VIEW_TITLE_INK (3, English's
+## capitals), lower by the rows that line's own marks reach over it (UIKit.mark_rows: Ś 3, so the line on
+## row 6; fix pass R2: the line stayed on row 3 with marks and they started on screen rows 0-1). A line
+## without marks (English, Cyrillic, a taller script, whose line box holds its marks) stays on row 3.
+static func view_title_y(title := "") -> int:
+	return VIEW_TITLE_INK + UIKit.mark_rows(title)
 
 
-## The map's area: 3 px under the name line to 2 px over the bottom row, 2 px from the sides
-## (MAP_AREA in English).
-static func view_map_area() -> Rect2i:
-	var top := view_title_y() + UIKit.line_h() + 3
+## The map's area under the name line `title`: 3 px under that line's box to 2 px over the bottom row,
+## 2 px from the sides (MAP_AREA in English). A marked title takes its rows from the map's height: the
+## map is drawn one size smaller where it then no longer fits (MapView.layout).
+static func view_map_area(title := "") -> Rect2i:
+	var top := view_title_y(title) + UIKit.line_h() + 3
 	return Rect2i(MAP_AREA.position.x, top, MAP_AREA.size.x, UIKit.bottom_row_y() - 2 - top)
 
 
@@ -438,6 +454,14 @@ func open_view(level: int) -> void:
 			if Progress.has_coin(level, cell):
 				coins.append(cell)
 	var theme := Themes.for_level(level) if themed else ""
+	var theme_name := Themes.display_name(Themes.for_level(level))
+	# i18n: {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
+	view_title.text = Loc.t("maps.view_title_hard", "{name}  HARD", {name = theme_name}) if hard else theme_name
+	# (the name line and the map's area follow that line's own marks: view_title_y)
+	view_title.position.y = view_title_y(view_title.text)
+	map_area = view_map_area(view_title.text)
+	view_area.position = Vector2(map_area.position)
+	view_area.size = Vector2(map_area.size)
 	var sizes := MapView.layout(maze.cells, map_area.size, themed)
 	var paper: String = Progress.map_paper if themed else ""
 	var image := MapView.render(maze, survey, sizes, coins, theme, paper, Progress.skin_color())
@@ -445,10 +469,7 @@ func open_view(level: int) -> void:
 	view_map.texture = ImageTexture.create_from_image(image)
 	view_map.size = Vector2(image.get_size())
 	view_map.position = Vector2(map_area.position + (map_area.size - image.get_size()) / 2)
-	var theme_name := Themes.display_name(Themes.for_level(level))
 	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
-	# i18n: {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
-	view_title.text = Loc.t("maps.view_title_hard", "{name}  HARD", {name = theme_name}) if hard else theme_name
 	var with_paper := ""
 	if paper != "" and paper != Cosmetics.DEFAULT_PAPER:
 		# i18n: {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line

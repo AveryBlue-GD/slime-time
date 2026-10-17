@@ -4,8 +4,9 @@ extends "res://tests/suite_base.gd"
 ## on the goo", "Script gap (CJK)", 10.2 signed numbers), in every locale:
 ## - every script's 8 px ink (Language METRICS ink_top .. ink_bottom, checked against every glyph of every
 ##   msgstr shaped with the installed fallback: bitmap bounds less their 1 px padding) lands, in a themed
-##   button, from row GOO_INK_ROW 3 to row h - 2 (under the lump row, over the bottom band), and in a goo
-##   panel (panel_style) from row 6 to row h - 4; Devanagari's trimmed line (17) holds all its ink;
+##   button, from row GOO_INK_ROW 3 to row h - 2 (under the lump row, over the bottom band; a taller
+##   script's to h - 3, 1 clear row over the border, fix pass R2, but Arabic), and in a goo panel
+##   (panel_style) from row 6 to row h - 4; Devanagari's trimmed line (17) holds all its ink;
 ## - a button sized from its text is text + 2 x BUTTON_TEXT_PAD (5) wide;
 ## - marks: has_mark / ink_above only for letters the slimy font draws with a mark;
 ## - Loc: the CJK script gap (U+2007, 1 px) after a slimy character before a CJK letter, only in ja / ko /
@@ -17,6 +18,8 @@ extends "res://tests/suite_base.gd"
 
 const Report := preload("res://tests/i18n_report.gd")
 const Lang := preload("res://scripts/language.gd")
+## Taller scripts whose last ink row is still on the row over a button's bottom border (see _margins).
+const BOTTOM_ROW_OPEN := ["ar"]
 
 var progress: Node
 var language: Node
@@ -61,6 +64,12 @@ func _margins(code: String) -> void:
 	var style := UIKit.panel_style() as StyleBox
 	_check(int(style.content_margin_top) == p.x and int(style.content_margin_bottom) == p.y, "%s: panel_style carries them" % code)
 	_check(UIKit.panel_text_top() == maxi(UIKit.PANEL_PAD, p.x), "%s: panel_text_top %d" % [code, UIKit.panel_text_top()])
+	# The bottom border rows (fix pass R2): a taller script's last ink keeps 1 clear row over the button's
+	# bottom border (h - 1), as English's drips do; Devanagari's trimmed line sat on the row over it (21 px).
+	# Arabic's lowest dots still reach h - 2 (21 px, 2 / 0): open, docs/i18n/review/fixes-R2.md.
+	if UIKit.tall_script() and not code in BOTTOM_ROW_OPEN:
+		_check(b.x + int(m.ink_bottom) <= bh - 1 - UIKit.BOTTOM_INK_ROOM,
+			"%s: button %d: last ink row %d, 1 clear row over the bottom border" % [code, bh, b.x + int(m.ink_bottom)])
 	if code == "en":
 		_check(b == Vector2i(3, 3) and p == Vector2i(6, 5) and bh == 13 and UIKit.panel_text_top() == 8, "en: English margins unchanged")
 	var text := "ABCDEFGHIJKLMNOP"

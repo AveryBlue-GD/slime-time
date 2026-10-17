@@ -35,6 +35,8 @@ const NAME_X := 26
 const NAME_PAD := 4
 const POINTS_X := 35
 const SHIFT_X := 2
+## The locale layout's room right of a name, past BUTTON_TEXT_PAD (see _geometry).
+const NAME_ROOM_PAD := UIKit.GAP_S
 const LevelSelect := preload("res://scripts/ui/level_select.gd")
 const MapSelect := preload("res://scripts/ui/map_select.gd")
 const HEAT_TINT := Color8(255, 170, 90)
@@ -92,7 +94,8 @@ func _ready() -> void:
 		add_child(button)
 		toggles[id] = button
 		if _geo.name_lines > 1:  # (sized once in the themed tree: sized before, it keeps the default font's width)
-			UIKit.wrap_label(button.get_node("Name"), Vector2(toggle_size.x - _geo.name_x - UIKit.BUTTON_TEXT_PAD, UIKit.text_block_h(2)))
+			var wrap_w: float = _geo.wrap_w if _geo.wrap_w > 0 else toggle_size.x - _geo.name_x - UIKit.BUTTON_TEXT_PAD
+			UIKit.wrap_label(button.get_node("Name"), Vector2(wrap_w, UIKit.text_block_h(2)))
 
 	about = UIKit.make_label(default_about(), UIKit.FONT, UIKit.TEXT_DIM)
 	about.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -149,7 +152,8 @@ static func about_texts() -> Array[String]:
 func _geometry() -> Dictionary:
 	var g := {rect = RECT, toggle = Vector2(TOGGLE), title_y = RECT.position.y + UIKit.PANEL_PAD, grid_y = GRID_Y,
 		about_y = ABOUT_Y, about_lines = 1, done_y = DONE_Y, icon_x = ICON_X, name_x = NAME_X, name_y = 7, name_lines = 1,
-		name_font = null, points_y = 20, icon_scale = ICON_SCALE, one_x = [], across = GAP, name_x_1x = NAME_X, room_1x = 0}
+		name_font = null, points_y = 20, icon_scale = ICON_SCALE, one_x = [], across = GAP, name_x_1x = NAME_X, room_1x = 0,
+		wrap_w = 0}
 	if english:
 		return g
 	var tall := UIKit.tall_script()
@@ -174,8 +178,16 @@ func _geometry() -> Dictionary:
 	var widest := 0
 	for id in Heat.IDS:
 		widest = maxi(widest, UIKit.text_w(Heat.display_name(id)))
-	if widest > room:
-		var language := get_tree().root.get_node_or_null("Language")
+	# A name that fills the room to BUTTON_TEXT_PAD (es NIEBLA VORAZ: 2 clear columns to the frame, English's
+	# names 5+) takes two lines where the panel still fits the screen and the script has no smaller size
+	# (fix pass R2); one line keeps NAME_ROOM_PAD more.
+	var language := get_tree().root.get_node_or_null("Language")
+	var has_small: bool = language != null and language.has_method("small_font") and language.small_font(UIKit.locale()) != null
+	if widest <= room and widest > room - NAME_ROOM_PAD and not has_small \
+			and _panel_h(UIKit.text_block_h(2), tall) <= UIKit.SCREEN.y - 2 * UIKit.EDGE:
+		g.name_lines = 2
+		name_h = UIKit.text_block_h(2)
+	elif widest > room:
 		var small: Font = language.small_font(UIKit.locale()) if language and language.has_method("small_font") else null
 		var small_widest := 0
 		if small:
@@ -191,6 +203,13 @@ func _geometry() -> Dictionary:
 		else:
 			g.name_lines = 2
 			name_h = UIKit.text_block_h(2)
+	if g.name_lines == 2:  # (wrapped NAME_ROOM_PAD inside the room, where every word fits that)
+		var narrow := int(room) - NAME_ROOM_PAD
+		g.wrap_w = narrow
+		for id in Heat.IDS:
+			for word in Heat.display_name(id).split(" "):
+				if UIKit.text_w(word) > narrow:
+					g.wrap_w = int(room)
 	g.name_x_1x = name_x_1x
 	g.room_1x = toggle_w - name_x_1x - pad
 	g.name_y = 4 if tall else maxi(7, UIKit.GOO_INK_ROW - int(UIKit.metrics().get("ink_top", 0)))  # (Vietnamese marks under the lump row: 8)
@@ -243,6 +262,12 @@ func _make_toggle(id: String) -> Button:
 	var cell := Vector2(9, 9) - Vector2(icon.texture.get_size())
 	icon.position = Vector2(_geo.icon_x, floorf((toggle_size.y - 9.0 * scale) / 2.0)) + (cell * scale / 2.0).floor()
 	button.add_child(icon)
+	if UIKit.rtl():
+		# A right-to-left layout mirrors a control by its size (x' = parent_w - x - size.x; its scale is not
+		# counted), so the 9 px box drawn 18 px wide landed 9 px too far right, over its toggle's frame (fix
+		# pass R2). The icon keeps its place out of the mirroring, at the mirrored drawn width instead.
+		UIKit.keep_ltr(icon)
+		icon.position.x = toggle_size.x - icon.position.x - icon.texture.get_size().x * scale
 	var name_label := UIKit.make_label(Heat.display_name(id), UIKit.FONT, UIKit.TEXT)
 	name_label.name = "Name"
 	name_label.position = Vector2(name_x, _geo.name_y)

@@ -146,11 +146,15 @@ static func text_block_h(lines: int) -> int:
 
 
 ## The standard button height (BUTTON_H in English; 16 with accents, 18 Vietnamese, 16 CJK, 18 zh_TW,
-## 19 Thai, 21 Devanagari / Arabic). The theme's button margins make every button at least this tall.
+## 19 Thai, 21 Arabic, 22 Devanagari). The theme's button margins make every button at least this tall.
 static func button_h() -> int:
 	var m := metrics()
-	# (a taller script's line starts on row GOO_INK_ROW - ink_top, clear of the goo: Devanagari 3 + 19)
-	var room := int(m.line_h) + maxi(0, GOO_INK_ROW - int(m.get("ink_top", 0))) if int(m.line_h) > TEXT_BODY else 0
+	# (a taller script's line starts on row GOO_INK_ROW - ink_top, clear of the goo: Devanagari 3 + 17; a line
+	# box trimmed to its ink (Language.LINE_TRIM, Devanagari) ends on its lowest marks: 1 clear row and the
+	# bottom border under it, + 2, as under English's drips, fix pass R2)
+	var room := 0
+	if int(m.line_h) > TEXT_BODY:
+		room = int(m.line_h) + maxi(0, GOO_INK_ROW - int(m.get("ink_top", 0))) + (BOTTOM_INK_ROOM if Lang.LINE_TRIM.has(locale()) else 0)
 	return maxi(BUTTON_H, maxi(int(m.button_h), room))
 
 
@@ -220,7 +224,8 @@ static func hit_pad() -> int:
 ## slimy font the 3 rows under the body stay (drips) and the accents' rows go on top; a taller
 ## script's line box (which has its own empty rows) gets 1 / 1, moved down by its ink_nudge, and never
 ## less on top than puts its highest ink (Language ink_top) on row GOO_INK_ROW, under the goo's lump row
-## (Devanagari: 3 / 1, its matras ink the line box's first row).
+## (Devanagari: 3 / 2, its matras ink the line box's first row and its lowest marks the last: 22 px keeps 1
+## clear row under them over the bottom border, as under English's drips).
 static func button_v_margins() -> Vector2i:
 	var margins := _v_margins(button_h(), line_h())
 	if tall_script():
@@ -246,6 +251,9 @@ static func _v_margins(total: int, content: int) -> Vector2i:
 ## The first row a button's text may ink (row 0 = its outline, 1 the goo band, 2 the lumps): English
 ## capitals start here; marks and taller scripts' letters too (button_v_margins).
 const GOO_INK_ROW := 3
+## Rows a button keeps under its text's last ink: 1 clear row, then the bottom border (h - 1), as under
+## English's drips (BACK: drips on row 10 of 13). A script's last ink row is at most h - 1 - BOTTOM_INK_ROOM.
+const BOTTOM_INK_ROOM := 2
 ## A goo panel's (panel_style) first and last text rows: 6 (clear of the band and its lumps, rows 0-4, by
 ## one row) and h - PANEL_INK_BOTTOM (the drips end over the bottom band's lumps, as in English).
 const PANEL_INK_TOP := 6
