@@ -39,7 +39,7 @@ Both suites are enforced (`ENFORCE`) for every locale: any open finding fails th
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 19, pt_BR 24, fr 27, de 21, it 14, ru 9, pl 11, tr 7, ja 2, th 4, vi 3, id 4, ar 8, hi 9, pseudo 43
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 24, fr 27, de 39, it 14, ru 27, pl 29, tr 25, ja 2, th 21, vi 20, id 4, ar 25, hi 9, pseudo 55
 - enforced: every locale
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell

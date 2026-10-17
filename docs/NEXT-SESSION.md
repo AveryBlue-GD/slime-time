@@ -18,7 +18,9 @@ Written 2026-10-16 at the end of a long session, for a fresh Claude Code window.
 ## Localization (D15), done through chunk J, OFF by default
 English + 17 languages on branch `spring-cleaning` (plan/as-built: `docs/i18n/plan.md`; fonts, style guide, per-locale glossaries, fit reports beside it).
 Try: `./tools/play.sh --dev --languages` (saved language or OS locale; LANGUAGE screen in settings), `./tools/play.sh --dev --lang=ar` (any locale, not saved), `--lang=pseudo`.
-Gate: `Economy.LANGUAGES_TEST`. Open items (a-g) are in `docs/handoff.md` open task 8: ship decision, native review (ar, hi, th), font licenses, unverified web/device checks, two old English layout bugs, ticket singular, 1 px row height.
+Gate: `Economy.LANGUAGES_TEST`. Open items (a-g) are in `docs/handoff.md` open task 8: ship decision, native review (ar, hi, th), font licenses, unverified web/device checks, ticket singular, 1 px row height. (The two old English layout bugs, "SPAC" and the random-maze pod over the timer, are fixed.)
+Verified 2026-10-17: the MAP TABLE shows all 10 maps once in every locale, normal and hard, hard maps separate (`tests/test_i18n_maps.gd`); every locale reviewed screen by screen and re-reviewed after fixes (`docs/i18n/review/`: per-locale findings, `fixes-*.md`, `recheck-*.md`, `leftovers.md` = accepted exceptions). Before any UI change: `./tools/i18n_capture.sh --locales all --states all --out /tmp/x --gate` (73 states x 19 locales, ~1 min; fails on text ink on goo, missing glyphs or a changed real save; needs a window, not part of test_all).
+Owner questions still open: German keeps STORY / LEVEL / SHOP as English loanwords (glossary/de.md): keep?
 
 ## Open tests the owner is trying (both OFF by default, decide keep / tune / revert)
 | Test | Flag | Launch | Doc |
