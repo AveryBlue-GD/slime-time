@@ -2300,7 +2300,7 @@ func _offer_retry() -> void:
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
 	elif progress and progress.assist_offered(level):
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
-		# i18n: result choice buttons, max 76px each, 1 line
+		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.assist", "ASSIST"), retry_assisted],
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], _map_choice()], 0)
 		hud.show_rewards({assisted = false, offer = true})
@@ -2311,7 +2311,7 @@ func _offer_retry() -> void:
 
 ## The dry-up row's MAP button (story levels only): opens the MAP TABLE on this level.
 func _map_choice() -> Array:
-	# i18n: result choice button, max 76px, 1 line (maps table shortcut)
+	# i18n: result choice button, max 62px, 1 line (maps table shortcut; four share the row: 72 px buttons)
 	return [Loc.t("result.choice.map", "MAP"), go_to_map]
 
 
@@ -2323,6 +2323,7 @@ func go_to_map() -> void:
 	DevLog.log_event(get_tree(), "to MAP TABLE", self)
 	progress.hard_mode = hard_mode
 	progress.current_level = level
+	progress.return_to_game = true  # the table's BACK returns to this level
 	UIKit.go(get_tree(), MAPS_SCENE)
 
 

@@ -99,9 +99,19 @@ static func hint_text() -> String:
 	return Loc.t("maps.hint", "PLAY TO FILL THEM IN")
 
 
+var from_game := false
+
+
+## Leaves: back into the level after a dry-up, otherwise to the hub.
+func _leave() -> void:
+	UIKit.go(get_tree(), UIKit.GAME_SCENE if from_game else UIKit.HUB_SCENE)
+
+
 func _ready() -> void:
 	skin_text = UIKit.setup_screen(self, Loc.t("maps.title", "MAP TABLE"))  # i18n: max 296px, 16 px font
 	hard = Progress.hard_mode
+	from_game = Progress.return_to_game  # opened from a dry-up row: BACK returns to the level
+	Progress.return_to_game = false
 	_layout_tiles()
 	grid = GridContainer.new()
 	grid.columns = 2
@@ -109,7 +119,7 @@ func _ready() -> void:
 	grid.add_theme_constant_override("h_separation", UIKit.GAP_XS)
 	grid.add_theme_constant_override("v_separation", UIKit.GAP_XS)
 	add_child(grid)
-	back_button = UIKit.add_back_button(self)
+	back_button = UIKit.add_back_button(self, _leave)
 	# The bottom bar's line: centered on the screen (48..271, like the map view's), on BACK's baseline.
 	hint_label = UIKit.add_label(self, hint_text() if not Progress.maps_hint_seen else "", bottom_line_rect(back_button),
 		8, UIKit.TEXT_DIM)
@@ -515,4 +525,4 @@ func _unhandled_input(event: InputEvent) -> void:
 			sfx.play("click", -6.0)
 		close_view()
 	else:
-		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+		_leave()

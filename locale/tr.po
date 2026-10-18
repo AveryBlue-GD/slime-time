@@ -506,8 +506,8 @@ msgid "OUT OF TIME!"
 msgstr "SÜRE DOLDU!"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
-#. result choice buttons, max 76px each, 1 line
-#. budget: max 76px, lines 1
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.restart"
 msgid "RESTART"
@@ -526,15 +526,15 @@ msgctxt "result.choice.upgrades"
 msgid "UPGRADES"
 msgstr "GELİŞTİR"
 
-#. result choice buttons, max 76px each, 1 line
-#. budget: max 76px, lines 1
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "YARDIM"
 
-#. result choice button, max 76px, 1 line (maps table shortcut)
-#. budget: max 76px, lines 1
+#. result choice button, max 62px, 1 line (maps table shortcut; four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.map"
 msgid "MAP"

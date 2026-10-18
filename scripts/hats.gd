@@ -58,32 +58,6 @@ const LIST := [
 ]
 
 
-## How likely the hat wheel is to land on a hat, next to an ordinary hat's 1 (its wedge's share).
-## `pity` = spins that missed the rainbow hat since it was last rolled: each one makes the
-## flowing (rainbow) hat's wedge a bit fatter (PITY_STEP).
-static func weight(id: String, pity := 0) -> float:
-	var hat := get_hat(id)
-	var w := float(hat.get("weight", 1.0))
-	if hat.get("flows", false):
-		w += pity * PITY_STEP
-	return w
-
-
-## The hat a spin lands on: `roll` (0-1) walked along the hats' weights, in order.
-static func pick(ids: Array, pity: int, roll: float) -> String:
-	if ids.is_empty():
-		return ""
-	var total := 0.0
-	for id: String in ids:
-		total += weight(id, pity)
-	var at := clampf(roll, 0.0, 0.999999) * total
-	for id: String in ids:
-		at -= weight(id, pity)
-		if at < 0.0:
-			return id
-	return ids[-1]
-
-
 ## The material a hat sprite wears: the flowing-rainbow shader for the rainbow hat, else none.
 static func material_for(id: String) -> Material:
 	if not get_hat(id).get("flows", false):

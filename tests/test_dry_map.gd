@@ -57,9 +57,25 @@ func _initialize() -> void:
 			"...with level %d's tile focused and its page shown" % lvl)
 		_check(not progress.survey_for(lvl, hard).is_empty(), "...the dry-up survey is recorded (the tile is unlocked)")
 		_check(not focus.disabled, "...the tile is open")
-		maps.queue_free()
+		_check(not progress.return_to_game and maps.from_game, "...flag consumed, BACK returns to the level")
+		maps.back_button.pressed.emit()
+		var back: Node = await _until_scene(UIKit.GAME_SCENE)
+		_check(back != null, "BACK from a dry-up's table returns to the level (hard=%s)" % hard)
+		if back != null:
+			back.queue_free()
 		current_scene = null
 		await _physics_frames(2)
+
+	var hub_maps: Node = load(MAPS).instantiate()
+	root.add_child(hub_maps)
+	current_scene = hub_maps
+	await _physics_frames(2)
+	_check(not hub_maps.from_game, "opened from the hub: BACK goes to the hub")
+	hub_maps.back_button.pressed.emit()
+	_check(await _until_scene(UIKit.HUB_SCENE) != null, "...hub scene reached")
+	if current_scene != null:
+		current_scene.queue_free()
+	current_scene = null
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
 	_check(real_md5 == "" or FileAccess.get_md5(real) == real_md5, "the real save is untouched")
