@@ -1695,6 +1695,8 @@ func _training_to_hub() -> void:
 
 ## Ends the training run (`skipped`: the pause menu's SKIP TRAINING) and returns the scene to go to.
 func leave_training(skipped: bool) -> String:
+	if progress:
+		progress.training_coin = Training.coin_taken  # (the hub tour's coin bag line)
 	Training.attempt = 1
 	Training.coin_taken = false
 	if progress:
@@ -2513,7 +2515,9 @@ func retry(via := "dry-up RESTART") -> void:
 		return
 	DevLog.route(get_tree(), via, self)
 	if training:
-		Training.mark_restart()  # the next attempt: full meter, the coin kept
+		# After a dry-up: the next attempt (full meter, the coin kept). R / pause RESTART mid-run: the same
+		# attempt again (attempt 1 keeps its low meter, so the staged dry-up isn't skipped).
+		Training.mark_restart(finished and not won)
 	get_tree().reload_current_scene()
 
 

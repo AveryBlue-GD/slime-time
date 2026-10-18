@@ -38,6 +38,7 @@ func _initialize() -> void:
 	await _leap_straight()
 	await _full_run()
 	await _restart_prompt()
+	await _coin_line_source()
 	await _skip()
 	await _replay_writes_nothing()
 
@@ -203,12 +204,14 @@ func _full_run() -> void:
 	_check(progress.mode == progress.MODE_STORY and progress.has_seen_tutorial(progress.TUTORIAL_TRAINING) and progress.hub_tour_due(),
 		"...training saved as done, the tour due")
 	_check(not progress.training_skipped, "...not counted as skipped")
+	_check(progress.training_coin, "...the practice coin was picked up (the tour's coin bag line says so)")
 	var after := _save_text()
 	_check(_without_tutorial(after) == _without_tutorial(before), "the save differs only in tutorial_seen")
 	await _clear_scene()
 
 
-# --- R mid-run: RESTART / CANCEL (no UPGRADES); RESTART from it is the next attempt
+# --- R mid-run: RESTART / CANCEL (no UPGRADES); RESTART from it is the same attempt again (attempt 1
+# keeps its low meter: the staged dry-up isn't skipped; attempt 2 stays full)
 func _restart_prompt() -> void:
 	progress.reset_progress()
 	progress.collect_coin(1, Levels.story_coin_cells(1)[0])  # (a coin in hand: the story prompt would offer UPGRADES)
@@ -222,7 +225,55 @@ func _restart_prompt() -> void:
 	var old_id := game.get_instance_id()
 	prompt.buttons[0].pressed.emit()
 	var game2: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
-	_check(game2 != null and game2.training_attempt == 2 and absf(game2.slime_remaining - 100.0) < 0.01, "...its RESTART: attempt 2, full meter")
+	_check(game2 != null and game2.training_attempt == 1 and absf(game2.slime_remaining - Training.start_percent(1)) < 0.01,
+		"...its RESTART on attempt 1: attempt 1 again, the low meter (%s)" % (game2.training_attempt if game2 else -1))
+	game2.pause_menu.open()
+	old_id = game2.get_instance_id()
+	game2.pause_menu.restart_button.pressed.emit()
+	var game3: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
+	_check(game3 != null and game3.training_attempt == 1, "...the pause menu's RESTART mid-run too")
+	game3.slime_remaining = 0.0
+	await _until(func() -> bool: return _shown_buttons(game3).size() > 0, 240)
+	old_id = game3.get_instance_id()
+	_shown_buttons(game3)[0].pressed.emit()
+	var game4: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
+	_check(game4 != null and game4.training_attempt == 2, "...after a dry-up, RESTART is attempt 2")
+	await _physics_frames(2)
+	await _action("restart")
+	await _physics_frames(2)
+	old_id = game4.get_instance_id()
+	game4.restart_prompt.buttons[0].pressed.emit()
+	var game5: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
+	_check(game5 != null and game5.training_attempt == 2 and absf(game5.slime_remaining - 100.0) < 0.01,
+		"...R mid-run on attempt 2: attempt 2 again, full meter")
+	await _clear_scene()
+
+
+# --- The tour's coin bag line follows the practice coin, not the way the training ended
+func _coin_line_source() -> void:
+	progress.reset_progress()
+	progress.prepare_training(false)
+	var game := await _start_game()
+	game.slime.position = game.goal.position
+	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 240)
+	_check(game.won and not Training.coin_taken, "teleported to the chalice: a win without the coin")
+	_shown_buttons(game)[0].pressed.emit()
+	await _until_scene(UIKit.HUB_SCENE)
+	_check(not progress.training_coin and not progress.training_skipped, "...a win without the coin: training_coin false")
+	await _clear_scene()
+	progress.reset_progress()
+	progress.prepare_training(false)
+	game = await _start_game()
+	game.slime.position = MazeGenerator.cell_center(game.maze.coin, 16)
+	await _until(func() -> bool: return Training.coin_taken, 120)
+	game.slime_remaining = 100.0
+	game.slime.position = game.goal.position
+	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 240)
+	_check(game.won and Training.coin_taken, "the coin, then the chalice")
+	game.pause_menu.open()
+	game.pause_menu.buttons[3].pressed.emit()
+	await _until_scene(UIKit.HUB_SCENE)
+	_check(progress.training_coin and progress.training_skipped, "...then SKIP TRAINING from the win panel: training_coin true")
 	await _clear_scene()
 
 

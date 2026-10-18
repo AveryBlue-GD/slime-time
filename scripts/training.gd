@@ -55,6 +55,7 @@ const GLIMMER_REPEAT := 1.2
 static var attempt := 1
 static var coin_taken := false
 static var _restart_pending := false
+static var _restart_next := true
 
 
 ## The maze name (level pod and area banner).
@@ -108,17 +109,20 @@ static func start_percent(n: int) -> float:
 	return (FIRST_METER_TILES if n <= 1 else FULL_METER_TILES) / FULL_METER_TILES * 100.0
 
 
-## game.gd, right before reloading the scene for a RESTART: the next run is the next attempt.
-static func mark_restart() -> void:
+## game.gd, right before reloading the scene for a RESTART: the next run is the next attempt
+## (`next`: after a dry-up) or this attempt again (R / pause RESTART mid-run); the coin stays found.
+static func mark_restart(next := true) -> void:
 	_restart_pending = true
+	_restart_next = next
 
 
 ## game.gd's _ready: begins a run and returns its attempt number. After mark_restart it is the next
-## attempt with the coin kept; otherwise a fresh run (attempt 1, no coin).
+## attempt (or the same one, mark_restart(false)) with the coin kept; otherwise a fresh run (attempt 1, no coin).
 static func begin_run() -> int:
 	if _restart_pending:
 		_restart_pending = false
-		attempt += 1
+		if _restart_next:
+			attempt += 1
 	else:
 		attempt = 1
 		coin_taken = false

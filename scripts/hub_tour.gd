@@ -118,9 +118,14 @@ func _process(delta: float) -> void:
 		hub._show_prompt()  # (the use key for the device in use now)
 
 
-## A tap on the SKIP pod skips (seen before the touch controls, which would take it for a JUMP).
+## A tap or a left click on the SKIP pod skips (seen before the touch controls, which would take a tap
+## for a JUMP).
 func _input(event: InputEvent) -> void:
-	if over or done or not (event is InputEventScreenTouch) or not event.pressed:
+	if over or done:
+		return
+	var touch: bool = event is InputEventScreenTouch and event.pressed
+	var click: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	if not touch and not click:
 		return
 	if skip_rect().has_point(event.position):
 		hub._sfx("click", 0.8)
@@ -212,7 +217,7 @@ func station_line(id: String) -> String:
 		"quit":
 			return Loc.t("hub.tour.quit", "THE TRAPDOOR. FOR BEDTIME.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"coins":
-			if Progress.training_skipped:
+			if not Progress.training_coin:
 				return Loc.t("hub.tour.coins", "COINS STILL HIDING IN EACH LEVEL.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 			return Loc.t("hub.tour.coins_practice", "THE PRACTICE COIN WAS FAKE. SORRY.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
 		"random":

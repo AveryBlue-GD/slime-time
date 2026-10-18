@@ -65,13 +65,15 @@ var tutorial_seen := 0
 ## SETTINGS replay (writes nothing). `training_used`: TUTORIAL_MOVE / TUTORIAL_LEAP the player really used
 ## in this training run (note_training_input), merged into tutorial_seen by finish_training.
 ## `tour_replay`: the hub tour after a replayed training is due (hub_tour_due) until finish_hub_tour.
-## `training_skipped`: the last training run ended through SKIP TRAINING. `tutorial_launch`: what
+## `training_skipped`: the last training run ended through SKIP TRAINING. `training_coin`: that run had
+## picked up the practice coin (game.gd leave_training; the hub tour's coin bag line). `tutorial_launch`: what
 ## `--tutorial[=maze|hub]` asked for ("intro", "maze", "hub"; "" = no flag), read once by the boot title
 ## (take_tutorial_launch).
 var training_replay := false
 var training_used := 0
 var tour_replay := false
 var training_skipped := false
+var training_coin := false
 var tutorial_launch := ""
 ## Story beats shown (bits STORY_INTRO / STORY_FINALE). Optional in saves; RESET PROGRESS clears it.
 var story_seen := 0

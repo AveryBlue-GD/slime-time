@@ -51,6 +51,7 @@ func _due_save() -> void:
 	progress.dev_tools = false
 	progress.tutorial_seen = progress.TUTORIAL_MOVE | progress.TUTORIAL_LEAP | progress.TUTORIAL_TRAINING
 	progress.training_skipped = false
+	progress.training_coin = true
 	HubScript.return_to = "settings"  # (the tour ignores it: it starts at the archway)
 
 
@@ -171,9 +172,9 @@ func _full_tour() -> void:
 	await _close(hub)
 
 
-# --- Skip at every step: Esc, B, or a tap on the SKIP pod
+# --- Skip at every step: Esc, B, a tap or a left click on the SKIP pod
 func _skips() -> void:
-	var ways := ["menu", "ui_cancel", "touch"]
+	var ways := ["menu", "ui_cancel", "touch", "click"]
 	for step in 9:
 		await _due_save()
 		var hub := await _open()
@@ -187,6 +188,13 @@ func _skips() -> void:
 			await _physics_frames(2)
 			_send_touch(0, at, false)
 			await _physics_frames(2)
+		elif how == "click":
+			_send_click(Vector2(160, 90), MOUSE_BUTTON_LEFT)  # (off the pod: nothing)
+			_send_click(tour.skip_rect().get_center(), MOUSE_BUTTON_RIGHT)  # (not the left button: nothing)
+			await _physics_frames(2)
+			_check(not tour.over, "a click off the SKIP pod, or a right click on it, doesn't skip")
+			_send_click(Rect2(tour.skip_pod.position, tour.skip_pod.size).get_center(), MOUSE_BUTTON_LEFT)
+			await _physics_frames(2)
 		else:
 			await _press(how)
 		var saved: bool = progress.has_seen_tutorial(progress.TUTORIAL_HUB)
@@ -194,6 +202,16 @@ func _skips() -> void:
 			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB != 0,
 			"skip after %d turns (%s): over, finish_hub_tour saved HUB, still in the hub, ROTATE again" % [step, how])
 		await _close(hub)
+
+
+func _send_click(at: Vector2, button: MouseButton) -> void:
+	for pressed in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = button
+		event.pressed = pressed
+		event.position = _to_window(at)
+		event.global_position = _to_window(at)
+		Input.parse_input_event(event)
 
 
 # --- Using a station ends the tour quietly
@@ -255,11 +273,12 @@ func _web_and_replay() -> void:
 	progress.save_progress()
 	progress.tour_replay = true
 	progress.training_skipped = true
+	progress.training_coin = false
 	hub = await _open()
 	_check(hub.tour != null and hub.prompt_name.text == "HOME. IT TURNS. HIT THE WHEEL.", "a SETTINGS replay: the tour again")
 	for i in 4:
 		await _turn(hub)
-	_check(hub.prompt_name.text == "COINS STILL HIDING IN EACH LEVEL.", "...training skipped: the coin bag's plain line")
+	_check(hub.prompt_name.text == "COINS STILL HIDING IN EACH LEVEL.", "...no practice coin picked up: the coin bag's plain line")
 	var before := FileAccess.get_file_as_string(test_save)
 	await _press("menu")
 	_check(hub.tour.over and not progress.tour_replay and FileAccess.get_file_as_string(test_save) == before,
