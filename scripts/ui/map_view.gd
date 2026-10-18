@@ -151,7 +151,12 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 		if absf(_luma(edge) - _luma(pal.floor)) < 0.25:  # keep the rim readable: the darker outline or the shine
 			var dark: Color = edge.lerp(Color.BLACK, 0.5)
 			edge = dark if absf(_luma(dark) - _luma(pal.floor)) >= absf(_luma(m[3]) - _luma(pal.floor)) else m[3]
-		pal.coin = m[1]
+		var fill: Color = m[1]  # (none reads: keep the face, the rim carries it) a face too dark or too like the paper: its light, then its shine (same hue family)
+		for cand: Color in [m[1], m[2], m[3]]:
+			if _luma(cand) >= 0.25 and absf(_luma(cand) - _luma(pal.floor)) >= 0.25:
+				fill = cand
+				break
+		pal.coin = fill
 		pal.coin_edge = edge
 	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)
 	return pal

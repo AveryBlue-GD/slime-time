@@ -27,8 +27,9 @@ func _initialize() -> void:
 	for theme: String in Themes.BY_LEVEL:
 		for paper in ["", "blueprint", "night", "goldleaf"]:
 			var pal := MapView.palette(theme, paper, Color(0.4, 0.8, 0.4))
-			_check(pal.coin == Coin.METAL[theme][1], "%s/%s coin face is the metal" % [theme, paper])
-			var d := absf(MapView._luma(pal.coin_edge) - MapView._luma(pal.floor))
-			_check(d >= 0.2 or absf(MapView._luma(pal.coin) - MapView._luma(pal.floor)) >= 0.25, "%s/%s coin visible on paper" % [theme, paper])
+			_check(pal.coin in [Coin.METAL[theme][1], Coin.METAL[theme][2], Coin.METAL[theme][3]], "%s/%s coin fill is the metal's face/light/shine" % [theme, paper])
+			var fd := absf(MapView._luma(pal.coin) - MapView._luma(pal.floor))
+			var ed := absf(MapView._luma(pal.coin_edge) - MapView._luma(pal.floor))
+			_check(maxf(fd, ed) >= 0.25, "%s/%s coin fill reads on the paper" % [theme, paper])
 	_result()
 	quit(1 if failures else 0)
