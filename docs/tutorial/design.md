@@ -292,3 +292,11 @@ Order: A, then B + C + D + E in parallel (B and C agree on the cue trigger API: 
 8. **Show the title once** between the intro and the maze, or go straight in as asked (recommended: straight in;
    the title is seen on the next launch or by Esc from the hub)?
 9. **The dry-up row in the maze:** RESTART only (recommended), or the real row with UPGRADES / MAP greyed out?
+
+## 13. Owner answers (2026-10-18)
+
+- Name: **SPLASHDOWN** (the training maze's banner and level name; English only for now).
+- Coin: a **practice coin**: collected and celebrated, never saved; the 165 story coins, medals and coin-gated unlocks stay unchanged.
+- Dry-up: **start low on purpose**: the first attempt starts with little slime so most players dry up just after the coin, then RESTART with the coin kept and a full meter.
+- Hub tour: **short text lines, no voiced audio**: one short line per station as the room turns to it; skippable. No voice-over.
+- Still open: replay location (proposed TRAINING button in SETTINGS), whether the hub turns itself after the first turn (default: no, the player turns it).
