@@ -250,6 +250,8 @@ func _initialize() -> void:
 	_check(rare >= 0 and wheel.sizes[rare] < wheel.sizes[0] * 0.5, "the rainbow hat's wedge is a thin sliver (%.2f vs %.2f)" % [wheel.sizes[rare], wheel.sizes[0]])
 	var propeller: int = wheel.hats.find("propeller")
 	_check(propeller >= 0 and is_equal_approx(wheel.sizes[propeller], wheel.sizes[rare]), "the propeller cap's wedge is the rainbow hat's size (as rare)")
+	var cloud: int = wheel.hats.find("raincloud")
+	_check(cloud >= 0 and is_equal_approx(wheel.sizes[cloud], wheel.sizes[rare]), "the raincloud hat's wedge is the rainbow hat's size (as rare)")
 	var rainbow_picks := 0
 	var top_hat_picks := 0
 	for i in 4000:

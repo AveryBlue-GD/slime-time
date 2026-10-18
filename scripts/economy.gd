@@ -82,15 +82,15 @@ const TAILOR_AFTER_SPINS := 3
 ## field is not used for the wheel): every hat weighs WHEEL_WEIGHT, a WHEEL_RARE one
 ## WHEEL_RARE_WEIGHT, and the flowing (rainbow) hat gets Hats.PITY_STEP more per spin that missed
 ## it (Progress.rainbow_pity). A hat's chance = its weight / the sum over the hats still on the wheel.
-## With all 12 hats of today's LIST on the wheel and no pity (10 x 1 + 2 x 0.3 = 10.6):
-##   tophat, beanie, party, cap, cowboy, chef, wizard, viking, crown, raincloud: 9.43 % each (94.34 %)
-##   propeller, rainbow: 2.83 % each (5.66 % for a rare one)
+## With all 12 hats of today's LIST on the wheel and no pity (9 x 1 + 3 x 0.3 = 9.9):
+##   tophat, beanie, party, cap, cowboy, chef, wizard, viking, crown: 10.10 % each (90.91 %)
+##   propeller, raincloud, rainbow: 3.03 % each (9.09 % for the rare ones)
 ## A save's FIRST spin (spins == 0: a fresh save, RESET PROGRESS, a new epoch, a code that never
 ## spun) is still random but never rare: it picks among the non-rare hats left, at their weights
-## (1 / 10 = 10 % each), so wiping a save to farm free spins can't win a rare hat.
+## (1 / 9 = 11.11 % each), so wiping a save to farm free spins can't win a rare hat.
 const WHEEL_WEIGHT := 1.0
 const WHEEL_RARE_WEIGHT := 0.3
-const WHEEL_RARE: Array[String] = ["rainbow", "propeller"]
+const WHEEL_RARE: Array[String] = ["rainbow", "propeller", "raincloud"]
 
 ## ---------------------------------------------------------------- tickets: the WORKSHOP (B.2)
 ## Utility upgrades bought with tickets in the cauldron's TICKETS tab: 3 levels each, not

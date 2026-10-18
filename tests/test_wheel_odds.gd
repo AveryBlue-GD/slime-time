@@ -33,7 +33,9 @@ func _initialize() -> void:
 		if not progress.is_rare_hat(id):
 			unchanged = unchanged and progress.wheel_weight(id) == Economy.WHEEL_WEIGHT
 	_check(unchanged, "every other hat keeps its odds (rainbow pity too)")
-	_check(progress.wheel_weight("propeller", 9) == Economy.WHEEL_RARE_WEIGHT, "pity only fattens the rainbow hat")
+	_check(progress.is_rare_hat("raincloud") and progress.wheel_weight("raincloud") == progress.wheel_weight("rainbow") and progress.wheel_weight("raincloud") == progress.wheel_weight("propeller"),
+		"the raincloud hat weighs exactly what the rainbow hat and the propeller cap do")
+	_check(progress.wheel_weight("raincloud", 9) == Economy.WHEEL_RARE_WEIGHT and progress.wheel_weight("propeller", 9) == Economy.WHEEL_RARE_WEIGHT, "pity only fattens the rainbow hat")
 	# The documented odds (Economy, docs/handoff.md): 12 hats today, 9.43 % each ordinary, 2.83 % each rare.
 	var total := 0.0
 	var rares := 0
@@ -41,9 +43,9 @@ func _initialize() -> void:
 		total += progress.wheel_weight(id)
 		rares += int(progress.is_rare_hat(id))
 	_check(is_equal_approx(total, (ids.size() - rares) * Economy.WHEEL_WEIGHT + rares * Economy.WHEEL_RARE_WEIGHT), "the wheel's total weight is the table's")
-	if ids.size() == 12 and rares == 2:
-		_check(absf(100.0 / total - 9.43) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 2.83) < 0.01,
-			"the documented odds: 9.43 %% per ordinary hat, 2.83 %% per rare one")
+	if ids.size() == 12 and rares == 3:
+		_check(absf(100.0 / total - 10.10) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 3.03) < 0.01,
+			"the documented odds: 10.10 %% per ordinary hat, 3.03 %% per rare one")
 
 	# --- A save's first spin: random, never rare
 	progress.reset_progress()
@@ -51,7 +53,7 @@ func _initialize() -> void:
 	var common_count := 0
 	for id in ids:
 		common_count += int(not progress.is_rare_hat(id))
-	_check(progress.spins == 0 and pool.size() == common_count and not "rainbow" in pool and not "propeller" in pool, "a fresh save's first spin leaves the rare hats out")
+	_check(progress.spins == 0 and pool.size() == common_count and not "rainbow" in pool and not "propeller" in pool and not "raincloud" in pool, "a fresh save's first spin leaves the rare hats out")
 	var hit := {}
 	var rare_rolls := 0
 	for i in 1000:
@@ -110,7 +112,7 @@ func _initialize() -> void:
 	veteran.save_path = throwaway_save("_veteran")
 	veteran.dev_tools = false
 	veteran.load_progress(old_path)
-	_check(veteran.spins == 1 and "rainbow" in veteran.wheel_pool() and "propeller" in veteran.wheel_pool() and veteran.spin_cost() == Economy.SPIN_COST,
+	_check(veteran.spins == 1 and "rainbow" in veteran.wheel_pool() and "propeller" in veteran.wheel_pool() and "raincloud" in veteran.wheel_pool() and veteran.spin_cost() == Economy.SPIN_COST,
 		"a save that used its free spin keeps every hat on the wheel, at the usual price")
 	_check(veteran.wheel_pick(veteran.wheel_pool(), 0, 0.99999) == ids[-1], "...and a later spin can land on the last (rare) wedge")
 
@@ -123,7 +125,7 @@ func _initialize() -> void:
 		later_total += progress.wheel_weight(id)
 	var expect: float = Economy.WHEEL_RARE_WEIGHT / later_total
 	var n := 40000
-	var counts := {"rainbow": 0, "propeller": 0}
+	var counts := {"rainbow": 0, "propeller": 0, "raincloud": 0}
 	seed(12345)
 	for i in n:
 		var id: String = progress.wheel_pick(later, 0, randf())
