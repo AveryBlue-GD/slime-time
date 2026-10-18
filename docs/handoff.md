@@ -1,4 +1,4 @@
-# Handoff: where Slime Time stands (updated 2026-10-16, end of the spring cleaning)
+# Handoff: where Slime Time stands (updated 2026-10-18; open items and owner questions: [NEXT-SESSION.md](NEXT-SESSION.md))
 
 Read [../CLAUDE.md](../CLAUDE.md) first (rules, commands), then this file. Code layout: [architecture.md](architecture.md). Docs
 index: [README-docs.md](README-docs.md). UI layout rules: [ui-rules.md](ui-rules.md). The long per-feature history (everything up to 2026-10-15, including the superseded
@@ -46,6 +46,14 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 [fonts](i18n/fonts.md), [style guide](i18n/style-guide.md), UI rules [ui-rules.md section 10](ui-rules.md), fit reports in `i18n/`. Try it:
 `./tools/play.sh --dev --languages`, `--lang=xx`, `--lang=pseudo`.
 
+## Since the cleanup (2026-10-17/18; details in NEXT-SESSION.md)
+
+- **D16 coin catch** on for everyone (`--nocoincatch`). **Maps:** collected coins hidden; dev-only reveal `Economy.MAP_COIN_REVEAL_TEST` (`--nocoinreveal`,
+  [spring-cleaning/map-coin-reveal-test.md](spring-cleaning/map-coin-reveal-test.md)); coins in their level's metal; dry-up MAP button (story levels).
+- **Localization rule:** English only until finalized; `i18n/pending.md` lists what the catch-up must cover; reviews in `i18n/review/`.
+- **SPLASHDOWN tutorial** behind `Economy.TUTORIAL_TEST := false` (`./tools/play.sh --tutorial[=maze|hub]`, SETTINGS TRAINING replay);
+  design + API in [tutorial/design.md](tutorial/design.md) sections 13-14; unplaytested by the owner.
+
 ## Modes
 
 - **Story:** 10 themed levels, coins at dead ends (165 in all), 1-3 tier time medals, wordless finale.
@@ -54,8 +62,7 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 - **Randomizer** (after the story): the gold ticket voucher is the goal (payout 5/4/3/2/1 by attempt), seed codes `N-L`.
 - **DESCENT:** chained randomizer-sized floors, boons, a ticket pot (2 paying runs per UTC day; milestones floors 5/10/15/20).
 - **Trail maps** (MAP TABLE): per-level map of every tile seen plus the fastest route (a trial: cost/unlock undecided).
-- Skins (10 presets, rainbow, Stopwatch for 30 gold medals, CHAMELEON; opaque default, jelly = hard-mode reward, D14), 11 placeholder hats (live since upgrades v2
-  batch 2), SETTINGS with a separate CONTROLS page and SAVE CODE.
+- Skins (10 presets, rainbow, Stopwatch for 30 gold medals, CHAMELEON; opaque default, jelly = hard-mode reward, D14), 12 hats incl. animated PROPELLER CAP and RAINCLOUD (the wardrobe station is COSMETICS, with a PAPERS page), SETTINGS with a separate CONTROLS page and SAVE CODE.
 
 ## Economy (every number in `scripts/economy.gd`; spec: [design/upgrades-v2.md](design/upgrades-v2.md))
 
@@ -75,7 +82,7 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 
 - Launch: `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain), `--story`
   (postgame state), `--autoplay [--speed=N]` (F10 stops), `--scene res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`.
-- Tests: `./tools/test_all.sh [-j N] [suite ...]` (91 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
+- Tests: `./tools/test_all.sh [-j N] [suite ...]` (111 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
   (`-j 1` = one at a time, about 5 minutes; `JOB_TIMEOUT=sec` kills a hung job, default 600); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
   [spring-cleaning/phase2-tests.md](spring-cleaning/phase2-tests.md)). One suite:
   `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.
@@ -103,7 +110,7 @@ are in the repo (they need SDKs, a keystore, a Team ID, GodotSteam): the presets
 (bundle id, icons, Android / iOS / Steam steps, low-end profiling, store pages) are in
 [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md). The Windows build zip and itch promo images are out
 of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-end PCs and low-to-mid mobile, smooth scaling to
-120/144/240 Hz; English only until the languages ship (open item 8). Perf notes: [perf/](perf/).
+120/144/240 Hz; English only until the game is finalized (`tests/i18n_mode.gd` ENGLISH_ONLY; pending list `i18n/pending.md`). Perf notes: [perf/](perf/).
 
 ## Open tasks and open questions
 
@@ -123,7 +130,7 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
    b. Native-speaker review of every locale; doubts are listed in `docs/i18n/glossary/<locale>.md` (esp. ar, hi, th).
    c. Fonts: Arabic uses Noto Kufi Arabic; the pixel bitmap-font option's license is unconfirmed. Thai / Hindi use non-pixel Noto fonts drawn without antialiasing.
    d. Not verified: a real web export with the .po files and fonts, the web shell in a browser, touch / gamepad on real devices with mirrored Arabic.
-   e. Two pre-existing English issues, left alone to keep English pixel-identical: the keyboard tutorial key shows "SPAC" (SPACE cut off in its 29 px key, `tutorial_cues.gd`); the random-maze level pod "RANDOM MAZE #n CODE..." overlaps the timer.
+   e. (Fixed since: "SPAC" and the random-maze pod.) Level 1-2 cue issues left pixel-identical: d-pad arrowheads point inward, SPACE's S touches its key edge, pad A hard to read.
    f. "+1 TICKETS" English singular (owner's call).
    g. The LANGUAGE screen's accented rows are 1 px taller in English (gate-on-only screen).
 

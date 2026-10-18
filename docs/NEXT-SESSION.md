@@ -1,10 +1,11 @@
 # Next session: start here
 
-Written 2026-10-16 at the end of a long session, for a fresh Claude Code window. Read this, then `CLAUDE.md`,
-`docs/handoff.md` and `docs/spring-cleaning/decisions.md` (owner decisions D1-D15; D15 = localization).
+Written 2026-10-18 for a fresh Claude Code session on another machine (the owner's desktop). Read this, then `CLAUDE.md`,
+`docs/handoff.md` and `docs/spring-cleaning/decisions.md` (owner decisions D1-D16; D15 = localization, D16 = coin catch for everyone).
+Desktop setup: `git pull` on `spring-cleaning` (the work was committed and pushed from the Mac; Windows commands are in CLAUDE.md).
 
 ## Where things are
-- **Branch: `spring-cleaning`** (all work pushed). It is NOT merged into `v2` yet - the owner hasn't decided.
+- **Branch: `spring-cleaning`** (commit and push when finishing on one machine, pull on the other). It is NOT merged into `v2` yet - the owner hasn't decided.
   Tags: `spring-cleaning-baseline` (before), `spring-cleaning-final` (after the 6-phase cleanup), plus phase tags.
 - The spring-cleaning report is `docs/spring-cleaning/FINAL-REPORT.md` (removed / optimized / UI / platforms / issues).
 - Since that report, owner-requested changes on the same branch:
@@ -15,29 +16,39 @@ Written 2026-10-16 at the end of a long session, for a fresh Claude Code window.
   - Intro cutscene: crumbling, irregular floor holes in the crack and fall shots.
   - A full "bouncy" ricochet was tried and REVERTED (owner: didn't feel good).
 
-## Localization (D15), done through chunk J, OFF by default
-English + 17 languages on branch `spring-cleaning` (plan/as-built: `docs/i18n/plan.md`; fonts, style guide, per-locale glossaries, fit reports beside it).
-Try: `./tools/play.sh --dev --languages` (saved language or OS locale; LANGUAGE screen in settings), `./tools/play.sh --dev --lang=ar` (any locale, not saved), `--lang=pseudo`.
-Gate: `Economy.LANGUAGES_TEST`. Open items (a-g) are in `docs/handoff.md` open task 8: ship decision, native review (ar, hi, th), font licenses, unverified web/device checks, ticket singular, 1 px row height. (The two old English layout bugs, "SPAC" and the random-maze pod over the timer, are fixed.)
-Verified 2026-10-17: the MAP TABLE shows all 10 maps once in every locale, normal and hard, hard maps separate (`tests/test_i18n_maps.gd`); every locale reviewed screen by screen and re-reviewed after fixes (`docs/i18n/review/`: per-locale findings, `fixes-*.md`, `recheck-*.md`, `leftovers.md` = accepted exceptions). Before any UI change: `./tools/i18n_capture.sh --locales all --states all --out /tmp/x --gate` (73 states x 19 locales, ~1 min; fails on text ink on goo, missing glyphs or a changed real save; needs a window, not part of test_all).
-Owner questions still open: German keeps STORY / LEVEL / SHOP as English loanwords (glossary/de.md): keep?
+## Localization (D15), OFF by default, English-only until the game is finalized
+17 languages + English behind `Economy.LANGUAGES_TEST` (plan/as-built: `docs/i18n/plan.md`; fonts, style guide, glossaries, fit reports beside it).
+Try: `./tools/play.sh --dev --languages`, `--lang=ar` (not saved), `--lang=pseudo`.
+**ENGLISH-ONLY rule:** `tests/i18n_mode.gd` has `ENGLISH_ONLY := true` (every i18n suite and `tools/i18n_capture.sh` read it); new text is not translated and
+falls back to English. After each text/UI change run `./tools/i18n_capture.sh --gate` and add a row to `docs/i18n/pending.md` (the catch-up list). A request that says
+"all languages" is done in every language at once. Catch-up steps: `docs/i18n/plan.md`.
+Reviews: `docs/i18n/review/` (per-locale findings, `fixes-*.md`, `recheck-*.md`, `leftovers.md` = accepted exceptions). The capture gate (73 states x 19 locales,
+~1 min) needs a window and isn't part of test_all.
 
-## Open tests the owner is trying (OFF by default, decide keep / tune / revert)
+## Open tests and the tutorial (OFF by default, decide keep / tune / revert)
 | Test | Flag | Launch | Doc |
 |---|---|---|---|
-| Soft bounce (short stun, smooth slide along the wall on glancing hits) | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
-| Map coin reveal (dev only: uncollected coins the light revealed, through walls, show on the MAP TABLE; collected coins are gone from the maps for everyone) | `Economy.MAP_COIN_REVEAL_TEST` (on in dev, `--nocoinreveal` = off) | `./tools/play.sh --dev [--upgrades=0,0,3]`, play, F1, open MAP TABLE | `docs/spring-cleaning/map-coin-reveal-test.md` |
-Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag plumbing removal is a follow-up; `docs/spring-cleaning/coin-catch-test.md`). To keep soft bounce for everyone, set its constant to `true`
-(and then remove the flag plumbing / test-only paths as a follow-up).
+| Soft bounce | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
+| Map coin reveal (dev only: uncollected coins the light revealed show on the MAP TABLE) | `Economy.MAP_COIN_REVEAL_TEST` (dev on, `--nocoinreveal` off) | `./tools/play.sh --dev`, play, F1, MAP TABLE | `docs/spring-cleaning/map-coin-reveal-test.md` |
+| SPLASHDOWN tutorial (training maze after the intro + hub tour; SETTINGS > TRAINING replays it) | `Economy.TUTORIAL_TEST` (false) | `./tools/play.sh --tutorial`, `--tutorial=maze`, `--tutorial=hub` | `docs/tutorial/design.md` (sections 13-14 = owner answers + API), shots `docs/tutorial/shots/` |
+
+The tutorial is built but the owner has NOT playtested it; the gate stays off until sign-off.
+Decided: D16 coin catch is on for everyone (`--nocoincatch` for A/B; flag plumbing removal is a follow-up; `docs/spring-cleaning/coin-catch-test.md`).
+Also since the last handoff: collected coins are hidden on the maps; map coins draw in their level's metal; MAP TABLE paging fixed; the dry-up row has a MAP button
+(story levels; BACK returns to the level); the wardrobe is now COSMETICS with a PAPERS page; propeller hat animated, new RAINCLOUD hat; wheel rare tier =
+rainbow, propeller, raincloud at weight 0.3 (ordinary 10.10 %, rare 3.03 %), a save's first free spin is never rare.
 
 ## Other open owner decisions
-- Merge `spring-cleaning` into `v2`?
-- Dense touch button stacks (pause, restart, key rows, shop) reach only 32-40 pt targets on phones.
-- Judge the high-refresh smoothing clips (`docs/spring-cleaning/perf/*.mp4`, local only).
-- Manual Mac fullscreen check: green button / F11, quit, relaunch.
-- Local videos (~105 MB of git-ignored mp4s) and purging old screenshots from git history: keep or remove?
-- Remaining affordability nudges (hub "!" on the hat wheel/cauldron, UPGRADES button after a dry-up): keep?
-- The disabled ticket workshop (`WORKSHOP_ENABLED = false`) and Descent (`DESCENT_ENABLED = false`) stay behind flags.
+- Ship the tutorial? Playtest first; the autopilot clears the maze in ~17 s vs the 60-90 s target (real players are slower).
+- TAILOR still sells the propeller hat at 45 tickets (rainbow 80) though it is rare on the wheel: reprice?
+- German keeps STORY / LEVEL / SHOP as English loanwords (`docs/i18n/glossary/de.md`): keep?
+- Level 1-2 cue issues seen but left pixel-identical: d-pad arrowheads point inward, SPACE's S touches its key edge, pad A is hard to read in a 29 px key.
+- "+1 TICKETS" English singular: fix?
+- Ship the languages (later, after finalizing; flip `LANGUAGES_TEST` and `LANGUAGES_ENABLED` in `tools/web_shell.html` together).
+- Merge / push `spring-cleaning` into `v2`?
+- `stash@{0}` is redundant (same content as committed files): drop it.
+- Older: dense touch button stacks (32-40 pt targets); perf clips; Mac fullscreen check; local mp4s / old screenshots in history; affordability nudges.
+- Workshop and Descent stay behind flags (`WORKSHOP_ENABLED`, `DESCENT_ENABLED` = false).
 
 ## How the owner likes to work
 - **English only (owner, 2026-10-18):** game changes are made and checked in English only. Don't translate new or
@@ -49,16 +60,16 @@ Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag 
   and add a row to `docs/i18n/pending.md` (change, strings, warnings), so the catch-up is a known list.
   Exceptions: changes without text need no language work; a request that says "all languages" is done in every
   language right away (translations + capture review for that change).
-- "launch" = `./tools/play.sh` (REAL save); "launch in dev mode" = `./tools/play.sh --dev`; "story mode" =
+- "launch" = `./tools/play.sh` (REAL save); "dev mode" = `./tools/play.sh --dev`; "story mode" =
   `--story`; "autoplay" = `--autoplay [--speed=N]`. Run launches in the background and close the previous game first
   (`pkill -f "Godot.app/Contents/MacOS/Godot.*--unlock-all"` closes only dev launches; a plain launch has no flags, so
-  check before killing - never close the owner's real-save game without saying so).
-- Big tasks: split across the agents in `.claude/agents/` with the best model per job (Opus for design, gameplay feel,
+  check before killing). Close a playing real-save game only by its own PID, never by quitting the Godot app: agents may be running Godot captures.
+- Big tasks: split across the agents in `.claude/agents/` with the best model per job (new: `i18n-engineer`, `localizer`, `tutorial-designer`; Opus for design, gameplay feel,
   reviews, UI/perf/platform; Sonnet for docs/tests/small fixes; Haiku for plain test runs). Each change gets an
   independent review/QA agent; nobody verifies their own work.
-- New gameplay ideas go behind a flag + debug launch flag first, so the owner can A/B them; revert cleanly if rejected.
+- New gameplay ideas go behind a test flag + debug launch flag first, so the owner can A/B them; revert cleanly if rejected. Never touch the real save.
 - Commit small steps with explicit `git add <paths>` and the Co-Authored-By line from the session's attribution
-  instruction; push to `origin spring-cleaning`. Pushing is fine (the owner asked for it throughout).
+  instruction. Push only when asked ("commit and push"); the owner syncs machines that way.
 - Keep replies short; the owner tests in the running game and gives feel-based feedback.
 
 ## Gotchas learned the hard way
@@ -68,6 +79,7 @@ Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag 
 - `tools/job_timeout.pl` once overwrote the Godot binary when called with a missing argument (now guarded). If
   `/Applications/Godot.app/Contents/MacOS/Godot --version` doesn't print `4.7.2.stable.official.ed1daf0bf`, reinstall
   from https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip
+- Tooling flakes: `i18n_capture.sh` sometimes dies mid-locale ("incomplete captures"; rerun); real-save md5 checks in tests can fail while the owner is playing (rerun when not).
 - Agents running `test_all.sh` at the same time as other agents can see flaky failures; rerun a failing suite alone.
 - Agents sometimes leave background shells/loops running; check `ps` for stray `zsh -c` / `sleep` loops at the end.
-- `./tools/test_all.sh` runs in parallel (~2 min, `-j N`, `JOB_TIMEOUT`); 91 suites.
+- `./tools/test_all.sh` runs in parallel (~2 min, `-j N`, `JOB_TIMEOUT`); 111 suites.
