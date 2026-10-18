@@ -28,12 +28,12 @@ reported here but do not fail them (the other languages are brought in line late
 | id | 0 | 0 | 0 | 0 |
 | ar | 0 | 0 | 0 | 0 |
 | hi | 0 | 0 | 0 | 0 |
-| pseudo | 0 | 3 | 1 | 0 |
-| **total** | 1 | 9 | 2 | 64 |
+| pseudo | 15 | 3 | 1 | 0 |
+| **total** | 16 | 9 | 2 | 64 |
 
 ## budget: what was measured
 
-- budgets: 135 of 459 template entries carry a `max Npx` note
+- budgets: 155 of 479 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
@@ -46,11 +46,26 @@ reported here but do not fail them (the other languages are brought in line late
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
 - states: 57 screen / overlay / HUD states per locale
 
-## budget: open (1 places)
+## budget: open (16 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
+| budget | hub.tour.coins_practice | THE PRACTICE COIN WAS FAKE. SORRY. | overflow | 1: pseudo | pseudo [______THÉ PRÁÇTÍÇÉ ÇÖÍÑ WÁŚ F: 260x1 vs 192x1 |
+| budget | hub.tour.coins | COINS STILL HIDING IN EACH LEVEL. | overflow | 1: pseudo | pseudo [______ÇÖÍÑŚ ŚTÍŁŁ HÍĐÍÑĞ ÍÑ É: 253x1 vs 192x1 |
+| budget | hub.tour.maps | MAPS OF EVERY LEVEL YOU SMEARED. | overflow | 1: pseudo | pseudo [_____MÁPŚ ÖF ÉVÉRÝ ŁÉVÉŁ ÝÖÜ : 251x1 vs 192x1 |
+| budget | hub.tour.quit | THE TRAPDOOR. FOR BEDTIME. | overflow | 1: pseudo | pseudo [____THÉ TRÁPĐÖÖR. FÖR BÉĐTÍMÉ: 202x1 vs 192x1 |
+| budget | hub.tour.random_locked | LOCKED. BEAT ALL {count} LEVELS FIRST. | overflow | 1: pseudo | pseudo [_______ŁÖÇKÉĐ. BÉÁT ÁŁŁ 88 ŁÉ: 269x1 vs 192x1 |
+| budget | hub.tour.random | A NEW MAZE EVERY TIME. NO MERCY. | overflow | 1: pseudo | pseudo [_____Á ÑÉW MÁŻÉ ÉVÉRÝ TÍMÉ. Ñ: 242x1 vs 192x1 |
+| budget | hub.tour.settings | SOUND, KEYS, FOG. THE BORING SIGN. | overflow | 1: pseudo | pseudo [______ŚÖÜÑĐ, KÉÝŚ, FÖĞ. THÉ B: 253x1 vs 192x1 |
+| budget | hub.tour.story | HOME. IT TURNS. HIT THE WHEEL. | overflow | 1: pseudo | pseudo [_____HÖMÉ. ÍT TÜRÑŚ. HÍT THÉ : 220x1 vs 192x1 |
+| budget | hub.tour.turn_back | HOLD {left} TO TURN IT BACK. | overflow | 1: pseudo | pseudo [_____HÖŁĐ 88 TÖ TÜRÑ ÍT BÁÇK.: 195x1 vs 192x1 |
+| budget | hub.tour.upgrades | COINS GO IN. STRONGER GOO COMES OUT. | overflow | 1: pseudo | pseudo [______ÇÖÍÑŚ ĞÖ ÍÑ. ŚTRÖÑĞÉR Ğ: 276x1 vs 192x1 |
+| budget | hub.tour.wardrobe | SKINS, HATS, TRAILS. DRY UP IN STYLE. | overflow | 1: pseudo | pseudo [______ŚKÍÑŚ, HÁTŚ, TRÁÍŁŚ. ĐR: 273x1 vs 192x1 |
+| budget | hub.tour.wheel_free | SPIN FOR HATS. THE FIRST IS FREE. | overflow | 1: pseudo | pseudo [______ŚPÍÑ FÖR HÁTŚ. THÉ FÍRŚ: 250x1 vs 192x1 |
+| budget | hub.tour.wheel | SPIN FOR HATS. BRING TICKETS. | overflow | 1: pseudo | pseudo [_____ŚPÍÑ FÖR HÁTŚ. BRÍÑĞ TÍÇ: 218x1 vs 192x1 |
+| budget | pause.skip_training | SKIP TRAINING | overflow | 1: pseudo | pseudo [__ŚKÍP TRÁÍÑÍÑĞ__]: 100x1 vs 92x1 |
 | budget | result.choice.restart | RESTART | overflow | 1: fr | fr RECOMMENCER: 66x1 vs 62x1 |
+| budget | training.name | SPLASHDOWN | overflow | 1: pseudo | pseudo [_ŚPŁÁŚHĐÖWÑ_]: 158x1 vs 120x1 |
 
 ## budget: accepted in English (the source layout; the same finding in another locale is accepted too)
 

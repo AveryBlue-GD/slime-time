@@ -546,17 +546,17 @@ msgctxt "result.choice.map"
 msgid "MAP"
 msgstr ""
 
+#: scripts/game.gd
+msgctxt "result.choice.hub"
+msgid "HUB"
+msgstr "QG"
+
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.replay_maze"
 msgid "REPLAY MAZE"
 msgstr "MÊME LABY"
-
-#: scripts/game.gd
-msgctxt "result.choice.hub"
-msgid "HUB"
-msgstr "QG"
 
 #: scripts/game.gd
 msgctxt "result.choice.replay"
@@ -907,6 +907,118 @@ msgstr "GRATUIT"
 msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "FINIS LES {count} NIVEAUX"
+
+#. the hub tour's SKIP pod (top right), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.skip"
+msgid "SKIP"
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.end"
+msgid "THE WAY UP. WALK IN."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.turn_back"
+msgid "HOLD {left} TO TURN IT BACK."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.story"
+msgid "HOME. IT TURNS. HIT THE WHEEL."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.maps"
+msgid "MAPS OF EVERY LEVEL YOU SMEARED."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.upgrades"
+msgid "COINS GO IN. STRONGER GOO COMES OUT."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.quit"
+msgid "THE TRAPDOOR. FOR BEDTIME."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.coins"
+msgid "COINS STILL HIDING IN EACH LEVEL."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.coins_practice"
+msgid "THE PRACTICE COIN WAS FAKE. SORRY."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.random"
+msgid "A NEW MAZE EVERY TIME. NO MERCY."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.random_locked"
+msgid "LOCKED. BEAT ALL {count} LEVELS FIRST."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.settings"
+msgid "SOUND, KEYS, FOG. THE BORING SIGN."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.wheel_free"
+msgid "SPIN FOR HATS. THE FIRST IS FREE."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.wheel"
+msgid "SPIN FOR HATS. BRING TICKETS."
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.wardrobe"
+msgid "SKINS, HATS, TRAILS. DRY UP IN STYLE."
+msgstr ""
+
+#. the stick / joystick held left, max 30px
+#. budget: max 30px
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.left"
+msgid "LEFT"
+msgstr ""
 
 #. HUD pod, max 60px, 1 line; {percent} = extra slime, e.g. 25
 #. budget: max 60px, lines 1
@@ -1304,6 +1416,20 @@ msgctxt "theme.dungeon"
 msgid "DARK DUNGEON"
 msgstr "DONJON DES DAMNÉS"
 
+#. training maze name; HUD level pod (max 120px) and the 16 px area banner (max 296px), 1 line
+#. budget: max 120px, lines 1
+#: scripts/training.gd
+msgctxt "training.name"
+msgid "SPLASHDOWN"
+msgstr ""
+
+#. joke under the training maze's name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/training.gd
+msgctxt "training.line"
+msgid "ROCK BOTTOM. NICE LANDING."
+msgstr ""
+
 #. tutorial keycap on touch screens, max 27px (a 29 px drawn key), grows to 60px (the key widens), 1 line
 #. budget: max 27px, lines 1
 #: scripts/tutorial_cues.gd
@@ -1416,20 +1542,6 @@ msgstr "COLLER"
 #. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "savecode.load"
-#. training maze name; HUD level pod (max 120px) and the 16 px area banner (max 296px), 1 line
-#. budget: max 120px, lines 1
-#: scripts/training.gd
-msgctxt "training.name"
-msgid "SPLASHDOWN"
-msgstr ""
-
-#. joke under the training maze's name, one line, max 296px. Keep it funny, not literal.
-#. budget: max 296px
-#: scripts/training.gd
-msgctxt "training.line"
-msgid "ROCK BOTTOM. NICE LANDING."
-msgstr ""
-
 msgid "LOAD"
 msgstr "CHARGER"
 
@@ -2108,6 +2220,8 @@ msgctxt "pause.resume"
 msgid "RESUME"
 msgstr "REPRENDRE"
 
+#. pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
+#. budget: max 92px, lines 1
 #: scripts/ui/pause_menu.gd
 msgctxt "pause.quit_hub"
 msgid "QUIT TO HUB"
@@ -2119,6 +2233,13 @@ msgstr "RETOUR AU QG"
 msgctxt "pause.new_seed"
 msgid "NEW SEED"
 msgstr "AUTRE GRAINE"
+
+#. pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
+#. budget: max 92px, lines 1
+#: scripts/ui/pause_menu.gd
+msgctxt "pause.skip_training"
+msgid "SKIP TRAINING"
+msgstr ""
 
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
@@ -2234,13 +2355,6 @@ msgctxt "skins.name_price"
 msgid "{name} - {price} TIX IN THE SHOP"
 msgid_plural "{name} - {price} TIX IN THE SHOP"
 msgstr[0] "{name} - {price} TIX EN BOUTIQUE"
-#. pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
-#. budget: max 92px, lines 1
-#: scripts/ui/pause_menu.gd
-msgctxt "pause.skip_training"
-msgid "SKIP TRAINING"
-msgstr ""
-
 msgstr[1] "{name} - {price} TIX EN BOUTIQUE"
 
 #. {count} = medals needed (30), {have}/{count} = progress; status line, max 312px (EDGE to EDGE, centred), 1 line
