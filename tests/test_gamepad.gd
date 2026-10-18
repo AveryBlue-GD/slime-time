@@ -264,7 +264,7 @@ func _menus() -> void:
 	_check(skins.page == "hats", "wardrobe RB: HATS")
 	await _tap(JOY_BUTTON_LEFT_SHOULDER)
 	await _tap(JOY_BUTTON_LEFT_SHOULDER)
-	_check(skins.page == "trails", "wardrobe LB twice: TRAILS (wraps)")
+	_check(skins.page == "papers", "wardrobe LB twice: PAPERS (wraps)")
 	current_scene = null
 	skins.free()
 

@@ -7,7 +7,7 @@ extends Node2D
 ## - map table: MAP TABLE (the trail maps of the story levels: scripts/ui/map_select.gd)
 ## - coin bag: a board of the coins found in each story level (no screen change)
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
-## - wardrobe: SKINS & HATS
+## - wardrobe: COSMETICS (pages SKINS / HATS / TRAILS / PAPERS)
 ## - cauldron: UPGRADES
 ## - prize wheel: HAT WHEEL: WHEEL | SHOP (HatWheel). Spin for a random hat you don't have yet (won
 ##   hats come off the wheel); the first spin is free, then 12 tickets, 2 more for each spin taken
@@ -278,7 +278,7 @@ func _build_stations() -> void:
 	_add_station("random", Loc.t("hub.station.random", "RANDOMIZER"), "portal", Vector2i(30, 40), 6)
 	_add_station("settings", Loc.t("hub.station.settings", "SETTINGS"), "signpost", Vector2i(24, 34), 6)
 	_add_station("wheel", Loc.t("hub.station.wheel", "HAT WHEEL"), "wheel", Vector2i(32, 40), 24)
-	_add_station("wardrobe", Loc.t("hub.station.wardrobe", "SKINS & HATS"), "wardrobe", Vector2i(28, 40), 5)
+	_add_station("wardrobe", Loc.t("hub.station.wardrobe", "COSMETICS"), "wardrobe", Vector2i(28, 40), 5)
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)

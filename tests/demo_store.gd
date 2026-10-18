@@ -3,7 +3,7 @@ extends Node
 ## Screenshot scenarios for the ticket store (upgrades v2 batch 2), picked with `--shot=`:
 ##   tickets  the cauldron's TICKETS tab (the WORKSHOP), with some levels bought
 ##   shop     the prize wheel's SHOP tab (TRAILS section; `--section=hats|papers` for the others)
-##   trails   the wardrobe's TRAILS page
+##   trails   the wardrobe's TRAILS page (`papers`: its PAPERS page, e.g. with --paper=night)
 ##   wind     SECOND WIND firing in a level (the meter empties mid-glide, refills, the WIND tag lights)
 ##   trail    a level with the test autopilot gliding, to show the worn trail style (`--trail=ID`)
 ## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_store.tscn --story-complete --tickets=60 --shot=tickets --workshop=2,1,0,3,0
@@ -32,10 +32,10 @@ func _ready() -> void:
 			var hub: Node = load("res://scenes/hub.tscn").instantiate()
 			add_child(hub)
 			_open_shop.call_deferred(hub)
-		"trails":
+		"trails", "papers":
 			var screen: Control = load("res://scenes/skins.tscn").instantiate()
 			add_child(screen)
-			screen.show_page.call_deferred("trails")
+			screen.show_page.call_deferred(shot)
 		"coins", "brightness":  # the COINS tab (names, bars, costs); `brightness` buys a level for the 1 s ring
 			var cauldron: Control = load("res://scenes/upgrades.tscn").instantiate()
 			add_child(cauldron)

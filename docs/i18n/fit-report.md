@@ -33,18 +33,18 @@ reported here but do not fail them (the other languages are brought in line late
 
 ## budget: what was measured
 
-- budgets: 133 of 453 template entries carry a `max Npx` note
+- budgets: 133 of 455 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 24, fr 27, de 39, it 14, ru 27, pl 29, tr 25, ja 2, th 21, vi 20, id 4, ar 25, hi 9, pseudo 55
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 32, pt_BR 26, fr 29, de 37, it 15, ru 27, pl 23, tr 25, ja 2, th 21, vi 20, id 4, ar 19, hi 3, pseudo 56
 - enforced: every locale (English-only mode: English fails, the other locales are reported)
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
-- states: 56 screen / overlay / HUD states per locale
+- states: 57 screen / overlay / HUD states per locale
 
 ## budget: open (0 places)
 

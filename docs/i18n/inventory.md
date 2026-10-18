@@ -41,7 +41,7 @@ plural · `J` list joined with `", "` · `NL` contains `\n` · `D` drawn with `d
 ### 2. Hub (`scripts/hub.gd`)
 | What | Strings | How | Layout |
 |---|---|---|---|
-| Station names `STORY - LEVEL %d`, `MAP TABLE`, `UPGRADES`, `QUIT`, `COIN BAG`, `RANDOMIZER`, `SETTINGS`, `HAT WHEEL`, `SKINS & HATS` | 9 | L, F | prompt box sized from its contents (`get_combined_minimum_size`), centered with `(320 - w) / 2` |
+| Station names `STORY - LEVEL %d`, `MAP TABLE`, `UPGRADES`, `QUIT`, `COIN BAG`, `RANDOMIZER`, `SETTINGS`, `HAT WHEEL`, `COSMETICS` | 9 | L, F | prompt box sized from its contents (`get_combined_minimum_size`), centered with `(320 - w) / 2` |
 | Prompt notes `LOCKED`, `BEST FLOOR %d`, `SHOP`, `FREE`, `BEAT ALL %d LEVELS`, `ROTATE`, `!` | 7 | L, F | same box |
 | Quit menu `LEAVE THE HUB?`, `THE GAME CLOSES`, `QUIT`, `BACK` | 4 | L | W: buttons 56x13 |
 | Portal menu `RANDOMIZER`, `RANDOM MAZE`, `DESCENT`, `BACK`, `BEST FLOOR %d    PAID RUNS %d/%d` | 5 | L, F, **aligned with 4 spaces** | W: buttons 120x13 and 56x13 |

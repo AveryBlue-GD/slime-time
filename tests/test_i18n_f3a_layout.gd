@@ -96,7 +96,7 @@ func _wardrobe() -> void:
 		skins.show_page(page)
 		await _frames(2)
 		_check(title.get_theme_font_size("font_size") == UIKit.FONT_BIG, _tag("wardrobe %s: the 16 px title" % page))
-		var grid: Control = {"skins": skins._skin_grid, "hats": skins._hat_grid, "trails": skins._trail_grid}[page]
+		var grid: Control = skins.grid_for(page)
 		var stage := _rect(skins.showcase) if skins.showcase.visible else Rect2(skins.custom_panel.global_position, Vector2(0, 0))
 		var title_ink := Rect2(160 - UIKit.text_w(title.text, UIKit.FONT_BIG) / 2.0, title.global_position.y, UIKit.text_w(title.text, UIKit.FONT_BIG), 1)
 		var back: Button = null
@@ -119,7 +119,7 @@ func _wardrobe() -> void:
 		for r: Rect2 in rects:
 			_check(SCREEN.encloses(r), _tag("wardrobe %s: %s inside the screen" % [page, r]))
 		if _code == "en":
-			_check(_rect(grid).position.y == skins.GRID_TOP and _rect(skins.page_button).position == Vector2(276, 164),
+			_check(_rect(grid).position.y == skins.GRID_TOP and _rect(skins.page_button) == Rect2(270, 164, 46, 13),
 				_tag("wardrobe %s: the English layout" % page))
 	skins.free()
 

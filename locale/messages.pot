@@ -723,7 +723,7 @@ msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.station.wardrobe"
-msgid "SKINS & HATS"
+msgid "COSMETICS"
 msgstr ""
 
 #. max 150px each, grows to 280px (the notice widens, centred), 1 line each
@@ -2136,6 +2136,11 @@ msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd
+msgctxt "skins.rule_papers"
+msgid "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_skins"
 msgid "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 msgstr ""
@@ -2148,6 +2153,11 @@ msgstr ""
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_trails"
 msgid "TRAILS"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.page_papers"
+msgid "PAPERS"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd
@@ -2169,7 +2179,7 @@ msgctxt "skins.name_how"
 msgid "{name} - {how}"
 msgstr ""
 
-#. {name} = the trail's name, {price} = tickets; max 300px, 1 line
+#. {name} = the trail's or paper's name, {price} = tickets; max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.name_price"

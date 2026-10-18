@@ -169,7 +169,7 @@ func _wardrobe() -> void:
 	for page: String in skins.PAGES:
 		skins.show_page(page)
 		await _frames(2)
-		var grid: Control = {skins = skins._skin_grid, hats = skins._hat_grid, trails = skins._trail_grid}[page]
+		var grid: Control = skins.grid_for(page)
 		var title := _text_rect(skins._title)
 		var g := _rect(grid)
 		var status := _text_rect(skins.status)
@@ -190,11 +190,12 @@ func _wardrobe() -> void:
 			title_end = pinned + 1.0
 		_ok(title_end <= g.position.y and g.end.y <= status.position.y and status.end.y <= rule.position.y,
 			"wardrobe title, grid, status, rule in order", "%s %s %s %s" % [title, g, status, rule])
-		if UIKit.button_h() != UIKit.BUTTON_H:  # (English: TRAILS grows its 40 px button by 2 px, the source layout)
-			if skins.layout_plan.get("top_page", false):  # (fix pass F3a: the page button top right, JELLY's mirror; BACK its own width)
-				_ok(back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE and page_b.position.y == UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
-			else:
-				_ok(back.size == page_b.size and back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
+		if UIKit.button_h() == UIKit.BUTTON_H:  # (English metrics: BACK 40 as everywhere; the page button its widest page name's width, EDGE from the right)
+			_ok(back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE and page_b.position.y == back.position.y, "wardrobe BACK / page button mirrored")
+		elif skins.layout_plan.get("top_page", false):  # (fix pass F3a: the page button top right, JELLY's mirror; BACK its own width)
+			_ok(back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE and page_b.position.y == UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
+		else:
+			_ok(back.size == page_b.size and back.position.x == UIKit.EDGE and page_b.end.x == 320 - UIKit.EDGE, "wardrobe BACK / page button mirrored, one width")
 		_ok(_fits(skins.page_button), "wardrobe page button fits its word", skins.page_button.text)
 		for r: Rect2 in [title, g, status, rule, back, page_b]:
 			_ok(SCREEN.encloses(r), "wardrobe on screen", str(r))

@@ -3,11 +3,13 @@ extends Control
 ## Skin select. Slimes are opaque by default (those unlock with the story levels); the JELLY ON / OFF
 ## switch shows the same skins as see-through jelly instead, each unlocked by beating its level on
 ## hard mode (D14; the stopwatch opens both versions together with all 30 medals). A tile per skin (locked ones are silhouettes); for the custom
-## skin, once the game is beaten, a color wheel. The page button cycles SKINS -> HATS -> TRAILS:
+## skin, once the game is beaten, a color wheel. The page button cycles SKINS -> HATS -> TRAILS -> PAPERS:
 ## the hats page has a tile per hat (plus no hat), each shown on a slime in your skin; the TRAILS page
 ## (upgrades v2 batch 2) a tile per goo trail style (the skin's own goo plus the five sold in the
 ## prize wheel's SHOP, Cosmetics), each a little strip of that goo in your skin; owned ones are worn
-## by pressing them, the others are silhouettes saying where to buy them.
+## by pressing them, the others are silhouettes saying where to buy them. The PAPERS page works the same
+## for the map papers (Cosmetics, sold in the same SHOP): a tile per paper, each a little example map
+## drawn on it (MapView.render); wearing one is the MAP TABLE's PAPER setting (Progress.map_paper).
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
 ## custom color panel or the preview stage (the clicked skin acting out a little routine, see
@@ -22,12 +24,15 @@ const RULE_TOP := 100
 const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
+## A locked paper's silhouette (the trails' locked dark, Cosmetics.trail_preview).
+const LOCKED_INK := Color(0.08, 0.08, 0.12, 0.9)
 ## The tip line of a page. i18n: one line, max 300px.
 static func rule_text(which: String) -> String:
 	match which:
 		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
 		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
+		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
 	return Loc.t("skins.rule_skins", "NEW LEVELS EQUIP YOUR NEWEST SKIN")
 
 
@@ -36,15 +41,17 @@ static func page_title(which: String) -> String:
 	match which:
 		"hats": return Loc.t("skins.page_hats", "HATS")
 		"trails": return Loc.t("skins.page_trails", "TRAILS")
+		"papers": return Loc.t("skins.page_papers", "PAPERS")
 	return Loc.t("skins.page_skins", "SKINS")
 
 
 ## The pages, in the order the page button cycles them.
-const PAGES := ["skins", "hats", "trails"]
+const PAGES := ["skins", "hats", "trails", "papers"]
 
 var tiles := {}
 var hat_tiles := {}
 var trail_tiles := {}
+var paper_tiles := {}
 var status: Label
 var custom_panel: Control
 var wheel: ColorWheel
@@ -52,7 +59,7 @@ var big_preview: AnimatedSprite2D
 ## The animated preview of the clicked skin (where the custom panel goes when that's not shown).
 var showcase: SkinShowcase
 var skin_text: SkinText
-## "skins", "hats" or "trails".
+## "skins", "hats", "trails" or "papers".
 var page := "skins"
 ## Which version of the skins the grid shows: jelly (true) or opaque (false, the default).
 var view_jelly := false
@@ -61,6 +68,7 @@ var jelly_button: Button
 var _skin_grid: VBoxContainer
 var _hat_grid: VBoxContainer
 var _trail_grid: VBoxContainer
+var _paper_grid: VBoxContainer
 var _title: Label
 var _rule: Label
 
@@ -87,6 +95,10 @@ func _ready() -> void:
 	for id in Cosmetics.trail_ids():
 		if Progress.cosmetic_visible(id):  # ABYSS is hidden while Descent is off, unless owned
 			_add_to_grid(_trail_grid, _make_trail_tile(id))
+	_paper_grid = _make_grid()
+	for id in Cosmetics.paper_ids():
+		if Progress.cosmetic_visible(id):
+			_add_to_grid(_paper_grid, _make_paper_tile(id))
 
 	status = _centered_label("", UIKit.TEXT, STATUS_TOP)
 	_rule = _centered_label(rule_text("skins"), UIKit.TEXT_DIM, RULE_TOP)
@@ -143,8 +155,16 @@ var layout_plan := {}
 func _layout(back: Button) -> void:
 	var metrics := UIKit.metrics()
 	if UIKit.button_h() == UIKit.BUTTON_H:
-		return  # English metrics (en, id, the gate off): the source layout as built (TRAILS grows its button 2 px there)
-	var bottom_texts := [back.text, page_title("skins"), page_title("hats"), page_title("trails")]
+		# English metrics (en, id, the gate off): the source layout as built, BACK 40 wide as on every screen;
+		# the page button one width for every page name (TRAILS / PAPERS: 46), ending EDGE from the right edge.
+		var english := [page_title("skins"), page_title("hats"), page_title("trails"), page_title("papers")]
+		var page_w: int = UIKit.tab_widths(english, int(back.custom_minimum_size.x))[0]
+		UIKit.note_text_w(page_button, english, int(back.custom_minimum_size.x))
+		page_button.custom_minimum_size.x = page_w
+		page_button.size.x = page_w
+		page_button.position.x = UIKit.SCREEN.x - UIKit.EDGE - page_w
+		return
+	var bottom_texts := [back.text, page_title("skins"), page_title("hats"), page_title("trails"), page_title("papers")]
 	var w: int = UIKit.tab_widths(bottom_texts, int(back.custom_minimum_size.x))[0]
 	for b: Button in [back, page_button]:
 		UIKit.note_text_w(b, bottom_texts, int(back.custom_minimum_size.x))
@@ -173,7 +193,7 @@ func _layout(back: Button) -> void:
 	var rule_last := ink_bottom
 	if UIKit.tall_script():
 		var rules: Array[String] = []
-		for which: String in ["skins", "jelly", "hats", "trails"]:
+		for which: String in ["skins", "jelly", "hats", "trails", "papers"]:
 			rules.append(rule_text(which))
 		rule_last = mini(ink_bottom, UIKit.ink_rows(rules, _rule.get_theme_font("font")).y)
 	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
@@ -249,7 +269,7 @@ func _layout(back: Button) -> void:
 		_title.add_theme_font_size_override("font_size", UIKit.FONT)
 		_title.offset_top = plan.title_y
 		_title.offset_bottom = plan.title_y + UIKit.line_h()
-	for grid: Control in [_skin_grid, _hat_grid, _trail_grid]:
+	for grid: Control in [_skin_grid, _hat_grid, _trail_grid, _paper_grid]:
 		grid.position.y = plan.grid_top
 		if plan.gap != GRID_GAP:
 			grid.add_theme_constant_override("separation", plan.gap)
@@ -336,15 +356,26 @@ func _fill_skin_grid() -> void:
 		_add_to_grid(_skin_grid, _make_tile(id))
 
 
-## Switches between the skins, hats and trails pages.
+## The tile grid of page `which`.
+func grid_for(which: String) -> VBoxContainer:
+	match which:
+		"hats": return _hat_grid
+		"trails": return _trail_grid
+		"papers": return _paper_grid
+	return _skin_grid
+
+
+## Switches between the skins, hats, trails and papers pages.
 func show_page(which: String) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	page = which
 	var hats := page == "hats"
 	var trails := page == "trails"
+	var papers := page == "papers"
 	_skin_grid.visible = page == "skins"
 	_hat_grid.visible = hats
 	_trail_grid.visible = trails
+	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
 	_title.text = page_title(page)
 	page_button.text = page_title(PAGES[(PAGES.find(page) + 1) % PAGES.size()])
@@ -360,6 +391,12 @@ func show_page(which: String) -> void:
 		showcase.visible = false
 		_refresh_trails()
 		trail_tiles[Progress.trail_style].grab_focus()
+	elif papers:
+		_rule.text = rule_text("papers")
+		custom_panel.visible = false
+		showcase.visible = false
+		_refresh_papers()
+		paper_tiles[Progress.map_paper].grab_focus()
 	else:
 		_refresh()
 		_preview(Progress.selected_skin)
@@ -454,7 +491,7 @@ func _on_trail_tile(id: String) -> void:
 func _refresh_trails(focus_id := "") -> void:
 	var id: String = focus_id if focus_id != "" else Progress.trail_style
 	if Progress.owns_cosmetic(id):
-		# i18n: {name} = the trail's name; status line, max 300px, 1 line. The two spaces are spacing.
+		# i18n: {name} = the trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
 		if id == Progress.trail_style:
 			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Cosmetics.display_name(id)})
 		else:
@@ -464,10 +501,70 @@ func _refresh_trails(focus_id := "") -> void:
 			# i18n: {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 			status.text = Loc.t("skins.name_how", "{name} - {how}", {name = Cosmetics.display_name(id), how = Cosmetics.earned_how(id)})
 		else:
-			# i18n: {name} = the trail's name, {price} = tickets; max 300px, 1 line
+			# i18n: {name} = the trail's or paper's name, {price} = tickets; max 300px, 1 line
 			status.text = Loc.n("skins.name_price", "{name} - {price} TIX IN THE SHOP", "{name} - {price} TIX IN THE SHOP", Cosmetics.price(id), {name = Cosmetics.display_name(id), price = Cosmetics.price(id)})
 	for tile_id: String in trail_tiles:
 		UIKit.set_selected(trail_tiles[tile_id], tile_id == Progress.trail_style)
+
+
+## A paper tile: a little example map drawn on that paper (paper_preview, 33x17, centred like the trails'
+## strips); a dark silhouette of the map (as the trails' are) until it's bought.
+func _make_paper_tile(id: String) -> Button:
+	var owned: bool = Progress.owns_cosmetic(id)
+	var tile := UIKit.make_button("", func() -> void: _on_paper_tile(id), TILE_SIZE)
+	var map := TextureRect.new()
+	map.texture = ImageTexture.create_from_image(paper_preview(id, Progress.skin_color(), not owned))
+	map.size = map.texture.get_size()
+	map.position = ((TILE_SIZE - map.size) / 2.0).floor()
+	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(map)
+	tile.focus_entered.connect(func() -> void:
+		if page == "papers":
+			_refresh_papers(id))
+	paper_tiles[id] = tile
+	return tile
+
+
+## The papers page's picture of paper `paper` (`ink`: the skin color, NIGHT draws in it): the first
+## level's MAP TABLE example maze (MapView.example: made up, the same for everyone), fully seen with its
+## route and a coin, unthemed (the paper's own colors; parchment = the plain map), its outer wall line
+## the frame. `locked`: the same map as a silhouette (Cosmetics.trail_preview's dark; the wall lines
+## left clear), whatever the paper.
+static func paper_preview(paper: String, ink: Color, locked := false) -> Image:
+	var ex := MapView.example(1, false)
+	var maze: Dictionary = ex.maze
+	var survey := Survey.full(maze, 1.0)
+	var coins: Array[Vector2i] = [Vector2i(maze.cells.x - 1 - maze.start.x, maze.cells.y - 1 - maze.start.y)]
+	if locked:
+		paper = Cosmetics.DEFAULT_PAPER
+	var image := MapView.render(maze, survey, MapView.EXAMPLE_SIZES, coins, "", paper, ink)
+	if locked:
+		var wall: Color = MapView.palette("", paper, ink).wall
+		for y in image.get_height():
+			for x in image.get_width():
+				image.set_pixel(x, y, Color(0, 0, 0, 0) if image.get_pixel(x, y).is_equal_approx(wall) else LOCKED_INK)
+	return image
+
+
+func _on_paper_tile(id: String) -> void:
+	if Progress.owns_cosmetic(id):
+		Progress.equip_cosmetic(id)
+	_refresh_papers(id)
+
+
+## The papers page's status line (for `focus_id`, or the worn paper) and tile highlights (the same
+## lines as the trails page's).
+func _refresh_papers(focus_id := "") -> void:
+	var id: String = focus_id if focus_id != "" else Progress.map_paper
+	if Progress.owns_cosmetic(id):
+		if id == Progress.map_paper:
+			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Cosmetics.display_name(id)})
+		else:
+			status.text = Cosmetics.display_name(id)
+	else:
+		status.text = Loc.n("skins.name_price", "{name} - {price} TIX IN THE SHOP", "{name} - {price} TIX IN THE SHOP", Cosmetics.price(id), {name = Cosmetics.display_name(id), price = Cosmetics.price(id)})
+	for tile_id: String in paper_tiles:
+		UIKit.set_selected(paper_tiles[tile_id], tile_id == Progress.map_paper)
 
 
 ## The custom color panel, mirrored about the center: the wheel on the left, the big preview
