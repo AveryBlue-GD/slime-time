@@ -41,8 +41,9 @@ Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag 
 
 ## How the owner likes to work
 - **English only (owner, 2026-10-18):** game changes are made and checked in English only. Don't translate new or
-  changed strings and don't fix layouts for the other 17 languages; they fall back to English for new text. Only when
-  the owner asks to "bring the other languages in line" do the catch-up (steps in `docs/i18n/plan.md`, English-only
+  changed strings and don't fix layouts for the other 17 languages; they fall back to English for new text. The owner
+  will update all other languages together once the game is finalized (reconfirmed 2026-10-18); only when the owner
+  asks to "bring the other languages in line" do the catch-up (steps in `docs/i18n/plan.md`, English-only
   mode switch in the i18n tests). Still wrap new text in `Loc.t` / `Loc.n` with `# i18n:` hints so the catch-up works.
   After every text/UI change, still run `./tools/i18n_capture.sh --gate` (English strict, other languages = warnings)
   and add a row to `docs/i18n/pending.md` (change, strings, warnings), so the catch-up is a known list.
