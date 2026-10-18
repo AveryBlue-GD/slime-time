@@ -15,6 +15,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.coincatch_force = 0  # assumes the instant pickup (coin catch has its own suite)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.save_path = test_save

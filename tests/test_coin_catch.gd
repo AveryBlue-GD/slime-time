@@ -22,7 +22,7 @@ func _initialize() -> void:
 	progress.levels_cleared = 10
 	progress.jelly = false
 	progress.reduce_motion = false
-	_check(not Economy.COIN_CATCH_TEST and not Economy.coin_catch_on(), "the coin catch test is off by default")
+	_check(Economy.COIN_CATCH_TEST and Economy.coin_catch_on(), "the coin catch is on by default")
 	var progress_script: GDScript = load("res://scripts/progress.gd")
 	_check(progress_script.game_args(PackedStringArray(["--coincatch"]), false).is_empty()
 		and progress_script.game_args(PackedStringArray(["--coincatch"]), true) == PackedStringArray(["--coincatch"]),

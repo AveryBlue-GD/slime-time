@@ -1,8 +1,10 @@
 # Coin catch test (owner A/B, 2026-10-16)
 
 Owner request: the coin pickup is far too sudden; it is hard to tell a coin was just picked up. This
-prototype makes the pickup a short, readable moment. **Off by default**: with
-`Economy.COIN_CATCH_TEST := false` the game plays exactly as before (same code path, untouched).
+prototype makes the pickup a short, readable moment.
+**Status: kept, on by default for everyone (owner 2026-10-18).** `Economy.COIN_CATCH_TEST := true`;
+with `false` (or `coincatch_force = 0`, or `--nocoincatch`) the old instant pickup runs. Credit and save still
+happen at touch time. Flag plumbing stays until a follow-up removes it.
 
 ## What happens when it is on
 
@@ -75,9 +77,8 @@ Touch to counter pop: 0.34 + 1.0 = about 1.35 s (1.2 s with Reduce Motion).
 ./tools/play.sh --dev --coincatch
 ```
 
-`--coincatch` is a debug launch flag (an exported release build ignores it; nothing is saved). Add
-`--jelly` for the see-through slime. To turn it on for everyone, set `const COIN_CATCH_TEST := true`
-in `scripts/economy.gd`.
+`--coincatch` (now the default, harmless) and `--nocoincatch` (old instant pickup, for A/B) are debug launch
+flags (an exported release build ignores them; nothing is saved). Add `--jelly` for the see-through slime.
 
 ## Code
 

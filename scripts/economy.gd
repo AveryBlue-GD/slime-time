@@ -183,7 +183,7 @@ const SOFT_BOUNCE_HEAD_DECEL := 520.0
 ## the HUD's coin counter pops up by one at the end. The coin is credited and saved at touch time
 ## exactly as today; only the show is later. `--coincatch` (debug builds only, like every launch flag)
 ## sets `coincatch_force` = 1; tests set it too.
-const COIN_CATCH_TEST := false
+const COIN_CATCH_TEST := true
 static var coincatch_force := -1
 
 

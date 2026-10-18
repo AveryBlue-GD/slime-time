@@ -22,12 +22,11 @@ Gate: `Economy.LANGUAGES_TEST`. Open items (a-g) are in `docs/handoff.md` open t
 Verified 2026-10-17: the MAP TABLE shows all 10 maps once in every locale, normal and hard, hard maps separate (`tests/test_i18n_maps.gd`); every locale reviewed screen by screen and re-reviewed after fixes (`docs/i18n/review/`: per-locale findings, `fixes-*.md`, `recheck-*.md`, `leftovers.md` = accepted exceptions). Before any UI change: `./tools/i18n_capture.sh --locales all --states all --out /tmp/x --gate` (73 states x 19 locales, ~1 min; fails on text ink on goo, missing glyphs or a changed real save; needs a window, not part of test_all).
 Owner questions still open: German keeps STORY / LEVEL / SHOP as English loanwords (glossary/de.md): keep?
 
-## Open tests the owner is trying (both OFF by default, decide keep / tune / revert)
+## Open tests the owner is trying (OFF by default, decide keep / tune / revert)
 | Test | Flag | Launch | Doc |
 |---|---|---|---|
 | Soft bounce (short stun, smooth slide along the wall on glancing hits) | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
-| Coin catch (coin tossed up, slime hops to catch, ~1 s dissolve, counter pops after) | `Economy.COIN_CATCH_TEST` | `./tools/play.sh --dev --coincatch` | `docs/spring-cleaning/coin-catch-test.md` |
-Both together: `./tools/play.sh --dev --coincatch --softbounce`. To keep one for everyone, set its constant to `true`
+Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag plumbing removal is a follow-up; `docs/spring-cleaning/coin-catch-test.md`). To keep soft bounce for everyone, set its constant to `true`
 (and then remove the flag plumbing / test-only paths as a follow-up).
 
 ## Other open owner decisions

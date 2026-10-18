@@ -14,6 +14,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.coincatch_force = 0  # assumes the instant pickup (coin catch has its own suite)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run
