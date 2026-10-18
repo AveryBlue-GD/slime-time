@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
-## 210, workshop 423, cosmetics 240), hats live for players (11 spins = 11 different hats, never a
+## 242, workshop 423, cosmetics 240), hats live for players (12 spins = 12 different hats, never a
 ## duplicate, rainbow pity), the TAILOR's direct buy (45 / rainbow 80 after 3 spins, counts as a spin,
 ## rainbow pity reset, atomic + saved), workshop and cosmetic purchases (exact balance, one short,
 ## double buy, max level, not refundable, dev mode free), equip / unequip / fallback, save round trips
@@ -55,7 +55,7 @@ func _totals() -> void:
 	var wheel := 0
 	for taken in Hats.LIST.size():
 		wheel += progress.spin_cost_after(taken)
-	_check(wheel == 210, "all 11 hats on the wheel cost 0 + 12 + 14 + ... + 30 = 210 (got %d)" % wheel)
+	_check(wheel == 242, "all 12 hats on the wheel cost 0 + 12 + 14 + ... + 32 = 242 (got %d)" % wheel)
 	_check(Workshop.full_cost() == 423 and Workshop.total_cost("wind", 3) == 95 and Workshop.total_cost("magnet", 3) == 82,
 		"the workshop costs 95 + 4 x 82 = 423 (got %d)" % Workshop.full_cost())
 	var cosmetics := 0
@@ -63,7 +63,7 @@ func _totals() -> void:
 		cosmetics += Cosmetics.price(id)
 	_check(cosmetics == 240 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 3,
 		"5 trails + 3 papers cost 240 (got %d)" % cosmetics)
-	_check(wheel + Workshop.full_cost() + cosmetics == 873, "everything in v1 costs 873 tickets")
+	_check(wheel + Workshop.full_cost() + cosmetics == 905, "everything in v1 costs 905 tickets")
 	_check(Economy.TAILOR_PRICE == 45 and Economy.TAILOR_RAINBOW_PRICE == 80 and Economy.TAILOR_AFTER_SPINS == 3
 		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
 		"store numbers live in Economy (Progress aliases them)")
@@ -93,15 +93,15 @@ func _hats() -> void:
 		if hat == "rainbow":
 			rainbow_at = i + 1
 		seen[hat] = true
-	_check(seen.size() == Hats.LIST.size() and progress.hats_left().is_empty() and paid == 210 and progress.tickets_spent == 210,
-		"11 spins win 11 different hats (no duplicates) for 210 tickets (paid %d)" % paid)
-	_check(rainbow_at > 0, "the rainbow hat comes by spin 11 at the latest (spin %d)" % rainbow_at)
-	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 790, "an empty wheel can't spin and takes nothing")
+	_check(seen.size() == Hats.LIST.size() and progress.hats_left().is_empty() and paid == 242 and progress.tickets_spent == 242,
+		"12 spins win 12 different hats (no duplicates) for 242 tickets (paid %d)" % paid)
+	_check(rainbow_at > 0, "the rainbow hat comes by spin 12 at the latest (spin %d)" % rainbow_at)
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 758, "an empty wheel can't spin and takes nothing")
 	# Pity: every miss fattens the rainbow wedge; landing on it resets.
 	_fresh(1000)
 	progress.spin_hat(0.0)  # the top hat (first in wheel order), a miss
 	progress.spin_hat(0.0)
-	_check(progress.rainbow_pity == 2 and Hats.weight("rainbow", 2) > Hats.weight("rainbow", 0), "misses build pity (%d)" % progress.rainbow_pity)
+	_check(progress.rainbow_pity == 2 and progress.wheel_weight("rainbow", 2) > progress.wheel_weight("rainbow", 0), "misses build pity (%d)" % progress.rainbow_pity)
 	progress.spin_hat(0.99999)  # the last wedge: the rainbow hat
 	_check(progress.rainbow_pity == 0 and "rainbow" in progress.hats_owned, "landing on the rainbow hat resets its pity")
 	# Atomic: paid, won and saved before the wheel turns (read back from the file).

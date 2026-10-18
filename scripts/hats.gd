@@ -6,7 +6,10 @@ extends RefCounted
 ## (Progress.selected_hat). The first spin is free, then 12 tickets rising by 2 per spin (Progress.spin_hat);
 ## after 3 spins the wheel's SHOP also sells any hat still on it (the TAILOR: 45, the rainbow hat 80).
 ## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
-## frame. The Hat node (scripts/hat.gd) puts the chosen one on the slime and handles its physics.
+## frame. An animated hat (`frames` > 1: the propeller cap, the raincloud) has its first frame
+## there (its still frame, as on the hat wheel's wedges) and the others after every hat's column
+## (anim_column), played at `fps` (`fps_moving` while the slime glides or charges, `fps_flying`
+## popped off by a leap; both default to `fps`). The Hat node (scripts/hat.gd) puts the chosen one on the slime and handles its physics.
 ##
 ## These are placeholders until the real hats are decided.
 
@@ -45,10 +48,13 @@ const LIST := [
 	{id = "chef", name = "CHEF HAT", column = 5},  # i18n: ignore (English source; shown via display_name)
 	{id = "wizard", name = "WIZARD HAT", column = 6},  # i18n: ignore (English source; shown via display_name)
 	{id = "viking", name = "VIKING HELMET", column = 7},  # i18n: ignore (English source; shown via display_name)
-	{id = "propeller", name = "PROPELLER CAP", column = 8},  # i18n: ignore (English source; shown via display_name)
+	# Its propeller spins (frames, see Hat._animate): lazily at rest, faster on the move, fastest flying off in a leap.
+	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0},  # i18n: ignore (English source; shown via display_name)
 	{id = "crown", name = "CROWN", column = 9},  # i18n: ignore (English source; shown via display_name)
+	# A little cloud hovering over the head (`hovers`: it never touches it), raining on it.
+	{id = "raincloud", name = "RAINCLOUD", column = 11, frames = 4, fps = 10.0, hovers = true},  # i18n: ignore (English source; shown via display_name)
 	# The rare one: a thin wedge on the wheel, and its colors flow (assets/shaders/rainbow_hat.gdshader).
-	{id = "rainbow", name = "RAINBOW HAT", column = 10, weight = 0.3, flows = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "rainbow", name = "RAINBOW HAT", column = 10, flows = true},  # i18n: ignore (English source; shown via display_name)
 ]
 
 
@@ -156,7 +162,18 @@ static func display_name(id: String) -> String:
 			return Loc.t("hat.crown", "CROWN")
 		"rainbow":
 			return Loc.t("hat.rainbow", "RAINBOW HAT")
+		"raincloud":
+			return Loc.t("hat.raincloud", "RAINCLOUD")
 	return get_hat(id).get("name", "")
+
+
+## A hat's one-line flavor text ("" for hats without one), like Cosmetics.about.
+static func about(id: String) -> String:
+	# i18n: wardrobe / hat wheel info line, after the hat's name; max 150px, 1 line, keep it short
+	match id:
+		"raincloud":
+			return Loc.t("hat.raincloud.desc", "ITS VERY OWN DRIZZLE")
+	return ""
 
 
 ## A hat can be worn once it's been won on the hat wheel (`owned`), and only once hats are out.
@@ -172,9 +189,54 @@ static func ids() -> Array[String]:
 	return out
 
 
-## The hat's frame within hats.png, at one of its widths.
-static func region(id: String, width := Width.NORMAL) -> Rect2:
-	return Rect2(Vector2(int(get_hat(id).get("column", 0)) * FRAME.x, width * FRAME.y), Vector2(FRAME))
+## The hat's frame within hats.png, at one of its widths (`frame`: which frame of an animated hat,
+## wrapped round; 0 = its still frame).
+static func region(id: String, width := Width.NORMAL, frame := 0) -> Rect2:
+	var hat := get_hat(id)
+	var column := int(hat.get("column", 0))
+	var n := frames(id)
+	if n > 1 and posmod(frame, n) > 0:
+		column = anim_column(id) + posmod(frame, n) - 1
+	return Rect2(Vector2(column * FRAME.x, width * FRAME.y), Vector2(FRAME))
+
+
+## How many frames hat `id` has (1: a still hat).
+static func frames(id: String) -> int:
+	return maxi(1, int(get_hat(id).get("frames", 1)))
+
+
+## The column of hat `id`'s second frame: the animated hats' other frames follow every hat's own
+## column, hat by hat in column order (tools/make_hats.py columns(); the raincloud's column comes
+## after the rainbow hat's, though the rainbow hat stays last in LIST, so last on the wheel).
+static func anim_column(id: String) -> int:
+	var by_column := LIST.duplicate()
+	by_column.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.column) < int(b.column))
+	var column := LIST.size()
+	for hat: Dictionary in by_column:
+		if hat.id == id:
+			return column
+		column += maxi(1, int(hat.get("frames", 1))) - 1
+	return column
+
+
+## Every column of hats.png: a frame per hat, then the animated hats' other frames.
+static func sheet_columns() -> int:
+	var columns := 0
+	for hat: Dictionary in LIST:
+		columns += maxi(1, int(hat.get("frames", 1)))
+	return columns
+
+
+## How fast hat `id` animates (frames a second): `fps`, or `fps_moving` / `fps_flying` when the
+## slime is on the move / the hat is flying off it.
+static func fps(id: String, moving := false, flying := false) -> float:
+	var hat := get_hat(id)
+	var base := float(hat.get("fps", 8.0))
+	if flying:
+		return float(hat.get("fps_flying", hat.get("fps_moving", base)))
+	if moving:
+		return float(hat.get("fps_moving", base))
+	return base
 
 
 ## How many px to lift hat `id` (at `width`) off the head in slime frame anim:frame so it doesn't
@@ -191,16 +253,17 @@ static func lift(id: String, width: int, anim: String, frame: int) -> int:
 			_image = preload("res://assets/sprites/hats.png").get_image()
 			if _image.is_compressed():
 				_image.decompress()
-		var r := region(id, width)
 		for k in MAX_LIFT + 1:
 			lifted = k
 			var clear := true
-			for e: Vector2i in eyes:
-				# The hat pixel that would land on this eye, with the hat raised k px.
-				var at := Vector2i(r.position) + Vector2i(HEAD) + e + Vector2i(0, k)
-				if at.y < int(r.position.y) + FRAME.y and _image.get_pixelv(at).a > 0.5:
-					clear = false
-					break
+			for f in frames(id):  # (every frame of an animated hat: it lifts the same through all)
+				var r := region(id, width, f)
+				for e: Vector2i in eyes:
+					# The hat pixel that would land on this eye, with the hat raised k px.
+					var at := Vector2i(r.position) + Vector2i(HEAD) + e + Vector2i(0, k)
+					if at.y < int(r.position.y) + FRAME.y and _image.get_pixelv(at).a > 0.5:
+						clear = false
+						break
 			if clear:
 				break
 	_lifts[key] = lifted

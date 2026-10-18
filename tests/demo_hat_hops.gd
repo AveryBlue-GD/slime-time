@@ -3,7 +3,7 @@ extends Node
 ## Watchable demo: the slime wears a hat and keeps leaping back and forth along the longest
 ## straight corridor of level 1, at random strengths, sometimes splatting into the far wall, so
 ## the hat can be seen popping off, riding the momentum and landing back on.
-## .\tools\play.ps1 -Dev -Scene res://tests/demo_hat_hops.tscn -GameArgs --hat=tophat
+## .\tools\play.ps1 -Dev -Scene res://tests/demo_hat_hops.tscn -GameArgs --hat=tophat [--level=N]
 
 const HOP_EVERY := 1.6
 
@@ -19,6 +19,9 @@ func _ready() -> void:
 		Progress.selected_hat = Hats.LIST[0].id
 	game = preload("res://scenes/main.tscn").instantiate()
 	game.level = 1
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--level="):  # (another level, to show its own skin there)
+			game.level = int(arg.trim_prefix("--level="))
 	add_child(game)
 	lane = _longest_lane()
 	var start := MazeGenerator.cell_center(lane.from, 16)

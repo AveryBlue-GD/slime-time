@@ -265,15 +265,16 @@ func _initialize() -> void:
 	wheel.free()
 
 	# --- Rainbow pity
-	_check(Hats.weight("rainbow") == 0.3 and is_equal_approx(Hats.weight("rainbow", 4), 0.3 + 4 * Hats.PITY_STEP) and Hats.weight("tophat", 9) == 1.0,
-		"each missed spin fattens only the rainbow wedge")
+	_check(progress.wheel_weight("rainbow") == Economy.WHEEL_RARE_WEIGHT and is_equal_approx(progress.wheel_weight("rainbow", 4), Economy.WHEEL_RARE_WEIGHT + 4 * Hats.PITY_STEP)
+		and progress.wheel_weight("tophat", 9) == Economy.WHEEL_WEIGHT, "each missed spin fattens only the rainbow wedge")
 	var ids := Hats.ids()
-	_check(Hats.pick(ids, 0, 0.0) == "tophat" and Hats.pick(ids, 0, 0.9999) == "rainbow", "a roll walks along the wedges in wheel order")
+	_check(ids[-1] == "rainbow" and progress.wheel_pick(ids, 0, 0.0) == "tophat" and progress.wheel_pick(ids, 0, 0.9999) == "rainbow",
+		"a roll walks along the wedges in wheel order (the rainbow hat last)")
 	var odds: Array[int] = []
 	for pity in [0, 10, 40]:
 		var hits := 0
 		for i in 1000:
-			if Hats.pick(ids, pity, i / 1000.0) == "rainbow":
+			if progress.wheel_pick(ids, pity, i / 1000.0) == "rainbow":
 				hits += 1
 		odds.append(hits)
 	_check(odds[0] < odds[1] and odds[1] < odds[2], "rainbow odds grow with pity: %s in 1000" % [odds])

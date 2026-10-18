@@ -104,6 +104,7 @@ func _initialize() -> void:
 	_check(back_on, "...then it comes straight back down onto the slime")
 	game.free()
 
+	await _check_animated_hats()
 	progress.selected_hat = Hats.NONE
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))
 	_result()
@@ -143,3 +144,59 @@ func _dead_end(game: Node2D, behind: int) -> Dictionary:
 	return {}
 
 
+## The animated hats on a slime: the propeller spins through its frames (faster on the move,
+## fastest flying), the raincloud rains; a paused slime (a locked tile) shows the still frame.
+func _check_animated_hats() -> void:
+	var holder := Node2D.new()
+	root.add_child(holder)
+	var body := UIKit.make_slime_preview(Skins.get_preset("lime").color, 1, false, null, false)
+	holder.add_child(body)
+	body.play("idle")
+	var hat := Hat.new()
+	holder.add_child(hat)
+	hat.setup("propeller", body)
+	hat.set_process(false)  # (stepped by hand below)
+	var seen := {}
+	for i in 16:
+		hat._process(1.0 / 8.0)
+		seen[int(hat.region_rect.position.x)] = true
+	_check(seen.size() == Hats.frames("propeller"), "the propeller cap's propeller spins through all %d frames (%d)" % [Hats.frames("propeller"), seen.size()])
+	var rest := _frames_in(hat, 0.5)
+	body.play("glide_e")
+	var moving := _frames_in(hat, 0.5)
+	hat.state = Hat.State.FLYING
+	var flying := _frames_in(hat, 0.5)
+	hat.state = Hat.State.ON
+	_check(rest < moving and moving < flying, "...lazily at rest, faster on the move, fastest flying (%d < %d < %d frames in half a second)" % [rest, moving, flying])
+	body.play("idle")
+	body.pause()
+	hat._process(0.3)
+	_check(hat.anim_frame == 0 and hat.region_rect == Hats.region("propeller", Hats.width_for(Slime.head_width("idle", body.frame))), "a paused slime's hat holds its still frame")
+	hat.queue_free()
+	body.play("idle")
+	var cloud := Hat.new()
+	holder.add_child(cloud)
+	cloud.setup("raincloud", body)
+	cloud.set_process(false)
+	var shown := {}
+	for i in 8:
+		cloud._process(1.0 / Hats.fps("raincloud"))
+		shown[int(cloud.region_rect.position.x)] = true
+	_check(shown.size() == Hats.frames("raincloud") and Hats.get_hat("raincloud").get("hovers", false), "the raincloud rains (%d frames) over the head" % shown.size())
+	cloud.pop(Vector2(80, 0), 0.5)
+	_check(cloud.state == Hat.State.ON, "a leap doesn't knock the raincloud off: it rides along over the head")
+	_check(Hats.display_name("raincloud") == "RAINCLOUD" and Hats.about("raincloud") != "" and "raincloud" in Hats.ids(), "it's the RAINCLOUD, with its own line")
+	holder.queue_free()
+	await process_frame
+
+
+## How many frame changes hat `hat` makes in `seconds` (stepped at 60 fps).
+func _frames_in(hat: Hat, seconds: float) -> int:
+	var changes := 0
+	var last := hat.anim_frame
+	for i in int(seconds * 60.0):
+		hat._process(1.0 / 60.0)
+		if hat.anim_frame != last:
+			changes += 1
+			last = hat.anim_frame
+	return changes

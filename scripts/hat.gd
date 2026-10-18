@@ -3,7 +3,8 @@ extends Sprite2D
 
 ## A hat on a slime. It's drawn to fit round the slime's dome (not just perched on it), and as the
 ## slime squashes and stretches it swaps to the matching width (Hats.width_for(Slime.head_width)).
-## When the slime leaps, the hat pops off and arcs up and back down onto its head. Along the floor
+## When the slime leaps, the hat pops off and arcs up and back down onto its head (a hovering
+## one, the raincloud, just keeps raining on it all the way). Along the floor
 ## it goes wherever the slime really goes (not where the leap was aimed), so when the slime bonks a
 ## wall, bounces back or gets stuck, the hat stays in line over it: a bonk just jolts it a few px
 ## on (it keeps a little of the speed the slime lost), springing back while it falls.
@@ -39,6 +40,9 @@ var _slime_last := Vector2.ZERO
 var _slime_velocity := Vector2.ZERO
 ## The height when this physics tick began (drawn between ticks when interpolating).
 var _height_from := 0.0
+## An animated hat's clock, in frames (Hats.frames, Hats.fps): `anim_frame` is the one shown.
+var _anim_time := 0.0
+var anim_frame := 0
 
 
 func _init() -> void:
@@ -62,9 +66,11 @@ func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null
 ## Pops the hat off with the slime's leap: `slime_velocity` is how fast the slime moves along the
 ## floor and `flight_time` how long it will be in the air, so the hat comes down onto it.
 func pop(slime_velocity: Vector2, flight_time: float) -> void:
+	if Hats.get_hat(hat_id).get("hovers", false):
+		return  # a hovering hat (the raincloud) isn't knocked off: it rides along over the head
 	ground = _floor_point()
 	height = _head_height()
-	region_rect = Hats.region(hat_id, Hats.Width.LOOSE)  # off the head it keeps its own shape
+	region_rect = Hats.region(hat_id, Hats.Width.LOOSE, anim_frame)  # off the head it keeps its own shape
 	_slime_last = ground
 	_slime_velocity = slime_velocity
 	_height_from = height
@@ -84,11 +90,13 @@ func _physics_process(delta: float) -> void:
 		_fly(delta)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_animate(delta)
 	match state:
 		State.ON:
 			_follow()
 		State.FLYING:
+			region_rect = Hats.region(hat_id, Hats.Width.LOOSE, anim_frame)
 			var drawn_height := height
 			var slime := anchor as Slime
 			if slime and slime.is_physics_interpolated_and_enabled():
@@ -96,11 +104,27 @@ func _process(_delta: float) -> void:
 			_place(_snap(ground + _drawn_shift(false) - Vector2(0.0, drawn_height)))
 
 
+## Steps an animated hat on (the propeller cap spins, the raincloud rains): at its own pace, faster
+## while the slime glides or winds up a leap and fastest flying off it. It holds its still frame
+## on a paused slime (a locked wardrobe tile's silhouette) and in frozen reviewer captures.
+func _animate(delta: float) -> void:
+	var n := Hats.frames(hat_id)
+	if n <= 1:
+		return
+	if Hats.frozen_flow_step >= 0 or (body and not body.is_playing()):
+		_anim_time = 0.0
+		anim_frame = 0
+		return
+	var moving := body != null and (body.animation.begins_with("glide") or body.animation.begins_with("charge"))
+	_anim_time = fmod(_anim_time + delta * Hats.fps(hat_id, moving, state == State.FLYING), float(n))
+	anim_frame = int(_anim_time) % n
+
+
 func _follow() -> void:
 	# Squashed slime, wider hat; stretched slime, narrower and taller. Lifted a px or two in the
 	# few frames whose eyes sit high, so it never covers them.
 	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
-	region_rect = Hats.region(hat_id, width)
+	region_rect = Hats.region(hat_id, width, anim_frame)
 	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
 	_place(_snap(_head() + _drawn_shift(true) - Vector2(0, lift_px) * body.global_scale))
 

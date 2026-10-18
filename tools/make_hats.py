@@ -30,8 +30,13 @@ taller than 7 px above it, so the slime still reads as the star. The rainbow hat
 arching over the head from two little clouds) is the rare one on the hat wheel; the game flows its
 colors (assets/shaders/rainbow_hat.gdshader).
 
-The output is a pure function of this file and the slime sheet (deterministic). Keep HATS in the
-same order as Hats.LIST.
+Two hats are animated (FRAMES): the propeller cap's propeller spins (8 frames, an eighth of a turn
+each) and the raincloud rains (4 frames). Frame 0 is the hat's own column (its still frame: the
+hat wheel's wedges draw it); the other frames come after every hat's column (columns()), and
+Hat._animate plays them (Hats.frames / fps).
+
+The output is a pure function of this file and the slime sheet (deterministic). HATS is in column order (each
+hat's `column` in Hats.LIST; LIST itself puts the rainbow hat last, for the wheel).
 """
 import colorsys
 import json
@@ -168,7 +173,7 @@ RUBY, SAPPHIRE, EMERALD = rgb(236, 56, 84), rgb(84, 150, 246), rgb(74, 206, 120)
 class Hat:
     """One hat at one width: a 32x16 grid, the dome it fits, and helpers to paint shaded shapes."""
 
-    def __init__(self, width: int, head: dict):
+    def __init__(self, width: int, head: dict, frame: int = 0):
         self.width = width
         self.px = [[CLEAR] * W for _ in range(H)]
         self.dome = head["dome"]
@@ -177,6 +182,7 @@ class Hat:
         self.sx = self.rx / NORMAL_RX             # how much wider than normal
         self.sy = HEIGHT[width]
         self.cx, self.top = HEAD
+        self.frame = frame                        # which frame of an animated hat
         self.ink = rgb(30, 20, 30)
         self.lining = rgb(24, 18, 30)
 
@@ -446,6 +452,9 @@ def viking_helmet(h: Hat):
     h.finish()
 
 
+PROPELLER_FRAMES = 8
+
+
 def propeller_cap(h: Hat):
     h.ink, h.lining = ink(*BLUE[1][:3]), BLUE[3]
     pts = h.cap(3.4, 3.0, BLUE, extra=0.5)
@@ -468,17 +477,44 @@ def propeller_cap(h: Hat):
     for y in (top - 1, top - 2):
         h.put(c - 1, y, METAL[1])
         h.put(c, y, METAL[2])
-    hub = top - 3                                                             # hub, blades caught mid-turn
+    hub = top - 3                                                             # hub, and the blades
     h.put(c - 1, hub, METAL[0])
     h.put(c, hub, METAL[1])
-    if h.width == SQUEEZED:
-        blades = [(-2, 0, RED[0]), (-3, -1, RED[1]), (1, 0, YELLOW[1]), (2, 1, YELLOW[2])]
-    else:
-        blades = [(-2, 0, RED[0]), (-3, 0, RED[0]), (-3, -1, RED[0]), (-4, -1, RED[1]),
-                  (1, 0, YELLOW[1]), (2, 0, YELLOW[1]), (2, 1, YELLOW[2]), (3, 1, YELLOW[2])]
-    for dx, dy, col in blades:
+    for dx, dy, col in propeller_blades(h.width, h.frame, c):
         h.put(c + dx, hub + dy, col)
     h.finish()
+
+
+def propeller_blades(width: int, frame: int, c: int):
+    """The propeller's blades in turn `frame` of PROPELLER_FRAMES (an eighth of a turn apart; the
+    game spins through them, faster as the slime moves and leaps): [(dx, dy from the hub, color)].
+    The disc they turn in is seen tipped, its left side away from us (frame 0, the hat's still
+    frame: the red blade out left, tipped up; the yellow out right, tipped down), so a blade's tip
+    sits a px up behind the stem and a px down in front of it; edge on, the far blade peeks over the
+    hub and the near one covers the top of the stem."""
+    out = []
+    for blade, angle in ((RED, 180 - 45 * frame), (YELLOW, -45 * frame)):
+        a = math.radians(angle)
+        x, depth = math.cos(a), math.sin(a)                                   # -1 left .. 1 right; 1 far
+        dy = max(-1, min(1, round(x - depth + 0.001 * x)))                    # where the tip sits, up or down
+        side = -1 if x < 0 else 1
+        lit, shade = (blade[0], blade[1]) if side < 0 else (blade[1], blade[2])
+        def at(dx):                                                           # dx out from the hub's side
+            return dx if side > 0 else -1 - dx
+        if abs(x) < 0.3:                                                      # edge on, 2 px over the stem
+            out.append((depth, [(-1, dy, blade[2] if depth > 0 else blade[0]), (0, dy, blade[2] if depth > 0 else blade[1])]))
+        elif width == SQUEEZED:
+            px = [(at(1), 0, lit)] + ([(at(2), dy, shade)] if abs(x) > 0.9 else [])
+            out.append((depth, px))
+        elif abs(x) > 0.9:                                                    # side on: long, its tip a px up or down
+            out.append((depth, [(at(1), 0, lit), (at(2), 0, lit), (at(2), dy, lit), (at(3), dy, shade)]
+                        if side < 0 else [(at(1), 0, lit), (at(2), 0, lit), (at(2), dy, shade), (at(3), dy, shade)]))
+        elif dy:                                                              # turned away or towards us: shorter
+            out.append((depth, [(at(1), 0, lit), (at(1), dy, lit), (at(2), dy, shade)]))
+        else:
+            out.append((depth, [(at(1), 0, lit), (at(2), 0, shade)]))
+    out.sort(key=lambda d: -d[0])                                             # the far blade first
+    return [p for _, px in out for p in px]
 
 
 def crown(h: Hat):
@@ -547,11 +583,106 @@ def rainbow_hat(h: Hat):
                 h.put(sx + dx, sy + dy, CLOUD[0] if (dx, dy) == (0, 0) else YELLOW[0])
 
 
+# A rain cloud: soft cool greys (lit warm-white on its top-left bumps, a blue-grey belly) and
+# rain drops in a pale sky blue that reads on every skin and in the dark.
+STORM = [rgb(236, 238, 248), rgb(190, 196, 216), rgb(140, 148, 178), rgb(104, 110, 146)]
+RAIN = [rgb(196, 232, 255), rgb(108, 170, 236)]
+RAIN_FRAMES = 4
+
+
+# The cloud's shape at each width, its bottom row on top of the 3 px of rain over the head: a big
+# puff in the middle between two small ones (the notches between them read as its outline), a
+# rounded underside. Drawn by hand (a cloud of circles came out a lumpy hill at this size); as
+# wide as the head, so its outline is at most a px past it. Flying (LOOSE) it keeps its NORMAL shape.
+CLOUDS = {
+    SQUEEZED: ["...###...",
+               ".##.####.",
+               "#########",
+               ".#######."],
+    NARROW: ["....####....",
+             ".##.#####.#.",
+             "############",
+             ".##########."],
+    NORMAL: [".....####.....",
+             "..##.#####.##.",
+             ".############.",
+             "##############",
+             ".############."],
+    BROAD: ["......####......",
+            "..###.######.##.",
+            ".##############.",
+            "################",
+            ".##############."],
+    WIDE: ["......######......",
+           "..###.#######.###.",
+           "##################",
+           ".################."],
+}
+CLOUDS[LOOSE] = CLOUDS[NORMAL]
+
+
+def raincloud(h: Hat):
+    # A little cloud hovering 3 px over the head, raining on it: each drop falls out of the
+    # cloud's belly and splashes on the head just above its outline (never on the face), the
+    # three a phase apart, so some rain is always falling (RAIN_FRAMES frames, looped).
+    h.ink, h.lining = ink(*STORM[2][:3]), STORM[3]
+    mask = CLOUDS[h.width]
+    belly = h.top - 5                                                         # its bottom row: 3 px of rain under its outline
+    left = fx(h.cx) - len(mask[0]) // 2
+    cloud = {(left + i, belly - len(mask) + 1 + j) for j, row in enumerate(mask) for i, ch in enumerate(row) if ch == "#"}
+    right = max(x for x, y in cloud)
+    for x, y in cloud:                                                        # lit from the top-left:
+        u = (x - left) / max(1, right - left)                                 # 0 at its left, 1 at its right
+        if y == belly:
+            col = STORM[3] if u > 0.6 else STORM[2]                           # the shadowed belly
+        elif (x, y - 1) not in cloud:
+            col = STORM[0] if u < 0.75 else STORM[1]                          # the tops of the puffs
+        elif (x + 1, y) not in cloud or (u > 0.8 and (x, y + 1) not in cloud):
+            col = STORM[2]                                                    # its shaded right side
+        elif u < 0.25 and (x - 1, y) not in cloud:
+            col = STORM[0]
+        else:
+            col = STORM[1]
+        h.put(x, y, col)
+    h.finish()
+    c = fx(h.cx)
+    spread = 2 if h.width in (SQUEEZED, NARROW) else 3                         # (over the flat top of the head)
+    for k, dx in enumerate((-spread, 0, spread - 1)):                         # three drops, staggered
+        x = c + dx
+
+        def land(xx):                                                         # the head's outline in column xx
+            return h.top + 1 if h.width == LOOSE else next((y for y in range(h.top, H) if h.on_head(xx + 0.5, y + 0.5)), H)
+        phase = (h.frame + k * 3) % RAIN_FRAMES
+        fall = list(range(belly + 2, land(x)))                                # rows between cloud and head
+        if phase < 2 and len(fall) >= 2:                                      # falling: a 2 px streak, out
+            y = fall[0] if phase == 0 else fall[-2]                           # of the cloud, then down onto the head
+            h.put(x, y, RAIN[1])
+            h.put(x, y + 1, RAIN[0])
+        elif phase == 2 and h.width != LOOSE:                                 # a splash on the head, hugging it
+            level = [xx for xx in (x - 1, x, x + 1) if land(xx) == land(x)]   # (only where it's as high:
+            for xx in level:                                                  # on a narrow top, a spurt up)
+                h.put(xx, land(x) - 1, RAIN[0] if xx != x else RAIN[1])
+            if len(level) == 1:
+                h.put(x, land(x) - 2, RAIN[0])
+
+
 HATS = [top_hat, beanie, party_hat, baseball_cap, cowboy_hat, chef_hat, wizard_hat, viking_helmet,
-        propeller_cap, crown, rainbow_hat]
+        propeller_cap, crown, rainbow_hat, raincloud]
+# Animated hats: how many frames each has. Frame 0 is in the hat's own column (HATS order, and
+# its still frame: the hat wheel's wedges); the rest follow every hat's column, hat by hat in
+# HATS order (Hats.LIST `anim_column`).
+FRAMES = {propeller_cap: PROPELLER_FRAMES, raincloud: RAIN_FRAMES}
 
 HEADS = measure_domes()
 NORMAL_RX = max(HEADS[NORMAL]["dome"][:5])
+
+
+def columns():
+    """The sheet's columns: (hat, frame), every hat's frame 0 first, then the animated hats' others."""
+    out = [(make, 0) for make in HATS]
+    for make in HATS:
+        out += [(make, f) for f in range(1, FRAMES.get(make, 1))]
+    return out
 
 
 def build():
@@ -559,8 +690,8 @@ def build():
     rows = []
     for width in range(ROWS):
         frames = []
-        for make in HATS:
-            hat = Hat(width, HEADS[width])
+        for make, frame in columns():
+            hat = Hat(width, HEADS[width], frame)
             make(hat)
             frames.append(hat.px)
         for y in range(H):
@@ -577,4 +708,4 @@ if __name__ == "__main__":
         print("hats.png is up to date" if same else "hats.png differs from tools/make_hats.py")
         sys.exit(0 if same else 1)
     write_png(str(OUT / "hats.png"), rows)
-    print(f"wrote assets/sprites/hats.png ({len(HATS)} hats x {ROWS} widths, {W}x{H} each)")
+    print(f"wrote assets/sprites/hats.png ({len(HATS)} hats, {len(columns())} columns x {ROWS} widths, {W}x{H} each)")

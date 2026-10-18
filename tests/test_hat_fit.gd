@@ -7,7 +7,8 @@ extends "res://tests/suite_base.gd"
 ## orphans, no pure black, a limited palette), and hats.png is exactly what tools/make_hats.py draws.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_hat_fit.gd
 
-## Animations a hat is worn through (it's popped off for launch and air, so those only need to fit).
+## Animations a hat is worn through (it's popped off for launch and air, so those only need to fit;
+## a hovering hat, the raincloud, stays on through them, so it's checked on every frame).
 const WORN := ["idle", "glide_", "charge_", "land_", "splat_", "recover", "celebrate"]
 ## Brims (and horns) may reach this far past the widest part of the head, outline included.
 const MAX_OVERHANG := 3
@@ -25,8 +26,9 @@ func _initialize() -> void:
 	sheet.decompress()
 	hats = preload("res://assets/sprites/hats.png").get_image()
 	hats.decompress()
-	_check(hats.get_size() == Vector2i(Hats.LIST.size() * Hats.FRAME.x, Hats.Width.size() * Hats.FRAME.y),
-		"hats.png has a frame per hat and width (%s)" % hats.get_size())
+	_check(hats.get_size() == Vector2i(Hats.sheet_columns() * Hats.FRAME.x, Hats.Width.size() * Hats.FRAME.y),
+		"hats.png has a frame per hat (and animation frame) and width (%s)" % hats.get_size())
+	_check_animated()
 	_check_head_points()
 	_check_fit()
 	_check_pixel_craft()
@@ -109,30 +111,41 @@ func _check_fit() -> void:
 				for x in range(r.y, r.z + 1):
 					body[Vector2i(x, r.x)] = true
 			var width := Hats.width_for(Slime.head_width(anim, frame))
-			var region := Hats.region(hat.id, width)
 			var lift := Hats.lift(hat.id, width, anim, frame)
 			lifts[lift] = lifts.get(lift, 0) + 1
 			var shift := Vector2i(Vector2(Slime.FRAME_SIZE / 2, Slime.FRAME_SIZE / 2) + Slime.head_point(anim, frame) - Hats.HEAD) - Vector2i(0, lift)
-			var covers_top := false
 			var hat_left := 99
 			var hat_right := -99
 			var highest := 99
-			for hy in Hats.FRAME.y:
-				for hx in Hats.FRAME.x:
-					if hats.get_pixel(int(region.position.x) + hx, int(region.position.y) + hy).a < 0.5:
-						continue
-					var p := Vector2i(hx, hy) + shift
-					hat_left = mini(hat_left, p.x)
-					hat_right = maxi(hat_right, p.x)
-					highest = mini(highest, p.y)
-					if p.y <= top + 1 and body.has(p):
-						covers_top = true  # (on the top row, or the next where the top is a 2 px nub)
-					var inside := p.x >= 0 and p.y >= 0 and p.x < Slime.FRAME_SIZE and p.y < Slime.FRAME_SIZE
-					if inside and body.has(p) and sheet.get_pixelv(o + p).is_equal_approx(EYE) and _worn(anim):
-						eyes.append("%s %s:%d" % [hat.id, anim, frame])
-			if not covers_top:
-				floating.append("%s %s:%d" % [hat.id, anim, frame])
-			if _worn(anim):
+			for hat_frame in Hats.frames(hat.id):  # (every frame of an animated hat)
+				var region := Hats.region(hat.id, width, hat_frame)
+				var covers_top := false
+				var lowest := -99
+				for hy in Hats.FRAME.y:
+					for hx in Hats.FRAME.x:
+						if hats.get_pixel(int(region.position.x) + hx, int(region.position.y) + hy).a < 0.5:
+							continue
+						var p := Vector2i(hx, hy) + shift
+						hat_left = mini(hat_left, p.x)
+						hat_right = maxi(hat_right, p.x)
+						highest = mini(highest, p.y)
+						if p.y <= top + 1 and body.has(p):
+							covers_top = true  # (on the top row, or the next where the top is a 2 px nub)
+						var inside := p.x >= 0 and p.y >= 0 and p.x < Slime.FRAME_SIZE and p.y < Slime.FRAME_SIZE
+						if inside and body.has(p) and sheet.get_pixelv(o + p).is_equal_approx(EYE) and (_worn(anim) or hat.get("hovers", false)):
+							eyes.append("%s %s:%d" % [hat.id, anim, frame])
+						if inside and body.has(p) and p.y > top and hat.get("hovers", false):  # (rain may splash on its outline)
+							eyes.append("%s %s:%d f%d (a hovering hat on the body at %s, top %d)" % [hat.id, anim, frame, hat_frame, p, top])
+						if hx == Hats.FRAME.x / 2:
+							lowest = maxi(lowest, p.y)
+				if hat.get("hovers", false):
+					# A hovering hat (the raincloud) never touches the head: its middle column (the
+					# cloud, a raindrop or a splash) ends just over the top of it, never far above.
+					if lowest < top - 4 or lowest >= top:
+						floating.append("%s %s:%d frame %d (%d px over)" % [hat.id, anim, frame, hat_frame, top - lowest])
+				elif not covers_top:
+					floating.append("%s %s:%d" % [hat.id, anim, frame])
+			if _worn(anim) or hat.get("hovers", false):
 				var past := maxi(body_left - hat_left, hat_right - body_right)
 				if past > worst:
 					worst_at[hat.id] = "%s:%d" % [anim, frame]
@@ -158,8 +171,9 @@ func _check_fit() -> void:
 func _check_pixel_craft() -> void:
 	var problems := []
 	for hat: Dictionary in Hats.LIST:
-		for width in Hats.Width.size():
-			var region := Hats.region(hat.id, width)
+		for i in Hats.Width.size() * Hats.frames(hat.id):
+			var width := i % Hats.Width.size()
+			var region := Hats.region(hat.id, width, i / Hats.Width.size())
 			var colors := {}
 			var any := false
 			for y in Hats.FRAME.y:
@@ -168,7 +182,7 @@ func _check_pixel_craft() -> void:
 					if c.a == 0.0:
 						continue
 					any = true
-					var tag := "%s/%d (%d,%d)" % [hat.id, width, x, y]
+					var tag := "%s/%d/%d (%d,%d)" % [hat.id, width, i / Hats.Width.size(), x, y]
 					if c.a < 1.0:
 						problems.append(tag + " semi-transparent")
 					if maxf(c.r, maxf(c.g, c.b)) < 0.04:
@@ -189,6 +203,35 @@ func _check_pixel_craft() -> void:
 			if colors.size() > MAX_COLORS:
 				problems.append("%s/%d has %d colors" % [hat.id, width, colors.size()])
 	_check(problems.is_empty(), "hat pixel art: opaque, no orphans or black, <= %d colors, inside its frame %s" % [MAX_COLORS, problems.slice(0, 10)])
+
+
+## The animated hats: every frame its own column (none shared, none past the sheet), each frame
+## different from the last (it really moves), and below the head line they all stay the same
+## (only the propeller / the rain moves, not the cap or a splash's way off the face).
+func _check_animated() -> void:
+	var seen := {}
+	var problems := []
+	for hat: Dictionary in Hats.LIST:
+		for f in Hats.frames(hat.id):
+			var r := Hats.region(hat.id, Hats.Width.NORMAL, f)
+			var key := int(r.position.x)
+			if seen.has(key) or r.end.x > hats.get_width():
+				problems.append("%s frame %d column %d" % [hat.id, f, key / Hats.FRAME.x])
+			seen[key] = true
+		if Hats.frames(hat.id) > 1:
+			for width in Hats.Width.size():
+				for f in Hats.frames(hat.id):
+					var a := hats.get_region(Rect2i(Hats.region(hat.id, width, f)))
+					var b := hats.get_region(Rect2i(Hats.region(hat.id, width, f + 1)))
+					if a.get_data() == b.get_data():
+						problems.append("%s/%d frames %d and %d are the same" % [hat.id, width, f, f + 1])
+	_check(problems.is_empty(), "animated hats: a column per frame, every frame moves %s" % [problems.slice(0, 6)])
+	_check(Hats.frames("propeller") == 8 and Hats.frames("raincloud") == 4 and Hats.frames("tophat") == 1,
+		"the propeller cap spins and the raincloud rains (8 and 4 frames); the rest stay still")
+	_check(Hats.region("propeller", Hats.Width.NORMAL, 0) == Hats.region("propeller") and Hats.region("propeller", 1, 8) == Hats.region("propeller", 1, 0),
+		"frame 0 is the hat's own column (the wheel's still frame), and frames wrap round")
+	_check(Hats.fps("propeller", false, true) > Hats.fps("propeller", true) and Hats.fps("propeller", true) > Hats.fps("propeller"),
+		"the propeller spins faster on the move, fastest flying off in a leap")
 
 
 ## hats.png is exactly what tools/make_hats.py draws, and drawing it twice gives the same pixels.

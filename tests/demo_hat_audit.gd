@@ -4,7 +4,8 @@ extends Node2D
 ## skin that matters, in every pose and animation frame, and saves each page as a 320x180 PNG.
 ## Pages: `lineup` (every hat x 7 poses, lime), `skins_<hat>` (10 skins x 7 poses),
 ## `frames_<hat>` (every frame of idle/glide/charge/launch/air/land/splat/celebrate/recover, lime),
-## `big` (2x, as on the title and skins screens), `rainbow_<n>` (the rainbow hat's flow over time),
+## `anim_<hat>` (an animated hat's every frame, a row each, on lime / inkky / ember / rainbow x
+## idle / glide / charge / land), `big` (2x, as on the title and skins screens), `rainbow_<n>` (the rainbow hat's flow over time),
 ## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors),
 ## `squeezed` (every hat on the splat frames, 2x), and the real screens players see them on:
 ## `ui_wheel` (the hub's prize wheel), `ui_won` (just after a spin lands), `ui_shop` (the SHOP's
@@ -58,6 +59,9 @@ func _run() -> void:
 	for id in Hats.ids():
 		await _page("skins_" + id, _skins_page.bind(id))
 		await _page("frames_" + id, _frames_page.bind(id))
+	for id in Hats.ids():
+		if Hats.frames(id) > 1:
+			await _page("anim_" + id, _anim_page.bind(id))
 	await _page("big", _big)
 	await _page("wheel", _wheel)
 	await _page("squeezed", _squeezed)
@@ -193,6 +197,24 @@ func _frames_page(id: String) -> void:
 		_slime(Vector2(20 + col * 40, 16 + row * 22), id, cell[0], cell[1])
 		col += 1
 	_label(id.to_upper(), Vector2(0, 170), 320)
+
+
+## Every frame of animated hat `id` (a row each) on four skins in four worn poses.
+func _anim_page(id: String) -> void:
+	_rect(Vector2.ZERO, Vector2(320, 180), BG)
+	var skins := [_skins()[0], _skins()[3], _skins()[5], _skins()[6]]
+	var poses := [["idle", 1], ["glide_e", 0], ["charge_e", 3], ["land_e", 0]]
+	var n := Hats.frames(id)
+	var step := clampi(180 / n, 22, 40)
+	for f in n:
+		if f % 2:
+			_rect(Vector2(0, f * step), Vector2(320, step), BG_ALT)
+		for k in skins.size() * poses.size():
+			_slime(Vector2(10 + k * 20, f * step + step - 9), id, poses[k % poses.size()][0], poses[k % poses.size()][1], skins[k / poses.size()])
+			var hat := get_child(get_child_count() - 1) as Hat
+			hat.set_process(false)
+			hat.anim_frame = f
+			hat._follow()
 
 
 func _big() -> void:
