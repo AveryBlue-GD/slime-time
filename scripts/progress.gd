@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -403,6 +403,9 @@ func _ready() -> void:
 		elif arg == "--nocoincatch":  # A/B: the old instant pickup (coin catch is on by default now)
 			saving_enabled = false
 			Economy.coincatch_force = 0
+		elif arg == "--nocoinreveal":  # A/B: no revealed coins on the maps in dev (Economy.MAP_COIN_REVEAL_TEST)
+			saving_enabled = false
+			Economy.mapcoinreveal_force = 0
 		elif arg == "--languages":  # the translations test (Economy.LANGUAGES_TEST, docs/i18n/plan.md)
 			saving_enabled = false
 			Economy.languages_force = 1
@@ -2606,9 +2609,11 @@ func survey_for(level: int, hard: bool) -> Dictionary:
 ## this attempt; `moves`: the cells walked (Survey move codes) from the maze's start. The tiles seen
 ## are added to the ones seen before. The route is replaced by a clear only when it is faster than
 ## the stored clear (or there is none); without any clear yet, each attempt that moved replaces the
-## faint last-attempt route. `goal_seen`: the goal came into view (a win counts).
+## faint last-attempt route. `goal_seen`: the goal came into view (a win counts). `coins_seen`: the
+## coins this attempt's light revealed (map coin reveal test, dev only: merged into the survey's
+## in-memory `seen_coins` only while Economy.map_coin_reveal_on; Survey.pack never writes it).
 func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray,
-		won: bool, run_time: float, goal_seen: bool) -> void:
+		won: bool, run_time: float, goal_seen: bool, coins_seen: Array[Vector2i] = []) -> void:
 	if level < 1 or level > Levels.COUNT:
 		return  # (not a story level: survey_key would clamp a Descent floor's 0 onto level 1)
 	var key := survey_key(level, hard)
@@ -2619,6 +2624,12 @@ func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteAr
 	if goal_seen or won:  # the chalice was in sight: its tile counts as seen (the map only marks seen tiles)
 		Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
 	survey.goal = survey.goal or goal_seen or won
+	if not coins_seen.is_empty() and Economy.map_coin_reveal_on(dev_tools):
+		var known: Array = survey.get("seen_coins", [])
+		for cell in coins_seen:
+			if not cell in known:
+				known.append(cell)
+		survey.seen_coins = known
 	var route := moves.slice(0, Survey.MAX_MOVES)
 	if won and is_finite(run_time) and run_time > 0.0:
 		var ms := clampi(roundi(run_time * 1000.0), 1, Survey.MAX_MS)
@@ -2632,6 +2643,20 @@ func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteAr
 		survey.start = maze.start
 	maps[key] = survey
 	save_progress()
+
+
+## The coins the MAP TABLE draws on a level's map: never a collected one (so outside the dev map coin
+## reveal test, none at all); with the test on (Economy.map_coin_reveal_on, dev only) the uncollected
+## coins its survey's runs revealed (`seen_coins`). Hard maps have no coins.
+func map_coins(level: int, hard: bool) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if hard or not Economy.map_coin_reveal_on(dev_tools):
+		return cells
+	var seen: Array = survey_for(level, hard).get("seen_coins", [])
+	for cell in Levels.story_coin_cells(level):
+		if cell in seen and not has_coin(level, cell):
+			cells.append(cell)
+	return cells
 
 
 ## Every story level, normal and hard, fully surveyed (Survey.full): its best route = the shortest

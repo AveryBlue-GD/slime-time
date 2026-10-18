@@ -141,11 +141,13 @@ func _test_capture() -> void:
 	progress.dry_ups.erase(1)
 
 	progress.dev_tools = true
+	Economy.mapcoinreveal_force = 0  # (the dev map coin reveal test records dev runs in memory: tests/test_map_coin_reveal.gd)
 	game = await _spawn_running(1)
 	await _walk(game, path.slice(0, 4))
 	await _stop(game)
 	progress.dev_tools = false
-	_check(progress.maps.is_empty(), "a dev-mode run records no survey")
+	Economy.mapcoinreveal_force = -1
+	_check(progress.maps.is_empty(), "a dev-mode run records no survey (map coin reveal test off)")
 
 	game = await _spawn_running(1)
 	game.dev_toggled = true  # what F1 FULL BRIGHT / F2 NO DRAIN set (they exist only in dev mode)

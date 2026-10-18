@@ -10,6 +10,9 @@ extends Node
 ## --set=N:P[:best|try] replaces level N's survey with one about P% uncovered (tiles lit outward from
 ## the start), with the shortest route as a best clear or a last try, or no route; --lock=N removes it.
 ## --themed / --plain force the themed maps on / off (map_select.THEMED_MAPS, on in the game).
+## --reveal=N (dev launch, --unlock-all: the map coin reveal test, Economy.map_coin_reveal_on): level N's
+## survey gets every coin as revealed (`seen_coins`) and its first coin collected, so the view draws the
+## other, uncollected ones (on fog too) and not the collected one.
 ## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_maps.tscn --story-complete --map=10
 
 
@@ -29,6 +32,16 @@ func _ready() -> void:
 			Progress.maps[Progress.survey_key(level, "--map-hard" in args)] = with_percent(maze, parts[1].to_int(), parts[2] if parts.size() > 2 else "")
 		if arg.begins_with("--lock="):
 			Progress.maps.erase(Progress.survey_key(arg.trim_prefix("--lock=").to_int(), "--map-hard" in args))
+		if arg.begins_with("--reveal="):
+			var level := arg.trim_prefix("--reveal=").to_int()
+			var survey: Dictionary = Progress.maps.get(Progress.survey_key(level, false), {})
+			var cells: Array[Vector2i] = Levels.story_coin_cells(level)
+			if not survey.is_empty():
+				var seen: Array = []
+				seen.assign(cells)
+				survey.seen_coins = seen
+			Progress.coins_found.erase(level)
+			Progress.collect_coin(level, cells[0])
 	var screen: Control = load("res://scenes/maps.tscn").instantiate()
 	screen.themed = ("--themed" in args or screen.themed) and not "--plain" in args
 	add_child(screen)

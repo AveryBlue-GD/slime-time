@@ -7,3 +7,4 @@ The running list for the later "bring all languages in line" session (`docs/i18n
 
 | date | change | strings added / changed (ctx) | screens / locales with gate warnings |
 |---|---|---|---|
+| 2026-10-18 | MAP TABLE: collected coins no longer drawn on the maps (everyone); dev-only map coin reveal test (revealed uncollected coins, `--nocoinreveal`) | none (no player-visible text added or changed) | none (en gate PASS, 0 warnings) |

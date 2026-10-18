@@ -12,9 +12,13 @@ extends RefCounted
 ##   posts where lines cross likewise only at a seen cell's corners;
 ## - the route: a thin (1 px) red line through the cells' centers, whatever skin the slime wears
 ##   (ROUTE; the best clear solid, the last attempt dashed and fainter), only between two seen cells,
-##   so a U-turn reads as a hairpin with a wall between its legs; found coins, the start (a ring) and
-##   the goal (an X in the wall ink, once it has been seen or reached) only on seen cells.
-## So even a damaged or hostile survey can't draw over the fog.
+##   so a U-turn reads as a hairpin with a wall between its legs; the start (a ring) and the goal (an
+##   X in the wall ink, once it has been seen or reached) only on seen cells.
+## - coins: only the cells the caller passes (Progress.map_coins): collected coins are never drawn
+##   (for everyone, so normal maps have no coin marks); the dev-only map coin reveal test
+##   (Economy.map_coin_reveal_on) passes the revealed uncollected ones, which may sit in fog
+##   (`fog_coins`: seen through a wall by a bright light, or with F1 FULL BRIGHT); otherwise only on seen cells.
+## So even a damaged or hostile survey can't draw over the fog (fog_coins is dev-only, in memory).
 ## Sizes are whole pixels (`layout`): a [floor px, wall px] pair per cell, the largest that fits, so
 ## a 36x20-cell maze still fits the 320x180 screen (5 + 2 px) with room for the title and BACK. Floors
 ## are always an odd number of px, so the 1 px route runs exactly down the middle of a corridor.
@@ -146,9 +150,10 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 
 
 ## The full map of `survey` on `maze` (which it must fit, Survey.fits), at `sizes` (see layout).
-## `coins`: cells of found coins; `theme`: see above (adds a FRAME px frame round the map).
+## `coins`: cells of coins to mark (never collected ones, see above); `theme`: see above (adds a FRAME
+## px frame round the map); `fog_coins`: also mark coins on unseen cells (dev coin reveal test).
 static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], theme := "",
-		paper := "", ink := Color.WHITE) -> Image:
+		paper := "", ink := Color.WHITE, fog_coins := false) -> Image:
 	var pal := palette(theme, paper, ink)
 	var px := map_size(maze.cells, sizes)
 	var image := Image.create_empty(px.x, px.y, false, Image.FORMAT_RGBA8)
@@ -156,7 +161,7 @@ static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins:
 	if Survey.fits(survey, maze):
 		_draw_maze(image, maze, survey, sizes, pal)
 		_draw_route(image, survey, Survey.route_cells(survey, maze), sizes, pal)
-		_draw_marks(image, maze, survey, sizes, coins, pal)
+		_draw_marks(image, maze, survey, sizes, coins, pal, fog_coins)
 	if not THEMED.has(theme):
 		return image
 	var framed := Image.create_empty(px.x + FRAME * 2, px.y + FRAME * 2, false, Image.FORMAT_RGBA8)
@@ -222,14 +227,17 @@ static func _draw_route(image: Image, survey: Dictionary, cells: Array[Vector2i]
 			run += 1
 
 
-## Found coins, the start ring and the goal X, each centered in its (seen) cell.
-static func _draw_marks(image: Image, maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], pal: Dictionary) -> void:
+## The given coins, the start ring and the goal X, each centered in its (seen) cell (`fog_coins`: coins
+## on unseen cells inside the maze too).
+static func _draw_marks(image: Image, maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins: Array[Vector2i], pal: Dictionary,
+		fog_coins := false) -> void:
 	var f := sizes.x
 	var dot := mini(f, maxi(2, f * 2 / 5))
 	if (f - dot) % 2 == 1:
 		dot += -1 if dot > 2 else 1
 	for cell in coins:
-		if _cell_seen(survey, cell):
+		var inside: bool = cell.x >= 0 and cell.y >= 0 and cell.x < maze.cells.x and cell.y < maze.cells.y
+		if _cell_seen(survey, cell) or (fog_coins and inside):
 			var r := cell_rect(cell, sizes)
 			if dot >= 3 and dot + 2 <= f:
 				_draw_disc(image, _centered(r, dot + 2), pal.coin_edge)

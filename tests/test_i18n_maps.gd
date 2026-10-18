@@ -14,7 +14,7 @@ extends "res://tests/suite_base.gd"
 ##   after returning from a map view (the view's level's page shown, its tile focused);
 ## - the map view for all 20 maps (10 levels x normal / hard): it opens, the title is the level's name
 ##   (+ the HARD suffix in hard), the line has that mode's %, the drawing is that mode's maze (its size,
-##   and different from the other mode's drawing), coins only on normal maps; the title, map, % line, BACK
+##   and different from the other mode's drawing), collected coins never drawn; the title, map, % line, BACK
 ##   and PAPER inside the screen, the texts inside their boxes, nothing overlapping;
 ## - the select's layout: every visible tile inside the screen over the bottom row, no two overlapping,
 ##   names inside their tiles (two lines at most), the % under the name, pictures inside; BACK, the hint
@@ -60,7 +60,7 @@ func _initialize() -> void:
 	var paper: String = Cosmetics.paper_ids()[1]
 	progress.cosmetics_owned.append(paper)
 	progress.equip_cosmetic(paper)
-	for level in range(1, Levels.COUNT + 1):  # every coin found: the normal maps draw them, the hard ones never
+	for level in range(1, Levels.COUNT + 1):  # every coin found: no map draws a collected coin (Progress.map_coins)
 		for cell in Levels.story_coin_cells(level):
 			progress.collect_coin(level, cell)
 	_test_separation()
@@ -482,18 +482,14 @@ func _views(ms: Control, hard: bool, mode: String) -> void:
 
 
 ## The drawing of `level`'s map in mode `hard` as the view should show it (its survey on its maze, the
-## found coins on normal maps only, the level's theme, the worn paper).
+## coins Progress.map_coins gives (never collected ones), the level's theme, the worn paper).
 func _render(ms: Control, level: int, hard: bool) -> Image:
 	var maze := Levels.story_maze(level, hard)
-	var coins: Array[Vector2i] = []
-	if not hard:
-		for cell in Levels.story_coin_cells(level):
-			if progress.has_coin(level, cell):
-				coins.append(cell)
+	var coins: Array[Vector2i] = progress.map_coins(level, hard)  # (never the collected ones)
 	var themed: bool = ms.themed
 	var sizes := MapView.layout(maze.cells, ms.map_area.size, themed)
 	return MapView.render(maze, surveys[level][hard], sizes, coins, Themes.for_level(level) if themed else "",
-		progress.map_paper if themed else "", progress.skin_color())
+		progress.map_paper if themed else "", progress.skin_color(), Economy.map_coin_reveal_on(progress.dev_tools))
 
 
 ## "" or what doesn't fit in the open view.

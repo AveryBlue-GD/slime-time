@@ -349,6 +349,11 @@ var _bright_shown := {}
 var survey_tiles := PackedByteArray()
 var survey_moves := PackedByteArray()
 var survey_goal := false
+## Map coin reveal test (Economy.map_coin_reveal_on, dev only): the cells of uncollected coins this run's
+## light revealed (center within the slime's light, relight_radius (LIGHT_RADIUS) + light_reach, walls ignored; every coin
+## while FULL BRIGHT is on), recorded with the survey. `_coin_reveal`: the test is on for this run.
+var survey_coins: Array[Vector2i] = []
+var _coin_reveal := false
 var _survey_cell := Vector2i.ZERO
 var _survey_live := false
 var _survey_done := false
@@ -422,6 +427,7 @@ func _ready() -> void:
 	maze_seed = int(config.seed)
 	_make_goal()
 	survey_tiles.resize(maze.size.x * maze.size.y)
+	_coin_reveal = progress != null and Economy.map_coin_reveal_on(progress.dev_tools)
 	_survey_cell = maze.start
 	# The slime grabs the goal when their shapes touch, a little short of its center.
 	var grab_reach: float = goal.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
@@ -622,6 +628,8 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	if _coin_reveal and not coins.is_empty():
+		_reveal_coins(pos)
 	if not drops.is_empty():
 		_pick_up_drops(pos)
 	_count_glimmer_travel(pos)
@@ -1577,6 +1585,15 @@ func _place_coins(maze_seed: int) -> void:
 	hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here)
 
 
+## Map coin reveal test (dev only): notes the uncollected coins within the light's reach (straight
+## line, walls ignored), or all of them under FULL BRIGHT.
+func _reveal_coins(pos: Vector2) -> void:
+	var reach := relight_radius + light_reach  # the light round the slime (as _relight)
+	for coin in coins:
+		if (dev_bright or pos.distance_to(coin.position) <= reach) and not coin.cell in survey_coins:
+			survey_coins.append(coin.cell)
+
+
 func _pick_up_coins(pos: Vector2) -> void:
 	for coin in coins.duplicate():
 		var d := pos.distance_to(coin.position)
@@ -1751,9 +1768,11 @@ func _refresh_attempt_pod() -> void:
 
 ## Records this run's survey from here on if it is a real story run (deferred from _ready, once the
 ## scene is the running one): never in a randomizer maze (fresh each time), a Descent floor (level 0:
-## it would land on level 1's map), dev mode or a test's loose game node.
+## it would land on level 1's map), dev mode (unless the map coin reveal test is on: _commit_survey)
+## or a test's loose game node.
 func _arm_survey() -> void:
-	_survey_live = progress != null and not is_random() and not descent and not progress.dev_tools and _is_running_scene()
+	_survey_live = progress != null and not is_random() and not descent and (not progress.dev_tools or _coin_reveal) \
+		and _is_running_scene()
 
 
 ## Follows the slime through the maze's cells: each time its center enters a new cell's open tile,
@@ -1784,11 +1803,16 @@ func _survey_enter(cell: Vector2i) -> void:
 
 
 ## Adds this run to the level's survey (once: at the win or dry-up, or when the run is left).
-## Assisted and dev-toggled runs (F1 FULL BRIGHT / F2 NO DRAIN) record nothing.
+## Assisted and dev-toggled runs (F1 FULL BRIGHT / F2 NO DRAIN) record nothing. Exception: with the
+## map coin reveal test on (dev only, Economy.map_coin_reveal_on) every dev run records, F1 / F2 ones
+## too, into the session's memory only (dev mode never saves), with the coins it revealed.
 func _commit_survey() -> void:
 	if _survey_done or not _survey_live:
 		return
 	_survey_done = true
+	if _coin_reveal and progress.dev_tools:
+		progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal, survey_coins)
+		return
 	if assisted or dev_toggled or progress.dev_tools:
 		return
 	progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal)

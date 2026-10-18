@@ -191,6 +191,27 @@ static func coin_catch_on() -> bool:
 	return COIN_CATCH_TEST if coincatch_force < 0 else coincatch_force == 1
 
 
+## ---------------------------------------------------------------- MAP COIN REVEAL test (owner, 2026-10-18)
+## The MAP TABLE's trail maps never draw collected coins (everyone). With this test an UNCOLLECTED coin
+## is drawn on its map once a run has "revealed" it: its cell center came within the slime's light
+## (its keep-lit light: Game.LIGHT_RADIUS 20 px + the BRIGHTNESS reach, 20 / 28 / 36 / 45 px) by straight-line distance,
+## walls ignored (a brighter light finds coins through walls; F1 FULL BRIGHT reveals every coin).
+## Revealed coins are kept per level/mode in the survey (`seen_coins`), merged over runs.
+## DEV MODE ONLY for now (docs/spring-cleaning/map-coin-reveal-test.md): on in every dev launch, never
+## outside dev (`MAP_COIN_REVEAL_TEST` = on for everyone too; false). While it is on, dev runs (F1 / F2
+## ones too) record their survey in memory for the session (dev saving stays off). `--nocoinreveal`
+## (debug builds) sets `mapcoinreveal_force` = 0: off in dev too, for A/B.
+const MAP_COIN_REVEAL_TEST := false
+static var mapcoinreveal_force := -1
+
+
+## Whether revealed (uncollected) coins are recorded and drawn on the maps; `dev` = Progress.dev_tools.
+static func map_coin_reveal_on(dev: bool) -> bool:
+	if mapcoinreveal_force == 0:
+		return false
+	return dev or MAP_COIN_REVEAL_TEST
+
+
 ## The slime's hop (seconds): an anticipation squash, the hop itself (up and down, at most
 ## COIN_CATCH_HOP_PX whole px), then a landing squash. The coin is caught COIN_CATCH_CATCH_SHARE of
 ## the way through the hop (just past its top).

@@ -11,7 +11,8 @@ extends Control
 ##   survey is of an older layout, Survey.fits) is locked: a sealed dark picture with a lock, dim
 ##   text, 0%. The first time the table is opened a short hint line explains it.
 ## - View: the player's real map (MapView: only what was seen, the route as a thin red line (the
-##   last try dashed), found coins, the start, the goal once seen) under the level's name, with one
+##   last try dashed), the start, the goal once seen; collected coins are never drawn, and only the dev
+##   map coin reveal test (Economy.map_coin_reveal_on) draws revealed uncollected ones) under the level's name, with one
 ##   line below: "72% UNCOVERED". No times: the level select has those. The route is red whatever
 ##   the skin.
 ## PAPER (bottom right of the view, once a map paper is owned: Cosmetics, bought in the prize wheel's
@@ -448,11 +449,7 @@ func open_view(level: int) -> void:
 	var maze := Levels.story_maze(level, hard)
 	if not Survey.fits(survey, maze):
 		return
-	var coins: Array[Vector2i] = []
-	if not hard:
-		for cell in Levels.story_coin_cells(level):
-			if Progress.has_coin(level, cell):
-				coins.append(cell)
+	var coins: Array[Vector2i] = Progress.map_coins(level, hard)  # never collected ones (dev: revealed ones, Economy.map_coin_reveal_on)
 	var theme := Themes.for_level(level) if themed else ""
 	var theme_name := Themes.display_name(Themes.for_level(level))
 	# i18n: {name} = the level's theme name; the map's title, max 296px, 1 line. The double space is spacing.
@@ -464,7 +461,7 @@ func open_view(level: int) -> void:
 	view_area.size = Vector2(map_area.size)
 	var sizes := MapView.layout(maze.cells, map_area.size, themed)
 	var paper: String = Progress.map_paper if themed else ""
-	var image := MapView.render(maze, survey, sizes, coins, theme, paper, Progress.skin_color())
+	var image := MapView.render(maze, survey, sizes, coins, theme, paper, Progress.skin_color(), Economy.map_coin_reveal_on(Progress.dev_tools))
 	view_area.color = MapView.palette(theme, paper, Progress.skin_color()).fog
 	view_map.texture = ImageTexture.create_from_image(image)
 	view_map.size = Vector2(image.get_size())

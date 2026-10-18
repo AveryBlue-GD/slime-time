@@ -26,6 +26,7 @@ Owner questions still open: German keeps STORY / LEVEL / SHOP as English loanwor
 | Test | Flag | Launch | Doc |
 |---|---|---|---|
 | Soft bounce (short stun, smooth slide along the wall on glancing hits) | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
+| Map coin reveal (dev only: uncollected coins the light revealed, through walls, show on the MAP TABLE; collected coins are gone from the maps for everyone) | `Economy.MAP_COIN_REVEAL_TEST` (on in dev, `--nocoinreveal` = off) | `./tools/play.sh --dev [--upgrades=0,0,3]`, play, F1, open MAP TABLE | `docs/spring-cleaning/map-coin-reveal-test.md` |
 Coin catch: KEPT, on by default since 2026-10-18 (`--nocoincatch` for A/B; flag plumbing removal is a follow-up; `docs/spring-cleaning/coin-catch-test.md`). To keep soft bounce for everyone, set its constant to `true`
 (and then remove the flag plumbing / test-only paths as a follow-up).
 
