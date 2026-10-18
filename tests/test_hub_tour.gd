@@ -3,7 +3,7 @@ extends "res://tests/suite_base.gd"
 ## The first-visit hub tour (chunk D of docs/tutorial/design.md, scripts/hub_tour.gd): it appears only
 ## when Progress.hub_tour_due() (gate on, training done, no TUTORIAL_HUB yet, or a SETTINGS replay); the
 ## slime starts by the wheel; each time the player turns the room, the station now at the back is lit and
-## its line shows in the prompt box (with the use key: F / X / TAP JUMP); the turn-back hint shows once;
+## its line shows in the prompt box (with the use key: F / X; none on touch); the turn-back hint shows once;
 ## a full turn ends at the archway (finish_hub_tour, TUTORIAL_HUB saved); Esc / B / the SKIP pod / using
 ## a station ends it at any step; the web's 8 stations (no trapdoor) too; gate off: no tour, as today.
 ## An autopilot reads each line for READ_TIME seconds, turns, then walks to the archway: the tour's length.
@@ -34,6 +34,7 @@ func _initialize() -> void:
 	await _skips()
 	await _station_ends_it()
 	await _devices()
+	await _layout()
 	await _web_and_replay()
 	await _timing()
 
@@ -245,13 +246,81 @@ func _devices() -> void:
 	Platform.last_input = Platform.INPUT_KEYS
 	hub._touch_controls.visible = true
 	await _physics_frames(3)
-	_check(hub.prompt_key.text == "TAP JUMP" and not tour.skip_key.visible, "touch: TAP JUMP; SKIP alone (tap it)")
+	_check(not hub.prompt_key.visible and not tour.skip_key.visible, "touch: no key after the line (the JUMP button is on screen); SKIP alone (tap it)")
 	var rect: Rect2 = tour.skip_rect()
 	_check(rect.size.x >= UIKit.TOUCH_MIN and rect.size.y >= UIKit.TOUCH_MIN, "touch: SKIP's tap area is at least %d px (%s)" % [UIKit.TOUCH_MIN, rect.size])
 	hub._touch_controls.visible = false
 	await _turn(hub, true)
 	_check(hub.back_station().id == "maps" and hub.prompt_name.text == "MAPS OF EVERY LEVEL YOU SMEARED.", "holding left turns back: the line follows (MAP TABLE)")
 	await _close(hub)
+
+
+# --- UI pass (docs/ui-rules.md, Tutorial UI): on every device, every line of the tour (each station, the
+# turn-back hint, the end) keeps the prompt box centred, inside the screen, within the 192 px line budget and
+# clear of the touch joystick / JUMP; the SKIP pod is a HUD pod mirroring the ticket pod (same top, height and
+# edge) and on touch its tap area stays off the pause button.
+func _layout() -> void:
+	for device in ["keys", "pad", "touch"]:
+		await _due_save()
+		var hub := await _open()
+		var tour: Node = hub.tour
+		Platform.last_input = Platform.INPUT_PAD if device == "pad" else Platform.INPUT_KEYS
+		hub._touch_controls.visible = device == "touch"
+		await _physics_frames(3)
+		var bad: Array[String] = []
+		var widest := 0.0
+		for step in hub.stations.size() + 1:
+			if step == 2:
+				await _wait_seconds(TourScript.HINT_DELAY + 0.1)
+				bad.append_array(_prompt_faults(hub, device))
+				widest = maxf(widest, hub.prompt_name.get_combined_minimum_size().x)
+			bad.append_array(_prompt_faults(hub, device))
+			widest = maxf(widest, hub.prompt_name.get_combined_minimum_size().x)
+			if step < hub.stations.size():
+				await _turn(hub)
+		_check(tour.done and hub.prompt_name.text == "THE WAY UP. WALK IN.", "%s: the walk ends on the last line" % device)
+		_check(bad.is_empty(), "%s: every tour line's prompt box centred, on screen, clear of the touch controls (%s)" % [device, ", ".join(bad)])
+		_check(widest <= 192.0, "%s: the widest tour line is within its 192 px budget (%d px)" % [device, widest])
+		await _close(hub)
+	await _due_save()
+	var hub2 := await _open()
+	var tour2: Node = hub2.tour
+	for device in ["keys", "pad", "touch"]:
+		Platform.last_input = Platform.INPUT_PAD if device == "pad" else Platform.INPUT_KEYS
+		hub2._touch_controls.visible = device == "touch"
+		await _physics_frames(3)
+		var skip := Rect2(tour2.skip_pod.position, tour2.skip_pod.size)
+		var ticket := Rect2(hub2.ticket_pod.position, hub2.ticket_pod.size)
+		_check(skip.position.y == ticket.position.y and skip.size.y == ticket.size.y and skip.size.y == UIKit.pod_h()
+			and 320.0 - skip.end.x == ticket.position.x and skip.position.x == roundf(skip.position.x),
+			"%s: the SKIP pod mirrors the ticket pod (SKIP %s, ticket %s)" % [device, skip, ticket])
+		_check(not skip.intersects(ticket), "%s: SKIP and the ticket pod apart" % device)
+		if device == "touch":
+			_check(not tour2.skip_rect().intersects(hub2._touch_controls.pause_rect),
+				"touch: SKIP's tap area (%s) off the pause button (%s)" % [tour2.skip_rect(), hub2._touch_controls.pause_rect])
+	hub2._touch_controls.visible = false
+	Platform.last_input = Platform.INPUT_KEYS
+	await _close(hub2)
+
+
+## What's wrong with the prompt box as it stands ([] = nothing).
+func _prompt_faults(hub: Node2D, device: String) -> Array[String]:
+	var out: Array[String] = []
+	var text: String = hub.prompt_name.text
+	if not hub.prompt.visible:
+		return ["%s hidden" % text]
+	var box := Rect2(hub.prompt.position, hub.prompt.size)
+	if absf(box.position.x - (320.0 - box.end.x)) > 1.0 or box.position.x != roundf(box.position.x):
+		out.append("%s off centre (%s)" % [text, box])
+	if box.position.x < UIKit.EDGE or box.end.x > 320 - UIKit.EDGE or box.end.y > 180:
+		out.append("%s off screen (%s)" % [text, box])
+	if device == "touch":
+		var touch: Node = hub._touch_controls
+		for circle in [[touch.JOY_HOME, touch.JOY_RADIUS], [touch.JUMP_CENTER, touch.JUMP_RADIUS]]:
+			var nearest := Vector2(clampf(circle[0].x, box.position.x, box.end.x), clampf(circle[0].y, box.position.y, box.end.y))
+			if nearest.distance_to(circle[0]) < circle[1] + UIKit.GAP_XS:
+				out.append("%s on a touch control (%s)" % [text, box])
+	return out
 
 
 # --- The web's 8 stations (no trapdoor); a SETTINGS replay writes nothing

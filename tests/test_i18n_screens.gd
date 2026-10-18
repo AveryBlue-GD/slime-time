@@ -8,7 +8,8 @@ extends "res://tests/suite_base.gd"
 ## coin board / hat wheel + shop + the one-time notice, the HUD on story (+ every coin found) / hard + HEAT /
 ## assisted / randomizer levels and the Descent pot pod (wide gain / paid-run values), the
 ## win / dry-up / randomizer results with their rewards and choice rows, pause on story / random /
-## Descent, the restart prompt, the Descent boon card and summary) and measures every visible Label
+## Descent, the restart prompt, the Descent boon card and summary, and the tutorial's screens with its gate on:
+## SPLASHDOWN's HUD / dry-up / win / pause / R prompt, SETTINGS' TRAINING, the hub tour's lines and SKIP pod) and measures every visible Label
 ## and Button that shows text, with the font it really uses (the locale's fallback installed):
 ## - overflow: the widest line wider than the label, or than the button's content box (minus its
 ##   style margins and icon);
@@ -201,6 +202,68 @@ func _all_states() -> void:
 	await _results()
 	await _pause_and_restart()
 	await _descent()
+	await _tutorial()
+
+
+## The SPLASHDOWN tutorial's screens (gate Economy.TUTORIAL_TEST forced on here only): the maze's HUD and
+## banner, its RESTART-only dry-up row, its win panel (two lines) with HUB, the pause menu's SKIP TRAINING,
+## the R prompt without UPGRADES, SETTINGS with TRAINING, and the hub tour's prompt (its first and widest
+## lines, the turn-back hint, the end) with the SKIP pod.
+func _tutorial() -> void:
+	var mode: String = progress.mode  # (put back at the end: the next locale's states start from the same state)
+	Economy.tutorial_force = 1
+	var states := [["training hud", ""], ["training dry-up", "dry"], ["training win", "win"], ["training pause", "pause"]]
+	for st: Array in states:
+		seed(20261017)
+		progress.prepare_training(false)
+		var game := await _spawn_game({})
+		await _frames(3)
+		match st[1]:
+			"dry":
+				game._dry_up()
+				game._offer_retry()
+			"win":
+				game._on_goal_body_entered(game.slime)
+				game._offer_next_steps()
+			"pause":
+				game.pause_menu.open()
+		await _frames(3)
+		await _scan(st[0], game)
+		if st[1] == "pause":
+			game.pause_menu.resume()
+			game.restart_prompt.open(false)
+			await _frames(2)
+			await _scan("training restart prompt", game)
+			game.restart_prompt.close()
+			paused = false
+		game.free()
+		Training.attempt = 1
+		Training.coin_taken = false
+	progress.mode = mode
+	progress.training_replay = false
+	var page := await _open("res://scenes/controls.tscn")
+	await _scan("settings training", page)
+	page.free()
+	progress.tour_replay = true
+	progress.training_coin = true
+	var hub_script: GDScript = load("res://scripts/hub.gd")
+	var return_to: String = hub_script.return_to  # (the tour clears it: put back for the next locale's hub states)
+	var hub := await _open("res://scenes/hub.tscn")
+	hub.set_physics_process(false)  # (held by the wheel: the tour's line stays in the prompt)
+	hub.near = {id = "rotor", name = Loc.t("hub.prompt.rotate", "ROTATE")}
+	for back: String in ["story", "wardrobe", "hint", "end"]:
+		hub.tour.hint_on = back == "hint"
+		hub.tour.done = back == "end"
+		if back in ["story", "wardrobe"]:
+			hub.tour.back_id = back
+		hub._show_prompt()
+		await _frames(2)
+		await _scan("hub tour " + back, hub)
+	hub.free()
+	hub_script.return_to = return_to
+	progress.tour_replay = false
+	progress.training_coin = false
+	Economy.tutorial_force = -1
 
 
 func _hub() -> void:

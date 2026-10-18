@@ -357,3 +357,11 @@ so saves stay byte-identical (`tests/test_tutorial_flow.gd`). Chunk A owns `scri
 - **Hand-off:** `Story.launch_next(Progress)` is what the boot title gives the launch intro as `Story.next_scene`:
   the title, or the training scene when due (Esc on the intro goes there too). The title's PLAY on a due save
   (intro seen, quit before the training ended) calls `start_training(false)`. `story_screen.gd` is unchanged.
+- **Chunk F as built (UI pass, 2026-10-18):** rules and measurements in [docs/ui-rules.md](../ui-rules.md) "Tutorial UI",
+  shots in [shots/](shots/) (x4; `tests/demo_tutorial_ui.tscn` and `tests/demo_training_cues.tscn` make them). Training
+  keycaps 11 px (letters off the top edge: the 9 px key's A read as H), the accept glyph centred on RESTART's frame and
+  GAP_M off it, the tour line with no key on touch (it ran into the joystick and JUMP), the SKIP pod mirrored in
+  right-to-left, SETTINGS' TRAINING in the MORE column under SAVE CODE (bottom-row centre only when LANGUAGE has that
+  cell). Review fixes in the same pass: the coin bag line follows the practice coin (`Progress.training_coin`, session
+  only), R / pause RESTART mid-run repeats the attempt (only a dry-up's RESTART is attempt 2, `Training.mark_restart(next)`),
+  the SKIP pod also takes a left click. The tutorial states are in `test_i18n_screens` / `i18n_capture.sh` now.

@@ -146,6 +146,37 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 - 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check); 7x9 flame; 16x16 ability and boon
   icons; HEAT modifier icons 9x9 (RACE 8x8), drawn at 2x in the HEAT panel and centred in an 18x18 cell.
 
+### Tutorial UI (SPLASHDOWN maze + hub tour, gate `Economy.TUTORIAL_TEST`; UI pass chunk F, 2026-10-18)
+
+Only drawn with the tutorial gate on; with it off every screen is byte-identical (seeded before / after captures of the
+hub by the wheel, SETTINGS, level 1's move glyph and level 1's dry-up row, `tests/demo_tutorial_ui.tscn`). Shots:
+[tutorial/shots/](tutorial/shots/).
+
+- **Keycaps** (training cues: move keys, leap key, accept key): the level 1-2 keycap (`TutorialCues.draw_key`, white
+  1 px edge, `KEY` 9 px, the word's widths and columns) grown upward by `TrainingCues.KEY_TOP_PAD` = 2 rows: **11 px**
+  tall, the 7 px letters start 2 rows under the key's top (edge + 1 clear row) and the 2 px drips end on the bottom edge.
+  On the 9 px key the letters start on the top edge itself, so an A's top merges into it and reads as H, SPACE's S loses
+  its top (levels 1-2 keep it: their pixels are a golden). The keys' bottoms stay where level 1-2's are (both glyphs end 14 px
+  above the slime's centre; the move glyph's rows stay 1 px apart, so it is 23 px tall). A word wider than the key widens it with `KEY_PAD` 2 clear each side (SPACE: 35 px, ink 2 / 2).
+- **Hold bar**: 2 px, 1 px under the leap key, the key's width.
+- **Accept glyph** by the dry-up row's RESTART: its 11 px box centred on RESTART's focused frame (15 px: 2 / 2), `GAP_M`
+  (4) clear of that frame (`HUD.ACCEPT_GAP`; the frame is drawn 1 px outside the button's rect). RESTART itself stays
+  centred like every one-button choice row (the glyph hangs off its right). On touch no glyph: the button pulses.
+- **Hub tour line**: the hub's own prompt box by the wheel (bottom centre, odd widths 0.5 px off centre as every hub
+  prompt). Lines within their 192 px budget (English widest 188); the use key after it on keyboard (F) and pad (X), **no key
+  on touch** (as the hub's own touch prompts: the JUMP button is on screen; a line + TAP JUMP reached 258 px and ran
+  4 px into the joystick and 3 px into JUMP). Every line's box keeps `GAP_XS` + clear of both touch circles (closest
+  English: 3.3 px).
+- **SKIP pod**: a HUD pod (`panel_style(true)`, `pod_h()` 14) mirroring the hub's ticket pod: same top (3), same edge
+  (3 px from the right; top left in a right-to-left language, where the ticket pod goes right), ink 3 / 2 like every
+  text-first HUD pod. SKIP + the skip key (ESC / B; on touch SKIP alone, tapped or clicked). Its tap area grows to
+  `TOUCH_MIN` and stays off the touch pause button.
+- **SETTINGS TRAINING**: the MORE column's fourth cell under SAVE CODE, on FOG's row (a full 4 x 2 grid, a column button
+  like its neighbours); with the language test on (LANGUAGE takes that cell) it falls back to the bottom row's centre.
+- Tests: `test_training_cues` (keycap rule, accept glyph centring / gap, hold bar), `test_hub_tour` (`_layout`: every
+  line on every device, the SKIP pod), `test_training_replay` (the TRAINING cell, focus), and the tutorial states in
+  `test_i18n_screens` / `i18n_capture.sh` (text in its box, off the goo bands).
+
 ### Tiles and grids
 
 | Grid | Tile | Gap | Placement |

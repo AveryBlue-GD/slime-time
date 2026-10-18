@@ -1485,8 +1485,8 @@ msgctxt "settings.reset"
 msgid "RESET PROGRESS"
 msgstr "重設進度"
 
-#. max 100px (grows with the text, button_size), 1 line
-#. budget: max 100px, lines 1
+#. column button, max 112px (button 120 wide, 4 px margins); in the bottom row (languages on) it grows with the text, 1 line
+#. budget: max 112px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.training"
 msgid "TRAINING"

@@ -138,13 +138,18 @@ func _ready() -> void:
 	reset_button.size = reset_button.custom_minimum_size
 	UIKit.place_bottom_row(reset_button, 1)
 	if Economy.tutorial_on():
-		# i18n: max 100px (grows with the text, button_size), 1 line
+		# The MORE column under SAVE CODE (docs/tutorial/design.md section 2), beside FOG: a full 4 x 2 grid.
+		# With the language test on, LANGUAGE has that cell: then centred in the bottom row instead.
+		# i18n: column button, max 112px (button 120 wide, 4 px margins); in the bottom row (languages on) it grows with the text, 1 line
 		var training_text := Loc.t("settings.training", "TRAINING")
-		training_button = UIKit.make_button(training_text, _start_training, UIKit.button_size(training_text, 56))
-		UIKit.note_text_w(training_button, [training_text], 56)
-		add_child(training_button)
-		training_button.size = training_button.custom_minimum_size
-		UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
+		if language_button == null:
+			training_button = _column_button(_cell(1, 3), _start_training, training_text)
+		else:
+			training_button = UIKit.make_button(training_text, _start_training, UIKit.button_size(training_text, 56))
+			UIKit.note_text_w(training_button, [training_text], 56)
+			add_child(training_button)
+			training_button.size = training_button.custom_minimum_size
+			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()

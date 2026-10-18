@@ -180,7 +180,8 @@ var accept_glyph: Control
 var _accept_time := 0.0
 const METER_PULSE_TIME := 0.6
 const METER_PULSE_PEAK := Color(1.9, 1.9, 1.9)
-const ACCEPT_GAP := 3.0
+## Clear px between RESTART's (focused) edge and the accept glyph: UI rules' button-to-box gap.
+const ACCEPT_GAP := float(UIKit.GAP_M)
 const ACCEPT_PULSE := Color(1.35, 1.35, 1.35)
 
 
@@ -411,7 +412,8 @@ func _training_step(delta: float) -> void:
 		var on := TutorialCues.bob_at(_accept_time) < 0.0
 		button.modulate = ACCEPT_PULSE if touch and on else Color.WHITE
 		var rect := button.get_global_rect()
-		accept_glyph.position = (Vector2(rect.end.x + ACCEPT_GAP, rect.position.y) - _choice_root.global_position).round()
+		# (GAP_M clear of the focus frame, drawn 1 px outside the button's rect)
+		accept_glyph.position = (Vector2(rect.end.x + 1.0 + ACCEPT_GAP, rect.position.y) - _choice_root.global_position).round()
 		accept_glyph.size = Vector2(1, rect.size.y)
 		accept_glyph.queue_redraw()
 

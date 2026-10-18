@@ -21,6 +21,9 @@ const MAX_FADE_STEP := TutorialCues.MAX_FADE_STEP
 ## Where the glyphs sit over the slime's centre (the level 1-2 spots: move top, leap key top).
 const MOVE_TOP := -33.0
 const LEAP_TOP := -23.0
+## Clear rows over the keycaps' words (TutorialCues.draw_key `top_pad`): 11 px keys, the letters 1 px under the
+## top edge instead of on it (on it, an A's top merges into the edge and reads as H). Keys grow upward.
+const KEY_TOP_PAD := 2.0
 ## Both glyphs go up this far while the slime wears a hat (a SETTINGS replay may have one on).
 const HAT_LIFT := 8.0
 ## The leap key's width as designed (TutorialCues' 29 px; a longer word widens it).
@@ -115,10 +118,10 @@ func draw_cues(canvas: Variant) -> void:
 	var bob := TutorialCues.bob_at(_time)
 	var lift := -HAT_LIFT if game.get("hat") != null else 0.0
 	if move_alpha > 0.0:
-		TutorialCues.draw_move(canvas, Vector2(0, MOVE_TOP + bob + lift), device != Platform.INPUT_KEYS, move_alpha)
+		TutorialCues.draw_move(canvas, Vector2(0, MOVE_TOP + bob + lift), device != Platform.INPUT_KEYS, move_alpha, KEY_TOP_PAD)
 	if leap_alpha > 0.0:
 		var touch := device == Platform.INPUT_TOUCH
-		var key := TutorialCues.draw_key(canvas, Vector2(0, LEAP_TOP + bob + lift), TutorialCues.leap_label(touch), LEAP_KEY_W, leap_alpha, touch)
+		var key := TutorialCues.draw_key(canvas, Vector2(0, LEAP_TOP + bob + lift), TutorialCues.leap_label(touch), LEAP_KEY_W, leap_alpha, touch, KEY_TOP_PAD)
 		var charging := slime.state == Slime.State.CHARGING
 		draw_hold_bar(canvas, key, slime.charge / 100.0 if charging else 0.0, leap_alpha)
 
@@ -149,10 +152,12 @@ static func accept_label() -> String:
 	return Platform.prompt_for("ui_accept", first if first != "" else "ENTER")  # i18n: ignore (an OS key name, like the keys TutorialCues shows)
 
 
-## The accept keycap with its left edge at `left` and its rows centred on `mid_y` (a stepped 1 px bob at
-## `time`), in the level 1-2 keycap style. Returns its rect.
+## The accept keycap with its left edge at `left` and its box centred on `mid_y` (a stepped 1 px bob at
+## `time`), in the training's keycap style (KEY_TOP_PAD). Returns its rect.
 static func draw_accept(canvas: Variant, left: float, mid_y: float, time: float, alpha := 1.0) -> Rect2:
 	var text := accept_label()
 	var size := TutorialCues.key_size(ThemeDB.fallback_font, text, TutorialCues.KEY)
-	var top := roundf(mid_y - TutorialCues.KEY / 2.0) + TutorialCues.bob_at(time)
-	return TutorialCues.draw_key(canvas, Vector2(left + floorf(size.x / 2.0), top), text, TutorialCues.KEY, alpha)
+	var pad := KEY_TOP_PAD if size.y == TutorialCues.KEY else 0.0
+	var box_top := roundf(mid_y - (size.y + pad) / 2.0) + TutorialCues.bob_at(time)
+	return TutorialCues.draw_key(canvas, Vector2(left + floorf(size.x / 2.0), box_top + size.y + pad - TutorialCues.KEY), text,
+		TutorialCues.KEY, alpha, false, KEY_TOP_PAD)

@@ -194,7 +194,24 @@ func _training_case() -> void:
 		var level_pen := _level_pen(fake, cues._time, 1.0, 0.0)
 		var want := ["W", "A", "S", "D"] if device == "keys" else []
 		_check(Array(pen.strings()) == want, "move glyph, %s: %s" % [device, "W A S D keys" if device == "keys" else "a d-pad"])
-		_check(pen.lines == level_pen.lines, "move glyph, %s: the same pixels as level 1-2's" % device)
+		if device == "keys":
+			# UI pass: the training's keycaps are KEY_TOP_PAD taller (letters off the top edge), same widths
+			# and columns, the bottom row's bottom where level 1-2's is, the rows 1 px apart.
+			var caps := _keycaps(pen)
+			var level_caps := _keycaps(level_pen)
+			_check(caps.size() == 4 and level_caps.size() == 4, "move glyph, keys: four keycaps")
+			var faults := _keycap_faults(caps)
+			for i in mini(caps.size(), level_caps.size()):
+				var r: Rect2 = caps[i].rect
+				var l: Rect2 = level_caps[i].rect
+				if r.position.x != l.position.x or r.size.x != l.size.x or r.size.y != l.size.y + TrainingCues.KEY_TOP_PAD:
+					faults.append("%s %s vs level %s" % [caps[i].text, r, l])
+			if caps.size() == 4:
+				if caps[1].rect.end.y != level_caps[1].rect.end.y or caps[1].rect.position.y - caps[0].rect.end.y != 1.0:
+					faults.append("rows: W %s, A %s" % [caps[0].rect, caps[1].rect])
+			_check(faults.is_empty(), "move glyph, keys: the level 1-2 keys, %d px taller, letters clear of the edges (%s)" % [TrainingCues.KEY_TOP_PAD, ", ".join(faults)])
+		else:
+			_check(pen.lines == level_pen.lines, "move glyph, %s: the same pixels as level 1-2's" % device)
 	_device("keys")
 
 	# Moving fades it and notes MOVE (in the session, not the save).
@@ -229,8 +246,21 @@ func _training_case() -> void:
 		var bars := pen.rects_of_height(TrainingCues.HOLD_BAR_H)
 		_check(bars.size() == 1, "leap key, %s: an empty hold bar under it" % device)
 		var level_pen := _level_pen(fake, cues._time, 0.0, 1.0)
-		var keycap := Array(pen.lines).slice(0, level_pen.lines.size())
-		_check(keycap == Array(level_pen.lines), "leap key, %s: the same keycap as level 1-2's" % device)
+		var caps := _keycaps(pen)
+		var level_caps := _keycaps(level_pen)
+		var faults := _keycap_faults(caps)
+		if caps.size() != 1 or level_caps.size() != 1:
+			faults.append("%d keycaps" % caps.size())
+		else:
+			var r: Rect2 = caps[0].rect
+			var l: Rect2 = level_caps[0].rect
+			var pad := TrainingCues.KEY_TOP_PAD if l.size.y == TutorialCues.KEY else 0.0
+			if r.position.x != l.position.x or r.size.x != l.size.x or r.end.y != l.end.y or r.size.y != l.size.y + pad \
+					or caps[0].baseline != level_caps[0].baseline:
+				faults.append("%s vs level %s" % [r, l])
+			if bars.size() == 1 and (bars[0].position.y != r.end.y + 1.0 or bars[0].position.x != r.position.x or bars[0].size.x != r.size.x):
+				faults.append("hold bar %s" % bars[0])
+		_check(faults.is_empty(), "leap key, %s: level 1-2's keycap grown upward (letters clear of the edges, bottom and word unmoved), the hold bar 1 px under it (%s)" % [device, ", ".join(faults)])
 		if device == "remap":
 			_restore_bindings(saved)
 	_device("keys")
@@ -268,6 +298,25 @@ func _training_case() -> void:
 		var pen := Pen.new()
 		TrainingCues.draw_accept(pen, 0.0, 5.0, 0.0)
 		_check(Array(pen.strings()) == ["SPACE"], "dry, keys: the accept key reads SPACE (%s)" % [pen.strings()])
+		# UI pass: the glyph's box centred on RESTART (its focus frame 1 px outside the rect), GAP_M clear of that
+		# frame, letters clear of the edges, inside the screen.
+		var b_rect := button.get_global_rect()
+		var glyph_pen := Pen.new()
+		TrainingCues.draw_accept(glyph_pen, 0.0, hud.accept_glyph.size.y / 2.0, 0.5)  # (0.5 s: the bob's rest phase)
+		var caps := _keycaps(glyph_pen)
+		var faults := _keycap_faults(caps)
+		if caps.size() == 1:
+			var at: Rect2 = Rect2(caps[0].rect.position + hud.accept_glyph.global_position, caps[0].rect.size)
+			var frame := b_rect.grow(1.0)
+			if at.position.y - frame.position.y != frame.end.y - at.end.y:
+				faults.append("not centred on RESTART: %s in %s" % [at, frame])
+			if at.position.x - frame.end.x != UIKit.GAP_M:
+				faults.append("%d px from RESTART's frame" % (at.position.x - frame.end.x))
+			if not Rect2(Vector2.ZERO, UIKit.SCREEN).encloses(at):
+				faults.append("off screen %s" % at)
+		else:
+			faults.append("%d keycaps" % caps.size())
+		_check(faults.is_empty(), "dry, keys: the accept glyph centred beside RESTART, GAP_M off its frame (%s)" % ", ".join(faults))
 		_device("pad")
 		await _physics_frames(2)
 		pen = Pen.new()
@@ -321,6 +370,33 @@ func _chalice_case() -> void:
 
 
 ## ---------------------------------------------------------------- helpers
+
+## The keycaps on `pen`: each outer rect in the key's white, the fill inside it and the word drawn next
+## ({rect, baseline, text}; a d-pad's arrows are not keycaps).
+func _keycaps(pen: Pen) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lines := pen.lines
+	for i in lines.size() - 2:
+		var a := lines[i].split(" ")
+		var b := lines[i + 1].split(" ")
+		var c := lines[i + 2]
+		if a[0] == "rect" and b[0] == "rect" and c.begins_with("text ") and a[5].begins_with(TutorialCues.KEY_EDGE.to_html(false)):
+			var t := c.split(" ")
+			out.append({rect = Rect2(float(a[1]), float(a[2]), float(a[3]), float(a[4])), baseline = float(t[2]), text = c.get_slice("'", 1)})
+	return out
+
+
+## The keycap rule (docs/ui-rules.md, Tutorial UI): the word's 7 px letters start 2 rows under the key's top
+## (its 1 px edge and 1 clear row) and its drips end on the bottom edge at the lowest.
+func _keycap_faults(caps: Array[Dictionary]) -> Array[String]:
+	var out: Array[String] = []
+	for cap in caps:
+		var r: Rect2 = cap.rect
+		var letters_top: float = cap.baseline - UIKit.TEXT_BODY
+		if letters_top < r.position.y + 2.0 or cap.baseline + UIKit.TEXT_DRIP > r.end.y:
+			out.append("%s letters %d..%d in %s" % [cap.text, letters_top, cap.baseline + UIKit.TEXT_DRIP - 1, r])
+	return out
+
 
 func _pen(cues: Node) -> Pen:
 	var pen := Pen.new()

@@ -103,12 +103,12 @@ static func bob_at(time: float) -> float:
 
 
 ## The move glyph with its top at `top`: the bound keys (W A S D, or the remapped ones), or a d-pad
-## (`dpad`: a pad or the touch joystick, no keys to show; the d-pad shape fits both).
-static func draw_move(canvas: Variant, top: Vector2, dpad: bool, alpha: float) -> void:
+## (`dpad`: a pad or the touch joystick, no keys to show; the d-pad shape fits both). `top_pad`: see draw_key.
+static func draw_move(canvas: Variant, top: Vector2, dpad: bool, alpha: float, top_pad := 0.0) -> void:
 	if dpad:
 		draw_dpad(canvas, top + Vector2(0, 6), alpha)
 	else:
-		draw_wasd(canvas, top, alpha)
+		draw_wasd(canvas, top, alpha, top_pad)
 
 
 ## The leap key's word: JUMP on touch screens, else the pad's A or the bound key (SPACE).
@@ -117,12 +117,14 @@ static func leap_label(touch: bool) -> String:
 	return Loc.t("tutorial.jump", "JUMP") if touch else Platform.prompt_for("jump", key_text("jump", "SPACE"))  # (pad: A)
 
 
-static func draw_wasd(canvas: Variant, top: Vector2, alpha: float) -> void:
+## The four move keys (W over A S D), the bottom row's bottom at `top` + 2 KEY + 1 whatever `top_pad`
+## (taller keys grow upward; the rows stay 1 px apart).
+static func draw_wasd(canvas: Variant, top: Vector2, alpha: float, top_pad := 0.0) -> void:
 	var step := KEY + 1.0
-	draw_key(canvas, top + Vector2(0, 0), key_text("move_up", "W"), KEY, alpha)
-	draw_key(canvas, top + Vector2(-step, step), key_text("move_left", "A"), KEY, alpha)
-	draw_key(canvas, top + Vector2(0, step), key_text("move_down", "S"), KEY, alpha)
-	draw_key(canvas, top + Vector2(step, step), key_text("move_right", "D"), KEY, alpha)
+	draw_key(canvas, top + Vector2(0, -top_pad), key_text("move_up", "W"), KEY, alpha, false, top_pad)
+	draw_key(canvas, top + Vector2(-step, step), key_text("move_left", "A"), KEY, alpha, false, top_pad)
+	draw_key(canvas, top + Vector2(0, step), key_text("move_down", "S"), KEY, alpha, false, top_pad)
+	draw_key(canvas, top + Vector2(step, step), key_text("move_right", "D"), KEY, alpha, false, top_pad)
 
 
 ## A plus-shaped d-pad of four arrowheads (touch screens: the joystick takes any direction).
@@ -141,13 +143,17 @@ static func draw_arrow(canvas: Variant, tip_center: Vector2, dir: Vector2, color
 		canvas.draw_rect(Rect2((back - side * half).round(), Vector2.ONE + side * (half * 2.0)), color)
 
 
-## A keycap centred on `center_top` (its bottom row KEY under that point); returns its rect.
-static func draw_key(canvas: Variant, center_top: Vector2, text: String, width: float, alpha: float, fit := false) -> Rect2:
+## A keycap centred on `center_top` (its bottom row KEY under that point); returns its rect. `top_pad`
+## (the training cues: 2) adds that many clear rows over the word, the key growing upward: the 9 px key's
+## letters start on its top edge (an A's top merges into it and reads as H); levels 1-2 keep 0.
+static func draw_key(canvas: Variant, center_top: Vector2, text: String, width: float, alpha: float, fit := false, top_pad := 0.0) -> Rect2:
 	var font := ThemeDB.fallback_font
 	var arrow: bool = text in ["UP", "DOWN", "LEFT", "RIGHT"]
 	var key := key_size(font, text, width, fit)
 	width = key.x
-	var height := key.y
+	if key.y != KEY:
+		top_pad = 0.0  # (a taller script's key already has room over its line)
+	var height := key.y + top_pad
 	var top := center_top - Vector2(floorf(width / 2.0), height - KEY)
 	var rect := Rect2(top.round(), Vector2(width, height))
 	canvas.draw_rect(rect, Color(KEY_EDGE, alpha))
@@ -159,7 +165,7 @@ static func draw_key(canvas: Variant, center_top: Vector2, text: String, width: 
 	else:
 		# The English baseline 7 px under the key's top; a taller script's line box fills the key's
 		# inside (moved down by its ink_nudge, like the buttons' text).
-		var baseline := 7.0 if height == KEY else 1.0 + font.get_ascent(8) + float(UIKit.metrics().get("ink_nudge", 0))
+		var baseline := top_pad + (7.0 if key.y == KEY else 1.0 + font.get_ascent(8) + float(UIKit.metrics().get("ink_nudge", 0)))
 		canvas.draw_string(font, Vector2(rect.position.x, rect.position.y + baseline), text, HORIZONTAL_ALIGNMENT_CENTER, width, 8, Color(KEY_EDGE, alpha))
 	return rect
 

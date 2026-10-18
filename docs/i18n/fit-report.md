@@ -40,11 +40,11 @@ reported here but do not fail them (the other languages are brought in line late
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 32, pt_BR 26, fr 29, de 37, it 15, ru 27, pl 23, tr 25, ja 2, th 21, vi 20, id 4, ar 19, hi 3, pseudo 56
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 42, pt_BR 27, fr 30, de 48, it 15, ru 37, pl 33, tr 35, ja 2, th 30, vi 29, id 4, ar 28, hi 3, pseudo 68
 - enforced: every locale (English-only mode: English fails, the other locales are reported)
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
-- states: 57 screen / overlay / HUD states per locale
+- states: 67 screen / overlay / HUD states per locale
 
 ## budget: open (16 places)
 

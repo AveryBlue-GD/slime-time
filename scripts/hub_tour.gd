@@ -51,7 +51,7 @@ func setup(the_hub: Node2D) -> void:
 	_build_skip()
 
 
-## The SKIP pod in the top right corner (a HUD pod like the ticket pod, HUD edge from the corner): SKIP and
+## The SKIP pod in the top right corner (top left right-to-left: the ticket pod's mirror; a HUD pod like it, HUD edge from the corner): SKIP and
 ## the key that skips (ESC, B on a pad, none on touch: tap it).
 func _build_skip() -> void:
 	_layer = CanvasLayer.new()
@@ -91,7 +91,9 @@ func _layout_skip() -> void:
 	var size := skip_pod.get_combined_minimum_size()
 	skip_pod.size = size
 	var edge := UIKit.hud_edge()
-	skip_pod.position = Vector2(320 - edge.x - size.x, edge.y)
+	# (the ticket pod's mirror: top right, or top left in a right-to-left language, where the hub's own UI
+	# puts the ticket pod top right)
+	skip_pod.position = Vector2(edge.x if UIKit.rtl() else 320 - edge.x - size.x, edge.y)
 
 
 ## The pod's touch area: at least UIKit.TOUCH_MIN each way round it.
@@ -190,8 +192,10 @@ func lit_id() -> String:
 
 
 ## The key after the line in the prompt: the use key (the wheel turns the room), none on the last line.
+## None on touch either, as the hub's own touch prompts: the JUMP button is on screen, and a line + TAP JUMP
+## (up to 254 px) would run into the joystick and JUMP (docs/ui-rules.md, Tutorial UI).
 func key_text() -> String:
-	return "" if done else hub._use_key()
+	return "" if done or hub._touch() else hub._use_key()
 
 
 ## The tour's line in the prompt box for the station or wheel next to the slime ("" = the hub's own prompt).

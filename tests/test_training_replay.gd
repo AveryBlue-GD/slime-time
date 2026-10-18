@@ -35,6 +35,18 @@ func _initialize() -> void:
 	for other: Button in [page.sound_button, page.motion_button, page.fog_button, page.fullscreen_button, page.controls_button, page.save_code_button, page.reset_button]:
 		_check(not b.get_global_rect().intersects(other.get_global_rect()), "no overlap with " + other.text)
 	_check(b.focus_mode == Control.FOCUS_ALL and b.get_global_rect().size.y >= UIKit.button_h(), "focusable, full height")
+	# UI pass (docs/ui-rules.md, Tutorial UI): the MORE column's fourth cell, under SAVE CODE, beside FOG: the
+	# column's x and width, SAVE CODE's row pitch, FOG's row.
+	var save_r: Rect2 = page.save_code_button.get_global_rect()
+	var ctl_r: Rect2 = page.controls_button.get_global_rect()
+	var fog_r: Rect2 = page.fog_button.get_global_rect()
+	var br := b.get_global_rect()
+	_check(br.position.x == save_r.position.x and br.size == save_r.size and br.position.y == fog_r.position.y
+		and br.position.y - save_r.position.y == save_r.position.y - ctl_r.position.y,
+		"TRAINING sits in the MORE column under SAVE CODE, on FOG's row (%s; SAVE CODE %s, FOG %s)" % [br, save_r, fog_r])
+	page.fog_button.grab_focus()
+	_check(page.fog_button.find_valid_focus_neighbor(SIDE_RIGHT) == b and b.find_valid_focus_neighbor(SIDE_TOP) == page.save_code_button,
+		"focus: right of FOG and under SAVE CODE is TRAINING")
 	b.grab_focus()
 	_check(b.has_focus(), "takes focus")
 	var seen_before: int = progress.tutorial_seen
