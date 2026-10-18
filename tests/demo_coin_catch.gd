@@ -3,8 +3,8 @@ extends Node
 ## Clip scenario for the coin catch test (docs/spring-cleaning/coin-catch-test.md): level 1 in FULL
 ## BRIGHT with every coin back in place (in memory only), then two pickups, 220 frames apart: the
 ## slime glides 3 cells down a straight corridor into a dead end's coin, then leaps 2 cells (4 tiles) onto
-## another one (caught in mid-leap). Add `--coincatch` for the catch (same spots); `--jelly` for the
-## see-through slime.
+## another one (caught in mid-leap). The catch is the default now (same spots); add `--nocoincatch` for
+## the old instant pickup, `--jelly` for the see-through slime.
 ## ./tools/godot.sh --path . --fixed-fps 60 --write-movie /private/tmp/claude-501/coincatch/on/f.png \
 ##   --quit-after 450 res://tests/demo_coin_catch.tscn -- --coincatch --skin=lime --hat=tophat
 

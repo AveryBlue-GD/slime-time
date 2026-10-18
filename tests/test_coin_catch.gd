@@ -24,9 +24,9 @@ func _initialize() -> void:
 	progress.reduce_motion = false
 	_check(Economy.COIN_CATCH_TEST and Economy.coin_catch_on(), "the coin catch is on by default")
 	var progress_script: GDScript = load("res://scripts/progress.gd")
-	_check(progress_script.game_args(PackedStringArray(["--coincatch"]), false).is_empty()
+	_check(progress_script.game_args(PackedStringArray(["--coincatch", "--nocoincatch"]), false).is_empty()
 		and progress_script.game_args(PackedStringArray(["--coincatch"]), true) == PackedStringArray(["--coincatch"]),
-		"--coincatch is a debug flag (a release build ignores it)")
+		"--coincatch and --nocoincatch are debug flags (a release build ignores them)")
 	_check(root.get_node("Sfx").has_sound("coin_fizz"), "the soft coin fizz sound loads")
 	await _flag_off()
 	await _lifecycle(false)

@@ -14,7 +14,8 @@ var game: Node2D
 func _ready() -> void:
 	Progress.set_jelly(true)
 	Progress.saving_enabled = false
-	game = preload("res://scenes/main.tscn").instantiate()
+	Economy.coincatch_force = 0  # show the dissolve_into sink, not the coin catch
+	game =preload("res://scenes/main.tscn").instantiate()
 	game.level = LEVEL
 	add_child(game)
 	var path := MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal)
