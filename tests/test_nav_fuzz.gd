@@ -1565,6 +1565,8 @@ func _escape_ladder() -> bool:
 			var g = current_scene
 			if g.pause_menu.visible:
 				var qb := button_with(g, "QUIT TO HUB")
+				if qb == null:
+					qb = button_with(g, "SKIP TRAINING")  # (the same button in the SPLASHDOWN training maze)
 				if qb:
 					await L.click(qb.get_global_rect().get_center(), 1)
 					await L.settle(240)

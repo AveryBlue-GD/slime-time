@@ -87,6 +87,11 @@ func _gate_off() -> void:
 	settings = await _open(SETTINGS)
 	var on_layout := _button_layout(settings)
 	on_layout.erase("@%s" % Rect2(settings.language_button.global_position, settings.language_button.size))
+	# (TRAINING, shipped with the tutorial, gives LANGUAGE its MORE cell and moves to the bottom row by design.)
+	var training: Button = settings.training_button
+	if training != null:
+		on_layout.erase("%s@%s" % [training.text, Rect2(training.global_position, training.size)])
+		layout = layout.filter(func(line: String) -> bool: return not line.begins_with(training.text + "@"))
 	_check(on_layout == layout, "gate on (English): every other SETTINGS button keeps its text and place")
 	_close(settings)
 	language.disable()

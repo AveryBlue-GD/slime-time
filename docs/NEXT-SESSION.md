@@ -30,16 +30,17 @@ Reviews: `docs/i18n/review/` (per-locale findings, `fixes-*.md`, `recheck-*.md`,
 |---|---|---|---|
 | Soft bounce | `Economy.SOFT_BOUNCE_TEST` | `./tools/play.sh --dev --softbounce` | `docs/spring-cleaning/soft-bounce-test.md` |
 | Map coin reveal (dev only: uncollected coins the light revealed show on the MAP TABLE) | `Economy.MAP_COIN_REVEAL_TEST` (dev on, `--nocoinreveal` off) | `./tools/play.sh --dev`, play, F1, MAP TABLE | `docs/spring-cleaning/map-coin-reveal-test.md` |
-| SPLASHDOWN tutorial (training maze after the intro + hub tour; SETTINGS > TRAINING replays it) | `Economy.TUTORIAL_TEST` (false) | `./tools/play.sh --tutorial`, `--tutorial=maze`, `--tutorial=hub` | `docs/tutorial/design.md` (sections 13-14 = owner answers + API), shots `docs/tutorial/shots/` |
+| SPLASHDOWN tutorial (training maze after the intro + hub tour; SETTINGS > TRAINING replays it) | `Economy.TUTORIAL_TEST` (**true**: shipped) | `./tools/play.sh --tutorial`, `--tutorial=maze`, `--tutorial=hub` | `docs/tutorial/design.md` (sections 13-14 = owner answers + API), shots `docs/tutorial/shots/` |
 
-The tutorial is built but the owner has NOT playtested it; the gate stays off until sign-off.
+The owner playtested the tutorial and shipped it (2026-10-18): `TUTORIAL_TEST := true`, so every fresh save gets the training maze and hub tour
+(existing saves never do; the launch flags still replay it on a clean in-memory save).
+Hat wheel (2026-10-18): the three rare slivers are spread evenly round the wheel (`HatWheel.spread_rares`, drawing order only; odds and picks unchanged).
 Decided: D16 coin catch is on for everyone (`--nocoincatch` for A/B; flag plumbing removal is a follow-up; `docs/spring-cleaning/coin-catch-test.md`).
 Also since the last handoff: collected coins are hidden on the maps; map coins draw in their level's metal; MAP TABLE paging fixed; the dry-up row has a MAP button
 (story levels; BACK returns to the level); the wardrobe is now COSMETICS with a PAPERS page; propeller hat animated, new RAINCLOUD hat; wheel rare tier =
 rainbow, propeller, raincloud at weight 0.3 (ordinary 10.10 %, rare 3.03 %), a save's first free spin is never rare.
 
 ## Other open owner decisions
-- Ship the tutorial? Playtest first; the autopilot clears the maze in ~17 s vs the 60-90 s target (real players are slower).
 - TAILOR still sells the propeller hat at 45 tickets (rainbow 80) though it is rare on the wheel: reprice?
 - German keeps STORY / LEVEL / SHOP as English loanwords (`docs/i18n/glossary/de.md`): keep?
 - Level 1-2 cue issues seen but left pixel-identical: d-pad arrowheads point inward, SPACE's S touches its key edge, pad A is hard to read in a 29 px key.

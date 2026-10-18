@@ -51,8 +51,9 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 - **D16 coin catch** on for everyone (`--nocoincatch`). **Maps:** collected coins hidden; dev-only reveal `Economy.MAP_COIN_REVEAL_TEST` (`--nocoinreveal`,
   [spring-cleaning/map-coin-reveal-test.md](spring-cleaning/map-coin-reveal-test.md)); coins in their level's metal; dry-up MAP button (story levels).
 - **Localization rule:** English only until finalized; `i18n/pending.md` lists what the catch-up must cover; reviews in `i18n/review/`.
-- **SPLASHDOWN tutorial** behind `Economy.TUTORIAL_TEST := false` (`./tools/play.sh --tutorial[=maze|hub]`, SETTINGS TRAINING replay);
-  design + API in [tutorial/design.md](tutorial/design.md) sections 13-14; unplaytested by the owner.
+- **SPLASHDOWN tutorial** shipped: `Economy.TUTORIAL_TEST := true` (owner playtest, 2026-10-18; `./tools/play.sh --tutorial[=maze|hub]`
+  replays it on a clean save, SETTINGS TRAINING replay); design + API in [tutorial/design.md](tutorial/design.md) sections 13-14.
+- **Hat wheel:** the rare slivers are spread evenly round the wheel (`HatWheel.spread_rares`; drawing order only, odds unchanged).
 
 ## Modes
 

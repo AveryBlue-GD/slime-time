@@ -32,7 +32,7 @@ func _initialize() -> void:
 	progress.saving_enabled = true
 	progress.save_path = test_save
 	progress.reset_progress()
-	_check(not Economy.TUTORIAL_TEST and not Economy.tutorial_on(), "the tutorial gate ships OFF")
+	_check(Economy.TUTORIAL_TEST and Economy.tutorial_on(), "the tutorial ships ON (owner, 2026-10-18)")
 	_result()
 	quit(1 if failures > 0 else 0)
 

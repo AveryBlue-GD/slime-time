@@ -32,6 +32,7 @@ func _ready() -> void:
 func _fresh_save() -> void:
 	Progress.save_path = DEMO_SAVE
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(DEMO_SAVE))
+	Economy.tutorial_force = 0  # (skins are the point here, not the SPLASHDOWN tutorial)
 	Progress.levels_cleared = 0
 	Progress.highest_unlocked = 1
 	Progress.current_level = 1

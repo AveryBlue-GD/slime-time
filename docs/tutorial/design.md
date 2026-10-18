@@ -1,6 +1,6 @@
 # Tutorial design: the training maze and the first hub visit
 
-Status: **chunks A and B built (2026-10-18): gate, flags, save bits, the intro hand-off, the SPLASHDOWN maze (section 14); C-H in progress.** Gate off. Owner request, 2026-10-18: a tutorial that plays
+Status: **chunks A and B built (2026-10-18): gate, flags, save bits, the intro hand-off, the SPLASHDOWN maze (section 14); C-H in progress.** **Gate ON: shipped 2026-10-18 after the owner's playtest.** Owner request, 2026-10-18: a tutorial that plays
 directly after the intro, a training maze showing jumping, coins and the chalice, and how drying up works, then
 talking the player into the hub to show rotating and what each station does. Research and sources:
 [research.md](research.md). The maze's name is a placeholder (**TRAINING** in code and text) until the owner

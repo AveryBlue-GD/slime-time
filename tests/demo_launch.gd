@@ -1,12 +1,13 @@
 extends Node
 
 ## Screenshot scenario: a first launch of a fresh save: the launch trailer, skipped with Esc,
-## wiping into the title (PLAY). Never saves.
+## wiping into the title (PLAY), with the tutorial gate forced off (on, it wipes into SPLASHDOWN). Never saves.
 ## ./tools/screenshot.sh --frames 150 --scene res://tests/demo_launch.tscn
 
 func _ready() -> void:
 	Progress.saving_enabled = false
 	Progress.dev_tools = false
+	Economy.tutorial_force = 0
 	Progress.levels_cleared = 0
 	Progress.story_seen = 0
 	Story.launched = false

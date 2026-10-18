@@ -124,6 +124,7 @@ func _initialize() -> void:
 	title_script.set("preload_in_headless", true)
 	title_script.set("_preload_started", false)
 	(title_script.get("_preloaded") as Array).clear()
+	Economy.tutorial_force = 0  # (with the tutorial gate on the intro hands off to SPLASHDOWN: test_tutorial_flow)
 	change_scene_to_packed(packed)
 	await _frames(5)
 	_check(current_scene != null and current_scene.scene_file_path == Story.SCENE and Story.launched, "booting a fresh save opens the intro first")
@@ -137,7 +138,8 @@ func _initialize() -> void:
 	await _frames(90)
 	_check(progress.has_seen_story(progress.STORY_INTRO), "skipping the trailer marks it seen")
 	_check(current_scene != null and current_scene.scene_file_path == UIKit.TITLE_SCENE and current_scene.enter_button.text == "PLAY",
-		"...and lands on the title (PLAY, fresh save)")
+		"...and lands on the title (PLAY, fresh save, tutorial gate off)")
+	Economy.tutorial_force = -1
 	Story.launched = false
 	_check(not Story.launch_due(current_scene, progress), "second launch: straight to the title, no trailer")
 	current_scene.free()

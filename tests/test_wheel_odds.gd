@@ -171,6 +171,24 @@ func _initialize() -> void:
 	var landed: String = landed_ids[0] if not landed_ids.is_empty() else ""
 	_check(landed != "" and landed == progress.hats_owned[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed and not progress.is_rare_hat(landed),
 		"...it lands on exactly the hat it won, an ordinary one (%s)" % landed)
+	# The rare slivers are spread evenly round the wheel, never side by side (the full wheel: 3 ordinary
+	# wedges between each), and the order keeps every hat once.
+	wheel.hats = ids
+	var rare_at: Array[int] = []
+	for i in wheel.hats.size():
+		if progress.is_rare_hat(wheel.hats[i]):
+			rare_at.append(i)
+	var gaps: Array[int] = []
+	for k in rare_at.size():
+		gaps.append(posmod(rare_at[(k + 1) % rare_at.size()] - rare_at[k], wheel.hats.size()) - 1)
+	var same: bool = wheel.hats.size() == ids.size()
+	for id in ids:
+		same = same and id in wheel.hats
+	_check(rare_at.size() == 3 and gaps.min() == gaps.max() and gaps.min() == 3 and same, "the full wheel spreads the rare hats evenly: %s ordinary wedges between them" % [gaps])
+	var some: Array[String] = ["tophat", "beanie", "party", "cap", "propeller", "raincloud", "rainbow"]
+	wheel.hats = some
+	_check(not progress.is_rare_hat(wheel.hats[0]) and progress.is_rare_hat(wheel.hats[2]) and not progress.is_rare_hat(wheel.hats[3]) and progress.is_rare_hat(wheel.hats[-1]),
+		"with fewer hats left the rare ones still don't bunch where they can be split (%s)" % [wheel.hats])
 	wheel.free()
 	fresh.free()
 	reborn.free()

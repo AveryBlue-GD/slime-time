@@ -97,10 +97,11 @@ var sections_rect := Rect2()
 ## The two status lines' tops (141 / 153 in English).
 var status_y := 141.0
 var status_line_y := 153.0
-## The hats on the wheel right now (the ones not won yet), in wheel order.
+## The hats on the wheel right now (the ones not won yet), in wheel order: the rare ones spread
+## evenly round it (spread_rares).
 var hats: Array[String] = []:
 	set(value):
-		hats = value
+		hats = spread_rares(value)
 		_layout()
 ## Where each wedge starts (radians from the wheel's zero) and how wide it is: shares of the
 ## circle by Progress.wheel_weight. (A save's first spin can't land on a rare hat's wedge, but it
@@ -450,6 +451,31 @@ func _refresh_wheel() -> void:
 func _on_spin_pressed() -> void:
 	if spin():
 		changed.emit("")
+
+
+## `ids` in wheel order with the rare hats (Progress.is_rare_hat) spaced evenly between the
+## ordinary ones, not bunched together: each rare sliver sits in the middle of its share of the
+## ordinary wedges (9 ordinary + 3 rare = 3 ordinary, rare, 3 ordinary, rare, ...). Only the drawing
+## order: the odds and the pick (Progress.spin_hat, by id) don't depend on it.
+static func spread_rares(ids: Array[String]) -> Array[String]:
+	var plain: Array[String] = []
+	var rare: Array[String] = []
+	for id in ids:
+		if Progress.is_rare_hat(id):
+			rare.append(id)
+		else:
+			plain.append(id)
+	if rare.is_empty() or plain.is_empty():
+		return ids.duplicate()
+	var out: Array[String] = []
+	var next := 0  # the next rare hat to place
+	for i in plain.size():
+		out.append(plain[i])
+		# Rare k goes after ordinary wedge ceil((k + 1) * plain / rare) - 1: one per equal stretch.
+		while next < rare.size() and i + 1 >= ceili((next + 1) * plain.size() / float(rare.size())):
+			out.append(rare[next])
+			next += 1
+	return out
 
 
 ## Sizes the wedges by each hat's odds.

@@ -258,13 +258,14 @@ const COIN_CATCH_FIZZ_DB := -8.0
 
 
 ## ---------------------------------------------------------------- TUTORIAL test (SPLASHDOWN, owner 2026-10-18)
-## ONE switch for the first-session tutorial (docs/tutorial/design.md): the SPLASHDOWN training maze
-## right after the launch intro, then the hub tour. Off (default): today's first launch exactly (intro,
+## Shipped (owner, 2026-10-18): on for everyone. ONE switch for the first-session tutorial
+## (docs/tutorial/design.md): the SPLASHDOWN training maze right after the launch intro, then the
+## hub tour; existing saves never get it (Progress.tutorial_due). Off: the old first launch exactly (intro,
 ## title PLAY, level 1), Progress.tutorial_due() / hub_tour_due() are always false, the training and
 ## hub bits (Progress.TUTORIAL_TRAINING / TUTORIAL_HUB) are never written, so saves are byte-identical.
 ## `--tutorial[=maze|hub]` (debug builds only, like every launch flag) sets `tutorial_force` = 1 on a
 ## clean in-memory fresh state (see Progress.enable_tutorial_test); tests set it too.
-const TUTORIAL_TEST := false
+const TUTORIAL_TEST := true
 static var tutorial_force := -1
 
 
