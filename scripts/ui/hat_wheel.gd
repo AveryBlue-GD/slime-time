@@ -4,12 +4,14 @@ extends Control
 ## The prize wheel's overlay, opened at the prize wheel in the hub: two tabs, WHEEL | SHOP
 ## (upgrades v2 batch 2, docs/design/upgrades-v2.md C.1-C.3).
 ## WHEEL: a big wheel with a wedge for every hat you don't have yet, each showing its hat; a wedge's
-## size is its odds (Hats.weight), so the rare rainbow hat gets a thin rainbow-striped sliver. A spin
+## size is its odds (Progress.wheel_weight, the table in Economy), so the rare hats (rainbow, propeller)
+## get thin slivers, the rainbow one rainbow-striped. A spin
 ## (the SPIN button, or the interact key / JUMP on a touchscreen) whirls it round (the flapper ticking
 ## on each wedge it passes), slows down and lands on a random hat. The spin is settled before the
 ## wheel turns (Progress.spin_hat picks the hat, charges its price (free first, then 12, +2 per spin
 ## taken, max 40; dev mode never pays) and wins it, all saved at once); the wheel just plays out
-## where it lands. A won hat comes off the wheel, so there are never duplicates: an empty wheel once
+## where it lands (always inside the won hat's wedge). A save's first spin never lands on a rare
+## hat (Progress.wheel_pool). A won hat comes off the wheel, so there are never duplicates: an empty wheel once
 ## every hat is yours.
 ## SHOP: three sections (HATS, TRAILS, PAPERS) of goo-framed tiles with their prices and the ticket
 ## icon. HATS = the TAILOR: any hat still on the wheel for 45 tickets (rainbow 80) once 3 spins have
@@ -101,7 +103,8 @@ var hats: Array[String] = []:
 		hats = value
 		_layout()
 ## Where each wedge starts (radians from the wheel's zero) and how wide it is: shares of the
-## circle by Hats.weight.
+## circle by Progress.wheel_weight. (A save's first spin can't land on a rare hat's wedge, but it
+## still shows: Progress.wheel_pool.)
 var starts: Array[float] = []
 var sizes: Array[float] = []
 ## How far the wheel has turned (radians); wedge i starts at turn + starts[i] (0 = pointing right).
@@ -455,11 +458,11 @@ func _layout() -> void:
 	sizes.clear()
 	var total := 0.0
 	for id in hats:
-		total += Hats.weight(id, Progress.rainbow_pity)
+		total += Progress.wheel_weight(id, Progress.rainbow_pity)
 	var at := 0.0
 	for id in hats:
 		starts.append(at)
-		sizes.append(TAU * Hats.weight(id, Progress.rainbow_pity) / total)
+		sizes.append(TAU * Progress.wheel_weight(id, Progress.rainbow_pity) / total)
 		at += sizes[-1]
 
 

@@ -248,10 +248,12 @@ func _initialize() -> void:
 	wheel.hats = Hats.ids()
 	var rare: int = wheel.hats.find("rainbow")
 	_check(rare >= 0 and wheel.sizes[rare] < wheel.sizes[0] * 0.5, "the rainbow hat's wedge is a thin sliver (%.2f vs %.2f)" % [wheel.sizes[rare], wheel.sizes[0]])
+	var propeller: int = wheel.hats.find("propeller")
+	_check(propeller >= 0 and is_equal_approx(wheel.sizes[propeller], wheel.sizes[rare]), "the propeller cap's wedge is the rainbow hat's size (as rare)")
 	var rainbow_picks := 0
 	var top_hat_picks := 0
 	for i in 4000:
-		var pick: int = wheel.hats.find(Hats.pick(wheel.hats, 0, randf()))
+		var pick: int = wheel.hats.find(progress.wheel_pick(wheel.hats, 0, randf()))
 		rainbow_picks += int(pick == rare)
 		top_hat_picks += int(pick == 0)
 	_check(rainbow_picks > 0 and rainbow_picks < top_hat_picks * 0.5, "the rainbow hat comes up far less often (%d vs %d for the top hat)" % [rainbow_picks, top_hat_picks])

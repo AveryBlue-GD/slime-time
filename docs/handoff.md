@@ -154,6 +154,8 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
   hard, `Skins.jelly_level`). The Stopwatch is the exception: both versions open together with all 30 medals.
   Loading a save recomputes unlocks under these rules; a locked look falls back to that skin's opaque version,
   then to Lime. Shots: `docs/spring-cleaning/skins/`.
-- **Hats:** compact (brims 2-3 px past the head); rainbow hat at reduced odds on the wheel.
+- **Hats:** compact (brims 2-3 px past the head); rainbow hat and propeller cap are the wheel's rare prizes (weight 0.3 vs 1, the one table in
+  `Economy.WHEEL_*`; 12 hats: 9.43 % per ordinary hat, 2.83 % per rare one, rainbow pity on top). A save's
+  first (free) spin is random but never rare (`Progress.wheel_pool`), so wiping a save can't farm rares.
 - **Commits** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Keeping machines in sync:
   "commit and push" when finishing on one, "pull" when starting on the other.

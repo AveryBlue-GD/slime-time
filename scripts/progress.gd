@@ -2138,6 +2138,51 @@ static func spin_cost_after(taken: int) -> int:
 	return clampi(SPIN_COST + SPIN_STEP * mini(taken - 1, 20), SPIN_COST, SPIN_COST_MAX)
 
 
+## Whether hat `id` is one of the wheel's rare prizes (Economy.WHEEL_RARE).
+static func is_rare_hat(id: String) -> bool:
+	return id in Economy.WHEEL_RARE
+
+
+## How likely the wheel is to land on hat `id` next to the others (its wedge's share): the odds
+## table in Economy (WHEEL_WEIGHT / WHEEL_RARE_WEIGHT), plus Hats.PITY_STEP per missed spin
+## (`pity`) for the flowing (rainbow) hat.
+static func wheel_weight(id: String, pity := 0) -> float:
+	var w := Economy.WHEEL_RARE_WEIGHT if is_rare_hat(id) else Economy.WHEEL_WEIGHT
+	if Hats.get_hat(id).get("flows", false):
+		w += maxi(pity, 0) * Hats.PITY_STEP
+	return w
+
+
+## The hat a spin lands on: `roll` (0-1) walked along the wheel weights of `ids`, in order.
+static func wheel_pick(ids: Array, pity: int, roll: float) -> String:
+	if ids.is_empty():
+		return ""
+	var total := 0.0
+	for id: String in ids:
+		total += wheel_weight(id, pity)
+	var at := clampf(roll, 0.0, 0.999999) * total
+	for id: String in ids:
+		at -= wheel_weight(id, pity)
+		if at < 0.0:
+			return id
+	return ids[-1]
+
+
+## The hats the next spin can land on: every hat left, except on this save's first spin (spins == 0,
+## which a fresh save, RESET PROGRESS, a new epoch and a code that never spun all start at), which
+## leaves the rare ones out so wiping a save for another free spin can never win one. (Only if
+## nothing but rare hats is left on a first spin, which no real play reaches, are they in.)
+func wheel_pool() -> Array[String]:
+	var left := hats_left()
+	if spins > 0:
+		return left
+	var common: Array[String] = []
+	for id in left:
+		if not is_rare_hat(id):
+			common.append(id)
+	return common if not common.is_empty() else left
+
+
 ## One whole spin, done before the wheel starts turning: picks the hat (the rare rainbow hat gets
 ## more likely with every spin that misses it), takes the tickets, wins the hat and saves, all
 ## together, so closing the game mid-spin can't lose a payment or a prize. `roll` (0-1) picks
@@ -2145,8 +2190,7 @@ static func spin_cost_after(taken: int) -> int:
 func spin_hat(roll := -1.0) -> String:
 	if not can_spin_hats():
 		return ""
-	var left := hats_left()
-	var pick := Hats.pick(left, rainbow_pity, randf() if roll < 0.0 else roll)
+	var pick := wheel_pick(wheel_pool(), rainbow_pity, randf() if roll < 0.0 else roll)
 	_pay(spin_cost())
 	spins += 1
 	rainbow_pity = 0 if Hats.get_hat(pick).get("flows", false) else mini(rainbow_pity + 1, RAINBOW_PITY_MAX)
