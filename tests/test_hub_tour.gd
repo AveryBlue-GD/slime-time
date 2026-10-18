@@ -1,0 +1,329 @@
+extends "res://tests/suite_base.gd"
+
+## The first-visit hub tour (chunk D of docs/tutorial/design.md, scripts/hub_tour.gd): it appears only
+## when Progress.hub_tour_due() (gate on, training done, no TUTORIAL_HUB yet, or a SETTINGS replay); the
+## slime starts by the wheel; each time the player turns the room, the station now at the back is lit and
+## its line shows in the prompt box (with the use key: F / X / TAP JUMP); the turn-back hint shows once;
+## a full turn ends at the archway (finish_hub_tour, TUTORIAL_HUB saved); Esc / B / the SKIP pod / using
+## a station ends it at any step; the web's 8 stations (no trapdoor) too; gate off: no tour, as today.
+## An autopilot reads each line for READ_TIME seconds, turns, then walks to the archway: the tour's length.
+## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_hub_tour.gd
+
+## Seconds the autopilot spends reading each line (design.md section 6: ~3 s).
+const READ_TIME := 3.0
+
+var progress: Node
+var HubScript: GDScript
+var TourScript: GDScript
+var hub_scene: PackedScene
+var test_save := throwaway_save()
+
+
+func _initialize() -> void:
+	await process_frame
+	progress = root.get_node("Progress")
+	progress.saving_enabled = true
+	progress.save_path = test_save
+	progress.dev_tools = false
+	HubScript = load("res://scripts/hub.gd")
+	TourScript = load("res://scripts/hub_tour.gd")
+	hub_scene = load("res://scenes/hub.tscn")
+
+	await _gate_off()
+	await _full_tour()
+	await _skips()
+	await _station_ends_it()
+	await _devices()
+	await _web_and_replay()
+	await _timing()
+
+	Economy.tutorial_force = -1
+	Platform.reset_overrides()
+	progress.reset_progress()
+	_result()
+	quit(1 if failures > 0 else 0)
+
+
+## A save the tour is due for: the training done (gate on), no TUTORIAL_HUB.
+func _due_save() -> void:
+	Economy.tutorial_force = 1
+	progress.reset_progress()
+	progress.dev_tools = false
+	progress.tutorial_seen = progress.TUTORIAL_MOVE | progress.TUTORIAL_LEAP | progress.TUTORIAL_TRAINING
+	progress.training_skipped = false
+	HubScript.return_to = "settings"  # (the tour ignores it: it starts at the archway)
+
+
+func _open() -> Node2D:
+	var hub: Node2D = hub_scene.instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	await _physics_frames(2)
+	return hub
+
+
+func _press(action: String) -> void:
+	Input.action_press(action)
+	await _physics_frames(2)
+	Input.action_release(action)
+	await _physics_frames(1)
+
+
+## Hits the wheel and waits until the room is still again.
+func _turn(hub: Node2D, back := false) -> void:
+	if back:
+		Input.action_press("move_left")
+	await _press("interact")
+	if back:
+		Input.action_release("move_left")
+	for i in 120:
+		if not hub.turning:
+			break
+		await physics_frame
+	await _physics_frames(2)
+
+
+func _close(hub: Node2D) -> void:
+	current_scene = null
+	hub.free()
+	await _physics_frames(2)
+
+
+# --- Gate off (and gate on but not due): no tour, the hub as today
+func _gate_off() -> void:
+	Economy.tutorial_force = 0
+	progress.reset_progress()
+	progress.tutorial_seen = progress.TUTORIAL_TRAINING  # (only a gate-on build writes it; off, nothing is due)
+	HubScript.return_to = ""
+	var hub := await _open()
+	_check(hub.tour == null and hub.slime.position == HubScript.START and hub.near.is_empty() and not hub.prompt.visible,
+		"gate off: no tour; the slime starts at START with nothing to use, as today")
+	hub.slime.position = hub.rotor.position + Vector2(0, 8)
+	await _physics_frames(2)
+	_check(hub.prompt_name.text == "ROTATE" and hub.prompt_key.text == "", "gate off: the wheel's prompt is ROTATE, as today")
+	await _turn(hub)
+	_check(hub.prompt_name.text == "ROTATE" and hub.back_station().id == "maps", "gate off: a turn brings MAP TABLE to the back; still ROTATE")
+	await _close(hub)
+	Economy.tutorial_force = 1
+	progress.tutorial_seen = progress.TUTORIAL_TRAINING | progress.TUTORIAL_HUB
+	hub = await _open()
+	_check(hub.tour == null, "gate on, the tour already seen: no tour")
+	await _close(hub)
+	progress.tutorial_seen = progress.TUTORIAL_TRAINING
+	progress.dev_tools = true
+	hub = await _open()
+	_check(hub.tour == null, "gate on, dev mode: no tour")
+	await _close(hub)
+	progress.dev_tools = false
+
+
+# --- A full turn of the room, one line per station, ending at the archway
+func _full_tour() -> void:
+	await _due_save()
+	var hub := await _open()
+	var tour: Node = hub.tour
+	_check(tour != null and hub.back_station().id == "story", "due: the tour is there, the archway at the back")
+	_check(hub.near.get("id", "") == "rotor" and hub.slime.position == hub.rotor.position + TourScript.SPAWN_FROM_WHEEL,
+		"...the slime starts next to the wheel")
+	_check(hub.prompt_name.text == "HOME. IT TURNS. HIT THE WHEEL." and hub.prompt_key.text == "F" and hub.prompt.visible,
+		"...the prompt box says HOME. IT TURNS. HIT THE WHEEL. F")
+	_check(tour.skip_pod.visible and tour.skip_label.text == "SKIP" and tour.skip_key.text == "ESC", "...with a SKIP ESC pod top right")
+	var pod := Rect2(tour.skip_pod.position, tour.skip_pod.size)
+	_check(pod.end.x == 320 - UIKit.HUD_EDGE and pod.position.y == UIKit.HUD_EDGE and pod.size.y == UIKit.POD_H,
+		"...a 14 px pod HUD_EDGE from the corner (%s)" % pod)
+	var heard: Array = []
+	hub.room_turned.connect(func(id: String, _dir: int) -> void: heard.append(id))
+	var expected := {
+		maps = "MAPS OF EVERY LEVEL YOU SMEARED.", upgrades = "COINS GO IN. STRONGER GOO COMES OUT.",
+		quit = "THE TRAPDOOR. FOR BEDTIME.", coins = "THE PRACTICE COIN WAS FAKE. SORRY.",
+		random = "LOCKED. BEAT ALL %d LEVELS FIRST." % Levels.COUNT, settings = "SOUND, KEYS, FOG. THE BORING SIGN.",
+		wheel = "SPIN FOR HATS. THE FIRST IS FREE.", wardrobe = "SKINS, HATS, TRAILS. DRY UP IN STYLE.",
+	}
+	var widest := 0
+	for i in range(1, hub.stations.size()):
+		await _turn(hub)
+		var id: String = hub.back_station().id
+		var want: String = expected.get(id, "?")
+		widest = maxi(widest, UIKit.text_w(want))
+		var station: Dictionary = hub._station(id)
+		var lit: bool = station.sprite.self_modulate == Color(1.25, 1.25, 1.25) \
+			or (id == "random" and station.pool.modulate.a > HubScript.POOLS[id].a * 1.3)  # (the locked portal: its pool only)
+		_check(heard.back() == id and hub.prompt_name.text == want and hub.prompt_key.text == "F" and lit and not tour.done,
+			"turn %d: room_turned(%s); %s F; the station lit" % [i, id, hub.prompt_name.text])
+		if i == 2:
+			_check(not tour.hint_on, "...no turn-back hint yet")
+			await _wait_seconds(TourScript.HINT_DELAY + 0.1)
+			_check(tour.hint_on and hub.prompt_name.text == "HOLD A TO TURN IT BACK." and hub.prompt_key.text == "F",
+				"after %.0f s at turn 2: %s F (once)" % [TourScript.HINT_DELAY, hub.prompt_name.text])
+	_check(widest <= 192 and hub.prompt.size.x <= 320 - 2 * UIKit.EDGE, "every line fits its 192 px budget (widest %d px)" % widest)
+	_check(not progress.has_seen_tutorial(progress.TUTORIAL_HUB), "...nothing saved before the end")
+	await _turn(hub)
+	_check(hub.back_station().id == "story" and tour.done and progress.has_seen_tutorial(progress.TUTORIAL_HUB) and not progress.hub_tour_due(),
+		"a full turn ends at the archway: TUTORIAL_HUB saved, no longer due")
+	_check(hub.prompt_name.text == "THE WAY UP. WALK IN." and hub.prompt_key.text == "" and not tour._layer.visible,
+		"...THE WAY UP. WALK IN. (no key); the SKIP pod gone")
+	_check(_saved_bits() & progress.TUTORIAL_HUB != 0, "...written to the save")
+	await _wait_seconds(TourScript.HINT_DELAY + 0.5)
+	_check(hub.prompt_name.text == "THE WAY UP. WALK IN.", "...the last line stays")
+	await _turn(hub)
+	_check(tour.over and hub.prompt_name.text == "ROTATE", "turning on past the end: the hub's own ROTATE again")
+	_check(not tour.back_pressed(), "after the tour, Esc / B are the hub's again (to the title, as always)")
+	await _close(hub)
+
+
+# --- Skip at every step: Esc, B, or a tap on the SKIP pod
+func _skips() -> void:
+	var ways := ["menu", "ui_cancel", "touch"]
+	for step in 9:
+		await _due_save()
+		var hub := await _open()
+		var tour: Node = hub.tour
+		for i in step:
+			await _turn(hub)
+		var how: String = ways[step % ways.size()]
+		if how == "touch":
+			var at: Vector2 = Rect2(tour.skip_pod.position, tour.skip_pod.size).get_center()
+			_send_touch(0, at, true)
+			await _physics_frames(2)
+			_send_touch(0, at, false)
+			await _physics_frames(2)
+		else:
+			await _press(how)
+		var saved: bool = progress.has_seen_tutorial(progress.TUTORIAL_HUB)
+		_check(tour.over and tour.skipped and saved and not hub.slime.frozen and not tour._layer.visible
+			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB != 0,
+			"skip after %d turns (%s): over, finish_hub_tour saved HUB, still in the hub, ROTATE again" % [step, how])
+		await _close(hub)
+
+
+# --- Using a station ends the tour quietly
+func _station_ends_it() -> void:
+	await _due_save()
+	var hub := await _open()
+	var tour: Node = hub.tour
+	await _turn(hub)
+	var bag: Dictionary = hub._station("coins")
+	hub.slime.position = bag.sprite.position + Vector2(0, -14)
+	await _physics_frames(3)
+	_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "COIN BAG", "away from the wheel: the station's own prompt (COIN BAG)")
+	await _press("interact")
+	_check(hub.coin_board.visible and tour.over and not tour.skipped and progress.has_seen_tutorial(progress.TUTORIAL_HUB),
+		"using a station (the coin bag) ends the tour quietly, saved")
+	await _close(hub)
+
+
+# --- Pad and touch: the right glyphs (Platform seam)
+func _devices() -> void:
+	await _due_save()
+	var hub := await _open()
+	var tour: Node = hub.tour
+	Platform.last_input = Platform.INPUT_PAD
+	await _physics_frames(3)
+	_check(hub.prompt_key.text == "X" and tour.skip_key.text == "B", "pad: the line's key is X, SKIP B")
+	await _turn(hub)
+	await _turn(hub)
+	await _wait_seconds(TourScript.HINT_DELAY + 0.1)
+	_check(hub.prompt_name.text == "HOLD LEFT TO TURN IT BACK.", "pad: HOLD LEFT TO TURN IT BACK.")
+	Platform.last_input = Platform.INPUT_KEYS
+	hub._touch_controls.visible = true
+	await _physics_frames(3)
+	_check(hub.prompt_key.text == "TAP JUMP" and not tour.skip_key.visible, "touch: TAP JUMP; SKIP alone (tap it)")
+	var rect: Rect2 = tour.skip_rect()
+	_check(rect.size.x >= UIKit.TOUCH_MIN and rect.size.y >= UIKit.TOUCH_MIN, "touch: SKIP's tap area is at least %d px (%s)" % [UIKit.TOUCH_MIN, rect.size])
+	hub._touch_controls.visible = false
+	await _turn(hub, true)
+	_check(hub.back_station().id == "maps" and hub.prompt_name.text == "MAPS OF EVERY LEVEL YOU SMEARED.", "holding left turns back: the line follows (MAP TABLE)")
+	await _close(hub)
+
+
+# --- The web's 8 stations (no trapdoor); a SETTINGS replay writes nothing
+func _web_and_replay() -> void:
+	await _due_save()
+	Platform.override = "web"
+	var hub := await _open()
+	var tour: Node = hub.tour
+	var ids: Array = []
+	for i in hub.stations.size():
+		await _turn(hub)
+		ids.append(hub.back_station().id)
+	_check(hub.stations.size() == 8 and not "quit" in ids and tour.done and ids.back() == "story",
+		"web (no trapdoor): 8 turns end at the archway (%s)" % ", ".join(ids))
+	await _close(hub)
+	Platform.override = ""
+
+	progress.tutorial_seen = progress.TUTORIAL_TRAINING | progress.TUTORIAL_HUB
+	progress.save_progress()
+	progress.tour_replay = true
+	progress.training_skipped = true
+	hub = await _open()
+	_check(hub.tour != null and hub.prompt_name.text == "HOME. IT TURNS. HIT THE WHEEL.", "a SETTINGS replay: the tour again")
+	for i in 4:
+		await _turn(hub)
+	_check(hub.prompt_name.text == "COINS STILL HIDING IN EACH LEVEL.", "...training skipped: the coin bag's plain line")
+	var before := FileAccess.get_file_as_string(test_save)
+	await _press("menu")
+	_check(hub.tour.over and not progress.tour_replay and FileAccess.get_file_as_string(test_save) == before,
+		"...skipped: nothing written")
+	await _close(hub)
+
+
+# --- The autopilot: read each line, turn, then walk into the archway
+func _timing() -> void:
+	await _due_save()
+	var hub := await _open()
+	var tour: Node = hub.tour
+	var start := Time.get_ticks_msec()
+	var frames := 0
+	while not tour.done:
+		await _wait_seconds(READ_TIME)
+		frames += int(READ_TIME * 60)
+		var before := Engine.get_physics_frames()
+		await _turn(hub)
+		frames += Engine.get_physics_frames() - before
+		if frames > 60 * 120:
+			break
+	await _wait_seconds(READ_TIME)  # (THE WAY UP. WALK IN.)
+	frames += int(READ_TIME * 60)
+	var walk_from := Engine.get_physics_frames()
+	await _walk(hub, [hub.rotor.position + Vector2(-22, 8), hub.rotor.position + Vector2(-22, -40), hub._station("story").sprite.position + Vector2(0, 16)])
+	var reached: bool = hub.near.get("id", "") == "story"
+	frames += Engine.get_physics_frames() - walk_from
+	var seconds := frames / 60.0
+	print("hub tour: %.1f s (reading %.1f s a line, %d stations, the walk to the archway %.1f s; %d ms real)" % [seconds, READ_TIME,
+		hub.stations.size(), (Engine.get_physics_frames() - walk_from) / 60.0, Time.get_ticks_msec() - start])
+	_check(tour.done and reached and hub.prompt_name.text.begins_with("STORY - LEVEL 1"), "the autopilot ends at the archway: STORY - LEVEL 1")
+	_check(seconds >= 35.0 and seconds <= 50.0, "the tour takes %.1f s (target 35-50 s, upper bound 50)" % seconds)
+	await _close(hub)
+
+
+## Glides the slime through `points` (like a player with the arrow keys) until a station is in reach of
+## the last one's or 10 s pass.
+func _walk(hub: Node2D, points: Array) -> void:
+	var dirs := {move_left = Vector2.LEFT, move_right = Vector2.RIGHT, move_up = Vector2.UP, move_down = Vector2.DOWN}
+	for i in 600:
+		if hub.near.get("id", "") == "story" or points.is_empty():
+			break
+		var to: Vector2 = points[0] - hub.slime.position
+		if to.length() < 4.0:
+			points.pop_front()
+			continue
+		for action: String in dirs:
+			var along: float = to.dot(dirs[action])
+			if along > 2.0:
+				Input.action_press(action)
+			else:
+				Input.action_release(action)
+		await physics_frame
+	for action: String in dirs:
+		Input.action_release(action)
+	await _physics_frames(2)
+
+
+func _saved_bits() -> int:
+	var cfg := ConfigFile.new()
+	if cfg.load(test_save) != OK:
+		return 0
+	for section in cfg.get_sections():
+		if cfg.has_section_key(section, "tutorial_seen"):
+			return int(cfg.get_value(section, "tutorial_seen"))
+	return 0

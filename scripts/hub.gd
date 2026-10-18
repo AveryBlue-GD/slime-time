@@ -121,6 +121,14 @@ const IDLE_ANIMS := {
 ## The station used last: coming back turns the room to face it, with the slime in front of it.
 static var return_to := ""
 
+const HubTour := preload("res://scripts/hub_tour.gd")
+## The room came to rest after a turn: the station now at the back and the way it turned (1 = clockwise,
+## -1 = back). The first-visit tour (scripts/hub_tour.gd) listens.
+signal room_turned(back_id: String, direction: int)
+## The first-visit tour (docs/tutorial/design.md section 5), only while Progress.hub_tour_due(); else null.
+var tour: Node = null
+var _turn_dir := 1
+
 var slime: Slime
 var hat: Hat
 ## Each: {id, name, sprite, body, size, frames, flat, view, flipped}; index = place in the ring.
@@ -205,10 +213,20 @@ const NOTICE_MIN_PAD := UIKit.GAP_M + 1
 
 
 func _ready() -> void:
+	var tour_due: bool = Progress.hub_tour_due()
+	if tour_due:
+		return_to = ""  # (the tour starts with the archway at the back)
 	_build_room()
 	_build_stations()
 	_spawn_slime()
+	if tour_due:
+		slime.position = rotor.position + HubTour.SPAWN_FROM_WHEEL  # next to the wheel
+		slime.reset_physics_interpolation()
 	_build_ui()
+	if tour_due:
+		tour = HubTour.new()
+		add_child(tour)  # (after the touch controls: a tap on its SKIP pod reaches it first)
+		tour.setup(self)
 	_place_all()
 	_fit_tree_notice()
 	_update_near()
@@ -1229,6 +1247,10 @@ func _physics_process(delta: float) -> void:
 				or (touch and Input.is_action_just_pressed("jump")):
 			close_coin_board()
 		return
+	if tour != null and not slime.frozen and (Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel")) \
+			and tour.back_pressed():
+		_sfx("click", 0.8)  # (Esc / B skips the tour first, and stays in the hub)
+		return
 	if Input.is_action_just_pressed("menu") and not slime.frozen:
 		_sfx("click")
 		slime.frozen = true
@@ -1243,6 +1265,7 @@ func _physics_process(delta: float) -> void:
 			turning = false
 			turn = wrapf(_turn_to, -PI, PI)
 			_place_all()
+			room_turned.emit(back_station().id, _turn_dir)
 	_update_near()
 	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
 	# such key, so right next to one JUMP uses it instead of leaping.
@@ -1263,7 +1286,7 @@ func _process(delta: float) -> void:
 			_play_idle_anims(station, delta)
 		if station.frames > 1:
 			_set_frame(station, _frame_of(station))
-		var lit: bool = station == near
+		var lit: bool = station == near or (tour != null and station.id == tour.lit_id())
 		if station.pool:
 			var flicker := 1.0
 			if station.id in FLICKER and not Progress.reduce_motion:
@@ -1285,6 +1308,7 @@ func turn_room(direction: int) -> void:
 	_turn_from = turn
 	_turn_to = turn - step * direction
 	_turn_t = 0.0
+	_turn_dir = direction
 	near = {}
 	prompt.visible = false
 	_sfx("squish", 0.7)
@@ -1445,9 +1469,12 @@ func _show_prompt(note := "") -> void:
 	if near.is_empty():
 		return
 	var price := false
-	prompt_name.text = near.name
+	var line: String = tour.line_for(near.id) if tour != null and note == "" else ""
+	prompt_name.text = near.name if line == "" else line
 	if note != "":
 		prompt_key.text = note
+	elif line != "":
+		prompt_key.text = tour.key_text()  # (the tour's line by the wheel: the key that turns the room)
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
 	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
@@ -1482,6 +1509,11 @@ func _show_prompt(note := "") -> void:
 	prompt.position = Vector2(roundf((320.0 - size.x) / 2.0), bottom - size.y)
 
 
+## The station at the back of the room now (facing you across it).
+func back_station() -> Dictionary:
+	return stations[posmod(roundi(-turn / step), stations.size())]
+
+
 func _station(id: String) -> Dictionary:
 	for station in stations:
 		if station.id == id:
@@ -1491,6 +1523,8 @@ func _station(id: String) -> Dictionary:
 
 ## Uses a station: opens its screen, or says why it can't.
 func _use(station: Dictionary) -> void:
+	if tour != null:
+		tour.station_used(station.id)
 	match station.id:
 		"story":
 			_leave(station, "res://scenes/level_select.tscn")
