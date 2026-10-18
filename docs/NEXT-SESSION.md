@@ -40,6 +40,14 @@ Both together: `./tools/play.sh --dev --coincatch --softbounce`. To keep one for
 - The disabled ticket workshop (`WORKSHOP_ENABLED = false`) and Descent (`DESCENT_ENABLED = false`) stay behind flags.
 
 ## How the owner likes to work
+- **English only (owner, 2026-10-18):** game changes are made and checked in English only. Don't translate new or
+  changed strings and don't fix layouts for the other 17 languages; they fall back to English for new text. Only when
+  the owner asks to "bring the other languages in line" do the catch-up (steps in `docs/i18n/plan.md`, English-only
+  mode switch in the i18n tests). Still wrap new text in `Loc.t` / `Loc.n` with `# i18n:` hints so the catch-up works.
+  After every text/UI change, still run `./tools/i18n_capture.sh --gate` (English strict, other languages = warnings)
+  and add a row to `docs/i18n/pending.md` (change, strings, warnings), so the catch-up is a known list.
+  Exceptions: changes without text need no language work; a request that says "all languages" is done in every
+  language right away (translations + capture review for that change).
 - "launch" = `./tools/play.sh` (REAL save); "launch in dev mode" = `./tools/play.sh --dev`; "story mode" =
   `--story`; "autoplay" = `--autoplay [--speed=N]`. Run launches in the background and close the previous game first
   (`pkill -f "Godot.app/Contents/MacOS/Godot.*--unlock-all"` closes only dev launches; a plain launch has no flags, so
