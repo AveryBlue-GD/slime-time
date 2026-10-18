@@ -25,6 +25,8 @@ extends "res://tests/suite_base.gd"
 ##   (48, 167) 224x10, view BACK 40x13).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_i18n_levels_layout.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)

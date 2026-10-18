@@ -133,7 +133,9 @@ func _initialize() -> void:
 	print("  budget report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
 		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
-		_check(failing.is_empty(), "every translation fits its width budget in every locale (%d open%s)" % [failing.size(),
+		# (English-only mode, tests/i18n_mode.gd: the open ones are non-English by construction - English's own are
+		# "acceptable" - so they are reported in the list above and docs/i18n/fit-report.md, not failed)
+		_check_locale(failing.is_empty(), "every translation fits its width budget in every locale (%d open%s)" % [failing.size(),
 			"" if REPORT_ONLY.is_empty() else ", reported only: " + ", ".join(REPORT_ONLY)])
 	_extractor_check()
 	_result()
@@ -198,11 +200,11 @@ func _extractor_check() -> void:
 	var script := ProjectSettings.globalize_path("res://tools/i18n_extract.py")
 	for python: String in ["python3", "python"]:
 		var output: Array = []
-		var code := OS.execute(python, [script, "--check"], output, true)
+		var code := OS.execute(python, [script, "--check"] + (["--partial"] if I18nMode.ENGLISH_ONLY else []), output, true)
 		if code == -1 or (code != 0 and not "i18n check" in "".join(output)):
 			continue  # no such interpreter
 		var text := "".join(output).strip_edges()
-		_check(code == 0, "tools/i18n_extract.py --check: %s" % text.get_slice("\n", text.get_slice_count("\n") - 1))
+		_check(code == 0, "tools/i18n_extract.py --check%s: %s" % [" --partial (English-only mode)" if I18nMode.ENGLISH_ONLY else "", text.get_slice("\n", text.get_slice_count("\n") - 1)])
 		if code != 0:
 			print(text)
 		return

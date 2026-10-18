@@ -30,6 +30,8 @@ extends "res://tests/suite_base.gd"
 ## button's icon side swap in a right-to-left layout.
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_i18n_screens.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const ENFORCE := true
 ## Locales whose findings are reported but do not fail the suite (none since chunk I).
@@ -96,7 +98,8 @@ func _initialize() -> void:
 	Report.write("screens", issues, {
 		states = "%d screen / overlay / HUD states per locale" % states_seen.size(),
 		deliberate_widths = "buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): " + ", ".join(counts),
-		enforced = "every locale" if REPORT_ONLY.is_empty() else "every locale but %s" % ", ".join(REPORT_ONLY),
+		enforced = ("every locale" if REPORT_ONLY.is_empty() else "every locale but %s" % ", ".join(REPORT_ONLY))
+			+ (" (English-only mode: English fails, the other locales are reported)" if I18nMode.ENGLISH_ONLY else ""),
 		measured = "every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size",
 		not_measured = "draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell",
 	})
@@ -107,7 +110,11 @@ func _initialize() -> void:
 	print("  screens report: %d open, %d accepted -> docs/i18n/fit-report.md" % [open.size(), issues.size() - open.size()])
 	if ENFORCE:
 		var failing := open.filter(func(i: Dictionary) -> bool: return not i.locale in REPORT_ONLY)
-		_check(failing.is_empty(), "every text fits its box in every locale (%d open%s)" % [failing.size(),
+		# English-only mode (tests/i18n_mode.gd): English's own findings fail, the other locales' are reported (list + report)
+		var english := failing.filter(func(i: Dictionary) -> bool: return i.locale == "en")
+		var others := failing.filter(func(i: Dictionary) -> bool: return i.locale != "en")
+		_check(english.is_empty(), "every English text fits its box (%d open)" % english.size())
+		_check_locale(others.is_empty(), "every text fits its box in every locale (%d open%s)" % [failing.size(),
 			"" if REPORT_ONLY.is_empty() else ", reported only: " + ", ".join(REPORT_ONLY)])
 		if not failing.is_empty():
 			for i: Dictionary in failing.slice(0, 20):

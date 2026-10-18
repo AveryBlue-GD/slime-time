@@ -12,6 +12,10 @@ extends "res://tests/suite_base.gd"
 ## - gate on, the real Language autoload with the real catalogs returns each translation, and English for
 ##   anything untranslated or fuzzy (an empty msgstr never blanks a label).
 ## Locales listed in COMPLETE_LOCALES must have every entry translated (chunk H adds each finished one).
+## English-only mode (tests/i18n_mode.gd, on): what only says "a .po is behind the English" is REPORTED, not failed: missing /
+## extra / changed-English entries, plural form counts, untranslated or fuzzy entries (COMPLETE_LOCALES), and the text problems
+## of a fuzzy entry (its old translation against the new English). The files' headers, Godot loading them, the plural rules,
+## the text problems of every up-to-date translation and the fall-back to English at run time stay enforced.
 ## The deeper text checks (NFC, ALL CAPS, Turkish casing, code completeness) are in
 ## `python3 tools/i18n_extract.py --check`; `--self-test` tests the extractor itself.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 60000 -s res://tests/test_i18n_catalog.gd
@@ -122,6 +126,7 @@ func _check_file(code: String, po: Dictionary, template: Dictionary) -> void:
 	var wrong: Array[String] = []
 	var bad_forms: Array[String] = []
 	var bad_text: Array[String] = []
+	var stale_text: Array[String] = []
 	var untranslated := 0
 	for ctx: String in template.entries:
 		var want: Dictionary = template.entries[ctx]
@@ -139,19 +144,21 @@ func _check_file(code: String, po: Dictionary, template: Dictionary) -> void:
 		for k in got.msgstr.size():
 			var problem := _text_problem(code, want, k, got.msgstr[k])
 			if problem != "":
-				bad_text.append("%s[%d]: %s" % [ctx, k, problem])
+				(stale_text if got.fuzzy else bad_text).append("%s[%d]: %s" % [ctx, k, problem])
 	var extra: Array[String] = []
 	for ctx: String in po.entries:
 		if not template.entries.has(ctx):
 			extra.append(ctx)
-	_check(missing.is_empty(), tag + ": every template entry is there" + _list(missing))
-	_check(wrong.is_empty(), tag + ": same English text as the template" + _list(wrong))
-	_check(extra.is_empty(), tag + ": no entry the template lacks" + _list(extra))
-	_check(bad_forms.is_empty(), tag + ": %d plural forms per plural entry" % nplurals + _list(bad_forms))
+	_check_locale(missing.is_empty(), tag + ": every template entry is there" + _list(missing), code)
+	_check_locale(wrong.is_empty(), tag + ": same English text as the template" + _list(wrong), code)
+	_check_locale(extra.is_empty(), tag + ": no entry the template lacks" + _list(extra), code)
+	_check_locale(bad_forms.is_empty(), tag + ": %d plural forms per plural entry" % nplurals + _list(bad_forms), code)
 	_check(bad_text.is_empty(), tag + ": translations keep the placeholders, no printf, within the line budget"
 		+ _list(bad_text))
+	_check_locale(stale_text.is_empty(), tag + ": fuzzy (changed-English) entries keep placeholders, no printf, line budget"
+		+ _list(stale_text), code)
 	if code in COMPLETE_LOCALES:
-		_check(untranslated == 0, tag + ": complete (%d untranslated or fuzzy)" % untranslated)
+		_check_locale(untranslated == 0, tag + ": complete (%d untranslated or fuzzy)" % untranslated, code)
 	else:
 		print("  note %s: %d of %d entries still untranslated" % [tag, untranslated, template.entries.size()])
 

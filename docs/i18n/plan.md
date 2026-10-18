@@ -443,3 +443,40 @@ Owner decision (section 11): mirror the layouts. Rules for screen code: [ui-rule
 - Names: **translate descriptive names** (levels, hats, upgrades, abilities, trails, papers, e.g. MOSSY MINES, BASEBALL CAP, MORE SLIME, SLIME RIFLE); **keep coined proper names** (Inkky, CHAMELEON, SLIMAKAZE and the game's name) untranslated, transliterated into the script only where the language has no Latin letters. The style guide lists which is which.
 - Spanish: **Latin-American neutral** (`es`), one Spanish only.
 - Web shell: **translate it** (chunk J), choosing the language from `navigator.language`.
+
+## English-only mode (owner decision 2026-10-18)
+
+Game changes are made in **English only**; the 17 other locales are brought in line later, only when the owner asks.
+One switch, `const ENGLISH_ONLY := true` in `tests/i18n_mode.gd`, read by every i18n suite (via `tests/suite_base.gd`),
+by `tools/i18n_capture.sh --gate` and (through the tests) by `tools/i18n_extract.py --check --partial`. Currently **ON**.
+
+**ON:** English stays fully enforced: English layout and text in `Loc`, the extractor finds every player-visible string
+wrapped (code scan), `messages.pot` up to date (run `python3 tools/i18n_extract.py` or `--merge` after a text change),
+placeholders valid in the code and in every up-to-date translation, gate-off behaviour, and the run-time fall-back (an
+untranslated, fuzzy or changed-English entry shows the English; `test_i18n_catalog.gd` checks this for every entry).
+For the 17 locales + pseudo these are **reported** (`note  (english-only, <locale>) ...`, a count at the end of the suite,
+`docs/i18n/fit-report*` for the fit / screens suites) but do not fail: missing / fuzzy / stale / untranslated entries, a `.po`
+behind the `.pot`, fit overflows, screen findings, and every assertion made while a non-English locale is set in a
+per-locale layout suite (`const I18N_PER_LOCALE := true`; `_check` / `_check_locale` in `suite_base.gd`).
+`--check --partial`: untranslated / fuzzy / stale entries and "`.po` behind the `.pot`" are notes (the `.pot`, the code
+scan, the web table and the header / text checks of up-to-date entries stay errors).
+`i18n_capture.sh --gate`: English strict; other locales' goo-ink findings and incomplete captures are warnings, printed per
+locale and written to `<out>/i18n_pending_warnings.json`.
+**OFF:** today's strict behaviour for every locale, unchanged.
+
+**Running list.** `docs/i18n/pending.md` is the catch-up list: after each text / UI change add a row (date | change | strings
+added / changed (ctx) | screens / locales with gate warnings). `python3 tools/i18n_extract.py --pending` lists, per locale,
+the entries that are new, changed (fuzzy) or untranslated.
+
+**Opt-in "all languages".** A request that says "all languages" is done in every locale at once, with the strict checks for
+that change (turn the switch OFF while working on it, fix, run everything green, and leave it ON again if other rows remain
+in `pending.md`; if the whole backlog is untranslated the strict suites will fail until the catch-up is complete).
+
+**Catch-up session** (when the owner asks):
+1. Set `ENGLISH_ONLY := false` in `tests/i18n_mode.gd`.
+2. `python3 tools/i18n_extract.py --merge` (keeps translations, marks changed ones `#, fuzzy`, adds new ones empty);
+   `python3 tools/i18n_extract.py --pending` for the list; read `docs/i18n/pending.md`.
+3. Translate the new / fuzzy entries with the localizer agents (rules: `docs/i18n/style-guide.md`), remove the `fuzzy` flags.
+4. Rerun subsets: `./tools/test_all.sh test_i18n_catalog test_i18n_fit test_i18n_screens`, then the per-locale layout suites.
+5. `./tools/i18n_capture.sh --gate`, review the shots (`docs/i18n/review/README.md`), fix text / layout until all suites
+   pass, `./tools/test_all.sh` green. Empty `pending.md`; decide whether to leave the switch OFF.

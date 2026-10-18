@@ -26,6 +26,8 @@ extends "res://tests/suite_base.gd"
 ## its normal maze, the preview cache keeps the modes apart.
 ## Throwaway save; the real save is never read or written (md5 checked).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_i18n_maps.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)

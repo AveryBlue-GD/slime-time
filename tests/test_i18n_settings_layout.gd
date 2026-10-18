@@ -22,6 +22,8 @@ extends "res://tests/suite_base.gd"
 ##   17 apart, the SAVE CODE panel (12, 14) 296x150, the RESET panel (24, 48) 272x82, ENTER (72, 84)).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_i18n_settings_layout.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)

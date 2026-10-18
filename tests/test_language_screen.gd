@@ -12,6 +12,8 @@ extends "res://tests/suite_base.gd"
 ## - Picking a language saves it ([settings] language in the throwaway save) and reloads the page in
 ##   it; Esc / B goes back to SETTINGS. The real save is never touched (throwaway_save).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_language_screen.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const SETTINGS := "res://scenes/controls.tscn"
 const PAGE := "res://scenes/language.tscn"

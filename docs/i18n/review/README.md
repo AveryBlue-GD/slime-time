@@ -52,6 +52,12 @@ captured fewer states than the suite builds. It prints "goo-ink gate: PASS" / "F
 headless suites (`./tools/test_all.sh`) check the layout rules behind it; this gate checks the rendered pixels, and
 needs a window, so it runs by hand before committing a change to text layout, fonts or Language metrics.
 
+English-only mode (`tests/i18n_mode.gd`, `ENGLISH_ONLY := true`): the gate stays strict for English; the other locales'
+findings and incomplete captures are **warnings**: a per-locale summary is printed and written to
+`<out>/i18n_pending_warnings.json` (`{"english_only": true, "warnings": {locale: {"goo_ink": [state box...], "incomplete": "shots/built"}}}`);
+copy the screens / locales into `docs/i18n/pending.md`. With the switch OFF every locale is strict. Catch-up steps:
+`docs/i18n/plan.md` "English-only mode".
+
 ## Missing-glyph check
 For every visible Label / Button with text, each character (spaces, controls and invisible bidi / joiner marks are skipped)
 is looked up with `Font.has_char` on the font the control really uses (`get_theme_font("font")`, the locale's fallback

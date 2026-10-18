@@ -7,17 +7,52 @@ extends SceneTree
 ## Named suite_base.gd (not test_*.gd) so tools/test_all.sh does not run it as a suite.
 
 const BASE_MAIN := preload("res://scenes/main.tscn")
+const I18nMode := preload("res://tests/i18n_mode.gd")
 
 var failures := 0
 ## Throwaway files this run made through throwaway_save(); _result() deletes them.
 var _temp_files: Array[String] = []
 
 
-## Prints "  ok   label" or "  FAIL label" and counts failures.
+## Non-English findings reported but not failed in English-only mode (tests/i18n_mode.gd).
+var reported := 0
+
+
+## Prints "  ok   label" or "  FAIL label" and counts failures. In English-only mode (tests/i18n_mode.gd) a suite that
+## declares `const I18N_PER_LOCALE := true` has a check that runs while a non-English locale is set (Language gate on,
+## locale not "en") REPORTED instead of failed ("  note  (english-only, de) label"); English checks stay strict.
 func _check(ok: bool, label: String) -> void:
+	var scope := _report_only_scope()
+	if not ok and scope != "":
+		print("  note  (english-only, %s) %s" % [scope, label])
+		reported += 1
+		return
 	print(("  ok   " if ok else "  FAIL ") + label)
 	if not ok:
 		failures += 1
+
+
+## Like _check, but for a finding about non-English content that is not tied to the locale set at that moment (a
+## catalog, a report after the locale loop): reported only while English-only mode is on. `locale` is for the message.
+func _check_locale(ok: bool, label: String, locale := "") -> void:
+	if not ok and I18nMode.ENGLISH_ONLY:
+		print("  note  (english-only%s) %s" % [(", " + locale) if locale != "" else "", label])
+		reported += 1
+		return
+	print(("  ok   " if ok else "  FAIL ") + label)
+	if not ok:
+		failures += 1
+
+
+## The non-English locale currently set when the running suite is per-locale and English-only mode is on, else "".
+func _report_only_scope() -> String:
+	if not I18nMode.ENGLISH_ONLY or not (get_script() as Script).get_script_constant_map().get("I18N_PER_LOCALE", false):
+		return ""
+	var language := root.get_node_or_null("Language")
+	if language == null or not language.get("active"):
+		return ""
+	var locale: String = language.get("locale")
+	return "" if locale == "en" else locale
 
 
 ## Prints the RESULT line, deletes the throwaway files. The suite then calls quit(...) itself.
@@ -28,6 +63,8 @@ func _result() -> void:
 	# A crash or a kill never gets here: tools/test_all.sh removes those files per job and sweeps dead pids at the start.
 	if DevLog.path_override == "":
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://dev_attempts_%d.log" % OS.get_process_id()))
+	if reported > 0:
+		print("english-only mode (tests/i18n_mode.gd): %d non-English findings reported, not failed" % reported)
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 
 

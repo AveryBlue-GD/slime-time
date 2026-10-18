@@ -22,6 +22,8 @@ extends "res://tests/suite_base.gd"
 ## English pinned: the HEAT icons' drawn rects, MAP_AREA, the settings columns and slider (66 px).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_r2_layout.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const Lang := preload("res://scripts/language.gd")

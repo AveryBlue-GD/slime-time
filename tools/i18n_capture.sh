@@ -2,7 +2,8 @@
 # Captures every screen / overlay / HUD state (the states of tests/test_i18n_screens.gd plus the story lines and stills of tests/capture_i18n.gd) in every locale,
 # checks every visible text for missing glyphs, and builds contact sheets (docs/i18n/review/README.md).
 # Usage: ./tools/i18n_capture.sh [--locales en,de,...|all] [--states slug,...|all] [--out DIR] [-j N] [--keep-backdrop] [--measure-boxes] [--no-sheets] [--gate]
-# --gate: exit 1 when the goo-ink check finds glyph ink on a goo band in any state of any locale, other than the
+# --gate (English-only mode on: only English is strict, other locales' findings are warnings, summarised and written to
+# <out>/i18n_pending_warnings.json): exit 1 when the goo-ink check finds glyph ink on a goo band in any state of any locale, other than the
 # accepted exceptions in tools/i18n_goo_ink_allow.txt (docs/i18n/review/README.md "Goo-ink gate"), or a locale
 # captured fewer states than the suite builds.
 # Exit 3 when the real save's md5 changed during the run (it must never be touched).
@@ -61,9 +62,12 @@ printf '%s\n' ${locales//,/ } | xargs -P "$jobs" -I{} "$0" --one {} --out "$out"
 python3 -I "$root/tools/i18n_contact_sheet.py" merge --out "$out" --locales "$locales"
 [ "$sheets" = 1 ] && python3 -I "$root/tools/i18n_contact_sheet.py" sheets --out "$out" --locales "$locales"
 status=0
-python3 -I - "$out" "$root/tools/i18n_goo_ink_allow.txt" "$gate" "$states" ${locales//,/ } <<'PY' || status=1
+# English-only mode (tests/i18n_mode.gd ENGLISH_ONLY): English stays strict, the other locales' gate findings are warnings.
+english_only=0
+grep -Eq '^const ENGLISH_ONLY *:= *true' "$root/tests/i18n_mode.gd" && english_only=1
+python3 -I - "$out" "$root/tools/i18n_goo_ink_allow.txt" "$gate" "$states" "$english_only" ${locales//,/ } <<'PY' || status=1
 import json, os, sys
-out, allow_path, gate, states, locales = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4], sys.argv[5:]
+out, allow_path, gate, states, english_only, locales = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4], sys.argv[5] == "1", sys.argv[6:]
 allow = set()
 if os.path.exists(allow_path):
     for line in open(allow_path, encoding="utf-8"):
@@ -85,12 +89,28 @@ for l in locales:
         short.append("%s %d/%d" % (l, shots, built))
 print("goo-ink check (glyph ink px on goo / in band rows): " + (", ".join(bad) if bad else "0 in every locale"))
 if gate:
+    def strict(item):  # English always; every locale when the switch is off
+        return not english_only or item.split()[0] == "en"
+    fails = [u for u in unexpected if strict(u)] + [x for x in short if strict(x)]
+    warns = {}
     for u in unexpected:
-        print("  goo-ink gate: " + u)
-    if short:
-        print("  goo-ink gate: incomplete captures (rerun these locales): " + ", ".join(short))
-    print("goo-ink gate: " + ("FAIL" if unexpected or short else "PASS"))
-    sys.exit(1 if unexpected or short else 0)
+        if not strict(u):
+            warns.setdefault(u.split()[0], {"goo_ink": [], "incomplete": ""})["goo_ink"].append(" ".join(u.split()[1:]))
+    for x in short:
+        if not strict(x):
+            warns.setdefault(x.split()[0], {"goo_ink": [], "incomplete": ""})["incomplete"] = x.split()[1]
+    for u in unexpected:
+        if strict(u):
+            print("  goo-ink gate: " + u)
+    if [x for x in short if strict(x)]:
+        print("  goo-ink gate: incomplete captures (rerun these locales): " + ", ".join(x for x in short if strict(x)))
+    if english_only:
+        json.dump({"english_only": True, "warnings": warns}, open(os.path.join(out, "i18n_pending_warnings.json"), "w"), indent=1, sort_keys=True)
+        print("english-only mode: %d locale(s) with gate warnings (not failures) -> %s" % (len(warns), os.path.join(out, "i18n_pending_warnings.json")))
+        for l, w in sorted(warns.items()):
+            print("  warn %-6s %d goo-ink box(es)%s" % (l, len(w["goo_ink"]), ", incomplete capture " + w["incomplete"] if w["incomplete"] else ""))
+    print("goo-ink gate: " + ("FAIL" if fails else "PASS"))
+    sys.exit(1 if fails else 0)
 PY
 if [ -n "$save" ]; then
     after=""; [ -f "$save" ] && after="$(md5of "$save")"

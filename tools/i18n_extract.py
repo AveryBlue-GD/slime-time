@@ -14,6 +14,8 @@ Usage (from the repo root or anywhere):
                                              entries, so the English shows until a translator checks it);
                                              entries whose key left the code move to the end as `#~` obsolete
                                              (revived if the key comes back with the same text).
+  python3 tools/i18n_extract.py --pending    changes nothing; lists per locale the entries the catch-up session must do
+                                             (new, changed English / fuzzy, untranslated) - docs/i18n/pending.md.
   python3 tools/i18n_extract.py --check      changes nothing; exits 1 on any error:
                                              - messages.pot is out of date with the code, or a .po is not merged;
                                              - bad call sites, a printf format (%d, %s, %.2f, %%) in a msgid,
@@ -27,8 +29,12 @@ Usage (from the repo root or anywhere):
                                              - code completeness: string literals in scripts/ that look like
                                                player-visible English (a run of 2+ capitals, or a capitalized
                                                sentence) outside Loc calls, minus the dev allowlist.
-           --partial                         with --check: untranslated / fuzzy entries are only counted, not
-                                             errors (while chunk H is translating).
+           --partial                         with --check: untranslated / fuzzy / stale entries (English changed
+                                             since the last --merge: new, changed, removed) and a .po that is
+                                             behind messages.pot are notes, not errors; the .pot, the code scan,
+                                             the web table and the header / text checks of up-to-date entries stay
+                                             strict. The tests pass it while I18N_ENGLISH_ONLY is on
+                                             (tests/i18n_mode.gd).
            --no-code-scan                    with --check: skip the code completeness scan.
   python3 tools/i18n_extract.py --web-json [--out FILE]
                                              the web shell's string table (chunk J): {locale: {key: text}} for
@@ -883,7 +889,16 @@ def check_po(code: str, path: str, template: dict[str, Entry], probs: Problems, 
         probs.err(f"{rel}: header Plural-Forms is {fields.get('Plural-Forms')!r}, expected {plural_forms(code)!r}")
     canonical = write_po(po.header_comments, po.header, po.entries, po.obsolete, template=False)
     merged = merge(template, code, po)
-    if canonical != merged:  # same content as a fresh merge (string line wrapping may differ)
+    # --partial (English-only mode, tests/i18n_mode.gd): English changed since the last --merge. New, changed or gone
+    # entries make this .po "behind" the template; that is a note then, any other difference stays an error.
+    behind = partial and (
+        any(e.ctx not in template or e.msgid != template[e.ctx].msgid or e.plural != template[e.ctx].plural
+            for e in po.entries)
+        or any(c not in {e.ctx for e in po.entries} for c in template))
+    if canonical != merged and behind:
+        probs.notes.append(f"{rel}: behind messages.pot (new / changed / removed English entries; "
+                           f"run tools/i18n_extract.py --merge, then translate)")
+    elif canonical != merged:  # same content as a fresh merge (string line wrapping may differ)
         a_lines, b_lines = canonical.split("\n"), merged.split("\n")
         k = next((i for i, (x, y) in enumerate(zip(a_lines, b_lines)) if x != y), min(len(a_lines), len(b_lines)))
         got = a_lines[k] if k < len(a_lines) else "(end)"
@@ -900,8 +915,12 @@ def check_po(code: str, path: str, template: dict[str, Entry], probs: Problems, 
         where = f"{rel} [{e.ctx}]"
         if t is None:
             continue  # reported by the merge comparison
+        # --partial: a stale entry (English changed: fuzzy, or another msgid than the template) has its text problems
+        # as notes; the game shows English there until the translator has been through it.
+        stale = partial and (e.fuzzy or e.msgid != t.msgid or e.plural != t.plural)
+        err = probs.notes.append if stale else probs.err
         if e.plural is not None and len(e.msgstr) != nplurals:
-            probs.err(f"{where}: {len(e.msgstr)} plural forms, {code} has {nplurals}")
+            err(f"{where}: {len(e.msgstr)} plural forms, {code} has {nplurals}")
         if e.fuzzy:
             fuzzy += 1
         if not e.translated():
@@ -914,26 +933,26 @@ def check_po(code: str, path: str, template: dict[str, Entry], probs: Problems, 
             got = _placeholders(s)
             need = want - ({"count"} if t.plural is not None and k in single else set())
             if not (need <= got <= want):
-                probs.err(f"{where}: placeholders {sorted(got)} in {s!r}, English has {sorted(want)}")
+                err(f"{where}: placeholders {sorted(got)} in {s!r}, English has {sorted(want)}")
             if PRINTF.search(s) and not PRINTF.search(t.msgid):
-                probs.err(f"{where}: printf format in {s!r}")
+                err(f"{where}: printf format in {s!r}")
             if unicodedata.normalize("NFC", s) != s:
-                probs.err(f"{where}: not NFC normalized: {s!r} (write precomposed letters)")
+                err(f"{where}: not NFC normalized: {s!r} (write precomposed letters)")
             if t.lines is not None and s.count("\n") + 1 > t.lines:
-                probs.err(f"{where}: {s.count(chr(10)) + 1} lines, budget {t.lines}")
+                err(f"{where}: {s.count(chr(10)) + 1} lines, budget {t.lines}")
             if s.strip() != s and t.msgid.strip() == t.msgid:
-                probs.err(f"{where}: leading / trailing spaces in {s!r} (the English has none)")
+                err(f"{where}: leading / trailing spaces in {s!r} (the English has none)")
             bare = PLACEHOLDER.sub("", s)
             if code in CASED and "mixed case" not in notes:
                 lower = [ch for ch in bare if ch.isalpha() and ch != ch.upper() and ch not in "ß"]
                 if lower or "ß" in bare:
-                    probs.err(f"{where}: lowercase letters in {s!r}: the game is ALL CAPS"
+                    err(f"{where}: lowercase letters in {s!r}: the game is ALL CAPS"
                               f"{' (German: SS or ẞ for ß)' if 'ß' in bare else ''}")
             if code == "tr":
                 if "\u0307" in s:
-                    probs.err(f"{where}: combining dot U+0307 in {s!r} (wrong casing: use İ U+0130)")
+                    err(f"{where}: combining dot U+0307 in {s!r} (wrong casing: use İ U+0130)")
                 if "mixed case" not in notes and re.search(r"[A-ZÇĞİÖŞÜ][iı]|[iı][A-ZÇĞİÖŞÜ]", bare):
-                    probs.err(f"{where}: lowercase i / ı inside a capital word in {s!r} (use İ / I)")
+                    err(f"{where}: lowercase i / ı inside a capital word in {s!r} (use İ / I)")
             if code == "th" and re.search(r"[\u0E00-\u0E7F]{16,}", bare):
                 probs.notes.append(f"{where}: long Thai run without U+200B / space (it cannot wrap there)")
     if missing:
@@ -972,6 +991,39 @@ def code_scan(root: str, loose: list[tuple[str, int, str]], probs: Problems) -> 
 
 # ---------------------------------------------------------------------------------------------------------
 
+def pending(entries: dict[str, Entry], locale_dir: str, pot: str, pot_path: str) -> int:
+    """--pending: per locale, the entries the catch-up session must translate: new (missing from the .po or
+    empty), fuzzy / changed English (old translation kept), and gone (obsolete, only counted). Changes nothing."""
+    total = 0
+    for code in LOCALES:
+        path = os.path.join(locale_dir, f"{code}.po")
+        if not os.path.exists(path):
+            print(f"{code}: no .po file")
+            continue
+        with open(path, encoding="utf-8") as fh:
+            po = parse_po(fh.read(), path)
+        have = {e.ctx: e for e in po.entries}
+        rows = []
+        for ctx, t in entries.items():
+            e = have.get(ctx)
+            if e is None:
+                rows.append(("new", ctx, t.msgid))
+            elif e.msgid != t.msgid or e.plural != t.plural or e.fuzzy:
+                rows.append(("changed", ctx, t.msgid))
+            elif not e.translated():
+                rows.append(("untranslated", ctx, t.msgid))
+        gone = [e.ctx for e in po.entries if e.ctx not in entries]
+        total += len(rows)
+        print(f"{code}: {len(rows)} pending" + (f", {len(gone)} gone from the code" if gone else ""))
+        for kind, ctx, msgid in rows:
+            print(f"  {kind:12} {ctx} | {msgid!r}")
+    stale_pot = (not os.path.exists(pot_path)) or open(pot_path, encoding="utf-8").read() != pot
+    if stale_pot:
+        print("note: locale/messages.pot is out of date with the code (run tools/i18n_extract.py)")
+    print(f"i18n pending: {total} entries over {len(LOCALES)} locales")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=ROOT, help="project root (default: this repo)")
@@ -979,6 +1031,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--partial", action="store_true")
     ap.add_argument("--no-code-scan", action="store_true")
+    ap.add_argument("--pending", action="store_true")
     ap.add_argument("--web-json", action="store_true")
     ap.add_argument("--web-embed", action="store_true")
     ap.add_argument("--out", default="")
@@ -1002,6 +1055,9 @@ def main(argv: list[str]) -> int:
         else:
             sys.stdout.write(text)
         return 0
+
+    if a.pending:
+        return pending(entries, locale_dir, pot, pot_path)
 
     if a.check:
         if not os.path.exists(pot_path):
@@ -1138,6 +1194,18 @@ var g := "node_name"
         ok("NIVEL {level}/{total}" in es3 and "#~ msgctxt" not in es3, "a returning key revives its translation")
         code, out = run(root, "--merge")
         ok(read(es_path) == es3, "merge is idempotent")
+        # English-only mode: English changed, nothing merged yet. The .pot (regenerated) is the only thing that must be current.
+        gd_before = read(gd)
+        write(gd, gd_before.replace('"RANDOM MAZE")', '"RANDOM MAZES (NEW)")'))
+        code, out = run(root, "--check", "--partial", "--no-code-scan")
+        ok(code == 1 and "messages.pot is out of date" in out, "--partial: the .pot must still be current")
+        run(root)  # rewrites only messages.pot
+        code, out = run(root, "--check", "--partial", "--no-code-scan")
+        ok(code == 0 and "behind messages.pot" in out, "--partial: a .po behind the template is a note")
+        code, out = run(root, "--check", "--no-code-scan")
+        ok(code == 1 and "not in merged form" in out, "strict --check: a .po behind the template is an error")
+        write(gd, gd_before)
+        run(root, "--merge")
         # Content checks.
         def try_es(old: str, new: str) -> str:
             write(es_path, es3.replace(old, new))

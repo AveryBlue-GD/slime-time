@@ -15,6 +15,8 @@ extends "res://tests/suite_base.gd"
 ## The rendered check (glyph ink pixels in each goo box's band rows) is tools/i18n_capture.sh's goo-ink check.
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_f1_marks.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const Lang := preload("res://scripts/language.gd")

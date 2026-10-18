@@ -17,6 +17,8 @@ extends "res://tests/suite_base.gd"
 ## English pinned: the wardrobe and upgrades title / tab / pod rects, the SHOP's first price box.
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_f3a_layout.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const SCREEN := Rect2(0, 0, 320, 180)

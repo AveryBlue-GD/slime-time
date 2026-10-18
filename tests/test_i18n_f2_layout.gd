@@ -18,6 +18,8 @@ extends "res://tests/suite_base.gd"
 ## - English pinned: area name / story line / panel / banner rects as before F2 (dry-up: +3 rows).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_f2_layout.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Report := preload("res://tests/i18n_report.gd")
 const Hud := preload("res://scripts/hud.gd")

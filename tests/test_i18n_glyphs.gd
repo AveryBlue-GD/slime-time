@@ -10,6 +10,8 @@ extends "res://tests/suite_base.gd"
 ## installed (none for English), and Lang.metrics matches the real fonts.
 ## When this fails after a translation update: run python3 tools/i18n_subset_fonts.py and re-import.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 60000 -s res://tests/test_i18n_glyphs.gd
+## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
+const I18N_PER_LOCALE := true
 
 const Lang := preload("res://scripts/language.gd")
 const LOCALE_DIR := "res://locale"
