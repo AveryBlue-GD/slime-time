@@ -1238,7 +1238,7 @@ func _write(for_code := false) -> ConfigFile:
 		file.set_value("cosmetics", "paper", map_paper)
 	for key: int in medals:
 		file.set_value("medals", "level_%d" % key, medals[key])
-	for key: int in maps:
+	for key: int in ([] if for_code and dev_tools else maps.keys()):  # a dev session's in-memory maps stay out of save codes
 		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
 	if maps_hint_seen:
 		file.set_value("maps", "hint_seen", true)

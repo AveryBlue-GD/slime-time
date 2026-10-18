@@ -1815,7 +1815,7 @@ func _commit_survey() -> void:
 		return
 	if assisted or dev_toggled or progress.dev_tools:
 		return
-	progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal)
+	progress.record_survey(level, hard_mode, maze, survey_tiles, survey_moves, won, run_time, survey_goal, survey_coins)
 
 
 # ---------------------------------------------------------------- DESCENT

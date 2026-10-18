@@ -20,7 +20,7 @@ them with the brightness but apply the change to have the collected coins disapp
   revealed coins that are not collected, also on fog cells (seen through a wall). Hard maps have no coins.
 - Recording: while the test is on, dev runs (F1 / F2 ones too) record their survey into memory for the session
   only (`Game._commit_survey`); dev mode never saves (`saving_enabled` is off), and `Survey.pack` never writes
-  `seen_coins`, so no new key reaches any save. Outside dev nothing about recording changed. Dev launches still
+  `seen_coins`, so no new key reaches any save. Normal runs pass `survey_coins` too (`record_survey` gates on `map_coin_reveal_on`), so flipping the constant shows revealed coins in normal mode; saving `seen_coins` is the follow-up when shipping. Dev sessions' in-memory maps are left out of save codes. Outside dev nothing about recording changed. Dev launches still
   start with no maps (`enable_dev_mode`), so play a level first.
 
 ## How to try

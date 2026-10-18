@@ -77,10 +77,13 @@ func _test_collected_never_drawn() -> void:
 	progress.dev_tools = true
 	var dev: Array[Vector2i] = progress.map_coins(2, false)
 	_check(not cells[0] in dev and dev.size() == cells.size() - 1, "dev: the collected coin is absent, the other revealed ones are there (%d)" % dev.size())
-	var only_collected: Array[Vector2i] = [cells[0]]
 	_check(_coin_px(MapView.render(maze, survey, sizes, dev, "", "", Color.WHITE, true)) > 0
-		and _coin_px(MapView.render(maze, survey, sizes, [] as Array[Vector2i])) == 0
-		and only_collected[0] not in dev, "dev: revealed coins are drawn, nothing when none")
+		and _coin_px(MapView.render(maze, survey, sizes, [] as Array[Vector2i])) == 0, "dev: revealed coins are drawn, nothing when none")
+	# Fog cells (nothing seen): coins only with fog_coins.
+	var blank := Survey.blank(maze)
+	_check(_coin_px(MapView.render(maze, blank, sizes, dev)) == 0
+		and _coin_px(MapView.render(maze, blank, sizes, dev, "", "", Color.WHITE, true)) > 0,
+		"revealed coins on fog cells are drawn only with fog_coins")
 	progress.dev_tools = false
 	progress.maps = {}
 	progress.coins_found = {}
@@ -109,9 +112,14 @@ func _test_reveal() -> void:
 	var path: Array[Vector2i] = MazeGenerator.shortest_path(maze, maze.start, maze.goal)
 	for level in 4:
 		progress.maps = {}
+		progress.coins_found = {}  # the same coin set at every level of BRIGHTNESS
 		progress.upgrades["brightness"] = level
 		var game := await _spawn_running(1)
 		_check(game._coin_reveal and game._survey_live, "dev BRIGHTNESS %d: the reveal is on and the run records" % level)
+		var centered := true  # coin.position is its cell's center, the distance the reveal measures
+		for coin in game.coins:
+			centered = centered and coin.position == MazeGenerator.cell_center(coin.cell, TILE)
+		_check(centered and not game.coins.is_empty(), "coins sit at their cell centers")
 		await _sweep(game, path)
 		counts.append(game.survey_coins.size())
 		game.slime.position = MazeGenerator.cell_center(beside, TILE)
@@ -124,7 +132,7 @@ func _test_reveal() -> void:
 			"...the dev run's survey is in memory with its revealed coins (%d)" % survey.get("seen_coins", []).size())
 	_check(through == [false, false, true, true], "a coin behind a wall one cell over (32 px): BRIGHTNESS 2 and 3 reach it (%s)" % [through])
 	_check(counts[0] <= counts[1] and counts[1] <= counts[2] and counts[2] <= counts[3] and counts[3] > counts[0],
-		"BRIGHTNESS 0..3 along the same route reveal more coins (%s)" % [counts])
+		"BRIGHTNESS 0..3 along the same route reveal more coins (non-decreasing, more at 3 than at 0) (%s)" % [counts])
 	progress.maps = {}
 	progress.upgrades["brightness"] = 0
 	var game := await _spawn_running(1)
@@ -143,6 +151,9 @@ func _test_reveal() -> void:
 	_check(progress.maps.has(progress.survey_key(1, true)) and progress.map_coins(1, true).is_empty()
 		and progress.map_coins(1, false).size() == coins.size(), "a hard dev run records its own map (no coins), the normal one unchanged")
 	_check(FileAccess.get_md5(ProjectSettings.globalize_path(test_save)) == md5, "dev runs saved nothing (save md5 unchanged)")
+	var code_file := ConfigFile.new()
+	code_file.parse(progress._write(true).encode_to_text())
+	_check(not progress.maps.is_empty() and not code_file.has_section("maps"), "a dev session's in-memory maps stay out of save codes")
 	progress.dev_tools = false
 	progress.dev_bright = false
 
