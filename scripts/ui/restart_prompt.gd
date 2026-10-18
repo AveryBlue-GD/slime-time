@@ -3,7 +3,8 @@ extends CanvasLayer
 
 ## Pressing R mid-run asks before throwing the run away: RESTART, UPGRADES (spend coins first;
 ## the upgrades screen's PLAY button comes back to the level) or CANCEL (also Esc or R again).
-## Pauses the game while it's open.
+## Pauses the game while it's open. The SPLASHDOWN training maze opens it without UPGRADES (open(false):
+## RESTART / CANCEL; the hub and its upgrades aren't introduced yet).
 
 ## The title's top (its box is UIKit.title_h() tall: 20 in English).
 const TITLE_Y := 30.0
@@ -68,7 +69,8 @@ func _ready() -> void:
 	UIKit.mirror_root(root)  # (right-to-left languages: flipped once built, docs/ui-rules.md 10.2)
 
 
-func open() -> void:
+func open(with_upgrades := true) -> void:
+	_show_upgrades(with_upgrades)
 	visible = true
 	get_tree().paused = true
 	var hud: Node = game.get("hud") if game else null
@@ -78,6 +80,16 @@ func open() -> void:
 	buttons[0].grab_focus()
 	if _focus_lock.is_empty():  # the level's other controls can't take focus meanwhile
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
+
+
+## UPGRADES shown or left out (the panel shrinks to the buttons left; CANCEL moves up).
+func _show_upgrades(on: bool) -> void:
+	if buttons[1].visible == on:
+		return
+	buttons[1].visible = on
+	var count := 3 if on else 2
+	_panel.size.y = UIKit.PANEL_PAD * 2 + count * UIKit.button_h() + (count - 1) * UIKit.GAP_S
+	_menu.size = Vector2.ZERO  # (the box shrinks to the buttons it still shows)
 
 
 ## RESTART?'s box (its text width, shadow included) keeps GAP_L from a HUD pod beside it (closer, the pod

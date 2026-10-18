@@ -1,6 +1,6 @@
 # Tutorial design: the training maze and the first hub visit
 
-Status: **chunk A built (2026-10-18): gate, flags, save bits, the intro hand-off (section 14); chunks B-H not yet.** Gate off. Owner request, 2026-10-18: a tutorial that plays
+Status: **chunks A and B built (2026-10-18): gate, flags, save bits, the intro hand-off, the SPLASHDOWN maze (section 14); C-H in progress.** Gate off. Owner request, 2026-10-18: a tutorial that plays
 directly after the intro, a training maze showing jumping, coins and the chalice, and how drying up works, then
 talking the player into the hub to show rotating and what each station does. Research and sources:
 [research.md](research.md). The maze's name is a placeholder (**TRAINING** in code and text) until the owner
@@ -337,6 +337,19 @@ so saves stay byte-identical (`tests/test_tutorial_flow.gd`). Chunk A owns `scri
   `training_cues.gd` connects to `training_cue`, and the HUD pulse reads the same names. C calls
   `Progress.note_training_input(Progress.TUTORIAL_MOVE / TUTORIAL_LEAP)` on a real move / leap, never
   `mark_tutorial_seen` (that would write during a replay).
+- **Chunk B as built (2026-10-18):** `scripts/training.gd` (`Training`: `LAYOUT`, `FULL_METER_TILES` 90,
+  `FIRST_METER_TILES` **28** (31%, not 26: the glide-only autopilot then takes the coin at ~23.4 tiles and dries up
+  back at the fork; 26 left only ~2.6 tiles of slack for hesitation before the coin), `STRAIGHT_FROM` / `FORK` beat tiles, and
+  the run state that survives RESTART's scene reload: `Training.attempt`, `Training.coin_taken`). `game.gd` has
+  `var training`, `training_attempt`, `training_beat(name)`, `leave_training(skipped) -> String` (the pause menu's
+  SKIP TRAINING and the win row's HUB both go through it). It makes `res://scripts/training_cues.gd` (if present) a
+  child of the slime and calls its `setup(game, slime, progress)` before the first beat. Beat timing: `"start"`
+  on every attempt (deferred one frame after `_ready`, so nodes connected in `_ready` get it), then `"restart"`
+  on attempt 2 on; `"straight"`, `"fork"`, `"first_drain"` again on each attempt (once per name per attempt);
+  `"dry"` and `"chalice"` when their button row (RESTART / HUB) has just been shown. R mid-run opens
+  `RestartPrompt.open(false)` (RESTART / CANCEL). Upgrades and the ticket workshop are off in the maze, so the
+  staged dry-up is the same on a SETTINGS replay. The stub branch in `prepare_training` is gone;
+  `Progress.training_built()` stays (true) for the tests that branch on it.
 - **Hub tour (chunk D):** the hub adds its tour node when `Progress.hub_tour_due()`; at the end (archway), on a
   skip (Esc / B / SKIP) or when a station is used, it calls `Progress.finish_hub_tour()` (saves HUB unless replay).
 - **Replay (chunk E):** SETTINGS' TRAINING button calls `Progress.start_training(true)`; the maze and then the tour

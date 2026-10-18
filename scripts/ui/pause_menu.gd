@@ -3,7 +3,8 @@ extends CanvasLayer
 ## In-game pause menu (Esc): resume, restart, sound on/off, volume, quit to the title. In a
 ## randomizer maze it also shows the maze's SEED (press it to copy the number or type another
 ## one: that maze is rebuilt, the same for anyone with the seed). Runs while the tree is paused;
-## everything else in the level freezes.
+## everything else in the level freezes. In the SPLASHDOWN training maze QUIT TO HUB reads SKIP TRAINING:
+## the training ends (Progress.finish_training(true), through game.leave_training) and the hub opens.
 
 ## The button column (100 wide, 13 px buttons 3 apart) on its panel, centered under PAUSED.
 const PANEL_X := 100
@@ -170,6 +171,8 @@ func open() -> void:
 	var hud: Node = game.get("hud")
 	if hud and hud.has_method("cover_area_texts"):
 		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
+	# i18n: pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
+	buttons[3].text = Loc.t("pause.skip_training", "SKIP TRAINING") if _training() else Loc.t("pause.quit_hub", "QUIT TO HUB")
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
 	descent_note.visible = false
@@ -411,24 +414,38 @@ static func parse_seed(text: String) -> int:
 
 func _restart() -> void:
 	resume()
+	if _training():
+		get_parent().retry("pause RESTART")  # i18n: ignore (DevLog route name; the next training attempt: full meter, the coin kept)
+		return
 	DevLog.route(get_tree(), "pause RESTART", get_parent())
 	get_tree().reload_current_scene()
 
 
+## True when the menu is over the SPLASHDOWN training maze (game.gd `training`).
+func _training() -> bool:
+	return get_parent().get("training") == true
+
+
 func _quit() -> void:
-	DevLog.log_event(get_tree(), "quit to hub (pause)", get_parent())
+	var training := _training()
+	DevLog.log_event(get_tree(), "skip training (pause)" if training else "quit to hub (pause)", get_parent())
 	if get_parent().has_method("quit_descent"):
 		get_parent().quit_descent()  # DESCENT: the run is banked as it stands (see game.quit_descent)
 	var transition := get_node_or_null("/root/Transition")
+	var target := UIKit.HUB_SCENE
+	if training:
+		if transition != null and transition.busy:
+			return  # a screen change is already underway (the win row's HUB): the training ends once
+		target = get_parent().leave_training(true)
 	if transition == null or transition.busy:
 		resume()
-		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+		UIKit.go(get_tree(), target)
 		return
 	# The level stays paused under the wipe (Transition.go unpauses as it swaps the scene): nothing
 	# runs meanwhile, no win or dry-up can happen and the result buttons can't be pressed.
 	visible = false
 	_return_focus = null
-	UIKit.go(get_tree(), UIKit.HUB_SCENE)
+	UIKit.go(get_tree(), target)
 
 
 func _toggle_sound() -> void:

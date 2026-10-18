@@ -119,6 +119,10 @@ const EDGE_FOG := 2
 const BORDER_PX := Vector2(TILE * BORDER, TILE * BORDER)
 
 signal level_finished(won: bool)
+## SPLASHDOWN training maze only (Progress.MODE_TRAINING; docs/tutorial/design.md section 14): a beat of
+## the training happened (training_beat). Names: "start", "straight", "fork", "first_drain", "dry",
+## "restart", "chalice". Chunk C's training cues and the HUD pulse listen to it.
+signal training_cue(name: String)
 
 ## Story level to play (1-10). 0 = ask the Progress autoload (or 1 without it).
 @export var level := 0
@@ -129,6 +133,19 @@ signal level_finished(won: bool)
 ## where the last floor left it (+ the refill), two goo drops wait at dead ends, boons apply
 ## (`_apply_descent`), and clearing the floor opens the boon card (DescentCard); a dry-up ends the run.
 var descent := false
+## SPLASHDOWN, the first-session training maze (Progress.MODE_TRAINING, Training): the hand-made layout,
+## the attempt meter (low on attempt 1), a practice coin that is never saved, no medals / records /
+## survey / dry-up count / tickets / upgrades / workshop / first-run skin, RESTART-only dry-up row and a
+## HUB-only win row. `training_attempt` = Training.attempt for this run; `_beats` = beats emitted on it.
+var training := false
+var training_attempt := 0
+var _beats := {}
+## Seconds left of the meter's visible fill at the start of attempt 2 on (Training.FILL_TIME).
+var _meter_fill := 0.0
+## The practice coin's cell (the maze's `coin`), and the fork's forced glimmers still to come.
+var _practice_coin := Vector2i(-1, -1)
+var _fork_glimmers := 0
+var _fork_glimmer_at := 0.0
 ## The run (Progress.descent_run, shared: the game writes the floor's results into it).
 var descent_run := {}
 ## The floor's goo drops still waiting (GooDrop), and the between-floor / end-of-run card.
@@ -380,16 +397,24 @@ var _survey_done := false
 
 func _ready() -> void:
 	if level == 0 and random_seed == 0:
-		if progress and progress.mode == progress.MODE_DESCENT and not progress.descent_run.is_empty():
+		if progress and progress.mode == progress.MODE_TRAINING:
+			training = true
+		elif progress and progress.mode == progress.MODE_DESCENT and not progress.descent_run.is_empty():
 			descent = true
 			descent_run = progress.descent_run
 		elif progress and progress.mode == progress.MODE_RANDOM:
 			random_seed = progress.random_seed
 		else:
 			level = progress.current_level if progress else 1
-	hard_mode = progress.hard_mode if progress and not descent else false  # Descent: normal rules only
+	hard_mode = progress.hard_mode if progress and not descent and not training else false  # Descent, training: normal rules only
 	var config: Dictionary
-	if descent:
+	if training:
+		training_attempt = Training.begin_run()
+		config = Training.config()
+		maze = Training.build_maze()
+		_practice_coin = maze.coin
+		hud.set_level_text(Training.display_name())
+	elif descent:
 		seed_level = clampi(progress.upgrade_level("slime"), 0, Levels.max_slime_level())
 		config = Descent.floor_config(descent_run.seed, descent_run.floor, seed_level)
 		maze = _random_maze(config)
@@ -428,7 +453,7 @@ func _ready() -> void:
 	maze_seed = int(config.seed)
 	_make_goal()
 	survey_tiles.resize(maze.size.x * maze.size.y)
-	_coin_reveal = progress != null and Economy.map_coin_reveal_on(progress.dev_tools)
+	_coin_reveal = progress != null and not training and Economy.map_coin_reveal_on(progress.dev_tools)
 	_survey_cell = maze.start
 	# The slime grabs the goal when their shapes touch, a little short of its center.
 	var grab_reach: float = goal.get_node("CollisionShape2D").shape.radius + Slime.RADIUS
@@ -436,7 +461,10 @@ func _ready() -> void:
 	# Story and randomizer alike are calibrated on the real start-to-chalice route (SpawnPicker), so a
 	# perfect glide always uses `target` of the meter and the exploration allowance (meter / route =
 	# 1 / target) is the level's own, wherever the slime starts.
-	slime_cost_per_tile = config.target * 100.0 / path_tiles
+	if training:
+		slime_cost_per_tile = 100.0 / Training.FULL_METER_TILES  # the meter is set directly (Training)
+	else:
+		slime_cost_per_tile = config.target * 100.0 / path_tiles
 	if config.has("meter_tiles"):
 		# Hard story levels: the meter is set directly (Levels.hard_meter_tiles = the v4 hard meter x
 		# HARD_SLIME_MULT) and the maze's route was built to fit it (same as target / route).
@@ -446,8 +474,9 @@ func _ready() -> void:
 		# x MORE SLIME below) and the route was built to the seed's usage x that meter (Levels.random_config).
 		slime_cost_per_tile = 100.0 / Levels.RANDOM_METER_TILES
 	par_time = Levels.par_for_path(path_tiles, slime.max_speed)  # before upgrades change the speed
-	_apply_upgrades()
-	_apply_workshop()
+	if not training:  # (training plays the bare slime: its staged dry-up must not depend on the save)
+		_apply_upgrades()
+		_apply_workshop()
 	_apply_heat()
 	if descent:
 		_apply_descent()
@@ -456,7 +485,7 @@ func _ready() -> void:
 		slime_cost_per_tile = Levels.RANDOM_MAX_USAGE * 100.0 / path_tiles
 	perfect_usage = path_tiles * slime_cost_per_tile / 100.0
 	# The slime reserve, if the player chose it on the dry-up screen: a little more to spend.
-	if progress and not is_random() and not descent and progress.take_assist(level):
+	if progress and not is_random() and not descent and not training and progress.take_assist(level):
 		assisted = true
 		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
 		hud.set_assist(true)
@@ -464,7 +493,7 @@ func _ready() -> void:
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
 	if progress:
-		if not is_random() and not descent and not hard_mode:
+		if not is_random() and not descent and not hard_mode and not training:
 			equipped = progress.equip_first_run_skin(level)
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
@@ -484,13 +513,15 @@ func _ready() -> void:
 		hud.flash_message(Loc.t("result.skin_equipped", "NEW SKIN EQUIPPED: {name}", {name = Skins.display_name(equipped)}), FORCED_SKIN_NOTICE)
 
 
-	if descent:
+	if descent or training:
 		theme = config.theme
 	else:
 		theme = Themes.for_seed(random_seed) if is_random() else Themes.for_level(level)
 	wall_damage = MazeTiles.fill(floor_layer, wall_layer, maze, config.seed, config.get("tile_level", level), fillet_layer, theme)
 	MazeTiles.add_border(border_layer, bedrock_layer, maze, BORDER, BORDER + EDGE_FOG, config.seed, theme)
-	if descent:
+	if training:
+		hud.show_area_name(Training.display_name(), Training.banner_line())
+	elif descent:
 		# i18n: line under the area name, max 296px
 		hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.floor", "FLOOR {floor}", {floor = int(descent_run.floor)}))
 	else:
@@ -499,6 +530,8 @@ func _ready() -> void:
 	_build_overlays()
 	_place_coins(config.seed)
 	_count_attempt()
+	if training:
+		_setup_training()
 	if descent:
 		_place_drops(config.seed)
 		slime_remaining = clampf(float(descent_run.meter), 0.0, 100.0)
@@ -629,6 +662,8 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	if training:
+		_training_step(pos, delta)
 	if _coin_reveal and not coins.is_empty():
 		_reveal_coins(pos)
 	if not drops.is_empty():
@@ -650,7 +685,11 @@ func _physics_process(delta: float) -> void:
 		_bladder_left -= add
 		if _bladder_left <= 0.001:
 			_bladder_left = 0.0
-	hud.set_slime(slime_remaining)
+	if _meter_fill > 0.0:  # training, attempt 2 on: the full meter fills up visibly first
+		_meter_fill = maxf(_meter_fill - delta, 0.0)
+		hud.set_slime(lerpf(slime_remaining, Training.start_percent(1), _meter_fill / Training.FILL_TIME))
+	else:
+		hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
 		if wind_state == "ready":
@@ -872,7 +911,11 @@ func _spawn_glimmer() -> void:
 		hidden.append(coin)
 	if hidden.is_empty():
 		return
-	var coin: Node2D = hidden.pick_random()
+	_glimmer_at(hidden.pick_random())
+
+
+## A glimmer over `coin` (a Coin or a Descent GooDrop), in its metal.
+func _glimmer_at(coin: Node2D) -> void:
 	var glimmer := Glimmer.new()
 	glimmer.position = coin.position.round()
 	if coin is GooDrop:
@@ -1544,6 +1587,121 @@ func _second_wind() -> void:
 	DevLog.log_event(get_tree(), "second wind", self)
 
 
+# ---------------------------------------------------------------- SPLASHDOWN (training maze)
+
+## The training run's own setup (from _ready, after the coin is placed): the attempt's meter (low on
+## attempt 1, full and visibly filling from attempt 2 on), no timer pod (no par, medals or records here),
+## the training cues (chunk C's scripts/training_cues.gd, when present) and the "start" beat.
+func _setup_training() -> void:
+	slime_remaining = Training.start_percent(training_attempt)
+	if training_attempt > 1 and motion_scale() > 0.0:
+		_meter_fill = Training.FILL_TIME
+	hud.set_slime(Training.start_percent(1) if _meter_fill > 0.0 else slime_remaining)
+	var timer_pod := hud.time_label.get_parent().get_parent() as Control
+	timer_pod.visible = false
+	if ResourceLoader.exists(TRAINING_CUES_SCRIPT):
+		var cues: Node = (load(TRAINING_CUES_SCRIPT) as GDScript).new()
+		if cues.has_method("setup"):
+			cues.call("setup", self, slime, progress)
+		slime.add_child(cues)
+	_begin_training_beats.call_deferred()
+
+
+## Chunk C's training cues (a node under the slime that listens to training_cue); optional.
+const TRAINING_CUES_SCRIPT := "res://scripts/training_cues.gd"
+
+
+func _begin_training_beats() -> void:
+	if not is_inside_tree():
+		return
+	training_beat("start")
+	if training_attempt > 1:
+		training_beat("restart")
+
+
+## Emits training_cue(`beat_name`) once per name per attempt (the contract in docs/tutorial/design.md
+## section 14). Only in the training maze.
+func training_beat(beat_name: String) -> void:
+	if not training or _beats.has(beat_name):
+		return
+	_beats[beat_name] = true
+	DevLog.log_event(get_tree(), "training beat " + beat_name, self)
+	training_cue.emit(beat_name)
+
+
+## Per tick while running: the straight, the fork (two forced glimmers over the practice coin while it
+## waits) and the first drain of the meter.
+func _training_step(pos: Vector2, delta: float) -> void:
+	var tile := Vector2i((pos / TILE).floor())
+	if Training.on_straight(tile):
+		training_beat("straight")
+	if tile == Training.FORK and not _beats.has("fork"):
+		training_beat("fork")
+		_fork_glimmers = 2 if not coins.is_empty() else 0
+		_fork_glimmer_at = 0.0
+	if _fork_glimmers > 0:
+		_fork_glimmer_at -= delta
+		if _fork_glimmer_at <= 0.0:
+			_fork_glimmers -= 1
+			_fork_glimmer_at = Training.GLIMMER_REPEAT
+			if not coins.is_empty() and is_instance_valid(coins[0]):
+				_glimmer_at(coins[0])
+	if slime_remaining < Training.start_percent(training_attempt) - 0.001:
+		training_beat("first_drain")
+
+
+## The practice coin at its dead end, unless this run already picked it up (it stays found across
+## RESTART). The HUD's pods count it as one coin here; nothing of it is saved.
+func _place_practice_coin() -> void:
+	coins_here = 1
+	if not Training.coin_taken:
+		var coin := Coin.new()
+		coin.z_index = 6  # under the fog: found by exploring
+		coin.position = MazeGenerator.cell_center(_practice_coin, TILE)
+		add_child(coin)
+		coin.setup(maxi(Themes.BY_LEVEL.find(theme), 0), _practice_coin)
+		coins.append(coin)
+	_show_practice_coin(0, false)
+
+
+## The practice coin is picked up: the same show as a real coin (catch, or the fly-in), never saved.
+func _take_practice_coin(coin: Coin) -> void:
+	Training.coin_taken = true
+	if Economy.coin_catch_on():
+		_catch_coin(coin)
+		return
+	_sfx("coin", -4.0)
+	if progress and progress.jelly:
+		coin.dissolve_into(slime, Skins.shades(skin_color).light)
+	else:
+		_fly_coin_in(coin)
+	_show_practice_coin(0, true)
+
+
+## The coin pods in training: the balance plus the practice coin while it lasts, and 1 coin here.
+func _show_practice_coin(showing: int, pop: bool) -> void:
+	var found := (1 if Training.coin_taken else 0) - showing
+	hud.set_coins((progress.coins() if progress else 0) + found, found, coins_here, pop)
+
+
+## The win row's HUB: the training ends (Progress.finish_training saves its bit, not on a replay) and the
+## hub (its tour) opens.
+func _training_to_hub() -> void:
+	if _leaving():
+		return
+	DevLog.route(get_tree(), "training HUB", self)
+	UIKit.go(get_tree(), leave_training(false))
+
+
+## Ends the training run (`skipped`: the pause menu's SKIP TRAINING) and returns the scene to go to.
+func leave_training(skipped: bool) -> String:
+	Training.attempt = 1
+	Training.coin_taken = false
+	if progress:
+		return progress.finish_training(skipped)
+	return HUB_SCENE
+
+
 # ---------------------------------------------------------------- coins
 
 ## The cells holding this level's coins (Levels.coin_cells: deep dead ends first, never the start
@@ -1568,6 +1726,9 @@ static func _random_maze(config: Dictionary) -> Dictionary:
 
 ## Puts out the coins of a story level that haven't been collected yet.
 func _place_coins(maze_seed: int) -> void:
+	if training:
+		_place_practice_coin()
+		return
 	if is_random() or descent or hard_mode or progress == null:  # coins live in the normal story mazes
 		hud.set_coins(progress.coins() if progress else 0, 0, 0)
 		return
@@ -1603,6 +1764,9 @@ func _pick_up_coins(pos: Vector2) -> void:
 		if d > Coin.REACH and not (is_revealed_at(coin.position) and clear_line(pos, coin.position)):
 			continue  # MAGNET pulls only coins on revealed floor in plain sight
 		coins.erase(coin)
+		if training:
+			_take_practice_coin(coin)
+			continue
 		progress.collect_coin(level, coin.cell, assisted)
 		if assisted:
 			assisted_coins += 1
@@ -1655,6 +1819,9 @@ func _end_coin_catches() -> void:
 ## The HUD's coin pods: the balance and this level's count, less the coins still dissolving.
 func _show_coins(pop := false) -> void:
 	var showing := coin_catches.size()
+	if training:
+		_show_practice_coin(showing, pop)
+		return
 	hud.set_coins(progress.coins() - showing, progress.coins_found_in(level) + assisted_coins - showing, coins_here, pop)
 
 
@@ -1772,7 +1939,7 @@ func _refresh_attempt_pod() -> void:
 ## it would land on level 1's map), dev mode (unless the map coin reveal test is on: _commit_survey)
 ## or a test's loose game node.
 func _arm_survey() -> void:
-	_survey_live = progress != null and not is_random() and not descent and (not progress.dev_tools or _coin_reveal) \
+	_survey_live = progress != null and not is_random() and not descent and not training and (not progress.dev_tools or _coin_reveal) \
 		and _is_running_scene()
 
 
@@ -2116,6 +2283,14 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
+	if training:
+		# SPLASHDOWN's chalice: the fanfare, nothing recorded or paid, then the HUB-only row.
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		_sfx("chalice", CHALICE_VOLUME_DB)
+		# i18n: result lines, max 296px each, 1 line each (the training maze's win)
+		_finish(true, Loc.lines([Loc.t("result.chalice", "CHALICE CONSUMED!"),
+			Loc.t("result.training_won", "THE REAL MAZES ARE UP THERE.")]))
+		return
 	if descent:
 		# The floor's exit: the chalice fanfare, the floor's tickets into the pot, then the boon card.
 		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
@@ -2245,7 +2420,7 @@ func _dry_up(out_of_time := false) -> void:
 		# i18n: result title, max 296px, 1 line
 		_finish(false, Loc.t("result.dried_up_floor", "DRIED UP ON FLOOR {floor}", {floor = int(descent_run.get("floor", 1))}))
 		return
-	if progress and not is_random():
+	if progress and not is_random() and not training:
 		progress.dry_ups[level] = int(progress.dry_ups.get(level, 0)) + 1
 	# i18n: result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
 	var dried := Loc.t("result.dried_up", "DRIED UP")
@@ -2279,7 +2454,7 @@ func _finish(did_win: bool, text: String) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if not is_random() and not descent and (assisted or dev_toggled):
+		if not is_random() and not descent and not training and (assisted or dev_toggled):
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
@@ -2293,6 +2468,11 @@ func _offer_retry() -> void:
 	# RESTART has the focus: one press of SPACE / Enter / R tries the same maze again.
 	if descent:
 		_show_descent_summary()  # a dry-up ends the run: its summary (NEW RUN / HUB)
+		return
+	if training:
+		# RESTART only (no UPGRADES / MAP: the hub isn't introduced yet): the next attempt, full meter.
+		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry]], 0)
+		training_beat("dry")
 		return
 	if is_random():
 		# i18n: result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
@@ -2332,6 +2512,8 @@ func retry(via := "dry-up RESTART") -> void:
 	if _leaving():  # a screen change is already underway (its wipe would race the reload)
 		return
 	DevLog.route(get_tree(), via, self)
+	if training:
+		Training.mark_restart()  # the next attempt: full meter, the coin kept
 	get_tree().reload_current_scene()
 
 
@@ -2360,6 +2542,10 @@ func _offer_next_steps() -> void:
 	# The middle button (carry on) has the focus, so SPACE / Enter just keeps going.
 	if descent:
 		_open_boon_card()
+		return
+	if training:
+		hud.show_choices([[Loc.t("result.choice.hub", "HUB"), _training_to_hub]], 0)
+		training_beat("chalice")
 		return
 	if is_random():
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
@@ -2447,6 +2633,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if descent:
 			return  # a floor can't be restarted (the meter carries over); the run ends by dry-up or CASH OUT
+		if training:
+			if finished and not won:
+				retry("R")
+			elif not finished:
+				restart_prompt.open(false)  # RESTART / CANCEL (no UPGRADES in training)
+			return  # (after the chalice: the HUB button is the way on)
 		if won:
 			replay("R")
 		elif finished:

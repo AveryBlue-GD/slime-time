@@ -1443,16 +1443,12 @@ func in_training() -> bool:
 
 ## Sets up a training run (MODE_TRAINING; `replay` = the SETTINGS replay, which writes nothing) and
 ## returns the scene to open for it. Used where another screen opens the scene (the launch intro's
-## Story.next_scene); everyone else calls start_training.
-## STUB until chunk B lands: while game.gd has no `training_beat` method (no MODE_TRAINING branch yet),
-## the training counts as skipped at once (finish_training(true)) and this returns the hub (the tour).
+## Story.next_scene); everyone else calls start_training. (game.gd's MODE_TRAINING branch plays it.)
 func prepare_training(replay := false) -> String:
 	mode = MODE_TRAINING
 	training_replay = replay
 	training_used = 0
 	training_skipped = false
-	if not training_built():
-		return finish_training(true)
 	return TRAINING_SCENE
 
 
@@ -1462,8 +1458,8 @@ func start_training(replay := false) -> void:
 	UIKit.go(get_tree(), prepare_training(replay))
 
 
-## Chunk B's training maze is there once game.gd defines `training_beat(name)`. (Chunk B: once it has,
-## this check and the stub branch in prepare_training can go.)
+## Chunk B's training maze is there: game.gd defines `training_beat(name)` (kept for the tests that
+## branched on it while the maze was a stub).
 static func training_built() -> bool:
 	var script: Script = load(_GAME_SCRIPT_PATH)
 	for method in script.get_script_method_list():
