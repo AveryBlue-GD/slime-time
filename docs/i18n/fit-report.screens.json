@@ -64,7 +64,9 @@
     {"acceptable":true,"box_h":7.0,"box_w":112.0,"en_text":"FULLSCREEN: OFF","key":"settings.fullscreen.off","kind":"overlap","locale":"en","node":"Button9","other":"COPY THIS CODE TO BACK UP YOUR PROGRESS","reason":"English source layout","screen":"settings save code","test":"screens","text":"FULLSCREEN: OFF","text_h":7.0,"text_w":84.0},
     {"acceptable":true,"box_h":7.0,"box_w":56.0,"en_text":"PASTE","key":"savecode.paste","kind":"overlap","locale":"en","node":"Control16/Button8","other":"Button12","reason":"English source layout","screen":"settings save code","test":"screens","text":"PASTE","text_h":7.0,"text_w":30.0},
     {"acceptable":true,"box_h":7.0,"box_w":56.0,"en_text":"LOAD","key":"savecode.load","kind":"overlap","locale":"en","node":"Control16/Button9","other":"Button12","reason":"English source layout","screen":"settings save code","test":"screens","text":"LOAD","text_h":7.0,"text_w":24.0},
-    {"acceptable":true,"box_h":7.0,"box_w":24.0,"en_text":"MORE","key":"settings.more","kind":"overlap","locale":"en","node":"Label4","other":"SAVE CODE","reason":"English source layout","screen":"settings save code","test":"screens","text":"MORE","text_h":7.0,"text_w":24.0}
+    {"acceptable":true,"box_h":7.0,"box_w":24.0,"en_text":"MORE","key":"settings.more","kind":"overlap","locale":"en","node":"Label4","other":"SAVE CODE","reason":"English source layout","screen":"settings save code","test":"screens","text":"MORE","text_h":7.0,"text_w":24.0},
+    {"acceptable":false,"box_h":7.0,"box_w":68.0,"en_text":"","key":"result.choice.map","kind":"offscreen","locale":"fr","node":"HUD/Control8/CenterContainer0/HBoxContainer0/Button3","other":"","reason":"","screen":"result dry-up","test":"screens","text":"MAP","text_h":7.0,"text_w":18.0},
+    {"acceptable":false,"box_h":7.0,"box_w":69.0,"en_text":"","key":"","kind":"offscreen","locale":"pseudo","node":"HUD/Control8/CenterContainer0/HBoxContainer0/Button3","other":"","reason":"","screen":"result dry-up","test":"screens","text":"[MÁP]","text_h":7.0,"text_w":24.0}
   ],
   "kind": "screens"
 }

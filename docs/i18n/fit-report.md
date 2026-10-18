@@ -13,7 +13,7 @@ reported here but do not fail them (the other languages are brought in line late
 | en | 0 | 3 | 0 | 64 |
 | es | 0 | 0 | 0 | 0 |
 | pt_BR | 0 | 0 | 0 | 0 |
-| fr | 0 | 0 | 0 | 0 |
+| fr | 1 | 0 | 1 | 0 |
 | de | 0 | 2 | 0 | 0 |
 | it | 0 | 0 | 0 | 0 |
 | ru | 0 | 0 | 0 | 0 |
@@ -28,12 +28,12 @@ reported here but do not fail them (the other languages are brought in line late
 | id | 0 | 0 | 0 | 0 |
 | ar | 0 | 0 | 0 | 0 |
 | hi | 0 | 0 | 0 | 0 |
-| pseudo | 0 | 3 | 0 | 0 |
-| **total** | 0 | 9 | 0 | 64 |
+| pseudo | 0 | 3 | 1 | 0 |
+| **total** | 1 | 9 | 2 | 64 |
 
 ## budget: what was measured
 
-- budgets: 133 of 455 template entries carry a `max Npx` note
+- budgets: 134 of 458 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
@@ -46,10 +46,11 @@ reported here but do not fail them (the other languages are brought in line late
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
 - states: 57 screen / overlay / HUD states per locale
 
-## budget: open (0 places)
+## budget: open (1 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
+| budget | result.choice.restart | RESTART | overflow | 1: fr | fr RECOMMENCER: 66x1 vs 62x1 |
 
 ## budget: accepted in English (the source layout; the same finding in another locale is accepted too)
 
@@ -59,10 +60,11 @@ reported here but do not fail them (the other languages are brought in line late
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 
-## screens: open (0 places)
+## screens: open (1 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
+| result dry-up | result.choice.map |  | offscreen | 2: fr, pseudo | pseudo [MÁP]: 24x7 vs 69x7 |
 
 ## screens: accepted in English (the source layout; the same finding in another locale is accepted too)
 
