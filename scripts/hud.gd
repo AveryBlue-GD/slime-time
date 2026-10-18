@@ -167,6 +167,21 @@ const TICKET_TINT := Color8(255, 226, 150)
 const TICKET_DIM := Color(0.55, 0.55, 0.6)
 const NEW_BEST_COLOR := Color8(255, 245, 190)
 const ASSIST_TINT := Color8(110, 236, 214)
+## SPLASHDOWN (MODE_TRAINING only, docs/tutorial/design.md section 3): the game's `training_cue` beats.
+## `"first_drain"` pulses the meter pod once (meter_pod's modulate for METER_PULSE_TIME); `"dry"` puts the accept
+## key's glyph beside RESTART on the dry-up row (keys / pad; on touch the button itself pulses). Nothing of it
+## exists in any other mode (the slime's own glyphs: training_cues.gd).
+var meter_pod: Control
+var training_hooked := false
+var meter_pulse_left := 0.0
+var accept_armed := false
+## The accept glyph's canvas (in the choice row's root, so it hides with the row); made on the "dry" beat.
+var accept_glyph: Control
+var _accept_time := 0.0
+const METER_PULSE_TIME := 0.6
+const METER_PULSE_PEAK := Color(1.9, 1.9, 1.9)
+const ACCEPT_GAP := 3.0
+const ACCEPT_PULSE := Color(1.35, 1.35, 1.35)
 
 
 func _ready() -> void:
@@ -193,6 +208,7 @@ func _ready() -> void:
 
 	# Left pod: goo drop, segmented meter, percent.
 	var meter_row := _make_pod(left_bar)
+	meter_pod = meter_row.get_parent()
 	_drop = UIKit.make_icon("drop", goo_color)
 	meter_row.add_child(_drop)
 	meter_row.add_child(_build_meter())
@@ -345,6 +361,63 @@ func _ready() -> void:
 	_skin_text.theme_owner = _choice_root
 	add_child(_skin_text)
 	UIKit.mirror_root(self)  # (right-to-left languages: the pods swap corners, docs/ui-rules.md 10.2)
+	var progress := get_node_or_null("/root/Progress")
+	if progress and progress.in_training():
+		_hook_training.call_deferred()  # (after game.gd's _ready has built the slime)
+
+
+## ---------------------------------------------------------------- SPLASHDOWN cues (MODE_TRAINING)
+
+func _hook_training() -> void:
+	var game := get_parent()
+	if training_hooked or game == null or not game.has_signal("training_cue"):
+		return
+	training_hooked = true
+	game.connect("training_cue", _on_training_cue)
+
+
+func _on_training_cue(beat: String) -> void:
+	match beat:
+		"first_drain":
+			meter_pulse_left = METER_PULSE_TIME
+		"dry":
+			accept_armed = true
+			_accept_time = 0.0
+			if accept_glyph == null:
+				accept_glyph = Control.new()
+				accept_glyph.name = "AcceptGlyph"
+				accept_glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				accept_glyph.draw.connect(_draw_accept_glyph)
+				_choice_root.add_child(accept_glyph)
+		"restart", "chalice":
+			accept_armed = false
+
+
+## One step of the training cues (from _process): the meter pod's pulse, then the accept glyph by the
+## dry-up row's first button (RESTART), or that button's own pulse on touch.
+func _training_step(delta: float) -> void:
+	if meter_pulse_left > 0.0:
+		meter_pulse_left = maxf(meter_pulse_left - delta, 0.0)
+		var t := 1.0 - meter_pulse_left / METER_PULSE_TIME
+		meter_pod.modulate = Color.WHITE.lerp(METER_PULSE_PEAK, sin(t * PI))
+	if accept_glyph == null:
+		return
+	_accept_time += delta
+	var button: Button = choice_buttons[0] if accept_armed and _choice_root.visible and not choice_buttons.is_empty() \
+			and is_instance_valid(choice_buttons[0]) else null
+	var touch := TrainingCues.device_for(get_parent()) == Platform.INPUT_TOUCH
+	accept_glyph.visible = button != null and not touch
+	if button:
+		var on := TutorialCues.bob_at(_accept_time) < 0.0
+		button.modulate = ACCEPT_PULSE if touch and on else Color.WHITE
+		var rect := button.get_global_rect()
+		accept_glyph.position = (Vector2(rect.end.x + ACCEPT_GAP, rect.position.y) - _choice_root.global_position).round()
+		accept_glyph.size = Vector2(1, rect.size.y)
+		accept_glyph.queue_redraw()
+
+
+func _draw_accept_glyph() -> void:
+	TrainingCues.draw_accept(accept_glyph, 0.0, accept_glyph.size.y / 2.0, _accept_time)
 
 
 func set_slime(percent: float) -> void:
@@ -1202,6 +1275,8 @@ func set_skin_color(color: Color, rainbow := false) -> void:
 
 ## Rainbow skin: the meter cycles through the rainbow (unless it's low and flashing red).
 func _process(delta: float) -> void:
+	if training_hooked:
+		_training_step(delta)
 	if record_banner.visible:
 		_chalice_clock += delta
 		var frame := int(_chalice_clock * CHALICE_FPS) % 4
