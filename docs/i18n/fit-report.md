@@ -33,7 +33,7 @@ reported here but do not fail them (the other languages are brought in line late
 
 ## budget: what was measured
 
-- budgets: 134 of 458 template entries carry a `max Npx` note
+- budgets: 135 of 459 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)

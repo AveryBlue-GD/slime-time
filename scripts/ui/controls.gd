@@ -74,6 +74,8 @@ var motion_button: Button
 var fog_button: Button
 var controls_button: Button
 var reset_button: Button
+## Only with the tutorial gate on (Economy.tutorial_on()): replays the training maze, writes nothing.
+var training_button: Button
 var reset_confirm: Control
 var confirm_button: Button
 var cancel_button: Button
@@ -135,6 +137,14 @@ func _ready() -> void:
 	add_child(reset_button)
 	reset_button.size = reset_button.custom_minimum_size
 	UIKit.place_bottom_row(reset_button, 1)
+	if Economy.tutorial_on():
+		# i18n: max 100px (grows with the text, button_size), 1 line
+		var training_text := Loc.t("settings.training", "TRAINING")
+		training_button = UIKit.make_button(training_text, _start_training, UIKit.button_size(training_text, 56))
+		UIKit.note_text_w(training_button, [training_text], 56)
+		add_child(training_button)
+		training_button.size = training_button.custom_minimum_size
+		UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -229,6 +239,11 @@ func _build_language_button() -> void:
 	label.position = Vector2(x + 10, line_top)
 	label.size = Vector2(text_w, UIKit.line_h())
 	language_button.set_meta("code", code)
+
+
+## TRAINING replays the maze (replay = true: nothing is saved, docs/tutorial/design.md section 8).
+func _start_training() -> void:
+	Progress.start_training(true)
 
 
 func _open_language() -> void:
