@@ -31,5 +31,6 @@ func _initialize() -> void:
 			var fd := absf(MapView._luma(pal.coin) - MapView._luma(pal.floor))
 			var ed := absf(MapView._luma(pal.coin_edge) - MapView._luma(pal.floor))
 			_check(maxf(fd, ed) >= 0.25, "%s/%s coin fill reads on the paper" % [theme, paper])
+			_check(absf(MapView._luma(pal.coin) - MapView._luma(pal.coin_edge)) >= 0.08, "%s/%s coin rim differs from its face" % [theme, paper])
 	_result()
 	quit(1 if failures else 0)

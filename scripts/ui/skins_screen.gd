@@ -491,7 +491,7 @@ func _on_trail_tile(id: String) -> void:
 func _refresh_trails(focus_id := "") -> void:
 	var id: String = focus_id if focus_id != "" else Progress.trail_style
 	if Progress.owns_cosmetic(id):
-		# i18n: {name} = the trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
+		# i18n: {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
 		if id == Progress.trail_style:
 			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Cosmetics.display_name(id)})
 		else:
@@ -565,6 +565,9 @@ func _refresh_papers(focus_id := "") -> void:
 		status.text = Loc.n("skins.name_price", "{name} - {price} TIX IN THE SHOP", "{name} - {price} TIX IN THE SHOP", Cosmetics.price(id), {name = Cosmetics.display_name(id), price = Cosmetics.price(id)})
 	for tile_id: String in paper_tiles:
 		UIKit.set_selected(paper_tiles[tile_id], tile_id == Progress.map_paper)
+		# redraw: NIGHT is drawn in the skin color, which may have changed since the page was built
+		var map := paper_tiles[tile_id].get_child(0) as TextureRect
+		map.texture = ImageTexture.create_from_image(paper_preview(tile_id, Progress.skin_color(), not Progress.owns_cosmetic(tile_id)))
 
 
 ## The custom color panel, mirrored about the center: the wheel on the left, the big preview
@@ -678,7 +681,7 @@ func _refresh_hats(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_hat
 	if Progress.is_hat_unlocked(id):
 		if id == Progress.selected_hat:
-			# i18n: {name} = the hat's name; status line, max 300px, 1 line. The two spaces are spacing.
+			# i18n: {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
 			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Hats.display_name(id)})
 		else:
 			status.text = Hats.display_name(id)

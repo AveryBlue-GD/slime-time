@@ -156,6 +156,8 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 			if _luma(cand) >= 0.25 and absf(_luma(cand) - _luma(pal.floor)) >= 0.25:
 				fill = cand
 				break
+		if fill == m[3] and edge == m[3]:  # face and rim both the shine: a flat coin; the darkened rim instead
+			edge = (m[0] as Color).lerp(Color.BLACK, 0.5)
 		pal.coin = fill
 		pal.coin_edge = edge
 	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)

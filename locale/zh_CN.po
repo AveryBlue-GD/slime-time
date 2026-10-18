@@ -2149,7 +2149,7 @@ msgctxt "skins.page_skins"
 msgid "SKINS"
 msgstr "皮肤"
 
-#. {name} = the hat's name; status line, max 300px, 1 line. The two spaces are spacing.
+#. {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.wearing"
