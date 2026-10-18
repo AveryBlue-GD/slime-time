@@ -64,6 +64,7 @@ const HUB_SCENE := "res://scenes/hub.tscn"
 const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
 const UPGRADES_SCENE := "res://scenes/upgrades.tscn"
+const MAPS_SCENE := "res://scenes/maps.tscn"
 ## After a win, the replay / next buttons appear after this long (so a held key can't press one).
 const CHOICE_DELAY := 0.6
 ## A dry-up offers its retry buttons sooner: failing should cost a moment, not a pause.
@@ -2301,10 +2302,28 @@ func _offer_retry() -> void:
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
 		# i18n: result choice buttons, max 76px each, 1 line
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.assist", "ASSIST"), retry_assisted],
-			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
+			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], _map_choice()], 0)
 		hud.show_rewards({assisted = false, offer = true})
 	else:
-		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
+		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades],
+			_map_choice()], 0)
+
+
+## The dry-up row's MAP button (story levels only): opens the MAP TABLE on this level.
+func _map_choice() -> Array:
+	# i18n: result choice button, max 76px, 1 line (maps table shortcut)
+	return [Loc.t("result.choice.map", "MAP"), go_to_map]
+
+
+## Opens the MAP TABLE at this level and mode (the run is already in its survey: _finish committed it).
+func go_to_map() -> void:
+	if _leaving() or not progress:
+		return
+	_commit_survey()
+	DevLog.log_event(get_tree(), "to MAP TABLE", self)
+	progress.hard_mode = hard_mode
+	progress.current_level = level
+	UIKit.go(get_tree(), MAPS_SCENE)
 
 
 ## Tries again: the same story level or the same random maze (a new one is the NEW MAZE button).

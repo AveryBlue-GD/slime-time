@@ -883,11 +883,13 @@ func show_choices(options: Array, focus := -1) -> void:
 		child.queue_free()
 	choice_buttons.clear()
 	# One width for the row (CHOICE_SIZE in English), from the longest translation.
-	var widths := UIKit.tab_widths(options.map(func(o: Array) -> String: return o[0]), int(UIKit.CHOICE_SIZE.x))
+	# (four buttons would overrun the screen at 84 px: they share the width left between the edges)
+	var row_w := mini(int(UIKit.CHOICE_SIZE.x), (int(UIKit.SCREEN.x) - 2 * UIKit.EDGE - UIKit.CHOICE_GAP * (options.size() - 1)) / options.size())
+	var widths := UIKit.tab_widths(options.map(func(o: Array) -> String: return o[0]), row_w)
 	for i in options.size():
 		var option: Array = options[i]
 		var button := UIKit.make_button(option[0], option[1], Vector2(widths[i], UIKit.choice_size().y))
-		UIKit.note_text_w(button, options.map(func(o: Array) -> String: return o[0]), int(UIKit.CHOICE_SIZE.x))
+		UIKit.note_text_w(button, options.map(func(o: Array) -> String: return o[0]), row_w)
 		row.add_child(button)
 		choice_buttons.append(button)
 	_choice_root.visible = true

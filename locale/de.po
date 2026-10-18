@@ -533,6 +533,13 @@ msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "HILFE"
 
+#. result choice button, max 76px, 1 line (maps table shortcut)
+#. budget: max 76px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.map"
+msgid "MAP"
+msgstr ""
+
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
@@ -619,6 +626,16 @@ msgstr "KRONE"
 msgctxt "hat.rainbow"
 msgid "RAINBOW HAT"
 msgstr "REGENBOGENHUT"
+
+#: scripts/hats.gd
+msgctxt "hat.raincloud"
+msgid "RAINCLOUD"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "hat.raincloud.desc"
+msgid "ITS VERY OWN DRIZZLE"
+msgstr ""
 
 #: scripts/heat.gd
 msgctxt "heatmod.dim.name"

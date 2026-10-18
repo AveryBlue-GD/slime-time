@@ -23,7 +23,7 @@ func _initialize() -> void:
 	_check(current_scene == game and paused and game.pause_menu.visible, "pausing holds everything (nothing reloads underneath)")
 	game.pause_menu.resume()
 	await _frames(int(game.CHOICE_DELAY * 60) + 10)
-	_check(current_scene == game and game.hud.choice_buttons.size() == 2, "after resuming, RESTART and UPGRADES appear (no automatic restart)")
+	_check(current_scene == game and game.hud.choice_buttons.size() == 3, "after resuming, RESTART, UPGRADES and MAP appear (no automatic restart)")
 	game.hud.choice_buttons[0].pressed.emit()
 	await _frames(5)
 	_check(current_scene != game and current_scene != null and not paused, "RESTART plays the level again")

@@ -2,7 +2,7 @@ extends "res://tests/suite_base.gd"
 
 ## After-win choices: story wins offer REPLAY / NEXT LEVEL (CONTINUE after level 10) / HUB, random
 ## wins offer REPLAY MAZE / NEW MAZE / HUB; each button loads the right thing (HUB lands in front of
-## the station the run came from). Dry-ups offer RESTART / UPGRADES. Uses a throwaway save file.
+## the station the run came from). Dry-ups offer RESTART / UPGRADES (/ MAP on story levels). Uses a throwaway save file.
 ## Run: .\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 20000 -s res://tests/test_next_steps.gd
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -102,7 +102,7 @@ func _initialize() -> void:
 	await _physics_frames(20)
 	Input.action_release(open_action)
 	await _physics_frames(int(game.CHOICE_DELAY * 60) + 5)
-	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES"], "drying up offers %s" % [_texts(game)])
+	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES", "MAP"], "drying up offers %s" % [_texts(game)])
 	_check(not game.won, "...and it's not a win")
 	_drop(game)
 

@@ -39,19 +39,19 @@ func _initialize() -> void:
 	# --- The dry-up screen offers it (only when it should)
 	var game := await _spawn(1, false)
 	game._offer_retry()
-	_check(_buttons(game) == ["RESTART", "ASSIST", "UPGRADES"] and game.hud.choice_buttons[0].has_focus(), "after 3 dry-ups: RESTART (the default), ASSIST, UPGRADES")
+	_check(_buttons(game) == ["RESTART", "ASSIST", "UPGRADES", "MAP"] and game.hud.choice_buttons[0].has_focus(), "after 3 dry-ups: RESTART (the default), ASSIST, UPGRADES, MAP")
 	_check("ASSIST" in game.hud.rewards_texts[0] and "NO MEDALS" in game.hud.rewards_texts[0], "...clearly labelled: no medals or tickets (%s)" % game.hud.rewards_texts[0])
 	game.free()
 	progress.dry_ups[1] = 2
 	game = await _spawn(1, false)
 	game._offer_retry()
-	_check(_buttons(game) == ["RESTART", "UPGRADES"], "with fewer dry-ups it isn't offered")
+	_check(_buttons(game) == ["RESTART", "UPGRADES", "MAP"], "with fewer dry-ups it isn't offered")
 	game.free()
 	progress.dry_ups[1] = 5
 	progress.hard_mode = true
 	game = await _spawn(1, false)
 	game._offer_retry()
-	_check(_buttons(game) == ["RESTART", "UPGRADES"], "not on hard mode, however many dry-ups")
+	_check(_buttons(game) == ["RESTART", "UPGRADES", "MAP"], "not on hard mode, however many dry-ups")
 	game.free()
 	progress.hard_mode = false
 	progress.start_random()
