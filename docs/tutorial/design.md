@@ -349,7 +349,7 @@ so saves stay byte-identical (`tests/test_tutorial_flow.gd`). Chunk A owns `scri
   `"dry"` and `"chalice"` when their button row (RESTART / HUB) has just been shown. R mid-run opens
   `RestartPrompt.open(false)` (RESTART / CANCEL). Upgrades and the ticket workshop are off in the maze, so the
   staged dry-up is the same on a SETTINGS replay. The stub branch in `prepare_training` is gone;
-  `Progress.training_built()` stays (true) for the tests that branch on it.
+  `Progress.training_built()` is gone.
 - **Hub tour (chunk D):** the hub adds its tour node when `Progress.hub_tour_due()`; at the end (archway), on a
   skip (Esc / B / SKIP) or when a station is used, it calls `Progress.finish_hub_tour()` (saves HUB unless replay).
 - **Replay (chunk E):** SETTINGS' TRAINING button calls `Progress.start_training(true)`; the maze and then the tour

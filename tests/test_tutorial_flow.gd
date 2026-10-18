@@ -89,16 +89,11 @@ func _gate_on_rules() -> void:
 
 	# The full run: moved and leapt, reached the chalice.
 	var next: String = progress.prepare_training(false)
-	if progress.training_built():
-		_check(next == progress.TRAINING_SCENE and progress.in_training(), "prepare_training: MODE_TRAINING, the training maze scene")
-		progress.note_training_input(progress.TUTORIAL_MOVE)
-		progress.note_training_input(progress.TUTORIAL_LEAP | 16)
-		_check(progress.tutorial_seen == 0 and progress.training_used == 3, "...moves / leaps are remembered, not saved yet")
-		next = progress.finish_training(false)
-	else:
-		_check(next == progress.TOUR_SCENE and not progress.in_training(), "stub (no chunk B maze yet): the training counts as skipped, the hub opens")
-		progress.tutorial_seen |= progress.TUTORIAL_MOVE | progress.TUTORIAL_LEAP  # (what a full run adds)
-		next = progress.finish_training(false)
+	_check(next == progress.TRAINING_SCENE and progress.in_training(), "prepare_training: MODE_TRAINING, the training maze scene")
+	progress.note_training_input(progress.TUTORIAL_MOVE)
+	progress.note_training_input(progress.TUTORIAL_LEAP | 16)
+	_check(progress.tutorial_seen == 0 and progress.training_used == 3, "...moves / leaps are remembered, not saved yet")
+	next = progress.finish_training(false)
 	_check(next == progress.TOUR_SCENE and progress.mode == progress.MODE_STORY, "finish_training: back to story mode, the hub next")
 	_check(progress.tutorial_seen == 7 and _save_bytes().contains("tutorial_seen=7"), "...saves TRAINING + MOVE + LEAP (%d)" % progress.tutorial_seen)
 	_check(not progress.is_fresh_save() and not progress.tutorial_due(), "...the save isn't fresh any more (the hub is open)")
@@ -164,7 +159,7 @@ func _boot_flow() -> void:
 		var screen := current_scene
 		var expect: String = UIKit.TITLE_SCENE
 		if gate == 1:
-			expect = progress.TRAINING_SCENE if progress.training_built() else progress.TOUR_SCENE
+			expect = progress.TRAINING_SCENE
 		_check(screen.next_scene == expect, "gate %d: ...which leads to %s (%s)" % [gate, expect.get_file(), screen.next_scene.get_file()])
 		await _frames(20)
 		screen._unhandled_input(_key(KEY_ESCAPE))
@@ -173,8 +168,6 @@ func _boot_flow() -> void:
 			"gate %d: Esc on the intro marks it seen and lands on %s" % [gate, expect.get_file()])
 		if gate == 0:
 			_check(current_scene.enter_button.text == "PLAY" and progress.tutorial_seen == 0, "gate off: ...the title, PLAY, no tutorial bit")
-		elif not progress.training_built():
-			_check(progress.hub_tour_due() and progress.tutorial_seen == progress.TUTORIAL_TRAINING, "stub: in the hub with the tour due")
 		await _settle()
 	# Quit during the training (intro seen, no bit): the title's PLAY goes to the training.
 	Economy.tutorial_force = 1
@@ -185,7 +178,7 @@ func _boot_flow() -> void:
 	title._play()
 	await _frames(90)
 	var landed: String = current_scene.scene_file_path if current_scene else ""
-	_check(landed == (progress.TRAINING_SCENE if progress.training_built() else progress.TOUR_SCENE), "...and PLAY opens the training (%s)" % landed.get_file())
+	_check(landed == (progress.TRAINING_SCENE), "...and PLAY opens the training (%s)" % landed.get_file())
 	title.free()
 	await _settle()
 	Economy.tutorial_force = 0
@@ -208,7 +201,7 @@ func _flags() -> void:
 	progress.enable_tutorial_test("maze")
 	_check(not Story.intro_due(progress) and progress.tutorial_due(), "--tutorial=maze: intro seen, training due")
 	var maze: String = progress.take_tutorial_launch()
-	_check(maze == (progress.TRAINING_SCENE if progress.training_built() else progress.TOUR_SCENE) and progress.take_tutorial_launch() == "", "...the boot title opens it, once")
+	_check(maze == (progress.TRAINING_SCENE) and progress.take_tutorial_launch() == "", "...the boot title opens it, once")
 	progress.enable_tutorial_test("hub")
 	_check(progress.hub_tour_due() and not progress.tutorial_due() and not progress.is_fresh_save(), "--tutorial=hub: training done, the tour due")
 	_check(progress.take_tutorial_launch() == progress.TOUR_SCENE, "...the boot title opens the hub")

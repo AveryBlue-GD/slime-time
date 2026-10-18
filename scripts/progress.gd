@@ -1418,7 +1418,6 @@ func mark_tutorial_seen(bit: int) -> void:
 const TRAINING_SCENE := "res://scenes/main.tscn"
 ## The hub, where the tour runs (chunk D's hub_tour.gd) and where training ends.
 const TOUR_SCENE := "res://scenes/hub.tscn"
-const _GAME_SCRIPT_PATH := "res://scripts/game.gd"
 
 
 ## True when a fresh save should get the training maze: the gate is on, the save has no progress and
@@ -1456,16 +1455,6 @@ func prepare_training(replay := false) -> String:
 ## TRAINING button with `replay` = true).
 func start_training(replay := false) -> void:
 	UIKit.go(get_tree(), prepare_training(replay))
-
-
-## Chunk B's training maze is there: game.gd defines `training_beat(name)` (kept for the tests that
-## branched on it while the maze was a stub).
-static func training_built() -> bool:
-	var script: Script = load(_GAME_SCRIPT_PATH)
-	for method in script.get_script_method_list():
-		if method.name == "training_beat":
-			return true
-	return false
 
 
 ## The training cues (chunk C) report a real move / leap in the maze (TUTORIAL_MOVE / TUTORIAL_LEAP):
