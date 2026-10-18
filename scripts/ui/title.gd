@@ -50,9 +50,16 @@ func _ready() -> void:
 		_start_preload(true)
 		Story.launched = true
 		Story.mode = "intro"
-		Story.next_scene = UIKit.TITLE_SCENE
+		Story.next_scene = Story.launch_next(Progress)  # the title (the training maze with the tutorial test on)
 		get_tree().change_scene_to_file.call_deferred(Story.SCENE)
 		return
+	if get_tree().current_scene == self and not Story.launched:
+		# Debug `--tutorial=maze|hub`: the boot title opens the training maze / the hub tour instead.
+		var tutorial_scene: String = Progress.take_tutorial_launch()
+		if tutorial_scene != "":
+			Story.launched = true
+			get_tree().change_scene_to_file.call_deferred(tutorial_scene)
+			return
 	if get_tree().current_scene == self:
 		Story.launched = true  # the booted title: no trailer later this run
 	UIKit.setup_screen(self, "")
@@ -262,8 +269,12 @@ func _enter() -> void:
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
-## First launch: straight into level 1 (the intro already played when the game opened).
+## First launch: straight into level 1 (the intro already played when the game opened). With the
+## tutorial test on, a save that hasn't had the training yet (quit during it) gets the training maze.
 func _play() -> void:
+	if Progress.tutorial_due():
+		Progress.start_training(false)
+		return
 	Progress.start_story(1)
 	UIKit.go(get_tree(), UIKit.GAME_SCENE)
 

@@ -257,6 +257,21 @@ const COIN_CATCH_COIN_DB := -4.0
 const COIN_CATCH_FIZZ_DB := -8.0
 
 
+## ---------------------------------------------------------------- TUTORIAL test (SPLASHDOWN, owner 2026-10-18)
+## ONE switch for the first-session tutorial (docs/tutorial/design.md): the SPLASHDOWN training maze
+## right after the launch intro, then the hub tour. Off (default): today's first launch exactly (intro,
+## title PLAY, level 1), Progress.tutorial_due() / hub_tour_due() are always false, the training and
+## hub bits (Progress.TUTORIAL_TRAINING / TUTORIAL_HUB) are never written, so saves are byte-identical.
+## `--tutorial[=maze|hub]` (debug builds only, like every launch flag) sets `tutorial_force` = 1 on a
+## clean in-memory fresh state (see Progress.enable_tutorial_test); tests set it too.
+const TUTORIAL_TEST := false
+static var tutorial_force := -1
+
+
+static func tutorial_on() -> bool:
+	return TUTORIAL_TEST if tutorial_force < 0 else tutorial_force == 1
+
+
 ## ---------------------------------------------------------------- LANGUAGES test (i18n, D15)
 ## ONE switch for the translations (docs/i18n/plan.md). Off (default): the `Language` autoload loads no
 ## translation, adds no font fallback and never touches the text direction, `Loc.t` / `Loc.n` return the

@@ -1,6 +1,6 @@
 # Tutorial design: the training maze and the first hub visit
 
-Status: **design only (2026-10-18), nothing built yet.** Owner request, 2026-10-18: a tutorial that plays
+Status: **chunk A built (2026-10-18): gate, flags, save bits, the intro hand-off (section 14); chunks B-H not yet.** Gate off. Owner request, 2026-10-18: a tutorial that plays
 directly after the intro, a training maze showing jumping, coins and the chalice, and how drying up works, then
 talking the player into the hub to show rotating and what each station does. Research and sources:
 [research.md](research.md). The maze's name is a placeholder (**TRAINING** in code and text) until the owner
@@ -300,3 +300,47 @@ Order: A, then B + C + D + E in parallel (B and C agree on the cue trigger API: 
 - Dry-up: **start low on purpose**: the first attempt starts with little slime so most players dry up just after the coin, then RESTART with the coin kept and a full meter.
 - Hub tour: **short text lines, no voiced audio**: one short line per station as the room turns to it; skippable. No voice-over.
 - Still open: replay location (proposed TRAINING button in SETTINGS), whether the hub turns itself after the first turn (default: no, the player turns it).
+
+## 14. API for chunks B-E (chunk A, built 2026-10-18)
+
+Everything below is inert with the gate off (`Economy.tutorial_on()` false): nothing is due and no bit is written,
+so saves stay byte-identical (`tests/test_tutorial_flow.gd`). Chunk A owns `scripts/economy.gd`, `scripts/progress.gd`,
+`scripts/ui/title.gd`, `scripts/story.gd`; later chunks call these and never edit them (ask chunk A's owner).
+
+- **Gate:** `Economy.TUTORIAL_TEST := false`, `Economy.tutorial_force` (-1 const / 0 off / 1 on; tests set it),
+  `Economy.tutorial_on()`.
+- **Debug flag** (`Progress.tutorial_flag(args)`, `enable_tutorial_test(which)`): `--tutorial` = clean in-memory
+  fresh save, saving off, the real save never read: intro, then training, then tour. `--tutorial=maze`: intro seen,
+  the boot title opens the maze. `--tutorial=hub`: training bits set, the boot title opens the hub with the tour due
+  (`take_tutorial_launch()`, read once by the boot title). `./tools/play.sh --tutorial[=maze|hub]`.
+- **Constants:** `Progress.MODE_TRAINING` ("training", in `Progress.mode`, never saved); bits in `tutorial_seen`:
+  `TUTORIAL_TRAINING := 4`, `TUTORIAL_HUB := 8` (next to `TUTORIAL_MOVE` 1, `TUTORIAL_LEAP` 2);
+  `Progress.TRAINING_SCENE` = `res://scenes/main.tscn` (the maze is the game scene in MODE_TRAINING),
+  `Progress.TOUR_SCENE` = `res://scenes/hub.tscn`.
+- **Queries:** `tutorial_due()` (gate, not dev, `is_fresh_save()`, `tutorial_seen == 0`); `hub_tour_due()` (gate,
+  not dev, and `tour_replay` or TRAINING set without HUB); `in_training()` (`mode == MODE_TRAINING`);
+  `training_replay` (this run is the SETTINGS replay: write nothing); `training_skipped` (the last run ended in
+  SKIP TRAINING); `is_fresh_save()` is also false once TRAINING is set while the gate is on (title: ENTER THE HUB).
+- **Training run (chunk B):** `prepare_training(replay) -> String` (sets MODE_TRAINING, returns the scene) and
+  `start_training(replay)` (the same behind the goo wipe). On the chalice's HUB button:
+  `UIKit.go(get_tree(), Progress.finish_training(false))`; on SKIP TRAINING: `finish_training(true)`. It returns the
+  hub, puts `mode` back to story, and (gate on, not a replay) saves TRAINING plus the MOVE / LEAP bits the cues
+  reported. **Stub:** until game.gd defines `func training_beat(name: String)` (checked by
+  `Progress.training_built()`), `prepare_training` calls `finish_training(true)` at once and returns the hub, so
+  `--tutorial` plays the intro and lands in the hub. Chunk B: adding `training_beat` switches it to the maze; then
+  ask chunk A to drop the stub branch.
+- **Cue trigger contract (B emits, C listens):** game.gd (MODE_TRAINING only) defines
+  `signal training_cue(name: String)` and `func training_beat(name: String) -> void` that emits it once per name
+  per attempt. Names: `"start"` (attempt begins: move glyph), `"straight"` (slime enters the long straight: leap
+  keycap + hold bar), `"fork"` (forced glimmer over the coin), `"first_drain"` (meter pod pulse), `"dry"` (dry-up
+  row shown: accept glyph by RESTART), `"restart"` (attempt 2 starts), `"chalice"` (win panel). Chunk C's
+  `training_cues.gd` connects to `training_cue`, and the HUD pulse reads the same names. C calls
+  `Progress.note_training_input(Progress.TUTORIAL_MOVE / TUTORIAL_LEAP)` on a real move / leap, never
+  `mark_tutorial_seen` (that would write during a replay).
+- **Hub tour (chunk D):** the hub adds its tour node when `Progress.hub_tour_due()`; at the end (archway), on a
+  skip (Esc / B / SKIP) or when a station is used, it calls `Progress.finish_hub_tour()` (saves HUB unless replay).
+- **Replay (chunk E):** SETTINGS' TRAINING button calls `Progress.start_training(true)`; the maze and then the tour
+  play, nothing is saved, and the tour ends in the hub.
+- **Hand-off:** `Story.launch_next(Progress)` is what the boot title gives the launch intro as `Story.next_scene`:
+  the title, or the training scene when due (Esc on the intro goes there too). The title's PLAY on a due save
+  (intro seen, quit before the training ended) calls `start_training(false)`. `story_screen.gd` is unchanged.

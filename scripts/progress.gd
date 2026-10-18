@@ -3,13 +3,20 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--heat=dim,fog,race` (or a mask number) picks HEAT modifiers, `--heat-best=10,7,4` sets hard levels' best heat, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
 const MODE_DESCENT := "descent"
+## The SPLASHDOWN training maze (Economy.TUTORIAL_TEST; docs/tutorial/design.md): set by
+## prepare_training / start_training, cleared by finish_training. Never saved.
+const MODE_TRAINING := "training"
 const TUTORIAL_MOVE := 1
 const TUTORIAL_LEAP := 2
+## Tutorial test bits (written only while Economy.tutorial_on(), so a save made with the gate off never
+## holds them): the training maze was finished or skipped, and the hub tour was finished or skipped.
+const TUTORIAL_TRAINING := 4
+const TUTORIAL_HUB := 8
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
@@ -51,8 +58,21 @@ const STOPWATCH_NOTICE := 200
 var highest_unlocked := 1
 ## Number of story levels beaten so far (0-10). Also decides which skins are unlocked.
 var levels_cleared := 0
-## Bit set of wordless hints already used (TUTORIAL_MOVE / TUTORIAL_LEAP); saved, optional key.
+## Bit set of wordless hints already used (TUTORIAL_MOVE / TUTORIAL_LEAP, and with the tutorial test on
+## TUTORIAL_TRAINING / TUTORIAL_HUB); saved, optional key.
 var tutorial_seen := 0
+## Tutorial test session state (never saved). `training_replay`: the current training run is the
+## SETTINGS replay (writes nothing). `training_used`: TUTORIAL_MOVE / TUTORIAL_LEAP the player really used
+## in this training run (note_training_input), merged into tutorial_seen by finish_training.
+## `tour_replay`: the hub tour after a replayed training is due (hub_tour_due) until finish_hub_tour.
+## `training_skipped`: the last training run ended through SKIP TRAINING. `tutorial_launch`: what
+## `--tutorial[=maze|hub]` asked for ("intro", "maze", "hub"; "" = no flag), read once by the boot title
+## (take_tutorial_launch).
+var training_replay := false
+var training_used := 0
+var tour_replay := false
+var training_skipped := false
+var tutorial_launch := ""
 ## Story beats shown (bits STORY_INTRO / STORY_FINALE). Optional in saves; RESET PROGRESS clears it.
 var story_seen := 0
 const STORY_INTRO := 1
@@ -294,9 +314,10 @@ func _ready() -> void:
 		print("Slime Time: debug launch flags are ignored in release builds (kept: %s)" % ", ".join(args))
 	var story_complete := STORY_COMPLETE_FLAG in args
 	var autoplay := Autoplay.requested(args)
+	var tutorial := tutorial_flag(args)
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
-	elif story_complete or autoplay:
+	elif story_complete or autoplay or tutorial != "":
 		pass  # a clean in-memory state (set up below), never the player's save
 	elif save_path == _throwaway_save_path():
 		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
@@ -312,6 +333,8 @@ func _ready() -> void:
 		enable_story_complete()
 	if autoplay:
 		enable_autoplay()
+	if tutorial != "":
+		enable_tutorial_test(tutorial)
 	var coins_in_hand := -1  # --coins=N (-1: not given)
 	for arg in args:
 		if arg.begins_with("--level="):
@@ -1360,9 +1383,11 @@ func complete_level(level: int, save := true) -> void:
 		save_progress()
 
 
-## True until the first chalice: the title goes straight into level 1 and the hub waits.
+## True until the first chalice: the title goes straight into level 1 and the hub waits. With the
+## tutorial test on, the finished (or skipped) training also ends it: the tour opens the hub before level 1.
 func is_fresh_save() -> bool:
-	return levels_cleared == 0 and randoms_won == 0 and hard_cleared.is_empty()
+	return levels_cleared == 0 and randoms_won == 0 and hard_cleared.is_empty() \
+		and not (Economy.tutorial_on() and has_seen_tutorial(TUTORIAL_TRAINING))
 
 
 func has_seen_tutorial(bit: int) -> bool:
@@ -1383,6 +1408,142 @@ func mark_tutorial_seen(bit: int) -> void:
 	if not has_seen_tutorial(bit):
 		tutorial_seen |= bit
 		save_progress()
+
+
+## ---------------------------------------------------------------- tutorial test (SPLASHDOWN)
+## The first-session tutorial behind Economy.TUTORIAL_TEST (docs/tutorial/design.md, "API for chunks B-E").
+## With the gate off every function here is inert: nothing is due, nothing is written.
+
+## The training maze is the gameplay scene in MODE_TRAINING (chunk B's game.gd branch).
+const TRAINING_SCENE := "res://scenes/main.tscn"
+## The hub, where the tour runs (chunk D's hub_tour.gd) and where training ends.
+const TOUR_SCENE := "res://scenes/hub.tscn"
+const _GAME_SCRIPT_PATH := "res://scripts/game.gd"
+
+
+## True when a fresh save should get the training maze: the gate is on, the save has no progress and
+## no tutorial bit at all (an old save without the key reads TUTORIAL_MOVE | TUTORIAL_LEAP once it has
+## progress; a save that moved in level 1 has bit 1), and it isn't dev mode.
+func tutorial_due() -> bool:
+	return Economy.tutorial_on() and not dev_tools and is_fresh_save() and tutorial_seen == 0
+
+
+## True when the hub should run its tour: the gate is on and either the training was just replayed
+## from SETTINGS, or the save finished / skipped the training and hasn't had the tour yet.
+func hub_tour_due() -> bool:
+	if not Economy.tutorial_on() or dev_tools:
+		return false
+	return tour_replay or (has_seen_tutorial(TUTORIAL_TRAINING) and not has_seen_tutorial(TUTORIAL_HUB))
+
+
+## True while a training run is set up or under way (game.gd reads Progress.mode the same way).
+func in_training() -> bool:
+	return mode == MODE_TRAINING
+
+
+## Sets up a training run (MODE_TRAINING; `replay` = the SETTINGS replay, which writes nothing) and
+## returns the scene to open for it. Used where another screen opens the scene (the launch intro's
+## Story.next_scene); everyone else calls start_training.
+## STUB until chunk B lands: while game.gd has no `training_beat` method (no MODE_TRAINING branch yet),
+## the training counts as skipped at once (finish_training(true)) and this returns the hub (the tour).
+func prepare_training(replay := false) -> String:
+	mode = MODE_TRAINING
+	training_replay = replay
+	training_used = 0
+	training_skipped = false
+	if not training_built():
+		return finish_training(true)
+	return TRAINING_SCENE
+
+
+## Opens the training maze behind the goo wipe (the title's PLAY on a due save; chunk E's SETTINGS
+## TRAINING button with `replay` = true).
+func start_training(replay := false) -> void:
+	UIKit.go(get_tree(), prepare_training(replay))
+
+
+## Chunk B's training maze is there once game.gd defines `training_beat(name)`. (Chunk B: once it has,
+## this check and the stub branch in prepare_training can go.)
+static func training_built() -> bool:
+	var script: Script = load(_GAME_SCRIPT_PATH)
+	for method in script.get_script_method_list():
+		if method.name == "training_beat":
+			return true
+	return false
+
+
+## The training cues (chunk C) report a real move / leap in the maze (TUTORIAL_MOVE / TUTORIAL_LEAP):
+## remembered for this run only and saved by finish_training, so a SETTINGS replay writes nothing.
+func note_training_input(bit: int) -> void:
+	if in_training():
+		training_used |= bit & (TUTORIAL_MOVE | TUTORIAL_LEAP)
+
+
+## Ends the training run (the chalice: `skipped` false; SKIP TRAINING in the pause menu: true) and
+## returns the scene to go to next (the hub, where the tour is now due). Outside a replay and with the
+## gate on it saves TUTORIAL_TRAINING plus the MOVE / LEAP bits the player really used (so the level 1-2
+## cues don't teach them again; a skip before moving keeps them as the safety net). Safe to call twice.
+func finish_training(skipped: bool) -> String:
+	if mode == MODE_TRAINING:
+		mode = MODE_STORY
+	training_skipped = skipped
+	tour_replay = training_replay
+	if Economy.tutorial_on() and not training_replay:
+		var bits := tutorial_seen | TUTORIAL_TRAINING | training_used
+		if bits != tutorial_seen:
+			tutorial_seen = bits
+			save_progress()
+	training_replay = false
+	training_used = 0
+	return TOUR_SCENE
+
+
+## Ends the hub tour (finished at the archway, skipped with Esc / B / SKIP, or ended by using a
+## station): saves TUTORIAL_HUB (gate on, not a replay) so it never comes back.
+func finish_hub_tour() -> void:
+	var replay := tour_replay
+	tour_replay = false
+	if Economy.tutorial_on() and not replay:
+		mark_tutorial_seen(TUTORIAL_HUB)
+
+
+## Debug `--tutorial` / `--tutorial=maze` / `--tutorial=hub` (tools/play.sh --tutorial): "intro", "maze",
+## "hub", or "" without the flag (an unknown value plays the whole thing).
+static func tutorial_flag(args: PackedStringArray) -> String:
+	for arg in args:
+		if arg == "--tutorial":
+			return "intro"
+		if arg.begins_with("--tutorial="):
+			var which := arg.trim_prefix("--tutorial=")
+			return which if which in ["maze", "hub"] else "intro"
+	return ""
+
+
+## Debug `--tutorial[=maze|hub]`: the tutorial gate on, over a clean in-memory fresh save (the real save is
+## never read, as with --story-complete, and nothing is saved). "intro": the launch intro is due, then the
+## training maze and the tour; "maze": the intro counts as seen and the boot title opens the maze;
+## "hub": training counts as done (with its MOVE / LEAP bits) and the boot title opens the hub's tour.
+func enable_tutorial_test(which: String) -> void:
+	saving_enabled = false
+	reset_progress()  # (saves nothing: saving is off)
+	dev_tools = false
+	Economy.tutorial_force = 1
+	tutorial_launch = which
+	story_seen = 0 if which == "intro" else STORY_INTRO
+	if which == "hub":
+		tutorial_seen = TUTORIAL_MOVE | TUTORIAL_LEAP | TUTORIAL_TRAINING
+
+
+## The boot title's `--tutorial=maze|hub` hand-off: the scene to open instead of the title ("" = none),
+## once per run ("intro" is the launch intro's own hand-off, see Story.launch_next).
+func take_tutorial_launch() -> String:
+	var which := tutorial_launch
+	if which == "intro" or which == "":
+		return ""
+	tutorial_launch = ""
+	if which == "maze":
+		return prepare_training(false) if tutorial_due() else ""
+	return TOUR_SCENE if hub_tour_due() else ""
 
 
 ## Dev mode, exactly as `--unlock-all` (tools/play.sh --dev) sets it up: every level unlocked,
@@ -2502,6 +2663,10 @@ func reset_progress() -> void:
 	tree_refund_notice = 0
 	skin_override = ""
 	tutorial_seen = 0
+	training_replay = false
+	training_used = 0
+	tour_replay = false
+	training_skipped = false
 	story_seen = 0
 	dry_ups = {}
 	tickets = 0

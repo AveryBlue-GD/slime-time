@@ -67,6 +67,15 @@ static func launch_due(title: Node, progress: Node) -> bool:
 		and intro_due(progress)
 
 
+## The scene the launch intro wipes into: the title, or (tutorial test on, a fresh save that is due:
+## Progress.tutorial_due) the SPLASHDOWN training maze, set up here (Progress.prepare_training). Esc on
+## the intro leads to the same scene. With the gate off this is always the title (today's flow).
+static func launch_next(progress: Node) -> String:
+	if progress != null and progress.tutorial_due():
+		return progress.prepare_training(false)
+	return UIKit.TITLE_SCENE
+
+
 ## Whether the intro should play automatically: only for a save that hasn't seen it.
 static func intro_due(progress: Node) -> bool:
 	return progress != null and not progress.dev_tools and not progress.has_seen_story(progress.STORY_INTRO)
