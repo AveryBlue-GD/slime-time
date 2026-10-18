@@ -145,8 +145,20 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 		# A white start ring would vanish on the pale papers: start and goal marks in the ink.
 		pal.merge({fog = t.fog, floor = t.paper, wall = t.ink, start = t.ink, goal = t.ink, frame = t.frame}, true)
 	pal.merge(Cosmetics.paper_colors(paper, ink), true)
+	if Coin.METAL.has(theme):  # the level's in-game coin metal, on every paper
+		var m: Array = Coin.METAL[theme]
+		var edge: Color = m[0]
+		if absf(_luma(edge) - _luma(pal.floor)) < 0.25:  # keep the rim readable: the darker outline or the shine
+			var dark: Color = edge.lerp(Color.BLACK, 0.5)
+			edge = dark if absf(_luma(dark) - _luma(pal.floor)) >= absf(_luma(m[3]) - _luma(pal.floor)) else m[3]
+		pal.coin = m[1]
+		pal.coin_edge = edge
 	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)
 	return pal
+
+
+static func _luma(c: Color) -> float:
+	return c.r * 0.3 + c.g * 0.59 + c.b * 0.11
 
 
 ## The full map of `survey` on `maze` (which it must fit, Survey.fits), at `sizes` (see layout).
