@@ -172,7 +172,7 @@ func _full_run() -> void:
 	_check(game.finished and not game.won, "attempt 1 (glide-only autopilot): dries up")
 	_check(Training.coin_taken and coin_frame > 0, "...after picking up the coin")
 	_check(seen.lines.slice(0, 3) == ["coin_ahead", "coin_up", "coin_use"], "lines: coin ahead, UP at the fork, what coins buy: %s" % [seen.lines])
-	_check(seen.at_coin == "COINS BUY UPGRADES IN THE HUB.", "...the coin line goes as the coin is picked up (%s)" % seen.at_coin)
+	_check(seen.at_coin == "COINS BUY UPGRADES IN THE HUB", "...the coin line goes as the coin is picked up (%s)" % seen.at_coin)
 	var dry_tile := Vector2i((game.slime.position / 16).floor())
 	_check(dry_tile.x == Training.FORK.x and dry_tile.y >= 1 and dry_tile.y <= 7, "...just after it, around the fork (tile %s)" % dry_tile)
 	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 120)

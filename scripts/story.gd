@@ -33,16 +33,16 @@ const FINALE: Array[Dictionary] = [
 
 ## One line under the area name when a level starts (story levels 1-10, bottom to top).
 const LEVEL_LINES: Array[String] = [
-	"SPLAT. IT IS DAMP. UP IS THAT WAY.",  # i18n: ignore (English source; shown via display_name)
-	"THE MINERS LEFT IN A HURRY. SO WOULD YOU.",  # i18n: ignore (English source; shown via display_name)
-	"SOMEONE SWEPT THE SAND. NOT RECENTLY.",  # i18n: ignore (English source; shown via display_name)
-	"NOT TECHNICALLY SWIMMING. STILL NOT DRY.",  # i18n: ignore (English source; shown via display_name)
-	"A SLIME IN SLIME. NOBODY WILL NOTICE.",  # i18n: ignore (English source; shown via display_name)
-	"THE RESIDENTS ARE QUIET. SUSPICIOUSLY.",  # i18n: ignore (English source; shown via display_name)
-	"COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.",  # i18n: ignore (English source; shown via display_name)
-	"A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.",  # i18n: ignore (English source; shown via display_name)
-	"SO SHINY. DAYLIGHT MUST BE CLOSE.",  # i18n: ignore (English source; shown via display_name)
-	"HOT. THE WAY OUT IS THE CRATER. RUN.",  # i18n: ignore (English source; shown via display_name)
+	"SPLAT. IT IS DAMP, UP IS THAT WAY",  # i18n: ignore (English source; shown via display_name)
+	"THE MINERS LEFT IN A HURRY. SO WOULD YOU",  # i18n: ignore (English source; shown via display_name)
+	"SOMEONE SWEPT THE SAND. NOT RECENTLY",  # i18n: ignore (English source; shown via display_name)
+	"NOT TECHNICALLY SWIMMING, STILL NOT DRY",  # i18n: ignore (English source; shown via display_name)
+	"A SLIME IN SLIME, NOBODY WILL NOTICE",  # i18n: ignore (English source; shown via display_name)
+	"THE RESIDENTS ARE QUIET. SUSPICIOUSLY",  # i18n: ignore (English source; shown via display_name)
+	"COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES",  # i18n: ignore (English source; shown via display_name)
+	"A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE",  # i18n: ignore (English source; shown via display_name)
+	"SO SHINY, DAYLIGHT MUST BE CLOSE",  # i18n: ignore (English source; shown via display_name)
+	"HOT. THE WAY OUT IS THE CRATER, RUN",  # i18n: ignore (English source; shown via display_name)
 ]
 
 
@@ -92,25 +92,25 @@ static func level_line_text(level: int) -> String:
 	# i18n: joke under the level name, one line, max 296px. Keep it funny, not literal.
 	match level:
 		1:
-			return Loc.t("story.level_1", "SPLAT. IT IS DAMP. UP IS THAT WAY.")
+			return Loc.t("story.level_1", "SPLAT. IT IS DAMP, UP IS THAT WAY")
 		2:
-			return Loc.t("story.level_2", "THE MINERS LEFT IN A HURRY. SO WOULD YOU.")
+			return Loc.t("story.level_2", "THE MINERS LEFT IN A HURRY. SO WOULD YOU")
 		3:
-			return Loc.t("story.level_3", "SOMEONE SWEPT THE SAND. NOT RECENTLY.")
+			return Loc.t("story.level_3", "SOMEONE SWEPT THE SAND. NOT RECENTLY")
 		4:
-			return Loc.t("story.level_4", "NOT TECHNICALLY SWIMMING. STILL NOT DRY.")
+			return Loc.t("story.level_4", "NOT TECHNICALLY SWIMMING, STILL NOT DRY")
 		5:
-			return Loc.t("story.level_5", "A SLIME IN SLIME. NOBODY WILL NOTICE.")
+			return Loc.t("story.level_5", "A SLIME IN SLIME, NOBODY WILL NOTICE")
 		6:
-			return Loc.t("story.level_6", "THE RESIDENTS ARE QUIET. SUSPICIOUSLY.")
+			return Loc.t("story.level_6", "THE RESIDENTS ARE QUIET. SUSPICIOUSLY")
 		7:
-			return Loc.t("story.level_7", "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.")
+			return Loc.t("story.level_7", "COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES")
 		8:
-			return Loc.t("story.level_8", "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.")
+			return Loc.t("story.level_8", "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE")
 		9:
-			return Loc.t("story.level_9", "SO SHINY. DAYLIGHT MUST BE CLOSE.")
+			return Loc.t("story.level_9", "SO SHINY, DAYLIGHT MUST BE CLOSE")
 		10:
-			return Loc.t("story.level_10", "HOT. THE WAY OUT IS THE CRATER. RUN.")
+			return Loc.t("story.level_10", "HOT. THE WAY OUT IS THE CRATER, RUN")
 	return ""
 
 

@@ -127,8 +127,8 @@ func _full_tour() -> void:
 	_check(tour != null and hub.back_station().id == "story", "due: the tour is there, the archway at the back")
 	_check(hub.near.get("id", "") == "rotor" and hub.slime.position == hub.rotor.position + TourScript.SPAWN_FROM_WHEEL,
 		"...the slime starts next to the wheel")
-	_check(hub.prompt_name.text == "HOME. IT TURNS. HIT THE WHEEL." and hub.prompt_key.text == "F" and hub.prompt.visible,
-		"...the prompt box says HOME. IT TURNS. HIT THE WHEEL. F")
+	_check(hub.prompt_name.text == "HOME. IT TURNS, HIT THE WHEEL" and hub.prompt_key.text == "F" and hub.prompt.visible,
+		"...the prompt box says HOME. IT TURNS, HIT THE WHEEL F")
 	_check(tour.skip_pod.visible and tour.skip_label.text == "SKIP" and tour.skip_key.text == "ESC", "...with a SKIP ESC pod top right")
 	var pod := Rect2(tour.skip_pod.position, tour.skip_pod.size)
 	_check(pod.end.x == 320 - UIKit.HUD_EDGE and pod.position.y == UIKit.HUD_EDGE and pod.size.y == UIKit.POD_H,
@@ -136,10 +136,10 @@ func _full_tour() -> void:
 	var heard: Array = []
 	hub.room_turned.connect(func(id: String, _dir: int) -> void: heard.append(id))
 	var expected := {
-		maps = "MAPS OF EVERY LEVEL YOU SMEARED.", upgrades = "COINS GO IN. STRONGER GOO COMES OUT.",
-		quit = "THE TRAPDOOR. FOR BEDTIME.", coins = "THE PRACTICE COIN WAS FAKE. SORRY.",
-		random = "LOCKED. BEAT ALL %d LEVELS FIRST." % Levels.COUNT, settings = "SOUND, KEYS, FOG. THE BORING SIGN.",
-		wheel = "SPIN FOR HATS. THE FIRST IS FREE.", wardrobe = "SKINS, HATS, TRAILS. DRY UP IN STYLE.",
+		maps = "MAPS OF EVERY LEVEL YOU SMEARED", upgrades = "COINS GO IN, STRONGER GOO COMES OUT",
+		quit = "THE TRAPDOOR, FOR BEDTIME", coins = "THE PRACTICE COIN WAS FAKE. SORRY",
+		random = "LOCKED: BEAT ALL %d LEVELS FIRST" % Levels.COUNT, settings = "SOUND, KEYS, FOG. THE BORING SIGN",
+		wheel = "SPIN FOR HATS, THE FIRST IS FREE", wardrobe = "SKINS, HATS, TRAILS. DRY UP IN STYLE",
 	}
 	var widest := 0
 	for i in range(1, hub.stations.size()):
@@ -155,18 +155,18 @@ func _full_tour() -> void:
 		if i == 2:
 			_check(not tour.hint_on, "...no turn-back hint yet")
 			await _wait_seconds(TourScript.HINT_DELAY + 0.1)
-			_check(tour.hint_on and hub.prompt_name.text == "HOLD A TO TURN IT BACK." and hub.prompt_key.text == "F",
+			_check(tour.hint_on and hub.prompt_name.text == "HOLD A TO TURN IT BACK" and hub.prompt_key.text == "F",
 				"after %.0f s at turn 2: %s F (once)" % [TourScript.HINT_DELAY, hub.prompt_name.text])
 	_check(widest <= 192 and hub.prompt.size.x <= 320 - 2 * UIKit.EDGE, "every line fits its 192 px budget (widest %d px)" % widest)
 	_check(not progress.has_seen_tutorial(progress.TUTORIAL_HUB), "...nothing saved before the end")
 	await _turn(hub)
 	_check(hub.back_station().id == "story" and tour.done and progress.has_seen_tutorial(progress.TUTORIAL_HUB) and not progress.hub_tour_due(),
 		"a full turn ends at the archway: TUTORIAL_HUB saved, no longer due")
-	_check(hub.prompt_name.text == "THE WAY UP. WALK IN." and hub.prompt_key.text == "" and not tour._layer.visible,
-		"...THE WAY UP. WALK IN. (no key); the SKIP pod gone")
+	_check(hub.prompt_name.text == "THE WAY UP, WALK IN" and hub.prompt_key.text == "" and not tour._layer.visible,
+		"...THE WAY UP, WALK IN (no key); the SKIP pod gone")
 	_check(_saved_bits() & progress.TUTORIAL_HUB != 0, "...written to the save")
 	await _wait_seconds(TourScript.HINT_DELAY + 0.5)
-	_check(hub.prompt_name.text == "THE WAY UP. WALK IN.", "...the last line stays")
+	_check(hub.prompt_name.text == "THE WAY UP, WALK IN", "...the last line stays")
 	await _turn(hub)
 	_check(tour.over and hub.prompt_name.text == "ROTATE", "turning on past the end: the hub's own ROTATE again")
 	_check(not tour.back_pressed(), "after the tour, Esc / B are the hub's again (Esc opens the hub menu)")
@@ -248,7 +248,7 @@ func _devices() -> void:
 	await _turn(hub)
 	await _turn(hub)
 	await _wait_seconds(TourScript.HINT_DELAY + 0.1)
-	_check(hub.prompt_name.text == "HOLD LEFT TO TURN IT BACK.", "pad: HOLD LEFT TO TURN IT BACK.")
+	_check(hub.prompt_name.text == "HOLD LEFT TO TURN IT BACK", "pad: HOLD LEFT TO TURN IT BACK")
 	Platform.last_input = Platform.INPUT_KEYS
 	hub._touch_controls.visible = true
 	await _physics_frames(3)
@@ -257,7 +257,7 @@ func _devices() -> void:
 	_check(rect.size.x >= UIKit.TOUCH_MIN and rect.size.y >= UIKit.TOUCH_MIN, "touch: SKIP's tap area is at least %d px (%s)" % [UIKit.TOUCH_MIN, rect.size])
 	hub._touch_controls.visible = false
 	await _turn(hub, true)
-	_check(hub.back_station().id == "maps" and hub.prompt_name.text == "MAPS OF EVERY LEVEL YOU SMEARED.", "holding left turns back: the line follows (MAP TABLE)")
+	_check(hub.back_station().id == "maps" and hub.prompt_name.text == "MAPS OF EVERY LEVEL YOU SMEARED", "holding left turns back: the line follows (MAP TABLE)")
 	await _close(hub)
 
 
@@ -284,7 +284,7 @@ func _layout() -> void:
 			widest = maxf(widest, hub.prompt_name.get_combined_minimum_size().x)
 			if step < hub.stations.size():
 				await _turn(hub)
-		_check(tour.done and hub.prompt_name.text == "THE WAY UP. WALK IN.", "%s: the walk ends on the last line" % device)
+		_check(tour.done and hub.prompt_name.text == "THE WAY UP, WALK IN", "%s: the walk ends on the last line" % device)
 		_check(bad.is_empty(), "%s: every tour line's prompt box centred, on screen, clear of the touch controls (%s)" % [device, ", ".join(bad)])
 		_check(widest <= 192.0, "%s: the widest tour line is within its 192 px budget (%d px)" % [device, widest])
 		await _close(hub)
@@ -350,10 +350,10 @@ func _web_and_replay() -> void:
 	progress.training_skipped = true
 	progress.training_coin = false
 	hub = await _open()
-	_check(hub.tour != null and hub.prompt_name.text == "HOME. IT TURNS. HIT THE WHEEL.", "a SETTINGS replay: the tour again")
+	_check(hub.tour != null and hub.prompt_name.text == "HOME. IT TURNS, HIT THE WHEEL", "a SETTINGS replay: the tour again")
 	for i in 4:
 		await _turn(hub)
-	_check(hub.prompt_name.text == "COINS STILL HIDING IN EACH LEVEL.", "...no practice coin picked up: the coin bag's plain line")
+	_check(hub.prompt_name.text == "COINS STILL HIDING IN EACH LEVEL", "...no practice coin picked up: the coin bag's plain line")
 	var before := FileAccess.get_file_as_string(test_save)
 	await _press("menu")
 	_check(hub.tour.over and not progress.tour_replay and FileAccess.get_file_as_string(test_save) == before,
@@ -376,7 +376,7 @@ func _timing() -> void:
 		frames += Engine.get_physics_frames() - before
 		if frames > 60 * 120:
 			break
-	await _wait_seconds(READ_TIME)  # (THE WAY UP. WALK IN.)
+	await _wait_seconds(READ_TIME)  # (THE WAY UP, WALK IN)
 	frames += int(READ_TIME * 60)
 	var walk_from := Engine.get_physics_frames()
 	await _walk(hub, [hub.rotor.position + Vector2(-22, 8), hub.rotor.position + Vector2(-22, -40), hub._station("story").sprite.position + Vector2(0, 16)])

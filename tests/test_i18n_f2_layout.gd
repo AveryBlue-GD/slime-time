@@ -69,10 +69,17 @@ func _initialize() -> void:
 		names[key.get_slice("|", 1)] = true
 	for name: String in names:
 		var bad := PackedStringArray()
+		var bad_other := PackedStringArray()  # (other locales: only reported in English-only mode, _check_locale)
 		for key: String in _seen:
 			if key.get_slice("|", 1) == name and _seen[key] != "":
-				bad.append("%s (%s)" % [key.get_slice("|", 0), _seen[key]])
+				var line := "%s (%s)" % [key.get_slice("|", 0), _seen[key]]
+				if key.get_slice("|", 0) in ["en", ""]:
+					bad.append(line)
+				else:
+					bad_other.append(line)
 		_check(bad.is_empty(), name + ("" if bad.is_empty() else ": " + ", ".join(bad.slice(0, 4))))
+		if not bad_other.is_empty():
+			_check_locale(false, name + ": " + ", ".join(bad_other.slice(0, 4)))
 	_result()
 	quit(1 if failures else 0)
 

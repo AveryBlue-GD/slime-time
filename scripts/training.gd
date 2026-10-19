@@ -72,7 +72,7 @@ static func display_name() -> String:
 ## The joke under the name on the area banner (must not repeat level 1's splat line).
 static func banner_line() -> String:
 	# i18n: joke under the training maze's name, one line, max 296px. Keep it funny, not literal.
-	return Loc.t("training.line", "ROCK BOTTOM. NICE LANDING.")
+	return Loc.t("training.line", "ROCK BOTTOM, NICE LANDING")
 
 
 ## The direction lines (game.gd's _training_line; one at a time, bottom centre or under the top pods).
@@ -82,13 +82,13 @@ static func line(which: String) -> String:
 	match which:
 		"coin_ahead":
 			# i18n: training direction line (HUD pod, bottom centre), max 184px (its pod: 192), 1 line; the coin is up the maze from the start
-			return Loc.t("training.coin_ahead", "A COIN IS UP AHEAD. GRAB IT!")
+			return Loc.t("training.coin_ahead", "A COIN IS UP AHEAD, GRAB IT!")
 		"coin_up":
 			# i18n: training direction line at the fork (the coin's dead end goes up), max 184px (its pod: 192), 1 line; UP = the up direction
 			return Loc.t("training.coin_up", "GO UP AND GRAB THE COIN!")
 		"coin_use":
 			# i18n: training line after the first coin, max 184px (its pod: 192), 1 line; the hub = the round room the player goes to next
-			return Loc.t("training.coin_use", "COINS BUY UPGRADES IN THE HUB.")
+			return Loc.t("training.coin_use", "COINS BUY UPGRADES IN THE HUB")
 		"chalice":
 			# i18n: training line after drying up once, max 184px (its pod: 192), 1 line; the golden chalice is the maze's exit
 			return Loc.t("training.chalice", "FIND THE CHALICE TO GET OUT!")

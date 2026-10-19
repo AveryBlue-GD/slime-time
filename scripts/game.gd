@@ -2335,7 +2335,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		# i18n: result lines, max 296px each, 1 line each (the training maze's win)
 		_finish(true, Loc.lines([Loc.t("result.chalice", "CHALICE CONSUMED!"),
-			Loc.t("result.training_won", "THE REAL MAZES ARE UP THERE.")]))
+			Loc.t("result.training_won", "THE REAL MAZES ARE UP THERE")]))
 		return
 	if descent:
 		# The floor's exit: the chalice fanfare, the floor's tickets into the pot, then the boon card.

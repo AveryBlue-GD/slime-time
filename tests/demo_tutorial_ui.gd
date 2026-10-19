@@ -3,7 +3,7 @@ extends Node
 ## Capture scenario for the tutorial's UI pass (docs/tutorial/design.md sections 4-5; gate forced on, a clean
 ## in-memory state, nothing saved). Prints "CAPTURE <name> <frame>" at each moment for picking movie frames.
 ##   --shot=tour      the hub tour: the first line, each turn's line (CAPTURE turn<N>), the turn-back hint,
-##                    the end line (THE WAY UP. WALK IN.)
+##                    the end line (THE WAY UP, WALK IN)
 ##   --shot=pause     the training maze with the pause menu open (SKIP TRAINING)
 ##   --shot=settings  SETTINGS with the TRAINING button
 ##   --shot=hub_plain the hub by the wheel with the gate off (the ROTATE prompt as before)

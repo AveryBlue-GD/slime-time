@@ -123,7 +123,7 @@ flag back on needs no new translation round.
 ### 10. Story (`scripts/story.gd`, `scripts/ui/story_screen.gd`, `scripts/ui/victory.gd`)
 | What | Strings | How | Layout |
 |---|---|---|---|
-| Per-level one-liners (`SPLAT. IT IS DAMP. UP IS THAT WAY.` …) | 10 | L, **jokes** | one line under the level name; `Story.MAX_WIDTH` 296 px, M-checked in `test_story.gd` (`widest_line`) |
+| Per-level one-liners (`SPLAT. IT IS DAMP, UP IS THAT WAY` …) | 10 | L, **jokes** | one line under the level name; `Story.MAX_WIDTH` 296 px, M-checked in `test_story.gd` (`widest_line`) |
 | Intro / ending cutscene | 0 | **wordless** (pixel sprites only) | – |
 | Victory `YOU ESCAPED!`, `ALL %d MAZES CLEARED\n\nUNLOCKED: %s (ANY COLOR YOU LIKE)`, `PICK YOUR COLOR`, `RANDOMIZER`, `HUB` | 5 | F, NL | |
 

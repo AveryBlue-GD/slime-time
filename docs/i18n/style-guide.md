@@ -25,7 +25,7 @@ glossary in `docs/i18n/glossary/<code>.md` (terms chosen once, reused everywhere
 ## 2. Tone
 
 Slime Time is a short, dark, silly game about a slime escaping a dungeon before it dries up. The
-voice is **dark, funny and short**: deadpan one-liners (`SPLAT. IT IS DAMP. UP IS THAT WAY.`),
+voice is **dark, funny and short**: deadpan one-liners (`SPLAT. IT IS DAMP, UP IS THAT WAY`),
 mild gallows humour about drying out, never cruel, never crude. Kids may play it.
 
 - **Short beats exact.** Every label has a pixel budget. A shorter word that keeps the joke wins over

@@ -396,7 +396,7 @@ msgstr "圣杯已吞下！"
 
 #: scripts/game.gd
 msgctxt "result.training_won"
-msgid "THE REAL MAZES ARE UP THERE."
+msgid "THE REAL MAZES ARE UP THERE"
 msgstr ""
 
 #. result title, max 296px, 1 line
@@ -931,98 +931,98 @@ msgstr ""
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.end"
-msgid "THE WAY UP. WALK IN."
+msgid "THE WAY UP, WALK IN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.turn_back"
-msgid "HOLD {left} TO TURN IT BACK."
+msgid "HOLD {left} TO TURN IT BACK"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.story"
-msgid "HOME. IT TURNS. HIT THE WHEEL."
+msgid "HOME. IT TURNS, HIT THE WHEEL"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.maps"
-msgid "MAPS OF EVERY LEVEL YOU SMEARED."
+msgid "MAPS OF EVERY LEVEL YOU SMEARED"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.upgrades"
-msgid "COINS GO IN. STRONGER GOO COMES OUT."
+msgid "COINS GO IN, STRONGER GOO COMES OUT"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.quit"
-msgid "THE TRAPDOOR. FOR BEDTIME."
+msgid "THE TRAPDOOR, FOR BEDTIME"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.coins"
-msgid "COINS STILL HIDING IN EACH LEVEL."
+msgid "COINS STILL HIDING IN EACH LEVEL"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.coins_practice"
-msgid "THE PRACTICE COIN WAS FAKE. SORRY."
+msgid "THE PRACTICE COIN WAS FAKE. SORRY"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.random"
-msgid "A NEW MAZE EVERY TIME. NO MERCY."
+msgid "A NEW MAZE EVERY TIME, NO MERCY"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.random_locked"
-msgid "LOCKED. BEAT ALL {count} LEVELS FIRST."
+msgid "LOCKED: BEAT ALL {count} LEVELS FIRST"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.settings"
-msgid "SOUND, KEYS, FOG. THE BORING SIGN."
+msgid "SOUND, KEYS, FOG. THE BORING SIGN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel_free"
-msgid "SPIN FOR HATS. THE FIRST IS FREE."
+msgid "SPIN FOR HATS, THE FIRST IS FREE"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel"
-msgid "SPIN FOR HATS. BRING TICKETS."
+msgid "SPIN FOR HATS, BRING TICKETS"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wardrobe"
-msgid "SKINS, HATS, TRAILS. DRY UP IN STYLE."
+msgid "SKINS, HATS, TRAILS. DRY UP IN STYLE"
 msgstr ""
 
 #. the stick / joystick held left, max 30px
@@ -1321,53 +1321,73 @@ msgid "EMBER"
 msgstr "余烬"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
 msgctxt "story.level_1"
-msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
+msgid "SPLAT. IT IS DAMP, UP IS THAT WAY"
 msgstr "啪叽。湿漉漉的。上面在那边。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
 msgctxt "story.level_2"
-msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
+msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU"
 msgstr "矿工们走得很匆忙。换你也会。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
 msgctxt "story.level_3"
-msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
+msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY"
 msgstr "有人扫过沙子。很久以前。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
 msgctxt "story.level_4"
-msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
+msgid "NOT TECHNICALLY SWIMMING, STILL NOT DRY"
 msgstr "严格来说不算游泳。但也没干。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
 msgctxt "story.level_5"
-msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
+msgid "A SLIME IN SLIME, NOBODY WILL NOTICE"
 msgstr "史莱姆混进黏液里。没人会发现。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
 msgctxt "story.level_6"
-msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
+msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY"
 msgstr "这里的住户很安静。安静得可疑。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
 msgctxt "story.level_7"
-msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
+msgid "COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES"
 msgstr "变冷了。史莱姆不会发抖。只会Q弹。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
 msgctxt "story.level_8"
-msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
+msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE"
 msgstr "关押被遗忘者的牢房。而你令人难忘。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
 msgctxt "story.level_9"
-msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
+msgid "SO SHINY, DAYLIGHT MUST BE CLOSE"
 msgstr "好闪亮。离日光一定不远了。"
 
 #: scripts/story.gd
+#, fuzzy
+#| msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
 msgctxt "story.level_10"
-msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
+msgid "HOT. THE WAY OUT IS THE CRATER, RUN"
 msgstr "好热。出口就是火山口。快跑。"
 
 #: scripts/themes.gd
@@ -1432,14 +1452,14 @@ msgstr ""
 #. budget: max 296px
 #: scripts/training.gd
 msgctxt "training.line"
-msgid "ROCK BOTTOM. NICE LANDING."
+msgid "ROCK BOTTOM, NICE LANDING"
 msgstr ""
 
 #. training direction line (HUD pod, bottom centre), max 184px (its pod: 192), 1 line; the coin is up the maze from the start
 #. budget: max 184px, lines 1
 #: scripts/training.gd
 msgctxt "training.coin_ahead"
-msgid "A COIN IS UP AHEAD. GRAB IT!"
+msgid "A COIN IS UP AHEAD, GRAB IT!"
 msgstr ""
 
 #. training direction line at the fork (the coin's dead end goes up), max 184px (its pod: 192), 1 line; UP = the up direction
@@ -1453,7 +1473,7 @@ msgstr ""
 #. budget: max 184px, lines 1
 #: scripts/training.gd
 msgctxt "training.coin_use"
-msgid "COINS BUY UPGRADES IN THE HUB."
+msgid "COINS BUY UPGRADES IN THE HUB"
 msgstr ""
 
 #. training line after drying up once, max 184px (its pod: 192), 1 line; the golden chalice is the maze's exit

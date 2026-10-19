@@ -24,16 +24,16 @@ Preview: `./tools/godot.sh --path . --write-movie /tmp/story.avi --fixed-fps 30 
 ## Level banners
 Shown under the area name for a few seconds when a story level starts (not in the randomizer).
 
-1. Dark Dungeon: SPLAT. IT IS DAMP. UP IS THAT WAY.
-2. Mossy Mines: THE MINERS LEFT IN A HURRY. SO WOULD YOU.
-3. Sandstone Sanctum: SOMEONE SWEPT THE SAND. NOT RECENTLY.
-4. Sunken Shrine: NOT TECHNICALLY SWIMMING. STILL NOT DRY.
-5. Toxic Tunnels: A SLIME IN SLIME. NOBODY WILL NOTICE.
-6. Creepy Catacombs: THE RESIDENTS ARE QUIET. SUSPICIOUSLY.
-7. Frozen Fortress: COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES.
-8. Obsidian Oubliette: A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE.
-9. Crystal Caverns: SO SHINY. DAYLIGHT MUST BE CLOSE.
-10. Volcanic Vault: HOT. THE WAY OUT IS THE CRATER. RUN.
+1. Dark Dungeon: SPLAT. IT IS DAMP, UP IS THAT WAY
+2. Mossy Mines: THE MINERS LEFT IN A HURRY. SO WOULD YOU
+3. Sandstone Sanctum: SOMEONE SWEPT THE SAND. NOT RECENTLY
+4. Sunken Shrine: NOT TECHNICALLY SWIMMING, STILL NOT DRY
+5. Toxic Tunnels: A SLIME IN SLIME, NOBODY WILL NOTICE
+6. Creepy Catacombs: THE RESIDENTS ARE QUIET. SUSPICIOUSLY
+7. Frozen Fortress: COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES
+8. Obsidian Oubliette: A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE
+9. Crystal Caverns: SO SHINY, DAYLIGHT MUST BE CLOSE
+10. Volcanic Vault: HOT. THE WAY OUT IS THE CRATER, RUN
 
 ## Finale (2 shots, about 13 s)
 Shown after beating level 10 (once; keys as above), then the victory screen. Also wordless.

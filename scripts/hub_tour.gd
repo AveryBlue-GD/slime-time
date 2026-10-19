@@ -5,7 +5,7 @@ extends Node
 ## The player turns the room (the hub never turns itself): each time the room comes to rest, the station
 ## now at the back is lit and one short line about it shows in the hub's own prompt box (where ROTATE
 ## would be), with the use key after it. Once (from the second turn on, after HINT_DELAY seconds) the line
-## says how to turn the room back. A full turn of the room ends back at the archway: THE WAY UP. WALK IN.
+## says how to turn the room back. A full turn of the room ends back at the archway: THE WAY UP, WALK IN
 ## (no key; walk to the archway, which opens the level select on level 1 as always) and the tour is done.
 ## Never blocking: the slime moves, leaps and uses stations as usual. Skippable at any time: Esc / B (the
 ## hub asks the tour before it goes to the title), the touch pause button (it presses `menu`) or a tap on
@@ -203,9 +203,9 @@ func line_for(near_id: String) -> String:
 	if over or near_id != "rotor":
 		return ""
 	if done:
-		return Loc.t("hub.tour.end", "THE WAY UP. WALK IN.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+		return Loc.t("hub.tour.end", "THE WAY UP, WALK IN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 	if hint_on:
-		return Loc.t("hub.tour.turn_back", "HOLD {left} TO TURN IT BACK.", {left = _left_name()})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
+		return Loc.t("hub.tour.turn_back", "HOLD {left} TO TURN IT BACK", {left = _left_name()})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
 	return station_line(back_id)
 
 
@@ -213,29 +213,29 @@ func line_for(near_id: String) -> String:
 func station_line(id: String) -> String:
 	match id:
 		"story":
-			return Loc.t("hub.tour.story", "HOME. IT TURNS. HIT THE WHEEL.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.story", "HOME. IT TURNS, HIT THE WHEEL")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"maps":
-			return Loc.t("hub.tour.maps", "MAPS OF EVERY LEVEL YOU SMEARED.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.maps", "MAPS OF EVERY LEVEL YOU SMEARED")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"upgrades":
-			return Loc.t("hub.tour.upgrades", "COINS GO IN. STRONGER GOO COMES OUT.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.upgrades", "COINS GO IN, STRONGER GOO COMES OUT")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"quit":
-			return Loc.t("hub.tour.quit", "THE TRAPDOOR. FOR BEDTIME.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.quit", "THE TRAPDOOR, FOR BEDTIME")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"coins":
 			if not Progress.training_coin:
-				return Loc.t("hub.tour.coins", "COINS STILL HIDING IN EACH LEVEL.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-			return Loc.t("hub.tour.coins_practice", "THE PRACTICE COIN WAS FAKE. SORRY.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
+				return Loc.t("hub.tour.coins", "COINS STILL HIDING IN EACH LEVEL")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.coins_practice", "THE PRACTICE COIN WAS FAKE. SORRY")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
 		"random":
 			if Progress.is_randomizer_unlocked():
-				return Loc.t("hub.tour.random", "A NEW MAZE EVERY TIME. NO MERCY.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-			return Loc.t("hub.tour.random_locked", "LOCKED. BEAT ALL {count} LEVELS FIRST.", {count = Levels.COUNT})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
+				return Loc.t("hub.tour.random", "A NEW MAZE EVERY TIME, NO MERCY")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.random_locked", "LOCKED: BEAT ALL {count} LEVELS FIRST", {count = Levels.COUNT})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
 		"settings":
-			return Loc.t("hub.tour.settings", "SOUND, KEYS, FOG. THE BORING SIGN.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.settings", "SOUND, KEYS, FOG. THE BORING SIGN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"wheel":
 			if Progress.spin_cost() == 0:
-				return Loc.t("hub.tour.wheel_free", "SPIN FOR HATS. THE FIRST IS FREE.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-			return Loc.t("hub.tour.wheel", "SPIN FOR HATS. BRING TICKETS.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+				return Loc.t("hub.tour.wheel_free", "SPIN FOR HATS, THE FIRST IS FREE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.wheel", "SPIN FOR HATS, BRING TICKETS")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"wardrobe":
-			return Loc.t("hub.tour.wardrobe", "SKINS, HATS, TRAILS. DRY UP IN STYLE.")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.wardrobe", "SKINS, HATS, TRAILS. DRY UP IN STYLE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 	return ""
 
 

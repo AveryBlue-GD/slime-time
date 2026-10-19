@@ -143,16 +143,16 @@ press of the use key at the wheel: the room turns one station clockwise, the sta
 
 | Step | At the back | Line (draft, English) |
 |---|---|---|
-| 0 | archway (start) | THIS IS HOME. IT TURNS. HIT THE WHEEL. *(+ use-key glyph by the wheel)* |
+| 0 | archway (start) | THIS IS HOME. IT TURNS, HIT THE WHEEL *(+ use-key glyph by the wheel)* |
 | 1 | MAP TABLE | MAPS OF EVERY FLOOR YOU HAVE SMEARED. |
-| 2 | UPGRADES | COINS GO IN. STRONGER GOO COMES OUT. |
-| 3 | QUIT (desktop only) | THE TRAPDOOR. FOR BEDTIME. |
-| 4 | COIN BAG | COINS STILL HIDING ON EACH FLOOR. *(practice-coin variant: THE PRACTICE COIN WAS FAKE. SORRY.)* |
+| 2 | UPGRADES | COINS GO IN, STRONGER GOO COMES OUT |
+| 3 | QUIT (desktop only) | THE TRAPDOOR, FOR BEDTIME |
+| 4 | COIN BAG | COINS STILL HIDING ON EACH FLOOR. *(practice-coin variant: THE PRACTICE COIN WAS FAKE. SORRY)* |
 | 5 | RANDOMIZER (locked) | LOCKED. CLIMB ALL 10 FLOORS FIRST. |
-| 6 | SETTINGS | SOUND, KEYS, FOG. THE BORING SIGN. |
+| 6 | SETTINGS | SOUND, KEYS, FOG. THE BORING SIGN |
 | 7 | HAT WHEEL | SPIN FOR HATS. THE FIRST SPIN IS FREE. |
-| 8 | COSMETICS | SKINS, HATS, TRAILS. DRY UP IN STYLE. |
-| 9 | archway again | THE WAY UP. WALK IN. *(use-key glyph over the archway; the line stays until it is used)* |
+| 8 | COSMETICS | SKINS, HATS, TRAILS. DRY UP IN STYLE |
+| 9 | archway again | THE WAY UP, WALK IN *(use-key glyph over the archway; the line stays until it is used)* |
 
 - On step 2 a second line: HOLD LEFT TO TURN BACK (once).
 - The lines describe and never recommend (D12: no "buy MORE SLIME"). The hat wheel line states a fact the
@@ -187,7 +187,7 @@ tour.
   the safety net.
 - The training cues reuse the TutorialCues drawing (keycaps, d-pad, `key_size`). The drawing moves to static
   helpers, so both nodes draw identical keycaps and nothing in levels 1-2 changes by a pixel.
-- Level 1's banner line ("SPLAT. IT IS DAMP. UP IS THAT WAY.") still works after the maze. The maze's own banner
+- Level 1's banner line ("SPLAT. IT IS DAMP, UP IS THAT WAY") still works after the maze. The maze's own banner
   must not repeat the splat joke.
 
 ## 8. Save and flag plan
@@ -383,9 +383,9 @@ so levels 1-2 and every other mode are unchanged. Text: `Training.line(which)`; 
 
 | Line | English (budget 184 px text, 192 px pod) | Shows | Goes |
 |---|---|---|---|
-| `coin_ahead` | A COIN IS UP AHEAD. GRAB IT! (142 px) | attempt 1's start, while the coin waits (also after R mid-run) | at the fork (replaced), the coin, a dry-up |
+| `coin_ahead` | A COIN IS UP AHEAD, GRAB IT! (142 px) | attempt 1's start, while the coin waits (also after R mid-run) | at the fork (replaced), the coin, a dry-up |
 | `coin_up` | GO UP AND GRAB THE COIN! (128 px) | the fork, while the coin waits (attempt 2: only once the chalice line is gone) | the coin, a dry-up |
-| `coin_use` | COINS BUY UPGRADES IN THE HUB. (162 px) | the practice coin is picked up (D12: no upgrade named) | after 5 s (it may finish over the dry-up row, up top) |
+| `coin_use` | COINS BUY UPGRADES IN THE HUB (162 px) | the practice coin is picked up (D12: no upgrade named) | after 5 s (it may finish over the dry-up row, up top) |
 | `chalice` | FIND THE CHALICE TO GET OUT! (150 px) | attempt 2 on (after a dry-up's RESTART), with the banner | the chalice (win), or after 15 s; `coin_use` interrupts it and it comes back while time is left |
 
 Why words, not glyphs: "UP" is a word every device reads the same (keys, pad, touch), so no new glyph art; the fork is where
