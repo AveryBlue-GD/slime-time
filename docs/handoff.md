@@ -63,7 +63,7 @@ later skins stay visible with a FULL GAME lock. End screen (`scenes/demo_end.tsc
 time), after the third demo maze and from the FULL GAME tiles: teaser cards of later areas, carry-over line (web: SAVE CODE), KEEP
 PLAYING; WISHLIST buttons (end screen, pause menu, hub sign) hidden while `Demo.WISHLIST_URL` is empty. Level data moved to
 `scripts/level_data/level_NN.gd` / `hard_NN.gd` (loaded on use; mazes byte-identical); `Demo.full_only_paths()` / `tools/demo_paths.gd`
-give the export exclude list (step 2: presets + stripping, not done yet). Saves carry `[meta] demo`; the full game reads them; the
+give the export cut list. **Step 2 (shipping, done):** four `... Demo` export presets generated from their full twins (`tools/demo_paths.gd -- --write-presets`, `custom_features="demo"`, exclude = twin + `Demo.export_cut()`: later levels' data, later themes' art + ambience, the victory screen, the catalogs while languages are off); `tools/build_demo.sh` / `build_demo.ps1` exports Windows + Web Demo to `build/demo/` and verifies them (PCK listing via `tools/pck_check.py`, smoke run of the exported pack via `tools/demo_smoke.gd`); `test_demo_export` fails while the presets are stale. Accepted leaks (code, coins.png, hats): demo-plan.md section 9. Saves carry `[meta] demo`; the full game reads them; the
 demo never writes a full-game save (`Progress.demo_guard`). Web defaults: no randomizer, no hat wheel (`WEB_*` knobs).
 
 ## Modes

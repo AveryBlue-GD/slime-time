@@ -7,7 +7,7 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 ## 1. The switch
 
 - `Platform.is_demo()` (`scripts/platform.gd`, the platform seam) is true when the export preset has the custom
-  feature **`demo`** (step 2 adds the demo presets), or on the debug launch flag **`--demo`**
+  feature **`demo`** (the "... Demo" export presets, section 8), or on the debug launch flag **`--demo`**
   (`./tools/play.sh --demo`, `.\tools\play.ps1 -Demo`; a release export ignores debug flags as usual).
   Tests force it with `Platform.demo_override` (1 on, 0 off, -1 real; `Platform.reset_overrides()`).
 - Every gate asks the **`Demo`** class (`scripts/demo.gd`). With the switch off every `Demo` query answers
@@ -73,13 +73,15 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 - **Maps / medals / records:** for the demo's levels; the map table keeps 4-10 sealed (even with a full save's surveys).
 - Workshop and Descent stay off as in the full game. Intro + SPLASHDOWN tutorial are unchanged.
 
-## 4. Full-game-only content (for step 2: the export exclude list)
+## 4. Full-game-only content (the export cut list)
 
-**Single source of truth: `Demo.full_only_paths(web := false)`.** Print it with
-`godot --path . --headless -s res://tools/demo_paths.gd [-- --web]`: one path per line, then a line
-`EXCLUDE: a, b, c` ready for the demo preset's `exclude_filter` (add it to the usual `tests/*, tools/*, ...`).
-It is computed from `Demo.LEVELS` / `WEB_LEVELS` / `HARD_LEVELS`, `Levels.data_path` and `Themes`, so changing a
-knob changes the list. Today (desktop; web the same while `WEB_LEVELS` is 3):
+**Single source of truth: `Demo.full_only_paths(web := false)`**, and `Demo.export_cut(web)` = that list plus the
+translation catalogs while the languages gate is off (section 9). Print them with
+`godot --path . --headless -s res://tools/demo_paths.gd [-- --web]`: one full-only path per line, then a line
+`EXCLUDE: a, b, c` (the whole cut). Nobody copies that line by hand: `--write-presets` writes it into the demo
+presets (section 8). It is computed from `Demo.LEVELS` / `WEB_LEVELS` / `HARD_LEVELS`, `Levels.data_path`, `Themes`
+and `Demo.FULL_ONLY_FILES`, so changing a knob, or adding a level or theme past the demo, changes the list.
+Today (desktop; web the same while `WEB_LEVELS` is 3):
 
 | what | paths |
 |---|---|
@@ -87,6 +89,10 @@ knob changes the list. Today (desktop; web the same while `WEB_LEVELS` is 3):
 | hard level tables, hard 2-10 | `res://scripts/level_data/hard_02.gd` .. `hard_10.gd` |
 | tile art of the 7 later themes | `res://assets/sprites/themes/{sunken,sewers,catacombs,frozen,obsidian,crystal,volcanic}_{walls,floors,fillets,border}.png` (+ `.import`) |
 | ambience of the 7 later themes | `res://assets/sounds/ambient_{theme}.wav` and `ambient_{theme}_N.wav` (+ `.import`) |
+| the victory screen (after the level-10 chalice only) | `res://scenes/victory.tscn`, `res://scripts/ui/victory.gd` (`Demo.FULL_ONLY_FILES`) |
+| the 17 translation catalogs, while `Economy.LANGUAGES_TEST` is false | `res://locale/*.po` (`Language.CATALOGS`; never loaded with the gate off) |
+
+That is 117 files (199 paths with the `.import` siblings).
 
 How the code keeps this possible:
 - `Levels` reads each level from its own file (`scripts/level_data/level_NN.gd`: `NORMAL` recipe + `line()`;
@@ -102,22 +108,9 @@ How the code keeps this possible:
   full-only path treated as absent) and checks that nothing asked for one (`Demo.denied`) and that none is in the
   resource cache (`ResourceLoader.has_cached`) afterwards.
 
-Step 2 checklist: add `custom_features="demo"` presets (Windows, macOS, Linux, Web) with the exclude list; export;
-open the export and play it through once (a missing file shows up as a load error in the log); keep
-`custom_user_dir_name` = `SlimeTime_R1` so desktop carry-over works.
-
-**What can't be protected:**
-- The **code** ships in the demo: `game.gd`, the maze generator, the finale cutscene (`story_screen.gd` draws it
-  in code), the HEAT / SHOP / Descent / workshop logic, `Themes` (names, fog colours), `MapView.THEMED` (palettes),
-  `Skins.PRESETS`, `Levels.COINS` (coin counts per level, kept in code: `Levels.total_coins()` and the rainbow skin
-  need them). Without the level files someone could still invent their own seeds.
-- `assets/sprites/coins.png` holds all 10 coin metals in one sheet (a small leak; split it per theme if it matters).
-- The translation catalogs (`locale/*.po`) hold every string, including the later levels' banner lines. They are
-  English-only fallbacks today; step 2 can drop the `story.level_4` .. `story.level_10` entries from a demo copy of
-  the catalogs, or ship the demo with languages off.
-- **Optional deterrent later:** PCK encryption (`encrypt_pck` / `encrypt_directory` with a script encryption key)
-  needs export templates compiled with that key (a custom template build). It slows casual extraction, it doesn't
-  stop a determined one (the key is in the binary).
+Step 2 (done, sections 8-10): the demo presets, the generator, the one-command build + verify, the CI test.
+`custom_user_dir_name` stays `SlimeTime_R1` (project.godot, shared by every preset) so desktop carry-over works.
+What still ships with the demo: section 9.
 
 ## 5. Save carry-over
 
@@ -144,3 +137,87 @@ digests themselves match). `test_hard_rebalance` reads the tables through `Level
 English only (owner rule), every string through `Loc.t` with `# i18n:` hints; catalogs merged
 (`python tools/i18n_extract.py --merge`), row in `docs/i18n/pending.md`; the capture gate has four demo states
 (`demo level select`, `demo upgrades capped`, `demo skin locked`, `demo end screen`). Screenshots: `docs/demo/`.
+
+## 8. Shipping the demo (step 2, 2026-10-19)
+
+**Presets.** `export_presets.cfg` has four demo presets, each GENERATED from its full twin (`tools/demo_export.gd`):
+"Windows Demo" (`build/demo/windows/DryTryingDemo.exe`), "Web Demo" (`build/demo/web/index.html`: zip that folder's
+files for itch, as with the full web build), "macOS Demo" (`build/demo/macos/DryTryingDemo.zip`, bundle id
+`com.slimetime.game.demo`) and "Linux Demo" (`build/demo/linux/DryTryingDemo.x86_64`). Generated = the twin's
+section and options copied, then the name, `custom_features="demo"`, the output path, the Windows product name
+(Dry Trying Demo) and `exclude_filter` = the twin's excludes + `Demo.export_cut()`. **Edit the full presets
+(editor or file), never the demo ones**: the next write replaces them. The full presets stay byte-identical (the
+file is read and written with ConfigFile, exactly as the editor saves it).
+
+**Commands** (from the project root; Godot 4.7.2 + its export templates, python 3):
+- Rewrite the demo presets after a change (a knob, a new level / theme, an edited full preset):
+  `./tools/godot.sh --path . --headless -s res://tools/demo_paths.gd -- --write-presets`
+  (`-- --check-presets` only checks: exit 1 if out of date). `tests/test_demo_export.gd` (in `test_all`) fails
+  while the file is out of date, so a forgotten regeneration can't ship.
+- **Build + verify in one go:** `./tools/build_demo.sh [--all] [--no-smoke]` (macOS / Linux / Git Bash: `tools/godot.sh`
+  finds `$GODOT`, the Mac app, `godot` on PATH or the winget console binary) or `.\tools\build_demo.ps1 [-All] [-NoSmoke]`
+  (Windows PowerShell). It self-tests the pack reader (`python tools/test_pck_check.py`: synthetic packs of formats
+  2-4, standalone and embedded, every leak form and near miss; run it by hand after touching `pck_check.py`; it is
+  not in `test_all`, which runs only Godot suites), writes the presets and a fresh cut list (a failed write fails
+  the build, never a stale list), exports Windows Demo + Web Demo (`--all`: + Linux Demo, + macOS Demo on a Mac
+  only: the macOS presets' ad-hoc signing needs Xcode's tools, so neither the full nor the demo macOS preset
+  exports on Windows), then:
+  1. **pack check** (`tools/pck_check.py`, a Godot 4 PCK reader for formats 2-4; reads an `.exe` / `.x86_64` with
+     the pack embedded, a `.pck`, and the `.pck` inside the macOS zip): lists every packed file and FAILS if a cut
+     path is inside in any form: the file, its `.import` / `.remap` / `.uid`, a `.gdc`, the imported copy
+     (`.godot/imported/<file>-<md5>.ctex|.sample`) or a converted scene (`.godot/exported/.../export-<md5>-<name>.scn`),
+     or if its `res://` path is written in the pack's `.godot/uid_cache.bin` or `global_script_class_cache.cfg`.
+     Excluding the source path keeps the imported data and the index entries out (verified, not assumed: the full
+     pack fails the same check on every one of these, the demo pack passes);
+  2. **smoke run** of the exported Windows and Web packs: the editor binary with `--main-pack <pack>` runs
+     `tools/demo_smoke.gd` from outside the pack (tools/ is never exported) with
+     `--save-path=<abs>/build/demo/reports/demo_smoke_selftest.cfg`: a debug binary honors it, so the throwaway save
+     is outside the game's user folder (`SlimeTime_R1`); the script stops at once unless the file has that name and
+     isn't the real save; the script and then the build script delete it (a crashed run's leftover is reported).
+     The web pack runs with `--platform=web --expect=web` (a debug binary then answers `Platform.is_web()` true), so
+     the web knobs are what is checked. Checks: the `demo` feature comes from the export (not a flag), the platform
+     is the expected one, `Demo.levels()` / randomizer / hat wheel match that platform's knobs, every cut path of
+     that platform is absent, levels 1-3 are played to the chalice by the route pilot and the end screen opens, the
+     first demo maze is played to its ticket (web: the randomizer stays shut, `WEB_RANDOMIZER` false), every menu
+     scene opens, a full-game level falls back. Fails on a failed check or any `ERROR` / `SCRIPT ERROR` line (the
+     engine's "resources still in use at exit" line is ignored). The exported exe itself is never run (it would use
+     the real save); the real save's md5 is compared before / after too.
+  Reports: `build/demo/reports/` (cut list, pack listings, export and smoke logs; not inside `build/demo/web`,
+  whose files are the itch upload). Last run (2026-10-19, Windows): Windows Demo exe 111.9 MB with a 2.7 MB pack
+  of 427 files (full: 116.5 MB, 7.2 MB pack, 644 files); Web Demo pack 2.6 MB (full 7.1 MB; the 39.5 MB engine
+  wasm is the same); Linux Demo 76.1 MB; smoke: 29 / 29 checks (Windows), 27 / 27 (web).
+
+## 9. What the demo still contains (accepted leaks)
+
+- **The code** (compiled `.gdc`; a decompiler reads it): `game.gd`, the maze generator, the finale cutscene
+  (`story_screen.gd` draws it in code and shares the file with the intro), HEAT / SHOP / Descent / workshop logic,
+  `Themes` (all 10 area names and fog colours), `MapView.THEMED` (palettes), `Skins.PRESETS`, the abilities, `Levels`
+  (coins per level, `COUNT`). The level RECIPES (seeds, sizes, hard tables) are cut, so the story mazes 4-10 can't
+  be rebuilt from the demo; someone could still invent seeds and play randomizer-style mazes in the demo's themes.
+- **`assets/sprites/coins.png`**: one sheet with all 10 coin metals (a few pixels per later area). Accepted: tiny;
+  a demo crop would need a second asset or an export-time image step.
+- **Hats** (`hats.png`, the TAILOR's whole catalogue) and **every skin** (built from `Skins.PRESETS` in code): the
+  demo shows them anyway (wheel prizes, FULL GAME silhouettes).
+- **Sounds of the locked abilities** (`goo_lob`, `goo_burst`, `kaze`, ...) and every shared UI / slime sound:
+  loaded by name, a few KB, no story content.
+- **Fonts** for other scripts (`assets/fonts/{arabic,cjk,devanagari,thai}`, ~0.3 MB): not later content, only
+  unused while languages are off (a possible size cut, left in).
+- **The translation catalogs** are cut while `Economy.LANGUAGES_TEST` is false (they hold every string, the later
+  levels' banner lines too, and are never loaded with the gate off). **If the demo ships with languages ON** they
+  ship whole (the cut follows the gate): the 7 later banner jokes x 17 languages and the victory text leak as
+  strings. If that matters then, add an export-time demo copy of the catalogs without `story.level_4` .. `_10` and
+  `victory.*` (not done).
+- **Path names**: none. The pack's `uid_cache.bin` and script class cache list only exported files; every build checks it (`pck_check.py` fails if a cut path is named in either).
+- A harmless engine WARNING in every export (full too): `title.tscn`'s binary copy carries a stale UID for
+  `title.gd` and falls back to the path (a stale editor cache entry; nothing to do with the demo).
+
+## 10. PCK encryption (not done: a deterrent only)
+
+Godot can encrypt the pack (`encrypt_pck=true`, `encrypt_directory=true`, `encryption_include_filters="*"`) with a
+256-bit key from the `GODOT_SCRIPT_ENCRYPTION_KEY` environment variable at export time. The game can only read such
+a pack when the **export templates were compiled with that same key** set: the official 4.7.2 templates can't, so
+it needs a custom template build per platform (Windows, macOS universal + re-signing, Linux, Web). It stops casual
+extraction (gdsdecomp and friends can't open the pack without the key), but the key sits inside the shipped binary
+and is routinely pulled out with a debugger, so it stops nobody determined. Cutting the content (sections 4 and 8)
+is the real protection; encryption would only add a hurdle for the code. `tools/pck_check.py` can't list an
+encrypted directory (it says so), so the build's check would have to run before encryption or with the key.

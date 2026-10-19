@@ -11,8 +11,10 @@ extends RefCounted
 ## and the skins earnable in it. Everything else stays visible with a FULL GAME lock (names only).
 ## The end screen (END_SCENE) follows the last demo level's chalice and the last demo maze.
 ##
-## Export stripping (step 2): every file only the full game needs is listed by full_only_paths() (run
-## tools/demo_paths.gd); the demo must run with them absent. Code the demo runs only ever `load()`s
+## Export stripping: every file only the full game needs is listed by full_only_paths() (export_cut() adds
+## the catalogs while languages are off); tools/demo_paths.gd --write-presets puts it into the demo export
+## presets and tools/build_demo.* exports + verifies them (docs/demo-plan.md section 8). The demo must run
+## with them absent. Code the demo runs only ever `load()`s
 ## level data / theme art / ambience through paths it allows (can_load), never `preload`s them.
 
 ## ---------------------------------------------------------------- the knobs (one place)
@@ -160,12 +162,19 @@ static func full_game_text() -> String:
 
 
 ## ---------------------------------------------------------------- what the demo leaves out
+## Files only the full game opens that no level number or theme names: the victory screen (shown only
+## after the level-10 chalice: Game.VICTORY_SCENE, Story's finale). Add a file here only if no demo
+## path can reach it (tests/test_demo_export.gd checks that each one exists).
+const FULL_ONLY_FILES: Array[String] = ["res://scenes/victory.tscn", "res://scripts/ui/victory.gd"]
+
+
 ## Every res:// file only the full game needs, for the demo export's exclude list (docs/demo-plan.md):
-## the data of the story levels past levels() and hard levels past hard_levels(), and the tile art and
-## ambience of the themes no demo level or maze uses. `web`: the web demo's list (its own levels()).
-## Imported files: the .png / .wav and their .import (the exporter then leaves out the imported copy).
+## the data of the story levels past levels() and hard levels past hard_levels(), the tile art and
+## ambience of the themes no demo level or maze uses, and FULL_ONLY_FILES. `web`: the web demo's list
+## (its own levels()). Imported files: the .png / .wav and their .import (the exporter then leaves out
+## the imported copy; tools/build_demo checks the exported pack).
 static func full_only_paths(web := false) -> PackedStringArray:
-	var out := PackedStringArray()
+	var out := PackedStringArray(FULL_ONLY_FILES)
 	var count := WEB_LEVELS if web else LEVELS
 	for level in range(count + 1, Levels.COUNT + 1):
 		out.append(Levels.data_path(level))
@@ -189,6 +198,18 @@ static func full_only_paths(web := false) -> PackedStringArray:
 			if FileAccess.file_exists(event) or FileAccess.file_exists(event + ".import"):
 				out.append(event)
 				out.append(event + ".import")
+	return out
+
+
+## Everything a demo export leaves out (its preset's exclude_filter, written by
+## `tools/demo_paths.gd --write-presets`): full_only_paths(web), plus the translation catalogs
+## (locale/*.po: every locale's strings, the later levels' banner lines too) while the languages gate is
+## off (Economy.LANGUAGES_TEST false: the game never loads them). With the gate on they ship.
+static func export_cut(web := false) -> PackedStringArray:
+	var out := full_only_paths(web)
+	if not Economy.LANGUAGES_TEST:
+		for path: String in Language.CATALOGS:
+			out.append(path)
 	return out
 
 
