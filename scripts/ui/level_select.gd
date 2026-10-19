@@ -17,6 +17,9 @@ var grid: GridContainer
 var skin_text: SkinText
 var hard_mode_box: CheckBox
 var info: Label
+## The info block's top row and height (two lines; _layout), so a shorter text can sit in its middle.
+var _info_top := 0.0
+var _info_h := 0
 var heat_button: Button
 var heat_panel: HeatPanel
 var info_panel: Panel
@@ -50,19 +53,10 @@ const PAGE_SIZE := 5
 
 ## The two help lines under the tiles.
 static func info_text(hard: bool) -> String:
-	if Demo.on():  # the demo: what's in the full game instead of HEAT
-		var first := Demo.last_level(hard) + 1
-		if hard:
-			# i18n: two lines (demo build), each max 300px; {from}-{to} = level numbers
-			return Loc.lines([
-				Loc.t("levels.demo_hard.1", "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"),
-				Loc.t("levels.demo_hard.2", "HARD {from}-{to} AND HEAT: FULL GAME", {from = first, to = Levels.COUNT}),
-			])
-		# i18n: two lines (demo build), each max 300px; {from}-{to} = level numbers
-		return Loc.lines([
-			Loc.t("levels.info_normal.1", "CLEAR A LEVEL TO UNLOCK THE NEXT"),
-			Loc.t("levels.demo_normal.2", "LEVELS {from}-{to} ARE IN THE FULL GAME", {from = first, to = Levels.COUNT}),
-		])
+	# The demo: no word about the full game here (its later levels are just locked); hard mode has no HEAT.
+	if Demo.on() and hard:
+		# i18n: one line (demo build, hard mode), max 300px
+		return Loc.t("levels.demo_hard.1", "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN")
 	# i18n: two lines, each max 300px; the numbers are the heat levels and ticket payouts (Heat.BOUNTIES), keep them
 	if hard:
 		return Loc.lines([
@@ -128,6 +122,16 @@ func _ready() -> void:
 ## Places the info panel (its lines, the checkbox under them, its bottom GRID_GAP over the bottom row)
 ## and the grid (two rows right under the title, or one row centred between the title and the panel
 ## when paged). English: INFO_RECT, the checkbox at (25, 145), the grid at GRID_POS.
+## The info lines in their two-line block: a one-line text (the demo's hard mode) in the block's middle,
+## so the panel and checkbox keep their place when the mode flips (the full game's texts are two lines).
+func _place_info() -> void:
+	if _info_h == 0:
+		return
+	var spare := _info_h - UIKit.text_block_h(info.text.count("\n") + 1)
+	info.offset_top = _info_top + floori(maxi(spare, 0) / 2.0)
+	info.offset_bottom = info.offset_top + _info_h - maxi(spare, 0) + 1
+
+
 func _layout() -> void:
 	if "\n" in hard_mode_box.text:
 		# Two lines: GAP_M over and under them (one line has 4.5 px in its 16 px box), so the drips stay
@@ -151,8 +155,9 @@ func _layout() -> void:
 	var panel := Rect2(UIKit.center_x(panel_w), panel_bottom - panel_h, panel_w, panel_h)
 	info_panel.position = panel.position
 	info_panel.size = panel.size
-	info.offset_top = panel.position.y + top_pad
-	info.offset_bottom = info.offset_top + lines_h + 1
+	_info_top = panel.position.y + top_pad
+	_info_h = lines_h
+	_place_info()
 	hard_mode_box.position = Vector2(UIKit.center_x(box.x), info.offset_top + lines_h + UIKit.GAP_L)
 	UIKit.align_checkbox(hard_mode_box)
 	var grid_y := float(UIKit.title_bottom())
@@ -236,6 +241,7 @@ func _refresh_heat() -> void:
 	heat_button.size = heat_size
 	UIKit.place_bottom_row(heat_button, 1)
 	info.text = info_text(Progress.hard_mode)
+	_place_info()
 	if not Progress.hard_mode and heat_panel.visible:
 		heat_panel.close()
 
@@ -270,10 +276,10 @@ func _fill_grid() -> void:
 func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
 	button.gui_input.connect(func(event: InputEvent) -> void: _tile_input(level, event))
-	# The demo: a full-game level is locked whatever the save says, and its tile opens the end screen.
-	var full := not Demo.level_open(level, Progress.hard_mode)
-	var locked := full or level > Progress.highest_unlocked
-	button.disabled = locked and not full
+	# The demo: a full-game level is locked whatever the save says, like any level not unlocked yet
+	# (the same dim lock, no label; pressing it does nothing).
+	var locked := level > Progress.highest_unlocked or not Demo.level_open(level, Progress.hard_mode)
+	button.disabled = locked
 	var number := UIKit.make_label(str(level), UIKit.FONT_BIG, LOCKED_NUMBER if locked else UIKit.TEXT)
 	number.name = "Number"
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -287,18 +293,7 @@ func _make_tile(level: int) -> Button:
 	button.add_child(number)
 
 	if locked:
-		button.add_child(_make_lock(full))
-		if full:
-			button.set_meta("full_game", true)
-			# i18n: demo build, under the lock on a full-game level's tile; max 44px, 1 line
-			var tag := UIKit.make_label(Loc.t("levels.demo_full", "FULL"), 8, UIKit.GOLD)
-			tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			tag.clip_text = true
-			UIKit.use_plain_font(tag)
-			tag.size = Vector2(TILE.x, 9)
-			tag.set_meta("box", Vector2(TILE.x, 9))
-			tag.position = Vector2(0, STATUS_Y)
-			button.add_child(tag)
+		button.add_child(_make_lock())
 		return button
 	# Hard mode: the best heat tier this level was cleared at, as a flame at the top left.
 	var heat_tier := Heat.tier_of(Progress.best_heat(level)) if Progress.hard_mode and Demo.heat_open() else 0
@@ -340,7 +335,7 @@ func _make_tile(level: int) -> Button:
 
 ## The lock icon centered by its own pixels on the number's center, on a dark copy (like the text
 ## shadow) so it reads over the digits beneath it.
-func _make_lock(full := false) -> Control:
+func _make_lock() -> Control:
 	var holder := Control.new()
 	holder.name = "Lock"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -350,7 +345,7 @@ func _make_lock(full := false) -> Control:
 	var shadow := UIKit.make_icon("lock", UIKit.BG)
 	shadow.position = at + Vector2(1, 1)
 	holder.add_child(shadow)
-	var icon := UIKit.make_icon("lock", UIKit.GOLD if full else UIKit.TEXT_DIM)  # (gold: in the full game)
+	var icon := UIKit.make_icon("lock", UIKit.TEXT_DIM)
 	icon.position = at
 	holder.add_child(icon)
 	return holder
@@ -358,8 +353,7 @@ func _make_lock(full := false) -> Control:
 
 func _play(level: int) -> void:
 	if not Demo.level_open(level, Progress.hard_mode):
-		load("res://scripts/ui/demo_end.gd").open(get_tree(), "locked")  # the demo: a FULL GAME tile shows what's ahead
-		return
+		return  # (the demo: a full-game level stays shut; its tile is disabled anyway)
 	Progress.start_story(level)
 	UIKit.go(get_tree(), UIKit.GAME_SCENE)
 

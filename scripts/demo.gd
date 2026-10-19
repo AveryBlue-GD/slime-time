@@ -8,7 +8,8 @@ extends RefCounted
 ## What the demo has: the intro + SPLASHDOWN tutorial, story levels 1..levels() with their coins,
 ## hard level 1..HARD_LEVELS, the cauldron with each coin upgrade capped at UPGRADE_CAP levels, the
 ## randomizer (after level levels()) as RANDOM_SEEDS fixed mazes with only the ABILITIES, the hat wheel,
-## and the skins earnable in it. Everything else stays visible with a FULL GAME lock (names only).
+## and the skins earnable in it. Later story / hard levels are plain locks (like any level not unlocked yet,
+## no FULL GAME text); the other full-game content stays visible with a FULL GAME lock (names only).
 ## The end screen (END_SCENE) follows the last demo level's chalice and the last demo maze.
 ##
 ## Export stripping: every file only the full game needs is listed by full_only_paths() (export_cut() adds
@@ -155,9 +156,9 @@ static func open_wishlist() -> void:
 		OS.shell_open(WISHLIST_URL)
 
 
-## The FULL GAME lock's text (tiles, prompts, status lines).
+## The FULL GAME lock's text (hub prompts and tour lines of the web demo's randomizer / hat wheel).
 static func full_game_text() -> String:
-	# i18n: lock label on demo-locked levels, skins, upgrades and the shop; max 52px, 1 line
+	# i18n: lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 	return Loc.t("demo.full_game", "FULL GAME")
 
 

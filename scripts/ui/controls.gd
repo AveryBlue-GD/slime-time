@@ -103,16 +103,6 @@ var load_armed := false
 var _focus_lock := {}
 
 
-## The demo playing a full-game save (Progress.demo_guard): settings, RESET and progress are not saved.
-static func guard_note() -> String:
-	# i18n: demo build on a full-game save: SETTINGS note above the bottom row and first line of the RESET confirm, max 256px, 1 line
-	return Loc.t("settings.demo_guard", "FULL GAME SAVE: THE DEMO WON'T CHANGE IT")
-
-
-## Set before opening this scene to open it on the SAVE CODE panel (the demo's end screen on the web).
-static var open_save_code := false
-
-
 func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("settings.title", "SETTINGS"))  # i18n: max 296px, 16 px font
 	_plan_page()
@@ -163,16 +153,6 @@ func _ready() -> void:
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
-	if Progress.demo_guard:  # (the demo on a full-game save: say why nothing here is kept)
-		var note := UIKit.make_label(guard_note(), UIKit.FONT, UIKit.TEXT_DIM)
-		note.name = "DemoGuardNote"
-		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		add_child(note)
-		note.position = Vector2(0, UIKit.BOTTOM_ROW_Y - UIKit.GAP_L - UIKit.line_h())
-		note.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
-	if open_save_code:  # (the web demo's end screen: SAVE CODE opens this page on the code panel)
-		open_save_code = false
-		_open_codes.call_deferred()
 
 
 ## This locale's grid (English: the constants). Columns: COL_W, or every text + its 4 px margins when
@@ -709,10 +689,6 @@ func _build_reset_confirm() -> void:
 	var title_text := Loc.t("reset.title", "ERASE ALL PROGRESS?")
 	# i18n: two lines, each max 256px; the panel grows to 296px, then each wraps onto 2 lines, lines 2
 	var body_text := Loc.lines([Loc.t("reset.body.1", "LEVELS, RECORDS, COINS, UPGRADES AND"), Loc.t("reset.body.2", "SKINS WILL BE GONE FOR GOOD")])
-	if Progress.demo_guard:  # the demo on a full-game save: nothing it does is saved (Progress.demo_guard)
-		body_text = Loc.lines([guard_note(),
-			# i18n: reset confirm, second line (demo build on a full-game save), max 256px
-			Loc.t("reset.demo_guard.2", "ONLY THIS SESSION STARTS OVER")])
 	# i18n: reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 	var confirm_text := Loc.t("reset.confirm", "CONFIRM")
 	var cancel_text := Loc.t("common.cancel", "CANCEL")

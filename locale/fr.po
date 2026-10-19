@@ -160,7 +160,7 @@ msgctxt "trail.ember.desc"
 msgid "GLOWING EMBERS, ANY SKIN"
 msgstr "BRAISES ARDENTES, TOUT SKIN"
 
-#. lock label on demo-locked levels, skins, upgrades and the shop; max 52px, 1 line
+#. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
 #: scripts/demo.gd
 msgctxt "demo.full_game"
@@ -1570,13 +1570,6 @@ msgctxt "savecode.copy_by_hand"
 msgid "COPY THE CODE FROM THE POP-UP"
 msgstr "COPIE LE CODE DANS LA FENÊTRE"
 
-#. demo build on a full-game save: SETTINGS note above the bottom row and first line of the RESET confirm, max 256px, 1 line
-#. budget: max 256px, lines 1
-#: scripts/ui/controls.gd
-msgctxt "settings.demo_guard"
-msgid "FULL GAME SAVE: THE DEMO WON'T CHANGE IT"
-msgstr ""
-
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/controls.gd
@@ -1741,13 +1734,6 @@ msgctxt "reset.body.2"
 msgid "SKINS WILL BE GONE FOR GOOD"
 msgstr "ET SKINS DISPARAÎTRONT POUR DE BON"
 
-#. reset confirm, second line (demo build on a full-game save), max 256px
-#. budget: max 256px
-#: scripts/ui/controls.gd
-msgctxt "reset.demo_guard.2"
-msgid "ONLY THIS SESSION STARTS OVER"
-msgstr ""
-
 #. reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 #. budget: max 62px, lines 1
 #: scripts/ui/controls.gd
@@ -1844,20 +1830,6 @@ msgctxt "demo.teaser.out"
 msgid "THE WAY OUT, MAYBE"
 msgstr ""
 
-#. demo end screen, max 300px, 1 line (SAVE CODE = the settings' save code button)
-#. budget: max 300px, lines 1
-#: scripts/ui/demo_end.gd
-msgctxt "demo.end.carry_web"
-msgid "COPY YOUR SAVE CODE TO KEEP YOUR PROGRESS"
-msgstr ""
-
-#. demo end screen, max 300px, 1 line
-#. budget: max 300px, lines 1
-#: scripts/ui/demo_end.gd
-msgctxt "demo.end.carry"
-msgid "YOUR PROGRESS CARRIES OVER TO THE FULL GAME"
-msgstr ""
-
 #. demo end screen title, max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/demo_end.gd
@@ -1870,13 +1842,6 @@ msgstr ""
 #: scripts/ui/demo_end.gd
 msgctxt "demo.keep_playing"
 msgid "KEEP PLAYING"
-msgstr ""
-
-#. demo end screen button (opens SETTINGS on the save code panel), max 80px, 1 line
-#. budget: max 80px, lines 1
-#: scripts/ui/demo_end.gd
-msgctxt "demo.save_code"
-msgid "SAVE CODE"
 msgstr ""
 
 #. demo end screen teaser card, {level} = a story level number; max 168px, 1 line
@@ -2331,24 +2296,11 @@ msgctxt "language.title"
 msgid "LANGUAGE"
 msgstr "LANGUE"
 
+#. one line (demo build, hard mode), max 300px
+#. budget: max 300px
 #: scripts/ui/level_select.gd
 msgctxt "levels.demo_hard.1"
 msgid "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"
-msgstr ""
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.demo_hard.2"
-msgid "HARD {from}-{to} AND HEAT: FULL GAME"
-msgstr ""
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_normal.1"
-msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
-msgstr "FINIS UN NIVEAU POUR DÉBLOQUER LE SUIVANT"
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.demo_normal.2"
-msgid "LEVELS {from}-{to} ARE IN THE FULL GAME"
 msgstr ""
 
 #: scripts/ui/level_select.gd
@@ -2360,6 +2312,11 @@ msgstr "MONTE LA CHALEUR DES NIVEAUX FINIS EN DIFFICILE"
 msgctxt "levels.info_hard.2"
 msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
 msgstr "CHALEUR 2 4 7 10 : 3 5 7 10 TICKETS, UNE FOIS"
+
+#: scripts/ui/level_select.gd
+msgctxt "levels.info_normal.1"
+msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
+msgstr "FINIS UN NIVEAU POUR DÉBLOQUER LE SUIVANT"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.2"
@@ -2386,13 +2343,6 @@ msgstr "DIFFICILE : AUTRES LABYS, ZÉRO AMÉLIORATION, BRUME"
 msgctxt "levels.heat"
 msgid "HEAT {points}"
 msgstr "CHAL. {points}"
-
-#. demo build, under the lock on a full-game level's tile; max 44px, 1 line
-#. budget: max 44px, lines 1
-#: scripts/ui/level_select.gd
-msgctxt "levels.demo_full"
-msgid "FULL"
-msgstr ""
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1

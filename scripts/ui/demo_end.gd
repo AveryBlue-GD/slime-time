@@ -3,17 +3,16 @@ extends Control
 
 ## The demo's end screen (docs/demo-plan.md): the pitch for the full game. Opens after the chalice of
 ## the demo's last level (CONTINUE: the first time it is the only button, so every finisher sees it), after
-## the demo's last randomizer maze is first won, and from a FULL GAME tile on the level select.
+## the demo's last randomizer maze is first won (a locked level's tile does nothing: docs/demo-plan.md).
 ## Top to bottom: the title and a line in the story voice; WISHLIST (only with a store page:
 ## Demo.WISHLIST_URL); a teaser of later areas (cards that flip by themselves every CARD_TIME s, < >
 ## flip them; each is an area name, its level and what's new there, beside a made-up map in that area's
-## colors: MapView's example maze, no real level data or art); the carry-over line (desktop: the same save
-## folder; the web: copy the SAVE CODE, a browser save can't reach a desktop install); KEEP PLAYING (hub).
+## colors: MapView's example maze, no real level data or art); KEEP PLAYING (hub). No line about the demo's
+## progress reaching the full game (owner, 2026-10-19: nothing on screen says or implies it carries over).
 
 const SCENE := "res://scenes/demo_end.tscn"
 const FROM_STORY := "story"
 const FROM_RANDOM := "random"
-const FROM_LOCKED := "locked"
 ## Why it opened (FROM_*), set by open().
 static var from := FROM_STORY
 
@@ -24,13 +23,11 @@ const MAP_POS := Vector2(38, 67)
 const TEXT_X := 116
 const TEXT_W := 168
 const DOTS_Y := 122
-const CARRY_Y := 136
 const WISHLIST_Y := 40
 const KEEP_W := 88
 
 var wishlist_button: Button
 var keep_button: Button
-var code_button: Button
 var arrows: Array[Button] = []
 var card := 0
 var map_rect: TextureRect
@@ -38,11 +35,10 @@ var area_label: Label
 var level_label: Label
 var feature_label: Label
 var dots: Array[ColorRect] = []
-var carry_label: Label
 var _clock := 0.0
 
 
-## Opens the end screen (`why`: FROM_STORY, FROM_RANDOM or FROM_LOCKED).
+## Opens the end screen (`why`: FROM_STORY or FROM_RANDOM).
 static func open(tree: SceneTree, why := FROM_STORY) -> void:
 	from = why
 	UIKit.go(tree, SCENE)
@@ -72,21 +68,10 @@ static func feature_line(level: int) -> String:
 	return Loc.t("demo.teaser.out", "THE WAY OUT, MAYBE")
 
 
-## The carry-over promise, only where it is true: a desktop demo and the full game share the save
-## folder (SlimeTime_R1); a browser save can't reach a desktop install, so the web asks for the code.
-static func carry_line() -> String:
-	if Platform.is_web():
-		# i18n: demo end screen, max 300px, 1 line (SAVE CODE = the settings' save code button)
-		return Loc.t("demo.end.carry_web", "COPY YOUR SAVE CODE TO KEEP YOUR PROGRESS")
-	# i18n: demo end screen, max 300px, 1 line
-	return Loc.t("demo.end.carry", "YOUR PROGRESS CARRIES OVER TO THE FULL GAME")
-
-
 func _ready() -> void:
 	# i18n: demo end screen title, max 296px, 16 px font
 	UIKit.setup_screen(self, Loc.t("demo.end.title", "END OF THE DEMO"))
-	if from != FROM_LOCKED:  # (a FULL GAME tile tapped early keeps the pitch after level 3 and the hub sign for later)
-		get_node("/root/Progress").mark_story_seen(Demo.END_SEEN_BIT)
+	get_node("/root/Progress").mark_story_seen(Demo.END_SEEN_BIT)
 	var line := UIKit.make_label(top_line(from), UIKit.FONT, UIKit.TEXT)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(line)
@@ -131,12 +116,6 @@ func _ready() -> void:
 		add_child(dot)
 		dots.append(dot)
 
-	carry_label = UIKit.make_label(carry_line(), UIKit.FONT, UIKit.TEXT_DIM)
-	carry_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(carry_label)
-	carry_label.position = Vector2(0, CARRY_Y)
-	carry_label.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
-
 	# i18n: demo end screen button, back to the hub; max 80px, 1 line
 	var keep_text := Loc.t("demo.keep_playing", "KEEP PLAYING")
 	keep_button = UIKit.make_button(keep_text, _keep_playing, Vector2(UIKit.button_w(keep_text, KEEP_W), UIKit.button_h()))
@@ -144,14 +123,6 @@ func _ready() -> void:
 	keep_button.size = keep_button.custom_minimum_size
 	UIKit.place_bottom_row(keep_button, 1)
 	UIKit.add_touch_target(keep_button)
-	if Platform.is_web():
-		# i18n: demo end screen button (opens SETTINGS on the save code panel), max 80px, 1 line
-		var code_text := Loc.t("demo.save_code", "SAVE CODE")
-		code_button = UIKit.make_button(code_text, _save_code, Vector2(UIKit.button_w(code_text, KEEP_W), UIKit.button_h()))
-		add_child(code_button)
-		code_button.size = code_button.custom_minimum_size
-		UIKit.place_bottom_row(code_button, -1)
-		UIKit.add_touch_target(code_button)
 	show_card(0)
 	(wishlist_button if wishlist_button.visible else keep_button).grab_focus()
 
@@ -184,11 +155,6 @@ func _process(delta: float) -> void:
 func _keep_playing() -> void:
 	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if from == FROM_RANDOM else "story")
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
-
-
-func _save_code() -> void:
-	(load("res://scripts/ui/controls.gd") as GDScript).set("open_save_code", true)
-	UIKit.go(get_tree(), "res://scenes/controls.tscn")
 
 
 func _unhandled_input(event: InputEvent) -> void:

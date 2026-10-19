@@ -41,6 +41,14 @@ const SLIME_Y := 112
 ## button's middle its position goes to stand level with the button (ink centred on the button's rows).
 const SLIME_INK := Rect2(-16, -12, 32, 30)
 const SLIME_LEVEL := 3
+## Demo builds only (Platform.is_demo()): the DEMO sticker (tools/make_demo_sticker.py, 65x40, pre-tilted
+## pixel art) at this top-left corner, under the logo's D by the left slime (over its hat, on purpose).
+## Its top row is the logo's row LOGO_LETTER_ROWS (only the logo's drips are under it, never its letters)
+## and its right end stays clear of ENTER THE HUB (x 72); tests/test_demo.gd checks both.
+const DEMO_STICKER_POS := Vector2(4, 60)
+const DEMO_STICKER_PATH := "res://assets/sprites/title/demo_sticker.png"
+## The logo's letters fill its top this many rows (the rest is drips and the drop shadow).
+const LOGO_LETTER_ROWS := 48
 ## The tagline is centred between the button and this row; one line of it is at most this wide.
 const TAGLINE_BOTTOM := 176
 const TAGLINE_W := 300
@@ -124,6 +132,9 @@ func _ready() -> void:
 			add_child(hat)
 			hat.setup(Progress.selected_hat, preview)
 
+	if Platform.is_demo():
+		add_child(make_demo_sticker())
+
 	enter_button = UIKit.make_button(enter_text, _play if fresh else _enter, Vector2(ENTER_SIZE.x, enter_height(enter_text)))
 	enter_button.add_theme_font_size_override("font_size", UIKit.FONT_BIG)
 	UIKit.use_big_font(enter_button, 16)
@@ -206,6 +217,20 @@ func _ready() -> void:
 			preview.position.y = slime_y
 	_warm_up_shaders()
 	_start_preload(fresh)
+
+
+## The DEMO sticker (demo builds): its letters are in the slime sheet's goo shades, so the skin shader
+## gives them the equipped skin (rainbow too); the paper's colors are left alone.
+static func make_demo_sticker() -> TextureRect:
+	var sticker := TextureRect.new()
+	sticker.name = "DemoSticker"
+	sticker.texture = load(DEMO_STICKER_PATH)
+	sticker.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+	(sticker.material as ShaderMaterial).set_shader_parameter("rainbow_width", 40.0)
+	(sticker.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)  # (solid, like the logo)
+	sticker.position = DEMO_STICKER_POS
+	sticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return sticker
 
 
 ## The ENTER button's height: ENTER_SIZE.y, or a taller script's 16 px line box (+ its ink nudge) when

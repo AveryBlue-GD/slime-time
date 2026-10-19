@@ -34,26 +34,42 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 
 ## 3. What the demo has and how each lock looks
 
+- **Title:** a DEMO sticker (demo builds only, `Platform.is_demo()`; owner-approved mockup C, 2026-10-19): a cream
+  paper sticker with a dark outline, rounded corners, its top-right corner peeled back (the grey underside folded
+  over the cut) and a soft drop shadow, tilted 12 degrees clockwise, DEMO in the game's 5x7 font at 2x. Generated
+  by `tools/make_demo_sticker.py` -> `assets/sprites/title/demo_sticker.png` (65x40): built flat, turned by three
+  integer shears (whole-pixel row / column shifts, nothing blended), then outlined and shaded, so every edge is a
+  clean 1 px line. The letters are in the slime sheet's goo shades (the logo's skin shader gives them the equipped
+  skin; rainbow isn't a demo skin, but works too), the paper in fixed colors the shader leaves alone. Drips under
+  D, E, M; none under the O (it read DEMP). Placed at `title.gd` `DEMO_STICKER_POS` (4, 60): under the logo's
+  letters (`LOGO_LETTER_ROWS`: only drips run under it), by the left slime and over its hat (owner: fine), clear
+  of ENTER THE HUB (x 72); `tests/test_demo.gd` checks all of it and that the full game has no sticker. **The PNG
+  ships in the full exports too** (633 bytes, never loaded there; not worth a cut-list entry).
 - **Story:** levels 1-3 (Dark Dungeon, Mossy Mines, Sandstone Sanctum) with their coins. The level select shows all
-  10 tiles; 4-10 carry a gold lock and FULL, stay pressable and open the end screen. The info lines say
-  LEVELS 4-10 ARE IN THE FULL GAME (hard: HARD 2-10 AND HEAT: FULL GAME). The hub archway's prompt adds FULL GAME
-  once the next level is a full-game one. The HUD still says LEVEL n/10 (the full game's size, on purpose).
+  10 tiles; 4-10 (hard: 2-10) are **plain locks** (owner, 2026-10-19): the same dim lock as a level not unlocked
+  yet in the full game, no FULL text, disabled, pressing one does nothing. The info lines are the full game's
+  (CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A NEW SKIN); hard: one line, BEAT A LEVEL ON HARD
+  FOR ITS JELLY SKIN (no HEAT in the demo). The hub archway says LOCKED once the next level is a full-game one.
+  The map table keeps 4-10 sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
 - **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the level-3 chalice the win row is
   CONTINUE only the first time (every finisher sees the pitch before the hub and the randomizer), later
   REPLAY / CONTINUE / HUB. Also after the third demo maze is first won (top line: the full game's endless mazes
-  and 3 abilities), and from any FULL GAME level tile. Layout: END OF THE DEMO, a story-voice line (THE WAY OUT
+  and 3 abilities). Not from a level tile any more (locked tiles do nothing). Layout: END OF THE DEMO, a story-voice line (THE WAY OUT
   IS STILL UP THERE), WISHLIST (hidden while the URL is empty; focused first when shown), five teaser cards that
   flip by themselves every 3.2 s (< > or LB / RB flip them: area name, LEVEL n - FULL GAME, what's new there, and
-  a made-up map in that area's colours), the carry-over line, KEEP PLAYING (back to the hub; Esc too).
+  a made-up map in that area's colours), KEEP PLAYING (back to the hub; Esc too).
   **Teaser = title cards, not stills (my call):** the cards are built from names (strings the demo has anyway)
   and the map table's example maze in each theme's palette (`MapView.preview`: hashed from the level number,
   not the real maze). No later-level art, data or text ships, so nothing to strip or leak. Real screenshots
   of later areas belong on the store page.
-- **Carry-over line (only where true):** desktop: YOUR PROGRESS CARRIES OVER TO THE FULL GAME (same save folder).
-  Web: COPY YOUR SAVE CODE TO KEEP YOUR PROGRESS plus a SAVE CODE button (opens SETTINGS on the save-code panel):
-  a browser save can never reach a desktop install. A Steam demo has its own app id and no shared Steam Cloud,
-  so a Steam demo build should get the web wording too (or point at the save code) unless both read the same
-  local folder (they do when `custom_user_dir_name` stays `SlimeTime_R1`).
+- **No word about carry-over (owner, 2026-10-19):** nothing the player sees says or implies that demo progress
+  carries over to (or is kept from) the full game: the end screen's carry-over line, the web end screen's
+  save-code pitch and SAVE CODE button, the SETTINGS note FULL GAME SAVE: THE DEMO WON'T CHANGE IT and the RESET
+  confirm's demo lines are gone (keys removed: `demo.end.carry`, `demo.end.carry_web`, `demo.save_code`,
+  `settings.demo_guard`, `reset.demo_guard.2`; with them `levels.demo_full`, `levels.demo_normal.2`,
+  `levels.demo_hard.2`). The save behaviour itself is unchanged (section 5): the demo marks its saves, never
+  writes over a full-game save, and on the same desktop the full game still reads a demo save. The SETTINGS page's
+  own SAVE CODE panel is untouched (it's the full game's backup feature).
 - **WISHLIST** also as a quiet pause-menu button and a small hub sign under the ticket pod (after the end screen
   was seen); all hidden while `WISHLIST_URL` is empty. `Demo.open_wishlist()` uses `OS.shell_open` (a new tab
   on the web); a Steam build should route it to the overlay through `Platform` later.
@@ -120,9 +136,10 @@ What still ships with the demo: section 9.
 - **Demo loading a full-game save** (no marker; someone who owns both, or a full code pasted into the demo): the
   demo plays it **in memory only** and never writes it (`Progress.demo_guard`: `save_progress` is a no-op, even
   RESET PROGRESS), so the full save stays byte-identical. It shows only the demo's content (levels, skins, maps,
-  abilities are gated by `Demo`, not by clamping the loaded values). Open question for the owner: show a small note
-  ("FULL GAME SAVE: THE DEMO WON'T CHANGE IT") somewhere, e.g. on the title?
-- Demo progress then carries over by itself on the same machine (desktop). Web: by save code only (end screen).
+  abilities are gated by `Demo`, not by clamping the loaded values). No note says so on screen (owner, 2026-10-19:
+  the SETTINGS / RESET note was removed with the carry-over lines, section 3).
+- Demo progress then carries over by itself on the same machine (desktop); web: by save code only. Neither is
+  advertised in the game (section 3).
 - A demo save that already has more than the demo allows (hand-made, or the --save-path test file) is just loaded.
 
 ## 6. Mazes unchanged
@@ -136,7 +153,8 @@ digests themselves match). `test_hard_rebalance` reads the tables through `Level
 
 English only (owner rule), every string through `Loc.t` with `# i18n:` hints; catalogs merged
 (`python tools/i18n_extract.py --merge`), row in `docs/i18n/pending.md`; the capture gate has four demo states
-(`demo level select`, `demo upgrades capped`, `demo skin locked`, `demo end screen`). Screenshots: `docs/demo/`.
+(`demo level select`, `demo upgrades capped`, `demo skin locked`, `demo end screen`). Screenshots: `docs/demo/`
+(`title_sticker_lime.png`, `title_sticker_ocean.png`, `level_select_locks.png` for the 2026-10-19 changes).
 
 ## 8. Shipping the demo (step 2, 2026-10-19)
 

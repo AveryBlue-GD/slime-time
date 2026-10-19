@@ -1626,7 +1626,7 @@ func _show_prompt(note := "") -> void:
 	elif line != "":
 		prompt_key.text = tour.key_text()  # (the tour's line by the wheel: the key that turns the room)
 	elif near.id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
-		prompt_key.text = Demo.full_game_text()  # (the demo: the next level is in the full game)
+		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: the next level is a full-game one, shown as plainly locked)
 	elif (near.id == "random" and not Demo.randomizer_open()) or (near.id == "wheel" and not Demo.hat_wheel_open()):
 		prompt_key.text = Demo.full_game_text()
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():

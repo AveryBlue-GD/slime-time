@@ -8,8 +8,10 @@ extends "res://tests/suite_base.gd"
 ## 2. the full game with the switch off: every knob is the full game's, saves carry no demo marker;
 ## 3. every lock: levels (level select + archway), upgrade cap, abilities (only SLIME RIFLE, in the shop and
 ##    in a maze), hard (level 1 only), HEAT, randomizer (after level 3, its 3 fixed mazes, demo themes),
-##    SHOP, skins, the web knobs; the end screen (WISHLIST hidden while the URL is empty, carry-over text
-##    per platform, teaser cards) and the pause menu;
+##    SHOP, skins, the web knobs; the title's DEMO sticker (demo only, at its constant, clear of the logo's
+##    letters and ENTER THE HUB); the end screen (WISHLIST hidden while the URL is empty, teaser cards) and the
+##    pause menu; no screen says the demo's progress carries over (end screen, SETTINGS, RESET confirm);
+##    locked level tiles are plain locks (no FULL text) and pressing one does nothing;
 ## 4. save carry-over both ways (files and codes): the demo marks its saves, the full game reads them and
 ##    drops the marker, and the demo never writes over a full-game save (byte-identical).
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_demo.gd
@@ -152,16 +154,10 @@ func _check_stripped_full_save() -> void:
 		var screen: Node = await _open(path)
 		screen.free()
 	var settings: Node = await _open("res://scenes/controls.tscn")
-	var note: Label = settings.get_node_or_null("DemoGuardNote")
-	_check(note != null and note.visible and note.text == "FULL GAME SAVE: THE DEMO WON'T CHANGE IT", "guarded: SETTINGS says the full save won't change")
-	_check(settings.reset_confirm.find_children("*", "Label", true, false).any(func(l: Label) -> bool: return "FULL GAME SAVE" in l.text),
-		"guarded: so does the RESET confirm")
+	var said := _save_talk(_texts(settings, false), ["SAVE CODE"])  # (the page's own SAVE CODE button and panel title)
+	_check(settings.get_node_or_null("DemoGuardNote") == null and said.is_empty(), "guarded: SETTINGS and the RESET confirm say nothing about the full save (%s)" % [said])
 	settings.free()
 	progress.demo_guard = false
-	DemoEnd.from = DemoEnd.FROM_LOCKED
-	var end: Control = await _open(DemoEnd.SCENE)
-	_check(not progress.has_seen_story(Demo.END_SEEN_BIT), "the end screen from a FULL GAME tile doesn't count as seen (the pitch after level 3 stays)")
-	end.free()
 	# The hub tour's lines in the demo (desktop: CLEAR / BEAT 3; web: the stations that are off say FULL GAME).
 	var tour: Node = load("res://scripts/hub_tour.gd").new()
 	progress.levels_cleared = 0
@@ -305,20 +301,51 @@ func _check_screens() -> void:
 	progress.levels_cleared = 3
 	progress.highest_unlocked = 4
 	progress.current_level = 4
+	# Title: the DEMO sticker (demo builds only), at its constant, inside the screen, clear of ENTER THE HUB and
+	# below the logo's letters (only its drips may run under it).
+	var title: Control = await _open("res://scenes/title.tscn")
+	var title_script: GDScript = title.get_script()
+	var sticker: TextureRect = title.get_node_or_null("DemoSticker")
+	_check(sticker != null and sticker.visible and sticker.texture != null and sticker.position == title_script.DEMO_STICKER_POS,
+		"title: the DEMO sticker is shown in the demo, at DEMO_STICKER_POS")
+	if sticker:
+		var rect := Rect2(sticker.position, sticker.texture.get_size())
+		var logo: TextureRect = title.get_node("Logo")
+		_check(Rect2(Vector2.ZERO, UIKit.SCREEN).encloses(rect) and rect.position == rect.position.round(), "...whole pixels, inside the screen (%s)" % rect)
+		_check(not rect.intersects(title.enter_button.get_global_rect()), "...clear of ENTER THE HUB (%s / %s)" % [rect, title.enter_button.get_global_rect()])
+		_check(rect.position.y >= logo.position.y + title_script.LOGO_LETTER_ROWS, "...under the logo's letters (top %d, letters end %d)" % [rect.position.y, logo.position.y + title_script.LOGO_LETTER_ROWS])
+		_check((sticker.material as ShaderMaterial).shader == (logo.material as ShaderMaterial).shader, "...its letters take the skin (the logo's skin shader)")
+	title.free()
+	Platform.demo_override = 0
+	title = await _open("res://scenes/title.tscn")
+	_check(title.get_node_or_null("DemoSticker") == null, "title: no DEMO sticker in the full game")
+	title.free()
+	Platform.demo_override = 1
 	# Level select.
 	var select: Control = await _open("res://scenes/level_select.tscn")
 	var tiles: Array = select.level_buttons
-	var full_ok := true
-	for i in tiles.size():
-		var full: bool = (tiles[i] as Button).has_meta("full_game")
-		full_ok = full_ok and full == (i + 1 > 3) and (not full or not (tiles[i] as Button).disabled)
-	_check(full_ok, "level select: tiles 4-10 carry the FULL GAME lock and open the end screen (enabled)")
+	_check(_plain_locks(tiles, 3), "level select: tiles 4-10 are plain locks (disabled, the dim lock, no FULL text)")
 	_check(select.get_viewport().gui_get_focus_owner() == tiles[2], "...the focus is on level 3 (the demo's last), not the locked 4")
-	_check("FULL GAME" in select.info.text, "...the info lines name the full game (%s)" % select.info.text.replace("\n", " / "))
+	_check(not "FULL" in select.info.text, "...the info lines don't name the full game (%s)" % select.info.text.replace("\n", " / "))
+	var before_level: int = progress.current_level
+	(tiles[3] as Button).pressed.emit()
+	select._play(5)
+	await _frames(2)
+	var transition := root.get_node_or_null("Transition")
+	_check(progress.current_level == before_level and (transition == null or not transition.busy) and select.is_inside_tree(),
+		"...pressing a locked tile does nothing (no end screen, no level)")
+	var normal_box: Vector2 = select.hard_mode_box.position
+	var normal_panel: Rect2 = Rect2(select.info_panel.position, select.info_panel.size)
+	var normal_top: float = select.info.offset_top
 	select.hard_mode_box.button_pressed = true
 	await _frames(2)
-	_check(not select.heat_button.visible and (select.level_buttons[1] as Button).has_meta("full_game") and not (select.level_buttons[0] as Button).has_meta("full_game"),
-		"hard mode: HEAT hidden, hard 2+ locked")
+	var one_line := UIKit.text_block_h(1)
+	var spare := UIKit.text_block_h(2) - one_line
+	_check(select.info.text.count("\n") == 0 and select.info.offset_top == normal_top + floori(spare / 2.0)
+		and select.hard_mode_box.position == normal_box and Rect2(select.info_panel.position, select.info_panel.size) == normal_panel,
+		"...hard's one info line sits in the middle of the two-line block (top %d, normal %d), the panel and checkbox stay put" % [select.info.offset_top, normal_top])
+	_check(not select.heat_button.visible and _plain_locks(select.level_buttons, 1), "hard mode: HEAT hidden, hard 2+ plain locks")
+	_check(not "FULL" in select.info.text, "...no FULL GAME line on hard either (%s)" % select.info.text.replace("\n", " / "))
 	select.hard_mode_box.button_pressed = false
 	select.free()
 	progress.hard_mode = false
@@ -338,11 +365,11 @@ func _check_screens() -> void:
 	skins._refresh("ocean")
 	_check(not "FULL GAME" in skins.status.text, "...a demo skin doesn't")
 	skins.free()
-	# Hub: the archway's FULL GAME note.
+	# Hub: the archway on a full-game level is plainly LOCKED.
 	var hub: Node = await _open("res://scenes/hub.tscn")
 	hub.near = hub._station("story")
 	hub._show_prompt()
-	_check(hub.prompt_key.text == "FULL GAME", "hub: the archway says FULL GAME when the next level is the full game's")
+	_check(hub.prompt_key.text == "LOCKED" and not "FULL" in hub.prompt_name.text, "hub: the archway says LOCKED (no FULL GAME) when the next level is the full game's (%s / %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	_check(hub.wishlist_sign == null, "hub: no WISHLIST sign while the URL is empty")
 	hub.free()
 	# End screen.
@@ -350,7 +377,8 @@ func _check_screens() -> void:
 	var end: Control = await _open(DemoEnd.SCENE)
 	_check(not end.wishlist_button.visible and end.keep_button.visible and end.get_viewport().gui_get_focus_owner() == end.keep_button,
 		"end screen: WISHLIST hidden (no URL), KEEP PLAYING focused")
-	_check(end.carry_label.text == "YOUR PROGRESS CARRIES OVER TO THE FULL GAME" and end.code_button == null, "...desktop: the carry-over line")
+	var said := _save_talk(_texts(end))
+	_check(said.is_empty(), "...desktop: no line about progress carrying over (%s)" % [said])
 	var names: Array[String] = []
 	for i in Demo.TEASER_LEVELS.size():
 		end.show_card(i)
@@ -364,8 +392,8 @@ func _check_screens() -> void:
 	end.free()
 	Platform.override = "web"
 	end = await _open(DemoEnd.SCENE)
-	_check(end.carry_label.text.begins_with("COPY YOUR SAVE CODE") and end.code_button != null and end.code_button.visible,
-		"...web: SAVE CODE instead of a carry-over promise")
+	said = _save_talk(_texts(end))
+	_check(said.is_empty(), "...web: no save-code pitch either (%s)" % [said])
 	end.free()
 	Platform.override = ""
 	# Pause menu: no seed typing, no WISHLIST while the URL is empty.
@@ -456,6 +484,48 @@ func _check_carry_over() -> void:
 	progress.demo_guard = false
 	Platform.demo_override = 0
 	progress.save_path = test_save
+
+
+## Every Label / Button text under `node` (only the visible ones, unless `visible_only` is false: the
+## SETTINGS page's closed RESET confirm counts too).
+func _texts(node: Node, visible_only := true) -> Array[String]:
+	var out: Array[String] = []
+	for child in node.find_children("*", "Control", true, false):
+		if visible_only and not (child as Control).is_visible_in_tree():
+			continue
+		if (child is Label or child is Button) and child.text != "":
+			out.append(child.text)
+	return out
+
+
+## The texts that talk about the demo's progress / save reaching (or being kept from) the full game.
+func _save_talk(texts: Array[String], allowed: Array[String] = []) -> Array[String]:
+	var out: Array[String] = []
+	for text in texts:
+		if text in allowed:
+			continue
+		for word in ["CARRIES", "CARRY", "KEEP YOUR PROGRESS", "SAVE CODE", "FULL GAME SAVE", "THE DEMO WON'T", "THIS SESSION"]:
+			if word in text:
+				out.append(text)
+				break
+	return out
+
+
+## Tiles past `last` are plain locks: disabled, the dim lock (no gold), no text but the number.
+func _plain_locks(tiles: Array, last: int) -> bool:
+	for i in tiles.size():
+		var tile := tiles[i] as Button
+		var locked := i + 1 > last
+		if tile.disabled != locked or (tile.get_node_or_null("Lock") != null) != locked:
+			return false
+		for label: Label in tile.find_children("*", "Label", true, false):
+			if "FULL" in label.text:
+				return false
+		if locked:
+			for icon in tile.get_node("Lock").get_children():
+				if icon is CanvasItem and (icon as CanvasItem).modulate == UIKit.GOLD:
+					return false
+	return true
 
 
 func _open(path: String) -> Node:
