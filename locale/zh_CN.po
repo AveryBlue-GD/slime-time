@@ -1433,6 +1433,34 @@ msgctxt "training.line"
 msgid "ROCK BOTTOM. NICE LANDING."
 msgstr ""
 
+#. training direction line (HUD pod, bottom centre), max 184px (its pod: 192), 1 line; the coin is up the maze from the start
+#. budget: max 184px, lines 1
+#: scripts/training.gd
+msgctxt "training.coin_ahead"
+msgid "A COIN IS UP AHEAD. GRAB IT!"
+msgstr ""
+
+#. training direction line at the fork (the coin's dead end goes up), max 184px (its pod: 192), 1 line; UP = the up direction
+#. budget: max 184px, lines 1
+#: scripts/training.gd
+msgctxt "training.coin_up"
+msgid "GO UP AND GRAB THE COIN!"
+msgstr ""
+
+#. training line after the first coin, max 184px (its pod: 192), 1 line; the hub = the round room the player goes to next
+#. budget: max 184px, lines 1
+#: scripts/training.gd
+msgctxt "training.coin_use"
+msgid "COINS BUY UPGRADES IN THE HUB."
+msgstr ""
+
+#. training line after drying up once, max 184px (its pod: 192), 1 line; the golden chalice is the maze's exit
+#. budget: max 184px, lines 1
+#: scripts/training.gd
+msgctxt "training.chalice"
+msgid "FIND THE CHALICE TO GET OUT!"
+msgstr ""
+
 #. tutorial keycap on touch screens, max 27px (a 29 px drawn key), grows to 60px (the key widens), 1 line
 #. budget: max 27px, lines 1
 #: scripts/tutorial_cues.gd

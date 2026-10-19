@@ -9,7 +9,7 @@ extends "res://tests/suite_base.gd"
 ## assisted / randomizer levels and the Descent pot pod (wide gain / paid-run values), the
 ## win / dry-up / randomizer results with their rewards and choice rows, pause on story / random /
 ## Descent, the restart prompt, the Descent boon card and summary, and the tutorial's screens with its gate on:
-## SPLASHDOWN's HUD / dry-up / win / pause / R prompt, SETTINGS' TRAINING, the hub tour's lines and SKIP pod) and measures every visible Label
+## SPLASHDOWN's HUD / dry-up / win / pause / R prompt / direction lines, SETTINGS' TRAINING, the hub tour's lines and SKIP pod) and measures every visible Label
 ## and Button that shows text, with the font it really uses (the locale's fallback installed):
 ## - overflow: the widest line wider than the label, or than the button's content box (minus its
 ##   style margins and icon);
@@ -212,7 +212,8 @@ func _all_states() -> void:
 func _tutorial() -> void:
 	var mode: String = progress.mode  # (put back at the end: the next locale's states start from the same state)
 	Economy.tutorial_force = 1
-	var states := [["training hud", ""], ["training dry-up", "dry"], ["training win", "win"], ["training pause", "pause"]]
+	var states := [["training hud", ""], ["training dry-up", "dry"], ["training win", "win"], ["training pause", "pause"],
+		["training coin use", "coin_use"], ["training dry-up coin use", "dry_coin"], ["training chalice line", "chalice"]]
 	for st: Array in states:
 		seed(20261017)
 		progress.prepare_training(false)
@@ -227,6 +228,14 @@ func _tutorial() -> void:
 				game._offer_next_steps()
 			"pause":
 				game.pause_menu.open()
+			"coin_use", "chalice":  # (the direction line: what coins buy; the chalice line after a dry-up)
+				game._training_line(st[1], 5.0)
+				await _frames(8)
+			"dry_coin":  # (what coins buy finishing its hold over the dry-up row, up top)
+				game._training_line("coin_use", 5.0)
+				game._dry_up()
+				game._offer_retry()
+				await _frames(8)
 		await _frames(3)
 		await _scan(st[0], game)
 		if st[1] == "pause":

@@ -183,6 +183,25 @@ const METER_PULSE_PEAK := Color(1.9, 1.9, 1.9)
 ## Clear px between RESTART's (focused) edge and the accept glyph: UI rules' button-to-box gap.
 const ACCEPT_GAP := float(UIKit.GAP_M)
 const ACCEPT_PULSE := Color(1.35, 1.35, 1.35)
+## SPLASHDOWN's direction line (game.gd's training lines: the practice coin, what coins buy, the chalice after a
+## dry-up; owner playtest 2026-10-19): one short line in a HUD pod, centred at the bottom of the screen (under
+## the touch joystick and JUMP), or under the top pods while the slime is down there or a choice row is up.
+## Made by _hook_training, so no other mode has it. Lines fit TRAINING_LINE_W (the hub tour line's budget).
+var training_line: PanelContainer
+var training_line_label: Label
+var training_line_on := false
+## True while the line sits up top (the slime near the bottom, or the dry-up row showing).
+var training_line_top := false
+## The slime's rect on screen (game.gd, every tick in training): the line keeps off it.
+var training_slime_rect := Rect2()
+## The touch joystick's ring on screen (game.gd, every tick; empty without touch controls): it floats to the
+## thumb anywhere in the left half, so the line keeps off it too.
+var training_joy_rect := Rect2()
+var _training_line_covered := false
+const TRAINING_LINE_W := 192
+const TRAINING_LINE_FADE := 4.0  # alpha per second (a quarter second in or out)
+## The slime must be this far clear of the bottom spot before the line goes back down (no flicker).
+const TRAINING_LINE_HYSTERESIS := 16.0
 
 
 func _ready() -> void:
@@ -375,6 +394,17 @@ func _hook_training() -> void:
 		return
 	training_hooked = true
 	game.connect("training_cue", _on_training_cue)
+	training_line = PanelContainer.new()
+	training_line.name = "TrainingLine"
+	training_line.add_theme_stylebox_override("panel", UIKit.panel_style(true))
+	training_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	training_line.custom_minimum_size.y = UIKit.pod_h()
+	training_line.visible = false
+	training_line.modulate.a = 0.0
+	training_line_label = _make_label()
+	training_line_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	training_line.add_child(training_line_label)
+	add_child(training_line)
 
 
 func _on_training_cue(beat: String) -> void:
@@ -401,6 +431,7 @@ func _training_step(delta: float) -> void:
 		meter_pulse_left = maxf(meter_pulse_left - delta, 0.0)
 		var t := 1.0 - meter_pulse_left / METER_PULSE_TIME
 		meter_pod.modulate = Color.WHITE.lerp(METER_PULSE_PEAK, sin(t * PI))
+	_training_line_step(delta)
 	if accept_glyph == null:
 		return
 	_accept_time += delta
@@ -420,6 +451,80 @@ func _training_step(delta: float) -> void:
 
 func _draw_accept_glyph() -> void:
 	TrainingCues.draw_accept(accept_glyph, 0.0, accept_glyph.size.y / 2.0, _accept_time)
+
+
+## Shows `text` on the training line (fading in; a new text replaces the old one at once).
+func show_training_line(text: String) -> void:
+	if training_line == null:
+		return
+	training_line_label.text = text
+	training_line_on = true
+	training_line.reset_size()
+	_place_training_line()
+
+
+## Fades the training line out.
+func hide_training_line() -> void:
+	training_line_on = false
+
+
+## The training line's text while it is (still) showing, else "".
+func training_line_text() -> String:
+	return training_line_label.text if training_line != null and training_line_on else ""
+
+
+func _training_line_step(delta: float) -> void:
+	if training_line == null:
+		return
+	var target := 1.0 if training_line_on else 0.0
+	training_line.modulate.a = move_toward(training_line.modulate.a, target, minf(delta, 0.1) * TRAINING_LINE_FADE)
+	training_line.visible = training_line.modulate.a > 0.0 and not _training_line_covered
+	if training_line.visible:
+		_place_training_line()
+
+
+## The line's spot: bottom centre (its pod HUD_EDGE over the screen's bottom), unless the slime or the floating
+## touch joystick is on or near it (GAP_M; once up, 16 px more before it comes back down: no flicker) or a choice
+## row is up. Up top it sits on the second pod row between the corner pods (GAP_M clear of them; GAP_XS under them
+## when one is too wide: ALL FOUND), and GAP_XS under the level banner (name and story line) while that shows.
+## A joystick held near the top spot keeps the line at the bottom (the two spots are too far apart for one ring).
+func _place_training_line() -> void:
+	var size := training_line.get_combined_minimum_size()
+	var edge := UIKit.hud_edge()
+	var x := roundf((UIKit.SCREEN.x - size.x) / 2.0)
+	var bottom := Rect2(x, UIKit.SCREEN.y - edge.y - size.y, size.x, size.y)
+	var near := bottom.grow(UIKit.GAP_M)  # (a few px early: the slime moves on before the next placement)
+	if training_line_top:
+		near = near.grow(TRAINING_LINE_HYSTERESIS)
+	var row_up := _choice_root.visible and not choice_buttons.is_empty()
+	var blocked := row_up or (training_slime_rect.has_area() and training_slime_rect.intersects(near)) 		or (training_joy_rect.has_area() and training_joy_rect.intersects(near))
+	var top := Rect2(x, _training_line_top_y(size), size.x, size.y)
+	var top_blocked := training_joy_rect.has_area() and training_joy_rect.intersects(top.grow(UIKit.GAP_M))
+	training_line_top = blocked and not top_blocked
+	training_line.size = size
+	training_line.position = top.position if training_line_top else bottom.position
+
+
+## The line's top up top (see _place_training_line): the second pod row, moved down under any pod it would come
+## within GAP_M beside / GAP_XS above, and under the banner's ink while the banner shows.
+func _training_line_top_y(size: Vector2) -> float:
+	var x := roundf((UIKit.SCREEN.x - size.x) / 2.0)
+	var top := float(UIKit.hud_edge().y + UIKit.pod_h() + UIKit.GAP_XS)
+	if area_label.visible and area_label.modulate.a > 0.0:
+		var last := story_label if story_label.visible and story_label.text != "" else area_label
+		top = maxf(top, _ink_rect(last, last.offset_top).end.y + UIKit.GAP_XS - TEXT_CLEARANCE)
+	var pods := pod_rects()
+	if not (time_label.get_parent().get_parent() as Control).visible:
+		pods.pop_back()  # (the timer pod, hidden in training)
+	var moved := true
+	while moved:
+		moved = false
+		var room := Rect2(x, top, size.x, size.y).grow_individual(UIKit.GAP_M, UIKit.GAP_XS, UIKit.GAP_M, UIKit.GAP_XS)
+		for pod in pods:
+			if room.intersects(pod):
+				top = pod.end.y + UIKit.GAP_XS
+				moved = true
+	return top
 
 
 func set_slime(percent: float) -> void:
@@ -1217,11 +1322,15 @@ func _pods_changed() -> void:
 func cover_area_texts() -> void:
 	area_label.visible = false
 	story_label.visible = false
+	_training_line_covered = true
+	if training_line:
+		training_line.visible = false
 
 
 ## The pause menu or restart prompt closed: the area texts come back if they were still up, at full
 ## alpha and for the rest of their hold, but at least AREA_RESHOW_TIME so they can be read again.
 func uncover_area_texts() -> void:
+	_training_line_covered = false  # (the training line comes back on its next step)
 	if _area_tween == null or not _area_tween.is_valid() or not _area_tween.is_running():
 		return
 	var hold := maxf(_area_hold - _area_tween.get_total_elapsed_time(), AREA_RESHOW_TIME)

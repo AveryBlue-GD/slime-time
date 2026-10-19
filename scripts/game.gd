@@ -146,6 +146,11 @@ var _meter_fill := 0.0
 var _practice_coin := Vector2i(-1, -1)
 var _fork_glimmers := 0
 var _fork_glimmer_at := 0.0
+## The direction line showing ("" none; Training.line names) and its seconds left (INF: until replaced), and
+## the chalice line's seconds left (attempt 2 on: it comes back after "coin_use" while time is left).
+var training_line := ""
+var _line_left := INF
+var _chalice_left := 0.0
 ## The run (Progress.descent_run, shared: the game writes the floor's results into it).
 var descent_run := {}
 ## The floor's goo drops still waiting (GooDrop), and the between-floor / end-of-run card.
@@ -636,6 +641,8 @@ func _physics_process(delta: float) -> void:
 		_spawn_at = Vector2.INF
 		hud.release_player_rect()  # (the intro texts' slime room was for the spawn spot only)
 	_relight(pos)
+	if training:
+		_training_lines_step(delta)
 	if finished:
 		return
 	_survey_step(pos)
@@ -1617,6 +1624,10 @@ func _begin_training_beats() -> void:
 	training_beat("start")
 	if training_attempt > 1:
 		training_beat("restart")
+		_chalice_left = Training.CHALICE_LINE_TIME
+		_training_line("chalice")
+	elif not Training.coin_taken:
+		_training_line("coin_ahead")
 
 
 ## Emits training_cue(`beat_name`) once per name per attempt (the contract in docs/tutorial/design.md
@@ -1639,6 +1650,8 @@ func _training_step(pos: Vector2, delta: float) -> void:
 		training_beat("fork")
 		_fork_glimmers = 2 if not coins.is_empty() else 0
 		_fork_glimmer_at = 0.0
+		if not Training.coin_taken and training_line != "chalice":
+			_training_line("coin_up")
 	if _fork_glimmers > 0:
 		_fork_glimmer_at -= delta
 		if _fork_glimmer_at <= 0.0:
@@ -1648,6 +1661,36 @@ func _training_step(pos: Vector2, delta: float) -> void:
 				_glimmer_at(coins[0])
 	if slime_remaining < Training.start_percent(training_attempt) - 0.001:
 		training_beat("first_drain")
+
+
+## Shows the direction line `which` (Training.line; "" hides it) for `seconds` (INF: until replaced).
+func _training_line(which: String, seconds := INF) -> void:
+	training_line = which
+	_line_left = seconds
+	if which == "":
+		hud.hide_training_line()
+	else:
+		hud.show_training_line(Training.line(which))
+
+
+## Per tick in training (running or not): the line's hold, the chalice line's own clock (back after "what coins
+## buy" while it has time left), and the slime's spot on screen (the line keeps off it).
+func _training_lines_step(delta: float) -> void:
+	_chalice_left = maxf(_chalice_left - delta, 0.0)
+	if training_line == "chalice" and (_chalice_left <= 0.0 or won):
+		_training_line("")  # (it goes at the chalice, or after a while)
+	if finished and training_line in ["coin_ahead", "coin_up"]:
+		_training_line("")  # (dried up: the next attempt has its own line)
+	if training_line != "" and _line_left != INF:
+		_line_left -= delta
+		if _line_left <= 0.0:
+			_training_line("chalice" if _chalice_left > 0.0 and not won else "")
+	var at := slime.get_global_transform_with_canvas().origin.round()
+	var body := Rect2(at - SLIME_SCREEN_HALF, SLIME_SCREEN_HALF * 2.0)
+	if hat:
+		body = body.merge(Rect2(at.x - SLIME_SCREEN_HALF.x - 4.0, at.y - SLIME_SCREEN_HALF.y - HAT_SCREEN_H, SLIME_SCREEN_HALF.x * 2.0 + 8.0, HAT_SCREEN_H))
+	hud.training_slime_rect = body
+	hud.training_joy_rect = touch_controls.joystick_rect()
 
 
 ## The practice coin at its dead end, unless this run already picked it up (it stays found across
@@ -1667,6 +1710,7 @@ func _place_practice_coin() -> void:
 ## The practice coin is picked up: the same show as a real coin (catch, or the fly-in), never saved.
 func _take_practice_coin(coin: Coin) -> void:
 	Training.coin_taken = true
+	_training_line("coin_use", Training.COIN_INFO_TIME)
 	if Economy.coin_catch_on():
 		_catch_coin(coin)
 		return
@@ -2474,6 +2518,8 @@ func _offer_retry() -> void:
 	if training:
 		# RESTART only (no UPGRADES / MAP: the hub isn't introduced yet): the next attempt, full meter.
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry]], 0)
+		if training_line != "coin_use":  # (what coins buy may finish its hold over the row, up top)
+			_training_line("")
 		training_beat("dry")
 		return
 	if is_random():
@@ -2549,6 +2595,7 @@ func _offer_next_steps() -> void:
 		return
 	if training:
 		hud.show_choices([[Loc.t("result.choice.hub", "HUB"), _training_to_hub]], 0)
+		_training_line("")
 		training_beat("chalice")
 		return
 	if is_random():

@@ -18,6 +18,8 @@ var progress: Node
 ## training_cue names with the physics frame they came on (this suite's clock).
 var beats: Array = []
 var frame := 0
+## Direction-line layouts already checked ("<line> top|bottom").
+var _line_checked := {}
 
 
 func _initialize() -> void:
@@ -94,6 +96,7 @@ func _gate_off() -> void:
 	var game := await _start_game()
 	_check(not game.training and game.level == 1, "gate off: level 1 is a story level (no training branch)")
 	_check((game.hud.time_label.get_parent().get_parent() as Control).visible, "...with its timer pod")
+	_check(game.hud.training_line == null and game.training_line == "", "...and no training direction line")
 	_check(game.coins_here > 1, "...and its real coins (%d)" % game.coins_here)
 	game.restart_prompt.open()
 	_check(game.restart_prompt.buttons[1].visible, "...and the R prompt keeps UPGRADES")
@@ -148,23 +151,40 @@ func _full_run() -> void:
 	var maze: Dictionary = game.maze
 	var route := MazeGenerator.shortest_path(maze, maze.start, maze.coin)
 	route.append_array(MazeGenerator.shortest_path(maze, maze.coin, maze.goal).slice(1))
+	await _physics_frames(30)
+	_check(game.hud.training_line_text() == Training.line("coin_ahead") and game.hud.training_line.visible,
+		"attempt 1 start: the coin line shows (%s)" % game.hud.training_line_text())
+	_line_layout(game, "coin_ahead")
 	var pilot := _pilot(game, route)
-	var seen := {coin = -1}  # (a lambda can't assign the function's locals)
+	var seen := {coin = -1, lines = [game.training_line], at_coin = ""}  # (a lambda can't assign the function's locals)
 	await _until(func() -> bool:
 		if seen.coin < 0 and Training.coin_taken:
 			seen.coin = frame
+			seen.at_coin = game.hud.training_line_text()
+		if game.training_line != seen.lines.back():
+			seen.lines.append(game.training_line)
+		if game.hud.training_line.visible and not game.finished:
+			_line_layout(game, game.training_line, true)
 		return game.finished, 60 * 60)
 	var coin_frame: int = seen.coin
 	pilot.queue_free()
 	var dry_frame := frame
 	_check(game.finished and not game.won, "attempt 1 (glide-only autopilot): dries up")
 	_check(Training.coin_taken and coin_frame > 0, "...after picking up the coin")
+	_check(seen.lines.slice(0, 3) == ["coin_ahead", "coin_up", "coin_use"], "lines: coin ahead, UP at the fork, what coins buy: %s" % [seen.lines])
+	_check(seen.at_coin == "COINS BUY UPGRADES IN THE HUB.", "...the coin line goes as the coin is picked up (%s)" % seen.at_coin)
 	var dry_tile := Vector2i((game.slime.position / 16).floor())
 	_check(dry_tile.x == Training.FORK.x and dry_tile.y >= 1 and dry_tile.y <= 7, "...just after it, around the fork (tile %s)" % dry_tile)
 	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 120)
 	_check(_labels(game) == ["RESTART"], "the dry-up row is RESTART only: %s" % [_labels(game)])
 	_check(not game.hud.choice_buttons.is_empty() and game.hud.choice_buttons[0].has_focus(), "...focused")
 	var row_frame := frame
+	await _physics_frames(20)
+	_check(game.training_line in ["coin_use", ""] and (game.training_line == "" or game.hud.training_line_top),
+		"at the dry-up row: no coin line; what coins buy may finish its hold, up top (%s)" % game.training_line)
+	if game.hud.training_line.visible:
+		_line_layout(game, game.training_line)
+	_check(game.training_line != "chalice", "...no chalice line yet (it comes with the next attempt)")
 	_check(_names() == ["start", "first_drain", "straight", "fork", "dry"], "attempt 1 beats in order, once each: %s" % [_names()])
 	_check(progress.dry_ups.is_empty(), "no dry-up counted")
 	_check(progress.coins() == 0 and progress.coins_found.is_empty() and progress.coins_earned() == 0, "the practice coin is not saved")
@@ -182,11 +202,96 @@ func _full_run() -> void:
 	await _physics_frames(2)
 	_check(absf(game2.slime_remaining - 100.0) < 0.01, "...with a full meter")
 	_check(game2.coins.is_empty() and Training.coin_taken and game2.hud.coins_left_label.text == "ALL FOUND", "...the coin kept (ALL FOUND)")
+	await _physics_frames(20)
+	_check(game2.hud.training_line_text() == "FIND THE CHALICE TO GET OUT!" and game2.hud.training_line.visible,
+		"after the dry-up's RESTART: the chalice line shows (%s)" % game2.hud.training_line_text())
+	_line_layout(game2, "chalice")
+	# (the camera keeps the slime well off the bottom here; a slime on the bottom spot sends the line up top)
+	var hud2: Node = game2.hud
+	var spot: Rect2 = hud2.training_line.get_global_rect()
+	hud2.training_slime_rect = Rect2(spot.get_center() - Vector2(9, 8), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(hud2.training_line_top, "a slime on the bottom spot sends the line up top")
+	_line_layout(game2, "chalice")
+	hud2.training_slime_rect = Rect2(spot.position - Vector2(0, 30), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(hud2.training_line_top, "...it stays up while the slime is near (no flicker)")
+	hud2.training_slime_rect = Rect2(spot.position - Vector2(0, 60), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(not hud2.training_line_top, "...and comes back down once it is clear")
+	# (up top while the level banner still shows: under its story line, never on it)
+	hud2.training_slime_rect = Rect2(spot.get_center() - Vector2(9, 8), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(hud2.story_label.visible and hud2.training_line_top, "with the banner up, a slime on the bottom spot sends the line up top")
+	var banner_ink: Rect2 = hud2._ink_rect(hud2.story_label, hud2.story_label.offset_top)
+	var area_ink: Rect2 = hud2._ink_rect(hud2.area_label, hud2.area_label.offset_top)
+	var up_box := Rect2(hud2.training_line.position, hud2.training_line.size)
+	_check(up_box.position.y >= banner_ink.end.y - 2.0 + UIKit.GAP_XS - 0.5 and not up_box.intersects(area_ink),
+		"...under the banner's story line, GAP_XS clear of its ink (line %s, banner ink to y %d)" % [up_box, banner_ink.end.y - 2.0])
+	_line_layout(game2, "chalice")
+	# (touch: the floating joystick, held near the line, sends it up top; held up there, it keeps it down)
+	var touch: TouchControls = game2.touch_controls
+	var touch_was: bool = touch.visible
+	touch.visible = true
+	touch._touch_down(7, Vector2(140, 150))
+	await _physics_frames(2)
+	_check(hud2.training_joy_rect.has_area() and hud2.training_line_top, "a joystick held over the bottom spot (%s) sends the line up top" % hud2.training_joy_rect)
+	_line_layout(game2, "chalice")
+	touch._touch_up(7, Vector2(140, 150))
+	touch._touch_down(7, Vector2(150, 50))
+	await _physics_frames(2)
+	hud2.training_slime_rect = Rect2(spot.get_center() - Vector2(9, 8), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(not hud2.training_line_top, "...a joystick held up top (%s) keeps it at the bottom, even with the slime near" % hud2.training_joy_rect)
+	touch._touch_up(7, Vector2(150, 50))
+	# (controls shown, no thumb: the resting ring is not in the way; the widest line comes back down)
+	await _physics_frames(2)
+	_check(not hud2.training_joy_rect.has_area(), "no thumb on the stick: no joystick to keep off")
+	hud2.show_training_line(Training.line("coin_use"))
+	hud2.training_slime_rect = Rect2(spot.get_center() - Vector2(9, 8), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(hud2.training_line_top, "...the widest line goes up for a slime on the bottom spot")
+	hud2.training_slime_rect = Rect2(Vector2(150, 70), Vector2(18, 16))
+	hud2._place_training_line()
+	_check(not hud2.training_line_top, "...and comes back down with the controls shown and no thumb")
+	_line_layout(game2, "coin_use")
+	hud2.show_training_line(Training.line("chalice"))
+	touch.visible = touch_was
+	await _physics_frames(2)
+	# (R mid-run on attempt 2: the same attempt again, the chalice line back with its full time)
+	game2._chalice_left = 0.0
+	await _physics_frames(2)
+	_check(game2.training_line == "", "the chalice line goes when its time is up")
+	await _action("restart")
+	await _physics_frames(2)
+	old_id = game2.get_instance_id()
+	game2.restart_prompt.buttons[0].pressed.emit()
+	var game2r: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
+	_check(game2r != null and game2r.training_attempt == 2, "R mid-run on attempt 2: attempt 2 again")
+	if game2r == null:
+		return
+	await _physics_frames(20)
+	_check(game2r.hud.training_line_text() == Training.line("chalice") and game2r._chalice_left > Training.CHALICE_LINE_TIME - 1.0,
+		"...the chalice line comes back with its full time (%.1f s)" % game2r._chalice_left)
+	game2 = game2r
+	beats.clear()
+	beats.append(["start", frame])
+	beats.append(["restart", frame])
+	t2 = frame
 	pilot = _pilot(game2, MazeGenerator.shortest_path(game2.maze, game2.maze.start, game2.maze.goal))
-	await _until(func() -> bool: return game2.finished, 60 * 60)
+	var lines2 := {kept = true}
+	await _until(func() -> bool:
+		if game2.hud.training_line.visible and not game2.finished:
+			_line_layout(game2, game2.training_line, true)
+		if not game2.won and game2.run_time < Training.CHALICE_LINE_TIME - 0.5 and game2.training_line != "chalice":
+			lines2.kept = false
+		return game2.finished, 60 * 60)
 	pilot.queue_free()
 	var win_frame := frame
 	_check(game2.finished and game2.won, "attempt 2 reaches the chalice")
+	_check(lines2.kept, "...the chalice line holds on the way (until the chalice or %.0f s)" % Training.CHALICE_LINE_TIME)
+	await _physics_frames(2)
+	_check(game2.training_line == "" and game2.hud.training_line_text() == "", "...and goes at the chalice")
 	_check(game2.slime_remaining >= 40.0, "...with at least 40%% left (%.0f%%)" % game2.slime_remaining)
 	await _until(func() -> bool: return _shown_buttons(game2).size() > 0, 120)
 	_check(_labels(game2) == ["HUB"], "the win row is HUB only: %s" % [_labels(game2)])
@@ -303,9 +408,17 @@ func _replay_writes_nothing() -> void:
 	var before := _save_text()
 	progress.prepare_training(true)
 	var game := await _start_game()
+	await _physics_frames(10)
+	_check(game.hud.training_line_text() == Training.line("coin_ahead"), "replay: the coin line shows too")
 	game.slime_remaining = 0.0
 	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 240)
 	_check(_labels(game) == ["RESTART"], "replay: the same RESTART-only row")
+	var old_id := game.get_instance_id()
+	_shown_buttons(game)[0].pressed.emit()
+	var game2: Node2D = await _until_scene_not(old_id, UIKit.GAME_SCENE)
+	await _physics_frames(10)
+	_check(game2 != null and game2.hud.training_line_text() == Training.line("chalice"), "replay: the chalice line after a dry-up too")
+	game = game2
 	game.pause_menu.open()
 	game.pause_menu.buttons[3].pressed.emit()
 	await _until_scene(UIKit.HUB_SCENE)
@@ -314,6 +427,39 @@ func _replay_writes_nothing() -> void:
 
 
 # --- helpers
+
+## The direction line: `which`'s text, one line in its pod, within the budget, centred at the bottom or up top,
+## never on the slime (`moving`: checked each tick, reported once per spot), the HUD pods or the touch controls.
+func _line_layout(game: Node2D, which: String, moving := false) -> void:
+	var hud: Node = game.hud
+	var box: Rect2 = hud.training_line.get_global_rect()
+	var key := "%s %s" % [which, "top" if hud.training_line_top else "bottom"]
+	if moving and _line_checked.has(key) and not box.intersects(hud.training_slime_rect):
+		return
+	_line_checked[key] = true
+	var text: String = hud.training_line_label.text
+	_check(text == Training.line(which) and not text.contains("\n"), "line %s: its text, one line" % key)
+	_check(box.size.x <= hud.TRAINING_LINE_W and UIKit.text_w(text) + 4 <= box.size.x,
+		"line %s: %d px wide (text %d, budget %d)" % [key, box.size.x, UIKit.text_w(text), hud.TRAINING_LINE_W])
+	_check(absf(box.get_center().x - UIKit.SCREEN.x / 2.0) <= 0.5 and box.position.y >= 0.0 and box.end.y <= UIKit.SCREEN.y - UIKit.HUD_EDGE,
+		"line %s: centred, on screen (%s)" % [key, box])
+	_check(not box.intersects(hud.training_slime_rect), "line %s: off the slime (%s / %s)" % [key, box, hud.training_slime_rect])
+	for pod: Control in [hud.meter_pod, hud.level_label.get_parent().get_parent(), hud.coin_label.get_parent().get_parent(),
+			hud.coins_left_label.get_parent().get_parent()]:
+		_check(not pod.visible or not box.grow_individual(UIKit.GAP_M - 0.5, UIKit.GAP_XS - 0.5, UIKit.GAP_M - 0.5, UIKit.GAP_XS - 0.5).intersects(pod.get_global_rect()),
+			"line %s: GAP_M beside / GAP_XS under the HUD pod at %s" % [key, pod.get_global_rect()])
+	# (the joystick where it is now: it floats to the thumb; at rest, JOY_HOME)
+	var joy: Rect2 = hud.training_joy_rect
+	if not joy.has_area():
+		joy = Rect2(TouchControls.JOY_HOME - Vector2.ONE * TouchControls.JOY_RADIUS, Vector2.ONE * TouchControls.JOY_RADIUS * 2.0)
+	_check(not box.grow(UIKit.GAP_XS).intersects(joy), "line %s: clear of the touch joystick (%s)" % [key, joy])
+	if not hud.training_line_top:
+		var jump := Rect2(TouchControls.JUMP_CENTER - Vector2.ONE * TouchControls.JUMP_RADIUS, Vector2.ONE * TouchControls.JUMP_RADIUS * 2.0)
+		_check(not box.grow(UIKit.GAP_XS).intersects(jump), "line %s: clear of the touch JUMP button" % key)
+	elif hud.area_label.visible:
+		for label: Label in [hud.area_label, hud.story_label]:
+			_check(not label.visible or not box.intersects(hud._ink_rect(label, label.offset_top)), "line %s: off the level banner" % key)
+
 
 func _start_game() -> Node2D:
 	var game: Node2D = MAIN.instantiate()

@@ -365,3 +365,37 @@ so saves stay byte-identical (`tests/test_tutorial_flow.gd`). Chunk A owns `scri
   cell). Review fixes in the same pass: the coin bag line follows the practice coin (`Progress.training_coin`, session
   only), R / pause RESTART mid-run repeats the attempt (only a dry-up's RESTART is attempt 2, `Training.mark_restart(next)`),
   the SKIP pod also takes a left click. The tutorial states are in `test_i18n_screens` / `i18n_capture.sh` now.
+
+## 15. Direction lines (owner playtest, 2026-10-19)
+
+The owner played the shipped maze and asked for more direction: tell the player to go UP for the practice coin and what
+coins are for, and after a dry-up tell them the chalice is the way out. This bends the "wordless maze" rule of section 4
+on purpose (owner's call); the glyph cues stay as they were. One short line at a time, in a HUD pod (`HUD.show_training_line`,
+`panel_style(true)`, `pod_h()` 14, the 8 px text), centred at the bottom of the screen (3 px over the edge; below JUMP and the
+joystick's resting ring). It moves up top (the second pod row, GAP_M clear of the corner pods; under them when ALL FOUND is
+too wide; GAP_XS under the level banner's story line while the banner shows) while the slime or the floating touch joystick
+(while a thumb holds it: it follows the thumb anywhere in the left half, `TouchControls.joystick_rect()`; the resting ring is clear by layout) is on or near the bottom spot (16 px
+hysteresis) or a choice row is up. A joystick held near the top spot keeps the line at the bottom (the finger wins over the
+slime; the camera keeps the slime far from the bottom in this maze anyway). It fades in / out in 0.25 s,
+hides under the pause menu and R prompt (`cover_area_texts`), and exists only in MODE_TRAINING (made by `HUD._hook_training`),
+so levels 1-2 and every other mode are unchanged. Text: `Training.line(which)`; logic: `game.gd` `_training_line` /
+`_training_lines_step`; timings `Training.COIN_INFO_TIME` 5 s, `Training.CHALICE_LINE_TIME` 15 s.
+
+| Line | English (budget 184 px text, 192 px pod) | Shows | Goes |
+|---|---|---|---|
+| `coin_ahead` | A COIN IS UP AHEAD. GRAB IT! (142 px) | attempt 1's start, while the coin waits (also after R mid-run) | at the fork (replaced), the coin, a dry-up |
+| `coin_up` | GO UP AND GRAB THE COIN! (128 px) | the fork, while the coin waits (attempt 2: only once the chalice line is gone) | the coin, a dry-up |
+| `coin_use` | COINS BUY UPGRADES IN THE HUB. (162 px) | the practice coin is picked up (D12: no upgrade named) | after 5 s (it may finish over the dry-up row, up top) |
+| `chalice` | FIND THE CHALICE TO GET OUT! (150 px) | attempt 2 on (after a dry-up's RESTART), with the banner | the chalice (win), or after 15 s; `coin_use` interrupts it and it comes back while time is left |
+
+Why words, not glyphs: "UP" is a word every device reads the same (keys, pad, touch), so no new glyph art; the fork is where
+UP is literally true (from the start pocket the first move is RIGHT, so the start line says "UP AHEAD", not "GO UP"). The
+hub is named, not the cauldron: the player has not seen it yet (the tour introduces it). The expert who wins attempt 1 never
+sees the chalice line; nothing is staged for them. A SETTINGS replay shows the same lines (nothing is saved either way).
+Shots: `shots/line_coin_ahead_keys.png`, `line_coin_ahead_touch.png`, `line_coin_up_keys.png`, `line_coin_use_keys.png`,
+`line_dry_coin_use_keys.png`, `line_chalice_keys.png` (`tests/demo_training.tscn`, CAPTURE start / fork / coin / dry / attempt2).
+Tests: `test_training_maze` (the line order on the autopilot run, the coin line gone at the coin, the chalice line after the
+dry-up and gone at the chalice, back with its full time after R mid-run on attempt 2, the replay, the layout: one line,
+budget, centred, off the slime / pods / banner / touch controls, top / bottom with hysteresis, a held joystick near either
+spot; none in a story level), `test_i18n_screens` states `training coin use`, `training dry-up coin use`,
+`training chalice line`.

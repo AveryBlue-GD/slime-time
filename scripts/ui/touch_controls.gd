@@ -256,6 +256,15 @@ func catches_jump(pos: Vector2) -> bool:
 	return pos.x >= jump_zone_left()
 
 
+## The joystick's ring on screen while a thumb holds it (it floats to the thumb in the left half), empty at
+## rest (the ring at JOY_HOME, clear of everything by layout) or while the controls are hidden. The training
+## direction line keeps off it (HUD).
+func joystick_rect() -> Rect2:
+	if not visible or menu_open or _joy_touch == -1:
+		return Rect2()
+	return Rect2(_joy_center - Vector2.ONE * JOY_RADIUS, Vector2.ONE * JOY_RADIUS * 2.0)
+
+
 ## Hides the controls (e.g. when a level ends and menu buttons take over).
 func hide_controls() -> void:
 	_release_all()

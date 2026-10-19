@@ -171,6 +171,13 @@ hub by the wheel, SETTINGS, level 1's move glyph and level 1's dry-up row, `test
   (3 px from the right; top left in a right-to-left language, where the ticket pod goes right), ink 3 / 2 like every
   text-first HUD pod. SKIP + the skip key (ESC / B; on touch SKIP alone, tapped or clicked). Its tap area grows to
   `TOUCH_MIN` and stays off the touch pause button.
+- **Training direction line** (owner playtest 2026-10-19, design section 15): one 8 px line in a HUD pod (`pod_h()` 14, pod
+  insets 4 / 4), centred, `HUD_EDGE` over the screen's bottom (y 163..177: below JUMP and the joystick's resting ring, which
+  end at y 160); up top while the slime or the floating joystick (`TouchControls.joystick_rect()`, while a thumb holds it)
+  is within GAP_M of that spot (back down once it is 16 px clear) or a choice row is up: on the second pod row GAP_M clear of
+  the corner pods, else GAP_XS under them, and GAP_XS under the banner's story line while the banner shows. A joystick held
+  near the top spot keeps it at the bottom. Text budget 184 px (pod 192, the hub tour line's);
+  English widest 162.
 - **SETTINGS TRAINING**: the MORE column's fourth cell under SAVE CODE, on FOG's row (a full 4 x 2 grid, a column button
   like its neighbours); with the language test on (LANGUAGE takes that cell) it falls back to the bottom row's centre.
 - Tests: `test_training_cues` (keycap rule, accept glyph centring / gap, hold bar), `test_hub_tour` (`_layout`: every

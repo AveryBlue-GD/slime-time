@@ -47,6 +47,11 @@ const FORK := Vector2i(17, 5)
 const FILL_TIME := 0.6
 ## Seconds between the two forced glimmers at the fork (one twinkle is easy to miss).
 const GLIMMER_REPEAT := 1.2
+## The direction line (HUD.show_training_line; owner playtest 2026-10-19): seconds "what coins buy" holds after
+## the practice coin is picked up, and the longest the chalice line holds after a dry-up's RESTART (it goes
+## sooner at the chalice).
+const COIN_INFO_TIME := 5.0
+const CHALICE_LINE_TIME := 15.0
 
 ## The run in progress, kept across the scene reloads of RESTART (game.gd retry): which attempt this is
 ## (1 = the low first meter) and whether the practice coin was picked up (it stays found, never saved).
@@ -68,6 +73,26 @@ static func display_name() -> String:
 static func banner_line() -> String:
 	# i18n: joke under the training maze's name, one line, max 296px. Keep it funny, not literal.
 	return Loc.t("training.line", "ROCK BOTTOM. NICE LANDING.")
+
+
+## The direction lines (game.gd's _training_line; one at a time, bottom centre or under the top pods).
+## `which`: "coin_ahead" (attempt 1's start while the coin waits), "coin_up" (at the fork), "coin_use" (the coin
+## was picked up: what coins are for; D12: no upgrade is named), "chalice" (after a dry-up: the way out).
+static func line(which: String) -> String:
+	match which:
+		"coin_ahead":
+			# i18n: training direction line (HUD pod, bottom centre), max 184px (its pod: 192), 1 line; the coin is up the maze from the start
+			return Loc.t("training.coin_ahead", "A COIN IS UP AHEAD. GRAB IT!")
+		"coin_up":
+			# i18n: training direction line at the fork (the coin's dead end goes up), max 184px (its pod: 192), 1 line; UP = the up direction
+			return Loc.t("training.coin_up", "GO UP AND GRAB THE COIN!")
+		"coin_use":
+			# i18n: training line after the first coin, max 184px (its pod: 192), 1 line; the hub = the round room the player goes to next
+			return Loc.t("training.coin_use", "COINS BUY UPGRADES IN THE HUB.")
+		"chalice":
+			# i18n: training line after drying up once, max 184px (its pod: 192), 1 line; the golden chalice is the maze's exit
+			return Loc.t("training.chalice", "FIND THE CHALICE TO GET OUT!")
+	return ""
 
 
 ## The tile config game.gd feeds MazeTiles (the Dark Dungeon look, level 1's tile wear).

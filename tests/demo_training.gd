@@ -4,7 +4,8 @@ extends Node
 ## clean in-memory fresh state, nothing saved): glides out of the start pocket, charges and leaps down the
 ## straight (full charge, landing short of the wall), picks up the practice coin, dries up on the low first
 ## meter, presses RESTART, glides to the chalice on attempt 2 and stops on the HUB row. Prints
-## "CAPTURE <name> <frame>" at each moment (start, straight, coin, dry, win) for picking movie frames.
+## "CAPTURE <name> <frame>" at each moment (start, straight, fork, coin, dry, attempt2, win; the direction
+## lines show at start, fork, coin, dry and attempt2) for picking movie frames.
 ## ./tools/godot.sh --path . --write-movie /tmp/x/frame.png --fixed-fps 60 --quit-after 2400 res://tests/demo_training.tscn
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -76,6 +77,8 @@ func _physics_process(_delta: float) -> void:
 			_pilot(route)
 			stage = "to_coin"
 	elif stage == "to_coin":
+		if game.training_line == "coin_up":
+			_capture("fork", 12)  # (the direction line: GO UP AND GRAB THE COIN!)
 		if Training.coin_taken:
 			_capture("coin", 6)
 		if game.finished and not game.hud.choice_buttons.is_empty() and game.hud.choice_buttons[0].is_visible_in_tree():
@@ -87,6 +90,8 @@ func _physics_process(_delta: float) -> void:
 				_hold = -1
 				game.hud.choice_buttons[0].pressed.emit()
 	elif stage == "attempt2":
+		if game.training_line == "chalice":
+			_capture("attempt2", 30)  # (the chalice line after the dry-up)
 		if pilot == null and frame > 3:
 			var m: Dictionary = game.maze
 			_pilot(MazeGenerator.shortest_path(m, m.start, m.goal))
