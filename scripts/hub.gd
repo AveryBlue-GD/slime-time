@@ -92,6 +92,13 @@ const QUIT_PANEL := Rect2(80, 63, 160, 54)
 const PORTAL_PANEL := Rect2(70, 45, 180, 89)
 ## A saved DESCENT run's prompt (three lines, RESUME / QUIT RUN).
 const RESUME_PANEL := Rect2(80, 57, 160, 66)
+## Esc's menu over the hub (MENU, then BACK / SETTINGS / QUIT TO TITLE stacked): PANEL_PAD, the title,
+## HUB_MENU_TITLE_GAP, three buttons GAP_S apart, PANEL_PAD; centred.
+const HUB_MENU_PANEL := Rect2(94, 53, 132, 74)
+## Its buttons' width in English (the pause stack's; one width for all three, a longer text widens all of them).
+const HUB_MENU_BUTTON_W := 100
+## The gap between the title's line box and the first button (4 px under the drips in English).
+const HUB_MENU_TITLE_GAP := 6
 ## The confirm panels' buttons: this far in from the panel's sides; the gap between the last line's
 ## box and the buttons (4 px under the drips in English).
 const DIALOG_INSET := 16.0
@@ -193,6 +200,18 @@ var resume_menu: Control
 var resume_button: Button
 var resume_quit: Button
 var resume_lines: Array[Label] = []
+## Esc's menu over the hub: MENU with BACK (focused), SETTINGS (as the signpost) and QUIT TO TITLE.
+## Esc / B / START closes it. On iOS / Android the touch home button still goes straight to the title (D10).
+var hub_menu: Control
+var hub_menu_panel: Panel
+var hub_menu_title: Label
+var menu_back: Button
+var menu_settings: Button
+var menu_quit: Button
+## Where the hub menu's panel is in the current language (HUB_MENU_PANEL in English).
+var hub_menu_rect := HUB_MENU_PANEL
+## Set when the touch controls' home button (D10, mobile native) was tapped; cleared by the `menu` press it makes.
+var _home_tap := false
 ## Top-left pod: ticket balance and medal count.
 var ticket_pod: PanelContainer
 var ticket_label: Label
@@ -462,6 +481,7 @@ func _build_ui() -> void:
 	_build_quit_menu(root)
 	_build_portal_menu(root)
 	_build_resume_menu(root)
+	_build_hub_menu(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
@@ -485,6 +505,8 @@ func _build_ui() -> void:
 	_touch_controls = preload("res://scripts/ui/touch_controls.gd").new()
 	add_child(_touch_controls)
 	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
+	_touch_controls.pause_tapped.connect(func() -> void:
+		_home_tap = _touch_controls.home_icon)  # (elsewhere its `menu` press opens the hub menu, like Esc)
 	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
 		if hat_wheel.visible:
 			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
@@ -718,6 +740,101 @@ func _confirm_quit() -> void:
 	get_tree().quit()
 
 
+## Esc's menu: MENU over BACK / SETTINGS / QUIT TO TITLE (BACK has the focus; up / down wrap). Static.
+func _build_hub_menu(root: Control) -> void:
+	hub_menu = Control.new()
+	hub_menu.visible = false
+	root.add_child(hub_menu)
+	hub_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()  # swallows clicks on the room behind
+	dim.color = Color(0, 0, 0, 0.45)
+	hub_menu.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hub_menu_panel = UIKit.add_panel(hub_menu, HUB_MENU_PANEL)
+	# i18n: the hub's Esc menu title, max 116px, 1 line (a longer one widens the panel)
+	hub_menu_title = UIKit.add_label(hub_menu, Loc.t("hub.menu.title", "MENU"), Rect2(), 8, UIKit.GOLD)
+	var size := Vector2(HUB_MENU_BUTTON_W, UIKit.button_h())
+	menu_back = UIKit.make_button(Loc.t("common.back", "BACK"), func() -> void: close_hub_menu(), size)
+	menu_settings = UIKit.make_button(Loc.t("hub.station.settings", "SETTINGS"), _hub_menu_settings, size)
+	# i18n: hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
+	menu_quit = UIKit.make_button(Loc.t("hub.menu.quit_title", "QUIT TO TITLE"), _hub_menu_quit, size)
+	var order: Array[Button] = [menu_back, menu_settings, menu_quit]
+	for b in order:
+		hub_menu.add_child(b)
+	_layout_hub_menu()
+	for i in order.size():
+		var b := order[i]
+		b.focus_neighbor_top = b.get_path_to(order[(i + order.size() - 1) % order.size()])
+		b.focus_neighbor_bottom = b.get_path_to(order[(i + 1) % order.size()])
+		b.focus_neighbor_left = b.get_path_to(b)
+		b.focus_neighbor_right = b.get_path_to(b)
+		b.focus_previous = b.focus_neighbor_top
+		b.focus_next = b.focus_neighbor_bottom
+
+
+## The title, HUB_MENU_TITLE_GAP, the three buttons GAP_S apart (equal widths from the longest word),
+## PANEL_PAD above and below: HUB_MENU_PANEL in English, wider for a longer text, taller for a taller script.
+func _layout_hub_menu() -> void:
+	var buttons: Array[Button] = [menu_back, menu_settings, menu_quit]
+	var texts := buttons.map(func(b: Button) -> String: return b.text)
+	var bw: int = UIKit.tab_widths(texts, HUB_MENU_BUTTON_W)[0]
+	for b in buttons:
+		UIKit.note_text_w(b, texts, HUB_MENU_BUTTON_W)
+	var bh := UIKit.button_h()
+	var w := maxf(HUB_MENU_PANEL.size.x, bw + 2 * DIALOG_INSET)
+	w = maxf(w, _widest([hub_menu_title]) + 2 * UIKit.PANEL_PAD)
+	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
+	var h := text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP + buttons.size() * bh + (buttons.size() - 1) * UIKit.GAP_S + UIKit.PANEL_PAD
+	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
+	hub_menu_panel.position = rect.position
+	hub_menu_panel.size = rect.size
+	_stack_lines([hub_menu_title], rect, rect.position.y + text_top)
+	var y := rect.position.y + text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP
+	for b in buttons:
+		b.custom_minimum_size = Vector2(bw, bh)
+		b.size = b.custom_minimum_size
+		b.position = Vector2(UIKit.center_x(bw, rect.position.x, rect.size.x), y)
+		y += bh + UIKit.GAP_S
+	hub_menu_rect = rect
+
+
+func open_hub_menu() -> void:
+	hub_menu.visible = true
+	prompt.visible = false
+	slime.frozen = true
+	if _touch_controls != null:
+		_touch_controls.menu_open = true  # taps go to the buttons, not the joystick
+	_sfx("click")
+	menu_back.grab_focus()
+
+
+func close_hub_menu() -> void:
+	hub_menu.visible = false
+	get_viewport().gui_release_focus()  # (no hidden button keeps the keyboard)
+	if _touch_controls != null:
+		_touch_controls.menu_open = false
+	slime.frozen = false
+	_show_prompt()
+
+
+## SETTINGS: the settings screen, as the signpost opens it (its BACK returns in front of the signpost).
+func _hub_menu_settings() -> void:
+	if not hub_menu.visible:
+		return
+	close_hub_menu()
+	_leave(_station("settings"), "res://scenes/controls.tscn")
+
+
+## QUIT TO TITLE: the goo wipe to the title (what Esc in the hub did before the menu).
+func _hub_menu_quit() -> void:
+	if not hub_menu.visible:
+		return
+	close_hub_menu()
+	_sfx("click")
+	slime.frozen = true
+	UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+
+
 ## The portal's mode choice: RANDOM MAZE and DESCENT stacked, a line with the Descent best floor and
 ## today's paying runs, BACK under them (focus starts on RANDOM MAZE; up / down wrap).
 func _build_portal_menu(root: Control) -> void:
@@ -878,7 +995,8 @@ func _link_resume_buttons(spent: bool) -> void:
 
 
 func open_resume_menu() -> void:
-	if not Progress.descent_resume_pending() or quit_menu.visible or portal_menu.visible or hat_wheel.visible or coin_board.visible:
+	if not Progress.descent_resume_pending() or quit_menu.visible or portal_menu.visible or hat_wheel.visible or coin_board.visible \
+			or hub_menu.visible:
 		return
 	UIKit.relayout(resume_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var run: Dictionary = Progress.descent_resume
@@ -1207,6 +1325,14 @@ func _spin_room_wheel() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var home_tap := _home_tap  # (the D10 home button's tap: the `menu` press it makes is that tap's)
+	if Input.is_action_just_pressed("menu"):
+		_home_tap = false
+	if hub_menu.visible:
+		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
+			_sfx("click", 0.8)
+			close_hub_menu()
+		return
 	if resume_menu.visible:
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)
@@ -1252,9 +1378,12 @@ func _physics_process(delta: float) -> void:
 		_sfx("click", 0.8)  # (Esc / B skips the tour first, and stays in the hub)
 		return
 	if Input.is_action_just_pressed("menu") and not slime.frozen:
-		_sfx("click")
-		slime.frozen = true
-		UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+		if home_tap:  # (iOS / Android: the touch home button goes straight to the title, D10)
+			_sfx("click")
+			slime.frozen = true
+			UIKit.go(get_tree(), UIKit.TITLE_SCENE)
+		else:
+			open_hub_menu()  # Esc / START / the touch pause button: MENU (BACK, SETTINGS, QUIT TO TITLE)
 		return
 	if turning:
 		_turn_t = minf(_turn_t + delta / TURN_TIME, 1.0)

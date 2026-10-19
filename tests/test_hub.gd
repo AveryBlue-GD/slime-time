@@ -131,10 +131,44 @@ func _initialize() -> void:
 	hub = await _open()
 	_check(hub.prompt_name.text.begins_with("STORY - LEVEL") and hub.prompt_key.text == "", "the story prompt has no key after it (%s)" % hub.prompt_name.text)
 	current_scene = hub
+	_check(not hub.hub_menu.visible, "the hub menu starts closed")
 	Input.action_press("menu")
 	await _physics_frames(2)
 	Input.action_release("menu")
-	_check(hub.slime.frozen, "Esc in the hub heads back to the title")
+	_check(hub.hub_menu.visible and hub.slime.frozen and not hub.prompt.visible and hub._touch_controls.menu_open,
+		"Esc in the hub opens MENU over it (slime held, prompt hidden, touch controls aside)")
+	_check(hub.menu_back.has_focus() and hub.hub_menu_title.text == "MENU"
+		and [hub.menu_back.text, hub.menu_settings.text, hub.menu_quit.text] == ["BACK", "SETTINGS", "QUIT TO TITLE"],
+		"...MENU: BACK (focused), SETTINGS, QUIT TO TITLE")
+	_check(hub.hub_menu_rect == hub.HUB_MENU_PANEL, "...its panel is HUB_MENU_PANEL in English (%s)" % hub.hub_menu_rect)
+	var wrap := InputEventAction.new()
+	wrap.action = "ui_up"
+	wrap.pressed = true
+	Input.parse_input_event(wrap)
+	await _physics_frames(3)
+	_check(hub.menu_quit.has_focus(), "...up from BACK wraps to QUIT TO TITLE")
+	await _physics_frames(2)
+	Input.action_press("menu")
+	await _physics_frames(2)
+	Input.action_release("menu")
+	_check(not hub.hub_menu.visible and not hub.slime.frozen and not hub._touch_controls.menu_open and hub.get_viewport().gui_get_focus_owner() == null,
+		"Esc again closes it (the slime moves again)")
+	Input.action_press("ui_cancel")
+	await _physics_frames(2)
+	Input.action_release("ui_cancel")
+	_check(not hub.hub_menu.visible and not hub.slime.frozen, "...B / ui_cancel alone doesn't open it")
+	hub.open_hub_menu()
+	Input.action_press("ui_cancel")
+	await _physics_frames(2)
+	Input.action_release("ui_cancel")
+	_check(not hub.hub_menu.visible and not hub.slime.frozen, "...B / ui_cancel closes it")
+	hub.open_hub_menu()
+	hub.menu_back.pressed.emit()
+	await _physics_frames(2)
+	_check(not hub.hub_menu.visible and not hub.slime.frozen, "...BACK closes it")
+	hub.open_hub_menu()
+	hub.menu_quit.pressed.emit()
+	_check(hub.slime.frozen and not hub.hub_menu.visible, "QUIT TO TITLE heads back to the title")
 	for i in 120:
 		await process_frame
 		if current_scene != null and current_scene.scene_file_path == "res://scenes/title.tscn":
@@ -321,6 +355,39 @@ func _initialize() -> void:
 	Input.action_release("interact")
 	_check(hub.slime.frozen and HubScript.return_to == "settings", "the signpost opens the settings (and remembers it)")
 	hub.free()
+	HubScript.return_to = ""
+
+	# --- The hub menu's SETTINGS opens the settings as the signpost does; its BACK returns in front of it
+	hub = await _open()
+	current_scene = hub
+	hub.open_hub_menu()
+	hub.menu_settings.pressed.emit()
+	_check(hub.slime.frozen and not hub.hub_menu.visible and HubScript.return_to == "settings", "MENU > SETTINGS opens the settings (remembering the signpost)")
+	for i in 120:
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == "res://scenes/controls.tscn":
+			break
+	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/controls.tscn", "...and lands on them")
+	if is_instance_valid(hub) and current_scene != hub:
+		hub.free()
+	for i in 30:
+		await process_frame
+	for pressed in [true, false]:  # (the settings screen reads events, not Input polling)
+		var esc := InputEventAction.new()
+		esc.action = "menu"
+		esc.pressed = pressed
+		Input.parse_input_event(esc)
+		await _physics_frames(2)
+	for i in 120:
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == "res://scenes/hub.tscn" and not root.get_node("Transition").busy:
+			break
+	var back_hub: Node = current_scene
+	_check(back_hub != null and back_hub.scene_file_path == "res://scenes/hub.tscn" and not back_hub.hub_menu.visible
+		and back_hub.back_station().id == "settings", "...its BACK returns to the hub, facing the signpost")
+	if back_hub != null:
+		current_scene = null
+		back_hub.free()
 	HubScript.return_to = ""
 
 	# --- The trapdoor asks first: LEAVE THE HUB? with QUIT and BACK

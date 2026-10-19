@@ -267,7 +267,7 @@ func _clear_scene() -> void:
 
 
 ## The Android back button / gesture taps `menu`: a level pauses (and back again resumes), the level select goes
-## back to the hub (through the goo wipe), the hub goes to the title, the title ignores it.
+## back to the hub (through the goo wipe), the hub opens its menu (back again closes it), the title ignores it.
 func _back_button() -> void:
 	var game: Node2D = BASE_MAIN.instantiate()
 	game.level = 2
@@ -292,12 +292,18 @@ func _back_button() -> void:
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/hub.tscn", "...and lands in the hub (%s)" % (current_scene.scene_file_path if current_scene else "none"))
 	for i in 30:
 		await process_frame
+	var hub: Node = current_scene
 	await _go_back()
+	_check(hub.hub_menu.visible and not transition.busy, "back in the hub opens the hub menu (as Esc)")
+	await _go_back()
+	_check(not hub.hub_menu.visible and current_scene == hub, "back again closes it")
+	await _go_back()
+	hub.menu_quit.pressed.emit()
 	for i in 120:
 		await process_frame
 		if not transition.busy:
 			break
-	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/title.tscn", "back in the hub goes to the title")
+	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/title.tscn", "...its QUIT TO TITLE goes to the title")
 	for i in 30:
 		await process_frame
 	var title := current_scene
@@ -438,7 +444,7 @@ func _fullscreen_sync() -> void:
 
 
 ## Owner decision D10: on iOS / Android the hub's touch pause button (it goes to the title) draws a home icon; desktop,
-## web and levels keep the pause bars.
+## web and levels keep the pause bars (there its tap presses `menu`, as Esc: the hub menu opens).
 func _home_icon() -> void:
 	for kind: String in ["desktop", "web", "ios", "android"]:
 		Platform.reset_overrides()
@@ -447,6 +453,21 @@ func _home_icon() -> void:
 		await _set_scene(hub)
 		var home: bool = hub._touch_controls.home_icon
 		_check(home == (kind in ["ios", "android"]), "%s: hub touch button draws %s" % [kind, "a home icon" if home else "pause bars"])
+		var at: Vector2 = TouchControls.PAUSE_RECT.get_center()
+		hub._touch_controls._touch_down(0, at)
+		await physics_frame
+		await physics_frame
+		hub._touch_controls._touch_up(0, at)
+		await physics_frame
+		if home:
+			_check(hub.slime.frozen and not hub.hub_menu.visible and root.get_node("Transition").busy,
+				"%s: the home button goes straight to the title (no hub menu)" % kind)
+			for i in 120:
+				await process_frame
+				if not root.get_node("Transition").busy:
+					break
+		else:
+			_check(hub.hub_menu.visible and hub.slime.frozen, "%s: the pause button opens the hub menu, as Esc" % kind)
 		await _clear_scene()
 	var game: Node2D = BASE_MAIN.instantiate()
 	game.level = 1

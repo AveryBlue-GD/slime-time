@@ -169,7 +169,7 @@ func _full_tour() -> void:
 	_check(hub.prompt_name.text == "THE WAY UP. WALK IN.", "...the last line stays")
 	await _turn(hub)
 	_check(tour.over and hub.prompt_name.text == "ROTATE", "turning on past the end: the hub's own ROTATE again")
-	_check(not tour.back_pressed(), "after the tour, Esc / B are the hub's again (to the title, as always)")
+	_check(not tour.back_pressed(), "after the tour, Esc / B are the hub's again (Esc opens the hub menu)")
 	await _close(hub)
 
 
@@ -202,6 +202,12 @@ func _skips() -> void:
 		_check(tour.over and tour.skipped and saved and not hub.slime.frozen and not tour._layer.visible
 			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB != 0,
 			"skip after %d turns (%s): over, finish_hub_tour saved HUB, still in the hub, ROTATE again" % [step, how])
+		_check(not hub.hub_menu.visible, "...the skipping press doesn't also open the hub menu (%s)" % how)
+		if how == "menu":
+			await _press("menu")
+			_check(hub.hub_menu.visible and hub.menu_back.has_focus(), "...after the tour, Esc opens the hub menu (%s)" % how)
+			await _press("menu")
+			_check(not hub.hub_menu.visible and not hub.slime.frozen, "...and Esc closes it again")
 		await _close(hub)
 
 

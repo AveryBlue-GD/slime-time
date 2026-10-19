@@ -288,6 +288,10 @@ func _hub() -> void:
 	await _frames(2)
 	await _scan("hub portal", hub)
 	hub.close_portal_menu()
+	hub.open_hub_menu()
+	await _frames(2)
+	await _scan("hub menu", hub)
+	hub.close_hub_menu()
 	progress.descent_resume = {seed = 5, floor = 12, cleared = 11, meter = 50.0, boons = {}, bladders = 0, pot = 30, time = 600.0,
 		wind_used = false, slot = 1, bonuses = [], new_best = false, best_before = 0}
 	hub.open_resume_menu()

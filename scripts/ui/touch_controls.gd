@@ -41,6 +41,9 @@ var home_icon := false:
 		if _canvas:
 			_canvas.queue_redraw()
 const PAUSE_TOUCH_MARGIN := 5.0
+## The pause (or home) button was tapped; emitted just before its `menu` press (the hub tells its home tap
+## from Esc by it).
+signal pause_tapped
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
 ## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
@@ -140,6 +143,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 	elif pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		_release_pause()  # (a second finger on it: the first one's press ends)
 		_pause_touch = index
+		pause_tapped.emit()
 		var pause := InputEventAction.new()
 		pause.action = "menu"
 		pause.pressed = true

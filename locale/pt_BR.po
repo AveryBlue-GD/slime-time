@@ -791,6 +791,20 @@ msgctxt "common.back"
 msgid "BACK"
 msgstr "VOLTAR"
 
+#. the hub's Esc menu title, max 116px, 1 line (a longer one widens the panel)
+#. budget: max 116px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.menu.title"
+msgid "MENU"
+msgstr ""
+
+#. hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
+#. budget: max 90px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.menu.quit_title"
+msgid "QUIT TO TITLE"
+msgstr ""
+
 #: scripts/hub.gd
 msgctxt "hub.portal.title"
 msgid "RANDOMIZER"

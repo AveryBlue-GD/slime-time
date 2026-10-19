@@ -229,11 +229,28 @@ func _scripted() -> void:
 	check(L.kind() == "hub", "TITLE-ENTER", "Enter (x2, second during the wipe) enters the hub once")
 	inv("hub after title")
 
-	print("-- hub: Esc, quit hatch, coin board")
+	print("-- hub: Esc menu, quit hatch, coin board")
 	var hub: Node2D = current_scene
 	await esc()
+	await L.frames(3)
+	check(L.kind() == "hub" and hub.hub_menu.visible and L.focus() == hub.menu_back, "HUB-ESC", "Esc in the hub opens MENU with BACK focused")
+	inv("hub menu")
+	await esc()
+	await L.frames(3)
+	check(L.kind() == "hub" and not hub.hub_menu.visible and not hub.slime.frozen, "HUB-ESC", "Esc again closes it (stays in the hub)")
+	await esc()
+	await L.frames(3)
+	await L.tap(KEY_ENTER)
+	await L.frames(3)
+	check(L.kind() == "hub" and not hub.hub_menu.visible, "HUB-ESC", "Enter on BACK closes it")
+	await esc()
+	await L.frames(3)
+	await L.tap(KEY_UP)  # (wraps from BACK to QUIT TO TITLE)
+	await L.frames(2)
+	check(L.focus() == hub.menu_quit, "HUB-ESC", "up from BACK wraps to QUIT TO TITLE")
+	await L.tap(KEY_ENTER)
 	await L.settle()
-	check(L.kind() == "title", "HUB-ESC", "Esc in the hub goes to the title")
+	check(L.kind() == "title", "HUB-ESC", "QUIT TO TITLE goes to the title")
 	await L.tap(KEY_ENTER)
 	await L.settle()
 	hub = current_scene
@@ -442,7 +459,8 @@ func _descent() -> void:
 
 
 func overlay_closed(hub: Node2D) -> bool:
-	return not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible
+	return not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible \
+		and not hub.hub_menu.visible
 
 
 func transition_busy() -> bool:
@@ -1511,6 +1529,8 @@ func _cover(cov: Dictionary) -> void:
 		"hub":
 			if cs.quit_menu.visible:
 				tags.append("hub:quit")
+			if cs.hub_menu.visible:
+				tags.append("hub:menu")
 			if cs.portal_menu.visible:
 				tags.append("hub:portal")
 			if cs.coin_board.visible:
@@ -1558,7 +1578,13 @@ func _escape_ladder() -> bool:
 			var hub_ok := true
 			if k == "hub":
 				var hub = current_scene
-				hub_ok = not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible
+				hub_ok = not hub.quit_menu.visible and not hub.coin_board.visible and not hub.hat_wheel.visible and not hub.portal_menu.visible \
+					and not hub.hub_menu.visible
+				if hub.hub_menu.visible:  # (Esc's MENU: leave it by its own buttons, QUIT TO TITLE or BACK)
+					var out: Button = hub.menu_quit if i % 2 == 0 else hub.menu_back
+					await L.click(out.get_global_rect().get_center(), 1)
+					await L.settle(240)
+					continue
 			if hub_ok:
 				return true
 		if k == "main":

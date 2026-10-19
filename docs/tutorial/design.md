@@ -21,7 +21,7 @@ picks one (section 12).
 - The hub: nine stations clockwise from the back (story archway, MAP TABLE, UPGRADES cauldron, QUIT trapdoor on
   desktop only, COIN BAG, RANDOMIZER locked, SETTINGS, HAT WHEEL, COSMETICS). The **wheel in the middle** turns the
   room one station (`turn_room`, interact key F / X next to it, or leap into it; hold LEFT to turn the other way;
-  JUMP on touch). The prompt at the bottom names the station you're next to. Esc goes to the title.
+  JUMP on touch). The prompt at the bottom names the station you're next to. Esc opens the hub MENU (BACK / SETTINGS / QUIT TO TITLE).
 
 ## 2. The new flow
 
@@ -245,7 +245,7 @@ tour.
 - **Opening the hub before level 1** changes the fresh-save flow (title PLAY to ENTER THE HUB, first chalice no
   longer opens the hub). Check every `is_fresh_save()` use (today only `title.gd`) and `go_to_hub` after an L1
   win (it already returns to the archway).
-- **Esc in the hub** means "title" everywhere else. In the tour the first Esc skips the tour. Must be tested so
+- **Esc in the hub** opens the hub MENU everywhere else (BACK / SETTINGS / QUIT TO TITLE). In the tour the first Esc skips the tour. Must be tested so
   players can't get stuck in a loop and Android back behaves the same.
 - **Touch:** JUMP both leaps and uses stations next to them. A player leaping near the wheel turns the room by
   accident (already true today); the tour line must stay correct when that happens.

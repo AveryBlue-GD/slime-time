@@ -105,6 +105,12 @@ func _initialize() -> void:
 	hub.open_portal_menu()
 	await _frames(2)
 	_check_exclusive(hub, "hub portal")
+	hub.close_portal_menu()
+	hub.open_hub_menu()
+	await _frames(2)
+	for b: Button in [hub.menu_back, hub.menu_settings, hub.menu_quit]:
+		_check(_span(b).x >= UIKit.TOUCH_MIN and _span(b).y >= 16.0, "hub menu %s: hit area %s (a stack: its pitch tall)" % [b.text, _span(b)])
+	_check_exclusive(hub, "hub menu")
 	hub.free()
 
 	# In a level: the pause stack (pitch 16: each button gets its share of the 3 px gaps) and the

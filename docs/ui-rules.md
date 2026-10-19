@@ -107,7 +107,7 @@ Rules:
 | panel pair | 48x13 (BUY? confirm), 56x13 (hub quit), 64x13 (save code), 70x13 (reset) | |
 | result choice row (in-level results, Descent summary) | **84x13**, gap 8, y 153 | `UIKit.CHOICE_SIZE`, `CHOICE_GAP`, `CHOICE_Y` |
 | Descent card buttons | 96x13 at y 153 (the tile width, under the outer tiles) | |
-| stacked menu | 100x13 (pause, restart), 120x13 (settings columns, portal, victory) | |
+| stacked menu | 100x13 (pause, restart, hub Esc menu), 120x13 (settings columns, portal, victory) | |
 | title CTA | 176x25, 16 px text | the only tall button |
 
 Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT toggles 84x34, boon 96x78).
@@ -118,7 +118,7 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 - **Content inset `UIKit.PANEL_PAD` = 8** at the top (to the first text's top row or the first button) and at the bottom
   (from the last button's bottom edge, or the last text line's drips). A first line with marks starts at
   `UIKit.panel_text_top()` instead (9 accented, 11 Vietnamese: the marks start on row 6, clear of the band and lumps,
-  rows 0-4); a PanelContainer gets the same from `panel_style()` (section 10.1, "No ink on the goo"). Applied to: pause and restart stacks, hub quit and
+  rows 0-4); a PanelContainer gets the same from `panel_style()` (section 10.1, "No ink on the goo"). Applied to: pause and restart stacks, the hub Esc menu, hub quit and
   portal dialogs, HEAT panel, Descent summary (which fits its panel to its lines). The BUY? and RESET confirms use 8 / 9.
 - Modal: a dim sheet that takes clicks, plus `UIKit.lock_focus`. A modal over the in-level HUD hides the HUD texts that
   would show through (`HUD.hide_area_texts()` from pause and restart; the Descent card hides the HUD layer).
