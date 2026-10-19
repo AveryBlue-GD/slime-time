@@ -1,10 +1,16 @@
-"""Generates the big bubbly "SLIME TIME" title logo (no dependencies): assets/sprites/title.png.
+"""Generates the big bubbly "DRY TRYING" title logo (no dependencies): assets/sprites/title/logo_NN.png.
 
-Run from the project root:  python tools/make_title.py
+Run from the project root:  python tools/make_title.py   (then re-import)
+
+The game was renamed from Slime Time to Dry Trying on 2026-10-19 (owner).
 
 Letters are drawn on a 5x7 cell grid; every filled cell becomes a fat blob and neighboring blobs
 are joined with thick capsules, so strokes come out round and gooey. Goo drips (with a bulb at
 the end) hang off the bottom edge, with short ones inside letter holes.
+The letter bodies come from one fixed seed; the drips from a different seed per variant, so the
+VARIANTS files have identical letters and different drips. The title screen (scripts/ui/title.gd,
+LOGO_VARIANTS / logo_texture) shows a different variant than last time on every visit, so the drips
+look fresh each time without any run-time drawing.
 The logo uses the slime sheet's goo shades (l/m/n plus white gloss), so the game's palette-swap
 shader recolors it to the equipped skin, rainbow included.
 """
@@ -14,7 +20,9 @@ from pathlib import Path
 
 from make_placeholder_art import PAL, write_png
 
-OUT = Path(__file__).resolve().parent.parent / "assets" / "sprites" / "title.png"
+OUT_DIR = Path(__file__).resolve().parent.parent / "assets" / "sprites" / "title"
+VARIANTS = 12  # keep equal to LOGO_VARIANTS in scripts/ui/title.gd
+BODY_SEED = 7
 CELL = 6
 RADIUS = 3.3  # strokes ~7 px thick; holes stay ~5 px open so letters still read clearly
 LETTER_GAP = 3
@@ -29,8 +37,13 @@ LETTERS = {
     "M": ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
     "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
     "T": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+    "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    "R": ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+    "Y": ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+    "N": ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+    "G": [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."],
 }
-TEXT = "SLIME TIME"
+TEXT = "DRY TRYING"
 
 
 def segment_distance(px, py, ax, ay, bx, by) -> float:
@@ -40,8 +53,9 @@ def segment_distance(px, py, ax, ay, bx, by) -> float:
     return math.hypot(px - (ax + t * vx), py - (ay + t * vy))
 
 
-def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random) -> list[tuple]:
-    """Capsules (ax, ay, bx, by, radius) that make up one gooey letter plus its drips."""
+def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random,
+                    drip_rng: random.Random) -> list[tuple]:
+    """Capsules (ax, ay, bx, by, radius) that make up one gooey letter (rng) plus its drips (drip_rng)."""
     filled = {(x, y) for y, row in enumerate(rows) for x, c in enumerate(row) if c == "#"}
     capsules = []
     for x, y in sorted(filled):
@@ -60,19 +74,20 @@ def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random) -
             continue
         # Long drips hang off the bottom edge; inside holes only short ones, so they don't
         # cross the gap and blur the letter shape.
-        if rng.random() > (0.7 if y == bottom else 0.3):
+        if drip_rng.random() > (0.7 if y == bottom else 0.3):
             continue
-        cx = ox + x * CELL + CELL / 2 + rng.uniform(-0.8, 0.8)
+        cx = ox + x * CELL + CELL / 2 + drip_rng.uniform(-0.8, 0.8)
         cy = oy + y * CELL + CELL / 2
-        end = cy + RADIUS + (rng.choice([3, 4, 6, 8, 10, 13]) if y == bottom else rng.choice([1, 2]))
-        width = rng.uniform(1.4, 2.0)
+        end = cy + RADIUS + (drip_rng.choice([3, 4, 6, 8, 10, 13]) if y == bottom else drip_rng.choice([1, 2]))
+        width = drip_rng.uniform(1.4, 2.0)
         capsules.append((cx, cy, cx, end, width))
         capsules.append((cx, end, cx, end, width + 0.6))  # the drop at the end of the drip
     return capsules
 
 
-def render() -> list[str]:
-    rng = random.Random(7)
+def render(drip_seed: int) -> list[str]:
+    rng = random.Random(BODY_SEED)
+    drip_rng = random.Random(drip_seed)
     width = MARGIN * 2 + sum(SPACE if ch == " " else len(LETTERS[ch][0]) * CELL + LETTER_GAP for ch in TEXT)
     height = MARGIN + 7 * CELL + 24
     capsules, x = [], MARGIN
@@ -80,11 +95,16 @@ def render() -> list[str]:
         if ch == " ":
             x += SPACE
             continue
-        capsules += letter_capsules(LETTERS[ch], x, MARGIN, rng)
+        capsules += letter_capsules(LETTERS[ch], x, MARGIN, rng, drip_rng)
         x += len(LETTERS[ch][0]) * CELL + LETTER_GAP
 
-    inside = [[any(segment_distance(px + 0.5, py + 0.5, *c[:4]) <= c[4] for c in capsules)
-               for px in range(width)] for py in range(height)]
+    inside = [[False] * width for _ in range(height)]
+    for ax, ay, bx, by, r in capsules:  # each capsule only touches the pixels of its bounding box
+        for py in range(max(0, int(min(ay, by) - r) - 1), min(height, int(max(ay, by) + r) + 2)):
+            row = inside[py]
+            for px in range(max(0, int(min(ax, bx) - r) - 1), min(width, int(max(ax, bx) + r) + 2)):
+                if not row[px] and segment_distance(px + 0.5, py + 0.5, ax, ay, bx, by) <= r:
+                    row[px] = True
 
     def ins(px, py):
         return 0 <= px < width and 0 <= py < height and inside[py][px]
@@ -115,5 +135,10 @@ def render() -> list[str]:
 
 
 if __name__ == "__main__":
-    rows = render()
-    write_png(OUT, rows)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for old in OUT_DIR.glob("logo_*.png"):
+        old.unlink()
+    for i in range(VARIANTS):
+        rows = render(1000 + i)
+        write_png(OUT_DIR / f"logo_{i:02d}.png", rows)
+    print(f"{VARIANTS} logos, {len(rows[0])}x{len(rows)}, in {OUT_DIR}")

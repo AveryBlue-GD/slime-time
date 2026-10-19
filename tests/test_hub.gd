@@ -33,7 +33,35 @@ func _initialize() -> void:
 		texts.append(node.text)
 	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG\nOR DRY TRYING" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
 		"the game opens on the title: ENTER THE HUB, then the tagline (no !)")
+	# The DRY TRYING logo: a different drip variant on every visit, always inside the 320x180 screen.
+	_check(ProjectSettings.get_setting("application/config/name") == "Dry Trying", "the window title says Dry Trying")
+	var TitleScript: GDScript = load("res://scripts/ui/title.gd")
+	var logo: TextureRect = title.get_node("Logo")
+	var shown: Array[String] = [logo.texture.resource_path]
+	var logo_ok := Rect2(Vector2.ZERO, Vector2(320, 180)).encloses(Rect2(logo.position, logo.texture.get_size()))
 	title.free()
+	for i in 8:  # eight more visits in a row
+		title = load("res://scenes/title.tscn").instantiate()
+		root.add_child(title)
+		await process_frame
+		logo = title.get_node("Logo")
+		shown.append(logo.texture.resource_path)
+		logo_ok = logo_ok and Rect2(Vector2.ZERO, Vector2(320, 180)).encloses(Rect2(logo.position, logo.texture.get_size()))
+		title.free()
+	var repeats := 0
+	for i in range(1, shown.size()):
+		if shown[i] == shown[i - 1]:
+			repeats += 1
+	# Random, not a cycle: the steps between visits aren't all the same (8 equal random steps: ~1 in 10^8).
+	var steps := {}
+	for i in range(1, shown.size()):
+		steps[posmod(shown[i].get_file().get_basename().trim_prefix("logo_").to_int() - shown[i - 1].get_file().get_basename().trim_prefix("logo_").to_int(), TitleScript.LOGO_VARIANTS)] = true
+	_check(steps.size() > 1, "...picked at random, not in a fixed order (%d different steps)" % steps.size())
+	var sizes_same := true
+	for i in TitleScript.LOGO_VARIANTS:
+		sizes_same = sizes_same and (load(TitleScript.LOGO_PATH % i) as Texture2D).get_size() == Vector2(303, 70)
+	_check(repeats == 0 and logo_ok and sizes_same and TitleScript.last_logo >= 0,
+		"9 title visits: never the same drips twice in a row (%s), logo 303x70 inside the screen" % ", ".join(shown.map(func(p): return p.get_file())))
 
 	# --- The room, its stations and their views
 	HubScript.return_to = ""

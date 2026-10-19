@@ -1,4 +1,6 @@
-# Slime Time
+# Dry Trying
+
+(The game was called Slime Time until the owner renamed it on 2026-10-19.)
 
 A 2D pixel-art maze game made in Godot. You're a slime in a maze hidden by fog. Your goo trail clears the fog as you glide, but every move costs slime. Find the golden chalice before you dry up! Beat all 10 story levels, then try hard mode (with its HEAT challenges), the Randomizer, where a gold ticket is the goal, and DESCENT, a run through chained random floors.
 

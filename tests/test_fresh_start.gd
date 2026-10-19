@@ -9,7 +9,7 @@ extends "res://tests/suite_base.gd"
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_fresh_start.gd
 
 const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
-const OLD_DIR_NAME := "Slime Time"  # application/config/name: the pre-release user dir (app_userdata)
+const OLD_DIR_NAME := "Slime Time"  # the old application/config/name (before the 2026-10-19 rename to Dry Trying): the pre-release user dir (app_userdata)
 
 var progress: Node
 var scratch: Array[String] = []

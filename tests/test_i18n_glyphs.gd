@@ -192,7 +192,7 @@ func _coverage() -> void:
 			_check(missing == "", "%s.po: every translated character has a glyph %s" % [code, missing])
 			if code == "tr":
 				# Mixed-case entries (browser dialogs, drawn by the browser) may use ı / i; the brand stays English.
-				var bare := _strip_placeholders(po_text(LOCALE_DIR.path_join(file), true)).replace("Slime Time", "")
+				var bare := _strip_placeholders(po_text(LOCALE_DIR.path_join(file), true)).replace("Slime Time", "").replace("Dry Trying", "")
 				_check(not bare.contains("i") and not bare.contains("ı"),
 					"tr.po writes capitals (İ / I): a lowercase i would draw as I")
 	print("  (%d catalogs checked)" % catalogs)

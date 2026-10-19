@@ -1607,8 +1607,10 @@ msgstr "关闭"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
+#, fuzzy
+#| msgid "Paste your Slime Time save code:"
 msgctxt "savecode.prompt_paste"
-msgid "Paste your Slime Time save code:"
+msgid "Paste your Dry Trying save code:"
 msgstr "粘贴你的 Slime Time 存档码："
 
 #: scripts/ui/controls.gd
@@ -1632,8 +1634,10 @@ msgstr "已粘贴 - 按读取"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
+#, fuzzy
+#| msgid "Copy your Slime Time save code:"
 msgctxt "savecode.prompt_copy"
-msgid "Copy your Slime Time save code:"
+msgid "Copy your Dry Trying save code:"
 msgstr "复制你的 Slime Time 存档码："
 
 #. status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
@@ -2329,8 +2333,10 @@ msgid "ROTATE YOUR DEVICE"
 msgstr "请把设备横过来"
 
 #: scripts/ui/rotate_hint.gd
+#, fuzzy
+#| msgid "SLIME TIME IS PLAYED SIDEWAYS"
 msgctxt "rotate.body"
-msgid "SLIME TIME IS PLAYED SIDEWAYS"
+msgid "DRY TRYING IS PLAYED SIDEWAYS"
 msgstr "SLIME TIME 要横屏玩"
 
 #: scripts/ui/skins_screen.gd
@@ -2794,17 +2800,21 @@ msgctxt "web.reload"
 msgid "RELOAD"
 msgstr "重新加载"
 
-#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep SLIME TIME and the browser names in Latin letters.
+#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep DRY TRYING (the game's name) and the browser names in Latin letters.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
 msgctxt "web.unsupported"
-msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
+msgid "Dry Trying can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
 msgstr "Slime Time 无法在此浏览器中运行。请试试最新版的 Chrome、Firefox、Edge 或 Safari（iPhone/iPad：iOS 15 或更高版本）。"
 
 #. Shown when WebGL 2 or another feature is missing; followed by web.details and the list of missing features. In a browser font, mixed case.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time can't run in this browser.\nIt needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
 msgctxt "web.no_webgl"
 msgid ""
-"Slime Time can't run in this browser.\n"
+"Dry Trying can't run in this browser.\n"
 "It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
 msgstr ""
 "Slime Time 无法在此浏览器中运行。\n"
@@ -2824,8 +2834,10 @@ msgstr "缺少在网页上运行 Godot 项目所需的以下功能："
 
 #. First line of the start-failure notice, followed by a blank line and the engine's English error text. In a browser font, mixed case.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time couldn't start. Reloading the page usually helps."
 msgctxt "web.start_failed"
-msgid "Slime Time couldn't start. Reloading the page usually helps."
+msgid "Dry Trying couldn't start. Reloading the page usually helps."
 msgstr "Slime Time 无法启动。通常重新加载页面就能解决。"
 
 #. Shown when the engine fails without any message. In a browser font, mixed case.

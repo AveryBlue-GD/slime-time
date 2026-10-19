@@ -34,7 +34,7 @@ plural · `J` list joined with `", "` · `NL` contains `\n` · `D` drawn with `d
 ### 1. Title (`scripts/ui/title.gd`, `tools/make_title.py`)
 | What | Strings | How | Layout |
 |---|---|---|---|
-| Logo `SLIME TIME` | 1 | **baked into `assets/sprites/title.png`** by `make_title.py` | bubbly art, not text |
+| Logo `DRY TRYING` (was SLIME TIME until 2026-10-19) | 1 | **baked into `assets/sprites/title/logo_NN.png`** by `make_title.py` | bubbly art, not text |
 | Tagline `ESCAPE THE FOG\nOR DRY TRYING` | 1 | L, NL, **pun** | centered |
 | `PLAY` / `ENTER THE HUB`, `STORY` | 3 | L | W: 176x25, and STORY = `BACK_SIZE` 40x13 (`STORY` uses 30 px of the 32 inside the 4 px margins) |
 

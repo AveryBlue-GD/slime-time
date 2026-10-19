@@ -44,11 +44,11 @@ func _ready() -> void:
 
 ## The cover's text (rebuilt when the language changes: this node lives across scenes).
 static func _message() -> String:
-	# i18n: 2 text lines + a blank line, each max 300px, centered; "SLIME TIME" is the brand
+	# i18n: 2 text lines + a blank line, each max 300px, centered; "DRY TRYING" is the game's name (formerly SLIME TIME)
 	return Loc.lines([
 		Loc.t("rotate.title", "ROTATE YOUR DEVICE"),
 		"",
-		Loc.t("rotate.body", "SLIME TIME IS PLAYED SIDEWAYS"),
+		Loc.t("rotate.body", "DRY TRYING IS PLAYED SIDEWAYS"),
 	])
 
 

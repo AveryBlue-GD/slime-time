@@ -498,7 +498,7 @@ func _paste_code() -> void:
 
 
 func _web_paste_by_hand() -> void:
-	var text = JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_paste", "Paste your Slime Time save code:"), "")  # i18n: browser dialog, mixed case, any width
+	var text = JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_paste", "Paste your Dry Trying save code:"), "")  # i18n: browser dialog, mixed case, any width
 	if text is String and text.strip_edges() != "":
 		_set_pasted(text)
 	else:
@@ -621,7 +621,7 @@ func _web_copy(text: String) -> void:
 
 func _web_copy_by_hand(text: String) -> void:
 	code_status.text = copy_by_hand_message()
-	JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_copy", "Copy your Slime Time save code:"), text)  # i18n: browser dialog, mixed case, any width
+	JavaScriptBridge.get_interface("window").prompt(Loc.t("savecode.prompt_copy", "Copy your Dry Trying save code:"), text)  # i18n: browser dialog, mixed case, any width
 
 
 ## The script `_web_copy` runs: copies `text` through a hidden, selected text box and gives the

@@ -1617,8 +1617,10 @@ msgstr "बंद"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
+#, fuzzy
+#| msgid "Paste your Slime Time save code:"
 msgctxt "savecode.prompt_paste"
-msgid "Paste your Slime Time save code:"
+msgid "Paste your Dry Trying save code:"
 msgstr "अपना Slime Time सेव कोड पेस्ट करो:"
 
 #: scripts/ui/controls.gd
@@ -1642,8 +1644,10 @@ msgstr "पेस्ट हुआ - लोड दबाओ"
 
 #. browser dialog, mixed case, any width
 #: scripts/ui/controls.gd
+#, fuzzy
+#| msgid "Copy your Slime Time save code:"
 msgctxt "savecode.prompt_copy"
-msgid "Copy your Slime Time save code:"
+msgid "Copy your Dry Trying save code:"
 msgstr "अपना Slime Time सेव कोड कॉपी करो:"
 
 #. status line, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
@@ -2348,8 +2352,10 @@ msgid "ROTATE YOUR DEVICE"
 msgstr "अपना डिवाइस घुमाओ"
 
 #: scripts/ui/rotate_hint.gd
+#, fuzzy
+#| msgid "SLIME TIME IS PLAYED SIDEWAYS"
 msgctxt "rotate.body"
-msgid "SLIME TIME IS PLAYED SIDEWAYS"
+msgid "DRY TRYING IS PLAYED SIDEWAYS"
 msgstr "SLIME TIME आड़ा पकड़कर खेलो"
 
 #: scripts/ui/skins_screen.gd
@@ -2817,17 +2823,21 @@ msgctxt "web.reload"
 msgid "RELOAD"
 msgstr "फिर से लोड करें"
 
-#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep SLIME TIME and the browser names in Latin letters.
+#. Shown when the browser cannot even read the engine script. In a browser font, mixed case. Keep DRY TRYING (the game's name) and the browser names in Latin letters.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
 msgctxt "web.unsupported"
-msgid "Slime Time can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
+msgid "Dry Trying can't run in this browser. Try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer)."
 msgstr "Slime Time इस ब्राउज़र में नहीं चल सकता। Chrome, Firefox, Edge या Safari का नया वर्शन आज़माएँ (iPhone/iPad: iOS 15 या नया)।"
 
 #. Shown when WebGL 2 or another feature is missing; followed by web.details and the list of missing features. In a browser font, mixed case.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time can't run in this browser.\nIt needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
 msgctxt "web.no_webgl"
 msgid ""
-"Slime Time can't run in this browser.\n"
+"Dry Trying can't run in this browser.\n"
 "It needs WebGL 2: try an up-to-date Chrome, Firefox, Edge or Safari (iPhone/iPad: iOS 15 or newer), and check that hardware acceleration is turned on."
 msgstr ""
 "Slime Time इस ब्राउज़र में नहीं चल सकता।\n"
@@ -2847,8 +2857,10 @@ msgstr "वेब पर Godot प्रोजेक्ट चलाने क�
 
 #. First line of the start-failure notice, followed by a blank line and the engine's English error text. In a browser font, mixed case.
 #: tools/web_shell.html
+#, fuzzy
+#| msgid "Slime Time couldn't start. Reloading the page usually helps."
 msgctxt "web.start_failed"
-msgid "Slime Time couldn't start. Reloading the page usually helps."
+msgid "Dry Trying couldn't start. Reloading the page usually helps."
 msgstr "Slime Time शुरू नहीं हो सका। पेज को फिर से लोड करना आमतौर पर काम करता है।"
 
 #. Shown when the engine fails without any message. In a browser font, mixed case.

@@ -313,7 +313,7 @@ func _ready() -> void:
 		_clear_throwaway_saves()  # fresh every run
 	var args := user_args()
 	if args.size() != OS.get_cmdline_user_args().size():
-		print("Slime Time: debug launch flags are ignored in release builds (kept: %s)" % ", ".join(args))
+		print("Dry Trying: debug launch flags are ignored in release builds (kept: %s)" % ", ".join(args))
 	var story_complete := STORY_COMPLETE_FLAG in args
 	var autoplay := Autoplay.requested(args)
 	var tutorial := tutorial_flag(args)
@@ -1296,7 +1296,7 @@ func save_code() -> String:
 	return SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)
 
 
-## The save inside a code, or null if it isn't a working Slime Time save code.
+## The save inside a code, or null if it isn't a working Dry Trying save code.
 ## Longest save code read (base64 characters); real ones are a few KB.
 const MAX_SAVE_CODE_LENGTH := 65536
 

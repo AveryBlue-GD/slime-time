@@ -5,6 +5,7 @@ Written 2026-10-18 for a fresh Claude Code session on another machine (the owner
 Desktop setup: `git pull` on `spring-cleaning` (the work was committed and pushed from the Mac; Windows commands are in CLAUDE.md).
 
 ## Where things are
+- **The game is now called Dry Trying** (renamed 2026-10-19 by the owner; formerly Slime Time): logo (`tools/make_title.py`, 12 drip variants picked per title visit), window title, web page, exports (`DryTrying.exe` / `.zip` / `.x86_64`) and docs. Kept on purpose: the save dir `SlimeTime_R1`, the `SLIME2-` code prefix, the bundle id `com.slimetime.game`, repo / file / class names, font family names, the Desktop release-zip names. The promo images and release zips are out of date (re-render only when asked). Open: the tagline ESCAPE THE FOG / OR DRY TRYING now repeats the name.
 - **Branch: `spring-cleaning`** (commit and push when finishing on one machine, pull on the other). It is NOT merged into `v2` yet - the owner hasn't decided.
   Tags: `spring-cleaning-baseline` (before), `spring-cleaning-final` (after the 6-phase cleanup), plus phase tags.
 - The spring-cleaning report is `docs/spring-cleaning/FINAL-REPORT.md` (removed / optimized / UI / platforms / issues).

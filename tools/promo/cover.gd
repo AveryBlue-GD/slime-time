@@ -48,7 +48,7 @@ func _ready() -> void:
 	view.add_child(layer)
 	layer.add_child(overlay)
 	var logo := TextureRect.new()
-	logo.texture = preload("res://assets/sprites/title.png")
+	logo.texture = load("res://scripts/ui/title.gd").logo_texture(0)  # a fixed variant: the cover looks the same every render
 	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
 	logo.position = Vector2(roundf((SIZE.x - logo.texture.get_width()) / 2.0), 4)
 	overlay.add_child(logo)

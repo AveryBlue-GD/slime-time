@@ -7,6 +7,13 @@ extends Control
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
+## The logo comes in LOGO_VARIANTS pre-baked versions (tools/make_title.py: the same letters, different
+## goo drips); every title visit shows a different one than the last, so the drips look fresh each time
+## at no run-time cost (only the chosen 303x70 PNG is loaded).
+const LOGO_VARIANTS := 12
+const LOGO_PATH := "res://assets/sprites/title/logo_%02d.png"
+## The variant the last title showed (-1 = none yet this session).
+static var last_logo := -1
 ## The scenes the first title of a session loads before its first frame (the boot screen still
 ## shows), so the first change to each one doesn't stall under the goo wipe (the first level of a
 ## session froze the wipe for 180-330 ms on the M3, several seconds on a phone; the hub and the story
@@ -47,6 +54,19 @@ var quit_button: Button
 static var quit_hook := Callable()
 
 
+## The logo for this visit: a random variant other than the last one (or variant `index` when given,
+## e.g. the promo cover's fixed look).
+static func logo_texture(index := -1) -> Texture2D:
+	if index < 0:
+		index = randi() % (LOGO_VARIANTS - 1)
+		if last_logo >= 0 and index >= last_logo:
+			index += 1  # skip the last one: never the same drips twice in a row
+		elif last_logo < 0:
+			index = randi() % LOGO_VARIANTS
+		last_logo = index
+	return load(LOGO_PATH % index)
+
+
 func _ready() -> void:
 	# The very first launch of a fresh save opens with the animated intro (the launch trailer),
 	# which then wipes into this screen. Only the title the game boots into counts.
@@ -71,7 +91,8 @@ func _ready() -> void:
 	UIKit.setup_screen(self, "")
 	# The logo is drawn in the slime sheet's goo shades, so the skin shader recolors it too.
 	var logo := TextureRect.new()
-	logo.texture = preload("res://assets/sprites/title.png")
+	logo.name = "Logo"
+	logo.texture = logo_texture()
 	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
 	(logo.material as ShaderMaterial).set_shader_parameter("rainbow_width", LOGO_RAINBOW_WIDTH)
 	(logo.material as ShaderMaterial).set_shader_parameter("translucency", 0.0)  # the logo stays solid

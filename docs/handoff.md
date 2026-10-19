@@ -1,4 +1,4 @@
-# Handoff: where Slime Time stands (updated 2026-10-18; open items and owner questions: [NEXT-SESSION.md](NEXT-SESSION.md))
+# Handoff: where Dry Trying stands (updated 2026-10-19; the game is now called **Dry Trying**, renamed 2026-10-19 by the owner; formerly Slime Time; open items and owner questions: [NEXT-SESSION.md](NEXT-SESSION.md))
 
 Read [../CLAUDE.md](../CLAUDE.md) first (rules, commands), then this file. Code layout: [architecture.md](architecture.md). Docs
 index: [README-docs.md](README-docs.md). UI layout rules: [ui-rules.md](ui-rules.md). The long per-feature history (everything up to 2026-10-15, including the superseded

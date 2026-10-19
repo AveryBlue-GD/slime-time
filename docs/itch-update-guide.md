@@ -1,5 +1,7 @@
 # Updating the itch.io page from a Mac
 
+The game is called **Dry Trying** (renamed 2026-10-19 by the owner; formerly Slime Time); the web zip keeps its old name `SlimeTime-Web-itch.zip`.
+
 Step-by-step for publishing a new build. Nothing here runs on its own: you do the export and the upload.
 (Background, fresh-start policy and platform notes: [itch-release.md](itch-release.md). Real-phone checklist:
 [qa-web-report.md](qa-web-report.md).)
@@ -30,8 +32,8 @@ Or in the editor: open `/Applications/Godot.app`, import the project, Project > 
 Desktop builds (optional):
 
 ```bash
-./tools/godot.sh --path . --headless --export-release "Windows Desktop" build/windows/SlimeTime.exe
-./tools/godot.sh --path . --headless --export-release "macOS" build/macos/SlimeTime.zip
+./tools/godot.sh --path . --headless --export-release "Windows Desktop" build/windows/DryTrying.exe
+./tools/godot.sh --path . --headless --export-release "macOS" build/macos/DryTrying.zip
 ```
 
 ## 2. Zip the web build (index.html must be at the top level of the zip)
@@ -50,9 +52,9 @@ unzip -l build/SlimeTime-Web-itch.zip | head      # index.html must NOT be insid
 4. **Embed options:** viewport **960 x 540** (the game is 16:9), tick **Mobile friendly**, **Fullscreen button**,
    leave **SharedArrayBuffer off** (the build is single-threaded), scrollbars off, orientation landscape if offered.
 5. **Visibility:** set it to **Draft** (or Restricted) while you test, then **Public** when happy.
-6. Optional desktop downloads: upload the Windows zip and `SlimeTime.zip` (macOS) as separate files and tick the
+6. Optional desktop downloads: upload the Windows zip and `DryTrying.zip` (macOS) as separate files and tick the
    right platform boxes. On the macOS file's description add the Gatekeeper note (right-click > Open, or
-   `xattr -dr com.apple.quarantine "Slime Time.app"`), because the app is ad-hoc signed, not notarized.
+   `xattr -dr com.apple.quarantine "Dry Trying.app"`), because the app is ad-hoc signed, not notarized.
 7. **Save**, then **View page** and test it in a private window: fresh start with the story trailer, level 1,
    hub, map table, SAVE CODE, fullscreen, reload (save persists).
 
