@@ -54,6 +54,9 @@ static var window_override := Vector2i.ZERO
 static var last_input := INPUT_KEYS
 static var _flag_read := false
 static var _fullscreen_ok := -1
+## Tests: 1 = run as the demo, 0 = the full game, -1 = the real build / launch flag (is_demo).
+static var demo_override := -1
+static var _demo_flag := -1
 
 
 ## The platform as one word: "web", "ios", "android", "steam" or "desktop".
@@ -103,6 +106,19 @@ static func is_desktop() -> bool:
 ## The Steam build (a future export preset with the "steam" feature). Always false today.
 static func is_steam() -> bool:
 	return kind() == "steam"
+
+
+## The demo build (docs/demo-plan.md): an export preset with the custom feature `demo`, or the debug launch
+## flag `--demo` (tools/play.sh --demo, play.ps1 -Demo; like every flag, a release build ignores it). Every
+## demo gate asks this through the Demo class (scripts/demo.gd); with it false the game is the full game.
+static func is_demo() -> bool:
+	if demo_override >= 0:
+		return demo_override == 1
+	if OS.has_feature("demo"):
+		return true
+	if _demo_flag < 0:
+		_demo_flag = 1 if "--demo" in _user_args() else 0
+	return _demo_flag == 1
 
 
 ## True when browser APIs (JavaScriptBridge) exist. Never overridden: guard every JS call with this.
@@ -247,6 +263,7 @@ static func reset_overrides() -> void:
 	safe_area_override = Rect2i()
 	window_override = Vector2i.ZERO
 	last_input = INPUT_KEYS
+	demo_override = -1
 
 
 ## The flags after `--` this build honors (Progress.user_args: every flag in a debug build, only the UI previews

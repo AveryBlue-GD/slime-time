@@ -37,11 +37,13 @@ static func for_level(level: int) -> String:
 	return BY_LEVEL[clampi(level, 1, BY_LEVEL.size()) - 1]
 
 
-## A random theme for a randomizer maze, fixed by its seed.
+## A random theme for a randomizer maze, fixed by its seed (in the demo, one of the demo's themes:
+## the others' art isn't in a demo export, docs/demo-plan.md).
 static func for_seed(maze_seed: int) -> String:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed * 31 + 7
-	return BY_LEVEL[rng.randi_range(0, BY_LEVEL.size() - 1)]
+	var pool: Array[String] = Demo.themes() if Demo.on() else BY_LEVEL
+	return pool[rng.randi_range(0, pool.size() - 1)]
 
 
 static func display_name(id: String) -> String:

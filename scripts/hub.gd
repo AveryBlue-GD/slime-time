@@ -319,6 +319,8 @@ func _build_stations() -> void:
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
+	if not Demo.hat_wheel_open():  # (a demo without the hat wheel: the web demo by default)
+		_station("wheel").sprite.modulate = Color(0.45, 0.45, 0.5)
 	var back := _station(return_to)
 	if not back.is_empty():
 		turn = -stations.find(back) * step  # that station back at the back of the room
@@ -482,6 +484,7 @@ func _build_ui() -> void:
 	_build_portal_menu(root)
 	_build_resume_menu(root)
 	_build_hub_menu(root)
+	_build_wishlist_sign(root)
 	hat_wheel = HatWheel.new()
 	hat_wheel.visible = false
 	root.add_child(hat_wheel)
@@ -1051,6 +1054,24 @@ func _quit_saved_descent() -> void:
 
 ## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
 ## wheel spends it) and the medals won so far.
+## The demo's WISHLIST sign: a small button under the ticket pod once the end screen was seen (only with a
+## store page to open, Demo.WISHLIST_URL; hidden otherwise).
+var wishlist_sign: Button
+
+
+func _build_wishlist_sign(root: Control) -> void:
+	if not (Demo.wishlist_shown() and Progress.has_seen_story(Demo.END_SEEN_BIT)):
+		return
+	# i18n: hub sign (demo build, opens the store page), max 80px, 1 line
+	var text := Loc.t("demo.wishlist", "WISHLIST")
+	wishlist_sign = UIKit.make_button(text, Demo.open_wishlist, Vector2(UIKit.button_w(text, 56), UIKit.button_h()))
+	wishlist_sign.focus_mode = Control.FOCUS_NONE  # (the hub is walked, not tabbed: a click / tap opens it)
+	root.add_child(wishlist_sign)
+	wishlist_sign.size = wishlist_sign.custom_minimum_size
+	wishlist_sign.position = Vector2(UIKit.hud_edge()) + Vector2(0, UIKit.pod_h() + UIKit.GAP_XS)
+	UIKit.add_touch_target(wishlist_sign)
+
+
 func _build_ticket_pod(root: Control) -> void:
 	ticket_pod = PanelContainer.new()
 	ticket_pod.add_theme_stylebox_override("panel", UIKit.panel_style(true))
@@ -1079,7 +1100,7 @@ func _refresh_tickets() -> void:
 	ticket_label.text = str(Progress.tickets)
 	medal_label.text = "%d/%d" % [Progress.medals_total(false), Progress.medals_max()]
 	heat_label.text = "%d/%d" % [Progress.heat_total(), Economy.HEAT_MAX * Levels.COUNT]
-	heat_flame.get_parent().visible = Progress.heat_total() > 0
+	heat_flame.get_parent().visible = Progress.heat_total() > 0 and Demo.heat_open()  # (the demo: no HEAT, even from a full save)
 	heat_flame.visible = heat_flame.get_parent().visible
 	heat_label.visible = heat_flame.visible
 
@@ -1604,6 +1625,10 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = note
 	elif line != "":
 		prompt_key.text = tour.key_text()  # (the tour's line by the wheel: the key that turns the room)
+	elif near.id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
+		prompt_key.text = Demo.full_game_text()  # (the demo: the next level is in the full game)
+	elif (near.id == "random" and not Demo.randomizer_open()) or (near.id == "wheel" and not Demo.hat_wheel_open()):
+		prompt_key.text = Demo.full_game_text()
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
 	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
@@ -1671,10 +1696,18 @@ func _use(station: Dictionary) -> void:
 					open_portal_menu()  # RANDOM MAZE or DESCENT
 				else:
 					_begin_random_maze()  # Descent is cut (D11): straight into a random maze
+			elif not Demo.randomizer_open():
+				_deny(Demo.full_game_text())
+			elif Demo.on():
+				# i18n: hub prompt (demo build), max 110px, 1 line; {level} = the demo's last level
+				_deny(Loc.t("hub.prompt.demo_clear", "CLEAR LEVEL {level}", {level = Demo.levels()}))
 			else:
 				_deny(Loc.t("hub.prompt.beat_all", "BEAT ALL {count} LEVELS", {count = Levels.COUNT}))
 		"wheel":
-			open_hat_wheel()
+			if Demo.hat_wheel_open():
+				open_hat_wheel()
+			else:
+				_deny(Demo.full_game_text())
 		"coins":
 			open_coin_board()
 		"quit":

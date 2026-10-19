@@ -23,7 +23,10 @@ func _initialize() -> void:
 	progress.dev_tools = false
 
 	# --- Text: ten level lines, everything uppercase and narrow enough
-	_check(Story.LEVEL_LINES.size() == Levels.COUNT, "a story line for each of the %d levels" % Levels.COUNT)
+	var every_line := true
+	for level in range(1, Levels.COUNT + 1):
+		every_line = every_line and Story.level_line(level) != ""
+	_check(every_line, "a story line for each of the %d levels" % Levels.COUNT)
 	_check(Story.widest_line() <= Story.MAX_WIDTH and Story.MAX_WIDTH < 320.0, "every level line fits 320 px (widest %d px)" % int(Story.widest_line()))
 
 	# --- Wordless: the cinematics carry no text at all, only pictures
@@ -39,8 +42,8 @@ func _initialize() -> void:
 			text_calls.append(call)
 	_check(source.length() > 1000 and text_calls.is_empty(), "the story screen's drawing makes no text calls and loads no font (%s)" % ", ".join(text_calls))
 	var upper := true
-	for line in Story.LEVEL_LINES:
-		upper = upper and line == line.to_upper()
+	for level in range(1, Levels.COUNT + 1):
+		upper = upper and Story.level_line(level) == Story.level_line(level).to_upper()
 	_check(upper and Story.level_line(0) == "" and Story.level_line(11) == "", "lines are uppercase; no line outside levels 1-10")
 
 	# --- Fresh save: due; seen flag persists; old saves are seen; RESET clears

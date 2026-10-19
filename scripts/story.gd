@@ -31,19 +31,9 @@ const FINALE: Array[Dictionary] = [
 	{art = "search", time = 6.2, still = 2.7},
 ]
 
-## One line under the area name when a level starts (story levels 1-10, bottom to top).
-const LEVEL_LINES: Array[String] = [
-	"SPLAT. IT IS DAMP, UP IS THAT WAY",  # i18n: ignore (English source; shown via display_name)
-	"THE MINERS LEFT IN A HURRY. SO WOULD YOU",  # i18n: ignore (English source; shown via display_name)
-	"SOMEONE SWEPT THE SAND. NOT RECENTLY",  # i18n: ignore (English source; shown via display_name)
-	"NOT TECHNICALLY SWIMMING, STILL NOT DRY",  # i18n: ignore (English source; shown via display_name)
-	"A SLIME IN SLIME, NOBODY WILL NOTICE",  # i18n: ignore (English source; shown via display_name)
-	"THE RESIDENTS ARE QUIET. SUSPICIOUSLY",  # i18n: ignore (English source; shown via display_name)
-	"COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES",  # i18n: ignore (English source; shown via display_name)
-	"A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE",  # i18n: ignore (English source; shown via display_name)
-	"SO SHINY, DAYLIGHT MUST BE CLOSE",  # i18n: ignore (English source; shown via display_name)
-	"HOT. THE WAY OUT IS THE CRATER, RUN",  # i18n: ignore (English source; shown via display_name)
-]
+## The line under the area name when a level starts (story levels 1-10, bottom to top) lives in that
+## level's data file (scripts/level_data/level_NN.gd, `line()`), so a demo export without a level's file
+## has none of its text either (docs/demo-plan.md).
 
 
 const SCENE := "res://scenes/story.tscn"
@@ -82,36 +72,15 @@ static func intro_due(progress: Node) -> bool:
 
 
 static func level_line(level: int) -> String:
-	if level < 1 or level > LEVEL_LINES.size():
+	if level < 1 or level > Levels.COUNT or not Levels.has_data(level):
 		return ""
 	return level_line_text(level)
 
 
-## Level banner lines, English source (the extractor reads the Loc calls in level_line_text).
+## A level's banner line, English source (the extractor reads the Loc calls in scripts/level_data/).
 static func level_line_text(level: int) -> String:
-	# i18n: joke under the level name, one line, max 296px. Keep it funny, not literal.
-	match level:
-		1:
-			return Loc.t("story.level_1", "SPLAT. IT IS DAMP, UP IS THAT WAY")
-		2:
-			return Loc.t("story.level_2", "THE MINERS LEFT IN A HURRY. SO WOULD YOU")
-		3:
-			return Loc.t("story.level_3", "SOMEONE SWEPT THE SAND. NOT RECENTLY")
-		4:
-			return Loc.t("story.level_4", "NOT TECHNICALLY SWIMMING, STILL NOT DRY")
-		5:
-			return Loc.t("story.level_5", "A SLIME IN SLIME, NOBODY WILL NOTICE")
-		6:
-			return Loc.t("story.level_6", "THE RESIDENTS ARE QUIET. SUSPICIOUSLY")
-		7:
-			return Loc.t("story.level_7", "COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES")
-		8:
-			return Loc.t("story.level_8", "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE")
-		9:
-			return Loc.t("story.level_9", "SO SHINY, DAYLIGHT MUST BE CLOSE")
-		10:
-			return Loc.t("story.level_10", "HOT. THE WAY OUT IS THE CRATER, RUN")
-	return ""
+	var script := Levels.level_script(level)
+	return script.call("line") if script != null else ""
 
 
 static func cards(which: String) -> Array[Dictionary]:
@@ -130,6 +99,6 @@ static func length(which: String) -> float:
 static func widest_line() -> float:
 	var font: Font = load("res://assets/fonts/pixel.fnt")
 	var widest := 0.0
-	for level in range(1, LEVEL_LINES.size() + 1):
+	for level in range(1, Levels.COUNT + 1):
 		widest = maxf(widest, font.get_string_size(level_line_text(level), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
 	return widest

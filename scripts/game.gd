@@ -63,6 +63,9 @@ const HUB_SCENE := "res://scenes/hub.tscn"
 ## Seconds the "first run: playing as ..." notice stays up.
 const FORCED_SKIN_NOTICE := 2.5
 const VICTORY_SCENE := "res://scenes/victory.tscn"
+## The demo's end screen script (scripts/ui/demo_end.gd, DemoEnd), loaded by path when used: naming the
+## class here made a load cycle that left game.gd's static vars unset.
+const DEMO_END_SCRIPT := "res://scripts/ui/demo_end.gd"
 const UPGRADES_SCENE := "res://scenes/upgrades.tscn"
 const MAPS_SCENE := "res://scenes/maps.tscn"
 ## After a win, the replay / next buttons appear after this long (so a held key can't press one).
@@ -448,6 +451,8 @@ func _ready() -> void:
 		else:
 			hud.set_level_text(Loc.t("hud.area.random", "RANDOM MAZE #{n}", {n = maze_n}))
 	else:
+		if not Demo.level_open(level, hard_mode):  # (the demo: a full-game level is never built; its data isn't there)
+			level = Demo.last_level(hard_mode)
 		config = Levels.get_config(level, hard_mode)
 		maze = Levels.story_maze(level, hard_mode)  # a deep copy of the cached build
 		# i18n: HUD area line, max 200px, 1 line; the two spaces before HARD are spacing, not words
@@ -2602,7 +2607,10 @@ func _offer_next_steps() -> void:
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
-	elif level >= Levels.COUNT:
+	elif Demo.on() and level >= Demo.last_level(hard_mode) and progress and not progress.has_seen_story(Demo.END_SEEN_BIT):
+		# The demo's last level, the first time: CONTINUE only, into the end screen (every finisher sees it).
+		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), play_next]], 0)
+	elif level >= Levels.COUNT or (Demo.on() and level >= Demo.last_level(hard_mode)):
 		hud.show_choices([[Loc.t("result.choice.replay", "REPLAY"), replay], [Loc.t("result.choice.continue", "CONTINUE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 	else:
@@ -2634,10 +2642,18 @@ func play_next() -> void:
 	if _leaving():
 		return
 	if is_random():
+		if Demo.on() and won and progress and progress.randoms_won == Demo.RANDOM_SEEDS.size():
+			# The demo's last fixed maze just won for the first time: the end screen's pitch (endless mazes).
+			DevLog.route(get_tree(), "NEW MAZE (demo end)", self)
+			load(DEMO_END_SCRIPT).open(get_tree(), "random")
+			return
 		if progress:
 			progress.new_random_maze()
 		DevLog.route(get_tree(), "NEW MAZE", self)
 		get_tree().reload_current_scene()
+	elif Demo.on() and level >= Demo.last_level(hard_mode):
+		DevLog.route(get_tree(), "CONTINUE (demo end)", self)
+		load(DEMO_END_SCRIPT).open(get_tree(), "story")
 	elif level >= Levels.COUNT:
 		if progress and not progress.dev_tools and not progress.has_seen_story(progress.STORY_FINALE):
 			Story.play(get_tree(), "finale", VICTORY_SCENE)

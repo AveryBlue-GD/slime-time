@@ -55,6 +55,17 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
   replays it on a clean save, SETTINGS TRAINING replay); design + API in [tutorial/design.md](tutorial/design.md) sections 13-14.
 - **Hat wheel:** the rare slivers are spread evenly round the wheel (`HatWheel.spread_rares`; drawing order only, odds unchanged).
 
+## Demo build (2026-10-19, [demo-plan.md](demo-plan.md))
+
+One switch `Platform.is_demo()` (export feature `demo` or `--demo`), knobs and gates in `scripts/demo.gd`: levels 1-3 + hard 1, upgrades
+capped at 2, the randomizer after level 3 as 3 fixed mazes with SLIME RIFLE only, the hat wheel, the demo's skins; levels 4-10, SHOP, HEAT,
+later skins stay visible with a FULL GAME lock. End screen (`scenes/demo_end.tscn`) after the level-3 chalice (CONTINUE only the first
+time), after the third demo maze and from the FULL GAME tiles: teaser cards of later areas, carry-over line (web: SAVE CODE), KEEP
+PLAYING; WISHLIST buttons (end screen, pause menu, hub sign) hidden while `Demo.WISHLIST_URL` is empty. Level data moved to
+`scripts/level_data/level_NN.gd` / `hard_NN.gd` (loaded on use; mazes byte-identical); `Demo.full_only_paths()` / `tools/demo_paths.gd`
+give the export exclude list (step 2: presets + stripping, not done yet). Saves carry `[meta] demo`; the full game reads them; the
+demo never writes a full-game save (`Progress.demo_guard`). Web defaults: no randomizer, no hat wheel (`WEB_*` knobs).
+
 ## Modes
 
 - **Story:** 10 themed levels, coins at dead ends (165 in all), 1-3 tier time medals, wordless finale.
@@ -83,7 +94,7 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 
 - Launch: `./tools/play.sh` (real save), `--dev` (everything unlocked, nothing saved; F1 full bright, F2 no drain), `--story`
   (postgame state), `--autoplay [--speed=N]` (F10 stops), `--scene res://tests/demo_*.tscn`. Windows: `tools/play.ps1 -Dev -Story -Autoplay`.
-- Tests: `./tools/test_all.sh [-j N] [suite ...]` (111 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
+- Tests: `./tools/test_all.sh [-j N] [suite ...]` (112 suites in parallel, prints `suites: N failed: 0`, about 2 minutes on the M3
   (`-j 1` = one at a time, about 5 minutes; `JOB_TIMEOUT=sec` kills a hung job, default 600); what each file is: [tests/README.md](../tests/README.md); timings and the flakiness fixes:
   [spring-cleaning/phase2-tests.md](spring-cleaning/phase2-tests.md)). One suite:
   `./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_X.gd`.

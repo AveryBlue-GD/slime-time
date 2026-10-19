@@ -17,25 +17,70 @@ extends RefCounted
 
 const COUNT := 10
 
-const DATA := [
-	{cells = Vector2i(10, 6), seed = 1118, branching = 0.05, run = 0.35, loops = 0, spawn = 0, target = 0.45},
-	{cells = Vector2i(12, 7), seed = 2136, branching = 0.06, run = 0.45, loops = 0, spawn = 1, target = 0.52},
-	{cells = Vector2i(13, 8), seed = 3306, branching = 0.15, run = 0.45, loops = 0, spawn = 2, target = 0.58},
-	{cells = Vector2i(15, 8), seed = 4071, branching = 0.20, run = 0.45, loops = 0, spawn = 0, target = 0.64},
-	{cells = Vector2i(16, 9), seed = 5053, branching = 0.25, run = 0.45, loops = 0, spawn = 1, target = 0.70},
-	{cells = Vector2i(18, 10), seed = 6206, branching = 0.18, run = 0.45, loops = 2, spawn = 2, target = 0.76},
-	{cells = Vector2i(20, 11), seed = 7132, branching = 0.21, run = 0.45, loops = 3, spawn = 0, target = 0.82},
-	{cells = Vector2i(22, 12), seed = 8131, branching = 0.12, run = 0.40, loops = 4, spawn = 1, target = 0.88},
-	{cells = Vector2i(24, 13), seed = 9283, branching = 0.14, run = 0.40, loops = 5, spawn = 2, target = 0.94},
-	{cells = Vector2i(26, 14), seed = 10383, branching = 0.10, run = 0.30, loops = 6, spawn = 0, target = 0.99},
-]
+## Each level's recipe lives in its own file, res://scripts/level_data/level_NN.gd (NORMAL; plus its banner
+## line), and each hard level's tables in hard_NN.gd (HARD), loaded by path on first use (never preloaded):
+## a demo export leaves out the files of the levels it doesn't have (Demo.full_only_paths,
+## docs/demo-plan.md), so nothing here may load them at startup. `data(level)` / `hard_data(level)` read them.
+const DATA_DIR := "res://scripts/level_data/"
+
+static var _data_cache := {}
+
+
+## Path of story level `level`'s data file (hard: its hard tables).
+static func data_path(level: int, hard := false) -> String:
+	return "%s%s_%02d.gd" % [DATA_DIR, "hard" if hard else "level", clampi(level, 1, COUNT)]
+
+
+## True if level `level`'s data (and, for hard, its hard tables) is in this build: always in the full
+## game; a demo export has only the demo's levels (Demo.can_load also honors the tests' strip simulation).
+static func has_data(level: int, hard := false) -> bool:
+	if level < 1 or level > COUNT:
+		return false
+	if not Demo.can_load(data_path(level)):
+		return false
+	return not hard or Demo.can_load(data_path(level, true))
+
+
+## The data script of a level (null when it is not in this build, see has_data).
+static func level_script(level: int, hard := false) -> GDScript:
+	var path := data_path(level, hard)
+	if Demo.strip_test and not Demo.can_load(path):
+		return null  # (tests: a stripped demo, even for a file loaded before the simulation began)
+	if _data_cache.has(path):
+		return _data_cache[path]
+	if not Demo.can_load(path):
+		return null  # (a miss is never cached: Demo.strip_test can change, a build can't)
+	_data_cache[path] = load(path)
+	return _data_cache[path]
+
+
+## Story level `level`'s recipe (the old DATA row): cells, seed, branching, run, loops, spawn, target.
+## A level not in this build (a demo) borrows level 1's so nothing crashes; callers check has_data first.
+static func data(level: int) -> Dictionary:
+	var script := level_script(clampi(level, 1, COUNT))
+	if script == null:
+		push_warning("Levels: level %d is not in this build (demo)" % level)
+		script = level_script(1)
+	return script.get_script_constant_map().NORMAL
+
+
+## Hard level `level`'s tables: seed, slime_mult, allowance, branching, run, v4_steps, v4_target.
+static func hard_data(level: int) -> Dictionary:
+	var script := level_script(clampi(level, 1, COUNT), true)
+	if script == null:
+		push_warning("Levels: hard level %d is not in this build (demo)" % level)
+		script = level_script(1, true)
+	return script.get_script_constant_map().HARD
+
 
 ## ---------------------------------------------------------------- hard mode (story)
 ## Hard mode plays its own mazes (own seeds, no loops) on a tight budget, without upgrades or coins.
 ## Since the 2026-10-14 rebalance (docs/level-design.md section 7) each hard level is built from
-## three per-level tables, in this order:
+## three per-level tables (fields of hard_data(level), from scripts/level_data/hard_NN.gd; their
+## old names were HARD_SEEDS, HARD_SLIME_MULT, HARD_ALLOWANCE, HARD_BRANCHING, HARD_RUN, HARD_V4_STEPS and
+## HARD_V4_TARGETS), in this order:
 ## 1. METER: hard_meter_tiles(n) = the v4 hard meter (HARD_V4_STEPS / HARD_V4_TARGETS, the meter
-##    the old hard mazes had) x HARD_SLIME_MULT[n]. **Edit HARD_SLIME_MULT to change how much more
+##    the old hard mazes had) x HARD_SLIME_MULT[n]. **Edit slime_mult (scripts/level_data/hard_NN.gd) to change how much more
 ##    slime hard mode gives**: the default is the progressive +10% per level (L1 x1.1 ... L10 x2.0);
 ##    a flat +10% is ten 1.1s, today's old meters ten 1.0s. Everything else follows from it.
 ## 2. ROUTE: hard_route_cells(n) = the meter / HARD_ALLOWANCE[n] (the exploration allowance, meter /
@@ -43,25 +88,17 @@ const DATA := [
 ## 3. SIZE: the maze starts at the level's normal size scaled by sqrt(route / v4 route) per side and
 ##    MazeGenerator.generate_hard_level grows it until its longest route has room for the route
 ##    (at most HARD_MAX_CELLS); the chalice sits exactly that route from the start.
-const HARD_SEEDS: Array[int] = [51089, 52223, 53226, 54019, 55041, 56205, 57062, 58160, 59062, 60900]
-## THE knob: each hard level's slime meter as a multiple of its v4 meter (index 0 = level 1).
-const HARD_SLIME_MULT: Array[float] = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-## Meter / shortest route per hard level (1 / the share of the meter a perfect run uses).
-const HARD_ALLOWANCE: Array[float] = [1.12, 1.13, 1.14, 1.15, 1.17, 1.19, 1.21, 1.23, 1.26, 1.28]
-## Hard mazes' own shape: branching and run per level (no loops). Retuned with the rebalance so every
-## level has more dead ends than its v4 maze and room for its longer route within HARD_MAX_CELLS
-## (very high branching shortens a tree's longest route: L8-L10 at the old 0.24-0.30 could not hold
-## a 117-149 cell route in 36x20). Each level also has a start of its class whose farthest cell is
-## exactly the route (the chalice there, SpawnPicker.pick_farthest_at; test_hard_rebalance checks it).
-const HARD_BRANCHING: Array[float] = [0.10, 0.15, 0.15, 0.20, 0.15, 0.18, 0.13, 0.15, 0.08, 0.18]
-const HARD_RUN: Array[float] = [0.30, 0.45, 0.40, 0.45, 0.30, 0.45, 0.45, 0.45, 0.30, 0.40]
+## The fields: slime_mult = THE knob, each hard level's meter as a multiple of its v4 meter;
+## allowance = meter / shortest route (1 / the share of the meter a perfect run uses); branching / run =
+## the hard maze's own shape (no loops), retuned with the rebalance so every level has more dead ends
+## than its v4 maze and room for its longer route within HARD_MAX_CELLS (very high branching shortens a
+## tree's longest route: L8-L10 at the old 0.24-0.30 could not hold a 117-149 cell route in 36x20). Each
+## level also has a start of its class whose farthest cell is exactly the route (the chalice there,
+## SpawnPicker.pick_farthest_at; test_hard_rebalance checks it). v4_steps / v4_target = the v4 hard mazes'
+## (2026-10-13 .. 2026-10-14, save version 4) start-to-chalice routes (cells) and the share of the meter a
+## perfect run used: they define the base meter (hard_meter_tiles) and the start size (hard_start_cells).
 ## The largest hard maze (cells), like the randomizer's RANDOM_MAX_CELLS (web build performance).
 const HARD_MAX_CELLS := Vector2i(36, 20)
-## The v4 hard mazes (2026-10-13 .. 2026-10-14, save version 4): their start-to-chalice routes
-## (cells) and the share of the meter a perfect run used. They define the base meter
-## (hard_meter_tiles) and the start size of the current hard mazes (hard_start_cells).
-const HARD_V4_STEPS: Array[int] = [25, 32, 39, 48, 57, 63, 71, 77, 93, 96]
-const HARD_V4_TARGETS: Array[float] = [0.89, 0.90, 0.91, 0.91, 0.92, 0.93, 0.95, 0.96, 0.98, 1.0]
 const RANDOM_HARD_TARGET := 0.9
 
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
@@ -95,13 +132,13 @@ const RANDOM_TILE_LEVEL := 6
 
 
 static func get_config(level: int, hard := false) -> Dictionary:
-	var config: Dictionary = DATA[clampi(level, 1, COUNT) - 1]
+	var config: Dictionary = data(level)
 	if hard:
-		var i := clampi(level, 1, COUNT) - 1
+		var tables := hard_data(level)
 		config = config.duplicate()
-		config.seed = HARD_SEEDS[i]
-		config.branching = HARD_BRANCHING[i]
-		config.run = HARD_RUN[i]
+		config.seed = tables.seed
+		config.branching = tables.branching
+		config.run = tables.run
 		config.loops = 0  # hard mode stays a tight single-route maze
 		config.route = hard_route_cells(level)
 		config.cells = hard_start_cells(level)
@@ -114,19 +151,19 @@ static func get_config(level: int, hard := false) -> Dictionary:
 
 ## A hard level's full slime meter in tiles (no upgrades in hard mode): the v4 meter x HARD_SLIME_MULT.
 static func hard_meter_tiles(level: int) -> float:
-	var i := clampi(level, 1, COUNT) - 1
-	return v4_hard_route_tiles(level) / HARD_V4_TARGETS[i] * HARD_SLIME_MULT[i]
+	var tables := hard_data(level)
+	return v4_hard_route_tiles(level) / tables.v4_target * tables.slime_mult
 
 
 ## The v4 hard maze's start-to-chalice route in tiles (as the game measures it, short by the grab reach).
 static func v4_hard_route_tiles(level: int) -> float:
-	return HARD_V4_STEPS[clampi(level, 1, COUNT) - 1] * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE
+	return hard_data(level).v4_steps * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE
 
 
 ## A hard level's start-to-chalice route in cells: the meter / HARD_ALLOWANCE, rounded down (so the
 ## allowance is never below the table's).
 static func hard_route_cells(level: int) -> int:
-	var tiles := hard_meter_tiles(level) / HARD_ALLOWANCE[clampi(level, 1, COUNT) - 1]
+	var tiles: float = hard_meter_tiles(level) / hard_data(level).allowance
 	return maxi(RANDOM_MIN_ROUTE, floori((tiles + GRAB_REACH / TILE) / MazeGenerator.CELL_SPAN))
 
 
@@ -134,8 +171,8 @@ static func hard_route_cells(level: int) -> int:
 ## side (area grows with the route), at most HARD_MAX_CELLS. generate_hard_level may grow it.
 static func hard_start_cells(level: int) -> Vector2i:
 	level = clampi(level, 1, COUNT)
-	var base: Vector2i = DATA[level - 1].cells
-	var k := sqrt(float(hard_route_cells(level)) / HARD_V4_STEPS[level - 1])
+	var base: Vector2i = data(level).cells
+	var k := sqrt(float(hard_route_cells(level)) / hard_data(level).v4_steps)
 	return Vector2i(clampi(roundi(base.x * k), base.x, HARD_MAX_CELLS.x), clampi(roundi(base.y * k), base.y, HARD_MAX_CELLS.y))
 
 

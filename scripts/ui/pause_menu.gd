@@ -29,6 +29,7 @@ const BOTTOM := 176
 const COLUMN_GAP := UIKit.GAP_L
 
 var buttons: Array[Button] = []
+var wishlist_button: Button
 var sound_button: Button
 var volume_row: PanelContainer
 ## The button column's width: COLUMN_W, or wider for a VOLUME label that would leave the slider shorter
@@ -113,6 +114,11 @@ func _ready() -> void:
 	seed_edit.text_submitted.connect(_submit_seed)
 	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
 	menu.add_child(seed_edit)
+	# The demo's quiet WISHLIST (only with a store page to open: Demo.WISHLIST_URL).
+	# i18n: pause menu button (demo build, opens the store page), max 92px, 1 line
+	wishlist_button = UIKit.make_button(Loc.t("demo.wishlist", "WISHLIST"), Demo.open_wishlist)
+	wishlist_button.visible = false
+	menu.add_child(wishlist_button)
 	descent_note = UIKit.make_label("", UIKit.FONT, UIKit.TEXT_DIM)
 	descent_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	descent_note.position = Vector2(0, NOTE_Y)
@@ -166,7 +172,8 @@ func open() -> void:
 	visible = true
 	var game := get_parent()
 	var random: bool = game.has_method("is_random") and game.is_random()
-	seed_button.visible = random
+	seed_button.visible = random and not Demo.on()  # (the demo plays its fixed mazes: no typed seeds)
+	wishlist_button.visible = Demo.wishlist_shown()
 	seed_edit.visible = false
 	var hud: Node = game.get("hud")
 	if hud and hud.has_method("cover_area_texts"):
@@ -181,7 +188,7 @@ func open() -> void:
 		descent_note.visible = true
 		# i18n: max 300px, 1 line, under the panel
 		descent_note.text = Loc.t("pause.quit_cashes", "QUITTING CASHES OUT THE POT") if game.won else Loc.t("pause.quit_banks", "QUITTING BANKS HALF THE POT")
-	_layout(5 + (1 if random else 0) - (1 if descent else 0), hud)
+	_layout(5 + (1 if seed_button.visible else 0) - (1 if descent else 0) + (1 if wishlist_button.visible else 0), hud)
 	if random:
 		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true

@@ -225,12 +225,19 @@ func station_line(id: String) -> String:
 				return Loc.t("hub.tour.coins", "COINS STILL HIDING IN EACH LEVEL")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 			return Loc.t("hub.tour.coins_practice", "THE PRACTICE COIN WAS FAKE. SORRY")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line (the training's coin is never saved)
 		"random":
+			if Demo.on() and not Demo.randomizer_open():
+				return Demo.full_game_text()  # (the web demo: no randomizer)
 			if Progress.is_randomizer_unlocked():
-				return Loc.t("hub.tour.random", "A NEW MAZE EVERY TIME, NO MERCY")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+				return Loc.t("hub.tour.random", "A NEW MAZE EVERY TIME, NO MERCY")
+			if Demo.on():
+				# i18n: hub tour line (demo build) in the hub prompt box (the use key follows), max 192px, 1 line; {count} = the demo's levels (3)
+				return Loc.t("hub.tour.random_locked_demo", "LOCKED: BEAT {count} LEVELS FIRST", {count = Demo.levels()})
 			return Loc.t("hub.tour.random_locked", "LOCKED: BEAT ALL {count} LEVELS FIRST", {count = Levels.COUNT})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
 		"settings":
 			return Loc.t("hub.tour.settings", "SOUND, KEYS, FOG. THE BORING SIGN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"wheel":
+			if not Demo.hat_wheel_open():
+				return Demo.full_game_text()  # (the web demo: no hat wheel)
 			if Progress.spin_cost() == 0:
 				return Loc.t("hub.tour.wheel_free", "SPIN FOR HATS, THE FIRST IS FREE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 			return Loc.t("hub.tour.wheel", "SPIN FOR HATS, BRING TICKETS")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line

@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## Hard-mode rebalance (2026-10-14, docs/level-design.md section 7): the per-level slime multiplier
-## table (Levels.HARD_SLIME_MULT), meters / routes / allowances hitting their targets, the bigger hard
+## table (_col("slime_mult")), meters / routes / allowances hitting their targets, the bigger hard
 ## mazes (solvable, within HARD_MAX_CELLS, spawn class kept, more dead ends, deterministic and fast to
 ## build), par from the new routes, hard records and tiers in a save (pre-release codes refused,
 ## hostile values; the pre-v5 migration was removed in spring cleaning) and --story-complete's hard
@@ -27,39 +27,47 @@ func _initialize() -> void:
 	quit(0 if failures == 0 else 1)
 
 
+## One hard table as a column (index 0 = level 1), from the per-level files (Levels.hard_data).
+static func _col(key: String) -> Array:
+	var out := []
+	for level in range(1, Levels.COUNT + 1):
+		out.append(Levels.hard_data(level)[key])
+	return out
+
+
 func _check_tables() -> void:
 	# The shipped curve: +10% per level (L1 x1.1 ... L10 x2.0). Editing HARD_SLIME_MULT on purpose
 	# (e.g. a flat +10%) means updating this one pin; every other check follows the table.
-	var progressive := Levels.HARD_SLIME_MULT.size() == Levels.COUNT
+	var progressive := _col("slime_mult").size() == Levels.COUNT
 	for i in Levels.COUNT:
-		progressive = progressive and is_equal_approx(Levels.HARD_SLIME_MULT[i], 1.0 + 0.1 * (i + 1))
-	_check(progressive, "HARD_SLIME_MULT is the progressive +10%%/level table %s" % [Levels.HARD_SLIME_MULT])
-	_check(Levels.HARD_ALLOWANCE.size() == Levels.COUNT and Levels.HARD_V4_STEPS.size() == Levels.COUNT
-		and Levels.HARD_V4_TARGETS.size() == Levels.COUNT and Levels.HARD_BRANCHING.size() == Levels.COUNT
-		and Levels.HARD_RUN.size() == Levels.COUNT, "every hard table has one entry per level")
+		progressive = progressive and is_equal_approx(_col("slime_mult")[i], 1.0 + 0.1 * (i + 1))
+	_check(progressive, "HARD_SLIME_MULT is the progressive +10%%/level table %s" % [_col("slime_mult")])
+	_check(_col("allowance").size() == Levels.COUNT and _col("v4_steps").size() == Levels.COUNT
+		and _col("v4_target").size() == Levels.COUNT and _col("branching").size() == Levels.COUNT
+		and _col("run").size() == Levels.COUNT, "every hard table has one entry per level")
 	var rising := true
 	for i in range(1, Levels.COUNT):
-		rising = rising and Levels.HARD_ALLOWANCE[i] >= Levels.HARD_ALLOWANCE[i - 1]
-	_check(rising and Levels.HARD_ALLOWANCE[0] >= 1.08 and Levels.HARD_ALLOWANCE[0] <= 1.15
-		and Levels.HARD_ALLOWANCE[-1] >= 1.25 and Levels.HARD_ALLOWANCE[-1] <= 1.30,
-		"the allowance rises with the level, ~1.1 at L1 to 1.25-1.30 at L10 %s" % [Levels.HARD_ALLOWANCE])
+		rising = rising and _col("allowance")[i] >= _col("allowance")[i - 1]
+	_check(rising and _col("allowance")[0] >= 1.08 and _col("allowance")[0] <= 1.15
+		and _col("allowance")[-1] >= 1.25 and _col("allowance")[-1] <= 1.30,
+		"the allowance rises with the level, ~1.1 at L1 to 1.25-1.30 at L10 %s" % [_col("allowance")])
 	for level in range(1, Levels.COUNT + 1):
 		var i := level - 1
 		var config := Levels.get_config(level, true)
-		var v4_meter: float = (Levels.HARD_V4_STEPS[i] * 2 - GRAB) / Levels.HARD_V4_TARGETS[i]
+		var v4_meter: float = (_col("v4_steps")[i] * 2 - GRAB) / _col("v4_target")[i]
 		var meter: float = config.meter_tiles
 		var route_tiles: float = config.route * 2 - GRAB
 		var allowance := meter / route_tiles
 		# Ratio preserved, then the extra slack: route = v4 route x mult x (v4 usage x allowance)^-1.
-		var expected_route: float = (Levels.HARD_V4_STEPS[i] * 2 - GRAB) * Levels.HARD_SLIME_MULT[i] / (Levels.HARD_V4_TARGETS[i] * Levels.HARD_ALLOWANCE[i])
-		_check(is_equal_approx(meter, v4_meter * Levels.HARD_SLIME_MULT[i]) and is_equal_approx(meter, Levels.hard_meter_tiles(level)),
-			"hard %2d: meter %.1f tiles = v4 meter %.1f x %.1f" % [level, meter, v4_meter, Levels.HARD_SLIME_MULT[i]])
-		_check(allowance >= Levels.HARD_ALLOWANCE[i] - 0.0001 and route_tiles * allowance <= (route_tiles + 2.0) * Levels.HARD_ALLOWANCE[i] + 0.0001
+		var expected_route: float = (_col("v4_steps")[i] * 2 - GRAB) * _col("slime_mult")[i] / (_col("v4_target")[i] * _col("allowance")[i])
+		_check(is_equal_approx(meter, v4_meter * _col("slime_mult")[i]) and is_equal_approx(meter, Levels.hard_meter_tiles(level)),
+			"hard %2d: meter %.1f tiles = v4 meter %.1f x %.1f" % [level, meter, v4_meter, _col("slime_mult")[i]])
+		_check(allowance >= _col("allowance")[i] - 0.0001 and route_tiles * allowance <= (route_tiles + 2.0) * _col("allowance")[i] + 0.0001
 			and absf(route_tiles / expected_route - 1.0) < 0.05 and is_equal_approx(config.target, route_tiles / meter),
 			"hard %2d: route %d cells (%.1f tiles, wanted %.1f), allowance %.3f (table %.2f, within one cell), a perfect run uses %.1f%%"
-			% [level, config.route, route_tiles, expected_route, allowance, Levels.HARD_ALLOWANCE[i], config.target * 100.0])
+			% [level, config.route, route_tiles, expected_route, allowance, _col("allowance")[i], config.target * 100.0])
 	var normal := Levels.get_config(3)
-	_check(not normal.has("meter_tiles") and not normal.has("route") and normal.cells == Levels.DATA[2].cells and normal.target == Levels.DATA[2].target,
+	_check(not normal.has("meter_tiles") and not normal.has("route") and normal.cells == Levels.data(3).cells and normal.target == Levels.data(3).target,
 		"normal-mode configs are unchanged (no hard fields)")
 
 
@@ -69,7 +77,7 @@ func _check_mazes() -> void:
 		var maze: Dictionary = Levels.build_story_maze(level, true)
 		var again := Levels.build_story_maze(level, true)
 		var dist := MazeGenerator.distances_from(maze, maze.start)
-		var base: Vector2i = Levels.DATA[level - 1].cells
+		var base: Vector2i = Levels.data(level).cells
 		var dead_ends := MazeGenerator.dead_end_count(maze)
 		_check(MazeGenerator.is_completable(maze) and maze.goal_steps == config.route and dist.get(maze.goal, -1) == config.route
 			and MazeGenerator.shortest_path(maze, maze.start, maze.goal).size() == config.route + 1,
@@ -77,9 +85,9 @@ func _check_mazes() -> void:
 		_check(maze.cells.x <= Levels.HARD_MAX_CELLS.x and maze.cells.y <= Levels.HARD_MAX_CELLS.y and maze.cells.x >= base.x and maze.cells.y >= base.y
 			and maze.cells.x * maze.cells.y > base.x * base.y,
 			"hard %2d: bigger than the level's normal %dx%d, within the %dx%d cap" % [level, base.x, base.y, Levels.HARD_MAX_CELLS.x, Levels.HARD_MAX_CELLS.y])
-		_check(maze.spawn_kind == config.spawn and config.route > Levels.HARD_V4_STEPS[level - 1] and dead_ends > V4_DEAD_ENDS[level - 1],
+		_check(maze.spawn_kind == config.spawn and config.route > _col("v4_steps")[level - 1] and dead_ends > V4_DEAD_ENDS[level - 1],
 			"hard %2d: %s start kept; route %d > v4 %d; %d dead ends > v4 %d" % [level, SpawnPicker.KIND_NAMES[config.spawn],
-				config.route, Levels.HARD_V4_STEPS[level - 1], dead_ends, V4_DEAD_ENDS[level - 1]])
+				config.route, _col("v4_steps")[level - 1], dead_ends, V4_DEAD_ENDS[level - 1]])
 		_check(maze.get("goal_farthest", false) and SpawnPicker.farthest(maze, maze.start).steps == config.route,
 			"hard %2d: the chalice is the start's farthest cell (end of a branch), as on every story level" % level)
 		_check(again.walls == maze.walls and again.start == maze.start and again.goal == maze.goal, "hard %2d: the same maze every build" % level)

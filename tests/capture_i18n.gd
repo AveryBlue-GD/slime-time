@@ -102,7 +102,7 @@ func _initialize() -> void:
 ## frame, mostly dark), so a reviewer can see that no shot draws text in any locale.
 func _all_states() -> void:
 	await super._all_states()
-	for level in range(1, Story.LEVEL_LINES.size() + 1):
+	for level in range(1, Levels.COUNT + 1):
 		var game := await _start({level = level})
 		await _frames(3)
 		_check(game.hud.story_label.visible and game.hud.story_label.modulate.a == 1.0 and game.hud.story_label.text != "",

@@ -79,6 +79,8 @@ var tutorial_launch := ""
 var story_seen := 0
 const STORY_INTRO := 1
 const STORY_FINALE := 2
+## 4 is taken by the demo: its end screen was seen (Demo.END_SEEN_BIT; the full game ignores it).
+const STORY_DEMO_END := 4
 ## Dry-ups per story level since it was last cleared (not saved); drives the mercy assist.
 var dry_ups := {}
 ## Story level the game scene loads next.
@@ -283,6 +285,10 @@ var randoms_cleared := 0
 var randoms_won := 0
 ## Set by debug flags so a test session never overwrites the real save.
 var saving_enabled := true
+## The demo (Demo.on) was given a save it didn't write (no [meta] demo marker: a full-game save, or a full
+## game's code): it plays it in memory and never writes it, so a player who owns both never loses
+## full-game progress to the demo (docs/demo-plan.md "Save carry-over"). Not saved.
+var demo_guard := false
 ## Debug (--touch): show the on-screen touch controls even without a touchscreen.
 var force_touch := false
 ## Trail map surveys (see Survey; shown at the hub's MAP TABLE): story level key (level, + HARD_RECORDS
@@ -317,9 +323,12 @@ func _ready() -> void:
 	var story_complete := STORY_COMPLETE_FLAG in args
 	var autoplay := Autoplay.requested(args)
 	var tutorial := tutorial_flag(args)
+	# --demo (debug): the demo on a clean in-memory save, like --tutorial (the real save is never read);
+	# with --save-path=user://x.cfg it plays and keeps that file instead, to try the carry-over.
+	var demo_clean := "--demo" in args and save_path == _throwaway_save_path()
 	if _is_test_or_tool_run():
 		story_seen = STORY_INTRO | STORY_FINALE  # tests start levels directly; story tests reset this
-	elif story_complete or autoplay or tutorial != "":
+	elif story_complete or autoplay or tutorial != "" or demo_clean:
 		pass  # a clean in-memory state (set up below), never the player's save
 	elif save_path == _throwaway_save_path():
 		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
@@ -666,6 +675,7 @@ func load_progress(path := "") -> void:
 	if not _is_this_epoch(file):
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
 	_read(file)
+	_guard_full_save(file)
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
 	# migration doesn't rerun on each launch.
 	if _int(file, "meta", "version", 0) < SAVE_VERSION:
@@ -1042,7 +1052,7 @@ func _tier_from_record(key: int) -> int:
 	var hard := key > HARD_RECORDS
 	var level := key - HARD_RECORDS if hard else key
 	var best: float = best_times.get(key, -1.0)
-	if is_finite(best) and best > 0.0:
+	if is_finite(best) and best > 0.0 and Levels.has_data(level, hard):  # (a demo export lacks later levels' pars)
 		return tier_for(best, Levels.level_par(level, hard))
 	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
 	return TIER_BRONZE if cleared else TIER_NONE
@@ -1118,7 +1128,7 @@ static func _ints(v: Variant) -> Array[int]:
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
-	if not saving_enabled:
+	if not saving_enabled or demo_guard:
 		return true
 	var ok := write_atomic(save_path, _write().encode_to_text())
 	save_failed = not ok
@@ -1204,6 +1214,8 @@ func _write(for_code := false) -> ConfigFile:
 	var file := ConfigFile.new()
 	file.set_value("meta", "version", SAVE_VERSION)
 	file.set_value("meta", "epoch", RELEASE_EPOCH)
+	if Demo.on():
+		file.set_value("meta", "demo", true)  # (the full game reads every demo save and drops the marker)
 	file.set_value("progress", "levels_cleared", levels_cleared)
 	file.set_value("progress", "highest_unlocked", highest_unlocked)
 	file.set_value("progress", "current_level", current_level)
@@ -1364,10 +1376,26 @@ func load_code(code: String) -> bool:
 	if file == null:
 		return false
 	_read(file, true)
+	_guard_full_save(file, true)
 	apply_bindings()
 	apply_volume()
 	save_progress()
 	return true
+
+
+## The demo's carry-over guard (see demo_guard): a save or code without the demo's marker is the full
+## game's, and the demo never writes over it. The full game (and a demo save in the demo) saves as ever.
+## `from_code`: a pasted code can turn the guard on, never off: a demo code pasted into a guarded demo (the
+## real file is still the full game's) must not let the next save overwrite it. Only loading a demo-marked
+## save FILE clears it.
+func _guard_full_save(file: ConfigFile, from_code := false) -> void:
+	var full := Demo.on() and not is_demo_save(file)
+	demo_guard = (demo_guard or full) if from_code else full
+
+
+## True for a save / code the demo wrote ([meta] demo = true).
+static func is_demo_save(file: ConfigFile) -> bool:
+	return file.has_section_key("meta", "demo") and file.get_value("meta", "demo") == true
 
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
@@ -2067,7 +2095,7 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 
 ## True when hard level `level` can be played with heat: it has its plain hard clear.
 func heat_unlocked(level: int) -> bool:
-	return level in hard_cleared
+	return Demo.heat_open() and level in hard_cleared
 
 
 ## The HEAT mask a hard story run of `level` plays with: the picked modifiers once the level is
@@ -2151,6 +2179,9 @@ func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
 	random_seed_fresh = true
+	if Demo.on():  # the demo's fixed mazes in turn; once all are won, replays (Demo.RANDOM_SEEDS)
+		random_seed = Demo.random_seed(randoms_won)
+		random_seed_fresh = not Demo.randoms_done(randoms_won)
 	random_attempts.clear()  # a new maze starts counting at attempt 1
 	random_offer_shown.clear()
 
@@ -2217,8 +2248,8 @@ func buy_upgrade(id: String) -> bool:
 	if upgrade.is_empty() or (upgrade.get("dev", false) and not dev_tools):
 		return false  # unknown, or the dev-only wall power outside dev mode (E3)
 	var level := upgrade_level(id)
-	if level >= Upgrades.max_level(id) or coins() < Upgrades.cost(id, level):
-		return false
+	if level >= Demo.upgrade_cap(id) or coins() < Upgrades.cost(id, level):
+		return false  # (maxed, or at the demo's cap: Demo.upgrade_cap is max_level in the full game)
 	upgrades[id] = level + 1
 	save_progress()
 	return true
@@ -2244,6 +2275,8 @@ func set_jelly(on: bool) -> void:
 
 ## Randomizer mode opens once all the story levels are beaten.
 func is_randomizer_unlocked() -> bool:
+	if Demo.on():  # the demo's randomizer opens after its last level (and not at all where it is left out)
+		return Demo.randomizer_open() and levels_cleared >= Demo.levels()
 	return levels_cleared >= Levels.COUNT
 
 
@@ -2360,7 +2393,7 @@ func tailor_price(id: String) -> int:
 
 
 func can_buy_hat(id: String) -> bool:
-	return tailor_open() and id in hats_left() and tailor_price(id) <= tickets
+	return Demo.shop_open() and tailor_open() and id in hats_left() and tailor_price(id) <= tickets
 
 
 ## Buys hat `id` from the TAILOR, atomically like spin_hat (pay, win, save at once). The buy
@@ -2441,7 +2474,7 @@ func abilities_open() -> bool:
 
 
 func can_buy_ability(id: String) -> bool:
-	return abilities_open() and Abilities.max_level(id) > 0 and ability_level(id) < Abilities.max_level(id) \
+	return abilities_open() and Demo.ability_open(id) and Abilities.max_level(id) > 0 and ability_level(id) < Abilities.max_level(id) \
 		and ability_cost(id) <= tickets
 
 
@@ -2467,7 +2500,7 @@ func cosmetic_price(id: String) -> int:
 
 
 func can_buy_cosmetic(id: String) -> bool:
-	return not Cosmetics.get_item(id).is_empty() and not Cosmetics.is_earned(id) and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
+	return Demo.shop_open() and not Cosmetics.get_item(id).is_empty() and not Cosmetics.is_earned(id) and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
 
 
 ## Buys cosmetic `id` and puts it on (pay + own + wear + save at once). False if it can't.
@@ -2521,11 +2554,13 @@ func store_affordable(where: String) -> bool:
 					cheapest = mini(cheapest, workshop_cost(id))
 		if abilities_open():
 			for id in Abilities.ids():
-				if ability_level(id) < Abilities.max_level(id):
+				if ability_level(id) < Abilities.max_level(id) and Demo.ability_open(id):
 					cheapest = mini(cheapest, ability_cost(id))
 	else:
-		if Hats.available and not hats_left().is_empty():
+		if Hats.available and not hats_left().is_empty() and Demo.hat_wheel_open():
 			cheapest = mini(cheapest, spin_cost())
+		if not Demo.shop_open():
+			return cheapest <= tickets  # (the demo: the SHOP is in the full game)
 		for id in Cosmetics.ids():
 			if not owns_cosmetic(id):
 				cheapest = mini(cheapest, cosmetic_price(id))
@@ -2555,6 +2590,8 @@ func select_hat(id: String) -> void:
 ## Whether skin `id` can be worn: opaque (`jelly_version` false, normal-mode unlock) or as jelly
 ## (true, its hard-mode unlock); null = in the version worn now.
 func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
+	if not Demo.skin_open(id, jelly if jelly_version == null else jelly_version):
+		return false  # (a full-game skin: a FULL GAME silhouette in the demo, even with a full save)
 	if dev_tools:
 		return true
 	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned(), all_medals())
@@ -2794,6 +2831,8 @@ func survey_key(level: int, hard: bool) -> int:
 func survey_for(level: int, hard: bool) -> Dictionary:
 	var key := survey_key(level, hard)
 	var survey: Dictionary = maps.get(key, {})
+	if not survey.is_empty() and not Levels.has_data(level, hard):
+		return {}  # (a demo export lacks this level: its survey is kept as it is, unread)
 	if not survey.is_empty() and not Survey.fits(survey, Levels.story_maze(level, hard)):
 		maps.erase(key)
 		return {}

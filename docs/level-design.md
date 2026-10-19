@@ -40,6 +40,10 @@ when its farthest cell is >= the route, and the chalice sits exactly `route` cel
 
 ## 2. Story levels v4 (`Levels.DATA`, `MazeGenerator.generate_level`)
 
+(Since 2026-10-19 the tables named in this file live one level per file: `Levels.DATA` rows are `NORMAL` in
+`scripts/level_data/level_NN.gd`, the `HARD_*` tables are the `HARD` fields of `hard_NN.gd`, read through
+`Levels.data()` / `Levels.hard_data()`; same values, docs/demo-plan.md.)
+
 Each level keeps its size, target, theme and coin count; the maze is rebuilt:
 - **run**: the growing tree keeps going straight with chance `run` (0.30-0.45), so each solution
   route's longest straight is now 5-10 cells (was 3-6) where the 8-tile leap pays off.

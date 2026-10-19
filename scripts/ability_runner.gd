@@ -41,7 +41,7 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	var owned := {}
 	for id in Abilities.ids():
 		var level: int = progress.ability_level(id)
-		if level > 0:
+		if level > 0 and Demo.ability_open(id):  # (the demo: only its abilities, even with a full save)
 			owned[id] = level
 	if owned.is_empty():
 		return null

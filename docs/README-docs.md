@@ -20,6 +20,7 @@ Living docs are here; finished reports and superseded plans are in [archive/](ar
 | [design/upgrades-v2.md](design/upgrades-v2.md) | implemented spec: coin tree, ticket store, workshop, Descent, Heat, Abilities v1, deviations |
 | [story.md](story.md) | plot, wordless intro and finale, level banners, `story_seen` |
 | [playtime-estimate.md](playtime-estimate.md) | model-based playtime priors (no playtest data yet) |
+| [demo-plan.md](demo-plan.md) | the demo build: one switch, knobs, locks, end screen, full-only content / export exclude list, save carry-over |
 | [itch-release.md](itch-release.md) | fresh-start policy (release dir, save epoch, `SLIME2-` codes), desktop builds, release checks |
 | [itch-update-guide.md](itch-update-guide.md) | step-by-step publishing of a new build to itch from a Mac |
 | [qa-web-report.md](qa-web-report.md) | web/itch and phone QA, fixes W1-W5, the 5-minute phone checklist |

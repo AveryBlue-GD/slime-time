@@ -50,6 +50,19 @@ const PAGE_SIZE := 5
 
 ## The two help lines under the tiles.
 static func info_text(hard: bool) -> String:
+	if Demo.on():  # the demo: what's in the full game instead of HEAT
+		var first := Demo.last_level(hard) + 1
+		if hard:
+			# i18n: two lines (demo build), each max 300px; {from}-{to} = level numbers
+			return Loc.lines([
+				Loc.t("levels.demo_hard.1", "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"),
+				Loc.t("levels.demo_hard.2", "HARD {from}-{to} AND HEAT: FULL GAME", {from = first, to = Levels.COUNT}),
+			])
+		# i18n: two lines (demo build), each max 300px; {from}-{to} = level numbers
+		return Loc.lines([
+			Loc.t("levels.info_normal.1", "CLEAR A LEVEL TO UNLOCK THE NEXT"),
+			Loc.t("levels.demo_normal.2", "LEVELS {from}-{to} ARE IN THE FULL GAME", {from = first, to = Levels.COUNT}),
+		])
 	# i18n: two lines, each max 300px; the numbers are the heat levels and ticket payouts (Heat.BOUNTIES), keep them
 	if hard:
 		return Loc.lines([
@@ -107,8 +120,9 @@ func _ready() -> void:
 	if pages > 1:
 		_add_pager()  # (last: the other nodes keep their places; hidden under a resized HEAT panel)
 	_refresh_heat()
-	_show_page((Progress.current_level - 1) / PAGE_SIZE)
-	level_buttons[Progress.current_level - 1].grab_focus()
+	var focus_level := mini(Progress.current_level, Demo.last_level(Progress.hard_mode))  # (the demo: its last level)
+	_show_page((focus_level - 1) / PAGE_SIZE)
+	level_buttons[focus_level - 1].grab_focus()
 
 
 ## Places the info panel (its lines, the checkbox under them, its bottom GRID_GAP over the bottom row)
@@ -213,7 +227,7 @@ func _tile_input(level: int, event: InputEvent) -> void:
 ## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
 func _refresh_heat() -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
-	heat_button.visible = Progress.hard_mode
+	heat_button.visible = Progress.hard_mode and Demo.heat_open()
 	# i18n: {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
 	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})
 	var heat_size := Vector2(UIKit.button_w(heat_button.text, int(HEAT_BUTTON_SIZE.x)), UIKit.button_h())
@@ -227,7 +241,7 @@ func _refresh_heat() -> void:
 
 
 func _open_heat() -> void:
-	if Progress.hard_mode and not heat_panel.visible:
+	if Progress.hard_mode and Demo.heat_open() and not heat_panel.visible:
 		heat_panel.open(self, heat_button)
 
 
@@ -256,8 +270,10 @@ func _fill_grid() -> void:
 func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: _play(level), TILE)
 	button.gui_input.connect(func(event: InputEvent) -> void: _tile_input(level, event))
-	var locked := level > Progress.highest_unlocked
-	button.disabled = locked
+	# The demo: a full-game level is locked whatever the save says, and its tile opens the end screen.
+	var full := not Demo.level_open(level, Progress.hard_mode)
+	var locked := full or level > Progress.highest_unlocked
+	button.disabled = locked and not full
 	var number := UIKit.make_label(str(level), UIKit.FONT_BIG, LOCKED_NUMBER if locked else UIKit.TEXT)
 	number.name = "Number"
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -271,10 +287,21 @@ func _make_tile(level: int) -> Button:
 	button.add_child(number)
 
 	if locked:
-		button.add_child(_make_lock())
+		button.add_child(_make_lock(full))
+		if full:
+			button.set_meta("full_game", true)
+			# i18n: demo build, under the lock on a full-game level's tile; max 44px, 1 line
+			var tag := UIKit.make_label(Loc.t("levels.demo_full", "FULL"), 8, UIKit.GOLD)
+			tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tag.clip_text = true
+			UIKit.use_plain_font(tag)
+			tag.size = Vector2(TILE.x, 9)
+			tag.set_meta("box", Vector2(TILE.x, 9))
+			tag.position = Vector2(0, STATUS_Y)
+			button.add_child(tag)
 		return button
 	# Hard mode: the best heat tier this level was cleared at, as a flame at the top left.
-	var heat_tier := Heat.tier_of(Progress.best_heat(level)) if Progress.hard_mode else 0
+	var heat_tier := Heat.tier_of(Progress.best_heat(level)) if Progress.hard_mode and Demo.heat_open() else 0
 	if heat_tier > 0:
 		var flame := Heat.make_rect(Heat.flame(heat_tier))
 		flame.name = "Flame"
@@ -313,7 +340,7 @@ func _make_tile(level: int) -> Button:
 
 ## The lock icon centered by its own pixels on the number's center, on a dark copy (like the text
 ## shadow) so it reads over the digits beneath it.
-func _make_lock() -> Control:
+func _make_lock(full := false) -> Control:
 	var holder := Control.new()
 	holder.name = "Lock"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -323,13 +350,16 @@ func _make_lock() -> Control:
 	var shadow := UIKit.make_icon("lock", UIKit.BG)
 	shadow.position = at + Vector2(1, 1)
 	holder.add_child(shadow)
-	var icon := UIKit.make_icon("lock", UIKit.TEXT_DIM)
+	var icon := UIKit.make_icon("lock", UIKit.GOLD if full else UIKit.TEXT_DIM)  # (gold: in the full game)
 	icon.position = at
 	holder.add_child(icon)
 	return holder
 
 
 func _play(level: int) -> void:
+	if not Demo.level_open(level, Progress.hard_mode):
+		load("res://scripts/ui/demo_end.gd").open(get_tree(), "locked")  # the demo: a FULL GAME tile shows what's ahead
+		return
 	Progress.start_story(level)
 	UIKit.go(get_tree(), UIKit.GAME_SCENE)
 

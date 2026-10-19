@@ -203,6 +203,41 @@ func _all_states() -> void:
 	await _pause_and_restart()
 	await _descent()
 	await _tutorial()
+	await _demo()
+
+
+## The demo build's screens (Platform.demo_override forced on here only; docs/demo-plan.md): the level
+## select with its FULL GAME tiles and info lines, the cauldron's capped row (FULL), a full-game skin's
+## status line, and the end screen (desktop line, teaser card). Progress is put back afterwards.
+func _demo() -> void:
+	var saved := [progress.levels_cleared, progress.highest_unlocked, progress.current_level, progress.coins_found.duplicate(true), progress.upgrades.duplicate()]
+	Platform.demo_override = 1
+	progress.levels_cleared = 3
+	progress.highest_unlocked = 4
+	progress.current_level = 3
+	for level in range(1, 4):
+		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
+	progress.upgrades = {slime = 2}
+	var ls := await _open("res://scenes/level_select.tscn")
+	await _scan("demo level select", ls)
+	ls.free()
+	var upg := await _open("res://scenes/upgrades.tscn")
+	await _scan("demo upgrades capped", upg)
+	upg.free()
+	var skins := await _open("res://scenes/skins.tscn")
+	skins._refresh("grape")
+	await _frames(2)
+	await _scan("demo skin locked", skins)
+	skins.free()
+	var end := await _open("res://scenes/demo_end.tscn")
+	await _scan("demo end screen", end)
+	end.free()
+	Platform.demo_override = -1
+	progress.levels_cleared = saved[0]
+	progress.highest_unlocked = saved[1]
+	progress.current_level = saved[2]
+	progress.coins_found = saved[3]
+	progress.upgrades = saved[4]
 
 
 ## The SPLASHDOWN tutorial's screens (gate Economy.TUTORIAL_TEST forced on here only): the maze's HUD and

@@ -781,7 +781,7 @@ func _make_tile(id: String) -> Button:
 			UIKit.set_selected(tile, true)
 	else:
 		var price := _price_of(id)
-		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open())
+		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open()) and Demo.shop_open()
 		right.add_child(UIKit.make_label(Loc.t("wheel.free", "FREE") if price == 0 else str(price), UIKit.FONT, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
 		if price > 0:
 			right.add_child(UIKit.make_icon("ticket", Color.WHITE if affordable else Color(0.55, 0.55, 0.6)))
@@ -820,6 +820,11 @@ func _describe_texts(id: String) -> void:
 ## Item `id`'s two status lines: its name and what pressing it does (or why it can't).
 func _status_texts(id: String) -> Array[String]:
 	var line := ""
+	if not Demo.shop_open() and (_is_hat(id) or not Progress.owns_cosmetic(id)):
+		# The demo: the SHOP's goods are on show, bought in the full game.
+		var name := Hats.display_name(id) if _is_hat(id) else Cosmetics.display_name(id)
+		# i18n: SHOP status line (demo build), max 300px, 1 line
+		return [name, Loc.t("wheel.demo_shop", "THE SHOP OPENS IN THE FULL GAME")]
 	if _is_hat(id):
 		var hat_status := Loc.t("wheel.from_tailor", "{name} - FROM THE TAILOR", {name = Hats.display_name(id)})
 		if not Progress.tailor_open():

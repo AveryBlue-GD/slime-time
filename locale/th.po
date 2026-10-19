@@ -160,6 +160,13 @@ msgctxt "trail.ember.desc"
 msgid "GLOWING EMBERS, ANY SKIN"
 msgstr "ถ่าน​ไฟ​คุ​แดง ใส่​ได้​ทุก​สกิน"
 
+#. lock label on demo-locked levels, skins, upgrades and the shop; max 52px, 1 line
+#. budget: max 52px, lines 1
+#: scripts/demo.gd
+msgctxt "demo.full_game"
+msgid "FULL GAME"
+msgstr ""
+
 #: scripts/descent.gd
 msgctxt "boon.gulp.name"
 msgid "BIG GULP"
@@ -556,14 +563,14 @@ msgid "REPLAY MAZE"
 msgstr "เล่น​ด่าน​ซ้ำ"
 
 #: scripts/game.gd
-msgctxt "result.choice.replay"
-msgid "REPLAY"
-msgstr "เล่น​ซ้ำ"
-
-#: scripts/game.gd
 msgctxt "result.choice.continue"
 msgid "CONTINUE"
 msgstr "ไป​ต่อ"
+
+#: scripts/game.gd
+msgctxt "result.choice.replay"
+msgid "REPLAY"
+msgstr "เล่น​ซ้ำ"
 
 #: scripts/game.gd
 msgctxt "result.choice.next_level"
@@ -868,6 +875,15 @@ msgctxt "hub.resume.banks_half"
 msgid "QUIT RUN BANKS HALF"
 msgstr "เลิก​รอบ​นี้ = ได้​ครึ่ง​กอง​กลาง"
 
+#. hub sign (demo build, opens the store page), max 80px, 1 line
+#. demo end screen button (opens the store page), max 80px, 1 line
+#. pause menu button (demo build, opens the store page), max 92px, 1 line
+#. budget: max 80px, lines 1
+#: scripts/hub.gd scripts/ui/demo_end.gd scripts/ui/pause_menu.gd
+msgctxt "demo.wishlist"
+msgid "WISHLIST"
+msgstr ""
+
 #. max 200px, grows to 280px (the board widens), 1 line; the spaces are spacing, not words
 #. budget: max 200px, lines 1
 #: scripts/hub.gd
@@ -914,6 +930,13 @@ msgstr "ร้าน​ค้า"
 msgctxt "hub.prompt.free"
 msgid "FREE"
 msgstr "ฟรี"
+
+#. hub prompt (demo build), max 110px, 1 line; {level} = the demo's last level
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.demo_clear"
+msgid "CLEAR LEVEL {level}"
+msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.beat_all"
@@ -983,11 +1006,16 @@ msgctxt "hub.tour.coins_practice"
 msgid "THE PRACTICE COIN WAS FAKE. SORRY"
 msgstr ""
 
-#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-#. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.random"
 msgid "A NEW MAZE EVERY TIME, NO MERCY"
+msgstr ""
+
+#. hub tour line (demo build) in the hub prompt box (the use key follows), max 192px, 1 line; {count} = the demo's levels (3)
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.random_locked_demo"
+msgid "LOCKED: BEAT {count} LEVELS FIRST"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {count} = 10
@@ -1255,6 +1283,96 @@ msgctxt "hud.area.name"
 msgid "- {name} -"
 msgstr "- {name} -"
 
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_01.gd
+#, fuzzy
+#| msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
+msgctxt "story.level_1"
+msgid "SPLAT. IT IS DAMP, UP IS THAT WAY"
+msgstr "แผละ! ที่​นี่​ชื้น​แฉะ ทาง​ขึ้น​อยู่​ทาง​โน้น"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_02.gd
+#, fuzzy
+#| msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
+msgctxt "story.level_2"
+msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU"
+msgstr "คน​งาน​เหมือง​รีบ​หนี​ไป​แล้ว คุณ​ก็​ควร​รีบ​เหมือน​กัน"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_03.gd
+#, fuzzy
+#| msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
+msgctxt "story.level_3"
+msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY"
+msgstr "มี​คน​กวาด​ทราย​ไว้ แต่​นาน​มา​แล้ว"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_04.gd
+#, fuzzy
+#| msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
+msgctxt "story.level_4"
+msgid "NOT TECHNICALLY SWIMMING, STILL NOT DRY"
+msgstr "ไม่​ได้​ว่าย​น้ำ​ซะ​ที​เดียว แต่​ก็​ยัง​ไม่​แห้ง"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_05.gd
+#, fuzzy
+#| msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
+msgctxt "story.level_5"
+msgid "A SLIME IN SLIME, NOBODY WILL NOTICE"
+msgstr "สไลม์​กลาง​กอง​เมือก ไม่​มี​ใคร​สังเกต​หรอก"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_06.gd
+#, fuzzy
+#| msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
+msgctxt "story.level_6"
+msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY"
+msgstr "ผู้​อยู่​อาศัย​เงียบ​มาก เงียบ​จน​น่า​สงสัย"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_07.gd
+#, fuzzy
+#| msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
+msgctxt "story.level_7"
+msgid "COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES"
+msgstr "หนาว​ขึ้น​แล้ว สไลม์​ไม่​สั่น​หนาว แค่​ดึ๋ง​ดึ๋ง"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_08.gd
+#, fuzzy
+#| msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
+msgctxt "story.level_8"
+msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE"
+msgstr "คุก​ของ​ผู้​ถูก​ลืม แต่​คุณ​น่ะ​ลืม​ไม่​ลง"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_09.gd
+#, fuzzy
+#| msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
+msgctxt "story.level_9"
+msgid "SO SHINY, DAYLIGHT MUST BE CLOSE"
+msgstr "แวว​วาว​จัง แสง​ตะวัน​คง​อยู่​ไม่​ไกล"
+
+#. joke under the level name, one line, max 296px. Keep it funny, not literal.
+#. budget: max 296px
+#: scripts/level_data/level_10.gd
+#, fuzzy
+#| msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
+msgctxt "story.level_10"
+msgid "HOT. THE WAY OUT IS THE CRATER, RUN"
+msgstr "ร้อน ทาง​ออก​คือ​ปาก​ปล่อง​ภูเขา​ไฟ วิ่ง!"
+
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
@@ -1319,76 +1437,6 @@ msgstr "หมาก​ฝรั่ง"
 msgctxt "skin.ember"
 msgid "EMBER"
 msgstr "ถ่าน​ไฟ"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "SPLAT. IT IS DAMP. UP IS THAT WAY."
-msgctxt "story.level_1"
-msgid "SPLAT. IT IS DAMP, UP IS THAT WAY"
-msgstr "แผละ! ที่​นี่​ชื้น​แฉะ ทาง​ขึ้น​อยู่​ทาง​โน้น"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU."
-msgctxt "story.level_2"
-msgid "THE MINERS LEFT IN A HURRY. SO WOULD YOU"
-msgstr "คน​งาน​เหมือง​รีบ​หนี​ไป​แล้ว คุณ​ก็​ควร​รีบ​เหมือน​กัน"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY."
-msgctxt "story.level_3"
-msgid "SOMEONE SWEPT THE SAND. NOT RECENTLY"
-msgstr "มี​คน​กวาด​ทราย​ไว้ แต่​นาน​มา​แล้ว"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "NOT TECHNICALLY SWIMMING. STILL NOT DRY."
-msgctxt "story.level_4"
-msgid "NOT TECHNICALLY SWIMMING, STILL NOT DRY"
-msgstr "ไม่​ได้​ว่าย​น้ำ​ซะ​ที​เดียว แต่​ก็​ยัง​ไม่​แห้ง"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "A SLIME IN SLIME. NOBODY WILL NOTICE."
-msgctxt "story.level_5"
-msgid "A SLIME IN SLIME, NOBODY WILL NOTICE"
-msgstr "สไลม์​กลาง​กอง​เมือก ไม่​มี​ใคร​สังเกต​หรอก"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY."
-msgctxt "story.level_6"
-msgid "THE RESIDENTS ARE QUIET. SUSPICIOUSLY"
-msgstr "ผู้​อยู่​อาศัย​เงียบ​มาก เงียบ​จน​น่า​สงสัย"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "COLDER NOW. SLIME DOES NOT SHIVER. IT JIGGLES."
-msgctxt "story.level_7"
-msgid "COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES"
-msgstr "หนาว​ขึ้น​แล้ว สไลม์​ไม่​สั่น​หนาว แค่​ดึ๋ง​ดึ๋ง"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE."
-msgctxt "story.level_8"
-msgid "A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE"
-msgstr "คุก​ของ​ผู้​ถูก​ลืม แต่​คุณ​น่ะ​ลืม​ไม่​ลง"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "SO SHINY. DAYLIGHT MUST BE CLOSE."
-msgctxt "story.level_9"
-msgid "SO SHINY, DAYLIGHT MUST BE CLOSE"
-msgstr "แวว​วาว​จัง แสง​ตะวัน​คง​อยู่​ไม่​ไกล"
-
-#: scripts/story.gd
-#, fuzzy
-#| msgid "HOT. THE WAY OUT IS THE CRATER. RUN."
-msgctxt "story.level_10"
-msgid "HOT. THE WAY OUT IS THE CRATER, RUN"
-msgstr "ร้อน ทาง​ออก​คือ​ปาก​ปล่อง​ภูเขา​ไฟ วิ่ง!"
 
 #: scripts/themes.gd
 msgctxt "theme.mossy"
@@ -1510,6 +1558,13 @@ msgstr "คัด​ลอก​แล้ว! เก็บ​ไว้​ที�
 msgctxt "savecode.copy_by_hand"
 msgid "COPY THE CODE FROM THE POP-UP"
 msgstr "คัด​ลอก​รหัส​จาก​หน้า​ต่าง​ป๊อปอัป"
+
+#. demo build on a full-game save: SETTINGS note above the bottom row and first line of the RESET confirm, max 256px, 1 line
+#. budget: max 256px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.demo_guard"
+msgid "FULL GAME SAVE: THE DEMO WON'T CHANGE IT"
+msgstr ""
 
 #. max 296px, 16 px font
 #. budget: max 296px
@@ -1675,6 +1730,13 @@ msgctxt "reset.body.2"
 msgid "SKINS WILL BE GONE FOR GOOD"
 msgstr "สกิน​จะ​หาย​ไป​ตลอด​กาล"
 
+#. reset confirm, second line (demo build on a full-game save), max 256px
+#. budget: max 256px
+#: scripts/ui/controls.gd
+msgctxt "reset.demo_guard.2"
+msgid "ONLY THIS SESSION STARTS OVER"
+msgstr ""
+
 #. reset confirm buttons (CONFIRM, CANCEL), max 62px (70 wide, 4 px margins), 1 line
 #. budget: max 62px, lines 1
 #: scripts/ui/controls.gd
@@ -1731,6 +1793,87 @@ msgstr "เสียง: เปิด"
 msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
 msgstr "เสียง: ปิด"
+
+#. demo end screen, line under the title, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.random"
+msgid "THE FULL GAME HAS ENDLESS MAZES AND 3 ABILITIES"
+msgstr ""
+
+#. demo end screen, line under the title (the story's voice: the slime climbs to daylight), max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.line"
+msgid "THE WAY OUT IS STILL UP THERE"
+msgstr ""
+
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.areas"
+msgid "SEVEN MORE AREAS"
+msgstr ""
+
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.loops"
+msgid "MAZES THAT LOOP BACK"
+msgstr ""
+
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.skins"
+msgid "JELLY SKINS AND HATS"
+msgstr ""
+
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.hard"
+msgid "HARD MODE AND HEAT"
+msgstr ""
+
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.out"
+msgid "THE WAY OUT, MAYBE"
+msgstr ""
+
+#. demo end screen, max 300px, 1 line (SAVE CODE = the settings' save code button)
+#. budget: max 300px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.carry_web"
+msgid "COPY YOUR SAVE CODE TO KEEP YOUR PROGRESS"
+msgstr ""
+
+#. demo end screen, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.carry"
+msgid "YOUR PROGRESS CARRIES OVER TO THE FULL GAME"
+msgstr ""
+
+#. demo end screen title, max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.title"
+msgid "END OF THE DEMO"
+msgstr ""
+
+#. demo end screen button, back to the hub; max 80px, 1 line
+#. budget: max 80px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.keep_playing"
+msgid "KEEP PLAYING"
+msgstr ""
+
+#. demo end screen button (opens SETTINGS on the save code panel), max 80px, 1 line
+#. budget: max 80px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.save_code"
+msgid "SAVE CODE"
+msgstr ""
+
+#. demo end screen teaser card, {level} = a story level number; max 168px, 1 line
+#. budget: max 168px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.teaser.level"
+msgid "LEVEL {level} - FULL GAME"
+msgstr ""
 
 #: scripts/ui/descent_card.gd
 msgctxt "descent.pick_one"
@@ -1985,6 +2128,13 @@ msgctxt "wheel.free"
 msgid "FREE"
 msgstr "ฟรี"
 
+#. SHOP status line (demo build), max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.demo_shop"
+msgid "THE SHOP OPENS IN THE FULL GAME"
+msgstr ""
+
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.from_tailor"
 msgid "{name} - FROM THE TAILOR"
@@ -2162,6 +2312,26 @@ msgid "LANGUAGE"
 msgstr "ภาษา"
 
 #: scripts/ui/level_select.gd
+msgctxt "levels.demo_hard.1"
+msgid "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"
+msgstr ""
+
+#: scripts/ui/level_select.gd
+msgctxt "levels.demo_hard.2"
+msgid "HARD {from}-{to} AND HEAT: FULL GAME"
+msgstr ""
+
+#: scripts/ui/level_select.gd
+msgctxt "levels.info_normal.1"
+msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
+msgstr "ผ่าน​ด่าน​เพื่อ​ปลด​ล็อก​ด่าน​ถัดไป"
+
+#: scripts/ui/level_select.gd
+msgctxt "levels.demo_normal.2"
+msgid "LEVELS {from}-{to} ARE IN THE FULL GAME"
+msgstr ""
+
+#: scripts/ui/level_select.gd
 msgctxt "levels.info_hard.1"
 msgid "HEAT UP LEVELS BEATEN ON HARD"
 msgstr "เพิ่ม​ความ​ร้อน​ให้​ด่าน​ที่​ผ่าน​โหมด​ยาก​แล้ว"
@@ -2170,11 +2340,6 @@ msgstr "เพิ่ม​ความ​ร้อน​ให้​ด่าน
 msgctxt "levels.info_hard.2"
 msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
 msgstr "ความ​ร้อน 2 4 7 10 ได้ 3 5 7 10 ตั๋ว (ครั้ง​เดียว)"
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_normal.1"
-msgid "CLEAR A LEVEL TO UNLOCK THE NEXT"
-msgstr "ผ่าน​ด่าน​เพื่อ​ปลด​ล็อก​ด่าน​ถัดไป"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.2"
@@ -2201,6 +2366,13 @@ msgstr "โหมด​ยาก: เขาวงกต​ใหม่ ไม่
 msgctxt "levels.heat"
 msgid "HEAT {points}"
 msgstr "ร้อน {points}"
+
+#. demo build, under the lock on a full-game level's tile; max 44px, 1 line
+#. budget: max 44px, lines 1
+#: scripts/ui/level_select.gd
+msgctxt "levels.demo_full"
+msgid "FULL"
+msgstr ""
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
@@ -2406,6 +2578,13 @@ msgid "{name} - {price} TIX IN THE SHOP"
 msgid_plural "{name} - {price} TIX IN THE SHOP"
 msgstr[0] "{name} - {price} ตั๋ว​ใน​ร้าน"
 
+#. status line (demo build), max 300px, 1 line; {name} = a skin name
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.demo_locked"
+msgid "{name} - IN THE FULL GAME"
+msgstr ""
+
 #. {count} = medals needed (30), {have}/{count} = progress; status line, max 312px (EDGE to EDGE, centred), 1 line
 #. budget: max 312px, lines 1
 #: scripts/ui/skins_screen.gd
@@ -2582,6 +2761,13 @@ msgctxt "upgrades.hint_coins.1"
 msgid "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"
 msgstr "เหรียญ​ซ่อน​อยู่​ทาง​ตัน​ใน​เขาวงกต​เนื้อ​เรื่อง"
 
+#. demo build, max 300px, 1 line; {level} = the demo's upgrade cap (2)
+#. budget: max 300px, lines 1
+#: scripts/ui/upgrades_screen.gd
+msgctxt "upgrades.demo_cap"
+msgid "UPGRADES PAST LEVEL {level}: FULL GAME"
+msgstr ""
+
 #: scripts/ui/upgrades_screen.gd
 msgctxt "upgrades.hint_coins.2"
 msgid "TAKE COINS BACK OUT ANY TIME"
@@ -2621,6 +2807,13 @@ msgstr "แตะ​ปุ่ม​ของ​มัน - เขาวงกต
 msgctxt "upgrades.hint_keys"
 msgid "KEYS {a} {b} {c} - RANDOM MAZES"
 msgstr "ปุ่ม {a} {b} {c} - เขาวงกต​สุ่ม"
+
+#. upgrade row cost column (demo build), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/ui/upgrades_screen.gd
+msgctxt "upgrades.demo_full"
+msgid "FULL"
+msgstr ""
 
 #. max 296px, 16 px font
 #. budget: max 296px

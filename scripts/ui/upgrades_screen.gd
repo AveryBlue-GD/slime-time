@@ -717,10 +717,13 @@ func _refresh() -> void:
 	for id: String in rows:
 		var row: Dictionary = rows[id]
 		var level: int = Progress.upgrade_level(id)
-		_color_pips(row.pips, level, skin)
+		var cap := Demo.upgrade_cap(id)  # (max_level in the full game)
+		_color_pips(row.pips, level, skin, cap)
 		var maxed := level >= Upgrades.max_level(id)
-		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else "%d" % Upgrades.cost(id, level)
-		row.plus.disabled = maxed or Progress.coins() < Upgrades.cost(id, level)
+		var capped := not maxed and level >= cap  # the demo: the next level is in the full game
+		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else (demo_full_text() if capped else "%d" % Upgrades.cost(id, level))
+		row.cost.add_theme_color_override("font_color", UIKit.GOLD if capped else UIKit.TEXT_DIM)
+		row.plus.disabled = maxed or capped or Progress.coins() < Upgrades.cost(id, level)
 		row.minus.disabled = level <= 0
 	var open: bool = Progress.workshop_open()
 	for id: String in ticket_rows:  # (empty while the workshop is switched off)
@@ -739,8 +742,9 @@ func _refresh() -> void:
 		var level: int = Progress.ability_level(id)
 		_color_pips(row.pips, level, skin)
 		var maxed := level >= Abilities.max_level(id)
-		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else "%d" % Progress.ability_cost(id)
-		row.ticket.visible = not maxed
+		var full := not Demo.ability_open(id)  # the demo: only its abilities
+		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else (demo_full_text() if full else "%d" % Progress.ability_cost(id))
+		row.ticket.visible = not maxed and not full
 		row.plus.disabled = not Progress.can_buy_ability(id)
 		var shade := Color.WHITE if abilities_open else Color(1, 1, 1, 0.5)
 		row.icon.modulate = shade
@@ -753,7 +757,9 @@ func _refresh() -> void:
 		# i18n: two lines, each max 300px
 		hint.text = Loc.lines([
 			Loc.t("upgrades.hint_coins.1", "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"),
-			Loc.t("upgrades.hint_coins.2", "TAKE COINS BACK OUT ANY TIME"),
+			# i18n: demo build, max 300px, 1 line; {level} = the demo's upgrade cap (2)
+			Loc.t("upgrades.demo_cap", "UPGRADES PAST LEVEL {level}: FULL GAME", {level = Demo.UPGRADE_CAP}) if Demo.on()
+				else Loc.t("upgrades.hint_coins.2", "TAKE COINS BACK OUT ANY TIME"),
 		])
 	_place_hint()
 
@@ -784,9 +790,16 @@ static func ability_hint() -> String:
 	return Loc.t("upgrades.hint_keys", "KEYS {a} {b} {c} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2]})
 
 
-func _color_pips(pips: Array, level: int, skin: Color) -> void:
+## The demo's lock on a cost: FULL (the next level / the ability is in the full game).
+static func demo_full_text() -> String:
+	# i18n: upgrade row cost column (demo build), max 40px, 1 line
+	return Loc.t("upgrades.demo_full", "FULL")
+
+
+func _color_pips(pips: Array, level: int, skin: Color, cap := 99) -> void:
 	for i in pips.size():
-		(pips[i] as ColorRect).color = skin if i < level else Color8(74, 70, 96)
+		# (past the demo's cap: a darker, locked pip)
+		(pips[i] as ColorRect).color = skin if i < level else (Color8(74, 70, 96) if i < cap else Color8(40, 38, 54))
 
 
 ## Leaves: back into the level after a dry-up, otherwise to the hub.

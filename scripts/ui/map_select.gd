@@ -316,7 +316,8 @@ func _make_tile(level: int) -> Button:
 	var button := UIKit.make_button("", func() -> void: open_view(level), tile_size)
 	if pages > 1:
 		button.gui_input.connect(func(event: InputEvent) -> void: _tile_input(level, event))
-	var survey: Dictionary = Progress.survey_for(level, hard)
+	# (the demo: a full-game level's map stays sealed, even from a full save's survey)
+	var survey: Dictionary = Progress.survey_for(level, hard) if Demo.level_open(level, hard) else {}
 	var maze: Dictionary = Levels.story_maze(level, hard) if not survey.is_empty() else {}
 	var locked := survey.is_empty() or not Survey.fits(survey, maze)
 	button.disabled = locked
@@ -454,7 +455,7 @@ func cycle_paper() -> void:
 func open_view(level: int) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var survey: Dictionary = Progress.survey_for(level, hard)
-	if survey.is_empty():
+	if survey.is_empty() or not Demo.level_open(level, hard):
 		return
 	var maze := Levels.story_maze(level, hard)
 	if not Survey.fits(survey, maze):
