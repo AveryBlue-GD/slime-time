@@ -155,7 +155,8 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
 - **Hub design:** Don't Starve style round room that rotates with the wheel in the middle; F = interact,
   SPACE = leap; Esc in the hub opens a small MENU over it (BACK / SETTINGS / QUIT TO TITLE, owner 2026-10-19;
   the iOS / Android home button still goes straight to the title, D10); the title screen has an ENTER THE HUB button and the tagline
-  ESCAPE THE FOG / OR DRY TRYING (no "!").
+  ESCAPE THE FOG / OR DRY TRYING (no "!"), STORY bottom-left and (desktop only, `Platform.can_quit()`) QUIT
+  bottom-right, which closes the game at once (owner 2026-10-19).
 - **Rainbow skin:** normal mode unlocks it (opaque) by finding every story coin; its jelly version needs hard
   level 10 (like the custom color's). The color-wheel skin is called CHAMELEON; the shadow skin is "Inkky".
 - **Opaque vs jelly (D14, owner 2026-10-16):** opaque (solid) slimes are the normal-mode skins and the default

@@ -160,12 +160,13 @@ func _title() -> void:
 		_check(top - marks >= UIKit.GOO_INK_ROW and top + Title.BIG_LINE_INK + Title.ENTER_TEXT_BOTTOM <= h and top >= Title.ENTER_TEXT_TOP,
 			_tag("title: ENTER's line on row %d of %d (marks %d): ink from row %d, drips over the outline" % [top, h, marks, top - marks]))
 	if _code in Lang.GAP_LOCALES:
-		for button: Button in [enter, page.story_button]:
+		for button: Button in [enter, page.story_button, page.quit_button]:
 			var gaps := _ink_gaps(button)
 			_check(absf(gaps.x - gaps.y) <= 1.0, _tag("title: %s's ink centred (%d / %d px)" % [button.text, gaps.x, gaps.y]))
 	if _code == "en":
 		_check(Rect2(enter.position, enter.size) == Rect2(72, 84, 176, 25) and top == 5
-			and Rect2(page.story_button.position, page.story_button.size) == Rect2(4, 164, 40, 13), _tag("title: the English ENTER / STORY unchanged"))
+			and Rect2(page.story_button.position, page.story_button.size) == Rect2(4, 164, 40, 13)
+			and Rect2(page.quit_button.position, page.quit_button.size) == Rect2(276, 164, 40, 13), _tag("title: the English ENTER / STORY / QUIT unchanged"))
 	page.free()
 
 

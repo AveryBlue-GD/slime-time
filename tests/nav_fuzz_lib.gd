@@ -261,10 +261,12 @@ func release_all() -> void:
 			Input.action_release(a)
 
 
-## True when pressing `button`/Enter on the focus would quit the game (the hub's QUIT).
+## True when pressing `button`/Enter on the focus would quit the game (the hub trapdoor's QUIT, the title's QUIT).
 func would_quit(button: Control) -> bool:
-	var hub := tree.current_scene
-	return kind() == "hub" and hub.quit_menu.visible and button == hub.quit_button
+	var scene := tree.current_scene
+	if kind() == "title":
+		return button != null and button == scene.quit_button
+	return kind() == "hub" and scene.quit_menu.visible and button == scene.quit_button
 
 
 # ------------------------------------------------------------------ queries

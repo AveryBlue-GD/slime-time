@@ -117,6 +117,15 @@ func _menus() -> void:
 			_check(r.end.x == UIKit.SCREEN.x - UIKit.EDGE and r.end.y == UIKit.BOTTOM_ROW_Y + UIKit.BUTTON_H,
 				"ar: %s: BACK on the bottom row's right edge (%s)" % [name, r])
 		match name:
+			"title":
+				var story: Button = screen.story_button
+				var quit: Button = screen.quit_button
+				_check(quit != null and story.get_global_rect().position.x > quit.get_global_rect().position.x,
+					"ar: title: STORY in the right corner, QUIT in the left")
+				if quit:
+					_check(story.get_node(story.focus_neighbor_left) == quit and quit.get_node(quit.focus_neighbor_right) == story
+						and story.get_node(story.focus_neighbor_right) == story and quit.get_node(quit.focus_neighbor_left) == quit,
+						"ar: title: left / right follow the mirrored row (left from STORY to QUIT)")
 			"controls":
 				var sound: Control = screen.sound_button
 				var fullscreen: Control = screen.fullscreen_button

@@ -88,6 +88,11 @@ func _initialize() -> void:
 		elif arg.begins_with("--nav-variant="):
 			variant = arg.get_slice("=", 1)
 	L = Lib.new(self)
+	# The title's QUIT closes the game at once: L.would_quit keeps the walks off it; if a scripted press still
+	# lands on it, count it instead of ending the run.
+	load("res://scripts/ui/title.gd").quit_hook = func() -> void:
+		L.quit_blocked += 1
+		L.note("(title QUIT pressed: quit blocked)")
 	var real: String = L.progress.REAL_SAVE_PATH
 	print("real save untouched check: save_path=%s" % L.progress.save_path)
 	var t0 := Time.get_ticks_msec()
@@ -102,6 +107,11 @@ func _initialize() -> void:
 		print("  %s %-14s %s" % ["KNOWN " if known else "NEW   ", tag, found[tag]])
 		if not known or strict:
 			unknown += 1
+	# The title's QUIT is never pressed on purpose (walks skip it through L.would_quit, scripted paths never aim
+	# at it): a press that still reached it is a focus-chain / guard bug.
+	if L.quit_blocked > 0:
+		print("  FAIL the title's QUIT was pressed %d time(s) (quit blocked by the hook; see the trace notes)" % L.quit_blocked)
+		failures += 1
 	done = true
 	var ok := failures == 0 and unknown == 0
 	print("RESULT: %s" % ("PASS" if ok else "FAIL (%d failed checks, %d new/strict bug tags)" % [failures, unknown]))
@@ -1716,7 +1726,8 @@ func _random_op() -> String:
 			var hit: Control = null
 			var skip := false
 			for c in L.clickables():
-				if L.would_quit(c) and c.get_global_rect().has_point(at):
+				# (grown by the touch hit pad and then some: a touch / click just beside QUIT still presses it)
+				if L.would_quit(c) and c.get_global_rect().grow(UIKit.HIT_PAD * 2).has_point(at):
 					skip = true
 			if skip:
 				L.note("(skipped random click on QUIT)")

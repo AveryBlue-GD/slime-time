@@ -37,6 +37,26 @@ func _menus() -> void:
 	var title := await _open("res://scenes/title.tscn")
 	_check_screen(title, "title")
 	_check_rect(title.story_button, Rect2(4, 164, 40, 13), "title: STORY on the bottom row")
+	_check(title.quit_button != null and title.quit_button.text == "QUIT", "title: QUIT on desktop")
+	_check_rect(title.quit_button, Rect2(276, 164, 40, 13), "title: QUIT on the bottom row's right end, mirroring STORY")
+	# Focus: ENTER first; down to STORY (never straight onto QUIT), left / right along the bottom row, up back to ENTER.
+	var enter: Button = title.enter_button
+	var story: Button = title.story_button
+	var quit: Button = title.quit_button
+	_check(enter.has_focus(), "title: ENTER has the focus")
+	_check(enter.get_node(enter.focus_neighbor_bottom) == story and enter.get_node(enter.focus_neighbor_top) == enter,
+		"title: down from ENTER goes to STORY, up stays (no wrap onto QUIT)")
+	_check(story.get_node(story.focus_neighbor_right) == quit and quit.get_node(quit.focus_neighbor_left) == story
+		and story.get_node(story.focus_neighbor_top) == enter and quit.get_node(quit.focus_neighbor_top) == enter,
+		"title: STORY <-> QUIT along the bottom row, up from either to ENTER")
+	_check(enter.get_node(enter.focus_next) == story and story.get_node(story.focus_next) == quit and quit.get_node(quit.focus_next) == enter,
+		"title: Tab order ENTER, STORY, QUIT")
+	# QUIT quits at once (the hook stands in for get_tree().quit() here).
+	var quits := [0]
+	title.quit_hook = func() -> void: quits[0] += 1
+	quit.pressed.emit()
+	_check(quits[0] == 1, "title: QUIT calls the quit path at once (no confirm)")
+	title.quit_hook = Callable()
 	title.free()
 
 	for hard in [false, true]:

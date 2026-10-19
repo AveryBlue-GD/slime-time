@@ -1,8 +1,9 @@
 extends Control
 
 ## The title screen (the main scene): the big gooey logo in your skin's colors, your slime on
-## either side (in your hat), an ENTER THE HUB button and the tagline under it. Everything else
-## (story, randomizer, skins, upgrades, settings, quit) lives in the hub.
+## either side (in your hat), an ENTER THE HUB button and the tagline under it, STORY in the bottom-left
+## corner and (desktop only, Platform.can_quit) QUIT in the bottom-right one, mirroring it. Everything else
+## (randomizer, skins, upgrades, settings, the QUIT trapdoor) lives in the hub.
 
 ## Rainbow skin: how wide one full rainbow is across the logo (px).
 const LOGO_RAINBOW_WIDTH := 90.0
@@ -39,6 +40,11 @@ const TAGLINE_W := 300
 
 var enter_button: Button
 var story_button: Button
+## QUIT (bottom-right, mirroring STORY): only where the game may close itself (Platform.can_quit, the hub
+## trapdoor's rule), else null. It quits at once: the title is a deliberate place (no confirm panel).
+var quit_button: Button
+## Tests only: called instead of quitting, so a test can press QUIT without ending the run.
+static var quit_hook := Callable()
 
 
 func _ready() -> void:
@@ -123,6 +129,17 @@ func _ready() -> void:
 		_shift_styles(story_button, story_shift)
 	add_child(story_button)
 	UIKit.place_bottom_row(story_button, -1)
+	if Platform.can_quit():
+		# i18n: max 32px, grows to 40px, 1 line; shared: the hub trapdoor dialog's QUIT (56 px pair) and the title's bottom-right corner (BACK_SIZE 40 wide, back_size widens it), the tighter title budget wins; closes the game
+		var quit_text := Loc.t("hub.quit.button", "QUIT")
+		quit_button = UIKit.make_button(quit_text, _quit, UIKit.back_size(quit_text))
+		UIKit.note_text_w(quit_button, [quit_text], int(UIKit.BACK_SIZE.x))
+		var quit_shift := UIKit.ink_shift(quit_text, UIKit.FONT)
+		if quit_shift != 0:
+			_shift_styles(quit_button, quit_shift)
+		add_child(quit_button)
+		UIKit.place_bottom_row(quit_button, 1)
+	_link_focus()
 
 	# i18n: tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
 	var parts := [Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "OR DRY TRYING")]
@@ -134,7 +151,8 @@ func _ready() -> void:
 	tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	# Centred between the button and the bottom edge (124 in English). A taller script whose two lines
 	# don't fit there takes them on one line when that fits the screen (Traditional Chinese). A second
-	# line long enough to run over STORY's corner lifts the block clear of it (Spanish, French, Italian).
+	# line long enough to run over STORY's (or QUIT's) corner lifts the block clear of it (Spanish, French,
+	# Italian).
 	var line := int(UIKit.metrics().title_line_h)
 	var block := 2 * line + spacing
 	var below := int(enter_rect.end.y)
@@ -146,7 +164,10 @@ func _ready() -> void:
 	var top := ceili((below + TAGLINE_BOTTOM - block) / 2.0)
 	var drips := 0 if UIKit.tall_script() else 2 * UIKit.TEXT_DRIP  # (the 16 px font's drips under a line)
 	var story_rect := Rect2(story_button.position, story_button.size)
-	if widths.size() == 2 and 160 - widths[1] / 2.0 < story_rect.end.x + UIKit.GAP_M and top + block + drips > story_rect.position.y - UIKit.GAP_S:
+	var corner_x := story_rect.end.x  # (how far in from either edge the corner buttons reach)
+	if quit_button:
+		corner_x = maxf(corner_x, 320 - quit_button.position.x)
+	if widths.size() == 2 and 160 - widths[1] / 2.0 < corner_x + UIKit.GAP_M and top + block + drips > story_rect.position.y - UIKit.GAP_S:
 		top = int(story_rect.position.y) - UIKit.GAP_S - block - drips
 	tagline.offset_top = top
 	tagline.offset_bottom = TAGLINE_BOTTOM
@@ -277,6 +298,35 @@ func _play() -> void:
 		return
 	Progress.start_story(1)
 	UIKit.go(get_tree(), UIKit.GAME_SCENE)
+
+
+## Keyboard / controller: ENTER (the focus) down to STORY, left / right along the bottom row between STORY and
+## QUIT, up from either back to ENTER; no wrap (a stray press never lands on QUIT from ENTER). Tab: ENTER, STORY, QUIT.
+func _link_focus() -> void:
+	var row: Array[Button] = [story_button]
+	if quit_button:
+		row.append(quit_button)
+	enter_button.focus_neighbor_bottom = enter_button.get_path_to(story_button)
+	enter_button.focus_neighbor_top = enter_button.get_path_to(enter_button)
+	var chain: Array[Button] = [enter_button]
+	chain.append_array(row)
+	for i in chain.size():
+		chain[i].focus_next = chain[i].get_path_to(chain[(i + 1) % chain.size()])
+		chain[i].focus_previous = chain[i].get_path_to(chain[i - 1])
+	for i in row.size():
+		var b := row[i]
+		b.focus_neighbor_top = b.get_path_to(enter_button)
+		b.focus_neighbor_bottom = b.get_path_to(b)
+		b.focus_neighbor_left = b.get_path_to(row[maxi(i - 1, 0)])
+		b.focus_neighbor_right = b.get_path_to(row[mini(i + 1, row.size() - 1)])
+
+
+## QUIT: closes the game at once (as the hub trapdoor's QUIT does).
+func _quit() -> void:
+	if quit_hook.is_valid():
+		quit_hook.call()
+		return
+	get_tree().quit()
 
 
 ## The intro again (and then back to the title).

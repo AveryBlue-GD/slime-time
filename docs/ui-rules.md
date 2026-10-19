@@ -35,7 +35,7 @@ Other locales: `UIKit.bottom_row_y()`, `UIKit.title_top()` / `title_bottom()`, `
 
 - The bottom row: **BACK at (4, 164) 40x13** on every screen (`UIKit.add_back_button(root, on_press)`); the page's own
   action mirrors it at the right edge (HEAT, PAPER, HATS / TRAILS / PAPERS / SKINS, RESET PROGRESS) or sits centred (JELLY,
-  RESET KEYS). The title's STORY button uses the same slot. In English the wardrobe's page button is one width for every
+  RESET KEYS). The title's STORY button uses the same slot, its QUIT (desktop only) the mirrored right-end slot (276, 164) 40x13. In English the wardrobe's page button is one width for every
   page name it shows (`tab_widths`: TRAILS / PAPERS need 46 px, so (270, 164) 46x13, ending at x 316) while BACK keeps
   40; in other locales BACK joins that equal-width group (section 10).
 - Text on the bottom row (map hints, the HARD checkbox) sits on BACK's text baseline (row 167).

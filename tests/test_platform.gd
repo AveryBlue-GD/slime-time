@@ -29,6 +29,7 @@ func _initialize() -> void:
 	progress.saving_enabled = true
 	_kinds()
 	await _hub_quit()
+	await _title_quit()
 	await _settings_fullscreen()
 	_fullscreen_memory()
 	_progress_events()
@@ -83,6 +84,23 @@ func _hub_quit() -> void:
 		_check(has_quit == (kind in ["desktop", "steam"]) and hub.stations.size() == (9 if has_quit else 8),
 			"%s: hub QUIT trapdoor %s (%d stations)" % [kind, "shown" if has_quit else "hidden", hub.stations.size()])
 		hub.free()
+	Platform.reset_overrides()
+
+
+## The title's QUIT follows the trapdoor's rule (Platform.can_quit): desktop / Steam only; elsewhere STORY's
+## bottom row has no QUIT and the focus chain is ENTER <-> STORY.
+func _title_quit() -> void:
+	for kind: String in ["desktop", "steam", "web", "ios", "android"]:
+		Platform.reset_overrides()
+		Platform.override = kind
+		var title: Control = load("res://scenes/title.tscn").instantiate()
+		root.add_child(title)
+		await process_frame
+		var shown: bool = title.quit_button != null and title.quit_button.is_visible_in_tree()
+		_check(shown == (kind in ["desktop", "steam"]), "%s: title QUIT %s" % [kind, "shown" if shown else "hidden"])
+		var story: Button = title.story_button
+		_check(story.get_node(story.focus_neighbor_right) == (title.quit_button if shown else story), "%s: STORY's right neighbour" % kind)
+		title.free()
 	Platform.reset_overrides()
 
 

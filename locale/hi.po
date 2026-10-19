@@ -776,7 +776,9 @@ msgctxt "hub.quit.subtitle"
 msgid "THE GAME CLOSES"
 msgstr "गेम बंद हो जाएगा"
 
-#: scripts/hub.gd
+#. max 32px, grows to 40px, 1 line; shared: the hub trapdoor dialog's QUIT (56 px pair) and the title's bottom-right corner (BACK_SIZE 40 wide, back_size widens it), the tighter title budget wins; closes the game
+#. budget: max 32px, lines 1
+#: scripts/hub.gd scripts/ui/title.gd
 msgctxt "hub.quit.button"
 msgid "QUIT"
 msgstr "छोड़ो"

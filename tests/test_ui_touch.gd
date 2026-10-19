@@ -93,6 +93,9 @@ func _initialize() -> void:
 	for path in ["res://scenes/level_select.tscn", "res://scenes/controls.tscn", "res://scenes/key_controls.tscn", "res://scenes/skins.tscn", "res://scenes/maps.tscn", "res://scenes/title.tscn"]:
 		var screen: Node = await _open(path)
 		_check_exclusive(screen, path.get_file())
+		if path.ends_with("title.tscn"):
+			for b: Button in [screen.story_button, screen.quit_button]:
+				_check(_span(b).x >= UIKit.TOUCH_MIN and _span(b).y >= UIKit.TOUCH_MIN, "title %s: hit area %s" % [b.text, _span(b)])
 		screen.free()
 
 	var hub: Node = await _open("res://scenes/hub.tscn")
