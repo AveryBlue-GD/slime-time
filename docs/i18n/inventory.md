@@ -35,7 +35,7 @@ plural · `J` list joined with `", "` · `NL` contains `\n` · `D` drawn with `d
 | What | Strings | How | Layout |
 |---|---|---|---|
 | Logo `DRY TRYING` (was SLIME TIME until 2026-10-19) | 1 | **baked into `assets/sprites/title/logo_NN.png`** by `make_title.py` | bubbly art, not text |
-| Tagline `ESCAPE THE FOG\nOR DRY TRYING` | 1 | L, NL, **pun** | centered |
+| Tagline `ESCAPE THE FOG\nBEFORE YOU DRY UP` | 1 | L, NL | centered |
 | `PLAY` / `ENTER THE HUB`, `STORY` | 3 | L | W: 176x25, and STORY = `BACK_SIZE` 40x13 (`STORY` uses 30 px of the 32 inside the 4 px margins) |
 
 ### 2. Hub (`scripts/hub.gd`)

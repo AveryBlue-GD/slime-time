@@ -2515,18 +2515,20 @@ msgctxt "title.story"
 msgid "STORY"
 msgstr "STORIA"
 
-#. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
+#. tagline, two lines (\n) of the 16 px font, max 300px each; the game is called DRY TRYING (drying up = losing), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
 msgctxt "title.tagline.1"
 msgid "ESCAPE THE FOG"
 msgstr "FUGGI DALLA NEBBIA"
 
-#. tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
+#. tagline, two lines (\n) of the 16 px font, max 300px each; the game is called DRY TRYING (drying up = losing), keep it short
 #. budget: max 300px
 #: scripts/ui/title.gd
+#, fuzzy
+#| msgid "OR DRY TRYING"
 msgctxt "title.tagline.2"
-msgid "OR DRY TRYING"
+msgid "BEFORE YOU DRY UP"
 msgstr "O SECCA NEL TENTATIVO"
 
 #. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)

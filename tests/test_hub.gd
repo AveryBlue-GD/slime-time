@@ -31,7 +31,7 @@ func _initialize() -> void:
 	var texts: Array = []
 	for node in title.find_children("*", "Label", true, false):
 		texts.append(node.text)
-	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG\nOR DRY TRYING" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
+	_check(title.enter_button.text == "ENTER THE HUB" and "ESCAPE THE FOG\nBEFORE YOU DRY UP" in texts and ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/title.tscn",
 		"the game opens on the title: ENTER THE HUB, then the tagline (no !)")
 	# The DRY TRYING logo: a different drip variant on every visit, always inside the 320x180 screen.
 	_check(ProjectSettings.get_setting("application/config/name") == "Dry Trying", "the window title says Dry Trying")

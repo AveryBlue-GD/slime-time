@@ -162,8 +162,8 @@ func _ready() -> void:
 		UIKit.place_bottom_row(quit_button, 1)
 	_link_focus()
 
-	# i18n: tagline, two lines (\n) of the 16 px font, max 300px each; a pun (fog / dry up), keep it short
-	var parts := [Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "OR DRY TRYING")]
+	# i18n: tagline, two lines (\n) of the 16 px font, max 300px each; the game is called DRY TRYING (drying up = losing), keep it short
+	var parts := [Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "BEFORE YOU DRY UP")]
 	var tagline := UIKit.make_label(Loc.lines(parts), UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var spacing := UIKit.line_spacing() * 2  # (10 in English: the big font's double line spacing)
