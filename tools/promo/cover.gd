@@ -34,6 +34,10 @@ func _ready() -> void:
 	view.snap_2d_transforms_to_pixel = true
 	add_child(view)
 
+	# Promo rule (owner, 2026-10-20): the RAINBOW / STOPWATCH skins are never shown in colour; the
+	# level's own first-run skin is worn instead.
+	if Progress.selected_skin in [Skins.RAINBOW, Skins.STOPWATCH]:
+		Progress.selected_skin = Skins.skin_for_level(level - 1)
 	var game: Node2D = preload("res://scenes/main.tscn").instantiate()
 	game.level = level
 	view.add_child(game)
@@ -49,7 +53,7 @@ func _ready() -> void:
 	layer.add_child(overlay)
 	var logo := TextureRect.new()
 	logo.texture = load("res://scripts/ui/title.gd").logo_texture(0)  # a fixed variant: the cover looks the same every render
-	logo.material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+	logo.material = Skins.make_material(Progress.skin_color(), false)  # never the rainbow in promos
 	logo.position = Vector2(roundf((SIZE.x - logo.texture.get_width()) / 2.0), 4)
 	overlay.add_child(logo)
 	var band := ColorRect.new()

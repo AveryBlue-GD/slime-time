@@ -1,0 +1,706 @@
+{
+ "base_args": [
+  "--story-complete"
+ ],
+ "takes": {
+  "l1_lime": {
+   "note": "L1 Dark Dungeon, Lime: goo splash, first corridors",
+   "take": "play",
+   "frames": 480,
+   "args": [
+    "--level=1",
+    "--skin=lime",
+    "--hide-hud"
+   ]
+  },
+  "l1_dry": {
+   "note": "L1, Lime, HUD on, 14% slime: runs dry",
+   "take": "play",
+   "frames": 600,
+   "args": [
+    "--level=1",
+    "--skin=lime",
+    "--meter=14"
+   ]
+  },
+  "l2_leap": {
+   "note": "L2 Mossy Mines, Mint: charged leap into the dark",
+   "take": "play",
+   "frames": 900,
+   "args": [
+    "--level=2",
+    "--skin=mint",
+    "--hide-hud",
+    "--leap=5"
+   ]
+  },
+  "l3_record": {
+   "note": "L3 Sandstone Sanctum, Lemon: chalice, NEW RECORD + gold",
+   "take": "play",
+   "frames": 1320,
+   "args": [
+    "--level=3",
+    "--skin=lemon",
+    "--record"
+   ]
+  },
+  "l4_ocean": {
+   "note": "L4 Sunken Shrine, Ocean",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=4",
+    "--skin=ocean",
+    "--hide-hud",
+    "--skip=20"
+   ]
+  },
+  "l6_crimson": {
+   "note": "L6 Creepy Catacombs, Crimson",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=6",
+    "--skin=crimson",
+    "--hide-hud",
+    "--skip=20"
+   ]
+  },
+  "l7_frost": {
+   "note": "L7 Frozen Fortress, Frost",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=7",
+    "--skin=frost",
+    "--hide-hud",
+    "--skip=20"
+   ]
+  },
+  "l9_bubblegum": {
+   "note": "L9 Crystal Caverns, Bubblegum",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=9",
+    "--skin=bubblegum",
+    "--hide-hud",
+    "--skip=20"
+   ]
+  },
+  "l10_ember": {
+   "note": "L10 Volcanic Vault, Ember",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=10",
+    "--skin=ember",
+    "--hide-hud",
+    "--skip=20"
+   ]
+  },
+  "random_a": {
+   "note": "randomizer maze (Volcanic Vault theme), Ember, HUD: ticket win",
+   "take": "play",
+   "frames": 900,
+   "args": [
+    "--random",
+    "--seed=4242",
+    "--skin=ember"
+   ]
+  },
+  "random_b": {
+   "note": "randomizer maze, Frost",
+   "take": "play",
+   "frames": 300,
+   "args": [
+    "--random",
+    "--seed=31337",
+    "--skin=frost",
+    "--hide-hud"
+   ]
+  },
+  "random_c": {
+   "note": "randomizer maze, Ember",
+   "take": "play",
+   "frames": 300,
+   "args": [
+    "--random",
+    "--seed=2024",
+    "--skin=ember",
+    "--hide-hud"
+   ]
+  },
+  "hard": {
+   "note": "L6 on HARD, jelly Crimson, HUD",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--hard",
+    "--level=6",
+    "--skin=crimson",
+    "--jelly"
+   ]
+  },
+  "skins": {
+   "note": "wardrobe: every skin (RAINBOW as a locked silhouette), then JELLY on",
+   "take": "skins",
+   "frames": 480,
+   "args": [
+    "--skin=lime",
+    "--cycle=lime,mint,lemon,ocean,grape,crimson,frost,shadow,bubblegum,ember,rainbow",
+    "--every=14",
+    "--jelly-at=240"
+   ]
+  },
+  "skins_gold": {
+   "note": "wardrobe: the STOPWATCH (all 30 golds) as a locked silhouette",
+   "take": "skins",
+   "frames": 240,
+   "args": [
+    "--skin=ember",
+    "--cycle=stopwatch",
+    "--every=1000",
+    "--cycle-at=30"
+   ]
+  },
+  "wheel": {
+   "note": "hub prize wheel: a ticket spin lands on a hat",
+   "take": "wheel",
+   "frames": 480,
+   "args": [
+    "--skin=bubblegum",
+    "--tickets=60",
+    "--open-at=40",
+    "--spin-at=80",
+    "--close-at=420"
+   ]
+  },
+  "hops": {
+   "note": "L1, Lime: leaps with a new hat every hop",
+   "take": "hops",
+   "frames": 720,
+   "args": [
+    "--level=1",
+    "--skin=lime",
+    "--hide-hud",
+    "--own-hats=all",
+    "--hat=tophat",
+    "--cycle=tophat,party,cowboy,wizard,viking,propeller,crown,raincloud,chef,rainbow",
+    "--every=40"
+   ]
+  },
+  "trail_candy": {
+   "note": "randomizer maze, Bubblegum, CANDY trail + wizard hat",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--random",
+    "--seed=99",
+    "--skin=bubblegum",
+    "--trail=candy",
+    "--own-hats=wizard",
+    "--hat=wizard",
+    "--hide-hud"
+   ]
+  },
+  "trail_starry": {
+   "note": "L7, Frost, STARRY trail + propeller cap",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=7",
+    "--skin=frost",
+    "--trail=starry",
+    "--own-hats=propeller",
+    "--hat=propeller",
+    "--hide-hud",
+    "--skip=10"
+   ]
+  },
+  "maps": {
+   "note": "map table: L4's map on every paper",
+   "take": "maps",
+   "frames": 300,
+   "args": [
+    "--skin=ocean",
+    "--open=4",
+    "--own-cosmetics=all",
+    "--every=36"
+   ]
+  }
+ },
+ "drafts": [
+  {
+   "id": "A",
+   "name": "Can you escape before you dry up?",
+   "hook": "goo splash into a pitch-black maze, the trail lights it up; then the slime runs dry",
+   "beats": [
+    {
+     "take": "l1_lime",
+     "in": 0.0,
+     "dur": 2.2,
+     "zoom": 5,
+     "color": "lime",
+     "caption": [
+      "CAN YOU ESCAPE"
+     ]
+    },
+    {
+     "take": "l1_dry",
+     "in": 2.6,
+     "dur": 2.0,
+     "zoom": 3,
+     "color": "lime",
+     "caption": [
+      "BEFORE YOU",
+      "DRY UP?"
+     ]
+    },
+    {
+     "take": "l4_ocean",
+     "in": 0.8,
+     "dur": 1.0,
+     "zoom": 4,
+     "color": "ocean",
+     "caption": [
+      "10 DARK MAZES"
+     ]
+    },
+    {
+     "take": "l6_crimson",
+     "in": 0.8,
+     "dur": 1.0,
+     "zoom": 4,
+     "color": "crimson",
+     "caption": [
+      "10 DARK MAZES"
+     ]
+    },
+    {
+     "take": "l9_bubblegum",
+     "in": 0.8,
+     "dur": 1.0,
+     "zoom": 4,
+     "color": "bubblegum",
+     "caption": [
+      "10 DARK MAZES"
+     ]
+    },
+    {
+     "take": "l2_leap",
+     "in": 4.1,
+     "dur": 1.8,
+     "zoom": 4,
+     "color": "mint",
+     "caption": [
+      "LEAP INTO",
+      "THE DARK"
+     ]
+    },
+    {
+     "take": "l3_record",
+     "in": 16.9,
+     "dur": 1.3,
+     "zoom": 3,
+     "color": "lemon",
+     "caption": [
+      "FIND THE CHALICE"
+     ]
+    },
+    {
+     "take": "random_b",
+     "in": 1.0,
+     "dur": 0.8,
+     "zoom": 4,
+     "color": "frost",
+     "caption": [
+      "THEN: ENDLESS",
+      "RANDOM MAZES"
+     ]
+    },
+    {
+     "take": "random_c",
+     "in": 1.0,
+     "dur": 0.8,
+     "zoom": 4,
+     "color": "ember",
+     "caption": [
+      "THEN: ENDLESS",
+      "RANDOM MAZES"
+     ]
+    },
+    {
+     "take": "hard",
+     "in": 1.4,
+     "dur": 1.4,
+     "zoom": 3,
+     "color": "crimson",
+     "caption": [
+      "HARD MODE"
+     ]
+    },
+    {
+     "take": "l3_record",
+     "in": 18.6,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "lemon",
+     "caption": [
+      "BEAT YOUR RECORDS"
+     ]
+    },
+    {
+     "take": "skins",
+     "in": 0.3,
+     "dur": 2.0,
+     "zoom": 3,
+     "color": "bubblegum",
+     "caption": [
+      "UNLOCK SKINS"
+     ]
+    },
+    {
+     "take": "skins",
+     "in": 4.1,
+     "dur": 1.5,
+     "zoom": 3,
+     "color": "frost",
+     "caption": [
+      "JELLY SKINS"
+     ]
+    },
+    {
+     "take": "wheel",
+     "in": 2.2,
+     "dur": 3.0,
+     "zoom": 4,
+     "color": "bubblegum",
+     "caption": [
+      "WIN HATS"
+     ]
+    },
+    {
+     "take": "trail_candy",
+     "in": 1.0,
+     "dur": 1.4,
+     "zoom": 5,
+     "color": "bubblegum",
+     "caption": [
+      "GOO TRAILS"
+     ]
+    },
+    {
+     "take": "maps",
+     "in": 0.7,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "ocean",
+     "caption": [
+      "MAP PAPERS"
+     ]
+    }
+   ],
+   "end": {
+    "dur": 3.4,
+    "tagline": [
+     "ESCAPE THE FOG",
+     "BEFORE YOU DRY UP"
+    ],
+    "cta": [
+     "COMING SOON"
+    ],
+    "store": [],
+    "logo": 0,
+    "skin": "lime"
+   }
+  },
+  {
+   "id": "B",
+   "name": "1000+ ways to dress your slime",
+   "hook": "the wardrobe flips through every skin in a second, then jelly, hats, trails",
+   "beats": [
+    {
+     "take": "skins",
+     "in": 0.3,
+     "dur": 2.2,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "1000+ WAYS TO",
+      "DRESS YOUR SLIME"
+     ]
+    },
+    {
+     "take": "skins",
+     "in": 4.1,
+     "dur": 1.4,
+     "zoom": 3,
+     "color": "frost",
+     "caption": [
+      "JELLY SKINS"
+     ]
+    },
+    {
+     "take": "hops",
+     "in": 2.4,
+     "dur": 2.4,
+     "zoom": 6,
+     "color": "lime",
+     "caption": [
+      "12 HATS"
+     ],
+     "x": 28
+    },
+    {
+     "take": "wheel",
+     "in": 2.2,
+     "dur": 3.0,
+     "zoom": 4,
+     "color": "bubblegum",
+     "caption": [
+      "SPIN TO WIN THEM"
+     ]
+    },
+    {
+     "take": "trail_starry",
+     "in": 0.8,
+     "dur": 1.4,
+     "zoom": 5,
+     "color": "frost",
+     "caption": [
+      "GOO TRAILS"
+     ]
+    },
+    {
+     "take": "maps",
+     "in": 0.7,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "ocean",
+     "caption": [
+      "MAP PAPERS"
+     ]
+    },
+    {
+     "take": "l1_lime",
+     "in": 0.0,
+     "dur": 1.6,
+     "zoom": 5,
+     "color": "lime",
+     "caption": [
+      "EARN THEM ALL:"
+     ]
+    },
+    {
+     "take": "l7_frost",
+     "in": 0.8,
+     "dur": 1.0,
+     "zoom": 4,
+     "color": "frost",
+     "caption": [
+      "ESCAPE THE FOG"
+     ]
+    },
+    {
+     "take": "l10_ember",
+     "in": 0.8,
+     "dur": 1.0,
+     "zoom": 4,
+     "color": "ember",
+     "caption": [
+      "ESCAPE THE FOG"
+     ]
+    },
+    {
+     "take": "l2_leap",
+     "in": 4.1,
+     "dur": 1.8,
+     "zoom": 4,
+     "color": "mint",
+     "caption": [
+      "LEAP!"
+     ]
+    },
+    {
+     "take": "random_a",
+     "in": 5.6,
+     "dur": 2.0,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "WIN TICKETS"
+     ]
+    },
+    {
+     "take": "hard",
+     "in": 1.4,
+     "dur": 1.4,
+     "zoom": 3,
+     "color": "crimson",
+     "caption": [
+      "HARD MODE"
+     ]
+    }
+   ],
+   "end": {
+    "dur": 3.4,
+    "tagline": [
+     "ESCAPE THE FOG",
+     "BEFORE YOU DRY UP"
+    ],
+    "cta": [
+     "COMING SOON"
+    ],
+    "store": [],
+    "logo": 0,
+    "skin": "bubblegum",
+    "args": [
+     "--jelly"
+    ]
+   }
+  },
+  {
+   "id": "C",
+   "name": "Beat the story... then the real game starts",
+   "hook": "story montage, then a hard turn into the endless postgame grind",
+   "beats": [
+    {
+     "take": "l10_ember",
+     "in": 0.6,
+     "dur": 1.4,
+     "zoom": 4,
+     "color": "ember",
+     "caption": [
+      "BEAT THE STORY..."
+     ]
+    },
+    {
+     "take": "l3_record",
+     "in": 16.9,
+     "dur": 1.3,
+     "zoom": 3,
+     "color": "lemon",
+     "caption": [
+      "BEAT THE STORY..."
+     ]
+    },
+    {
+     "take": "random_a",
+     "in": 0.5,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "...THEN THE",
+      "REAL GAME STARTS"
+     ]
+    },
+    {
+     "take": "random_b",
+     "in": 1.0,
+     "dur": 0.8,
+     "zoom": 4,
+     "color": "frost",
+     "caption": [
+      "ENDLESS MAZES"
+     ]
+    },
+    {
+     "take": "random_c",
+     "in": 1.0,
+     "dur": 0.8,
+     "zoom": 4,
+     "color": "ember",
+     "caption": [
+      "ENDLESS MAZES"
+     ]
+    },
+    {
+     "take": "random_a",
+     "in": 5.6,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "WIN TICKETS"
+     ]
+    },
+    {
+     "take": "wheel",
+     "in": 2.2,
+     "dur": 3.0,
+     "zoom": 4,
+     "color": "bubblegum",
+     "caption": [
+      "SPIN FOR HATS"
+     ]
+    },
+    {
+     "take": "hard",
+     "in": 1.4,
+     "dur": 1.4,
+     "zoom": 3,
+     "color": "crimson",
+     "caption": [
+      "HARD MODE"
+     ]
+    },
+    {
+     "take": "skins",
+     "in": 4.1,
+     "dur": 1.4,
+     "zoom": 3,
+     "color": "frost",
+     "caption": [
+      "= JELLY SKINS"
+     ]
+    },
+    {
+     "take": "l3_record",
+     "in": 18.6,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "CHASE GOLD"
+     ]
+    },
+    {
+     "take": "skins_gold",
+     "in": 0.6,
+     "dur": 1.6,
+     "zoom": 3,
+     "color": "gold",
+     "caption": [
+      "ALL GOLD = A",
+      "SECRET SKIN"
+     ]
+    },
+    {
+     "take": "hops",
+     "in": 2.4,
+     "dur": 2.4,
+     "zoom": 6,
+     "color": "lime",
+     "caption": [
+      "COLLECT IT ALL"
+     ],
+     "x": 28
+    }
+   ],
+   "end": {
+    "dur": 3.4,
+    "tagline": [
+     "ONE MORE RUN?"
+    ],
+    "cta": [
+     "COMING SOON"
+    ],
+    "store": [],
+    "logo": 0,
+    "skin": "ember"
+   }
+  }
+ ]
+}

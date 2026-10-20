@@ -56,6 +56,7 @@ Each script's header comment lists its options (`--shot=`, `--skin=`, `--attempt
 - `audit_ui` (UI symmetry audit), `bench_heat` (HEAT winnability sweep, ~480 runs), `bench_random_size` (randomizer size benchmark).
 - `qa_poc_*.gd`, `qa_soak.gd`: QA proofs of concept and the long soak / leak driver; `qa_poc_disk_full` is also run by `test_save_robust`.
 - Promo renders live in `tools/promo/` (`cover.tscn`, `jump_shot.tscn`, `make_promo.sh/.ps1`); re-render only when asked.
+- Trailer drafts (vertical Shorts) live in `tools/trailer/` (`take.tscn` director, `card.tscn`, `trailer.json`, `make_trailer.ps1/.sh`; [docs/marketing/trailer.md](../docs/marketing/trailer.md)).
 
 ## 4. Data
 
