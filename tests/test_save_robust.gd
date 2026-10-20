@@ -374,6 +374,20 @@ func _overwrite_policy() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(sp.save_path + ".tmp"))
 	_e("...and the next save (or the retry) writes it", sp.save_progress() and not sp.save_failed and _load_levels(sp.save_path) == 9)
 	sp.free()
+	# a rename that fails with no save left at the path (Windows removes the old save first): the verified temp stays
+	var rp := _scratch("rename")
+	var rn := _new_at(rp)
+	rn.saving_enabled = true
+	rn.levels_cleared = 7
+	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(rp))  # (a folder in the save's place: the rename fails)
+	_e("a failed rename with no save at the path keeps the complete temp file", not rn.save_progress() and rn.save_failed and FileAccess.file_exists(rp + ".tmp"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	var rv := _new_at(rp)
+	rv.saving_enabled = true
+	rv.load_progress()
+	_e("...which the next launch promotes to the save (levels_cleared=%d)" % rv.levels_cleared, rv.levels_cleared == 7 and FileAccess.file_exists(rp) and not FileAccess.file_exists(rp + ".tmp"))
+	for n in [rn, rv]:
+		n.free()
 	# an interrupted save: a temp next to a save is discarded; a lone valid temp (crash between remove and rename) is used
 	var cp := _scratch("crash")
 	var good := _new_at(cp)

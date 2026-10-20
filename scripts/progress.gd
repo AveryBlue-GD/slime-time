@@ -1206,8 +1206,9 @@ func flush_save() -> void:
 ## text goes to `path.tmp`, is read back and compared (a short write on a full disk / quota is caught
 ## even when the OS reported success), and only then renamed over `path` (atomic on macOS, Linux and
 ## the web's in-memory file system, which Godot syncs to IndexedDB on the next frame; on Windows Godot
-## removes then renames, and _recover_temp_save handles a crash in between). On any failure the temp
-## file is removed, `path` is untouched and false is returned.
+## removes then renames, and _recover_temp_save handles a crash in between). A failed rename is retried
+## once. On any failure false is returned and the temp file is removed while `path` is still there
+## (untouched); if Windows already removed `path`, the verified temp file is kept for _recover_temp_save.
 static func write_atomic(path: String, text: String) -> bool:
 	var bytes := text.to_utf8_buffer()
 	var temp := path + TEMP_SUFFIX
@@ -1220,10 +1221,14 @@ static func write_atomic(path: String, text: String) -> bool:
 	if not stored or FileAccess.get_file_as_bytes(temp) != bytes:
 		DirAccess.remove_absolute(g_temp)
 		return false
-	if DirAccess.rename_absolute(g_temp, ProjectSettings.globalize_path(path)) != OK:
-		DirAccess.remove_absolute(g_temp)
-		return false
-	return true
+	var g_path := ProjectSettings.globalize_path(path)
+	if DirAccess.rename_absolute(g_temp, g_path) == OK or DirAccess.rename_absolute(g_temp, g_path) == OK:
+		return true  # (one retry: on Windows a virus scanner / indexer can hold the file for a moment)
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(g_temp)  # the old save is still there: as if nothing was written
+	# else Windows removed the old save before its rename failed: the verified temp file is now the only copy
+	# and stays (_recover_temp_save promotes it on the next launch; the next save retries the rename).
+	return false
 
 
 ## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
