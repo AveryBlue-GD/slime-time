@@ -30,6 +30,7 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 | `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / false | hat wheel on desktop / web |
 | `RANDOM_WINS` | 3 | randomizer wins before the end screen's pitch (shown once, after that win); every maze is a new random one, as in the full game |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |
+| `ABILITY_PRICES` | `{"rifle": [5]}` | the demo's ticket prices for an ability's first levels (full game: SLIME RIFLE 15), so it is in reach before the randomizer's end screen (a win pays at most 5) |
 | `WISHLIST_URL` | `""` | store page for every WISHLIST button; **empty = every WISHLIST button is hidden** (no Steam page yet) |
 | `TEASER_LEVELS` | 6, 7, 9, 10 | the end screen's teaser cards after the first one, which is always the area right after the demo (`Demo.teasers()`: desktop 5, 6, 7, 9, 10; web 4, 6, 7, 9, 10); the first card says {count} MORE AREAS (6 / 7) |
 | `END_SEEN_BIT` | 4 | `Progress.story_seen` bit: the end screen was seen (the full game ignores it); also opens the demo's hat wheel |

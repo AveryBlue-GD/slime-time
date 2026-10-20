@@ -101,21 +101,26 @@ static func max_level(id: String) -> int:
 	return track.costs.size() if not track.is_empty() else 0
 
 
+## The track's ticket prices: Economy.ABILITIES, with the demo's own first levels while it is on (Demo.ability_prices).
+static func _costs(id: String) -> Array:
+	var track := _track(id)
+	return Demo.ability_prices(id, track.costs) if not track.is_empty() else []
+
+
 ## Tickets for the next level up from `level` (0 when maxed or unknown).
 static func cost(id: String, level: int) -> int:
-	var track := _track(id)
-	if track.is_empty() or level < 0 or level >= track.costs.size():
+	var costs := _costs(id)
+	if level < 0 or level >= costs.size():
 		return 0
-	return track.costs[level]
+	return costs[level]
 
 
 ## Tickets a track at `level` cost in all.
 static func total_cost(id: String, level: int) -> int:
-	var track := _track(id)
+	var costs := _costs(id)
 	var total := 0
-	if not track.is_empty():
-		for i in clampi(level, 0, track.costs.size()):
-			total += int(track.costs[i])
+	for i in clampi(level, 0, costs.size()):
+		total += int(costs[i])
 	return total
 
 

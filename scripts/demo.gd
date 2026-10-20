@@ -48,6 +48,10 @@ const WEB_HAT_WHEEL := false
 const RANDOM_WINS := 3
 ## Abilities that work (and can be bought) in the demo.
 const ABILITIES: Array[String] = ["rifle"]
+## The demo's own ticket prices for the first levels of an ability (ABILITY_PRICES[id][i] = tickets for
+## level i + 1; later levels keep Economy.ABILITIES' prices). A randomizer win pays at most 5 tickets and
+## the pitch comes after RANDOM_WINS wins, so SLIME RIFLE level 1 must be in reach before it (full: 15).
+const ABILITY_PRICES := {"rifle": [5]}
 ## The store page the WISHLIST buttons open (OS.shell_open). Empty = every WISHLIST button is hidden.
 const WISHLIST_URL := ""
 ## The demo's end screen.
@@ -108,6 +112,18 @@ static func upgrade_cap(id: String) -> int:
 static func prices(id: String) -> Array:
 	var table: Dictionary = WEB_PRICES if Platform.is_web() else PRICES
 	return table.get(id, [])
+
+
+## The ticket prices of ability `id`'s levels here: Economy.ABILITIES' `full` list, its first levels
+## replaced by ABILITY_PRICES while the demo is on. Abilities.cost / total_cost use it.
+static func ability_prices(id: String, full: Array) -> Array:
+	if not on():
+		return full
+	var out := full.duplicate()
+	var demo: Array = ABILITY_PRICES.get(id, [])
+	for i in mini(demo.size(), out.size()):
+		out[i] = demo[i]
+	return out
 
 
 ## Coins hidden in the demo's story levels (1..levels(); every level's in the full game).

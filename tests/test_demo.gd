@@ -269,6 +269,9 @@ func _check_locks() -> void:
 	progress.tickets_lifetime = 60
 	_check(progress.can_buy_ability("rifle") and not progress.can_buy_ability("splat") and not progress.can_buy_ability("kaze"),
 		"abilities: only SLIME RIFLE can be bought")
+	var rifle_1 := Abilities.cost("rifle", 0)
+	_check(rifle_1 == int(Demo.ABILITY_PRICES.rifle[0]) and rifle_1 <= Economy.RANDOM_ATTEMPT_PAY[0] 			and Abilities.cost("rifle", 1) == int(Economy.ABILITIES.rifle.costs[1]) and Abilities.total_cost("rifle", 2) == rifle_1 + int(Economy.ABILITIES.rifle.costs[1]),
+		"SLIME RIFLE level 1 costs %d tickets in the demo (one first-try randomizer win pays %d), later levels the full price" % [rifle_1, Economy.RANDOM_ATTEMPT_PAY[0]])
 	# SHOP.
 	progress.spins = 20
 	var cosmetic: String = Cosmetics.ids()[0]
