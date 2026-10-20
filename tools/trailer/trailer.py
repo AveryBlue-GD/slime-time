@@ -5,10 +5,11 @@ Everything a draft shows is defined in tools/trailer/trailer.json:
           res://tools/trailer/take.tscn (see take.gd for the modes and flags) at 320x180, 60 fps,
           PNG frames + the game's own audio (WAV). Same flags = same pictures (seeded).
   drafts  a list of beats (a slice of a take, how it is framed, the caption over it) and an end
-          card (res://tools/trailer/card.tscn, logo + tagline + CTA).
+          card (res://tools/trailer/card.tscn: logo + try-on stage; the words are goo_text overlays).
 Steps: render the takes (skipped when their flags haven't changed; --force re-renders), render the
-caption overlays and end cards in the game's font (card.tscn), cut and frame every beat with ffmpeg
-(nearest-neighbour upscale, 1080x1920), join them, normalise the audio and write
+caption overlays and the end card's words in the logo's gooey lettering (goo_text.py) and the end
+cards (card.tscn: logo + try-on stage), cut and frame every beat with ffmpeg (nearest-neighbour
+upscale, 1080x1920), join them, normalise the audio and write
 build/trailer/short_<ID>.mp4 + short_<ID>_sheet.png (contact sheet: one frame per beat) +
 build/trailer/README.md.
 Music (optional): a draft's "music" (or --music) puts a track under the game's audio and writes
@@ -16,6 +17,10 @@ build/trailer/short_<ID>_music.mp4 next to the plain cut. A tools/make_music.py 
 ("trailer_1", "trailer_2") is rendered fitted to the draft, its final hit exactly on the end card; a file
 (WAV/OGG/MP3) is used as is, shifted so its "hit" (seconds) lands on the end card. --music-only remixes
 the existing short_<ID>.mp4 files (no Godot, no re-cut). See docs/marketing/music.md.
+
+Portrait takes ("scene": "portrait" in trailer.json): tools/trailer/portrait.tscn draws a marketing-only
+9:16 reconstruction of a menu (wardrobe, hat wheel, map papers) at 180x320 and saves its own frames;
+the beat shows it 6x, edge to edge (no crop, no follow).
 
 Usage (from the project root; the wrappers tools/trailer/make_trailer.ps1 / .sh add the quiet-window
 arguments on Windows):
@@ -36,16 +41,17 @@ import shutil
 import subprocess
 import sys
 
+import goo_text
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CONFIG = os.path.join(ROOT, "tools", "trailer", "trailer.json")
 OUT = os.path.join(ROOT, "build", "trailer")
 FPS = 60
 W, H = 1080, 1920
-CANVAS = 4  # caption overlays are drawn at 270x480 (card.gd) and scaled 4x
 GAME = (320, 180)
+PORTRAIT = (180, 320)  # portrait takes (portrait.tscn): 180x320, shown 6x
 BG = "0x1a1c2c"  # UIKit.BG
 GODOT_TIMEOUT = 180  # seconds per Godot run, plus 0.1 s per recorded frame
-CAPTION_FRAMES_MAX = 20000  # the captions run's --quit-after guard
 FFMPEG_TIMEOUT = 900
 
 
@@ -56,6 +62,19 @@ def file_sha1(*names):
         with open(os.path.join(ROOT, "tools", "trailer", name), "rb") as f:
             h.update(f.read())
     return h.hexdigest()
+
+
+def goo_sha():
+    """sha1 of everything goo_text renders with (part of the caption cache keys)."""
+    h = hashlib.sha1()
+    for path in goo_text.files_sha_input():
+        with open(path, "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()
+
+
+def is_portrait(take):
+    return take.get("scene") == "portrait"
 
 
 def find_godot(explicit):
@@ -136,7 +155,12 @@ class Runner:
         out_dir = os.path.join(OUT, "takes", take_id)
         user_args = list(base_args) + ["--take=" + take["take"]] + list(take.get("args", []))             + ["--track=" + os.path.join(out_dir, "track.txt").replace("\\", "/")]
         frames = int(take["frames"])
-        stamp = hashlib.sha1(json.dumps([user_args, frames, take, file_sha1("take.gd")], sort_keys=True).encode()).hexdigest()
+        portrait = is_portrait(take)
+        if portrait:  # (draws into its own 180x320 view and saves those frames: p%08d.png)
+            user_args = list(base_args) + ["--view=" + take["take"]] + list(take.get("args", [])) \
+                + ["--frames-dir=" + out_dir.replace("\\", "/")]
+        script = "portrait.gd" if portrait else "take.gd"
+        stamp = hashlib.sha1(json.dumps([user_args, frames, take, file_sha1(script)], sort_keys=True).encode()).hexdigest()
         stamp_file = os.path.join(out_dir, "stamp.txt")
         if not self.args.force and os.path.exists(stamp_file) and open(stamp_file).read() == stamp \
                 and os.path.exists(os.path.join(out_dir, "f.wav")):
@@ -144,23 +168,29 @@ class Runner:
         shutil.rmtree(out_dir, ignore_errors=True)
         os.makedirs(out_dir)
         print(" take %-14s %4d frames  %s" % (take_id, frames, " ".join(user_args)))
-        self.godot_run("res://tools/trailer/take.tscn", GAME, user_args, os.path.join(out_dir, "f.png"), frames, self.args.pos_take, "take " + take_id)
+        scene = "res://tools/trailer/%s.tscn" % ("portrait" if portrait else "take")
+        self.godot_run(scene, GAME, user_args, os.path.join(out_dir, "f.png"), frames, self.args.pos_take, "take " + take_id)
         if not os.path.exists(os.path.join(out_dir, "f.wav")):
             sys.exit("take %s wrote no movie" % take_id)
+        if portrait:  # (the movie writer's own 320x180 frames: only its audio is used)
+            for name in os.listdir(out_dir):
+                if name.startswith("f") and name.endswith(".png"):
+                    os.remove(os.path.join(out_dir, name))
+            if not os.path.exists(os.path.join(out_dir, "p%08d.png" % (frames - 2))):
+                sys.exit("take %s saved too few portrait frames" % take_id)
         with open(stamp_file, "w") as f:
             f.write(stamp)
         return out_dir
 
     def render_card(self, draft_id, end, base_args):
         out_dir = os.path.join(OUT, "takes", "card_" + draft_id)
+        # (the tagline / CTA / store words are goo_text overlays, added in build_draft)
         user_args = list(base_args) + ["--card", "--skin=" + end.get("skin", "lime"),
-                                       "--tagline=" + "|".join(end.get("tagline", [])),
-                                       "--cta=" + "|".join(end.get("cta", [])),
-                                       "--store=" + "|".join(end.get("store", [])),
                                        "--logo=%d" % end.get("logo", 0)] + list(end.get("args", []))
         frames_dir = ["--frames-dir=" + out_dir.replace("\\", "/")]
         frames = int(round(end.get("dur", 4.0) * FPS)) + 2
-        stamp = hashlib.sha1(json.dumps([user_args, frames, end, file_sha1("card.gd")], sort_keys=True).encode()).hexdigest()
+        look = {k: v for k, v in end.items() if k not in ("tagline", "cta", "store")}
+        stamp = hashlib.sha1(json.dumps([user_args, frames, look, file_sha1("card.gd")], sort_keys=True).encode()).hexdigest()
         stamp_file = os.path.join(out_dir, "stamp.txt")
         if not self.args.force and os.path.exists(stamp_file) and open(stamp_file).read() == stamp:
             return out_dir
@@ -175,21 +205,6 @@ class Runner:
             f.write(stamp)
         return out_dir
 
-    def render_captions(self, jobs, base_args):
-        todo = [j for j in jobs if self.args.force or not os.path.exists(j["out"])]
-        if not todo:
-            return
-        path = os.path.join(OUT, "captions", "jobs.json")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(todo, f, indent=1)
-        print(" captions: %d" % len(todo))
-        # --quit-after is only a guard (card.gd quits by itself after the last caption).
-        self.godot_run("res://tools/trailer/card.tscn", GAME, list(base_args) + ["--captions=" + path],
-                       frames=CAPTION_FRAMES_MAX, pos=self.args.pos_take, what="captions")
-        missing = [j["out"] for j in todo if not os.path.exists(j["out"])]
-        if missing:
-            sys.exit("captions not written: %s" % missing[:3])
-
     # ------------------------------------------------------------- ffmpeg
 
     def ff(self, cmd, cwd=None):
@@ -203,6 +218,7 @@ class Runner:
         return proc
 
 
+CARD_TEXT_TOP = 404  # the end card's words start here on the 540x960 goo canvas (808 px: under card.gd's stage)
 ZOOM = 11  # 180 x 11 = 1980 >= 1920: the game fills the frame's height, in whole game pixels
 FOLLOW = 0.06  # how quickly the crop catches up with the action (per frame, smoothed both ways)
 
@@ -262,7 +278,7 @@ def caption_job(draft, beat, index):
         "at": beat.get("at", "top"),
         "skin": beat.get("skin", ""),
     }
-    key = hashlib.sha1(json.dumps([job, file_sha1("card.gd")], sort_keys=True).encode()).hexdigest()[:12]
+    key = hashlib.sha1(json.dumps([job, goo_sha()], sort_keys=True).encode()).hexdigest()[:12]
     job["out"] = os.path.join(OUT, "captions", "cap_%s.png" % key)
     return job
 
@@ -279,26 +295,32 @@ def build_draft(run, cfg, draft):
         frames = int(round(beat["dur"] * FPS))
         cap = beat["_caption"]
         seg = os.path.join(work, "seg_%02d.mkv" % i)
-        # Full screen: crop a strip of the game (following the action), scale it up `zoom`x with
-        # nearest neighbour and cut the 1080x1920 frame out of it; the crop moves in whole game
-        # pixels, driven per frame by sendcmd.
-        path, cw, zoom = crop_path(take_dir, beat, start, frames)
-        cmds = "cmd_%02d.txt" % i
-        with open(os.path.join(work, cmds), "w") as f:
-            last = None
-            for k, (xi, ys) in enumerate(path):
-                if (xi, ys) != last:
-                    f.write("%.4f crop@a x %d, crop@b y %d;\n" % (max(k / FPS - 0.002, 0.0), xi, ys))
-                    last = (xi, ys)
-        vf = ("[0:v]sendcmd=f=%s,crop@a=w=%d:h=%d:x=%d:y=0,scale=%d:%d:flags=neighbor,crop@b=w=%d:h=%d:x=%d:y=%d[g];"
-              "[1:v]scale=%d:%d:flags=neighbor,format=rgba[c];[g][c]overlay=0:0:shortest=1,format=yuv420p[v]"
-              % (cmds, cw, GAME[1], path[0][0], cw * zoom, GAME[1] * zoom, W, H, (cw * zoom - W) // 2, path[0][1], W, H))
+        caps = "[1:v]scale=%d:%d:flags=neighbor,format=rgba[c];[g][c]overlay=0:0:shortest=1,format=yuv420p[v]" % (W, H)
+        frames_in = os.path.join(take_dir, "f%08d.png")
+        if is_portrait(cfg["takes"][beat["take"]]):
+            # A portrait take (180x320) fills the frame at 6x: no crop, no follow.
+            frames_in = os.path.join(take_dir, "p%08d.png")
+            vf = "[0:v]scale=%d:%d:flags=neighbor[g];" % (W, H) + caps
+        else:
+            # Full screen: crop a strip of the game (following the action), scale it up `zoom`x with
+            # nearest neighbour and cut the 1080x1920 frame out of it; the crop moves in whole game
+            # pixels, driven per frame by sendcmd.
+            path, cw, zoom = crop_path(take_dir, beat, start, frames)
+            cmds = "cmd_%02d.txt" % i
+            with open(os.path.join(work, cmds), "w") as f:
+                last = None
+                for k, (xi, ys) in enumerate(path):
+                    if (xi, ys) != last:
+                        f.write("%.4f crop@a x %d, crop@b y %d;\n" % (max(k / FPS - 0.002, 0.0), xi, ys))
+                        last = (xi, ys)
+            vf = ("[0:v]sendcmd=f=%s,crop@a=w=%d:h=%d:x=%d:y=0,scale=%d:%d:flags=neighbor,crop@b=w=%d:h=%d:x=%d:y=%d[g];"
+                  % (cmds, cw, GAME[1], path[0][0], cw * zoom, GAME[1] * zoom, W, H, (cw * zoom - W) // 2, path[0][1])) + caps
         fade = min(0.04, beat["dur"] / 4)
         af = "atrim=start=%.4f:duration=%.4f,asetpts=PTS-STARTPTS,afade=t=in:d=%.3f,afade=t=out:st=%.4f:d=%.3f,aresample=48000" % (
             beat["in"], beat["dur"], fade, beat["dur"] - fade, fade)
         if "gain" in beat:
             af += ",volume=%sdB" % beat["gain"]
-        run.ff(["-framerate", str(FPS), "-start_number", str(start), "-i", os.path.join(take_dir, "f%08d.png"),
+        run.ff(["-framerate", str(FPS), "-start_number", str(start), "-i", frames_in,
                 "-loop", "1", "-framerate", str(FPS), "-i", cap,
                 "-i", os.path.join(take_dir, "f.wav"),
                 "-filter_complex", vf + ";[2:a]" + af + "[a]", "-map", "[v]", "-map", "[a]",
@@ -307,13 +329,17 @@ def build_draft(run, cfg, draft):
         segments.append(seg)
         sheet_frames.append(t + beat["dur"] * float(beat.get("sheet_at", 0.6)))
         t += beat["dur"]
-    # End card: 360x640, 3x.
+    # End card: 360x640, 3x, its words in goo lettering over it (goo_text, 540x960, 2x).
     end = draft["end"]
     card_dir = os.path.join(OUT, "takes", "card_" + did)
     seg = os.path.join(work, "seg_end.mkv")
     dur = end.get("dur", 4.0)
+    words = os.path.join(work, "card_text.png")
+    goo_text.card_text_png(words, end.get("tagline", []), end.get("cta", []), end.get("store", []), end.get("skin", "lime"), CARD_TEXT_TOP)
     run.ff(["-framerate", str(FPS), "-i", os.path.join(card_dir, "c%08d.png"), "-i", os.path.join(card_dir, "f.wav"),
-            "-filter_complex", "[0:v]scale=%d:%d:flags=neighbor,format=yuv420p[v];[1:a]atrim=duration=%.3f,afade=t=out:st=%.3f:d=0.5,aresample=48000[a]" % (W, H, dur, dur - 0.5),
+            "-loop", "1", "-framerate", str(FPS), "-i", words,
+            "-filter_complex", "[0:v]scale=%d:%d:flags=neighbor[g];[2:v]scale=%d:%d:flags=neighbor,format=rgba[t];"
+            "[g][t]overlay=0:0:shortest=1,format=yuv420p[v];[1:a]atrim=duration=%.3f,afade=t=out:st=%.3f:d=0.5,aresample=48000[a]" % (W, H, W, H, dur, dur - 0.5),
             "-map", "[v]", "-map", "[a]", "-frames:v", str(int(round(dur * FPS))), "-r", str(FPS),
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "10", "-c:a", "pcm_s16le", "-ac", "2", seg])
     segments.append(seg)
@@ -553,12 +579,10 @@ def main():
             b["_caption"] = job["out"]
             if job["out"] not in [j["out"] for j in jobs]:
                 jobs.append(job)
-    # A caption colored "skin" takes the beat's skin (card.gd colors it from --skin).
-    by_skin = {}
-    for j in jobs:
-        by_skin.setdefault(j.pop("skin") or "lime", []).append(j)
-    for skin, js in by_skin.items():
-        run.render_captions(js, base + ["--skin=" + skin])
+    todo = [j for j in jobs if args.force or not os.path.exists(j["out"])]
+    print("captions: %d" % len(todo))
+    for j in todo:  # (the logo's goo lettering, goo_text.py; "skin" = the beat's skin colour)
+        goo_text.caption_png(j["out"], j)
     print("cards:")
     for d in drafts:
         run.render_card(d["id"], d["end"], base)

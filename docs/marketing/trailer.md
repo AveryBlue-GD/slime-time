@@ -1,7 +1,8 @@
 # Trailer drafts (vertical Shorts) and how to re-render them
 
 Started 2026-10-20 for the social-media push (TikTok / YouTube Shorts / Reels). All footage is the real game:
-real levels, hub, wardrobe and prize wheel, played by the autopilot or by scripted inputs. Nothing is mocked up.
+real levels played by the autopilot or by scripted inputs, and real menus. The wardrobe, hat wheel and map
+papers beats use portrait rebuilds of those screens, made from the game's own pieces (see "Portrait screens").
 Marketing context: [advisor/demo.md](../advisor/demo.md) (the Shorts feed the web demo and the Steam page).
 
 ## Output
@@ -11,7 +12,8 @@ Marketing context: [advisor/demo.md](../advisor/demo.md) (the Shorts feed the we
 - `short_A.mp4`, `short_B.mp4`, `short_C.mp4`: 1080x1920, 60 fps, H.264 High yuv420p, AAC 192k, `+faststart`.
 - `short_<ID>_sheet.png`: contact sheet, one frame per beat plus the end card.
 - `README.md`: each draft's beats, timings and captions (generated).
-- `takes/` (raw takes: PNG frames + WAV, reused while their flags are unchanged), `captions/` (caption overlays).
+- `takes/` (raw takes: PNG frames + WAV, reused while their flags are unchanged; portrait takes keep `p%08d.png`),
+  `captions/` (caption overlays).
 
 Audio is the game's own audio: level ambience plus sound effects (glide, leap, splat, chalice, wheel clicks,
 unlock jingle). **The game has no music.** The drafts are loudness-normalised (two-pass `loudnorm`, -14 LUFS,
@@ -50,7 +52,9 @@ never read or written.
 |---|---|
 | `tools/trailer/trailer.json` | **what to shoot**: `takes` (named game moments + flags) and `drafts` (beats + end card) |
 | `tools/trailer/take.tscn` / `take.gd` | the director: plays one take (modes `play`, `hops`, `skins`, `hats`, `trails`, `wheel`, `hub`, `maps`, `title`, `win`; flags in the header comment) |
-| `tools/trailer/card.tscn` / `card.gd` | caption overlays (the slimy pixel font + drip shader) and the animated end card (logo in the skin's colors, the skins-screen try-on stage) |
+| `tools/trailer/portrait.tscn` / `portrait.gd` (+ `portrait_stage.gd`) | marketing-only 9:16 rebuilds of the wardrobe, hat wheel and map papers at 180x320 (views `skins`, `wheel`, `papers`; flags in the header comment). The game never loads them |
+| `tools/trailer/goo_text.py` | captions and the end card's words in the logo's gooey lettering (pure Python, no Godot) |
+| `tools/trailer/card.tscn` / `card.gd` | the animated end card: the logo in the skin's colors over the skins-screen try-on stage (its words come from `goo_text.py`) |
 | `tools/trailer/trailer.py` | renders takes (movie writer, PNG + WAV), captions and cards, then cuts, frames and joins with ffmpeg, adds the contact sheets and README |
 | `make_trailer.ps1` / `.sh` | wrappers (quiet windows on Windows) |
 
@@ -71,12 +75,46 @@ about it. Menu takes also hide the chrome the crop would cut or the caption woul
 and button in the wardrobe except the skin tiles, the hat wheel's header row, and the map view's title and bottom
 bar.
 
-**Captions** are overlaid on the picture. They're drawn on a 270x480 canvas (4x) in the slimy 16-px font with its
-drips, in a column from x 10 to 228 (clear of the right ~15% button rail). They start at y 34 (`"at": "top"`, below
-the status bar) or y 300 (`"low"`), never below y 384 (the bottom 20% holds the caption, likes and progress bar).
-`card.gd` gives each one a 1-px dark outline plus a drop shadow, so it stays legible on any background.
+**Captions** (owner, 2026-10-20) use the DRY TRYING logo's own lettering: `goo_text.py` calls
+`tools/make_title.py`'s `render_text()` (the logo's code: 5x7 cells drawn as thick capsule strokes with goo
+drips, light / mid / dark goo shades, white gloss dashes, the dark outline and the 2-px drop shadow). Letters are
+the logo's where it has them, else the game font's 5x7 glyphs (`make_font.py`: A-Z, 0-9, `? ! . , : ; = + ' -`
+and more; the zero is drawn as an O, since the slashed one reads as an O-slash this big). The goo is recoloured
+the way the game's skin shader recolours the logo (`Skins.shades` of the caption colour); white and gold stay
+as before. Drips and lumps are seeded from the text, so a caption renders the same every time.
+They're drawn on a 540x960 canvas (2x: one logo pixel = 2x2 frame pixels; a letter is 66x84 px on the frame)
+in a column from x 20 to 456 (clear of the right ~15% button rail), word-wrapped to as many lines as needed (a
+lone short last word takes the one before it along), each line centred. They start at y 68 (`"at": "top"`,
+136 px, under the status bar) or y 600 (`"low"`), and the block always ends above y 768 (the bottom 20%).
+One line takes ~33 px per letter, so about 13 letters fit a line; 2 lines end by frame y ~400, 3 by ~520.
 
-The end card is still its own 360x640 canvas (3x), which fills the frame; the 303-px logo fits.
+`tools/make_title.py` was only refactored for this (`render()` = `render_text(TEXT, ...)`): the logo PNGs come
+out byte-identical (checked by regenerating and comparing md5s).
+
+The end card is its own 360x640 canvas (3x), which fills the frame: the 303-px logo at y 120 and the try-on
+stage at y 212; the tagline (white), CTA (the skin's colour) and store line (dim) are goo text from frame
+y 808 down, laid over it by `trailer.py`.
+
+### Portrait screens (marketing only)
+
+The landscape menus cropped to 9:16 lost most of the screen, so the wardrobe, wheel and papers beats use
+`portrait.tscn` takes (`"scene": "portrait"` in `trailer.json`): a 180x320 view (x6 = 1080x1920, the same chunky
+pixels as the game) built from the real pieces: UIKit's theme, the menu backdrop, GooBox frames, the skins
+screen's tiles and slime previews (skin shader, jelly), SkinShowcase's routine, HatWheel itself (its drawing,
+odds-sized wedges, rare slivers spread round, flapper, a real seeded spin), Hat sprites, MapView on the real
+papers and the PAPERS page's tiles. Nothing in the game uses them. It saves its own frames (`p%08d.png`) while the
+movie run paces the frames and records the audio; the beat shows the frame at 6x with no crop or follow.
+
+- `skins`: the try-on stage on top (a 3x slime acting out the showcase routine), the status line, the 13 skin
+  tiles in rows of 5, JELLY: OFF / ON. RAINBOW and STOPWATCH only as the locked silhouettes, with the screen's
+  own locked lines. Takes `skins` (flip every skin, then JELLY on), `skins_hook` (`--top=90 --no-jelly`, under
+  B's 3-line hook caption), `skins_gold` (the STOPWATCH silhouette, "LOCKED - EARN ALL 30 MEDALS").
+- `wheel`: the wheel filling the width in a goo frame, a ticket spin (`--spin-at`), and the won hat popping onto
+  the slime on a small stage under it ("YOU WON THE COWBOY HAT!").
+- `papers`: L4's map (Sunken Shrine) big on the worn paper, the paper's name and "% UNCOVERED", and the four
+  PAPERS tiles, flipping PARCHMENT, BLUEPRINT, NIGHT, GOLD LEAF.
+
+Content starts at `--top` (70 default: under a 2-line caption; papers 62; 90 under 3 lines).
 
 ## Changing text and beats
 
@@ -85,7 +123,8 @@ Edit `tools/trailer/trailer.json`:
 - A beat is `{"take", "in" (s into the take), "dur" (s), "caption": [lines], "sub": [small lines], "color",
   "at": "top"|"low"|y, optional "focus": [x, y], "follow", "zoom" (>= 11)}`. Colors: `white`, `gold`, a skin id (`lime`, `ocean`,
   ... `shadow` = INKKY) or `#rrggbb`.
-- A take is `{"take": mode, "frames", "args": [...], "note"}`. Args are the game's debug flags (`--level=N`,
+- A take is `{"take": mode, "frames", "args": [...], "note"}`; a portrait take adds `"scene": "portrait"` and
+  `"take"` is then the view (`skins`, `wheel`, `papers`). Args are the game's debug flags (`--level=N`,
   `--skin=ID`, `--hard`, `--random --seed=N`, `--trail=ID`, `--tickets=N`, `--medals=...`) plus the take flags
   (`--keep-hud`, `--focus=X,Y`, `--skip=CELLS`, `--leap=N`, `--meter=P`, `--record`, `--jelly`, `--own-hats=all`, `--hat=ID`,
   `--cycle=...`, `--every=F`, ...).
@@ -94,8 +133,8 @@ Edit `tools/trailer/trailer.json`:
 - To find the right `in` time, render with `-OnlyTakes` and look at `build/trailer/takes/<id>/f%08d.png`
   (frame = seconds x 60).
 
-Text rules: keep it short and simple, because it will be translated for other markets. Use 1-2 lines of at most
-about 18 characters in the 16-px font. Only claim numbers that are true; recount if the content changes.
+Text rules: keep it short and simple, because it will be translated for other markets. In the goo lettering a
+line holds about 13 letters, so keep a caption to 1-2 wrapped lines (3 only over gameplay or a `--top=90` take). Only claim numbers that are true; recount if the content changes.
 Counts as of 2026-10-20:
 
 - **Skins:** 13 = 10 level skins + CHAMELEON (any color) + RAINBOW + STOPWATCH (all 30 gold medals). Each has an
@@ -133,7 +172,7 @@ keep DESCENT out while it's switched off (D11).
 - **C, "Beat the story... then the real game starts"** (~22 s): story, then the postgame loop: endless mazes,
   tickets, hat wheel, hard mode = jelly skins, gold medals, the secret STOPWATCH skin (a locked silhouette), "ONE MORE RUN?".
 
-Known rough edges: the mid-level shots (`--skip`) start the slime partway along the route, so less of the trail
+Known rough edges: B's hook caption ("1000+ WAYS TO / DRESS YOUR SLIME") wraps to 3 goo lines. The mid-level shots (`--skip`) start the slime partway along the route, so less of the trail
 is lit than in a real run. The hat hops on level 1 happen in a sparse part of the maze. The trails beat is
 gameplay only, because the trails page is too small to read on a phone.
 

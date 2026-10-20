@@ -85,18 +85,33 @@ def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random,
     return capsules
 
 
+def text_width(text: str, glyphs: dict | None = None) -> int:
+    """The width in px of render_text(text) (margins included)."""
+    glyphs = glyphs or LETTERS
+    return MARGIN * 2 + sum(SPACE if ch == " " else len(glyphs[ch][0]) * CELL + LETTER_GAP for ch in text)
+
+
 def render(drip_seed: int) -> list[str]:
-    rng = random.Random(BODY_SEED)
+    """The logo (TEXT) with the drips of `drip_seed`."""
+    return render_text(TEXT, drip_seed)
+
+
+def render_text(text: str, drip_seed: int, body_seed: int = BODY_SEED, glyphs: dict | None = None) -> list[str]:
+    """Any text in the logo's gooey lettering, as palette rows (make_placeholder_art.PAL keys: l / m / n
+    goo, e gloss, k outline, K drop shadow, . clear). `glyphs`: 5x7 cell rows per character (default
+    LETTERS; tools/trailer/goo_text.py passes the logo's letters plus the pixel font's glyphs)."""
+    glyphs = glyphs or LETTERS
+    rng = random.Random(body_seed)
     drip_rng = random.Random(drip_seed)
-    width = MARGIN * 2 + sum(SPACE if ch == " " else len(LETTERS[ch][0]) * CELL + LETTER_GAP for ch in TEXT)
+    width = text_width(text, glyphs)
     height = MARGIN + 7 * CELL + 24
     capsules, x = [], MARGIN
-    for ch in TEXT:
+    for ch in text:
         if ch == " ":
             x += SPACE
             continue
-        capsules += letter_capsules(LETTERS[ch], x, MARGIN, rng, drip_rng)
-        x += len(LETTERS[ch][0]) * CELL + LETTER_GAP
+        capsules += letter_capsules(glyphs[ch], x, MARGIN, rng, drip_rng)
+        x += len(glyphs[ch][0]) * CELL + LETTER_GAP
 
     inside = [[False] * width for _ in range(height)]
     for ax, ay, bx, by, r in capsules:  # each capsule only touches the pixels of its bounding box

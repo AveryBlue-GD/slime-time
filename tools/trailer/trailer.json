@@ -134,7 +134,8 @@
    ]
   },
   "skins": {
-   "note": "wardrobe: every skin (RAINBOW as a locked silhouette), then JELLY on",
+   "note": "portrait wardrobe: every skin on the try-on stage (RAINBOW as a locked silhouette), then JELLY on",
+   "scene": "portrait",
    "take": "skins",
    "frames": 480,
    "args": [
@@ -144,8 +145,22 @@
     "--jelly-at=240"
    ]
   },
+  "skins_hook": {
+   "note": "portrait wardrobe flipping every skin, laid out under a 3-line caption",
+   "scene": "portrait",
+   "take": "skins",
+   "frames": 180,
+   "args": [
+    "--skin=lime",
+    "--cycle=lime,mint,lemon,ocean,grape,crimson,frost,shadow,bubblegum,ember,rainbow",
+    "--every=14",
+    "--top=90",
+    "--no-jelly"
+   ]
+  },
   "skins_gold": {
-   "note": "wardrobe: the STOPWATCH (all 30 golds) as a locked silhouette",
+   "note": "portrait wardrobe: the STOPWATCH (all 30 golds) as a locked silhouette",
+   "scene": "portrait",
    "take": "skins",
    "frames": 240,
    "args": [
@@ -156,15 +171,14 @@
    ]
   },
   "wheel": {
-   "note": "hub prize wheel: a ticket spin lands on a hat",
+   "note": "portrait hat wheel: a ticket spin lands on a hat, the hat pops onto the slime",
+   "scene": "portrait",
    "take": "wheel",
-   "frames": 480,
+   "frames": 360,
    "args": [
     "--skin=bubblegum",
     "--tickets=60",
-    "--open-at=40",
-    "--spin-at=80",
-    "--close-at=420"
+    "--spin-at=30"
    ]
   },
   "hops": {
@@ -207,14 +221,16 @@
    ]
   },
   "maps": {
-   "note": "map table: L4's map on every paper",
-   "take": "maps",
-   "frames": 300,
+   "note": "portrait map papers: L4's map on every paper",
+   "scene": "portrait",
+   "take": "papers",
+   "frames": 240,
    "args": [
     "--skin=ocean",
     "--open=4",
     "--own-cosmetics=all",
-    "--every=36"
+    "--cycle-at=30",
+    "--every=24"
    ]
   }
  },
@@ -348,7 +364,7 @@
     },
     {
      "take": "wheel",
-     "in": 2.2,
+     "in": 1.9,
      "dur": 3.0,
      "color": "white",
      "caption": [
@@ -366,7 +382,7 @@
     },
     {
      "take": "maps",
-     "in": 0.7,
+     "in": 0.5,
      "dur": 1.6,
      "color": "white",
      "caption": [
@@ -395,7 +411,7 @@
    "hook": "the wardrobe flips through every skin in a second, then jelly, hats, trails",
    "beats": [
     {
-     "take": "skins",
+     "take": "skins_hook",
      "in": 0.3,
      "dur": 2.2,
      "color": "gold",
@@ -424,7 +440,7 @@
     },
     {
      "take": "wheel",
-     "in": 2.2,
+     "in": 1.9,
      "dur": 3.0,
      "color": "white",
      "caption": [
@@ -442,7 +458,7 @@
     },
     {
      "take": "maps",
-     "in": 0.7,
+     "in": 0.5,
      "dur": 1.6,
      "color": "white",
      "caption": [
@@ -584,7 +600,7 @@
     },
     {
      "take": "wheel",
-     "in": 2.2,
+     "in": 1.9,
      "dur": 3.0,
      "color": "white",
      "caption": [
