@@ -3054,3 +3054,21 @@ msgstr "Slime Time не удалось запустить. Обычно помо
 msgctxt "web.unknown_error"
 msgid "An unknown error occurred."
 msgstr "Произошла неизвестная ошибка."
+
+#. Big button on phones before the game starts (goes full screen, turns sideways). In a browser font, caps, short: about 12 characters.
+#: tools/web_shell.html
+msgctxt "web.tap_play"
+msgid "TAP TO PLAY"
+msgstr ""
+
+#. Cover on a phone held upright, under a rotate icon. In a browser font, caps, large: keep it short (2 short lines at most).
+#: tools/web_shell.html
+msgctxt "web.rotate"
+msgid "TURN YOUR PHONE SIDEWAYS"
+msgstr ""
+
+#. Small hint inside the TikTok / Instagram / Facebook / YouTube built-in browser. In a browser font, mixed case. Keep Chrome and Safari in Latin letters.
+#: tools/web_shell.html
+msgctxt "web.in_app"
+msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
+msgstr ""

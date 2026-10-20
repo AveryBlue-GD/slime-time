@@ -70,7 +70,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _update() -> void:
-	set_shown(should_show(DisplayServer.window_get_size(), DisplayServer.is_touchscreen_available()))
+	set_shown(should_show(DisplayServer.window_get_size(), Platform.has_touch()))
 
 
 ## Shows or hides the cover, pausing the game under it and putting the pause state back after.
