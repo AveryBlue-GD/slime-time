@@ -32,7 +32,7 @@ done
 if [ -n "$one" ]; then  # worker (one locale, one Godot process); started by the xargs below
     t=$SECONDS
     for try in 1 2; do  # (a run that dies before its summary, rare and not reproducible, is run once more)
-        "$root/tools/godot.sh" --path "$root" --fixed-fps 60 --quit-after 300000 -s res://tests/capture_i18n.gd \
+        "$root/tools/godot.sh" --path "$root" ${QUIET_POS:+--position "$QUIET_POS"} --audio-driver Dummy --fixed-fps 60 --quit-after 300000 -s res://tests/capture_i18n.gd \
             -- --locale="$one" --out="$out" ${extra[@]+"${extra[@]}"} >"$out/logs/$one.log" 2>&1 || true
         grep -q "^RESULT:" "$out/logs/$one.log" && break
         echo "  $one: run $try ended early, retrying"
@@ -57,6 +57,18 @@ start=$SECONDS
 mkdir -p "$out/logs" "$out/json"
 for l in ${locales//,/ }; do rm -rf "$out/$l"; rm -f "$out/json/missing_$l.json" "$out/json/states_$l.json"; done
 
+# Windows (Git Bash): open the capture windows on the owner's right-most monitor without taking focus, like
+# tools/play.ps1 / screenshot.ps1 (quiet_window.ps1: --position + a temporary override.cfg with no_focus).
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        QUIET_POS="$(powershell -NoProfile -ExecutionPolicy Bypass -Command ". '$(cygpath -w "$root/tools/quiet_window.ps1")'; (Get-RightScreenArgs)[1]" 2>/dev/null | tr -d '\r')"
+        export QUIET_POS
+        if [ ! -e "$root/override.cfg" ]; then
+            printf '[display]\n\nwindow/size/no_focus=true\n' > "$root/override.cfg"
+            trap 'rm -f "$root/override.cfg"' EXIT
+        fi
+        ;;
+esac
 printf '%s\n' ${locales//,/ } | xargs -P "$jobs" -I{} "$0" --one {} --out "$out" ${extra[@]+"${extra[@]}"}
 
 python3 -I "$root/tools/i18n_contact_sheet.py" merge --out "$out" --locales "$locales"

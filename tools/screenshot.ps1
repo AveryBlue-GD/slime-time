@@ -16,6 +16,7 @@ Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $out | Out-Null
 
 $godotArgs = @("--path", $root, "--write-movie", (Join-Path $out "frame.png"), "--fixed-fps", "60", "--quit-after", $Frames) + (Get-RightScreenArgs)
+$godotArgs += @("--audio-driver", "Dummy")  # captures are silent on the owner's speakers (owner, 2026-10-19)
 if ($Scene) { $godotArgs += $Scene }
 $userArgs = @("--quiet-window") + @($GameArgs)
 if ($Level -gt 0) { $userArgs += "--level=$Level" }

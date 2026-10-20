@@ -1,6 +1,6 @@
 # Opens the game for playtesting on the right-most monitor without stealing focus (click the
 # window to play), so whatever is in front on the other screen stays there.
-# Usage: .\tools\play.ps1 [-Dev | -Story | -Demo | -Autoplay [-Speed 3]] [-Scene res://tests/demo_record_run.tscn] [-GameArgs --skin=ocean]
+# Usage: .\tools\play.ps1 [-Dev | -Story | -Demo | -Autoplay [-Speed 3]] [-Mute] [-Scene res://tests/demo_record_run.tscn] [-GameArgs --skin=ocean]
 #   -Dev      everything unlocked, nothing saved (the --unlock-all debug flag)
 #   -Story    the whole story beaten on normal AND hard, all coins found, nothing saved (--story-complete)
 #   -Autoplay the game plays the whole story by itself (every coin, upgrades, medals, then hard mode)
@@ -8,6 +8,8 @@
 #             1-8); -Cinematics also plays the story intro/finale. F10 or Esc -> QUIT TO HUB stops it.
 #   -Demo     the demo build (docs/demo-plan.md) on a clean in-memory save, nothing saved (--demo; add
 #             -GameArgs --save-path=user://demo_try.cfg to keep a separate save and try the carry-over)
+#   -Mute     no sound at all (Godot's Dummy audio driver); the saved sound setting is untouched, so it
+#             combines with any mode, the real save included
 #   -Scene    start in a specific scene instead of the title
 #   -GameArgs extra debug flags for the game (see scripts/progress.gd)
 param(
@@ -15,6 +17,7 @@ param(
     [switch]$Story,
     [switch]$Autoplay,
     [switch]$Demo,
+    [switch]$Mute,
     [double]$Speed = 0,
     [switch]$Cinematics,
     [string]$Scene = "",
@@ -23,6 +26,7 @@ param(
 . (Join-Path $PSScriptRoot "quiet_window.ps1")
 
 $godotArgs = @("--path", $QuietRoot) + (Get-RightScreenArgs)
+if ($Mute) { $godotArgs += @("--audio-driver", "Dummy") }  # (an engine flag, before `--`: the game sees no debug flag)
 if ($Scene) { $godotArgs += $Scene }
 $userArgs = @("--quiet-window") + @($GameArgs)
 if ($Dev) { $userArgs += "--unlock-all" }
