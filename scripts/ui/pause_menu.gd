@@ -172,7 +172,7 @@ func open() -> void:
 	visible = true
 	var game := get_parent()
 	var random: bool = game.has_method("is_random") and game.is_random()
-	seed_button.visible = random and not Demo.on()  # (the demo plays its fixed mazes: no typed seeds)
+	seed_button.visible = random and not Demo.on()  # (the demo deals its own new random mazes: no typed seeds)
 	wishlist_button.visible = Demo.wishlist_shown()
 	seed_edit.visible = false
 	var hud: Node = game.get("hud")

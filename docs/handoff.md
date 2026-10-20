@@ -57,14 +57,16 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 
 ## Demo build (2026-10-19, [demo-plan.md](demo-plan.md))
 
-One switch `Platform.is_demo()` (export feature `demo` or `--demo`), knobs and gates in `scripts/demo.gd`: levels 1-3 + hard 1, upgrades
-capped at 2, the randomizer after level 3 as 3 fixed mazes with SLIME RIFLE only, the hat wheel, the demo's skins; levels 4-10, SHOP, HEAT,
-later skins stay visible with a FULL GAME lock. End screen (`scenes/demo_end.tscn`) after the level-3 chalice (CONTINUE only the first
-time), after the third demo maze and from the FULL GAME tiles: teaser cards of later areas, carry-over line (web: SAVE CODE), KEEP
+One switch `Platform.is_demo()` (export feature `demo` or `--demo`), knobs and gates in `scripts/demo.gd`: levels 1-4 (web 1-3) + hard 1,
+upgrades capped per track (MORE SLIME 3, SPEED 2, BRIGHTNESS 1; web 2 / 1 / 1) at demo prices that add up to the demo's coins, the
+randomizer after the last demo level (a new random maze each attempt in the demo's themes, SLIME RIFLE only, level 1 at 5 tickets), the
+hat wheel (opens with the end screen, at most 2 hats), the demo's skins; later levels are plain locks; SHOP, HEAT and later skins stay
+visible with a FULL GAME lock. End screen (`scenes/demo_end.tscn`) after the last demo level's chalice (CONTINUE only the first time) and
+once after the third randomizer win (its own seen bit): teaser cards of later areas (no HEAT, nothing implying progress carries over), KEEP
 PLAYING; WISHLIST buttons (end screen, pause menu, hub sign) hidden while `Demo.WISHLIST_URL` is empty. Level data moved to
 `scripts/level_data/level_NN.gd` / `hard_NN.gd` (loaded on use; mazes byte-identical); `Demo.full_only_paths()` / `tools/demo_paths.gd`
 give the export cut list. **Step 2 (shipping, done):** four `... Demo` export presets generated from their full twins (`tools/demo_paths.gd -- --write-presets`, `custom_features="demo"`, exclude = twin + `Demo.export_cut()`: later levels' data, later themes' art + ambience, the victory screen, the catalogs while languages are off); `tools/build_demo.sh` / `build_demo.ps1` exports Windows + Web Demo to `build/demo/` and verifies them (PCK listing via `tools/pck_check.py`, smoke run of the exported pack via `tools/demo_smoke.gd`); `test_demo_export` fails while the presets are stale. Accepted leaks (code, coins.png, hats): demo-plan.md section 9. Saves carry `[meta] demo`; the full game reads them; the
-demo never writes a full-game save (`Progress.demo_guard`). Web defaults: no randomizer, no hat wheel (`WEB_*` knobs).
+demo never writes a full-game save, nor one it can't read, from another epoch or of a newer save version (`Progress.demo_guard`). Web defaults: no randomizer, no hat wheel (`WEB_*` knobs).
 
 ## Modes
 
