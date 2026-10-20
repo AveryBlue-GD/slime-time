@@ -196,10 +196,7 @@ static func key_text(action: String, fallback: String) -> String:
 
 
 ## The name printed on the player's own key for a key event: a physical binding (W A S D) shows the
-## letter of the keyboard layout (Z Q S D on AZERTY), through DisplayServer; a plain keycode its name.
+## letter of the keyboard layout (Z Q S D on AZERTY: Platform.key_label); a plain keycode its name.
 static func key_label(event: InputEventKey) -> String:
-	var code: Key = event.keycode
-	if event.physical_keycode != KEY_NONE:
-		var shown := DisplayServer.keyboard_get_label_from_physical(event.physical_keycode)
-		code = shown if shown != KEY_NONE else event.physical_keycode
+	var code: Key = Platform.key_label(event.physical_keycode) if event.physical_keycode != KEY_NONE else event.keycode
 	return OS.get_keycode_string(code).to_upper()

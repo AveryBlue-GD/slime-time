@@ -98,6 +98,15 @@ static func is_android() -> bool:
 	return kind() == "android"
 
 
+## The key the player's keyboard layout prints on physical key `physical` (Z for W on AZERTY), or `physical`
+## itself where the display server can't tell (headless, web, phones: the call only logs an error there).
+static func key_label(physical: Key) -> Key:
+	if not is_desktop() or DisplayServer.get_name() == "headless":
+		return physical
+	var shown := DisplayServer.keyboard_get_label_from_physical(physical)
+	return shown if shown != KEY_NONE else physical
+
+
 ## The frame-rate cap: 60 on the web and on phones / tablets (physics runs 60 ticks and interpolation stays
 ## off at 60 fps, so a 120 Hz screen would only run every per-frame cost twice and drain the battery);
 ## 0 = none (desktop keeps 120 / 144 / 240 Hz smooth). Headless runs (tests) are never capped.

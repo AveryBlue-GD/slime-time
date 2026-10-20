@@ -189,8 +189,8 @@ func _training_case() -> void:
 	physical_w.physical_keycode = KEY_W
 	var plain_z := InputEventKey.new()
 	plain_z.keycode = KEY_Z
-	var layout_w := DisplayServer.keyboard_get_label_from_physical(KEY_W)
-	_check(TutorialCues.key_label(physical_w) == OS.get_keycode_string(layout_w if layout_w != KEY_NONE else KEY_W).to_upper() 			and TutorialCues.key_label(plain_z) == "Z", "keycaps: a physical key shows its layout's letter (%s), a plain keycode its name" % TutorialCues.key_label(physical_w))
+	_check(TutorialCues.key_label(physical_w) == OS.get_keycode_string(Platform.key_label(KEY_W)).to_upper() 			and Platform.key_label(KEY_W) == KEY_W and TutorialCues.key_label(plain_z) == "Z",
+		"keycaps: a physical key shows its layout's letter (%s; headless: the key itself), a plain keycode its name" % TutorialCues.key_label(physical_w))
 	# The move glyph per device, and the same keycaps as level 1-2's.
 	var fake := FakeGame.new()
 	root.add_child(fake)
