@@ -110,7 +110,8 @@ func _title_quit() -> void:
 	Platform.reset_overrides()
 
 
-## FULLSCREEN is disabled (not hidden: the layout stays) where it means nothing.
+## FULLSCREEN on desktop (enabled) and on a desktop-sized web page; phones and tablets get VIBRATION in its cell
+## (a saved setting, on by default, toggled there).
 func _settings_fullscreen() -> void:
 	for kind: String in ["desktop", "ios", "android"]:
 		Platform.reset_overrides()
@@ -118,9 +119,17 @@ func _settings_fullscreen() -> void:
 		var screen: Control = SETTINGS.instantiate()
 		root.add_child(screen)
 		await process_frame
-		var disabled: bool = screen.fullscreen_button.disabled
-		_check(disabled == (kind != "desktop") and screen.fullscreen_button.visible,
-			"%s: SETTINGS FULLSCREEN %s" % [kind, "disabled" if disabled else "enabled"])
+		if kind == "desktop":
+			_check(screen.fullscreen_button != null and not screen.fullscreen_button.disabled and screen.vibration_button == null,
+				"desktop: SETTINGS FULLSCREEN enabled, no VIBRATION")
+		else:
+			var vib: Button = screen.vibration_button
+			_check(screen.fullscreen_button == null and vib != null and vib.position == screen._cell(1, 0) and vib.text == "VIBRATION: ON",
+				"%s: SETTINGS VIBRATION: ON in FULLSCREEN's cell" % kind)
+			vib.pressed.emit()
+			_check(not progress.vibration and vib.text == "VIBRATION: OFF", "%s: ...a press turns it off" % kind)
+			vib.pressed.emit()
+			_check(progress.vibration, "%s: ...and on again" % kind)
 		screen.free()
 	Platform.reset_overrides()
 

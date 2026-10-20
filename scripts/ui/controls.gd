@@ -69,6 +69,8 @@ var _covered: Array[CanvasItem] = []
 var sound_button: Button
 var volume_slider: HSlider
 var fullscreen_button: Button
+## Phones and tablets (Platform.has_vibration): VIBRATION ON / OFF in FULLSCREEN's cell (fullscreen_button null).
+var vibration_button: Button
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
@@ -118,8 +120,11 @@ func _ready() -> void:
 	volume_slider = volume_row.get_meta("slider")
 	motion_button = _column_button(_cell(0, 2), _toggle_motion)
 	fog_button = _column_button(_cell(0, 3), _cycle_fog)
-	fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
-	fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
+	if Platform.has_vibration():  # (phones: VIBRATION in FULLSCREEN's cell; the web's TAP TO PLAY goes full screen)
+		vibration_button = _column_button(_cell(1, 0), _toggle_vibration)
+	else:
+		fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
+		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
 	_refresh_sound()
 	_refresh_display_options()
 
@@ -794,6 +799,8 @@ func _reset() -> void:
 
 ## Keeps the fullscreen label right whether it was toggled here or with F11.
 func _process(_delta: float) -> void:
+	if fullscreen_button == null:
+		return
 	# i18n: max 112px, 1 line; the two states are whole strings
 	if Progress.is_fullscreen():
 		fullscreen_button.text = Loc.t("settings.fullscreen.on", "FULLSCREEN: ON")
@@ -813,6 +820,14 @@ func _toggle_motion() -> void:
 	_refresh_display_options()
 
 
+func _toggle_vibration() -> void:
+	Progress.vibration = not Progress.vibration
+	Progress.save_progress()
+	_refresh_display_options()
+	if Progress.vibration:
+		Input.vibrate_handheld(60)  # (a sample buzz)
+
+
 func _cycle_fog() -> void:
 	Progress.fog_brightness = (Progress.fog_brightness + 1) % 3
 	Progress.save_progress()
@@ -825,6 +840,12 @@ func _refresh_display_options() -> void:
 		motion_button.text = Loc.t("settings.motion.less", "MOTION: LESS")
 	else:
 		motion_button.text = Loc.t("settings.motion.full", "MOTION: FULL")
+	if vibration_button:
+		# i18n: max 112px, 1 line; the two states are whole strings (phones: a buzz on each splat)
+		if Progress.vibration:
+			vibration_button.text = Loc.t("settings.vibration.on", "VIBRATION: ON")
+		else:
+			vibration_button.text = Loc.t("settings.vibration.off", "VIBRATION: OFF")
 	match Progress.fog_brightness:
 		0:
 			fog_button.text = Loc.t("settings.fog.dark", "FOG: DARK")
@@ -858,7 +879,8 @@ static func column_texts() -> Array[String]:
 		Loc.t("settings.motion.less", "MOTION: LESS"), Loc.t("settings.motion.full", "MOTION: FULL"),
 		Loc.t("settings.fog.dark", "FOG: DARK"), Loc.t("settings.fog.normal", "FOG: NORMAL"),
 		Loc.t("settings.fog.bright", "FOG: BRIGHT"), Loc.t("settings.fullscreen.on", "FULLSCREEN: ON"),
-		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.controls", "CONTROLS"),
+		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.vibration.on", "VIBRATION: ON"),
+		Loc.t("settings.vibration.off", "VIBRATION: OFF"), Loc.t("settings.controls", "CONTROLS"),
 		Loc.t("settings.save_code", "SAVE CODE")]
 
 

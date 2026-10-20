@@ -425,7 +425,7 @@ func finish_dash() -> void:
 	velocity = Vector2.ZERO
 	_hit_stop(1.0)
 	_sfx("splat", 2.0, 0.75)
-	Input.vibrate_handheld(120)
+	_buzz(120)
 	dash_hit.emit(-_jump_dir)
 
 
@@ -796,7 +796,7 @@ func _land(hit_wall: bool, wall_normal: Vector2) -> void:
 		_knock_back(wall_normal)
 		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))
 		_sfx("splat")
-		Input.vibrate_handheld(60)  # phones buzz on a splat (no effect elsewhere)
+		_buzz(60)  # phones buzz on a splat (no effect elsewhere)
 	else:
 		state = State.GLIDE
 		_land_anim_left = LAND_ANIM_TIME
@@ -835,7 +835,7 @@ func _soft_hit(wall_normal: Vector2) -> void:
 		velocity = _soft_vel
 		_hit_stop(inverse_lerp(jump_distance_for(0.0), jump_distance_for(100.0), _jump_distance))
 		_sfx("splat")
-		Input.vibrate_handheld(60)
+		_buzz(60)
 	else:
 		last_hit_glancing = true
 		_stun_total = minf(splat_stun, Economy.SOFT_BOUNCE_GLANCE_STUN)
@@ -847,7 +847,7 @@ func _soft_hit(wall_normal: Vector2) -> void:
 		_soft_decel = speed * speed / (2.0 * dist)
 		_soft_hold_left = Economy.SOFT_BOUNCE_SQUASH
 		_sfx("splat", Economy.SOFT_BOUNCE_PLAP_DB, Economy.SOFT_BOUNCE_PLAP_PITCH)
-		Input.vibrate_handheld(20)
+		_buzz(20)
 	_stun_left = _stun_total
 
 
@@ -870,6 +870,14 @@ func _soft_step(delta: float) -> void:
 		if get_slide_collision(i).get_normal().dot(dir) < -0.5:
 			velocity = Vector2.ZERO
 			return
+
+
+## A phone buzz of `ms` milliseconds, unless SETTINGS VIBRATION is off (no effect where there's no vibrator).
+func _buzz(ms: int) -> void:
+	var progress := get_node_or_null("/root/Progress")
+	if progress and not progress.vibration:
+		return
+	Input.vibrate_handheld(ms)
 
 
 ## Holds the sprite for a moment on impact (`power` 0-1), unless Reduce Motion is on.

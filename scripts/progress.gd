@@ -252,6 +252,8 @@ var sound_on := true
 var volume := 0.8
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
 var reduce_motion := false
+## Phones buzz on a splat (Slime._buzz); SETTINGS VIBRATION (Platform.has_vibration) turns it off.
+var vibration := true
 ## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;
 ## applied at launch on a normal player launch, Platform.remembers_fullscreen). Kept by RESET PROGRESS.
 var fullscreen := false
@@ -768,6 +770,7 @@ func _read(file: ConfigFile, from_code := false) -> void:
 	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
 	hard_mode = _bool(file, "settings", "hard_mode", false)
 	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
+	vibration = _bool(file, "settings", "vibration", vibration)
 	fog_brightness = clampi(_int(file, "settings", "fog_brightness", fog_brightness), FOG_DARK, FOG_BRIGHT)
 	fullscreen = _bool(file, "settings", "fullscreen", false)
 	if not from_code:  # a code never brings a language: the device keeps its own
@@ -1255,6 +1258,7 @@ func _write(for_code := false) -> ConfigFile:
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("settings", "reduce_motion", reduce_motion)
+	file.set_value("settings", "vibration", vibration)
 	file.set_value("settings", "fog_brightness", fog_brightness)
 	if fullscreen:
 		file.set_value("settings", "fullscreen", true)

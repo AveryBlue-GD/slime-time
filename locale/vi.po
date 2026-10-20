@@ -1770,6 +1770,16 @@ msgid "MOTION: FULL"
 msgstr "CHUYỂN ĐỘNG: ĐỦ"
 
 #: scripts/ui/controls.gd
+msgctxt "settings.vibration.on"
+msgid "VIBRATION: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.vibration.off"
+msgid "VIBRATION: OFF"
+msgstr ""
+
+#: scripts/ui/controls.gd
 msgctxt "settings.fog.dark"
 msgid "FOG: DARK"
 msgstr "SƯƠNG: TỐI"

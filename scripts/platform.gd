@@ -107,6 +107,12 @@ static func key_label(physical: Key) -> Key:
 	return shown if shown != KEY_NONE else physical
 
 
+## SETTINGS shows VIBRATION (in FULLSCREEN's cell): phones and tablets, native or in a browser. A desktop
+## (touchscreen laptops too) keeps FULLSCREEN; no vibrator there anyway.
+static func has_vibration() -> bool:
+	return has_touch() and not is_desktop()
+
+
 ## The frame-rate cap: 60 on the web and on phones / tablets (physics runs 60 ticks and interpolation stays
 ## off at 60 fps, so a 120 Hz screen would only run every per-frame cost twice and drain the battery);
 ## 0 = none (desktop keeps 120 / 144 / 240 Hz smooth). Headless runs (tests) are never capped.
