@@ -77,6 +77,27 @@ func _initialize() -> void:
 	screen.free()
 	_check(not Story.intro_due(progress), "...so it isn't due again")
 	progress.story_seen = 0
+	# Touch: the fast-forward pod skips the whole intro in one tap (a tap elsewhere only moves on one shot).
+	Platform.override = "ios"
+	screen = await _open("intro", false)
+	await _frames(20)
+	var tap := InputEventScreenTouch.new()
+	tap.pressed = true
+	tap.position = Vector2(160, 90)
+	screen._unhandled_input(tap)
+	_check(screen.touch_skip and screen.index == 1 and not screen.finished, "touch: a tap on the picture moves on one shot")
+	await _frames(20)
+	tap.position = screen.SKIP_POD.get_center()
+	screen._unhandled_input(tap)
+	_check(screen.finished and progress.has_seen_story(progress.STORY_INTRO), "touch: a tap on the fast-forward pod skips the whole intro")
+	_check(screen.SKIP_HIT.size.x >= UIKit.TOUCH_MIN and screen.SKIP_HIT.size.y >= UIKit.TOUCH_MIN and screen.SKIP_HIT.encloses(screen.SKIP_POD),
+		"...its tap area is at least %d px and holds the pod" % UIKit.TOUCH_MIN)
+	screen.free()
+	Platform.reset_overrides()
+	screen = await _open("intro", false)
+	_check(not screen.touch_skip, "no touchscreen: no pod (the mark stays a hint, Esc skips)")
+	screen.free()
+	progress.story_seen = 0
 	screen = await _open("intro")
 	for i in screen.cards.size():
 		await _frames(20)

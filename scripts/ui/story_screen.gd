@@ -5,7 +5,8 @@ extends Control
 ## at 320x180 behind letterbox bars. The story is wordless: no text is drawn anywhere on this
 ## screen (tests/test_story.gd checks it); beats are told by staging, light and pixel pictograms.
 ## A shot moves on by itself after its time; any key, click or tap moves on early; Esc skips the
-## lot. Reduce Motion freezes each shot on a still (its `still` moment, particles and all) with no
+## lot; on a touchscreen the fast-forward mark in the bottom bar is a pod (drawn, wordless) whose tap
+## skips the lot. Reduce Motion freezes each shot on a still (its `still` moment, particles and all) with no
 ## shake or zoom, and holds each still at least CALM_HOLD seconds.
 ##
 ## Drawing: StageArt (a Node2D moved and scaled as the camera: zooms, bounces, shakes) draws the
@@ -23,6 +24,9 @@ const GRACE := 0.25
 ## A Reduce Motion still stays up at least this long, to read it.
 const CALM_HOLD := 4.5
 const INK := Color8(9, 8, 16)
+## Touch: the fast-forward pod (bottom right, in the letterbox bar) and its tap area (>= UIKit.TOUCH_MIN).
+const SKIP_POD := Rect2(SCREEN.x - 27, SCREEN.y - 25, 21, 13)
+const SKIP_HIT := Rect2(SCREEN.x - 40, SCREEN.y - 36, 40, 36)
 
 var mode := "intro"
 var next_scene := ""
@@ -32,6 +36,8 @@ var finished := false
 var calm := false
 ## Off in demos: finishing only emits `done` instead of changing scenes.
 var leave_on_finish := true
+## A touchscreen: the fast-forward pod is shown from the start and a tap on it skips the lot.
+var touch_skip := false
 
 var art: StageArt
 var cover: Cover
@@ -46,6 +52,7 @@ func _ready() -> void:
 	Story.mode = "intro"
 	Story.next_scene = ""
 	calm = Progress.reduce_motion
+	touch_skip = Platform.has_touch()
 	cards = Story.cards(mode)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # clicks reach _unhandled_input
@@ -129,6 +136,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		finish()
 		return
+	if touch_skip and _skip_tapped(event):
+		get_viewport().set_input_as_handled()
+		finish()
+		return
 	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) \
 		or (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]) \
 		or (event is InputEventScreenTouch and event.pressed) \
@@ -144,6 +155,12 @@ class Layer extends Node2D:
 
 	func _draw() -> void:
 		draw_fn.call(self)
+
+
+## A tap (or the click a tap is emulated as) on the touch fast-forward pod.
+func _skip_tapped(event: InputEvent) -> bool:
+	var tap: bool = (event is InputEventScreenTouch and event.pressed) 		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+	return tap and SKIP_HIT.has_point(make_input_local(event).position)
 
 
 ## Screen-space overlay: letterbox bars, the fade at each shot's start and the finale's gold, the
@@ -168,9 +185,11 @@ class Cover extends Control:
 		if e > 0.99:
 			draw_rect(Rect2(0, top, SCREEN.x, 1), Color8(30, 26, 44))
 			draw_rect(Rect2(0, SCREEN.y - bottom - 1, SCREEN.x, 1), Color8(30, 26, 44))
-		_draw_pips(clampf((screen._age - 0.8) / 0.5, 0.0, 1.0) if screen.index == 0 and not screen.calm else 1.0)
+		var alpha := clampf((screen._age - 0.8) / 0.5, 0.0, 1.0) if screen.index == 0 and not screen.calm else 1.0
+		_draw_pips(alpha)
+		_draw_skip(1.0 if screen.touch_skip else alpha)
 
-	## One pip per shot (past ones dim goo, the current one bright), and a fast-forward mark.
+	## One pip per shot (past ones dim goo, the current one bright).
 	func _draw_pips(alpha: float) -> void:
 		if alpha <= 0.0:
 			return
@@ -183,7 +202,16 @@ class Cover extends Control:
 			# The current pip grows a row above and below (4x5), so it stays centered on the row.
 			var current: bool = i == screen.index
 			draw_rect(Rect2(x0 + i * 6.0, y - (1.0 if current else 0.0), 4, 5 if current else 3), Color(c, alpha))
+
+	## The fast-forward mark; on touch inside a pod (a dark fill with a 1 px goo edge) and brighter, as a button.
+	func _draw_skip(alpha: float) -> void:
+		if alpha <= 0.0:
+			return
 		var ff := Color(Color8(84, 78, 110), alpha * 0.9)
+		if screen.touch_skip:
+			draw_rect(SKIP_POD, Color(Color8(20, 18, 32), alpha))
+			draw_rect(SKIP_POD.grow(-0.5), Color(screen.art.goo.dark, alpha), false, 1.0)
+			ff = Color(Color8(170, 162, 200), alpha)
 		for k in 2:
 			var fx := SCREEN.x - 22.0 + k * 5.0
 			for row in 5:
