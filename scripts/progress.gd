@@ -2884,8 +2884,12 @@ func apply_bindings() -> void:
 	Platform.apply_pad_layout()  # the fixed gamepad layer (D4), never wiped by a key change
 
 
+## The name of a bound key (bindings are physical keys): the letter the player's keyboard layout prints
+## on it (Z for the W key on AZERTY: Platform.key_label, desktop windows only).
 static func key_name(keycode: int) -> String:
-	return OS.get_keycode_string(keycode).to_upper()
+	if keycode == 0:
+		return ""
+	return OS.get_keycode_string(Platform.key_label(keycode as Key)).to_upper()
 
 
 static func _key_event(keycode: int) -> InputEventKey:
