@@ -10,6 +10,8 @@ extends Node
 ##   they only tick while the tree runs), every held input is let go (a finger or key held when the app went
 ##   away never comes back stuck) and a save that failed earlier is retried at once. Coming back releases
 ##   held inputs again and leaves the pause menu up: the player presses RESUME.
+## - Quitting (the title's / hub's QUIT through quit_game(), the window's close button: NOTIFICATION_WM_CLOSE_REQUEST,
+##   the quit follows it): a save that failed earlier is retried first.
 ## - The last input device (Platform.last_input), read from every input event before any node sees it, so
 ##   prompts can name pad buttons, keys or taps (`input_kind_changed`).
 ## Achievements for Steam or the mobile stores attach to `progress_event` (emitted by Progress.report_progress
@@ -89,6 +91,8 @@ func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			go_back()
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			_flush_progress()  # (the window's close button / Alt+F4 / Cmd+Q: the quit follows this notification)
 		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
 			enter_background()
 		NOTIFICATION_APPLICATION_RESUMED, NOTIFICATION_APPLICATION_FOCUS_IN:
@@ -115,15 +119,26 @@ func go_back() -> void:
 func enter_background(force := false) -> void:
 	in_background = true
 	release_held_inputs()
-	var progress := get_node_or_null("/root/Progress")
-	if progress:
-		progress.flush_save()
+	_flush_progress()
 	pause_wanted = force or (Platform.pauses_on_focus_loss() and get_tree().root.get_node_or_null("Autoplay") == null)
 	if pause_wanted:
 		var scene := get_tree().current_scene
 		if scene and scene.has_method("pause_for_background"):
 			scene.pause_for_background()
 	backgrounded.emit()
+
+
+## Closes the game (the title's / hub's QUIT): a save that failed earlier is retried first.
+func quit_game() -> void:
+	_flush_progress()
+	get_tree().quit()
+
+
+## Retries a save that failed earlier (Progress.flush_save), before the app may stop running.
+func _flush_progress() -> void:
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.flush_save()
 
 
 func leave_background() -> void:

@@ -740,7 +740,7 @@ func close_quit_menu() -> void:
 
 
 func _confirm_quit() -> void:
-	get_tree().quit()
+	PlatformEvents.quit_game()
 
 
 ## Esc's menu: MENU over BACK / SETTINGS / QUIT TO TITLE (BACK has the focus; up / down wrap). Static.

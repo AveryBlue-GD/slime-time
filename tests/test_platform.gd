@@ -412,6 +412,10 @@ func _background() -> void:
 	events.enter_background(true)
 	_check(not progress.save_failed and FileAccess.file_exists(progress.save_path), "backgrounding retries a failed save at once")
 	events.leave_background()
+	progress.save_failed = true
+	events.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	_check(not progress.save_failed, "closing the window (close request) retries a failed save first")
+	events.leave_background()
 
 
 ## QA phase 5 #2: the app goes to the background during the goo wipe into a level (pause_for_background skips a

@@ -372,7 +372,7 @@ func _quit() -> void:
 	if quit_hook.is_valid():
 		quit_hook.call()
 		return
-	get_tree().quit()
+	PlatformEvents.quit_game()
 
 
 ## The intro again (and then back to the title).
