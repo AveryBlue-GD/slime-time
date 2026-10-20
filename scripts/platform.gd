@@ -98,6 +98,15 @@ static func is_android() -> bool:
 	return kind() == "android"
 
 
+## The frame-rate cap: 60 on the web and on phones / tablets (physics runs 60 ticks and interpolation stays
+## off at 60 fps, so a 120 Hz screen would only run every per-frame cost twice and drain the battery);
+## 0 = none (desktop keeps 120 / 144 / 240 Hz smooth). Headless runs (tests) are never capped.
+static func frame_cap() -> int:
+	if DisplayServer.get_name() == "headless":
+		return 0
+	return 60 if is_web() or is_mobile_native() else 0
+
+
 ## A desktop build (Windows / macOS / Linux, Steam included).
 static func is_desktop() -> bool:
 	return not is_web() and not is_mobile_native()

@@ -67,6 +67,12 @@ func _kinds() -> void:
 	_check(Platform.has_touch() and Platform.is_ios() and not Platform.is_android(), "ios: touch, is_ios")
 	Platform.override = "android"
 	_check(Platform.has_touch() and Platform.is_android(), "android: touch, is_android")
+	# Frame cap: 60 on web / phones, none on desktop; never in a headless run (tests run as fast as they can).
+	var caps := {}
+	for kind: String in rows:
+		Platform.override = kind
+		caps[kind] = Platform.frame_cap()
+	_check(caps.values().all(func(c: int) -> bool: return c == 0) and Engine.max_fps == 0, "headless: no frame cap on any platform (%s)" % caps)
 	Platform.reset_overrides()
 	_check(Platform.kind() == "desktop" and not Platform.has_js(), "this test run is a desktop build without browser APIs")
 	_check(not Platform.is_steam(), "no Steam build yet: is_steam() is false")

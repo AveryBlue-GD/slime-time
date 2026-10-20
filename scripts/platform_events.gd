@@ -40,6 +40,8 @@ var _web_visibility: JavaScriptObject
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if Platform.frame_cap() > 0:
+		Engine.max_fps = Platform.frame_cap()
 	get_tree().root.window_input.connect(_on_window_input)
 	if Platform.has_js():
 		_web_visibility = JavaScriptBridge.create_callback(func(_args: Array) -> void:
