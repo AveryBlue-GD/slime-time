@@ -462,11 +462,11 @@ func _ready() -> void:
 func settle_debug_coins(in_hand: int) -> void:
 	if in_hand >= 0:
 		coins_found = {0: []}
-	if in_hand < 0 and coins() >= 0:
+	if in_hand < 0 and _coins_balance() >= 0:  # (unclamped: the demo's coins() is floored at 0)
 		return
 	if not coins_found.has(0):
 		coins_found[0] = []
-	for i in maxi(maxi(in_hand, 0) - coins(), 0):
+	for i in maxi(maxi(in_hand, 0) - _coins_balance(), 0):
 		coins_found[0].append("debug%d" % coins_found[0].size())
 
 
@@ -799,7 +799,11 @@ func _read(file: ConfigFile, from_code := false) -> void:
 					upgrades[id] = Demo.upgrade_cap(id)
 				else:
 					upgrades.erase(id)
-	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
+	var guarded := Demo.on() and not is_demo_save(file)  # a full save in the demo: in memory only, left alone
+	if is_demo_save(file):  # bought at the demo's prices (Demo.PRICES): over this build's, a level at a time back
+		while _coins_balance() < 0 and _drop_priciest_level():
+			pass
+	while _coins_balance() < 0 and not upgrades.is_empty() and not guarded:  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
 	_read_bindings(file)
@@ -2185,10 +2189,7 @@ func heat_crown() -> bool:
 func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
-	random_seed_fresh = true
-	if Demo.on():  # the demo's fixed mazes in turn; once all are won, replays (Demo.RANDOM_SEEDS)
-		random_seed = Demo.random_seed(randoms_won)
-		random_seed_fresh = not Demo.randoms_done(randoms_won)
+	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
 	random_attempts.clear()  # a new maze starts counting at attempt 1
 	random_offer_shown.clear()
 
@@ -2231,6 +2232,20 @@ func coins_earned() -> int:
 	return total
 
 
+## Coins found in this build's story levels: every level in the full game; in the demo only levels
+## 1..Demo.levels() (a guarded full save's later coins, or a desktop demo save's level 4 on the web, don't
+## count there).
+func coins_earned_here() -> int:
+	if not Demo.on():
+		return coins_earned()
+	var total := 0
+	for level in range(1, Demo.levels() + 1):
+		total += coins_found_in(level)
+	return total
+
+
+## Coins in the upgrade tree at this build's prices. In the demo: Demo.prices, so only the levels up to each
+## demo cap cost anything (a guarded full save's levels above the caps are kept but neither cost nor refund).
 func coins_spent() -> int:
 	var total := 0
 	for id: String in upgrades:
@@ -2238,9 +2253,24 @@ func coins_spent() -> int:
 	return total
 
 
-## Coins in hand (found minus what's in the upgrade tree).
+## Found minus spent, unclamped (the load checks use it to refit a save that spent more than it found).
+func _coins_balance() -> int:
+	return coins_earned_here() - coins_spent() + (dev_coins if dev_tools else 0)
+
+
+## Coins in hand (found minus what's in the upgrade tree). In the demo never below 0 (a guarded full save
+## is left as it is) and never above Demo.coins_total() (only the demo's levels count).
 func coins() -> int:
-	return coins_earned() - coins_spent() + (dev_coins if dev_tools else 0)
+	return maxi(_coins_balance(), 0) if Demo.on() else _coins_balance()
+
+
+## True if some coin upgrade can be bought now (under its cap, affordable): the R prompt's demo check.
+func upgrade_buyable() -> bool:
+	for upgrade: Dictionary in Upgrades.LIST:
+		var id: String = upgrade.id
+		if not upgrade.get("dev", false) and upgrade_level(id) < Demo.upgrade_cap(id) and coins() >= Upgrades.cost(id, upgrade_level(id)):
+			return true
+	return false
 
 
 func upgrade_level(id: String) -> int:
@@ -2259,6 +2289,27 @@ func buy_upgrade(id: String) -> bool:
 		return false  # (maxed, or at the demo's cap: Demo.upgrade_cap is max_level in the full game)
 	upgrades[id] = level + 1
 	save_progress()
+	return true
+
+
+## Lowers by one level the upgrade whose top level costs the most at this build's prices (the first in
+## Upgrades.LIST on a tie): a demo save's levels, bought at the demo's prices, refitted to the coins found.
+## False if nothing is left to lower.
+func _drop_priciest_level() -> bool:
+	var pick := ""
+	var most := -1
+	for upgrade: Dictionary in Upgrades.LIST:
+		var id: String = upgrade.id
+		var level := int(upgrades.get(id, 0))
+		if level > 0 and Upgrades.cost(id, level - 1) > most:
+			most = Upgrades.cost(id, level - 1)
+			pick = id
+	if pick == "":
+		return false
+	if upgrades[pick] <= 1:
+		upgrades.erase(pick)
+	else:
+		upgrades[pick] -= 1
 	return true
 
 

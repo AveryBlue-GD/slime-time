@@ -26,21 +26,31 @@ static func max_level(id: String) -> int:
 	return track.costs.size() if not track.is_empty() else 0
 
 
-## Coins for the next level up from `level` (0 when there is none: maxed or unknown).
+## The track's prices: Economy.COIN_TRACKS, or the demo's own (Demo.prices: one per capped level, they
+## add up to the demo's coins) while the demo is on. Never a dev track's (dev wall power stays free).
+static func _costs(id: String) -> Array:
+	var track := _track(id)
+	if track.is_empty():
+		return []
+	if Demo.on() and not get_upgrade(id).get("dev", false):
+		return Demo.prices(id)
+	return track.costs
+
+
+## Coins for the next level up from `level` (0 when there is none: maxed, past the demo's prices, or unknown).
 static func cost(id: String, level: int) -> int:
-	var track := _track(id)
-	if track.is_empty() or level < 0 or level >= track.costs.size():
+	var costs := _costs(id)
+	if level < 0 or level >= costs.size():
 		return 0
-	return track.costs[level]
+	return costs[level]
 
 
-## Coins invested in an upgrade at `level` (clamped to the track).
+## Coins invested in an upgrade at `level` (clamped to the track; in the demo, to its price list).
 static func total_cost(id: String, level: int) -> int:
-	var track := _track(id)
+	var costs := _costs(id)
 	var total := 0
-	if not track.is_empty():
-		for i in clampi(level, 0, track.costs.size()):
-			total += int(track.costs[i])
+	for i in clampi(level, 0, costs.size()):
+		total += int(costs[i])
 	return total
 
 

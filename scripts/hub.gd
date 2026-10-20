@@ -1264,14 +1264,18 @@ func open_coin_board() -> void:
 		var found: int = Progress.coins_found_in(i + 1)
 		var total: int = Levels.COINS[i]
 		var count: Label = board_rows[i]
-		count.text = "%d/%d" % [found, total]
-		count.add_theme_color_override("font_color", UIKit.GOLD if found >= total else UIKit.TEXT)
+		var hidden := Demo.coins_hidden(i + 1)  # (the demo: a later level's coins aren't told)
+		count.text = "?/?" if hidden else "%d/%d" % [found, total]  # i18n: ignore (digits and marks only)
+		count.add_theme_color_override("font_color", UIKit.TEXT_DIM if hidden else (UIKit.GOLD if found >= total else UIKit.TEXT))
 		count.remove_from_group(SkinText.GROUP)  # keep the gold for finished levels
 		count.remove_meta(SkinText.DUE)  # (a rainbow color it was due while hidden is stale now)
-		if found < total:
+		if found < total and not hidden:
 			count.add_to_group(SkinText.GROUP)
+	# The demo counts only its own levels (the full game's total isn't told; a guarded full save too).
+	var have: int = Progress.coins_earned_here()
+	var story_total := Demo.coins_total()  # (Levels.total_coins() in the full game)
 	# i18n: max 200px, grows to 280px (the board widens), 1 line; the spaces are spacing, not words
-	board_total.text = Loc.t("hub.coins.total", "STORY {have}/{total}   IN HAND {hand}", {have = Progress.coins_earned(), total = Levels.total_coins(), hand = maxi(Progress.coins(), 0)})
+	board_total.text = Loc.t("hub.coins.total", "STORY {have}/{total}   IN HAND {hand}", {have = have, total = story_total, hand = maxi(Progress.coins(), 0)})
 	var touch := _touch_controls != null and _touch_controls.visible
 	# i18n: max 200px, 1 line; {key} = a key or pad button name
 	if touch:

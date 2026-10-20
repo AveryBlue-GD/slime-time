@@ -23,21 +23,35 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 |---|---|---|
 | `LEVELS` / `WEB_LEVELS` | 4 / 3 | story levels in the demo (desktop / web build; owner 2026-10-19: the desktop demo has Sunken Shrine too) |
 | `HARD_LEVELS` | 1 | hard levels (hard 1 unlocks jelly Lime and jelly Mint, the existing rule: both have hard level 1) |
-| `UPGRADE_CAPS` | `{"slime": 2, "speed": 1, "brightness": 1}` | how far each coin upgrade can be bought (an upgrade not listed: 0); the rest of the bar is darker, its cost says FULL. Coin math below |
+| `UPGRADE_CAPS` / `WEB_UPGRADE_CAPS` | `{"slime": 3, "speed": 2, "brightness": 1}` / `{"slime": 2, "speed": 1, "brightness": 1}` | how far each coin upgrade can be bought (an upgrade not listed: 0); the rest of the bar is darker, its cost says FULL. Coin math below |
+| `PRICES` / `WEB_PRICES` | slime 1, 4, 6; speed 6, 8; brightness 9 (= 34) / slime 1, 5; speed 7; brightness 9 (= 22) | the demo's own coin prices, one per capped level (`Upgrades.cost` / `total_cost` use them while the demo is on); they add up to exactly the coins of the demo's levels |
 | `HATS_MAX` | 2 | hats the demo's wheel gives at most; with that many owned it doesn't spin (a guarded full save that owns more: no spins either) |
 | `RANDOMIZER` / `WEB_RANDOMIZER` | true / false | randomizer on desktop / web (the web demo leaves it out by default) |
 | `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / false | hat wheel on desktop / web |
-| `RANDOM_SEEDS` | 1016, 1063, 1015 | the demo's randomizer mazes in order (usage 50 / 57 / 62 %, themes picked from the demo's 4); then they replay (replay pay) |
+| `RANDOM_WINS` | 3 | randomizer wins before the end screen's pitch (shown once, after that win); every maze is a new random one, as in the full game |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |
 | `WISHLIST_URL` | `""` | store page for every WISHLIST button; **empty = every WISHLIST button is hidden** (no Steam page yet) |
 | `TEASER_LEVELS` | 6, 7, 9, 10 | the end screen's teaser cards after the first one, which is always the area right after the demo (`Demo.teasers()`: desktop 5, 6, 7, 9, 10; web 4, 6, 7, 9, 10); the first card says {count} MORE AREAS (6 / 7) |
 | `END_SEEN_BIT` | 4 | `Progress.story_seen` bit: the end screen was seen (the full game ignores it); also opens the demo's hat wheel |
 
-**Coin math (desktop, 2026-10-19).** The caps at the full game's prices (`Economy.COIN_TRACKS`): MORE SLIME 1 + 4,
-SPEED 6, BRIGHTNESS 9 = **20 coins**; story levels 1-4 hide 6 + 9 + 7 + 12 = **34**. A player who finds about
-60 % of the coins can buy every demo level; the other 14 have nowhere to go (the bars' FULL says why). The web
-demo (3 levels) hides 22: still enough for all 20. `tests/test_demo.gd` checks the sums, that 20 coins buy
-exactly the caps and that buying stops at each cap.
+**Coin math (owner 2026-10-20).** The demo has its own prices (`PRICES`, not `Economy.COIN_TRACKS`), and they add up
+to **exactly** the coins its levels hide (`Demo.coins_total()`, from `Levels.COINS`): desktop MORE SLIME 1 + 4 + 6,
+SPEED 6 + 8, BRIGHTNESS 9 = **34** = 6 + 9 + 7 + 12 (levels 1-4); web (`WEB_UPGRADE_CAPS` / `WEB_PRICES`) MORE SLIME
+1 + 5, SPEED 7, BRIGHTNESS 9 = **22** = 6 + 9 + 7 (levels 1-3). Every coin found has a use and finding them all buys
+every demo level with 0 left. `tests/test_demo.gd` checks per platform: prices == coins, one price per capped level,
+buying everything with all coins leaves 0, refunds give the demo prices back.
+**Saves:** coins in hand are derived (found minus `Upgrades.total_cost` at this build's prices), so a demo save simply
+re-prices. On load, a demo save in the demo is clamped to this platform's caps; a demo-marked save whose levels cost
+more than the coins found at this build's prices (the full game's are higher: slime 3 + speed 2 + brightness 1 =
+36 > 34) loses one level at a time from the track with the priciest top step (`Progress._drop_priciest_level`), so
+the full game keeps as much as fits (34 coins: slime 3, speed 1, brightness 1, 7 in hand) and coins in hand never go
+negative. Other saves keep the old rule.
+**Coins in hand in the demo** (`Progress.coins()`): max(0, coins found in levels 1..`Demo.levels()`
+(`coins_earned_here()`) − the demo-priced cost of the levels within the demo caps). A guarded full save (a full
+save opened in the demo, in memory only) keeps its upgrades as they are; its levels above the caps neither cost nor
+refund anything there, so the hand is never above `Demo.coins_total()` (a maxed full save: 0) and never below 0
+(nothing is erased). The R key's "spend coins first?" prompt opens in the demo only if some upgrade is buyable
+(`Progress.upgrade_buyable()`). The full game's math is unchanged.
 
 ## 3. What the demo has and how each lock looks
 
@@ -80,12 +94,19 @@ exactly the caps and that buying stops at each cap.
 - **WISHLIST** also as a quiet pause-menu button and a small hub sign under the ticket pod (after the end screen
   was seen); all hidden while `WISHLIST_URL` is empty. `Demo.open_wishlist()` uses `OS.shell_open` (a new tab
   on the web); a Steam build should route it to the overlay through `Platform` later.
-- **Upgrades:** the cauldron works; each coin upgrade stops at its `UPGRADE_CAPS` level (MORE SLIME 2, SPEED 1,
-  BRIGHTNESS 1: cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
+- **Coin bag (hub):** the demo's levels show found / total as usual; later levels show `?/?` (dim) and the
+  STORY line counts only the demo's levels (`STORY n/34`, web `/22`; `Demo.coins_total()`), so the full game's 165 is
+  never told (a guarded full save too).
+- **Upgrades:** the cauldron works at the demo's `PRICES`; each coin upgrade stops at its `UPGRADE_CAPS` level (MORE
+  SLIME 3, SPEED 2, BRIGHTNESS 1; web 2 / 1 / 1: cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
   show FULL); in a maze only RIFLE works (`AbilityRunner.create`).
 - **Hard mode:** level 1 only; HEAT hidden (button and panel) and `heat_unlocked` false.
-- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`), plays `RANDOM_SEEDS` in turn (they pay
-  tickets as usual), only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
+- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). As in the full game, every
+  maze is a new random one (`Progress.new_random_maze`: a random seed, so a new layout and start; entering the portal,
+  NEW MAZE after a dry-up and after a win; RESTART replays the same maze), paying tickets as usual. The end screen's
+  pitch follows the `RANDOM_WINS`-th win. (Until 2026-10-20 the demo replayed three fixed seeds picked by
+  `randoms_won`: a dry-up or a fresh portal visit gave the same Dark Dungeon maze and start again, owner bug report.)
+  Only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
   pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 4; on the web (left out): FULL GAME.
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";
   station dimmed, prompt LOCKED, using it says CLEAR LEVEL 4, tour line SPIN FOR HATS AFTER LEVEL 4, so no free-spin

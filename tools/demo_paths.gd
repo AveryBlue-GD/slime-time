@@ -1,10 +1,9 @@
 extends SceneTree
 
 ## The demo export's cut list (docs/demo-plan.md), from Demo.full_only_paths() / Demo.export_cut().
-##   godot --path . --headless -s res://tools/demo_paths.gd [-- --web] [-- --seeds]
+##   godot --path . --headless -s res://tools/demo_paths.gd [-- --web]
 ##     one res:// path per line (Demo.full_only_paths), then `EXCLUDE: ...` = Demo.export_cut, comma-joined.
-##     `--web`: the web demo's list (Demo.WEB_LEVELS). `--seeds`: also lists randomizer seed candidates for
-##     Demo.RANDOM_SEEDS (a middling usage, and the demo theme each would get).
+##     `--web`: the web demo's list (Demo.WEB_LEVELS).
 ##   ... -- --write-presets   rebuilds the demo presets in export_presets.cfg from their full twins
 ##                            (tools/demo_export.gd; the full presets are left byte-identical)
 ##   ... -- --check-presets   exit 1 if export_presets.cfg's demo presets are out of date
@@ -29,12 +28,6 @@ func _initialize() -> void:
 		print(path)
 	var cut := Demo.export_cut("--web" in args)
 	print("EXCLUDE: " + ", ".join(Array(cut).map(func(p: String) -> String: return p.trim_prefix("res://"))))
-	if "--seeds" in args:
-		Platform.demo_override = 1
-		for s in range(1000, 1200):
-			var u := Levels.random_usage_permille(s)
-			if u >= 480 and u <= 640:
-				print("seed %d usage %d theme %s" % [s, u, Themes.for_seed(s)])
 	quit()
 
 

@@ -133,6 +133,14 @@ func _play_first_maze() -> void:
 	current_scene = maze
 	await physics_frame
 	_check(maze.is_random() and maze.theme in Demo.themes(), "demo maze %d in a demo theme (%s)" % [progress.random_seed, maze.theme])
+	# Every maze is a new random seed: whatever theme one draws must be in this pack.
+	var pool := {}
+	for s in range(1, 400):
+		pool[Themes.for_seed(s)] = true
+	var packed := true
+	for id: String in pool:
+		packed = packed and id in Demo.themes() and ResourceLoader.exists(Themes.atlas_path(id, "walls"))
+	_check(packed and pool.size() == Demo.themes().size(), "random mazes draw only packed demo themes (%s)" % [pool.keys()])
 	maze.add_child(RoutePilot.new())
 	for i in 150 * 60:
 		await physics_frame

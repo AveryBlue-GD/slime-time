@@ -7,7 +7,7 @@ extends "res://tests/suite_base.gd"
 ##    for or loaded (no level 5+ / hard 2+ data, no later theme art or ambience in the resource cache);
 ## 2. the full game with the switch off: every knob is the full game's, saves carry no demo marker;
 ## 3. every lock: levels (level select + archway), the per-upgrade caps (and their coin math), abilities (only
-##    SLIME RIFLE, in the shop and in a maze), hard (level 1 only), HEAT, randomizer (after level 4, its 3 fixed
+##    SLIME RIFLE, in the shop and in a maze), hard (level 1 only), HEAT, randomizer (after level 4, new random
 ##    mazes, demo themes), the hat wheel (shut until the end screen, then a free spin, at most HATS_MAX hats),
 ##    SHOP, skins, the web knobs; the title's DEMO sticker (demo only, at its constant, clear of the logo's
 ##    letters and ENTER THE HUB); the end screen (WISHLIST hidden while the URL is empty, teaser cards) and the
@@ -91,14 +91,24 @@ func _check_stripped_run() -> void:
 		if not path.ends_with(".import") and ResourceLoader.has_cached(path):
 			loaded.append(path)
 	_check(loaded.is_empty(), "no full-only file was loaded during the demo run (%s)" % [loaded])
-	# The randomizer's first fixed maze, played stripped too.
-	progress.start_random()
-	_check(progress.random_seed == Demo.RANDOM_SEEDS[0] and progress.random_seed_fresh, "the first demo maze is Demo.RANDOM_SEEDS[0]")
-	var maze: Node2D = MAIN.instantiate()
-	root.add_child(maze)
-	await physics_frame
-	_check(maze.is_random() and maze.theme in Demo.themes(), "...in a demo theme (%s)" % maze.theme)
-	maze.free()
+	# Randomizer mazes, played stripped too: each attempt a new random maze (seed, start) in a demo theme.
+	var seen := {}
+	var starts := {}
+	for attempt in 6:
+		if attempt == 0:
+			progress.start_random()
+		else:
+			progress.new_random_maze()  # (NEW MAZE after a dry-up or a win)
+		var maze: Node2D = MAIN.instantiate()
+		root.add_child(maze)
+		await physics_frame
+		_check(maze.is_random() and maze.theme in Demo.themes() and progress.random_seed_fresh,
+			"demo maze %d: random seed %d, a demo theme (%s), fresh" % [attempt + 1, progress.random_seed, maze.theme])
+		seen[progress.random_seed] = maze.theme
+		starts[maze.maze.start] = true
+		maze.free()
+	_check(seen.size() == 6 and starts.size() >= 2, "consecutive demo mazes differ: %d seeds, %d starts, themes %s" % [seen.size(), starts.size(), seen.values()])
+	_check(Demo.denied.is_empty(), "...no full-only data asked for by the random mazes (%s)" % [Demo.denied])
 	# A full-only level asked for anyway (a hand-made save, a bug) never crashes and is never built.
 	progress.current_level = 7
 	var forced: Node2D = MAIN.instantiate()
@@ -149,6 +159,7 @@ func _check_stripped_full_save() -> void:
 	hub.open_coin_board()
 	await _frames(2)
 	_check(not hub.heat_label.visible, "full save, hub: the HEAT n/100 pod is hidden in the demo")
+	_check(_coin_bag_ok(hub, true), "full save, hub coin bag: levels 5-10 show ?/?, the total only the demo's (%s)" % hub.board_total.text)
 	hub.close_coin_board()
 	hub.free()
 	for path in ["res://scenes/skins.tscn", "res://scenes/upgrades.tscn"]:
@@ -212,36 +223,45 @@ func _check_locks() -> void:
 	progress.reset_progress()
 	_check(Demo.levels() == 4 and Demo.hard_levels() == 1 and not Demo.level_open(5) and Demo.level_open(4)
 		and not Demo.level_open(2, true) and Demo.level_open(1, true), "demo: levels 1-4, hard level 1")
-	# Upgrades: each stops at its own cap (MORE SLIME 2, SPEED 1, BRIGHTNESS 1, the dev wall power 0), at the
-	# full game's prices: 1 + 4 + 6 + 9 = 20 of the 34 coins levels 1-4 hide.
-	_check(Demo.upgrade_cap("slime") == 2 and Demo.upgrade_cap("speed") == 1 and Demo.upgrade_cap("brightness") == 1 and Demo.upgrade_cap("power") == 0,
-		"demo caps: MORE SLIME 2, SPEED 1, BRIGHTNESS 1, anything else 0")
-	var hidden := 0
-	for level in range(1, Demo.LEVELS + 1):
-		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-		hidden += Levels.COINS[level - 1]
-	var caps_cost := 0
-	for id: String in Demo.UPGRADE_CAPS:
-		caps_cost += Upgrades.total_cost(id, Demo.upgrade_cap(id))
-	_check(caps_cost == 20 and hidden == 34 and progress.coins() == hidden, "coin math: the caps cost %d, levels 1-%d hide %d" % [caps_cost, Demo.LEVELS, hidden])
-	var bought := {}
-	for id: String in ["slime", "speed", "brightness"]:
-		bought[id] = 0
-		while progress.buy_upgrade(id):
-			bought[id] += 1
-	_check(bought == {slime = 2, speed = 1, brightness = 1} and progress.coins() == hidden - caps_cost,
-		"upgrades stop at each cap with coins left (%s, %d left)" % [bought, progress.coins()])
+	# Upgrades: each stops at its own cap (MORE SLIME 3, SPEED 2, BRIGHTNESS 1, the dev wall power 0), at the
+	# demo's own prices, which add up to exactly the coins its levels hide (desktop 34, web 22).
+	_check(Demo.upgrade_cap("slime") == 3 and Demo.upgrade_cap("speed") == 2 and Demo.upgrade_cap("brightness") == 1 and Demo.upgrade_cap("power") == 0,
+		"demo caps: MORE SLIME 3, SPEED 2, BRIGHTNESS 1, anything else 0")
+	_check(Upgrades.cost("slime", 0) == 1 and Upgrades.cost("slime", 2) == 6 and Upgrades.cost("speed", 1) == 8 and Upgrades.cost("slime", 3) == 0
+		and Upgrades.total_cost("speed", 4) == 14, "demo prices: Demo.PRICES (slime 3rd level 6, speed 2nd 8, none past the cap)")
+	for web in [false, true]:
+		Platform.override = "web" if web else ""
+		var hidden := 0
+		for level in range(1, Demo.levels() + 1):
+			hidden += Levels.COINS[level - 1]
+		var priced := 0
+		var lists_fit := true
+		for upgrade: Dictionary in Upgrades.LIST:
+			var id: String = upgrade.id
+			priced += Upgrades.total_cost(id, Upgrades.max_level(id))
+			lists_fit = lists_fit and (upgrade.get("dev", false) or Demo.prices(id).size() == Demo.upgrade_cap(id))
+		var name := "web" if web else "desktop"
+		_check(lists_fit and hidden == Demo.coins_total() and priced == hidden and hidden == (22 if web else 34),
+			"%s demo: one price per capped level, prices %d == coins in levels 1-%d %d" % [name, priced, Demo.levels(), hidden])
+		progress.upgrades = {}
+		progress.coins_found.clear()
+		for level in range(1, Demo.levels() + 1):
+			progress.coins_found[level] = Levels.coin_keys(level).duplicate()
+		var bought := {}
+		for id: String in ["slime", "speed", "brightness", "power"]:
+			while progress.buy_upgrade(id):
+				bought[id] = int(bought.get(id, 0)) + 1
+		var caps: Dictionary = Demo.WEB_UPGRADE_CAPS if web else Demo.UPGRADE_CAPS
+		_check(bought == caps and progress.upgrades == caps and progress.coins() == 0 and progress.coins_spent() == hidden,
+			"%s demo: every coin buys every capped level, 0 left (%s, %d left)" % [name, bought, progress.coins()])
+		var refunded := 0
+		while progress.refund_upgrade("slime"):
+			refunded += 1
+		_check(refunded == int(caps.slime) and progress.coins() == Upgrades.total_cost("slime", int(caps.slime)),
+			"%s demo: refunds return the demo prices (%d coins)" % [name, progress.coins()])
+	Platform.override = ""
 	progress.upgrades = {}
 	progress.coins_found.clear()
-	var need := 0
-	for level in range(1, Demo.LEVELS + 1):  # just the 20 coins the caps cost: every capped level can be bought
-		var keys: Array = Levels.coin_keys(level).slice(0, mini(Levels.COINS[level - 1], caps_cost - need))
-		need += keys.size()
-		progress.coins_found[level] = keys
-	for id: String in ["brightness", "speed", "slime", "slime"]:
-		progress.buy_upgrade(id)
-	_check(progress.coins() == 0 and progress.upgrades == Demo.UPGRADE_CAPS, "...exactly %d coins buy every demo level (%s)" % [caps_cost, progress.upgrades])
-	progress.upgrades = {}
 	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
 	# Abilities: only SLIME RIFLE.
@@ -300,22 +320,24 @@ func _check_locks() -> void:
 	Platform.demo_override = 0
 	_check(progress.demo_wheel_block() == "" and progress.can_spin_hats(), "switch off: the wheel spins as always")
 	Platform.demo_override = 1
-	# Randomizer: after level 4, its fixed mazes in turn, then replays.
+	# Randomizer: after level 4, new random mazes (as the full game), the end screen after RANDOM_WINS wins.
 	progress.reset_progress()
 	progress.levels_cleared = Demo.LEVELS - 1
 	_check(not progress.is_randomizer_unlocked(), "randomizer locked before level %d" % Demo.LEVELS)
 	progress.levels_cleared = Demo.LEVELS
 	_check(progress.is_randomizer_unlocked(), "randomizer open after level %d" % Demo.LEVELS)
-	var picked: Array[int] = []
-	for won in Demo.RANDOM_SEEDS.size():
+	var picked := {}
+	var fresh := true
+	for won in [0, 0, 1, Demo.RANDOM_WINS, Demo.RANDOM_WINS + 2]:  # (a dry-up keeps the wins: still a new maze)
 		progress.randoms_won = won
 		progress.new_random_maze()
-		picked.append(progress.random_seed)
-		_check(progress.random_seed_fresh, "...maze %d is fresh (pays the full table)" % (won + 1))
-	_check(picked == Demo.RANDOM_SEEDS, "the demo's mazes are its fixed seeds in order %s" % [picked])
-	progress.randoms_won = Demo.RANDOM_SEEDS.size()
-	progress.new_random_maze()
-	_check(progress.random_seed == Demo.RANDOM_SEEDS[0] and not progress.random_seed_fresh, "...then they replay (replay pay)")
+		picked[progress.random_seed] = true
+		fresh = fresh and progress.random_seed_fresh
+	_check(picked.size() == 5 and fresh, "every demo maze is a new random seed, fresh (pays the full table), wins or not (%s)" % [picked.keys()])
+	var theme_seen := {}
+	for s in range(1, 300):
+		theme_seen[Themes.for_seed(s)] = true
+	_check(theme_seen.size() == Demo.themes().size(), "...drawn from every demo theme (%s)" % [theme_seen.keys()])
 	var themes_ok := true
 	for s in range(1, 300):
 		themes_ok = themes_ok and Themes.for_seed(s) in Demo.themes()
@@ -419,8 +441,9 @@ func _check_screens() -> void:
 	# Upgrades: every row at its cap shows FULL.
 	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-	for id in ["slime", "slime", "speed", "brightness"]:
-		progress.buy_upgrade(id)
+	for id in ["slime", "speed", "brightness"]:
+		while progress.buy_upgrade(id):
+			pass
 	var upg: Control = await _open("res://scenes/upgrades.tscn")
 	for id: String in ["slime", "speed", "brightness"]:
 		var row: Dictionary = upg.rows[id]
@@ -436,6 +459,17 @@ func _check_screens() -> void:
 	skins.free()
 	# Hub: the archway on a full-game level is plainly LOCKED.
 	var hub: Node = await _open("res://scenes/hub.tscn")
+	hub.open_coin_board()
+	_check(_coin_bag_ok(hub, true) and hub.board_total.text.begins_with("STORY 34/34 "),
+		"hub coin bag (demo): ?/? past level %d, STORY 34/34 (%s)" % [Demo.LEVELS, hub.board_total.text])
+	hub.close_coin_board()
+	Platform.demo_override = 0
+	var full_hub: Node = await _open("res://scenes/hub.tscn")
+	full_hub.open_coin_board()
+	_check(_coin_bag_ok(full_hub, false) and "/%d " % Levels.total_coins() in full_hub.board_total.text,
+		"hub coin bag (switch off): every level's numbers, the story total %d (%s)" % [Levels.total_coins(), full_hub.board_total.text])
+	full_hub.free()
+	Platform.demo_override = 1
 	hub.near = hub._station("story")
 	hub._show_prompt()
 	_check(hub.prompt_key.text == "LOCKED" and not "FULL" in hub.prompt_name.text, "hub: the archway says LOCKED (no FULL GAME) when the next level is the full game's (%s / %s)" % [hub.prompt_name.text, hub.prompt_key.text])
@@ -538,20 +572,30 @@ func _check_carry_over() -> void:
 	progress.save_path = old_path
 	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-	progress.upgrades = {slime = 2, speed = 2, brightness = 1}  # (29 of the 34 coins)
+	progress.upgrades = {slime = 4, speed = 2, brightness = 1}  # (over today's MORE SLIME cap)
 	progress.save_progress()
 	progress.save_path = test_save
 	progress.reset_progress()
 	progress.save_path = old_path
 	progress.load_progress()
-	_check(not progress.demo_guard and progress.upgrades == Demo.UPGRADE_CAPS and progress.coins() == 34 - 20,
-		"an older demo save is clamped to today's caps on load (%s, %d coins back in hand)" % [progress.upgrades, progress.coins()])
+	_check(not progress.demo_guard and progress.upgrades == Demo.UPGRADE_CAPS and progress.coins() == 0,
+		"an older demo save is clamped to today's caps on load (%s, %d coins in hand)" % [progress.upgrades, progress.coins()])
+	Platform.override = "web"  # the web demo: its own caps and prices (22 coins in levels 1-3 of the 34 found)
+	progress.save_path = test_save
+	progress.reset_progress()
+	progress.save_path = old_path
+	progress.load_progress()
+	_check(progress.upgrades == Demo.WEB_UPGRADE_CAPS and progress.coins_earned_here() == 22 and progress.coins() == 0 and not progress.upgrade_buyable(),
+		"...the web demo clamps it to its caps, counts only levels 1-3 (%s, %d of 22 found, %d in hand)" % [progress.upgrades, progress.coins_earned_here(), progress.coins()])
+	Platform.override = ""
 	Platform.demo_override = 0
 	progress.save_path = test_save
 	progress.reset_progress()
 	progress.save_path = old_path
 	progress.load_progress()
-	_check(progress.upgrades == {slime = 2, speed = 2, brightness = 1}, "...the full game loads it unclamped (%s)" % [progress.upgrades])
+	# Full prices: slime 3 = 12, speed 2 = 15, brightness 1 = 9 = 36 > 34 found: the priciest top step goes.
+	_check(progress.upgrades == {slime = 3, speed = 1, brightness = 1} and progress.coins() == 34 - 27,
+		"...the full game refits it to its prices a level at a time (%s, %d in hand)" % [progress.upgrades, progress.coins()])
 	Platform.demo_override = 1
 	progress.save_path = demo_path
 	# The full game reads a demo save and drops the marker.
@@ -585,6 +629,28 @@ func _check_carry_over() -> void:
 	progress.load_progress()
 	_check(progress.demo_guard and progress.levels_cleared == Levels.COUNT and not Demo.level_open(5), "the demo loads a full save (guarded, shows only demo content)")
 	_check(progress.upgrades == {slime = 7, speed = 4}, "...its upgrades are left alone (in memory only; %s)" % [progress.upgrades])
+	# Demo coin math on it: only levels 1-4's coins (34), only the levels within the caps cost (11 + 14).
+	_check(progress.coins_earned_here() == 34 and progress.coins() == 34 - 25 and progress.upgrade_buyable(),
+		"...its hand counts only the demo's coins and capped levels (%d in hand, BRIGHTNESS 1 buyable)" % progress.coins())
+	progress.refund_upgrade("slime")
+	_check(progress.upgrade_level("slime") == 6 and progress.coins() == 9, "...a level above the cap refunds nothing (%d in hand)" % progress.coins())
+	progress.upgrades = {slime = 7, speed = 4, brightness = 3}  # a maxed full save
+	_check(progress.coins() == 0 and progress.coins() <= Demo.coins_total() and not progress.upgrade_buyable(),
+		"...maxed: 0 in hand (not 165 - 34), nothing buyable (no R-prompt nag)")
+	Platform.override = "web"
+	_check(progress.coins_earned_here() == 22 and progress.coins() == 0 and not progress.upgrade_buyable(), "...web demo, maxed: 0 in hand of 22")
+	progress.upgrades = {slime = 7, speed = 4}
+	_check(progress.coins() == 22 - 6 - 7 and progress.upgrade_buyable(), "...web demo, no BRIGHTNESS: %d in hand at WEB_PRICES" % progress.coins())
+	Platform.override = ""
+	progress.save_path = test_save
+	progress.reset_progress()
+	progress.save_path = full_path
+	Platform.override = "web"  # a guarded full save whose capped levels cost more than its demo coins: left alone, hand 0
+	progress.load_progress()
+	progress.coins_found.clear()
+	_check(progress.upgrades == {slime = 7, speed = 4} and progress.coins() == 0, "...web, no demo coins found: upgrades kept, hand 0 (never negative)")
+	Platform.override = ""
+	progress.load_progress()
 	progress.complete_level(2)
 	progress.buy_upgrade("speed")
 	progress.reset_progress()
@@ -633,6 +699,21 @@ func _save_talk(texts: Array[String], allowed: Array[String] = []) -> Array[Stri
 				out.append(text)
 				break
 	return out
+
+
+## The hub's coin bag rows: "?/?" (dim) past the demo's levels when `demo`, else "found/total" for every
+## level; the total line never names the full game's 165 in the demo.
+func _coin_bag_ok(hub: Node, demo: bool) -> bool:
+	var ok := true
+	for i in Levels.COUNT:
+		var text: String = hub.board_rows[i].text
+		if demo and i + 1 > Demo.levels():
+			ok = ok and text == "?/?"
+		else:
+			ok = ok and text == "%d/%d" % [progress.coins_found_in(i + 1), Levels.COINS[i]]
+	if demo:
+		ok = ok and "/%d " % Demo.coins_total() in hub.board_total.text and not str(Levels.total_coins()) in hub.board_total.text
+	return ok
 
 
 ## Tiles past `last` are plain locks: disabled, the dim lock (no gold), no text but the number.

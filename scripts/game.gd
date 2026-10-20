@@ -2642,8 +2642,8 @@ func play_next() -> void:
 	if _leaving():
 		return
 	if is_random():
-		if Demo.on() and won and progress and progress.randoms_won == Demo.RANDOM_SEEDS.size():
-			# The demo's last fixed maze just won for the first time: the end screen's pitch (endless mazes).
+		if Demo.on() and won and progress and progress.randoms_won == Demo.RANDOM_WINS:
+			# The demo's RANDOM_WINS-th randomizer win: the end screen's pitch (endless mazes), once.
 			DevLog.route(get_tree(), "NEW MAZE (demo end)", self)
 			load(DEMO_END_SCRIPT).open(get_tree(), "random")
 			return
@@ -2710,7 +2710,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			replay("R")
 		elif finished:
 			retry("R")  # the dry-up buttons already offer the upgrades
-		elif progress and not hard_mode and progress.coins() > 0:
+		elif progress and not hard_mode and progress.coins() > 0 and (not Demo.on() or progress.upgrade_buyable()):
 			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
 			DevLog.log_event(get_tree(), "R prompt opened", self)
 		else:

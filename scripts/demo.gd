@@ -7,7 +7,8 @@ extends RefCounted
 ##
 ## What the demo has: the intro + SPLASHDOWN tutorial, story levels 1..levels() with their coins,
 ## hard level 1..HARD_LEVELS, the cauldron with each coin upgrade capped (UPGRADE_CAPS), the
-## randomizer (after level levels()) as RANDOM_SEEDS fixed mazes with only the ABILITIES, the hat wheel
+## randomizer (after level levels(): new random mazes in the demo's themes, as in the full game, with only the
+## ABILITIES; the end screen after RANDOM_WINS wins), the hat wheel
 ## (opens with the end screen, at most HATS_MAX hats), and the skins earnable in it. Later story / hard levels are plain locks (like any level not unlocked yet,
 ## no FULL GAME text); the other full-game content stays visible with a FULL GAME lock (names only).
 ## The end screen (END_SCENE) follows the last demo level's chalice and the last demo maze.
@@ -25,9 +26,15 @@ const WEB_LEVELS := 3
 ## Hard-mode levels in the demo (1..HARD_LEVELS; hard level 1 unlocks jelly Lime as usual).
 const HARD_LEVELS := 1
 ## How far each coin upgrade can be bought in the demo (the rest of its bar shows FULL); an upgrade not
-## listed stays at 0. At the full game's prices that is 1 + 4 + 6 + 9 = 20 coins of the 34 that levels
-## 1-4 hide (docs/demo-plan.md section 2).
-const UPGRADE_CAPS := {"slime": 2, "speed": 1, "brightness": 1}
+## listed stays at 0. WEB_UPGRADE_CAPS: the web demo's (its WEB_LEVELS levels hide fewer coins).
+const UPGRADE_CAPS := {"slime": 3, "speed": 2, "brightness": 1}
+const WEB_UPGRADE_CAPS := {"slime": 2, "speed": 1, "brightness": 1}
+## The demo's own coin prices (PRICES[id][i] = coins for level i + 1, one per capped level; the full
+## game's are Economy.COIN_TRACKS). They add up to EXACTLY the coins levels 1..levels() hide (coins_total():
+## desktop 6 + 9 + 7 + 12 = 34, web 6 + 9 + 7 = 22; tests/test_demo.gd checks it): every coin found buys
+## every demo upgrade level, 0 left over (docs/demo-plan.md section 2).
+const PRICES := {"slime": [1, 4, 6], "speed": [6, 8], "brightness": [9]}  # 11 + 14 + 9 = 34
+const WEB_PRICES := {"slime": [1, 5], "speed": [7], "brightness": [9]}  # 6 + 7 + 9 = 22
 ## Hats the demo's wheel gives at most: with this many hats owned it doesn't spin.
 const HATS_MAX := 2
 ## The randomizer (opens after the last demo level) and the hat wheel, per platform: the web demo
@@ -36,9 +43,9 @@ const RANDOMIZER := true
 const WEB_RANDOMIZER := false
 const HAT_WHEEL := true
 const WEB_HAT_WHEEL := false
-## The demo's randomizer mazes, played in this order (then replayed in turn). Picked for a middling
-## usage (about half to two thirds of the meter: tools/demo_paths.gd --seeds lists candidates).
-const RANDOM_SEEDS: Array[int] = [1016, 1063, 1015]  # usage 50 / 57 / 62 %
+## Randomizer wins before the end screen's pitch (shown once, after the RANDOM_WINS-th win). Every maze
+## is a new random one (random seed and start, a theme drawn from themes()), as in the full game.
+const RANDOM_WINS := 3
 ## Abilities that work (and can be bought) in the demo.
 const ABILITIES: Array[String] = ["rifle"]
 ## The store page the WISHLIST buttons open (OS.shell_open). Empty = every WISHLIST button is hidden.
@@ -90,7 +97,28 @@ static func level_open(level: int, hard := false) -> bool:
 ## The highest level coin upgrade `id` can be bought to here (UPGRADE_CAPS; 0 if not listed).
 static func upgrade_cap(id: String) -> int:
 	var top := Upgrades.max_level(id)
-	return mini(int(UPGRADE_CAPS.get(id, 0)), top) if on() else top
+	var caps: Dictionary = WEB_UPGRADE_CAPS if Platform.is_web() else UPGRADE_CAPS
+	return mini(int(caps.get(id, 0)), top) if on() else top
+
+
+## The demo's price list for coin upgrade `id` on this platform (PRICES / WEB_PRICES; [] if not listed).
+## Upgrades.cost / total_cost use it while the demo is on.
+static func prices(id: String) -> Array:
+	var table: Dictionary = WEB_PRICES if Platform.is_web() else PRICES
+	return table.get(id, [])
+
+
+## Coins hidden in the demo's story levels (1..levels(); every level's in the full game).
+static func coins_total() -> int:
+	var total := 0
+	for level in range(1, levels() + 1):
+		total += int(Levels.COINS[level - 1])
+	return total
+
+
+## The coin bag's row for story level `level` shows "?/?": a level past the demo's last.
+static func coins_hidden(level: int) -> bool:
+	return on() and level > levels()
 
 
 ## The hat wheel in the demo: "" = it spins as usual (always in the full game); "closed" = not before
@@ -162,16 +190,6 @@ static func themes() -> Array[String]:
 		if not id in out:
 			out.append(id)
 	return out
-
-
-## The randomizer seed for the demo's `index`-th maze (0-based, wrapping round).
-static func random_seed(index: int) -> int:
-	return RANDOM_SEEDS[posmod(index, RANDOM_SEEDS.size())]
-
-
-## True once every demo maze has been won (randoms_won counts the wins).
-static func randoms_done(won: int) -> bool:
-	return won >= RANDOM_SEEDS.size()
 
 
 ## The WISHLIST buttons show only with a store page to open.
