@@ -212,12 +212,12 @@ func _all_states() -> void:
 func _demo() -> void:
 	var saved := [progress.levels_cleared, progress.highest_unlocked, progress.current_level, progress.coins_found.duplicate(true), progress.upgrades.duplicate()]
 	Platform.demo_override = 1
-	progress.levels_cleared = 3
-	progress.highest_unlocked = 4
-	progress.current_level = 3
-	for level in range(1, 4):
+	progress.levels_cleared = Demo.LEVELS
+	progress.highest_unlocked = Demo.LEVELS + 1
+	progress.current_level = Demo.LEVELS
+	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-	progress.upgrades = {slime = 2}
+	progress.upgrades = Demo.UPGRADE_CAPS.duplicate()
 	var ls := await _open("res://scenes/level_select.tscn")
 	await _scan("demo level select", ls)
 	ls.free()
@@ -225,7 +225,7 @@ func _demo() -> void:
 	await _scan("demo upgrades capped", upg)
 	upg.free()
 	var skins := await _open("res://scenes/skins.tscn")
-	skins._refresh("grape")
+	skins._refresh("crimson")
 	await _frames(2)
 	await _scan("demo skin locked", skins)
 	skins.free()

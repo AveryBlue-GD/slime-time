@@ -792,6 +792,13 @@ func _read(file: ConfigFile, from_code := false) -> void:
 		_migrate_tree()
 	if tree < Economy.TREE_VERSION:
 		_migrate_prices()
+	if Demo.on() and is_demo_save(file):  # a demo save from older, higher caps: back to today's (the coins return)
+		for id: String in upgrades.keys():
+			if upgrades[id] > Demo.upgrade_cap(id):
+				if Demo.upgrade_cap(id) > 0:
+					upgrades[id] = Demo.upgrade_cap(id)
+				else:
+					upgrades.erase(id)
 	while coins() < 0 and not upgrades.is_empty():  # never spend more than was found
 		upgrades.erase(upgrades.keys()[0])
 	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
@@ -2296,13 +2303,21 @@ func hats_left() -> Array[String]:
 
 
 ## Whether the hat wheel can be spun right now: dev mode always (free); otherwise once hats are out
-## (Hats.available), with a hat left to win and the first spin (free) or its price in tickets.
+## (Hats.available), with a hat left to win and the first spin (free) or its price in tickets. The
+## demo: not before its end screen, nor past Demo.HATS_MAX hats (demo_wheel_block), dev mode included.
 func can_spin_hats() -> bool:
-	if hats_left().is_empty():
+	if hats_left().is_empty() or demo_wheel_block() != "":
 		return false
 	if dev_tools:
 		return true
 	return Hats.available and spin_cost() <= tickets
+
+
+## Why the demo's hat wheel can't spin (Demo.wheel_block: "closed" until the demo is completed, i.e. its
+## last level cleared (even if the game was closed on the win row, before the end screen) or the end
+## screen seen; "full" at Demo.HATS_MAX hats owned), or "" (always in the full game).
+func demo_wheel_block() -> String:
+	return Demo.wheel_block(levels_cleared >= Demo.levels() or has_seen_story(STORY_DEMO_END), hats_owned.size())
 
 
 ## What the next spin costs: nothing in dev mode and for the very first spin, then SPIN_COST plus
@@ -2557,7 +2572,7 @@ func store_affordable(where: String) -> bool:
 				if ability_level(id) < Abilities.max_level(id) and Demo.ability_open(id):
 					cheapest = mini(cheapest, ability_cost(id))
 	else:
-		if Hats.available and not hats_left().is_empty() and Demo.hat_wheel_open():
+		if Hats.available and not hats_left().is_empty() and Demo.hat_wheel_open() and demo_wheel_block() == "":
 			cheapest = mini(cheapest, spin_cost())
 		if not Demo.shop_open():
 			return cheapest <= tickets  # (the demo: the SHOP is in the full game)

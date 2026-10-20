@@ -2,12 +2,13 @@ extends "res://tests/suite_base.gd"
 
 ## The demo build (scripts/demo.gd, docs/demo-plan.md): one switch (Platform.is_demo, forced here with
 ## Platform.demo_override) and its gates. Checks, in this order:
-## 1. a stripped demo export: with Demo.strip_test on, levels 1-3 are played to the chalice by the autopilot
+## 1. a stripped demo export: with Demo.strip_test on, levels 1-4 are played to the chalice by the autopilot
 ##    and the last one leads (CONTINUE only, the first time) to the end screen; nothing full-only was asked
-##    for or loaded (no level 4+ / hard 2+ data, no later theme art or ambience in the resource cache);
+##    for or loaded (no level 5+ / hard 2+ data, no later theme art or ambience in the resource cache);
 ## 2. the full game with the switch off: every knob is the full game's, saves carry no demo marker;
-## 3. every lock: levels (level select + archway), upgrade cap, abilities (only SLIME RIFLE, in the shop and
-##    in a maze), hard (level 1 only), HEAT, randomizer (after level 3, its 3 fixed mazes, demo themes),
+## 3. every lock: levels (level select + archway), the per-upgrade caps (and their coin math), abilities (only
+##    SLIME RIFLE, in the shop and in a maze), hard (level 1 only), HEAT, randomizer (after level 4, its 3 fixed
+##    mazes, demo themes), the hat wheel (shut until the end screen, then a free spin, at most HATS_MAX hats),
 ##    SHOP, skins, the web knobs; the title's DEMO sticker (demo only, at its constant, clear of the logo's
 ##    letters and ENTER THE HUB); the end screen (WISHLIST hidden while the URL is empty, teaser cards) and the
 ##    pause menu; no screen says the demo's progress carries over (end screen, SETTINGS, RESET confirm);
@@ -106,9 +107,9 @@ func _check_stripped_run() -> void:
 	await physics_frame
 	_check(forced.level == Demo.LEVELS, "a full-game level falls back to the demo's last level (%d)" % forced.level)
 	forced.free()
-	_check(not Levels.has_data(4) and Levels.has_data(3) and not Levels.has_data(2, true) and Levels.has_data(1, true),
-		"stripped: Levels.has_data sees levels 1-3 and hard 1 only")
-	_check(Story.level_line(4) == "" and Story.level_line(3) != "", "stripped: no banner line for level 4")
+	_check(not Levels.has_data(Demo.LEVELS + 1) and Levels.has_data(Demo.LEVELS) and not Levels.has_data(2, true) and Levels.has_data(1, true),
+		"stripped: Levels.has_data sees levels 1-%d and hard 1 only" % Demo.LEVELS)
+	_check(Story.level_line(Demo.LEVELS + 1) == "" and Story.level_line(Demo.LEVELS) != "", "stripped: no banner line for level %d" % (Demo.LEVELS + 1))
 	Demo.strip_test = false
 	Demo.denied.clear()
 
@@ -158,10 +159,11 @@ func _check_stripped_full_save() -> void:
 	_check(settings.get_node_or_null("DemoGuardNote") == null and said.is_empty(), "guarded: SETTINGS and the RESET confirm say nothing about the full save (%s)" % [said])
 	settings.free()
 	progress.demo_guard = false
-	# The hub tour's lines in the demo (desktop: CLEAR / BEAT 3; web: the stations that are off say FULL GAME).
+	# The hub tour's lines in the demo (desktop: CLEAR / BEAT 4; web: the stations that are off say FULL GAME).
 	var tour: Node = load("res://scripts/hub_tour.gd").new()
 	progress.levels_cleared = 0
-	_check(tour.station_line("random") == "LOCKED: BEAT 3 LEVELS FIRST", "demo tour: the portal asks for the demo's 3 levels (%s)" % tour.station_line("random"))
+	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS, "demo tour: the portal asks for the demo's %d levels (%s)" % [Demo.LEVELS, tour.station_line("random")])
+	_check(tour.station_line("wheel") == "SPIN FOR HATS AFTER LEVEL %d" % Demo.LEVELS, "demo tour: the wheel opens after the last level, no free-spin promise yet (%s)" % tour.station_line("wheel"))
 	Platform.override = "web"
 	_check(tour.station_line("random") == "FULL GAME" and tour.station_line("wheel") == "FULL GAME", "web demo tour: randomizer and wheel say FULL GAME")
 	Platform.override = ""
@@ -208,16 +210,40 @@ func _check_full_game() -> void:
 func _check_locks() -> void:
 	Platform.demo_override = 1
 	progress.reset_progress()
-	_check(Demo.levels() == 3 and Demo.hard_levels() == 1 and not Demo.level_open(4) and Demo.level_open(3)
-		and not Demo.level_open(2, true) and Demo.level_open(1, true), "demo: levels 1-3, hard level 1")
-	# Upgrades: capped at UPGRADE_CAP even with coins to spare.
-	for level in range(1, 4):
+	_check(Demo.levels() == 4 and Demo.hard_levels() == 1 and not Demo.level_open(5) and Demo.level_open(4)
+		and not Demo.level_open(2, true) and Demo.level_open(1, true), "demo: levels 1-4, hard level 1")
+	# Upgrades: each stops at its own cap (MORE SLIME 2, SPEED 1, BRIGHTNESS 1, the dev wall power 0), at the
+	# full game's prices: 1 + 4 + 6 + 9 = 20 of the 34 coins levels 1-4 hide.
+	_check(Demo.upgrade_cap("slime") == 2 and Demo.upgrade_cap("speed") == 1 and Demo.upgrade_cap("brightness") == 1 and Demo.upgrade_cap("power") == 0,
+		"demo caps: MORE SLIME 2, SPEED 1, BRIGHTNESS 1, anything else 0")
+	var hidden := 0
+	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-	var bought := 0
-	while progress.buy_upgrade("slime"):
-		bought += 1
-	_check(bought == Demo.UPGRADE_CAP and progress.upgrade_level("slime") == Demo.UPGRADE_CAP and progress.coins() >= Upgrades.cost("slime", Demo.UPGRADE_CAP),
-		"upgrades stop at level %d with coins left (%d)" % [Demo.UPGRADE_CAP, progress.coins()])
+		hidden += Levels.COINS[level - 1]
+	var caps_cost := 0
+	for id: String in Demo.UPGRADE_CAPS:
+		caps_cost += Upgrades.total_cost(id, Demo.upgrade_cap(id))
+	_check(caps_cost == 20 and hidden == 34 and progress.coins() == hidden, "coin math: the caps cost %d, levels 1-%d hide %d" % [caps_cost, Demo.LEVELS, hidden])
+	var bought := {}
+	for id: String in ["slime", "speed", "brightness"]:
+		bought[id] = 0
+		while progress.buy_upgrade(id):
+			bought[id] += 1
+	_check(bought == {slime = 2, speed = 1, brightness = 1} and progress.coins() == hidden - caps_cost,
+		"upgrades stop at each cap with coins left (%s, %d left)" % [bought, progress.coins()])
+	progress.upgrades = {}
+	progress.coins_found.clear()
+	var need := 0
+	for level in range(1, Demo.LEVELS + 1):  # just the 20 coins the caps cost: every capped level can be bought
+		var keys: Array = Levels.coin_keys(level).slice(0, mini(Levels.COINS[level - 1], caps_cost - need))
+		need += keys.size()
+		progress.coins_found[level] = keys
+	for id: String in ["brightness", "speed", "slime", "slime"]:
+		progress.buy_upgrade(id)
+	_check(progress.coins() == 0 and progress.upgrades == Demo.UPGRADE_CAPS, "...exactly %d coins buy every demo level (%s)" % [caps_cost, progress.upgrades])
+	progress.upgrades = {}
+	for level in range(1, Demo.LEVELS + 1):
+		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
 	# Abilities: only SLIME RIFLE.
 	progress.tickets = 60
 	progress.tickets_lifetime = 60
@@ -233,19 +259,53 @@ func _check_locks() -> void:
 	progress.hard_cleared.assign([1])
 	_check(not progress.heat_unlocked(1), "HEAT is locked (hard level 1 cleared)")
 	# Skins.
-	progress.levels_cleared = 3
-	_check(progress.is_skin_unlocked("ocean", false) and progress.is_skin_unlocked("lemon", false) and progress.is_skin_unlocked("lime", true),
-		"demo skins: Lime..Ocean opaque, jelly Lime (and Mint: both hard level 1)")
+	progress.levels_cleared = Demo.LEVELS
+	_check(progress.is_skin_unlocked("grape", false) and progress.is_skin_unlocked("lemon", false) and progress.is_skin_unlocked("lime", true),
+		"demo skins: Lime..Grape opaque (Grape: level 4's reward), jelly Lime (and Mint: both hard level 1)")
 	progress.levels_cleared = Levels.COUNT
 	progress.hard_cleared.assign([1, 2, 3])
-	_check(not progress.is_skin_unlocked("grape", false) and not progress.is_skin_unlocked("lemon", true) and not progress.is_skin_unlocked(Skins.CUSTOM, false),
-		"full-game skins stay locked even on a full save (Grape, jelly Lemon, Chameleon)")
-	# Randomizer: after level 3, its fixed mazes in turn, then replays.
+	_check(not progress.is_skin_unlocked("crimson", false) and not progress.is_skin_unlocked("lemon", true) and not progress.is_skin_unlocked(Skins.CUSTOM, false),
+		"full-game skins stay locked even on a full save (Crimson, jelly Lemon, Chameleon)")
+	Platform.override = "web"
+	_check(not progress.is_skin_unlocked("grape", false) and progress.is_skin_unlocked("ocean", false), "web demo (3 levels): Grape stays locked, Ocean is earnable")
+	Platform.override = ""
+	# Hat wheel: shut until the end screen was seen, then the first spin is free, later ones cost tickets,
+	# up to HATS_MAX hats.
 	progress.reset_progress()
-	progress.levels_cleared = 2
-	_check(not progress.is_randomizer_unlocked(), "randomizer locked before level 3")
-	progress.levels_cleared = 3
-	_check(progress.is_randomizer_unlocked(), "randomizer open after level 3")
+	progress.levels_cleared = Demo.LEVELS - 1
+	progress.tickets = 200
+	_check(progress.demo_wheel_block() == "closed" and not progress.can_spin_hats() and progress.spin_hat(0.5) == "" and not progress.store_affordable("wheel"),
+		"hat wheel: shut before the demo is completed (no spin, no '!')")
+	progress.dev_tools = true
+	_check(not progress.can_spin_hats(), "...dev mode doesn't open it either")
+	progress.dev_tools = false
+	progress.levels_cleared = Demo.LEVELS
+	_check(progress.demo_wheel_block() == "" and not progress.has_seen_story(Demo.END_SEEN_BIT),
+		"...open once level %d is cleared, even if the game closed on the win row (end screen not seen)" % Demo.LEVELS)
+	progress.levels_cleared = 0
+	progress.mark_story_seen(Demo.END_SEEN_BIT)
+	_check(progress.demo_wheel_block() == "" and progress.spin_cost() == 0 and progress.can_spin_hats(), "...open after the end screen, the first spin free")
+	progress.levels_cleared = Demo.LEVELS
+	var wheel_won: Array[String] = []
+	for i in Demo.HATS_MAX + 2:
+		var hat: String = progress.spin_hat(0.5)
+		if hat != "":
+			wheel_won.append(hat)
+	_check(wheel_won.size() == Demo.HATS_MAX and progress.hats_owned.size() == Demo.HATS_MAX and progress.tickets == 200 - progress.spin_cost_after(1),
+		"...%d hats won (free + %d tickets), then no more spins (%s)" % [wheel_won.size(), progress.spin_cost_after(1), wheel_won])
+	_check(progress.demo_wheel_block() == "full" and not progress.can_spin_hats() and not progress.store_affordable("wheel") and not progress.hats_left().is_empty(),
+		"...at HATS_MAX: blocked though hats are left, no '!'")
+	progress.hats_owned.assign(Hats.ids().slice(0, 5))
+	_check(not progress.can_spin_hats() and progress.spin_hat(0.5) == "" and progress.hats_owned.size() == 5, "...a save with more hats (a full save) just can't spin")
+	Platform.demo_override = 0
+	_check(progress.demo_wheel_block() == "" and progress.can_spin_hats(), "switch off: the wheel spins as always")
+	Platform.demo_override = 1
+	# Randomizer: after level 4, its fixed mazes in turn, then replays.
+	progress.reset_progress()
+	progress.levels_cleared = Demo.LEVELS - 1
+	_check(not progress.is_randomizer_unlocked(), "randomizer locked before level %d" % Demo.LEVELS)
+	progress.levels_cleared = Demo.LEVELS
+	_check(progress.is_randomizer_unlocked(), "randomizer open after level %d" % Demo.LEVELS)
 	var picked: Array[int] = []
 	for won in Demo.RANDOM_SEEDS.size():
 		progress.randoms_won = won
@@ -259,7 +319,7 @@ func _check_locks() -> void:
 	var themes_ok := true
 	for s in range(1, 300):
 		themes_ok = themes_ok and Themes.for_seed(s) in Demo.themes()
-	_check(themes_ok and Demo.themes() == ["dungeon", "mossy", "sandstone"], "random mazes use the demo's themes only")
+	_check(themes_ok and Demo.themes() == ["dungeon", "mossy", "sandstone", "sunken"], "random mazes use the demo's themes only (%s)" % [Demo.themes()])
 	# Abilities in a maze: a full save's SPLAT / SLIMAKAZE don't work, RIFLE does.
 	progress.abilities = {rifle = 1, splat = 2, kaze = 3}
 	progress.tickets_lifetime = 5
@@ -275,18 +335,25 @@ func _check_locks() -> void:
 	Platform.override = "web"
 	_check(not Demo.randomizer_open() and not Demo.hat_wheel_open() and Demo.levels() == Demo.WEB_LEVELS and not progress.is_randomizer_unlocked(),
 		"web demo: no randomizer, no hat wheel, WEB_LEVELS levels")
-	_check(Demo.full_only_paths(true).size() >= Demo.full_only_paths(false).size(), "the web list leaves out at least as much")
+	_check(Demo.full_only_paths(true).size() > Demo.full_only_paths(false).size(), "the web list leaves out more (level 4, Sunken Shrine)")
+	_check(Demo.themes() == ["dungeon", "mossy", "sandstone"] and Demo.teasers() == [4, 6, 7, 9, 10], "web demo: 3 themes, teasers from level 4 %s" % [Demo.teasers()])
+	var web_cut := Demo.export_cut(true)
+	var desk_cut := Demo.export_cut(false)
+	_check(Levels.data_path(4) in web_cut and Themes.atlas_path("sunken", "walls") in web_cut and "res://assets/sounds/ambient_sunken.wav" in web_cut
+		and not Levels.data_path(4) in desk_cut and not Themes.atlas_path("sunken", "walls") in desk_cut and not "res://assets/sounds/ambient_sunken.wav" in desk_cut,
+		"level 4 + Sunken Shrine: cut from the web demo, kept in the desktop one")
 	Platform.override = ""
+	_check(Demo.teasers() == [5, 6, 7, 9, 10], "desktop demo: teasers from level 5 %s" % [Demo.teasers()])
 	_check(not Demo.wishlist_shown() and Demo.WISHLIST_URL == "", "WISHLIST is hidden while the URL is empty")
 	# The exclude list: every level past 3, hard past 1, later themes' art and ambience, nothing of the demo's.
 	var paths := Demo.full_only_paths()
 	var demo_art := false
 	for id in Demo.themes():
 		demo_art = demo_art or Themes.atlas_path(id, "walls") in paths or ("res://assets/sounds/ambient_%s.wav" % id) in paths
-	_check(Levels.data_path(4) in paths and Levels.data_path(10) in paths and not Levels.data_path(3) in paths
+	_check(Levels.data_path(5) in paths and Levels.data_path(10) in paths and not Levels.data_path(4) in paths
 		and Levels.data_path(2, true) in paths and not Levels.data_path(1, true) in paths
-		and Themes.atlas_path("volcanic", "border") in paths and "res://assets/sounds/ambient_sunken.wav" in paths and not demo_art,
-		"full_only_paths: levels 4-10, hard 2-10, later themes' art + ambience; none of the demo's (%d paths)" % paths.size())
+		and Themes.atlas_path("volcanic", "border") in paths and "res://assets/sounds/ambient_sewers.wav" in paths and not demo_art,
+		"full_only_paths: levels 5-10, hard 2-10, later themes' art + ambience; none of the demo's (%d paths)" % paths.size())
 	var all_exist := true
 	for path in paths:
 		all_exist = all_exist and FileAccess.file_exists(path)
@@ -298,9 +365,9 @@ func _check_locks() -> void:
 func _check_screens() -> void:
 	Platform.demo_override = 1
 	progress.reset_progress()
-	progress.levels_cleared = 3
-	progress.highest_unlocked = 4
-	progress.current_level = 4
+	progress.levels_cleared = Demo.LEVELS
+	progress.highest_unlocked = Demo.LEVELS + 1
+	progress.current_level = Demo.LEVELS + 1
 	# Title: the DEMO sticker (demo builds only), at its constant, inside the screen, clear of ENTER THE HUB and
 	# below the logo's letters (only its drips may run under it).
 	var title: Control = await _open("res://scenes/title.tscn")
@@ -324,12 +391,12 @@ func _check_screens() -> void:
 	# Level select.
 	var select: Control = await _open("res://scenes/level_select.tscn")
 	var tiles: Array = select.level_buttons
-	_check(_plain_locks(tiles, 3), "level select: tiles 4-10 are plain locks (disabled, the dim lock, no FULL text)")
-	_check(select.get_viewport().gui_get_focus_owner() == tiles[2], "...the focus is on level 3 (the demo's last), not the locked 4")
+	_check(_plain_locks(tiles, Demo.LEVELS), "level select: tiles 5-10 are plain locks (disabled, the dim lock, no FULL text)")
+	_check(select.get_viewport().gui_get_focus_owner() == tiles[Demo.LEVELS - 1], "...the focus is on level 4 (the demo's last), not the locked 5")
 	_check(not "FULL" in select.info.text, "...the info lines don't name the full game (%s)" % select.info.text.replace("\n", " / "))
 	var before_level: int = progress.current_level
-	(tiles[3] as Button).pressed.emit()
-	select._play(5)
+	(tiles[Demo.LEVELS] as Button).pressed.emit()
+	select._play(6)
 	await _frames(2)
 	var transition := root.get_node_or_null("Transition")
 	_check(progress.current_level == before_level and (transition == null or not transition.busy) and select.is_inside_tree(),
@@ -349,20 +416,22 @@ func _check_screens() -> void:
 	select.hard_mode_box.button_pressed = false
 	select.free()
 	progress.hard_mode = false
-	# Upgrades.
-	for level in range(1, 4):
+	# Upgrades: every row at its cap shows FULL.
+	for level in range(1, Demo.LEVELS + 1):
 		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
-	progress.buy_upgrade("slime")
-	progress.buy_upgrade("slime")
+	for id in ["slime", "slime", "speed", "brightness"]:
+		progress.buy_upgrade(id)
 	var upg: Control = await _open("res://scenes/upgrades.tscn")
-	var row: Dictionary = upg.rows["slime"]
-	_check(row.cost.text == "FULL" and row.plus.disabled and not row.minus.disabled, "upgrades: MORE SLIME at %d shows FULL, + disabled" % Demo.UPGRADE_CAP)
+	for id: String in ["slime", "speed", "brightness"]:
+		var row: Dictionary = upg.rows[id]
+		_check(row.cost.text == "FULL" and row.plus.disabled and not row.minus.disabled, "upgrades: %s at %d shows FULL, + disabled" % [id, Demo.upgrade_cap(id)])
+	_check("MORE UPGRADE LEVELS" in upg.hint.text, "...the hint says more levels are in the full game (%s)" % upg.hint.text.replace("\n", " / "))
 	upg.free()
 	# Skins.
 	var skins: Control = await _open("res://scenes/skins.tscn")
-	skins._refresh("grape")
+	skins._refresh("crimson")
 	_check("FULL GAME" in skins.status.text, "skins: a full-game skin says so (%s)" % skins.status.text)
-	skins._refresh("ocean")
+	skins._refresh("grape")
 	_check(not "FULL GAME" in skins.status.text, "...a demo skin doesn't")
 	skins.free()
 	# Hub: the archway on a full-game level is plainly LOCKED.
@@ -371,7 +440,36 @@ func _check_screens() -> void:
 	hub._show_prompt()
 	_check(hub.prompt_key.text == "LOCKED" and not "FULL" in hub.prompt_name.text, "hub: the archway says LOCKED (no FULL GAME) when the next level is the full game's (%s / %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	_check(hub.wishlist_sign == null, "hub: no WISHLIST sign while the URL is empty")
+	# Hub: the hat wheel before the demo is completed (LOCKED, CLEAR LEVEL 4, the overlay stays shut) and at HATS_MAX.
+	progress.levels_cleared = Demo.LEVELS - 1
+	hub.near = hub._station("wheel")
+	hub._show_prompt()
+	_check(hub.prompt_key.text == "LOCKED" and not hub.prompt_bang.visible, "hub: the wheel says LOCKED before the end screen (%s)" % hub.prompt_key.text)
+	hub._use(hub.near)
+	_check(not hub.hat_wheel.visible and hub.prompt_key.text == "CLEAR LEVEL %d" % Demo.LEVELS, "...using it: CLEAR LEVEL %d, the wheel stays shut (%s)" % [Demo.LEVELS, hub.prompt_key.text])
 	hub.free()
+	progress.levels_cleared = Demo.LEVELS
+	hub = await _open("res://scenes/hub.tscn")
+	hub.near = hub._station("wheel")
+	hub._show_prompt()
+	_check(hub.prompt_key.text == "FREE", "hub: after the end screen the first spin is FREE (%s)" % hub.prompt_key.text)
+	var tour: Node = load("res://scripts/hub_tour.gd").new()
+	_check(tour.station_line("wheel") == "SPIN FOR HATS, THE FIRST IS FREE", "...the tour says so now (%s)" % tour.station_line("wheel"))
+	progress.hats_owned.assign(Hats.ids().slice(0, Demo.HATS_MAX))
+	progress.spins = Demo.HATS_MAX
+	progress.tickets = 100
+	hub._show_prompt()
+	_check(hub.prompt_key.text == "LOCKED" and tour.station_line("wheel") == "NO MORE HATS IN THE DEMO", "hub: at HATS_MAX the wheel says LOCKED, the tour NO MORE HATS IN THE DEMO")
+	tour.free()
+	hub._use(hub.near)
+	await _frames(2)
+	_check(hub.hat_wheel.visible and hub.hat_wheel.spin_button.disabled and hub.hat_wheel.result.text == "NO MORE HATS IN THE DEMO",
+		"...the wheel opens with SPIN disabled and says why (%s)" % hub.hat_wheel.result.text)
+	hub.close_hat_wheel()
+	hub.free()
+	progress.hats_owned.clear()
+	progress.spins = 0
+	progress.story_seen &= ~Demo.END_SEEN_BIT
 	# End screen.
 	DemoEnd.from = DemoEnd.FROM_STORY
 	var end: Control = await _open(DemoEnd.SCENE)
@@ -380,10 +478,12 @@ func _check_screens() -> void:
 	var said := _save_talk(_texts(end))
 	_check(said.is_empty(), "...desktop: no line about progress carrying over (%s)" % [said])
 	var names: Array[String] = []
-	for i in Demo.TEASER_LEVELS.size():
+	for i in Demo.teasers().size():
 		end.show_card(i)
 		names.append(end.area_label.text)
-	_check(names.size() == 5 and names[0] == "SUNKEN SHRINE" and names[-1] == "VOLCANIC VAULT", "...teaser cards of later areas %s" % [names])
+	_check(names.size() == 5 and names[0] == "TOXIC TUNNELS" and names[-1] == "VOLCANIC VAULT", "...teaser cards of later areas %s" % [names])
+	end.show_card(0)
+	_check(end.feature_label.text == "6 MORE AREAS", "...the first card counts the areas past the demo (%s)" % end.feature_label.text)
 	var inside := true
 	for control: Control in [end.keep_button, end.arrows[0], end.arrows[1]]:
 		var rect := control.get_global_rect()
@@ -433,6 +533,27 @@ func _check_carry_over() -> void:
 	file.load(demo_path)
 	_check(file.get_value("meta", "demo", false) == true, "the demo's save carries [meta] demo = true")
 	var demo_code: String = progress.save_code()
+	# A demo save from older, higher caps (SPEED 2): loaded back to today's caps, the coins return.
+	var old_path := throwaway_save("_oldcaps")
+	progress.save_path = old_path
+	for level in range(1, Demo.LEVELS + 1):
+		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
+	progress.upgrades = {slime = 2, speed = 2, brightness = 1}  # (29 of the 34 coins)
+	progress.save_progress()
+	progress.save_path = test_save
+	progress.reset_progress()
+	progress.save_path = old_path
+	progress.load_progress()
+	_check(not progress.demo_guard and progress.upgrades == Demo.UPGRADE_CAPS and progress.coins() == 34 - 20,
+		"an older demo save is clamped to today's caps on load (%s, %d coins back in hand)" % [progress.upgrades, progress.coins()])
+	Platform.demo_override = 0
+	progress.save_path = test_save
+	progress.reset_progress()
+	progress.save_path = old_path
+	progress.load_progress()
+	_check(progress.upgrades == {slime = 2, speed = 2, brightness = 1}, "...the full game loads it unclamped (%s)" % [progress.upgrades])
+	Platform.demo_override = 1
+	progress.save_path = demo_path
 	# The full game reads a demo save and drops the marker.
 	Platform.demo_override = 0
 	progress.save_path = test_save  # (RESET saves: never onto the file under test)
@@ -449,7 +570,9 @@ func _check_carry_over() -> void:
 	progress.save_path = full_path
 	for level in range(1, Levels.COUNT + 1):
 		progress.complete_level(level, false)
-	progress.upgrades = {slime = 7}
+	for level in range(1, Levels.COUNT + 1):
+		progress.coins_found[level] = Levels.coin_keys(level).duplicate()
+	progress.upgrades = {slime = 7, speed = 4}
 	progress.hard_cleared.assign([1, 2, 3, 4])
 	progress.tickets = 40
 	progress.save_progress()
@@ -461,6 +584,7 @@ func _check_carry_over() -> void:
 	progress.save_path = full_path
 	progress.load_progress()
 	_check(progress.demo_guard and progress.levels_cleared == Levels.COUNT and not Demo.level_open(5), "the demo loads a full save (guarded, shows only demo content)")
+	_check(progress.upgrades == {slime = 7, speed = 4}, "...its upgrades are left alone (in memory only; %s)" % [progress.upgrades])
 	progress.complete_level(2)
 	progress.buy_upgrade("speed")
 	progress.reset_progress()

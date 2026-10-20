@@ -167,6 +167,20 @@ msgctxt "demo.full_game"
 msgid "FULL GAME"
 msgstr ""
 
+#. hat wheel status line and hub tour line (demo build: the wheel's hats are used up), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/demo.gd
+msgctxt "demo.wheel_full"
+msgid "NO MORE HATS IN THE DEMO"
+msgstr ""
+
+#. hat wheel status line and hub tour line (demo build: the wheel opens after the last demo level), max 192px, 1 line; {level} = the demo's last level (4)
+#. budget: max 192px, lines 1
+#: scripts/demo.gd
+msgctxt "demo.wheel_closed"
+msgid "SPIN FOR HATS AFTER LEVEL {level}"
+msgstr ""
+
 #: scripts/descent.gd
 msgctxt "boon.gulp.name"
 msgid "BIG GULP"
@@ -1011,7 +1025,7 @@ msgctxt "hub.tour.random"
 msgid "A NEW MAZE EVERY TIME, NO MERCY"
 msgstr ""
 
-#. hub tour line (demo build) in the hub prompt box (the use key follows), max 192px, 1 line; {count} = the demo's levels (3)
+#. hub tour line (demo build) in the hub prompt box (the use key follows), max 192px, 1 line; {count} = the demo's levels (4)
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.random_locked_demo"
@@ -1794,9 +1808,11 @@ msgctxt "demo.end.line"
 msgid "THE WAY OUT IS STILL UP THERE"
 msgstr ""
 
+#. demo end screen teaser card, max 168px, 1 line; {count} = story areas past the demo (6, web 7)
+#. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
-msgctxt "demo.teaser.areas"
-msgid "SEVEN MORE AREAS"
+msgctxt "demo.teaser.more_areas"
+msgid "{count} MORE AREAS"
 msgstr ""
 
 #: scripts/ui/demo_end.gd
@@ -2711,11 +2727,11 @@ msgctxt "upgrades.hint_coins.1"
 msgid "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"
 msgstr "XU NẰM Ở NGÕ CỤT TRONG MÊ CUNG TRUYỆN"
 
-#. demo build, max 300px, 1 line; {level} = the demo's upgrade cap (2)
+#. demo build (each upgrade stops at its own demo cap), max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
-msgctxt "upgrades.demo_cap"
-msgid "UPGRADES PAST LEVEL {level}: FULL GAME"
+msgctxt "upgrades.demo_caps"
+msgid "MORE UPGRADE LEVELS IN THE FULL GAME"
 msgstr ""
 
 #: scripts/ui/upgrades_screen.gd

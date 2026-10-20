@@ -21,16 +21,23 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 
 | knob | default | meaning |
 |---|---|---|
-| `LEVELS` / `WEB_LEVELS` | 3 / 3 | story levels in the demo (desktop / web build) |
+| `LEVELS` / `WEB_LEVELS` | 4 / 3 | story levels in the demo (desktop / web build; owner 2026-10-19: the desktop demo has Sunken Shrine too) |
 | `HARD_LEVELS` | 1 | hard levels (hard 1 unlocks jelly Lime and jelly Mint, the existing rule: both have hard level 1) |
-| `UPGRADE_CAP` | 2 | each coin upgrade can be bought up to this level; the rest of the bar is darker, its cost says FULL |
+| `UPGRADE_CAPS` | `{"slime": 2, "speed": 1, "brightness": 1}` | how far each coin upgrade can be bought (an upgrade not listed: 0); the rest of the bar is darker, its cost says FULL. Coin math below |
+| `HATS_MAX` | 2 | hats the demo's wheel gives at most; with that many owned it doesn't spin (a guarded full save that owns more: no spins either) |
 | `RANDOMIZER` / `WEB_RANDOMIZER` | true / false | randomizer on desktop / web (the web demo leaves it out by default) |
 | `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / false | hat wheel on desktop / web |
-| `RANDOM_SEEDS` | 1016, 1063, 1015 | the demo's randomizer mazes in order (usage 50 / 57 / 62 %, themes dungeon / mossy / sandstone); then they replay (replay pay) |
+| `RANDOM_SEEDS` | 1016, 1063, 1015 | the demo's randomizer mazes in order (usage 50 / 57 / 62 %, themes picked from the demo's 4); then they replay (replay pay) |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |
 | `WISHLIST_URL` | `""` | store page for every WISHLIST button; **empty = every WISHLIST button is hidden** (no Steam page yet) |
-| `TEASER_LEVELS` | 4, 6, 7, 9, 10 | the end screen's teaser cards |
-| `END_SEEN_BIT` | 4 | `Progress.story_seen` bit: the end screen was seen (the full game ignores it) |
+| `TEASER_LEVELS` | 6, 7, 9, 10 | the end screen's teaser cards after the first one, which is always the area right after the demo (`Demo.teasers()`: desktop 5, 6, 7, 9, 10; web 4, 6, 7, 9, 10); the first card says {count} MORE AREAS (6 / 7) |
+| `END_SEEN_BIT` | 4 | `Progress.story_seen` bit: the end screen was seen (the full game ignores it); also opens the demo's hat wheel |
+
+**Coin math (desktop, 2026-10-19).** The caps at the full game's prices (`Economy.COIN_TRACKS`): MORE SLIME 1 + 4,
+SPEED 6, BRIGHTNESS 9 = **20 coins**; story levels 1-4 hide 6 + 9 + 7 + 12 = **34**. A player who finds about
+60 % of the coins can buy every demo level; the other 14 have nowhere to go (the bars' FULL says why). The web
+demo (3 levels) hides 22: still enough for all 20. `tests/test_demo.gd` checks the sums, that 20 coins buy
+exactly the caps and that buying stops at each cap.
 
 ## 3. What the demo has and how each lock looks
 
@@ -45,13 +52,13 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
   letters (`LOGO_LETTER_ROWS`: only drips run under it), by the left slime and over its hat (owner: fine), clear
   of ENTER THE HUB (x 72); `tests/test_demo.gd` checks all of it and that the full game has no sticker. **The PNG
   ships in the full exports too** (633 bytes, never loaded there; not worth a cut-list entry).
-- **Story:** levels 1-3 (Dark Dungeon, Mossy Mines, Sandstone Sanctum) with their coins. The level select shows all
-  10 tiles; 4-10 (hard: 2-10) are **plain locks** (owner, 2026-10-19): the same dim lock as a level not unlocked
+- **Story:** levels 1-4 (Dark Dungeon, Mossy Mines, Sandstone Sanctum, Sunken Shrine; the web demo 1-3) with their
+  coins. The level select shows all 10 tiles; 5-10 (web 4-10; hard: 2-10) are **plain locks** (owner, 2026-10-19): the same dim lock as a level not unlocked
   yet in the full game, no FULL text, disabled, pressing one does nothing. The info lines are the full game's
   (CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A NEW SKIN); hard: one line, BEAT A LEVEL ON HARD
   FOR ITS JELLY SKIN (no HEAT in the demo). The hub archway says LOCKED once the next level is a full-game one.
-  The map table keeps 4-10 sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
-- **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the level-3 chalice the win row is
+  The map table keeps the later levels sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
+- **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the last demo level's chalice (desktop 4, web 3) the win row is
   CONTINUE only the first time (every finisher sees the pitch before the hub and the randomizer), later
   REPLAY / CONTINUE / HUB. Also after the third demo maze is first won (top line: the full game's endless mazes
   and 3 abilities). Not from a level tile any more (locked tiles do nothing). Layout: END OF THE DEMO, a story-voice line (THE WAY OUT
@@ -73,20 +80,25 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 - **WISHLIST** also as a quiet pause-menu button and a small hub sign under the ticket pod (after the end screen
   was seen); all hidden while `WISHLIST_URL` is empty. `Demo.open_wishlist()` uses `OS.shell_open` (a new tab
   on the web); a Steam build should route it to the overlay through `Platform` later.
-- **Upgrades:** the cauldron works; each coin upgrade stops at level 2 (cost column FULL in gold, darker pips past
-  the cap, hint line UPGRADES PAST LEVEL 2: FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
+- **Upgrades:** the cauldron works; each coin upgrade stops at its `UPGRADE_CAPS` level (MORE SLIME 2, SPEED 1,
+  BRIGHTNESS 1: cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
   show FULL); in a maze only RIFLE works (`AbilityRunner.create`).
 - **Hard mode:** level 1 only; HEAT hidden (button and panel) and `heat_unlocked` false.
-- **Randomizer:** opens after level 3 (`Progress.is_randomizer_unlocked`), plays `RANDOM_SEEDS` in turn (they pay
+- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`), plays `RANDOM_SEEDS` in turn (they pay
   tickets as usual), only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
-  pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 3; on the web (left out): FULL GAME.
-- **Hat wheel:** works (free first spin + tickets from the mazes); on the web left out (station dimmed, FULL GAME).
+  pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 4; on the web (left out): FULL GAME.
+- **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";
+  station dimmed, prompt LOCKED, using it says CLEAR LEVEL 4, tour line SPIN FOR HATS AFTER LEVEL 4, so no free-spin
+  promise before it opens). Then as in the full game: the first spin free, later ones cost tickets from the mazes,
+  up to `HATS_MAX` hats ("full": prompt LOCKED, the wheel still opens with SPIN disabled and the line NO MORE HATS
+  IN THE DEMO, also the tour line; no "!"). Counted as hats owned in the save, so a guarded full save with more
+  hats just can't spin. Dev mode doesn't lift either block in the demo. On the web left out (station dimmed, FULL GAME).
   **SHOP:** on show, nothing for sale (status line THE SHOP OPENS IN THE FULL GAME, prices dimmed;
   `can_buy_cosmetic` / `can_buy_hat` false; the hub's "!" ignores it).
-- **Skins:** Lime, Mint, Lemon, Ocean (opaque) and jelly Lime / Mint; every other skin is a silhouette whose
+- **Skins:** Lime, Mint, Lemon, Ocean, Grape (opaque; the web demo without Grape) and jelly Lime / Mint; every other skin is a silhouette whose
   status line says NAME - IN THE FULL GAME (`Progress.is_skin_unlocked` asks `Demo.skin_open`, so a full save
   shows the demo's skins only).
-- **Maps / medals / records:** for the demo's levels; the map table keeps 4-10 sealed (even with a full save's surveys).
+- **Maps / medals / records:** for the demo's levels; the map table keeps the later ones sealed (even with a full save's surveys).
 - Workshop and Descent stay off as in the full game. Intro + SPLASHDOWN tutorial are unchanged.
 
 ## 4. Full-game-only content (the export cut list)
@@ -97,18 +109,19 @@ translation catalogs while the languages gate is off (section 9). Print them wit
 `EXCLUDE: a, b, c` (the whole cut). Nobody copies that line by hand: `--write-presets` writes it into the demo
 presets (section 8). It is computed from `Demo.LEVELS` / `WEB_LEVELS` / `HARD_LEVELS`, `Levels.data_path`, `Themes`
 and `Demo.FULL_ONLY_FILES`, so changing a knob, or adding a level or theme past the demo, changes the list.
-Today (desktop; web the same while `WEB_LEVELS` is 3):
+Today (desktop, `LEVELS` 4; the web demo, `WEB_LEVELS` 3, also cuts level 4 and Sunken Shrine: the "Web Demo"
+preset gets `export_cut(true)`, the desktop ones `export_cut(false)`):
 
 | what | paths |
 |---|---|
-| story level data + banner line, levels 4-10 | `res://scripts/level_data/level_04.gd` .. `level_10.gd` |
+| story level data + banner line, levels 5-10 (web 4-10) | `res://scripts/level_data/level_05.gd` .. `level_10.gd` |
 | hard level tables, hard 2-10 | `res://scripts/level_data/hard_02.gd` .. `hard_10.gd` |
-| tile art of the 7 later themes | `res://assets/sprites/themes/{sunken,sewers,catacombs,frozen,obsidian,crystal,volcanic}_{walls,floors,fillets,border}.png` (+ `.import`) |
-| ambience of the 7 later themes | `res://assets/sounds/ambient_{theme}.wav` and `ambient_{theme}_N.wav` (+ `.import`) |
+| tile art of the 6 later themes (web 7, + sunken) | `res://assets/sprites/themes/{sewers,catacombs,frozen,obsidian,crystal,volcanic}_{walls,floors,fillets,border}.png` (+ `.import`) |
+| ambience of the 6 later themes (web 7) | `res://assets/sounds/ambient_{theme}.wav` and `ambient_{theme}_N.wav` (+ `.import`) |
 | the victory screen (after the level-10 chalice only) | `res://scenes/victory.tscn`, `res://scripts/ui/victory.gd` (`Demo.FULL_ONLY_FILES`) |
 | the 17 translation catalogs, while `Economy.LANGUAGES_TEST` is false | `res://locale/*.po` (`Language.CATALOGS`; never loaded with the gate off) |
 
-That is 117 files (199 paths with the `.import` siblings).
+(Counts: see `build/demo/reports/` after a build.)
 
 How the code keeps this possible:
 - `Levels` reads each level from its own file (`scripts/level_data/level_NN.gd`: `NORMAL` recipe + `line()`;
@@ -118,9 +131,9 @@ How the code keeps this possible:
   check first: the game falls back to the demo's last level, `Story.level_line` is empty, `Progress` keeps a full
   save's surveys and medals of missing levels untouched (`survey_for`, `_tier_from_record`).
 - Theme art and ambience were already loaded by path for the current theme only (`MazeTiles`, `game.gd`); the demo
-  only ever plays the demo's themes (story levels 1-3 and `Themes.for_seed` in the demo).
+  only ever plays the demo's themes (its story levels and `Themes.for_seed` in the demo).
 - The data files have no `class_name` (nothing in the global class cache points at them).
-- `tests/test_demo.gd` plays levels 1-3 to the chalice and the first demo maze with `Demo.strip_test` on (every
+- `tests/test_demo.gd` plays levels 1-4 to the chalice and the first demo maze with `Demo.strip_test` on (every
   full-only path treated as absent) and checks that nothing asked for one (`Demo.denied`) and that none is in the
   resource cache (`ResourceLoader.has_cached`) afterwards.
 
@@ -195,15 +208,15 @@ file is read and written with ConfigFile, exactly as the editor saves it).
      The web pack runs with `--platform=web --expect=web` (a debug binary then answers `Platform.is_web()` true), so
      the web knobs are what is checked. Checks: the `demo` feature comes from the export (not a flag), the platform
      is the expected one, `Demo.levels()` / randomizer / hat wheel match that platform's knobs, every cut path of
-     that platform is absent, levels 1-3 are played to the chalice by the route pilot and the end screen opens, the
+     that platform is absent, levels 1..`Demo.levels()` (desktop 1-4, web 1-3) are played to the chalice by the route pilot and the end screen opens, the
      first demo maze is played to its ticket (web: the randomizer stays shut, `WEB_RANDOMIZER` false), every menu
      scene opens, a full-game level falls back. Fails on a failed check or any `ERROR` / `SCRIPT ERROR` line (the
      engine's "resources still in use at exit" line is ignored). The exported exe itself is never run (it would use
      the real save); the real save's md5 is compared before / after too.
   Reports: `build/demo/reports/` (cut list, pack listings, export and smoke logs; not inside `build/demo/web`,
-  whose files are the itch upload). Last run (2026-10-19, Windows): Windows Demo exe 111.9 MB with a 2.7 MB pack
-  of 427 files (full: 116.5 MB, 7.2 MB pack, 644 files); Web Demo pack 2.6 MB (full 7.1 MB; the 39.5 MB engine
-  wasm is the same); Linux Demo 76.1 MB; smoke: 29 / 29 checks (Windows), 27 / 27 (web).
+  whose files are the itch upload). Last run (2026-10-20, Windows, 4 desktop levels): Windows Demo exe 112.3 MB with a 3.1 MB pack
+  of 453 files, 105 files cut (full: 116.5 MB, 7.2 MB pack, 644 files); Web Demo pack 2.6 MB of 428 files, 117 files
+  cut (full 7.1 MB; the 39.5 MB engine wasm is the same); smoke: 31 / 31 checks (Windows), 27 / 27 (web).
 
 ## 9. What the demo still contains (accepted leaks)
 

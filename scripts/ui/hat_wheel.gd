@@ -420,6 +420,8 @@ func _refresh_wheel() -> void:
 		result.text = Loc.t("wheel.won", "YOU WON THE {name}!", {name = Hats.display_name(_won)})
 	elif not Hats.available and not Progress.dev_tools:
 		result.text = Loc.t("wheel.resting", "THE WHEEL IS RESTING")
+	elif Progress.demo_wheel_block() != "":
+		result.text = Demo.wheel_block_text(Progress.demo_wheel_block())  # (the demo: hats used up / not open yet)
 	elif not can:
 		result.text = Loc.n("wheel.need_to_spin", "NEED {count} TICKET TO SPIN", "NEED {count} TICKETS TO SPIN", cost)
 	else:

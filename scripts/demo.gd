@@ -6,9 +6,9 @@ extends RefCounted
 ## `--demo`), and a few gates that all ask this class; the full game (switch off) is unchanged.
 ##
 ## What the demo has: the intro + SPLASHDOWN tutorial, story levels 1..levels() with their coins,
-## hard level 1..HARD_LEVELS, the cauldron with each coin upgrade capped at UPGRADE_CAP levels, the
-## randomizer (after level levels()) as RANDOM_SEEDS fixed mazes with only the ABILITIES, the hat wheel,
-## and the skins earnable in it. Later story / hard levels are plain locks (like any level not unlocked yet,
+## hard level 1..HARD_LEVELS, the cauldron with each coin upgrade capped (UPGRADE_CAPS), the
+## randomizer (after level levels()) as RANDOM_SEEDS fixed mazes with only the ABILITIES, the hat wheel
+## (opens with the end screen, at most HATS_MAX hats), and the skins earnable in it. Later story / hard levels are plain locks (like any level not unlocked yet,
 ## no FULL GAME text); the other full-game content stays visible with a FULL GAME lock (names only).
 ## The end screen (END_SCENE) follows the last demo level's chalice and the last demo maze.
 ##
@@ -20,12 +20,16 @@ extends RefCounted
 
 ## ---------------------------------------------------------------- the knobs (one place)
 ## Story levels in the demo (1..LEVELS), and on the web build (WEB_LEVELS: a shorter web demo if wanted).
-const LEVELS := 3
+const LEVELS := 4
 const WEB_LEVELS := 3
 ## Hard-mode levels in the demo (1..HARD_LEVELS; hard level 1 unlocks jelly Lime as usual).
 const HARD_LEVELS := 1
-## Each coin upgrade can be bought up to this level in the demo (the rest of its bar shows FULL).
-const UPGRADE_CAP := 2
+## How far each coin upgrade can be bought in the demo (the rest of its bar shows FULL); an upgrade not
+## listed stays at 0. At the full game's prices that is 1 + 4 + 6 + 9 = 20 coins of the 34 that levels
+## 1-4 hide (docs/demo-plan.md section 2).
+const UPGRADE_CAPS := {"slime": 2, "speed": 1, "brightness": 1}
+## Hats the demo's wheel gives at most: with this many hats owned it doesn't spin.
+const HATS_MAX := 2
 ## The randomizer (opens after the last demo level) and the hat wheel, per platform: the web demo
 ## leaves both out by default (a lighter, shorter demo for the Shorts / browser audience).
 const RANDOMIZER := true
@@ -34,7 +38,7 @@ const HAT_WHEEL := true
 const WEB_HAT_WHEEL := false
 ## The demo's randomizer mazes, played in this order (then replayed in turn). Picked for a middling
 ## usage (about half to two thirds of the meter: tools/demo_paths.gd --seeds lists candidates).
-const RANDOM_SEEDS: Array[int] = [1016, 1063, 1015]  # usage 50 / 57 / 62 %: dungeon, mossy, sandstone
+const RANDOM_SEEDS: Array[int] = [1016, 1063, 1015]  # usage 50 / 57 / 62 %
 ## Abilities that work (and can be bought) in the demo.
 const ABILITIES: Array[String] = ["rifle"]
 ## The store page the WISHLIST buttons open (OS.shell_open). Empty = every WISHLIST button is hidden.
@@ -42,8 +46,9 @@ const WISHLIST_URL := ""
 ## The demo's end screen.
 const END_SCENE := "res://scenes/demo_end.tscn"
 ## The end screen's teaser cards: later story levels shown by area name and a stylised (made-up)
-## map in their colors. Only names and colors: no later level data or art is needed.
-const TEASER_LEVELS: Array[int] = [4, 6, 7, 9, 10]
+## map in their colors. Only names and colors: no later level data or art is needed. The first card is
+## always the area right after the demo's last level (teasers(): 5 on desktop, 4 on the web), then these.
+const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)
 
@@ -82,10 +87,34 @@ static func level_open(level: int, hard := false) -> bool:
 	return level >= 1 and level <= last_level(hard)
 
 
-## The highest level coin upgrade `id` can be bought to here.
+## The highest level coin upgrade `id` can be bought to here (UPGRADE_CAPS; 0 if not listed).
 static func upgrade_cap(id: String) -> int:
 	var top := Upgrades.max_level(id)
-	return mini(UPGRADE_CAP, top) if on() else top
+	return mini(int(UPGRADE_CAPS.get(id, 0)), top) if on() else top
+
+
+## The hat wheel in the demo: "" = it spins as usual (always in the full game); "closed" = not before
+## the demo is completed (`done`: its last level cleared or the end screen seen); "full" = `owned` hats
+## reach HATS_MAX (a guarded full save that owns more: no spins either).
+static func wheel_block(done: bool, owned: int) -> String:
+	if not on():
+		return ""
+	if not done:
+		return "closed"
+	return "full" if owned >= HATS_MAX else ""
+
+
+## The end screen's teaser levels on this platform: the area after the demo's last level, then the
+## TEASER_LEVELS past it (the full game: TEASER_LEVELS).
+static func teasers() -> Array[int]:
+	var first := levels() + 1
+	if first > Levels.COUNT:
+		return TEASER_LEVELS.duplicate()
+	var out: Array[int] = [first]
+	for level in TEASER_LEVELS:
+		if level > first:
+			out.append(level)
+	return out
 
 
 ## HEAT (hard mode's modifiers): a full-game feature.
@@ -160,6 +189,16 @@ static func open_wishlist() -> void:
 static func full_game_text() -> String:
 	# i18n: lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 	return Loc.t("demo.full_game", "FULL GAME")
+
+
+## Why the demo's hat wheel doesn't spin (`block`: Demo.wheel_block's "closed" / "full"): the hub tour's
+## line by the wheel and the wheel's own status line.
+static func wheel_block_text(block: String) -> String:
+	if block == "full":
+		# i18n: hat wheel status line and hub tour line (demo build: the wheel's hats are used up), max 192px, 1 line
+		return Loc.t("demo.wheel_full", "NO MORE HATS IN THE DEMO")
+	# i18n: hat wheel status line and hub tour line (demo build: the wheel opens after the last demo level), max 192px, 1 line; {level} = the demo's last level (4)
+	return Loc.t("demo.wheel_closed", "SPIN FOR HATS AFTER LEVEL {level}", {level = levels()})
 
 
 ## ---------------------------------------------------------------- what the demo leaves out

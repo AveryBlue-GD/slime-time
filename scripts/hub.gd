@@ -319,7 +319,7 @@ func _build_stations() -> void:
 	step = TAU / stations.size()
 	if not Progress.is_randomizer_unlocked():
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
-	if not Demo.hat_wheel_open():  # (a demo without the hat wheel: the web demo by default)
+	if not Demo.hat_wheel_open() or Progress.demo_wheel_block() == "closed":  # (left out: the web demo; or not open yet)
 		_station("wheel").sprite.modulate = Color(0.45, 0.45, 0.5)
 	var back := _station(return_to)
 	if not back.is_empty():
@@ -1633,6 +1633,8 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
 	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
 		prompt_key.text = Loc.t("hub.prompt.best_floor", "BEST FLOOR {floor}", {floor = Progress.descent_best_floor})  # Descent's record
+	elif near.id == "wheel" and Progress.demo_wheel_block() != "":
+		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: before its end screen, or its hats used up)
 	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
 		prompt_key.text = Loc.t("hub.prompt.shop", "SHOP")  # every hat won: the overlay opens on its SHOP
 	elif near.id == "wheel":
@@ -1704,8 +1706,11 @@ func _use(station: Dictionary) -> void:
 			else:
 				_deny(Loc.t("hub.prompt.beat_all", "BEAT ALL {count} LEVELS", {count = Levels.COUNT}))
 		"wheel":
-			if Demo.hat_wheel_open():
-				open_hat_wheel()
+			if Demo.hat_wheel_open() and Progress.demo_wheel_block() == "closed":
+				# i18n: hub prompt (demo build), max 110px, 1 line; {level} = the demo's last level
+				_deny(Loc.t("hub.prompt.demo_clear", "CLEAR LEVEL {level}", {level = Demo.levels()}))
+			elif Demo.hat_wheel_open():
+				open_hat_wheel()  # (the demo at HATS_MAX too: the wheel says so)
 			else:
 				_deny(Demo.full_game_text())
 		"coins":

@@ -757,8 +757,8 @@ func _refresh() -> void:
 		# i18n: two lines, each max 300px
 		hint.text = Loc.lines([
 			Loc.t("upgrades.hint_coins.1", "COINS HIDE AT DEAD ENDS IN THE STORY MAZES"),
-			# i18n: demo build, max 300px, 1 line; {level} = the demo's upgrade cap (2)
-			Loc.t("upgrades.demo_cap", "UPGRADES PAST LEVEL {level}: FULL GAME", {level = Demo.UPGRADE_CAP}) if Demo.on()
+			# i18n: demo build (each upgrade stops at its own demo cap), max 300px, 1 line
+			Loc.t("upgrades.demo_caps", "MORE UPGRADE LEVELS IN THE FULL GAME") if Demo.on()
 				else Loc.t("upgrades.hint_coins.2", "TAKE COINS BACK OUT ANY TIME"),
 		])
 	_place_hint()

@@ -53,12 +53,14 @@ static func top_line(why: String) -> String:
 	return Loc.t("demo.end.line", "THE WAY OUT IS STILL UP THERE")
 
 
-## What's new in a teaser card's area (Demo.TEASER_LEVELS order).
+## What's new in a teaser card's area (Demo.teasers() order: the first card, the area right after the
+## demo, counts the areas still to come).
 static func feature_line(level: int) -> String:
+	if level == Demo.levels() + 1:
+		# i18n: demo end screen teaser card, max 168px, 1 line; {count} = story areas past the demo (6, web 7)
+		return Loc.t("demo.teaser.more_areas", "{count} MORE AREAS", {count = Levels.COUNT - Demo.levels()})
 	# i18n: demo end screen teaser card, max 168px, 1 line
 	match level:
-		4:
-			return Loc.t("demo.teaser.areas", "SEVEN MORE AREAS")
 		6:
 			return Loc.t("demo.teaser.loops", "MAZES THAT LOOP BACK")
 		7:
@@ -107,7 +109,7 @@ func _ready() -> void:
 	arrows = UIKit.add_page_arrows(self, _flip, CARD.position.y + (CARD.size.y - UIKit.button_h()) / 2.0, UIKit.EDGE, UIKit.SCREEN.x - UIKit.EDGE)
 	for arrow in arrows:
 		UIKit.add_touch_target(arrow)
-	var count := Demo.TEASER_LEVELS.size()
+	var count := Demo.teasers().size()
 	for i in count:
 		var dot := ColorRect.new()
 		dot.size = Vector2(3, 3)
@@ -129,9 +131,10 @@ func _ready() -> void:
 
 ## Shows teaser card `index` (wrapping round).
 func show_card(index: int) -> void:
-	card = posmod(index, Demo.TEASER_LEVELS.size())
+	var levels := Demo.teasers()
+	card = posmod(index, levels.size())
 	_clock = 0.0
-	var level: int = Demo.TEASER_LEVELS[card]
+	var level: int = levels[card]
 	var theme := Themes.for_level(level)
 	map_rect.texture = MapView.preview(level, false, 100, 2, false, theme)
 	area_label.text = Themes.display_name(theme)
