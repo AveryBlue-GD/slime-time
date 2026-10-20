@@ -2642,8 +2642,10 @@ func play_next() -> void:
 	if _leaving():
 		return
 	if is_random():
-		if Demo.on() and won and progress and progress.randoms_won == Demo.RANDOM_WINS:
-			# The demo's RANDOM_WINS-th randomizer win: the end screen's pitch (endless mazes), once.
+		if Demo.on() and won and progress and progress.randoms_won >= Demo.RANDOM_WINS \
+				and not progress.has_seen_story(Demo.RANDOM_END_SEEN_BIT):
+			# The demo's RANDOM_WINS-th randomizer win (or the first NEW MAZE after it, if the player left by
+			# HUB / REPLAY on that win): the end screen's pitch (endless mazes), once.
 			DevLog.route(get_tree(), "NEW MAZE (demo end)", self)
 			load(DEMO_END_SCRIPT).open(get_tree(), "random")
 			return

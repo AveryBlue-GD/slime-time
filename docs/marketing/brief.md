@@ -15,7 +15,7 @@ move drains it. Find the golden chalice before you dry up.
 
 ## What to pitch
 1. **The core loop**: glide, leap, splat off walls, light up the maze with your trail, budget your slime.
-2. **10 themed story levels**: Dank Dungeon, Mossy Mines, Sandstone Sanctum, Sunken Shrine, Toxic Tunnels,
+2. **10 themed story levels**: Dark Dungeon, Mossy Mines, Sandstone Sanctum, Sunken Shrine, Toxic Tunnels,
    Creepy Catacombs, Frozen Fortress, Obsidian Oubliette, Crystal Caverns, Volcanic Vault. 165 hidden coins.
 3. **A replayable endgame**: endless random mazes (they pay tickets), hard mode with its own mazes, best
    times and gold / silver / bronze medals on every level.

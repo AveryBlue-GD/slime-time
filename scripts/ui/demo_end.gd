@@ -64,9 +64,9 @@ static func feature_line(level: int) -> String:
 		6:
 			return Loc.t("demo.teaser.loops", "MAZES THAT LOOP BACK")
 		7:
-			return Loc.t("demo.teaser.skins", "JELLY SKINS AND HATS")
+			return Loc.t("demo.teaser.shop", "THE SHOP: TRAILS AND HATS")
 		9:
-			return Loc.t("demo.teaser.hard", "HARD MODE AND HEAT")
+			return Loc.t("demo.teaser.abilities", "NEW ABILITIES")
 	return Loc.t("demo.teaser.out", "THE WAY OUT, MAYBE")
 
 
@@ -74,6 +74,8 @@ func _ready() -> void:
 	# i18n: demo end screen title, max 296px, 16 px font
 	UIKit.setup_screen(self, Loc.t("demo.end.title", "END OF THE DEMO"))
 	get_node("/root/Progress").mark_story_seen(Demo.END_SEEN_BIT)
+	if from == FROM_RANDOM:
+		get_node("/root/Progress").mark_story_seen(Demo.RANDOM_END_SEEN_BIT)
 	var line := UIKit.make_label(top_line(from), UIKit.FONT, UIKit.TEXT)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(line)

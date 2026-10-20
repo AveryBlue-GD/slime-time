@@ -1871,13 +1871,13 @@ msgid "MAZES THAT LOOP BACK"
 msgstr ""
 
 #: scripts/ui/demo_end.gd
-msgctxt "demo.teaser.skins"
-msgid "JELLY SKINS AND HATS"
+msgctxt "demo.teaser.shop"
+msgid "THE SHOP: TRAILS AND HATS"
 msgstr ""
 
 #: scripts/ui/demo_end.gd
-msgctxt "demo.teaser.hard"
-msgid "HARD MODE AND HEAT"
+msgctxt "demo.teaser.abilities"
+msgid "NEW ABILITIES"
 msgstr ""
 
 #: scripts/ui/demo_end.gd

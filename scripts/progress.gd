@@ -81,6 +81,8 @@ const STORY_INTRO := 1
 const STORY_FINALE := 2
 ## 4 is taken by the demo: its end screen was seen (Demo.END_SEEN_BIT; the full game ignores it).
 const STORY_DEMO_END := 4
+## 8 too: the demo's randomizer end screen was seen (Demo.RANDOM_END_SEEN_BIT).
+const STORY_DEMO_RANDOM_END := 8
 ## Dry-ups per story level since it was last cleared (not saved); drives the mercy assist.
 var dry_ups := {}
 ## Story level the game scene loads next.
@@ -669,11 +671,17 @@ func load_progress(path := "") -> void:
 		return  # no save: a fresh start
 	var file := _load_checked(file_path)
 	if file == null:
-		if owned:
+		if Demo.on():
+			demo_guard = true  # (maybe a newer full game's save the demo can't read: play fresh, never touch it)
+		elif owned:
 			_set_aside_corrupt(file_path)
 		return
 	if not _is_this_epoch(file):
+		demo_guard = Demo.on()  # (the demo never overwrites another epoch's save; the full game starts fresh)
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
+	if Demo.on() and _int(file, "meta", "version", 0) > SAVE_VERSION:
+		demo_guard = true  # a newer full game's save: play fresh in memory, never write it
+		return
 	_read(file)
 	_guard_full_save(file)
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
@@ -1406,7 +1414,8 @@ func _guard_full_save(file: ConfigFile, from_code := false) -> void:
 
 ## True for a save / code the demo wrote ([meta] demo = true).
 static func is_demo_save(file: ConfigFile) -> bool:
-	return file.has_section_key("meta", "demo") and file.get_value("meta", "demo") == true
+	return file.has_section_key("meta", "demo") and typeof(file.get_value("meta", "demo")) == TYPE_BOOL \
+			and file.get_value("meta", "demo")
 
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard

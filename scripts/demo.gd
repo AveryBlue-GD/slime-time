@@ -58,6 +58,8 @@ const END_SCENE := "res://scenes/demo_end.tscn"
 const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)
+## The randomizer's end screen (after RANDOM_WINS wins) was seen (Progress.story_seen bit).
+const RANDOM_END_SEEN_BIT := 8  # (= Progress.STORY_DEMO_RANDOM_END: keep the two in step)
 
 ## ---------------------------------------------------------------- tests
 ## Tests: treat every full-only path as absent (can_load false), as in a stripped demo export.
