@@ -29,6 +29,7 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 | `RANDOMIZER` / `WEB_RANDOMIZER` | true / false | randomizer on desktop / web (the web demo leaves it out by default) |
 | `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / false | hat wheel on desktop / web |
 | `RANDOM_WINS` | 3 | randomizer wins before the end screen's pitch (shown once, after that win); every maze is a new random one, as in the full game |
+| `GENTLE_MAZES`, `GENTLE_MAX_USAGE` | 3, 750 | the first 3 randomizer mazes (by wins) are drawn from seeds whose perfect route uses at most 75% of the meter (no 90%+ marathon first); later ones any seed |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |
 | `ABILITY_PRICES` | `{"rifle": [5]}` | the demo's ticket prices for an ability's first levels (full game: SLIME RIFLE 15), so it is in reach before the randomizer's end screen (a win pays at most 5) |
 | `WISHLIST_URL` | `""` | store page for every WISHLIST button; **empty = every WISHLIST button is hidden** (no Steam page yet) |

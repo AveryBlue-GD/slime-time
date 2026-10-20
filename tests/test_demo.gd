@@ -337,6 +337,20 @@ func _check_locks() -> void:
 		picked[progress.random_seed] = true
 		fresh = fresh and progress.random_seed_fresh
 	_check(picked.size() == 5 and fresh, "every demo maze is a new random seed, fresh (pays the full table), wins or not (%s)" % [picked.keys()])
+	var gentle := true
+	var steep := 0
+	for won in Demo.GENTLE_MAZES + 1:
+		progress.randoms_won = won
+		for i in 40:
+			progress.new_random_maze()
+			var u := Levels.random_usage_permille(progress.random_seed)
+			if won < Demo.GENTLE_MAZES:
+				gentle = gentle and u <= Demo.GENTLE_MAX_USAGE
+			elif u > Demo.GENTLE_MAX_USAGE:
+				steep += 1
+	_check(gentle and steep > 0, "the first %d demo mazes ask for at most %d%% of the meter, later ones any amount (%d of 40 steeper)"
+		% [Demo.GENTLE_MAZES, Demo.GENTLE_MAX_USAGE / 10, steep])
+	progress.randoms_won = 0
 	var theme_seen := {}
 	for s in range(1, 300):
 		theme_seen[Themes.for_seed(s)] = true

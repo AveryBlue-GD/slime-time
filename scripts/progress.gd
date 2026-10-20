@@ -2202,6 +2202,11 @@ func heat_crown() -> bool:
 
 func new_random_maze() -> void:
 	random_seed = randi_range(1, 2_000_000_000)
+	if Demo.gentle_maze(randoms_won):  # (the demo's first mazes: a seed that doesn't ask for most of the meter)
+		for _i in 64:
+			if Levels.random_usage_permille(random_seed) <= Demo.GENTLE_MAX_USAGE:
+				break
+			random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
 	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
 	random_attempts.clear()  # a new maze starts counting at attempt 1

@@ -46,6 +46,11 @@ const WEB_HAT_WHEEL := false
 ## Randomizer wins before the end screen's pitch (shown once, after the RANDOM_WINS-th win). Every maze
 ## is a new random one (random seed and start, a theme drawn from themes()), as in the full game.
 const RANDOM_WINS := 3
+## The first GENTLE_MAZES randomizer mazes (counted by wins) are drawn only from seeds whose perfect route
+## uses at most GENTLE_MAX_USAGE permille of the meter (Levels.random_usage_permille: about 70% of seeds),
+## so a first random maze isn't a 90%+ marathon. Later ones: any seed, as in the full game.
+const GENTLE_MAZES := 3
+const GENTLE_MAX_USAGE := 750
 ## Abilities that work (and can be bought) in the demo.
 const ABILITIES: Array[String] = ["rifle"]
 ## The demo's own ticket prices for the first levels of an ability (ABILITY_PRICES[id][i] = tickets for
@@ -124,6 +129,11 @@ static func ability_prices(id: String, full: Array) -> Array:
 	for i in mini(demo.size(), out.size()):
 		out[i] = demo[i]
 	return out
+
+
+## True if the next randomizer maze must be a gentle one (`won`: randomizer wins so far).
+static func gentle_maze(won: int) -> bool:
+	return on() and won < GENTLE_MAZES
 
 
 ## Coins hidden in the demo's story levels (1..levels(); every level's in the full game).
