@@ -190,7 +190,16 @@ static func key_size(font: Font, text: String, width: float, fit := false) -> Ve
 static func key_text(action: String, fallback: String) -> String:
 	for event in InputMap.action_get_events(action):
 		if event is InputEventKey:
-			var code: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
-			var label := OS.get_keycode_string(code).to_upper()
+			var label := key_label(event)
 			return label if label != "" else fallback
 	return fallback
+
+
+## The name printed on the player's own key for a key event: a physical binding (W A S D) shows the
+## letter of the keyboard layout (Z Q S D on AZERTY), through DisplayServer; a plain keycode its name.
+static func key_label(event: InputEventKey) -> String:
+	var code: Key = event.keycode
+	if event.physical_keycode != KEY_NONE:
+		var shown := DisplayServer.keyboard_get_label_from_physical(event.physical_keycode)
+		code = shown if shown != KEY_NONE else event.physical_keycode
+	return OS.get_keycode_string(code).to_upper()

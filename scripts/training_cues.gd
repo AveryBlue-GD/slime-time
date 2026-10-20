@@ -145,10 +145,10 @@ static func accept_label() -> String:
 		if event is InputEventKey:
 			var code: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
 			if code == KEY_SPACE:
-				first = OS.get_keycode_string(code).to_upper()
+				first = TutorialCues.key_label(event)
 				break
 			if first == "":
-				first = OS.get_keycode_string(code).to_upper()
+				first = TutorialCues.key_label(event)
 	return Platform.prompt_for("ui_accept", first if first != "" else "ENTER")  # i18n: ignore (an OS key name, like the keys TutorialCues shows)
 
 
