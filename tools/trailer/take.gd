@@ -13,7 +13,7 @@ extends Node
 ##   play     a story level (--level=N) or a randomizer maze (--random --seed=N) played by the
 ##            autopilot; the level is the current scene, so the real win flow (chalice, NEW RECORD,
 ##            medal, tickets) runs. --record = a fake slow old record (NEW RECORD! on the win),
-##            --hide-hud, --pilot-at=F (frames before the autopilot starts), --leap=N (a charged
+##            --pilot-at=F (frames before the autopilot starts), --leap=N (a charged
 ##            leap down the first straight N+ cell corridor of the route into its end wall: splat),
 ##            --skip=CELLS (start this many cells along the route, so a take opens mid-maze),
 ##            --bright (dev FULL BRIGHT; only with --unlock-all), --meter=P (start with P% slime:
@@ -33,6 +33,11 @@ extends Node
 ##   maps     the MAP TABLE with --open=N (that level's map view) on --paper=ID; --every=F flips to
 ##            the next owned paper every F frames (with --own-cosmetics=all).
 ##   title    the title screen.
+## Every take: the game's HUD (meter, coins, timer, level / area banners, story line, prompts,
+## result panels, NEW RECORD) is hidden on every frame (--keep-hud shows it), and --track=FILE
+## writes "frame x y" per drawn frame: the point the vertical crop follows, in 320x180 viewport
+## pixels (the slime; the try-on slime in the wardrobe; the hat wheel's hub once open; --focus=X,Y
+## pins it). Menu takes also hide the chrome around their shot (_tidy).
 ## Any mode: RAINBOW / STOPWATCH skins are blacked out (see _black_out_secret_skins); --jelly = the see-through jelly version of the worn skin; --own-hats=a,b|all and
 ## --own-cosmetics=a,b|all = hats / shop trails and papers owned (so --hat=ID can be worn).
 
@@ -51,6 +56,8 @@ var _leap_dir := Vector2.ZERO
 var _lane := {}
 var _hops := 0
 var _hop_wait := 40
+var _track: FileAccess
+var _drawn := 0
 
 
 func _ready() -> void:
@@ -63,6 +70,8 @@ func _ready() -> void:
 		elif arg.begins_with("--"):
 			opts[arg.trim_prefix("--")] = "1"
 	seed(int(opts.get("rng", "1")))
+	if opts.has("track"):
+		_track = FileAccess.open(String(opts.track), FileAccess.WRITE)
 	Progress.saving_enabled = false
 	Progress.tutorial_seen = 3  # no first-time hints in the shots
 	Progress.maps_hint_seen = true
@@ -193,9 +202,9 @@ func _start_level() -> void:
 		if opts.has("record"):
 			Progress.best_times[level + (Progress.HARD_RECORDS if hard else 0)] = 999.0
 	_make_current(game)
-	await get_tree().process_frame
-	if opts.has("hide-hud"):
+	if not opts.has("keep-hud"):
 		game.hud.visible = false
+	await get_tree().process_frame
 	if opts.has("bright"):
 		game.set_dev_bright(true)
 	if opts.has("skip"):
@@ -354,3 +363,65 @@ func _wardrobe_tick() -> void:
 			if screen.trail_tiles.has(id):
 				screen._on_trail_tile(id)
 				screen.trail_tiles[id].grab_focus()
+
+
+func _process(_delta: float) -> void:
+	if game != null and is_instance_valid(game) and not opts.has("keep-hud"):
+		game.hud.visible = false
+	if screen != null and is_instance_valid(screen):
+		_tidy()
+	if _track != null:
+		var p := _focus()
+		_track.store_line("%d %.2f %.2f" % [_drawn, p.x, p.y])
+		_track.flush()
+	_drawn += 1
+
+
+## Where the action is on screen (320x180 viewport pixels).
+func _focus() -> Vector2:
+	if opts.has("focus"):
+		var xy := String(opts.focus).split(",")
+		return Vector2(float(xy[0]), float(xy[1]))
+	if game != null and is_instance_valid(game) and game.slime != null:
+		return game.slime.get_global_transform_with_canvas().origin
+	if screen != null and is_instance_valid(screen):
+		match mode:
+			"skins":
+				if screen.showcase != null and screen.showcase.visible and screen.showcase.slime != null:
+					return screen.showcase.slime.get_global_transform_with_canvas().origin
+			"wheel", "hub":
+				if screen.hat_wheel != null and screen.hat_wheel.visible:
+					return screen.hat_wheel.get_global_transform_with_canvas() * screen.hat_wheel.wheel_center
+				if screen.slime != null:
+					return screen.slime.get_global_transform_with_canvas().origin
+	return Vector2(160, 90)
+
+
+## Menu chrome that the full-screen crop would cut in half or the caption would sit on, hidden in
+## the trailer only: the wardrobe's labels and buttons (all but the skin tiles: the try-on stage and
+## the tiles are the shot), the hat wheel's header row (tabs, title, balance), the map view's title
+## and bottom bar.
+func _tidy() -> void:
+	var keep: Array = []
+	var root: Node = screen
+	var band := Vector2(-INF, INF)  # hide what lies outside this y band (or everything: skins)
+	match mode:
+		"skins":
+			keep = screen.tiles.values()
+			band = Vector2(INF, -INF)
+		"wheel":
+			if screen.hat_wheel == null or not screen.hat_wheel.visible:
+				return
+			root = screen.hat_wheel
+			band = Vector2(22, INF)
+		"maps":
+			band = Vector2(16, 158)
+		_:
+			return
+	for node: Node in root.find_children("*", "Label", true, false) + root.find_children("*", "Button", true, false):
+		var c := node as Control
+		if c == null or c in keep:
+			continue
+		var r := c.get_global_rect()
+		if r.position.y < band.x or r.end.y > band.y:
+			c.modulate.a = 0.0

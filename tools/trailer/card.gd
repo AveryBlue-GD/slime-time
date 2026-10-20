@@ -72,7 +72,10 @@ func _render_captions(path: String) -> void:
 		_draw_caption(view, job)
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
-		view.get_texture().get_image().save_png(String(job.out))
+		var img := view.get_texture().get_image()
+		img.convert(Image.FORMAT_RGBA8)
+		_outline(img)
+		img.save_png(String(job.out))
 		print("caption ", job.out)
 	get_tree().quit()
 
@@ -88,39 +91,28 @@ func _make_view(size: Vector2i, transparent: bool) -> SubViewport:
 	return view
 
 
-## One overlay: `frame` = [x, y, w, h] of the game picture (a 1 px border in `frame_color` is drawn
-## just outside it), `lines` (16 px text) and `sub` (8 px text) in `color`, placed `at` "top" (the
-## block ends `gap` px above the frame) or "bottom" (starts below it) or at a y given as a number.
-## `width` = the text column (left-aligned to `left`), kept clear of the phone UI on the right.
+## One overlay, laid over full-screen gameplay: `lines` (16 px text) and `sub` (8 px text) in
+## `color`, starting at y = `at` ("top" = TOP_Y, "low" = LOW_Y, or a number), centred in the column
+## `left`..`left + width`. The defaults keep it inside the phones' safe area: below the status bar,
+## left of the right-hand button rail (~15%), above the bottom ~20% (caption, likes, progress bar).
+## _outline() then gives it a dark outline and drop shadow so it reads over any background.
+const TOP_Y := 34      # 136 px on the 1080x1920 frame
+const LOW_Y := 300     # the block must end above 384 (80% of 480)
+const SAFE_BOTTOM := 384
+
+
 func _draw_caption(view: SubViewport, job: Dictionary) -> void:
 	var root := Control.new()
 	root.size = Vector2(CAPTION_SIZE)
 	view.add_child(root)
-	var frame: Array = job.get("frame", [])
-	if frame.size() == 4:
-		var border := ReferenceRect.new()
-		border.editor_only = false
-		border.border_width = 1
-		border.border_color = color_of(String(job.get("frame_color", "skin")))
-		border.position = Vector2(frame[0] - 1, frame[1] - 1)
-		border.size = Vector2(frame[2] + 2, frame[3] + 2)
-		root.add_child(border)
 	var lines: Array = job.get("lines", [])
 	var sub: Array = job.get("sub", [])
-	if lines.is_empty() and sub.is_empty():
-		return
 	var block_h := lines.size() * LINE_BIG + sub.size() * LINE_SMALL
-	var y := 0.0
 	var at = job.get("at", "top")
-	var gap := float(job.get("gap", 8))
-	if at is float or at is int:
-		y = float(at)
-	elif at == "bottom" and frame.size() == 4:
-		y = frame[1] + frame[3] + gap
-	elif frame.size() == 4:
-		y = frame[1] - gap - block_h + 2
-	var left := float(job.get("left", 8))
-	var width := float(job.get("width", 236))
+	var y := float(at) if (at is float or at is int) else float(LOW_Y if at == "low" else TOP_Y)
+	y = minf(y, SAFE_BOTTOM - block_h)
+	var left := float(job.get("left", 10))
+	var width := float(job.get("width", 218))
 	var color := color_of(String(job.get("color", "white")))
 	var sub_color := color_of(String(job.get("sub_color", "white")))
 	for text: String in lines:
@@ -129,6 +121,41 @@ func _draw_caption(view: SubViewport, job: Dictionary) -> void:
 	for text: String in sub:
 		_line(root, text, UIKit.FONT, sub_color, left, y, width)
 		y += LINE_SMALL
+
+
+const OUTLINE := Color(0.03, 0.03, 0.06, 1.0)
+const SHADOW := Color(0.0, 0.0, 0.0, 0.85)
+
+
+## A 1 px dark outline all round the text (drips included), then a 1 px drop shadow down-right of
+## that (2 px below), in caption pixels (x4 on screen).
+static func _outline(img: Image) -> void:
+	var used := img.get_used_rect()
+	if used.size == Vector2i.ZERO:
+		return
+	var area := used.grow(3).intersection(Rect2i(Vector2i.ZERO, img.get_size()))
+	var src := img.duplicate()
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			if src.get_pixel(x, y).a > 0.5:
+				continue
+			for dy in [-1, 0, 1]:
+				for dx in [-1, 0, 1]:
+					var nx: int = x + dx
+					var ny: int = y + dy
+					if nx >= 0 and ny >= 0 and nx < src.get_width() and ny < src.get_height() and src.get_pixel(nx, ny).a > 0.5:
+						img.set_pixel(x, y, OUTLINE)
+	var outlined := img.duplicate()
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			if outlined.get_pixel(x, y).a > 0.5:
+				continue
+			for d: Vector2i in [Vector2i(1, 1), Vector2i(0, 2), Vector2i(1, 2)]:
+				var sx := x - d.x
+				var sy := y - d.y
+				if sx >= 0 and sy >= 0 and outlined.get_pixel(sx, sy).a > 0.5:
+					img.set_pixel(x, y, SHADOW)
+					break
 
 
 func _line(root: Control, text: String, font_size: int, color: Color, left: float, y: float, width: float) -> Label:

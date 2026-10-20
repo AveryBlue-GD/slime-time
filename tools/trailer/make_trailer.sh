@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # macOS/Linux twin of make_trailer.ps1: renders the vertical trailer drafts (tools/trailer/trailer.json)
 # into build/trailer/ (short_<ID>.mp4, short_<ID>_sheet.png, README.md). See docs/marketing/trailer.md.
-# Usage: ./tools/trailer/make_trailer.sh [--drafts A,B] [--force] [--only-takes]
+# Usage: ./tools/trailer/make_trailer.sh [--drafts A,B] [--force] [--only-takes] [--music NAME|FILE|none] [--music-only]
+# (music: short_<ID>_music.mp4 with a tools/make_music.py track under the game audio; docs/marketing/music.md)
 # Godot: $GODOT or the usual install (tools/godot.sh's lookup); ffmpeg: $FFMPEG or PATH. The movie
 # writer records the game's audio into the file without playing it; the save is never touched.
 set -e

@@ -15,8 +15,12 @@ Marketing context: [advisor/demo.md](../advisor/demo.md) (the Shorts feed the we
 
 Audio is the game's own audio: level ambience plus sound effects (glide, leap, splat, chalice, wheel clicks,
 unlock jingle). **The game has no music.** The drafts are loudness-normalised (two-pass `loudnorm`, -14 LUFS,
--1.5 dBTP). A music bed is the owner's call. Add it in an editor, or as an extra ffmpeg input in
-`build_draft()`, ducked under the effects.
+-1.5 dBTP).
+
+Music cuts (2026-10-20, mockups): a draft with `"music"` in `trailer.json` also gets `short_<ID>_music.mp4`,
+the same picture with a procedural track from `tools/make_music.py` under the game audio, its final hit on the
+end card. `-Music NAME|FILE|none` overrides it; `-MusicOnly` remakes only the music cuts from the existing
+`short_<ID>.mp4` (no Godot). Details: [music.md](music.md).
 
 ## Re-render
 
@@ -51,31 +55,39 @@ never read or written.
 | `make_trailer.ps1` / `.sh` | wrappers (quiet windows on Windows) |
 
 Takes are recorded at the game's native 320x180, 60 fps (`--write-movie f.png`, lossless). The global RNG is seeded,
-so a take renders the same every time. Each beat crops the take and scales it up with **nearest neighbour** by an
-integer `zoom`:
+so a take renders the same every time.
 
-| zoom | game area shown | on the 1080x1920 canvas | use for |
-|---|---|---|---|
-| 3 | the full 320x180 | 960x540, centered | menus and HUD shots (wardrobe, map table, win panels, HARD tag) |
-| 4 | 270x180 (center, or `x`) | 1080x720 | gameplay (default) |
-| 5 | 216x180 | 1080x900 | gameplay close-up |
-| 6 | 180x180 | 1080x1080 | the hat hops |
+**Full screen (owner, 2026-10-20).** Every beat fills the 9:16 frame edge to edge; there are no bands or borders.
+The game is scaled up **11x with nearest neighbour** (180 x 11 = 1980, so the game's height fills the 1920-px frame).
+That shows a strip about 98 x 175 game pixels, or 6 x 11 tiles. The strip **follows the action**: `take.gd
+--track` writes the focus point for every drawn frame (the slime; the try-on slime in the wardrobe; the hat wheel
+once it opens). `trailer.py` smooths that path both ways (an eased pan with no lag and no jitter, `FOLLOW` = 0.06
+per frame, per beat `"follow"`) and moves the crop in **whole game pixels** through ffmpeg `sendcmd`. A beat can pin
+the view with `"focus": [x, y]` (320x180 pixels) or zoom further in with `"zoom": 12+`.
 
-The picture is centered vertically. A 1-px frame in the beat's color surrounds it, and the caption sits above it
-on the dark `UIKit.BG` band. Captions are drawn on a 270x480 canvas (4x) in a column from x 8 to 244, which keeps
-them clear of the right-hand button rail. Nothing is placed in the bottom 20% (captions, likes, the progress bar).
-The end card is drawn on a 360x640 canvas (3x) so the 303-px logo fits.
+**No HUD (owner, 2026-10-20).** `take.gd` hides the game's whole HUD on every frame: meter, coins, timer, level
+and area banners, story line, prompts, dry-up and win panels, NEW RECORD. `--keep-hud` shows it for a beat that is
+about it. Menu takes also hide the chrome the crop would cut or the caption would sit on (`_tidy`): every label
+and button in the wardrobe except the skin tiles, the hat wheel's header row, and the map view's title and bottom
+bar.
+
+**Captions** are overlaid on the picture. They're drawn on a 270x480 canvas (4x) in the slimy 16-px font with its
+drips, in a column from x 10 to 228 (clear of the right ~15% button rail). They start at y 34 (`"at": "top"`, below
+the status bar) or y 300 (`"low"`), never below y 384 (the bottom 20% holds the caption, likes and progress bar).
+`card.gd` gives each one a 1-px dark outline plus a drop shadow, so it stays legible on any background.
+
+The end card is still its own 360x640 canvas (3x), which fills the frame; the 303-px logo fits.
 
 ## Changing text and beats
 
 Edit `tools/trailer/trailer.json`:
 
-- A beat is `{"take", "in" (s into the take), "dur" (s), "zoom", "x" (optional crop left), "caption": [lines],
-  "sub": [small lines], "color", "at": "top"|"bottom"|y}`. Colors: `white`, `gold`, a skin id (`lime`, `ocean`,
+- A beat is `{"take", "in" (s into the take), "dur" (s), "caption": [lines], "sub": [small lines], "color",
+  "at": "top"|"low"|y, optional "focus": [x, y], "follow", "zoom" (>= 11)}`. Colors: `white`, `gold`, a skin id (`lime`, `ocean`,
   ... `shadow` = INKKY) or `#rrggbb`.
 - A take is `{"take": mode, "frames", "args": [...], "note"}`. Args are the game's debug flags (`--level=N`,
   `--skin=ID`, `--hard`, `--random --seed=N`, `--trail=ID`, `--tickets=N`, `--medals=...`) plus the take flags
-  (`--hide-hud`, `--skip=CELLS`, `--leap=N`, `--meter=P`, `--record`, `--jelly`, `--own-hats=all`, `--hat=ID`,
+  (`--keep-hud`, `--focus=X,Y`, `--skip=CELLS`, `--leap=N`, `--meter=P`, `--record`, `--jelly`, `--own-hats=all`, `--hat=ID`,
   `--cycle=...`, `--every=F`, ...).
 - The end card is `{"dur", "skin", "args": ["--jelly"], "tagline": [...], "cta": [...], "store": [...], "logo": 0-11}`.
   **`store` is the empty slot for the store link** (e.g. `["WISHLIST ON STEAM"]`).
@@ -127,12 +139,12 @@ gameplay only, because the trails page is too small to read on a phone.
 
 ## Later: the horizontal 45-60 s trailer
 
-- Same pipeline: add a `"canvas": "16:9"` mode to `trailer.py` (1920x1080 = the 320x180 game at 6x, no crop) and
-  captions on a 320x180 overlay at 6x.
+- Same pipeline: add a `"canvas": "16:9"` mode to `trailer.py` (1920x1080 = the 320x180 game at 6x, no crop,
+  no follow) and captions on a 320x180 overlay at 6x.
 - Structure: cold open in the dark (a 2-3 s hook), the core loop (glide, light, meter, leap, splat), a level
   montage with each theme's own skin, the story beat (the intro cutscene, `tests/demo_story.tscn`), the chalice and
   medals, a hard pivot to the postgame (randomizer, hard mode, jelly), the cosmetics wall, then logo + store CTA.
-- The horizontal cut is where music matters most. Commission or license a short chiptune loop, then cut to its
-  beats.
+- The horizontal cut is where music matters most. Use a `tools/make_music.py` track (it can be fitted to any
+  hit time, [music.md](music.md)), or commission / license one, then cut to its beats.
 - Consider a slow full-bright overview of a finished level (`tests/demo_overview.tscn`) as the "look how big this
   maze was" reveal.

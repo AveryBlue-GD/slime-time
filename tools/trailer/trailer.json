@@ -9,8 +9,7 @@
    "frames": 480,
    "args": [
     "--level=1",
-    "--skin=lime",
-    "--hide-hud"
+    "--skin=lime"
    ]
   },
   "l1_dry": {
@@ -30,7 +29,6 @@
    "args": [
     "--level=2",
     "--skin=mint",
-    "--hide-hud",
     "--leap=5"
    ]
   },
@@ -51,7 +49,6 @@
    "args": [
     "--level=4",
     "--skin=ocean",
-    "--hide-hud",
     "--skip=20"
    ]
   },
@@ -62,7 +59,6 @@
    "args": [
     "--level=6",
     "--skin=crimson",
-    "--hide-hud",
     "--skip=20"
    ]
   },
@@ -73,7 +69,6 @@
    "args": [
     "--level=7",
     "--skin=frost",
-    "--hide-hud",
     "--skip=20"
    ]
   },
@@ -84,7 +79,6 @@
    "args": [
     "--level=9",
     "--skin=bubblegum",
-    "--hide-hud",
     "--skip=20"
    ]
   },
@@ -95,7 +89,6 @@
    "args": [
     "--level=10",
     "--skin=ember",
-    "--hide-hud",
     "--skip=20"
    ]
   },
@@ -116,8 +109,7 @@
    "args": [
     "--random",
     "--seed=31337",
-    "--skin=frost",
-    "--hide-hud"
+    "--skin=frost"
    ]
   },
   "random_c": {
@@ -127,8 +119,7 @@
    "args": [
     "--random",
     "--seed=2024",
-    "--skin=ember",
-    "--hide-hud"
+    "--skin=ember"
    ]
   },
   "hard": {
@@ -183,7 +174,6 @@
    "args": [
     "--level=1",
     "--skin=lime",
-    "--hide-hud",
     "--own-hats=all",
     "--hat=tophat",
     "--cycle=tophat,party,cowboy,wizard,viking,propeller,crown,raincloud,chef,rainbow",
@@ -200,8 +190,7 @@
     "--skin=bubblegum",
     "--trail=candy",
     "--own-hats=wizard",
-    "--hat=wizard",
-    "--hide-hud"
+    "--hat=wizard"
    ]
   },
   "trail_starry": {
@@ -214,7 +203,6 @@
     "--trail=starry",
     "--own-hats=propeller",
     "--hat=propeller",
-    "--hide-hud",
     "--skip=10"
    ]
   },
@@ -234,13 +222,13 @@
   {
    "id": "A",
    "name": "Can you escape before you dry up?",
+   "music": "trailer_2",
    "hook": "goo splash into a pitch-black maze, the trail lights it up; then the slime runs dry",
    "beats": [
     {
      "take": "l1_lime",
      "in": 0.0,
      "dur": 2.2,
-     "zoom": 5,
      "color": "lime",
      "caption": [
       "CAN YOU ESCAPE"
@@ -250,7 +238,6 @@
      "take": "l1_dry",
      "in": 2.6,
      "dur": 2.0,
-     "zoom": 3,
      "color": "lime",
      "caption": [
       "BEFORE YOU",
@@ -261,8 +248,7 @@
      "take": "l4_ocean",
      "in": 0.8,
      "dur": 1.0,
-     "zoom": 4,
-     "color": "ocean",
+     "color": "white",
      "caption": [
       "10 DARK MAZES"
      ]
@@ -271,8 +257,7 @@
      "take": "l6_crimson",
      "in": 0.8,
      "dur": 1.0,
-     "zoom": 4,
-     "color": "crimson",
+     "color": "white",
      "caption": [
       "10 DARK MAZES"
      ]
@@ -281,8 +266,7 @@
      "take": "l9_bubblegum",
      "in": 0.8,
      "dur": 1.0,
-     "zoom": 4,
-     "color": "bubblegum",
+     "color": "white",
      "caption": [
       "10 DARK MAZES"
      ]
@@ -291,7 +275,6 @@
      "take": "l2_leap",
      "in": 4.1,
      "dur": 1.8,
-     "zoom": 4,
      "color": "mint",
      "caption": [
       "LEAP INTO",
@@ -300,10 +283,9 @@
     },
     {
      "take": "l3_record",
-     "in": 16.9,
-     "dur": 1.3,
-     "zoom": 3,
-     "color": "lemon",
+     "in": 16.4,
+     "dur": 1.2,
+     "color": "white",
      "caption": [
       "FIND THE CHALICE"
      ]
@@ -312,8 +294,7 @@
      "take": "random_b",
      "in": 1.0,
      "dur": 0.8,
-     "zoom": 4,
-     "color": "frost",
+     "color": "gold",
      "caption": [
       "THEN: ENDLESS",
       "RANDOM MAZES"
@@ -323,7 +304,6 @@
      "take": "random_c",
      "in": 1.0,
      "dur": 0.8,
-     "zoom": 4,
      "color": "ember",
      "caption": [
       "THEN: ENDLESS",
@@ -334,18 +314,16 @@
      "take": "hard",
      "in": 1.4,
      "dur": 1.4,
-     "zoom": 3,
-     "color": "crimson",
+     "color": "white",
      "caption": [
       "HARD MODE"
      ]
     },
     {
      "take": "l3_record",
-     "in": 18.6,
+     "in": 17.7,
      "dur": 1.6,
-     "zoom": 3,
-     "color": "lemon",
+     "color": "white",
      "caption": [
       "BEAT YOUR RECORDS"
      ]
@@ -354,8 +332,7 @@
      "take": "skins",
      "in": 0.3,
      "dur": 2.0,
-     "zoom": 3,
-     "color": "bubblegum",
+     "color": "white",
      "caption": [
       "UNLOCK SKINS"
      ]
@@ -364,7 +341,6 @@
      "take": "skins",
      "in": 4.1,
      "dur": 1.5,
-     "zoom": 3,
      "color": "frost",
      "caption": [
       "JELLY SKINS"
@@ -374,8 +350,7 @@
      "take": "wheel",
      "in": 2.2,
      "dur": 3.0,
-     "zoom": 4,
-     "color": "bubblegum",
+     "color": "white",
      "caption": [
       "WIN HATS"
      ]
@@ -384,7 +359,6 @@
      "take": "trail_candy",
      "in": 1.0,
      "dur": 1.4,
-     "zoom": 5,
      "color": "bubblegum",
      "caption": [
       "GOO TRAILS"
@@ -394,8 +368,7 @@
      "take": "maps",
      "in": 0.7,
      "dur": 1.6,
-     "zoom": 3,
-     "color": "ocean",
+     "color": "white",
      "caption": [
       "MAP PAPERS"
      ]
@@ -418,13 +391,13 @@
   {
    "id": "B",
    "name": "1000+ ways to dress your slime",
+   "music": "trailer_1",
    "hook": "the wardrobe flips through every skin in a second, then jelly, hats, trails",
    "beats": [
     {
      "take": "skins",
      "in": 0.3,
      "dur": 2.2,
-     "zoom": 3,
      "color": "gold",
      "caption": [
       "1000+ WAYS TO",
@@ -435,7 +408,6 @@
      "take": "skins",
      "in": 4.1,
      "dur": 1.4,
-     "zoom": 3,
      "color": "frost",
      "caption": [
       "JELLY SKINS"
@@ -445,19 +417,16 @@
      "take": "hops",
      "in": 2.4,
      "dur": 2.4,
-     "zoom": 6,
      "color": "lime",
      "caption": [
       "12 HATS"
-     ],
-     "x": 28
+     ]
     },
     {
      "take": "wheel",
      "in": 2.2,
      "dur": 3.0,
-     "zoom": 4,
-     "color": "bubblegum",
+     "color": "white",
      "caption": [
       "SPIN TO WIN THEM"
      ]
@@ -466,7 +435,6 @@
      "take": "trail_starry",
      "in": 0.8,
      "dur": 1.4,
-     "zoom": 5,
      "color": "frost",
      "caption": [
       "GOO TRAILS"
@@ -476,8 +444,7 @@
      "take": "maps",
      "in": 0.7,
      "dur": 1.6,
-     "zoom": 3,
-     "color": "ocean",
+     "color": "white",
      "caption": [
       "MAP PAPERS"
      ]
@@ -486,7 +453,6 @@
      "take": "l1_lime",
      "in": 0.0,
      "dur": 1.6,
-     "zoom": 5,
      "color": "lime",
      "caption": [
       "EARN THEM ALL:"
@@ -496,7 +462,6 @@
      "take": "l7_frost",
      "in": 0.8,
      "dur": 1.0,
-     "zoom": 4,
      "color": "frost",
      "caption": [
       "ESCAPE THE FOG"
@@ -506,7 +471,6 @@
      "take": "l10_ember",
      "in": 0.8,
      "dur": 1.0,
-     "zoom": 4,
      "color": "ember",
      "caption": [
       "ESCAPE THE FOG"
@@ -516,7 +480,6 @@
      "take": "l2_leap",
      "in": 4.1,
      "dur": 1.8,
-     "zoom": 4,
      "color": "mint",
      "caption": [
       "LEAP!"
@@ -524,10 +487,9 @@
     },
     {
      "take": "random_a",
-     "in": 5.6,
+     "in": 4.8,
      "dur": 2.0,
-     "zoom": 3,
-     "color": "gold",
+     "color": "white",
      "caption": [
       "WIN TICKETS"
      ]
@@ -536,8 +498,7 @@
      "take": "hard",
      "in": 1.4,
      "dur": 1.4,
-     "zoom": 3,
-     "color": "crimson",
+     "color": "white",
      "caption": [
       "HARD MODE"
      ]
@@ -563,13 +524,13 @@
   {
    "id": "C",
    "name": "Beat the story... then the real game starts",
+   "music": "trailer_1",
    "hook": "story montage, then a hard turn into the endless postgame grind",
    "beats": [
     {
      "take": "l10_ember",
      "in": 0.6,
      "dur": 1.4,
-     "zoom": 4,
      "color": "ember",
      "caption": [
       "BEAT THE STORY..."
@@ -577,10 +538,9 @@
     },
     {
      "take": "l3_record",
-     "in": 16.9,
-     "dur": 1.3,
-     "zoom": 3,
-     "color": "lemon",
+     "in": 16.4,
+     "dur": 1.2,
+     "color": "white",
      "caption": [
       "BEAT THE STORY..."
      ]
@@ -589,7 +549,6 @@
      "take": "random_a",
      "in": 0.5,
      "dur": 1.6,
-     "zoom": 3,
      "color": "gold",
      "caption": [
       "...THEN THE",
@@ -600,8 +559,7 @@
      "take": "random_b",
      "in": 1.0,
      "dur": 0.8,
-     "zoom": 4,
-     "color": "frost",
+     "color": "gold",
      "caption": [
       "ENDLESS MAZES"
      ]
@@ -610,7 +568,6 @@
      "take": "random_c",
      "in": 1.0,
      "dur": 0.8,
-     "zoom": 4,
      "color": "ember",
      "caption": [
       "ENDLESS MAZES"
@@ -618,10 +575,9 @@
     },
     {
      "take": "random_a",
-     "in": 5.6,
+     "in": 4.8,
      "dur": 1.6,
-     "zoom": 3,
-     "color": "gold",
+     "color": "white",
      "caption": [
       "WIN TICKETS"
      ]
@@ -630,8 +586,7 @@
      "take": "wheel",
      "in": 2.2,
      "dur": 3.0,
-     "zoom": 4,
-     "color": "bubblegum",
+     "color": "white",
      "caption": [
       "SPIN FOR HATS"
      ]
@@ -640,8 +595,7 @@
      "take": "hard",
      "in": 1.4,
      "dur": 1.4,
-     "zoom": 3,
-     "color": "crimson",
+     "color": "white",
      "caption": [
       "HARD MODE"
      ]
@@ -650,7 +604,6 @@
      "take": "skins",
      "in": 4.1,
      "dur": 1.4,
-     "zoom": 3,
      "color": "frost",
      "caption": [
       "= JELLY SKINS"
@@ -658,10 +611,9 @@
     },
     {
      "take": "l3_record",
-     "in": 18.6,
+     "in": 17.7,
      "dur": 1.6,
-     "zoom": 3,
-     "color": "gold",
+     "color": "white",
      "caption": [
       "CHASE GOLD"
      ]
@@ -670,7 +622,6 @@
      "take": "skins_gold",
      "in": 0.6,
      "dur": 1.6,
-     "zoom": 3,
      "color": "gold",
      "caption": [
       "ALL GOLD = A",
@@ -681,12 +632,10 @@
      "take": "hops",
      "in": 2.4,
      "dur": 2.4,
-     "zoom": 6,
      "color": "lime",
      "caption": [
       "COLLECT IT ALL"
-     ],
-     "x": 28
+     ]
     }
    ],
    "end": {

@@ -11,11 +11,16 @@ caption overlays and end cards in the game's font (card.tscn), cut and frame eve
 (nearest-neighbour upscale, 1080x1920), join them, normalise the audio and write
 build/trailer/short_<ID>.mp4 + short_<ID>_sheet.png (contact sheet: one frame per beat) +
 build/trailer/README.md.
+Music (optional): a draft's "music" (or --music) puts a track under the game's audio and writes
+build/trailer/short_<ID>_music.mp4 next to the plain cut. A tools/make_music.py trailer track
+("trailer_1", "trailer_2") is rendered fitted to the draft, its final hit exactly on the end card; a file
+(WAV/OGG/MP3) is used as is, shifted so its "hit" (seconds) lands on the end card. --music-only remixes
+the existing short_<ID>.mp4 files (no Godot, no re-cut). See docs/marketing/music.md.
 
 Usage (from the project root; the wrappers tools/trailer/make_trailer.ps1 / .sh add the quiet-window
 arguments on Windows):
   python tools/trailer/trailer.py [--drafts A,B] [--force] [--only-takes] [--godot EXE] [--ffmpeg EXE]
-      [--quiet --pos-take X,Y]
+      [--quiet --pos-take X,Y] [--music NAME|FILE|none] [--music-only]
 Godot: --godot, else $GODOT, else the winget console binary / /Applications/Godot.app / `godot` on PATH.
 ffmpeg: --ffmpeg, else $FFMPEG, else `ffmpeg` on PATH, else the winget Gyan.FFmpeg install.
 Nothing here touches the player's save: every run is a res://tools/ scene with debug flags (a
@@ -25,6 +30,7 @@ import argparse
 import glob
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -35,12 +41,21 @@ CONFIG = os.path.join(ROOT, "tools", "trailer", "trailer.json")
 OUT = os.path.join(ROOT, "build", "trailer")
 FPS = 60
 W, H = 1080, 1920
-CANVAS = 4  # caption overlays are drawn at 270x480 and scaled 4x
+CANVAS = 4  # caption overlays are drawn at 270x480 (card.gd) and scaled 4x
 GAME = (320, 180)
 BG = "0x1a1c2c"  # UIKit.BG
 GODOT_TIMEOUT = 180  # seconds per Godot run, plus 0.1 s per recorded frame
 CAPTION_FRAMES_MAX = 20000  # the captions run's --quit-after guard
 FFMPEG_TIMEOUT = 900
+
+
+def file_sha1(*names):
+    """sha1 of tools/trailer/<name> files: part of every cache stamp, so editing a script re-renders."""
+    h = hashlib.sha1()
+    for name in names:
+        with open(os.path.join(ROOT, "tools", "trailer", name), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()
 
 
 def find_godot(explicit):
@@ -79,7 +94,7 @@ def find_ffmpeg(explicit):
 class Runner:
     def __init__(self, args):
         self.args = args
-        self.godot = find_godot(args.godot)
+        self.godot = None if args.music_only else find_godot(args.godot)
         self.ffmpeg = find_ffmpeg(args.ffmpeg)
 
     # ------------------------------------------------------------- godot
@@ -119,9 +134,9 @@ class Runner:
 
     def render_take(self, take_id, take, base_args):
         out_dir = os.path.join(OUT, "takes", take_id)
-        user_args = list(base_args) + ["--take=" + take["take"]] + list(take.get("args", []))
+        user_args = list(base_args) + ["--take=" + take["take"]] + list(take.get("args", []))             + ["--track=" + os.path.join(out_dir, "track.txt").replace("\\", "/")]
         frames = int(take["frames"])
-        stamp = hashlib.sha1(json.dumps([user_args, frames]).encode()).hexdigest()
+        stamp = hashlib.sha1(json.dumps([user_args, frames, take, file_sha1("take.gd")], sort_keys=True).encode()).hexdigest()
         stamp_file = os.path.join(out_dir, "stamp.txt")
         if not self.args.force and os.path.exists(stamp_file) and open(stamp_file).read() == stamp \
                 and os.path.exists(os.path.join(out_dir, "f.wav")):
@@ -145,7 +160,7 @@ class Runner:
                                        "--logo=%d" % end.get("logo", 0)] + list(end.get("args", []))
         frames_dir = ["--frames-dir=" + out_dir.replace("\\", "/")]
         frames = int(round(end.get("dur", 4.0) * FPS)) + 2
-        stamp = hashlib.sha1(json.dumps([user_args, frames]).encode()).hexdigest()
+        stamp = hashlib.sha1(json.dumps([user_args, frames, end, file_sha1("card.gd")], sort_keys=True).encode()).hexdigest()
         stamp_file = os.path.join(out_dir, "stamp.txt")
         if not self.args.force and os.path.exists(stamp_file) and open(stamp_file).read() == stamp:
             return out_dir
@@ -177,9 +192,10 @@ class Runner:
 
     # ------------------------------------------------------------- ffmpeg
 
-    def ff(self, cmd):
+    def ff(self, cmd, cwd=None):
         try:
-            proc = subprocess.run([self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y"] + cmd, capture_output=True, text=True, timeout=FFMPEG_TIMEOUT)
+            proc = subprocess.run([self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y"] + cmd, capture_output=True, text=True,
+                                  timeout=FFMPEG_TIMEOUT, cwd=cwd)
         except subprocess.TimeoutExpired:
             sys.exit("ffmpeg timed out: %s" % " ".join(cmd[-3:]))
         if proc.returncode != 0:
@@ -187,21 +203,58 @@ class Runner:
         return proc
 
 
-def frame_rect(beat):
-    """The game picture's place on the 270x480 caption canvas: (x, y, w, h) in canvas pixels."""
-    zoom = int(beat.get("zoom", 4))
-    crop_w = min(GAME[0], W // zoom)
-    w_px, h_px = crop_w * zoom, GAME[1] * zoom
-    x = (W - w_px) // 2 // CANVAS
-    y = int(round((H / 2 - h_px / 2) / CANVAS))
-    return [x, y, w_px // CANVAS, h_px // CANVAS], crop_w, zoom
+ZOOM = 11  # 180 x 11 = 1980 >= 1920: the game fills the frame's height, in whole game pixels
+FOLLOW = 0.06  # how quickly the crop catches up with the action (per frame, smoothed both ways)
+
+
+def load_track(take_dir):
+    """The take's focus point per frame (take.gd --track): [(x, y)], in 320x180 game pixels."""
+    pts = []
+    with open(os.path.join(take_dir, "track.txt")) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) == 3:
+                pts.append((float(parts[1]), float(parts[2])))
+    return pts or [(GAME[0] / 2, GAME[1] / 2)]
+
+
+def smooth(values, alpha):
+    """Zero-phase exponential smoothing (forward, then backward): an eased pan with no lag or jitter."""
+    out, acc = [], values[0]
+    for v in values:
+        acc += (v - acc) * alpha
+        out.append(acc)
+    acc = out[-1]
+    for i in range(len(out) - 1, -1, -1):
+        acc += (out[i] - acc) * alpha
+        out[i] = acc
+    return out
+
+
+def crop_path(take_dir, beat, start, frames):
+    """Per frame of the beat: (game x of the crop's left edge, screen y of the crop's top), both
+    whole game pixels. The crop is `cw` game pixels wide (a bit over 1080 / zoom) and the full height."""
+    zoom = int(beat.get("zoom", ZOOM))
+    cw = -(-W // zoom) + 1
+    if "focus" in beat:
+        pts = [tuple(beat["focus"])] * (start + frames)
+    else:
+        pts = load_track(take_dir)
+        pts += [pts[-1]] * max(0, start + frames - len(pts))
+    alpha = float(beat.get("follow", FOLLOW))
+    xs = smooth([p[0] for p in pts], alpha)
+    ys = smooth([p[1] for p in pts], alpha)
+    max_y = GAME[1] * zoom - H
+    path = []
+    for n in range(start, start + frames):
+        xi = min(max(int(round(xs[n] - cw / 2)), 0), GAME[0] - cw)
+        yi = int(round(ys[n] - H / 2 / zoom))
+        path.append((xi, min(max(yi * zoom, 0), max_y)))
+    return path, cw, zoom
 
 
 def caption_job(draft, beat, index):
-    rect, _, _ = frame_rect(beat)
     job = {
-        "frame": rect,
-        "frame_color": beat.get("frame_color", beat.get("color", "white")),
         "lines": beat.get("caption", []),
         "sub": beat.get("sub", []),
         "color": beat.get("color", "white"),
@@ -209,7 +262,7 @@ def caption_job(draft, beat, index):
         "at": beat.get("at", "top"),
         "skin": beat.get("skin", ""),
     }
-    key = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:12]
+    key = hashlib.sha1(json.dumps([job, file_sha1("card.gd")], sort_keys=True).encode()).hexdigest()[:12]
     job["out"] = os.path.join(OUT, "captions", "cap_%s.png" % key)
     return job
 
@@ -222,17 +275,24 @@ def build_draft(run, cfg, draft):
     segments, sheet_frames, t = [], [], 0.0
     for i, beat in enumerate(draft["beats"]):
         take_dir = os.path.join(OUT, "takes", beat["take"])
-        rect, crop_w, zoom = frame_rect(beat)
-        crop_x = int(beat.get("x", (GAME[0] - crop_w) // 2))
         start = int(round(beat["in"] * FPS))
         frames = int(round(beat["dur"] * FPS))
         cap = beat["_caption"]
         seg = os.path.join(work, "seg_%02d.mkv" % i)
-        gx, gy = rect[0] * CANVAS, rect[1] * CANVAS
-        vf = ("[0:v]crop=%d:%d:%d:0,scale=%d:%d:flags=neighbor[g];"
-              "color=c=%s:s=%dx%d:r=%d[bg];[bg][g]overlay=%d:%d:shortest=1[b];"
-              "[1:v]scale=%d:%d:flags=neighbor,format=rgba[c];[b][c]overlay=0:0:shortest=1,format=yuv420p[v]"
-              % (crop_w, GAME[1], crop_x, crop_w * zoom, GAME[1] * zoom, BG, W, H, FPS, gx, gy, W, H))
+        # Full screen: crop a strip of the game (following the action), scale it up `zoom`x with
+        # nearest neighbour and cut the 1080x1920 frame out of it; the crop moves in whole game
+        # pixels, driven per frame by sendcmd.
+        path, cw, zoom = crop_path(take_dir, beat, start, frames)
+        cmds = "cmd_%02d.txt" % i
+        with open(os.path.join(work, cmds), "w") as f:
+            last = None
+            for k, (xi, ys) in enumerate(path):
+                if (xi, ys) != last:
+                    f.write("%.4f crop@a x %d, crop@b y %d;\n" % (max(k / FPS - 0.002, 0.0), xi, ys))
+                    last = (xi, ys)
+        vf = ("[0:v]sendcmd=f=%s,crop@a=w=%d:h=%d:x=%d:y=0,scale=%d:%d:flags=neighbor,crop@b=w=%d:h=%d:x=%d:y=%d[g];"
+              "[1:v]scale=%d:%d:flags=neighbor,format=rgba[c];[g][c]overlay=0:0:shortest=1,format=yuv420p[v]"
+              % (cmds, cw, GAME[1], path[0][0], cw * zoom, GAME[1] * zoom, W, H, (cw * zoom - W) // 2, path[0][1], W, H))
         fade = min(0.04, beat["dur"] / 4)
         af = "atrim=start=%.4f:duration=%.4f,asetpts=PTS-STARTPTS,afade=t=in:d=%.3f,afade=t=out:st=%.4f:d=%.3f,aresample=48000" % (
             beat["in"], beat["dur"], fade, beat["dur"] - fade, fade)
@@ -243,7 +303,7 @@ def build_draft(run, cfg, draft):
                 "-i", os.path.join(take_dir, "f.wav"),
                 "-filter_complex", vf + ";[2:a]" + af + "[a]", "-map", "[v]", "-map", "[a]",
                 "-frames:v", str(frames), "-r", str(FPS),
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "10", "-c:a", "pcm_s16le", "-ac", "2", seg])
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "10", "-c:a", "pcm_s16le", "-ac", "2", seg], cwd=work)
         segments.append(seg)
         sheet_frames.append(t + beat["dur"] * float(beat.get("sheet_at", 0.6)))
         t += beat["dur"]
@@ -262,10 +322,10 @@ def build_draft(run, cfg, draft):
     listing = os.path.join(work, "list.txt")
     with open(listing, "w") as f:
         for s in segments:
-            f.write("file '%s'\n" % s.replace("\\", "/"))
+            f.write("file '%s'\n" % s.replace("\\", "/").replace("'", "'\\''"))  # (concat quoting: ' -> '\'')
     final = os.path.join(OUT, "short_%s.mp4" % did)
     run.ff(["-f", "concat", "-safe", "0", "-i", listing,
-            "-af", loudnorm(run, listing) + ",aresample=48000",
+            "-af", loudnorm(run, ["-f", "concat", "-safe", "0", "-i", listing]) + ",aresample=48000",
             "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(FPS),
             "-profile:v", "high", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", final])
     # Contact sheet: one frame per beat (and the end card), 270x480 each, in rows of 6.
@@ -277,32 +337,143 @@ def build_draft(run, cfg, draft):
             "tile=%dx%d:padding=6:margin=6:color=0x404040" % (cols, rows), "-frames:v", "1",
             os.path.join(OUT, "short_%s_sheet.png" % did)])
     print(" wrote %s (%.1f s)" % (os.path.relpath(final, ROOT), t))
+    if music_of(run, draft):
+        build_music_version(run, draft, ["-f", "concat", "-safe", "0", "-i", listing], final, work)
     return t
 
 
 LOUDNESS = "I=-14:TP=-1.5:LRA=11"  # the usual target for Shorts / TikTok / Reels
 
 
-def loudnorm(run, listing):
-    """Two-pass loudness normalisation: measure the joined draft, then apply it linearly."""
-    proc = subprocess.run([run.ffmpeg, "-hide_banner", "-f", "concat", "-safe", "0", "-i", listing, "-vn",
-                           "-af", "loudnorm=%s:print_format=json" % LOUDNESS, "-f", "null", "-"],
-                          capture_output=True, text=True, timeout=FFMPEG_TIMEOUT)
+def measure_loudness(run, inputs):
+    """ffmpeg's loudnorm analysis of `inputs` (ffmpeg input args): the parsed JSON, or None."""
+    try:
+        proc = subprocess.run([run.ffmpeg, "-hide_banner"] + inputs + ["-vn", "-af", "loudnorm=%s:print_format=json" % LOUDNESS,
+                                                                        "-f", "null", "-"],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=FFMPEG_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        sys.exit("ffmpeg timed out measuring loudness: %s" % " ".join(inputs[-1:]))
     text = proc.stderr
     try:
-        m = json.loads(text[text.rindex("{"):text.rindex("}") + 1])
+        return json.loads(text[text.rindex("{"):text.rindex("}") + 1])
+    except ValueError:
+        return None
+
+
+def lufs(measured):
+    """The integrated loudness of a measure_loudness() result, or None if missing or not finite (silence = -inf)."""
+    try:
+        value = float(measured["input_i"])
+    except (TypeError, KeyError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
+def loudnorm(run, inputs):
+    """Two-pass loudness normalisation: measure the joined draft, then apply it linearly."""
+    m = measure_loudness(run, inputs)
+    try:
         return ("loudnorm=%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true"
                 % (LOUDNESS, m["input_i"], m["input_tp"], m["input_lra"], m["input_thresh"], m["target_offset"]))
-    except (ValueError, KeyError):
+    except (TypeError, KeyError):
         return "loudnorm=" + LOUDNESS
 
 
-def write_readme(cfg, drafts, lengths):
+# ------------------------------------------------------------- music
+
+MUSIC_TRACKS = ("trailer_1", "trailer_2")  # tools/make_music.py trailer tracks (fitted per draft)
+GAME_LUFS = -17.0   # the game's own audio in the music cut: ducked a bit from its solo level
+MUSIC_LUFS = -18.0  # the music bed under it (a draft's "music_db" moves it); the sum is then normalised to -14
+
+
+def music_of(run, draft):
+    """The draft's music as {"track", "hit", "db"}, or None. --music overrides trailer.json's "music"."""
+    spec = run.args.music if run.args.music else draft.get("music")
+    if not spec or spec == "none":
+        return None
+    if isinstance(spec, str):
+        spec = {"track": spec}
+    return {"track": spec["track"], "hit": spec.get("hit"), "db": float(spec.get("db", draft.get("music_db", 0.0)))}
+
+
+def draft_times(draft):
+    card = sum(b["dur"] for b in draft["beats"])
+    return card, card + draft["end"].get("dur", 4.0)
+
+
+def fitted_music(run, track, hit, length):
+    """A make_music.py trailer track whose hit lands at `hit` s, cached under build/trailer/music/."""
+    script = os.path.join(ROOT, "tools", "make_music.py")
+    with open(script, "rb") as f:
+        stamp = hashlib.sha1(f.read() + ("%s %.3f %.3f" % (track, hit, length)).encode()).hexdigest()[:12]
+    out = os.path.join(OUT, "music", "%s_%s.wav" % (track, stamp))
+    if not os.path.exists(out):
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        print(" music %s: hit at %.2f s, %.2f s long" % (track, hit, length))
+        try:
+            proc = subprocess.run([sys.executable, script, "--fit", track, "--hit", "%.3f" % hit, "--length", "%.3f" % length,
+                                   "--out", out, "--ffmpeg", run.ffmpeg], capture_output=True, text=True, timeout=FFMPEG_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            sys.exit("make_music.py timed out (%s)" % track)
+        if proc.returncode != 0 or not os.path.exists(out):
+            sys.exit("make_music.py failed:\n%s" % (proc.stdout + proc.stderr)[-2000:])
+    return out
+
+
+def build_music_version(run, draft, game_inputs, video, work):
+    """short_<ID>_music.mp4: the plain cut's picture, the game's audio ducked a bit with the music under it,
+    the music's hit on the end card, the sum loudness-normalised to -14 LUFS."""
+    did = draft["id"]
+    music = music_of(run, draft)
+    card, total = draft_times(draft)
+    os.makedirs(work, exist_ok=True)
+    game = os.path.join(work, "game.wav")
+    run.ff(game_inputs + ["-vn", "-ac", "2", "-ar", "48000", "-c:a", "pcm_f32le", game])
+    track = music["track"]
+    if track in MUSIC_TRACKS:
+        src, offset = fitted_music(run, track, card, total), 0.0
+    else:
+        src = track if os.path.isabs(track) else os.path.join(ROOT, track)
+        if not os.path.exists(src):
+            sys.exit("draft %s: music file not found: %s" % (did, src))
+        offset = card - float(music["hit"]) if music["hit"] is not None else 0.0
+    gi = measure_loudness(run, ["-i", game])
+    mi = measure_loudness(run, ["-i", src])
+    g_i, m_i = lufs(gi), lufs(mi)  # (None: silent or unmeasured -> a fixed gain)
+    g_db = GAME_LUFS - g_i if g_i is not None else -3.0
+    m_db = MUSIC_LUFS + music["db"] - m_i if m_i is not None else 0.0
+    shift = ("adelay=%d:all=1," % int(round(offset * 1000))) if offset > 0 else \
+            ("atrim=start=%.4f,asetpts=PTS-STARTPTS," % -offset) if offset < 0 else ""
+    mix = os.path.join(work, "mix.wav")
+    run.ff(["-i", game, "-i", src, "-filter_complex",
+            "[0:a]volume=%.2fdB[g];[1:a]aresample=48000,aformat=channel_layouts=stereo,%svolume=%.2fdB,apad,atrim=0:%.3f,"
+            "afade=t=out:st=%.3f:d=0.5[m];[g][m]amix=inputs=2:normalize=0:duration=first[a]"
+            % (g_db, shift, m_db, total, total - 0.5),
+            "-map", "[a]", "-c:a", "pcm_f32le", mix])
+    final = os.path.join(OUT, "short_%s_music.mp4" % did)
+    run.ff(["-i", video, "-i", mix, "-map", "0:v", "-map", "1:a", "-c:v", "copy",
+            "-af", loudnorm(run, ["-i", mix]) + ",aresample=48000", "-c:a", "aac", "-b:a", "192k",
+            "-shortest", "-movflags", "+faststart", final])
+    print(" wrote %s (music: %s, hit at %.2f s)" % (os.path.relpath(final, ROOT), os.path.basename(track), card))
+
+
+def write_readme(run, cfg, lengths):
+    """README.md for every draft that has a short_<ID>.mp4 (this run's lengths, else from trailer.json)."""
+    drafts = []
+    for d in cfg["drafts"]:
+        if d["id"] not in lengths and not os.path.exists(os.path.join(OUT, "short_%s.mp4" % d["id"])):
+            continue
+        if "_music" not in d:  # (not in this run: its own trailer.json music, not --music)
+            spec = d.get("music") or ""
+            track = spec if isinstance(spec, str) else spec.get("track", "")
+            d["_music"] = "" if track == "none" else track
+        drafts.append(d)
     lines = ["# Trailer drafts (generated by tools/trailer/trailer.py; see docs/marketing/trailer.md)", "",
              "Vertical 1080x1920, 60 fps, H.264 + AAC. Audio = the game's own sound effects and level ambience",
-             "(the game has no music), loudness-normalised to -14 LUFS.", ""]
+             "(the game has no music), loudness-normalised to -14 LUFS. short_<ID>_music.mp4 = the same cut with a",
+             "music mockup under it (tools/make_music.py; docs/marketing/music.md).", ""]
     for d in drafts:
-        lines += ["## short_%s.mp4: %s (%.1f s)" % (d["id"], d["name"], lengths[d["id"]]), "", "Hook: " + d.get("hook", ""), "",
+        lines += ["## short_%s.mp4: %s (%.1f s)" % (d["id"], d["name"], lengths.get(d["id"], draft_times(d)[1])), "", "Hook: " + d.get("hook", ""), "",
                   "| # | time | shot | caption |", "|---|---|---|---|"]
         t = 0.0
         for i, b in enumerate(d["beats"]):
@@ -313,6 +484,8 @@ def write_readme(cfg, drafts, lengths):
         lines.append("| end | %.1f-%.1f | end card (logo, %s slime) | %s |" % (t, t + e.get("dur", 4.0), e.get("skin", ""),
                      " / ".join(e.get("tagline", []) + e.get("cta", []) + e.get("store", []))))
         lines += ["", "Contact sheet: short_%s_sheet.png" % d["id"], ""]
+        if d.get("_music"):
+            lines += ["Music cut: short_%s_music.mp4 (%s, its hit on the end card at %.1f s)" % (d["id"], d["_music"], t), ""]
     with open(os.path.join(OUT, "README.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
@@ -326,6 +499,10 @@ def main():
     p.add_argument("--ffmpeg")
     p.add_argument("--quiet", action="store_true", help="open Godot's windows without focus (override.cfg no_focus)")
     p.add_argument("--pos-take", help="X,Y window position for Godot's (320x180) windows")
+    p.add_argument("--music", help="music for every selected draft: a make_music.py track (trailer_1, trailer_2), "
+                                   "a WAV/OGG/MP3 path, or none (default: each draft's \"music\" in trailer.json)")
+    p.add_argument("--music-only", action="store_true",
+                   help="only (re)make short_<ID>_music.mp4 from the existing short_<ID>.mp4 (no Godot, no re-cut)")
     args = p.parse_args()
     with open(CONFIG, encoding="utf-8") as f:
         cfg = json.load(f)
@@ -334,6 +511,23 @@ def main():
     drafts = [d for d in cfg["drafts"] if not wanted or d["id"] in wanted]
     if not drafts:
         sys.exit("no such draft: %s" % args.drafts)
+    for d in drafts:
+        m = music_of(run, d)
+        d["_music"] = m["track"] if m else ""
+    if args.music_only:
+        for d in drafts:
+            video = os.path.join(OUT, "short_%s.mp4" % d["id"])
+            if not os.path.exists(video):
+                sys.exit("--music-only: %s is missing; render the draft first" % os.path.relpath(video, ROOT))
+            if not d["_music"]:
+                print(" draft %s has no music (trailer.json \"music\" or --music)" % d["id"])
+                continue
+            work = os.path.join(OUT, "work", d["id"])
+            shutil.rmtree(work, ignore_errors=True)
+            build_music_version(run, d, ["-i", video], video, work)
+        write_readme(run, cfg, {})
+        shutil.rmtree(os.path.join(OUT, "work"), ignore_errors=True)
+        return
     os.makedirs(os.path.join(OUT, "captions"), exist_ok=True)
     base = cfg.get("base_args", [])
     needed = []
@@ -372,7 +566,7 @@ def main():
     lengths = {}
     for d in drafts:
         lengths[d["id"]] = build_draft(run, cfg, d)
-    write_readme(cfg, drafts, lengths)
+    write_readme(run, cfg, lengths)
     shutil.rmtree(os.path.join(OUT, "work"), ignore_errors=True)
 
 
