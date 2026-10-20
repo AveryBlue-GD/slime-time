@@ -167,8 +167,10 @@ keep DESCENT out while it's switched off (D11).
 - **A, "Can you escape before you dry up?"** (~28 s): goo splash into the dark Dark Dungeon, the slime runs dry,
   10 themed mazes, a charged leap into the dark, the chalice, then the endgame (random mazes, hard mode, records),
   then the cosmetics grind (skins, jelly, hat wheel, trails, map papers), then the end card.
-- **B, "1000+ ways to dress your slime"** (~24 s): the wardrobe flipping every skin, jelly, 12 hats popping off a
-  leaping slime, the wheel, trails, papers; then "earn them all" over gameplay, tickets, hard mode.
+- **B, "1000+ ways to dress your slime"** (~27 s): the wardrobe flipping every skin, jelly, 12 hats popping off a
+  leaping slime, ANIMATED HATS (owner, 2026-10-20: a close 13x take of the RAINCLOUD hovering and raining over Lime
+  on L1, then the PROPELLER CAP spinning on Mint on L2; takes `rain_hat`, `prop_hat`), the wheel, trails, papers;
+  then "earn them all" over gameplay, tickets, hard mode.
 - **C, "Beat the story... then the real game starts"** (~22 s): story, then the postgame loop: endless mazes,
   tickets, hat wheel, hard mode = jelly skins, gold medals, the secret STOPWATCH skin (a locked silhouette), "ONE MORE RUN?".
 

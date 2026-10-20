@@ -194,6 +194,28 @@
     "--every=40"
    ]
   },
+  "rain_hat": {
+   "note": "L1, Lime, RAINCLOUD hat: the autopilot glides and leaps, the cloud hovers and rains",
+   "take": "play",
+   "frames": 360,
+   "args": [
+    "--level=1",
+    "--skin=lime",
+    "--own-hats=all",
+    "--hat=raincloud"
+   ]
+  },
+  "prop_hat": {
+   "note": "L2, Mint, PROPELLER CAP: spins faster while the slime glides",
+   "take": "play",
+   "frames": 300,
+   "args": [
+    "--level=2",
+    "--skin=mint",
+    "--own-hats=all",
+    "--hat=propeller"
+   ]
+  },
   "trail_candy": {
    "note": "randomizer maze, Bubblegum, CANDY trail + wizard hat",
    "take": "play",
@@ -436,6 +458,26 @@
      "color": "lime",
      "caption": [
       "12 HATS"
+     ]
+    },
+    {
+     "take": "rain_hat",
+     "in": 1.0,
+     "dur": 1.8,
+     "color": "frost",
+     "zoom": 13,
+     "caption": [
+      "ANIMATED HATS"
+     ]
+    },
+    {
+     "take": "prop_hat",
+     "in": 1.0,
+     "dur": 0.9,
+     "color": "frost",
+     "zoom": 13,
+     "caption": [
+      "ANIMATED HATS"
      ]
     },
     {
