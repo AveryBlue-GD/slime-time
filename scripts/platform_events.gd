@@ -134,11 +134,13 @@ func quit_game() -> void:
 	get_tree().quit()
 
 
-## Retries a save that failed earlier (Progress.flush_save), before the app may stop running.
+## Retries a save that failed earlier (Progress.flush_save) and, on the web, writes the files to IndexedDB at
+## once (a tab killed in the background keeps its last save), before the app may stop running.
 func _flush_progress() -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.flush_save()
+	Platform.sync_storage()
 
 
 func leave_background() -> void:

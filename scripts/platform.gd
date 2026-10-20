@@ -144,6 +144,14 @@ static func has_js() -> bool:
 	return OS.has_feature("web")
 
 
+## The web build: writes user:// (the in-memory file system) to the browser's IndexedDB now. Godot does it a
+## frame after each write anyway; this is for the moment the page may stop running (hidden tab, quit). No-op
+## elsewhere.
+static func sync_storage() -> void:
+	if has_js():
+		JavaScriptBridge.force_fs_sync()
+
+
 ## The device has a touchscreen (or the --touch flag / a mobile override asks for touch controls).
 static func has_touch() -> bool:
 	if is_mobile_native():
