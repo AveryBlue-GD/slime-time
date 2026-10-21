@@ -23,6 +23,8 @@ const MAP_POS := Vector2(38, 67)
 const TEXT_X := 116
 const TEXT_W := 168
 const DOTS_Y := 122
+## The randomizer hint's row (story end on a demo with the randomizer): between the dots and KEEP PLAYING.
+const RANDOM_HINT_Y := 140
 const WISHLIST_Y := 40
 const KEEP_W := 88
 
@@ -34,6 +36,8 @@ var map_rect: TextureRect
 var area_label: Label
 var level_label: Label
 var feature_label: Label
+## "NOW TRY THE RANDOMIZER IN THE HUB" (null when not shown: random_hint_shown()).
+var random_hint: Label
 var dots: Array[ColorRect] = []
 var _clock := 0.0
 
@@ -131,6 +135,14 @@ func _ready() -> void:
 		add_child(dot)
 		dots.append(dot)
 
+	if random_hint_shown():
+		# i18n: demo end screen, under the teaser cards (the demo's random mazes open after its last level; RANDOMIZER = the hub station's name), max 296px, 1 line
+		random_hint = UIKit.make_label(Loc.t("demo.end.try_random", "NOW TRY THE RANDOMIZER IN THE HUB"), UIKit.FONT, UIKit.GOLD)
+		random_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		add_child(random_hint)
+		random_hint.position = Vector2(0, RANDOM_HINT_Y)
+		random_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
+
 	# i18n: demo end screen button, back to the hub; max 80px, 1 line
 	var keep_text := Loc.t("demo.keep_playing", "KEEP PLAYING")
 	keep_button = UIKit.make_button(keep_text, _keep_playing, Vector2(UIKit.button_w(keep_text, KEEP_W), UIKit.button_h()))
@@ -168,8 +180,14 @@ func _process(delta: float) -> void:
 		show_card(card + 1)
 
 
+## After the story's end, a demo with a randomizer points the player at it (owner, 2026-10-21); KEEP PLAYING
+## then puts the slime by the RANDOMIZER portal.
+static func random_hint_shown() -> bool:
+	return from == FROM_STORY and Demo.randomizer_open()
+
+
 func _keep_playing() -> void:
-	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if from == FROM_RANDOM else "story")
+	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random" if from == FROM_RANDOM or random_hint_shown() else "story")
 	UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 

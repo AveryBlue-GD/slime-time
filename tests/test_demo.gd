@@ -518,6 +518,15 @@ func _check_screens() -> void:
 	var end: Control = await _open(DemoEnd.SCENE)
 	_check(not end.wishlist_button.visible and end.keep_button.visible and end.get_viewport().gui_get_focus_owner() == end.keep_button,
 		"end screen: WISHLIST hidden (no URL), KEEP PLAYING focused")
+	_check(end.random_hint != null and end.random_hint.text == "NOW TRY THE RANDOMIZER IN THE HUB"
+		and end.random_hint.get_global_rect().end.y <= UIKit.BOTTOM_ROW_Y,
+		"...after the story it points at the randomizer, above KEEP PLAYING")
+	DemoEnd.from = DemoEnd.FROM_RANDOM
+	_check(not DemoEnd.random_hint_shown(), "...not after the randomizer's own end")
+	DemoEnd.from = DemoEnd.FROM_STORY
+	Platform.override = "web"
+	_check(not DemoEnd.random_hint_shown(), "...not on the web demo (no randomizer there)")
+	Platform.override = ""
 	var said := _save_talk(_texts(end))
 	_check(said.is_empty(), "...desktop: no line about progress carrying over (%s)" % [said])
 	var names: Array[String] = []

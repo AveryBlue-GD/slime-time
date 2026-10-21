@@ -1762,6 +1762,13 @@ msgctxt "demo.end.title"
 msgid "END OF THE DEMO"
 msgstr ""
 
+#. demo end screen, under the teaser cards (the demo's random mazes open after its last level; RANDOMIZER = the hub station's name), max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/ui/demo_end.gd
+msgctxt "demo.end.try_random"
+msgid "NOW TRY THE RANDOMIZER IN THE HUB"
+msgstr ""
+
 #. demo end screen button, back to the hub; max 80px, 1 line
 #. budget: max 80px, lines 1
 #: scripts/ui/demo_end.gd
