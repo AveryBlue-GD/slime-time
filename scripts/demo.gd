@@ -20,21 +20,22 @@ extends RefCounted
 ## level data / theme art / ambience through paths it allows (can_load), never `preload`s them.
 
 ## ---------------------------------------------------------------- the knobs (one place)
-## Story levels in the demo (1..LEVELS), and on the web build (WEB_LEVELS: a shorter web demo if wanted).
+## Story levels in the demo (1..LEVELS), and on the web build (WEB_LEVELS: 4 like the desktop since
+## 2026-10-21, owner; a shorter web demo is one number away, with its caps and prices below).
 const LEVELS := 4
-const WEB_LEVELS := 3
+const WEB_LEVELS := 4
 ## Hard-mode levels in the demo (1..HARD_LEVELS; hard level 1 unlocks jelly Lime as usual).
 const HARD_LEVELS := 1
 ## How far each coin upgrade can be bought in the demo (the rest of its bar shows FULL); an upgrade not
-## listed stays at 0. WEB_UPGRADE_CAPS: the web demo's (its WEB_LEVELS levels hide fewer coins).
+## listed stays at 0. WEB_UPGRADE_CAPS: the web demo's (the same while it has the same levels).
 const UPGRADE_CAPS := {"slime": 3, "speed": 2, "brightness": 1}
-const WEB_UPGRADE_CAPS := {"slime": 2, "speed": 1, "brightness": 1}
+const WEB_UPGRADE_CAPS := UPGRADE_CAPS
 ## The demo's own coin prices (PRICES[id][i] = coins for level i + 1, one per capped level; the full
 ## game's are Economy.COIN_TRACKS). They add up to EXACTLY the coins levels 1..levels() hide (coins_total():
-## desktop 6 + 9 + 7 + 12 = 34, web 6 + 9 + 7 = 22; tests/test_demo.gd checks it): every coin found buys
+## levels 1-4: 6 + 9 + 7 + 12 = 34, on desktop and web; tests/test_demo.gd checks it): every coin found buys
 ## every demo upgrade level, 0 left over (docs/demo-plan.md section 2).
 const PRICES := {"slime": [1, 4, 6], "speed": [6, 8], "brightness": [9]}  # 11 + 14 + 9 = 34
-const WEB_PRICES := {"slime": [1, 5], "speed": [7], "brightness": [9]}  # 6 + 7 + 9 = 22
+const WEB_PRICES := PRICES  # (a 3-level web demo would be {"slime": [1, 5], "speed": [7], "brightness": [9]}: 22)
 ## Hats the demo's wheel gives at most: with this many hats owned it doesn't spin.
 const HATS_MAX := 2
 ## The randomizer (opens after the last demo level) and the hat wheel, per platform: the web demo
@@ -69,7 +70,7 @@ static var steam_app_override := -1
 const END_SCENE := "res://scenes/demo_end.tscn"
 ## The end screen's teaser cards: later story levels shown by area name and a stylised (made-up)
 ## map in their colors. Only names and colors: no later level data or art is needed. The first card is
-## always the area right after the demo's last level (teasers(): 5 on desktop, 4 on the web), then these.
+## always the area right after the demo's last level (teasers(): 5), then these.
 const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)

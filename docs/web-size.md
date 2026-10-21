@@ -7,23 +7,26 @@ Gzip = `gzip -9` of each file, roughly what a server sends when it compresses on
 | File | Web Demo | gzip | Full web game | gzip |
 |---|---|---|---|---|
 | `index.wasm` (the engine) | 39.51 MB | 10.05 MB | 39.51 MB | 10.05 MB |
-| `index.pck` (the game) | 2.57 MB | 2.21 MB | 7.12 MB | 5.10 MB |
+| `index.pck` (the game) | 5.18 MB | 4.56 MB | 7.12 MB | 5.10 MB |
 | `index.js` | 0.28 MB | 0.07 MB | 0.28 MB | 0.07 MB |
 | html, worklets, icons | 0.08 MB | 0.04 MB | 0.08 MB | 0.04 MB |
-| **Total** | **42.4 MB** | **12.4 MB** | **47.0 MB** | **15.3 MB** |
+| **Total** | **45.1 MB** | **14.8 MB** | **47.0 MB** | **15.3 MB** |
 
-The demo's pack is a third of the full one because levels 4-10 (web demo: 1-3 playable), their themes and ambience and
+The Web Demo column was re-measured 2026-10-21 on Windows (same template, `gzip -9` in Python) after the web demo got
+level 4 (Sunken Shrine) and the game got music (the three hub loops and the intro, 2.1 MB of OGG that barely
+compresses); before both it was 2.57 / 2.21 MB pack, 42.4 / 12.4 MB in all. The full-game column predates the music
+(add about 2.1 MB). The demo's pack is smaller than the full one because levels 5-10, their themes and ambience and
 the translation catalogs are cut (`Demo.export_cut`). The engine is the same 39.5 MB for both and is 80% of the download.
 
 ## What a player waits for (estimate, not measured on a phone)
 
 Download only, with compression, before the TAP TO PLAY gate; the browser caches it, so a second visit is quick.
 
-| Connection | Web Demo (12.4 MB) | Without compression (42.4 MB) |
+| Connection | Web Demo (14.8 MB) | Without compression (45.1 MB) |
 |---|---|---|
 | Good 4G / 5G (~40 Mbit/s) | ~3 s | ~9 s |
-| Average 4G (~15 Mbit/s) | ~7 s | ~23 s |
-| Weak 4G / 3G (~4 Mbit/s) | ~25 s | ~85 s |
+| Average 4G (~15 Mbit/s) | ~8 s | ~24 s |
+| Weak 4G / 3G (~4 Mbit/s) | ~30 s | ~90 s |
 
 So compression matters more than anything else: the wasm shrinks to a quarter.
 
@@ -45,5 +48,5 @@ So compression matters more than anything else: the wasm shrinks to a quarter.
   -> text_server_fb, etc.). Typical result for a 2D game: the wasm drops from 39.5 MB to about 15-20 MB (gzip about 4-5 MB),
   so the demo would be around 6-7 MB compressed. Needs emscripten and an hour of build time; set it as the Web presets'
   `custom_template/release`. Test the whole game on it (fonts: the game uses bitmap fonts, so the fallback text server is fine).
-- The pack: `index.pck` is already small; the demo's 2.6 MB is mostly sprites and sounds of levels 1-3.
+- The pack: `index.pck` is already small; the demo's 5.2 MB is mostly the music (2.1 MB) and the sprites and sounds of levels 1-4.
 - Loading feedback already exists: the web shell shows a progress bar, and on phones a TAP TO PLAY gate.

@@ -158,7 +158,7 @@ func _check_stripped_full_save() -> void:
 		Platform.override = "web" if web else ""
 		progress.medals = {1: 3, 2: 1, 4: 2, 5: 3, 8: 2}
 		hub._refresh_tickets()
-		var want := ("4/9" if web else "6/12")
+		var want := "6/12"  # (4 levels on both since 2026-10-21)
 		_check(hub.medal_label.text == want, "%s demo hub medals: only the demo's levels, earned and total (%s, want %s)" % ["web" if web else "desktop", hub.medal_label.text, want])
 	Platform.override = ""
 	Platform.demo_override = 0
@@ -247,7 +247,7 @@ func _check_locks() -> void:
 			priced += Upgrades.total_cost(id, Upgrades.max_level(id))
 			lists_fit = lists_fit and (upgrade.get("dev", false) or Demo.prices(id).size() == Demo.upgrade_cap(id))
 		var name := "web" if web else "desktop"
-		_check(lists_fit and hidden == Demo.coins_total() and priced == hidden and hidden == (22 if web else 34),
+		_check(lists_fit and hidden == Demo.coins_total() and priced == hidden and hidden == 34,
 			"%s demo: one price per capped level, prices %d == coins in levels 1-%d %d" % [name, priced, Demo.levels(), hidden])
 		progress.upgrades = {}
 		progress.coins_found.clear()
@@ -294,7 +294,7 @@ func _check_locks() -> void:
 	_check(not progress.is_skin_unlocked("crimson", false) and not progress.is_skin_unlocked("lemon", true) and not progress.is_skin_unlocked(Skins.CUSTOM, false),
 		"full-game skins stay locked even on a full save (Crimson, jelly Lemon, Chameleon)")
 	Platform.override = "web"
-	_check(not progress.is_skin_unlocked("grape", false) and progress.is_skin_unlocked("ocean", false), "web demo (3 levels): Grape stays locked, Ocean is earnable")
+	_check(progress.is_skin_unlocked("grape", false) and not progress.is_skin_unlocked("crimson", false), "web demo (4 levels, like the desktop): Grape is earnable, Crimson stays locked")
 	Platform.override = ""
 	# Hat wheel: shut until the end screen was seen, then the first spin is free, later ones cost tickets,
 	# up to HATS_MAX hats.
@@ -378,13 +378,11 @@ func _check_locks() -> void:
 	Platform.override = "web"
 	_check(not Demo.randomizer_open() and not Demo.hat_wheel_open() and Demo.levels() == Demo.WEB_LEVELS and not progress.is_randomizer_unlocked(),
 		"web demo: no randomizer, no hat wheel, WEB_LEVELS levels")
-	_check(Demo.full_only_paths(true).size() > Demo.full_only_paths(false).size(), "the web list leaves out more (level 4, Sunken Shrine)")
-	_check(Demo.themes() == ["dungeon", "mossy", "sandstone"] and Demo.teasers() == [4, 6, 7, 9, 10], "web demo: 3 themes, teasers from level 4 %s" % [Demo.teasers()])
+	_check(Demo.WEB_LEVELS == Demo.LEVELS and Demo.full_only_paths(true) == Demo.full_only_paths(false), "the web demo has the desktop's 4 levels and cuts the same files")
+	_check(Demo.themes() == ["dungeon", "mossy", "sandstone", "sunken"] and Demo.teasers() == [5, 6, 7, 9, 10], "web demo: 4 themes, teasers from level 5 %s" % [Demo.teasers()])
 	var web_cut := Demo.export_cut(true)
-	var desk_cut := Demo.export_cut(false)
-	_check(Levels.data_path(4) in web_cut and Themes.atlas_path("sunken", "walls") in web_cut and "res://assets/sounds/ambient_sunken.wav" in web_cut
-		and not Levels.data_path(4) in desk_cut and not Themes.atlas_path("sunken", "walls") in desk_cut and not "res://assets/sounds/ambient_sunken.wav" in desk_cut,
-		"level 4 + Sunken Shrine: cut from the web demo, kept in the desktop one")
+	_check(not Levels.data_path(4) in web_cut and not Themes.atlas_path("sunken", "walls") in web_cut and Levels.data_path(5) in web_cut,
+		"level 4 + Sunken Shrine ship in the web demo, level 5 is cut")
 	Platform.override = ""
 	_check(Demo.teasers() == [5, 6, 7, 9, 10], "desktop demo: teasers from level 5 %s" % [Demo.teasers()])
 	_check(not Demo.wishlist_shown() and Demo.store_url() == "", "WISHLIST is hidden while there is no store page")
@@ -622,13 +620,13 @@ func _check_carry_over() -> void:
 	progress.load_progress()
 	_check(not progress.demo_guard and progress.upgrades == Demo.UPGRADE_CAPS and progress.coins() == 0,
 		"an older demo save is clamped to today's caps on load (%s, %d coins in hand)" % [progress.upgrades, progress.coins()])
-	Platform.override = "web"  # the web demo: its own caps and prices (22 coins in levels 1-3 of the 34 found)
+	Platform.override = "web"  # the web demo: its caps and prices (the desktop's: 34 coins in levels 1-4)
 	progress.save_path = test_save
 	progress.reset_progress()
 	progress.save_path = old_path
 	progress.load_progress()
-	_check(progress.upgrades == Demo.WEB_UPGRADE_CAPS and progress.coins_earned_here() == 22 and progress.coins() == 0 and not progress.upgrade_buyable(),
-		"...the web demo clamps it to its caps, counts only levels 1-3 (%s, %d of 22 found, %d in hand)" % [progress.upgrades, progress.coins_earned_here(), progress.coins()])
+	_check(progress.upgrades == Demo.WEB_UPGRADE_CAPS and progress.coins_earned_here() == 34 and progress.coins() == 0 and not progress.upgrade_buyable(),
+		"...the web demo clamps it to its caps, counts only levels 1-4 (%s, %d of 34 found, %d in hand)" % [progress.upgrades, progress.coins_earned_here(), progress.coins()])
 	Platform.override = ""
 	Platform.demo_override = 0
 	progress.save_path = test_save
@@ -680,7 +678,7 @@ func _check_carry_over() -> void:
 	_check(progress.coins() == 0 and progress.coins() <= Demo.coins_total() and not progress.upgrade_buyable(),
 		"...maxed: 0 in hand (not 165 - 34), nothing buyable (no R-prompt nag)")
 	Platform.override = "web"
-	_check(progress.coins_earned_here() == 22 and progress.coins() == 0 and not progress.upgrade_buyable(), "...web demo, maxed: 0 in hand of 22")
+	_check(progress.coins_earned_here() == 34 and progress.coins() == 0 and not progress.upgrade_buyable(), "...web demo, maxed: 0 in hand of 34")
 	progress.upgrades = {slime = 7, speed = 4}
 	_check(progress.coins() == 22 - 6 - 7 and progress.upgrade_buyable(), "...web demo, no BRIGHTNESS: %d in hand at WEB_PRICES" % progress.coins())
 	Platform.override = ""
