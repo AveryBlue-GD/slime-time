@@ -77,9 +77,9 @@ const DYES := [
 	# Its colors flow (rainbow_hat.gdshader, material_for); Economy.DYE_RAINBOW_PRICE.
 	{id = "rainbow", color = Color8(222, 62, 70), flows = true},
 ]
-## The RAINBOW dye's look: false = the dyed part turns through the colors as one (like the rainbow
+## The RAINBOW dye's look (owner, 2026-10-21: the gradient): false = the dyed part turns through the colors as one (like the rainbow
 ## hat's arch), true = a rainbow gradient flowing across it (like the rainbow jelly skin).
-static var RAINBOW_GRADIENT := false
+static var RAINBOW_GRADIENT := true
 ## A dye block's height in hat_dyes.png: every width's row (Width), like hats.png.
 const DYE_BLOCK := 6 * 16
 
