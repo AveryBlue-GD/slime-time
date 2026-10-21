@@ -38,12 +38,13 @@ const PRICES := {"slime": [1, 4, 6], "speed": [6, 8], "brightness": [9]}  # 11 +
 const WEB_PRICES := PRICES  # (a 3-level web demo would be {"slime": [1, 5], "speed": [7], "brightness": [9]}: 22)
 ## Hats the demo's wheel gives at most: with this many hats owned it doesn't spin.
 const HATS_MAX := 2
-## The randomizer (opens after the last demo level) and the hat wheel, per platform: the web demo
-## leaves both out by default (a lighter, shorter demo for the Shorts / browser audience).
+## The randomizer (opens after the last demo level) and the hat wheel, per platform. The web demo has both
+## since 2026-10-21 (owner: no FULL GAME on them; their lines read as on the desktop demo); false would
+## show them dimmed with a FULL GAME lock.
 const RANDOMIZER := true
-const WEB_RANDOMIZER := false
+const WEB_RANDOMIZER := true
 const HAT_WHEEL := true
-const WEB_HAT_WHEEL := false
+const WEB_HAT_WHEEL := true
 ## Randomizer wins before the end screen's pitch (shown once, after the RANDOM_WINS-th win). Every maze
 ## is a new random one (random seed and start, a theme drawn from themes()), as in the full game.
 const RANDOM_WINS := 3

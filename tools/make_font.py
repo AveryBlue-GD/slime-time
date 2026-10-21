@@ -32,7 +32,7 @@ HEIGHT = 7
 DRIP_ROWS = 2
 LINE_HEIGHT = HEIGHT + DRIP_ROWS
 PAL.update({"1": (215, 215, 215, 255), "2": (160, 160, 160, 255)})  # body / drip shades
-SPACE_ADVANCE = 4
+SPACE_ADVANCE = 2   # word gap 3 px (1 + 2), was 4 (5 px): the owner found the words too far apart (2026-10-21)
 
 GLYPHS = {
     "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],

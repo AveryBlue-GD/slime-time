@@ -239,10 +239,10 @@ func _fit_text_cases() -> void:
 	_check(r.fits and r.step == "grow" and b.size == Vector2(need, 13) and b.position.x == 100 - floorf((need - 40) / 2.0) and b.position.y == 50,
 		"fit_text: grows to %d centred (%s at %s)" % [need, b.size, b.position])
 	# Wrap: a label too wide for 60 px but two lines fit.
-	var c := UIKit.add_label(screen, "ABCDE FGHIJ", Rect2(10, 10, 40, 7))
+	var c := UIKit.add_label(screen, "ABCDEF GHIJKL", Rect2(10, 10, 40, 7))
 	r = UIKit.fit_text(c, Rect2(10, 10, 40, 7), Vector2(60, UIKit.text_block_h(2)), 2)
 	_check(r.fits and r.step == "wrap" and r.lines == 2 and c.autowrap_mode != TextServer.AUTOWRAP_OFF and c.size.y == UIKit.text_block_h(2)
-		and c.text == "ABCDE FGHIJ", "fit_text: wraps onto 2 lines (%s, %s)" % [r, c.size])
+		and c.text == "ABCDEF GHIJKL", "fit_text: wraps onto 2 lines (%s, %s)" % [r, c.size])
 	_check(c.size == r.size and c.position == Vector2(10 - floorf((r.size.x - 40) / 2.0), 10 - floorf((r.size.y - 7) / 2.0)),
 		"fit_text: the wrapped size holds in the same frame, no deferred resize (%s vs %s)" % [c.size, r.size])
 	# No fit: nothing cut, fits false.

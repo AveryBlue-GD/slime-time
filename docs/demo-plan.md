@@ -26,8 +26,8 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 | `UPGRADE_CAPS` / `WEB_UPGRADE_CAPS` | `{"slime": 3, "speed": 2, "brightness": 1}` / the same (`= UPGRADE_CAPS`) | how far each coin upgrade can be bought (an upgrade not listed: 0); the rest of the bar is darker, its cost says FULL. Coin math below |
 | `PRICES` / `WEB_PRICES` | slime 1, 4, 6; speed 6, 8; brightness 9 (= 34) / the same (`= PRICES`) | the demo's own coin prices, one per capped level (`Upgrades.cost` / `total_cost` use them while the demo is on); they add up to exactly the coins of the demo's levels |
 | `HATS_MAX` | 2 | hats the demo's wheel gives at most; with that many owned it doesn't spin (a guarded full save that owns more: no spins either) |
-| `RANDOMIZER` / `WEB_RANDOMIZER` | true / false | randomizer on desktop / web (the web demo leaves it out by default) |
-| `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / false | hat wheel on desktop / web |
+| `RANDOMIZER` / `WEB_RANDOMIZER` | true / true | randomizer on desktop / web (owner 2026-10-21: the web demo has it too, no FULL GAME lock) |
+| `HAT_WHEEL` / `WEB_HAT_WHEEL` | true / true | hat wheel on desktop / web (web too since 2026-10-21) |
 | `RANDOM_WINS` | 3 | randomizer wins before the end screen's pitch (shown once, after that win); every maze is a new random one, as in the full game |
 | `GENTLE_MAZES`, `GENTLE_MAX_USAGE` | 3, 750 | the first 3 randomizer mazes (by wins) are drawn from seeds whose perfect route uses at most 75% of the meter (no 90%+ marathon first); later ones any seed |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |

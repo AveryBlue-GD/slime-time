@@ -141,7 +141,7 @@ func _results() -> void:
 			_check(panel.end.y + UIKit.GAP_XS <= marks_top + 0.5,
 				_tag("result L3: panel ends %d, GAP_XS over the banner title's marks (%d)" % [panel.end.y, marks_top]))
 		if _code == "en" and not c.get("random", false):
-			_check(panel == Rect2(92, 53, 136, 54), _tag("English L3 result panel pinned %s" % panel))
+			_check(panel == Rect2(93, 53, 134, 54), _tag("English L3 result panel pinned %s" % panel))
 		game.free()
 
 

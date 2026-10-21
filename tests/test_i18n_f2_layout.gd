@@ -206,9 +206,9 @@ func _results() -> void:
 				"compact; panel %s" % panel)
 			_ok(not panel.intersects(_rect(hud.record_banner.get_child(0))), "result panel clear of the banner")
 		if _code == "en":
-			var want := {3: Rect2(92, 53, 136, 54), 10: Rect2(84, 59, 152, 42)}
+			var want := {3: Rect2(93, 53, 134, 54), 10: Rect2(85, 59, 150, 42)}  # (2 px spaces since 2026-10-21)
 			if c.get("dry", false):
-				_ok(panel == Rect2(53, 64, 214, 32), "English result panels pinned (dry-up)", str(panel))
+				_ok(panel == Rect2(57, 64, 206, 32), "English result panels pinned (dry-up)", str(panel))
 			elif not c.get("random", false) and want.has(c.level):
 				_ok(panel == want[c.level], "English result panels pinned", "L%d %s" % [c.level, panel])
 		game.free()

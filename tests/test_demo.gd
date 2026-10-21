@@ -176,13 +176,14 @@ func _check_stripped_full_save() -> void:
 	_check(settings.get_node_or_null("DemoGuardNote") == null and said.is_empty(), "guarded: SETTINGS and the RESET confirm say nothing about the full save (%s)" % [said])
 	settings.free()
 	progress.demo_guard = false
-	# The hub tour's lines in the demo (desktop: CLEAR / BEAT 4; web: the stations that are off say FULL GAME).
+	# The hub tour's lines in the demo (CLEAR / BEAT 4; the web demo too since 2026-10-21: no FULL GAME).
 	var tour: Node = load("res://scripts/hub_tour.gd").new()
 	progress.levels_cleared = 0
 	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS, "demo tour: the portal asks for the demo's %d levels (%s)" % [Demo.LEVELS, tour.station_line("random")])
 	_check(tour.station_line("wheel") == "SPIN FOR HATS AFTER LEVEL %d" % Demo.LEVELS, "demo tour: the wheel opens after the last level, no free-spin promise yet (%s)" % tour.station_line("wheel"))
 	Platform.override = "web"
-	_check(tour.station_line("random") == "FULL GAME" and tour.station_line("wheel") == "FULL GAME", "web demo tour: randomizer and wheel say FULL GAME")
+	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS and tour.station_line("wheel") == "SPIN FOR HATS AFTER LEVEL %d" % Demo.LEVELS,
+		"web demo tour: randomizer and wheel read as on the desktop, no FULL GAME (%s / %s)" % [tour.station_line("random"), tour.station_line("wheel")])
 	Platform.override = ""
 	tour.free()
 	_check(Demo.denied.is_empty(), "full save in a stripped demo: nothing full-only asked for (%s)" % [Demo.denied])
@@ -376,8 +377,8 @@ func _check_locks() -> void:
 	progress.abilities = {}
 	# Web knobs.
 	Platform.override = "web"
-	_check(not Demo.randomizer_open() and not Demo.hat_wheel_open() and Demo.levels() == Demo.WEB_LEVELS and not progress.is_randomizer_unlocked(),
-		"web demo: no randomizer, no hat wheel, WEB_LEVELS levels")
+	_check(Demo.randomizer_open() and Demo.hat_wheel_open() and Demo.levels() == Demo.WEB_LEVELS,
+		"web demo: randomizer and hat wheel open like the desktop's, WEB_LEVELS levels")
 	_check(Demo.WEB_LEVELS == Demo.LEVELS and Demo.full_only_paths(true) == Demo.full_only_paths(false), "the web demo has the desktop's 4 levels and cuts the same files")
 	_check(Demo.themes() == ["dungeon", "mossy", "sandstone", "sunken"] and Demo.teasers() == [5, 6, 7, 9, 10], "web demo: 4 themes, teasers from level 5 %s" % [Demo.teasers()])
 	var web_cut := Demo.export_cut(true)
@@ -535,7 +536,7 @@ func _check_screens() -> void:
 	_check(not DemoEnd.random_hint_shown(), "...not after the randomizer's own end")
 	DemoEnd.from = DemoEnd.FROM_STORY
 	Platform.override = "web"
-	_check(not DemoEnd.random_hint_shown(), "...not on the web demo (no randomizer there)")
+	_check(DemoEnd.random_hint_shown(), "...on the web demo too (it has the randomizer)")
 	Platform.override = ""
 	var said := _save_talk(_texts(end))
 	_check(said.is_empty(), "...desktop: no line about progress carrying over (%s)" % [said])

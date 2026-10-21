@@ -23,7 +23,7 @@ func _initialize() -> void:
 	var font: Font = load(ProjectSettings.get_setting("gui/theme/custom_font"))
 	var spaced := font.get_string_size("NEW GAME", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var squashed := font.get_string_size("NEWGAME", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	_check(font is FontFile and spaced >= squashed + 3, "pixel font is the project font, with real spaces (%d vs %d px)" % [spaced, squashed])
+	_check(font is FontFile and spaced >= squashed + 2, "pixel font is the project font, with real spaces (%d vs %d px)" % [spaced, squashed])
 	_check(font.has_char("Q".unicode_at(0)) and font.has_char("q".unicode_at(0)) and font.has_char("%".unicode_at(0)),
 		"font covers letters (both cases), digits and punctuation")
 

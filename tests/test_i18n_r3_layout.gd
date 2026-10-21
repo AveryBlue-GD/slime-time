@@ -111,7 +111,7 @@ func _hub_notice() -> void:
 	var style := notice.get_theme_stylebox("panel")
 	_check(style.get_margin(SIDE_LEFT) >= hub.NOTICE_MIN_PAD and style.get_margin(SIDE_RIGHT) >= hub.NOTICE_MIN_PAD, _tag("hub notice: side padding NOTICE_MIN_PAD+"))
 	if _code == "en":
-		_check(box == Rect2(98, 24, 124, 30) and style.get_margin(SIDE_LEFT) == UIKit.PANEL_PAD, _tag("hub notice: the English box %s" % box))
+		_check(box == Rect2(100, 24, 120, 30) and style.get_margin(SIDE_LEFT) == UIKit.PANEL_PAD, _tag("hub notice: the English box %s" % box))
 	hub.free()
 	progress.tree_refund_notice = 0
 
