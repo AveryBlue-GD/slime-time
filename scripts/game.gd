@@ -356,7 +356,7 @@ var _bright_shown := {}
 var survey_tiles := PackedByteArray()
 var survey_moves := PackedByteArray()
 var survey_goal := false
-## Map coin reveal test (Economy.map_coin_reveal_on, dev only): the cells of uncollected coins this run's
+## Map coin reveal (Economy.map_coin_reveal_on): the cells of uncollected coins this run's
 ## light revealed (center within the slime's light, LIGHT_RADIUS + light_reach, walls ignored; every coin
 ## while FULL BRIGHT is on), recorded with the survey. `_coin_reveal`: the test is on for this run.
 var survey_coins: Array[Vector2i] = []
@@ -1740,7 +1740,7 @@ func _place_coins(maze_seed: int) -> void:
 	hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here)
 
 
-## Map coin reveal test (dev only): notes the uncollected coins within the light's reach (straight
+## Map coin reveal: notes the uncollected coins within the light's reach (straight
 ## line, walls ignored), or all of them under FULL BRIGHT.
 func _reveal_coins(pos: Vector2) -> void:
 	var reach := LIGHT_RADIUS + light_reach  # the light round the slime (as _relight)
@@ -1929,7 +1929,7 @@ func _refresh_attempt_pod() -> void:
 
 ## Records this run's survey from here on if it is a real story run (deferred from _ready, once the
 ## scene is the running one): never in a randomizer maze (fresh each time), a Descent floor (level 0:
-## it would land on level 1's map), dev mode (unless the map coin reveal test is on: _commit_survey)
+## it would land on level 1's map), dev mode (unless the map coin reveal is on: _commit_survey)
 ## or a test's loose game node.
 func _arm_survey() -> void:
 	_survey_live = progress != null and not is_random() and not descent and not training and (not progress.dev_tools or _coin_reveal) \
@@ -1965,7 +1965,7 @@ func _survey_enter(cell: Vector2i) -> void:
 
 ## Adds this run to the level's survey (once: at the win or dry-up, or when the run is left).
 ## Assisted and dev-toggled runs (F1 FULL BRIGHT / F2 NO DRAIN) record nothing. Exception: with the
-## map coin reveal test on (dev only, Economy.map_coin_reveal_on) every dev run records, F1 / F2 ones
+## map coin reveal on (Economy.map_coin_reveal_on) every dev run records, F1 / F2 ones
 ## too, into the session's memory only (dev mode never saves), with the coins it revealed.
 func _commit_survey() -> void:
 	if _survey_done or not _survey_live:

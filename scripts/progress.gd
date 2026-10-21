@@ -1060,8 +1060,28 @@ func _read_maps(file: ConfigFile) -> void:
 		for key in [level, level + HARD_RECORDS]:
 			var survey := Survey.unpack(file.get_value("maps", "level_%d" % key, ""))
 			if not survey.is_empty():
+				var coins := _read_seen_coins(file.get_value("maps", "coins_%d" % key, []), survey)
+				if not coins.is_empty():
+					survey.seen_coins = coins
 				maps[key] = survey
 	maps_hint_seen = _bool(file, "maps", "hint_seen", false)
+
+
+## A survey's revealed coins ([maps] coins_N: cell x + y * 256 each, saved beside level_N): only
+## cells inside the survey's maze, no repeats, at most 64 (Progress.map_coins then keeps only the
+## level's real coin cells); anything else is dropped.
+func _read_seen_coins(value: Variant, survey: Dictionary) -> Array:
+	var cells: Array = []
+	if typeof(value) != TYPE_ARRAY and typeof(value) != TYPE_PACKED_INT32_ARRAY and typeof(value) != TYPE_PACKED_INT64_ARRAY:
+		return cells
+	var size := Vector2i((int(survey.w) - 1) / 2, (int(survey.h) - 1) / 2)
+	for code: Variant in value:
+		if typeof(code) != TYPE_INT or cells.size() >= 64:
+			continue
+		var cell := Vector2i(int(code) % 256, int(code) / 256)
+		if int(code) >= 0 and cell.x < size.x and cell.y < size.y and not cell in cells:
+			cells.append(cell)
+	return cells
 
 
 ## Type-safe save readers: a wrong-typed value (hand-edited or hostile save) gives the default.
@@ -1274,6 +1294,9 @@ func _write(for_code := false) -> ConfigFile:
 		file.set_value("medals", "level_%d" % key, medals[key])
 	for key: int in ([] if for_code and dev_tools else maps.keys()):  # a dev session's in-memory maps stay out of save codes
 		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
+		var seen_coins: Array = maps[key].get("seen_coins", [])
+		if not seen_coins.is_empty():
+			file.set_value("maps", "coins_%d" % key, seen_coins.map(func(cell: Vector2i) -> int: return cell.x + cell.y * 256))
 	if maps_hint_seen:
 		file.set_value("maps", "hint_seen", true)
 	# DESCENT records and its daily counter: written only once a run has been played.
@@ -2843,8 +2866,8 @@ func survey_for(level: int, hard: bool) -> Dictionary:
 ## are added to the ones seen before. The route is replaced by a clear only when it is faster than
 ## the stored clear (or there is none); without any clear yet, each attempt that moved replaces the
 ## faint last-attempt route. `goal_seen`: the goal came into view (a win counts). `coins_seen`: the
-## coins this attempt's light revealed (map coin reveal test, dev only: merged into the survey's
-## in-memory `seen_coins` only while Economy.map_coin_reveal_on; Survey.pack never writes it).
+## coins this attempt's light revealed (merged into the survey's `seen_coins` while
+## Economy.map_coin_reveal_on, saved beside it as [maps] coins_N).
 func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray,
 		won: bool, run_time: float, goal_seen: bool, coins_seen: Array[Vector2i] = []) -> void:
 	if level < 1 or level > Levels.COUNT:
@@ -2878,9 +2901,9 @@ func record_survey(level: int, hard: bool, maze: Dictionary, tiles: PackedByteAr
 	save_progress()
 
 
-## The coins the MAP TABLE draws on a level's map: never a collected one (so outside the dev map coin
-## reveal test, none at all); with the test on (Economy.map_coin_reveal_on, dev only) the uncollected
-## coins its survey's runs revealed (`seen_coins`). Hard maps have no coins.
+## The coins the MAP TABLE draws on a level's map: never a collected one; with the map coin reveal on
+## (Economy.map_coin_reveal_on: everyone, unless --nocoinreveal) the uncollected coins its survey's
+## runs revealed (`seen_coins`). Hard maps have no coins.
 func map_coins(level: int, hard: bool) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	if hard or not Economy.map_coin_reveal_on(dev_tools):

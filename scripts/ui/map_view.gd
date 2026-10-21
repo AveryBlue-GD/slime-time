@@ -15,7 +15,7 @@ extends RefCounted
 ##   so a U-turn reads as a hairpin with a wall between its legs; the start (a ring) and the goal (an
 ##   X in the wall ink, once it has been seen or reached) only on seen cells.
 ## - coins: only the cells the caller passes (Progress.map_coins): collected coins are never drawn
-##   (for everyone, so normal maps have no coin marks); the dev-only map coin reveal test
+##   (for everyone); the map coin reveal
 ##   (Economy.map_coin_reveal_on) passes the revealed uncollected ones, which may sit in fog
 ##   (`fog_coins`: seen through a wall by a bright light, or with F1 FULL BRIGHT); otherwise only on seen cells.
 ## So even a damaged or hostile survey can't draw over the fog (fog_coins is dev-only, in memory).

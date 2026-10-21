@@ -1,15 +1,14 @@
 extends "res://tests/suite_base.gd"
 
-## Map coins (MAP TABLE) and the dev-only map coin reveal test (Economy.MAP_COIN_REVEAL_TEST,
-## docs/spring-cleaning/map-coin-reveal-test.md). Checks:
+## Map coins (MAP TABLE) and the map coin reveal (Economy.MAP_COIN_REVEAL_TEST, on for everyone since
+## 2026-10-21, docs/spring-cleaning/map-coin-reveal-test.md). Checks:
 ## - collected coins are never drawn, in normal mode and in dev (Progress.map_coins, MapView.render);
-##   normal mode draws no coin marks at all;
-## - dev: an uncollected coin is revealed when its center is within the light (LIGHT_RADIUS + the
+## - an uncollected coin is revealed when its center is within the light (LIGHT_RADIUS + the
 ##   BRIGHTNESS reach: 20 / 28 / 36 / 45 px) by straight line, walls ignored: one cell over (32 px), behind
 ##   a wall, BRIGHTNESS 2 and 3 reach it; BRIGHTNESS 0..3 along the same walk reveal more and more coins; F1 FULL BRIGHT reveals
 ##   all; the revealed coins are drawn, also on fog cells;
-## - never outside dev (no reveal, no seen_coins recorded, nothing new in the packed survey / save);
-##   `--nocoinreveal` (child launch) and mapcoinreveal_force = 0 turn it off in dev;
+## - normal runs reveal too and their revealed coins are saved ([maps] coins_N) and read back (broken
+##   values dropped); `--nocoinreveal` (child launch) and mapcoinreveal_force = 0 turn it off;
 ## - dev runs (F1 ones too) record into memory only: the save file's md5 is unchanged; hard maps are
 ##   separate (their own key, no coins).
 ## Uses a throwaway save; the real save's md5 is checked unchanged at the end.
@@ -52,10 +51,10 @@ func _initialize() -> void:
 
 
 func _test_switch() -> void:
-	_check(Economy.MAP_COIN_REVEAL_TEST == false, "MAP_COIN_REVEAL_TEST is off (dev only for now)")
-	_check(Economy.map_coin_reveal_on(true) and not Economy.map_coin_reveal_on(false), "on in dev, never outside dev")
+	_check(Economy.MAP_COIN_REVEAL_TEST == true, "MAP_COIN_REVEAL_TEST is on (for everyone)")
+	_check(Economy.map_coin_reveal_on(true) and Economy.map_coin_reveal_on(false), "on in dev and outside dev")
 	Economy.mapcoinreveal_force = 0
-	_check(not Economy.map_coin_reveal_on(true), "mapcoinreveal_force = 0 (--nocoinreveal) turns it off in dev")
+	_check(not Economy.map_coin_reveal_on(true) and not Economy.map_coin_reveal_on(false), "mapcoinreveal_force = 0 (--nocoinreveal) turns it off")
 	Economy.mapcoinreveal_force = -1
 
 
@@ -72,8 +71,10 @@ func _test_collected_never_drawn() -> void:
 	var sizes := MapView.layout(maze.cells, Vector2i(316, 149))
 	progress.dev_tools = false
 	var normal: Array[Vector2i] = progress.map_coins(2, false)
-	_check(normal.is_empty(), "normal mode: no coin marks at all (even with seen_coins in a survey)")
-	_check(_coin_px(MapView.render(maze, survey, sizes, normal)) == 0, "...the normal map draws no coin pixel")
+	_check(not cells[0] in normal and normal.size() == cells.size() - 1, "normal mode: the collected coin is absent, the other revealed ones are there (%d)" % normal.size())
+	survey.erase("seen_coins")
+	_check(progress.map_coins(2, false).is_empty(), "...no revealed coins, no coin marks")
+	survey.seen_coins = seen
 	progress.dev_tools = true
 	var dev: Array[Vector2i] = progress.map_coins(2, false)
 	_check(not cells[0] in dev and dev.size() == cells.size() - 1, "dev: the collected coin is absent, the other revealed ones are there (%d)" % dev.size())
@@ -158,7 +159,7 @@ func _test_reveal() -> void:
 	progress.dev_bright = false
 
 
-## Outside dev: no reveal, no seen_coins, nothing new in the save.
+## Outside dev: normal runs reveal coins too, and the save keeps them.
 func _test_not_outside_dev() -> void:
 	progress.reset_progress()
 	progress.saving_enabled = true
@@ -166,23 +167,31 @@ func _test_not_outside_dev() -> void:
 	progress.tutorial_seen = 3
 	progress.upgrades["brightness"] = 3
 	var game := await _spawn_running(1)
-	_check(not game._coin_reveal and game._survey_live, "normal run: no coin reveal (a survey as before)")
+	_check(game._coin_reveal and game._survey_live, "normal run: the coin reveal is on and the run records")
 	await _sweep(game, MazeGenerator.shortest_path(game.maze, game.maze.start, game.maze.goal).slice(0, 12))
-	var noted: int = game.survey_coins.size()
+	var noted: Array[Vector2i] = game.survey_coins.duplicate()
 	await _stop(game)
 	var survey: Dictionary = progress.survey_for(1, false)
-	_check(noted == 0 and not survey.is_empty() and not survey.has("seen_coins"), "...it notes no coins and records no seen_coins")
-	var tiles := PackedByteArray()
-	var maze := Levels.story_maze(2)
-	tiles.resize(maze.size.x * maze.size.y)
-	progress.record_survey(2, false, maze, tiles, PackedByteArray(), false, 1.0, false, Levels.story_coin_cells(2))
-	_check(not progress.survey_for(2, false).has("seen_coins"), "record_survey outside dev ignores revealed coins")
+	_check(not noted.is_empty() and survey.get("seen_coins", []).size() == noted.size(), "...it notes coins and records them (%d)" % noted.size())
 	var text := FileAccess.get_file_as_string(test_save)
-	_check(not "seen_coins" in text, "the save holds no new key")
+	_check("coins_1" in text, "the save holds the revealed coins ([maps] coins_1)")
+	progress.load_progress()
+	var back: Array = progress.survey_for(1, false).get("seen_coins", [])
+	var same := back.size() == noted.size()
+	for cell in noted:
+		same = same and cell in back
+	_check(same, "...and reads them back (%d)" % back.size())
+	var file := ConfigFile.new()
+	file.load(test_save)
+	file.set_value("maps", "coins_1", [-5, "x", 99999, 1, 1, 2.5])
+	file.save(test_save)
+	progress.load_progress()
+	_check(progress.survey_for(1, false).get("seen_coins", []) == [Vector2i(1, 0)], "broken coin values are dropped (%s)" % [progress.survey_for(1, false).get("seen_coins", [])])
+	var maze := Levels.story_maze(2)
 	var with := Survey.full(maze, 3.0)
 	var plain := Survey.pack(with)
 	with.seen_coins = [Vector2i(1, 1)]
-	_check(Survey.pack(with) == plain, "Survey.pack never writes seen_coins")
+	_check(Survey.pack(with) == plain, "Survey.pack itself is unchanged (coins are saved beside it)")
 	progress.dev_tools = true
 	Economy.mapcoinreveal_force = 0
 	game = await _spawn_running(1)
@@ -203,7 +212,7 @@ func _test_child_flag() -> void:
 			for l in chunk.split("\n"):
 				if l.begins_with("REVEAL_CHILD"):
 					line = l
-		var want := "on=true dev=true" if flags == ["--unlock-all"] else ("on=false dev=true" if flags.size() == 2 else "on=false dev=false")
+		var want := "on=true dev=true" if flags == ["--unlock-all"] else ("on=false dev=true" if flags.size() == 2 else "on=true dev=false")
 		_check(want in line, "a launch with %s: %s" % [flags, line])
 
 
