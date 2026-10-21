@@ -130,6 +130,11 @@ func _follow() -> void:
 	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
 	region_rect = Hats.dye_region(hat_id, dye, width, anim_frame)
 	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
+	var mat := material as ShaderMaterial
+	if mat and mat.get_shader_parameter("gradient"):  # (the RAINBOW dye's gradient lines up with a rainbow slime's)
+		var head := Slime.head_point(body.animation, body.frame) - Vector2(0, lift_px)
+		if mat.get_shader_parameter("head_offset") != head:
+			mat.set_shader_parameter("head_offset", head)
 	_place(_snap(_head() + _drawn_shift(true) - Vector2(0, lift_px) * body.global_scale))
 
 

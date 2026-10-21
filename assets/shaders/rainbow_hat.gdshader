@@ -9,11 +9,21 @@ shader_type canvas_item;
 uniform float speed = 0.35;  // full turns of the color wheel per second
 const float HUE_STEPS = 12.0;
 // `gradient` (a hat in the RAINBOW dye, Hats.RAINBOW_GRADIENT): instead of turning every pixel the
-// same, a rainbow lies across the hat (one full rainbow every `gradient_width` px, on a slant) and
-// flows along it, like the rainbow jelly skin (slime_skin.gdshader), in HUE_STEPS bands.
+// same, the rainbow jelly skin's own rainbow (slime_skin.gdshader: its wave, `rainbow_width` 16 and
+// `rainbow_speed` 0.45, HUE_STEPS bands, red to violet) runs across the hat, measured in the slime
+// sprite's own pixels: `head_offset` is where the hat's head point sits in the slime's sprite
+// (Slime.head_point, less the hat's lift; set by Hat every frame). So on a rainbow slime the hat's
+// colors line up with the body's and flow with them.
 uniform bool gradient = false;
 uniform float gradient_width = 16.0;
 uniform float gradient_speed = 0.45;
+uniform vec2 head_offset = vec2(0.0, -7.0);
+
+varying vec2 local_pos;
+
+void vertex() {
+	local_pos = VERTEX;  // (the hat's own pixels, its head point at 0, 0: Hat's offset = -Hats.HEAD)
+}
 
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -33,11 +43,11 @@ void fragment() {
 	vec3 hsv = rgb2hsv(COLOR.rgb);
 	if (hsv.y > 0.4 && hsv.z > 0.3 && texture(TEXTURE, UV).a > 0.998) {
 		if (gradient) {
-			// The pixel's place in its 32 x 16 frame (the sheet's frames all start on whole multiples).
-			vec2 p = mod(floor(UV / TEXTURE_PIXEL_SIZE), vec2(32.0, 16.0));
-			float wave = p.x + p.y * 0.5;
+			// The pixel in the slime sprite's coordinates, then the skin's formula exactly.
+			vec2 p = floor(local_pos + head_offset);
+			float wave = p.x + sin(p.y * 0.6 + TIME * 4.0) * 1.5;
 			float hue = fract(floor((wave / gradient_width - TIME * gradient_speed) * HUE_STEPS) / HUE_STEPS);
-			hsv.x = fract(hsv.x + hue * 0.83);  // (red to violet, skipping magenta, as the skin does)
+			hsv.x = hue * 0.83;  // (red to violet, skipping magenta, as the skin does)
 		} else {
 			hsv.x = fract(hsv.x - floor(TIME * speed * HUE_STEPS) / HUE_STEPS);
 		}
