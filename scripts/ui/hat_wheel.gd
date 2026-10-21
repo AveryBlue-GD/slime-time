@@ -616,6 +616,8 @@ func show_section(which: String, focus := true) -> void:
 	for i in ids.size():
 		var tile := _make_tile(ids[i])
 		tile.position = Vector2(grid_left[i % 2], grid_top + ((i / 2) % rows_per_page) * grid_step)
+		if dye_hat != "" and section == "hats" and i == ids.size() - 1 and i % 2 == 0:
+			tile.position.x = roundf(CENTER.x - tile_size.x / 2.0)  # (a hat's last dye, RAINBOW, alone on its row: centred under the two above)
 		_grid.add_child(tile)
 		if tile.has_meta("wrap_name"):
 			var wrap: Array = tile.get_meta("wrap_name")
