@@ -402,8 +402,8 @@ func _ui_wardrobe() -> void:
 	await process_frame
 	screen.show_page("hats")
 	screen.page_button.pressed.emit()
-	_check(screen.page == "trails" and screen.trail_tiles.size() == 7 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
-		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (7 tiles: the earned EMBER too; ABYSS is hidden while Descent is off, D11)")
+	_check(screen.page == "trails" and screen.trail_tiles.size() == 6 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
+		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (6 tiles: ABYSS is hidden while Descent is off, D11)")
 	_check(screen.trail_tiles[Cosmetics.DEFAULT_TRAIL].has_focus() and "WEARING" in screen.status.text, "focus on the worn trail")
 	screen.trail_tiles["gold"].pressed.emit()
 	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "30 TIX" in screen.status.text, "an unowned trail says its price, isn't worn")

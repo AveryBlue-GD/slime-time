@@ -3,9 +3,6 @@ extends Control
 ## Grid of the 10 story levels (locked ones can't be picked; cleared ones are marked), plus the
 ## hard mode checkbox: hard mode plays its own mazes on a tight slime budget with no upgrades,
 ## and explored areas that fully dim are swallowed by fog again. Tiles show that mode's records.
-## Hard mode adds HEAT (Heat, upgrades v2 batch 4): a HEAT n button bottom right (mirroring BACK)
-## opens the HeatPanel of six modifier toggles, the info lines name the bounties, and each hard
-## tile shows its best heat tier as a flame at its top left (mirroring the medal pips).
 ## Other languages (docs/ui-rules.md section 10): sizes follow the locale's lines (title_bottom,
 ## line pitch, button_h, the accents' room); when the two rows of tiles, the info panel and the bottom
 ## row don't fit between the title and row 176 (every locale with taller lines: accents, Vietnamese,
@@ -20,8 +17,6 @@ var info: Label
 ## The info block's top row and height (two lines; _layout), so a shorter text can sit in its middle.
 var _info_top := 0.0
 var _info_h := 0
-var heat_button: Button
-var heat_panel: HeatPanel
 var info_panel: Panel
 ## Pages of tiles (1: the English two rows; 2: one row of PAGE_SIZE each) and the one shown.
 var pages := 1
@@ -42,9 +37,6 @@ const STATUS_Y := 32  # top row of the record time / check
 ## The info panel, 4 px under the grid (the section gap).
 const INFO_RECT := Rect2(14, 113, 292, 48)
 const LOCKED_NUMBER := UIKit.TEXT_OFF  # dimmer than the lock over it
-## The flame badge's top-left corner on a hard tile (7x9; the medal pips mirror it at the top right).
-const FLAME_POS := Vector2(5, 5)
-const HEAT_BUTTON_SIZE := Vector2(52, UIKit.BUTTON_H)
 ## The info lines' top under the panel's top edge (English; the accents' room is added on top).
 const INFO_PAD := 5
 ## Tiles per page when paged (one row).
@@ -53,16 +45,10 @@ const PAGE_SIZE := 5
 
 ## The two help lines under the tiles.
 static func info_text(hard: bool) -> String:
-	# The demo: no word about the full game here (its later levels are just locked); hard mode has no HEAT.
-	if Demo.on() and hard:
-		# i18n: one line (demo build, hard mode), max 300px
-		return Loc.t("levels.demo_hard.1", "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN")
-	# i18n: two lines, each max 300px; the numbers are the heat levels and ticket payouts (Heat.BOUNTIES), keep them
 	if hard:
-		return Loc.lines([
-			Loc.t("levels.info_hard.1", "HEAT UP LEVELS BEATEN ON HARD"),
-			Loc.t("levels.info_hard.2", "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"),
-		])
+		# i18n: one line (hard mode), max 300px
+		return Loc.t("levels.demo_hard.1", "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN")
+	# i18n: two lines, each max 300px
 	return Loc.lines([
 		Loc.t("levels.info_normal.1", "CLEAR A LEVEL TO UNLOCK THE NEXT"),
 		Loc.t("levels.info_normal.2", "EACH CLEAR ALSO UNLOCKS A NEW SKIN"),
@@ -99,21 +85,15 @@ func _ready() -> void:
 	hard_mode_box.toggled.connect(func(on: bool) -> void:
 		Progress.set_hard_mode(on)
 		_fill_grid()  # show that mode's record times
-		_refresh_heat())
+		_refresh_info())
 	add_child(hard_mode_box)
 	UIKit.note_text_w(hard_mode_box, [hard_mode_box.text], 0, UIKit.FONT, UIKit.checkbox_extra(hard_mode_box))  # (sized to its text)
 	UIKit.add_touch_target(hard_mode_box)
 	UIKit.add_back_button(self)
-	# HEAT (hard mode only): bottom right, mirroring BACK (placed by _refresh_heat: its width follows its text).
-	heat_button = UIKit.make_button("", _open_heat, HEAT_BUTTON_SIZE)
-	add_child(heat_button)
 	_layout()
-	heat_panel = HeatPanel.new()
-	heat_panel.closed.connect(_refresh_heat)
-	add_child(heat_panel)
 	if pages > 1:
-		_add_pager()  # (last: the other nodes keep their places; hidden under a resized HEAT panel)
-	_refresh_heat()
+		_add_pager()  # (last: the other nodes keep their places)
+	_refresh_info()
 	var focus_level := mini(Progress.current_level, Demo.last_level(Progress.hard_mode))  # (the demo: its last level)
 	_show_page((focus_level - 1) / PAGE_SIZE)
 	level_buttons[focus_level - 1].grab_focus()
@@ -158,7 +138,7 @@ func _layout() -> void:
 	_info_top = panel.position.y + top_pad
 	_info_h = lines_h
 	_place_info()
-	hard_mode_box.position = Vector2(UIKit.center_x(box.x), info.offset_top + lines_h + UIKit.GAP_L)
+	hard_mode_box.position = Vector2(UIKit.center_x(box.x), _info_top + lines_h + UIKit.GAP_L)  # (under the two-line block, whichever mode's text)
 	UIKit.align_checkbox(hard_mode_box)
 	var grid_y := float(UIKit.title_bottom())
 	if pages > 1:
@@ -229,26 +209,11 @@ func _tile_input(level: int, event: InputEvent) -> void:
 	level_buttons[i + step].grab_focus()
 
 
-## The HEAT button (shown in hard mode: HEAT n, the picked modifiers' total) and the info lines.
-func _refresh_heat() -> void:
+## The info lines (they follow the mode).
+func _refresh_info() -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
-	heat_button.visible = Progress.hard_mode and Demo.heat_open()
-	# i18n: {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
-	heat_button.text = Loc.t("levels.heat", "HEAT {points}", {points = Heat.points(Progress.heat_mods)})
-	var heat_size := Vector2(UIKit.button_w(heat_button.text, int(HEAT_BUTTON_SIZE.x)), UIKit.button_h())
-	UIKit.note_text_w(heat_button, [heat_button.text], int(HEAT_BUTTON_SIZE.x))
-	heat_button.custom_minimum_size = heat_size
-	heat_button.size = heat_size
-	UIKit.place_bottom_row(heat_button, 1)
 	info.text = info_text(Progress.hard_mode)
 	_place_info()
-	if not Progress.hard_mode and heat_panel.visible:
-		heat_panel.close()
-
-
-func _open_heat() -> void:
-	if Progress.hard_mode and Demo.heat_open() and not heat_panel.visible:
-		heat_panel.open(self, heat_button)
 
 
 ## (Re)builds the level tiles.
@@ -295,13 +260,6 @@ func _make_tile(level: int) -> Button:
 	if locked:
 		button.add_child(_make_lock())
 		return button
-	# Hard mode: the best heat tier this level was cleared at, as a flame at the top left.
-	var heat_tier := Heat.tier_of(Progress.best_heat(level)) if Progress.hard_mode and Demo.heat_open() else 0
-	if heat_tier > 0:
-		var flame := Heat.make_rect(Heat.flame(heat_tier))
-		flame.name = "Flame"
-		flame.position = FLAME_POS
-		button.add_child(flame)
 	# Medal pips stacked at the tile's top right: one gold pip per tier won (bronze 1, silver 2,
 	# gold 3) on this mode's best clear, dark for the rest.
 	var tier := Progress.medals_for(level)
@@ -360,8 +318,4 @@ func _play(level: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
-		if heat_panel.visible:  # Esc closes the HEAT panel first
-			get_viewport().set_input_as_handled()
-			heat_panel.close()
-			return
 		UIKit.go(get_tree(), UIKit.HUB_SCENE)

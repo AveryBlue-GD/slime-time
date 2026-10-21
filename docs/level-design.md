@@ -373,8 +373,8 @@ medals/times were earned on the new mazes (not handled, like the earlier version
 Shots (`tests/demo_overview.tscn -- --unlock-all --level=N --hard --skin=...`):
 `docs/polish-shots/hard_before_l1/l5/l10.png` (v4) and `hard_after_l1/l5/l10.png`.
 
-**HEAT (2026-10-15).** Optional hard-mode modifiers on top of these levels (no change to the meter, route, size or
-par above): section 10.
+**HEAT (2026-10-15, removed 2026-10-20).** Optional hard-mode modifiers on top of these levels (no change to the meter,
+route, size or par above): section 10, kept for the record.
 
 ## 8. Trail maps: the MAP TABLE survey (trial, 2026-10-14)
 
@@ -522,7 +522,10 @@ or on its boon card (the same three offers). **One resume per floor:** RESUME of
 Clearing the floor starts the count over; the boon card can be resumed any number of times (it has nothing to
 retry). The paid slot is taken once and the run banks once whatever happens.
 
-## 10. Hard-mode HEAT (upgrades v2 batch 4, 2026-10-15)
+## 10. Hard-mode HEAT (upgrades v2 batch 4, 2026-10-15; REMOVED 2026-10-20)
+
+**Removed from the game on 2026-10-20** (owner): none of the code, tests or strings below exist any more. This section
+describes the state at tag `pre-heat-removal`; how to bring it back: [heat-removed.md](heat-removed.md).
 
 Spec: [design/upgrades-v2.md](design/upgrades-v2.md) C3. Code: `scripts/heat.gd` (`Heat`: ids, masks, points,
 bounty, effects, icons), `scripts/economy.gd` (`HEAT_MODS`, `HEAT_MAX`, `HEAT_TIERS`, `HEAT_BOUNTY`, `HEAT_EMBER`),

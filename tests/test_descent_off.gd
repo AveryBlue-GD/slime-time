@@ -118,7 +118,7 @@ func _abyss() -> void:
 	var screen: Node = load("res://scenes/skins.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(not screen.trail_tiles.has("abyss") and screen.trail_tiles.has("ember"), "wardrobe: no ABYSS tile unless owned")
+	_check(not screen.trail_tiles.has("abyss") and screen.trail_tiles.has("starry"), "wardrobe: no ABYSS tile unless owned")
 	screen.free()
 	progress.cosmetics_owned.append("abyss")
 	screen = load("res://scenes/skins.tscn").instantiate()

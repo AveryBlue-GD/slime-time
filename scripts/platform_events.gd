@@ -6,8 +6,8 @@ extends Node
 ##   the `menu` action (Esc / P / Start). Every menu already backs out on it, a level opens its pause menu, the
 ##   hub goes back to the title and the title ignores it. iOS has no back button: every screen has BACK.
 ## - Focus loss and backgrounding (NOTIFICATION_APPLICATION_FOCUS_OUT / PAUSED; in a browser also the page's
-##   `visibilitychange`): a running level opens its pause menu (so the run clock and the RACE countdown stop:
-##   they only tick while the tree runs), every held input is let go (a finger or key held when the app went
+##   `visibilitychange`): a running level opens its pause menu (so the run clock stops:
+##   it only ticks while the tree runs), every held input is let go (a finger or key held when the app went
 ##   away never comes back stuck) and a save that failed earlier is retried at once. Coming back releases
 ##   held inputs again and leaves the pause menu up: the player presses RESUME.
 ## - Quitting (the title's / hub's QUIT through quit_game(), the window's close button: NOTIFICATION_WM_CLOSE_REQUEST,

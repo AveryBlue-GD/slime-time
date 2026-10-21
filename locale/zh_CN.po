@@ -46,11 +46,6 @@ msgid "REACH DESCENT FLOOR 10"
 msgstr "深入模式到达第10层"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.unlock"
-msgid "HEAT 7 ON EVERY HARD LEVEL"
-msgstr "每个困难关卡达到热度7"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.skin.name"
 msgid "SKIN GOO"
 msgstr "同色黏液"
@@ -106,11 +101,6 @@ msgid "ABYSS TRAIL"
 msgstr "深渊拖尾"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.name"
-msgid "EMBER TRAIL"
-msgstr "余烬拖尾"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.ink.desc"
 msgid "DEEP INKY GOO"
 msgstr "深邃的墨色黏液"
@@ -154,11 +144,6 @@ msgstr "奶油色纸，金墨"
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
 msgstr "暗色黏液，微弱星光"
-
-#: scripts/cosmetics.gd
-msgctxt "trail.ember.desc"
-msgid "GLOWING EMBERS, ANY SKIN"
-msgstr "发光余烬，任何皮肤可用"
 
 #. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
@@ -517,17 +502,12 @@ msgctxt "result.dried_up_floor"
 msgid "DRIED UP ON FLOOR {floor}"
 msgstr "在第{floor}层干涸了"
 
-#. result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
+#. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up"
 msgid "DRIED UP"
 msgstr "干涸了"
-
-#: scripts/game.gd
-msgctxt "result.out_of_time"
-msgid "OUT OF TIME!"
-msgstr "时间到！"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
@@ -660,66 +640,6 @@ msgstr ""
 msgctxt "hat.raincloud.desc"
 msgid "ITS VERY OWN DRIZZLE"
 msgstr ""
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.name"
-msgid "DIM"
-msgstr "昏暗"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.name"
-msgid "BRITTLE"
-msgstr "易碎"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.name"
-msgid "FOG BITES"
-msgstr "迷雾反扑"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.name"
-msgid "GROUNDED"
-msgstr "禁足"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.name"
-msgid "THIRSTY"
-msgstr "口渴"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.name"
-msgid "RACE"
-msgstr "竞速"
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.desc"
-msgid "LESS LIGHT, PATHS FADE FASTER"
-msgstr "光线更暗，路径消失更快"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.desc"
-msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
-msgstr "撞墙消耗翻倍，没有免费滑行"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.desc"
-msgid "FOG RETURNS TWICE AS FAST"
-msgstr "迷雾回归速度翻倍"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.desc"
-msgid "NO LEAPS"
-msgstr "不能跳跃"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.desc"
-msgid "SLIME DRAINS 8% FASTER"
-msgstr "黏液流失加快8%"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.desc"
-msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr "1.3倍标准时间内通关，否则干涸"
 
 #. station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 #. budget: max 110px, lines 1
@@ -1150,42 +1070,6 @@ msgstr "得1张"
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "有奖局 {slot}/{total}"
-
-#. HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
-#. budget: max 50px
-#: scripts/hud.gd
-msgctxt "hud.pod.heat"
-msgid "HEAT {heat}"
-msgstr "热度 {heat}"
-
-#. result heat row (one line with icons), max 120px each; {heat} = heat level
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat"
-msgid "HEAT {heat}"
-msgstr "热度 {heat}"
-
-#. max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_bounty"
-msgid "BOUNTY +{count}"
-msgid_plural "BOUNTY +{count}"
-msgstr[0] "赏金 +{count}"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_new_best"
-msgid "NEW BEST HEAT!"
-msgstr "热度新高！"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_best"
-msgid "BEST HEAT {heat}"
-msgstr "最高热度 {heat}"
 
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
@@ -2173,32 +2057,6 @@ msgctxt "wheel.confirm"
 msgid "BUY {name}?"
 msgstr "购买{name}？"
 
-#. the line under the toggles, max 224px (the English panel); grows to 296px (the wider panel), wraps onto 2 lines there, lines 2
-#. budget: max 224px, lines 2
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.about_default"
-msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
-msgstr "适用于困难模式已通关的关卡"
-
-#. max 42px (50 wide, 4 px margins), 1 line
-#. budget: max 42px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.done"
-msgid "DONE"
-msgstr "完成"
-
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.points"
-msgid "+{points}"
-msgstr "+{points}"
-
-#. panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
-#. budget: max 120px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.title"
-msgid "HEAT {points}/{max}"
-msgstr "热度 {points}/{max}"
-
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_up"
 msgid "MOVE UP"
@@ -2302,22 +2160,12 @@ msgctxt "language.title"
 msgid "LANGUAGE"
 msgstr "语言"
 
-#. one line (demo build, hard mode), max 300px
+#. one line (hard mode), max 300px
 #. budget: max 300px
 #: scripts/ui/level_select.gd
 msgctxt "levels.demo_hard.1"
 msgid "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"
 msgstr ""
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.1"
-msgid "HEAT UP LEVELS BEATEN ON HARD"
-msgstr "给困难模式已通关的关卡加热度"
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.2"
-msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-msgstr "热度 2 4 7 10 首次奖励 3 5 7 10 张奖券"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.1"
@@ -2342,13 +2190,6 @@ msgstr "选择关卡"
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 msgstr "困难模式：新迷宫，无升级，迷雾回归"
-
-#. {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
-#. budget: max 52px, lines 1
-#: scripts/ui/level_select.gd
-msgctxt "levels.heat"
-msgid "HEAT {points}"
-msgstr "热度 {points}"
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
@@ -3034,3 +2875,116 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "trail.ember.unlock"
+#~ msgid "HEAT 7 ON EVERY HARD LEVEL"
+#~ msgstr "每个困难关卡达到热度7"
+
+#~ msgctxt "trail.ember.name"
+#~ msgid "EMBER TRAIL"
+#~ msgstr "余烬拖尾"
+
+#~ msgctxt "trail.ember.desc"
+#~ msgid "GLOWING EMBERS, ANY SKIN"
+#~ msgstr "发光余烬，任何皮肤可用"
+
+#~ msgctxt "result.out_of_time"
+#~ msgid "OUT OF TIME!"
+#~ msgstr "时间到！"
+
+#~ msgctxt "heatmod.dim.name"
+#~ msgid "DIM"
+#~ msgstr "昏暗"
+
+#~ msgctxt "heatmod.brittle.name"
+#~ msgid "BRITTLE"
+#~ msgstr "易碎"
+
+#~ msgctxt "heatmod.fog.name"
+#~ msgid "FOG BITES"
+#~ msgstr "迷雾反扑"
+
+#~ msgctxt "heatmod.grounded.name"
+#~ msgid "GROUNDED"
+#~ msgstr "禁足"
+
+#~ msgctxt "heatmod.thirsty.name"
+#~ msgid "THIRSTY"
+#~ msgstr "口渴"
+
+#~ msgctxt "heatmod.race.name"
+#~ msgid "RACE"
+#~ msgstr "竞速"
+
+#~ msgctxt "heatmod.dim.desc"
+#~ msgid "LESS LIGHT, PATHS FADE FASTER"
+#~ msgstr "光线更暗，路径消失更快"
+
+#~ msgctxt "heatmod.brittle.desc"
+#~ msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
+#~ msgstr "撞墙消耗翻倍，没有免费滑行"
+
+#~ msgctxt "heatmod.fog.desc"
+#~ msgid "FOG RETURNS TWICE AS FAST"
+#~ msgstr "迷雾回归速度翻倍"
+
+#~ msgctxt "heatmod.grounded.desc"
+#~ msgid "NO LEAPS"
+#~ msgstr "不能跳跃"
+
+#~ msgctxt "heatmod.thirsty.desc"
+#~ msgid "SLIME DRAINS 8% FASTER"
+#~ msgstr "黏液流失加快8%"
+
+#~ msgctxt "heatmod.race.desc"
+#~ msgid "BEAT 1.3 X PAR OR DRY UP"
+#~ msgstr "1.3倍标准时间内通关，否则干涸"
+
+#~ msgctxt "hud.pod.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "热度 {heat}"
+
+#~ msgctxt "result.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "热度 {heat}"
+
+#~ msgctxt "result.heat_bounty"
+#~ msgid "BOUNTY +{count}"
+#~ msgid_plural "BOUNTY +{count}"
+#~ msgstr[0] "赏金 +{count}"
+
+#~ msgctxt "result.heat_new_best"
+#~ msgid "NEW BEST HEAT!"
+#~ msgstr "热度新高！"
+
+#~ msgctxt "result.heat_best"
+#~ msgid "BEST HEAT {heat}"
+#~ msgstr "最高热度 {heat}"
+
+#~ msgctxt "heat.about_default"
+#~ msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
+#~ msgstr "适用于困难模式已通关的关卡"
+
+#~ msgctxt "heat.done"
+#~ msgid "DONE"
+#~ msgstr "完成"
+
+#~ msgctxt "heat.points"
+#~ msgid "+{points}"
+#~ msgstr "+{points}"
+
+#~ msgctxt "heat.title"
+#~ msgid "HEAT {points}/{max}"
+#~ msgstr "热度 {points}/{max}"
+
+#~ msgctxt "levels.info_hard.1"
+#~ msgid "HEAT UP LEVELS BEATEN ON HARD"
+#~ msgstr "给困难模式已通关的关卡加热度"
+
+#~ msgctxt "levels.info_hard.2"
+#~ msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
+#~ msgstr "热度 2 4 7 10 首次奖励 3 5 7 10 张奖券"
+
+#~ msgctxt "levels.heat"
+#~ msgid "HEAT {points}"
+#~ msgstr "热度 {points}"

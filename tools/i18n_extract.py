@@ -48,7 +48,7 @@ Usage (from the repo root or anywhere):
 
 Hints for translators go in `# i18n:` comments, trailing on a line of the call or on the comment lines right
 above it (they apply to every call that starts on the next code line):
-    label.text = Loc.t("hud.pod.heat", "HEAT {heat}", {heat = heat})  # i18n: HUD pod, max 50px; {heat} = heat level
+    label.text = Loc.t("hud.pod.coins", "COINS {count}", {count = count})  # i18n: HUD pod, max 50px; {count} = coins
     # i18n: max 296px, lines 2. Pun on "dry"; keep it short.
 The whole hint becomes a translator comment (`#.`). `max N` / `max Npx` is the width budget in pixels of the
 8 px font, `lines N` (or `N lines`) the line budget; they are also written as one normalized line

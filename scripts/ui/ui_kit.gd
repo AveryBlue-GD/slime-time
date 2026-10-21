@@ -1321,22 +1321,6 @@ static func make_icon(icon_name: String, tint := TEXT) -> TextureRect:
 	return icon
 
 
-## Holds a pod icon bigger than the 8x8 UI icons (the 7x9 HEAT flame, the 9x9 HEAT modifier icons)
-## in an 8 px tall cell (its full width), the art centered on the cell's rows and allowed to hang 1 px
-## over it, so a pod holding it keeps the standard POD_H height instead of growing to 15.
-static func fit_icon(icon: TextureRect) -> Control:
-	var art := Vector2(icon.texture.get_size())
-	var cell := Control.new()
-	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cell.custom_minimum_size = Vector2(art.x, minf(art.y, 8.0))
-	cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.size_flags_vertical = Control.SIZE_FILL
-	icon.position = Vector2(0, floorf((cell.custom_minimum_size.y - art.y) / 2.0))
-	icon.size = art
-	cell.add_child(icon)
-	return cell
-
-
 ## The bounding box (in icon pixels) of an icon's visible pixels, so it can be centered by its ink
 ## rather than its 8x8 cell.
 static func icon_ink_rect(icon_name: String) -> Rect2i:

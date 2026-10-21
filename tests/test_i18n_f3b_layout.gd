@@ -230,7 +230,7 @@ func _levels() -> void:
 	for hard in [false, true]:
 		progress.hard_mode = hard
 		var ls: Control = await _open("res://scenes/level_select.tscn")
-		var top: int = int(ls.info.offset_top - ls.info_panel.position.y)
+		var top: int = int(ls._info_top - ls.info_panel.position.y)  # (the two-line block's top: hard's one line sits in its middle)
 		if _code == "en" or (_over() == 0 and not UIKit.tall_script()):
 			_check(top == ls.INFO_PAD, _tag("level select: the info lines INFO_PAD under the panel's top (%d)" % top))
 		else:

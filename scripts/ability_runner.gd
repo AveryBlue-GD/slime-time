@@ -3,7 +3,7 @@ extends Node2D
 
 ## ABILITIES v1 in a level (rules and geometry: Abilities, numbers: Economy.ABILITIES and the RIFLE_ /
 ## SPLAT_ / KAZE_ constants; design: docs/design/upgrades-v2.md "Abilities v1"). Made by game.gd
-## (`create`) when the run has any ability: never in hard mode (so never in a HEAT run), never with the
+## (`create`) when the run has any ability: never in hard mode, never with the
 ## abilities switched off. Each owned ability has Abilities.charges uses per attempt (the scene is
 ## rebuilt by every restart, new maze, next level and Descent floor, so they refill there). Its key
 ## (Abilities.action, 1 / 2 / 3 by default) or touch button fires it along the slime's facing,

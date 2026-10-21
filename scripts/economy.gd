@@ -5,7 +5,7 @@ extends RefCounted
 ## edits the numbers here and nowhere else. Static constants only; Upgrades (and through it the
 ## game, the randomizer sizing, the upgrades screen and the autoplay planner) reads them.
 ## Batch 1 of upgrades v2 holds the core coin tree; later batches add the workshop, the store,
-## Descent and Heat tables here.
+## Descent tables here.
 
 ## ---------------------------------------------------------------- core coin tree (spec A2.1)
 ## The tree's version, saved as [upgrades] tree. Saves without it hold levels of the old 3 x 10-level
@@ -297,7 +297,7 @@ static func languages_on() -> bool:
 ## attempt (refilled by every restart, new maze, next level or Descent floor). Each use costs `slime`
 ## percent of the meter (SLIME RIFLE / SLIME SPLAT are refused unless the meter holds MORE than that;
 ## SLIMAKAZE always fires and leaves the meter at 0, a dry-up on impact, when it holds that much or
-## less). ON only in randomizer mazes and Descent (Abilities.allowed_in); OFF in every story level (normal, hard, HEAT) and in the hard-mode randomizer.
+## less). ON only in randomizer mazes and Descent (Abilities.allowed_in); OFF in every story level (normal, hard) and in the hard-mode randomizer.
 ## Never change par, routes, u, payouts or seed codes. `abilities_force` (-1 follow the const, 0 off,
 ## 1 on) is a test hook, like `workshop_force`.
 const ABILITIES_ENABLED := true
@@ -419,32 +419,3 @@ const BOONS := {
 ## Boons offered after each floor.
 const BOON_OFFERS := 3
 
-## ---------------------------------------------------------------- hard-mode HEAT (C3)
-## Optional modifiers for hard story levels, toggled on the level select's HEAT panel (global: they
-## apply to every hard level already cleared plainly on hard). Each adds its `heat`; the run's heat
-## is their sum (max HEAT_MAX: BRITTLE and GROUNDED never go together). Nothing here moves par, the
-## route or the meter's size; Heat (scripts/heat.gd) has the names, icons and rules.
-##   dim       DIM        the light keeps cells lit within `relight` px (game.LIGHT_RADIUS 20), the
-##                        fade-back steps come `fade` x as soon (FADE_AFTER x0.6), lantern x `lantern`
-##   brittle   BRITTLE    splat penalties x `splat`, and the knockback slide after a splat drains too
-##   fog       FOG BITES  hard mode's fog comes back after `refog` x the last fade step (9 s -> 4.5 s;
-##                        with DIM 5.4 s -> 2.7 s)
-##   grounded  GROUNDED   no leaps (the jump key does nothing)
-##   thirsty   THIRSTY    the meter drains `drain` x as fast (gliding, leaps and splats)
-##   race      RACE       a countdown of `limit` x par (the silver line); at 0 the slime dries up
-const HEAT_MODS := {
-	"dim": {heat = 1, relight = 10.0, fade = 0.6, lantern = 0.6},
-	"brittle": {heat = 1, splat = 2.0},
-	"fog": {heat = 2, refog = 0.5},
-	"grounded": {heat = 2},
-	"thirsty": {heat = 2, drain = 1.08},
-	"race": {heat = 3, limit = 1.3},
-}
-const HEAT_MAX := 10
-## Bounty tiers: the first clear of a hard level at heat >= HEAT_TIERS[i] pays HEAT_BOUNTY[i] tickets,
-## once per level and tier (a clear that crosses several tiers pays them all): 25 a level, 250 in all.
-const HEAT_TIERS: Array[int] = [2, 4, 7, 10]
-const HEAT_BOUNTY: Array[int] = [3, 5, 7, 10]
-## Clearing every hard level at heat >= this earns the EMBER trail (never sold); every level at
-## HEAT_MAX lights the flame crown over the title logo.
-const HEAT_EMBER := 7

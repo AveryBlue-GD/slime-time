@@ -112,7 +112,6 @@ func _all_states() -> void:
 		await _scan("story line L%d" % level, game)
 		game.free()
 	progress.hard_mode = false
-	progress.heat_mods = 0
 	for which in ["intro", "finale"]:
 		Story.mode = which
 		var story := await _open("res://scenes/story.tscn")

@@ -4,7 +4,7 @@ extends "res://tests/suite_base.gd"
 ## panel, the Descent cards, the tutorial key caps), in every locale (Arabic included: the HUD and the
 ## cards are mirrored, the area texts are centred and the game world is not), measured from the built
 ## controls' rects and their texts' line boxes (+ marks above, drips below):
-## - HUD (L1, L10, L7 hard HEAT 63, L8 assisted, randomizer, Descent pot): the area name and story line
+## - HUD (L1, L10, L7 hard, L8 assisted, randomizer, Descent pot): the area name and story line
 ##   clear of the player slime's drawn body (from the slime's own canvas position), TEXT_CLEARANCE under /
 ##   side_clearance() beside every pod (English 2, fix pass R1), on screen; the level pod GAP_L clear of the timer pod (English's
 ##   RANDOM MAZE #n  CODE LVx (YOU y) included), each wrapped line within the room.
@@ -63,7 +63,6 @@ func _initialize() -> void:
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	progress.hard_mode = false
-	progress.heat_mods = 0
 	var names := {}
 	for key: String in _seen:
 		names[key.get_slice("|", 1)] = true
@@ -96,7 +95,7 @@ func _ok(ok: bool, name: String, detail := "") -> void:
 # ------------------------------------------------------------------ HUD
 
 func _hud() -> void:
-	var cases: Array[Dictionary] = [{level = 1}, {level = 10}, {level = 7, hard = true, heat = 63},
+	var cases: Array[Dictionary] = [{level = 1}, {level = 10}, {level = 7, hard = true},
 		{level = 8, assist = true}, {random = true}, {descent = true}]
 	for c: Dictionary in cases:
 		var game := await _start(c)
@@ -122,13 +121,12 @@ func _hud() -> void:
 		if _code == "en":
 			_pin_english_hud(c, hud)
 		game.free()
-		progress.heat_mods = 0
 		progress.hard_mode = false
 
 
 ## English: the area name and story line where they were before F2 (none of them was on the slime).
 func _pin_english_hud(c: Dictionary, hud: Node) -> void:
-	var tops := {1: [20, 35], 10: [20, 35], 7: [35, 50], 8: [20, 51]}
+	var tops := {1: [20, 35], 10: [20, 35], 7: [20, 35], 8: [20, 51]}
 	if c.get("random", false):
 		_ok(hud.area_label.offset_top == 44, "English area texts pinned", "random %d" % hud.area_label.offset_top)
 	elif c.get("descent", false):
@@ -173,7 +171,7 @@ func _results() -> void:
 	for c: Dictionary in [{level = 3, record = true}, {level = 10}, {level = 4, dry = true}, {random = true}]:
 		var game := await _start(c)
 		if c.get("dry", false):
-			game._dry_up(true)
+			game._dry_up()
 			game.hud.show_rewards({offer = true})
 			game._offer_retry()
 		else:
@@ -210,7 +208,7 @@ func _results() -> void:
 		if _code == "en":
 			var want := {3: Rect2(92, 53, 136, 54), 10: Rect2(84, 59, 152, 42)}
 			if c.get("dry", false):
-				_ok(panel == Rect2(53, 58, 214, 44), "English result panels pinned (dry-up +3 rows)", str(panel))
+				_ok(panel == Rect2(53, 64, 214, 32), "English result panels pinned (dry-up)", str(panel))
 			elif not c.get("random", false) and want.has(c.level):
 				_ok(panel == want[c.level], "English result panels pinned", "L%d %s" % [c.level, panel])
 		game.free()
@@ -279,7 +277,6 @@ func _keys() -> void:
 func _start(c: Dictionary) -> Node:
 	seed(20261017)
 	progress.hard_mode = c.get("hard", false)
-	progress.heat_mods = c.get("heat", 0)
 	if c.get("descent", false):
 		progress.start_descent(77)
 		return await _spawn_game({})

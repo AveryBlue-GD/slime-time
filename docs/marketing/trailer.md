@@ -140,8 +140,8 @@ Counts as of 2026-10-20:
 - **Skins:** 13 = 10 level skins + CHAMELEON (any color) + RAINBOW + STOPWATCH (all 30 gold medals). Each has an
   opaque and a jelly version: 26 looks.
 - **Hats:** 12 (plus none).
-- **Trails:** 6 without HEAT / DESCENT (skin goo, ink, glow, gold, candy, starry). The ABYSS trail is DESCENT-only
-  (switched off, D11). The EMBER trail is HEAT-only, so leave it out.
+- **Trails:** 6 (skin goo, ink, glow, gold, candy, starry). The ABYSS trail is DESCENT-only (switched off, D11). The
+  EMBER trail went with HEAT (scrapped 2026-10-20).
 - **Map papers:** 4.
 - **Looks:** 26 x 13 x 6 = 2,028, so "1000+ ways to dress your slime" is true.
 
@@ -158,8 +158,9 @@ RAINBOW HAT is a hat and may appear.
 ## The no-HEAT rule
 
 The Shorts must not show or mention HEAT: no HEAT screens, flame modifiers, heat numbers or the word. The takes
-avoid it like this: hard mode is shown mid-run only (no hard-mode win panel), no HEAT panel, the trails page isn't used, and
-the EMBER trail (whose unlock text names HEAT) is never focused. Check the contact sheets after any change. Also
+avoided it like this: hard mode is shown mid-run only (no hard-mode win panel), no HEAT panel, the trails page isn't used, and
+the EMBER trail (whose unlock text named HEAT) is never focused. HEAT and the EMBER trail are gone from the game since
+2026-10-20 ([../heat-removed.md](../heat-removed.md)), so the rule now only matters for old footage. Also
 keep DESCENT out while it's switched off (D11).
 
 ## The drafts (2026-10-20)

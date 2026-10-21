@@ -19,7 +19,7 @@ extends SceneTree
 ##        `-- --nav-area-steps=N` (steps per area walk, default 2000; 0 skips them),
 ##        `-- --nav-walk=I` or `--nav-walk=A-B` (only those walk indices) or `--nav-walk=A-` (A and every later one), `-- --nav-no-web-child` (skip the --web-ui
 ##        child process; tools/test_all.sh runs that ring as its own parallel job, see its SHARDS).
-## Area walks: eleven more walks (the last: the level select's HEAT panel and heat runs) that start inside one area and keep steering back into it (`_area_op`,
+## Area walks: ten more walks that start inside one area and keep steering back into it (`_area_op`,
 ## about a third of the inputs): the map table + map view (with its PAPER button), the SETTINGS panels,
 ## the pause menu, the dry-up choices, the win choices, a touch-driven level, the prize wheel's
 ## WHEEL | SHOP overlay (sections, tiles, the buy confirm), the cauldron's COINS | TICKETS tabs and
@@ -58,10 +58,9 @@ const AREAS := [["maps", "rich", "res://scenes/maps.tscn"], ["settings", "comple
 	["pause", "complete", "res://scenes/main.tscn"], ["dry", "complete", "res://scenes/main.tscn"],
 	["win", "complete", "res://scenes/main.tscn"], ["touch", "touch", "res://scenes/main.tscn"],
 	["wheel", "rich", "res://scenes/hub.tscn"], ["upgrades", "rich", "res://scenes/upgrades.tscn"],
-	["skins", "rich", "res://scenes/skins.tscn"], ["descent", "complete", "res://scenes/hub.tscn"],
-	["heat", "heat", "res://scenes/level_select.tscn"]]
+	["skins", "rich", "res://scenes/skins.tscn"], ["descent", "complete", "res://scenes/hub.tscn"]]
 ## The hub station each area walks back to.
-const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel", "upgrades": "upgrades", "skins": "wardrobe", "descent": "random", "heat": "story"}
+const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel", "upgrades": "upgrades", "skins": "wardrobe", "descent": "random"}
 
 
 func _initialize() -> void:
@@ -1348,8 +1347,6 @@ func _area_setup() -> void:
 				await L.click(cs.abilities_tab.get_global_rect().get_center(), 1)
 			elif cs.tickets_tab != null:
 				await L.click(cs.tickets_tab.get_global_rect().get_center(), 1)
-		"heat":
-			await L.click(cs.heat_button.get_global_rect().get_center(), 1)
 		"skins":
 			await L.click(cs.page_button.get_global_rect().get_center(), 1)
 			await L.click(cs.page_button.get_global_rect().get_center(), 1)
@@ -1389,30 +1386,6 @@ func _area_op() -> void:
 			elif hub_to(station):
 				L.note("(area) tp to %s + F" % station)
 				await L.tap(KEY_F)
-		"level_select" when area == "heat":
-			# HEAT: mostly inside the panel (toggles, DONE, Esc, clicks outside), else open it, flip
-			# HARD MODE, or play a level with the heat on.
-			var r := rng.randf()
-			if cs.heat_panel.visible:
-				if r < 0.6:
-					await _poke_inside(cs.heat_panel)
-				elif r < 0.75:
-					await esc()
-				elif r < 0.85:
-					await L.click(Vector2(rng.randi_range(0, 319), rng.randi_range(0, 179)), 1)  # maybe outside: closes
-				else:
-					var under: Array = [cs.hard_mode_box, cs.heat_button] + cs.level_buttons
-					var c: Control = under[rng.randi() % under.size()]
-					await L.click(c.get_global_rect().get_center(), 1)  # under the panel: must not react
-			elif cs.heat_button.visible and r < 0.5:
-				if rng.randf() < 0.5:
-					await L.click(cs.heat_button.get_global_rect().get_center(), 1)
-				else:
-					await L.touch(cs.heat_button.get_global_rect().get_center(), 1)
-			elif r < 0.6:
-				await L.click(cs.hard_mode_box.get_global_rect().get_center(), 1)
-			else:
-				await L.tap(KEY_ENTER)  # into a level (with heat when hard)
 		"level_select", "story", "victory":
 			if k != "victory" or rng.randf() < 0.5:
 				await L.tap(KEY_ENTER)
@@ -1461,26 +1434,6 @@ func _area_op() -> void:
 					L.note("(harness) reach the exit")
 					cs._on_goal_body_entered(cs.slime)
 				elif r < 0.75:
-					L.note("(harness) dry up the slime")
-					cs.slime_remaining = 0.05
-					cs.slime.position.x += 4.0
-				else:
-					await esc()
-			elif area == "heat" and cs.finished and not cs.pause_menu.visible and not cs.hud.choice_buttons.is_empty() and rng.randf() < 0.5:
-				var b: Button = cs.hud.choice_buttons[-1]  # HUB after a win, UPGRADES after a dry-up: out, back toward the panel
-				if is_instance_valid(b) and b.is_visible_in_tree():
-					await L.click(b.get_global_rect().get_center(), 1)
-				else:
-					await L.frames(1)
-			elif area == "heat" and not cs.finished:
-				var r := rng.randf()
-				if r < 0.35:
-					L.note("(harness) reach the goal (heat %d)" % cs.heat)
-					cs._on_goal_body_entered(cs.slime)
-				elif r < 0.55 and cs.race_limit > 0.0:
-					L.note("(harness) RACE runs out")
-					cs.run_time = cs.race_limit - 0.02
-				elif r < 0.7:
 					L.note("(harness) dry up the slime")
 					cs.slime_remaining = 0.05
 					cs.slime.position.x += 4.0
@@ -1551,9 +1504,6 @@ func _cover(cov: Dictionary) -> void:
 					tags.append("hub:wheel:confirm")
 		"upgrades":
 			tags.append("upgrades:" + cs.page)
-		"level_select":
-			if cs.heat_panel.visible:
-				tags.append("levels:heatpanel")
 		"main":
 			if cs.pause_menu.visible:
 				tags.append("game:pause")
@@ -1565,8 +1515,6 @@ func _cover(cov: Dictionary) -> void:
 				tags.append("descent:floor")
 				if cs.descent_card != null and cs.descent_card.visible:
 					tags.append("descent:" + ("summary" if cs.descent_card.summary_root.visible else "boons"))
-			if cs.heat > 0:
-				tags.append("game:heat")
 			if cs.finished and not cs.won:
 				tags.append("game:dry")
 			if cs.won:

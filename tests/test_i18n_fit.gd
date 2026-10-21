@@ -30,7 +30,7 @@ const SAMPLES := {
 	"count": "88", "n": "88", "level": "10", "total": "10", "floor": "88", "time": "8:88.88", "best": "8:88.88",
 	"code": "10", "own": "10", "have": "165", "hand": "165", "cost": "888", "price": "888", "pot": "888",
 	"paid": "888", "gain": "888", "left": "88", "max": "99", "next": "888", "now": "888", "percent": "25",
-	"points": "99", "rate": "888", "reach": "88", "slot": "8", "heat": "99", "a": "888", "b": "888", "c": "888",
+	"points": "99", "rate": "888", "reach": "88", "slot": "8", "a": "888", "b": "888", "c": "888",
 	"key": "SPACE", "keys": "WASD", "name": "BUBBLEGUM", "skin": "BUBBLEGUM", "paper": "PARCHMENT",
 	"names": "BUBBLEGUM, LIME", "about": "", "how": "",
 }

@@ -7,7 +7,7 @@ extends "res://tests/suite_base.gd"
 ##    for or loaded (no level 5+ / hard 2+ data, no later theme art or ambience in the resource cache);
 ## 2. the full game with the switch off: every knob is the full game's, saves carry no demo marker;
 ## 3. every lock: levels (level select + archway), the per-upgrade caps (and their coin math), abilities (only
-##    SLIME RIFLE, in the shop and in a maze), hard (level 1 only), HEAT, randomizer (after level 4, new random
+##    SLIME RIFLE, in the shop and in a maze), hard (level 1 only), randomizer (after level 4, new random
 ##    mazes, demo themes), the hat wheel (shut until the end screen, then a free spin, at most HATS_MAX hats),
 ##    SHOP, skins, the web knobs; the title's DEMO sticker (demo only, at its constant, clear of the logo's
 ##    letters and ENTER THE HUB); the end screen (WISHLIST hidden while the URL is empty, teaser cards) and the
@@ -125,7 +125,7 @@ func _check_stripped_run() -> void:
 
 
 ## A stripped demo showing a FULL save's menus (someone who owns both): level select, map table, hub (coin board,
-## HEAT pod, tour lines), skins, upgrades, settings and the end screen opened from a FULL GAME tile. Nothing
+## tour lines), skins, upgrades, settings and the end screen opened from a FULL GAME tile. Nothing
 ## full-only may be asked for or loaded (this runs before anything else in the suite loads later levels).
 func _check_stripped_full_save() -> void:
 	Platform.demo_override = 1
@@ -137,7 +137,6 @@ func _check_stripped_full_save() -> void:
 	progress.highest_unlocked = Levels.COUNT
 	progress.current_level = 7
 	progress.hard_cleared.assign([1, 2, 3, 4, 5])
-	progress.heat_best = {1: 10, 2: 7, 4: 4}
 	progress.best_times = {5: 40.0, 108: 70.0}
 	progress.medals = {5: 3, 8: 2}
 	progress.coins_found[8] = ["1,1", "2,3"]
@@ -147,10 +146,6 @@ func _check_stripped_full_save() -> void:
 	for hard in [false, true]:
 		progress.hard_mode = hard
 		var select: Control = await _open("res://scenes/level_select.tscn")
-		var flames := []
-		for tile: Button in select.level_buttons:
-			flames += tile.find_children("Flame", "", false, false)
-		_check(flames.is_empty(), "full save, %s level select: no heat flames in the demo" % ("hard" if hard else "normal"))
 		select.free()
 		var maps: Control = await _open("res://scenes/maps.tscn")
 		maps.free()
@@ -158,7 +153,6 @@ func _check_stripped_full_save() -> void:
 	var hub: Node = await _open("res://scenes/hub.tscn")
 	hub.open_coin_board()
 	await _frames(2)
-	_check(not hub.heat_label.visible, "full save, hub: the HEAT n/100 pod is hidden in the demo")
 	_check(_coin_bag_ok(hub, true), "full save, hub coin bag: levels 5-10 show ?/?, the total only the demo's (%s)" % hub.board_total.text)
 	hub.close_coin_board()
 	hub.free()
@@ -197,9 +191,9 @@ func _check_full_game() -> void:
 	progress.reset_progress()
 	_check(not Demo.on() and Demo.levels() == Levels.COUNT and Demo.hard_levels() == Levels.COUNT and Demo.level_open(10, true),
 		"switch off: every level, normal and hard")
-	_check(Demo.upgrade_cap("slime") == Upgrades.max_level("slime") and Demo.heat_open() and Demo.shop_open()
+	_check(Demo.upgrade_cap("slime") == Upgrades.max_level("slime") and Demo.shop_open()
 		and Demo.randomizer_open() and Demo.hat_wheel_open() and Demo.ability_open("kaze") and Demo.skin_open("ember", true)
-		and Demo.skin_open(Skins.RAINBOW, false), "switch off: no cap, HEAT, SHOP, randomizer, wheel, every ability and skin")
+		and Demo.skin_open(Skins.RAINBOW, false), "switch off: no cap, SHOP, randomizer, wheel, every ability and skin")
 	_check(not progress.is_randomizer_unlocked(), "switch off: the randomizer still opens only after level %d" % Levels.COUNT)
 	_check(not progress._write().has_section_key("meta", "demo") and not progress.demo_guard, "switch off: saves carry no demo marker")
 	var seeds_ok := true
@@ -278,9 +272,7 @@ func _check_locks() -> void:
 	_check(not progress.can_buy_cosmetic(cosmetic) and not progress.buy_cosmetic(cosmetic) and not progress.can_buy_hat(progress.hats_left()[0]),
 		"the SHOP sells nothing in the demo")
 	_check(not progress.store_affordable("wheel") or progress.spin_cost() <= progress.tickets, "the wheel's '!' counts no SHOP goods")
-	# Hard, HEAT.
 	progress.hard_cleared.assign([1])
-	_check(not progress.heat_unlocked(1), "HEAT is locked (hard level 1 cleared)")
 	# Skins.
 	progress.levels_cleared = Demo.LEVELS
 	_check(progress.is_skin_unlocked("grape", false) and progress.is_skin_unlocked("lemon", false) and progress.is_skin_unlocked("lime", true),
@@ -450,7 +442,7 @@ func _check_screens() -> void:
 	_check(select.info.text.count("\n") == 0 and select.info.offset_top == normal_top + floori(spare / 2.0)
 		and select.hard_mode_box.position == normal_box and Rect2(select.info_panel.position, select.info_panel.size) == normal_panel,
 		"...hard's one info line sits in the middle of the two-line block (top %d, normal %d), the panel and checkbox stay put" % [select.info.offset_top, normal_top])
-	_check(not select.heat_button.visible and _plain_locks(select.level_buttons, 1), "hard mode: HEAT hidden, hard 2+ plain locks")
+	_check(_plain_locks(select.level_buttons, 1), "hard mode: hard 2+ plain locks")
 	_check(not "FULL" in select.info.text, "...no FULL GAME line on hard either (%s)" % select.info.text.replace("\n", " / "))
 	select.hard_mode_box.button_pressed = false
 	select.free()

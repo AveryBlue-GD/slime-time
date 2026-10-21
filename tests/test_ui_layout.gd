@@ -67,19 +67,6 @@ func _menus() -> void:
 		var grid := _rect(ls.grid)
 		_check(absf(grid.get_center().x - 160.0) <= 0.5, tag + ": grid centered (%s)" % grid)
 		_check(ls.INFO_RECT.position.y - grid.end.y >= UIKit.GAP_M, tag + ": 4+ px between the grid and the info panel")
-		if hard:
-			_check_rect(ls.heat_button, Rect2(320 - 4 - 52, 164, 52, 13), tag + ": HEAT mirrors BACK")
-			ls.heat_panel.open(ls, ls.heat_button)
-			await _frames(2)
-			_check_screen(ls.heat_panel, "HEAT panel")
-			var panel: Rect2 = ls.heat_panel.RECT
-			var flame: Rect2 = _rect(ls.heat_panel.title_flame)
-			var text_w := _text_w(ls.heat_panel.title)
-			var group := Rect2(flame.position.x, flame.position.y, ls.heat_panel.title.position.x + 1.0 + text_w - 1.0 - flame.position.x, 9)
-			_check(absf(group.get_center().x - panel.get_center().x) <= 0.5, "HEAT panel: flame + title centered as a group (%s)" % group)
-			_check(ls.heat_panel.title.position.y - panel.position.y == UIKit.PANEL_PAD, "HEAT panel: title PANEL_PAD under the top")
-			_check(panel.end.y - _rect(ls.heat_panel.done_button).end.y == UIKit.PANEL_PAD, "HEAT panel: DONE PANEL_PAD over the bottom")
-			ls.heat_panel.close()
 		ls.free()
 	progress.hard_mode = false
 
@@ -228,14 +215,12 @@ func _hud() -> void:
 	var cases: Array[Dictionary] = []
 	for level in range(1, 11):
 		cases.append({level = level, tag = "L%d" % level})
-	cases.append({level = 7, hard = true, heat = 63, tag = "L7 hard, six HEAT modifiers"})
-	cases.append({level = 5, hard = true, heat = 1, tag = "L5 hard, HEAT 1"})
+	cases.append({level = 7, hard = true, tag = "L7 hard"})
 	cases.append({level = 8, assist = true, tag = "L8 assisted"})
 	cases.append({level = 8, dev = true, tag = "L8 dev badge"})
 	cases.append({random = true, tag = "randomizer"})
 	for c: Dictionary in cases:
 		progress.hard_mode = c.get("hard", false)
-		progress.heat_mods = c.get("heat", 0)
 		if c.get("random", false):
 			progress.start_random()
 		else:
@@ -279,7 +264,6 @@ func _hud() -> void:
 				_check(not ink.grow(2.0).intersects(_rect(p)), c.tag + ": '%s' clear of pod %s" % [label.text.left(16), _rect(p)])
 			_check(SCREEN.encloses(ink), c.tag + ": '%s' on screen" % label.text.left(16))
 		game.free()
-		progress.heat_mods = 0
 	progress.hard_mode = false
 
 

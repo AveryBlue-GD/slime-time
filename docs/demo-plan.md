@@ -72,7 +72,7 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   coins. The level select shows all 10 tiles; 5-10 (web 4-10; hard: 2-10) are **plain locks** (owner, 2026-10-19): the same dim lock as a level not unlocked
   yet in the full game, no FULL text, disabled, pressing one does nothing. The info lines are the full game's
   (CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A NEW SKIN); hard: one line, BEAT A LEVEL ON HARD
-  FOR ITS JELLY SKIN (no HEAT in the demo). The hub archway says LOCKED once the next level is a full-game one.
+  FOR ITS JELLY SKIN (the full game's hard line too). The hub archway says LOCKED once the next level is a full-game one.
   The map table keeps the later levels sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
 - **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the last demo level's chalice (desktop 4, web 3) the win row is
   CONTINUE only the first time (every finisher sees the pitch before the hub and the randomizer), later
@@ -102,7 +102,7 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
 - **Upgrades:** the cauldron works at the demo's `PRICES`; each coin upgrade stops at its `UPGRADE_CAPS` level (MORE
   SLIME 3, SPEED 2, BRIGHTNESS 1; web 2 / 1 / 1: cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
   show FULL); in a maze only RIFLE works (`AbilityRunner.create`).
-- **Hard mode:** level 1 only; HEAT hidden (button and panel) and `heat_unlocked` false.
+- **Hard mode:** level 1 only.
 - **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). As in the full game, every
   maze is a new random one (`Progress.new_random_maze`: a random seed, so a new layout and start; entering the portal,
   NEW MAZE after a dry-up and after a win; RESTART replays the same maze), paying tickets as usual. The end screen's
@@ -244,7 +244,7 @@ file is read and written with ConfigFile, exactly as the editor saves it).
 ## 9. What the demo still contains (accepted leaks)
 
 - **The code** (compiled `.gdc`; a decompiler reads it): `game.gd`, the maze generator, the finale cutscene
-  (`story_screen.gd` draws it in code and shares the file with the intro), HEAT / SHOP / Descent / workshop logic,
+  (`story_screen.gd` draws it in code and shares the file with the intro), SHOP / Descent / workshop logic,
   `Themes` (all 10 area names and fog colours), `MapView.THEMED` (palettes), `Skins.PRESETS`, the abilities, `Levels`
   (coins per level, `COUNT`). The level RECIPES (seeds, sizes, hard tables) are cut, so the story mazes 4-10 can't
   be rebuilt from the demo; someone could still invent seeds and play randomizer-style mazes in the demo's themes.

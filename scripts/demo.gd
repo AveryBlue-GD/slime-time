@@ -173,11 +173,6 @@ static func teasers() -> Array[int]:
 	return out
 
 
-## HEAT (hard mode's modifiers): a full-game feature.
-static func heat_open() -> bool:
-	return not on()
-
-
 ## The SHOP (TAILOR hats, trails, papers): a full-game feature (shown with a FULL GAME lock).
 static func shop_open() -> bool:
 	return not on()

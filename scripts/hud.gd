@@ -124,23 +124,11 @@ var dev_badge: Control
 var ability_pod: Control
 var ability_row: HBoxContainer
 var ability_items: Array[Dictionary] = []
-## HEAT runs: a pod under the level with a flame, the heat and the modifiers' icons (set_heat); the
-## timer's clock becomes an hourglass counting down with RACE (set_countdown); the result's heat
-## line (show_heat_result).
-var heat_pod: Control
-var heat_label: Label
-var heat_icons: Array[String] = []
-var heat_row: HBoxContainer
-var heat_texts: Array[String] = []
 var _clock_icon: TextureRect
 var _message_center: CenterContainer
 ## The player slime's screen rect as the run ends (game.gd, before the result shows; empty = unknown): a
 ## translation's re-fitted result panel covers it whole or keeps clear of it (_slime_room), as English's does.
 var result_slime_rect := Rect2()
-## The result panel moves up by this when the HEAT line adds a row, so its bottom stays clear of
-## the NEW RECORD! banner (13 = the row's 9 px + the 4 px gap).
-const HEAT_ROW_LIFT := 13
-var _lift := 0
 ## The rewards row's widest English layout; a wider translation wraps its last text (_wrap_rewards).
 const REWARDS_W := 296
 ## Rows kept under a text-only rewards row (the panel's last line) so its drips clear the goo band.
@@ -152,9 +140,6 @@ const MESSAGE_PAIR_GAP := "   "
 var _fit_queued := false
 var _banner_words: BoxContainer
 var _banner_title: Label
-var countdown := -1.0
-const HEAT_TINT := Color8(255, 170, 90)
-const RACE_LOW := 10.0
 var _dev_label: Label
 var _left_bar: BoxContainer
 var _right_bar: BoxContainer
@@ -362,12 +347,6 @@ func _ready() -> void:
 	rewards_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rewards_row.visible = false
 	message_box.add_child(rewards_row)
-	heat_row = HBoxContainer.new()
-	heat_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	heat_row.add_theme_constant_override("separation", 4)
-	heat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	heat_row.visible = false
-	message_box.add_child(heat_row)
 	# The panel shows whenever the message does.
 	message.visibility_changed.connect(func() -> void: _message_panel.visible = message.visible)
 	message.visible = false
@@ -773,73 +752,6 @@ func set_time(seconds: float) -> void:
 	time_label.text = UIKit.format_time(seconds)
 
 
-## RACE: the timer counts down `seconds` left (an hourglass instead of the clock; red under RACE_LOW).
-func set_countdown(seconds: float) -> void:
-	seconds = maxf(seconds, 0.0)
-	if countdown < 0.0:
-		_clock_icon.texture = Heat.icon("race")
-		_clock_icon.modulate = Color.WHITE
-	countdown = seconds
-	time_label.text = UIKit.format_time(seconds)
-	var low := seconds < RACE_LOW
-	if low != time_label.has_theme_color_override("font_color"):
-		if low:
-			time_label.add_theme_color_override("font_color", LOW_COLOR)
-		else:
-			time_label.remove_theme_color_override("font_color")
-
-
-## HEAT: the pod under the level name (a flame in the run's tier color, HEAT n, and the icon of each
-## modifier on). Built the first time it is needed.
-func set_heat(heat: int, ids: Array[String]) -> void:
-	if heat_pod == null:
-		var row := _make_pod(_right_bar)
-		heat_pod = row.get_parent()
-		heat_pod.name = "HeatPod"
-		row.add_theme_constant_override("separation", 2)
-		row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.flame(heat))))
-		heat_label = UIKit.make_label("", 8, HEAT_TINT)
-		row.add_child(heat_label)
-		for id in ids:
-			row.add_child(UIKit.fit_icon(Heat.make_rect(Heat.icon(id))))
-	heat_label.text = Loc.t("hud.pod.heat", "HEAT {heat}", {heat = heat})  # i18n: HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
-	heat_icons = ids.duplicate()
-	heat_pod.visible = heat > 0
-	_pods_changed()
-
-
-## The result's HEAT line (a heat run's clear): the flame and HEAT n, then the bounty it paid
-## (+N TICKETS), NEW BEST HEAT, or the best so far. `result` = Progress.complete_heat's ({} when the
-## run could earn nothing: dev toggles).
-func show_heat_result(heat: int, result: Dictionary) -> void:
-	for child in heat_row.get_children():
-		child.queue_free()
-	heat_texts.clear()
-	heat_row.add_child(Heat.make_rect(Heat.flame(heat)))
-	# i18n: result heat row (one line with icons), max 120px each; {heat} = heat level
-	_heat_text(Loc.t("result.heat", "HEAT {heat}", {heat = heat}), HEAT_TINT)
-	var paid := int(result.get("paid", 0))
-	if paid > 0:
-		heat_row.add_child(UIKit.make_icon("ticket", Color.WHITE))
-		# i18n: max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
-		_heat_text(Loc.n("result.heat_bounty", "BOUNTY +{count}", "BOUNTY +{count}", paid), TICKET_TINT)
-	elif result.get("new_best", false):
-		_heat_text(Loc.t("result.heat_new_best", "NEW BEST HEAT!"), NEW_BEST_COLOR)  # i18n: max 120px
-	elif not result.is_empty():
-		_heat_text(Loc.t("result.heat_best", "BEST HEAT {heat}", {heat = int(result.best)}), MEDAL_OWNED)  # i18n: max 120px
-	if not heat_row.visible:
-		_message_center.offset_top -= HEAT_ROW_LIFT
-		_message_center.offset_bottom -= HEAT_ROW_LIFT
-		_lift = HEAT_ROW_LIFT
-	heat_row.visible = true
-	_queue_fit()
-
-
-func _heat_text(text: String, color: Color) -> void:
-	heat_row.add_child(UIKit.make_label(text, 8, color))
-	heat_texts.append(text)
-
-
 ## The assist tag in the top bar.
 func set_assist(on: bool) -> void:
 	assist_pod.visible = on
@@ -1176,7 +1088,7 @@ func _fade_area_texts(hold: float) -> void:
 
 
 ## Moves the area name and the story line down (each as a whole line) until their text, drips
-## included, is TEXT_CLEARANCE clear of every pod showing in the top corners (the HEAT pod, an
+## included, is TEXT_CLEARANCE clear of every pod showing in the top corners (an
 ## ASSIST or DEV tag, a long line under the coin pods; TEXT_SIDE_CLEARANCE beside one). Pods are
 ## measured by their minimum sizes, so it works before the bars have sorted.
 ## The player slime (player_rect) is kept clear too: when the pods push a text onto it, the texts first
@@ -1583,11 +1495,11 @@ static func _pair_lines(text: String) -> String:
 
 
 ## The highest row the result panel may start on: GAP_XS under every HUD pod its columns would cross
-## (the English 20, less a heat row's lift, at the most).
+## (the English 20 at the most).
 func _panel_top() -> float:
 	var width := _message_panel.get_combined_minimum_size().x
 	var span := Rect2((UIKit.SCREEN.x - width) / 2.0, 0, width, 1)
-	var top := 20.0 - _lift
+	var top := 20.0
 	for pod: Rect2 in pod_rects():
 		if pod.position.x < span.end.x and pod.end.x > span.position.x:
 			top = maxf(top, pod.end.y + UIKit.GAP_XS)

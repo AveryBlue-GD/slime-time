@@ -1,6 +1,6 @@
 extends "res://tests/suite_base.gd"
 
-## Fix pass F3a (docs/i18n/review/fixes-F3a.md): the wardrobe, upgrades, hat wheel SHOP, HEAT panel and
+## Fix pass F3a (docs/i18n/review/fixes-F3a.md): the wardrobe, upgrades, hat wheel SHOP and
 ## hub (coin board digits, notice) rows, checked in every locale (Arabic included) from the built
 ## controls and the Language ink metrics (ink_top / ink_bottom):
 ## - wardrobe: the 16 px title on every page; title, JELLY, the page button, the grid, the status / rule
@@ -10,8 +10,6 @@ extends "res://tests/suite_base.gd"
 ##   inking from row PANEL_INK_TOP (6) and its tag's last ink at h - PANEL_INK_BOTTOM or higher (English: one
 ##   more clear row, h - 5, and the panel 30 tall; Thai's name from row 5, the first under the lumps);
 ## - hat wheel SHOP: each tile's price on its name's text row (the price box at the name's top - 1);
-## - HEAT panel: a 2x icon in every toggle whose name fits beside it; every name's room ends
-##   BUTTON_TEXT_PAD from its toggle's edge;
 ## - hub: the coin board's digits on the CJK names' middle (ink_drop rows lower); the notice between the
 ##   stations on its rows and clear of the wheel.
 ## English pinned: the wardrobe and upgrades title / tab / pod rects, the SHOP's first price box.
@@ -45,7 +43,6 @@ func _initialize() -> void:
 		await _wardrobe()
 		await _upgrades()
 		await _hub()
-		await _heat_panel()
 	language.set_locale("en")
 	language.disable()
 	Economy.languages_force = -1
@@ -211,29 +208,3 @@ func _hub() -> void:
 	progress.tree_refund_notice = 0
 
 
-# ------------------------------------------------------------------ HEAT panel
-
-func _heat_panel() -> void:
-	progress.hard_mode = true
-	var ls := await _open("res://scenes/level_select.tscn")
-	var hp: Control = ls.heat_panel
-	hp.open(ls, ls.heat_button)
-	await _frames(2)
-	if not hp.english:
-		var ok := true
-		var icons_ok := true
-		for id: String in hp.toggles:
-			var toggle: Button = hp.toggles[id]
-			var name_label: Label = toggle.get_node("Name")
-			var icon: Control = toggle.get_node("Icon")
-			var lines := name_label.get_line_count() if name_label.autowrap_mode != TextServer.AUTOWRAP_OFF else 1
-			var font: Font = name_label.get_theme_font("font")
-			var w := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x if lines == 1 else name_label.size.x
-			ok = ok and name_label.position.x + w <= toggle.size.x - UIKit.BUTTON_TEXT_PAD + 0.5
-			var fits_2x: bool = UIKit.text_w(name_label.text, UIKit.FONT, font) <= toggle.size.x - hp._geo.name_x - UIKit.BUTTON_TEXT_PAD
-			icons_ok = icons_ok and (icon.scale.x == 2 or not fits_2x)
-		_check(ok, _tag("HEAT panel: every name BUTTON_TEXT_PAD+ from its toggle's edge"))
-		_check(icons_ok, _tag("HEAT panel: a 2x icon wherever the name fits beside it"))
-	hp.close()
-	ls.free()
-	progress.hard_mode = false

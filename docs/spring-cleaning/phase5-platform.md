@@ -188,14 +188,14 @@ respects the mute switch). `user://` is the app's Documents (iCloud-backed); the
 
 1. **Signal (done):** `Progress.report_progress(id, value)` after the save points emit `PlatformEvents.progress_event`:
    `medal_normal` / `medal_hard` (medals in that mode, after `record_clear`), `coins` (story coins found), `hats` (hats
-   owned), `heat` (HEAT total), `random_wins`, `descent_floor` (deepest floor, after a run banks). Dev and in-memory runs
+   owned), `random_wins`, `descent_floor` (deepest floor, after a run banks). Dev and in-memory runs
    report nothing. Nothing listens yet.
 2. **Steam build:** a "Steam (Windows / Linux / macOS)" set of presets duplicating the desktop ones with
    `custom_features="steam"` (so `Platform.is_steam()` is true) and the GodotSteam GDExtension in `addons/godotsteam/`
    excluded from every other preset (the Web preset keeps `variant/extensions_support=false`).
 3. **Backend:** a `SteamBackend` node added by PlatformEvents only when `Platform.is_steam()`: `Steam.steamInitEx()`,
    map `progress_event` to achievements (e.g. `medal_normal >= 30` -> ALL GOLD, `coins >= 165`, `hats >= 11`,
-   `heat >= 100`, `descent_floor >= 10 / 20`) with `setAchievement` + `storeStats`; `Steam.overlay_toggled(active)` ->
+   `descent_floor >= 10 / 20`; no HEAT achievement: HEAT was scrapped 2026-10-20) with `setAchievement` + `storeStats`; `Steam.overlay_toggled(active)` ->
    `PlatformEvents.enter_background()` / `leave_background()` (the overlay doesn't take OS focus); on the Deck,
    `ShowFloatingGamepadTextInput` when the save-code box gains focus (M6).
 4. **Cloud saves:** Steam Auto-Cloud, no code: roots Windows `%APPDATA%/SlimeTime_R1`, macOS

@@ -46,11 +46,6 @@ msgid "REACH DESCENT FLOOR 10"
 msgstr "CAPAI LANTAI 10 DI KEDALAMAN"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.unlock"
-msgid "HEAT 7 ON EVERY HARD LEVEL"
-msgstr "PANAS 7 DI SETIAP LEVEL SULIT"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.skin.name"
 msgid "SKIN GOO"
 msgstr "LENDIR WARNA SKIN"
@@ -106,11 +101,6 @@ msgid "ABYSS TRAIL"
 msgstr "JEJAK JURANG"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.name"
-msgid "EMBER TRAIL"
-msgstr "JEJAK BARA"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.ink.desc"
 msgid "DEEP INKY GOO"
 msgstr "LENDIR HITAM PEKAT"
@@ -154,11 +144,6 @@ msgstr "KERTAS KRIM, TINTA EMAS"
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
 msgstr "LENDIR GELAP, BINTANG SAMAR"
-
-#: scripts/cosmetics.gd
-msgctxt "trail.ember.desc"
-msgid "GLOWING EMBERS, ANY SKIN"
-msgstr "BARA MENYALA, SEMUA SKIN"
 
 #. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
@@ -517,17 +502,12 @@ msgctxt "result.dried_up_floor"
 msgid "DRIED UP ON FLOOR {floor}"
 msgstr "KERING DI LANTAI {floor}"
 
-#. result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
+#. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up"
 msgid "DRIED UP"
 msgstr "KERING"
-
-#: scripts/game.gd
-msgctxt "result.out_of_time"
-msgid "OUT OF TIME!"
-msgstr "WAKTU HABIS!"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
@@ -660,66 +640,6 @@ msgstr ""
 msgctxt "hat.raincloud.desc"
 msgid "ITS VERY OWN DRIZZLE"
 msgstr ""
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.name"
-msgid "DIM"
-msgstr "REDUP"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.name"
-msgid "BRITTLE"
-msgstr "RAPUH"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.name"
-msgid "FOG BITES"
-msgstr "KABUT BUAS"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.name"
-msgid "GROUNDED"
-msgstr "TERPAKU"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.name"
-msgid "THIRSTY"
-msgstr "HAUS"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.name"
-msgid "RACE"
-msgstr "BALAPAN"
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.desc"
-msgid "LESS LIGHT, PATHS FADE FASTER"
-msgstr "CAHAYA KURANG, JEJAK CEPAT PUDAR"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.desc"
-msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
-msgstr "BENTURAN 2X LIPAT, TANPA LUNCUR GRATIS"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.desc"
-msgid "FOG RETURNS TWICE AS FAST"
-msgstr "KABUT KEMBALI 2X LEBIH CEPAT"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.desc"
-msgid "NO LEAPS"
-msgstr "TANPA LOMPATAN"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.desc"
-msgid "SLIME DRAINS 8% FASTER"
-msgstr "SLIME TERKURAS 8% LEBIH CEPAT"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.desc"
-msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr "SELESAI DI BAWAH 1.3 X PAR ATAU KERING"
 
 #. station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 #. budget: max 110px, lines 1
@@ -1150,42 +1070,6 @@ msgstr "HADIAH 1"
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "RUN HADIAH {slot}/{total}"
-
-#. HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
-#. budget: max 50px
-#: scripts/hud.gd
-msgctxt "hud.pod.heat"
-msgid "HEAT {heat}"
-msgstr "PANAS {heat}"
-
-#. result heat row (one line with icons), max 120px each; {heat} = heat level
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat"
-msgid "HEAT {heat}"
-msgstr "PANAS {heat}"
-
-#. max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_bounty"
-msgid "BOUNTY +{count}"
-msgid_plural "BOUNTY +{count}"
-msgstr[0] "IMBALAN +{count}"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_new_best"
-msgid "NEW BEST HEAT!"
-msgstr "REKOR PANAS BARU!"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_best"
-msgid "BEST HEAT {heat}"
-msgstr "REKOR PANAS {heat}"
 
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
@@ -2174,32 +2058,6 @@ msgctxt "wheel.confirm"
 msgid "BUY {name}?"
 msgstr "BELI {name}?"
 
-#. the line under the toggles, max 224px (the English panel); grows to 296px (the wider panel), wraps onto 2 lines there, lines 2
-#. budget: max 224px, lines 2
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.about_default"
-msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
-msgstr "UNTUK LEVEL YANG TAMAT DI MODE SULIT"
-
-#. max 42px (50 wide, 4 px margins), 1 line
-#. budget: max 42px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.done"
-msgid "DONE"
-msgstr "SELESAI"
-
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.points"
-msgid "+{points}"
-msgstr "+{points}"
-
-#. panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
-#. budget: max 120px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.title"
-msgid "HEAT {points}/{max}"
-msgstr "PANAS {points}/{max}"
-
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_up"
 msgid "MOVE UP"
@@ -2303,22 +2161,12 @@ msgctxt "language.title"
 msgid "LANGUAGE"
 msgstr "BAHASA"
 
-#. one line (demo build, hard mode), max 300px
+#. one line (hard mode), max 300px
 #. budget: max 300px
 #: scripts/ui/level_select.gd
 msgctxt "levels.demo_hard.1"
 msgid "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"
 msgstr ""
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.1"
-msgid "HEAT UP LEVELS BEATEN ON HARD"
-msgstr "NAIKKAN PANAS LEVEL YANG TAMAT DI MODE SULIT"
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.2"
-msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-msgstr "PANAS 2 4 7 10 BERI 3 5 7 10 TIKET SEKALI"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.1"
@@ -2343,13 +2191,6 @@ msgstr "PILIH LEVEL"
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 msgstr "SULIT: LABIRIN BARU, TANPA UPGRADE, KABUT KEMBALI"
-
-#. {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
-#. budget: max 52px, lines 1
-#: scripts/ui/level_select.gd
-msgctxt "levels.heat"
-msgid "HEAT {points}"
-msgstr "PANAS {points}"
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
@@ -3036,3 +2877,116 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "trail.ember.unlock"
+#~ msgid "HEAT 7 ON EVERY HARD LEVEL"
+#~ msgstr "PANAS 7 DI SETIAP LEVEL SULIT"
+
+#~ msgctxt "trail.ember.name"
+#~ msgid "EMBER TRAIL"
+#~ msgstr "JEJAK BARA"
+
+#~ msgctxt "trail.ember.desc"
+#~ msgid "GLOWING EMBERS, ANY SKIN"
+#~ msgstr "BARA MENYALA, SEMUA SKIN"
+
+#~ msgctxt "result.out_of_time"
+#~ msgid "OUT OF TIME!"
+#~ msgstr "WAKTU HABIS!"
+
+#~ msgctxt "heatmod.dim.name"
+#~ msgid "DIM"
+#~ msgstr "REDUP"
+
+#~ msgctxt "heatmod.brittle.name"
+#~ msgid "BRITTLE"
+#~ msgstr "RAPUH"
+
+#~ msgctxt "heatmod.fog.name"
+#~ msgid "FOG BITES"
+#~ msgstr "KABUT BUAS"
+
+#~ msgctxt "heatmod.grounded.name"
+#~ msgid "GROUNDED"
+#~ msgstr "TERPAKU"
+
+#~ msgctxt "heatmod.thirsty.name"
+#~ msgid "THIRSTY"
+#~ msgstr "HAUS"
+
+#~ msgctxt "heatmod.race.name"
+#~ msgid "RACE"
+#~ msgstr "BALAPAN"
+
+#~ msgctxt "heatmod.dim.desc"
+#~ msgid "LESS LIGHT, PATHS FADE FASTER"
+#~ msgstr "CAHAYA KURANG, JEJAK CEPAT PUDAR"
+
+#~ msgctxt "heatmod.brittle.desc"
+#~ msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
+#~ msgstr "BENTURAN 2X LIPAT, TANPA LUNCUR GRATIS"
+
+#~ msgctxt "heatmod.fog.desc"
+#~ msgid "FOG RETURNS TWICE AS FAST"
+#~ msgstr "KABUT KEMBALI 2X LEBIH CEPAT"
+
+#~ msgctxt "heatmod.grounded.desc"
+#~ msgid "NO LEAPS"
+#~ msgstr "TANPA LOMPATAN"
+
+#~ msgctxt "heatmod.thirsty.desc"
+#~ msgid "SLIME DRAINS 8% FASTER"
+#~ msgstr "SLIME TERKURAS 8% LEBIH CEPAT"
+
+#~ msgctxt "heatmod.race.desc"
+#~ msgid "BEAT 1.3 X PAR OR DRY UP"
+#~ msgstr "SELESAI DI BAWAH 1.3 X PAR ATAU KERING"
+
+#~ msgctxt "hud.pod.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "PANAS {heat}"
+
+#~ msgctxt "result.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "PANAS {heat}"
+
+#~ msgctxt "result.heat_bounty"
+#~ msgid "BOUNTY +{count}"
+#~ msgid_plural "BOUNTY +{count}"
+#~ msgstr[0] "IMBALAN +{count}"
+
+#~ msgctxt "result.heat_new_best"
+#~ msgid "NEW BEST HEAT!"
+#~ msgstr "REKOR PANAS BARU!"
+
+#~ msgctxt "result.heat_best"
+#~ msgid "BEST HEAT {heat}"
+#~ msgstr "REKOR PANAS {heat}"
+
+#~ msgctxt "heat.about_default"
+#~ msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
+#~ msgstr "UNTUK LEVEL YANG TAMAT DI MODE SULIT"
+
+#~ msgctxt "heat.done"
+#~ msgid "DONE"
+#~ msgstr "SELESAI"
+
+#~ msgctxt "heat.points"
+#~ msgid "+{points}"
+#~ msgstr "+{points}"
+
+#~ msgctxt "heat.title"
+#~ msgid "HEAT {points}/{max}"
+#~ msgstr "PANAS {points}/{max}"
+
+#~ msgctxt "levels.info_hard.1"
+#~ msgid "HEAT UP LEVELS BEATEN ON HARD"
+#~ msgstr "NAIKKAN PANAS LEVEL YANG TAMAT DI MODE SULIT"
+
+#~ msgctxt "levels.info_hard.2"
+#~ msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
+#~ msgstr "PANAS 2 4 7 10 BERI 3 5 7 10 TIKET SEKALI"
+
+#~ msgctxt "levels.heat"
+#~ msgid "HEAT {points}"
+#~ msgstr "PANAS {points}"

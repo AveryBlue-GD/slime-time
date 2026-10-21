@@ -46,11 +46,6 @@ msgid "REACH DESCENT FLOOR 10"
 msgstr "RAGGIUNGI IL PIANO 10 DELLA DISCESA"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.unlock"
-msgid "HEAT 7 ON EVERY HARD LEVEL"
-msgstr "CALORE 7 SU OGNI LIVELLO DIFFICILE"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.skin.name"
 msgid "SKIN GOO"
 msgstr "BAVA IN TINTA"
@@ -106,11 +101,6 @@ msgid "ABYSS TRAIL"
 msgstr "SCIA ABISSALE"
 
 #: scripts/cosmetics.gd
-msgctxt "trail.ember.name"
-msgid "EMBER TRAIL"
-msgstr "SCIA DI BRACE"
-
-#: scripts/cosmetics.gd
 msgctxt "trail.ink.desc"
 msgid "DEEP INKY GOO"
 msgstr "BAVA NERA COME L’INCHIOSTRO"
@@ -154,11 +144,6 @@ msgstr "CARTA CREMA, INCHIOSTRO D’ORO"
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
 msgstr "BAVA SCURA, STELLE FIOCHE"
-
-#: scripts/cosmetics.gd
-msgctxt "trail.ember.desc"
-msgid "GLOWING EMBERS, ANY SKIN"
-msgstr "BRACI ARDENTI, OGNI SKIN"
 
 #. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
@@ -520,17 +505,12 @@ msgctxt "result.dried_up_floor"
 msgid "DRIED UP ON FLOOR {floor}"
 msgstr "RINSECCHITO AL PIANO {floor}"
 
-#. result title, max 296px, 1 line each (RACE's countdown adds OUT OF TIME! above)
+#. result title, max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.dried_up"
 msgid "DRIED UP"
 msgstr "RINSECCHITO"
-
-#: scripts/game.gd
-msgctxt "result.out_of_time"
-msgid "OUT OF TIME!"
-msgstr "TEMPO SCADUTO!"
 
 #. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
@@ -663,66 +643,6 @@ msgstr ""
 msgctxt "hat.raincloud.desc"
 msgid "ITS VERY OWN DRIZZLE"
 msgstr ""
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.name"
-msgid "DIM"
-msgstr "PENOMBRA"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.name"
-msgid "BRITTLE"
-msgstr "FRAGILE"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.name"
-msgid "FOG BITES"
-msgstr "LA NEBBIA MORDE"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.name"
-msgid "GROUNDED"
-msgstr "A TERRA"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.name"
-msgid "THIRSTY"
-msgstr "ASSETATO"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.name"
-msgid "RACE"
-msgstr "GARA"
-
-#: scripts/heat.gd
-msgctxt "heatmod.dim.desc"
-msgid "LESS LIGHT, PATHS FADE FASTER"
-msgstr "MENO LUCE, LA SCIA SVANISCE PRIMA"
-
-#: scripts/heat.gd
-msgctxt "heatmod.brittle.desc"
-msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
-msgstr "SPLAT X2, SCIVOLATA A PAGAMENTO"
-
-#: scripts/heat.gd
-msgctxt "heatmod.fog.desc"
-msgid "FOG RETURNS TWICE AS FAST"
-msgstr "LA NEBBIA TORNA AL DOPPIO DELLA VELOCITÀ"
-
-#: scripts/heat.gd
-msgctxt "heatmod.grounded.desc"
-msgid "NO LEAPS"
-msgstr "NIENTE BALZI"
-
-#: scripts/heat.gd
-msgctxt "heatmod.thirsty.desc"
-msgid "SLIME DRAINS 8% FASTER"
-msgstr "LO SLIME SI ASCIUGA L’8% PIÙ IN FRETTA"
-
-#: scripts/heat.gd
-msgctxt "heatmod.race.desc"
-msgid "BEAT 1.3 X PAR OR DRY UP"
-msgstr "BATTI 1.3 X IL PAR O TI SECCHI"
 
 #. station names are prompt-box labels, max 110px, grows to 200px (the prompt box widens, centred), 1 line
 #. budget: max 110px, lines 1
@@ -1156,43 +1076,6 @@ msgstr "PAGA 1"
 msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "PAGATA {slot}/{total}"
-
-#. HUD pod, max 50px, grows to 128px (the pod widens under the timer row); {heat} = heat level
-#. budget: max 50px
-#: scripts/hud.gd
-msgctxt "hud.pod.heat"
-msgid "HEAT {heat}"
-msgstr "CAL. {heat}"
-
-#. result heat row (one line with icons), max 120px each; {heat} = heat level
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat"
-msgid "HEAT {heat}"
-msgstr "CALORE {heat}"
-
-#. max 120px; {count} = tickets the heat bounty paid (after a ticket icon)
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_bounty"
-msgid "BOUNTY +{count}"
-msgid_plural "BOUNTY +{count}"
-msgstr[0] "TAGLIA +{count}"
-msgstr[1] "TAGLIA +{count}"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_new_best"
-msgid "NEW BEST HEAT!"
-msgstr "RECORD DI CALORE!"
-
-#. max 120px
-#. budget: max 120px
-#: scripts/hud.gd
-msgctxt "result.heat_best"
-msgid "BEST HEAT {heat}"
-msgstr "RECORD CALORE {heat}"
 
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
@@ -2193,32 +2076,6 @@ msgctxt "wheel.confirm"
 msgid "BUY {name}?"
 msgstr "COMPRARE {name}?"
 
-#. the line under the toggles, max 224px (the English panel); grows to 296px (the wider panel), wraps onto 2 lines there, lines 2
-#. budget: max 224px, lines 2
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.about_default"
-msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
-msgstr "VALE SUI LIVELLI GIÀ BATTUTI IN DIFFICILE"
-
-#. max 42px (50 wide, 4 px margins), 1 line
-#. budget: max 42px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.done"
-msgid "DONE"
-msgstr "OK"
-
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.points"
-msgid "+{points}"
-msgstr "+{points}"
-
-#. panel title; {points} = current heat, {max} = the top; max 120px, 1 line (a flame icon sits to its left)
-#. budget: max 120px, lines 1
-#: scripts/ui/heat_panel.gd
-msgctxt "heat.title"
-msgid "HEAT {points}/{max}"
-msgstr "CALORE {points}/{max}"
-
 #: scripts/ui/key_controls.gd
 msgctxt "keys.move_up"
 msgid "MOVE UP"
@@ -2322,22 +2179,12 @@ msgctxt "language.title"
 msgid "LANGUAGE"
 msgstr "LINGUA"
 
-#. one line (demo build, hard mode), max 300px
+#. one line (hard mode), max 300px
 #. budget: max 300px
 #: scripts/ui/level_select.gd
 msgctxt "levels.demo_hard.1"
 msgid "BEAT A LEVEL ON HARD FOR ITS JELLY SKIN"
 msgstr ""
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.1"
-msgid "HEAT UP LEVELS BEATEN ON HARD"
-msgstr "ALZA IL CALORE DEI LIVELLI BATTUTI IN DIFFICILE"
-
-#: scripts/ui/level_select.gd
-msgctxt "levels.info_hard.2"
-msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
-msgstr "CALORE 2 4 7 10: 3 5 7 10 TICKET, UNA VOLTA"
 
 #: scripts/ui/level_select.gd
 msgctxt "levels.info_normal.1"
@@ -2362,13 +2209,6 @@ msgstr "SCEGLI IL LIVELLO"
 msgctxt "levels.hard_mode"
 msgid "HARD MODE: NEW MAZES, NO UPGRADES, FOG RETURNS"
 msgstr "DIFFICILE: NUOVI PERCORSI, NO POTENZIAMENTI, NEBBIA"
-
-#. {points} = the heat total (0-99); max 52px, grows to 100px (button_w: the button widens), 1 line
-#. budget: max 52px, lines 1
-#: scripts/ui/level_select.gd
-msgctxt "levels.heat"
-msgid "HEAT {points}"
-msgstr "CAL. {points}"
 
 #. first-visit hint at the bottom, max 224px, 1 line
 #. budget: max 224px, lines 1
@@ -3059,3 +2899,117 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "trail.ember.unlock"
+#~ msgid "HEAT 7 ON EVERY HARD LEVEL"
+#~ msgstr "CALORE 7 SU OGNI LIVELLO DIFFICILE"
+
+#~ msgctxt "trail.ember.name"
+#~ msgid "EMBER TRAIL"
+#~ msgstr "SCIA DI BRACE"
+
+#~ msgctxt "trail.ember.desc"
+#~ msgid "GLOWING EMBERS, ANY SKIN"
+#~ msgstr "BRACI ARDENTI, OGNI SKIN"
+
+#~ msgctxt "result.out_of_time"
+#~ msgid "OUT OF TIME!"
+#~ msgstr "TEMPO SCADUTO!"
+
+#~ msgctxt "heatmod.dim.name"
+#~ msgid "DIM"
+#~ msgstr "PENOMBRA"
+
+#~ msgctxt "heatmod.brittle.name"
+#~ msgid "BRITTLE"
+#~ msgstr "FRAGILE"
+
+#~ msgctxt "heatmod.fog.name"
+#~ msgid "FOG BITES"
+#~ msgstr "LA NEBBIA MORDE"
+
+#~ msgctxt "heatmod.grounded.name"
+#~ msgid "GROUNDED"
+#~ msgstr "A TERRA"
+
+#~ msgctxt "heatmod.thirsty.name"
+#~ msgid "THIRSTY"
+#~ msgstr "ASSETATO"
+
+#~ msgctxt "heatmod.race.name"
+#~ msgid "RACE"
+#~ msgstr "GARA"
+
+#~ msgctxt "heatmod.dim.desc"
+#~ msgid "LESS LIGHT, PATHS FADE FASTER"
+#~ msgstr "MENO LUCE, LA SCIA SVANISCE PRIMA"
+
+#~ msgctxt "heatmod.brittle.desc"
+#~ msgid "SPLATS COST DOUBLE, NO FREE SLIDE"
+#~ msgstr "SPLAT X2, SCIVOLATA A PAGAMENTO"
+
+#~ msgctxt "heatmod.fog.desc"
+#~ msgid "FOG RETURNS TWICE AS FAST"
+#~ msgstr "LA NEBBIA TORNA AL DOPPIO DELLA VELOCITÀ"
+
+#~ msgctxt "heatmod.grounded.desc"
+#~ msgid "NO LEAPS"
+#~ msgstr "NIENTE BALZI"
+
+#~ msgctxt "heatmod.thirsty.desc"
+#~ msgid "SLIME DRAINS 8% FASTER"
+#~ msgstr "LO SLIME SI ASCIUGA L’8% PIÙ IN FRETTA"
+
+#~ msgctxt "heatmod.race.desc"
+#~ msgid "BEAT 1.3 X PAR OR DRY UP"
+#~ msgstr "BATTI 1.3 X IL PAR O TI SECCHI"
+
+#~ msgctxt "hud.pod.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "CAL. {heat}"
+
+#~ msgctxt "result.heat"
+#~ msgid "HEAT {heat}"
+#~ msgstr "CALORE {heat}"
+
+#~ msgctxt "result.heat_bounty"
+#~ msgid "BOUNTY +{count}"
+#~ msgid_plural "BOUNTY +{count}"
+#~ msgstr[0] "TAGLIA +{count}"
+#~ msgstr[1] "TAGLIA +{count}"
+
+#~ msgctxt "result.heat_new_best"
+#~ msgid "NEW BEST HEAT!"
+#~ msgstr "RECORD DI CALORE!"
+
+#~ msgctxt "result.heat_best"
+#~ msgid "BEST HEAT {heat}"
+#~ msgstr "RECORD CALORE {heat}"
+
+#~ msgctxt "heat.about_default"
+#~ msgid "WORKS ON LEVELS ALREADY BEATEN ON HARD"
+#~ msgstr "VALE SUI LIVELLI GIÀ BATTUTI IN DIFFICILE"
+
+#~ msgctxt "heat.done"
+#~ msgid "DONE"
+#~ msgstr "OK"
+
+#~ msgctxt "heat.points"
+#~ msgid "+{points}"
+#~ msgstr "+{points}"
+
+#~ msgctxt "heat.title"
+#~ msgid "HEAT {points}/{max}"
+#~ msgstr "CALORE {points}/{max}"
+
+#~ msgctxt "levels.info_hard.1"
+#~ msgid "HEAT UP LEVELS BEATEN ON HARD"
+#~ msgstr "ALZA IL CALORE DEI LIVELLI BATTUTI IN DIFFICILE"
+
+#~ msgctxt "levels.info_hard.2"
+#~ msgid "HEAT 2 4 7 10 PAYS 3 5 7 10 TICKETS ONCE"
+#~ msgstr "CALORE 2 4 7 10: 3 5 7 10 TICKET, UNA VOLTA"
+
+#~ msgctxt "levels.heat"
+#~ msgid "HEAT {points}"
+#~ msgstr "CAL. {points}"

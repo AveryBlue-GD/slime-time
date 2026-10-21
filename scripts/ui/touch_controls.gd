@@ -68,8 +68,6 @@ var joy_vector := Vector2.ZERO
 var _joy_touch := -1
 var _joy_center := JOY_HOME
 var _jump_touch := -1
-## False when the run has no leaps (HEAT GROUNDED): the JUMP button is drawn struck out and does nothing.
-var jump_enabled := true
 ## The finger on the pause button: its `menu` press is released when it lifts (or the level pauses /
 ## the controls go away), so the action is never left held.
 var _pause_touch := -1
@@ -157,8 +155,7 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pass  # (abilities shown: the dead ring / the buttons' side of the right half)
 	elif _jump_touch == -1:
 		_jump_touch = index
-		if jump_enabled:
-			_press("jump")
+		_press("jump")
 	_canvas.queue_redraw()
 
 
@@ -336,10 +333,7 @@ func _draw_controls() -> void:
 	_canvas.draw_circle(JUMP_CENTER, radius, Color(color, 0.55) if pressed else dim)
 	_canvas.draw_arc(JUMP_CENTER, radius, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, jump_baseline(font))).round(), jump_text,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9 if jump_enabled else 0.35))
-	if not jump_enabled:  # GROUNDED: struck out
-		var d := Vector2(radius, radius) * 0.6
-		_canvas.draw_line((JUMP_CENTER - d).round(), (JUMP_CENTER + d).round(), Color(0.95, 0.3, 0.3, 0.8), 1.0)
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
 	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used.
 	for i in abilities.size():
 		var item: Dictionary = abilities[i]

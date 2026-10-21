@@ -3,7 +3,7 @@ extends "res://tests/suite_base.gd"
 ## The platform seam (scripts/platform.gd, scripts/platform_events.gd; docs/spring-cleaning/phase5-platform.md):
 ## every platform branch simulated through Platform.override (desktop, web, iOS, Android, Steam), the Android
 ## back button (NOTIFICATION_WM_GO_BACK_REQUEST) on every kind of screen, focus loss / backgrounding (a running
-## level pauses, its clock and the RACE countdown stop, held inputs are let go), the hub's QUIT trapdoor and the
+## level pauses, its clock stops, held inputs are let go), the hub's QUIT trapdoor and the
 ## SETTINGS FULLSCREEN button per platform, the remembered fullscreen choice, the CONTROLS note, and the safe
 ## area mapped into the 320x180 view (iPhone home indicator, notches, rounded corners) with simulated rects.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_platform.gd
@@ -372,25 +372,6 @@ func _background() -> void:
 	await _physics_frames(10)
 	_check(game.run_time > clock, "RESUME: the clock runs again")
 	await _clear_scene()
-
-	# RACE: the countdown stops as well.
-	progress.hard_mode = true
-	progress.heat_mods = Heat.bit("race")
-	var race: Node2D = BASE_MAIN.instantiate()
-	race.level = 1
-	await _set_scene(race)
-	await _physics_frames(20)
-	if race.race_limit > 0.0:
-		var t: float = race.run_time
-		events.enter_background(true)
-		await _physics_frames(90)
-		_check(race.run_time == t and not race.race_over, "backgrounded: the RACE countdown stops")
-		events.leave_background()
-	else:
-		_check(false, "RACE run set up (race_limit %.1f)" % race.race_limit)
-	await _clear_scene()
-	progress.hard_mode = false
-	progress.heat_mods = 0
 
 	# Nothing to pause: a finished level, the hub. Without force (headless), focus loss pauses nothing.
 	var done: Node2D = BASE_MAIN.instantiate()

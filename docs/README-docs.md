@@ -16,8 +16,8 @@ Living docs are here; finished reports and superseded plans are in [archive/](ar
 | [handoff.md](handoff.md) | current state: modes, economy, build/test/launch, save safety, platforms, open tasks, standing preferences |
 | [architecture.md](architecture.md) | detailed code layout and conventions (moved out of CLAUDE.md): font and pixel rules, every screen and script |
 | [ui-rules.md](ui-rules.md) | final UI layout rules (spacing scale, button / pod / tile sizes, text, touch targets, safe areas); numbers are `UIKit` constants |
-| [level-design.md](level-design.md) | spawn picker, story layouts v4, calibration, save migration, randomizer, hard-mode rebalance, trail maps, Descent (9), Heat (10) |
-| [design/upgrades-v2.md](design/upgrades-v2.md) | implemented spec: coin tree, ticket store, workshop, Descent, Heat, Abilities v1, deviations |
+| [level-design.md](level-design.md) | spawn picker, story layouts v4, calibration, save migration, randomizer, hard-mode rebalance, trail maps, Descent (9), Heat (10, removed) |
+| [design/upgrades-v2.md](design/upgrades-v2.md) | implemented spec: coin tree, ticket store, workshop, Descent, Heat (removed), Abilities v1, deviations |
 | [story.md](story.md) | plot, wordless intro and finale, level banners, `story_seen` |
 | [playtime-estimate.md](playtime-estimate.md) | model-based playtime priors (no playtest data yet) |
 | [demo-plan.md](demo-plan.md) | the demo build: one switch, knobs, locks, end screen, full-only content / export exclude list, save carry-over |

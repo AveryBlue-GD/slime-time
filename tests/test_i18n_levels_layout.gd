@@ -1,27 +1,22 @@
 extends "res://tests/suite_base.gd"
 
 ## Layout in every locale (i18n chunk G1, docs/ui-rules.md section 10) of the LEVEL SELECT (normal and
-## hard), its HEAT panel, the MAP TABLE and the map view, with the gate on and the locale's fallback font
+## hard), the MAP TABLE and the map view, with the gate on and the locale's fallback font
 ## installed. Arabic is skipped (its mirroring is chunk I). Measured from the built controls' rects and
 ## their texts' widths / line heights, per locale:
 ## - Level select: one page (two rows) where the two rows, the info panel and the bottom row fit
 ##   between the title's line box and row 176 (English and Indonesian), else two pages of one row with
 ##   < / > beside the title (symmetric, clear of the title's letters, the paging showing 1-5 / 6-10);
 ##   the grid centred, under the title's line box and GAP_M over the info panel; the panel centred,
-##   inside EDGE, GRID_GAP over the bottom row, its lines and checkbox inside it; HEAT mirroring BACK
-##   (ending on row 176 and EDGE from the right, as wide as its text); the tiles' digits on the slimy
+##   inside EDGE, GRID_GAP over the bottom row, its lines and checkbox inside it; the tiles' digits on the slimy
 ##   font's own 14 / 9 px line boxes (no script fallback pushing them down).
-## - HEAT panel: inside the screen (EDGE from the sides), centred; the title PANEL_PAD under its top,
-##   DONE (centred, fits its word) PANEL_PAD over its bottom; six toggles inside it, none overlapping,
-##   each name inside its toggle (one line, the smaller script size, or two lines), the +N under the
-##   name; the screen behind hidden while a resized panel is open (and shown again after).
 ## - Map table: the grid under the title (its shadow row), BOTTOM_GAP over the bottom row, five rows on
 ##   one page or balanced pages; each name inside its tile (two lines at most) and the % under it inside
 ##   the tile; the hint centred on BACK's text line; HARD ending EDGE from the right, inside the screen.
 ## - Map view: the name line above the map area, the map inside it, the % line on BACK's text line, BACK
 ##   / PAPER fitting their words on the bottom row; the select hidden behind the view while it is open.
 ## - English: the source rects pinned (grid (34, 22), info panel (14, 113) 292x48, checkbox (25, 145),
-##   HEAT (264, 164) 52x13, HEAT panel RECT / TOGGLE, map tiles 155x26 from (4, 21), MAP_AREA, hint
+##   map tiles 155x26 from (4, 21), MAP_AREA, hint
 ##   (48, 167) 224x10, view BACK 40x13).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 120000 -s res://tests/test_i18n_levels_layout.gd
@@ -131,15 +126,8 @@ func _level_select(hard: bool) -> void:
 		_tag(tag + ": the checkbox's text GAP_M over the panel's bottom (%s)" % box))
 	var info: Label = ls.info
 	var lines_h := UIKit.text_block_h(2)
-	_check(info.position.y >= panel.position.y + ls.INFO_PAD and info.position.y + lines_h + UIKit.GAP_L <= box.position.y + 0.5
+	_check(info.position.y >= panel.position.y + ls.INFO_PAD and ls._info_top + lines_h + UIKit.GAP_L <= box.position.y + 0.5
 		and _text_w(info) <= panel.size.x - 2 * UIKit.GAP_M, _tag(tag + ": the info lines inside the panel, over the checkbox"))
-	var heat: Button = ls.heat_button
-	if hard:
-		var heat_rect := _rect(heat)
-		_check(heat_rect.end == Vector2(320 - UIKit.EDGE, 177) and heat_rect.size.x == UIKit.button_w(heat.text, 52) and heat_rect.size.y == UIKit.button_h(),
-			_tag(tag + ": HEAT mirrors BACK, as wide as its text (%s)" % heat_rect))
-		if english:
-			_check(heat_rect == Rect2(264, 164, 52, 13), _tag(tag + ": HEAT at the English rect"))
 	# Tiles: the shown page; digits on the slimy font's own line boxes.
 	var shown: Array[int] = []
 	var digits_ok := true
@@ -179,8 +167,6 @@ func _level_select(hard: bool) -> void:
 		await _frames(2)
 		_check(on_six and ls.level_buttons[4].has_focus() and ls.page == 0 and ls.level_buttons[4].visible,
 			_tag(tag + ": right from 5 flips to 6, left from 6 back to 5"))
-	if hard:
-		await _heat_panel(ls)
 	ls.free()
 
 
@@ -194,46 +180,6 @@ func _pager(prev: Button, next: Button, title: String, tag: String) -> void:
 	_check(a.end.x + UIKit.GAP_M <= 160.0 - title_w / 2.0 and b.position.x - UIKit.GAP_M >= 160.0 + title_w / 2.0
 		and a.position.y >= UIKit.title_top() - 2 and a.end.y <= UIKit.title_bottom(), _tag(tag + ": the arrows clear of the title (%d px wide)" % title_w))
 	_check(prev.disabled and not next.disabled, _tag(tag + ": page 1: < off, > on"))
-
-
-func _heat_panel(ls: Control) -> void:
-	var hp: Control = ls.heat_panel
-	hp.open(ls, ls.heat_button)
-	await _frames(2)
-	var rect: Rect2 = hp.rect
-	if UIKit.locale() == "en":
-		_check(rect == hp.RECT and hp.toggle_size == Vector2(hp.TOGGLE), _tag("HEAT panel: the English RECT / TOGGLE"))
-	_check(rect.position.x >= UIKit.EDGE and rect.end.x <= 320 - UIKit.EDGE and rect.position.y >= 2 and rect.end.y <= 178
-		and absf(rect.get_center().x - 160.0) <= 0.5, _tag("HEAT panel: inside the screen, centred (%s)" % rect))
-	_check(hp.title.position.y - rect.position.y == UIKit.PANEL_PAD and rect.end.y - _rect(hp.done_button).end.y == UIKit.PANEL_PAD,
-		_tag("HEAT panel: title PANEL_PAD under the top, DONE PANEL_PAD over the bottom"))
-	var done := _rect(hp.done_button)
-	_check(absf(done.get_center().x - rect.get_center().x) <= 0.5 and done.size.x == UIKit.button_w(hp.done_button.text, 50),
-		_tag("HEAT panel: DONE centred, fitting its word (%s)" % done))
-	var rects: Array[Rect2] = []
-	var names_ok := true
-	for id: String in hp.toggles:
-		var toggle: Button = hp.toggles[id]
-		var t := _rect(toggle)
-		rects.append(t)
-		var name_label: Label = toggle.get_node("Name")
-		var points: Label = toggle.get_node("Points")
-		var lines := name_label.get_line_count() if name_label.autowrap_mode != TextServer.AUTOWRAP_OFF else 1
-		var w := _text_w(name_label) if lines == 1 else name_label.size.x
-		names_ok = names_ok and lines <= 2 and name_label.position.x + w <= t.size.x - hp.NAME_PAD + 0.5
-		names_ok = names_ok and points.position.y >= name_label.position.y + name_label.get_combined_minimum_size().y \
-			and points.position.y + 9 <= t.size.y
-	_check(names_ok, _tag("HEAT panel: every name inside its toggle (two lines at most), the +N under it"))
-	var inside := true
-	for t in rects:
-		inside = inside and rect.grow(-UIKit.GAP_M).encloses(t)
-	_check(inside, _tag("HEAT panel: the toggles inside the panel"))
-	_no_overlaps(rects + [_rect(hp.about), done], "HEAT panel toggles, line and DONE")
-	var behind_hidden: bool = not ls.grid.visible and not ls.info.visible
-	_check(behind_hidden == not hp.english, _tag("HEAT panel: the screen behind hidden only for a resized panel"))
-	hp.close()
-	await _frames(1)
-	_check(ls.grid.visible and ls.info.visible and ls.heat_button.has_focus(), _tag("HEAT panel: closed, the screen back, focus on HEAT"))
 
 
 # ------------------------------------------------------------------ maps

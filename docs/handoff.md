@@ -60,9 +60,9 @@ LANGUAGE screen, per-script fallback fonts, Arabic right-to-left mirroring, web 
 One switch `Platform.is_demo()` (export feature `demo` or `--demo`), knobs and gates in `scripts/demo.gd`: levels 1-4 (web 1-3) + hard 1,
 upgrades capped per track (MORE SLIME 3, SPEED 2, BRIGHTNESS 1; web 2 / 1 / 1) at demo prices that add up to the demo's coins, the
 randomizer after the last demo level (a new random maze each attempt in the demo's themes, SLIME RIFLE only, level 1 at 5 tickets), the
-hat wheel (opens with the end screen, at most 2 hats), the demo's skins; later levels are plain locks; SHOP, HEAT and later skins stay
+hat wheel (opens with the end screen, at most 2 hats), the demo's skins; later levels are plain locks; SHOP and later skins stay
 visible with a FULL GAME lock. End screen (`scenes/demo_end.tscn`) after the last demo level's chalice (CONTINUE only the first time) and
-once after the third randomizer win (its own seen bit): teaser cards of later areas (no HEAT, nothing implying progress carries over), KEEP
+once after the third randomizer win (its own seen bit): teaser cards of later areas (nothing implying progress carries over), KEEP
 PLAYING; WISHLIST buttons (end screen, pause menu, hub sign) hidden while `Demo.WISHLIST_URL` is empty. Level data moved to
 `scripts/level_data/level_NN.gd` / `hard_NN.gd` (loaded on use; mazes byte-identical); `Demo.full_only_paths()` / `tools/demo_paths.gd`
 give the export cut list. **Step 2 (shipping, done):** four `... Demo` export presets generated from their full twins (`tools/demo_paths.gd -- --write-presets`, `custom_features="demo"`, exclude = twin + `Demo.export_cut()`: later levels' data, later themes' art + ambience, the victory screen, the catalogs while languages are off); `tools/build_demo.sh` / `build_demo.ps1` exports Windows + Web Demo to `build/demo/` and verifies them (PCK listing via `tools/pck_check.py`, smoke run of the exported pack via `tools/demo_smoke.gd`); `test_demo_export` fails while the presets are stale. Accepted leaks (code, coins.png, hats): demo-plan.md section 9. Saves carry `[meta] demo`; the full game reads them; the
@@ -71,8 +71,8 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 ## Modes
 
 - **Story:** 10 themed levels, coins at dead ends (165 in all), 1-3 tier time medals, wordless finale.
-- **Hard mode:** own bigger mazes, meter x `Levels.HARD_SLIME_MULT`, no upgrades; **HEAT** (hard level select): six modifiers,
-  bounties 3/5/7/10 tickets at heat 2/4/7/10 per level.
+- **Hard mode:** own bigger mazes, meter x `Levels.HARD_SLIME_MULT`, no upgrades. (HEAT, its six optional modifiers, was scrapped
+  on 2026-10-20: [heat-removed.md](heat-removed.md), tag `pre-heat-removal`.)
 - **Randomizer** (after the story): the gold ticket voucher is the goal (payout 5/4/3/2/1 by attempt), seed codes `N-L`.
 - **DESCENT:** chained randomizer-sized floors, boons, a ticket pot (2 paying runs per UTC day; milestones floors 5/10/15/20).
 - **Trail maps** (MAP TABLE): per-level map of every tile seen plus the fastest route (a trial: cost/unlock undecided).
@@ -82,9 +82,9 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 
 - **Coins** buy the core tree at the cauldron's COINS tab (refundable, tree 3): MORE SLIME 7 levels (1,4,7,9,12,20,27 = 80), SPEED 4
   (6,9,13,18 = 46), BRIGHTNESS 3 (9,12,18 = 39); coins in hand are derived (`coins_earned - coins_spent`); tree 2 saves are repriced on load.
-- **Tickets** (randomizer, Descent pots, HEAT bounties) buy hat wheel spins, the SHOP (TAILOR hats, rainbow, 5 trail styles, 3 map
+- **Tickets** (randomizer, Descent pots) buy hat wheel spins, the SHOP (TAILOR hats, rainbow, 5 trail styles, 3 map
   papers) and the three **abilities** (SLIME RIFLE / SPLAT / SLIMAKAZE, keys 1/2/3, one charge per attempt; they work ONLY in
-  randomizer mazes and Descent, never in story/hard/HEAT: `Abilities.allowed_in`).
+  randomizer mazes and Descent, never in story/hard: `Abilities.allowed_in`).
 - The ticket **workshop** (SECOND WIND, QUICK CHARGE, ...) is switched OFF (`Economy.WORKSHOP_ENABLED := false`); saved levels are
   kept, flipping the const restores it.
 - **DESCENT** is switched OFF too (D11, `Economy.DESCENT_ENABLED := false`, test hook `Economy.descent_force`; reason: too hard to
@@ -130,7 +130,7 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
 
 1. Real-device checks on Android and iPhone (web zip, checklist above); the native ports follow the port-time checklist.
 2. Tuning from playtests (all numbers are priors, see [playtime-estimate.md](playtime-estimate.md)): story budgets, hard allowances,
-   randomizer/Descent/HEAT ticket payouts, hat wheel and cosmetic prices, whether the randomizer should still pay 5 tickets first try.
+   randomizer/Descent ticket payouts, hat wheel and cosmetic prices, whether the randomizer should still pay 5 tickets first try.
 3. Real hats from the owner (the wheel, SHOP and wardrobe work with any `Hats.LIST`).
 4. Trail maps: decide cost/unlock ([advisor/maps.md](advisor/maps.md)).
 5. Optional: merge `v2` into `main`; update the itch tagline when prepping a release.

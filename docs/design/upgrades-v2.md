@@ -521,7 +521,10 @@ same offers). Picking is a full-screen panel over the cleared floor (keyboard / 
 
 ---
 
-## C3. Hard-mode Heat modifiers (owner direction 5)
+## C3. Hard-mode Heat modifiers (owner direction 5) - REMOVED 2026-10-20
+
+**Scrapped on 2026-10-20** (owner): batch 4 is out of the game; this spec and the batch 4 notes above are kept for the
+record. Restore: [../heat-removed.md](../heat-removed.md) (tag `pre-heat-removal`).
 
 ### C3.1 Modifiers
 

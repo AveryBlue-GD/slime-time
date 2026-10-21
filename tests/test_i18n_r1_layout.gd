@@ -34,7 +34,9 @@ const SMALL_ICON_OK: Array[String] = ["pseudo"]
 ## its room (pods above, the banner's marks or the choice row below), checked in the captures instead:
 ## vi / hi L3 end 3 rows over the idle body's last row and hide the drawn celebrate pose whole; ar's
 ## and hi randomizer wins show the slime's top over the panel (their two-line pods push it to row 74-75).
-const SLIME_ROOM_OK: Array[String] = ["vi L3", "hi L3", "ar random", "hi random"]
+## "en dry" / "id dry": the one-line DRIED UP panel (since HEAT's two-line OUT OF TIME! went, 2026-10-20) overlaps the
+## slime's top rows here only because the test's slime never left the spawn cell; same placement as before HEAT.
+const SLIME_ROOM_OK: Array[String] = ["vi L3", "hi L3", "ar random", "hi random", "en dry", "id dry"]
 
 var progress: Node
 var language: Node
@@ -69,7 +71,6 @@ func _initialize() -> void:
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	progress.hard_mode = false
-	progress.heat_mods = 0
 	var names := {}
 	for key: String in _seen:
 		names[key.get_slice("|", 1)] = true
@@ -123,7 +124,7 @@ func _seed_cutoff() -> void:
 
 func _intro_texts() -> void:
 	_ok(Hud.side_clearance() == (Hud.TEXT_CLEARANCE if _code == "en" else Hud.TEXT_SIDE_CLEARANCE), "HUD side clearance: English 2, a translation 12")
-	for c: Dictionary in [{level = 1}, {level = 10}, {level = 8, assist = true}, {level = 7, hard = true, heat = 63}]:
+	for c: Dictionary in [{level = 1}, {level = 10}, {level = 8, assist = true}, {level = 7, hard = true}]:
 		var game := await _start(c)
 		if c.get("assist", false):
 			game.hud.set_assist(true)
@@ -162,7 +163,6 @@ func _intro_texts() -> void:
 			_ok(story + rows.y + 1 + Hud.TEXT_CLEARANCE <= rect.position.y + 1, "th L10: the story line above the slime (as before F2)",
 				"story %d ink to %d, slime from %d" % [story, story + rows.y, rect.position.y + 1])
 		game.free()
-		progress.heat_mods = 0
 		progress.hard_mode = false
 
 
@@ -172,7 +172,7 @@ func _results() -> void:
 	for c: Dictionary in [{level = 3, record = true}, {level = 10}, {level = 4, dry = true}, {random = true}]:
 		var game := await _start(c)
 		if c.get("dry", false):
-			game._dry_up(true)
+			game._dry_up()
 			game.hud.show_rewards({offer = true})
 			game._offer_retry()
 		else:
@@ -303,7 +303,6 @@ func _restart_prompt() -> void:
 func _start(c: Dictionary) -> Node:
 	seed(20261017)
 	progress.hard_mode = c.get("hard", false)
-	progress.heat_mods = c.get("heat", 0)
 	if c.get("random", false):
 		progress.start_random()
 		return await _spawn_game({})

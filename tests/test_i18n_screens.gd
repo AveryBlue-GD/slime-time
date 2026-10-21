@@ -2,10 +2,10 @@ extends "res://tests/suite_base.gd"
 
 ## Every screen in every language (docs/i18n/plan.md section 9.3, chunk F). For English, the 17
 ## translations and the pseudo locale, with the gate on, builds every screen / overlay / HUD state the
-## test_ui_layout.gd harness reaches (title, level select normal / hard + HEAT panel, map table + map
+## test_ui_layout.gd harness reaches (title, level select normal / hard, map table + map
 ## view, upgrades both pages, wardrobe pages, settings + save code + reset confirm, key controls,
 ## LANGUAGE, victory, the story intro cards, the hub + each station's prompt + quit / portal / resume /
-## coin board / hat wheel + shop + the one-time notice, the HUD on story (+ every coin found) / hard + HEAT /
+## coin board / hat wheel + shop + the one-time notice, the HUD on story (+ every coin found) / hard /
 ## assisted / randomizer levels and the Descent pot pod (wide gain / paid-run values), the
 ## win / dry-up / randomizer results with their rewards and choice rows, pause on story / random /
 ## Descent, the restart prompt, the Descent boon card and summary, and the tutorial's screens with its gate on:
@@ -136,11 +136,6 @@ func _all_states() -> void:
 		progress.hard_mode = hard
 		var ls := await _open("res://scenes/level_select.tscn")
 		await _scan("level select " + ("hard" if hard else "normal"), ls)
-		if hard:
-			ls.heat_panel.open(ls, ls.heat_button)
-			await _frames(2)
-			await _scan("level select HEAT panel", ls)
-			ls.heat_panel.close()
 		ls.free()
 	progress.hard_mode = false
 
@@ -366,7 +361,7 @@ func _hud() -> void:
 	var cases: Array[Dictionary] = [
 		{level = 1, tag = "L1"},
 		{level = 10, tag = "L10"},
-		{level = 7, hard = true, heat = 63, tag = "L7 hard HEAT 63"},
+		{level = 7, hard = true, tag = "L7 hard"},
 		{level = 8, assist = true, tag = "L8 assisted"},
 		{random = true, tag = "randomizer"},
 	]
@@ -381,7 +376,6 @@ func _hud() -> void:
 			await _frames(2)
 			await _scan("hud L1 all found", game)
 		game.free()
-		progress.heat_mods = 0
 		progress.hard_mode = false
 	# Descent: the pot pod with a floor's gain and the paid-run line (wide sample values).
 	seed(20261017)
@@ -413,7 +407,7 @@ func _results() -> void:
 	game.free()
 	# Dried up three times on a level: the assist offer.
 	game = await _start({level = 4})
-	game._dry_up(true)
+	game._dry_up()
 	game.hud.show_rewards({offer = true})
 	game._offer_retry()
 	await _frames(3)
@@ -466,7 +460,6 @@ func _descent() -> void:
 func _start(c: Dictionary) -> Node:
 	seed(20261017)  # the same random maze (and SEED text) in every locale and every run: a stable report
 	progress.hard_mode = c.get("hard", false)
-	progress.heat_mods = c.get("heat", 0)
 	if c.get("random", false):
 		progress.start_random()
 		return await _spawn_game({})

@@ -2,10 +2,6 @@ extends "res://tests/suite_base.gd"
 
 ## Fix pass R2 (docs/i18n/review/fixes-R2.md), checked in every locale (Arabic included) from the built
 ## controls, their texts' widths and the Language ink metrics:
-## - HEAT panel: each toggle's icon drawn (its texture at its scale) inside its toggle, ICON_X - 1 or more
-##   from both sides, mirrored too (Arabic: the 2x icons were mirrored at their 1x width, 9 px too far
-##   right, over the toggle's frame); a one-line name keeps NAME_ROOM_PAD more than BUTTON_TEXT_PAD from
-##   the edge wherever two lines fit (es NIEBLA VORAZ: 2 clear columns);
 ## - Devanagari buttons: 22 px, margins 3 / 2 (the lowest marks 1 clear row over the bottom border), the
 ##   LANGUAGE screen's row metric unchanged (21: the untrimmed native name); Arabic 22 px, 2 / 1 (the
 ##   lowest dots 1 clear row over the border; 21, 2 / 0 before), its LANGUAGE row metric 21 too;
@@ -19,7 +15,7 @@ extends "res://tests/suite_base.gd"
 ## - wardrobe (ar 22 px buttons): the 16 px title kept (the flush plan: the stage's frame on the bottom row
 ##   buttons' bottom border, row 176, not 175; the other locales keep 175), the rule line's deepest ink 1+
 ##   clear row over it.
-## English pinned: the HEAT icons' drawn rects, MAP_AREA, the settings columns and slider (66 px).
+## English pinned: MAP_AREA, the settings columns and slider (66 px).
 ## Throwaway save; the real save is never read or written.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 200000 -s res://tests/test_i18n_r2_layout.gd
 ## English-only mode (tests/i18n_mode.gd): a check made while a non-English locale is set is reported, not failed.
@@ -51,7 +47,6 @@ func _initialize() -> void:
 		_code = code
 		language.set_locale(code)
 		_buttons()
-		await _heat_panel()
 		await _maps()
 		await _settings()
 		await _wardrobe()
@@ -112,47 +107,6 @@ func _wardrobe() -> void:
 		_check(stage_end == want, _tag("wardrobe: the stage's frame ends on row %d (flush %s: the buttons' %d)" % [stage_end - 1, plan.get("flush", false), UIKit.bottom_row_y() + UIKit.button_h() - 1]))
 		_check(int(plan.rule_end) + 1 <= int(plan.stage_top), _tag("wardrobe: rule ink ends %d, 1+ clear row over the stage (%d)" % [plan.rule_end - 1, plan.stage_top]))
 	skins.queue_free()
-	await _frames(1)
-
-
-# ------------------------------------------------------------------ HEAT panel
-
-func _heat_panel() -> void:
-	progress.hard_mode = true
-	var ls: Node = await _open("res://scenes/level_select.tscn")
-	var hp: Control = ls.heat_panel
-	hp.open(ls, ls.heat_button)
-	await _frames(2)
-	UIKit.mirror_now(hp)
-	var icons_ok := true
-	var bad := ""
-	for id: String in hp.toggles:
-		var toggle: Button = hp.toggles[id]
-		var icon: TextureRect = toggle.get_node("Icon")
-		var drawn := Rect2(icon.global_position, Vector2(icon.texture.get_size()) * icon.scale)
-		var box := toggle.get_global_rect().grow(-(hp.ICON_X - 1))
-		if not box.encloses(drawn) or not box.encloses(icon.get_global_rect()):
-			icons_ok = false
-			bad = "%s icon %s in %s (box %s)" % [id, drawn, toggle.get_global_rect(), icon.size]
-		if _code == "en" and id == "dim" and drawn != Rect2(toggle.get_global_rect().position + Vector2(5, 8), Vector2(18, 18)):
-			icons_ok = false
-			bad = "English DIM icon moved: %s" % drawn
-	_check(icons_ok, _tag("HEAT: every icon drawn inside its toggle%s (%s)" % [" (mirrored)" if UIKit.rtl() else "", "ok" if bad == "" else bad]))
-	if not hp.english and hp._geo.name_font == null and hp._geo.one_x.is_empty():
-		var room: float = hp.toggle_size.x - hp._geo.name_x - UIKit.BUTTON_TEXT_PAD
-		var two_fit: bool = hp._panel_h(UIKit.text_block_h(2), UIKit.tall_script()) <= UIKit.SCREEN.y - 2 * UIKit.EDGE
-		var names_ok := true
-		for id: String in hp.toggles:
-			var name_label: Label = hp.toggles[id].get_node("Name")
-			var lines := name_label.get_line_count() if name_label.autowrap_mode != TextServer.AUTOWRAP_OFF else 1
-			var one_word := not name_label.text.contains(" ")
-			if lines == 1 and two_fit and not one_word and UIKit.text_w(name_label.text) > room - hp.NAME_ROOM_PAD:
-				names_ok = false
-		_check(names_ok, _tag("HEAT: a one-line name keeps BUTTON_TEXT_PAD + NAME_ROOM_PAD where two lines fit"))
-	hp.close()
-	await _frames(1)
-	ls.free()
-	progress.hard_mode = false
 	await _frames(1)
 
 

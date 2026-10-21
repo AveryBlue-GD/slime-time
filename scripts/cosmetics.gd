@@ -10,7 +10,7 @@ extends RefCounted
 ##     INK     the skin's deep shade, alpha 150        GLOW    goo alpha 170 and the trail halo x2
 ##     GOLD    chalice gold goo (whatever the skin)    CANDY   skin / white stripes every 12 px traveled
 ##     STARRY  skin goo with 1 px white specks (trail.gdshader `stars`, by pixel hash: deterministic)
-##   earned, never sold: ABYSS (Descent floor 10), EMBER (HEAT 7+ on every hard level)
+##   earned, never sold: ABYSS (Descent floor 10)
 ##   papers (MapView.palette `paper`, the MAP TABLE's map view; the PAPER button cycles owned ones)
 ##     BLUEPRINT  blue paper, white ink   NIGHT  dark paper, skin-colored ink   GOLD LEAF  cream paper, gold ink + coins
 ## The rainbow skin keeps its rainbow trail unless a trail style is worn.
@@ -33,8 +33,6 @@ const LIST := [
 	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
-	# Earned on HEAT (batch 4): every hard level cleared at heat Economy.HEAT_EMBER+.
-	{id = "ember", kind = TRAIL, name = "EMBER TRAIL", about = "GLOWING EMBERS, ANY SKIN", earned = "HEAT 7 ON EVERY HARD LEVEL"},  # i18n: ignore (English source; shown via display_name)
 ]
 
 ## Trail looks: the goo alpha (0-255) of a painted cell, and the trail halo strength (game.gd TRAIL_GLOW).
@@ -55,12 +53,6 @@ const ABYSS := Color8(52, 30, 92)
 const ABYSS_DEEP := Color8(22, 12, 42)
 const ABYSS_ALPHA := 190
 const ABYSS_GLOW := 0.45
-## EMBER (earned with HEAT 7+ on every hard level): glowing orange-red goo, a strong halo and
-## sparks (the shader's specks).
-const EMBER := Color8(255, 120, 40)
-const EMBER_DEEP := Color8(170, 40, 24)
-const EMBER_ALPHA := 180
-const EMBER_GLOW := 0.7
 
 
 static func get_item(id: String) -> Dictionary:
@@ -93,8 +85,6 @@ static func earned_how(id: String) -> String:
 	match id:
 		"abyss":
 			return Loc.t("trail.abyss.unlock", "REACH DESCENT FLOOR 10")
-		"ember":
-			return Loc.t("trail.ember.unlock", "HEAT 7 ON EVERY HARD LEVEL")
 	return get_item(id).get("earned", "")
 
 
@@ -132,8 +122,6 @@ static func display_name(id: String) -> String:
 			return Loc.t("paper.goldleaf", "GOLD LEAF PAPER")
 		"abyss":
 			return Loc.t("trail.abyss.name", "ABYSS TRAIL")
-		"ember":
-			return Loc.t("trail.ember.name", "EMBER TRAIL")
 	return get_item(id).get("name", "")
 
 
@@ -159,8 +147,6 @@ static func about(id: String) -> String:
 			return Loc.t("paper.goldleaf.desc", "CREAM PAPER, GOLD INK")
 		"abyss":
 			return Loc.t("trail.abyss.desc", "DARK GOO, FAINT STARS")
-		"ember":
-			return Loc.t("trail.ember.desc", "GLOWING EMBERS, ANY SKIN")
 	return ""
 
 
@@ -210,11 +196,6 @@ static func trail_look(style: String, skin: Color, rainbow := false) -> Dictiona
 			look.deep = Color(ABYSS_DEEP, ABYSS_ALPHA / 255.0)
 			look.stars = true
 			look.glow = ABYSS_GLOW
-		"ember":  # whatever the skin: hot orange goo, cooling red, with sparks
-			look.light = Color(EMBER, EMBER_ALPHA / 255.0)
-			look.deep = Color(EMBER_DEEP, EMBER_ALPHA / 255.0)
-			look.stars = true
-			look.glow = EMBER_GLOW
 		_:
 			look.rainbow = rainbow  # the default: the rainbow skin lays rainbow bands
 	return look

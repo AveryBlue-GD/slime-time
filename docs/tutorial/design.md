@@ -102,7 +102,7 @@ splat leaves droplets that stick), so starting low fits.
 - Option for the owner (Q3): start full (no staged dry-up). The dry-up then shows up only if it happens on its own.
 
 **Exclusions in the maze** (like Descent's `level < 1` rules): no survey / MAP TABLE entry, no records, medals,
-par or timer pod, no `dry_ups` count or ASSIST, no first-run skin (the default opaque Lime), no hard mode / HEAT /
+par or timer pod, no `dry_ups` count or ASSIST, no first-run skin (the default opaque Lime), no hard mode /
 abilities, no tickets. The level pod shows the maze's name, and the area banner shows its name and a one-line
 joke (e.g. "THE BOTTOM. DAMP. YOU WILL LIVE."). The HUD's coin pod shows the coin while the run lasts. Whether
 it's **banked** is Q2: the recommendation is a practice coin that isn't saved, so the 165-coin total, the coin tree

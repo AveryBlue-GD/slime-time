@@ -6,7 +6,7 @@ extends "res://tests/suite_base.gd"
 ## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
 ## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
-## their bindings), touch buttons, the HUD strip, OFF in every story level (normal, hard, HEAT) and hard-mode randomizer / with the flag off, ON in
+## their bindings), touch buttons, the HUD strip, OFF in every story level (normal, hard) and hard-mode randomizer / with the flag off, ON in
 ## randomizer mazes and Descent, par and payout untouched, the TICKETS tab purchase flow (exact tickets,
 ## confirm, max level, locked), saves and hostile values. Never touches the real save.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_abilities.gd
@@ -771,7 +771,7 @@ func _charges_left(game: Node2D) -> Dictionary:
 
 func _modes() -> void:
 	_state({rifle = 3, splat = 3, kaze = 3})
-	# Story levels (normal, hard, HEAT): abilities are OFF; keys do nothing, cost nothing, no strip/buttons.
+	# Story levels (normal, hard): abilities are OFF; keys do nothing, cost nothing, no strip/buttons.
 	var game := await _story(1)
 	var par: float = game.par_time
 	await _inert(game, "story normal")
@@ -781,12 +781,6 @@ func _modes() -> void:
 	game = await _story(1)
 	await _inert(game, "story hard")
 	await _stop(game)
-	progress.heat_mods = 1  # DIM
-	game = await _story(1)
-	_check(game.heat > 0, "a HEAT run is on")
-	await _inert(game, "HEAT")
-	await _stop(game)
-	progress.heat_mods = 0
 	progress.hard_mode = true
 	game = await _spawn(0, 4242)
 	_check(game.abilities == null, "hard-mode randomizer: off (hard mode plays without upgrades)")

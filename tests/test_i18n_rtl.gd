@@ -10,7 +10,7 @@ extends "res://tests/suite_base.gd"
 ##   from its outer (right) end, the language grid mirrored, the hat wheel's try-on slimes mirrored;
 ## - every visible control of every screen inside 320x180, and each mirrored control exactly where the
 ##   English one is mirrored (x' = 320 - x - w) for the screens built from the same layout;
-## - after a dynamic re-layout (a page / tab switch, the HEAT panel, the pause menu) still mirrored;
+## - after a dynamic re-layout (a page / tab switch, the hard level select, the pause menu) still mirrored;
 ## - keys follow the visual order (explicit left / right neighbours swapped; the level select's left key
 ##   on a page's visual left end turns to the next page);
 ## - NOT mirrored: the game world (slime, maze) and the hub room (stations, slime) stay where English has them;
@@ -211,14 +211,11 @@ func _dynamic() -> void:
 	await _frames(1)
 	_check(skins.page == pages[(pages.find(start_page) - 1 + pages.size()) % pages.size()], "ar: skins RB moves to the tab on the visual left")
 	skins.free()
-	# The HEAT panel opened over the hard level select (positions set at open time).
+	# The hard level select (its info line set after the mode is read).
 	progress.hard_mode = true
 	var ls: Control = await _open("res://scenes/level_select.tscn")
-	ls.heat_panel.open(ls, ls.heat_button)
 	await _frames(2)
-	_check(_offscreen(ls.heat_panel).is_empty(), "ar: HEAT panel inside the screen %s" % _offscreen(ls.heat_panel))
-	_check(ls.heat_button.get_global_rect().position.x == UIKit.EDGE, "ar: the HEAT button sits bottom left (BACK's mirror)")
-	ls.heat_panel.close()
+	_check(_offscreen(ls).is_empty(), "ar: hard level select inside the screen %s" % _offscreen(ls))
 	ls.free()
 	progress.hard_mode = false
 

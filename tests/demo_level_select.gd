@@ -4,8 +4,6 @@ extends Node2D
 ## two with record times), 4 cleared without a time, 5 open, 6-10 locked; focus on tile 5.
 ## Pass `-- hard`, `-- only=lock|number` (measuring) for hard mode, `-- focus=N` to focus another tile. Nothing is saved.
 ## `-- all-times`: all 10 tiles open, each with a record time.
-## `-- heat` (with hard): HEAT flames on tiles 1-4 (best heat 10 / 7 / 4 / 2) and DIM + FOG BITES + RACE
-## picked; `-- heat-panel` also opens the HEAT panel (focus on its FOG BITES toggle).
 ## ./tools/screenshot.sh --frames 40 --scene res://tests/demo_level_select.tscn [hard]
 
 
@@ -23,9 +21,6 @@ func _ready() -> void:
 	if hard:
 		Progress.hard_cleared.assign([1, 2, 3, 4])
 	var args := OS.get_cmdline_user_args()
-	if "heat" in args or "heat-panel" in args:
-		Progress.heat_best = {1: 10, 2: 7, 3: 4, 4: 2}
-		Progress.heat_mods = Heat.bit("dim") | Heat.bit("fog") | Heat.bit("race")
 	Progress.best_times[base + 1] = 12.3
 	Progress.best_times[base + 2] = 65.4
 	if "all-times" in args:  # every tile open with a record time (the number vs time gap on 1-10)
@@ -50,7 +45,3 @@ func _ready() -> void:
 				for child in tile.get_children():
 					if child.name == drop:
 						child.free()
-	if "heat-panel" in args:
-		await get_tree().process_frame
-		screen.heat_panel.open(screen, screen.heat_button)
-		screen.heat_panel.toggles["fog"].grab_focus()

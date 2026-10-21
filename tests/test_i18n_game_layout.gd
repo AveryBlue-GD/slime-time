@@ -76,7 +76,6 @@ func _initialize() -> void:
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	progress.hard_mode = false
-	progress.heat_mods = 0
 	_result()
 	quit(1 if failures else 0)
 
@@ -278,7 +277,7 @@ func _pause() -> void:
 
 
 func _hud() -> void:
-	for c: Dictionary in [{level = 1}, {level = 10}, {level = 7, hard = true, heat = 63}, {level = 8}]:
+	for c: Dictionary in [{level = 1}, {level = 10}, {level = 7, hard = true}, {level = 8}]:
 		var game := await _start(c)
 		await _frames(3)
 		var hud = game.hud
@@ -290,7 +289,6 @@ func _hud() -> void:
 			for pod: Rect2 in hud.pod_rects():
 				_ok(not ink.intersects(pod), "hud area texts clear of the pods", "%s %s %s" % [label.text.left(20), ink, pod])
 		game.free()
-		progress.heat_mods = 0
 		progress.hard_mode = false
 	for name in ["hud area texts on screen", "hud area texts clear of the pods"]:
 		_report(name)
@@ -300,7 +298,7 @@ func _results() -> void:
 	for c: Dictionary in [{level = 3, record = true}, {level = 10}, {level = 4, dry = true}, {random = true}]:
 		var game := await _start(c)
 		if c.get("dry", false):
-			game._dry_up(true)
+			game._dry_up()
 			game.hud.show_rewards({offer = true})
 			game._offer_retry()
 		else:
@@ -359,7 +357,6 @@ func _touch_jump() -> void:
 func _start(c: Dictionary) -> Node:
 	seed(20261017)
 	progress.hard_mode = c.get("hard", false)
-	progress.heat_mods = c.get("heat", 0)
 	if c.get("random", false):
 		progress.start_random()
 		return await _spawn_game({})

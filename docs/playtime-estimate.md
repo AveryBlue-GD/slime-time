@@ -212,6 +212,9 @@ maxes 7 / 4 / 3 and golds all 20 levels. Full table: [design/upgrades-v2.md](des
 
 ### Note: workshop, Descent and Heat (2026-10-15, *estimates, not measured*)
 
+(2026-10-20: Heat has been removed from the game and the workshop and Descent are switched off; the notes below are
+kept as priors in case they come back.)
+
 The headline table covers the story only and is unchanged by these; they add optional play after it. Rough priors:
 - **Workshop:** nothing changes on first clears (tickets only come after the story). On replays it speeds coin hunts and gold runs a little (SECOND WIND, QUICK CHARGE), so goal (d) may shrink by perhaps 5-10%. Buying all 15 levels takes ~423 tickets, i.e. roughly 90-140 randomizer wins (*est.*, 3-4 tickets a win after the first attempt, 5 wins a day cap), which spreads over days, not hours.
 - **Descent:** a run is ~10-40 min depending on depth (a floor takes about as long as a randomizer maze, 1-3 min); with 2 paying runs a day and 1-4 tickets per floor it adds a daily 20-60 min loop for long-term players (*est.*).
