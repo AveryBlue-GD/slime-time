@@ -12,7 +12,7 @@ TestFlight (send it to the phone without a cable, 90-day builds) needs the paid 
    A team called "Your Name (Personal Team)" appears.
 3. **Phone**: plug the iPhone into the Mac with its cable, unlock it, tap **Trust** and enter the phone's passcode.
 4. **Developer Mode** (iOS 16+): on the phone, Settings > Privacy & Security > Developer Mode (at the very bottom) > on.
-   The phone restarts; after it, tap Turn On. (If the switch isn't there yet, it shows up after step 6 tries once.)
+   The phone restarts; after it, tap Turn On. (If the switch isn't there yet, it shows up after step 5 tries once.)
 
 ## Each build (and every 7 days to renew)
 
