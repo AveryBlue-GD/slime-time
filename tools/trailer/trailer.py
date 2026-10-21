@@ -25,7 +25,7 @@ the beat shows it 6x, edge to edge (no crop, no follow).
 Usage (from the project root; the wrappers tools/trailer/make_trailer.ps1 / .sh add the quiet-window
 arguments on Windows):
   python tools/trailer/trailer.py [--drafts A,B] [--force] [--only-takes] [--godot EXE] [--ffmpeg EXE]
-      [--quiet --pos-take X,Y] [--music NAME|FILE|none] [--music-only]
+      [--quiet --pos-take X,Y] [--music NAME|FILE|none] [--music-only] [--lang zh]
 Godot: --godot, else $GODOT, else the winget console binary / /Applications/Godot.app / `godot` on PATH.
 ffmpeg: --ffmpeg, else $FFMPEG, else `ffmpeg` on PATH, else the winget Gyan.FFmpeg install.
 Nothing here touches the player's save: every run is a res://tools/ scene with debug flags (a
@@ -516,6 +516,34 @@ def write_readme(run, cfg, lengths):
         f.write("\n".join(lines))
 
 
+def translate_draft(draft, lang):
+    """--lang: the draft's captions and end-card words from tools/trailer/captions_<lang>.json (English lines
+    joined with " / " -> the translation, " / " = a line break), and its id becomes <ID>_<lang>, so the cut is
+    short_<ID>_<lang>.mp4 beside the English one (the takes are shared). A line without a translation stops the run."""
+    path = os.path.join(ROOT, "tools", "trailer", "captions_%s.json" % lang)
+    if not os.path.exists(path):
+        sys.exit("--lang %s: %s is missing" % (lang, os.path.relpath(path, ROOT)))
+    with open(path, encoding="utf-8") as f:
+        table = json.load(f)["captions"]
+
+    def tr(lines):
+        if not lines:
+            return lines
+        key = " / ".join(lines)
+        if key not in table:
+            sys.exit("--lang %s: no translation for %r (draft %s) in %s" % (lang, key, draft["id"], os.path.relpath(path, ROOT)))
+        return table[key].split(" / ")
+
+    for beat in draft["beats"]:
+        for k in ("caption", "sub"):
+            if k in beat:
+                beat[k] = tr(beat[k])
+    for k in ("tagline", "cta", "store"):
+        if k in draft["end"]:
+            draft["end"][k] = tr(draft["end"][k])
+    draft["id"] = "%s_%s" % (draft["id"], lang)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--drafts", default="", help="comma list of draft ids (default: all)")
@@ -527,6 +555,8 @@ def main():
     p.add_argument("--pos-take", help="X,Y window position for Godot's (320x180) windows")
     p.add_argument("--music", help="music for every selected draft: a make_music.py track (trailer_1, trailer_2), "
                                    "a WAV/OGG/MP3 path, or none (default: each draft's \"music\" in trailer.json)")
+    p.add_argument("--lang", default="", help="caption language: zh = the Chinese captions of tools/trailer/captions_zh.json "
+                   "(goo lettering from tools/trailer/goo_cjk/), written as short_<ID>_zh*.mp4")
     p.add_argument("--music-only", action="store_true",
                    help="only (re)make short_<ID>_music.mp4 from the existing short_<ID>.mp4 (no Godot, no re-cut)")
     args = p.parse_args()
@@ -537,6 +567,9 @@ def main():
     drafts = [d for d in cfg["drafts"] if not wanted or d["id"] in wanted]
     if not drafts:
         sys.exit("no such draft: %s" % args.drafts)
+    if args.lang:
+        for d in drafts:
+            translate_draft(d, args.lang)
     for d in drafts:
         m = music_of(run, d)
         d["_music"] = m["track"] if m else ""

@@ -3,8 +3,9 @@ shades (recoloured to the caption's colour the way the game's palette-swap shade
 its white gloss dashes, dark outline and drop shadow. Marketing only (tools/trailer/trailer.py).
 
 The letters come from tools/make_title.py's render_text (the logo's own code, so the shapes, strokes,
-drips and shading are the logo's; the logo PNGs stay byte-identical): its LETTERS where it has them,
-else the game font's 5x7 glyphs (tools/make_font.py GLYPHS: A-Z, 0-9 and the punctuation). Drips and
+drips and shading are the logo's; the logo PNGs stay pixel-identical): its LETTERS where it has them,
+else the game font's 5x7 glyphs (tools/make_font.py GLYPHS: A-Z, 0-9 and the punctuation), and Simplified
+Chinese from tools/trailer/goo_cjk/goo_cjk.json (12x12, drawn as tall as the letters). Drips and
 blob lumps are seeded from the text, so a caption renders the same every time.
 
 Everything is drawn on a 540x960 canvas (SCALE = 2: one logo pixel = 2x2 px of the 1080x1920 frame),
@@ -13,6 +14,7 @@ which trailer.py scales up with nearest neighbour.
   card_text_png(path, ...)  the end card's tagline, CTA and store line (centred, from a given y)
 """
 import colorsys
+import json
 import os
 import re
 import struct
@@ -38,6 +40,14 @@ LINE_H = make_title.MARGIN + 7 * make_title.CELL + 24  # one rendered line's hei
 GLYPHS = dict(make_font.GLYPHS)
 GLYPHS.update(make_title.LETTERS)  # the logo's own letter shapes win (its S and G)
 GLYPHS["0"] = GLYPHS["O"]  # (the font's slashed zero reads as an O-slash this big)
+# Simplified Chinese (12x12 cells, drawn as tall as the 5x7 letters: make_title.glyph_cell), for the
+# Douyin / Bilibili cuts (trailer.py --lang zh). Latin, digits and ASCII punctuation keep the goo letters.
+CJK_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goo_cjk", "goo_cjk.json")
+with open(CJK_JSON, encoding="utf-8") as _f:
+    CJK = {ch: rows for ch, rows in json.load(_f)["glyphs"].items() if ch not in GLYPHS}
+GLYPHS.update(CJK)
+NO_LINE_START = set("，。！？：；、…）」】—")  # (Chinese punctuation never starts a line)
+NO_LINE_END = set("（「【")
 
 WHITE = (244, 244, 244)       # UIKit.TEXT
 GOLD = (255, 205, 117)        # UIKit.GOLD
@@ -50,7 +60,7 @@ SHADOW = (8, 8, 14, 255)      # the logo's "K" drop shadow
 def files_sha_input():
     """The files whose content decides how text renders (for trailer.py's caches)."""
     return [os.path.abspath(__file__), os.path.join(TOOLS, "make_title.py"), os.path.join(TOOLS, "make_font.py"),
-            os.path.join(ROOT, "scripts", "skins.gd")]
+            os.path.join(ROOT, "scripts", "skins.gd"), CJK_JSON]
 
 
 # ------------------------------------------------------------------ colours
@@ -120,21 +130,40 @@ def width(text):
     return make_title.text_width(text, GLYPHS)
 
 
+def _units(text):
+    """The breakable pieces of a line: (piece, joins_previous). Words split at spaces; Chinese can also
+    break between any two characters (a run of Latin / digits stays whole, punctuation stays with its
+    neighbour), and those pieces join without a space."""
+    out = []
+    for word in text.split():
+        pieces = []
+        for ch in word:
+            if pieces and (ch in NO_LINE_START or pieces[-1][-1] in NO_LINE_END
+                           or (ch not in CJK and pieces[-1][-1] not in CJK)):
+                pieces[-1] += ch
+            else:
+                pieces.append(ch)
+        out += [(p, i > 0) for i, p in enumerate(pieces)]
+    return out
+
+
 def wrap(text, max_w):
     """Greedy word wrap of one caption line into lines at most `max_w` px wide (a single word wider
-    than that stays on its own line); a lone short word left on the last line takes the word before it
-    along ("BEFORE YOU / DRY UP", not "BEFORE YOU DRY / UP")."""
+    than that stays on its own line; Chinese wraps between characters); a lone short word left on the
+    last line takes the word before it along ("BEFORE YOU / DRY UP", not "BEFORE YOU DRY / UP")."""
     check(text)  # (a clear message for a missing glyph, before width() would raise a bare KeyError)
     out, cur = [], ""
-    for word in text.split():
-        trial = (cur + " " + word) if cur else word
+    for piece, joins in _units(text):
+        trial = (cur + ("" if joins else " ") + piece) if cur else piece
         if cur and width(trial) > max_w:
             out.append(cur)
-            cur = word
+            cur = piece
         else:
             cur = trial
     if cur:
         out.append(cur)
+    if any(ch in CJK for ch in text):
+        return out  # (the lone-word rule below is for spaced words)
     if len(out) > 1 and " " not in out[-1] and " " in out[-2] and width(out[-1]) < 0.5 * max(width(l) for l in out):
         head, moved = out[-2].rsplit(" ", 1)
         if width(moved + " " + out[-1]) <= max_w:

@@ -53,22 +53,32 @@ def segment_distance(px, py, ax, ay, bx, by) -> float:
     return math.hypot(px - (ax + t * vx), py - (ay + t * vy))
 
 
+def glyph_cell(rows: list[str]) -> float:
+    """The cell size of a glyph: CELL for the 5x7 letters; a taller glyph (the trailer's 12x12 Chinese
+    goo glyphs, tools/trailer/goo_cjk/) is drawn smaller, so it stands as tall as 7 rows of CELL."""
+    return CELL if len(rows) <= 7 else 7 * CELL / len(rows)
+
+
 def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random,
                     drip_rng: random.Random) -> list[tuple]:
     """Capsules (ax, ay, bx, by, radius) that make up one gooey letter (rng) plus its drips (drip_rng)."""
     filled = {(x, y) for y, row in enumerate(rows) for x, c in enumerate(row) if c == "#"}
+    cell = glyph_cell(rows)
+    k = 1 if cell == CELL else cell / CELL  # (5x7 letters: exactly the logo's numbers)
     capsules = []
     for x, y in sorted(filled):
-        cx, cy = ox + x * CELL + CELL / 2, oy + y * CELL + CELL / 2
-        capsules.append((cx, cy, cx, cy, RADIUS + rng.uniform(-0.2, 0.6)))  # lumpy, bubbly blobs
+        cx, cy = ox + x * cell + cell / 2, oy + y * cell + cell / 2
+        lump = rng.uniform(-0.2, 0.6)
+        capsules.append((cx, cy, cx, cy, RADIUS + lump if k == 1 else (RADIUS + lump) * k))  # lumpy, bubbly blobs
         for dx, dy in ((1, 0), (0, 1), (1, 1), (-1, 1)):
             if (x + dx, y + dy) not in filled:
                 continue
             # Diagonals only where they're the only link (M's middle), not across L-corners.
             if dx and dy and ((x + dx, y) in filled or (x, y + dy) in filled):
                 continue
-            capsules.append((cx, cy, cx + dx * CELL, cy + dy * CELL, RADIUS - 0.2))
-    bottom = len(rows) - 1
+            capsules.append((cx, cy, cx + dx * cell, cy + dy * cell, RADIUS - 0.2 if k == 1 else (RADIUS - 0.2) * k))
+    # Long drips hang off the lowest row (a Chinese glyph's lowest ink row, its cell has empty rows below).
+    bottom = len(rows) - 1 if k == 1 else max((y for _, y in filled), default=0)
     for x, y in sorted(filled):
         if (x, y + 1) in filled:
             continue
@@ -76,10 +86,10 @@ def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random,
         # cross the gap and blur the letter shape.
         if drip_rng.random() > (0.7 if y == bottom else 0.3):
             continue
-        cx = ox + x * CELL + CELL / 2 + drip_rng.uniform(-0.8, 0.8)
-        cy = oy + y * CELL + CELL / 2
-        end = cy + RADIUS + (drip_rng.choice([3, 4, 6, 8, 10, 13]) if y == bottom else drip_rng.choice([1, 2]))
-        width = drip_rng.uniform(1.4, 2.0)
+        cx = ox + x * cell + cell / 2 + drip_rng.uniform(-0.8, 0.8)
+        cy = oy + y * cell + cell / 2
+        end = cy + RADIUS * k + (drip_rng.choice([3, 4, 6, 8, 10, 13]) if y == bottom else drip_rng.choice([1, 2]))
+        width = drip_rng.uniform(1.4, 2.0) * k
         capsules.append((cx, cy, cx, end, width))
         capsules.append((cx, end, cx, end, width + 0.6))  # the drop at the end of the drip
     return capsules
@@ -88,7 +98,7 @@ def letter_capsules(rows: list[str], ox: float, oy: float, rng: random.Random,
 def text_width(text: str, glyphs: dict | None = None) -> int:
     """The width in px of render_text(text) (margins included)."""
     glyphs = glyphs or LETTERS
-    return MARGIN * 2 + sum(SPACE if ch == " " else len(glyphs[ch][0]) * CELL + LETTER_GAP for ch in text)
+    return MARGIN * 2 + int(round(sum(SPACE if ch == " " else len(glyphs[ch][0]) * glyph_cell(glyphs[ch]) + LETTER_GAP for ch in text)))
 
 
 def render(drip_seed: int) -> list[str]:
@@ -111,7 +121,7 @@ def render_text(text: str, drip_seed: int, body_seed: int = BODY_SEED, glyphs: d
             x += SPACE
             continue
         capsules += letter_capsules(glyphs[ch], x, MARGIN, rng, drip_rng)
-        x += len(glyphs[ch][0]) * CELL + LETTER_GAP
+        x += len(glyphs[ch][0]) * glyph_cell(glyphs[ch]) + LETTER_GAP
 
     inside = [[False] * width for _ in range(height)]
     for ax, ay, bx, by, r in capsules:  # each capsule only touches the pixels of its bounding box
