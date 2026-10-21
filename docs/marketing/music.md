@@ -31,7 +31,7 @@ progressions with a melodic hook.
 | file | length | tempo / meter | key, progression | mood |
 |---|---|---|---|---|
 | `hub_A.wav` "Cozy Goo" | 68.6 s loop | 84 BPM, 4/4, swung 8ths | D Dorian: Dm9 - G9 - Bbmaj7 - A7sus/A7 | warm and slow; a goo-voice hook, then a counter-melody over bubble arps |
-| `hub_B.wav` "Foggy Lullaby" | 73.0 s loop | 69 BPM, 3/4, light swing | C minor: Cm9 - Abmaj7 - Fm9 - G7sus/G7, Cm9 - Ebmaj7 - Abmaj7 - G7 | sparser and darker; a music-box goo melody, fog, a soft heartbeat kick, four near-empty bars |
+| `hub_B.wav` "Foggy Lullaby" | 73.0 s loop | 69 BPM, 3/4, light swing | C minor: Cm9 - Abmaj7 - Fm9 - G7sus/G7, Cm9 - Ebmaj7 - Abmaj7 - G7 | sparser and darker; a music-box goo melody, a soft heartbeat kick, four near-empty bars |
 | `hub_C.wav` "Bouncy Hub" | 76.8 s loop | 100 BPM, 4/4, swung 16ths | F major: Fmaj7 - Dm7 - Gm7 - C7sus/C7, Bbmaj7 - Am7 - Gm7 - C7 | more upbeat; boing bass, squelch snares, a hummable hook, a breakdown before the loop |
 | `trailer_1.wav` "Goo Rush" | 28.0 s | ~108 BPM (fitted) | D minor: build Dm9 - Bbmaj7 - Gm9 - A7, drop Dm - Bb - F - C | energetic: a "blup blup bloooop" hook with a splat, a bubbling build, a bouncy drop, a gap, the hit |
 | `trailer_2.wav` "Fog Pulse" | 28.0 s | ~89 BPM (fitted) | C minor: Cm9 - Abmaj7 - Ebmaj7 - G7 | moody: a lullaby hook over a heartbeat thud, a heartbeat build, a half-time drop, a deep boom |

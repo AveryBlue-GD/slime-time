@@ -612,10 +612,9 @@ def hub_B():
     play_melody(s, mel, 12, "pluck", gain=0.26, tau=0.75)
     play_melody(s, mel, 36, "lead", gain=0.2, cutoff=1100)
     play_melody(s, [(b, m - 12, d) for b, m, d in mel if b % 3 == 0], 36, "pluck", gain=0.1, tau=0.6, bus="pluck")
-    s.put("fog", fog(s.length, 31), at=0, gain=0.05, jitter=0)
-    meta = dict(title="Foggy Lullaby", mood="sparse, darker, hushed; a music-box goo melody in the fog",
+    meta = dict(title="Foggy Lullaby", mood="sparse, darker, hushed; a music-box goo melody",
                 key="C minor (Cm9 - Abmaj7 - Fm9 - G7sus/G7 | Cm9 - Ebmaj7 - Abmaj7 - G7)", bpm=69, meter="3/4, lightly swung",
-                form="4-bar intro, 8 bars music-box melody, 8 bars goo-voice melody, 4 dark bars (pad, bass, fog), 4 bars arpeggio back in")
+                form="4-bar intro, 8 bars music-box melody, 8 bars goo-voice melody, 4 dark bars (pad, bass), 4 bars arpeggio back in")
     return s, meta
 
 
@@ -739,7 +738,6 @@ def trailer(name: str, hit: float, ring: float):
         s.put("lead", lead(58, s.beats(2.0), 1100, 0.1, 1.5), 2, gain=0.22, jitter=0)
         pad_chord(s, C["Cm9"][1], 0, 4, gain=0.05, cutoff=600, attack=0.4)
         tail_root, tail_chord, tail_top = 36, (48, 55, 58, 62, 63), (60, 67)
-        s.put("fog", fog(s.length, 77), at=0, gain=0.05, jitter=0)
     # Build: pads opening up, arpeggios getting busier, the kick filling in, a riser and a snare roll.
     for k in range(build):
         bar = 1 + k
