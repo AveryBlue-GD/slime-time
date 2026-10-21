@@ -97,7 +97,7 @@ func _ready() -> void:
 	]
 	for button in buttons:
 		menu.add_child(button)
-	volume_row = UIKit.make_volume_slider(UIKit.volume_slider_width(root, _col_w))  # 6 + VOLUME + 6 + slider + 6 = the 100 px button column
+	volume_row = UIKit.make_volume_slider(UIKit.volume_slider_width(root, _col_w, ["sfx"]))  # 6 + SFX + 6 + slider + 6 = the 100 px button column (levels play no music: only the SFX slider here)
 	menu.add_child(volume_row)
 	menu.move_child(volume_row, 3)
 	seed_button = UIKit.make_button("", _edit_seed)
@@ -329,7 +329,7 @@ func _title_slot(hud: Node, own_marks := false, lift := 0) -> int:
 ## as English's (COLUMN_W - VOLUME_BOX_EXTRA - VOLUME), while two such columns still fit inside EDGE.
 func _column_w(root: Control) -> int:
 	var english := COLUMN_W - VOLUME_BOX_EXTRA - ceili(UIKit.font_for(UIKit.FONT).get_string_size("VOLUME", HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)  # i18n: ignore (English's label, measured for its slider length)
-	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W)))
+	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W, ["sfx"])))
 	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - COLUMN_GAP) / 2.0)
 	return clampi(VOLUME_BOX_EXTRA + label + english, COLUMN_W, widest)
 

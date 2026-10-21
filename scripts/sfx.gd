@@ -6,6 +6,8 @@ extends Node
 
 const SOUNDS: Array[String] = ["squish", "charge", "jump", "land", "splat", "chalice", "unlock", "dry", "click", "pause", "coin", "crumble", "jingle", "upgrade", "heartbeat", "lowwarn", "whoosh", "crack", "clank", "sunrise", "huh", "grumble", "goo_shot", "goo_lob", "goo_burst", "kaze", "coin_fizz"]
 const VOICES := 3
+## The audio bus (its SFX slider in SETTINGS; Progress.SFX_BUS, made by Progress.ensure_bus).
+const BUS := "SFX"  # i18n: ignore (an audio bus name)
 
 ## Sounds that vary a little each time (+/- this share of pitch, and +/- VARY_DB in volume), so
 ## quick repeats don't sound machine-gunned. Others (charge, chalice...) always play as asked.
@@ -19,12 +21,16 @@ var _unlocked := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.ensure_bus(BUS)
 	for sound_name in SOUNDS:
 		var stream: AudioStream = load("res://assets/sounds/%s.wav" % sound_name)
 		var voices: Array[AudioStreamPlayer] = []
 		for i in VOICES:
 			var player := AudioStreamPlayer.new()
 			player.stream = stream
+			player.bus = BUS
 			add_child(player)
 			voices.append(player)
 		_players[sound_name] = voices

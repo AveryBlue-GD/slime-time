@@ -27,14 +27,15 @@ static func copy_by_hand_message() -> String:
 	return Loc.t("savecode.copy_by_hand", "COPY THE CODE FROM THE POP-UP")
 
 
-## Layout: two even columns on one grid. Left: SOUND, VOLUME, MOTION, FOG. Right: FULLSCREEN,
+## Layout: two even columns on one grid. Left: SOUND, SFX and MUSIC volume, MOTION, FOG. Right: FULLSCREEN,
 ## CONTROLS, SAVE CODE, and (only while Economy.languages_on(), docs/i18n/plan.md section 6) LANGUAGE
 ## mirroring FOG. BACK bottom left, the destructive RESET PROGRESS bottom right.
 ## English: columns COL_W wide at x COL_L / COL_R, headings HEADING_GAP under the title's line box (y 27),
-## rows ROW_GAP apart from FIRST_ROW (38, 58, 78, 98). Other locales (_plan_page, docs/ui-rules.md
+## rows ROW_GAP apart from FIRST_ROW (38, 58, 78, 98, 118). Other locales (_plan_page, docs/ui-rules.md
 ## section 10): both columns widen alike when a text needs it (staying centred), rows follow the
 ## locale's button_h() / line_h() under its title_bottom(), and the row gap closes to GAP_M / GAP_S only
-## when the four rows would not end above the bottom row otherwise (Devanagari).
+## when the five rows would not end above the bottom row otherwise (Devanagari).
+const ROWS := 5
 const COL_W := 120
 const COL_L := 36
 const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
@@ -68,6 +69,7 @@ var _covered: Array[CanvasItem] = []
 
 var sound_button: Button
 var volume_slider: HSlider
+var music_slider: HSlider
 var fullscreen_button: Button
 ## Phones and tablets (Platform.has_vibration): VIBRATION ON / OFF in FULLSCREEN's cell (fullscreen_button null).
 var vibration_button: Button
@@ -112,14 +114,10 @@ func _ready() -> void:
 	_section(Loc.t("settings.options", "OPTIONS"), col_x[0], heading_y)
 	_section(Loc.t("settings.more", "MORE"), col_x[1], heading_y)
 	sound_button = _column_button(_cell(0, 0), _toggle_sound)
-	var volume_row := UIKit.make_volume_slider(UIKit.volume_slider_width(self, col_w))
-	add_child(volume_row)  # (in the tree first, so it is measured in the theme's font)
-	volume_row.position = _cell(0, 1)
-	volume_row.custom_minimum_size = Vector2(col_w, UIKit.button_h())
-	volume_row.size = Vector2(col_w, UIKit.button_h())
-	volume_slider = volume_row.get_meta("slider")
-	motion_button = _column_button(_cell(0, 2), _toggle_motion)
-	fog_button = _column_button(_cell(0, 3), _cycle_fog)
+	volume_slider = _volume_row(1, "sfx")
+	music_slider = _volume_row(2, "music")
+	motion_button = _column_button(_cell(0, 3), _toggle_motion)
+	fog_button = _column_button(_cell(0, 4), _cycle_fog)
 	if Platform.has_vibration():  # (phones: VIBRATION in FULLSCREEN's cell; the web's TAP TO PLAY goes full screen)
 		vibration_button = _column_button(_cell(1, 0), _toggle_vibration)
 	else:
@@ -164,7 +162,7 @@ func _ready() -> void:
 ## one needs more (both columns alike, the pair re-centred: Spanish PANTALLA COMPLETA), or the VOLUME
 ## label + a VOLUME_SLIDER_MIN slider (German LAUTSTÄRKE). Rows: the
 ## headings HEADING_GAP under the title's line box, the first row 4 px under a heading's line, rows
-## ROW_GAP apart; GAP_M, then GAP_S, when four rows would not end GAP_M above the bottom row.
+## ROW_GAP apart; GAP_M, then GAP_S, when ROWS rows would not end GAP_M above the bottom row.
 func _plan_page() -> void:
 	var widest := 0
 	for text in column_texts():
@@ -182,8 +180,18 @@ func _plan_page() -> void:
 	var bottom := UIKit.bottom_row_y() - UIKit.GAP_M
 	for gap: int in [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]:
 		row_step = UIKit.button_h() + gap
-		if first_row + 3 * row_step + UIKit.button_h() <= bottom:
+		if first_row + (ROWS - 1) * row_step + UIKit.button_h() <= bottom:
 			break
+
+
+## A volume box ("sfx" / "music") in the left column's `row`; returns its slider.
+func _volume_row(row: int, kind: String) -> HSlider:
+	var box := UIKit.make_volume_slider(UIKit.volume_slider_width(self, col_w), kind)
+	add_child(box)  # (in the tree first, so it is measured in the theme's font)
+	box.position = _cell(0, row)
+	box.custom_minimum_size = Vector2(col_w, UIKit.button_h())
+	box.size = Vector2(col_w, UIKit.button_h())
+	return box.get_meta("slider")
 
 
 ## Top-left corner of a grid cell (column 0 = left, 1 = right).

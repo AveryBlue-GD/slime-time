@@ -1541,18 +1541,29 @@ static func unlock_focus(saved: Dictionary) -> void:
 	saved.clear()
 
 
-## The slider width that makes a VOLUME box `total` px wide: the box is 6 + label + 6 + slider + 6
+## A volume box's label: "sfx" (sound effects, Progress.volume) or "music" (Progress.music_volume).
+static func volume_label(kind := "sfx") -> String:
+	if kind == "music":
+		return Loc.t("settings.volume_music", "MUSIC")  # i18n: volume slider label, max 60px, 1 line (the slider shrinks to fit)
+	return Loc.t("settings.volume_sfx", "SFX")  # i18n: sound-effects volume slider label, max 60px, 1 line (the slider shrinks to fit)
+
+
+## The slider width that makes a volume box `total` px wide: the box is 6 + label + 6 + slider + 6
 ## (margins and separation = 18 px), the label measured in `node`'s theme font so a longer
-## translation takes its room from the slider, not from the box.
-static func volume_slider_width(node: Control, total: float) -> float:
+## translation takes its room from the slider, not from the box. The widest of `kinds`' labels counts
+## (SETTINGS: both, so its two sliders line up; the pause menu: only its SFX).
+static func volume_slider_width(node: Control, total: float, kinds: Array = ["sfx", "music"]) -> float:
 	var font: Font = node.get_theme_font("font", "Label")
-	var label_w := font.get_string_size(Loc.t("settings.volume", "VOLUME"), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT).x
+	var label_w := 0.0
+	for kind: String in kinds:
+		label_w = maxf(label_w, font.get_string_size(volume_label(kind), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT).x)
 	return total - 18.0 - ceilf(label_w)
 
 
-## "VOLUME" label + slider wired to Progress.volume (plays a bubble so you can hear the level),
-## inside a goo-framed box like a button's (the slider is the box's "slider" meta).
-static func make_volume_slider(width := 90.0) -> PanelContainer:
+## A volume label + slider wired to Progress.volume ("sfx": plays a bubble so you can hear the level) or
+## Progress.music_volume ("music"), inside a goo-framed box like a button's (the slider is the box's
+## "slider" meta). The label takes the room volume_slider_width left it, so two boxes line up.
+static func make_volume_slider(width := 90.0, kind := "sfx") -> PanelContainer:
 	var box := PanelContainer.new()
 	var style := GooBox.make_button("normal")
 	# The 10 px slider fills the face between the goo bands (2 / 1 in English: 13 tall); the box is
@@ -1572,8 +1583,9 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	box.add_child(row)
 	row.add_theme_constant_override("separation", 6)
 	# i18n: max 60px, 1 line (the slider shrinks to fit: Controls measures it)
-	var label := make_label(Loc.t("settings.volume", "VOLUME"), FONT, TEXT_DIM)
+	var label := make_label(volume_label(kind), FONT, TEXT_DIM)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 	var slider := HSlider.new()
 	slider.custom_minimum_size = Vector2(width, 10)
@@ -1582,18 +1594,20 @@ static func make_volume_slider(width := 90.0) -> PanelContainer:
 	slider.max_value = 1.0
 	slider.step = 0.05
 	var progress: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Progress")
-	slider.value = progress.volume if progress else 0.8
+	var music := kind == "music"
+	slider.value = (progress.music_volume if music else progress.volume) if progress else 0.8
+	var setter := "set_music_volume" if music else "set_volume"
 	var dragging := [false]  # applied live while dragging, saved once on release
 	slider.drag_started.connect(func() -> void: dragging[0] = true)
 	slider.drag_ended.connect(func(_changed: bool) -> void:
 		dragging[0] = false
 		if progress:
-			progress.set_volume(slider.value))
+			progress.call(setter, slider.value))
 	slider.value_changed.connect(func(value: float) -> void:
 		if progress:
-			progress.set_volume(value, not dragging[0])
+			progress.call(setter, value, not dragging[0])
 		var sfx := slider.get_node_or_null("/root/Sfx")
-		if sfx:
+		if sfx and not music:
 			sfx.play("click"))
 	row.add_child(slider)
 	box.set_meta("slider", slider)

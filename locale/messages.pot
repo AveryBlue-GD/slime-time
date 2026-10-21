@@ -2523,11 +2523,18 @@ msgctxt "common.buy"
 msgid "BUY"
 msgstr ""
 
-#. max 60px, 1 line (the slider shrinks to fit: Controls measures it)
+#. volume slider label, max 60px, 1 line (the slider shrinks to fit)
 #. budget: max 60px, lines 1
 #: scripts/ui/ui_kit.gd
-msgctxt "settings.volume"
-msgid "VOLUME"
+msgctxt "settings.volume_music"
+msgid "MUSIC"
+msgstr ""
+
+#. sound-effects volume slider label, max 60px, 1 line (the slider shrinks to fit)
+#. budget: max 60px, lines 1
+#: scripts/ui/ui_kit.gd
+msgctxt "settings.volume_sfx"
+msgid "SFX"
 msgstr ""
 
 #. title max 200px, 16 px font

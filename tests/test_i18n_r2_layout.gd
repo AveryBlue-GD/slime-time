@@ -158,7 +158,7 @@ func _settings() -> void:
 	_check(slider.size.x >= page.VOLUME_SLIDER_MIN or page.col_w == max_col,
 		_tag("VOLUME slider %d px (min %d, column %d)" % [slider.size.x, page.VOLUME_SLIDER_MIN, page.col_w]))
 	if _code == "en":
-		_check(slider.size.x == 66 and page.col_w == 120, _tag("English slider 66, columns 120"))
+		_check(slider.size.x >= 66 and page.col_w == 120 and page.music_slider.size.x == slider.size.x, _tag("English sliders %d px (min 66, SFX = MUSIC), columns 120" % slider.size.x))
 	if not UIKit.tall_script():
 		var big := [false, false]
 		for i in 2:

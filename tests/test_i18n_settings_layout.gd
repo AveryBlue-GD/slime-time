@@ -76,7 +76,7 @@ func _open(path: String) -> Control:
 func _settings() -> void:
 	var page: Control = await _open("res://scenes/controls.tscn")
 	var bad: Array[String] = []
-	var left: Array[Control] = [page.sound_button, page.volume_slider.get_parent().get_parent(), page.motion_button, page.fog_button]
+	var left: Array[Control] = [page.sound_button, page.volume_slider.get_parent().get_parent(), page.music_slider.get_parent().get_parent(), page.motion_button, page.fog_button]
 	var right: Array[Control] = [page.fullscreen_button, page.controls_button, page.save_code_button, page.language_button]
 	var w: float = page.sound_button.size.x
 	for column: Array[Control] in [left, right]:
@@ -94,7 +94,7 @@ func _settings() -> void:
 	var r_end := _rect(right[0]).end.x
 	if l != 320 - r_end or _rect(right[0]).position.x - _rect(left[0]).end.x != UIKit.GAP_L:
 		bad.append("columns not centred (L%d R%d)" % [l, 320 - r_end])
-	var bottom := _rect(left[3]).end.y
+	var bottom := _rect(left[left.size() - 1]).end.y
 	if bottom + UIKit.GAP_S > UIKit.bottom_row_y():
 		bad.append("last row ends at %d, bottom row at %d" % [bottom, UIKit.bottom_row_y()])
 	if page.heading_y < UIKit.title_bottom() or page.heading_y + UIKit.line_h() > page.first_row:

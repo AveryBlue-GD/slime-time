@@ -37,14 +37,25 @@ func _initialize() -> void:
 	_check(not _playing(sfx, "click"), "muted: nothing plays")
 	progress.sound_on = true
 	progress.set_volume(0.5)
-	_check(absf(AudioServer.get_bus_volume_db(0) - linear_to_db(0.5)) < 0.01 and not AudioServer.is_bus_mute(0),
-		"volume slider value drives the master volume")
+	progress.set_music_volume(0.3)
+	var sfx_bus := AudioServer.get_bus_index(progress.SFX_BUS)
+	var music_bus := AudioServer.get_bus_index(progress.MUSIC_BUS)
+	_check(sfx_bus > 0 and absf(AudioServer.get_bus_volume_db(sfx_bus) - linear_to_db(0.5)) < 0.01 and not AudioServer.is_bus_mute(sfx_bus)
+		and absf(AudioServer.get_bus_volume_db(0)) < 0.01 and sfx._players["click"][0].bus == progress.SFX_BUS,
+		"the SFX slider drives the SFX bus (the sound effects play there; Master stays at 0 dB)")
+	_check(music_bus > 0 and absf(AudioServer.get_bus_volume_db(music_bus) - linear_to_db(0.3)) < 0.01 and get_root().get_node("Music")._player.bus == progress.MUSIC_BUS,
+		"the MUSIC slider drives the Music bus on its own")
 	progress.set_volume(0.0)
-	_check(AudioServer.is_bus_mute(0), "volume at zero mutes")
+	_check(AudioServer.is_bus_mute(sfx_bus) and not AudioServer.is_bus_mute(music_bus), "SFX at zero mutes the effects, not the music")
+	progress.set_volume(0.8)
+	progress.set_music_volume(0.0)
+	_check(AudioServer.is_bus_mute(music_bus) and not AudioServer.is_bus_mute(sfx_bus), "MUSIC at zero mutes the music, not the effects")
+	progress.set_music_volume(0.35)
+	progress.set_volume(0.0)
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = progress.save_path
 	reloaded.load_progress()
-	_check(reloaded.volume == 0.0, "volume is saved")
+	_check(reloaded.volume == 0.0 and is_equal_approx(reloaded.music_volume, 0.35), "SFX and MUSIC volumes are saved separately")
 	reloaded.free()
 	progress.set_volume(0.8)
 

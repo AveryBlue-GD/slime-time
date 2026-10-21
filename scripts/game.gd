@@ -746,6 +746,7 @@ func _start_ambience() -> void:
 		ambient = AudioStreamPlayer.new()
 		ambient.stream = stream
 		ambient.volume_db = -60.0
+		ambient.bus = Progress.SFX_BUS
 		add_child(ambient)
 		create_tween().tween_property(ambient, "volume_db", AMBIENT_BED_DB.get(theme, AMBIENT_FAINT_DB), AMBIENT_FADE)
 	var k := 0
@@ -753,6 +754,7 @@ func _start_ambience() -> void:
 		ambient_events.append(load("res://assets/sounds/ambient_%s_%d.wav" % [theme, k]))
 		k += 1
 	ambient_event_player = AudioStreamPlayer.new()
+	ambient_event_player.bus = Progress.SFX_BUS
 	add_child(ambient_event_player)
 	_next_ambient_event = randf_range(3.0, AMBIENT_EVENT_GAP.x)
 	_update_ambience(0.0)

@@ -241,8 +241,13 @@ var dev_coins := DEV_COINS
 var all_coins_debug := false
 var custom_color := Color8(239, 125, 47)
 var sound_on := true
-## Master volume, 0-1 (applied to the Master audio bus).
+## Sound-effects volume, 0-1 (the SFX audio bus: Sfx and the level ambience; saved as `volume`, which
+## was the master volume before music) and music volume, 0-1 (the Music bus: the Music autoload).
+## Settings has a slider for each (UIKit.make_volume_slider); the Master bus stays at 0 dB.
 var volume := 0.8
+var music_volume := 0.8
+const SFX_BUS := "SFX"  # i18n: ignore (an audio bus name)
+const MUSIC_BUS := "Music"  # i18n: ignore (an audio bus name)
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
 var reduce_motion := false
 ## Phones buzz on a splat (Slime._buzz); SETTINGS VIBRATION (Platform.has_vibration) turns it off.
@@ -746,6 +751,7 @@ func _read(file: ConfigFile, from_code := false) -> void:
 		selected_hat = Hats.NONE
 	sound_on = _bool(file, "settings", "sound_on", true)
 	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
+	music_volume = clampf(_float(file, "settings", "music_volume", music_volume), 0.0, 1.0)
 	hard_mode = _bool(file, "settings", "hard_mode", false)
 	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
 	vibration = _bool(file, "settings", "vibration", vibration)
@@ -1220,6 +1226,7 @@ func _write(for_code := false) -> ConfigFile:
 	file.set_value("hats", "owned", hats_owned.duplicate())
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
+	file.set_value("settings", "music_volume", music_volume)
 	file.set_value("settings", "hard_mode", hard_mode)
 	file.set_value("settings", "reduce_motion", reduce_motion)
 	file.set_value("settings", "vibration", vibration)
@@ -2732,9 +2739,31 @@ func set_volume(value: float, save := true) -> void:
 		save_progress()
 
 
+func set_music_volume(value: float, save := true) -> void:
+	music_volume = clampf(value, 0.0, 1.0)
+	apply_volume()
+	if save:
+		save_progress()
+
+
+## The SFX and Music buses (made here, under Master, the first time) at their volumes.
 func apply_volume() -> void:
-	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(volume, 0.0001)))
-	AudioServer.set_bus_mute(0, volume <= 0.0)
+	for pair in [[SFX_BUS, volume], [MUSIC_BUS, music_volume]]:
+		var index := ensure_bus(pair[0])
+		AudioServer.set_bus_volume_db(index, linear_to_db(maxf(pair[1], 0.0001)))
+		AudioServer.set_bus_mute(index, pair[1] <= 0.0)
+
+
+## The index of audio bus `bus_name`, added (sending to Master) if it doesn't exist yet. Players pick
+## their bus by name (Sfx, Game's ambience: SFX_BUS; Music: MUSIC_BUS).
+static func ensure_bus(bus_name: String) -> int:
+	var index := AudioServer.get_bus_index(bus_name)
+	if index < 0:
+		index = AudioServer.bus_count
+		AudioServer.add_bus(index)
+		AudioServer.set_bus_name(index, bus_name)
+		AudioServer.set_bus_send(index, "Master")
+	return index
 
 
 # ---------------------------------------------------------------- controls

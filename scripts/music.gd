@@ -5,7 +5,7 @@ extends Node
 ## else (the title, a level), one of the three hub loops is picked at random (never the same one twice in
 ## a row) and fades in; it keeps playing on the hub's own screens and fades out when a level, the title or
 ## any other screen starts. The intro track follows the intro's shots (StoryScreen calls play_intro and
-## seek_shot). Plays on the Master bus like Sfx; silent while Progress.sound_on is false.
+## seek_shot). Plays on the Music bus (the MUSIC slider); silent while Progress.sound_on is false.
 
 const HUB_TRACKS: Array[String] = ["res://assets/music/hub_a.ogg", "res://assets/music/hub_b.ogg", "res://assets/music/hub_c.ogg"]
 const INTRO_TRACK := "res://assets/music/story_intro.ogg"
@@ -24,6 +24,8 @@ const FADE_IN := 1.5
 const FADE_OUT := 0.6
 ## The intro is only re-synced to a shot when it has drifted further than this (s) from the shot's start.
 const SEEK_SLACK := 0.3
+## The audio bus (the MUSIC slider in SETTINGS; Progress.MUSIC_BUS, made by Progress.ensure_bus).
+const BUS := "Music"  # i18n: ignore (an audio bus name)
 
 ## The track playing (a res:// path, empty when silent).
 var current := ""
@@ -40,6 +42,10 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_player = AudioStreamPlayer.new()
 	_player.volume_db = -80.0
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.ensure_bus(BUS)
+	_player.bus = BUS
 	add_child(_player)
 	get_tree().scene_changed.connect(_on_scene_changed)
 

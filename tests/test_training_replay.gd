@@ -39,11 +39,11 @@ func _initialize() -> void:
 	# column's x and width, SAVE CODE's row pitch, FOG's row.
 	var save_r: Rect2 = page.save_code_button.get_global_rect()
 	var ctl_r: Rect2 = page.controls_button.get_global_rect()
-	var fog_r: Rect2 = page.fog_button.get_global_rect()
+	var fog_r: Rect2 = page.motion_button.get_global_rect()  # (TRAINING mirrors MOTION: the left column has 5 rows, SFX + MUSIC)
 	var br := b.get_global_rect()
 	_check(br.position.x == save_r.position.x and br.size == save_r.size and br.position.y == fog_r.position.y
 		and br.position.y - save_r.position.y == save_r.position.y - ctl_r.position.y,
-		"TRAINING sits in the MORE column under SAVE CODE, on FOG's row (%s; SAVE CODE %s, FOG %s)" % [br, save_r, fog_r])
+		"TRAINING sits in the MORE column under SAVE CODE, on MOTION's row (%s; SAVE CODE %s, MOTION %s)" % [br, save_r, fog_r])
 	page.fog_button.grab_focus()
 	_check(page.fog_button.find_valid_focus_neighbor(SIDE_RIGHT) == b and b.find_valid_focus_neighbor(SIDE_TOP) == page.save_code_button,
 		"focus: right of FOG and under SAVE CODE is TRAINING")

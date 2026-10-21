@@ -124,9 +124,9 @@ To swap music:
   them as OGG Vorbis (quality 3, 2 MB in all) to `assets/music/hub_a.ogg`, `hub_b.ogg`, `hub_c.ogg`,
   `story_intro.ogg`; then re-import. They are not in `Demo.export_cut()`, so every demo export ships them
   (`tests/test_music.gd` checks it; the demo packs were checked to contain them).
-- **Player.** The `Music` autoload (`scripts/music.gd`), one `AudioStreamPlayer` on the Master bus, silent while
-  `Progress.sound_on` is off (the existing SOUND toggle and volume cover it; there is no separate music slider
-  yet). It follows scene changes (`SceneTree.scene_changed`, and `Transition.go` as its wipe starts):
+- **Player.** The `Music` autoload (`scripts/music.gd`), one `AudioStreamPlayer` on the `Music` bus (SETTINGS'
+  MUSIC slider, `[settings] music_volume`; the effects are on the `SFX` bus, the SFX slider; both made under Master
+  by `Progress.ensure_bus`), silent while `Progress.sound_on` is off. It follows scene changes (`SceneTree.scene_changed`, and `Transition.go` as its wipe starts):
   - the hub and its screens (`Music.HUB_SCENES`: hub, level select, skins, maps, upgrades): if no hub loop is
     playing, one of the three is picked at random (never the one picked last time) and fades in over 1.5 s,
     looping; it carries on across these screens;
@@ -149,4 +149,4 @@ To swap music:
      raining downward; it clears out just before the splat;
   5. splat (17.3-23.7 s): the splat sound alone, then a Dm9 rolled on goo drops and the hub's hook (from
      "Cozy Goo"), slow, on the music box, settling on Dm9 as two bubbles rise.
-- **Not done yet:** a MUSIC volume slider / separate bus, ducking under effects, title-screen music.
+- **Not done yet:** ducking under effects, title-screen music.

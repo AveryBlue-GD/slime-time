@@ -2532,12 +2532,19 @@ msgctxt "common.buy"
 msgid "BUY"
 msgstr "購買"
 
-#. max 60px, 1 line (the slider shrinks to fit: Controls measures it)
+#. volume slider label, max 60px, 1 line (the slider shrinks to fit)
 #. budget: max 60px, lines 1
 #: scripts/ui/ui_kit.gd
-msgctxt "settings.volume"
-msgid "VOLUME"
-msgstr "音量"
+msgctxt "settings.volume_music"
+msgid "MUSIC"
+msgstr ""
+
+#. sound-effects volume slider label, max 60px, 1 line (the slider shrinks to fit)
+#. budget: max 60px, lines 1
+#: scripts/ui/ui_kit.gd
+msgctxt "settings.volume_sfx"
+msgid "SFX"
+msgstr ""
 
 #. title max 200px, 16 px font
 #. budget: max 200px
@@ -2890,6 +2897,10 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "settings.volume"
+#~ msgid "VOLUME"
+#~ msgstr "音量"
 
 #~ msgctxt "trail.ember.unlock"
 #~ msgid "HEAT 7 ON EVERY HARD LEVEL"
