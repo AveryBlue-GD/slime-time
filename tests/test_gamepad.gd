@@ -4,7 +4,8 @@ extends "res://tests/suite_base.gd"
 ## the pad layer survives every key binding change, real InputEventJoypadButton / InputEventJoypadMotion events
 ## move and leap the slime (the stick snapped to 8 directions), pause and back out, use hub stations, switch tabs
 ## with LB / RB (upgrades, wardrobe, hat wheel), move the focus in menus, cancel a key rebind wait, hide the touch
-## controls, and make prompts name pad buttons instead of keys.
+## controls, and make prompts name pad buttons instead of keys; a Steam Deck (or the Steam build with a pad
+## connected at start) starts with pad prompts before any input.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_gamepad.gd
 
 const StartDirs := preload("res://tests/start_dirs.gd")
@@ -322,6 +323,39 @@ func _prompts() -> void:
 	drift.axis_value = 0.15
 	Platform.note_input(drift)
 	_check(Platform.last_input == Platform.INPUT_KEYS, "stick drift does not switch the prompts")
+	_first_prompts()
+
+
+## The first prompts before any input (Platform.initial_input, set by PlatformEvents at startup).
+func _first_prompts() -> void:
+	Platform.override = "desktop"
+	Platform.pads_override = 0
+	Platform.steam_deck_override = 0
+	_check(Platform.initial_input() == Platform.INPUT_KEYS, "desktop, no pad: key prompts first")
+	Platform.pads_override = 1
+	_check(Platform.initial_input() == Platform.INPUT_KEYS, "desktop (not Steam) with a pad: still keys until the pad is used")
+	Platform.override = "steam"
+	Platform.pads_override = 0
+	_check(Platform.initial_input() == Platform.INPUT_KEYS, "Steam build, no pad: keys")
+	Platform.pads_override = 1
+	_check(Platform.initial_input() == Platform.INPUT_PAD, "Steam build with a pad at start: pad prompts first")
+	Platform.override = "desktop"
+	Platform.pads_override = 0
+	Platform.steam_deck_override = 1
+	_check(Platform.is_steam_deck() and Platform.initial_input() == Platform.INPUT_PAD, "Steam Deck (SteamDeck=1): pad prompts first")
+	Platform.steam_deck_override = -1
+	OS.set_environment("SteamDeck", "1")
+	_check(Platform.is_steam_deck(), "the real check reads the SteamDeck environment variable")
+	OS.unset_environment("SteamDeck")
+	_check(not Platform.is_steam_deck(), "...and without it, no Deck")
+	# PlatformEvents applies it: a fresh one on a Deck starts on the pad, so the hub prompt says X, not F.
+	Platform.steam_deck_override = 1
+	Platform.last_input = Platform.INPUT_KEYS
+	var fresh: Node = load("res://scripts/platform_events.gd").new()
+	root.add_child(fresh)
+	_check(Platform.using_pad() and Platform.prompt_for("interact", "F") == "X", "PlatformEvents starts a Deck on pad prompts")
+	fresh.free()
+	Platform.reset_overrides()
 
 
 func _pad_event() -> InputEventJoypadButton:

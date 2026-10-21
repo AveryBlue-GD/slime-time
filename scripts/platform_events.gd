@@ -42,6 +42,7 @@ var _web_visibility: JavaScriptObject
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	Platform.last_input = Platform.initial_input()  # (a Steam Deck starts on the pad: its first prompts say A, not SPACE)
 	if Platform.frame_cap() > 0:
 		Engine.max_fps = Platform.frame_cap()
 	get_tree().root.window_input.connect(_on_window_input)

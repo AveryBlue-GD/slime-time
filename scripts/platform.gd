@@ -57,6 +57,10 @@ static var _fullscreen_ok := -1
 ## Tests: 1 = run as the demo, 0 = the full game, -1 = the real build / launch flag (is_demo).
 static var demo_override := -1
 static var _demo_flag := -1
+## Tests: 1 / 0 = running on a Steam Deck or not (instead of the `SteamDeck` environment variable), -1 = real;
+## a pad count to use instead of Input.get_connected_joypads() (-1 = real).
+static var steam_deck_override := -1
+static var pads_override := -1
 
 
 ## The platform as one word: "web", "ios", "android", "steam" or "desktop".
@@ -130,6 +134,25 @@ static func is_desktop() -> bool:
 ## The Steam build (a future export preset with the "steam" feature). Always false today.
 static func is_steam() -> bool:
 	return kind() == "steam"
+
+
+## Running on a Steam Deck (Steam sets the environment variable SteamDeck=1 for games it starts there).
+static func is_steam_deck() -> bool:
+	if steam_deck_override >= 0:
+		return steam_deck_override == 1
+	return OS.get_environment("SteamDeck") == "1"
+
+
+## The device the first prompts name before any input (PlatformEvents sets last_input to it at startup): the pad
+## on a Steam Deck, or in the Steam build when a pad is connected at start (couch / Big Picture players), so
+## the very first prompts say A / START, not SPACE / ESC; else keys (the first real input switches it either way).
+static func initial_input() -> String:
+	if is_steam_deck():
+		return INPUT_PAD
+	var pads := pads_override if pads_override >= 0 else Input.get_connected_joypads().size()
+	if is_steam() and pads > 0:
+		return INPUT_PAD
+	return INPUT_KEYS
 
 
 ## The demo build (docs/demo-plan.md): an export preset with the custom feature `demo`, or the debug launch
@@ -296,6 +319,8 @@ static func reset_overrides() -> void:
 	window_override = Vector2i.ZERO
 	last_input = INPUT_KEYS
 	demo_override = -1
+	steam_deck_override = -1
+	pads_override = -1
 
 
 ## The flags after `--` this build honors (Progress.user_args: every flag in a debug build, only the UI previews
