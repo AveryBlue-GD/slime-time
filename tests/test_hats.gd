@@ -58,6 +58,24 @@ func _initialize() -> void:
 	var head_gap: float = game.slime.position.y - game.hat.global_position.y
 	_check(head_gap > 4.0 and head_gap < 12.0, "the hat sits on top of the slime (%.0f px above its center)" % head_gap)
 
+	# --- A small hop (the shortest leap): the hat stays on, lifted a px or two at most, never left behind
+	game.slime.facing = Vector2(spot.dir)
+	game.slime.launch(0.0)
+	var stayed := true
+	var most_off := 0.0
+	for i in 20:
+		await process_frame
+		stayed = stayed and game.hat.state == Hat.State.ON
+		var head: Vector2 = game.slime.sprite.global_position + Slime.head_point(game.slime.sprite.animation, game.slime.sprite.frame)
+		most_off = maxf(most_off, head.y - game.hat.global_position.y)
+	_check(stayed and most_off <= Hats.MAX_LIFT + Hat.HOP_LIFT_MAX + 1.0, "a small hop barely lifts the hat (%.0f px off the head at most), it stays on" % most_off)
+	for i in 20:
+		await process_frame
+	game.slime.position = start
+	game.last_slime_pos = start
+	await physics_frame
+	await process_frame
+
 	# --- A clean leap: off, along for the ride, back on
 	game.slime.facing = Vector2(spot.dir)
 	game.slime.launch(28.0)  # about 3 tiles, well short of the far wall

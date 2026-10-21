@@ -4,7 +4,10 @@ extends Sprite2D
 ## A hat on a slime. It's drawn to fit round the slime's dome (not just perched on it), and as the
 ## slime squashes and stretches it swaps to the matching width (Hats.width_for(Slime.head_width)).
 ## When the slime leaps, the hat pops off and arcs up and back down onto its head (a hovering
-## one, the raincloud, just keeps raining on it all the way). Along the floor
+## one, the raincloud, just keeps raining on it all the way). A small hop (a flight under SMALL_HOP,
+## the shortest leaps) only lifts it a pixel or two off the head and sets it back down just after
+## the slime lands, still fitted to the head (owner, 2026-10-21: it used to fly 3x as long as the hop
+## and hang in the air between quick hops). Along the floor
 ## it goes wherever the slime really goes (not where the leap was aimed), so when the slime bonks a
 ## wall, bounces back or gets stuck, the hat stays in line over it: a bonk just jolts it a few px
 ## on (it keeps a little of the speed the slime lost), springing back while it falls.
@@ -17,8 +20,15 @@ enum State { ON, FLYING }
 
 ## Strong enough that even a short hop flicks the hat up visibly and a full leap sends it high.
 const GRAVITY := 1000.0
-## Even the smallest hop sends the hat up for at least this long.
+## Even the smallest leap that pops it off sends the hat up for at least this long.
 const MIN_FLIGHT := 0.25
+## Leaps shorter than this (seconds in the air: about 2 tiles) are small hops: the hat stays on and
+## only lifts HOP_LIFT px off the head (more for a longer hop, at most HOP_LIFT_MAX), landing HOP_LAG
+## after the slime does.
+const SMALL_HOP := 0.15
+const HOP_LIFT := 1.0
+const HOP_LIFT_MAX := 2.0
+const HOP_LAG := 0.05
 ## A bonk: share of the speed the slime suddenly lost that jolts the hat on (px per px/s), the
 ## most it can be thrown off line, and how fast it springs back over the slime.
 const JOLT := 0.03
@@ -45,6 +55,10 @@ var _height_from := 0.0
 ## An animated hat's clock, in frames (Hats.frames, Hats.fps): `anim_frame` is the one shown.
 var _anim_time := 0.0
 var anim_frame := 0
+## A small hop's lift: time into it, its length and its height (px; 0 = none).
+var _hop_t := 0.0
+var _hop_len := 0.0
+var _hop_px := 0.0
 
 
 func _init() -> void:
@@ -72,8 +86,16 @@ func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null
 func pop(slime_velocity: Vector2, flight_time: float) -> void:
 	if Hats.get_hat(hat_id).get("hovers", false):
 		return  # a hovering hat (the raincloud) isn't knocked off: it rides along over the head
+	if flight_time < SMALL_HOP and state == State.ON:
+		# A small hop: it barely lifts off and settles back just after the slime lands.
+		_hop_t = 0.0
+		_hop_len = flight_time + HOP_LAG
+		_hop_px = clampf(HOP_LIFT + flight_time / SMALL_HOP, HOP_LIFT, HOP_LIFT_MAX)
+		return
+	_hop_len = 0.0
 	ground = _floor_point()
-	height = _head_height()
+	if state != State.FLYING:  # (popped again mid-flight: it carries on from where it is, no snap)
+		height = _head_height()
 	region_rect = Hats.dye_region(hat_id, dye, Hats.Width.LOOSE, anim_frame)  # off the head it keeps its own shape
 	_slime_last = ground
 	_slime_velocity = slime_velocity
@@ -96,6 +118,10 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_animate(delta)
+	if _hop_len > 0.0:
+		_hop_t += delta
+		if _hop_t >= _hop_len:
+			_hop_len = 0.0
 	match state:
 		State.ON:
 			_follow()
@@ -129,13 +155,20 @@ func _follow() -> void:
 	# few frames whose eyes sit high, so it never covers them.
 	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
 	region_rect = Hats.dye_region(hat_id, dye, width, anim_frame)
-	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
+	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame) + _hop_lift()
 	var mat := material as ShaderMaterial
 	if mat and mat.get_shader_parameter("gradient"):  # (the RAINBOW dye's gradient lines up with a rainbow slime's)
 		var head := Slime.head_point(body.animation, body.frame) - Vector2(0, lift_px)
 		if mat.get_shader_parameter("head_offset") != head:
 			mat.set_shader_parameter("head_offset", head)
 	_place(_snap(_head() + _drawn_shift(true) - Vector2(0, lift_px) * body.global_scale))
+
+
+## A small hop's lift right now (whole px; 0 when not hopping).
+func _hop_lift() -> int:
+	if _hop_len <= 0.0:
+		return 0
+	return roundi(sin(PI * clampf(_hop_t / _hop_len, 0.0, 1.0)) * _hop_px)
 
 
 ## How far from its physics position a slime anchor is drawn this frame (Slime.drawn_shift: only

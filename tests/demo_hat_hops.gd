@@ -1,57 +1,52 @@
 extends Node
 
-## Watchable demo: the slime wears a hat and keeps leaping back and forth along the longest
-## straight corridor of level 1, at random strengths, sometimes splatting into the far wall, so
-## the hat can be seen popping off, riding the momentum and landing back on.
-## .\tools\play.ps1 -Dev -Scene res://tests/demo_hat_hops.tscn -GameArgs --hat=tophat [--level=N]
+## Consecutive small hops with a hat on (a watchable check, not a test): level 1, the slime in a
+## straight corridor wearing the top hat, hopping the shortest leap back and forth every HOP_EVERY
+## seconds. Record it with --write-movie (tools/screenshot.ps1 -Scene res://tests/demo_hat_hops.tscn).
 
-const HOP_EVERY := 1.6
-
-var game: Node2D
-var lane: Dictionary
-var _next := 1.0
-var _forward := true
+const MAIN := preload("res://scenes/main.tscn")
+const HOP_EVERY := 0.16
 
 
 func _ready() -> void:
-	if Progress.selected_hat == Hats.NONE:
-		Progress.saving_enabled = false
-		Progress.selected_hat = Hats.LIST[0].id
-	game = preload("res://scenes/main.tscn").instantiate()
+	Progress.saving_enabled = false
+	Progress.tutorial_seen = 3
+	Progress.levels_cleared = Levels.COUNT
+	Progress.hats_owned.assign(["tophat"])
+	Progress.selected_hat = "tophat"
+	Progress.start_story(1)
+	var game: Node2D = MAIN.instantiate()
 	game.level = 1
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--level="):  # (another level, to show its own skin there)
-			game.level = int(arg.trim_prefix("--level="))
-	add_child(game)
-	lane = _longest_lane()
-	var start := MazeGenerator.cell_center(lane.from, 16)
-	game.slime.position = start
-	game.last_slime_pos = start
-	game.slime_remaining = 100.0
+	get_tree().root.add_child.call_deferred(game)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	get_tree().current_scene = game
+	game.set_dev_bright(true)
+	game.set_dev_no_drain(true)
+	var spot := _straight(game, 3)
+	game.slime.position = MazeGenerator.cell_center(spot.cell, 16)
+	game.last_slime_pos = game.slime.position
+	var dir := Vector2(spot.dir)
+	var hops := 0
+	while is_inside_tree():
+		await get_tree().create_timer(HOP_EVERY).timeout
+		if game.slime.state == Slime.State.GLIDE:
+			game.slime.facing = dir
+			game.slime.launch(0.0)
+			hops += 1
+			if hops % 4 == 0:
+				dir = -dir
 
 
-func _physics_process(delta: float) -> void:
-	game.slime_remaining = 100.0  # never dry up during the demo
-	_next -= delta
-	if _next > 0.0 or game.slime.state != Slime.State.GLIDE or game.slime.velocity.length() > 5.0:
-		return
-	_next = HOP_EVERY
-	game.slime.facing = Vector2(lane.dir) * (1.0 if _forward else -1.0)
-	_forward = not _forward
-	game.slime.launch(randf_range(25.0, 100.0))
-
-
-## The longest straight run of open cells in the maze: {from, dir, length}.
-func _longest_lane() -> Dictionary:
-	var best := {from = game.maze.start, dir = Vector2i.RIGHT, length = 0}
+func _straight(game: Node2D, length: int) -> Dictionary:
 	for y in game.maze.cells.y:
 		for x in game.maze.cells.x:
-			for dir: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+			for d: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT]:
 				var cell := Vector2i(x, y)
-				var length := 0
-				while (cell + dir) in MazeGenerator.open_neighbors(game.maze, cell):
-					cell += dir
-					length += 1
-				if length > best.length:
-					best = {from = Vector2i(x, y), dir = dir, length = length}
-	return best
+				var ok := true
+				for i in length:
+					ok = ok and (cell + d) in MazeGenerator.open_neighbors(game.maze, cell)
+					cell += d
+				if ok:
+					return {cell = Vector2i(x, y), dir = d}
+	return {}
