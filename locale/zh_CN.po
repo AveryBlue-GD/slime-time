@@ -1688,11 +1688,11 @@ msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
 msgstr "声音：关"
 
-#. demo end screen, line under the title, max 300px, 1 line
+#. demo end screen, line under the title, max 300px, 1 line; {count} = abilities the demo lacks (2)
 #. budget: max 300px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.end.random"
-msgid "THE FULL GAME HAS ENDLESS MAZES AND 3 ABILITIES"
+msgid "THE FULL GAME ADDS {count} ABILITIES AND THE SHOP"
 msgstr ""
 
 #. demo end screen, line under the title (the story's voice: the slime climbs to daylight), max 300px, 1 line
@@ -1709,21 +1709,29 @@ msgctxt "demo.teaser.more_areas"
 msgid "{count} MORE AREAS"
 msgstr ""
 
+#. demo end screen teaser card, max 168px, 1 line; {count} = hard levels past the demo (9)
+#. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
-msgctxt "demo.teaser.loops"
-msgid "MAZES THAT LOOP BACK"
+msgctxt "demo.teaser.hard"
+msgid "{count} MORE HARD LEVELS"
 msgstr ""
 
+#. demo end screen teaser card, max 168px, 1 line (the TAILOR's shop: hats, goo trails, map papers)
+#. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.teaser.shop"
-msgid "THE SHOP: TRAILS AND HATS"
+msgid "THE SHOP: TRAILS AND PAPERS"
 msgstr ""
 
+#. demo end screen teaser card, max 168px, 1 line; {count} = abilities the demo lacks (2, web 3)
+#. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.teaser.abilities"
-msgid "NEW ABILITIES"
+msgid "{count} MORE ABILITIES"
 msgstr ""
 
+#. demo end screen teaser card, max 168px, 1 line (the last area: the story's voice)
+#. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.teaser.out"
 msgid "THE WAY OUT, MAYBE"

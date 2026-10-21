@@ -527,6 +527,18 @@ func _check_screens() -> void:
 	_check(names.size() == 5 and names[0] == "TOXIC TUNNELS" and names[-1] == "VOLCANIC VAULT", "...teaser cards of later areas %s" % [names])
 	end.show_card(0)
 	_check(end.feature_label.text == "6 MORE AREAS", "...the first card counts the areas past the demo (%s)" % end.feature_label.text)
+	# Teasers name only full-game content (QA must-fix 4): nothing the demo already gives, no HEAT.
+	var lines: Array[String] = [DemoEnd.top_line(DemoEnd.FROM_RANDOM)]
+	for i in Demo.teasers().size():
+		end.show_card(i)
+		lines.append(end.feature_label.text)
+	var banned: Array[String] = []
+	for text in lines:
+		for word in ["HEAT", "ENDLESS", "JELLY", "HATS", "LOOP", "HARD MODE", "NEW ABILITIES"]:
+			if word in text:
+				banned.append("%s (%s)" % [text, word])
+	_check(banned.is_empty() and "2 MORE ABILITIES" in lines and "9 MORE HARD LEVELS" in lines
+		and lines[0] == "THE FULL GAME ADDS 2 ABILITIES AND THE SHOP", "...teaser lines only name full-game content %s %s" % [lines, banned])
 	var inside := true
 	for control: Control in [end.keep_button, end.arrows[0], end.arrows[1]]:
 		var rect := control.get_global_rect()
