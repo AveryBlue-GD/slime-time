@@ -126,6 +126,13 @@ func _dyes() -> void:
 	_check(count == 103 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
 		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
 		"103 dyes: 10 dyeable hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
+	var sheet_dyes := 0
+	for entry: Dictionary in Hats.DYES:
+		if not entry.has("block"):
+			sheet_dyes += 1
+	var sheet: Texture2D = preload("res://assets/sprites/hat_dyes.png")
+	_check(sheet.get_height() == sheet_dyes * Hats.DYE_BLOCK and sheet.get_width() == preload("res://assets/sprites/hats.png").get_width(),
+		"the imported hat_dyes.png has a block per drawn dye (%d px high; re-import after tools/make_hats.py)" % sheet.get_height())
 	_check(progress.dye_price("clover") == 10 and progress.dye_price("rainbow") == 99 and progress.dye_price("prism") == 50
 		and Hats.sheet_block("prism") == Hats.sheet_block("rainbow") and Hats.sheet_block("rainbow") == 9
 		and Hats.material_for("beanie", "rainbow").get_shader_parameter("gradient") and not Hats.material_for("beanie", "prism").get_shader_parameter("gradient") and Hats.material_for("beanie", "rainbow") != null
@@ -451,11 +458,17 @@ func _ui_wardrobe() -> void:
 	screen._refresh_hats()
 	_check(not screen.color_button.disabled, "...on once the worn hat has a dye")
 	screen.color_button.pressed.emit()
-	_check(progress.hat_dye_of("beanie") == "clover" and screen.hat_tiles["beanie"].get_meta("hat").dye == "clover" and "CLOVER" in screen.status.text,
-		"COLOR puts the worn hat on in its first owned dye (tile and status too)")
+	_check(screen._picker != null and screen.picker_tiles.keys() == ["", "clover", "plum"] and screen.picker_tiles[""].has_focus(),
+		"COLOR opens a picker of the hat's own color and every owned dye, focus on the worn one")
+	screen.picker_tiles["plum"].pressed.emit()
+	_check(screen._picker == null and progress.hat_dye_of("beanie") == "plum" and screen.hat_tiles["beanie"].get_meta("hat").dye == "plum"
+		and "PLUM" in screen.status.text and screen.color_button.has_focus(), "picking a color wears it (tile and status too) and closes the picker")
 	screen.color_button.pressed.emit()
-	screen.color_button.pressed.emit()
-	_check(progress.hat_dye_of("beanie") == "", "...then the next, then back to its own color")
+	var esc := InputEventAction.new()
+	esc.action = "ui_cancel"
+	esc.pressed = true
+	screen._unhandled_input(esc)
+	_check(screen._picker == null and screen.is_inside_tree() and progress.hat_dye_of("beanie") == "plum", "Esc closes the picker first, nothing changed")
 	screen.page_button.pressed.emit()
 	_check(screen.page == "trails" and screen.trail_tiles.size() == 6 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
 		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (6 tiles: ABYSS is hidden while Descent is off, D11)")

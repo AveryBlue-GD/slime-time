@@ -14,8 +14,9 @@ extends Control
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
 ## custom color panel or the preview stage (the clicked skin acting out a little routine, see
 ## SkinShowcase), and a bottom row of BACK | JELLY | HATS. On the hats page COLOR takes JELLY's place:
-## it turns the worn hat through its own color and the dyes you own of it (Hats.dyes_for, bought in the
-## prize wheel's SHOP).
+## it opens a picker of the worn hat's own color and every dye you own of it (Hats.dyes_for, bought in
+## the prize wheel's SHOP): a tile each (swatch and name), the worn one lit; pressing one puts it on,
+## Esc / B closes it.
 
 const TILE_SIZE := Vector2(40, 30)
 const GRID_COLUMNS := 7
@@ -67,8 +68,17 @@ var page := "skins"
 var view_jelly := false
 var page_button: Button
 var jelly_button: Button
-## Hats page: COLOR, in JELLY's place (the worn hat's next owned dye; disabled when it has none).
+## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
+## The color picker: a dim sheet, its panel, its tiles by dye ("" = the hat's own), the focus lock.
+var _picker_blocker: ColorRect
+var _picker: Panel
+var picker_tiles := {}
+var _picker_lock := {}
+## A picker tile's size, the gap between tiles and the panel's inset round them.
+const PICK_TILE := Vector2(84, 13)
+const PICK_GAP := 2
+const PICK_PAD := 8
 var _skin_grid: VBoxContainer
 var _hat_grid: VBoxContainer
 var _trail_grid: VBoxContainer
@@ -121,7 +131,7 @@ func _ready() -> void:
 	jelly_button.position = Vector2((320 - 80) / 2, back.position.y)
 	add_child(jelly_button)
 	# i18n: wardrobe hats page button (the worn hat's color), max 72px, 1 line
-	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), _cycle_hat_color, Vector2(80, UIKit.button_h()))
+	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), open_color_picker, Vector2(80, UIKit.button_h()))
 	add_child(color_button)
 	_layout(back)
 	color_button.position = jelly_button.position
@@ -638,18 +648,80 @@ func _hat_colors(hat: String) -> Array[String]:
 	return colors
 
 
-## COLOR: puts the worn hat on in its next color (saved), on its tile too.
-func _cycle_hat_color() -> void:
+## COLOR: the picker of the worn hat's colors (its own and every dye you own of it), two columns of
+## tiles in a panel centred over the grid; focus on the worn color, locked inside until it closes.
+func open_color_picker() -> void:
 	var hat := Progress.selected_hat
 	var colors := _hat_colors(hat)
 	if colors.size() < 2:
 		return
-	var next := colors[(colors.find(Progress.hat_dye_of(hat)) + 1) % colors.size()]
-	Progress.wear_dye(hat, next)
+	close_color_picker()
+	_picker_blocker = ColorRect.new()
+	_picker_blocker.color = Color(0, 0, 0, 0.45)
+	_picker_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_picker_blocker)
+	_picker_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_picker_blocker.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			close_color_picker())
+	var rows := ceili(colors.size() / 2.0)
+	var tile_h := UIKit.button_h()
+	var box := Vector2(2 * PICK_TILE.x + PICK_GAP + 2 * PICK_PAD, PICK_PAD + UIKit.line_pitch() + rows * (tile_h + PICK_GAP) - PICK_GAP + PICK_PAD)
+	_picker = UIKit.add_panel(self, Rect2((Vector2(320, 180) - box) / 2.0, box).abs())
+	_picker.position = _picker.position.round()
+	var heading := UIKit.make_label(Hats.display_name(hat), UIKit.FONT, UIKit.GOLD)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.position = Vector2(0, PICK_PAD - 2)
+	heading.size = Vector2(box.x, 10)
+	_picker.add_child(heading)
+	picker_tiles.clear()
+	for i in colors.size():
+		var dye := colors[i]
+		var tile := UIKit.make_button("", func() -> void: _pick_hat_color(dye), Vector2(PICK_TILE.x, tile_h))
+		var x := PICK_PAD + (i % 2) * (PICK_TILE.x + PICK_GAP)
+		if i == colors.size() - 1 and i % 2 == 0:
+			x = roundf((box.x - PICK_TILE.x) / 2.0)  # (a last color alone on its row: centred)
+		tile.position = Vector2(x, PICK_PAD + UIKit.line_pitch() + (i / 2) * (tile_h + PICK_GAP))
+		var swatch := ColorRect.new()
+		swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
+		swatch.size = Vector2(5, 5)
+		swatch.position = Vector2(4, UIKit.button_v_margins().x + 1)
+		swatch.material = Hats.flow_material() if Hats.dye_flows(dye) else null
+		tile.add_child(swatch)
+		var dye_label := UIKit.make_label(Hats.dye_name(dye), UIKit.FONT, UIKit.TEXT)
+		dye_label.position = Vector2(12, UIKit.button_v_margins().x)
+		tile.add_child(dye_label)
+		UIKit.set_selected(tile, dye == Progress.hat_dye_of(hat))
+		_picker.add_child(tile)
+		picker_tiles[dye] = tile
+	_picker_lock = UIKit.lock_focus(self, _picker)
+	(picker_tiles.get(Progress.hat_dye_of(hat), picker_tiles[""]) as Button).grab_focus()
+
+
+## Closes the color picker (if open) and puts the focus back on COLOR.
+func close_color_picker() -> void:
+	if _picker == null:
+		return
+	UIKit.unlock_focus(_picker_lock)
+	_picker.queue_free()
+	_picker_blocker.queue_free()
+	_picker = null
+	_picker_blocker = null
+	picker_tiles.clear()
+	if color_button.visible:
+		color_button.grab_focus()
+
+
+## A picker tile: puts the worn hat on in that color (saved), on its tile too, and closes the picker.
+func _pick_hat_color(dye: String) -> void:
+	var hat := Progress.selected_hat
+	Progress.wear_dye(hat, dye)
 	var tile: Button = hat_tiles.get(hat)
 	if tile and tile.has_meta("hat"):
 		var worn: Hat = tile.get_meta("hat")
-		worn.setup(hat, worn.body, null, next)
+		worn.setup(hat, worn.body, null, Progress.hat_dye_of(hat))
+	close_color_picker()
 	_refresh_hats(hat)
 
 
@@ -732,6 +804,11 @@ func _refresh_hats(focus_id := "") -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _picker != null:
+		if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
+			close_color_picker()  # (Esc / B: the picker first)
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
 		UIKit.go(get_tree(), UIKit.HUB_SCENE)
 	elif event.is_action_pressed("tab_next") or event.is_action_pressed("tab_prev"):

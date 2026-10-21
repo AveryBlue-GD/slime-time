@@ -316,6 +316,8 @@ func _ui_wardrobe_color() -> void:
 	layer.add_child(screen)
 	screen.show_page.call_deferred("hats")
 	screen.color_button.grab_focus.call_deferred()
+	if "picker" in OS.get_cmdline_user_args():
+		screen.open_color_picker.call_deferred()
 
 
 func _ui_dyed() -> void:
