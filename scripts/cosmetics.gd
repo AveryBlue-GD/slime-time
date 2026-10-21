@@ -2,7 +2,8 @@ class_name Cosmetics
 extends RefCounted
 
 ## Ticket cosmetics v1 (upgrades v2 batch 2, docs/design/upgrades-v2.md C.2): five goo TRAIL styles
-## and three map PAPERS, sold in the hat wheel's SHOP tab (prices: Economy.COSMETICS), owned for
+## and map PAPERS (each a bundle: its sheet, its walls and its route; owner 2026-10-21: owned bundles'
+## parts are mixed in the wardrobe, Progress.map_paper / map_walls / map_route, style_colors), sold in the hat wheel's SHOP tab (prices: Economy.COSMETICS), owned for
 ## good (Progress.cosmetics_owned), worn one at a time (Progress.trail_style / map_paper; the
 ## defaults DEFAULT_TRAIL and DEFAULT_PAPER are free and always owned). All palette / pattern work:
 ## no new sprite sheets, and nothing in a shader indexes an array at run time.
@@ -31,6 +32,17 @@ const LIST := [
 	{id = "blueprint", kind = PAPER, name = "BLUEPRINT PAPER", about = "BLUE PAPER, WHITE INK"},  # i18n: ignore (English source; shown via display_name)
 	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},  # i18n: ignore (English source; shown via display_name)
 	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},  # i18n: ignore (English source; shown via display_name)
+	# Dye bundles (Hats.DYES' colors but MIDNIGHT and SNOW: NIGHT and BLUEPRINT / GOLD LEAF are those looks): a pale sheet, deep walls and a
+	# route in the dye. Then the flowing bundles (`flow`: MapView.mark_flow, map_flow.gdshader).
+	{id = "cherry_paper", kind = PAPER, name = "CHERRY PAPER", about = "A CHERRY SET", dye = Color8(206, 52, 62)},  # i18n: ignore (English source; shown via display_name)
+	{id = "tangerine_paper", kind = PAPER, name = "TANGERINE PAPER", about = "A TANGERINE SET", dye = Color8(232, 128, 48)},  # i18n: ignore (English source; shown via display_name)
+	{id = "butter_paper", kind = PAPER, name = "BUTTER PAPER", about = "A BUTTER SET", dye = Color8(240, 204, 76)},  # i18n: ignore (English source; shown via display_name)
+	{id = "clover_paper", kind = PAPER, name = "CLOVER PAPER", about = "A CLOVER SET", dye = Color8(72, 168, 84)},  # i18n: ignore (English source; shown via display_name)
+	{id = "cobalt_paper", kind = PAPER, name = "COBALT PAPER", about = "A COBALT SET", dye = Color8(62, 110, 214)},  # i18n: ignore (English source; shown via display_name)
+	{id = "plum_paper", kind = PAPER, name = "PLUM PAPER", about = "A PLUM SET", dye = Color8(124, 78, 196)},  # i18n: ignore (English source; shown via display_name)
+	{id = "bubblegum_paper", kind = PAPER, name = "BUBBLEGUM PAPER", about = "A BUBBLEGUM SET", dye = Color8(236, 120, 176)},  # i18n: ignore (English source; shown via display_name)
+	{id = "prism_paper", kind = PAPER, name = "PRISM PAPER", about = "TURNS THROUGH THE COLORS", flow = "prism"},  # i18n: ignore (English source; shown via display_name)
+	{id = "rainbow_paper", kind = PAPER, name = "RAINBOW PAPER", about = "A FLOWING RAINBOW", flow = "gradient"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
 ]
@@ -120,6 +132,24 @@ static func display_name(id: String) -> String:
 			return Loc.t("paper.night", "NIGHT PAPER")
 		"goldleaf":
 			return Loc.t("paper.goldleaf", "GOLD LEAF PAPER")
+		"cherry_paper":
+			return Loc.t("paper.cherry", "CHERRY PAPER")
+		"tangerine_paper":
+			return Loc.t("paper.tangerine", "TANGERINE PAPER")
+		"butter_paper":
+			return Loc.t("paper.butter", "BUTTER PAPER")
+		"clover_paper":
+			return Loc.t("paper.clover", "CLOVER PAPER")
+		"cobalt_paper":
+			return Loc.t("paper.cobalt", "COBALT PAPER")
+		"plum_paper":
+			return Loc.t("paper.plum", "PLUM PAPER")
+		"bubblegum_paper":
+			return Loc.t("paper.bubblegum", "BUBBLEGUM PAPER")
+		"prism_paper":
+			return Loc.t("paper.prism", "PRISM PAPER")
+		"rainbow_paper":
+			return Loc.t("paper.rainbow", "RAINBOW PAPER")
 		"abyss":
 			return Loc.t("trail.abyss.name", "ABYSS TRAIL")
 	return get_item(id).get("name", "")
@@ -145,6 +175,24 @@ static func about(id: String) -> String:
 			return Loc.t("paper.night.desc", "DARK PAPER, SKIN INK")
 		"goldleaf":
 			return Loc.t("paper.goldleaf.desc", "CREAM PAPER, GOLD INK")
+		"cherry_paper":
+			return Loc.t("paper.cherry.desc", "SHEET, WALLS AND ROUTE IN CHERRY")
+		"tangerine_paper":
+			return Loc.t("paper.tangerine.desc", "SHEET, WALLS AND ROUTE IN TANGERINE")
+		"butter_paper":
+			return Loc.t("paper.butter.desc", "SHEET, WALLS AND ROUTE IN BUTTER")
+		"clover_paper":
+			return Loc.t("paper.clover.desc", "SHEET, WALLS AND ROUTE IN CLOVER")
+		"cobalt_paper":
+			return Loc.t("paper.cobalt.desc", "SHEET, WALLS AND ROUTE IN COBALT")
+		"plum_paper":
+			return Loc.t("paper.plum.desc", "SHEET, WALLS AND ROUTE IN PLUM")
+		"bubblegum_paper":
+			return Loc.t("paper.bubblegum.desc", "SHEET, WALLS AND ROUTE IN BUBBLEGUM")
+		"prism_paper":
+			return Loc.t("paper.prism.desc", "TURNS THROUGH THE COLORS")
+		"rainbow_paper":
+			return Loc.t("paper.rainbow.desc", "A FLOWING RAINBOW")
 		"abyss":
 			return Loc.t("trail.abyss.desc", "DARK GOO, FAINT STARS")
 	return ""
@@ -231,9 +279,71 @@ static func trail_preview(style: String, skin: Color, rainbow: bool, size := Vec
 
 # ---------------------------------------------------------------- map papers
 
+## A map style: three owned papers' parts, "sheet|walls|route" (a bare paper id = all three its own;
+## Progress.map_style).
+static func style_parts(style: String) -> Array[String]:
+	var parts: Array[String] = []
+	for part in (style.split("|") if "|" in style else PackedStringArray([style, style, style])):
+		parts.append(part)
+	while parts.size() < 3:
+		parts.append(DEFAULT_PAPER)
+	return parts.slice(0, 3)
+
+
+## Which of a paper's colors make up each part of a bundle.
+const SHEET_KEYS := ["fog", "floor", "frame", "coin", "coin_edge"]
+const WALL_KEYS := ["wall", "start", "goal"]
+const ROUTE_KEYS := ["route"]
+
+
+## The colors style `style` (see style_parts) puts over a map's palette: each part taken from its own
+## paper's colors (the default parchment keeps the map's own); `flow` = {palette key: "prism" /
+## "gradient"} for parts of a flowing paper. `ink`: the skin color (NIGHT draws in it).
+static func style_colors(style: String, ink := Color.WHITE) -> Dictionary:
+	var parts := style_parts(style)
+	var out := {}
+	var flow := {}
+	for i in 3:
+		var colors := paper_colors(parts[i], ink)
+		var mode: String = get_item(parts[i]).get("flow", "")
+		for key: String in [SHEET_KEYS, WALL_KEYS, ROUTE_KEYS][i]:
+			if colors.has(key):
+				out[key] = colors[key]
+				if mode != "" and key in ["floor", "wall", "start", "goal", "route"]:
+					flow[key] = mode
+	if not flow.is_empty():
+		out.flow = flow
+	return out
+
+
+## Whether style `style` has a flowing part (its map texture needs map_flow.gdshader).
+static func style_flows(style: String) -> bool:
+	for part in style_parts(style):
+		if get_item(part).has("flow"):
+			return true
+	return false
+
+
 ## The colors map paper `paper` puts over a map's palette (MapView.palette): {} for the default.
-## `ink`: the skin color (NIGHT draws in it). The route stays red on every paper.
+## `ink`: the skin color (NIGHT draws in it). The classic papers keep the red route.
 static func paper_colors(paper: String, ink := Color.WHITE) -> Dictionary:
+	var item := get_item(paper)
+	if item.has("dye"):
+		var dye: Color = item.dye
+		var sheet := dye.lerp(Color.WHITE, 0.62)
+		var walls := dye.darkened(0.55) if dye.get_luminance() > 0.25 else dye.lerp(Color.BLACK, 0.3)
+		var route := dye if dye.get_luminance() < 0.7 else dye.darkened(0.45)
+		return {fog = dye.darkened(0.85), floor = sheet, wall = walls, start = walls, goal = walls, route = route,
+			frame = [dye.darkened(0.8), dye.darkened(0.5), dye, sheet]}
+	match item.get("flow", ""):
+		"prism":  # (bright and saturated: the shader turns their hue as one)
+			var red := Color8(222, 62, 70)
+			return {fog = Color8(14, 12, 22), floor = Color8(250, 196, 196), wall = Color8(150, 30, 44), start = Color8(150, 30, 44),
+				goal = Color8(150, 30, 44), route = red, frame = [Color8(14, 12, 22), Color8(150, 30, 44), red, Color8(250, 196, 196)]}
+		"gradient":  # (mark_flow lays a rainbow across these, then the shader flows it)
+			var red := Color8(224, 64, 72)
+			return {fog = Color8(14, 12, 22), floor = Color8(250, 198, 198), wall = Color8(152, 32, 46), start = Color8(152, 32, 46),
+				goal = Color8(152, 32, 46), route = red, frame = [Color8(14, 12, 22), Color8(152, 32, 46), red, Color8(250, 198, 198)]}
 	match paper:
 		"blueprint":
 			var white := Color8(232, 242, 255)

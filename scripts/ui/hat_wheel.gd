@@ -63,6 +63,8 @@ const GRID_STEP := 15
 ## A dye tile's color swatch (square, before its name) and the room it takes from the name.
 const SWATCH := 5
 const SWATCH_ROOM := 8
+## A paper tile's little map (paper_scrap, 9 px wide) and the room it takes from the name.
+const PAPER_ROOM := 12
 ## The tiles' text inset, the least gap between a name and its price, the gap between tiles.
 const TILE_PAD := 4
 const NAME_GAP := 3
@@ -645,7 +647,7 @@ func _fit_grid(ids: Array[String]) -> void:
 	var name_w := 0
 	var right_w := 0
 	for id in ids:
-		name_w = maxi(name_w, UIKit.text_w(_name_of(id)) + (SWATCH_ROOM if _is_dye(id) else 0))
+		name_w = maxi(name_w, UIKit.text_w(_name_of(id)) + (SWATCH_ROOM if _is_dye(id) else PAPER_ROOM if _is_paper(id) else 0))
 		right_w = maxi(right_w, _right_w(id))
 	# (up to GRID_MIN_INSET from the panel's sides before a name has to wrap)
 	var max_w := floorf((PANEL.size.x - 2 * GRID_MIN_INSET - GRID_GAP) / 2.0)
@@ -661,7 +663,7 @@ func _fit_grid(ids: Array[String]) -> void:
 	grid_step = tile_size.y + GRID_GAP
 	_place_status(ids)
 	var area := status_y - (UIKit.GAP_S if _compact() else UIKit.GAP_M) - grid_top
-	if section != "hats":
+	if section == "trails":  # (papers show a little map in each tile instead: all of them on one page)
 		area -= _preview_room()
 	var budget := UIKit.grid_budget(ids.size(), 2, area, tile_size.y, GRID_GAP)
 	rows_per_page = budget.rows_per_page if not budget.fits else maxi(budget.rows, 1)
@@ -804,7 +806,7 @@ func _worn(id: String) -> bool:
 	if _is_dye(id):
 		var parts := _dye_parts(id)
 		return Progress.selected_hat == parts[0] and Progress.hat_dye_of(parts[0]) == parts[1]
-	return Progress.trail_style == id or Progress.map_paper == id
+	return Progress.trail_style == id or Progress.uses_paper(id)
 
 
 ## A dyeable hat tile's right part: the dyes owned of its dyes ("3/9").
@@ -830,6 +832,14 @@ func _make_tile(id: String) -> Button:
 	# (right-to-left: the Kufi letters have no side bearing, the slimy font's 1 px is on the left, so
 	# the right-aligned name keeps 1 px more from the tile's inner border: 3 clear columns, as English's left)
 	name_label.position = Vector2(TILE_PAD + (1 if UIKit.rtl() else 0), text_y)
+	if _is_paper(id):  # a little map on that paper (its sheet, walls and route; PRISM / RAINBOW flowing)
+		var scrap := TextureRect.new()
+		scrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		scrap.texture = ImageTexture.create_from_image(paper_scrap(id, Progress.skin_color()))
+		scrap.material = MapView.flow_material(id)
+		scrap.position = Vector2(TILE_PAD, text_y)
+		tile.add_child(scrap)
+		name_label.position.x += PAPER_ROOM
 	if _is_dye(id):  # a swatch of the dye (the hat's own look for ORIGINAL: a goo-dark square with its outline)
 		var dye := _dye_parts(id)[1]
 		var swatch := ColorRect.new()
@@ -995,7 +1005,7 @@ func _fit_status(label: Label, top: float, lines: int) -> void:
 
 
 func _show_preview(id: String) -> void:
-	preview.visible = not _is_hat(id) and not _is_dye(id) and Cosmetics.get_item(id).size() > 0
+	preview.visible = not _is_hat(id) and not _is_dye(id) and Cosmetics.kind_of(id) == Cosmetics.TRAIL
 	_preview_floor.visible = preview.visible
 	if not preview.visible:
 		return
@@ -1009,7 +1019,7 @@ func _show_preview(id: String) -> void:
 		material.set_shader_parameter("animate", 0.0 if Progress.reduce_motion else 1.0)
 	else:
 		image = paper_swatch(id, Progress.skin_color())
-	preview.material = material
+	preview.material = material if material else MapView.flow_material(id)  # (PRISM / RAINBOW papers flow)
 	preview.texture = ImageTexture.create_from_image(image)
 	var scale := 2 if material else 3
 	preview.size = Vector2(image.get_size() * scale)
@@ -1046,6 +1056,29 @@ func _show_try_on(id: String, dye := "") -> void:
 		hat.setup(id, slime, null, dye)
 
 
+## A map paper tile (the SHOP's PAPERS).
+func _is_paper(id: String) -> bool:
+	return not _is_dye(id) and Cosmetics.kind_of(id) == Cosmetics.PAPER
+
+
+## A paper tile's little map, before its name: 9 x 7 px, the sheet framed in the walls with a route
+## through it (marked to flow for PRISM / RAINBOW).
+static func paper_scrap(paper: String, ink: Color) -> Image:
+	var pal := MapView.palette("", paper, ink)
+	var image := Image.create_empty(9, 7, false, Image.FORMAT_RGBA8)
+	image.fill(pal.wall)
+	image.fill_rect(Rect2i(1, 1, 7, 5), pal.floor)
+	image.fill_rect(Rect2i(4, 1, 1, 3), pal.wall)
+	for x in range(1, 4):
+		image.set_pixel(x, 4, pal.route)
+	for y in range(2, 5):
+		image.set_pixel(3, y, pal.route)
+	for x in range(5, 8):
+		image.set_pixel(x, 2, pal.route)
+	MapView.mark_flow(image, pal)
+	return image
+
+
 ## A scrap of map on paper `paper`: a little maze corner (floor cells, wall lines, a red route, a coin).
 static func paper_swatch(paper: String, ink: Color) -> Image:
 	var pal := MapView.palette("dungeon", paper, ink)
@@ -1060,6 +1093,7 @@ static func paper_swatch(paper: String, ink: Color) -> Image:
 	for y in range(2, 8):
 		image.set_pixel(24, y, pal.route)
 	image.fill_rect(Rect2i(3, 7, 1, 1), pal.coin)
+	MapView.mark_flow(image, pal)
 	return image
 
 

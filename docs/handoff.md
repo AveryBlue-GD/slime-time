@@ -86,7 +86,7 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 - **Hub color** (owner, 2026-10-21): the wardrobe's HUB page sets the hub room's and stations' color to AUTO (the worn skin) or any unlocked skin (`Progress.hub_skin`, saved `[skin] hub`), open once normal mode is beaten.
 - **Tickets** (randomizer, Descent pots) buy hat wheel spins, the SHOP (hat DYES: hats are never sold (owner, 2026-10-21);
   all 12 hats (the viking helmet: its rim only; the party hat: its pompom; the crown: its gems) in 9 dyes minus their own color at 10 tickets (teal dropped so every hat's colors fit one page), plus two flowing dyes: PRISM at 50 (turns through the colors as one) and RAINBOW at 99 (the rainbow skin's own gradient, lined up with a rainbow slime) (123 dyes; compare in `tests/demo_rainbow_dyes.tscn`), `assets/sprites/hat_dyes.png` from `tools/make_hats.py`;
-  5 trail styles, 3 map papers) and the three **abilities** (SLIME RIFLE / SPLAT / SLIMAKAZE, keys 1/2/3, one charge per attempt; they work ONLY in
+  5 trail styles, 12 map paper bundles: the 3 classic ones, 7 dye ones at 30, PRISM 50, RAINBOW 99; each a sheet, walls and route the wardrobe's PAPERS page mixes with SET, `Progress.map_style()`) and the three **abilities** (SLIME RIFLE / SPLAT / SLIMAKAZE, keys 1/2/3, one charge per attempt; they work ONLY in
   randomizer mazes and Descent, never in story/hard: `Abilities.allowed_in`).
 - The ticket **workshop** (SECOND WIND, QUICK CHARGE, ...) is switched OFF (`Economy.WORKSHOP_ENABLED := false`); saved levels are
   kept, flipping the const restores it.

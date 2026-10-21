@@ -9,7 +9,10 @@ extends Control
 ## prize wheel's SHOP, Cosmetics), each a little strip of that goo in your skin; owned ones are worn
 ## by pressing them, the others are silhouettes saying where to buy them. The PAPERS page works the same
 ## for the map papers (Cosmetics, sold in the same SHOP): a tile per paper, each a little example map
-## drawn on it (MapView.render); wearing one is the MAP TABLE's PAPER setting (Progress.map_paper).
+## drawn on it (MapView.render). Papers are bundles (a sheet, walls and a route): PART (in JELLY's
+## place) picks what pressing an owned paper sets (ALL of it, or only its SHEET, WALLS or ROUTE), so
+## owned papers' parts mix (Progress.map_paper / map_walls / map_route); the mix is drawn big under the
+## tip line (paper_mix), PRISM and RAINBOW parts flowing (MapView.flow_material).
 ## The HUB page (owner, 2026-10-21) picks the hub's color: AUTO (it follows the worn skin) or any skin
 ## you have unlocked (a slime in it, opaque); shut (silhouettes) until normal mode is beaten
 ## (Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
@@ -77,6 +80,12 @@ var page := "skins"
 var view_jelly := false
 var page_button: Button
 var jelly_button: Button
+## Papers page: PART, in JELLY's place: what pressing an owned paper sets ("all", "sheet", "walls",
+## "route"), and the mixed map drawn big where the stage goes.
+var part_button: Button
+var paper_part := "all"
+var paper_mix: TextureRect
+const PAPER_PARTS := ["all", "sheet", "walls", "route"]
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
 ## The color picker: a dim sheet, its panel, its tiles by dye ("" = the hat's own), the focus lock.
@@ -143,6 +152,14 @@ func _ready() -> void:
 	color_button.position = jelly_button.position
 	color_button.custom_minimum_size.x = jelly_button.size.x
 	color_button.size.x = jelly_button.size.x
+	part_button = UIKit.make_button(_part_text(), _cycle_part, Vector2(jelly_button.size.x, UIKit.button_h()))
+	part_button.position = jelly_button.position
+	add_child(part_button)
+	paper_mix = TextureRect.new()
+	paper_mix.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	paper_mix.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	paper_mix.stretch_mode = TextureRect.STRETCH_SCALE
+	add_child(paper_mix)
 	show_page("skins")
 
 
@@ -441,6 +458,8 @@ func show_page(which: String) -> void:
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
 	color_button.visible = hats
+	part_button.visible = papers
+	paper_mix.visible = papers
 	_title.text = page_title(page)
 	page_button.text = page_title(PAGES[(PAGES.find(page) + 1) % PAGES.size()])
 	if hats:
@@ -675,8 +694,38 @@ static func paper_preview(paper: String, ink: Color, locked := false) -> Image:
 
 func _on_paper_tile(id: String) -> void:
 	if Progress.owns_cosmetic(id):
-		Progress.equip_cosmetic(id)
+		Progress.set_map_part(paper_part, id)
 	_refresh_papers(id)
+
+
+## PART's text: what pressing an owned paper sets.
+func _part_text() -> String:
+	# i18n: wardrobe PAPERS page button (which part of a map paper a press sets), max 72px, 1 line
+	match paper_part:
+		"sheet":
+			return Loc.t("skins.part_sheet", "SET: SHEET")
+		"walls":
+			return Loc.t("skins.part_walls", "SET: WALLS")
+		"route":
+			return Loc.t("skins.part_route", "SET: ROUTE")
+	return Loc.t("skins.part_all", "SET: ALL")
+
+
+## A map part's name ("sheet", "walls", "route").
+static func part_name(part: String) -> String:
+	# i18n: a map paper part, status line word, max 48px
+	match part:
+		"walls":
+			return Loc.t("skins.part_name_walls", "WALLS")
+		"route":
+			return Loc.t("skins.part_name_route", "ROUTE")
+	return Loc.t("skins.part_name_sheet", "SHEET")
+
+
+func _cycle_part() -> void:
+	paper_part = PAPER_PARTS[(PAPER_PARTS.find(paper_part) + 1) % PAPER_PARTS.size()]
+	part_button.text = _part_text()
+	_refresh_papers()
 
 
 ## The papers page's status line (for `focus_id`, or the worn paper) and tile highlights (the same
@@ -684,17 +733,35 @@ func _on_paper_tile(id: String) -> void:
 func _refresh_papers(focus_id := "") -> void:
 	var id: String = focus_id if focus_id != "" else Progress.map_paper
 	if Progress.owns_cosmetic(id):
-		if id == Progress.map_paper:
+		var used: Array[String] = []
+		for pair: Array in [["sheet", Progress.map_paper], ["walls", Progress.map_walls], ["route", Progress.map_route]]:
+			if pair[1] == id:
+				used.append(part_name(pair[0]))
+		if used.size() == 3:
 			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Cosmetics.display_name(id)})
+		elif not used.is_empty():
+			# i18n: wardrobe PAPERS status, max 300px, 1 line; {parts} = the parts it gives, e.g. SHEET, ROUTE
+			status.text = Loc.t("skins.paper_parts", "{name} - {parts}", {name = Cosmetics.display_name(id), parts = ", ".join(used)})
 		else:
 			status.text = Cosmetics.display_name(id)
 	else:
 		status.text = Loc.n("skins.name_price", "{name} - {price} TIX IN THE SHOP", "{name} - {price} TIX IN THE SHOP", Cosmetics.price(id), {name = Cosmetics.display_name(id), price = Cosmetics.price(id)})
 	for tile_id: String in paper_tiles:
-		UIKit.set_selected(paper_tiles[tile_id], tile_id == Progress.map_paper)
+		UIKit.set_selected(paper_tiles[tile_id], Progress.uses_paper(tile_id))
 		# redraw: NIGHT is drawn in the skin color, which may have changed since the page was built
 		var map := paper_tiles[tile_id].get_child(0) as TextureRect
-		map.texture = ImageTexture.create_from_image(paper_preview(tile_id, Progress.skin_color(), not Progress.owns_cosmetic(tile_id)))
+		var owned := Progress.owns_cosmetic(tile_id)
+		map.texture = ImageTexture.create_from_image(paper_preview(tile_id, Progress.skin_color(), not owned))
+		map.material = MapView.flow_material(tile_id) if owned else null
+	# The mix, big: under the tip line, centred (where the stage goes on the skins page).
+	var mix := paper_preview(Progress.map_style(), Progress.skin_color())
+	var scale := 2
+	paper_mix.texture = ImageTexture.create_from_image(mix)
+	paper_mix.material = MapView.flow_material(Progress.map_style())
+	paper_mix.size = Vector2(mix.get_size() * scale)
+	var top := _rule.offset_top + 10 + UIKit.GAP_M
+	var room := UIKit.bottom_row_y() - UIKit.GAP_S - top
+	paper_mix.position = Vector2(roundf((320 - paper_mix.size.x) / 2.0), roundf(top + maxf(0.0, (room - paper_mix.size.y) / 2.0)))
 
 
 ## The custom color panel, mirrored about the center: the wheel on the left, the big preview

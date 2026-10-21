@@ -61,9 +61,9 @@ func _totals() -> void:
 	var cosmetics := 0
 	for id in Cosmetics.ids():
 		cosmetics += Cosmetics.price(id)
-	_check(cosmetics == 240 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 3,
-		"5 trails + 3 papers cost 240 (got %d)" % cosmetics)
-	_check(wheel + Workshop.full_cost() + cosmetics == 905, "everything in v1 costs 905 tickets")
+	_check(cosmetics == 599 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 12,
+		"5 trails (150) + 12 paper bundles (90 + 7 x 30 + PRISM 50 + RAINBOW 99) cost 599 (got %d)" % cosmetics)
+	_check(wheel + Workshop.full_cost() + cosmetics == 1264, "everything but the hat dyes costs 1264 tickets")
 	_check(Economy.DYE_PRICE == 10
 		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
 		"store numbers live in Economy (Progress aliases them)")
@@ -478,8 +478,25 @@ func _ui_wardrobe() -> void:
 	screen.trail_tiles["ink"].pressed.emit()
 	_check(progress.trail_style == "ink" and "WEARING" in screen.status.text, "an owned trail is worn")
 	screen.page_button.pressed.emit()
-	_check(screen.page == "papers" and screen.paper_tiles.size() == 4 and screen.page_button.text == "HUB" and screen._title.text == "PAPERS",
-		"...then PAPERS (4 tiles: parchment and the three sold papers)")
+	_check(screen.page == "papers" and screen.paper_tiles.size() == 13 and screen.page_button.text == "HUB" and screen._title.text == "PAPERS",
+		"...then PAPERS (13 tiles: parchment and the twelve sold papers)")
+	# Papers are bundles: SET picks the part a press sets, and owned papers' parts mix.
+	progress.cosmetics_owned.append_array(["night", "rainbow_paper"])
+	screen.show_page("papers")
+	screen.paper_tiles["night"].pressed.emit()
+	_check(progress.map_style() == "night", "SET: ALL wears a paper whole (its sheet, walls and route)")
+	screen.part_button.pressed.emit()
+	screen.part_button.pressed.emit()
+	_check(screen.paper_part == "walls" and "WALLS" in screen.part_button.text, "SET cycles ALL -> SHEET -> WALLS")
+	screen.paper_tiles["rainbow_paper"].pressed.emit()
+	_check(progress.map_style() == "night|rainbow_paper|night" and Cosmetics.style_flows(progress.map_style())
+		and screen.paper_mix.material != null and "WALLS" in screen.status.text, "...a paper's walls on another's sheet, flowing (the mix drawn big)")
+	var mixed: ConfigFile = progress._write()
+	progress.map_walls = "night"
+	progress._read(mixed)
+	_check(progress.map_style() == "night|rainbow_paper|night", "the mix is saved")
+	progress.unequip_cosmetic("rainbow_paper")
+	_check(progress.map_style() == "night|parchment|night", "taking a paper off drops every part it gave")
 	screen.page_button.pressed.emit()
 	_check(screen.page == "hub" and screen.hub_tiles.size() == 14 and screen.hub_tiles[""].has_focus() and "BEAT THE STORY" in screen._rule.text,
 		"...then HUB (AUTO + 13 skins), shut before normal mode is beaten")

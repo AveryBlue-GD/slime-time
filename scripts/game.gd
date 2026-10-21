@@ -2506,7 +2506,7 @@ func open_random_map() -> void:
 		var focus := get_viewport().gui_get_focus_owner()
 		if buttons.size() > 3 and is_instance_valid(buttons[3]) and not (focus in buttons):
 			(buttons[3] as Button).grab_focus())  # (back on MAP, even when it was clicked)
-	random_map_view.open(maze, survey, theme, progress.map_paper, progress.skin_color())
+	random_map_view.open(maze, survey, theme, progress.map_style(), progress.skin_color())
 	DevLog.log_event(get_tree(), "random maze map opened", self)
 
 

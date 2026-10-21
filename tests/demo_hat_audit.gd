@@ -73,6 +73,8 @@ func _run() -> void:
 	await _ui_page("ui_dyed", _ui_dyed, 30)
 	await _ui_page("ui_wardrobe_color", _ui_wardrobe_color, 30)
 	await _ui_page("ui_hub_page", _ui_hub_page, 30)
+	await _ui_page("ui_papers_mix", _ui_papers_mix, 30)
+	await _ui_page("ui_shop_papers", _ui_shop_papers, 30)
 	await _ui_page("ui_hub_frost", _ui_hub_frost, 30)
 	await _ui_page("ui_wardrobe", _ui_wardrobe, 30)
 	await _ui_page("ui_hub", _ui_hub, 30)
@@ -331,6 +333,31 @@ func _ui_hub_page() -> void:
 	var screen: Control = load("res://scenes/skins.tscn").instantiate()
 	layer.add_child(screen)
 	screen.show_page.call_deferred("hub")
+
+
+## The wardrobe's PAPERS page with every paper owned and a mix: NIGHT sheet, RAINBOW walls, BUTTER route.
+func _ui_papers_mix() -> void:
+	Progress.cosmetics_owned.assign(Cosmetics.ids())
+	Progress.map_paper = "night"
+	Progress.map_walls = "rainbow_paper"
+	Progress.map_route = "butter_paper"
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	var screen: Control = load("res://scenes/skins.tscn").instantiate()
+	layer.add_child(screen)
+	screen.show_page.call_deferred("papers")
+
+
+## The SHOP's PAPERS section (two pages of bundles), RAINBOW focused.
+func _ui_shop_papers() -> void:
+	var hub := _hub()
+	await get_tree().process_frame
+	hub.open_hat_wheel()
+	var wheel: Control = hub.hat_wheel
+	wheel.show_tab("shop")
+	wheel.section_buttons["papers"].pressed.emit()
+	await get_tree().process_frame
+	wheel.shop_tiles["rainbow_paper"].grab_focus()
 
 
 func _ui_hub_frost() -> void:

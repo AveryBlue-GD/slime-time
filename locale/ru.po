@@ -96,6 +96,51 @@ msgid "GOLD LEAF PAPER"
 msgstr "СУСАЛЬНОЕ ЗОЛОТО"
 
 #: scripts/cosmetics.gd
+msgctxt "paper.cherry"
+msgid "CHERRY PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.tangerine"
+msgid "TANGERINE PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.butter"
+msgid "BUTTER PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.clover"
+msgid "CLOVER PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.cobalt"
+msgid "COBALT PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.plum"
+msgid "PLUM PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.bubblegum"
+msgid "BUBBLEGUM PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.prism"
+msgid "PRISM PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.rainbow"
+msgid "RAINBOW PAPER"
+msgstr ""
+
+#: scripts/cosmetics.gd
 msgctxt "trail.abyss.name"
 msgid "ABYSS TRAIL"
 msgstr "СЛЕД БЕЗДНЫ"
@@ -139,6 +184,51 @@ msgstr "ТЁМНАЯ БУМАГА, ЧЕРНИЛА СКИНА"
 msgctxt "paper.goldleaf.desc"
 msgid "CREAM PAPER, GOLD INK"
 msgstr "КРЕМОВАЯ БУМАГА, ЗОЛОТЫЕ ЧЕРНИЛА"
+
+#: scripts/cosmetics.gd
+msgctxt "paper.cherry.desc"
+msgid "SHEET, WALLS AND ROUTE IN CHERRY"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.tangerine.desc"
+msgid "SHEET, WALLS AND ROUTE IN TANGERINE"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.butter.desc"
+msgid "SHEET, WALLS AND ROUTE IN BUTTER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.clover.desc"
+msgid "SHEET, WALLS AND ROUTE IN CLOVER"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.cobalt.desc"
+msgid "SHEET, WALLS AND ROUTE IN COBALT"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.plum.desc"
+msgid "SHEET, WALLS AND ROUTE IN PLUM"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.bubblegum.desc"
+msgid "SHEET, WALLS AND ROUTE IN BUBBLEGUM"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.prism.desc"
+msgid "TURNS THROUGH THE COLORS"
+msgstr ""
+
+#: scripts/cosmetics.gd
+msgctxt "paper.rainbow.desc"
+msgid "A FLOWING RAINBOW"
+msgstr ""
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.desc"
@@ -2572,6 +2662,48 @@ msgid_plural "{name} - {price} TIX IN THE SHOP"
 msgstr[0] "{name} - {price} БИЛЕТ В ЛАВКЕ"
 msgstr[1] "{name} - {price} БИЛЕТА В ЛАВКЕ"
 msgstr[2] "{name} - {price} БИЛЕТОВ В ЛАВКЕ"
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_sheet"
+msgid "SET: SHEET"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_walls"
+msgid "SET: WALLS"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_route"
+msgid "SET: ROUTE"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_all"
+msgid "SET: ALL"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_name_walls"
+msgid "WALLS"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_name_route"
+msgid "ROUTE"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.part_name_sheet"
+msgid "SHEET"
+msgstr ""
+
+#. wardrobe PAPERS status, max 300px, 1 line; {parts} = the parts it gives, e.g. SHEET, ROUTE
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.paper_parts"
+msgid "{name} - {parts}"
+msgstr ""
 
 #. status line (demo build), max 300px, 1 line; {name} = a skin name
 #. budget: max 300px, lines 1

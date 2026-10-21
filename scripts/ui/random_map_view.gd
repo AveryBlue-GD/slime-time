@@ -49,6 +49,7 @@ func open(maze: Dictionary, survey: Dictionary, maze_theme: String, paper: Strin
 	add_child(fog)
 	var map := TextureRect.new()
 	map.texture = ImageTexture.create_from_image(image)
+	map.material = MapView.flow_material(paper)
 	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map.size = Vector2(image.get_size())
 	map.position = (Vector2(MARGIN, top) + (Vector2(area) - map.size) / 2.0).floor()

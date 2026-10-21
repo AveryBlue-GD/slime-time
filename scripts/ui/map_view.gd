@@ -23,10 +23,11 @@ extends RefCounted
 ## a 36x20-cell maze still fits the 320x180 screen (5 + 2 px) with room for the title and BACK. Floors
 ## are always an odd number of px, so the 1 px route runs exactly down the middle of a corridor.
 ## `theme` (a Themes id; "" = the plain parchment) draws the map in that level's palette with a themed
-## frame round it (on in the game: map_select.THEMED_MAPS). `paper` (a Cosmetics map paper, bought in
-## the prize wheel's SHOP; "" / "parchment" = none) recolors the paper, ink, fog, marks and frame
-## (Cosmetics.paper_colors; the frame keeps its theme's motif in the paper's colors); the route
-## stays red on every paper.
+## frame round it (on in the game: map_select.THEMED_MAPS). `paper` (a map style: a Cosmetics map paper
+## bundle, or "sheet|walls|route" mixing three owned papers' parts, Cosmetics.style_colors; "" /
+## "parchment" = none) recolors the sheet (paper, fog, frame, coins), the walls (ink and marks) and the
+## route; walls or a route too like the sheet are pushed lighter or darker (_readable). A flowing part
+## (PRISM, RAINBOW) is marked in the image (mark_flow) for map_flow.gdshader to turn its colors.
 ## The MAP TABLE's tiles never show the real map: `preview` draws a tiny made-up example maze per
 ## level (EXAMPLE_CELLS, fixed for everyone, nothing from the real layout), lit in proportion to the
 ## real % uncovered, with an example route only when the level has a recorded route.
@@ -144,7 +145,12 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 		var t: Dictionary = THEMED[theme]
 		# A white start ring would vanish on the pale papers: start and goal marks in the ink.
 		pal.merge({fog = t.fog, floor = t.paper, wall = t.ink, start = t.ink, goal = t.ink, frame = t.frame}, true)
-	pal.merge(Cosmetics.paper_colors(paper, ink), true)
+	var style := Cosmetics.style_colors(paper, ink)
+	pal.merge(style, true)
+	pal.flow = style.get("flow", {})
+	if "|" in paper:  # (a mix of parts: keep the walls, marks and route readable on the sheet)
+		for key: String in ["wall", "start", "goal", "route"]:
+			pal[key] = _readable(pal[key], pal.floor, 0.32 if key != "route" else 0.22)
 	if Coin.METAL.has(theme):  # the level's in-game coin metal, on every paper
 		var m: Array = Coin.METAL[theme]
 		var edge: Color = m[0]
@@ -160,8 +166,61 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 			edge = (m[0] as Color).lerp(Color.BLACK, 0.5)
 		pal.coin = fill
 		pal.coin_edge = edge
-	pal.faint = ROUTE.lerp(pal.floor, ROUTE_FAINT)
+	pal.faint = (pal.route as Color).lerp(pal.floor, ROUTE_FAINT)
 	return pal
+
+
+## `color`, or a darker / lighter shade of it, so its brightness differs from `back`'s by `gap`.
+static func _readable(color: Color, back: Color, gap: float) -> Color:
+	if absf(_luma(color) - _luma(back)) >= gap:
+		return color
+	var darker := _luma(back) > 0.5
+	for k in range(1, 11):
+		var c := color.darkened(k * 0.09) if darker else color.lightened(k * 0.09)
+		if absf(_luma(c) - _luma(back)) >= gap:
+			return c
+	return Color.BLACK if darker else Color.WHITE
+
+
+## The rainbow gradient's width across a map (px) and its bands, as the skin's (slime_skin.gdshader).
+const FLOW_WIDTH := 24.0
+const FLOW_STEPS := 12.0
+## A flowing pixel's alpha: map_flow.gdshader turns only these (everything else is drawn as is).
+const FLOW_ALPHA := 254
+
+
+## Marks the flowing parts of a map drawn in palette `pal` (pal.flow: {key: "prism" / "gradient"}):
+## their pixels get FLOW_ALPHA, and a "gradient" part a rainbow laid across the image (its hue by
+## position, its shade kept), so the shader's hue turn makes it flow; a "prism" part keeps its color
+## and turns as one. Does nothing without a flowing part.
+static func mark_flow(image: Image, pal: Dictionary) -> void:
+	var flow: Dictionary = pal.get("flow", {})
+	if flow.is_empty():
+		return
+	var marks := {}
+	for key: String in flow:  # (by their 8-bit values: the image holds them rounded)
+		marks[(pal[key] as Color).to_rgba32()] = flow[key]
+		if key == "route":
+			marks[(pal.faint as Color).to_rgba32()] = flow[key]
+	for y in image.get_height():
+		for x in image.get_width():
+			var c := image.get_pixel(x, y)
+			var mode: String = marks.get(c.to_rgba32(), "")
+			if mode == "":
+				continue
+			if mode == "gradient":
+				var hue := fposmod(floorf((x + y * 0.5) / FLOW_WIDTH * FLOW_STEPS) / FLOW_STEPS, 1.0) * 0.83
+				c = Color.from_hsv(hue, c.s, c.v)
+			image.set_pixel(x, y, Color(c, FLOW_ALPHA / 255.0))
+
+
+## The material a map texture in style `paper` needs: map_flow.gdshader when a part flows, else none.
+static func flow_material(paper: String) -> Material:
+	if not Cosmetics.style_flows(paper):
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://assets/shaders/map_flow.gdshader")
+	return mat
 
 
 static func _luma(c: Color) -> float:
@@ -182,11 +241,13 @@ static func render(maze: Dictionary, survey: Dictionary, sizes: Vector2i, coins:
 		_draw_route(image, survey, Survey.route_cells(survey, maze), sizes, pal)
 		_draw_marks(image, maze, survey, sizes, coins, pal, fog_coins)
 	if not THEMED.has(theme):
+		mark_flow(image, pal)
 		return image
 	var framed := Image.create_empty(px.x + FRAME * 2, px.y + FRAME * 2, false, Image.FORMAT_RGBA8)
 	framed.fill(pal.fog)
 	framed.blit_rect(image, Rect2i(Vector2i.ZERO, px), Vector2i.ONE * FRAME)
 	_draw_frame(framed, theme, pal.frame)
+	mark_flow(framed, pal)
 	return framed
 
 
