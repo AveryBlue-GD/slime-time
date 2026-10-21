@@ -123,11 +123,11 @@ func _dyes() -> void:
 	var count := 0
 	for hat in Hats.ids():
 		count += Hats.dyes_for(hat).size()
-	_check(count == 93 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
+	_check(count == 103 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
 		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
-		"93 dyes: 9 dyeable hats, each without its own color, each with RAINBOW (%d)" % count)
+		"103 dyes: 10 dyeable hats, each without its own color, each with RAINBOW (%d)" % count)
 	_check(progress.dye_price("teal") == 10 and progress.dye_price("rainbow") == 99 and Hats.material_for("beanie", "rainbow") != null
-		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null, "RAINBOW costs 99 and flows; the others 10")
+		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW costs 99 and flows; the others 10")
 	_check(not progress.can_buy_dye("beanie", "teal") and not progress.buy_dye("beanie", "teal") and progress.tickets == 25, "no dye for a hat not won")
 	progress.win_hat("beanie")
 	progress.win_hat("crown")
@@ -427,7 +427,7 @@ func _ui_wheel() -> void:
 	_check(wheel.tab == "shop" and wheel.shop_page.visible and wheel.get_viewport().gui_get_focus_owner() != null
 		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every hat won: opens on the SHOP, focus inside")
 	wheel.section_buttons["hats"].pressed.emit()
-	_check(wheel.shop_tiles.size() == 9 and wheel.dye_hat == "", "...its DYES section lists all 9 dyeable hats")
+	_check(wheel.shop_tiles.size() == 10 and wheel.dye_hat == "", "...its DYES section lists all 10 dyeable hats")
 	wheel.wheel_tab.pressed.emit()
 	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY HAT" in wheel.result.text and wheel.wheel_tab.has_focus(),
 		"...the WHEEL tab shows an empty wheel that can't spin")

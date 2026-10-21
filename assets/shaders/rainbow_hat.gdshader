@@ -8,6 +8,12 @@ shader_type canvas_item;
 
 uniform float speed = 0.35;  // full turns of the color wheel per second
 const float HUE_STEPS = 12.0;
+// `gradient` (a hat in the RAINBOW dye, Hats.RAINBOW_GRADIENT): instead of turning every pixel the
+// same, a rainbow lies across the hat (one full rainbow every `gradient_width` px, on a slant) and
+// flows along it, like the rainbow jelly skin (slime_skin.gdshader), in HUE_STEPS bands.
+uniform bool gradient = false;
+uniform float gradient_width = 16.0;
+uniform float gradient_speed = 0.45;
 
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -26,7 +32,15 @@ vec3 hsv2rgb(vec3 c) {
 void fragment() {
 	vec3 hsv = rgb2hsv(COLOR.rgb);
 	if (hsv.y > 0.4 && hsv.z > 0.3 && texture(TEXTURE, UV).a > 0.998) {
-		hsv.x = fract(hsv.x - floor(TIME * speed * HUE_STEPS) / HUE_STEPS);
+		if (gradient) {
+			// The pixel's place in its 32 x 16 frame (the sheet's frames all start on whole multiples).
+			vec2 p = mod(floor(UV / TEXTURE_PIXEL_SIZE), vec2(32.0, 16.0));
+			float wave = p.x + p.y * 0.5;
+			float hue = fract(floor((wave / gradient_width - TIME * gradient_speed) * HUE_STEPS) / HUE_STEPS);
+			hsv.x = fract(hsv.x + hue * 0.83);  // (red to violet, skipping magenta, as the skin does)
+		} else {
+			hsv.x = fract(hsv.x - floor(TIME * speed * HUE_STEPS) / HUE_STEPS);
+		}
 		COLOR.rgb = hsv2rgb(hsv);
 	}
 }

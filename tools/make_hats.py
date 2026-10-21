@@ -170,6 +170,7 @@ VELVET = ramp(150, 30, 60)
 RUBY, SAPPHIRE, EMERALD = rgb(236, 56, 84), rgb(84, 150, 246), rgb(74, 206, 120)
 WIZARD_TRIM = YELLOW            # the wizard hat's band and stars (a dye can swap it: DYE_CLASH)
 BLADE_A, BLADE_B = RED, YELLOW  # the propeller's two blades (dyed together: DYEABLE)
+VIKING_TRIM = GOLD              # the viking helmet's riveted rim (its only dyed part)
 
 
 class Hat:
@@ -442,7 +443,7 @@ def viking_helmet(h: Hat):
     rim_y = fx(h.Y(1.0))
     c = fx(h.cx)                                                              # (pixels c-1, c: the middle two)
     h.recolor(lambda x, y, col: y >= rim_y,                                   # riveted brass rim
-              lambda x, y, col: GOLD[0] if y == rim_y and (x - c) % 3 == 1 else GOLD[1] if x + 0.5 < h.cx + 2 else GOLD[2])
+              lambda x, y, col: VIKING_TRIM[0] if y == rim_y and (x - c) % 3 == 1 else VIKING_TRIM[1] if x + 0.5 < h.cx + 2 else VIKING_TRIM[2])
     h.recolor(lambda x, y, col: x in (c - 1, c) and y < rim_y,               # crest ridge, 2 px: centered
               lambda x, y, col: METAL[0] if x == c - 1 else METAL[1])
     root_y = fx(h.Y(-0.6))                                                    # horns from the helmet's shoulders
@@ -721,7 +722,7 @@ DYES = [
     # The RAINBOW dye: drawn in a bright red that rainbow_hat.gdshader turns round the color wheel in
     # the game (Hats.material_for), like the rainbow hat's arch. Every other colorful pixel of the hat
     # (a ribbon, a band, the cap's panels) gets KEEP_ALPHA so it stays as drawn.
-    ("rainbow", (220, 60, 72)),
+    ("rainbow", (222, 62, 70)),  # (not RED's base: the propeller cap's red panel must not flow)
 ]
 FLOW_DYE = "rainbow"
 
@@ -749,6 +750,7 @@ DYEABLE = {
     cowboy_hat: (("LEATHER",), ramp),
     chef_hat: (("CREAM",), pale_ramp),
     wizard_hat: (("PURPLE",), ramp),
+    viking_helmet: (("VIKING_TRIM",), ramp),          # the rim round the bottom (not the dome or horns)
     propeller_cap: (("BLADE_A", "BLADE_B"), ramp),   # the propeller (its spinner on top)
     rainbow_hat: (("CLOUD",), small_cloud_ramp),            # its two clouds (not the flowing arch)
     raincloud: (("STORM",), cloud_ramp),
@@ -777,6 +779,10 @@ def draw_dyed(make, width, frame, dye, base):
         globals().update(saved)
     dyed = {c for name in names for c in swap[name]}
     if dye == FLOW_DYE:
+        plain = Hat(width, HEADS[width], frame)
+        make(plain)
+        shared = dyed & {c for row in plain.px for c in row}
+        assert not shared, f"{make.__name__}: the rainbow dye's colors {shared} are also in the undyed hat"
         if make is not rainbow_hat:  # (only the dyed material flows; the rainbow hat flows whole)
             hat.px = [[c if c in dyed or c[3] == 0 else (c[0], c[1], c[2], KEEP_ALPHA) for c in row] for row in hat.px]
     elif make is rainbow_hat:  # (the clouds keep their dye while the arch's colors flow)

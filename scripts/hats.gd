@@ -49,7 +49,7 @@ const LIST := [
 	{id = "cowboy", name = "COWBOY HAT", column = 4, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	{id = "chef", name = "CHEF HAT", column = 5, dyeable = true, own = "snow"},  # i18n: ignore (English source; shown via display_name)
 	{id = "wizard", name = "WIZARD HAT", column = 6, dyeable = true, own = "plum"},  # i18n: ignore (English source; shown via display_name)
-	{id = "viking", name = "VIKING HELMET", column = 7},  # i18n: ignore (English source; shown via display_name)
+	{id = "viking", name = "VIKING HELMET", column = 7, dyeable = true, own = "butter"},  # (a dye colors its rim)  # i18n: ignore (English source; shown via display_name)
 	# Its propeller spins (frames, see Hat._animate): lazily at rest, faster on the move, fastest flying off in a leap.
 	# A dye colors the propeller (both blades).
 	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0, dyeable = true},  # i18n: ignore (English source; shown via display_name)
@@ -75,8 +75,11 @@ const DYES := [
 	{id = "midnight", color = Color8(52, 50, 72)},
 	{id = "snow", color = Color8(232, 232, 240)},
 	# Its colors flow (rainbow_hat.gdshader, material_for); Economy.DYE_RAINBOW_PRICE.
-	{id = "rainbow", color = Color8(220, 60, 72), flows = true},
+	{id = "rainbow", color = Color8(222, 62, 70), flows = true},
 ]
+## The RAINBOW dye's look: false = the dyed part turns through the colors as one (like the rainbow
+## hat's arch), true = a rainbow gradient flowing across it (like the rainbow jelly skin).
+static var RAINBOW_GRADIENT := false
 ## A dye block's height in hat_dyes.png: every width's row (Width), like hats.png.
 const DYE_BLOCK := 6 * 16
 
@@ -164,13 +167,16 @@ static func dye_flows(dye: String) -> bool:
 static func material_for(id: String, dye := "") -> Material:
 	if not get_hat(id).get("flows", false) and not (dye_flows(dye) and dye in dyes_for(id)):
 		return null
-	return flow_material()
+	return flow_material(RAINBOW_GRADIENT and not get_hat(id).get("flows", false))
 
 
-## The flowing-rainbow shader (assets/shaders/rainbow_hat.gdshader) as a new material.
-static func flow_material() -> ShaderMaterial:
+## The flowing-rainbow shader (assets/shaders/rainbow_hat.gdshader) as a new material; `gradient`:
+## a rainbow running across the pixels and flowing (like the rainbow jelly skin) instead of the
+## whole thing turning one color at a time (RAINBOW_GRADIENT picks the RAINBOW dye's look).
+static func flow_material(gradient := false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/rainbow_hat.gdshader")
+	mat.set_shader_parameter("gradient", gradient)
 	return mat
 
 
