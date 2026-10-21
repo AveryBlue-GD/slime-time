@@ -101,6 +101,9 @@ func go(scene: String) -> void:
 	if busy:
 		return
 	busy = true
+	var music := get_node_or_null("/root/Music")
+	if music:
+		music.follow_scene(scene)  # the hub music starts fading as the wipe covers the screen
 	_paint()
 	_set_edges(0.0, 0.0)
 	_sheet.visible = true

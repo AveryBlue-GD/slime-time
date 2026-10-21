@@ -16,7 +16,7 @@ Marketing context: [advisor/demo.md](../advisor/demo.md) (the Shorts feed the we
   `captions/` (caption overlays).
 
 Audio is the game's own audio: level ambience plus sound effects (glide, leap, splat, chalice, wheel clicks,
-unlock jingle). **The game has no music.** The drafts are loudness-normalised (two-pass `loudnorm`, -14 LUFS,
+unlock jingle). (The game's own music, the hub loops and the intro, isn't in these captures.) The drafts are loudness-normalised (two-pass `loudnorm`, -14 LUFS,
 -1.5 dBTP).
 
 Music cuts (2026-10-20, mockups): a draft with `"music"` in `trailer.json` also gets `short_<ID>_music.mp4`,

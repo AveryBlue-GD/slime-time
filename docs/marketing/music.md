@@ -1,8 +1,8 @@
 # Music mockups (hub loops and trailer tracks)
 
-Started 2026-10-20. The owner asked for "a mockup of some music to play in the hub and through the trailers".
-**These are mockups only. Nothing is wired into the game**: no scene, script or asset uses them, and the files live
-in `build/music/` (git-ignored). The game still has no music.
+Started 2026-10-20 as mockups ("a mockup of some music to play in the hub and through the trailers"). Since
+2026-10-21 **the hub and the story intro play music in the game** (see "In the game" below); the trailer tracks are
+for the videos only. The listening copies live in `build/music/` (git-ignored); the game's copies in `assets/music/`.
 
 ## What it is
 
@@ -33,6 +33,7 @@ progressions with a melodic hook.
 | `hub_A.wav` "Cozy Goo" | 68.6 s loop | 84 BPM, 4/4, swung 8ths | D Dorian: Dm9 - G9 - Bbmaj7 - A7sus/A7 | warm and slow; a goo-voice hook, then a counter-melody over bubble arps |
 | `hub_B.wav` "Foggy Lullaby" | 73.0 s loop | 69 BPM, 3/4, light swing | C minor: Cm9 - Abmaj7 - Fm9 - G7sus/G7, Cm9 - Ebmaj7 - Abmaj7 - G7 | sparser and darker; a music-box goo melody, a soft heartbeat kick, four near-empty bars |
 | `hub_C.wav` "Bouncy Hub" | 76.8 s loop | 100 BPM, 4/4, swung 16ths | F major: Fmaj7 - Dm7 - Gm7 - C7sus/C7, Bbmaj7 - Am7 - Gm7 - C7 | more upbeat; boing bass, squelch snares, a hummable hook, a breakdown before the loop |
+| `story_intro.wav` "Down We Go" | 25.4 s, plays once | ~104 BPM 8ths, free sections | D minor: Dm - Bbmaj7 - Gm9, A7sus - dim, Dm - C - Bb - A (lament), Dm9 - G9 - Dm9 | soft storybook, one section per intro shot (below) |
 | `trailer_1.wav` "Goo Rush" | 28.0 s | ~108 BPM (fitted) | D minor: build Dm9 - Bbmaj7 - Gm9 - A7, drop Dm - Bb - F - C | energetic: a "blup blup bloooop" hook with a splat, a bubbling build, a bouncy drop, a gap, the hit |
 | `trailer_2.wav` "Fog Pulse" | 28.0 s | ~89 BPM (fitted) | C minor: Cm9 - Abmaj7 - Ebmaj7 - G7 | moody: a lullaby hook over a heartbeat thud, a heartbeat build, a half-time drop, a deep boom |
 
@@ -61,6 +62,7 @@ Every piece comes as a 44.1 kHz 16-bit stereo WAV (TPDF dither) plus an `.ogg` c
 ```
 python tools/make_music.py                    # everything (about 1 minute, pieces render in parallel)
 python tools/make_music.py hub_B trailer_2    # only these
+python tools/make_music.py --game               # the game's pieces, also as OGG into assets/music/ (then re-import)
 python tools/make_music.py --fit trailer_1 --hit 20.8 --length 24.2 --out build/x.wav   # fitted to a video
 python tools/make_music.py --verbose hub_A    # also print each bus's level (for re-balancing)
 ```
@@ -116,28 +118,35 @@ To swap music:
 - Remove `"music"` from a draft to drop its music cut. `GAME_LUFS` / `MUSIC_LUFS` in `trailer.py` set the
   default balance.
 
-## Later: wiring hub music into the game (not done)
+## In the game
 
-This is what it would take, behind a test flag like the other unfinished features:
-
-- **Flag.** `Economy.HUB_MUSIC_TEST := false`, plus a debug flag such as `--music` in `Progress`'s game args.
-  `tools/i18n_extract.py --check` doesn't care about it, because there's no text.
-- **Asset.** Pick one loop and export it as OGG Vorbis into `assets/music/` with loop enabled on import.
-  Godot's OGG loops are seamless, and the file is already a whole-bar loop. Keep the generator in `tools/`
-  like the other `make_*.py` scripts.
-- **Audio bus.** Today there is only the Master bus: `Progress.apply_volume()` sets bus 0, and `Sfx` plays
-  everything there. Add a `default_bus_layout.tres` with `Music` and `SFX` buses under Master, so music can be
-  turned down without touching the effects. Optionally, duck `Music` a few dB with a compressor sidechained
-  from `SFX`.
-- **Player.** Put a `Music` node in the `Sfx` autoload, or a small new autoload: one `AudioStreamPlayer` on the
-  `Music` bus. It should keep playing across the hub and its sub-screens (skins, maps, level select), so it
-  isn't restarted by each scene change.
-- **Fades on scene changes.** Fade out (about 0.5-1 s, a `Tween` on `volume_db`) when entering a level, since
-  levels have their own ambience beds. Fade back in on returning to the hub. The natural place is the
-  `Transition` autoload's scene changes (check that every hub/level change goes through it). Decide whether
-  `PlatformEvents` focus loss should pause the music too.
-- **Setting.** Add a MUSIC volume slider next to the existing volume (`[settings] music_volume`, default
-  around 0.6). That needs a save-key addition (load default when missing, no save-version bump) and
-  `Loc.t()` text with an i18n hint. On web, audio starts after the first input, as today.
-- **Tests.** Check that the player exists and follows the flag, that the volume is saved and loaded, and that
-  the music fades on hub -> level -> hub. Measure the hub's frame time on web/Android with the OGG decoding.
+- **Files.** `python tools/make_music.py --game` renders `hub_A`, `hub_B`, `hub_C` and `story_intro` and writes
+  them as OGG Vorbis (quality 3, 2 MB in all) to `assets/music/hub_a.ogg`, `hub_b.ogg`, `hub_c.ogg`,
+  `story_intro.ogg`; then re-import. They are not in `Demo.export_cut()`, so every demo export ships them
+  (`tests/test_music.gd` checks it; the demo packs were checked to contain them).
+- **Player.** The `Music` autoload (`scripts/music.gd`), one `AudioStreamPlayer` on the Master bus, silent while
+  `Progress.sound_on` is off (the existing SOUND toggle and volume cover it; there is no separate music slider
+  yet). It follows scene changes (`SceneTree.scene_changed`, and `Transition.go` as its wipe starts):
+  - the hub and its screens (`Music.HUB_SCENES`: hub, level select, skins, maps, upgrades): if no hub loop is
+    playing, one of the three is picked at random (never the one picked last time) and fades in over 1.5 s,
+    looping; it carries on across these screens;
+  - the settings pages and the story (`KEEP_SCENES`) keep whatever is playing;
+  - anything else (a level, the title, the victory and demo end screens) fades it out over 0.6 s.
+  The hub loops play at -3 dB (mastered to -18 LUFS) under the sound effects.
+- **The story intro.** `StoryScreen` starts `story_intro` with the intro (only the intro: the finale has no
+  music) and fades it out over 0.8 s at the end or on Esc. Its sections start on the intro's shots
+  (`INTRO_SHOTS` in `make_music.py` = the cumulative `Story.INTRO` times; the test checks they match, so change
+  both together and re-render). When the player skips ahead (or a Reduce Motion still holds longer), each new
+  shot jumps the music to its section if it has drifted more than 0.3 s. Mastered to -21 LUFS, played at 0 dB.
+  The beats:
+  1. run (0-4.6 s): a soft, scurrying goo-drop ostinato over Dm, a bass pulse, a two-note "uh-oh" when the
+     slime panics;
+  2. chase (4.6-8.6 s): three bubble glints for the adventurers' gold dreams, then the ostinato slows into a
+     music-box lullaby (the slime dreams of a nap) over Bbmaj7 and Gm9;
+  3. crack (8.6-12.5 s): it thins to a hollow A7sus; each crack is a deep goo thud, the second turns the pad
+     diminished; when the floor breaks a gloop drops away and it goes nearly silent;
+  4. fall (12.5-17.3 s): a lament bass (D - C - Bb - A) under a goo voice sinking a step per chord and bubbles
+     raining downward; it clears out just before the splat;
+  5. splat (17.3-23.7 s): the splat sound alone, then a Dm9 rolled on goo drops and the hub's hook (from
+     "Cozy Goo"), slow, on the music box, settling on Dm9 as two bubbles rise.
+- **Not done yet:** a MUSIC volume slider / separate bus, ducking under effects, title-screen music.

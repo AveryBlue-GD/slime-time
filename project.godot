@@ -24,6 +24,7 @@ config/quit_on_go_back=false
 Progress="*res://scripts/progress.gd"
 Language="*res://scripts/language.gd"
 Sfx="*res://scripts/sfx.gd"
+Music="*res://scripts/music.gd"
 RotateHint="*res://scripts/ui/rotate_hint.gd"
 Transition="*res://scripts/ui/transition.gd"
 PlatformEvents="*res://scripts/platform_events.gd"

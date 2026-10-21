@@ -1,11 +1,13 @@
-"""Procedural music MOCKUPS for Dry Trying: hub loops and trailer tracks (no dependencies).
+"""Procedural music for Dry Trying: hub loops, the story intro and trailer tracks (no dependencies).
 
-Nothing here is wired into the game: the files go to build/music/ (git-ignored) for listening and for
-the trailer drafts (tools/trailer/trailer.py). See docs/marketing/music.md.
+Everything renders to build/music/ (git-ignored) for listening and for the trailer drafts
+(tools/trailer/trailer.py); --game also writes the pieces the game plays (the three hub loops and the story
+intro) as OGG into assets/music/, where scripts/music.gd plays them. See docs/marketing/music.md.
 
 Run from the project root:
   python tools/make_music.py                     # every piece -> build/music/ (+ .ogg, seams/, README.md)
   python tools/make_music.py hub_A trailer_1     # only these
+  python tools/make_music.py --game              # the game's pieces -> build/music/ and assets/music/*.ogg
   python tools/make_music.py --fit trailer_1 --hit 24.4 --length 27.8 --out x.wav
       # one trailer track fitted to a video: the tempo is nudged so the final hit lands exactly at --hit
       # seconds and the ring-out lasts until --length (what tools/trailer/trailer.py calls)
@@ -55,6 +57,7 @@ SR = 44100
 TAU = 2.0 * math.pi
 TAIL = 6.0            # seconds rendered past the end for note and reverb tails
 HUB_LUFS = -18.0
+INTRO_LUFS = -21.0    # the story intro sits further under its sound effects
 TRAILER_LUFS = -14.0
 TP_MAX = -1.2         # dBTP we aim under (the spec is "below -1")
 TABLE_N = 4096
@@ -681,6 +684,93 @@ def hub_C():
     return s, meta
 
 
+## The story intro's shots (scripts/story.gd INTRO: run 4.6 s, chase 4.0, crack 3.9, fall 4.8, splat 6.4) start at
+## these seconds. Each section of story_intro() starts on its shot, so the game can seek to a shot's start when the
+## player skips ahead (scripts/music.gd). Change both together.
+INTRO_SHOTS = (0.0, 4.6, 8.6, 12.5, 17.3, 23.7)
+
+
+def story_intro():
+    """The story intro (wordless, about 24 s), soft and under the sound effects; D minor, the hub's key.
+    Times are in seconds (60 BPM, one beat a bar), one section per shot."""
+    run, chase, crack, fall, splat_t, end = INTRO_SHOTS
+    s = Song(bpm=60, meter=1, bars=int(end) + 1, loop=False, extra=1.4, seed=66)
+    e8 = (chase - run) / 16.0                 # the scurrying 8ths: 16 to the run shot (about 104 BPM)
+
+    def ostinato(start, notes, count, gain, fade_to=None):
+        for k in range(count):
+            g = gain if fade_to is None else gain + (fade_to - gain) * k / max(1, count - 1)
+            s.put("pluck" if k % 2 else "pluck2", pluck(notes[k % 4], 0.2, 0.7), start + k * e8, gain=g, vel=0.2)
+
+    # 1. run: the adventurers chase the slime. A soft, scurrying goo-drop ostinato over a low Dm, a bass pulse,
+    #    and a two-note "uh-oh" from the goo voice when the slime panics (the "!" at 0.9 s).
+    pad_chord(s, (50, 53, 57, 60), run, chase - run, gain=0.035, cutoff=700, attack=1.2, release=0.8)
+    ostinato(run, (50, 57, 53, 57), 16, 0.11)
+    for k in range(4):
+        s.put("bass", bass(38, 0.7, "round"), run + k * 4 * e8, gain=0.34 - 0.03 * (k % 2))
+    s.put("kick", kick(90.0, 40.0, 0.12), run, gain=0.16)
+    s.put("kick", kick(90.0, 40.0, 0.12), run + 8 * e8, gain=0.13)
+    play_melody(s, [(0.9, 69, 0.3), (1.25, 65, 0.7), (2.95, 69, 0.3), (3.3, 64, 0.9)], run, "lead", gain=0.12, cutoff=1100)
+
+    # 2. chase: they dream of gold (three glints), it dreams of a nap (the moon at 1.3 s): the ostinato slows
+    #    into a music-box lullaby over Bbmaj7 then Gm9.
+    pad_chord(s, (50, 53, 57, 62), chase, 2.0, gain=0.035, cutoff=750, attack=0.4, release=1.0)
+    pad_chord(s, (50, 53, 57, 58), chase + 2.0, 2.0, gain=0.035, cutoff=700, attack=0.6, release=1.4, table="hollow")
+    ostinato(chase, (46, 53, 50, 53), 8, 0.09, 0.03)
+    s.put("bass", bass(34, 1.8), chase, gain=0.3)
+    s.put("bass", bass(31, 1.8), chase + 2.0, gain=0.26)
+    for i, m in enumerate((74, 77, 81)):
+        s.put("arpL" if i % 2 else "arpR", bubble(m, 0.06), chase + 0.3 + i * 0.35, gain=0.06)
+    play_melody(s, [(1.4, 69, 0.5), (1.9, 67, 0.5), (2.4, 65, 0.8), (3.2, 62, 0.8)], chase, "pluck", gain=0.12, tau=0.8)
+
+    # 3. crack: the floor gives way. Everything thins to a low, hollow A7sus; each crack (0.75 s, 1.6 s) is a deep
+    #    goo thud, the second turns the pad diminished; the floor breaks at 2.35 s and a gloop drops away with it.
+    pad_chord(s, (52, 55, 57, 62), crack, 1.6, gain=0.04, cutoff=650, attack=0.5, release=0.5, table="hollow")
+    pad_chord(s, (46, 49, 52, 55), crack + 1.6, 0.8, gain=0.04, cutoff=650, attack=0.1, release=0.6, table="hollow")
+    s.put("bass", bass(33, 0.7), crack + 0.15, gain=0.26)
+    s.put("bass", bass(33, 0.5, "boing"), crack + 0.75, gain=0.3)
+    s.put("bass", bass(34, 0.5, "boing"), crack + 1.6, gain=0.32)
+    s.put("kick", kick(80.0, 36.0, 0.14), crack + 0.75, gain=0.14)
+    s.put("kick", kick(80.0, 36.0, 0.14), crack + 1.6, gain=0.16)
+    for k in range(4):   # nervous ticking between the cracks, like grit trickling
+        s.put("popL" if k % 2 else "popR", pop(k), crack + 1.0 + k * 0.15, gain=0.02, vel=0.3)
+    s.put("fx", gloop(62, 38, 1.3, 0.05, 6.0), crack + 2.4, gain=0.07)
+
+    # 4. fall: down through the floors. A lament bass (D - C - Bb - A) under a goo voice sinking one step per
+    #    chord, and a slow rain of bubbles sinking from high to low; it clears out just before the splat.
+    step = (splat_t - fall - 0.25) / 4.0
+    lament = [(38, (50, 53, 57, 62), 69), (36, (48, 52, 55, 60), 67), (34, (50, 53, 58, 62), 65), (33, (49, 52, 55, 57), 64)]
+    for i, (root, chord, mel) in enumerate(lament):
+        at = fall + i * step
+        pad_chord(s, chord, at, step, gain=0.035, cutoff=800, attack=0.5, release=0.35 if i == 3 else 0.8)
+        s.put("bass", bass(root, step * 0.92), at, gain=0.3)
+        s.put("lead", lead(mel, round(step * 0.9, 3), 1100.0, 0.06, 0.6 if i == 3 else 0.25), at + 0.08, gain=0.11)
+    for k in range(18):
+        at = fall + 0.2 + k * (step * 4 - 0.5) / 18
+        s.put("arpL" if k % 2 else "arpR", bubble(84 - k * 1.5, 0.05), at, gain=0.045 * (1 - k / 30))
+
+    # 5. splat: it lands at the very bottom (the splat sound has the stage to itself), then the music comes back
+    #    slowly: a Dm9 rolled on goo drops and the hub's hook, slow, on the music box, settling on Dm9; two
+    #    bubbles rise at the end (it looks around: here we go).
+    s.put("bass", bass(38, 2.2), splat_t + 0.7, gain=0.26)
+    for i, m in enumerate((53, 57, 60, 64)):
+        s.put("pluck2", pluck(m, 0.9), splat_t + 0.8 + i * 0.12, gain=0.08)
+    pad_chord(s, (53, 57, 60, 64), splat_t + 0.8, 2.6, gain=0.03, cutoff=750, attack=1.0, release=1.2)
+    pad_chord(s, (53, 57, 59, 62), splat_t + 3.4, 1.4, gain=0.03, cutoff=750, attack=0.6, release=1.0)
+    pad_chord(s, (53, 57, 60, 64), splat_t + 4.8, 1.6, gain=0.03, cutoff=700, attack=0.6, release=1.6)
+    s.put("bass", bass(43, 1.3), splat_t + 3.4, gain=0.22)
+    s.put("bass", bass(38, 1.8), splat_t + 4.8, gain=0.22)
+    hook = [(1.7, 62, 0.4), (2.1, 65, 0.4), (2.5, 69, 1.0), (3.5, 67, 0.4), (3.9, 65, 0.4), (4.3, 62, 1.2), (5.0, 57, 1.4)]
+    play_melody(s, hook, splat_t, "pluck", gain=0.15, tau=0.8)
+    for i, m in enumerate((69, 74)):
+        s.put("arpR" if i else "arpL", bubble(m, 0.07), splat_t + 5.6 + i * 0.3, gain=0.045)
+    meta = dict(title="Down We Go", mood="soft and storybook: scurry, dream, crack, a long fall, a gentle landing",
+                key="D minor (Dm - Bbmaj7 - Gm9 | A7sus - dim | Dm - C - Bb - A | Dm9 - G9 - Dm9)", bpm=104,
+                meter="free (one section per intro shot)",
+                form="run (ostinato), chase (lullaby), crack (thuds), fall (lament + sinking bubbles), splat (the hub hook)")
+    return s, meta
+
+
 TRAILERS = {
     "trailer_1": dict(title="Goo Rush", mood="energetic: a goo hook, a bubbling build, a bouncy drop, a splat hit",
                       key="D minor (build Dm9 - Bbmaj7 - Gm9 - A7, drop Dm - Bb - F - C)", bpm=112, swing=0.5),
@@ -834,7 +924,10 @@ def trailer(name: str, hit: float, ring: float):
     return s, meta
 
 
-PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "trailer_1": None, "trailer_2": None}
+PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "trailer_1": None, "trailer_2": None}
+## The pieces the game plays (scripts/music.gd): --game writes them as OGG into assets/music/ (lower-case names).
+GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro")
+GAME_DIR = ROOT / "assets" / "music"
 DEFAULT_HIT, DEFAULT_RING = 24.4, 3.6   # draft A's end card starts at 24.4 s
 
 
@@ -1077,7 +1170,10 @@ def seam_check(data: array, loop_n: int, name: str):
 # ---------------------------------------------------------------- render
 
 
-def _vorbis_args(ffmpeg):
+GAME_QUALITY = 3   # Vorbis quality of the game's copies (about 110 kb/s; the listening copies use 5)
+
+
+def _vorbis_args(ffmpeg, quality=5):
     """The .ogg encoder: libvorbis, else ffmpeg's own Vorbis encoder (Homebrew's ffmpeg has no libvorbis;
     the built-in one is marked experimental and only does 2 channels, which these are)."""
     try:
@@ -1085,8 +1181,8 @@ def _vorbis_args(ffmpeg):
     except (OSError, subprocess.SubprocessError):
         listed = ""
     if "libvorbis" in listed:
-        return ["-c:a", "libvorbis", "-q:a", "5"]
-    return ["-c:a", "vorbis", "-strict", "experimental", "-q:a", "5"]
+        return ["-c:a", "libvorbis", "-q:a", str(quality)]
+    return ["-c:a", "vorbis", "-strict", "experimental", "-q:a", str(quality)]
 
 def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=False):
     t0 = time.time()
@@ -1095,7 +1191,7 @@ def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=Fals
         target = TRAILER_LUFS
     else:
         s, meta = PIECES[name]()
-        target = HUB_LUFS
+        target = INTRO_LUFS if name == "story_intro" else HUB_LUFS
     L, R = mixdown(s, verbose=verbose)
     if not s.loop:
         n = int(round(s.length * SR))
@@ -1138,7 +1234,8 @@ def _job(args):
 def write_readme(stats):
     lines = ["# Music mockups (generated by tools/make_music.py; see docs/marketing/music.md)", "",
              "Procedural, synthesized from scratch (no samples, nothing third-party). 44.1 kHz 16-bit stereo WAV, plus an",
-             "OGG copy of each for quick listening. **Mockups only: none of this is in the game.**", "",
+             "OGG copy of each for quick listening. The game plays hub_A/B/C and story_intro (`--game` copies them to",
+             "assets/music/); the trailer tracks are for the videos.", "",
              "| file | length | tempo | key | loudness | true peak |", "|---|---|---|---|---|---|"]
     for st in stats:
         lines.append("| %s.wav | %.1f s%s | %s BPM, %s | %s | %.1f LUFS | %.1f dBTP |" % (
@@ -1152,7 +1249,7 @@ def write_readme(stats):
                          " music's own 99.9th-percentile sample step; the steps around the seam average %.2fx the track's."
                          " Listen to `seams/%s_seam.wav` (the last 3 s, then the first 3 s)." % (
                              st["seam_step_lsb"], st["p999_step_lsb"], st["seam_window_vs_track"], st["name"]))
-        else:
+        elif "hit" in st:
             lines.append("- The hit (for the end card) lands at %.2f s. The trailer pipeline renders a copy fitted to each"
                          " draft's end card instead (`python tools/make_music.py --fit ...`)." % st["hit"])
         if st["limited_db"] > 0.05:
@@ -1171,6 +1268,8 @@ def main():
     p.add_argument("--ffmpeg")
     p.add_argument("--verbose", action="store_true", help="print each bus's level")
     p.add_argument("-j", "--jobs", type=int, default=0)
+    p.add_argument("--game", action="store_true",
+                   help="render the pieces the game plays (%s) and write them as OGG into assets/music/" % ", ".join(GAME_PIECES))
     args = p.parse_args()
     ffmpeg = find_ffmpeg(args.ffmpeg)
     if args.fit:
@@ -1179,7 +1278,7 @@ def main():
         st = render(args.fit, ffmpeg, Path(args.out), hit=args.hit, ring=max(1.5, args.length - args.hit), extras=False, verbose=args.verbose)
         print(json.dumps({k: st[k] for k in ("lufs", "tp", "bpm", "hit", "seconds")}))
         return
-    names = args.pieces or list(PIECES)
+    names = args.pieces or (list(GAME_PIECES) if args.game else list(PIECES))
     bad = [n for n in names if n not in PIECES]
     if bad:
         sys.exit("unknown piece(s): %s (have %s)" % (", ".join(bad), ", ".join(PIECES)))
@@ -1196,6 +1295,14 @@ def main():
     old.update({st["name"]: st for st in results})
     stats_path.write_text(json.dumps(old, indent=1), encoding="utf-8")
     write_readme([old[n] for n in PIECES if n in old])
+    if args.game:
+        GAME_DIR.mkdir(parents=True, exist_ok=True)
+        for n in names:
+            if n in GAME_PIECES:
+                dest = GAME_DIR / ("%s.ogg" % n.lower())
+                subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(OUT / ("%s.wav" % n)),
+                                "-map_metadata", "-1"] + _vorbis_args(ffmpeg, GAME_QUALITY) + [str(dest)], check=True, timeout=600)
+                print("game copy %s  %.0f KB" % (dest.relative_to(ROOT).as_posix(), dest.stat().st_size / 1024), flush=True)
 
 
 if __name__ == "__main__":

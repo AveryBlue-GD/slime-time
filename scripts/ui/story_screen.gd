@@ -68,6 +68,9 @@ func _ready() -> void:
 	cover = Cover.new()
 	cover.screen = self
 	add_child(cover)
+	var music := get_node_or_null("/root/Music")
+	if music and mode == "intro":
+		music.play_intro()
 	show_card(0)
 
 
@@ -78,9 +81,21 @@ func show_card(i: int) -> void:
 	if calm or i > 0:
 		_bars = 1.0
 	art.start(card.art)
+	var music := get_node_or_null("/root/Music")
+	if music and mode == "intro":
+		music.seek_shot(shot_start(i))
 	if calm:
 		art.simulate_to(card.still)
 	cover.queue_redraw()
+
+
+## Where shot `i` starts on the default timeline (s): the intro's music (Music.INTRO_TRACK, one section
+## per shot; tools/make_music.py INTRO_SHOTS) is kept on it.
+func shot_start(i: int) -> float:
+	var at := 0.0
+	for k in i:
+		at += float(cards[k].time)
+	return at
 
 
 ## How long the current shot stays up before moving on by itself.
@@ -108,6 +123,9 @@ func finish() -> void:
 	if sfx:
 		for long_sound in ["sunrise", "whoosh", "crumble", "crack", "splat", "grumble"]:
 			sfx.stop(long_sound)
+	var music := get_node_or_null("/root/Music")
+	if music and mode == "intro":
+		music.stop(0.8)
 	Progress.mark_story_seen(Progress.STORY_FINALE if mode == "finale" else Progress.STORY_INTRO)
 	done.emit()
 	if not leave_on_finish:
