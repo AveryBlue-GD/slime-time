@@ -1,7 +1,9 @@
 extends "res://tests/suite_base.gd"
 
-## The dry-up choice row's MAP button (owner, 2026-10-18): story levels only (normal and hard; a random
-## maze has no map), last in the row (keyboard order RESTART, UPGRADES, MAP; with the ASSIST offer
+## The dry-up choice row's MAP button (owner, 2026-10-18): on story levels (normal and hard) it opens
+## the MAP TABLE; on a random maze (owner, 2026-10-21) it opens that maze's own map (RandomMapView:
+## every try so far, Progress.random_map), kept across tries and dropped on a clear, a new maze or the
+## hub. Last in the row (keyboard order RESTART, UPGRADES, MAP; with the ASSIST offer
 ## RESTART, ASSIST, UPGRADES, MAP, all inside the screen), RESTART keeps the focus. Pressing it commits the
 ## dry-up survey, then opens the MAP TABLE in the mode just played with that level's tile focused (its page shown).
 ## Uses a throwaway save; the real save's md5 is checked unchanged at the end.
@@ -37,7 +39,39 @@ func _initialize() -> void:
 	await _stop(game)
 
 	game = await _dry(0, false, true)
-	_check("MAP" not in _labels(game), "a random maze has no MAP button: %s" % [_labels(game)])
+	_check(_labels(game) == ["RESTART", "NEW MAZE", "UPGRADES", "MAP"] and _row_inside(game) and game.hud.choice_buttons[0].has_focus(),
+		"random dry-up row: %s, inside the screen, RESTART focused" % [_labels(game)])
+	var key: String = game.attempt_key
+	var first: Dictionary = progress.random_map_for(key).duplicate(true)
+	_check(not first.is_empty() and Survey.completeness(first, game.maze) > 0.0, "...the try is on the maze's map")
+	game.hud.choice_buttons[3].grab_focus()
+	game.hud.choice_buttons[3].pressed.emit()
+	await _physics_frames(2)
+	var view := _find_view(game)
+	_check(view != null and view._back.has_focus(), "MAP opens this maze's map, focus on BACK")
+	await _action("ui_cancel")
+	await _physics_frames(2)
+	_check(_find_view(game) == null and game.hud.choice_buttons[3].has_focus(), "...Esc closes it, focus back on MAP")
+	await _stop(game)
+	game = await _dry(0, false, true, false, true)  # the same maze again (RESTART)
+	_check(game.attempt_key == key and progress.random_map_key == key and progress.random_map_for(key).seen.size() == first.seen.size(),
+		"a second try at the same maze adds to the same map")
+	await _stop(game)
+	progress.new_random_maze()
+	_check(progress.random_map_for(key).is_empty() and progress.random_map.is_empty(), "NEW MAZE drops the map")
+	game = await _dry(0, false, true)
+	key = game.attempt_key
+	await _stop(game)
+	var hub: Node = load(UIKit.HUB_SCENE).instantiate()
+	root.add_child(hub)
+	_check(progress.random_map_for(key).is_empty(), "the hub drops the map")
+	hub.free()
+	game = await _dry(0, false, true)
+	key = game.attempt_key
+	game.won = true
+	game._survey_done = false
+	game._commit_survey()
+	_check(progress.random_map_for(key).is_empty(), "clearing the maze drops the map")
 	await _stop(game)
 
 	progress.maps = {}
@@ -84,10 +118,11 @@ func _initialize() -> void:
 
 
 ## Dries a run up (level 0 = a random maze) and waits for its choice buttons.
-func _dry(level: int, hard: bool, random: bool, assist := false) -> Node2D:
+func _dry(level: int, hard: bool, random: bool, assist := false, same_maze := false) -> Node2D:
 	progress.hard_mode = hard
 	if random:
-		progress.start_random()
+		if not same_maze:
+			progress.start_random()
 	else:
 		progress.start_story(level)
 	if assist:
@@ -104,6 +139,13 @@ func _dry(level: int, hard: bool, random: bool, assist := false) -> Node2D:
 			break
 	await _physics_frames(3)
 	return game
+
+
+func _find_view(game: Node) -> RandomMapView:
+	for node in game.find_children("*", "RandomMapView", true, false):
+		if not node.is_queued_for_deletion():
+			return node
+	return null
 
 
 func _labels(game: Node2D) -> Array:

@@ -60,7 +60,7 @@ func _initialize() -> void:
 	root.add_child(game)
 	await physics_frame
 	game._offer_retry()
-	_check(_buttons(game) == ["RESTART", "NEW MAZE", "UPGRADES"], "not in randomizer mazes")
+	_check(_buttons(game) == ["RESTART", "NEW MAZE", "UPGRADES", "MAP"], "not in randomizer mazes")
 	game.free()
 	# (were a randomizer run ever assisted, its ticket would pay nothing, and the pod would say so)
 	progress.upgrades = {"slime": 1}

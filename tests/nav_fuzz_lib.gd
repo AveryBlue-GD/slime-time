@@ -313,6 +313,8 @@ func modal() -> Node:
 			if cs.hat_wheel.visible:
 				return cs.hat_wheel.modal()  # the buy confirm while it's open, else the whole overlay
 		"main":
+			if cs.random_map_view != null and is_instance_valid(cs.random_map_view):
+				return cs.random_map_view  # (a random maze's MAP after a dry-up)
 			if cs.restart_prompt.visible:
 				return cs.restart_prompt
 			if cs.pause_menu.visible:

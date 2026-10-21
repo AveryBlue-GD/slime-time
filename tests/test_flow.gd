@@ -56,7 +56,7 @@ func _initialize() -> void:
 	game._dry_up()
 	await _physics_frames(40)
 	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
-	_check(texts == ["RESTART", "NEW MAZE", "UPGRADES"], "a random dry-up offers RESTART first, then NEW MAZE and UPGRADES")
+	_check(texts == ["RESTART", "NEW MAZE", "UPGRADES", "MAP"], "a random dry-up offers RESTART first, then NEW MAZE, UPGRADES and MAP")
 	_check(progress.random_seed == 4321 and game.hud.message.text == "DRIED UP", "...and keeps the same maze")
 	current_scene = null
 	game.free()

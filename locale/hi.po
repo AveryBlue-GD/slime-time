@@ -512,7 +512,6 @@ msgctxt "result.dried_up"
 msgid "DRIED UP"
 msgstr "सूख गए"
 
-#. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. budget: max 62px, lines 1
 #: scripts/game.gd
@@ -520,9 +519,9 @@ msgctxt "result.choice.restart"
 msgid "RESTART"
 msgstr "फिर शुरू"
 
-#. result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
-#. budget: max 76px, lines 1
+#. budget: max 62px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.new_maze"
 msgid "NEW MAZE"
@@ -533,19 +532,19 @@ msgctxt "result.choice.upgrades"
 msgid "UPGRADES"
 msgstr "अपग्रेड"
 
-#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
-#. budget: max 62px, lines 1
-#: scripts/game.gd
-msgctxt "result.choice.assist"
-msgid "ASSIST"
-msgstr "मदद"
-
 #. result choice button, max 62px, 1 line (maps table shortcut; four share the row: 72 px buttons)
 #. budget: max 62px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.map"
 msgid "MAP"
 msgstr ""
+
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.assist"
+msgid "ASSIST"
+msgstr "मदद"
 
 #: scripts/game.gd
 msgctxt "result.choice.hub"
@@ -2401,6 +2400,20 @@ msgstr "छोड़ने पर आधा पॉट मिलेगा"
 msgctxt "pause.seed"
 msgid "SEED {code}"
 msgstr "सीड {code}"
+
+#. random maze map view title, max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/ui/random_map_view.gd
+msgctxt "random_map.title"
+msgid "THIS MAZE SO FAR"
+msgstr ""
+
+#. random maze map view line, max 296px, 1 line; {percent} = share of the maze seen
+#. budget: max 296px, lines 1
+#: scripts/ui/random_map_view.gd
+msgctxt "random_map.line"
+msgid "{percent}% SEEN - GONE ONCE YOU CLEAR IT OR LEAVE"
+msgstr ""
 
 #. title max 150px; buttons max 96px, 1 line each
 #. budget: max 150px, lines 1

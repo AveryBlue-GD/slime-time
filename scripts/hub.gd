@@ -229,6 +229,7 @@ const NOTICE_MIN_PAD := UIKit.GAP_M + 1
 
 
 func _ready() -> void:
+	Progress.discard_random_map()  # (back in the hub: the random maze's map is gone)
 	var tour_due: bool = Progress.hub_tour_due()
 	if tour_due:
 		return_to = ""  # (the tour starts with the archway at the back)

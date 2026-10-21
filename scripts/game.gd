@@ -1968,6 +1968,13 @@ func _survey_enter(cell: Vector2i) -> void:
 ## map coin reveal on (Economy.map_coin_reveal_on) every dev run records, F1 / F2 ones
 ## too, into the session's memory only (dev mode never saves), with the coins it revealed.
 func _commit_survey() -> void:
+	if not _survey_done and _random_map_live():
+		_survey_done = true
+		if won:
+			progress.discard_random_map()  # (cleared: its map is gone)
+		else:
+			progress.record_random_map(attempt_key, maze, survey_tiles, survey_moves, survey_goal)
+		return
 	if _survey_done or not _survey_live:
 		return
 	_survey_done = true
@@ -2456,9 +2463,9 @@ func _offer_retry() -> void:
 		training_beat("dry")
 		return
 	if is_random():
-		# i18n: result choice buttons, max 76px each, 1 line (UIKit.CHOICE_SIZE)
+		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
-			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades]], 0)
+			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], [Loc.t("result.choice.map", "MAP"), open_random_map]], 0)
 	elif progress and progress.assist_offered(level):
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
@@ -2468,6 +2475,39 @@ func _offer_retry() -> void:
 	else:
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades],
 			_map_choice()], 0)
+
+
+## Whether this run feeds the random maze's map (Progress.random_map): a randomizer maze (not
+## Descent, training or a test's loose game node).
+func _random_map_live() -> bool:
+	return progress != null and is_random() and not descent and not training and attempt_key != "" and _is_running_scene()
+
+
+## The random maze's map while it's open (RandomMapView), else null.
+var random_map_view: RandomMapView
+
+
+## The random maze's map over the result row (the dry-up row's MAP; the run is already in it).
+func open_random_map() -> void:
+	if _leaving() or progress == null:
+		return
+	var survey: Dictionary = progress.random_map_for(attempt_key)
+	if survey.is_empty():
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+	random_map_view = RandomMapView.new()
+	layer.add_child(random_map_view)
+	random_map_view.closed.connect(func() -> void:
+		random_map_view = null
+		layer.queue_free()
+		var buttons: Array = hud.choice_buttons
+		var focus := get_viewport().gui_get_focus_owner()
+		if buttons.size() > 3 and is_instance_valid(buttons[3]) and not (focus in buttons):
+			(buttons[3] as Button).grab_focus())  # (back on MAP, even when it was clicked)
+	random_map_view.open(maze, survey, theme, progress.map_paper, progress.skin_color())
+	DevLog.log_event(get_tree(), "random maze map opened", self)
 
 
 ## The dry-up row's MAP button (story levels only): opens the MAP TABLE on this level.

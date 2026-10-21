@@ -2144,7 +2144,41 @@ func end_descent(cashed: bool, tainted := false, seconds := 0.0) -> Dictionary:
 	return result
 
 
+## The current random maze's map (owner, 2026-10-21): every try at it so far, merged like a story
+## survey (Survey: the tiles seen, the last try's route), for the MAP button after a dry-up
+## (RandomMapView). In memory only: gone once the maze is cleared, a new one starts or the player
+## goes back to the hub (discard_random_map). `random_map_key` = the maze's random_attempt_key.
+var random_map := {}
+var random_map_key := ""
+
+
+## Adds a try at random maze `key` (its tiles seen and the cells walked) to its map; another maze's
+## map is dropped first.
+func record_random_map(key: String, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray, goal_seen: bool) -> void:
+	if key != random_map_key or not Survey.fits(random_map, maze):
+		random_map = Survey.blank(maze)
+		random_map_key = key
+	Survey.merge_seen(random_map, tiles)
+	if goal_seen:
+		Survey.mark_seen(random_map, maze.goal * 2 + Vector2i.ONE)
+	random_map.goal = random_map.goal or goal_seen
+	if not moves.is_empty():
+		random_map.moves = moves.slice(0, Survey.MAX_MOVES)
+		random_map.start = maze.start
+
+
+## The map of random maze `key` ({} = none yet, or another maze's).
+func random_map_for(key: String) -> Dictionary:
+	return random_map if key == random_map_key and not random_map.is_empty() else {}
+
+
+func discard_random_map() -> void:
+	random_map = {}
+	random_map_key = ""
+
+
 func new_random_maze() -> void:
+	discard_random_map()
 	random_seed = randi_range(1, 2_000_000_000)
 	if Demo.gentle_maze(randoms_won):  # (the demo's first mazes: a seed that doesn't ask for most of the meter)
 		for _i in 64:
