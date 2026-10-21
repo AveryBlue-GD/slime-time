@@ -759,7 +759,8 @@ func _other_screens() -> void:
 	await L.frames(3)
 	check(not hub.hat_wheel.visible and L.kind() == "hub", "WHEEL-ESC", "Esc closes the wheel after the spin ends")
 	inv("wheel closed")
-	# The SHOP tab: a tile's confirm takes Esc first, then the overlay closes; focus stays inside.
+	# The SHOP tab (DYES): a hat's tile opens its colors; a dye's confirm takes Esc first, then its
+	# colors, then the overlay closes; focus stays inside.
 	L.set_state("rich")
 	hub = await _fresh_scene(L.HUB)
 	hub_to("wheel")
@@ -769,14 +770,21 @@ func _other_screens() -> void:
 	await L.frames(2)
 	check(hub.hat_wheel.tab == "shop" and hub.hat_wheel.shop_page.visible, "WHEEL-SHOP", "clicking SHOP shows the shop")
 	inv("wheel shop")
-	await L.tap(KEY_ENTER)  # the focused (first) tile: a hat, its confirm
+	await L.tap(KEY_ENTER)  # the focused (first) tile: the top hat, its colors
 	await L.frames(2)
-	check(hub.hat_wheel.confirm.visible, "SHOP-CONFIRM", "Enter on a shop tile asks BUY ...?")
+	check(hub.hat_wheel.dye_hat == "tophat", "SHOP-DYES", "Enter on a hat's tile shows its colors")
+	await L.tap(KEY_RIGHT)  # ORIGINAL -> the first dye
+	await L.tap(KEY_ENTER)
+	await L.frames(2)
+	check(hub.hat_wheel.confirm.visible, "SHOP-CONFIRM", "Enter on a dye's tile asks BUY ...?")
 	inv("shop confirm")
 	await esc()
 	await L.frames(2)
 	check(not hub.hat_wheel.confirm.visible and hub.hat_wheel.visible, "SHOP-ESC", "Esc closes the confirm first (the shop stays)")
 	inv("confirm closed")
+	await esc()
+	await L.frames(2)
+	check(hub.hat_wheel.visible and hub.hat_wheel.dye_hat == "", "SHOP-ESC", "...then Esc goes back to the hats")
 	await L.tap(KEY_TAB)
 	await L.frames(1)
 	inv("shop tab key")

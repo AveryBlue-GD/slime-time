@@ -9,7 +9,8 @@ extends Node2D
 ## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors),
 ## `squeezed` (every hat on the splat frames, 2x), and the real screens players see them on:
 ## `ui_wheel` (the hub's prize wheel), `ui_won` (just after a spin lands), `ui_shop` (the SHOP's
-## HATS section: the TAILOR), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
+## DYES section: your dyeable hats), `ui_dyes` (one hat's colors, a dye focused on the try-on slimes),
+## `ui_dyed` (the hub slime in a dyed hat), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
 ## ./tools/godot.sh --path . res://tests/demo_hat_audit.tscn -- --unlock-all --out=/abs/dir [--only=lineup,...]
 ## then: python3 -I tools/upscale_png.py OUT/lineup.png OUT/lineup_x4.png 4
 
@@ -68,6 +69,8 @@ func _run() -> void:
 	await _ui_page("ui_wheel", _ui_wheel, 30)
 	await _ui_page("ui_won", _ui_won, 4)
 	await _ui_page("ui_shop", _ui_shop, 30)
+	await _ui_page("ui_dyes", _ui_dyes, 30)
+	await _ui_page("ui_dyed", _ui_dyed, 30)
 	await _ui_page("ui_wardrobe", _ui_wardrobe, 30)
 	await _ui_page("ui_hub", _ui_hub, 30)
 	if _only.is_empty() or "rainbow" in _only:
@@ -280,6 +283,32 @@ func _ui_shop() -> void:
 	hub.open_hat_wheel()
 	hub.hat_wheel.show_tab("shop")
 	hub.hat_wheel.show_section("hats")
+
+
+## A player with five hats (four dyeable), two dyes for the propeller cap (wearing teal).
+func _dyed_player() -> void:
+	Progress.hats_owned.assign(["tophat", "beanie", "propeller", "wizard", "crown"])
+	Progress.hat_dyes_owned.assign(["propeller:teal", "propeller:bubblegum", "wizard:butter"])
+	Progress.hat_dyes = {"propeller": "teal"}
+	Progress.selected_hat = "propeller"
+	Progress.tickets = 34
+
+
+func _ui_dyes() -> void:
+	_dyed_player()
+	var hub := _hub()
+	await get_tree().process_frame
+	hub.open_hat_wheel()
+	var wheel: Control = hub.hat_wheel
+	wheel.show_tab("shop")
+	wheel.shop_tiles["wizard"].pressed.emit()
+	await get_tree().process_frame
+	wheel.shop_tiles["wizard:cherry"].grab_focus()
+
+
+func _ui_dyed() -> void:
+	_dyed_player()
+	_hub()
 
 
 func _ui_wardrobe() -> void:

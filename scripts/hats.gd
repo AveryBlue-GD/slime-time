@@ -3,8 +3,10 @@ extends RefCounted
 
 ## Hats: won on the hat wheel in the hub (a spin lands on a random hat you don't have yet, and
 ## won hats come off the wheel; Progress.hats_owned), then picked on the Skins screen's hats page
-## (Progress.selected_hat). The first spin is free, then 12 tickets rising by 2 per spin (Progress.spin_hat);
-## after 3 spins the wheel's SHOP also sells any hat still on it (the TAILOR: 45, the rainbow hat 80).
+## (Progress.selected_hat). The first spin is free, then 12 tickets rising by 2 per spin (Progress.spin_hat).
+## Hats are never sold: the wheel's SHOP sells DYES instead (Economy.DYE_PRICE tickets each): the
+## `dyeable` hats in another color (DYES), drawn in assets/sprites/hat_dyes.png (dye_region). Each
+## dyeable hat skips the dye nearest its own color (`own`). Progress.hat_dye says which one is worn.
 ## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
 ## frame. An animated hat (`frames` > 1: the propeller cap, the raincloud) has its first frame
 ## there (its still frame, as on the hat wheel's wedges) and the others after every hat's column
@@ -40,22 +42,111 @@ const FLOW_STEPS := 12
 static var _flow_frames := {}
 
 const LIST := [
-	{id = "tophat", name = "TOP HAT", column = 0},  # i18n: ignore (English source; shown via display_name)
-	{id = "beanie", name = "BEANIE", column = 1},  # i18n: ignore (English source; shown via display_name)
+	{id = "tophat", name = "TOP HAT", column = 0, dyeable = true, own = "midnight"},  # i18n: ignore (English source; shown via display_name)
+	{id = "beanie", name = "BEANIE", column = 1, dyeable = true, own = "cherry"},  # i18n: ignore (English source; shown via display_name)
 	{id = "party", name = "PARTY HAT", column = 2},  # i18n: ignore (English source; shown via display_name)
-	{id = "cap", name = "BASEBALL CAP", column = 3},  # i18n: ignore (English source; shown via display_name)
-	{id = "cowboy", name = "COWBOY HAT", column = 4},  # i18n: ignore (English source; shown via display_name)
-	{id = "chef", name = "CHEF HAT", column = 5},  # i18n: ignore (English source; shown via display_name)
-	{id = "wizard", name = "WIZARD HAT", column = 6},  # i18n: ignore (English source; shown via display_name)
+	{id = "cap", name = "BASEBALL CAP", column = 3, dyeable = true, own = "cobalt"},  # i18n: ignore (English source; shown via display_name)
+	{id = "cowboy", name = "COWBOY HAT", column = 4, dyeable = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "chef", name = "CHEF HAT", column = 5, dyeable = true, own = "snow"},  # i18n: ignore (English source; shown via display_name)
+	{id = "wizard", name = "WIZARD HAT", column = 6, dyeable = true, own = "plum"},  # i18n: ignore (English source; shown via display_name)
 	{id = "viking", name = "VIKING HELMET", column = 7},  # i18n: ignore (English source; shown via display_name)
 	# Its propeller spins (frames, see Hat._animate): lazily at rest, faster on the move, fastest flying off in a leap.
-	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0},  # i18n: ignore (English source; shown via display_name)
+	# A dye colors the propeller (both blades).
+	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	{id = "crown", name = "CROWN", column = 9},  # i18n: ignore (English source; shown via display_name)
 	# A little cloud hovering over the head (`hovers`: it never touches it), raining on it.
-	{id = "raincloud", name = "RAINCLOUD", column = 11, frames = 4, fps = 10.0, hovers = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "raincloud", name = "RAINCLOUD", column = 11, frames = 4, fps = 10.0, hovers = true, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	# The rare one: a thin wedge on the wheel, and its colors flow (assets/shaders/rainbow_hat.gdshader).
-	{id = "rainbow", name = "RAINBOW HAT", column = 10, flows = true},  # i18n: ignore (English source; shown via display_name)
+	# A dye colors its two clouds (marked in hat_dyes.png so the shader leaves them as drawn).
+	{id = "rainbow", name = "RAINBOW HAT", column = 10, flows = true, dyeable = true, own = "snow"},  # i18n: ignore (English source; shown via display_name)
 ]
+
+## Hat dyes, in hat_dyes.png's block order (tools/make_hats.py DYES: the same ids, same order).
+## `color` is the swatch shown in the SHOP.
+const DYES := [
+	{id = "cherry", color = Color8(206, 52, 62)},
+	{id = "tangerine", color = Color8(232, 128, 48)},
+	{id = "butter", color = Color8(240, 204, 76)},
+	{id = "clover", color = Color8(72, 168, 84)},
+	{id = "teal", color = Color8(44, 156, 156)},
+	{id = "cobalt", color = Color8(62, 110, 214)},
+	{id = "plum", color = Color8(124, 78, 196)},
+	{id = "bubblegum", color = Color8(236, 120, 176)},
+	{id = "midnight", color = Color8(52, 50, 72)},
+	{id = "snow", color = Color8(232, 232, 240)},
+]
+## A dye block's height in hat_dyes.png: every width's row (Width), like hats.png.
+const DYE_BLOCK := 6 * 16
+
+
+## Whether hat `id` comes in dyes.
+static func is_dyeable(id: String) -> bool:
+	return get_hat(id).get("dyeable", false)
+
+
+## The dyes hat `id` comes in (none for a hat that isn't dyeable): every dye but its own color's.
+static func dyes_for(id: String) -> Array[String]:
+	var out: Array[String] = []
+	if is_dyeable(id):
+		for dye: Dictionary in DYES:
+			if dye.id != get_hat(id).get("own", ""):
+				out.append(dye.id)
+	return out
+
+
+## The block of dye `dye` in hat_dyes.png (-1: not a dye).
+static func dye_index(dye: String) -> int:
+	for i in DYES.size():
+		if DYES[i].id == dye:
+			return i
+	return -1
+
+
+static func dye_color(dye: String) -> Color:
+	var i := dye_index(dye)
+	return DYES[i].color if i >= 0 else Color.WHITE
+
+
+static func dye_name(dye: String) -> String:
+	# i18n: hat dye (a color) name, max 64px, 1 line; the SHOP's DYES tiles
+	match dye:
+		"cherry":
+			return Loc.t("dye.cherry", "CHERRY")
+		"tangerine":
+			return Loc.t("dye.tangerine", "TANGERINE")
+		"butter":
+			return Loc.t("dye.butter", "BUTTER")
+		"clover":
+			return Loc.t("dye.clover", "CLOVER")
+		"teal":
+			return Loc.t("dye.teal", "TEAL")
+		"cobalt":
+			return Loc.t("dye.cobalt", "COBALT")
+		"plum":
+			return Loc.t("dye.plum", "PLUM")
+		"bubblegum":
+			return Loc.t("dye.bubblegum", "BUBBLEGUM")
+		"midnight":
+			return Loc.t("dye.midnight", "MIDNIGHT")
+		"snow":
+			return Loc.t("dye.snow", "SNOW")
+	# i18n: a dyeable hat in its own color (no dye), max 64px, 1 line; the SHOP's DYES tiles
+	return Loc.t("dye.original", "ORIGINAL")
+
+
+## The sheet hat `id` is drawn from in dye `dye` ("" or a dye it doesn't come in: hats.png).
+static func texture_for(id: String, dye := "") -> Texture2D:
+	if dye != "" and dye in dyes_for(id):
+		return preload("res://assets/sprites/hat_dyes.png")
+	return preload("res://assets/sprites/hats.png")
+
+
+## region() in the sheet texture_for(id, dye) gives: hat_dyes.png's block for the dye.
+static func dye_region(id: String, dye: String, width := Width.NORMAL, frame := 0) -> Rect2:
+	var r := region(id, width, frame)
+	if dye != "" and dye in dyes_for(id):
+		r.position.y += dye_index(dye) * DYE_BLOCK
+	return r
 
 
 ## The material a hat sprite wears: the flowing-rainbow shader for the rainbow hat, else none.

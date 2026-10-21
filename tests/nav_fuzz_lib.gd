@@ -55,7 +55,7 @@ func _init(t: SceneTree) -> void:
 
 ## A start state: "complete" (--story-complete + full maps), "fresh" (new player), "mid" (3 levels
 ## cleared, maps of levels 1-3 only), "dev" (--unlock-all), "touch" (complete + touch), "rich" (complete
-## + 300 tickets, 3 spins taken (the TAILOR open), a trail and two map papers owned, a workshop level).
+## + 300 tickets, 3 spins taken (the top hat won: something to dye), a trail and two map papers owned, a workshop level).
 func set_state(kind: String) -> void:
 	progress.reset_progress()
 	progress.maps = {}
@@ -82,6 +82,7 @@ func set_state(kind: String) -> void:
 			progress.tickets = 300
 			progress.tickets_lifetime = 300
 			progress.spins = 3
+			progress.hats_owned.assign(["tophat"])
 			progress.cosmetics_owned.assign(["gold", "blueprint", "night"])
 			progress.workshop = {charge = 1}
 		"mid":

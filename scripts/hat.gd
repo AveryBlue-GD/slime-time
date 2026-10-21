@@ -34,6 +34,8 @@ var ground := Vector2.ZERO
 var height := 0.0
 var lift := 0.0
 var hat_id := Hats.NONE
+## The dye it's drawn in ("": its own color; Hats.dyes_for).
+var dye := ""
 ## How far the hat is thrown off line from the slime by a bonk (springs back to zero).
 var jolt := Vector2.ZERO
 var _slime_last := Vector2.ZERO
@@ -49,14 +51,16 @@ func _init() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF  # it places itself every frame
 
 
-## Puts hat `hat_id` on the given slime sprite.
-func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null) -> void:
+## Puts hat `hat_id` on the given slime sprite, in dye `dye_id` ("": its own color; the player's
+## hat wears Progress.hat_dye_of).
+func setup(id: String, slime_body: AnimatedSprite2D, slime_anchor: Node2D = null, dye_id := "") -> void:
 	hat_id = id
+	dye = dye_id if dye_id in Hats.dyes_for(id) else ""
 	body = slime_body
 	anchor = slime_anchor if slime_anchor else slime_body
-	texture = preload("res://assets/sprites/hats.png")
+	texture = Hats.texture_for(hat_id, dye)
 	region_enabled = true
-	region_rect = Hats.region(hat_id)
+	region_rect = Hats.dye_region(hat_id, dye)
 	material = Hats.material_for(hat_id)
 	centered = false
 	offset = -Hats.HEAD  # the frame's head point goes on the top of the slime's head
@@ -70,7 +74,7 @@ func pop(slime_velocity: Vector2, flight_time: float) -> void:
 		return  # a hovering hat (the raincloud) isn't knocked off: it rides along over the head
 	ground = _floor_point()
 	height = _head_height()
-	region_rect = Hats.region(hat_id, Hats.Width.LOOSE, anim_frame)  # off the head it keeps its own shape
+	region_rect = Hats.dye_region(hat_id, dye, Hats.Width.LOOSE, anim_frame)  # off the head it keeps its own shape
 	_slime_last = ground
 	_slime_velocity = slime_velocity
 	_height_from = height
@@ -96,7 +100,7 @@ func _process(delta: float) -> void:
 		State.ON:
 			_follow()
 		State.FLYING:
-			region_rect = Hats.region(hat_id, Hats.Width.LOOSE, anim_frame)
+			region_rect = Hats.dye_region(hat_id, dye, Hats.Width.LOOSE, anim_frame)
 			var drawn_height := height
 			var slime := anchor as Slime
 			if slime and slime.is_physics_interpolated_and_enabled():
@@ -124,7 +128,7 @@ func _follow() -> void:
 	# Squashed slime, wider hat; stretched slime, narrower and taller. Lifted a px or two in the
 	# few frames whose eyes sit high, so it never covers them.
 	var width := Hats.width_for(Slime.head_width(body.animation, body.frame))
-	region_rect = Hats.region(hat_id, width, anim_frame)
+	region_rect = Hats.dye_region(hat_id, dye, width, anim_frame)
 	var lift_px := Hats.lift(hat_id, width, body.animation, body.frame)
 	_place(_snap(_head() + _drawn_shift(true) - Vector2(0, lift_px) * body.global_scale))
 

@@ -2,8 +2,8 @@ extends "res://tests/suite_base.gd"
 
 ## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
 ## 242, workshop 423, cosmetics 240), hats live for players (12 spins = 12 different hats, never a
-## duplicate, rainbow pity), the TAILOR's direct buy (45 / rainbow 80 after 3 spins, counts as a spin,
-## rainbow pity reset, atomic + saved), workshop and cosmetic purchases (exact balance, one short,
+## duplicate, rainbow pity), hat dyes (hats are never sold; 10 tickets a dye for a won dyeable hat,
+## worn at once, its own color free, saved), workshop and cosmetic purchases (exact balance, one short,
 ## double buy, max level, not refundable, dev mode free), equip / unequip / fallback, save round trips
 ## (file and code, size), hostile values, RESET PROGRESS, the release epoch; the UI: the cauldron's
 ## TICKETS tab, the prize wheel's SHOP (buy through the confirm, Esc ladder), the wardrobe's TRAILS
@@ -27,7 +27,7 @@ func _initialize() -> void:
 	_check(progress.save_path != progress.REAL_SAVE_PATH, "tests save to a throwaway file (%s)" % progress.save_path)
 	_totals()
 	_hats()
-	_tailor()
+	_dyes()
 	_workshop()
 	_cosmetics()
 	_saves()
@@ -64,7 +64,7 @@ func _totals() -> void:
 	_check(cosmetics == 240 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 3,
 		"5 trails + 3 papers cost 240 (got %d)" % cosmetics)
 	_check(wheel + Workshop.full_cost() + cosmetics == 905, "everything in v1 costs 905 tickets")
-	_check(Economy.TAILOR_PRICE == 45 and Economy.TAILOR_RAINBOW_PRICE == 80 and Economy.TAILOR_AFTER_SPINS == 3
+	_check(Economy.DYE_PRICE == 10
 		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
 		"store numbers live in Economy (Progress aliases them)")
 	var values := [Workshop.wind_refill(1), Workshop.wind_refill(3), Workshop.charge_time(0), Workshop.charge_time(3),
@@ -117,35 +117,48 @@ func _hats() -> void:
 	progress.saving_enabled = false
 
 
-func _tailor() -> void:
-	_fresh(200)
-	_check(not progress.tailor_open() and not progress.buy_hat("crown") and progress.tickets == 200, "the TAILOR is shut before 3 spins")
-	progress.spin_hat(0.0)
-	progress.spin_hat(0.0)
-	_check(not progress.tailor_open(), "...still shut after 2")
-	progress.spin_hat(0.0)
-	var spent: int = 200 - progress.tickets
-	_check(progress.tailor_open() and progress.spins == 3, "...open after 3 spins (paid %d so far)" % spent)
-	var left_before: int = progress.hats_left().size()
-	var pity: int = progress.rainbow_pity
-	var price_before: int = progress.spin_cost()
-	var tickets_before: int = progress.tickets
-	_check(progress.buy_hat("crown") and progress.tickets == tickets_before - 45 and "crown" in progress.hats_owned
-		and progress.selected_hat == "crown" and progress.hats_left().size() == left_before - 1,
-		"a hat costs 45, comes off the wheel and is worn")
-	_check(progress.spins == 4 and progress.hats_bought == 1 and progress.spin_cost() == price_before + Economy.SPIN_STEP and progress.rainbow_pity == pity,
-		"a direct buy counts as a spin (next spin %d), pity unchanged" % progress.spin_cost())
-	_check(not progress.buy_hat("crown") and progress.tickets == tickets_before - 45, "no double buy (the crown is off the wheel)")
-	_check(not progress.buy_hat("nothat") and not progress.buy_hat(""), "unknown hats can't be bought")
-	progress.rainbow_pity = 5
-	progress.tickets = 79
-	_check(not progress.buy_hat("rainbow") and progress.tickets == 79 and progress.rainbow_pity == 5, "the rainbow hat at 79 of 80: no buy, nothing taken")
-	progress.tickets = 80
-	_check(progress.buy_hat("rainbow") and progress.tickets == 0 and progress.rainbow_pity == 0, "the rainbow hat at exactly 80: bought, pity reset")
+func _dyes() -> void:
+	_fresh(25)
+	_check(not progress.has_method("buy_hat") and not progress.has_method("tailor_price"), "hats are never sold (no TAILOR)")
+	var count := 0
+	for hat in Hats.ids():
+		count += Hats.dyes_for(hat).size()
+	_check(count == 84 and Hats.dyes_for("tophat").size() == 9 and Hats.dyes_for("cowboy").size() == 10 and Hats.dyes_for("crown").is_empty()
+		and not "midnight" in Hats.dyes_for("tophat"), "84 dyes: 9 dyeable hats, each without its own color (%d)" % count)
+	_check(not progress.can_buy_dye("beanie", "teal") and not progress.buy_dye("beanie", "teal") and progress.tickets == 25, "no dye for a hat not won")
+	progress.win_hat("beanie")
+	progress.win_hat("crown")
+	_check(not progress.buy_dye("beanie", "cherry") and not progress.buy_dye("crown", "teal") and not progress.buy_dye("beanie", "nope"),
+		"no dye a hat doesn't come in (its own color, a plain hat, an unknown dye)")
+	progress.selected_hat = "crown"
+	_check(progress.buy_dye("beanie", "teal") and progress.tickets == 15 and progress.owns_dye("beanie", "teal")
+		and progress.selected_hat == "beanie" and progress.hat_dye_of("beanie") == "teal", "a dye costs 10, and the hat is put on in it")
+	_check(not progress.buy_dye("beanie", "teal") and progress.tickets == 15, "no double buy")
+	progress.tickets = 9
+	_check(not progress.buy_dye("beanie", "plum") and progress.tickets == 9 and not progress.owns_dye("beanie", "plum"), "one short: no buy, nothing taken")
+	progress.tickets = 10
+	_check(progress.buy_dye("beanie", "plum") and progress.tickets == 0, "exactly 10: bought")
+	_check(progress.wear_dye("beanie", "") and progress.hat_dye_of("beanie") == "" and progress.wear_dye("beanie", "teal")
+		and progress.hat_dye_of("beanie") == "teal", "the hat's own color is free to go back to; an owned dye is worn again")
+	_check(not progress.wear_dye("beanie", "snow") and progress.hat_dye_of("beanie") == "teal", "an unowned dye can't be worn")
+	var file: ConfigFile = progress._write()
+	progress.reset_progress()
+	_check(progress.hat_dyes_owned.is_empty() and progress.hat_dye_of("beanie") == "", "RESET PROGRESS clears the dyes")
+	progress._read(file)
+	_check(progress.owns_dye("beanie", "teal") and progress.owns_dye("beanie", "plum") and progress.hat_dye_of("beanie") == "teal",
+		"dyes round-trip through the save")
+	var bad := ConfigFile.new()
+	bad.set_value("meta", "version", 6)
+	bad.set_value("meta", "epoch", 1)
+	bad.set_value("hats", "owned", ["beanie"])
+	bad.set_value("hats", "dyes", ["beanie:teal", "beanie:teal", "beanie:cherry", "crown:teal", "beanie", 7, "x:y:z"])
+	bad.set_value("hats", "dyes_worn", ["beanie:plum", "tophat:teal"])
+	progress._read(bad)
+	_check(str(progress.hat_dyes_owned) == str(["beanie:teal"]) and progress.hat_dye_of("beanie") == "",
+		"hostile dyes: real ones once each, a worn dye only if owned (%s)" % [progress.hat_dyes_owned])
 	progress.dev_tools = true
 	progress.tickets = 0
-	var free_hat: String = progress.hats_left()[0]
-	_check(progress.tailor_price(free_hat) == 0 and progress.buy_hat(free_hat) and progress.tickets == 0, "dev mode buys free")
+	_check(progress.dye_price() == 0 and progress.owns_dye("tophat", "teal"), "dev mode owns every dye")
 	progress.dev_tools = false
 
 
@@ -199,29 +212,33 @@ func _saves() -> void:
 	progress.spin_hat(0.0)
 	progress.spin_hat(0.0)
 	progress.spin_hat(0.0)
-	progress.buy_hat("chef")
+	progress.win_hat("chef")
+	progress.buy_dye("chef", "teal")
 	progress.buy_workshop("charge")
 	progress.buy_workshop("sticky")
 	progress.buy_workshop("sticky")
 	progress.buy_cosmetic("candy")
 	progress.buy_cosmetic("blueprint")
 	var want := [progress.tickets, progress.tickets_spent, progress.workshop.duplicate(), progress.cosmetics_owned.duplicate(),
-		progress.trail_style, progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned.duplicate()]
+		progress.trail_style, progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned.duplicate(), progress.hat_dyes_owned.duplicate()]
 	var file: ConfigFile = progress._write()
 	progress.reset_progress()
 	progress._read(file)
 	var got := [progress.tickets, progress.tickets_spent, progress.workshop, progress.cosmetics_owned, progress.trail_style,
-		progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned]
+		progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned, progress.hat_dyes_owned]
 	_check(str(got) == str(want), "the store round-trips through the save (%s)" % [got])
 	var code: String = progress.save_code()
 	progress.reset_progress()
-	_check(progress.load_code(code) and progress.workshop_level("sticky") == 2 and progress.trail_style == "candy" and "chef" in progress.hats_owned,
+	_check(progress.load_code(code) and progress.workshop_level("sticky") == 2 and progress.trail_style == "candy" and progress.owns_dye("chef", "teal"),
 		"...and through a save code (%d chars)" % code.length())
 	# A full store (every hat, workshop maxed, every cosmetic worn) still makes a short code.
 	progress.hats_owned.assign(Hats.ids())
 	for id in Workshop.ids():
 		progress.workshop[id] = Workshop.max_level(id)
 	progress.cosmetics_owned.assign(Cosmetics.ids())
+	for hat in Hats.ids():
+		for dye in Hats.dyes_for(hat):
+			progress.hat_dyes_owned.append("%s:%s" % [hat, dye])
 	progress.hats_bought = 11
 	progress.tickets_spent = 873
 	var full: String = progress.save_code()
@@ -352,20 +369,37 @@ func _ui_wheel() -> void:
 	_check(wheel.visible and wheel.tab == "wheel" and wheel.spin_button.has_focus() and "SPIN  16" in wheel.spin_button.text and wheel.spin_button.icon != null,
 		"the wheel opens on WHEEL, focus on SPIN with its price and the ticket icon (%s)" % wheel.spin_button.text)
 	wheel.shop_tab.pressed.emit()
-	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.size() == Hats.LIST.size(),
-		"SHOP opens on HATS: a tile per hat still on the wheel")
-	var crown: Button = wheel.shop_tiles["crown"]
-	_check(crown.has_focus() or wheel.shop_tiles.values()[0].has_focus(), "focus on the first tile")
-	crown.pressed.emit()
-	_check(wheel.confirm.visible and wheel.confirm_back.has_focus() and "CROWN" in wheel.confirm_label.text and wheel.confirm_price.text == "45",
-		"buying asks once: BUY CROWN? 45, focus on BACK")
+	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.is_empty()
+		and "NO HATS TO DYE" in wheel.status.text and wheel.section_buttons["hats"].text == "DYES", "SHOP opens on DYES: no hat won yet, no tiles")
+	hub.close_hat_wheel()
+	progress.win_hat("tophat")
+	progress.win_hat("crown")
+	hub.open_hat_wheel()
+	await process_frame
+	wheel.shop_tab.pressed.emit()
+	_check(wheel.shop_tiles.keys() == ["tophat"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
+		"DYES lists the dyeable hats won (the crown isn't one), focus on the first")
+	wheel.shop_tiles["tophat"].pressed.emit()
+	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.size() == 10 and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:teal")
+		and not wheel.shop_tiles.has("tophat:midnight"), "a hat's tile opens its colors: ORIGINAL + 9 dyes")
+	var teal: Button = wheel.shop_tiles["tophat:teal"]
+	teal.grab_focus()
+	teal.pressed.emit()
+	_check(wheel.confirm.visible and wheel.confirm_back.has_focus() and "TEAL DYE" in wheel.confirm_label.text and wheel.confirm_price.text == "10",
+		"buying asks once: BUY TEAL DYE? 10, focus on BACK")
 	_check(not wheel.spin() and progress.tickets == 100, "no spin from the SHOP / under the confirm")
-	_check(wheel.back() and not wheel.confirm.visible and progress.tickets == 100, "Esc (back) closes the confirm first, nothing bought")
-	crown.pressed.emit()
+	_check(wheel.back() and not wheel.confirm.visible and progress.tickets == 100 and wheel.dye_hat == "tophat", "Esc (back) closes the confirm first, nothing bought")
+	teal.pressed.emit()
 	wheel.confirm_buy.pressed.emit()
 	await process_frame
-	_check(progress.tickets == 55 and "crown" in progress.hats_owned and progress.selected_hat == "crown" and not wheel.shop_tiles.has("crown")
-		and hub.hat != null and not wheel.confirm.visible, "BUY: paid 45, worn on the hub slime, off the list")
+	_check(progress.tickets == 90 and progress.owns_dye("tophat", "teal") and progress.selected_hat == "tophat" and hub.hat != null
+		and hub.hat.dye == "teal" and hub.hat.texture == preload("res://assets/sprites/hat_dyes.png") and not wheel.confirm.visible,
+		"BUY: paid 10, the hub slime wears the top hat in teal")
+	wheel.shop_tiles["tophat:"].pressed.emit()
+	_check(progress.hat_dye_of("tophat") == "" and hub.hat.dye == "", "ORIGINAL puts its own color back on")
+	_check(wheel.back() and wheel.dye_hat == "" and wheel.shop_tiles.has("tophat") and wheel.shop_tiles["tophat"].has_focus(), "Esc goes back to the hats first")
+	progress.tickets = 55
+	wheel.refresh("F")
 	wheel.section_buttons["trails"].pressed.emit()
 	_check(wheel.section == "trails" and wheel.shop_tiles.size() == 5, "TRAILS: 5 tiles")
 	wheel.shop_tiles["starry"].pressed.emit()
@@ -385,7 +419,7 @@ func _ui_wheel() -> void:
 	_check(wheel.tab == "shop" and wheel.shop_page.visible and wheel.get_viewport().gui_get_focus_owner() != null
 		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every hat won: opens on the SHOP, focus inside")
 	wheel.section_buttons["hats"].pressed.emit()
-	_check(wheel.shop_tiles.is_empty() and wheel.section_buttons["hats"].has_focus() and "EVERY HAT" in wheel.status.text, "...its HATS section is empty")
+	_check(wheel.shop_tiles.size() == 9 and wheel.dye_hat == "", "...its DYES section lists all 9 dyeable hats")
 	wheel.wheel_tab.pressed.emit()
 	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY HAT" in wheel.result.text and wheel.wheel_tab.has_focus(),
 		"...the WHEEL tab shows an empty wheel that can't spin")

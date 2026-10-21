@@ -11,7 +11,7 @@ extends Node2D
 ## - cauldron: UPGRADES
 ## - prize wheel: HAT WHEEL: WHEEL | SHOP (HatWheel). Spin for a random hat you don't have yet (won
 ##   hats come off the wheel); the first spin is free, then 12 tickets, 2 more for each spin taken
-##   (up to 40). The SHOP sells hats (the TAILOR, after 3 spins), trail styles and map papers. The
+##   (up to 40). The SHOP sells hat dyes (never hats), trail styles and map papers. The
 ##   prompt shows the next spin's price with the ticket icon (SHOP once every hat is won) and a "!"
 ##   when something there is affordable (the cauldron's too, for its TICKETS workshop; none while Economy.WORKSHOP_ENABLED is off). The
 ##   top-left pod shows the ticket balance and medals won.
@@ -426,7 +426,7 @@ func _put_on_hat() -> void:
 		# A child of the slime, so it's y-sorted with it: behind the wheel and stations when the
 		# slime is, in front when it's in front (the hat still places itself, even when knocked off).
 		slime.add_child(hat)
-		hat.setup(Progress.selected_hat, slime.sprite, slime)
+		hat.setup(Progress.selected_hat, slime.sprite, slime, Progress.hat_dye_of(Progress.selected_hat))
 		slime.launched.connect(hat.pop)
 
 
@@ -497,7 +497,7 @@ func _build_ui() -> void:
 		if id == "":
 			_spin_room_wheel()  # the SPIN button started a spin
 		elif not Hats.get_hat(id).is_empty():
-			_put_on_hat()  # bought from the TAILOR: worn at once
+			_put_on_hat()  # a dye bought or worn in the SHOP: the hat is put on in it
 		_refresh_tickets())
 	_show_tree_notice(root)
 	UIKit.add_skin_text(root)

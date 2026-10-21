@@ -181,7 +181,7 @@ static func teasers() -> Array[int]:
 	return out
 
 
-## The SHOP (TAILOR hats, trails, papers): a full-game feature (shown with a FULL GAME lock).
+## The SHOP (hat dyes, trails, papers): a full-game feature (shown with a FULL GAME lock).
 static func shop_open() -> bool:
 	return not on()
 

@@ -76,7 +76,7 @@ static func feature_line(level: int) -> String:
 			# i18n: demo end screen teaser card, max 168px, 1 line; {count} = hard levels past the demo (9)
 			return Loc.t("demo.teaser.hard", "{count} MORE HARD LEVELS", {count = Levels.COUNT - Demo.hard_levels()})
 		7:
-			# i18n: demo end screen teaser card, max 168px, 1 line (the TAILOR's shop: hats, goo trails, map papers)
+			# i18n: demo end screen teaser card, max 168px, 1 line (the SHOP: hat dyes, goo trails, map papers)
 			return Loc.t("demo.teaser.shop", "THE SHOP: TRAILS AND PAPERS")
 		9:
 			# i18n: demo end screen teaser card, max 168px, 1 line; {count} = abilities the demo lacks (2, web 3)

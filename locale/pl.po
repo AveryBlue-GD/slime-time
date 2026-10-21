@@ -578,6 +578,63 @@ msgid "NEXT LEVEL"
 msgstr "DALEJ"
 
 #: scripts/hats.gd
+msgctxt "dye.cherry"
+msgid "CHERRY"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.tangerine"
+msgid "TANGERINE"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.butter"
+msgid "BUTTER"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.clover"
+msgid "CLOVER"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.teal"
+msgid "TEAL"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.cobalt"
+msgid "COBALT"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.plum"
+msgid "PLUM"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.bubblegum"
+msgid "BUBBLEGUM"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.midnight"
+msgid "MIDNIGHT"
+msgstr ""
+
+#: scripts/hats.gd
+msgctxt "dye.snow"
+msgid "SNOW"
+msgstr ""
+
+#. a dyeable hat in its own color (no dye), max 64px, 1 line; the SHOP's DYES tiles
+#. budget: max 64px, lines 1
+#: scripts/hats.gd
+msgctxt "dye.original"
+msgid "ORIGINAL"
+msgstr ""
+
+#: scripts/hats.gd
 msgctxt "hat.none"
 msgid "NO HAT"
 msgstr "BEZ CZAPKI"
@@ -1734,7 +1791,7 @@ msgctxt "demo.teaser.hard"
 msgid "{count} MORE HARD LEVELS"
 msgstr ""
 
-#. demo end screen teaser card, max 168px, 1 line (the TAILOR's shop: hats, goo trails, map papers)
+#. demo end screen teaser card, max 168px, 1 line (the SHOP: hat dyes, goo trails, map papers)
 #. budget: max 168px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.teaser.shop"
@@ -2004,12 +2061,12 @@ msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
 msgstr "KRĘĆ  {cost}"
 
-#. max 44px, grows to 56px (tab_widths: the three alike), 1 line
+#. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.section.hats"
-msgid "HATS"
-msgstr "CZAPKI"
+msgctxt "wheel.section.dyes"
+msgid "DYES"
+msgstr ""
 
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line
 #. budget: max 44px, lines 1
@@ -2026,16 +2083,6 @@ msgid "PAPERS"
 msgstr "PAPIERY"
 
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.all_yours"
-msgid "EVERY HAT IS YOURS"
-msgstr "WSZYSTKIE CZAPKI SĄ TWOJE"
-
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.wear_wardrobe"
-msgid "WEAR THEM IN THE WARDROBE"
-msgstr "ZAKŁADAJ JE W GARDEROBIE"
-
-#: scripts/ui/hat_wheel.gd
 msgctxt "wheel.worn"
 msgid "WORN"
 msgstr "W UŻYCIU"
@@ -2050,6 +2097,20 @@ msgctxt "wheel.free"
 msgid "FREE"
 msgstr "ZA DARMO"
 
+#. SHOP status lines (DYES with no dyeable hat yet), max 240px each, 1 line each
+#. budget: max 240px, lines 1
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.dyes_empty"
+msgid "NO HATS TO DYE YET"
+msgstr ""
+
+#. SHOP status lines (DYES with no dyeable hat yet), max 240px each, 1 line each
+#. budget: max 240px, lines 1
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.dyes_win"
+msgid "WIN ONE ON THE WHEEL, THEN DYE IT HERE"
+msgstr ""
+
 #. SHOP status line (demo build), max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2057,18 +2118,17 @@ msgctxt "wheel.demo_shop"
 msgid "THE SHOP OPENS IN THE FULL GAME"
 msgstr ""
 
+#. SHOP status line (DYES: a dyeable hat's tile), max 240px, 1 line
+#. budget: max 240px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.from_tailor"
-msgid "{name} - FROM THE TAILOR"
-msgstr "{name} - OD KRAWCA"
+msgctxt "wheel.pick_dye"
+msgid "PRESS TO PICK ITS COLOR"
+msgstr ""
 
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.tailor_opens"
-msgid "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})"
-msgid_plural "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})"
-msgstr[0] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIU ({have}/{count})"
-msgstr[1] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIACH ({have}/{count})"
-msgstr[2] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIACH ({have}/{count})"
+msgctxt "wheel.wear"
+msgid "PRESS TO WEAR IT"
+msgstr "NACIŚNIJ, BY ZAŁOŻYĆ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.need"
@@ -2079,9 +2139,9 @@ msgstr[1] "POTRZEBA {count} BILETÓW"
 msgstr[2] "POTRZEBA {count} BILETÓW"
 
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.no_luck"
-msgid "NO LUCK NEEDED (COUNTS AS A SPIN)"
-msgstr "BEZ LOSOWANIA (LICZY SIĘ JAK ZAKRĘCENIE)"
+msgctxt "wheel.buy"
+msgid "PRESS TO BUY"
+msgstr "NACIŚNIJ, BY KUPIĆ"
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.item_info"
@@ -2093,15 +2153,19 @@ msgctxt "wheel.take_off"
 msgid "PRESS TO TAKE IT OFF"
 msgstr "NACIŚNIJ, BY ZDJĄĆ"
 
+#. SHOP status line (DYES), max 240px, 1 line: a hat name, then a dye name or ORIGINAL
+#. budget: max 240px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.wear"
-msgid "PRESS TO WEAR IT"
-msgstr "NACIŚNIJ, BY ZAŁOŻYĆ"
+msgctxt "wheel.dye_title"
+msgid "{hat} - {dye}"
+msgstr ""
 
+#. the buy confirm's name for a hat dye, e.g. BUY TEAL DYE?; max 120px with BUY ...?
+#. budget: max 120px
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.buy"
-msgid "PRESS TO BUY"
-msgstr "NACIŚNIJ, BY KUPIĆ"
+msgctxt "wheel.dye_name"
+msgid "{dye} DYE"
+msgstr ""
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.confirm"
@@ -2942,6 +3006,33 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.section.hats"
+#~ msgid "HATS"
+#~ msgstr "CZAPKI"
+
+#~ msgctxt "wheel.all_yours"
+#~ msgid "EVERY HAT IS YOURS"
+#~ msgstr "WSZYSTKIE CZAPKI SĄ TWOJE"
+
+#~ msgctxt "wheel.wear_wardrobe"
+#~ msgid "WEAR THEM IN THE WARDROBE"
+#~ msgstr "ZAKŁADAJ JE W GARDEROBIE"
+
+#~ msgctxt "wheel.from_tailor"
+#~ msgid "{name} - FROM THE TAILOR"
+#~ msgstr "{name} - OD KRAWCA"
+
+#~ msgctxt "wheel.tailor_opens"
+#~ msgid "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})"
+#~ msgid_plural "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})"
+#~ msgstr[0] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIU ({have}/{count})"
+#~ msgstr[1] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIACH ({have}/{count})"
+#~ msgstr[2] "KRAWIEC OTWIERA PO {count} ZAKRĘCENIACH ({have}/{count})"
+
+#~ msgctxt "wheel.no_luck"
+#~ msgid "NO LUCK NEEDED (COUNTS AS A SPIN)"
+#~ msgstr "BEZ LOSOWANIA (LICZY SIĘ JAK ZAKRĘCENIE)"
 
 #~ msgctxt "settings.volume"
 #~ msgid "VOLUME"

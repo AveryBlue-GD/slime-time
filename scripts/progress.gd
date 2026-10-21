@@ -105,7 +105,7 @@ const SAVE_VERSION := 6
 ## maze took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5
 ## paying wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a
 ## typed or replayed seed, get at most 1 per win. Sinks (upgrades v2 batch 2): the hat wheel (free,
-## then 12, +2 per spin taken, up to 40), the TAILOR (a hat for 45, rainbow 80), the WORKSHOP
+## then 12, +2 per spin taken, up to 40), hat DYES (10 each; hats are never sold), the WORKSHOP
 ## (ticket utility upgrades) and cosmetics (trail styles, map papers). All numbers: Economy.
 ## (Saved under the old [wallet] keys "globs" and "globs_lifetime" so existing saves still load.)
 const TICKETS_MAX := 99999
@@ -200,8 +200,13 @@ var selected_skin := Skins.DEFAULT
 var selected_hat := Hats.NONE
 ## Hats won on the hat wheel (saved): they're off the wheel and can be worn.
 var hats_owned: Array[String] = []
-## Hats bought from the TAILOR ([hats] bought; stats only: `spins` already counts them).
+## Hats bought from the TAILOR ([hats] bought; stats only; the TAILOR is gone (hats are never sold),
+## old saves keep their count).
 var hats_bought := 0
+## Hat dyes bought in the SHOP ([hats] dyes: "hat:dye" each, Hats.dyes_for), and the dye each hat
+## is worn in ([hats] dyes_worn, the same form; a hat not in it wears its own color).
+var hat_dyes_owned: Array[String] = []
+var hat_dyes := {}
 ## Tickets spent in all ([wallet] tickets_spent; for stats and sanity checks).
 var tickets_spent := 0
 ## The ticket WORKSHOP's levels by id (Workshop; [workshop], 0-3 each; off in hard mode).
@@ -746,6 +751,14 @@ func _read(file: ConfigFile, from_code := false) -> void:
 	var color: Variant = file.get_value("skin", "custom_color", custom_color)
 	custom_color = color if typeof(color) == TYPE_COLOR else custom_color
 	hats_owned.assign(_strings(file.get_value("hats", "owned", [])))
+	hat_dyes_owned.clear()
+	for key in _strings(file.get_value("hats", "dyes", [])):
+		if _dye_key_valid(key) and not key in hat_dyes_owned:
+			hat_dyes_owned.append(key)
+	hat_dyes = {}
+	for key in _strings(file.get_value("hats", "dyes_worn", [])):
+		if key in hat_dyes_owned:
+			hat_dyes[key.get_slice(":", 0)] = key.get_slice(":", 1)
 	selected_hat = _string(file, "skin", "hat", Hats.NONE)
 	if not is_hat_unlocked(selected_hat):
 		selected_hat = Hats.NONE
@@ -1244,6 +1257,13 @@ func _write(for_code := false) -> ConfigFile:
 	file.set_value("skin", "jelly", jelly)
 	file.set_value("skin", "hat", selected_hat)
 	file.set_value("hats", "owned", hats_owned.duplicate())
+	if not hat_dyes_owned.is_empty():
+		file.set_value("hats", "dyes", hat_dyes_owned.duplicate())
+	var worn: Array[String] = []
+	for hat: String in hat_dyes:
+		worn.append("%s:%s" % [hat, hat_dyes[hat]])
+	if not worn.is_empty():
+		file.set_value("hats", "dyes_worn", worn)
 	file.set_value("settings", "sound_on", sound_on)
 	file.set_value("settings", "volume", volume)
 	file.set_value("settings", "music_volume", music_volume)
@@ -2369,35 +2389,57 @@ func spin_hat(roll := -1.0) -> String:
 	return pick
 
 
-## TAILOR (the hat wheel's SHOP): whether direct buys are open (after Economy.TAILOR_AFTER_SPINS
-## spins; dev mode always).
-func tailor_open() -> bool:
-	return dev_tools or (Hats.available and spins >= Economy.TAILOR_AFTER_SPINS)
+# ---------------------------------------------------------------- hat dyes (the SHOP's DYES)
+
+## Whether "hat:dye" names a real dye of a real dyeable hat (Hats.dyes_for).
+static func _dye_key_valid(key: String) -> bool:
+	return key.get_slice_count(":") == 2 and key.get_slice(":", 1) in Hats.dyes_for(key.get_slice(":", 0))
 
 
-## What the TAILOR asks for hat `id` (0 in dev mode).
-func tailor_price(id: String) -> int:
-	if dev_tools:
-		return 0
-	return Economy.TAILOR_RAINBOW_PRICE if Hats.get_hat(id).get("flows", false) else Economy.TAILOR_PRICE
+## Whether dye `dye` of hat `hat` is yours (dev mode: every dye).
+func owns_dye(hat: String, dye: String) -> bool:
+	return dye in Hats.dyes_for(hat) and (dev_tools or "%s:%s" % [hat, dye] in hat_dyes_owned)
 
 
-func can_buy_hat(id: String) -> bool:
-	return Demo.shop_open() and tailor_open() and id in hats_left() and tailor_price(id) <= tickets
+## The dye hat `hat` is worn in ("": its own color).
+func hat_dye_of(hat: String) -> String:
+	var dye: String = hat_dyes.get(hat, "")
+	return dye if owns_dye(hat, dye) else ""
 
 
-## Buys hat `id` from the TAILOR, atomically like spin_hat (pay, win, save at once). The buy
-## counts as a spin taken (so mixing can't dodge the price ramp); buying the rainbow hat resets its
-## pity (another hat leaves the pity as it is: a buy isn't a roll). False if it can't be bought.
-func buy_hat(id: String) -> bool:
-	if not can_buy_hat(id):
+## What a dye costs (0 in dev mode).
+func dye_price() -> int:
+	return 0 if dev_tools else Economy.DYE_PRICE
+
+
+## A dye can be bought for a hat you have won, in a dye it comes in and you don't own yet.
+func can_buy_dye(hat: String, dye: String) -> bool:
+	return Demo.shop_open() and is_hat_unlocked(hat) and dye in Hats.dyes_for(hat) and not owns_dye(hat, dye) \
+		and dye_price() <= tickets
+
+
+## Buys dye `dye` for hat `hat` and puts the hat on in it (pay + own + wear + save at once).
+## False if it can't be bought.
+func buy_dye(hat: String, dye: String) -> bool:
+	if not can_buy_dye(hat, dye):
 		return false
-	_pay(tailor_price(id))
-	spins = mini(spins + 1, SPINS_MAX)
-	hats_bought += 1
-	if Hats.get_hat(id).get("flows", false):
-		rainbow_pity = 0
-	win_hat(id)  # saves
+	_pay(dye_price())
+	hat_dyes_owned.append("%s:%s" % [hat, dye])
+	wear_dye(hat, dye)  # saves
+	return true
+
+
+## Wears hat `hat` (if unlocked) in dye `dye` ("": its own color; only a dye you own). Saves.
+## False if it can't.
+func wear_dye(hat: String, dye: String) -> bool:
+	if not is_hat_unlocked(hat) or (dye != "" and not owns_dye(hat, dye)):
+		return false
+	if dye == "":
+		hat_dyes.erase(hat)
+	else:
+		hat_dyes[hat] = dye
+	selected_hat = hat
+	save_progress()
 	return true
 
 
@@ -2529,7 +2571,7 @@ func _wear(id: String) -> void:
 		map_paper = id
 
 
-## The cheapest thing in the store not owned yet (hat spin, TAILOR hat, workshop level, cosmetic)
+## The cheapest thing in the store not owned yet (hat spin, hat dye, workshop level, cosmetic)
 ## is affordable: the hub prompts show a "!" (spec C.3).
 func store_affordable(where: String) -> bool:
 	if dev_tools:
@@ -2554,9 +2596,10 @@ func store_affordable(where: String) -> bool:
 		for id in Cosmetics.ids():
 			if not owns_cosmetic(id):
 				cheapest = mini(cheapest, cosmetic_price(id))
-		if tailor_open():
-			for id in hats_left():
-				cheapest = mini(cheapest, tailor_price(id))
+		for hat in hats_owned:
+			for dye in Hats.dyes_for(hat):
+				if not owns_dye(hat, dye):
+					cheapest = mini(cheapest, dye_price())
 	return cheapest <= tickets
 
 
@@ -2695,6 +2738,8 @@ func reset_progress() -> void:
 	spins = 0
 	rainbow_pity = 0
 	hats_bought = 0
+	hat_dyes_owned.clear()
+	hat_dyes = {}
 	tickets_spent = 0
 	workshop = {}
 	abilities = {}

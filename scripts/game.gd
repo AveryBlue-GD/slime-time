@@ -2244,7 +2244,7 @@ func _put_on_hat() -> void:
 	hat = Hat.new()
 	hat.z_index = slime.z_index + 1
 	add_child(hat)
-	hat.setup(progress.selected_hat, slime.sprite, slime)
+	hat.setup(progress.selected_hat, slime.sprite, slime, progress.hat_dye_of(progress.selected_hat))
 	slime.launched.connect(hat.pop)
 
 

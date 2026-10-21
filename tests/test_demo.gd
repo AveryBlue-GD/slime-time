@@ -282,7 +282,7 @@ func _check_locks() -> void:
 	# SHOP.
 	progress.spins = 20
 	var cosmetic: String = Cosmetics.ids()[0]
-	_check(not progress.can_buy_cosmetic(cosmetic) and not progress.buy_cosmetic(cosmetic) and not progress.can_buy_hat(progress.hats_left()[0]),
+	_check(not progress.can_buy_cosmetic(cosmetic) and not progress.buy_cosmetic(cosmetic) and not progress.can_buy_dye("tophat", "teal"),
 		"the SHOP sells nothing in the demo")
 	_check(not progress.store_affordable("wheel") or progress.spin_cost() <= progress.tickets, "the wheel's '!' counts no SHOP goods")
 	progress.hard_cleared.assign([1])

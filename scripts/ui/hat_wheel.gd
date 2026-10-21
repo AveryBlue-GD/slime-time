@@ -13,18 +13,21 @@ extends Control
 ## where it lands (always inside the won hat's wedge). A save's first spin never lands on a rare
 ## hat (Progress.wheel_pool). A won hat comes off the wheel, so there are never duplicates: an empty wheel once
 ## every hat is yours.
-## SHOP: three sections (HATS, TRAILS, PAPERS) of goo-framed tiles with their prices and the ticket
-## icon. HATS = the TAILOR: any hat still on the wheel for 45 tickets (rainbow 80) once 3 spins have
-## been taken (a buy counts as a spin). TRAILS / PAPERS = Cosmetics; an owned one is worn / taken off
-## by pressing its tile. Buying asks once (BUY GOLD TRAIL? 30 [ticket]  BUY / BACK, focus on BACK).
-## Focus stays inside (the confirm, when open, locks it); Esc / B close the confirm first, then the
-## overlay (the hub does that, via `back`). The hub opens and closes it and passes on the spin key.
+## SHOP: three sections (DYES, TRAILS, PAPERS) of goo-framed tiles with their prices and the ticket
+## icon. Hats are never sold. DYES (section id "hats"): a tile per dyeable hat you have won (its name
+## and how many of its dyes you own); pressing one opens its colors (`dye_hat`): ORIGINAL and each dye
+## (a swatch, the name, the price or OWNED / WORN; Hats.dyes_for, Economy.DYE_PRICE). Pressing an owned
+## one puts the hat on in it; Esc / B or the DYES button go back to the hats. TRAILS / PAPERS =
+## Cosmetics; an owned one is worn / taken off by pressing its tile. Buying asks once (BUY GOLD
+## TRAIL? 30 [ticket]  BUY / BACK, focus on BACK). Focus stays inside (the confirm, when open, locks
+## it); Esc / B close the confirm first, then a hat's colors, then the overlay (the hub does that,
+## via `back`). The hub opens and closes it and passes on the spin key.
 ## On a touchscreen there is no key to close it, so a BACK button shows in the header (mirroring the SHOP
 ## tab, `show_close`); a tap anywhere else never spins (the hub's JUMP mapping is off while it's open).
 
 signal landed(hat_id: String)
-## The SPIN button started a spin, something was bought in the SHOP (a hat or cosmetic id), or a
-## cosmetic was worn / taken off ("" for a spin).
+## The SPIN button started a spin, something was bought in the SHOP (a cosmetic id, or the hat id
+## of a dye), or a cosmetic / dye was worn / taken off ("" for a spin).
 signal changed(id: String)
 ## The touch BACK button was pressed (the hub closes the overlay).
 signal close_requested
@@ -57,6 +60,9 @@ const TILE := Vector2(138, UIKit.BUTTON_H)
 const GRID_LEFT := [21.0, 161.0]
 const GRID_TOP := 46
 const GRID_STEP := 15
+## A dye tile's color swatch (square, before its name) and the room it takes from the name.
+const SWATCH := 5
+const SWATCH_ROOM := 8
 ## The tiles' text inset, the least gap between a name and its price, the gap between tiles.
 const TILE_PAD := 4
 const NAME_GAP := 3
@@ -125,6 +131,9 @@ var _balance_icon: TextureRect
 ## "wheel" or "shop", and the SHOP's section.
 var tab := "wheel"
 var section := "hats"
+## DYES: the hat whose colors are shown ("": the list of your dyeable hats). Its tiles' ids are
+## "hat:dye" ("hat:" = ORIGINAL).
+var dye_hat := ""
 var wheel_tab: Button
 var shop_tab: Button
 var spin_button: Button
@@ -141,7 +150,7 @@ var status_line: Label
 var preview: TextureRect
 var _preview_floor: ColorRect
 ## Two slimes in your skin wearing a hat, either side of the text at the bottom: the hat you just won
-## (WHEEL), or the TAILOR's hat you're looking at (SHOP). `_try_on_id` = "tab:hat" they're dressed for.
+## (WHEEL), or the hat / dye you're looking at (SHOP). `_try_on_id` = "tab:hat:dye" they're dressed for.
 var _try_on_root: Node2D
 var _try_on_id := ""
 ## The hue step the flowing (rainbow) hat on the wheel was last drawn at (Hats.flow_step).
@@ -218,7 +227,7 @@ func _ready() -> void:
 	sections_rect = Rect2(x, sections_y, row_w, UIKit.tab_h())
 	for i in SECTIONS.size():
 		var id: String = SECTIONS[i]
-		var button := UIKit.make_button(section_texts[i], func() -> void: show_section(id), Vector2(section_w[i], UIKit.tab_h()))
+		var button := UIKit.make_button(section_texts[i], func() -> void: _on_section_button(id), Vector2(section_w[i], UIKit.tab_h()))
 		UIKit.note_text_w(button, section_texts, 52)
 		button.position = Vector2(x, sections_y)
 		x += section_w[i] + UIKit.GAP_M
@@ -325,6 +334,14 @@ func back() -> bool:
 	if confirm.visible:
 		close_confirm()
 		return true
+	if tab == "shop" and section == "hats" and dye_hat != "":
+		var hat := dye_hat
+		dye_hat = ""
+		show_section("hats", false)
+		if shop_tiles.has(hat):
+			(shop_tiles[hat] as Button).grab_focus()
+			_describe(hat)
+		return true
 	return false
 
 
@@ -394,6 +411,7 @@ func refresh(spin_key: String, opening := false) -> void:
 	_spin_key = spin_key
 	if opening:
 		_won = ""
+		dye_hat = ""
 		_try_on_id = ""  # (the skin may have changed since: dress new ones)
 		close_confirm()
 		show_tab("shop" if Progress.hats_left().is_empty() else "wheel")
@@ -569,13 +587,19 @@ func _process(delta: float) -> void:
 func _section_label(id: String) -> String:
 	match id:
 		"hats":
-			return Loc.t("wheel.section.hats", "HATS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
+			return Loc.t("wheel.section.dyes", "DYES")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 		"trails":
 			return Loc.t("wheel.section.trails", "TRAILS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
 	return Loc.t("wheel.section.papers", "PAPERS")  # i18n: max 44px, grows to 56px (tab_widths: the three alike), 1 line
 
 
-## Shows a SHOP section's tiles: HATS (the TAILOR), TRAILS or PAPERS.
+## A section button: its tiles (DYES: back to the list of hats).
+func _on_section_button(id: String) -> void:
+	dye_hat = ""
+	show_section(id)
+
+
+## Shows a SHOP section's tiles: DYES (your dyeable hats, or one's colors: dye_hat), TRAILS or PAPERS.
 func show_section(which: String, focus := true) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	if which != section:
@@ -601,8 +625,8 @@ func show_section(which: String, focus := true) -> void:
 	balance.text = str(Progress.tickets)
 	if ids.is_empty():
 		_show_try_on("")
-		status.text = Loc.t("wheel.all_yours", "EVERY HAT IS YOURS")
-		status_line.text = Loc.t("wheel.wear_wardrobe", "WEAR THEM IN THE WARDROBE")
+		status.text = _empty_texts()[0]
+		status_line.text = _empty_texts()[1]
 		_fit_status_lines()
 	else:
 		_describe(ids[0])
@@ -619,7 +643,7 @@ func _fit_grid(ids: Array[String]) -> void:
 	var name_w := 0
 	var right_w := 0
 	for id in ids:
-		name_w = maxi(name_w, UIKit.text_w(_name_of(id)))
+		name_w = maxi(name_w, UIKit.text_w(_name_of(id)) + (SWATCH_ROOM if _is_dye(id) else 0))
 		right_w = maxi(right_w, _right_w(id))
 	# (up to GRID_MIN_INSET from the panel's sides before a name has to wrap)
 	var max_w := floorf((PANEL.size.x - 2 * GRID_MIN_INSET - GRID_GAP) / 2.0)
@@ -649,9 +673,12 @@ func _preview_room() -> float:
 	return (9.0 * 2.0 if section == "trails" else 10.0 * 3.0) + 8.0 + UIKit.GAP_M
 
 
-## The width of a tile's right part for item `id`: its price and the ticket icon, or OWNED / WORN.
+## The width of a tile's right part for item `id`: its price and the ticket icon, OWNED / WORN, or
+## a dyeable hat's dye count.
 func _right_w(id: String) -> int:
-	if not _is_hat(id) and Progress.owns_cosmetic(id):
+	if _is_hat(id):
+		return UIKit.text_w(_dye_count(id))
+	if _owned(id):
 		return UIKit.text_w(Loc.t("wheel.worn", "WORN") if _worn(id) else Loc.t("wheel.owned", "OWNED"))
 	var price := _price_of(id)
 	if price == 0:
@@ -724,26 +751,73 @@ func _on_tile_input(event: InputEvent, tile: Button) -> void:
 func _section_ids() -> Array[String]:
 	match section:
 		"hats":
-			return Progress.hats_left()
+			var ids: Array[String] = []
+			if dye_hat != "":
+				ids.append(dye_hat + ":")
+				for dye in Hats.dyes_for(dye_hat):
+					ids.append("%s:%s" % [dye_hat, dye])
+				return ids
+			for hat in Hats.ids():
+				if Hats.is_dyeable(hat) and Progress.is_hat_unlocked(hat):
+					ids.append(hat)
+			return ids
 		"trails":
 			return Cosmetics.ids(Cosmetics.TRAIL)
 	return Cosmetics.ids(Cosmetics.PAPER)
 
 
+## A DYES hat tile (a dyeable hat's id).
 func _is_hat(id: String) -> bool:
 	return not Hats.get_hat(id).is_empty()
 
 
+## A DYES color tile ("hat:dye"; "hat:" = ORIGINAL).
+func _is_dye(id: String) -> bool:
+	return ":" in id
+
+
+func _dye_parts(id: String) -> Array[String]:
+	return [id.get_slice(":", 0), id.get_slice(":", 1)]
+
+
 func _name_of(id: String) -> String:
+	if _is_dye(id):
+		return Hats.dye_name(_dye_parts(id)[1])
 	return Hats.display_name(id) if _is_hat(id) else Cosmetics.display_name(id)
 
 
 func _price_of(id: String) -> int:
-	return Progress.tailor_price(id) if _is_hat(id) else Progress.cosmetic_price(id)
+	return Progress.dye_price() if _is_dye(id) else Progress.cosmetic_price(id)
+
+
+## Whether item `id` is yours (a hat's ORIGINAL always is).
+func _owned(id: String) -> bool:
+	if _is_dye(id):
+		var parts := _dye_parts(id)
+		return parts[1] == "" or Progress.owns_dye(parts[0], parts[1])
+	return not _is_hat(id) and Progress.owns_cosmetic(id)
 
 
 func _worn(id: String) -> bool:
+	if _is_dye(id):
+		var parts := _dye_parts(id)
+		return Progress.selected_hat == parts[0] and Progress.hat_dye_of(parts[0]) == parts[1]
 	return Progress.trail_style == id or Progress.map_paper == id
+
+
+## A dyeable hat tile's right part: the dyes owned of its dyes ("3/9").
+func _dye_count(hat: String) -> String:
+	var owned := 0
+	for dye in Hats.dyes_for(hat):
+		if Progress.owns_dye(hat, dye):
+			owned += 1
+	return "%d/%d" % [owned, Hats.dyes_for(hat).size()]  # i18n: ignore (numbers only)
+
+
+## The two status lines when the section has no tiles (no dyeable hat won yet).
+func _empty_texts() -> Array[String]:
+	# i18n: SHOP status lines (DYES with no dyeable hat yet), max 240px each, 1 line each
+	return [Loc.t("wheel.dyes_empty", "NO HATS TO DYE YET"), Loc.t("wheel.dyes_win", "WIN ONE ON THE WHEEL, THEN DYE IT HERE")]
 
 
 ## A goo-framed tile: the item's name, and its price with the ticket icon (or OWNED / WORN).
@@ -754,6 +828,15 @@ func _make_tile(id: String) -> Button:
 	# (right-to-left: the Kufi letters have no side bearing, the slimy font's 1 px is on the left, so
 	# the right-aligned name keeps 1 px more from the tile's inner border: 3 clear columns, as English's left)
 	name_label.position = Vector2(TILE_PAD + (1 if UIKit.rtl() else 0), text_y)
+	if _is_dye(id):  # a swatch of the dye (the hat's own look for ORIGINAL: a goo-dark square with its outline)
+		var dye := _dye_parts(id)[1]
+		var swatch := ColorRect.new()
+		swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
+		swatch.size = Vector2(SWATCH, SWATCH)
+		swatch.position = Vector2(TILE_PAD, text_y + 1)
+		tile.add_child(swatch)
+		name_label.position.x += SWATCH_ROOM
 	tile.add_child(name_label)
 	var right_w := maxf(40, _right_w(id))
 	if _two_line_names:  # (wrapped into the room left of the price, sized once in the tree: show_section)
@@ -777,13 +860,17 @@ func _make_tile(id: String) -> Button:
 		right.position = Vector2(TILE.x - 4 - 40, text_y - 1)
 		right.size = Vector2(40, 9)
 	tile.add_child(right)
-	if not _is_hat(id) and Progress.owns_cosmetic(id):
+	if _is_hat(id):
+		right.add_child(UIKit.make_label(_dye_count(id), UIKit.FONT, UIKit.TEXT_DIM))
+		if Progress.selected_hat == id:
+			UIKit.set_selected(tile, true)
+	elif _owned(id):
 		right.add_child(UIKit.make_label(Loc.t("wheel.worn", "WORN") if _worn(id) else Loc.t("wheel.owned", "OWNED"), UIKit.FONT, UIKit.GOLD if _worn(id) else UIKit.TEXT_DIM))
 		if _worn(id):
 			UIKit.set_selected(tile, true)
 	else:
 		var price := _price_of(id)
-		var affordable := price <= Progress.tickets and (not _is_hat(id) or Progress.tailor_open()) and Demo.shop_open()
+		var affordable := price <= Progress.tickets and Demo.shop_open()
 		right.add_child(UIKit.make_label(Loc.t("wheel.free", "FREE") if price == 0 else str(price), UIKit.FONT, UIKit.TEXT if affordable else UIKit.TEXT_OFF))
 		if price > 0:
 			right.add_child(UIKit.make_icon("ticket", Color.WHITE if affordable else Color(0.55, 0.55, 0.6)))
@@ -813,7 +900,10 @@ func _fit_status_lines() -> void:
 
 func _describe_texts(id: String) -> void:
 	_show_preview(id)
-	_show_try_on(id if _is_hat(id) else "")
+	if _is_dye(id):
+		_show_try_on(_dye_parts(id)[0], _dye_parts(id)[1])
+	else:
+		_show_try_on(id if _is_hat(id) else "", Progress.hat_dye_of(id))
 	var texts := _status_texts(id)
 	status.text = texts[0]
 	status_line.text = texts[1]
@@ -822,21 +912,22 @@ func _describe_texts(id: String) -> void:
 ## Item `id`'s two status lines: its name and what pressing it does (or why it can't).
 func _status_texts(id: String) -> Array[String]:
 	var line := ""
-	if not Demo.shop_open() and (_is_hat(id) or not Progress.owns_cosmetic(id)):
+	if not Demo.shop_open() and (_is_hat(id) or not _owned(id)):
 		# The demo: the SHOP's goods are on show, bought in the full game.
-		var name := Hats.display_name(id) if _is_hat(id) else Cosmetics.display_name(id)
+		var name := _dye_title(id) if _is_dye(id) else Hats.display_name(id) if _is_hat(id) else Cosmetics.display_name(id)
 		# i18n: SHOP status line (demo build), max 300px, 1 line
 		return [name, Loc.t("wheel.demo_shop", "THE SHOP OPENS IN THE FULL GAME")]
 	if _is_hat(id):
-		var hat_status := Loc.t("wheel.from_tailor", "{name} - FROM THE TAILOR", {name = Hats.display_name(id)})
-		if not Progress.tailor_open():
-			line = Loc.n("wheel.tailor_opens", "THE TAILOR OPENS AFTER {count} SPIN ({have}/{count})", "THE TAILOR OPENS AFTER {count} SPINS ({have}/{count})",
-				Economy.TAILOR_AFTER_SPINS, {have = mini(Progress.spins, Economy.TAILOR_AFTER_SPINS)})
-		elif Progress.tailor_price(id) > Progress.tickets:
-			line = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", Progress.tailor_price(id))
+		# i18n: SHOP status line (DYES: a dyeable hat's tile), max 240px, 1 line
+		return [Hats.display_name(id), Loc.t("wheel.pick_dye", "PRESS TO PICK ITS COLOR")]
+	if _is_dye(id):
+		if _owned(id):
+			line = Loc.t("wheel.worn", "WORN") if _worn(id) else Loc.t("wheel.wear", "PRESS TO WEAR IT")
+		elif Progress.dye_price() > Progress.tickets:
+			line = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", Progress.dye_price())
 		else:
-			line = Loc.t("wheel.no_luck", "NO LUCK NEEDED (COUNTS AS A SPIN)")
-		return [hat_status, line]
+			line = Loc.t("wheel.buy", "PRESS TO BUY")
+		return [_dye_title(id), line]
 	var item_status := Loc.t("wheel.item_info", "{name} - {about}", {name = Cosmetics.display_name(id), about = Cosmetics.about(id)})
 	if Progress.owns_cosmetic(id):
 		line = Loc.t("wheel.take_off", "PRESS TO TAKE IT OFF") if _worn(id) else Loc.t("wheel.wear", "PRESS TO WEAR IT")
@@ -847,7 +938,14 @@ func _status_texts(id: String) -> Array[String]:
 	return [item_status, line]
 
 
-## The width the status lines may take: between the try-on slimes (HATS), or the panel's.
+## A dye tile's first status line: the hat in that color ("TOP HAT - COBALT").
+func _dye_title(id: String) -> String:
+	var parts := _dye_parts(id)
+	# i18n: SHOP status line (DYES), max 240px, 1 line: a hat name, then a dye name or ORIGINAL
+	return Loc.t("wheel.dye_title", "{hat} - {dye}", {hat = Hats.display_name(parts[0]), dye = Hats.dye_name(parts[1])})
+
+
+## The width the status lines may take: between the try-on slimes (DYES), or the panel's.
 func _status_room() -> float:
 	return STATUS_W if section == "hats" and tab == "shop" else PANEL.size.x - 2 * HEADER_INSET
 
@@ -869,8 +967,8 @@ func _place_status(ids: Array[String]) -> void:
 		first = maxi(first, _status_lines(texts[0]))
 		second = maxi(second, _status_lines(texts[1]))
 	if ids.is_empty():
-		first = _status_lines(Loc.t("wheel.all_yours", "EVERY HAT IS YOURS"))
-		second = _status_lines(Loc.t("wheel.wear_wardrobe", "WEAR THEM IN THE WARDROBE"))
+		first = _status_lines(_empty_texts()[0])
+		second = _status_lines(_empty_texts()[1])
 	var bottom := PANEL.end.y - UIKit.PANEL_PAD if _compact() else STATUS_BOTTOM
 	status_line_y = bottom - UIKit.text_block_h(second)
 	status_y = status_line_y - first * UIKit.line_pitch()
@@ -894,7 +992,7 @@ func _fit_status(label: Label, top: float, lines: int) -> void:
 
 
 func _show_preview(id: String) -> void:
-	preview.visible = not _is_hat(id) and Cosmetics.get_item(id).size() > 0
+	preview.visible = not _is_hat(id) and not _is_dye(id) and Cosmetics.get_item(id).size() > 0
 	_preview_floor.visible = preview.visible
 	if not preview.visible:
 		return
@@ -924,10 +1022,10 @@ func _show_preview(id: String) -> void:
 	_preview_floor.size = preview.size + Vector2(8, 8)
 
 
-## Puts hat `id` on the two try-on slimes (in the skin you wear now), or hides them ("").
-func _show_try_on(id: String) -> void:
+## Puts hat `id` (in dye `dye`) on the two try-on slimes (in the skin you wear now), or hides them ("").
+func _show_try_on(id: String, dye := "") -> void:
 	_try_on_root.visible = id != ""
-	var key := tab + ":" + id
+	var key := "%s:%s:%s" % [tab, id, dye]
 	if key == _try_on_id or id == "":
 		return
 	_try_on_id = key
@@ -942,7 +1040,7 @@ func _show_try_on(id: String) -> void:
 		var hat := Hat.new()
 		hat.scale = slime.scale
 		_try_on_root.add_child(hat)
-		hat.setup(id, slime)
+		hat.setup(id, slime, null, dye)
 
 
 ## A scrap of map on paper `paper`: a little maze corner (floor cells, wall lines, a red route, a coin).
@@ -963,7 +1061,19 @@ static func paper_swatch(paper: String, ink: Color) -> Image:
 
 
 func _on_tile(id: String) -> void:
-	if not _is_hat(id) and Progress.owns_cosmetic(id):
+	if _is_hat(id):  # a dyeable hat: its colors
+		_sfx("click", -6.0)
+		dye_hat = id
+		page = 0
+		show_section("hats")
+		return
+	if _is_dye(id) and _owned(id):
+		var parts := _dye_parts(id)
+		if Progress.wear_dye(parts[0], parts[1]):
+			changed.emit(parts[0])
+		_rebuild_keep_focus(id)
+		return
+	if not _is_dye(id) and Progress.owns_cosmetic(id):
 		if _worn(id):
 			Progress.unequip_cosmetic(id)
 		else:
@@ -971,7 +1081,7 @@ func _on_tile(id: String) -> void:
 		changed.emit(id)
 		_rebuild_keep_focus(id)
 		return
-	var can: bool = Progress.can_buy_hat(id) if _is_hat(id) else Progress.can_buy_cosmetic(id)
+	var can: bool = Progress.can_buy_dye(_dye_parts(id)[0], _dye_parts(id)[1]) if _is_dye(id) else Progress.can_buy_cosmetic(id)
 	if not can:
 		_sfx("click", -6.0, 0.6)
 		_describe(id)
@@ -982,7 +1092,11 @@ func _on_tile(id: String) -> void:
 func open_confirm(id: String) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	_confirm_id = id
-	confirm_label.text = Loc.t("wheel.confirm", "BUY {name}?", {name = _name_of(id)})
+	var name := _name_of(id)
+	if _is_dye(id):
+		# i18n: the buy confirm's name for a hat dye, e.g. BUY TEAL DYE?; max 120px with BUY ...?
+		name = Loc.t("wheel.dye_name", "{dye} DYE", {dye = _name_of(id)})
+	confirm_label.text = Loc.t("wheel.confirm", "BUY {name}?", {name = name})
 	confirm_price.text = str(_price_of(id))
 	confirm.visible = true
 	_blocker.visible = true
@@ -1007,7 +1121,7 @@ func close_confirm() -> void:
 
 func _buy_confirmed() -> void:
 	var id := _confirm_id
-	var ok: bool = Progress.buy_hat(id) if _is_hat(id) else Progress.buy_cosmetic(id)
+	var ok: bool = Progress.buy_dye(_dye_parts(id)[0], _dye_parts(id)[1]) if _is_dye(id) else Progress.buy_cosmetic(id)
 	confirm.visible = false
 	_blocker.visible = false
 	UIKit.unlock_focus(_confirm_lock)
@@ -1015,7 +1129,7 @@ func _buy_confirmed() -> void:
 	if ok:
 		_sfx("unlock", -4.0)
 		balance.text = str(Progress.tickets)
-		changed.emit(id)
+		changed.emit(_dye_parts(id)[0] if _is_dye(id) else id)
 	_rebuild_keep_focus(id)
 
 

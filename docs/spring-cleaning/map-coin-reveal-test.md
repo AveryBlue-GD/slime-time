@@ -1,4 +1,10 @@
-# Map coin reveal test (owner, 2026-10-18)
+# Map coin reveal (owner, 2026-10-18; shipped for everyone 2026-10-21)
+
+**2026-10-21 (owner): on for everyone.** `Economy.MAP_COIN_REVEAL_TEST := true`: every player's MAP TABLE shows the
+coins their runs revealed (through walls by the light's reach) until they are collected. Revealed coins are saved
+beside each survey as `[maps] coins_N` (cell x + y * 256 each; `Progress._read_seen_coins` drops anything outside the
+maze, repeats, and more than 64), so `Survey.pack` and its version are unchanged. `--nocoinreveal` turns it off
+everywhere. The notes below describe the original dev-only test.
 
 Owner request: "make the coins disappear on the map if the player has picked them up but show them if they
 revealed them even through a wall with the increased brightness. Limit this to dev mode only for now on showing

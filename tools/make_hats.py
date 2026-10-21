@@ -1,4 +1,4 @@
-"""Generates the hat sprites (no dependencies): assets/sprites/hats.png.
+"""Generates the hat sprites (no dependencies): assets/sprites/hats.png and their dyes, hat_dyes.png.
 
 Run from the project root:  python tools/make_hats.py   (--check: only compare with hats.png)
 
@@ -168,6 +168,8 @@ YELLOW = ramp(244, 200, 64)
 GREEN = ramp(76, 176, 92)
 VELVET = ramp(150, 30, 60)
 RUBY, SAPPHIRE, EMERALD = rgb(236, 56, 84), rgb(84, 150, 246), rgb(74, 206, 120)
+WIZARD_TRIM = YELLOW            # the wizard hat's band and stars (a dye can swap it: DYE_CLASH)
+BLADE_A, BLADE_B = RED, YELLOW  # the propeller's two blades (dyed together: DYEABLE)
 
 
 class Hat:
@@ -415,13 +417,13 @@ def wizard_hat(h: Hat):
         return abs(x - (h.cx + lean)) <= half * t + 0.5
     h.shape(cone, PURPLE, light="cyl")
     h.recolor(lambda x, y, c: y == fx(h.Y(0.2)) and c in PURPLE[:3] and abs(x + 0.5 - h.cx) < half,  # gold band
-              lambda x, y, c: YELLOW[0] if x + 0.5 < h.cx else YELLOW[1])
+              lambda x, y, c: WIZARD_TRIM[0] if x + 0.5 < h.cx else WIZARD_TRIM[1])
     if h.width != SQUEEZED:                                                   # a star
         sx, sy = fx(h.cx + half * 0.3), fx(h.Y(-3.4))
-        h.put(sx, sy, YELLOW[0])
+        h.put(sx, sy, WIZARD_TRIM[0])
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             if h.get(sx + dx, sy + dy) in PURPLE:
-                h.put(sx + dx, sy + dy, YELLOW[1])
+                h.put(sx + dx, sy + dy, WIZARD_TRIM[1])
     h.finish()
 
 
@@ -493,7 +495,7 @@ def propeller_blades(width: int, frame: int, c: int):
     sits a px up behind the stem and a px down in front of it; edge on, the far blade peeks over the
     hub and the near one covers the top of the stem."""
     out = []
-    for blade, angle in ((RED, 180 - 45 * frame), (YELLOW, -45 * frame)):
+    for blade, angle in ((BLADE_A, 180 - 45 * frame), (BLADE_B, -45 * frame)):
         a = math.radians(angle)
         x, depth = math.cos(a), math.sin(a)                                   # -1 left .. 1 right; 1 far
         dy = max(-1, min(1, round(x - depth + 0.001 * x)))                    # where the tip sits, up or down
@@ -699,13 +701,103 @@ def build():
     return rows
 
 
+# ---------------------------------------------------------------- dyes (assets/sprites/hat_dyes.png)
+# Hat dyes, bought with tickets in the hat wheel's SHOP (Hats.DYES: the same ids in the same order).
+# Each dye redraws the dyeable hats with one material swapped for the dye's ramp (so the shading,
+# outline and lining follow it, as if the hat had been drawn in that color). hat_dyes.png is a block
+# of ROWS x 16 px per dye, in DYES order, laid out like hats.png (same columns), with only the
+# dyeable hats drawn: Hats.dye_region = Hats.region moved down by the dye's block.
+DYES = [
+    ("cherry", (206, 52, 62)),
+    ("tangerine", (232, 128, 48)),
+    ("butter", (240, 204, 76)),
+    ("clover", (72, 168, 84)),
+    ("teal", (44, 156, 156)),
+    ("cobalt", (62, 110, 214)),
+    ("plum", (124, 78, 196)),
+    ("bubblegum", (236, 120, 176)),
+    ("midnight", (52, 50, 72)),
+    ("snow", (232, 232, 240)),
+]
+
+
+def pale_ramp(r, g, b):
+    """A soft material's four shades (cloth that is white undyed: the chef hat, clouds): a pale light."""
+    return [_hsv(r, g, b, 0.0, 0.25, 1.0, 0.12), rgb(r, g, b), _hsv(r, g, b, -0.03, 1.1, 0.82), _hsv(r, g, b, -0.06, 1.15, 0.64)]
+
+
+def cloud_ramp(r, g, b, white=0.45):
+    """A cloud's shades: the dye taken `white` of the way to white first, so it stays a fluffy pastel."""
+    return pale_ramp(*(round(c + (255 - c) * white) for c in (r, g, b)))
+
+
+def small_cloud_ramp(r, g, b):
+    """The rainbow hat's little clouds: less pale than the raincloud, so the dye reads at their size."""
+    return cloud_ramp(r, g, b, 0.15)
+
+
+# Which globals each dyeable hat takes the dye on, and how its ramp is made.
+DYEABLE = {
+    top_hat: (("FELT",), ramp),
+    beanie: (("KNIT",), ramp),
+    baseball_cap: (("BLUE",), ramp),
+    cowboy_hat: (("LEATHER",), ramp),
+    chef_hat: (("CREAM",), pale_ramp),
+    wizard_hat: (("PURPLE",), ramp),
+    propeller_cap: (("BLADE_A", "BLADE_B"), ramp),   # the propeller (its spinner on top)
+    rainbow_hat: (("CLOUD",), small_cloud_ramp),            # its two clouds (not the flowing arch)
+    raincloud: (("STORM",), cloud_ramp),
+}
+# A dye that would hide a detail swaps that detail's material too: (hat, dye) -> {global: ramp}.
+DYE_CLASH = {
+    (wizard_hat, "butter"): {"WIZARD_TRIM": PURPLE},   # gold band and stars on a yellow hat
+    (top_hat, "cherry"): {"RIBBON": FELT},             # a red ribbon on a red hat
+}
+# The flowing hat's dyed pixels get this alpha: assets/shaders/rainbow_hat.gdshader leaves them as drawn.
+KEEP_ALPHA = 254
+
+
+def draw_dyed(make, width, frame, dye, base):
+    names, make_ramp = DYEABLE[make]
+    swap = {name: make_ramp(*base) for name in names}
+    swap.update(DYE_CLASH.get((make, dye), {}))
+    saved = {name: globals()[name] for name in swap}
+    globals().update(swap)
+    try:
+        hat = Hat(width, HEADS[width], frame)
+        make(hat)
+    finally:
+        globals().update(saved)
+    if make is rainbow_hat:  # (the clouds keep their dye while the arch's colors flow)
+        dyed = set(swap["CLOUD"])
+        hat.px = [[(c[0], c[1], c[2], KEEP_ALPHA) if c in dyed else c for c in row] for row in hat.px]
+    return hat.px
+
+
+def build_dyes():
+    """Every dye's block: the dyeable hats at every width, the others left clear."""
+    rows = []
+    blank = [[CLEAR] * W for _ in range(H)]
+    for dye, base in DYES:
+        for width in range(ROWS):
+            frames = [draw_dyed(make, width, frame, dye, base) if make in DYEABLE else blank for make, frame in columns()]
+            for y in range(H):
+                rows.append([p for frame in frames for p in frame[y]])
+    return rows
+
+
 if __name__ == "__main__":
     import sys
     rows = build()
-    if "--check" in sys.argv:  # tests: is the checked-in sheet exactly what this file draws (twice over)?
+    dyes = build_dyes()
+    if "--check" in sys.argv:  # tests: are the checked-in sheets exactly what this file draws (twice over)?
         _, _, current = read_png(str(OUT / "hats.png"))
         same = [list(map(tuple, r)) for r in current] == rows and build() == rows
-        print("hats.png is up to date" if same else "hats.png differs from tools/make_hats.py")
+        _, _, current = read_png(str(OUT / "hat_dyes.png"))
+        same = same and [list(map(tuple, r)) for r in current] == dyes
+        print("hats.png and hat_dyes.png are up to date" if same else "hats.png or hat_dyes.png differs from tools/make_hats.py")
         sys.exit(0 if same else 1)
     write_png(str(OUT / "hats.png"), rows)
+    write_png(str(OUT / "hat_dyes.png"), dyes)
     print(f"wrote assets/sprites/hats.png ({len(HATS)} hats, {len(columns())} columns x {ROWS} widths, {W}x{H} each)")
+    print(f"wrote assets/sprites/hat_dyes.png ({len(DYES)} dyes x {len(DYEABLE)} hats)")

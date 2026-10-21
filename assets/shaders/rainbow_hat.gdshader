@@ -2,8 +2,9 @@ shader_type canvas_item;
 
 // The rainbow hat's flowing colors: every colorful pixel (the rainbow's bands, the twinkle's
 // points) has its hue turned round over time, so the bands keep their order but flow along the
-// arch. Whites (clouds), greys and the dark outline are left as drawn. Hues move in steps so the
-// pixel art doesn't smear.
+// arch. Whites (clouds), greys and the dark outline are left as drawn, and so are dyed clouds
+// (hat_dyes.png marks them with alpha 254: tools/make_hats.py KEEP_ALPHA). Hues move in steps so
+// the pixel art doesn't smear.
 
 uniform float speed = 0.35;  // full turns of the color wheel per second
 const float HUE_STEPS = 12.0;
@@ -24,7 +25,7 @@ vec3 hsv2rgb(vec3 c) {
 
 void fragment() {
 	vec3 hsv = rgb2hsv(COLOR.rgb);
-	if (hsv.y > 0.4 && hsv.z > 0.3) {
+	if (hsv.y > 0.4 && hsv.z > 0.3 && texture(TEXTURE, UV).a > 0.998) {
 		hsv.x = fract(hsv.x - floor(TIME * speed * HUE_STEPS) / HUE_STEPS);
 		COLOR.rgb = hsv2rgb(hsv);
 	}

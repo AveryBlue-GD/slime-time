@@ -124,7 +124,7 @@ func _ready() -> void:
 			var hat := Hat.new()
 			hat.scale = preview.scale
 			add_child(hat)
-			hat.setup(Progress.selected_hat, preview)
+			hat.setup(Progress.selected_hat, preview, null, Progress.hat_dye_of(Progress.selected_hat))
 
 	if Platform.is_demo():
 		add_child(make_demo_sticker())

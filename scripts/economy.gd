@@ -73,11 +73,10 @@ const TICKETS_REPLAY_CAP := 1
 const SPIN_COST := 12
 const SPIN_STEP := 2
 const SPIN_COST_MAX := 40
-## TAILOR (the SHOP's direct buy): any hat still on the wheel for TAILOR_PRICE (the rainbow hat
-## TAILOR_RAINBOW_PRICE), once TAILOR_AFTER_SPINS spins have been taken. A buy counts as a spin.
-const TAILOR_PRICE := 45
-const TAILOR_RAINBOW_PRICE := 80
-const TAILOR_AFTER_SPINS := 3
+## Hats are never sold (owner, 2026-10-21: the TAILOR's direct buy is gone). The SHOP's DYES sell a
+## won hat in another color (Hats.dyes_for: 9 dyeable hats, 9-10 dyes each, 84 in all) for
+## DYE_PRICE tickets each, about one day's paid randomizer wins.
+const DYE_PRICE := 10
 ## The wheel's odds, the one rarity table (Progress.wheel_weight reads it; Hats.LIST's own `weight`
 ## field is not used for the wheel): every hat weighs WHEEL_WEIGHT, a WHEEL_RARE one
 ## WHEEL_RARE_WEIGHT, and the flowing (rainbow) hat gets Hats.PITY_STEP more per spin that missed

@@ -439,7 +439,7 @@ func _make_hat_tile(id: String) -> Button:
 	if id != Hats.NONE:
 		var hat := Hat.new()
 		tile.add_child(hat)
-		hat.setup(id, preview)
+		hat.setup(id, preview, null, Progress.hat_dye_of(id))
 		if not unlocked:
 			hat.modulate = Color(0, 0, 0, 0.85)
 	if not unlocked:
