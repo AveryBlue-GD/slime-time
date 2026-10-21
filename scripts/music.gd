@@ -46,6 +46,9 @@ func _ready() -> void:
 	if progress:
 		progress.ensure_bus(BUS)
 	_player.bus = BUS
+	# Streamed (decoded a little at a time), also on the web: the web build's default "sample" playback would
+	# decode a whole 25-77 s track into the browser in one go each time one starts, a freeze in the game.
+	_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(_player)
 	get_tree().scene_changed.connect(_on_scene_changed)
 
@@ -134,7 +137,11 @@ func _process(delta: float) -> void:
 	_apply_volume()
 
 
+## Sets the player's volume only when it changes (fades, the SOUND toggle): on the web each change is a
+## call into the browser's audio (sample playback), so setting it every frame made the game choppy there.
 func _apply_volume() -> void:
 	var progress := get_node_or_null("/root/Progress")
 	var on: bool = progress == null or progress.sound_on
-	_player.volume_db = _base_db + linear_to_db(_level) if on and _level > 0.0 else -80.0
+	var db := snappedf(_base_db + linear_to_db(_level), 0.1) if on and _level > 0.0 else -80.0
+	if not is_equal_approx(_player.volume_db, db):
+		_player.volume_db = db

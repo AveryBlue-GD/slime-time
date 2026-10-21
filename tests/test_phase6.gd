@@ -36,6 +36,9 @@ func _initialize() -> void:
 	sfx.play("click")
 	_check(not _playing(sfx, "click"), "muted: nothing plays")
 	progress.sound_on = true
+	_check(AudioServer.bus_count == 3 and AudioServer.get_bus_index(progress.SFX_BUS) == 1 and AudioServer.get_bus_index(progress.MUSIC_BUS) == 2
+		and ProjectSettings.get_setting("audio/buses/default_bus_layout", "") == "res://default_bus_layout.tres",
+		"the SFX and Music buses come from default_bus_layout.tres at startup, none added at run time (the web build's sample playback needs them from the start)")
 	progress.set_volume(0.5)
 	progress.set_music_volume(0.3)
 	var sfx_bus := AudioServer.get_bus_index(progress.SFX_BUS)
@@ -43,7 +46,8 @@ func _initialize() -> void:
 	_check(sfx_bus > 0 and absf(AudioServer.get_bus_volume_db(sfx_bus) - linear_to_db(0.5)) < 0.01 and not AudioServer.is_bus_mute(sfx_bus)
 		and absf(AudioServer.get_bus_volume_db(0)) < 0.01 and sfx._players["click"][0].bus == progress.SFX_BUS,
 		"the SFX slider drives the SFX bus (the sound effects play there; Master stays at 0 dB)")
-	_check(music_bus > 0 and absf(AudioServer.get_bus_volume_db(music_bus) - linear_to_db(0.3)) < 0.01 and get_root().get_node("Music")._player.bus == progress.MUSIC_BUS,
+	_check(music_bus > 0 and absf(AudioServer.get_bus_volume_db(music_bus) - linear_to_db(0.3)) < 0.01 and get_root().get_node("Music")._player.bus == progress.MUSIC_BUS
+		and get_root().get_node("Music")._player.playback_type == AudioServer.PLAYBACK_TYPE_STREAM,
 		"the MUSIC slider drives the Music bus on its own")
 	progress.set_volume(0.0)
 	_check(AudioServer.is_bus_mute(sfx_bus) and not AudioServer.is_bus_mute(music_bus), "SFX at zero mutes the effects, not the music")

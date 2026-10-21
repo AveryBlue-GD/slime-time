@@ -2754,8 +2754,10 @@ func apply_volume() -> void:
 		AudioServer.set_bus_mute(index, pair[1] <= 0.0)
 
 
-## The index of audio bus `bus_name`, added (sending to Master) if it doesn't exist yet. Players pick
-## their bus by name (Sfx, Game's ambience: SFX_BUS; Music: MUSIC_BUS).
+## The index of audio bus `bus_name`. The buses are in res://default_bus_layout.tres (Master, SFX, Music),
+## loaded at startup: they must exist from the start, since the web build's sample playback routes sounds
+## through browser copies of the buses made then (a bus added at run time left the web silent). Adding one
+## here is only a fallback. Players pick their bus by name (Sfx, Game's ambience: SFX_BUS; Music: MUSIC_BUS).
 static func ensure_bus(bus_name: String) -> int:
 	var index := AudioServer.get_bus_index(bus_name)
 	if index < 0:
