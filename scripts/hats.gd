@@ -74,6 +74,8 @@ const DYES := [
 	{id = "bubblegum", color = Color8(236, 120, 176)},
 	{id = "midnight", color = Color8(52, 50, 72)},
 	{id = "snow", color = Color8(232, 232, 240)},
+	# Its colors flow (rainbow_hat.gdshader, material_for); Economy.DYE_RAINBOW_PRICE.
+	{id = "rainbow", color = Color8(220, 60, 72), flows = true},
 ]
 ## A dye block's height in hat_dyes.png: every width's row (Width), like hats.png.
 const DYE_BLOCK := 6 * 16
@@ -130,6 +132,8 @@ static func dye_name(dye: String) -> String:
 			return Loc.t("dye.midnight", "MIDNIGHT")
 		"snow":
 			return Loc.t("dye.snow", "SNOW")
+		"rainbow":
+			return Loc.t("dye.rainbow", "RAINBOW")
 	# i18n: a dyeable hat in its own color (no dye), max 64px, 1 line; the SHOP's DYES tiles
 	return Loc.t("dye.original", "ORIGINAL")
 
@@ -149,10 +153,22 @@ static func dye_region(id: String, dye: String, width := Width.NORMAL, frame := 
 	return r
 
 
-## The material a hat sprite wears: the flowing-rainbow shader for the rainbow hat, else none.
-static func material_for(id: String) -> Material:
-	if not get_hat(id).get("flows", false):
+## Whether dye `dye`'s colors flow (the RAINBOW dye).
+static func dye_flows(dye: String) -> bool:
+	var i := dye_index(dye)
+	return i >= 0 and DYES[i].get("flows", false)
+
+
+## The material a hat sprite wears: the flowing-rainbow shader for the rainbow hat or a hat in the
+## RAINBOW dye, else none.
+static func material_for(id: String, dye := "") -> Material:
+	if not get_hat(id).get("flows", false) and not (dye_flows(dye) and dye in dyes_for(id)):
 		return null
+	return flow_material()
+
+
+## The flowing-rainbow shader (assets/shaders/rainbow_hat.gdshader) as a new material.
+static func flow_material() -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/rainbow_hat.gdshader")
 	return mat

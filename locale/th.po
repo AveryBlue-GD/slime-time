@@ -621,6 +621,11 @@ msgctxt "dye.snow"
 msgid "SNOW"
 msgstr ""
 
+#: scripts/hats.gd
+msgctxt "dye.rainbow"
+msgid "RAINBOW"
+msgstr ""
+
 #. a dyeable hat in its own color (no dye), max 64px, 1 line; the SHOP's DYES tiles
 #. budget: max 64px, lines 1
 #: scripts/hats.gd

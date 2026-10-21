@@ -123,8 +123,11 @@ func _dyes() -> void:
 	var count := 0
 	for hat in Hats.ids():
 		count += Hats.dyes_for(hat).size()
-	_check(count == 84 and Hats.dyes_for("tophat").size() == 9 and Hats.dyes_for("cowboy").size() == 10 and Hats.dyes_for("crown").is_empty()
-		and not "midnight" in Hats.dyes_for("tophat"), "84 dyes: 9 dyeable hats, each without its own color (%d)" % count)
+	_check(count == 93 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
+		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
+		"93 dyes: 9 dyeable hats, each without its own color, each with RAINBOW (%d)" % count)
+	_check(progress.dye_price("teal") == 10 and progress.dye_price("rainbow") == 99 and Hats.material_for("beanie", "rainbow") != null
+		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null, "RAINBOW costs 99 and flows; the others 10")
 	_check(not progress.can_buy_dye("beanie", "teal") and not progress.buy_dye("beanie", "teal") and progress.tickets == 25, "no dye for a hat not won")
 	progress.win_hat("beanie")
 	progress.win_hat("crown")
@@ -138,6 +141,10 @@ func _dyes() -> void:
 	_check(not progress.buy_dye("beanie", "plum") and progress.tickets == 9 and not progress.owns_dye("beanie", "plum"), "one short: no buy, nothing taken")
 	progress.tickets = 10
 	_check(progress.buy_dye("beanie", "plum") and progress.tickets == 0, "exactly 10: bought")
+	progress.tickets = 98
+	_check(not progress.buy_dye("beanie", "rainbow") and progress.tickets == 98, "RAINBOW at 98 of 99: no buy")
+	progress.tickets = 99
+	_check(progress.buy_dye("beanie", "rainbow") and progress.tickets == 0 and progress.wear_dye("beanie", "teal"), "RAINBOW at exactly 99: bought")
 	_check(progress.wear_dye("beanie", "") and progress.hat_dye_of("beanie") == "" and progress.wear_dye("beanie", "teal")
 		and progress.hat_dye_of("beanie") == "teal", "the hat's own color is free to go back to; an owned dye is worn again")
 	_check(not progress.wear_dye("beanie", "snow") and progress.hat_dye_of("beanie") == "teal", "an unowned dye can't be worn")
@@ -380,8 +387,9 @@ func _ui_wheel() -> void:
 	_check(wheel.shop_tiles.keys() == ["tophat"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
 		"DYES lists the dyeable hats won (the crown isn't one), focus on the first")
 	wheel.shop_tiles["tophat"].pressed.emit()
-	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.size() == 10 and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:teal")
-		and not wheel.shop_tiles.has("tophat:midnight"), "a hat's tile opens its colors: ORIGINAL + 9 dyes")
+	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:teal")
+		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 11 and wheel.shop_tiles.has("tophat:rainbow"),
+		"a hat's tile opens its colors: ORIGINAL + 10 dyes (RAINBOW last)")
 	var teal: Button = wheel.shop_tiles["tophat:teal"]
 	teal.grab_focus()
 	teal.pressed.emit()

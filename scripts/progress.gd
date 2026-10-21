@@ -105,7 +105,7 @@ const SAVE_VERSION := 6
 ## maze took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5
 ## paying wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a
 ## typed or replayed seed, get at most 1 per win. Sinks (upgrades v2 batch 2): the hat wheel (free,
-## then 12, +2 per spin taken, up to 40), hat DYES (10 each; hats are never sold), the WORKSHOP
+## then 12, +2 per spin taken, up to 40), hat DYES (10 each, RAINBOW 99; hats are never sold), the WORKSHOP
 ## (ticket utility upgrades) and cosmetics (trail styles, map papers). All numbers: Economy.
 ## (Saved under the old [wallet] keys "globs" and "globs_lifetime" so existing saves still load.)
 const TICKETS_MAX := 99999
@@ -2407,15 +2407,17 @@ func hat_dye_of(hat: String) -> String:
 	return dye if owns_dye(hat, dye) else ""
 
 
-## What a dye costs (0 in dev mode).
-func dye_price() -> int:
-	return 0 if dev_tools else Economy.DYE_PRICE
+## What dye `dye` costs (0 in dev mode): the RAINBOW dye more than the others.
+func dye_price(dye := "") -> int:
+	if dev_tools:
+		return 0
+	return Economy.DYE_RAINBOW_PRICE if Hats.dye_flows(dye) else Economy.DYE_PRICE
 
 
 ## A dye can be bought for a hat you have won, in a dye it comes in and you don't own yet.
 func can_buy_dye(hat: String, dye: String) -> bool:
 	return Demo.shop_open() and is_hat_unlocked(hat) and dye in Hats.dyes_for(hat) and not owns_dye(hat, dye) \
-		and dye_price() <= tickets
+		and dye_price(dye) <= tickets
 
 
 ## Buys dye `dye` for hat `hat` and puts the hat on in it (pay + own + wear + save at once).
@@ -2423,7 +2425,7 @@ func can_buy_dye(hat: String, dye: String) -> bool:
 func buy_dye(hat: String, dye: String) -> bool:
 	if not can_buy_dye(hat, dye):
 		return false
-	_pay(dye_price())
+	_pay(dye_price(dye))
 	hat_dyes_owned.append("%s:%s" % [hat, dye])
 	wear_dye(hat, dye)  # saves
 	return true
@@ -2599,7 +2601,7 @@ func store_affordable(where: String) -> bool:
 		for hat in hats_owned:
 			for dye in Hats.dyes_for(hat):
 				if not owns_dye(hat, dye):
-					cheapest = mini(cheapest, dye_price())
+					cheapest = mini(cheapest, dye_price(dye))
 	return cheapest <= tickets
 
 

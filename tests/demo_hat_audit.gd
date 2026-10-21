@@ -285,11 +285,11 @@ func _ui_shop() -> void:
 	hub.hat_wheel.show_section("hats")
 
 
-## A player with five hats (four dyeable), two dyes for the propeller cap (wearing teal).
+## A player with five hats (four dyeable), two dyes for the propeller cap (wearing rainbow).
 func _dyed_player() -> void:
 	Progress.hats_owned.assign(["tophat", "beanie", "propeller", "wizard", "crown"])
-	Progress.hat_dyes_owned.assign(["propeller:teal", "propeller:bubblegum", "wizard:butter"])
-	Progress.hat_dyes = {"propeller": "teal"}
+	Progress.hat_dyes_owned.assign(["propeller:teal", "propeller:rainbow", "wizard:butter"])
+	Progress.hat_dyes = {"propeller": "rainbow"}
 	Progress.selected_hat = "propeller"
 	Progress.tickets = 34
 
@@ -303,7 +303,7 @@ func _ui_dyes() -> void:
 	wheel.show_tab("shop")
 	wheel.shop_tiles["wizard"].pressed.emit()
 	await get_tree().process_frame
-	wheel.shop_tiles["wizard:cherry"].grab_focus()
+	wheel.shop_tiles["wizard:rainbow"].grab_focus()
 
 
 func _ui_dyed() -> void:

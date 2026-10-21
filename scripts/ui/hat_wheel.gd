@@ -787,7 +787,7 @@ func _name_of(id: String) -> String:
 
 
 func _price_of(id: String) -> int:
-	return Progress.dye_price() if _is_dye(id) else Progress.cosmetic_price(id)
+	return Progress.dye_price(_dye_parts(id)[1]) if _is_dye(id) else Progress.cosmetic_price(id)
 
 
 ## Whether item `id` is yours (a hat's ORIGINAL always is).
@@ -835,6 +835,7 @@ func _make_tile(id: String) -> Button:
 		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
 		swatch.size = Vector2(SWATCH, SWATCH)
 		swatch.position = Vector2(TILE_PAD, text_y + 1)
+		swatch.material = Hats.flow_material() if Hats.dye_flows(dye) else null  # (the RAINBOW swatch flows too)
 		tile.add_child(swatch)
 		name_label.position.x += SWATCH_ROOM
 	tile.add_child(name_label)
@@ -923,8 +924,8 @@ func _status_texts(id: String) -> Array[String]:
 	if _is_dye(id):
 		if _owned(id):
 			line = Loc.t("wheel.worn", "WORN") if _worn(id) else Loc.t("wheel.wear", "PRESS TO WEAR IT")
-		elif Progress.dye_price() > Progress.tickets:
-			line = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", Progress.dye_price())
+		elif _price_of(id) > Progress.tickets:
+			line = Loc.n("wheel.need", "NEED {count} TICKET", "NEED {count} TICKETS", _price_of(id))
 		else:
 			line = Loc.t("wheel.buy", "PRESS TO BUY")
 		return [_dye_title(id), line]

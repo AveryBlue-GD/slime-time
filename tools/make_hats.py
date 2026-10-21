@@ -718,7 +718,12 @@ DYES = [
     ("bubblegum", (236, 120, 176)),
     ("midnight", (52, 50, 72)),
     ("snow", (232, 232, 240)),
+    # The RAINBOW dye: drawn in a bright red that rainbow_hat.gdshader turns round the color wheel in
+    # the game (Hats.material_for), like the rainbow hat's arch. Every other colorful pixel of the hat
+    # (a ribbon, a band, the cap's panels) gets KEEP_ALPHA so it stays as drawn.
+    ("rainbow", (220, 60, 72)),
 ]
+FLOW_DYE = "rainbow"
 
 
 def pale_ramp(r, g, b):
@@ -759,6 +764,8 @@ KEEP_ALPHA = 254
 
 def draw_dyed(make, width, frame, dye, base):
     names, make_ramp = DYEABLE[make]
+    if dye == FLOW_DYE:
+        make_ramp = ramp  # (full color even on white cloth and clouds, so the shader flows it)
     swap = {name: make_ramp(*base) for name in names}
     swap.update(DYE_CLASH.get((make, dye), {}))
     saved = {name: globals()[name] for name in swap}
@@ -768,8 +775,11 @@ def draw_dyed(make, width, frame, dye, base):
         make(hat)
     finally:
         globals().update(saved)
-    if make is rainbow_hat:  # (the clouds keep their dye while the arch's colors flow)
-        dyed = set(swap["CLOUD"])
+    dyed = {c for name in names for c in swap[name]}
+    if dye == FLOW_DYE:
+        if make is not rainbow_hat:  # (only the dyed material flows; the rainbow hat flows whole)
+            hat.px = [[c if c in dyed or c[3] == 0 else (c[0], c[1], c[2], KEEP_ALPHA) for c in row] for row in hat.px]
+    elif make is rainbow_hat:  # (the clouds keep their dye while the arch's colors flow)
         hat.px = [[(c[0], c[1], c[2], KEEP_ALPHA) if c in dyed else c for c in row] for row in hat.px]
     return hat.px
 
