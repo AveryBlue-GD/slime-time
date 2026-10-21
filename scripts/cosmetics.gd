@@ -33,7 +33,8 @@ const LIST := [
 	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},  # i18n: ignore (English source; shown via display_name)
 	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},  # i18n: ignore (English source; shown via display_name)
 	# Dye bundles (Hats.DYES' colors but MIDNIGHT and SNOW: NIGHT and BLUEPRINT / GOLD LEAF are those looks): a pale sheet, deep walls and a
-	# route in the dye. Then the flowing bundles (`flow`: MapView.mark_flow, map_flow.gdshader).
+	# route in the dye. Then the flowing bundle, PRISM (`flow`: MapView.mark_flow, map_flow.gdshader;
+	# a RAINBOW gradient paper was tried and dropped, owner 2026-10-21: "gradient" stays supported).
 	{id = "cherry_paper", kind = PAPER, name = "CHERRY PAPER", about = "A CHERRY SET", dye = Color8(206, 52, 62)},  # i18n: ignore (English source; shown via display_name)
 	{id = "tangerine_paper", kind = PAPER, name = "TANGERINE PAPER", about = "A TANGERINE SET", dye = Color8(232, 128, 48)},  # i18n: ignore (English source; shown via display_name)
 	{id = "butter_paper", kind = PAPER, name = "BUTTER PAPER", about = "A BUTTER SET", dye = Color8(240, 204, 76)},  # i18n: ignore (English source; shown via display_name)
@@ -42,7 +43,6 @@ const LIST := [
 	{id = "plum_paper", kind = PAPER, name = "PLUM PAPER", about = "A PLUM SET", dye = Color8(124, 78, 196)},  # i18n: ignore (English source; shown via display_name)
 	{id = "bubblegum_paper", kind = PAPER, name = "BUBBLEGUM PAPER", about = "A BUBBLEGUM SET", dye = Color8(236, 120, 176)},  # i18n: ignore (English source; shown via display_name)
 	{id = "prism_paper", kind = PAPER, name = "PRISM PAPER", about = "TURNS THROUGH THE COLORS", flow = "prism"},  # i18n: ignore (English source; shown via display_name)
-	{id = "rainbow_paper", kind = PAPER, name = "RAINBOW PAPER", about = "A FLOWING RAINBOW", flow = "gradient"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
 ]
@@ -148,8 +148,6 @@ static func display_name(id: String) -> String:
 			return Loc.t("paper.bubblegum", "BUBBLEGUM PAPER")
 		"prism_paper":
 			return Loc.t("paper.prism", "PRISM PAPER")
-		"rainbow_paper":
-			return Loc.t("paper.rainbow", "RAINBOW PAPER")
 		"abyss":
 			return Loc.t("trail.abyss.name", "ABYSS TRAIL")
 	return get_item(id).get("name", "")
@@ -191,8 +189,6 @@ static func about(id: String) -> String:
 			return Loc.t("paper.bubblegum.desc", "SHEET, WALLS AND ROUTE IN BUBBLEGUM")
 		"prism_paper":
 			return Loc.t("paper.prism.desc", "TURNS THROUGH THE COLORS")
-		"rainbow_paper":
-			return Loc.t("paper.rainbow.desc", "A FLOWING RAINBOW")
 		"abyss":
 			return Loc.t("trail.abyss.desc", "DARK GOO, FAINT STARS")
 	return ""

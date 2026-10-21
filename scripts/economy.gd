@@ -351,7 +351,7 @@ const COSMETICS := {
 	"blueprint": 25, "night": 25, "goldleaf": 40,
 	# Paper bundles (owner, 2026-10-21): a dye-colored sheet, walls and route; the flowing ones like the hat dyes.
 	"cherry_paper": 30, "tangerine_paper": 30, "butter_paper": 30, "clover_paper": 30, "cobalt_paper": 30,
-	"plum_paper": 30, "bubblegum_paper": 30, "prism_paper": 50, "rainbow_paper": 99,
+	"plum_paper": 30, "bubblegum_paper": 30, "prism_paper": 50,
 }
 
 ## ---------------------------------------------------------------- DESCENT runs (C2)

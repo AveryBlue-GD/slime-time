@@ -335,11 +335,11 @@ func _ui_hub_page() -> void:
 	screen.show_page.call_deferred("hub")
 
 
-## The wardrobe's PAPERS page with every paper owned and a mix: NIGHT sheet, RAINBOW walls, BUTTER route.
+## The wardrobe's PAPERS page with every paper owned and a mix: NIGHT sheet, PRISM walls, BUTTER route.
 func _ui_papers_mix() -> void:
 	Progress.cosmetics_owned.assign(Cosmetics.ids())
 	Progress.map_paper = "night"
-	Progress.map_walls = "rainbow_paper"
+	Progress.map_walls = "prism_paper"
 	Progress.map_route = "butter_paper"
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -348,7 +348,7 @@ func _ui_papers_mix() -> void:
 	screen.show_page.call_deferred("papers")
 
 
-## The SHOP's PAPERS section (two pages of bundles), RAINBOW focused.
+## The SHOP's PAPERS section, PRISM focused.
 func _ui_shop_papers() -> void:
 	var hub := _hub()
 	await get_tree().process_frame
@@ -357,7 +357,7 @@ func _ui_shop_papers() -> void:
 	wheel.show_tab("shop")
 	wheel.section_buttons["papers"].pressed.emit()
 	await get_tree().process_frame
-	wheel.shop_tiles["rainbow_paper"].grab_focus()
+	wheel.shop_tiles["prism_paper"].grab_focus()
 
 
 func _ui_hub_frost() -> void:

@@ -80,6 +80,9 @@ var page := "skins"
 var view_jelly := false
 var page_button: Button
 var jelly_button: Button
+## Skins page, dev mode only: PASTEL (Skins.pastel, the session's soft pastel look; never saved),
+## to the right of JELLY.
+var pastel_button: Button
 ## Papers page: PART, in JELLY's place: what pressing an owned paper sets ("all", "sheet", "walls",
 ## "route"), and the mixed map drawn big where the stage goes.
 var part_button: Button
@@ -149,6 +152,10 @@ func _ready() -> void:
 	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), open_color_picker, Vector2(80, UIKit.button_h()))
 	add_child(color_button)
 	_layout(back)
+	pastel_button = UIKit.make_button("", _toggle_pastel, Vector2(64, UIKit.button_h()))
+	pastel_button.position = Vector2(jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M, jelly_button.position.y)
+	add_child(pastel_button)
+	_set_pastel_text()
 	color_button.position = jelly_button.position
 	color_button.custom_minimum_size.x = jelly_button.size.x
 	color_button.size.x = jelly_button.size.x
@@ -457,6 +464,7 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
+	pastel_button.visible = page == "skins" and Progress.dev_tools
 	color_button.visible = hats
 	part_button.visible = papers
 	paper_mix.visible = papers
@@ -954,6 +962,23 @@ func _refresh(focus_id := "") -> void:
 
 
 ## The JELLY switch's text for either state (its width is measured from both, _layout).
+## PASTEL (dev mode): the soft pastel look on or off for the session; every skin tile, the preview and
+## the custom wheel's slime take it at once (and the hub, levels and screens after this one).
+func _toggle_pastel() -> void:
+	Skins.pastel = not Skins.pastel
+	_set_pastel_text()
+	_fill_skin_grid()
+	Skins.apply_to(big_preview.material, Progress.custom_color)
+	skin_text.recolor()
+	_refresh()
+	_preview(Progress.selected_skin)
+	pastel_button.grab_focus()
+
+
+func _set_pastel_text() -> void:
+	pastel_button.text = "PASTEL: " + ("ON" if Skins.pastel else "OFF")  # i18n: ignore (dev mode only)
+
+
 static func _jelly_text(on: bool) -> String:
 	# i18n: max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 	return Loc.t("skins.jelly.on", "JELLY: ON") if on else Loc.t("skins.jelly.off", "JELLY: OFF")

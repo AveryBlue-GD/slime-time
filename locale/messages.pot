@@ -135,11 +135,6 @@ msgid "PRISM PAPER"
 msgstr ""
 
 #: scripts/cosmetics.gd
-msgctxt "paper.rainbow"
-msgid "RAINBOW PAPER"
-msgstr ""
-
-#: scripts/cosmetics.gd
 msgctxt "trail.abyss.name"
 msgid "ABYSS TRAIL"
 msgstr ""
@@ -222,11 +217,6 @@ msgstr ""
 #: scripts/cosmetics.gd
 msgctxt "paper.prism.desc"
 msgid "TURNS THROUGH THE COLORS"
-msgstr ""
-
-#: scripts/cosmetics.gd
-msgctxt "paper.rainbow.desc"
-msgid "A FLOWING RAINBOW"
 msgstr ""
 
 #: scripts/cosmetics.gd
