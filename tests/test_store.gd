@@ -123,22 +123,22 @@ func _dyes() -> void:
 	var count := 0
 	for hat in Hats.ids():
 		count += Hats.dyes_for(hat).size()
-	_check(count == 113 and Hats.dyes_for("tophat").size() == 11 and Hats.dyes_for("cowboy").size() == 12 and Hats.dyes_for("crown").is_empty()
+	_check(count == 103 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
 		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
-		"113 dyes: 10 dyeable hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
-	_check(progress.dye_price("teal") == 10 and progress.dye_price("rainbow") == 99 and progress.dye_price("prism") == 50
-		and Hats.sheet_block("prism") == Hats.sheet_block("rainbow") and Hats.sheet_block("rainbow") == 10
+		"103 dyes: 10 dyeable hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
+	_check(progress.dye_price("clover") == 10 and progress.dye_price("rainbow") == 99 and progress.dye_price("prism") == 50
+		and Hats.sheet_block("prism") == Hats.sheet_block("rainbow") and Hats.sheet_block("rainbow") == 9
 		and Hats.material_for("beanie", "rainbow").get_shader_parameter("gradient") and not Hats.material_for("beanie", "prism").get_shader_parameter("gradient") and Hats.material_for("beanie", "rainbow") != null
-		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW 99 (a gradient), PRISM 50 (turns as one), both from the rainbow block; the others 10")
-	_check(not progress.can_buy_dye("beanie", "teal") and not progress.buy_dye("beanie", "teal") and progress.tickets == 25, "no dye for a hat not won")
+		and Hats.material_for("beanie", "clover") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW 99 (a gradient), PRISM 50 (turns as one), both from the rainbow block; the others 10")
+	_check(not progress.can_buy_dye("beanie", "clover") and not progress.buy_dye("beanie", "clover") and progress.tickets == 25, "no dye for a hat not won")
 	progress.win_hat("beanie")
 	progress.win_hat("crown")
-	_check(not progress.buy_dye("beanie", "cherry") and not progress.buy_dye("crown", "teal") and not progress.buy_dye("beanie", "nope"),
+	_check(not progress.buy_dye("beanie", "cherry") and not progress.buy_dye("crown", "clover") and not progress.buy_dye("beanie", "nope"),
 		"no dye a hat doesn't come in (its own color, a plain hat, an unknown dye)")
 	progress.selected_hat = "crown"
-	_check(progress.buy_dye("beanie", "teal") and progress.tickets == 15 and progress.owns_dye("beanie", "teal")
-		and progress.selected_hat == "beanie" and progress.hat_dye_of("beanie") == "teal", "a dye costs 10, and the hat is put on in it")
-	_check(not progress.buy_dye("beanie", "teal") and progress.tickets == 15, "no double buy")
+	_check(progress.buy_dye("beanie", "clover") and progress.tickets == 15 and progress.owns_dye("beanie", "clover")
+		and progress.selected_hat == "beanie" and progress.hat_dye_of("beanie") == "clover", "a dye costs 10, and the hat is put on in it")
+	_check(not progress.buy_dye("beanie", "clover") and progress.tickets == 15, "no double buy")
 	progress.tickets = 9
 	_check(not progress.buy_dye("beanie", "plum") and progress.tickets == 9 and not progress.owns_dye("beanie", "plum"), "one short: no buy, nothing taken")
 	progress.tickets = 10
@@ -146,28 +146,28 @@ func _dyes() -> void:
 	progress.tickets = 98
 	_check(not progress.buy_dye("beanie", "rainbow") and progress.tickets == 98, "RAINBOW at 98 of 99: no buy")
 	progress.tickets = 99
-	_check(progress.buy_dye("beanie", "rainbow") and progress.tickets == 0 and progress.wear_dye("beanie", "teal"), "RAINBOW at exactly 99: bought")
-	_check(progress.wear_dye("beanie", "") and progress.hat_dye_of("beanie") == "" and progress.wear_dye("beanie", "teal")
-		and progress.hat_dye_of("beanie") == "teal", "the hat's own color is free to go back to; an owned dye is worn again")
-	_check(not progress.wear_dye("beanie", "snow") and progress.hat_dye_of("beanie") == "teal", "an unowned dye can't be worn")
+	_check(progress.buy_dye("beanie", "rainbow") and progress.tickets == 0 and progress.wear_dye("beanie", "clover"), "RAINBOW at exactly 99: bought")
+	_check(progress.wear_dye("beanie", "") and progress.hat_dye_of("beanie") == "" and progress.wear_dye("beanie", "clover")
+		and progress.hat_dye_of("beanie") == "clover", "the hat's own color is free to go back to; an owned dye is worn again")
+	_check(not progress.wear_dye("beanie", "snow") and progress.hat_dye_of("beanie") == "clover", "an unowned dye can't be worn")
 	var file: ConfigFile = progress._write()
 	progress.reset_progress()
 	_check(progress.hat_dyes_owned.is_empty() and progress.hat_dye_of("beanie") == "", "RESET PROGRESS clears the dyes")
 	progress._read(file)
-	_check(progress.owns_dye("beanie", "teal") and progress.owns_dye("beanie", "plum") and progress.hat_dye_of("beanie") == "teal",
+	_check(progress.owns_dye("beanie", "clover") and progress.owns_dye("beanie", "plum") and progress.hat_dye_of("beanie") == "clover",
 		"dyes round-trip through the save")
 	var bad := ConfigFile.new()
 	bad.set_value("meta", "version", 6)
 	bad.set_value("meta", "epoch", 1)
 	bad.set_value("hats", "owned", ["beanie"])
-	bad.set_value("hats", "dyes", ["beanie:teal", "beanie:teal", "beanie:cherry", "crown:teal", "beanie", 7, "x:y:z"])
-	bad.set_value("hats", "dyes_worn", ["beanie:plum", "tophat:teal"])
+	bad.set_value("hats", "dyes", ["beanie:clover", "beanie:clover", "beanie:cherry", "crown:clover", "beanie", 7, "x:y:z"])
+	bad.set_value("hats", "dyes_worn", ["beanie:plum", "tophat:clover"])
 	progress._read(bad)
-	_check(str(progress.hat_dyes_owned) == str(["beanie:teal"]) and progress.hat_dye_of("beanie") == "",
+	_check(str(progress.hat_dyes_owned) == str(["beanie:clover"]) and progress.hat_dye_of("beanie") == "",
 		"hostile dyes: real ones once each, a worn dye only if owned (%s)" % [progress.hat_dyes_owned])
 	progress.dev_tools = true
 	progress.tickets = 0
-	_check(progress.dye_price() == 0 and progress.owns_dye("tophat", "teal"), "dev mode owns every dye")
+	_check(progress.dye_price() == 0 and progress.owns_dye("tophat", "clover"), "dev mode owns every dye")
 	progress.dev_tools = false
 
 
@@ -222,7 +222,7 @@ func _saves() -> void:
 	progress.spin_hat(0.0)
 	progress.spin_hat(0.0)
 	progress.win_hat("chef")
-	progress.buy_dye("chef", "teal")
+	progress.buy_dye("chef", "clover")
 	progress.buy_workshop("charge")
 	progress.buy_workshop("sticky")
 	progress.buy_workshop("sticky")
@@ -238,7 +238,7 @@ func _saves() -> void:
 	_check(str(got) == str(want), "the store round-trips through the save (%s)" % [got])
 	var code: String = progress.save_code()
 	progress.reset_progress()
-	_check(progress.load_code(code) and progress.workshop_level("sticky") == 2 and progress.trail_style == "candy" and progress.owns_dye("chef", "teal"),
+	_check(progress.load_code(code) and progress.workshop_level("sticky") == 2 and progress.trail_style == "candy" and progress.owns_dye("chef", "clover"),
 		"...and through a save code (%d chars)" % code.length())
 	# A full store (every hat, workshop maxed, every cosmetic worn) still makes a short code.
 	progress.hats_owned.assign(Hats.ids())
@@ -389,22 +389,22 @@ func _ui_wheel() -> void:
 	_check(wheel.shop_tiles.keys() == ["tophat"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
 		"DYES lists the dyeable hats won (the crown isn't one), focus on the first")
 	wheel.shop_tiles["tophat"].pressed.emit()
-	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:teal")
-		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 12 and wheel.shop_tiles.has("tophat:rainbow") and wheel.shop_tiles.has("tophat:prism"),
-		"a hat's tile opens its colors: ORIGINAL + 11 dyes (PRISM, RAINBOW last)")
-	var teal: Button = wheel.shop_tiles["tophat:teal"]
+	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:clover")
+		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 11 and wheel.shop_tiles.has("tophat:rainbow") and wheel.shop_tiles.has("tophat:prism"),
+		"a hat's tile opens its colors: ORIGINAL + 10 dyes (PRISM, RAINBOW last)")
+	var teal: Button = wheel.shop_tiles["tophat:clover"]
 	teal.grab_focus()
 	teal.pressed.emit()
-	_check(wheel.confirm.visible and wheel.confirm_back.has_focus() and "TEAL DYE" in wheel.confirm_label.text and wheel.confirm_price.text == "10",
-		"buying asks once: BUY TEAL DYE? 10, focus on BACK")
+	_check(wheel.confirm.visible and wheel.confirm_back.has_focus() and "CLOVER DYE" in wheel.confirm_label.text and wheel.confirm_price.text == "10",
+		"buying asks once: BUY CLOVER DYE? 10, focus on BACK")
 	_check(not wheel.spin() and progress.tickets == 100, "no spin from the SHOP / under the confirm")
 	_check(wheel.back() and not wheel.confirm.visible and progress.tickets == 100 and wheel.dye_hat == "tophat", "Esc (back) closes the confirm first, nothing bought")
 	teal.pressed.emit()
 	wheel.confirm_buy.pressed.emit()
 	await process_frame
-	_check(progress.tickets == 90 and progress.owns_dye("tophat", "teal") and progress.selected_hat == "tophat" and hub.hat != null
-		and hub.hat.dye == "teal" and hub.hat.texture == preload("res://assets/sprites/hat_dyes.png") and not wheel.confirm.visible,
-		"BUY: paid 10, the hub slime wears the top hat in teal")
+	_check(progress.tickets == 90 and progress.owns_dye("tophat", "clover") and progress.selected_hat == "tophat" and hub.hat != null
+		and hub.hat.dye == "clover" and hub.hat.texture == preload("res://assets/sprites/hat_dyes.png") and not wheel.confirm.visible,
+		"BUY: paid 10, the hub slime wears the top hat in clover")
 	wheel.shop_tiles["tophat:"].pressed.emit()
 	_check(progress.hat_dye_of("tophat") == "" and hub.hat.dye == "", "ORIGINAL puts its own color back on")
 	_check(wheel.back() and wheel.dye_hat == "" and wheel.shop_tiles.has("tophat") and wheel.shop_tiles["tophat"].has_focus(), "Esc goes back to the hats first")
@@ -445,6 +445,17 @@ func _ui_wardrobe() -> void:
 	root.add_child(screen)
 	await process_frame
 	screen.show_page("hats")
+	_check(screen.color_button.visible and screen.color_button.disabled and not screen.jelly_button.visible, "hats page: COLOR in JELLY's place, off with no hat dyes")
+	progress.win_hat("beanie")
+	progress.hat_dyes_owned.assign(["beanie:clover", "beanie:plum"])
+	screen._refresh_hats()
+	_check(not screen.color_button.disabled, "...on once the worn hat has a dye")
+	screen.color_button.pressed.emit()
+	_check(progress.hat_dye_of("beanie") == "clover" and screen.hat_tiles["beanie"].get_meta("hat").dye == "clover" and "CLOVER" in screen.status.text,
+		"COLOR puts the worn hat on in its first owned dye (tile and status too)")
+	screen.color_button.pressed.emit()
+	screen.color_button.pressed.emit()
+	_check(progress.hat_dye_of("beanie") == "", "...then the next, then back to its own color")
 	screen.page_button.pressed.emit()
 	_check(screen.page == "trails" and screen.trail_tiles.size() == 6 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
 		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (6 tiles: ABYSS is hidden while Descent is off, D11)")

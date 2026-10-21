@@ -13,7 +13,9 @@ extends Control
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
 ## custom color panel or the preview stage (the clicked skin acting out a little routine, see
-## SkinShowcase), and a bottom row of BACK | JELLY | HATS.
+## SkinShowcase), and a bottom row of BACK | JELLY | HATS. On the hats page COLOR takes JELLY's place:
+## it turns the worn hat through its own color and the dyes you own of it (Hats.dyes_for, bought in the
+## prize wheel's SHOP).
 
 const TILE_SIZE := Vector2(40, 30)
 const GRID_COLUMNS := 7
@@ -65,6 +67,8 @@ var page := "skins"
 var view_jelly := false
 var page_button: Button
 var jelly_button: Button
+## Hats page: COLOR, in JELLY's place (the worn hat's next owned dye; disabled when it has none).
+var color_button: Button
 var _skin_grid: VBoxContainer
 var _hat_grid: VBoxContainer
 var _trail_grid: VBoxContainer
@@ -116,7 +120,13 @@ func _ready() -> void:
 	jelly_button = UIKit.make_button("", _toggle_jelly, Vector2(80, UIKit.button_h()))
 	jelly_button.position = Vector2((320 - 80) / 2, back.position.y)
 	add_child(jelly_button)
+	# i18n: wardrobe hats page button (the worn hat's color), max 72px, 1 line
+	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), _cycle_hat_color, Vector2(80, UIKit.button_h()))
+	add_child(color_button)
 	_layout(back)
+	color_button.position = jelly_button.position
+	color_button.custom_minimum_size.x = jelly_button.size.x
+	color_button.size.x = jelly_button.size.x
 	show_page("skins")
 
 
@@ -372,6 +382,7 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
+	color_button.visible = hats
 	_title.text = page_title(page)
 	page_button.text = page_title(PAGES[(PAGES.find(page) + 1) % PAGES.size()])
 	if hats:
@@ -440,6 +451,7 @@ func _make_hat_tile(id: String) -> Button:
 		var hat := Hat.new()
 		tile.add_child(hat)
 		hat.setup(id, preview, null, Progress.hat_dye_of(id))
+		tile.set_meta("hat", hat)
 		if not unlocked:
 			hat.modulate = Color(0, 0, 0, 0.85)
 	if not unlocked:
@@ -617,6 +629,30 @@ func _on_hat_tile(id: String) -> void:
 	_refresh_hats(id)
 
 
+## The worn hat's colors to turn through with COLOR: its own, then each dye of it you own.
+func _hat_colors(hat: String) -> Array[String]:
+	var colors: Array[String] = [""]
+	for dye in Hats.dyes_for(hat):
+		if Progress.owns_dye(hat, dye):
+			colors.append(dye)
+	return colors
+
+
+## COLOR: puts the worn hat on in its next color (saved), on its tile too.
+func _cycle_hat_color() -> void:
+	var hat := Progress.selected_hat
+	var colors := _hat_colors(hat)
+	if colors.size() < 2:
+		return
+	var next := colors[(colors.find(Progress.hat_dye_of(hat)) + 1) % colors.size()]
+	Progress.wear_dye(hat, next)
+	var tile: Button = hat_tiles.get(hat)
+	if tile and tile.has_meta("hat"):
+		var worn: Hat = tile.get_meta("hat")
+		worn.setup(hat, worn.body, null, next)
+	_refresh_hats(hat)
+
+
 func _on_custom_changed() -> void:
 	wheel.value = 1.0
 	Progress.custom_color = wheel.get_color()
@@ -678,17 +714,21 @@ static func _jelly_text(on: bool) -> String:
 func _refresh_hats(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_hat
 	if Progress.is_hat_unlocked(id):
+		var name := Hats.display_name(id)
+		if Progress.hat_dye_of(id) != "":
+			name = Loc.t("wheel.dye_title", "{hat} - {dye}", {hat = name, dye = Hats.dye_name(Progress.hat_dye_of(id))})
 		if id == Progress.selected_hat:
 			# i18n: {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.
-			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = Hats.display_name(id)})
+			status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = name})
 		else:
-			status.text = Hats.display_name(id)
+			status.text = name
 	else:
 		# i18n: status line, max 300px, 1 line
 		status.text = Loc.t("skins.locked_hat", "LOCKED - WIN IT ON THE HAT WHEEL")
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		UIKit.set_selected(tile, tile_id == Progress.selected_hat)
+	color_button.disabled = _hat_colors(Progress.selected_hat).size() < 2
 
 
 func _unhandled_input(event: InputEvent) -> void:

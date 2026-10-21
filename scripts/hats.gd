@@ -68,7 +68,6 @@ const DYES := [
 	{id = "tangerine", color = Color8(232, 128, 48)},
 	{id = "butter", color = Color8(240, 204, 76)},
 	{id = "clover", color = Color8(72, 168, 84)},
-	{id = "teal", color = Color8(44, 156, 156)},
 	{id = "cobalt", color = Color8(62, 110, 214)},
 	{id = "plum", color = Color8(124, 78, 196)},
 	{id = "bubblegum", color = Color8(236, 120, 176)},
@@ -140,8 +139,6 @@ static func dye_name(dye: String) -> String:
 			return Loc.t("dye.butter", "BUTTER")
 		"clover":
 			return Loc.t("dye.clover", "CLOVER")
-		"teal":
-			return Loc.t("dye.teal", "TEAL")
 		"cobalt":
 			return Loc.t("dye.cobalt", "COBALT")
 		"plum":

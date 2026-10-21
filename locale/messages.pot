@@ -594,11 +594,6 @@ msgid "CLOVER"
 msgstr ""
 
 #: scripts/hats.gd
-msgctxt "dye.teal"
-msgid "TEAL"
-msgstr ""
-
-#: scripts/hats.gd
 msgctxt "dye.cobalt"
 msgid "COBALT"
 msgstr ""
@@ -2121,7 +2116,7 @@ msgstr ""
 
 #. SHOP status line (DYES), max 240px, 1 line: a hat name, then a dye name or ORIGINAL
 #. budget: max 240px, lines 1
-#: scripts/ui/hat_wheel.gd
+#: scripts/ui/hat_wheel.gd scripts/ui/skins_screen.gd
 msgctxt "wheel.dye_title"
 msgid "{hat} - {dye}"
 msgstr ""
@@ -2450,6 +2445,13 @@ msgstr ""
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.page_skins"
 msgid "SKINS"
+msgstr ""
+
+#. wardrobe hats page button (the worn hat's color), max 72px, 1 line
+#. budget: max 72px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.hat_color"
+msgid "COLOR"
 msgstr ""
 
 #. {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.

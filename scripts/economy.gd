@@ -74,7 +74,7 @@ const SPIN_COST := 12
 const SPIN_STEP := 2
 const SPIN_COST_MAX := 40
 ## Hats are never sold (owner, 2026-10-21: the TAILOR's direct buy is gone). The SHOP's DYES sell a
-## won hat in another color (Hats.dyes_for: 10 dyeable hats, 10-11 dyes each, 103 in all) for
+## won hat in another color (Hats.dyes_for: 10 dyeable hats, 10-11 dyes each incl. PRISM and RAINBOW, 103 in all) for
 ## DYE_PRICE tickets each, about one day's paid randomizer wins; the flowing RAINBOW dye costs
 ## DYE_RAINBOW_PRICE, the PRISM dye (it turns through the colors as one) DYE_PRISM_PRICE (owner, 2026-10-21).
 const DYE_PRICE := 10
