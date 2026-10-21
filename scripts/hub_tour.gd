@@ -40,7 +40,6 @@ var _layer: CanvasLayer
 var skip_pod: PanelContainer
 var skip_label: Label
 var skip_key: Label
-var _prompt_key_shown := ""
 
 
 func setup(the_hub: Node2D) -> void:

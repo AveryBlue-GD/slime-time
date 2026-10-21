@@ -68,7 +68,7 @@ const SCRIPT_FONTS := {
 ## get no fallback at all (pixel-identical); text in another script on the same screen (the LANGUAGE
 ## screen's native names) uses native_font(code), a variation of the slimy font with that script's
 ## fallback.
-const FALLBACK_ORDER := ["zh_CN", "zh_TW", "ja", "ko", "th", "hi", "ar"]
+
 ## Line metrics per script group, in px at 320x180 (fonts.md sections 3.3 and 5, measured with the
 ## real fonts by tests/test_i18n_glyphs.gd):
 ## - line_h: a line box's height (the slimy font's is its 7 px letter body; a fallback's line box is

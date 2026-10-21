@@ -34,7 +34,7 @@ pixels actually drawn (text letters, icon pixels), measured from rendered frames
 Other locales: `UIKit.bottom_row_y()`, `UIKit.title_top()` / `title_bottom()`, `UIKit.back_size()` (section 10).
 
 - The bottom row: **BACK at (4, 164) 40x13** on every screen (`UIKit.add_back_button(root, on_press)`); the page's own
-  action mirrors it at the right edge (HEAT, PAPER, HATS / TRAILS / PAPERS / SKINS, RESET PROGRESS) or sits centred (JELLY,
+  action mirrors it at the right edge (PAPER, HATS / TRAILS / PAPERS / SKINS, RESET PROGRESS) or sits centred (JELLY,
   RESET KEYS). The title's STORY button uses the same slot, its QUIT (desktop only) the mirrored right-end slot (276, 164) 40x13. In English the wardrobe's page button is one width for every
   page name it shows (`tab_widths`: TRAILS / PAPERS need 46 px, so (270, 164) 46x13, ending at x 316) while BACK keeps
   40; in other locales BACK joins that equal-width group (section 10).
@@ -73,7 +73,7 @@ Rules:
   board's 10 rows and the map tiles' two lines.
 - Vertical centring is measured on the **letter body**, never the drips. In a 13 px button the body is rows 3..9.
 - Horizontal centring: the measured ink is within ±0.5 px of the box centre. Centre an icon and its text **as one
-  group** (HEAT panel title: flame, 5 px gap, text).
+  group**.
 - A label that shows changing values is either sized to its text (its pod grows from the anchored edge: the upgrades
   balance pod) or uses tabular digits in a fixed box (the HUD timer). Never a fixed oversize box with left-aligned text.
 - Every label in one row shares one baseline (hat wheel header: tabs, title and balance on row 12; map table bottom bar
@@ -93,7 +93,7 @@ Rules:
   | dim | `UIKit.TEXT_DIM` | hints, secondary lines |
   | disabled | `UIKit.TEXT_OFF` | disabled text |
 
-  Fixed tints: tickets `255,226,150`, HEAT `255,170,90`, DEV badge pink. Labels use a 1 px shadow (`BG` at 0.9).
+  Fixed tints: tickets `255,226,150`, DEV badge pink. Labels use a 1 px shadow (`BG` at 0.9).
 
 ## 5. Components
 
@@ -110,7 +110,7 @@ Rules:
 | stacked menu | 100x13 (pause, restart, hub Esc menu), 120x13 (settings columns, portal, victory) | |
 | title CTA | 176x25, 16 px text | the only tall button |
 
-Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT toggles 84x34, boon 96x78).
+Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, boon 96x78).
 
 ### Panels (`UIKit.add_panel`, `panel_style`)
 
@@ -119,7 +119,7 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
   (from the last button's bottom edge, or the last text line's drips). A first line with marks starts at
   `UIKit.panel_text_top()` instead (9 accented, 11 Vietnamese: the marks start on row 6, clear of the band and lumps,
   rows 0-4); a PanelContainer gets the same from `panel_style()` (section 10.1, "No ink on the goo"). Applied to: pause and restart stacks, the hub Esc menu, hub quit and
-  portal dialogs, HEAT panel, Descent summary (which fits its panel to its lines). The BUY? and RESET confirms use 8 / 9.
+  portal dialogs, Descent summary (which fits its panel to its lines). The BUY? and RESET confirms use 8 / 9.
 - Modal: a dim sheet that takes clicks, plus `UIKit.lock_focus`. A modal over the in-level HUD hides the HUD texts that
   would show through (`HUD.hide_area_texts()` from pause and restart; the Descent card hides the HUD layer).
 
@@ -128,8 +128,7 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 - `hud_pod.png` 9-slice, content margins 4/4/3/3, edge margin 3.
 - Height **14** (`UIKit.POD_H`) for one line, **23** (`UIKit.POD_H2`) for two. Every one-line pod is 14 (text-only pods
   included), so pods in a row share their bottom edge and mirrored rows start together (rows at y 3, 19, 35, 51).
-- Icons in pods are 8x8. Taller art (the 7x9 flame, 9x9 HEAT modifier icons) goes through `UIKit.fit_icon`, an 8 px tall
-  cell the art overhangs by 1 px, so the pod stays 14.
+- Icons in pods are 8x8.
 - Content ink pads equal on both sides (HUD timer 4 / 4, upgrades balance 4 / 4, hub prompt 8 / 8: the prompt's left
   content margin is 1 less to absorb the font's leading letter gap).
 - The hub prompt is a goo panel (`panel_style`): its top room follows its line's marks (`panel_v_margins(text)`); a
@@ -143,8 +142,8 @@ Tiles are buttons too (level 48x42, skins 40x30, map 155x26, shop 138x13, HEAT t
 ### Icons
 
 - The touch pause button (15x13 rect, `TouchControls.PAUSE_RECT`) draws two pause bars; in the hub on iOS / Android it draws a 7x7 pixel house instead (`home_icon`, decision D10: the button goes to the title). Both are constant pixel lists centred on the rect, whole pixels.
-- 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check); 7x9 flame; 16x16 ability and boon
-  icons; HEAT modifier icons 9x9 (RACE 8x8), drawn at 2x in the HEAT panel and centred in an 18x18 cell.
+- 8x8 UI icons (`assets/ui/icon_*.png`: drop, clock, coin, ticket, medal, lock, check); 16x16 ability and boon
+  icons.
 
 ### Tutorial UI (SPLASHDOWN maze + hub tour, gate `Economy.TUTORIAL_TEST`; UI pass chunk F, 2026-10-18)
 
@@ -192,7 +191,6 @@ hub by the wheel, SETTINGS, level 1's move glyph and level 1's dry-up row, `test
 | skins | 40x30 | 3 | centred (row 2 of 6 tiles: 0.5 px, accepted) |
 | map table | 155x26 | 2 | L4 / R4 |
 | shop | 138x13 | 2 | centred in its panel: L13 / R13 |
-| HEAT toggles | 84x34 | 4 | centred in the panel |
 | boon tiles | 96x78 | 6 | L10 / R10 |
 
 - A grid is centred on the screen or on its panel, ±0.5 px.
@@ -354,7 +352,7 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   Devanagari). One page (English) keeps its place.
 - **Panel-cover rule**: while a modal panel is open in a locale whose layout differs from English, the page's own
   controls behind it are hidden: `cover_behind(screen, keep, rect)` (only those under `rect` when given: SAVE CODE and
-  RESET panels; all of them: the resized HEAT panel, the opaque map view) and `uncover(list)` on close. That includes
+  RESET panels; all of them: the opaque map view) and `uncover(list)` on close. That includes
   the page arrows (they are added last so the other nodes keep their places). English keeps its faint ghosts
   (byte-identical), because its panels' texts already avoid the page.
 - **Digit rule**: digits-only texts (level numbers, record times, %, +N, counts beside coin / ticket icons) and the
@@ -405,7 +403,7 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   - Key controls note: `NOTE_GAP` over the bottom row (English); when that leaves it closer to the rows than to the
     bottom row it is centred between them, never less than `GAP_L` over the bottom row (Vietnamese fills the room:
     its stacked marks reach the last key row's bottom edge beside the keys).
-- **Screen rules of fix pass F3a** (wardrobe, upgrades, hat wheel, HEAT panel, hub), each a no-op in English except the
+- **Screen rules of fix pass F3a** (wardrobe, upgrades, hat wheel, hub), each a no-op in English except the
   upgrades ABILITIES rows:
   - **Keep the 16 px title by making room**: a screen tries its 16 px title with the layout's other steps first (the
     wardrobe's stage on the bottom row, gaps one scale step closer, the smaller crisp font for body lines) and only then
@@ -423,8 +421,6 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
   - **Name next to a price / icon**: in a right-to-left layout a name keeps 1 px more from its border / icon (Kufi has
     no side bearing); a price label sits on its name's text row (box top - 1, as English); a tile grown for a longer
     name keeps `GAP_L` between its longest name and the price where the panel has the room.
-  - **Toggle name fitting** (HEAT): one line (up to `BUTTON_TEXT_PAD` from the edge) -> the smaller font -> two lines
-    if the panel still fits the screen -> the 1x icon only in the toggles whose name needs it.
   - **Mixed digit rows in CJK**: digits beside CJK names go `ink_drop` (1) rows down (the coin board).
 - **Leftover pass rules** (docs/i18n/review/leftovers.md), no-ops in English except the SAVE CODE panel:
   - **A slimy character's drips count as the line's ink**: in a taller script the slimy digits / Latin letters hang their
@@ -463,10 +459,8 @@ nothing in English, so English and the gate-off game stay pixel-identical (seede
     taller script (Arabic's lowest dots still on h - 2: open, fixes-R2.md).
   - **A scaled control mirrors at its drawn size**: a right-to-left layout mirrors by `size` (x' = parent_w - x - w;
     `scale` is not counted), so a control drawn at 2x is kept out of the mirroring (`UIKit.keep_ltr`) and placed at
-    x' = W - x - texture_w * scale itself (the HEAT panel's icons; LTR untouched).
-  - **A name filling its room to `BUTTON_TEXT_PAD` takes two lines where they fit**: the HEAT toggles' one-line names
-    keep `NAME_ROOM_PAD` (`GAP_S`) more where the panel fits two-line names and the script has no smaller size (es
-    NIEBLA VORAZ, 2 -> 5+ clear columns); the map tiles' names wrap past `name_room()` (`TEXT_PAD` + `GAP_S`: ru / fr
+    x' = W - x - texture_w * scale itself (LTR untouched).
+  - **A name filling its room to `BUTTON_TEXT_PAD` takes two lines where they fit**: the map tiles' names wrap past `name_room()` (`TEXT_PAD` + `GAP_S`: ru / fr
     1 -> 8+ columns to the tile's inset bar).
   - **An 8 px name line over art starts its marks on row 3** (the map view's `view_title_y(text)`: 3 + that line's own
     `mark_rows`; the map area follows it, so a marked name costs the map its rows: one size step on the maps that need
@@ -539,8 +533,7 @@ in `UIKit`, does it for every screen; screen code keeps writing the English (lef
   zero-width (`UIKit.is_format_char`). Signed numbers written in a translation itself (`+30%`, `-10%`, `(+0)`, `10%`:
   no placeholder) get the same isolate from `Loc.t` / `Loc.n` (`Loc.isolate_signed`, fix pass F1), so the sign and the
   % stay where an Arabic reader expects them (they drew `1+` and `%10-`).
-- **Fitting without a smaller font** (Arabic has none: Kufi merges dots under 12 px): the HEAT toggles draw their
-  icon at 1x before wrapping a name (two-line names would make the panel taller than the screen), and the upgrades
+- **Fitting without a smaller font** (Arabic has none: Kufi merges dots under 12 px): the upgrades
   ABILITIES rows go on pages (a `1/2` button mirroring BACK) when they don't fit one page.
 - **Tests**: `tests/test_i18n_rtl.gd` (every menu: each control at the mirror of its LTR place, BACK bottom right,
   tab / tile / arrow order, inside 320x180; dynamic re-layouts; keys; HUD sides; game world and hub room unmirrored;

@@ -299,11 +299,6 @@ func _layout(back: Button) -> void:
 		jelly_button.position.x = UIKit.center_x(jelly_w)
 
 
-## The tall grid's height (two rows of tiles: the skins and the hats).
-func _grid_h() -> int:
-	return 2 * int(TILE_SIZE.y) + GRID_GAP
-
-
 ## A label centered across the screen, `top` = its top edge.
 func _centered_label(text: String, color: Color, top: int) -> Label:
 	var label := UIKit.make_label(text, UIKit.FONT, color)
