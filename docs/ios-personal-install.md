@@ -14,22 +14,21 @@ TestFlight (send it to the phone without a cable, 90-day builds) needs the paid 
 4. **Developer Mode** (iOS 16+): on the phone, Settings > Privacy & Security > Developer Mode (at the very bottom) > on.
    The phone restarts; after it, tap Turn On. (If the switch isn't there yet, it shows up after step 6 tries once.)
 
-## Each build
+## Each build (and every 7 days to renew)
 
-5. In Terminal, in the game folder: `./tools/ios_build.sh`. It makes `build/ios/DryTrying.xcodeproj` and opens it.
-6. In Xcode: click **DryTrying** at the top of the left list > **Signing & Capabilities** tab > tick
-   **Automatically manage signing** > Team: **Your Name (Personal Team)**. If it says the bundle id is taken, change
-   `com.averyblue.drytrying` to anything unique (e.g. add your initials).
-7. At the top of the Xcode window pick your iPhone as the run target, then press the **Play** button (Cmd+R).
-8. The first time, the phone says "Untrusted Developer": Settings > General > **VPN & Device Management** > your
-   Apple ID > **Trust**. Press Play in Xcode again (or tap the app icon).
+5. Plug the phone in and unlock it. In Terminal, in the game folder: `./tools/ios_build.sh`. It exports the game,
+   builds and signs it with your Personal Team (read from Xcode's account settings; or pass the team id) and installs
+   it on the phone. No clicking in Xcode needed.
+6. The first time, the phone says "Untrusted Developer": Settings > General > **VPN & Device Management** > your
+   Apple ID > **Trust**. Then tap the Dry Trying icon.
 
+If the bundle id is ever taken, change `com.averyblue.drytrying` in the `iOS` preset to something unique.
 Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
 
 ## Notes
 
-- The preset is `iOS` in `export_presets.cfg` (export project only, placeholder team `ABCDE12345`;
-  `./tools/ios_build.sh TEAMID` fills a real one for that build only). Icon: `assets/ios/icon_1024.png` from
+- The preset is `iOS` in `export_presets.cfg` (export project only, iOS 15+ (Xcode 27's minimum), placeholder team `ABCDE12345`; `ios_build.sh` fills the real
+  one for that build only; builds go to `build/ios` and `build/ios-derived`). Icon: `assets/ios/icon_1024.png` from
   `tools/make_ios_icon.gd` (nearest-neighbor 16x of `icon.png`, no alpha). Landscape only (sensor landscape).
 - Touch controls are the game's own (`TouchControls`: joystick left half, JUMP right half, pause top right).
 - Saves live in the app (`user://` = the app's Documents); deleting the app deletes the save.
