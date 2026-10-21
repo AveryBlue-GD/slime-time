@@ -10,7 +10,7 @@ extends Node2D
 ## `squeezed` (every hat on the splat frames, 2x), and the real screens players see them on:
 ## `ui_wheel` (the hub's prize wheel), `ui_won` (just after a spin lands), `ui_shop` (the SHOP's
 ## DYES section: your dyeable hats), `ui_dyes` (one hat's colors, a dye focused on the try-on slimes),
-## `ui_dyed` (the hub slime in a dyed hat), `ui_wardrobe_color` (the hats page in a dyed hat, COLOR), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
+## `ui_dyed` (the hub slime in a dyed hat), `ui_wardrobe_color` (the hats page in a dyed hat, COLOR), `ui_hub_page` / `ui_hub_frost` (the HUB page; the hub in FROST), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
 ## ./tools/godot.sh --path . res://tests/demo_hat_audit.tscn -- --unlock-all --out=/abs/dir [--only=lineup,...]
 ## then: python3 -I tools/upscale_png.py OUT/lineup.png OUT/lineup_x4.png 4
 
@@ -72,6 +72,8 @@ func _run() -> void:
 	await _ui_page("ui_dyes", _ui_dyes, 30)
 	await _ui_page("ui_dyed", _ui_dyed, 30)
 	await _ui_page("ui_wardrobe_color", _ui_wardrobe_color, 30)
+	await _ui_page("ui_hub_page", _ui_hub_page, 30)
+	await _ui_page("ui_hub_frost", _ui_hub_frost, 30)
 	await _ui_page("ui_wardrobe", _ui_wardrobe, 30)
 	await _ui_page("ui_hub", _ui_hub, 30)
 	if _only.is_empty() or "rainbow" in _only:
@@ -318,6 +320,23 @@ func _ui_wardrobe_color() -> void:
 	screen.color_button.grab_focus.call_deferred()
 	if "picker" in OS.get_cmdline_user_args():
 		screen.open_color_picker.call_deferred()
+
+
+## The wardrobe's HUB page (normal mode beaten), the hub set to FROST; then the hub in it.
+func _ui_hub_page() -> void:
+	Progress.levels_cleared = Levels.COUNT
+	Progress.hub_skin = "frost"
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	var screen: Control = load("res://scenes/skins.tscn").instantiate()
+	layer.add_child(screen)
+	screen.show_page.call_deferred("hub")
+
+
+func _ui_hub_frost() -> void:
+	Progress.levels_cleared = Levels.COUNT
+	Progress.hub_skin = "frost"
+	_hub()
 
 
 func _ui_dyed() -> void:

@@ -10,6 +10,10 @@ extends Control
 ## by pressing them, the others are silhouettes saying where to buy them. The PAPERS page works the same
 ## for the map papers (Cosmetics, sold in the same SHOP): a tile per paper, each a little example map
 ## drawn on it (MapView.render); wearing one is the MAP TABLE's PAPER setting (Progress.map_paper).
+## The HUB page (owner, 2026-10-21) picks the hub's color: AUTO (it follows the worn skin) or any skin
+## you have unlocked (a slime in it, opaque); shut (silhouettes) until normal mode is beaten
+## (Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
+## just picked shows on them at once.
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
 ## custom color panel or the preview stage (the clicked skin acting out a little routine, see
@@ -36,6 +40,8 @@ static func rule_text(which: String) -> String:
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
 		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
+		"hub": return Loc.t("skins.rule_hub", "THE HUB TAKES THIS COLOR")
+		"hub_locked": return Loc.t("skins.rule_hub_locked", "BEAT THE STORY TO COLOR THE HUB")
 	return Loc.t("skins.rule_skins", "NEW LEVELS EQUIP YOUR NEWEST SKIN")
 
 
@@ -45,16 +51,19 @@ static func page_title(which: String) -> String:
 		"hats": return Loc.t("skins.page_hats", "HATS")
 		"trails": return Loc.t("skins.page_trails", "TRAILS")
 		"papers": return Loc.t("skins.page_papers", "PAPERS")
+		"hub": return Loc.t("skins.page_hub", "HUB")
 	return Loc.t("skins.page_skins", "SKINS")
 
 
 ## The pages, in the order the page button cycles them.
-const PAGES := ["skins", "hats", "trails", "papers"]
+const PAGES := ["skins", "hats", "trails", "papers", "hub"]
 
 var tiles := {}
 var hat_tiles := {}
 var trail_tiles := {}
 var paper_tiles := {}
+## HUB page tiles: "" = AUTO, else a skin id.
+var hub_tiles := {}
 var status: Label
 var custom_panel: Control
 var wheel: ColorWheel
@@ -83,6 +92,7 @@ var _skin_grid: VBoxContainer
 var _hat_grid: VBoxContainer
 var _trail_grid: VBoxContainer
 var _paper_grid: VBoxContainer
+var _hub_grid: VBoxContainer
 var _title: Label
 var _rule: Label
 
@@ -100,15 +110,11 @@ func _ready() -> void:
 	_fill_skin_grid()
 
 	_hat_grid = _make_grid()
-	var hat_ids: Array[String] = [Hats.NONE]
-	for hat: Dictionary in Hats.LIST:
-		hat_ids.append(hat.id)
-	for id in hat_ids:
-		_add_to_grid(_hat_grid, _make_hat_tile(id))
+	_fill_hat_grid()
 	_trail_grid = _make_grid()
-	for id in Cosmetics.trail_ids():
-		if Progress.cosmetic_visible(id):  # ABYSS is hidden while Descent is off, unless owned
-			_add_to_grid(_trail_grid, _make_trail_tile(id))
+	_fill_trail_grid()
+	_hub_grid = _make_grid()
+	_fill_hub_grid()
 	_paper_grid = _make_grid()
 	for id in Cosmetics.paper_ids():
 		if Progress.cosmetic_visible(id):
@@ -289,7 +295,7 @@ func _layout(back: Button) -> void:
 		_title.add_theme_font_size_override("font_size", UIKit.FONT)
 		_title.offset_top = plan.title_y
 		_title.offset_bottom = plan.title_y + UIKit.line_h()
-	for grid: Control in [_skin_grid, _hat_grid, _trail_grid, _paper_grid]:
+	for grid: Control in [_skin_grid, _hat_grid, _trail_grid, _paper_grid, _hub_grid]:
 		grid.position.y = plan.grid_top
 		if plan.gap != GRID_GAP:
 			grid.add_theme_constant_override("separation", plan.gap)
@@ -371,9 +377,49 @@ func _fill_skin_grid() -> void:
 		_add_to_grid(_skin_grid, _make_tile(id))
 
 
+## (Re)builds the hat tiles: each on a slime in the skin worn now.
+func _fill_hat_grid() -> void:
+	_clear_grid(_hat_grid)
+	hat_tiles.clear()
+	var hat_ids: Array[String] = [Hats.NONE]
+	for hat: Dictionary in Hats.LIST:
+		hat_ids.append(hat.id)
+	for id in hat_ids:
+		_add_to_grid(_hat_grid, _make_hat_tile(id))
+
+
+## (Re)builds the trail tiles: each a strip of goo in the skin worn now.
+func _fill_trail_grid() -> void:
+	_clear_grid(_trail_grid)
+	trail_tiles.clear()
+	for id in Cosmetics.trail_ids():
+		if Progress.cosmetic_visible(id):  # ABYSS is hidden while Descent is off, unless owned
+			_add_to_grid(_trail_grid, _make_trail_tile(id))
+
+
+## (Re)builds the HUB tiles: AUTO, then every skin (opaque).
+func _fill_hub_grid() -> void:
+	_clear_grid(_hub_grid)
+	hub_tiles.clear()
+	_add_to_grid(_hub_grid, _make_hub_tile(""))
+	var ids: Array[String] = []
+	for preset: Dictionary in Skins.PRESETS:
+		ids.append(preset.id)
+	ids.append_array([Skins.CUSTOM, Skins.RAINBOW, Skins.STOPWATCH])
+	for id in ids:
+		_add_to_grid(_hub_grid, _make_hub_tile(id))
+
+
+func _clear_grid(grid: VBoxContainer) -> void:
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+
+
 ## The tile grid of page `which`.
 func grid_for(which: String) -> VBoxContainer:
 	match which:
+		"hub": return _hub_grid
 		"hats": return _hat_grid
 		"trails": return _trail_grid
 		"papers": return _paper_grid
@@ -387,7 +433,9 @@ func show_page(which: String) -> void:
 	var hats := page == "hats"
 	var trails := page == "trails"
 	var papers := page == "papers"
+	var hub := page == "hub"
 	_skin_grid.visible = page == "skins"
+	_hub_grid.visible = hub
 	_hat_grid.visible = hats
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
@@ -399,12 +447,14 @@ func show_page(which: String) -> void:
 		_rule.text = rule_text("hats")
 		custom_panel.visible = false
 		showcase.visible = false
+		_fill_hat_grid()  # (in the skin worn now: it may have changed on the skins page)
 		_refresh_hats()
 		hat_tiles[Progress.selected_hat].grab_focus()
 	elif trails:
 		_rule.text = rule_text("trails")
 		custom_panel.visible = false
 		showcase.visible = false
+		_fill_trail_grid()
 		_refresh_trails()
 		trail_tiles[Progress.trail_style].grab_focus()
 	elif papers:
@@ -413,6 +463,13 @@ func show_page(which: String) -> void:
 		showcase.visible = false
 		_refresh_papers()
 		paper_tiles[Progress.map_paper].grab_focus()
+	elif hub:
+		_rule.text = rule_text("hub" if Progress.hub_color_open() else "hub_locked")
+		custom_panel.visible = false
+		showcase.visible = false
+		_fill_hub_grid()
+		_refresh_hub()
+		hub_tiles[Progress.hub_skin_in_use()].grab_focus()
 	else:
 		_refresh()
 		_preview(Progress.selected_skin)
@@ -448,6 +505,59 @@ func _make_tile(id: String) -> Button:
 	tile.set_meta("preview", preview)
 	tiles[id] = tile
 	return tile
+
+
+## A HUB tile: AUTO (its word), or a slime in that skin, opaque (a silhouette while it can't be chosen).
+func _make_hub_tile(id: String) -> Button:
+	var tile := UIKit.make_button("", func() -> void: _on_hub_tile(id), TILE_SIZE)
+	if id == "":
+		# i18n: wardrobe HUB page tile (the hub follows the worn skin), max 32px, 1 line
+		var label := UIKit.make_label(Loc.t("skins.hub_auto", "AUTO"), UIKit.FONT, UIKit.TEXT)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.size = TILE_SIZE
+		tile.add_child(label)
+	else:
+		var color: Color = Progress.hub_custom if id == Skins.CUSTOM and Progress.hub_skin == Skins.CUSTOM else _base_color(id)
+		var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, false, id == Skins.STOPWATCH)
+		preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
+		if not _hub_choosable(id):
+			preview.modulate = Color(0, 0, 0, 0.85)
+			preview.pause()
+		tile.add_child(preview)
+	tile.focus_entered.connect(func() -> void:
+		if page == "hub":
+			_refresh_hub(id))
+	hub_tiles[id] = tile
+	return tile
+
+
+func _hub_choosable(id: String) -> bool:
+	return Progress.hub_color_open() and (id == "" or Progress.is_skin_unlocked(id, false) or Progress.is_skin_unlocked(id, true))
+
+
+func _on_hub_tile(id: String) -> void:
+	if Progress.set_hub_skin(id):
+		if id == Skins.CUSTOM:  # (the custom tile shows the color the hub took)
+			for child in hub_tiles[id].get_children():
+				if child is AnimatedSprite2D:
+					(child as AnimatedSprite2D).material = Skins.make_material(Progress.hub_custom)
+	_refresh_hub(id)
+
+
+## The HUB page's status line (for `focus_id`, or the hub's color now) and tile highlights.
+func _refresh_hub(focus_id: Variant = null) -> void:
+	var id: String = Progress.hub_skin_in_use() if focus_id == null else focus_id
+	var skin_name := Loc.t("skins.hub_auto_line", "AUTO - YOUR SKIN'S COLOR") if id == "" else Skins.display_name(id)  # i18n: wardrobe HUB page status, max 240px, 1 line
+	if not _hub_choosable(id):
+		# i18n: wardrobe HUB page status line, max 300px, 1 line
+		status.text = rule_text("hub_locked") if not Progress.hub_color_open() else Loc.t("skins.locked_hub", "{name} - UNLOCK THIS SKIN FIRST", {name = skin_name})
+	elif id == Progress.hub_skin_in_use():
+		status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = skin_name})
+	else:
+		status.text = name
+	for tile_id: String in hub_tiles:
+		UIKit.set_selected(hub_tiles[tile_id], tile_id == Progress.hub_skin_in_use())
 
 
 ## A hat tile: a slime in the selected skin wearing the hat (a silhouette while locked).

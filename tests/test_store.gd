@@ -478,10 +478,38 @@ func _ui_wardrobe() -> void:
 	screen.trail_tiles["ink"].pressed.emit()
 	_check(progress.trail_style == "ink" and "WEARING" in screen.status.text, "an owned trail is worn")
 	screen.page_button.pressed.emit()
-	_check(screen.page == "papers" and screen.paper_tiles.size() == 4 and screen.page_button.text == "SKINS" and screen._title.text == "PAPERS",
+	_check(screen.page == "papers" and screen.paper_tiles.size() == 4 and screen.page_button.text == "HUB" and screen._title.text == "PAPERS",
 		"...then PAPERS (4 tiles: parchment and the three sold papers)")
 	screen.page_button.pressed.emit()
+	_check(screen.page == "hub" and screen.hub_tiles.size() == 14 and screen.hub_tiles[""].has_focus() and "BEAT THE STORY" in screen._rule.text,
+		"...then HUB (AUTO + 13 skins), shut before normal mode is beaten")
+	screen.hub_tiles["mint"].pressed.emit()
+	_check(progress.hub_skin_in_use() == "" and progress.hub_color() == progress.skin_color(), "...a skin can't be picked yet: the hub follows the worn skin")
+	progress.levels_cleared = Levels.COUNT
+	progress.selected_skin = "lime"
+	screen.show_page("hub")
+	_check(not "BEAT" in screen._rule.text, "normal mode beaten: the HUB page opens")
+	screen.hub_tiles["frost"].pressed.emit()
+	_check(progress.hub_skin_in_use() == "frost" and progress.hub_color() == Skins.get_preset("frost").color and progress.skin_color() == Skins.get_preset("lime").color
+		and "WEARING" in screen.status.text, "an unlocked skin colors the hub; the slime keeps its own")
+	screen.hub_tiles[Skins.RAINBOW].pressed.emit()
+	_check(progress.hub_skin_in_use() == "frost", "a locked skin (rainbow: every coin) can't be the hub's")
+	var file: ConfigFile = progress._write()
+	progress.hub_skin = ""
+	progress._read(file)
+	_check(progress.hub_skin_in_use() == "frost", "the hub's color is saved")
+	screen.hub_tiles[""].pressed.emit()
+	_check(progress.hub_skin_in_use() == "" and progress.hub_color() == progress.skin_color(), "AUTO: the hub follows the worn skin again")
+	screen.page_button.pressed.emit()
 	_check(screen.page == "skins", "...and back round to SKINS")
+	# A skin picked on the skins page shows on the hats page at once.
+	screen._on_tile("mint")
+	screen.show_page("hats")
+	var tint := Color.BLACK
+	for child in screen.hat_tiles[Hats.NONE].get_children():
+		if child is AnimatedSprite2D:
+			tint = (child.material as ShaderMaterial).get_shader_parameter("mid")
+	_check(tint.is_equal_approx(Skins.shades(Skins.get_preset("mint").color).mid), "a skin just picked shows on the hats page at once")
 	screen.free()
 
 

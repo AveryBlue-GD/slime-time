@@ -261,8 +261,8 @@ func _build_room() -> void:
 	material.set_shader_parameter("center", CENTER)
 	material.set_shader_parameter("radii", ROOM_RADII)
 	material.set_shader_parameter("background", UIKit.BG)
-	material.set_shader_parameter("rainbow", Progress.is_rainbow())
-	var shades := Skins.shades(Skins.RAINBOW_BASE if Progress.is_rainbow() else Progress.skin_color())
+	material.set_shader_parameter("rainbow", Progress.hub_rainbow())  # (the hub's own color once chosen: Progress.hub_color)
+	var shades := Skins.shades(Skins.RAINBOW_BASE if Progress.hub_rainbow() else Progress.hub_color())
 	for shade: String in shades:
 		material.set_shader_parameter("outline" if shade == "outline" else shade, shades[shade])
 	room.material = material
@@ -393,7 +393,7 @@ var _station_material: ShaderMaterial
 
 func _skin_material() -> ShaderMaterial:
 	if _station_material == null:
-		_station_material = Skins.make_material(Progress.skin_color(), Progress.is_rainbow())
+		_station_material = Skins.make_material(Progress.hub_color(), Progress.hub_rainbow())
 		_station_material.set_shader_parameter("translucency", 0.0)
 	return _station_material
 

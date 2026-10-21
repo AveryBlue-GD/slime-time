@@ -2435,6 +2435,16 @@ msgid "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd
+msgctxt "skins.rule_hub"
+msgid "THE HUB TAKES THIS COLOR"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.rule_hub_locked"
+msgid "BEAT THE STORY TO COLOR THE HUB"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_skins"
 msgid "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 msgstr "새 레벨을 깨면 최신 스킨을 장착해요"
@@ -2455,6 +2465,11 @@ msgid "PAPERS"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd
+msgctxt "skins.page_hub"
+msgid "HUB"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
 msgctxt "skins.page_skins"
 msgid "SKINS"
 msgstr "스킨"
@@ -2464,6 +2479,27 @@ msgstr "스킨"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.hat_color"
 msgid "COLOR"
+msgstr ""
+
+#. wardrobe HUB page tile (the hub follows the worn skin), max 32px, 1 line
+#. budget: max 32px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.hub_auto"
+msgid "AUTO"
+msgstr ""
+
+#. wardrobe HUB page status, max 240px, 1 line
+#. budget: max 240px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.hub_auto_line"
+msgid "AUTO - YOUR SKIN'S COLOR"
+msgstr ""
+
+#. wardrobe HUB page status line, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.locked_hub"
+msgid "{name} - UNLOCK THIS SKIN FIRST"
 msgstr ""
 
 #. {name} = the hat's, trail's or paper's name; status line, max 300px, 1 line. The two spaces are spacing.

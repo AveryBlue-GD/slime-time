@@ -245,6 +245,11 @@ var dev_coins := DEV_COINS
 ## --all-coins: every coin counts as found, wherever it is.
 var all_coins_debug := false
 var custom_color := Color8(239, 125, 47)
+## The hub's color ([skin] hub, owner 2026-10-21): "" = AUTO (the worn skin's), else a skin id whose
+## look (opaque) the room and stations take; `hub_custom` = the custom color it was set to (the
+## wardrobe gives the wheel a fresh color each visit). Only once normal mode is beaten (hub_color_open).
+var hub_skin := ""
+var hub_custom := Color8(239, 125, 47)
 var sound_on := true
 ## Sound-effects volume, 0-1 (the SFX audio bus: Sfx and the level ambience; saved as `volume`, which
 ## was the master volume before music) and music volume, 0-1 (the Music bus: the Music autoload).
@@ -768,6 +773,9 @@ func _read(file: ConfigFile, from_code := false) -> void:
 		if key in hat_dyes_owned:
 			hat_dyes[key.get_slice(":", 0)] = key.get_slice(":", 1)
 	selected_hat = _string(file, "skin", "hat", Hats.NONE)
+	hub_skin = _string(file, "skin", "hub", "")
+	var hub_tint: Variant = file.get_value("skin", "hub_custom", hub_custom)
+	hub_custom = hub_tint if typeof(hub_tint) == TYPE_COLOR else hub_custom
 	if not is_hat_unlocked(selected_hat):
 		selected_hat = Hats.NONE
 	sound_on = _bool(file, "settings", "sound_on", true)
@@ -1263,6 +1271,9 @@ func _write(for_code := false) -> ConfigFile:
 	file.set_value("skin", "selected", selected_skin)
 	file.set_value("skin", "custom_color", custom_color)
 	file.set_value("skin", "jelly", jelly)
+	if hub_skin != "":
+		file.set_value("skin", "hub", hub_skin)
+		file.set_value("skin", "hub_custom", hub_custom)
 	file.set_value("skin", "hat", selected_hat)
 	file.set_value("hats", "owned", hats_owned.duplicate())
 	if not hat_dyes_owned.is_empty():
@@ -2725,6 +2736,7 @@ func reset_progress() -> void:
 	randoms_cleared = 0
 	randoms_won = 0
 	selected_skin = Skins.DEFAULT
+	hub_skin = ""
 	set_jelly(false)
 	selected_hat = Hats.NONE
 	hats_owned.clear()
@@ -2776,6 +2788,48 @@ func reset_progress() -> void:
 	descent_paid = 0
 	descent_milestones = 0
 	save_progress()
+
+
+## Whether the hub's color can be chosen: normal mode beaten (all story levels cleared), or dev mode.
+func hub_color_open() -> bool:
+	return dev_tools or levels_cleared >= Levels.COUNT
+
+
+## The skin the hub wears: "" = AUTO (the worn skin's), or the chosen one while it's allowed.
+func hub_skin_in_use() -> String:
+	if hub_skin == "" or not hub_color_open() or not (is_skin_unlocked(hub_skin, false) or is_skin_unlocked(hub_skin, true)):
+		return ""
+	return hub_skin
+
+
+## The hub's color (the room and the stations): the chosen skin's, else the worn skin's.
+func hub_color() -> Color:
+	match hub_skin_in_use():
+		"":
+			return skin_color()
+		Skins.STOPWATCH:
+			return Skins.STOPWATCH_BASE
+		Skins.RAINBOW:
+			return Skins.RAINBOW_BASE
+		Skins.CUSTOM:
+			return hub_custom
+	return Skins.get_preset(hub_skin_in_use()).color
+
+
+## Whether the hub flows in rainbow colors (the chosen skin, else the worn one).
+func hub_rainbow() -> bool:
+	return is_rainbow() if hub_skin_in_use() == "" else hub_skin_in_use() == Skins.RAINBOW
+
+
+## Sets the hub's color to skin `id` ("" = AUTO); false if that can't be chosen. Saves.
+func set_hub_skin(id: String) -> bool:
+	if id != "" and (not hub_color_open() or not (is_skin_unlocked(id, false) or is_skin_unlocked(id, true))):
+		return false
+	hub_skin = id
+	if id == Skins.CUSTOM:
+		hub_custom = custom_color
+	save_progress()
+	return true
 
 
 ## True when the rainbow skin is in use (and unlocked).

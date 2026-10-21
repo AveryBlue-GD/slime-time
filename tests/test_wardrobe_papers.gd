@@ -54,16 +54,16 @@ func _hub_name() -> void:
 
 func _pages() -> void:
 	var screen := await _open()
-	_check(screen.PAGES == ["skins", "hats", "trails", "papers"], "four pages: SKINS, HATS, TRAILS, PAPERS")
+	_check(screen.PAGES == ["skins", "hats", "trails", "papers", "hub"], "five pages: SKINS, HATS, TRAILS, PAPERS, HUB")
 	var seen: Array[String] = []
 	var buttons: Array[String] = []
-	for i in 4:
+	for i in 5:
 		seen.append(screen._title.text)
 		buttons.append(screen.page_button.text)
 		screen.page_button.pressed.emit()
 		await process_frame
-	_check(seen == ["SKINS", "HATS", "TRAILS", "PAPERS"] and screen.page == "skins", "the page button cycles SKINS -> HATS -> TRAILS -> PAPERS -> SKINS (%s)" % [seen])
-	_check(buttons == ["HATS", "TRAILS", "PAPERS", "SKINS"], "the page button names the next page (%s)" % [buttons])
+	_check(seen == ["SKINS", "HATS", "TRAILS", "PAPERS", "HUB"] and screen.page == "skins", "the page button cycles SKINS -> HATS -> TRAILS -> PAPERS -> HUB -> SKINS (%s)" % [seen])
+	_check(buttons == ["HATS", "TRAILS", "PAPERS", "HUB", "SKINS"], "the page button names the next page (%s)" % [buttons])
 	for page: String in screen.PAGES:
 		screen.show_page(page)
 		var grids := 0
@@ -77,10 +77,12 @@ func _pages() -> void:
 	action.action = "tab_next"
 	action.pressed = true
 	screen._unhandled_input(action)
-	_check(screen.page == "skins", "RB on PAPERS wraps to SKINS")
+	_check(screen.page == "hub", "RB on PAPERS goes on to HUB")
+	screen._unhandled_input(action)
+	_check(screen.page == "skins", "RB on HUB wraps to SKINS")
 	action.action = "tab_prev"
 	screen._unhandled_input(action)
-	_check(screen.page == "papers", "LB on SKINS wraps to PAPERS")
+	_check(screen.page == "hub", "LB on SKINS wraps to HUB")
 	_close(screen)
 
 
