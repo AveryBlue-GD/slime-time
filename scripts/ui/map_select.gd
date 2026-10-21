@@ -471,7 +471,7 @@ func open_view(level: int) -> void:
 	view_area.position = Vector2(map_area.position)
 	view_area.size = Vector2(map_area.size)
 	var sizes := MapView.layout(maze.cells, map_area.size, themed)
-	var paper: String = Progress.map_style() if themed else ""
+	var paper: String = Progress.map_paper if themed else ""
 	var image := MapView.render(maze, survey, sizes, coins, theme, paper, Progress.skin_color(), Economy.map_coin_reveal_on(Progress.dev_tools))
 	view_area.color = MapView.palette(theme, paper, Progress.skin_color()).fog
 	view_map.texture = ImageTexture.create_from_image(image)
@@ -480,7 +480,7 @@ func open_view(level: int) -> void:
 	view_map.position = Vector2(map_area.position + (map_area.size - image.get_size()) / 2)
 	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
 	var with_paper := ""
-	if paper != "" and paper != Cosmetics.DEFAULT_PAPER and not "|" in paper:
+	if paper != "" and paper != Cosmetics.DEFAULT_PAPER:
 		# i18n: {percent} = 0-100 (the % sign is part of the string), {paper} = the map paper's name; max 296px, 1 line
 		with_paper = Loc.t("maps.uncovered_paper", "{percent}% UNCOVERED  {paper}", {percent = percent, paper = Cosmetics.display_name(paper)})
 	# i18n: {percent} = 0-100; the line under the map, max 296px, 1 line

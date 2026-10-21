@@ -480,23 +480,12 @@ func _ui_wardrobe() -> void:
 	screen.page_button.pressed.emit()
 	_check(screen.page == "papers" and screen.paper_tiles.size() == 12 and screen.page_button.text == "HUB" and screen._title.text == "PAPERS",
 		"...then PAPERS (12 tiles: parchment and the eleven sold papers)")
-	# Papers are bundles: SET picks the part a press sets, and owned papers' parts mix.
+	# Papers are bundles, worn whole: pressing an owned one wears its sheet, walls and route.
 	progress.cosmetics_owned.append_array(["night", "prism_paper"])
 	screen.show_page("papers")
-	screen.paper_tiles["night"].pressed.emit()
-	_check(progress.map_style() == "night", "SET: ALL wears a paper whole (its sheet, walls and route)")
-	screen.part_button.pressed.emit()
-	screen.part_button.pressed.emit()
-	_check(screen.paper_part == "walls" and "WALLS" in screen.part_button.text, "SET cycles ALL -> SHEET -> WALLS")
 	screen.paper_tiles["prism_paper"].pressed.emit()
-	_check(progress.map_style() == "night|prism_paper|night" and Cosmetics.style_flows(progress.map_style())
-		and screen.paper_mix.material != null and "WALLS" in screen.status.text, "...a paper's walls on another's sheet, flowing (the mix drawn big)")
-	var mixed: ConfigFile = progress._write()
-	progress.map_walls = "night"
-	progress._read(mixed)
-	_check(progress.map_style() == "night|prism_paper|night", "the mix is saved")
-	progress.unequip_cosmetic("prism_paper")
-	_check(progress.map_style() == "night|parchment|night", "taking a paper off drops every part it gave")
+	_check(progress.map_paper == "prism_paper" and Cosmetics.style_flows(progress.map_paper) and "WEARING" in screen.status.text
+		and (screen.paper_tiles["prism_paper"].get_child(0) as TextureRect).material != null, "an owned paper is worn whole; PRISM's tile flows")
 	screen.page_button.pressed.emit()
 	_check(screen.page == "hub" and screen.hub_tiles.size() == 14 and screen.hub_tiles[""].has_focus() and "BEAT THE STORY" in screen._rule.text,
 		"...then HUB (AUTO + 13 skins), shut before normal mode is beaten")

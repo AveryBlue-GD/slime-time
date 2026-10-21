@@ -218,11 +218,6 @@ var abilities := {}
 var cosmetics_owned: Array[String] = []
 var trail_style := Cosmetics.DEFAULT_TRAIL
 var map_paper := Cosmetics.DEFAULT_PAPER
-## A map style mixes owned papers' parts (owner, 2026-10-21; the wardrobe's PAPERS page): `map_paper`
-## gives the sheet, these the walls and the route ([cosmetics] walls / route; a save without them
-## takes the sheet's paper for all three). map_style() is what MapView draws.
-var map_walls := Cosmetics.DEFAULT_PAPER
-var map_route := Cosmetics.DEFAULT_PAPER
 ## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
 ## only be collected once; they're saved the moment they're grabbed.
 var coins_found := {}
@@ -448,8 +443,6 @@ func _ready() -> void:
 				if paper != Cosmetics.DEFAULT_PAPER and not paper in cosmetics_owned:
 					cosmetics_owned.append(paper)
 				map_paper = paper
-				map_walls = paper
-				map_route = paper
 		elif arg == "--softbounce":  # the soft bounce test (Economy.SOFT_BOUNCE_TEST, docs/spring-cleaning/soft-bounce-test.md)
 			saving_enabled = false
 			Economy.softbounce_force = 1
@@ -1073,12 +1066,6 @@ func _read_store(file: ConfigFile) -> void:
 	map_paper = _string(file, "cosmetics", "paper", Cosmetics.DEFAULT_PAPER)
 	if not owns_cosmetic(map_paper) or Cosmetics.kind_of(map_paper) != Cosmetics.PAPER:
 		map_paper = Cosmetics.DEFAULT_PAPER
-	map_walls = _string(file, "cosmetics", "walls", map_paper)
-	if not owns_cosmetic(map_walls) or Cosmetics.kind_of(map_walls) != Cosmetics.PAPER:
-		map_walls = map_paper
-	map_route = _string(file, "cosmetics", "route", map_paper)
-	if not owns_cosmetic(map_route) or Cosmetics.kind_of(map_route) != Cosmetics.PAPER:
-		map_route = map_paper
 	hats_bought = clampi(_int(file, "hats", "bought", 0), 0, Hats.LIST.size())
 	tickets_spent = clampi(_int(file, "wallet", "tickets_spent", 0), 0, 100 * TICKETS_MAX)
 
@@ -1345,10 +1332,6 @@ func _write(for_code := false) -> ConfigFile:
 		file.set_value("cosmetics", "trail", trail_style)
 	if map_paper != Cosmetics.DEFAULT_PAPER:
 		file.set_value("cosmetics", "paper", map_paper)
-	if map_walls != map_paper:
-		file.set_value("cosmetics", "walls", map_walls)
-	if map_route != map_paper:
-		file.set_value("cosmetics", "route", map_route)
 	for key: int in medals:
 		file.set_value("medals", "level_%d" % key, medals[key])
 	for key: int in ([] if for_code and dev_tools else maps.keys()):  # a dev session's in-memory maps stay out of save codes
@@ -2632,58 +2615,21 @@ func equip_cosmetic(id: String) -> bool:
 	return true
 
 
-## Takes off cosmetic `id` if it is worn (back to its kind's default; a paper: every part it gives). Saves.
+## Takes off cosmetic `id` if it is worn (back to its kind's default). Saves.
 func unequip_cosmetic(id: String) -> void:
 	if trail_style == id:
 		trail_style = Cosmetics.DEFAULT_TRAIL
-	if map_paper == id:
+	elif map_paper == id:
 		map_paper = Cosmetics.DEFAULT_PAPER
-	if map_walls == id:
-		map_walls = Cosmetics.DEFAULT_PAPER
-	if map_route == id:
-		map_route = Cosmetics.DEFAULT_PAPER
 	save_progress()
 
 
-## Wears an owned cosmetic; a paper is worn whole (its sheet, walls and route).
+## Wears an owned cosmetic; a paper is worn whole (its sheet, walls and route together).
 func _wear(id: String) -> void:
 	if Cosmetics.kind_of(id) == Cosmetics.TRAIL:
 		trail_style = id
 	else:
 		map_paper = id
-		map_walls = id
-		map_route = id
-
-
-## The map style MapView draws: the paper bundle when all three parts are one paper's, else
-## "sheet|walls|route" (Cosmetics.style_parts).
-func map_style() -> String:
-	if map_walls == map_paper and map_route == map_paper:
-		return map_paper
-	return "%s|%s|%s" % [map_paper, map_walls, map_route]
-
-
-## Uses owned paper `id`'s part `part` ("sheet", "walls", "route" or "all") in the map style. Saves.
-## False if the paper isn't owned.
-func set_map_part(part: String, id: String) -> bool:
-	if not owns_cosmetic(id) or Cosmetics.kind_of(id) != Cosmetics.PAPER:
-		return false
-	match part:
-		"sheet":
-			map_paper = id
-		"walls":
-			map_walls = id
-		"route":
-			map_route = id
-		_:
-			_wear(id)
-	save_progress()
-	return true
-
-
-## Whether paper `id` gives any part of the map style in use.
-func uses_paper(id: String) -> bool:
-	return id in [map_paper, map_walls, map_route]
 
 
 ## The cheapest thing in the store not owned yet (hat spin, hat dye, workshop level, cosmetic)
@@ -2862,8 +2808,6 @@ func reset_progress() -> void:
 	cosmetics_owned.clear()
 	trail_style = Cosmetics.DEFAULT_TRAIL
 	map_paper = Cosmetics.DEFAULT_PAPER
-	map_walls = Cosmetics.DEFAULT_PAPER
-	map_route = Cosmetics.DEFAULT_PAPER
 	random_pay_day = 0
 	random_paid = 0
 	random_paid_seeds.clear()

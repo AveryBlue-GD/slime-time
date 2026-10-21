@@ -2636,48 +2636,6 @@ msgid_plural "{name} - {price} TIX IN THE SHOP"
 msgstr[0] "{name} - {price} TIX EN BOUTIQUE"
 msgstr[1] "{name} - {price} TIX EN BOUTIQUE"
 
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_sheet"
-msgid "SET: SHEET"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_walls"
-msgid "SET: WALLS"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_route"
-msgid "SET: ROUTE"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_all"
-msgid "SET: ALL"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_name_walls"
-msgid "WALLS"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_name_route"
-msgid "ROUTE"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.part_name_sheet"
-msgid "SHEET"
-msgstr ""
-
-#. wardrobe PAPERS status, max 300px, 1 line; {parts} = the parts it gives, e.g. SHEET, ROUTE
-#. budget: max 300px, lines 1
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.paper_parts"
-msgid "{name} - {parts}"
-msgstr ""
-
 #. status line (demo build), max 300px, 1 line; {name} = a skin name
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd

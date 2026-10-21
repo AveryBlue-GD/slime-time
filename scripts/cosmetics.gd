@@ -2,8 +2,7 @@ class_name Cosmetics
 extends RefCounted
 
 ## Ticket cosmetics v1 (upgrades v2 batch 2, docs/design/upgrades-v2.md C.2): five goo TRAIL styles
-## and map PAPERS (each a bundle: its sheet, its walls and its route; owner 2026-10-21: owned bundles'
-## parts are mixed in the wardrobe, Progress.map_paper / map_walls / map_route, style_colors), sold in the hat wheel's SHOP tab (prices: Economy.COSMETICS), owned for
+## and map PAPERS (each a bundle: its sheet, its walls and its route, worn together; Progress.map_paper), sold in the hat wheel's SHOP tab (prices: Economy.COSMETICS), owned for
 ## good (Progress.cosmetics_owned), worn one at a time (Progress.trail_style / map_paper; the
 ## defaults DEFAULT_TRAIL and DEFAULT_PAPER are free and always owned). All palette / pattern work:
 ## no new sprite sheets, and nothing in a shader indexes an array at run time.
@@ -275,49 +274,27 @@ static func trail_preview(style: String, skin: Color, rainbow: bool, size := Vec
 
 # ---------------------------------------------------------------- map papers
 
-## A map style: three owned papers' parts, "sheet|walls|route" (a bare paper id = all three its own;
-## Progress.map_style).
-static func style_parts(style: String) -> Array[String]:
-	var parts: Array[String] = []
-	for part in (style.split("|") if "|" in style else PackedStringArray([style, style, style])):
-		parts.append(part)
-	while parts.size() < 3:
-		parts.append(DEFAULT_PAPER)
-	return parts.slice(0, 3)
+## Which of a paper's palette colors may flow (a PRISM paper: MapView.mark_flow).
+const FLOW_KEYS := ["floor", "wall", "start", "goal", "route"]
 
 
-## Which of a paper's colors make up each part of a bundle.
-const SHEET_KEYS := ["fog", "floor", "frame", "coin", "coin_edge"]
-const WALL_KEYS := ["wall", "start", "goal"]
-const ROUTE_KEYS := ["route"]
-
-
-## The colors style `style` (see style_parts) puts over a map's palette: each part taken from its own
-## paper's colors (the default parchment keeps the map's own); `flow` = {palette key: "prism" /
-## "gradient"} for parts of a flowing paper. `ink`: the skin color (NIGHT draws in it).
-static func style_colors(style: String, ink := Color.WHITE) -> Dictionary:
-	var parts := style_parts(style)
-	var out := {}
-	var flow := {}
-	for i in 3:
-		var colors := paper_colors(parts[i], ink)
-		var mode: String = get_item(parts[i]).get("flow", "")
-		for key: String in [SHEET_KEYS, WALL_KEYS, ROUTE_KEYS][i]:
-			if colors.has(key):
-				out[key] = colors[key]
-				if mode != "" and key in ["floor", "wall", "start", "goal", "route"]:
-					flow[key] = mode
-	if not flow.is_empty():
+## The colors paper `paper` puts over a map's palette, plus `flow` = {palette key: "prism" /
+## "gradient"} for a flowing paper. `ink`: the skin color (NIGHT draws in it).
+static func style_colors(paper: String, ink := Color.WHITE) -> Dictionary:
+	var out := paper_colors(paper, ink)
+	var mode: String = get_item(paper).get("flow", "")
+	if mode != "":
+		var flow := {}
+		for key: String in FLOW_KEYS:
+			if out.has(key):
+				flow[key] = mode
 		out.flow = flow
 	return out
 
 
-## Whether style `style` has a flowing part (its map texture needs map_flow.gdshader).
-static func style_flows(style: String) -> bool:
-	for part in style_parts(style):
-		if get_item(part).has("flow"):
-			return true
-	return false
+## Whether paper `paper` flows (its map texture needs map_flow.gdshader).
+static func style_flows(paper: String) -> bool:
+	return get_item(paper).has("flow")
 
 
 ## The colors map paper `paper` puts over a map's palette (MapView.palette): {} for the default.

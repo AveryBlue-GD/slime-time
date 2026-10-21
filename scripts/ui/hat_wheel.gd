@@ -806,7 +806,7 @@ func _worn(id: String) -> bool:
 	if _is_dye(id):
 		var parts := _dye_parts(id)
 		return Progress.selected_hat == parts[0] and Progress.hat_dye_of(parts[0]) == parts[1]
-	return Progress.trail_style == id or Progress.uses_paper(id)
+	return Progress.trail_style == id or Progress.map_paper == id
 
 
 ## A dyeable hat tile's right part: the dyes owned of its dyes ("3/9").

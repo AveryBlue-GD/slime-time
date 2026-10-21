@@ -73,7 +73,7 @@ func _run() -> void:
 	await _ui_page("ui_dyed", _ui_dyed, 30)
 	await _ui_page("ui_wardrobe_color", _ui_wardrobe_color, 30)
 	await _ui_page("ui_hub_page", _ui_hub_page, 30)
-	await _ui_page("ui_papers_mix", _ui_papers_mix, 30)
+	await _ui_page("ui_papers", _ui_papers, 30)
 	await _ui_page("ui_shop_papers", _ui_shop_papers, 30)
 	await _ui_page("ui_hub_frost", _ui_hub_frost, 30)
 	await _ui_page("ui_wardrobe", _ui_wardrobe, 30)
@@ -335,12 +335,10 @@ func _ui_hub_page() -> void:
 	screen.show_page.call_deferred("hub")
 
 
-## The wardrobe's PAPERS page with every paper owned and a mix: NIGHT sheet, PRISM walls, BUTTER route.
-func _ui_papers_mix() -> void:
+## The wardrobe's PAPERS page with every paper owned, PRISM worn.
+func _ui_papers() -> void:
 	Progress.cosmetics_owned.assign(Cosmetics.ids())
-	Progress.map_paper = "night"
-	Progress.map_walls = "prism_paper"
-	Progress.map_route = "butter_paper"
+	Progress.map_paper = "prism_paper"
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var screen: Control = load("res://scenes/skins.tscn").instantiate()

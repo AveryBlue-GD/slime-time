@@ -23,11 +23,10 @@ extends RefCounted
 ## a 36x20-cell maze still fits the 320x180 screen (5 + 2 px) with room for the title and BACK. Floors
 ## are always an odd number of px, so the 1 px route runs exactly down the middle of a corridor.
 ## `theme` (a Themes id; "" = the plain parchment) draws the map in that level's palette with a themed
-## frame round it (on in the game: map_select.THEMED_MAPS). `paper` (a map style: a Cosmetics map paper
-## bundle, or "sheet|walls|route" mixing three owned papers' parts, Cosmetics.style_colors; "" /
-## "parchment" = none) recolors the sheet (paper, fog, frame, coins), the walls (ink and marks) and the
-## route; walls or a route too like the sheet are pushed lighter or darker (_readable). A flowing part
-## (PRISM, RAINBOW) is marked in the image (mark_flow) for map_flow.gdshader to turn its colors.
+## frame round it (on in the game: map_select.THEMED_MAPS). `paper` (a Cosmetics map paper bundle, bought
+## in the prize wheel's SHOP; "" / "parchment" = none) recolors the sheet (paper, fog, frame, coins), the
+## walls (ink and marks) and the route (Cosmetics.style_colors). A flowing paper (PRISM) is marked in the
+## image (mark_flow) for map_flow.gdshader to turn its colors.
 ## The MAP TABLE's tiles never show the real map: `preview` draws a tiny made-up example maze per
 ## level (EXAMPLE_CELLS, fixed for everyone, nothing from the real layout), lit in proportion to the
 ## real % uncovered, with an example route only when the level has a recorded route.
@@ -148,9 +147,6 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 	var style := Cosmetics.style_colors(paper, ink)
 	pal.merge(style, true)
 	pal.flow = style.get("flow", {})
-	if "|" in paper:  # (a mix of parts: keep the walls, marks and route readable on the sheet)
-		for key: String in ["wall", "start", "goal", "route"]:
-			pal[key] = _readable(pal[key], pal.floor, 0.32 if key != "route" else 0.22)
 	if Coin.METAL.has(theme):  # the level's in-game coin metal, on every paper
 		var m: Array = Coin.METAL[theme]
 		var edge: Color = m[0]
@@ -168,18 +164,6 @@ static func palette(theme := "", paper := "", ink := Color.WHITE) -> Dictionary:
 		pal.coin_edge = edge
 	pal.faint = (pal.route as Color).lerp(pal.floor, ROUTE_FAINT)
 	return pal
-
-
-## `color`, or a darker / lighter shade of it, so its brightness differs from `back`'s by `gap`.
-static func _readable(color: Color, back: Color, gap: float) -> Color:
-	if absf(_luma(color) - _luma(back)) >= gap:
-		return color
-	var darker := _luma(back) > 0.5
-	for k in range(1, 11):
-		var c := color.darkened(k * 0.09) if darker else color.lightened(k * 0.09)
-		if absf(_luma(c) - _luma(back)) >= gap:
-			return c
-	return Color.BLACK if darker else Color.WHITE
 
 
 ## The rainbow gradient's width across a map (px) and its bands, as the skin's (slime_skin.gdshader).
