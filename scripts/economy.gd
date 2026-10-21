@@ -76,9 +76,10 @@ const SPIN_COST_MAX := 40
 ## Hats are never sold (owner, 2026-10-21: the TAILOR's direct buy is gone). The SHOP's DYES sell a
 ## won hat in another color (Hats.dyes_for: 10 dyeable hats, 10-11 dyes each, 103 in all) for
 ## DYE_PRICE tickets each, about one day's paid randomizer wins; the flowing RAINBOW dye costs
-## DYE_RAINBOW_PRICE (owner, 2026-10-21).
+## DYE_RAINBOW_PRICE, the PRISM dye (it turns through the colors as one) DYE_PRISM_PRICE (owner, 2026-10-21).
 const DYE_PRICE := 10
 const DYE_RAINBOW_PRICE := 99
+const DYE_PRISM_PRICE := 50
 ## The wheel's odds, the one rarity table (Progress.wheel_weight reads it; Hats.LIST's own `weight`
 ## field is not used for the wheel): every hat weighs WHEEL_WEIGHT, a WHEEL_RARE one
 ## WHEEL_RARE_WEIGHT, and the flowing (rainbow) hat gets Hats.PITY_STEP more per spin that missed

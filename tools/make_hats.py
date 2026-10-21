@@ -703,7 +703,8 @@ def build():
 
 
 # ---------------------------------------------------------------- dyes (assets/sprites/hat_dyes.png)
-# Hat dyes, bought with tickets in the hat wheel's SHOP (Hats.DYES: the same ids in the same order).
+# Hat dyes, bought with tickets in the hat wheel's SHOP (Hats.DYES: the same ids in the same order, plus
+# dyes drawn like one of these, `block`: PRISM uses the rainbow block).
 # Each dye redraws the dyeable hats with one material swapped for the dye's ramp (so the shading,
 # outline and lining follow it, as if the hat had been drawn in that color). hat_dyes.png is a block
 # of ROWS x 16 px per dye, in DYES order, laid out like hats.png (same columns), with only the

@@ -49,7 +49,7 @@ const LIST := [
 	{id = "cowboy", name = "COWBOY HAT", column = 4, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	{id = "chef", name = "CHEF HAT", column = 5, dyeable = true, own = "snow"},  # i18n: ignore (English source; shown via display_name)
 	{id = "wizard", name = "WIZARD HAT", column = 6, dyeable = true, own = "plum"},  # i18n: ignore (English source; shown via display_name)
-	{id = "viking", name = "VIKING HELMET", column = 7, dyeable = true, own = "butter"},  # (a dye colors its rim)  # i18n: ignore (English source; shown via display_name)
+	{id = "viking", name = "VIKING HELMET", column = 7, dyeable = true, own = "butter"},  # i18n: ignore (English source; shown via display_name); a dye colors its rim
 	# Its propeller spins (frames, see Hat._animate): lazily at rest, faster on the move, fastest flying off in a leap.
 	# A dye colors the propeller (both blades).
 	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0, dyeable = true},  # i18n: ignore (English source; shown via display_name)
@@ -74,12 +74,13 @@ const DYES := [
 	{id = "bubblegum", color = Color8(236, 120, 176)},
 	{id = "midnight", color = Color8(52, 50, 72)},
 	{id = "snow", color = Color8(232, 232, 240)},
-	# Its colors flow (rainbow_hat.gdshader, material_for); Economy.DYE_RAINBOW_PRICE.
-	{id = "rainbow", color = Color8(222, 62, 70), flows = true},
+	# The two flowing dyes (owner, 2026-10-21: both sold), drawn alike (hat_dyes.png's rainbow block,
+	# `block`), told apart by the shader (material_for): PRISM turns the dyed part through the colors
+	# as one, like the rainbow hat's arch (Economy.DYE_PRISM_PRICE); RAINBOW lays the rainbow jelly
+	# skin's own flowing rainbow across it (`gradient`; Economy.DYE_RAINBOW_PRICE).
+	{id = "prism", color = Color8(222, 62, 70), flows = true, block = "rainbow"},
+	{id = "rainbow", color = Color8(222, 62, 70), flows = true, gradient = true},
 ]
-## The RAINBOW dye's look (owner, 2026-10-21: the gradient): false = the dyed part turns through the colors as one (like the rainbow
-## hat's arch), true = a rainbow gradient flowing across it (like the rainbow jelly skin).
-static var RAINBOW_GRADIENT := true
 ## A dye block's height in hat_dyes.png: every width's row (Width), like hats.png.
 const DYE_BLOCK := 6 * 16
 
@@ -99,11 +100,27 @@ static func dyes_for(id: String) -> Array[String]:
 	return out
 
 
-## The block of dye `dye` in hat_dyes.png (-1: not a dye).
+## Dye `dye`'s place in DYES (-1: not a dye).
 static func dye_index(dye: String) -> int:
 	for i in DYES.size():
 		if DYES[i].id == dye:
 			return i
+	return -1
+
+
+## Dye `dye`'s block in hat_dyes.png (tools/make_hats.py DYES order): a dye drawn like another
+## (`block`) uses that one's; dyes with a `block` of their own aren't in the sheet.
+static func sheet_block(dye: String) -> int:
+	var i := dye_index(dye)
+	if i < 0:
+		return -1
+	var drawn: String = DYES[i].get("block", dye)
+	var n := 0
+	for entry: Dictionary in DYES:
+		if entry.id == drawn:
+			return n
+		if not entry.has("block"):
+			n += 1
 	return -1
 
 
@@ -135,6 +152,8 @@ static func dye_name(dye: String) -> String:
 			return Loc.t("dye.midnight", "MIDNIGHT")
 		"snow":
 			return Loc.t("dye.snow", "SNOW")
+		"prism":
+			return Loc.t("dye.prism", "PRISM")
 		"rainbow":
 			return Loc.t("dye.rainbow", "RAINBOW")
 	# i18n: a dyeable hat in its own color (no dye), max 64px, 1 line; the SHOP's DYES tiles
@@ -152,7 +171,7 @@ static func texture_for(id: String, dye := "") -> Texture2D:
 static func dye_region(id: String, dye: String, width := Width.NORMAL, frame := 0) -> Rect2:
 	var r := region(id, width, frame)
 	if dye != "" and dye in dyes_for(id):
-		r.position.y += dye_index(dye) * DYE_BLOCK
+		r.position.y += sheet_block(dye) * DYE_BLOCK
 	return r
 
 
@@ -167,12 +186,13 @@ static func dye_flows(dye: String) -> bool:
 static func material_for(id: String, dye := "") -> Material:
 	if not get_hat(id).get("flows", false) and not (dye_flows(dye) and dye in dyes_for(id)):
 		return null
-	return flow_material(RAINBOW_GRADIENT and not get_hat(id).get("flows", false))
+	var i := dye_index(dye)
+	return flow_material(i >= 0 and DYES[i].get("gradient", false) and dye in dyes_for(id) and not get_hat(id).get("flows", false))
 
 
 ## The flowing-rainbow shader (assets/shaders/rainbow_hat.gdshader) as a new material; `gradient`:
 ## a rainbow running across the pixels and flowing (like the rainbow jelly skin) instead of the
-## whole thing turning one color at a time (RAINBOW_GRADIENT picks the RAINBOW dye's look).
+## whole thing turning one color at a time (the RAINBOW dye; PRISM turns as one).
 static func flow_material(gradient := false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/rainbow_hat.gdshader")

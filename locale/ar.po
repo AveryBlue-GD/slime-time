@@ -637,6 +637,11 @@ msgid "SNOW"
 msgstr ""
 
 #: scripts/hats.gd
+msgctxt "dye.prism"
+msgid "PRISM"
+msgstr ""
+
+#: scripts/hats.gd
 msgctxt "dye.rainbow"
 msgid "RAINBOW"
 msgstr ""

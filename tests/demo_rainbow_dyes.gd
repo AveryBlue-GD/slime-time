@@ -1,7 +1,7 @@
 extends Node2D
 
-## The RAINBOW hat dye (a watchable check, not a test): every dyeable hat in it at 2x, on lime
-## slimes (top row) and on the rainbow skin (bottom row), where the hat's gradient must line up with
+## The flowing hat dyes (a watchable check, not a test): every dyeable hat at 2x, in PRISM on lime
+## slimes (top row) and in RAINBOW on the rainbow skin (bottom row), where the hat's gradient must line up with
 ## the body's rainbow and flow at its pace. Record it with --write-movie.
 ## ./tools/godot.sh --path . res://tests/demo_rainbow_dyes.tscn
 
@@ -18,7 +18,7 @@ func _ready() -> void:
 		if "rainbow" in Hats.dyes_for(id):
 			hats.append(id)
 	for row in 2:
-		var head := UIKit.make_label(["RAINBOW DYE ON LIME", "RAINBOW DYE ON THE RAINBOW SKIN"][row], UIKit.FONT, UIKit.TEXT)  # i18n: ignore (dev comparison scene)
+		var head := UIKit.make_label(["PRISM DYE (50) ON LIME", "RAINBOW DYE (99) ON THE RAINBOW SKIN"][row], UIKit.FONT, UIKit.TEXT)  # i18n: ignore (dev comparison scene)
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		head.size = Vector2(320, 10)
 		head.position = Vector2(0, 8 + row * 88)
@@ -30,4 +30,4 @@ func _ready() -> void:
 			var hat := Hat.new()
 			hat.scale = slime.scale
 			add_child(hat)
-			hat.setup(hats[i], slime, null, "rainbow")
+			hat.setup(hats[i], slime, null, ["prism", "rainbow"][row])

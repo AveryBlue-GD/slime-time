@@ -2419,7 +2419,9 @@ func hat_dye_of(hat: String) -> String:
 func dye_price(dye := "") -> int:
 	if dev_tools:
 		return 0
-	return Economy.DYE_RAINBOW_PRICE if Hats.dye_flows(dye) else Economy.DYE_PRICE
+	if not Hats.dye_flows(dye):
+		return Economy.DYE_PRICE
+	return Economy.DYE_PRISM_PRICE if dye == "prism" else Economy.DYE_RAINBOW_PRICE
 
 
 ## A dye can be bought for a hat you have won, in a dye it comes in and you don't own yet.

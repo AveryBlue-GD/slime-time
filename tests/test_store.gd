@@ -123,11 +123,13 @@ func _dyes() -> void:
 	var count := 0
 	for hat in Hats.ids():
 		count += Hats.dyes_for(hat).size()
-	_check(count == 103 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
+	_check(count == 113 and Hats.dyes_for("tophat").size() == 11 and Hats.dyes_for("cowboy").size() == 12 and Hats.dyes_for("crown").is_empty()
 		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
-		"103 dyes: 10 dyeable hats, each without its own color, each with RAINBOW (%d)" % count)
-	_check(progress.dye_price("teal") == 10 and progress.dye_price("rainbow") == 99 and Hats.material_for("beanie", "rainbow") != null
-		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW costs 99 and flows; the others 10")
+		"113 dyes: 10 dyeable hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
+	_check(progress.dye_price("teal") == 10 and progress.dye_price("rainbow") == 99 and progress.dye_price("prism") == 50
+		and Hats.sheet_block("prism") == Hats.sheet_block("rainbow") and Hats.sheet_block("rainbow") == 10
+		and Hats.material_for("beanie", "rainbow").get_shader_parameter("gradient") and not Hats.material_for("beanie", "prism").get_shader_parameter("gradient") and Hats.material_for("beanie", "rainbow") != null
+		and Hats.material_for("beanie", "teal") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW 99 (a gradient), PRISM 50 (turns as one), both from the rainbow block; the others 10")
 	_check(not progress.can_buy_dye("beanie", "teal") and not progress.buy_dye("beanie", "teal") and progress.tickets == 25, "no dye for a hat not won")
 	progress.win_hat("beanie")
 	progress.win_hat("crown")
@@ -388,8 +390,8 @@ func _ui_wheel() -> void:
 		"DYES lists the dyeable hats won (the crown isn't one), focus on the first")
 	wheel.shop_tiles["tophat"].pressed.emit()
 	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:teal")
-		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 11 and wheel.shop_tiles.has("tophat:rainbow"),
-		"a hat's tile opens its colors: ORIGINAL + 10 dyes (RAINBOW last)")
+		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 12 and wheel.shop_tiles.has("tophat:rainbow") and wheel.shop_tiles.has("tophat:prism"),
+		"a hat's tile opens its colors: ORIGINAL + 11 dyes (PRISM, RAINBOW last)")
 	var teal: Button = wheel.shop_tiles["tophat:teal"]
 	teal.grab_focus()
 	teal.pressed.emit()

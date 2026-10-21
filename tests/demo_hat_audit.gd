@@ -303,7 +303,7 @@ func _ui_dyes() -> void:
 	wheel.show_tab("shop")
 	wheel.shop_tiles["wizard"].pressed.emit()
 	await get_tree().process_frame
-	wheel.shop_tiles["wizard:rainbow"].grab_focus()
+	wheel.shop_tiles["wizard:prism"].grab_focus()
 
 
 func _ui_dyed() -> void:

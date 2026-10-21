@@ -83,7 +83,7 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 - **Coins** buy the core tree at the cauldron's COINS tab (refundable, tree 3): MORE SLIME 7 levels (1,4,7,9,12,20,27 = 80), SPEED 4
   (6,9,13,18 = 46), BRIGHTNESS 3 (9,12,18 = 39); coins in hand are derived (`coins_earned - coins_spent`); tree 2 saves are repriced on load.
 - **Tickets** (randomizer, Descent pots) buy hat wheel spins, the SHOP (hat DYES: hats are never sold (owner, 2026-10-21);
-  10 dyeable hats (the viking helmet: its rim only) in 10 dyes minus their own color at 10 tickets, plus a flowing RAINBOW dye at 99 (103 dyes; a rainbow gradient flowing across the dyed part (`Hats.RAINBOW_GRADIENT`), compare in `tests/demo_rainbow_dyes.tscn`), `assets/sprites/hat_dyes.png` from `tools/make_hats.py`;
+  10 dyeable hats (the viking helmet: its rim only) in 10 dyes minus their own color at 10 tickets, plus two flowing dyes: PRISM at 50 (turns through the colors as one) and RAINBOW at 99 (the rainbow skin's own gradient, lined up with a rainbow slime) (113 dyes; compare in `tests/demo_rainbow_dyes.tscn`), `assets/sprites/hat_dyes.png` from `tools/make_hats.py`;
   5 trail styles, 3 map papers) and the three **abilities** (SLIME RIFLE / SPLAT / SLIMAKAZE, keys 1/2/3, one charge per attempt; they work ONLY in
   randomizer mazes and Descent, never in story/hard: `Abilities.allowed_in`).
 - The ticket **workshop** (SECOND WIND, QUICK CHARGE, ...) is switched OFF (`Economy.WORKSHOP_ENABLED := false`); saved levels are
