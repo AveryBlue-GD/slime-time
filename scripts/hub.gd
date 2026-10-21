@@ -1090,7 +1090,8 @@ func _build_ticket_pod(root: Control) -> void:
 
 func _refresh_tickets() -> void:
 	ticket_label.text = str(Progress.tickets)
-	medal_label.text = "%d/%d" % [Progress.medals_total(false), Progress.medals_max()]
+	# The demo counts only its own levels' medals (desktop 4 levels = 12, web 3 = 9); the full game all 30.
+	medal_label.text = "%d/%d" % [Progress.medals_total(false, Demo.levels()), Demo.levels() * Progress.TIER_GOLD]
 
 
 ## The coin bag's board: every story level's coins found out of its total (a gold check once it's

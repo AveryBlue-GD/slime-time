@@ -154,6 +154,18 @@ func _check_stripped_full_save() -> void:
 	hub.open_coin_board()
 	await _frames(2)
 	_check(_coin_bag_ok(hub, true), "full save, hub coin bag: levels 5-10 show ?/?, the total only the demo's (%s)" % hub.board_total.text)
+	for web in [false, true]:
+		Platform.override = "web" if web else ""
+		progress.medals = {1: 3, 2: 1, 4: 2, 5: 3, 8: 2}
+		hub._refresh_tickets()
+		var want := ("4/9" if web else "6/12")
+		_check(hub.medal_label.text == want, "%s demo hub medals: only the demo's levels, earned and total (%s, want %s)" % ["web" if web else "desktop", hub.medal_label.text, want])
+	Platform.override = ""
+	Platform.demo_override = 0
+	hub._refresh_tickets()
+	_check(hub.medal_label.text == "11/30", "full game hub medals: every level, out of 30 (%s)" % hub.medal_label.text)
+	Platform.demo_override = 1
+	progress.medals = {5: 3, 8: 2}
 	hub.close_coin_board()
 	hub.free()
 	for path in ["res://scenes/skins.tscn", "res://scenes/upgrades.tscn"]:

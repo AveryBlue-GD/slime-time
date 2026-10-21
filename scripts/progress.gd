@@ -1768,11 +1768,12 @@ func record_clear(level: int, run_time: float, par: float, assisted := false, fi
 	return result
 
 
-## Medal tiers won across the story in one mode (the current one unless `hard` says otherwise).
-func medals_total(hard: Variant = null) -> int:
+## Medal tiers won across the story in one mode (the current one unless `hard` says otherwise), on
+## levels 1..`up_to` (all of them by default; the demo's hub passes Demo.levels()).
+func medals_total(hard: Variant = null, up_to := Levels.COUNT) -> int:
 	var total := 0
 	var offset := HARD_RECORDS if (hard_mode if hard == null else hard) else 0
-	for level in range(1, Levels.COUNT + 1):
+	for level in range(1, mini(up_to, Levels.COUNT) + 1):
 		total += clampi(int(medals.get(level + offset, 0)), 0, TIER_GOLD)
 	return total
 
