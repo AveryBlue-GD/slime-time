@@ -114,7 +114,7 @@ func _ready() -> void:
 	seed_edit.text_submitted.connect(_submit_seed)
 	seed_edit.focus_exited.connect(func() -> void: _refocus.call_deferred())
 	menu.add_child(seed_edit)
-	# The demo's quiet WISHLIST (only with a store page to open: Demo.WISHLIST_URL).
+	# The demo's quiet WISHLIST (only with a store page to open: Demo.store_url()).
 	# i18n: pause menu button (demo build, opens the store page), max 92px, 1 line
 	wishlist_button = UIKit.make_button(Loc.t("demo.wishlist", "WISHLIST"), Demo.open_wishlist)
 	wishlist_button.visible = false

@@ -57,8 +57,14 @@ const ABILITIES: Array[String] = ["rifle"]
 ## level i + 1; later levels keep Economy.ABILITIES' prices). A randomizer win pays at most 5 tickets and
 ## the pitch comes after RANDOM_WINS wins, so SLIME RIFLE level 1 must be in reach before it (full: 15).
 const ABILITY_PRICES := {"rifle": [5]}
-## The store page the WISHLIST buttons open (OS.shell_open). Empty = every WISHLIST button is hidden.
+## The store page the WISHLIST buttons open (Platform.open_store_page). Empty = the Steam page of
+## STEAM_APP_ID, if set. With neither, every WISHLIST button is hidden.
 const WISHLIST_URL := ""
+## The FULL game's Steam app id (not the demo's): the Steam build opens its store page in the Steam overlay,
+## other builds in the browser. 0 = no Steam page yet (docs/steam-setup.md).
+const STEAM_APP_ID := 0
+## Tests: a Steam app id to use instead of STEAM_APP_ID (-1 = the constant).
+static var steam_app_override := -1
 ## The demo's end screen.
 const END_SCENE := "res://scenes/demo_end.tscn"
 ## The end screen's teaser cards: later story levels shown by area name and a stylised (made-up)
@@ -215,15 +221,27 @@ static func themes() -> Array[String]:
 	return out
 
 
-## The WISHLIST buttons show only with a store page to open.
-static func wishlist_shown() -> bool:
-	return on() and WISHLIST_URL != ""
+## The full game's Steam app id (STEAM_APP_ID, or the tests' steam_app_override).
+static func steam_app_id() -> int:
+	return steam_app_override if steam_app_override >= 0 else STEAM_APP_ID
 
 
-## Opens the store page (a new browser tab on the web; the Steam overlay later, through Platform).
-static func open_wishlist() -> void:
+## The store page's web address: WISHLIST_URL, else the Steam page of STEAM_APP_ID, else "".
+static func store_url() -> String:
 	if WISHLIST_URL != "":
-		OS.shell_open(WISHLIST_URL)
+		return WISHLIST_URL
+	return "https://store.steampowered.com/app/%d/" % steam_app_id() if steam_app_id() > 0 else ""
+
+
+## The WISHLIST buttons show only with a store page to open, and never in a phone app (the App Store and
+## Google Play don't allow pointing players at another store).
+static func wishlist_shown() -> bool:
+	return on() and not Platform.is_mobile_native() and store_url() != ""
+
+
+## Opens the store page: the Steam overlay in the Steam build, else the browser (a new tab on the web).
+static func open_wishlist() -> void:
+	Platform.open_store_page(store_url(), steam_app_id())
 
 
 ## The FULL GAME lock's text (hub prompts and tour lines of the web demo's randomizer / hat wheel).

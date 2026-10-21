@@ -65,9 +65,12 @@ func _check_presets() -> void:
 		var path := str(cfg.get_value(demo, "export_path"))
 		_check(path.begins_with("build/demo/") and path == entry.path, "%s: exports to %s" % [name, path])
 		_check(cfg.get_value(demo, "platform") == cfg.get_value(twin, "platform"), "%s: same platform as %s" % [name, entry.twin])
+		var steam: bool = entry.get("steam", false)
+		_check(("steam" in features) == steam, "%s: custom feature `steam` %s" % [name, "on" if steam else "off"])
 		var filter := str(cfg.get_value(demo, "exclude_filter"))
-		var twin_filter := str(cfg.get_value(twin, "exclude_filter"))
+		var twin_filter := DemoExport.base_filter(str(cfg.get_value(twin, "exclude_filter")), steam)
 		_check(filter.begins_with(twin_filter + ", "), "%s: keeps %s's excludes (%s)" % [name, entry.twin, twin_filter])
+		_check((DemoExport.STEAM_ADDON in filter) != steam, "%s: GodotSteam %s" % [name, "shipped" if steam else "excluded"])
 		var cut := Demo.export_cut(entry.web)
 		var listed := filter.split(",", false)
 		for i in listed.size():
@@ -89,10 +92,25 @@ func _check_presets() -> void:
 			_check(cfg.get_value(demo, key) == cfg.get_value(twin, key), "%s: %s as in %s" % [name, key, entry.twin])
 	_check(str(cfg.get_value(by_name.get("Web Demo", ""), "export_path", "")).ends_with("/index.html"),
 		"the web demo exports an index.html (what itch serves)")
+	for entry: Dictionary in DemoExport.STEAM:
+		var name: String = entry.name
+		_check(by_name.has(name) and by_name.has(entry.twin), "Steam preset \"%s\" exists" % name)
+		if not by_name.has(name) or not by_name.has(entry.twin):
+			continue
+		var section: String = by_name[name]
+		var twin: String = by_name[entry.twin]
+		_check(str(cfg.get_value(section, "custom_features")).split(",", false) == PackedStringArray(["steam"]),
+			"%s: custom feature `steam` only (Platform.is_steam)" % name)
+		_check(str(cfg.get_value(section, "export_path")) == entry.path and entry.path.begins_with("build/steam/"), "%s: exports to %s" % [name, entry.path])
+		_check(cfg.get_value(section, "platform") == cfg.get_value(twin, "platform"), "%s: same platform as %s" % [name, entry.twin])
+		_check(str(cfg.get_value(section, "exclude_filter")) == DemoExport.base_filter(str(cfg.get_value(twin, "exclude_filter")), true)
+			and not DemoExport.STEAM_ADDON in str(cfg.get_value(section, "exclude_filter")), "%s: %s's excludes but ships GodotSteam" % [name, entry.twin])
 	var all_cut := Demo.export_cut(false) + Demo.export_cut(true)
 	for name: String in by_name:
 		if not DemoExport.spec(name).is_empty():
 			continue
+		if DemoExport.steam_spec(name).is_empty():
+			_check(DemoExport.STEAM_ADDON in str(cfg.get_value(by_name[name], "exclude_filter")), "full preset %s: excludes GodotSteam" % name)
 		var section: String = by_name[name]
 		_check(not "demo" in str(cfg.get_value(section, "custom_features")).split(",", false), "full preset %s: no `demo` feature" % name)
 		var filter := str(cfg.get_value(section, "exclude_filter"))
@@ -174,7 +192,8 @@ func _check_generator() -> void:
 	cfg.parse(SAMPLE)
 	var errors: Array[String] = []
 	var built := DemoExport.build(cfg, errors)
-	_check(errors.size() == 2 and "macOS" in errors[0] and "Linux" in errors[1], "a missing twin is reported (%s)" % [errors])
+	_check(errors.size() == 6 and errors.all(func(e: String) -> bool: return "\"macOS\"" in e or "\"Linux\"" in e),
+		"a missing twin is reported (%s)" % [errors])
 	var sections := built.get_sections()
 	_check(sections.slice(0, 4) == PackedStringArray(["preset.0", "preset.0.options", "preset.1", "preset.1.options"]),
 		"the full presets stay first, in order (%s)" % [sections])
@@ -186,6 +205,10 @@ func _check_generator() -> void:
 	_check(built.get_value("preset.2", "name") == "Windows Demo" and built.get_value("preset.3", "name") == "Web Demo",
 		"the demo presets are appended (preset.2 Windows Demo, preset.3 Web Demo)")
 	_check(built.get_value("preset.3", "custom_features") == "mobile_ui,demo", "a twin's own features are kept, `demo` added")
+	_check(built.get_value("preset.4", "name") == "Windows Steam Demo" and built.get_value("preset.4", "custom_features") == "steam,demo"
+		and built.get_value("preset.5", "name") == "Windows Steam" and built.get_value("preset.5", "custom_features") == "steam",
+		"then the Steam demo (steam,demo) and the Steam full game (steam)")
+	_check(built.get_value("preset.5", "exclude_filter") == "tests/*, tools/*", "the Steam full preset: the twin's excludes, no cut")
 	_check(built.get_value("preset.2.options", "application/product_name") == "Dry Trying Demo"
 		and built.get_value("preset.2.options", "binary_format/embed_pck") == true, "options: the twin's, plus the demo's overrides")
 	_check(str(built.get_value("preset.2", "exclude_filter")) == DemoExport.exclude_filter("tests/*, tools/*", false),

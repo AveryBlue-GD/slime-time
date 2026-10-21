@@ -375,7 +375,7 @@ func _check_locks() -> void:
 		"level 4 + Sunken Shrine: cut from the web demo, kept in the desktop one")
 	Platform.override = ""
 	_check(Demo.teasers() == [5, 6, 7, 9, 10], "desktop demo: teasers from level 5 %s" % [Demo.teasers()])
-	_check(not Demo.wishlist_shown() and Demo.WISHLIST_URL == "", "WISHLIST is hidden while the URL is empty")
+	_check(not Demo.wishlist_shown() and Demo.store_url() == "", "WISHLIST is hidden while there is no store page")
 	# The exclude list: every level past 3, hard past 1, later themes' art and ambience, nothing of the demo's.
 	var paths := Demo.full_only_paths()
 	var demo_art := false

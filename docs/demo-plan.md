@@ -32,7 +32,8 @@ the full game: one switch, a handful of gates, no copied scenes or scripts. Advi
 | `GENTLE_MAZES`, `GENTLE_MAX_USAGE` | 3, 750 | the first 3 randomizer mazes (by wins) are drawn from seeds whose perfect route uses at most 75% of the meter (no 90%+ marathon first); later ones any seed |
 | `ABILITIES` | `["rifle"]` | abilities that can be bought and that work in a maze (a full save's others are switched off) |
 | `ABILITY_PRICES` | `{"rifle": [5]}` | the demo's ticket prices for an ability's first levels (full game: SLIME RIFLE 15), so it is in reach before the randomizer's end screen (a win pays at most 5) |
-| `WISHLIST_URL` | `""` | store page for every WISHLIST button; **empty = every WISHLIST button is hidden** (no Steam page yet) |
+| `WISHLIST_URL` | `""` | store page for every WISHLIST button; empty = the Steam page of `STEAM_APP_ID`; **with neither, every WISHLIST button is hidden** (no Steam page yet) |
+| `STEAM_APP_ID` | `0` | the FULL game's Steam app id: the Steam build opens its page in the Steam overlay ([steam-setup.md](steam-setup.md)) |
 | `TEASER_LEVELS` | 6, 7, 9, 10 | the end screen's teaser cards after the first one, which is always the area right after the demo (`Demo.teasers()`: desktop 5, 6, 7, 9, 10; web 4, 6, 7, 9, 10); the first card says {count} MORE AREAS (6 / 7) |
 | `END_SEEN_BIT` | 4 | `Progress.story_seen` bit: the end screen was seen (the full game ignores it); also opens the demo's hat wheel |
 
@@ -94,8 +95,9 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   writes over a full-game save, and on the same desktop the full game still reads a demo save. The SETTINGS page's
   own SAVE CODE panel is untouched (it's the full game's backup feature).
 - **WISHLIST** also as a quiet pause-menu button and a small hub sign under the ticket pod (after the end screen
-  was seen); all hidden while `WISHLIST_URL` is empty. `Demo.open_wishlist()` uses `OS.shell_open` (a new tab
-  on the web); a Steam build should route it to the overlay through `Platform` later.
+  was seen); all hidden while there is no store page (`Demo.store_url()` empty) and always in a phone app.
+  `Demo.open_wishlist()` goes through `Platform.open_store_page`: the Steam overlay on the store page in the Steam
+  build (GodotSteam `activateGameOverlayToStore`), else `OS.shell_open` (a new tab on the web). [steam-setup.md](steam-setup.md).
 - **Coin bag (hub):** the demo's levels show found / total as usual; later levels show `?/?` (dim) and the
   STORY line counts only the demo's levels (`STORY n/34`, web `/22`; `Demo.coins_total()`), so the full game's 165 is
   never told (a guarded full save too).

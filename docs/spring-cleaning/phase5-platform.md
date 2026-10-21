@@ -184,7 +184,7 @@ on iPhone and iPad), `display/window/ios/hide_home_indicator=true`, `suppress_ui
 swipes, so bottom-row taps aren't stolen), `hide_status_bar=true`, `audio/general/ios/session_category=0` (Ambient:
 respects the mute switch). `user://` is the app's Documents (iCloud-backed); the custom user dir name is ignored there.
 
-## Steam seam plan (no Steam code yet)
+## Steam seam plan (2026-10-21: step 2 and the WISHLIST overlay are done, see [../steam-setup.md](../steam-setup.md))
 
 1. **Signal (done):** `Progress.report_progress(id, value)` after the save points emit `PlatformEvents.progress_event`:
    `medal_normal` / `medal_hard` (medals in that mode, after `record_clear`), `coins` (story coins found), `hats` (hats

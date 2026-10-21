@@ -50,7 +50,7 @@ func _presets(write: bool) -> int:
 		return 1
 	file.store_string(expected)
 	file.close()
-	print("demo presets: written (%s)" % ", ".join(DemoExport.DEMOS.map(func(d: Dictionary) -> String: return d.name)))
+	print("demo presets: written (%s)" % ", ".join((DemoExport.DEMOS + DemoExport.STEAM).map(func(d: Dictionary) -> String: return d.name)))
 	return 0
 
 

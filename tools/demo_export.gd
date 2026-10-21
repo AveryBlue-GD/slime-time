@@ -1,6 +1,7 @@
 extends RefCounted
 
-## The demo export presets (docs/demo-plan.md "Shipping the demo"). Each demo preset is GENERATED from its
+## The demo and Steam export presets (docs/demo-plan.md "Shipping the demo", docs/steam-setup.md). Each demo
+## (and Steam) preset is GENERATED from its
 ## full twin in export_presets.cfg: the same section and options, then the demo's name, the `demo` custom
 ## feature, its own output under build/demo/, and the twin's exclude_filter plus Demo.export_cut() (the
 ## full-only files: later levels' data, later themes' art and ambience, the victory screen, the catalogs
@@ -24,8 +25,25 @@ const DEMOS := [
 	{twin = "macOS", name = "macOS Demo", path = "build/demo/macos/DryTryingDemo.zip", web = false,
 		options = {"application/bundle_identifier": "com.slimetime.game.demo"}},
 	{twin = "Linux", name = "Linux Demo", path = "build/demo/linux/DryTryingDemo.x86_64", web = false, options = {}},
+	# The Steam demo app (docs/steam-setup.md): the same cut, plus the `steam` feature and the GodotSteam extension.
+	{twin = "Windows Desktop", name = "Windows Steam Demo", path = "build/demo/steam/windows/DryTryingDemo.exe", web = false,
+		steam = true, options = {"application/product_name": "Dry Trying Demo", "application/file_description": "Dry Trying Demo"}},
+	{twin = "macOS", name = "macOS Steam Demo", path = "build/demo/steam/macos/DryTryingDemo.zip", web = false,
+		steam = true, options = {"application/bundle_identifier": "com.slimetime.game.demo"}},
+	{twin = "Linux", name = "Linux Steam Demo", path = "build/demo/steam/linux/DryTryingDemo.x86_64", web = false,
+		steam = true, options = {}},
 ]
 const DEMO_FEATURE := "demo"
+## The full game's Steam presets (DRAFTS until the Steam app exists, docs/steam-setup.md): generated from the
+## same twins with the `steam` feature (Platform.is_steam) and without STEAM_ADDON in the excludes. No cut.
+const STEAM := [
+	{twin = "Windows Desktop", name = "Windows Steam", path = "build/steam/windows/DryTrying.exe", options = {}},
+	{twin = "macOS", name = "macOS Steam", path = "build/steam/macos/DryTrying.zip", options = {}},
+	{twin = "Linux", name = "Linux Steam", path = "build/steam/linux/DryTrying.x86_64", options = {}},
+]
+const STEAM_FEATURE := "steam"
+## The GodotSteam GDExtension's folder: every non-Steam preset excludes it (the full presets list it by hand).
+const STEAM_ADDON := "addons/godotsteam/*"
 
 
 ## The demo spec (an entry of DEMOS) for demo preset `name`, or {} if `name` isn't one.
@@ -36,11 +54,29 @@ static func spec(name: String) -> Dictionary:
 	return {}
 
 
-## The exclude_filter of a demo preset: its twin's filter, then every cut path (without res://).
-static func exclude_filter(twin_filter: String, web: bool) -> String:
+## The full Steam spec (an entry of STEAM) for preset `name`, or {}.
+static func steam_spec(name: String) -> Dictionary:
+	for entry: Dictionary in STEAM:
+		if entry.name == name:
+			return entry
+	return {}
+
+
+## A generated preset's base filter: its twin's, without STEAM_ADDON for a Steam preset.
+static func base_filter(twin_filter: String, steam: bool) -> String:
 	var parts := PackedStringArray()
-	if twin_filter.strip_edges() != "":
-		parts.append(twin_filter.strip_edges())
+	for part in twin_filter.split(",", false):
+		if part.strip_edges() != "" and not (steam and part.strip_edges() == STEAM_ADDON):
+			parts.append(part.strip_edges())
+	return ", ".join(parts)
+
+
+## The exclude_filter of a demo preset: its twin's filter (base_filter), then every cut path (without res://).
+static func exclude_filter(twin_filter: String, web: bool, steam := false) -> String:
+	var parts := PackedStringArray()
+	var base := base_filter(twin_filter, steam)
+	if base != "":
+		parts.append(base)
 	for path in Demo.export_cut(web):
 		parts.append(path.trim_prefix("res://"))
 	return ", ".join(parts)
@@ -65,10 +101,12 @@ static func build(cfg: ConfigFile, errors: Array[String] = []) -> ConfigFile:
 	var next := 0
 	for name: String in indices:
 		next = maxi(next, indices[name] + 1)
-	for entry: Dictionary in DEMOS:
+	for entry: Dictionary in DEMOS + STEAM:
 		if not indices.has(entry.twin):
 			errors.append("no full preset named \"%s\" for \"%s\"" % [entry.twin, entry.name])
 			continue
+		var demo := not spec(entry.name).is_empty()
+		var steam: bool = entry.get("steam", not demo)
 		var twin := "preset.%d" % indices[entry.twin]
 		var index: int = indices.get(entry.name, next)
 		if index == next:
@@ -82,12 +120,17 @@ static func build(cfg: ConfigFile, errors: Array[String] = []) -> ConfigFile:
 		out.set_value(section, "name", entry.name)
 		var features := PackedStringArray()
 		for feature in str(out.get_value(twin, "custom_features", "")).split(",", false):
-			if feature.strip_edges() != DEMO_FEATURE:
+			if not feature.strip_edges() in [DEMO_FEATURE, STEAM_FEATURE]:
 				features.append(feature.strip_edges())
-		features.append(DEMO_FEATURE)
+		if steam:
+			features.append(STEAM_FEATURE)
+		if demo:
+			features.append(DEMO_FEATURE)
 		out.set_value(section, "custom_features", ",".join(features))
 		out.set_value(section, "export_path", entry.path)
-		out.set_value(section, "exclude_filter", exclude_filter(str(out.get_value(twin, "exclude_filter", "")), entry.web))
+		var twin_filter := str(out.get_value(twin, "exclude_filter", ""))
+		out.set_value(section, "exclude_filter",
+			exclude_filter(twin_filter, entry.web, steam) if demo else base_filter(twin_filter, steam))
 		if out.has_section(twin + ".options"):
 			for key in out.get_section_keys(twin + ".options"):
 				out.set_value(section + ".options", key, entry.options.get(key, out.get_value(twin + ".options", key)))

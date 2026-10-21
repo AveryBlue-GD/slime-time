@@ -79,7 +79,7 @@ static func kind() -> String:
 		return "ios"
 	if OS.has_feature("android"):
 		return "android"
-	if OS.has_feature("steam"):  # a future Steam export preset sets custom_features="steam"
+	if OS.has_feature("steam"):  # the "... Steam" export presets set custom_features="steam"
 		return "steam"
 	return "desktop"
 
@@ -131,9 +131,55 @@ static func is_desktop() -> bool:
 	return not is_web() and not is_mobile_native()
 
 
-## The Steam build (a future export preset with the "steam" feature). Always false today.
+## The Steam build (the "... Steam" export presets set the "steam" feature; docs/steam-setup.md).
 static func is_steam() -> bool:
 	return kind() == "steam"
+
+
+## Tests: a stand-in for the GodotSteam singleton (any Object with steamInitEx / isOverlayEnabled /
+## activateGameOverlayToStore); null = the real one.
+static var steam_override: Object = null
+## The GodotSteam singleton once steamInitEx succeeded; _steam_tried = it was asked once (success or not).
+static var _steam: Object = null
+static var _steam_tried := false
+
+
+## The GodotSteam API (the GDExtension in addons/godotsteam/, shipped only in the Steam presets), started
+## once on first use; null outside the Steam build, without the extension, or when Steam isn't running.
+## Called through Object.call so this file parses without the extension (Engine singleton "Steam").
+static func steam_api() -> Object:
+	if not is_steam():
+		return null
+	if _steam_tried:
+		return _steam
+	_steam_tried = true
+	var api: Object = steam_override
+	if api == null and Engine.has_singleton("Steam"):
+		api = Engine.get_singleton("Steam")
+	if api == null:
+		return null
+	var init: Variant = api.call("steamInitEx")
+	if init is Dictionary and int(init.get("status", 1)) == 0:
+		_steam = api
+	else:
+		push_warning("Steam: steamInitEx failed (%s)" % [init])
+	return _steam
+
+
+## True if the Steam overlay can show store page `app_id` (the Steam build, Steam running, overlay on).
+static func steam_overlay_ready(app_id: int) -> bool:
+	var api := steam_api()
+	return app_id > 0 and api != null and bool(api.call("isOverlayEnabled"))
+
+
+## Opens a store page: the Steam overlay on the game's page in the Steam build (`steam_app_id`; the overlay
+## keeps the player in the game and logged in, so WISHLIST is one click), else `url` in the browser (a new
+## tab on the web). Does nothing with neither.
+static func open_store_page(url: String, steam_app_id := 0) -> void:
+	if steam_overlay_ready(steam_app_id):
+		steam_api().call("activateGameOverlayToStore", steam_app_id, 0)  # (0 = k_EOverlayToStoreFlag_None)
+	elif url != "":
+		OS.shell_open(url)
 
 
 ## Running on a Steam Deck (Steam sets the environment variable SteamDeck=1 for games it starts there).
@@ -321,6 +367,9 @@ static func reset_overrides() -> void:
 	demo_override = -1
 	steam_deck_override = -1
 	pads_override = -1
+	steam_override = null
+	_steam = null
+	_steam_tried = false
 
 
 ## The flags after `--` this build honors (Progress.user_args: every flag in a debug build, only the UI previews

@@ -1052,7 +1052,7 @@ func _quit_saved_descent() -> void:
 ## A small framed pod at the top left with the ticket balance (the cosmetic currency; the hat
 ## wheel spends it) and the medals won so far.
 ## The demo's WISHLIST sign: a small button under the ticket pod once the end screen was seen (only with a
-## store page to open, Demo.WISHLIST_URL; hidden otherwise).
+## store page to open, Demo.store_url(); hidden otherwise).
 var wishlist_sign: Button
 
 

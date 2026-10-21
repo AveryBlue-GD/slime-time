@@ -5,7 +5,7 @@ extends Control
 ## the demo's last level (CONTINUE: the first time it is the only button, so every finisher sees it), after
 ## the demo's last randomizer maze is first won (a locked level's tile does nothing: docs/demo-plan.md).
 ## Top to bottom: the title and a line in the story voice; WISHLIST (only with a store page:
-## Demo.WISHLIST_URL); a teaser of later areas (cards that flip by themselves every CARD_TIME s, < >
+## Demo.store_url()); a teaser of later areas (cards that flip by themselves every CARD_TIME s, < >
 ## flip them; each is an area name, its level and what's new there, beside a made-up map in that area's
 ## colors: MapView's example maze, no real level data or art); KEEP PLAYING (hub). No line about the demo's
 ## progress reaching the full game (owner, 2026-10-19: nothing on screen says or implies it carries over).
