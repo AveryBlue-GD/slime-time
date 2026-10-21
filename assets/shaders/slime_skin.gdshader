@@ -15,6 +15,8 @@ uniform vec4 dark = vec4(0.145, 0.443, 0.475, 1.0);
 uniform vec4 deep = vec4(0.086, 0.259, 0.322, 1.0);
 uniform vec4 outline = vec4(0.047, 0.149, 0.188, 1.0);
 uniform bool rainbow = false;
+// Dev-only PASTEL look (Skins.pastel): the rainbow's bands go pale (pastel_rainbow_sv).
+uniform bool pastel_rainbow = false;
 // Jelly test (0 = solid, 1 = see-through): the goo body lets the floor show through, while the
 // outline, shine and eyes stay solid so the slime still reads clearly.
 uniform float translucency = 0.0;
@@ -94,6 +96,16 @@ vec2 rainbow_sv(int s) {
 	if (s == 3) { return vec2(0.85, 0.55); }
 	if (s == 4) { return vec2(0.9, 0.36); }
 	return vec2(0.9, 0.18);
+}
+
+// PASTEL rainbow version of each shade: saturation, value.
+vec2 pastel_rainbow_sv(int s) {
+	if (s == 0) { return vec2(0.08, 1.0); }
+	if (s == 1) { return vec2(0.2, 1.0); }
+	if (s == 2) { return vec2(0.36, 1.0); }
+	if (s == 3) { return vec2(0.44, 0.86); }
+	if (s == 4) { return vec2(0.5, 0.7); }
+	return vec2(0.55, 0.44);
 }
 
 // How see-through each goo shade gets at full translucency (highlight ... outline).
@@ -179,7 +191,7 @@ void fragment() {
 		float hue = fract(floor((wave / rainbow_width - TIME * rainbow_speed) * HUE_STEPS) / HUE_STEPS);
 		// Red -> violet is the first 5/6 of the hue circle; squeeze it so magenta is skipped.
 		hue *= 0.83;
-		vec2 sv = rainbow_sv(source);
+		vec2 sv = pastel_rainbow ? pastel_rainbow_sv(source) : rainbow_sv(source);
 		rgb = hsv_to_rgb(hue, sv.x, sv.y);
 	} else if (source >= 0) {
 		rgb = skin_shade(source);

@@ -2756,6 +2756,15 @@ func set_dev_no_drain(on: bool) -> void:
 	_refresh_dev_badge()
 
 
+## PASTEL (dev only, Skins.pastel): the slime wears the soft pastel version of its skin. Looks only,
+## so the run still counts; kept for the session, never saved.
+func set_dev_pastel(on: bool) -> void:
+	if not dev_enabled() or on == Skins.pastel:
+		return
+	Skins.pastel = on
+	slime.apply_skin(skin_color, rainbow, stopwatch)
+
+
 func _refresh_dev_badge() -> void:
 	var tags: Array[String] = []
 	if dev_bright:

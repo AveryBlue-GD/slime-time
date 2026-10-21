@@ -39,6 +39,30 @@ const STOPWATCH_SHADES := {
 static var jelly := false
 ## Stand-in base color for the rainbow skin wherever one color is needed.
 const RAINBOW_BASE := Color8(230, 60, 60)
+## Dev-only PASTEL look (pause menu DEV panel or --pastel; dev mode only, never saved): presets
+## swap to the soft PASTEL bases (pastel_shades), the stopwatch to STOPWATCH_PASTEL_SHADES and the
+## rainbow to paler bands (shader `pastel_rainbow`). CHAMELEON keeps its own color.
+static var pastel := false
+const PASTEL := {
+	lime = Color8(142, 230, 168),
+	mint = Color8(163, 240, 223),
+	lemon = Color8(255, 238, 153),
+	ocean = Color8(165, 202, 250),
+	grape = Color8(208, 171, 245),
+	crimson = Color8(250, 167, 181),
+	frost = Color8(217, 242, 255),
+	shadow = Color8(167, 155, 194),
+	bubblegum = Color8(255, 178, 223),
+	ember = Color8(255, 194, 153),
+}
+const STOPWATCH_PASTEL_SHADES := {
+	highlight = Color8(255, 254, 250),
+	light = Color8(253, 249, 238),
+	mid = Color8(248, 241, 226),
+	dark = Color8(234, 222, 196),
+	deep = Color8(240, 200, 140),
+	outline = Color8(176, 136, 104),
+}
 
 const PRESETS := [
 	{id = "lime", name = "LIME", color = Color8(56, 183, 100), unlock = 0},  # i18n: ignore (English source); 1 Dark Dungeon
@@ -182,6 +206,26 @@ static func shades(base: Color) -> Dictionary:
 	}
 
 
+## Shades for a PASTEL base: brighter and softer than shades(), with gentler shadows.
+static func pastel_shades(base: Color) -> Dictionary:
+	return {
+		highlight = Color.from_hsv(wrapf(base.h + 0.05, 0.0, 1.0), base.s * 0.22, 1.0),
+		light = Color.from_hsv(wrapf(base.h + 0.03, 0.0, 1.0), base.s * 0.6, minf(base.v + 0.04, 1.0)),
+		mid = base,
+		dark = Color.from_hsv(wrapf(base.h - 0.035, 0.0, 1.0), minf(base.s * 1.3, 1.0), base.v * 0.82),
+		deep = Color.from_hsv(wrapf(base.h - 0.06, 0.0, 1.0), minf(base.s * 1.5, 1.0), base.v * 0.66),
+		outline = Color.from_hsv(wrapf(base.h - 0.08, 0.0, 1.0), minf(base.s * 1.7, 0.8), base.v * 0.42),
+	}
+
+
+## The PASTEL base for a preset's color, or null for any other color (CHAMELEON).
+static func pastel_base(base: Color) -> Variant:
+	for preset: Dictionary in PRESETS:
+		if (preset.color as Color).is_equal_approx(base):
+			return PASTEL[preset.id]
+	return null
+
+
 ## Palette-swap material for a slime sprite in this color (or the flowing rainbow).
 static func make_material(base: Color, rainbow := false, clock := false) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
@@ -194,6 +238,13 @@ static func make_material(base: Color, rainbow := false, clock := false) -> Shad
 static func apply_to(material: ShaderMaterial, base: Color, rainbow := false, clock := false) -> void:
 	material.set_shader_parameter("rainbow", rainbow)
 	material.set_shader_parameter("clock_on", 1.0 if clock else 0.0)
+	material.set_shader_parameter("pastel_rainbow", pastel and rainbow)
 	var colors := STOPWATCH_SHADES if clock else shades(base)
+	if pastel:
+		var soft: Variant = pastel_base(base)
+		if clock:
+			colors = STOPWATCH_PASTEL_SHADES
+		elif soft != null:
+			colors = pastel_shades(soft)
 	for shade: String in colors:
 		material.set_shader_parameter(shade, colors[shade])

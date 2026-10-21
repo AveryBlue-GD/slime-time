@@ -42,11 +42,12 @@ var _panel: Panel
 ## what QUIT TO HUB does to the run (mid-floor: banks half the pot; on the boon card: cashes out).
 var restart_button: Button
 var descent_note: Label
-## Dev mode only (built only then): FULL BRIGHT and NO DRAIN switches (Game.set_dev_bright /
-## set_dev_no_drain, also F1 / F2 in the level), on their own panel to the right.
+## Dev mode only (built only then): FULL BRIGHT, NO DRAIN and PASTEL switches (Game.set_dev_bright /
+## set_dev_no_drain, also F1 / F2 in the level; Game.set_dev_pastel), on their own panel to the right.
 var dev_panel: Control
 var bright_button: Button
 var drain_button: Button
+var pastel_button: Button
 ## What had keyboard focus when the menu opened (e.g. a dry-up / win choice): it gets it back on
 ## resume. And the level's controls kept out of focus while the menu is open (UIKit.lock_focus).
 var _return_focus: Control
@@ -134,7 +135,7 @@ func _ready() -> void:
 
 
 func _build_dev_panel(root: Control) -> void:
-	dev_panel = UIKit.add_panel(root, Rect2(320 - UIKit.EDGE - 88, MENU_TOP - UIKit.PANEL_PAD, 88, 50))
+	dev_panel = UIKit.add_panel(root, Rect2(320 - UIKit.EDGE - 88, MENU_TOP - UIKit.PANEL_PAD, 88, 66))
 	var column := VBoxContainer.new()
 	column.position = dev_panel.position + Vector2(6, 5)
 	column.custom_minimum_size = Vector2(76, 0)
@@ -146,7 +147,9 @@ func _build_dev_panel(root: Control) -> void:
 	bright_button = UIKit.make_button("", func() -> void: _dev_toggle("set_dev_bright", "dev_bright"))
 	drain_button = UIKit.make_button("", func() -> void: _dev_toggle("set_dev_no_drain", "dev_no_drain"))
 	column.add_child(bright_button)
+	pastel_button = UIKit.make_button("", func() -> void: _dev_pastel())
 	column.add_child(drain_button)
+	column.add_child(pastel_button)
 	_refresh_dev()
 
 
@@ -154,6 +157,13 @@ func _dev_toggle(setter: String, flag: String) -> void:
 	var game := get_parent()
 	if game.has_method(setter):
 		game.call(setter, not game.get(flag))
+	_refresh_dev()
+
+
+func _dev_pastel() -> void:
+	var game := get_parent()
+	if game.has_method("set_dev_pastel"):
+		game.set_dev_pastel(not Skins.pastel)
 	_refresh_dev()
 
 
@@ -165,6 +175,7 @@ func _refresh_dev() -> void:
 	var no_drain: bool = game.get("dev_no_drain") == true
 	bright_button.text = "BRIGHT: " + ("ON" if bright else "OFF")
 	drain_button.text = "DRAIN: " + ("OFF" if no_drain else "ON")
+	pastel_button.text = "PASTEL: " + ("ON" if Skins.pastel else "OFF")  # i18n: ignore (dev mode only panel)
 
 
 func open() -> void:
