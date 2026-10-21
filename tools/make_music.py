@@ -1078,6 +1078,18 @@ def seam_check(data: array, loop_n: int, name: str):
 
 # ---------------------------------------------------------------- render
 
+
+def _vorbis_args(ffmpeg):
+    """The .ogg encoder: libvorbis, else ffmpeg's own Vorbis encoder (Homebrew's ffmpeg has no libvorbis;
+    the built-in one is marked experimental and only does 2 channels, which these are)."""
+    try:
+        listed = subprocess.run([ffmpeg, "-hide_banner", "-encoders"], capture_output=True, text=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        listed = ""
+    if "libvorbis" in listed:
+        return ["-c:a", "libvorbis", "-q:a", "5"]
+    return ["-c:a", "vorbis", "-strict", "experimental", "-q:a", "5"]
+
 def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=False):
     t0 = time.time()
     if name.startswith("trailer"):
@@ -1114,8 +1126,8 @@ def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=Fals
                 f.write(b"data" + struct.pack("<I", size))
                 f.write(seam.tobytes())
     if extras:
-        subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(out_wav), "-c:a", "libvorbis", "-q:a", "5",
-                        str(out_wav.with_suffix(".ogg"))], check=True, timeout=600)
+        subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(out_wav)] + _vorbis_args(ffmpeg)
+                       + [str(out_wav.with_suffix(".ogg"))], check=True, timeout=600)
     print("wrote %s  %.1f s  %.1f LUFS  %.1f dBTP  (%.0f s)" % (out_wav.name, stats["seconds"], lufs, tp, stats["render_s"]), flush=True)
     return stats
 
