@@ -48,4 +48,4 @@ capture screenshot-4-volcanic-vault.png res://tests/demo.tscn 1100 --unlock-all 
 capture screenshot-5-crystal-caverns.png res://tests/demo.tscn 1000 --unlock-all --skin=bubblegum --level=9 --upgrades=0,0,2 --all-coins
 capture screenshot-6-new-record.png res://tests/demo_record_run.tscn 1150 --unlock-all --skin=lemon --coins=9  # level 3, the Sandstone Sanctum; the win lands at about frame 1084 (banner at once, buttons 0.6 s later)
 capture screenshot-7-upgrades.png res://scenes/upgrades.tscn 40 --skin=mint --upgrades=4,1,2 --coins=12
-capture screenshot-8-skins.png res://scenes/skins.tscn 40 --unlock-all --skin=bubblegum
+capture screenshot-8-skins.png res://scenes/skins.tscn 40 --unlock-all --promo --skin=bubblegum

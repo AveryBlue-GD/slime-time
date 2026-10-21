@@ -349,6 +349,9 @@ func _ready() -> void:
 			current_level = clampi(arg.trim_prefix("--level=").to_int(), 1, Levels.COUNT)
 		elif arg == "--unlock-all":
 			enable_dev_mode()
+		elif arg == "--promo":  # promo captures: the RAINBOW / STOPWATCH skins stay locked silhouettes even with --unlock-all (not saved)
+			saving_enabled = false
+			promo_secrets_locked = true
 		elif arg == "--touch":
 			force_touch = true
 		elif arg == "--hard":
@@ -2545,9 +2548,15 @@ func select_hat(id: String) -> void:
 
 ## Whether skin `id` can be worn: opaque (`jelly_version` false, normal-mode unlock) or as jelly
 ## (true, its hard-mode unlock); null = in the version worn now.
+## Debug flag --promo (promo captures): RAINBOW and STOPWATCH read as locked whatever else is unlocked.
+var promo_secrets_locked := false
+
+
 func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
 	if not Demo.skin_open(id, jelly if jelly_version == null else jelly_version):
 		return false  # (a full-game skin: a FULL GAME silhouette in the demo, even with a full save)
+	if promo_secrets_locked and id in [Skins.RAINBOW, Skins.STOPWATCH]:
+		return false  # (promo rule, owner 2026-10-20: the secret skins only ever as locked silhouettes)
 	if dev_tools:
 		return true
 	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned(), all_medals())

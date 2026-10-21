@@ -22,6 +22,16 @@ func _initialize() -> void:
 	progress.skin_notices_seen.clear()
 	progress.hard_mode = false
 
+	# Promo captures (--promo): the secret skins stay locked even in dev mode, everything else stays open.
+	var dev_before: bool = progress.dev_tools
+	progress.dev_tools = true
+	progress.promo_secrets_locked = true
+	_check(not progress.is_skin_unlocked(Skins.RAINBOW) and not progress.is_skin_unlocked(Skins.STOPWATCH)
+		and progress.is_skin_unlocked("frost"), "--promo: RAINBOW and STOPWATCH locked (silhouettes), other skins open")
+	progress.promo_secrets_locked = false
+	_check(progress.is_skin_unlocked(Skins.RAINBOW), "...without it, dev mode opens RAINBOW as before")
+	progress.dev_tools = dev_before
+
 	# Brand-new player: Lime is already on, so level 1 just starts (no notice).
 	progress.levels_cleared = 0
 	progress.selected_skin = Skins.DEFAULT
