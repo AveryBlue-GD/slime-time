@@ -120,6 +120,7 @@ func _initialize() -> void:
 	paused = false
 
 	await _hat_wheel_taps()
+	await _hub_station_taps()
 	_result()
 	quit(1 if failures else 0)
 
@@ -159,6 +160,47 @@ func _hat_wheel_taps() -> void:
 	_check(not wheel.visible and not hub._touch_controls.menu_open and progress.tickets == tickets, "touch: BACK closes the overlay, nothing spent")
 	current_scene = null
 	hub.free()
+	progress.force_touch = false
+	await process_frame
+
+
+## Owner, 2026-10-21: in the hub JUMP never uses a station on a touchscreen (it leaps, as anywhere); a tap on the
+## station the slime stands at (or on its prompt) opens it.
+func _hub_station_taps() -> void:
+	progress.force_touch = true
+	progress.saving_enabled = false
+	var hub_script: GDScript = load("res://scripts/hub.gd")
+	hub_script.return_to = "upgrades"
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	await _physics_frames(3)
+	hub._touch_controls.visible = true
+	_check(hub.near.get("id", "") == "upgrades", "hub touch: the slime starts at UPGRADES")
+	var station: Sprite2D = hub.near.sprite
+	var on_it: Vector2 = (station.get_global_transform_with_canvas() * station.get_rect()).get_center()
+	var jump_at := Vector2(300, 170)
+	_check(not hub.tap_hits(jump_at), "hub touch: a tap on the empty right half is not a tap on the station")
+	_send_touch(0, jump_at, true)
+	await _physics_frames(3)
+	_check(hub.slime.state == Slime.State.CHARGING and not hub.slime.frozen, "hub touch: JUMP next to a station leaps (charges), it doesn't open it")
+	_send_touch(0, jump_at, false)
+	for i in 120:
+		await physics_frame
+		if hub.slime.state == Slime.State.GLIDE:
+			break
+	hub.slime.position = hub.USE_RING * Vector2(0, -1) + hub.CENTER + Vector2(0, 4)  # (back at the station after the leap)
+	await _physics_frames(3)
+	_check(hub.near.get("id", "") == "upgrades" and hub.tap_hits(on_it), "hub touch: a tap on the station counts (%s)" % on_it)
+	_send_touch(0, on_it, true)
+	await _physics_frames(2)
+	_check(not Input.is_action_pressed("jump") and not hub.slime.frozen, "hub touch: pressing on the station is no JUMP, and opens on release")
+	_send_touch(0, on_it, false)
+	await _physics_frames(2)
+	_check(hub.slime.frozen, "hub touch: tapping the station opens it")
+	current_scene = null
+	hub.free()
+	hub_script.return_to = ""
 	progress.force_touch = false
 	await process_frame
 

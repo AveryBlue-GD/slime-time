@@ -44,6 +44,11 @@ const PAUSE_TOUCH_MARGIN := 5.0
 ## The pause (or home) button was tapped; emitted just before its `menu` press (the hub tells its home tap
 ## from Esc by it).
 signal pause_tapped
+## Set by a scene whose things are tapped (the hub: the station you stand at): true if a touch at `pos` lands on one,
+## so it goes to `tapped` (on release) instead of the joystick or JUMP.
+var tap_claim := Callable()
+signal tapped(pos: Vector2)
+var _tap_touch := -1
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
 ## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
@@ -146,6 +151,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
+	elif _tap_touch == -1 and tap_claim.is_valid() and tap_claim.call(pos):
+		_tap_touch = index
 	elif pos.x < SCREEN.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
@@ -168,6 +175,9 @@ func _touch_up(index: int, pos: Vector2) -> void:
 			ability_tapped.emit(abilities[slot].id)
 	elif index == _pause_touch:
 		_release_pause()
+	elif index == _tap_touch:
+		_tap_touch = -1
+		tapped.emit(pos)
 	elif index == _joy_touch:
 		_joy_touch = -1
 		_joy_center = JOY_HOME
@@ -288,6 +298,7 @@ func _release_all() -> void:
 	_release_pause()
 	_joy_touch = -1
 	_jump_touch = -1
+	_tap_touch = -1  # (nothing opens: a tap only counts on a real release)
 	_joy_center = JOY_HOME
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)

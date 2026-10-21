@@ -25,7 +25,7 @@ extends Node2D
 ## view for where it stands: its front at the back of the room, its side at the sides, its back up
 ## close (holding left while hitting the wheel turns the other way). You glide and leap around as
 ## your slime, in your skin and hat; next to a station the prompt names it and the interact key
-## uses it (on a touchscreen, JUMP does, right next to one).
+## uses it (on a touchscreen, a tap on it does, right next to one; JUMP always leaps).
 ## The title screen (title.tscn) leads here, and Esc goes back to it. Coming back from a station turns the room so that
 ## station faces you again, with the slime in front of it.
 
@@ -151,6 +151,8 @@ var rotor: Sprite2D
 var rotor_base: Sprite2D
 ## The station (or {id = "rotor"}) the slime is next to ({} = none).
 var near: Dictionary = {}
+## Room around a station's sprite (and the prompt) that still counts as a tap on it (view px).
+const TAP_MARGIN := 4.0
 var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
@@ -507,6 +509,8 @@ func _build_ui() -> void:
 	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
 	_touch_controls.pause_tapped.connect(func() -> void:
 		_home_tap = _touch_controls.home_icon)  # (elsewhere its `menu` press opens the hub menu, like Esc)
+	_touch_controls.tap_claim = tap_hits  # (a tap on the station you stand at opens it; JUMP only leaps)
+	_touch_controls.tapped.connect(_on_tapped)
 	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
 		if hat_wheel.visible:
 			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
@@ -1410,16 +1414,39 @@ func _physics_process(delta: float) -> void:
 			_place_all()
 			room_turned.emit(back_station().id, _turn_dir)
 	_update_near()
-	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
-	# such key, so right next to one JUMP uses it instead of leaping.
-	var touch := _touch_controls != null and _touch_controls.visible
-	slime.can_charge = near.is_empty() or not touch
-	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
-	if not near.is_empty() and used and slime.state == Slime.State.GLIDE:
-		if near.id == "rotor":
-			turn_room(-1 if Input.is_action_pressed("move_left") else 1)
-		else:
-			_use(near)
+	# The interact key (F) uses the station or wheel you're next to; on a touchscreen a tap on it (or on its
+	# prompt) does (_on_tapped). JUMP always leaps.
+	if Input.is_action_just_pressed("interact"):
+		_use_near()
+
+
+## Uses the station or wheel next to the slime, if any (while it glides).
+func _use_near() -> void:
+	if near.is_empty() or slime.state != Slime.State.GLIDE:
+		return
+	if near.id == "rotor":
+		turn_room(-1 if Input.is_action_pressed("move_left") else 1)
+	else:
+		_use(near)
+
+
+## True if a touch at `pos` (screen) is on the station or wheel the slime stands at, or on its prompt.
+func tap_hits(pos: Vector2) -> bool:
+	if near.is_empty() or turning or slime.frozen:
+		return false
+	if prompt.visible and prompt.get_global_rect().grow(TAP_MARGIN).has_point(pos):
+		return true
+	var sprites: Array = [rotor, rotor_base] if near.id == "rotor" else [near.sprite]
+	for sprite: Sprite2D in sprites:
+		var rect := sprite.get_global_transform_with_canvas() * sprite.get_rect()
+		if rect.grow(TAP_MARGIN).has_point(pos):
+			return true
+	return false
+
+
+func _on_tapped(pos: Vector2) -> void:
+	if tap_hits(pos):
+		_use_near()
 
 
 func _process(delta: float) -> void:
