@@ -123,9 +123,9 @@ func _dyes() -> void:
 	var count := 0
 	for hat in Hats.ids():
 		count += Hats.dyes_for(hat).size()
-	_check(count == 103 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("crown").is_empty()
+	_check(count == 123 and Hats.dyes_for("tophat").size() == 10 and Hats.dyes_for("cowboy").size() == 11 and Hats.dyes_for("nothat").is_empty()
 		and not "midnight" in Hats.dyes_for("tophat") and "rainbow" in Hats.dyes_for("rainbow"),
-		"103 dyes: 10 dyeable hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
+		"123 dyes: all 12 hats, each without its own color, each with PRISM and RAINBOW (%d)" % count)
 	var sheet_dyes := 0
 	for entry: Dictionary in Hats.DYES:
 		if not entry.has("block"):
@@ -136,11 +136,11 @@ func _dyes() -> void:
 	_check(progress.dye_price("clover") == 10 and progress.dye_price("rainbow") == 99 and progress.dye_price("prism") == 50
 		and Hats.sheet_block("prism") == Hats.sheet_block("rainbow") and Hats.sheet_block("rainbow") == 9
 		and Hats.material_for("beanie", "rainbow").get_shader_parameter("gradient") and not Hats.material_for("beanie", "prism").get_shader_parameter("gradient") and Hats.material_for("beanie", "rainbow") != null
-		and Hats.material_for("beanie", "clover") == null and Hats.material_for("crown", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW 99 (a gradient), PRISM 50 (turns as one), both from the rainbow block; the others 10")
+		and Hats.material_for("beanie", "clover") == null and Hats.material_for("nothat", "rainbow") == null and "rainbow" in Hats.dyes_for("viking") and not "butter" in Hats.dyes_for("viking"), "RAINBOW 99 (a gradient), PRISM 50 (turns as one), both from the rainbow block; the others 10")
 	_check(not progress.can_buy_dye("beanie", "clover") and not progress.buy_dye("beanie", "clover") and progress.tickets == 25, "no dye for a hat not won")
 	progress.win_hat("beanie")
 	progress.win_hat("crown")
-	_check(not progress.buy_dye("beanie", "cherry") and not progress.buy_dye("crown", "clover") and not progress.buy_dye("beanie", "nope"),
+	_check(not progress.buy_dye("beanie", "cherry") and not progress.buy_dye("crown", "butter") and not progress.buy_dye("beanie", "nope"),
 		"no dye a hat doesn't come in (its own color, a plain hat, an unknown dye)")
 	progress.selected_hat = "crown"
 	_check(progress.buy_dye("beanie", "clover") and progress.tickets == 15 and progress.owns_dye("beanie", "clover")
@@ -167,7 +167,7 @@ func _dyes() -> void:
 	bad.set_value("meta", "version", 6)
 	bad.set_value("meta", "epoch", 1)
 	bad.set_value("hats", "owned", ["beanie"])
-	bad.set_value("hats", "dyes", ["beanie:clover", "beanie:clover", "beanie:cherry", "crown:clover", "beanie", 7, "x:y:z"])
+	bad.set_value("hats", "dyes", ["beanie:clover", "beanie:clover", "beanie:cherry", "crown:butter", "beanie", 7, "x:y:z"])
 	bad.set_value("hats", "dyes_worn", ["beanie:plum", "tophat:clover"])
 	progress._read(bad)
 	_check(str(progress.hat_dyes_owned) == str(["beanie:clover"]) and progress.hat_dye_of("beanie") == "",
@@ -393,8 +393,8 @@ func _ui_wheel() -> void:
 	hub.open_hat_wheel()
 	await process_frame
 	wheel.shop_tab.pressed.emit()
-	_check(wheel.shop_tiles.keys() == ["tophat"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
-		"DYES lists the dyeable hats won (the crown isn't one), focus on the first")
+	_check(wheel.shop_tiles.keys() == ["tophat", "crown"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
+		"DYES lists the hats won, focus on the first")
 	wheel.shop_tiles["tophat"].pressed.emit()
 	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:clover")
 		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 11 and wheel.shop_tiles.has("tophat:rainbow") and wheel.shop_tiles.has("tophat:prism"),
@@ -436,7 +436,7 @@ func _ui_wheel() -> void:
 	_check(wheel.tab == "shop" and wheel.shop_page.visible and wheel.get_viewport().gui_get_focus_owner() != null
 		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every hat won: opens on the SHOP, focus inside")
 	wheel.section_buttons["hats"].pressed.emit()
-	_check(wheel.shop_tiles.size() == 10 and wheel.dye_hat == "", "...its DYES section lists all 10 dyeable hats")
+	_check(wheel.shop_tiles.size() == 12 and wheel.dye_hat == "", "...its DYES section lists all 12 hats")
 	wheel.wheel_tab.pressed.emit()
 	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY HAT" in wheel.result.text and wheel.wheel_tab.has_focus(),
 		"...the WHEEL tab shows an empty wheel that can't spin")

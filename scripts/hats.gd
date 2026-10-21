@@ -44,7 +44,7 @@ static var _flow_frames := {}
 const LIST := [
 	{id = "tophat", name = "TOP HAT", column = 0, dyeable = true, own = "midnight"},  # i18n: ignore (English source; shown via display_name)
 	{id = "beanie", name = "BEANIE", column = 1, dyeable = true, own = "cherry"},  # i18n: ignore (English source; shown via display_name)
-	{id = "party", name = "PARTY HAT", column = 2},  # i18n: ignore (English source; shown via display_name)
+	{id = "party", name = "PARTY HAT", column = 2, dyeable = true, own = "cherry"},  # i18n: ignore (English source; shown via display_name); a dye colors its pompom
 	{id = "cap", name = "BASEBALL CAP", column = 3, dyeable = true, own = "cobalt"},  # i18n: ignore (English source; shown via display_name)
 	{id = "cowboy", name = "COWBOY HAT", column = 4, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	{id = "chef", name = "CHEF HAT", column = 5, dyeable = true, own = "snow"},  # i18n: ignore (English source; shown via display_name)
@@ -53,7 +53,7 @@ const LIST := [
 	# Its propeller spins (frames, see Hat._animate): lazily at rest, faster on the move, fastest flying off in a leap.
 	# A dye colors the propeller (both blades).
 	{id = "propeller", name = "PROPELLER CAP", column = 8, frames = 8, fps = 8.0, fps_moving = 16.0, fps_flying = 24.0, dyeable = true},  # i18n: ignore (English source; shown via display_name)
-	{id = "crown", name = "CROWN", column = 9},  # i18n: ignore (English source; shown via display_name)
+	{id = "crown", name = "CROWN", column = 9, dyeable = true, own = "butter"},  # i18n: ignore (English source; shown via display_name); a dye colors its gems, all alike
 	# A little cloud hovering over the head (`hovers`: it never touches it), raining on it.
 	{id = "raincloud", name = "RAINCLOUD", column = 11, frames = 4, fps = 10.0, hovers = true, dyeable = true},  # i18n: ignore (English source; shown via display_name)
 	# The rare one: a thin wedge on the wheel, and its colors flow (assets/shaders/rainbow_hat.gdshader).

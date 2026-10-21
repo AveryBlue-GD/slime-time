@@ -25,7 +25,7 @@ func _ready() -> void:
 		add_child(head)
 		for i in hats.size():
 			var slime := UIKit.make_slime_preview(Skins.get_preset("lime").color, 2, row == 1)
-			slime.position = Vector2(16 + i * 32, 58 + row * 88)
+			slime.position = Vector2(14 + i * 26, 58 + row * 88)  # (12 hats: 26 apart)
 			add_child(slime)
 			var hat := Hat.new()
 			hat.scale = slime.scale

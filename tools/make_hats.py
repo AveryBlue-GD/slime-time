@@ -171,6 +171,8 @@ RUBY, SAPPHIRE, EMERALD = rgb(236, 56, 84), rgb(84, 150, 246), rgb(74, 206, 120)
 WIZARD_TRIM = YELLOW            # the wizard hat's band and stars (a dye can swap it: DYE_CLASH)
 BLADE_A, BLADE_B = RED, YELLOW  # the propeller's two blades (dyed together: DYEABLE)
 VIKING_TRIM = GOLD              # the viking helmet's riveted rim (its only dyed part)
+PARTY_POM = RED                 # the party hat's pompom on top (its only dyed part)
+CROWN_GEMS = (SAPPHIRE, RUBY, EMERALD)  # the crown's three gems, left to right (dyed all alike)
 
 
 class Hat:
@@ -339,7 +341,7 @@ def party_hat(h: Hat):
             h.put(x, y, RED[1] if x + 0.5 < h.cx + half * 0.4 else RED[2])
         elif y in stripes:                                                    # two bands round the cone
             h.put(x, y, BLUE[0] if x + 0.5 < h.cx - 1 else BLUE[1] if x + 0.5 < h.cx + half * 0.5 else BLUE[2])
-    h.ellipse(tip[0], tip[1] - 0.6, 1.4, 1.3, RED)                            # pompom
+    h.ellipse(tip[0], tip[1] - 0.6, 1.4, 1.3, PARTY_POM)                      # pompom
     h.finish()
 
 
@@ -544,7 +546,7 @@ def crown(h: Hat):
         return True
     h.shape(ring, GOLD, light="cyl")
     jy = fx(h.Y(0.0))                                                         # jewels on the band
-    gems = ((0.0, RUBY),) if h.width == SQUEEZED else ((-0.55, SAPPHIRE), (0.0, RUBY), (0.55, EMERALD))
+    gems = ((0.0, CROWN_GEMS[1]),) if h.width == SQUEEZED else ((-0.55, CROWN_GEMS[0]), (0.0, CROWN_GEMS[1]), (0.55, CROWN_GEMS[2]))
     for dx, col in gems:
         xs = [fx(h.cx) - 1, fx(h.cx)] if dx == 0 else [fx(h.cx + dx * h.rx - 0.5) + (1 if dx > 0 else 0)]
         for x in xs:                                                          # (the middle one 2 px, so it's centered)
@@ -732,6 +734,12 @@ def pale_ramp(r, g, b):
     return [_hsv(r, g, b, 0.0, 0.25, 1.0, 0.12), rgb(r, g, b), _hsv(r, g, b, -0.03, 1.1, 0.82), _hsv(r, g, b, -0.06, 1.15, 0.64)]
 
 
+def gem_ramp(r, g, b):
+    """The crown's three gems in one dye: a bright, jewel-like shade of it (each gem is one pixel)."""
+    gem = _hsv(r, g, b, 0.0, 1.05, 1.08, 0.04)
+    return (gem, gem, gem)
+
+
 def cloud_ramp(r, g, b, white=0.45):
     """A cloud's shades: the dye taken `white` of the way to white first, so it stays a fluffy pastel."""
     return pale_ramp(*(round(c + (255 - c) * white) for c in (r, g, b)))
@@ -751,6 +759,8 @@ DYEABLE = {
     chef_hat: (("CREAM",), pale_ramp),
     wizard_hat: (("PURPLE",), ramp),
     viking_helmet: (("VIKING_TRIM",), ramp),          # the rim round the bottom (not the dome or horns)
+    party_hat: (("PARTY_POM",), ramp),                 # the pompom on top (not the cone, rim or bands)
+    crown: (("CROWN_GEMS",), gem_ramp),                # the gems (not the gold)
     propeller_cap: (("BLADE_A", "BLADE_B"), ramp),   # the propeller (its spinner on top)
     rainbow_hat: (("CLOUD",), small_cloud_ramp),            # its two clouds (not the flowing arch)
     raincloud: (("STORM",), cloud_ramp),
