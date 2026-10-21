@@ -2381,11 +2381,11 @@ msgctxt "random_map.title"
 msgid "THIS MAZE SO FAR"
 msgstr ""
 
-#. random maze map view line, max 296px, 1 line; {percent} = share of the maze seen
+#. random maze map view line, max 296px, 1 line; {percent} = share of the maze explored
 #. budget: max 296px, lines 1
 #: scripts/ui/random_map_view.gd
-msgctxt "random_map.line"
-msgid "{percent}% SEEN - GONE ONCE YOU CLEAR IT OR LEAVE"
+msgctxt "random_map.explored"
+msgid "{percent}% EXPLORED"
 msgstr ""
 
 #. title max 150px; buttons max 96px, 1 line each

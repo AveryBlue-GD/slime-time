@@ -5,7 +5,7 @@ extends Control
 ## (Game._offer_retry): every try at this maze so far drawn like a MAP TABLE map (MapView.render: the
 ## tiles seen, the last try's route dashed, the start ring; no coins, a random maze has none). It
 ## lives only as long as the maze does (Progress.random_map: gone once the maze is cleared, a new one
-## is started or the player goes back to the hub). BACK (or Esc / B) closes it; focus stays inside
+## is started or the player goes back to the hub; the view only says how much is explored). BACK (or Esc / B) closes it; focus stays inside
 ## while it's open and goes back where it was.
 
 signal closed
@@ -33,8 +33,8 @@ func open(maze: Dictionary, survey: Dictionary, maze_theme: String, paper: Strin
 	# i18n: random maze map view title, max 296px, 1 line
 	var title := _label(Loc.t("random_map.title", "THIS MAZE SO FAR"), UIKit.GOLD, MARGIN)
 	var percent := roundi(Survey.completeness(survey, maze) * 100.0)
-	# i18n: random maze map view line, max 296px, 1 line; {percent} = share of the maze seen
-	var line := _label(Loc.t("random_map.line", "{percent}% SEEN - GONE ONCE YOU CLEAR IT OR LEAVE", {percent = percent}), UIKit.TEXT_DIM, 0)
+	# i18n: random maze map view line, max 296px, 1 line; {percent} = share of the maze explored
+	var line := _label(Loc.t("random_map.explored", "{percent}% EXPLORED", {percent = percent}), UIKit.TEXT_DIM, 0)
 	_back = UIKit.add_back_button(self, close)
 	line.position.y = _back.position.y - UIKit.GAP_M - UIKit.line_h()
 	var top := title.position.y + UIKit.line_h() + UIKit.GAP_M
@@ -59,12 +59,7 @@ func open(maze: Dictionary, survey: Dictionary, maze_theme: String, paper: Strin
 
 
 func _label(text: String, color: Color, top: float) -> Label:
-	var label := UIKit.make_label(text, UIKit.FONT, color)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.position = Vector2(0, top)
-	label.size = Vector2(320, maxi(10, UIKit.line_h()))
-	add_child(label)
-	return label
+	return UIKit.add_label(self, text, Rect2(0, top, 320, maxi(10, UIKit.line_h())), UIKit.FONT, color)  # (in the tree first: centred)
 
 
 ## Closes the view and gives the focus back.
