@@ -792,9 +792,14 @@ func _cancel_reset() -> void:
 	reset_button.grab_focus()
 
 
+## RESET PROGRESS starts over like a first launch: the story intro plays again (reset clears the seen
+## flag), then the training maze (tutorial on) or the title. Dev mode, which never plays it, goes to the hub.
 func _reset() -> void:
 	Progress.reset_progress()
-	UIKit.go(get_tree(), UIKit.HUB_SCENE)
+	if Story.intro_due(Progress):
+		Story.play(get_tree(), "intro", Story.launch_next(Progress))
+	else:
+		UIKit.go(get_tree(), UIKit.HUB_SCENE)
 
 
 ## Keeps the fullscreen label right whether it was toggled here or with F11.

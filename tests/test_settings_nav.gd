@@ -44,6 +44,16 @@ func _initialize() -> void:
 	current_scene.back_button.pressed.emit()
 	await _frames(240)
 	_check(current_scene.scene_file_path == "res://scenes/controls.tscn", "BACK returns to settings")
+	# RESET PROGRESS (confirmed) starts over like a first launch: the story intro plays again.
+	progress.dev_tools = false
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_FINALE
+	current_scene._reset()
+	await _frames(60)
+	_check(current_scene.scene_file_path == "res://scenes/story.tscn" and current_scene.mode == "intro" and not progress.has_seen_story(progress.STORY_INTRO),
+		"RESET PROGRESS replays the story intro")
+	current_scene.finish()
+	await _frames(240)
+	_check(current_scene.scene_file_path == Story.launch_next(progress), "...and then goes where a first launch goes (%s)" % current_scene.scene_file_path)
 	print("RESULT: %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
 
