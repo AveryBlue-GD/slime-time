@@ -539,6 +539,11 @@ func _goal_reveals() -> void:
 			game.abilities.flush()
 			_check(far and game.goal.visible and game.survey_goal and not game.finished and not game.won,
 				"%s %s: a reveal over the goal's tile (%d tiles off, a wall between: %s) shows it and marks it seen, never takes it (visible %s, survey %s)" % [mode, kind, line.n, line.walled, game.goal.visible, game.survey_goal])
+			# ...and the maze's MAP (recorded at the dry-up) draws the ticket's X there.
+			progress.record_random_map("goal_reveal", game.maze, game.survey_tiles, game.survey_moves, game.survey_goal)
+			var map: Dictionary = progress.random_map_for("goal_reveal")
+			_check(map.goal and MapView._cell_seen(map, game.maze.goal), "%s %s: the maze's MAP then marks the ticket" % [mode, kind])
+			progress.discard_random_map()
 			await _stop(game)
 
 
