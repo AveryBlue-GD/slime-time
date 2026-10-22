@@ -223,6 +223,27 @@ func _release(action: String) -> void:
 
 
 ## ABILITIES: the buttons to show ([{id, left, max}]; AbilityRunner keeps it current).
+## The ability the tutorial is on (AbilityCoach): its button blinks a gold ring. "" = none.
+var coach_id := ""
+var _coach_clock := 0.0
+const COACH_BLINK := 0.6
+
+
+func set_coach(id: String) -> void:
+	coach_id = id
+	_coach_clock = 0.0
+	if _canvas:
+		_canvas.queue_redraw()
+
+
+## Ticks the coached button's blink (AbilityCoach, while it shows a line).
+func step_coach(delta: float) -> void:
+	var was := fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0
+	_coach_clock += delta
+	if _canvas and was != (fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0):
+		_canvas.queue_redraw()
+
+
 func set_abilities(items: Array[Dictionary]) -> void:
 	abilities = items.duplicate(true)
 	if _canvas:
@@ -346,6 +367,8 @@ func _draw_controls() -> void:
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
 			Color(1, 1, 1, 0.95 if ready else 0.35))
+		if item.id == coach_id and fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0:
+			_canvas.draw_arc(at, ABILITY_RADIUS + 2.0, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
 	# Pause button: two bars (or the hub's home icon on phones).
 	_canvas.draw_rect(pause_rect, dim)
 	for r: Rect2i in (HOME_PIXELS if home_icon else PAUSE_PIXELS):

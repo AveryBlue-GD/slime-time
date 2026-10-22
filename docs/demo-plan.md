@@ -121,10 +121,13 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   offers only CONTINUE and the pause menu's QUIT also goes on to the randomizer's end screen. Nothing borrowed
   reaches the save: `Progress.begin_demo_preview` saves the seen bit (`PREVIEW_SEEN_BIT` 16: once per save), keeps a
   `_write()` of the whole state and writes nothing until `end_demo_preview` (DemoEnd, the hub and the title call it)
-  reads that back. Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
+  reads that back (its first run is the 3rd win's; later ones come from the portal). Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
   After PLAY the ability tutorial (`scripts/ability_coach.gd`, owner 2026-10-22) walks through every ability on the
-  training line pod: key, name and what it does, on to the next once used (or after 12 s). Outside the preview it shows
-  each ability's line once, in the first random maze with it (`tutorial_seen` bits 16-128; the demo: SLIME SNIPER).
+  training line pod: key (touch: TAP, the button blinks gold), name and what it does; the slime is held (turning only,
+  no clock or drain) until that ability is used, SKIP (F / pad X / tap) ends it. Outside the preview it shows each
+  ability's line once, in the first random maze with it (`tutorial_seen` bits 16-128; the demo: SLIME SNIPER).
+  After the preview has played, the randomizer portal always plays it again (`Progress.demo_preview_replay`, owner
+  2026-10-22: no new seeds), as just the maze (its tutorial is the first run's: `story_seen` bit 32).
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";
   station dimmed, prompt LOCKED, using it says CLEAR LEVEL 4, tour line SPIN FOR HATS AFTER LEVEL 4, so no free-spin
   promise before it opens). Then as in the full game: the first spin free, later ones cost tickets from the mazes,

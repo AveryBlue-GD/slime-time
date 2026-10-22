@@ -3,7 +3,9 @@ extends "res://tests/suite_base.gd"
 ## The demo's FULL GAME PREVIEW (Demo.PREVIEW, Progress.begin_demo_preview / end_demo_preview, game.gd `preview`):
 ## the RANDOM_WINS-th randomizer win leads into one fixed maze with every ability and a borrowed look, its card
 ## first, no attempts / pickups / pay, CONTINUE only into the end screen; nothing it borrows reaches the save
-## (none written meanwhile, the state from before put back after), and it plays once per save.
+## (none written meanwhile, the state from before put back after); after it the randomizer portal always plays it again
+## (just the maze: the ability tutorial is its first run's). The ability tutorial (AbilityCoach): a line per ability,
+## the slime held (turning only, no clock) until that ability is used; SKIP ends it.
 
 var test_save := throwaway_save()
 var progress: Node
@@ -91,6 +93,10 @@ func _check_preview() -> void:
 	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
 	_check(game.hud.training_line_text() == AbilityCoach.line("rifle") and game.hud.training_line.visible or game.hud.training_line_on,
 		"its first line: %s" % game.hud.training_line_text())
+	var clock_held: float = game.run_time
+	game.slime.position += Vector2.ZERO
+	await _physics_frames(10)
+	_check(game.slime.hold and game.run_time == clock_held and coach.skip_pod.visible, "the slime is held (no clock) while the line waits, SKIP shown")
 	runner.start_aim("rifle")
 	await _physics_frames(2)
 	_check(game.hud.training_line_text() == AbilityCoach.aim_line(), "aiming: %s" % AbilityCoach.aim_line())
@@ -98,7 +104,8 @@ func _check_preview() -> void:
 	runner.use("rifle")
 	await _physics_frames(2)
 	await _wait_seconds(AbilityCoach.GAP + 0.2)
-	_check(coach.current == "splat" and game.hud.training_line_text() == AbilityCoach.line("splat"), "used: on to %s" % AbilityCoach.line("splat"))
+	_check(coach.current == "splat" and game.hud.training_line_text() == AbilityCoach.line("splat") and game.slime.hold,
+		"used: on to %s (held again)" % AbilityCoach.line("splat"))
 	var widest := 0.0
 	for text in [AbilityCoach.aim_line(), AbilityCoach.done_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)):
 		widest = maxf(widest, UIKit.text_w(text))
@@ -125,17 +132,36 @@ func _check_preview() -> void:
 	again.free()
 
 	# The end: everything from before is back, and saving with it.
+	var seen_then: int = progress.STORY_INTRO | progress.STORY_DEMO_END | progress.STORY_DEMO_PREVIEW
 	progress.end_demo_preview()
 	_check(not progress.in_demo_preview() and not Demo.preview and not Demo.ability_open("kaze"), "end: the preview is over")
-	_check(progress._write().encode_to_text() == saved_at_start, "...the state is exactly the one from before it")
+	_check(progress.story_seen == seen_then | progress.STORY_DEMO_PREVIEW_COACHED and _disk() == progress._write().encode_to_text(),
+		"...its tutorial is marked played (saved)")
+	progress.story_seen = seen_then
+	_check(progress._write().encode_to_text() == saved_at_start, "...otherwise the state is exactly the one from before it")
 	_check(progress.active_skin() == "lemon" and progress.selected_hat == Hats.NONE and progress.abilities == {rifle = 1}
 		and progress.random_seed == player_seed and progress.skin_override == "",
 		"...the player's skin, hat, abilities and maze")
 	progress.save_progress()
 	_check(_disk() == saved_at_start, "...and the next save writes that")
-	_check(not progress.demo_preview_due(), "it plays once per save")
+	progress.story_seen = seen_then | progress.STORY_DEMO_PREVIEW_COACHED
+	progress.save_progress()
+	var after_first := _disk()
+	_check(not progress.demo_preview_due(), "the 3rd win's preview is once")
 	progress.end_demo_preview()  # (twice is harmless)
-	_check(progress._write().encode_to_text() == saved_at_start, "a second end_demo_preview changes nothing")
+	_check(progress._write().encode_to_text() == after_first, "a second end_demo_preview changes nothing")
+	# The randomizer portal after the demo: the preview maze again, without its tutorial.
+	progress.start_random()
+	_check(progress.in_demo_preview() and progress.random_seed == Demo.PREVIEW_SEED, "the portal plays the preview maze again (no new seed)")
+	var replay: Node2D = BASE_MAIN.instantiate()
+	root.add_child(replay)
+	current_scene = replay
+	await physics_frame
+	_check(replay.preview and replay.preview_card_up and replay.coach == null, "...its card, then just the maze (no tutorial)")
+	replay.free()
+	progress.end_demo_preview()
+	_check(progress._write().encode_to_text() == after_first, "...and leaves the save as it was")
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END  # (a demo whose preview hasn't played: its own randomizer)
 	# Outside the preview: each ability's line once (the demo's own randomizer: SLIME SNIPER), then never again.
 	progress.start_random()
 	var maze: Node2D = BASE_MAIN.instantiate()
@@ -144,9 +170,10 @@ func _check_preview() -> void:
 	await physics_frame
 	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a demo random maze coaches SLIME SNIPER the first time")
 	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
-	maze.abilities.use("rifle")
+	_check(maze.slime.hold and maze.coach.current == "rifle", "...holding the slime")
+	maze.coach.skip()
 	await _physics_frames(3)
-	_check(progress.has_seen_tutorial(AbilityCoach.bit("rifle")), "...seen once used")
+	_check(not maze.slime.hold and not maze.coach.skip_pod.visible and progress.has_seen_tutorial(AbilityCoach.bit("rifle")), "SKIP: the slime is free, the line seen")
 	maze.free()
 	var later: Node2D = BASE_MAIN.instantiate()
 	root.add_child(later)

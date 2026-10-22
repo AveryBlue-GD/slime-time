@@ -88,6 +88,9 @@ var can_charge := true
 ## True while an ability is being aimed (AbilityRunner aim mode): the slime glides to a stop, the
 ## direction keys only aim and JUMP doesn't charge a leap.
 var aim_lock := false
+## Held in place (the ability tutorial, AbilityCoach): the direction keys only turn the slime (its facing, so an
+## ability can be aimed), no gliding or leaping.
+var hold := false
 ## Maze helpers: lining up with the 16 px corridor lanes and slipping past corners a leap only
 ## clips. Off in the hub, a round room with no lanes (they'd tug the slime at invisible lines).
 var maze_assist := true
@@ -521,13 +524,15 @@ func _physics_process(delta: float) -> void:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input != Vector2.ZERO and (state == State.GLIDE or state == State.CHARGING):
 		facing = input.normalized()
+	if hold:
+		input = Vector2.ZERO  # (turned, not moved)
 
 	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
-	if frozen or aim_lock or not can_charge or not Input.is_action_pressed("jump"):
+	if frozen or aim_lock or hold or not can_charge or not Input.is_action_pressed("jump"):
 		_jump_buffer_left = 0.0  # let go (or can't charge): the remembered press is void
 	elif Input.is_action_just_pressed("jump") and state != State.GLIDE and state != State.CHARGING:
 		_jump_buffer_left = JUMP_BUFFER  # pressed too early (stun, leap): remember it
-	if state == State.GLIDE and not frozen and not aim_lock and can_charge \
+	if state == State.GLIDE and not frozen and not aim_lock and not hold and can_charge \
 			and (Input.is_action_just_pressed("jump") or _jump_buffer_left > 0.0):
 		_jump_buffer_left = 0.0
 		state = State.CHARGING

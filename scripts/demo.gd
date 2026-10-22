@@ -78,7 +78,8 @@ const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
 ## random look from the full game (Progress.begin_demo_preview: skin, jelly / pastel, hat + dye, trail, paper), with
 ## no ticket pickups or pay, after a short card (game.gd); its win or dry-up goes straight to the randomizer's end
 ## screen. Everything it borrows is in memory only: the save is not written while it runs and the whole state from
-## before it comes back as it ends (Progress.end_demo_preview). Once per save (PREVIEW_SEEN_BIT); false = no preview.
+## before it comes back as it ends (Progress.end_demo_preview). First after the 3rd win (PREVIEW_SEEN_BIT), then every time the
+## randomizer portal is used (Progress.demo_preview_replay: no new seeds); false = no preview.
 const PREVIEW := true
 const PREVIEW_SEED := 1854
 const PREVIEW_LEVEL := 3

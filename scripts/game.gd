@@ -648,8 +648,8 @@ func _physics_process(delta: float) -> void:
 	_relight(pos)
 	if training:
 		_training_lines_step(delta)
-	if finished or preview_card_up:
-		return
+	if finished or preview_card_up or slime.hold:
+		return  # (the preview's card, the ability tutorial's hold: no clock, no drain)
 	_survey_step(pos)
 	run_time += delta
 	hud.set_time(run_time)

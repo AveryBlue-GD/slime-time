@@ -92,6 +92,8 @@ const STORY_DEMO_END := 4
 const STORY_DEMO_RANDOM_END := 8
 ## 16 too: the demo's FULL GAME PREVIEW maze was started (Demo.PREVIEW_SEEN_BIT).
 const STORY_DEMO_PREVIEW := 16
+## 32: the preview's ability tutorial has played (AbilityCoach: later preview runs are just the maze).
+const STORY_DEMO_PREVIEW_COACHED := 32
 ## Dry-ups per story level since it was last cleared (not saved); drives the mercy assist.
 var dry_ups := {}
 ## Story level the game scene loads next.
@@ -1558,6 +1560,9 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
+	if demo_preview_replay():
+		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
+		return
 	mode = MODE_RANDOM
 	new_random_maze()
 
@@ -1574,6 +1579,12 @@ const _PREVIEW_LIVE_KEYS: Array[String] = ["mode", "random_seed", "random_level"
 
 ## The preview's card was shown (once per preview; its restarts go straight in). Not saved.
 var preview_card_shown := false
+
+
+## Whether the randomizer portal plays the preview maze again: a demo whose preview was played (owner, 2026-10-22:
+## after beating the demo the randomizer always takes them back into it, no new seeds).
+func demo_preview_replay() -> bool:
+	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
 
 
 ## Whether the RANDOM_WINS-th randomizer win leads into the preview now (a demo with it, not seen yet).
@@ -1648,6 +1659,7 @@ func end_demo_preview() -> void:
 	for key: String in _preview_live:
 		set(key, _preview_live[key])
 	_preview_live = {}
+	mark_story_seen(STORY_DEMO_PREVIEW_COACHED)  # (its ability tutorial has played: replays are just the maze)
 
 
 ## True while the demo's FULL GAME PREVIEW runs.

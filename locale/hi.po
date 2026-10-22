@@ -76,11 +76,11 @@ msgctxt "coach.sense"
 msgid "PEEKS AT THE MAP"
 msgstr ""
 
-#. ability tutorial line (touch: its button is on screen), max 192px, 1 line; {name} = ability name, {what} = coach.*
+#. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
 msgctxt "coach.line_touch"
-msgid "{name}: {what}"
+msgid "TAP {name}: {what}"
 msgstr ""
 
 #. ability tutorial line, max 192px, 1 line; {key} = its key (1, 2, 3, M, a pad button), {name} = ability name, {what} = coach.*
@@ -102,6 +102,13 @@ msgstr ""
 #: scripts/ability_coach.gd
 msgctxt "coach.done"
 msgid "THAT'S EVERY ABILITY, GOOD LUCK"
+msgstr ""
+
+#. the hub tour's SKIP pod (top right), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/ability_coach.gd scripts/hub_tour.gd
+msgctxt "hub.tour.skip"
+msgid "SKIP"
 msgstr ""
 
 #: scripts/cosmetics.gd
@@ -1137,13 +1144,6 @@ msgstr ""
 msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "सभी {count} लेवल जीतो"
-
-#. the hub tour's SKIP pod (top right), max 40px, 1 line
-#. budget: max 40px, lines 1
-#: scripts/hub_tour.gd
-msgctxt "hub.tour.skip"
-msgid "SKIP"
-msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
