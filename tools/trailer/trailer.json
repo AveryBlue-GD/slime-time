@@ -256,51 +256,24 @@
    ]
   },
   "flip": {
-   "note": "portrait 'how many looks': the slime's look flips through skins, hats, dyes, trails, CHAMELEON colors, then everything faster and faster (portrait.gd FLIP_PLAN)",
+   "note": "draft D: the whole Short as one unbroken take, the look flipping (portrait.gd FLIP_PLAN)",
    "scene": "portrait",
    "take": "flip",
-   "frames": 1180,
+   "frames": 1640,
    "args": [
     "--skin=ocean",
     "--rng=7"
-   ]
-  },
-  "flip_fast": {
-   "note": "the flip take's last stretch (FLIP_PLAN from frame 1170: everything flips) under a 3-line caption (--top=92), names hidden",
-   "scene": "portrait",
-   "take": "flip",
-   "frames": 480,
-   "args": [
-    "--skin=ocean",
-    "--rng=7",
-    "--plan-from=1170",
-    "--top=92",
-    "--no-names"
    ]
   },
   "flip_beat": {
    "note": "draft E: the flip take on the music's beat grid (trailer_1 fitted to a 27.0 s hit = 13 bars, 31.153846 frames a beat; portrait.gd FLIP_BEATS)",
    "scene": "portrait",
    "take": "flip",
-   "frames": 1266,
+   "frames": 1640,
    "args": [
     "--skin=ocean",
     "--rng=7",
     "--beat=31.153846"
-   ]
-  },
-  "flip_beat_fast": {
-   "note": "draft E's last 3 bars (from beat 40) under the 3-line caption, names hidden",
-   "scene": "portrait",
-   "take": "flip",
-   "frames": 394,
-   "args": [
-    "--skin=ocean",
-    "--rng=7",
-    "--beat=31.153846",
-    "--plan-from-beat=40",
-    "--top=92",
-    "--no-names"
    ]
   }
  },
@@ -832,28 +805,27 @@
      "above": 70
     },
     {
-     "take": "flip_fast",
-     "in": 0.0,
+     "take": "flip",
+     "in": 19.5,
      "dur": 5.0,
      "color": "gold",
      "caption": [
       "272,544",
-      "DIFFERENT",
-      "LOOKS"
+      "DIFFERENT LOOKS"
      ],
      "center": "frame",
-     "above": 92
+     "above": 70
     },
     {
-     "take": "flip_fast",
-     "in": 5.0,
+     "take": "flip",
+     "in": 24.5,
      "dur": 2.5,
      "color": "white",
      "caption": [
       "FIND YOURS"
      ],
      "center": "frame",
-     "above": 92
+     "above": 70
     }
    ],
    "end": {
@@ -948,28 +920,27 @@
      "above": 70
     },
     {
-     "take": "flip_beat_fast",
-     "in": 0.0,
+     "take": "flip_beat",
+     "in": 20.766667,
      "dur": 4.15,
      "color": "gold",
      "caption": [
       "272,544",
-      "DIFFERENT",
-      "LOOKS"
+      "DIFFERENT LOOKS"
      ],
      "center": "frame",
-     "above": 92
+     "above": 70
     },
     {
-     "take": "flip_beat_fast",
-     "in": 4.15,
+     "take": "flip_beat",
+     "in": 24.916667,
      "dur": 2.083333,
      "color": "white",
      "caption": [
       "FIND YOURS"
      ],
      "center": "frame",
-     "above": 92
+     "above": 70
     }
    ],
    "end": {

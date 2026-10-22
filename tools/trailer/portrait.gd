@@ -480,7 +480,7 @@ func _beat_tick() -> void:
 	var from := float(opts.get("plan-from-beat", "0"))
 	if _next_beat < 0.0:
 		_next_beat = from + _beat_phase(from)[1]  # (the first look is the downbeat's)
-	if frame < roundi((_next_beat - from) * per_beat):
+	if frame - 1 < roundi((_next_beat - from) * per_beat):  # (frame 1 is the first saved frame, p00000000)
 		return
 	var phase := _beat_phase(_next_beat)
 	_flip(phase[0], _beat_phase(_next_beat + phase[1])[0] != phase[0])
