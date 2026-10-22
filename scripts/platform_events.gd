@@ -119,6 +119,7 @@ func go_back() -> void:
 ## false (tests, which run headless).
 func enter_background(force := false) -> void:
 	in_background = true
+	get_tree().call_group(Slime.GROUP, "cancel_charge")  # (before the release below, which would fire it)
 	release_held_inputs()
 	_flush_progress()
 	pause_wanted = force or (Platform.pauses_on_focus_loss() and get_tree().root.get_node_or_null("Autoplay") == null)

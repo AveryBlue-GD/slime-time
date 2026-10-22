@@ -94,6 +94,11 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
   first-try even one level). The randomizer portal goes straight into a random maze, no resume prompt, nothing mentions it, ABYSS is
   hidden unless owned; a saved `[descent_run]`, stats and milestones are kept untouched, and flipping the const restores it all.
   Descent suites force it on; `test_descent_off` covers the off behaviour. (Mentions of Descent in this file describe it when on.)
+- **Bug-hunt fixes** (owner, 2026-10-22; `test_bughunt_fixes`): the hat wheel rolls from a saved seed and the spin count
+  (`Progress.wheel_seed` / `wheel_roll`, `[hats] seed`; an older save or code gets one from its own text), so re-loading a SAVE CODE
+  and spinning again lands the same hat; a run that ends, or an app that goes to the background, closes an open SLIME SENSE peek
+  (`Game._close_run_map`); losing focus drops a leap being charged (`Slime.cancel_charge` via the `Slime.GROUP` group) instead of
+  firing it on RESUME; remaps can't take the arrows or F11 (`Progress.RESERVED_KEYS`) or SLIME SENSE's key (`UNLISTED_ACTIONS`).
 - **SLIME SENSE** (owner, 2026-10-22): a fourth ticket ability (`Economy.ABILITIES.sense`, 30 / 60 / 100, 1 / 2 / 3 peeks per attempt), key M
   (pad: left stick click; not on the CONTROLS page, whose columns hold five rows): opens the maze's map mid-run (`Game.toggle_run_map`),
   the slime held still and the meter not draining; its key again closes it for free. **Idle drain**: standing still drains

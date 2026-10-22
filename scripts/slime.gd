@@ -19,6 +19,8 @@ signal dash_hit(wall_normal: Vector2)
 ## DASH: the SLIMAKAZE ability's straight dash to a wall (set by AbilityRunner through dash()).
 enum State { GLIDE, CHARGING, AIRBORNE, STUNNED, DASH }
 
+## Every slime is in this group (PlatformEvents cancels a charging leap through it).
+const GROUP := "slime"
 const TILE := 16
 ## Slime sheet frames are this many px square (slime_sheet.json frame_size).
 const FRAME_SIZE := 20
@@ -341,6 +343,7 @@ func leap_aim() -> Vector2:
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	# Moved on physics ticks, so drawn between them when interpolation is on (the scene root opts out,
 	# Transition); the camera places itself (game.gd) and never interpolates (slime.tscn).
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
@@ -596,6 +599,15 @@ func catch_hop() -> float:
 		return left
 	catch_t = 0.0
 	return catch_moment()
+
+
+## Drops a leap being charged without firing it (PlatformEvents, when the app loses focus: the held JUMP
+## it then lets go of must not launch the stored charge).
+func cancel_charge() -> void:
+	if state == State.CHARGING:
+		state = State.GLIDE
+		charge = 0.0
+		_sfx_stop("charge")
 
 
 ## Ends a catch hop at once (a win, a dry-up, tests); the sprite drops back to where the tick put it.

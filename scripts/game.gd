@@ -1448,6 +1448,12 @@ func toggle_run_map() -> void:
 		slime.set_deferred("aim_lock", false))
 
 
+## Closes a SLIME SENSE peek if one is up.
+func _close_run_map() -> void:
+	if random_map_view != null and _map_mid_run:
+		random_map_view.close()
+
+
 ## ABILITIES: takes `percent` of the meter (not with dev NO DRAIN).
 func spend_slime(percent: float) -> void:
 	if not dev_no_drain:
@@ -2517,6 +2523,7 @@ func _dry_up() -> void:
 ## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
 func _finish(did_win: bool, text: String) -> void:
 	finished = true
+	_close_run_map()  # (a glide that carries on after M can end the run: the result must not sit under the map)
 	_end_coin_catches()
 	won = did_win
 	if did_win:
@@ -2800,6 +2807,7 @@ func _leaving() -> bool:
 func pause_for_background() -> bool:
 	if not _is_running_scene() or _leaving() or finished or get_tree().paused:
 		return false
+	_close_run_map()  # (its focus lock would leave the pause menu without focus, under the map)
 	pause_menu.open()
 	DevLog.log_event(get_tree(), "pause (app in the background)", self)
 	return true

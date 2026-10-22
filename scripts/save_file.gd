@@ -112,7 +112,7 @@ static func _read_bindings(p: Node, file: ConfigFile) -> void:
 	var used := {}
 	for action: String in p.DEFAULT_KEYS:
 		var key := get_int(file, "controls", action, p.DEFAULT_KEYS[action])
-		if key <= 0 or key > p.KEY_MAX_CODE or used.has(key):
+		if key <= 0 or key > p.KEY_MAX_CODE or used.has(key) or key in p.RESERVED_KEYS:
 			key = p.DEFAULT_KEYS[action]
 		if used.has(key) and action.begins_with("ability_"):
 			# (an ability key missing from an older save, or broken: the first free spare, so the
@@ -142,6 +142,11 @@ static func _read_wallet(p: Node, file: ConfigFile) -> void:
 	p.random_paid_seeds.assign(ints(file.get_value("wallet", "paid_seeds", [])).slice(-p.PAID_SEEDS_MAX))
 	p.spins = clampi(get_int(file, "hats", "spins", 0), 0, p.SPINS_MAX)
 	p.rainbow_pity = clampi(get_int(file, "hats", "rainbow_pity", 0), 0, p.RAINBOW_PITY_MAX)
+	# A save or code from before the wheel had a seed gets one from its own text, so loading the same
+	# old code again still rolls the same hats.
+	p.wheel_seed = get_int(file, "hats", "seed", 0)
+	if p.wheel_seed == 0 and file.has_section("progress"):
+		p.wheel_seed = hash(file.encode_to_text()) | 1
 	p.medals = {}
 	# A save with best times but no [medals] section at all gets tiers from its best times; otherwise
 	# stored tiers count when 1-3 (anything else is 0).
@@ -358,6 +363,9 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("wallet", "paid_seeds", p.random_paid_seeds)
 	file.set_value("hats", "spins", p.spins)
 	file.set_value("hats", "rainbow_pity", p.rainbow_pity)
+	if p.wheel_seed == 0:
+		p.wheel_seed = randi() | 1
+	file.set_value("hats", "seed", p.wheel_seed)
 	# The ticket store: written only once used, so a save without it stays as small as before.
 	if p.hats_bought > 0:
 		file.set_value("hats", "bought", p.hats_bought)

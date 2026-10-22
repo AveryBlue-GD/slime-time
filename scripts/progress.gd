@@ -30,6 +30,12 @@ const DEFAULT_KEYS := {
 const ABILITY_SPARE_KEYS: Array[int] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0,
 	KEY_Q, KEY_E, KEY_C, KEY_Z, KEY_X, KEY_V, KEY_G, KEY_T]
 const SECONDARY_KEYS := {move_up = KEY_UP, move_down = KEY_DOWN, move_left = KEY_LEFT, move_right = KEY_RIGHT}
+## Keys no remappable action can take, so one key never does two things: the arrows (movement's fixed
+## SECONDARY_KEYS) and F11 (toggle_fullscreen). Esc and P (pause) are refused by the CONTROLS page.
+const RESERVED_KEYS: Array[int] = [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_F11]
+## Actions the CONTROLS page doesn't list (SLIME SENSE stays on M): their key is never swapped away,
+## since the player couldn't see or undo the move.
+const UNLISTED_ACTIONS: Array[String] = ["ability_sense"]
 
 ## The player's save. user:// is the RELEASE user data dir (project.godot application/config/
 ## custom_user_dir_name, e.g. ~/Library/Application Support/SlimeTime_R1 on macOS, /userfs/SlimeTime_R1
@@ -147,6 +153,10 @@ var medals := {}
 ## Hat wheel: spins made in all, and spins since the rainbow hat was last rolled (pity).
 var spins := 0
 var rainbow_pity := 0
+## The wheel's own seed: each spin's roll comes from it and `spins` (wheel_roll), so loading a save
+## code from before a spin and spinning again lands the same hat; re-rolling is never free. 0 = not
+## picked yet (SaveFile.write picks one).
+var wheel_seed := 0
 ## UTC day number and how many randomizer wins were paid on it.
 var random_pay_day := 0
 var random_paid := 0
@@ -2079,10 +2089,19 @@ func wheel_pool() -> Array[String]:
 ## more likely with every spin that misses it), takes the tickets, wins the hat and saves, all
 ## together, so closing the game mid-spin can't lose a payment or a prize. `roll` (0-1) picks
 ## the hat; leave it -1 for a random one. Returns the hat's id, or "" if it can't spin.
+## The next spin's roll (0-1): fixed by wheel_seed and the spins made so far.
+func wheel_roll() -> float:
+	if wheel_seed == 0:
+		wheel_seed = randi() | 1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([wheel_seed, spins])
+	return rng.randf()
+
+
 func spin_hat(roll := -1.0) -> String:
 	if not can_spin_hats():
 		return ""
-	var pick := wheel_pick(wheel_pool(), rainbow_pity, randf() if roll < 0.0 else roll)
+	var pick := wheel_pick(wheel_pool(), rainbow_pity, wheel_roll() if roll < 0.0 else roll)
 	_pay(spin_cost())
 	spins += 1
 	rainbow_pity = 0 if Hats.get_hat(pick).get("flows", false) else mini(rainbow_pity + 1, RAINBOW_PITY_MAX)
@@ -2444,6 +2463,7 @@ func reset_progress() -> void:
 	medals = {}
 	spins = 0
 	rainbow_pity = 0
+	wheel_seed = 0
 	hats_bought = 0
 	hat_dyes_owned.clear()
 	hat_dyes = {}
@@ -2588,11 +2608,22 @@ static func ensure_bus(bus_name: String) -> int:
 
 # ---------------------------------------------------------------- controls
 
+## Whether `keycode` can become `action`'s key: a real key, not RESERVED_KEYS, and not the key of
+## an action the CONTROLS page doesn't list (UNLISTED_ACTIONS).
+func can_bind(action: String, keycode: int) -> bool:
+	if keycode <= 0 or keycode > KEY_MAX_CODE or not action in DEFAULT_KEYS or keycode in RESERVED_KEYS:
+		return false  # (not a key, which a save could never read back, or a key with a fixed job)
+	for other: String in UNLISTED_ACTIONS:
+		if other != action and bindings.get(other, 0) == keycode:
+			return false
+	return true
+
+
 ## Binds `keycode` as the primary key for `action`. If another action used that key, the two
-## swap keys so no key is ever bound twice.
+## swap keys so no key is ever bound twice. A key can_bind refuses changes nothing.
 func set_binding(action: String, keycode: int) -> void:
-	if keycode <= 0 or keycode > KEY_MAX_CODE or not action in DEFAULT_KEYS:
-		return  # (not a key; a save could never read it back)
+	if not can_bind(action, keycode):
+		return
 	for other: String in bindings:
 		if other != action and bindings[other] == keycode:
 			bindings[other] = bindings[action]
