@@ -322,6 +322,8 @@ var _pod_inputs_shown: Array = []
 var assisted_coins := 0
 ## Asks RESTART / UPGRADES / CANCEL when R is pressed mid-run.
 var restart_prompt: RestartPrompt
+## The ability tutorial (AbilityCoach) on this run: null once every ability here was shown (or without any).
+var coach: AbilityCoach
 ## ABILITIES v1 (AbilityRunner): the ticket abilities on this run; null outside randomizer mazes and Descent / without any.
 var abilities: AbilityRunner
 ## The seed this maze was built from (config.seed; the SLIMAKAZE splatter is seeded from it).
@@ -558,6 +560,7 @@ func _ready() -> void:
 	add_child(restart_prompt)
 	_put_on_hat()
 	abilities = AbilityRunner.create(self)
+	coach = AbilityCoach.create(self) if abilities and not training else null
 	if progress and not is_random() and not descent and not hard_mode and level <= TutorialCues.MAX_LEVEL \
 			and level > progress.levels_cleared and progress.randoms_won == 0:
 		var cues := TutorialCues.new()

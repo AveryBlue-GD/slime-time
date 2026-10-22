@@ -85,6 +85,24 @@ func _check_preview() -> void:
 	game.hud.choice_buttons[0].pressed.emit()
 	await physics_frame
 	_check(not game.preview_card_up and not game.slime.frozen and not game.hud.message.visible, "PLAY: the card goes, the run starts")
+	# The ability tutorial: a line per ability, on to the next once it is used.
+	var coach: AbilityCoach = game.coach
+	_check(coach != null and coach.steps == Abilities.ids(), "the ability tutorial has every ability")
+	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
+	_check(game.hud.training_line_text() == AbilityCoach.line("rifle") and game.hud.training_line.visible or game.hud.training_line_on,
+		"its first line: %s" % game.hud.training_line_text())
+	runner.start_aim("rifle")
+	await _physics_frames(2)
+	_check(game.hud.training_line_text() == AbilityCoach.aim_line(), "aiming: %s" % AbilityCoach.aim_line())
+	runner.cancel_aim()
+	runner.use("rifle")
+	await _physics_frames(2)
+	await _wait_seconds(AbilityCoach.GAP + 0.2)
+	_check(coach.current == "splat" and game.hud.training_line_text() == AbilityCoach.line("splat"), "used: on to %s" % AbilityCoach.line("splat"))
+	var widest := 0.0
+	for text in [AbilityCoach.aim_line(), AbilityCoach.done_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)):
+		widest = maxf(widest, UIKit.text_w(text))
+	_check(widest <= game.hud.TRAINING_LINE_W, "every coach line fits the line's %d px (widest %d)" % [game.hud.TRAINING_LINE_W, widest])
 	await _physics_frames(2)
 	_check(runner.use("sense") and game.random_map_view != null, "SLIME SENSE peeks at the map")
 	game._close_run_map()
@@ -118,5 +136,23 @@ func _check_preview() -> void:
 	_check(not progress.demo_preview_due(), "it plays once per save")
 	progress.end_demo_preview()  # (twice is harmless)
 	_check(progress._write().encode_to_text() == saved_at_start, "a second end_demo_preview changes nothing")
+	# Outside the preview: each ability's line once (the demo's own randomizer: SLIME SNIPER), then never again.
+	progress.start_random()
+	var maze: Node2D = BASE_MAIN.instantiate()
+	root.add_child(maze)
+	current_scene = maze
+	await physics_frame
+	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a demo random maze coaches SLIME SNIPER the first time")
+	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
+	maze.abilities.use("rifle")
+	await _physics_frames(3)
+	_check(progress.has_seen_tutorial(AbilityCoach.bit("rifle")), "...seen once used")
+	maze.free()
+	var later: Node2D = BASE_MAIN.instantiate()
+	root.add_child(later)
+	current_scene = later
+	await physics_frame
+	_check(later.coach == null, "...and not again")
+	later.free()
 	_check(Demo.denied.is_empty(), "the preview loads nothing a stripped demo export leaves out (%s)" % [Demo.denied])
 	current_scene = null

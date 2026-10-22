@@ -373,6 +373,13 @@ func _hook_training() -> void:
 		return
 	training_hooked = true
 	game.connect("training_cue", _on_training_cue)
+	ensure_training_line()
+
+
+## Builds the training line's pod (SPLASHDOWN's direction lines, the demo preview's ability coach) once.
+func ensure_training_line() -> void:
+	if training_line != null:
+		return
 	training_line = PanelContainer.new()
 	training_line.name = "TrainingLine"
 	training_line.add_theme_stylebox_override("panel", UIKit.panel_style(true))
@@ -1310,6 +1317,8 @@ func set_skin_color(color: Color, rainbow := false) -> void:
 func _process(delta: float) -> void:
 	if training_hooked:
 		_training_step(delta)
+	elif training_line != null:
+		_training_line_step(delta)  # (the line alone: the demo preview's ability coach)
 	if record_banner.visible:
 		_chalice_clock += delta
 		var frame := int(_chalice_clock * CHALICE_FPS) % 4

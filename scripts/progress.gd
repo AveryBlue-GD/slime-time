@@ -17,6 +17,7 @@ const TUTORIAL_LEAP := 2
 ## holds them): the training maze was finished or skipped, and the hub tour was finished or skipped.
 const TUTORIAL_TRAINING := 4
 const TUTORIAL_HUB := 8
+## 16, 32, 64, 128: the ability tutorial's lines were shown (AbilityCoach.BITS).
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.

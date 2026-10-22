@@ -122,6 +122,9 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   reaches the save: `Progress.begin_demo_preview` saves the seen bit (`PREVIEW_SEEN_BIT` 16: once per save), keeps a
   `_write()` of the whole state and writes nothing until `end_demo_preview` (DemoEnd, the hub and the title call it)
   reads that back. Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
+  After PLAY the ability tutorial (`scripts/ability_coach.gd`, owner 2026-10-22) walks through every ability on the
+  training line pod: key, name and what it does, on to the next once used (or after 12 s). Outside the preview it shows
+  each ability's line once, in the first random maze with it (`tutorial_seen` bits 16-128; the demo: SLIME SNIPER).
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";
   station dimmed, prompt LOCKED, using it says CLEAR LEVEL 4, tour line SPIN FOR HATS AFTER LEVEL 4, so no free-spin
   promise before it opens). Then as in the full game: the first spin free, later ones cost tickets from the mazes,

@@ -56,6 +56,54 @@ msgctxt "ability.sense.desc"
 msgid "PEEK AT MAP"
 msgstr ""
 
+#: scripts/ability_coach.gd
+msgctxt "coach.rifle"
+msgid "SHOOTS PAST WALLS"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.splat"
+msgid "LOBS GOO OVER WALLS"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.kaze"
+msgid "DASHES INTO A WALL"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.sense"
+msgid "PEEKS AT THE MAP"
+msgstr ""
+
+#. ability tutorial line (touch: its button is on screen), max 192px, 1 line; {name} = ability name, {what} = coach.*
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line_touch"
+msgid "{name}: {what}"
+msgstr ""
+
+#. ability tutorial line, max 192px, 1 line; {key} = its key (1, 2, 3, M, a pad button), {name} = ability name, {what} = coach.*
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line"
+msgid "{key} {name}: {what}"
+msgstr ""
+
+#. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim"
+msgid "AIM, THEN {key} TO FIRE"
+msgstr ""
+
+#. ability tutorial's last line, max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.done"
+msgid "THAT'S EVERY ABILITY, GOOD LUCK"
+msgstr ""
+
 #: scripts/cosmetics.gd
 msgctxt "trail.wheel.unlock"
 msgid "WIN IT ON THE PRIZE WHEEL"
