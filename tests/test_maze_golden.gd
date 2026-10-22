@@ -10,7 +10,7 @@ extends "res://tests/suite_base.gd"
 ## SLIME level instead): the MORE SLIME 0 / 5 / 10 lines changed (except seeds that were already at
 ## the max size); the story lines and the hard-mode lines (fixed u, so the same size) are
 ## byte-identical to before. Rewritten on purpose again on 2026-10-14 for the hard-mode rebalance
-## (Levels.HARD_SLIME_MULT, docs/level-design.md section 7): only the 10 "story N hard" lines changed
+## (hard_data(level).slime_mult, docs/level-design.md section 7): only the 10 "story N hard" lines changed
 ## (bigger hard mazes, new routes and pars; built via Levels.build_story_maze); every story normal
 ## line and all 8,000 randomizer lines (hard randomizer included) are byte-identical. Rewritten on purpose on
 ## 2026-10-15 for the upgrades v2 coin tree (MORE SLIME 0-7, docs/design/upgrades-v2.md A2.5): the

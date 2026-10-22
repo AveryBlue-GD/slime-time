@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Story level 9: its maze recipe (Levels.get_config; field meanings in scripts/levels.gd) and its banner
 ## line (Story.level_line). One file per level so a demo export can leave out the levels it doesn't
-## have (Demo.full_only_paths, docs/demo-plan.md). Loaded by path only (Levels.level_data), never preloaded.
+## have (Demo.full_only_paths, docs/demo-plan.md). Loaded by path only (Levels.level_script), never preloaded.
 
 const NORMAL := {cells = Vector2i(24, 13), seed = 9283, branching = 0.14, run = 0.40, loops = 5, spawn = 2, target = 0.94}
 

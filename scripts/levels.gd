@@ -79,11 +79,11 @@ static func hard_data(level: int) -> Dictionary:
 ## three per-level tables (fields of hard_data(level), from scripts/level_data/hard_NN.gd; their
 ## old names were HARD_SEEDS, HARD_SLIME_MULT, HARD_ALLOWANCE, HARD_BRANCHING, HARD_RUN, HARD_V4_STEPS and
 ## HARD_V4_TARGETS), in this order:
-## 1. METER: hard_meter_tiles(n) = the v4 hard meter (HARD_V4_STEPS / HARD_V4_TARGETS, the meter
-##    the old hard mazes had) x HARD_SLIME_MULT[n]. **Edit slime_mult (scripts/level_data/hard_NN.gd) to change how much more
+## 1. METER: hard_meter_tiles(n) = the v4 hard meter (v4_steps / v4_target, the meter
+##    the old hard mazes had) x slime_mult. **Edit slime_mult (scripts/level_data/hard_NN.gd) to change how much more
 ##    slime hard mode gives**: the default is the progressive +10% per level (L1 x1.1 ... L10 x2.0);
 ##    a flat +10% is ten 1.1s, today's old meters ten 1.0s. Everything else follows from it.
-## 2. ROUTE: hard_route_cells(n) = the meter / HARD_ALLOWANCE[n] (the exploration allowance, meter /
+## 2. ROUTE: hard_route_cells(n) = the meter / allowance (the exploration allowance, meter /
 ##    shortest route; it grows with the level so the big late mazes don't demand a perfect route).
 ## 3. SIZE: the maze starts at the level's normal size scaled by sqrt(route / v4 route) per side and
 ##    MazeGenerator.generate_hard_level grows it until its longest route has room for the route
@@ -149,7 +149,7 @@ static func get_config(level: int, hard := false) -> Dictionary:
 	return config
 
 
-## A hard level's full slime meter in tiles (no upgrades in hard mode): the v4 meter x HARD_SLIME_MULT.
+## A hard level's full slime meter in tiles (no upgrades in hard mode): the v4 meter x slime_mult.
 static func hard_meter_tiles(level: int) -> float:
 	var tables := hard_data(level)
 	return v4_hard_route_tiles(level) / tables.v4_target * tables.slime_mult
@@ -160,7 +160,7 @@ static func v4_hard_route_tiles(level: int) -> float:
 	return hard_data(level).v4_steps * MazeGenerator.CELL_SPAN - GRAB_REACH / TILE
 
 
-## A hard level's start-to-chalice route in cells: the meter / HARD_ALLOWANCE, rounded down (so the
+## A hard level's start-to-chalice route in cells: the meter / allowance, rounded down (so the
 ## allowance is never below the table's).
 static func hard_route_cells(level: int) -> int:
 	var tiles: float = hard_meter_tiles(level) / hard_data(level).allowance

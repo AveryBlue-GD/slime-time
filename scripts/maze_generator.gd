@@ -322,7 +322,7 @@ static func has_second_route(maze: Dictionary) -> bool:
 	return must.size() > 0 and must.count(1) * 2 <= must.size()
 
 
-## A story level's maze (see Levels.DATA and docs/level-design.md): a growing tree like `generate`
+## A story level's maze (see Levels.data and docs/level-design.md): a growing tree like `generate`
 ## that keeps going straight with chance `run` (longer corridors for the 8-tile leap), plus
 ## `loops` extra openings that join two far-apart parts of the maze (shortcuts, never next to a
 ## dead end so the coin dead ends survive), then a fixed spawn from SpawnPicker with the level's

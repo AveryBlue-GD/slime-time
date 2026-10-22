@@ -6,7 +6,7 @@ extends RefCounted
 ## (Progress.selected_hat). The first spin is free, then 12 tickets rising by 2 per spin (Progress.spin_hat).
 ## Hats are never sold: the wheel's SHOP sells DYES instead (Economy.DYE_PRICE tickets each): the
 ## `dyeable` hats in another color (DYES), drawn in assets/sprites/hat_dyes.png (dye_region). Each
-## dyeable hat skips the dye nearest its own color (`own`). Progress.hat_dye says which one is worn.
+## dyeable hat skips the dye nearest its own color (`own`). Progress.hat_dye_of says which one is worn.
 ## Sprites are 32x16 frames in assets/sprites/hats.png (tools/make_hats.py), `column` = which
 ## frame. An animated hat (`frames` > 1: the propeller cap, the raincloud) has its first frame
 ## there (its still frame, as on the hat wheel's wedges) and the others after every hat's column

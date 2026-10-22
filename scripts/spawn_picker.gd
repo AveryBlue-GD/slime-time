@@ -2,7 +2,7 @@ class_name SpawnPicker
 extends RefCounted
 
 ## Where the slime starts, shared by the randomizer (a pick per seed) and the story levels (one
-## fixed pick per level, from the level's own constant seed and a class chosen in Levels.DATA).
+## fixed pick per level, from the level's own constant seed and a class chosen in Levels.data).
 ## See docs/level-design.md.
 ##
 ## Spawn classes, by a cell's EDGE DEPTH d = min(x, y, w - 1 - x, h - 1 - y) (cells from the

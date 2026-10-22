@@ -53,7 +53,7 @@ func _initialize() -> void:
 	_check(stats[-1].broken > stats[0].broken * 3, "broken walls grow (%.0f%% -> %.0f%%)" % [stats[0].broken * 100.0, stats[-1].broken * 100.0])
 
 	# Hard mode: different, bigger mazes, every one beatable by a perfect walking run with no upgrades
-	# under par (gold), using about the level's planned share (1 / Levels.HARD_ALLOWANCE) of the meter.
+	# under par (gold), using about the level's planned share (1 / Levels.hard_data(level).allowance) of the meter.
 	var settings: Node = root.get_node("Progress")
 	settings.hard_mode = true
 	for level in range(1, Levels.COUNT + 1):
