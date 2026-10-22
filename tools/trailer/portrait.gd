@@ -430,8 +430,8 @@ func _build_flip() -> void:
 	root.add_child(trail_rect)
 	var y := top + FLIP_STAGE.y + 3 + 7 * FLIP_PX + 2
 	skin_line = _label("", UIKit.TEXT, y)
-	hat_line = _label("", UIKit.GOLD, y + 9)
-	trail_line = _label("", UIKit.TEXT_DIM, y + 18)
+	trail_line = _label("", UIKit.TEXT_DIM, y + 9)
+	hat_line = _label("", UIKit.GOLD, y + 18)  # (last: no gap while no hat is worn)
 	for line in [skin_line, hat_line, trail_line]:
 		line.visible = not opts.has("no-names")
 	_show_look()
