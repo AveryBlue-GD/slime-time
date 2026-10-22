@@ -109,11 +109,11 @@ const TICKETS_NO_SLIME_CAP := 1
 const TICKETS_REPLAY_CAP := 1
 
 ## ---------------------------------------------------------------- tickets: the hat wheel (C.1)
-## The first spin is free, the second costs SPIN_COST, each later one SPIN_STEP more (spins already
-## taken beyond the second), never above SPIN_COST_MAX: 0, 12, 14 ... 30 = 210 for all 11 hats.
-const SPIN_COST := 12
-const SPIN_STEP := 2
-const SPIN_COST_MAX := 40
+## The first spin is free, then every spin costs SPIN_COST (owner, 2026-10-22: a flat 20; SPIN_STEP /
+## SPIN_COST_MAX still allow a rising price): 0, 20, 20 ... = 420 for all 22 prizes.
+const SPIN_COST := 20
+const SPIN_STEP := 0
+const SPIN_COST_MAX := 20
 ## Hats are never sold (owner, 2026-10-21: the TAILOR's direct buy is gone). The SHOP's DYES sell a
 ## won hat in another color (Hats.dyes_for: all 12 hats, 10-11 dyes each incl. PRISM and RAINBOW, 123 in all) for
 ## DYE_PRICE tickets each, about one day's paid randomizer wins; the flowing RAINBOW dye costs

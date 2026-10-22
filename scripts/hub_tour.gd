@@ -238,8 +238,8 @@ func station_line(id: String) -> String:
 			if Progress.demo_wheel_block() != "":
 				return Demo.wheel_block_text(Progress.demo_wheel_block())  # (the demo: not open yet / hats used up)
 			if Progress.spin_cost() == 0:
-				return Loc.t("hub.tour.wheel_free", "SPIN FOR HATS, THE FIRST IS FREE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-			return Loc.t("hub.tour.wheel", "SPIN FOR HATS, BRING TICKETS")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+				return Loc.t("hub.tour.wheel_free", "SPIN FOR PRIZES, THE FIRST IS FREE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+			return Loc.t("hub.tour.wheel", "SPIN FOR PRIZES, BRING TICKETS")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 		"wardrobe":
 			return Loc.t("hub.tour.wardrobe", "SKINS, HATS, TRAILS. DRY UP IN STYLE")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 	return ""

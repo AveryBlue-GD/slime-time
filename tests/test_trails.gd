@@ -37,7 +37,7 @@ func _initialize() -> void:
 			runs += 1
 			if why != "":
 				bad.append("%s on %s: %s" % [style, skin, why])
-	_check(bad.is_empty() and runs == Cosmetics.trail_ids().size() * skins.size() and Cosmetics.trail_ids().size() == 7, "%d style x skin runs paint their own colors (%s)" % [runs, "ok" if bad.is_empty() else "; ".join(bad.slice(0, 4))])
+	_check(bad.is_empty() and runs == Cosmetics.trail_ids().size() * skins.size() and Cosmetics.trail_ids().size() == 17, "%d style x skin runs paint their own colors (%s)" % [runs, "ok" if bad.is_empty() else "; ".join(bad.slice(0, 4))])
 	# Previews (wardrobe tiles / shop) for every style, locked and owned.
 	var previews_ok := true
 	for style in Cosmetics.trail_ids():
@@ -49,6 +49,24 @@ func _initialize() -> void:
 	progress.reset_progress()
 	_result()
 	quit(0 if failures == 0 else 1)
+
+
+## Every alpha (0-255) wheel-trail look `look` can paint: its cell rules over a patch of cells and a
+## stretch of travel (PULSE's bands), plus TREASURE's center dashes.
+func _wheel_alphas(look: Dictionary) -> Dictionary:
+	var out := {}
+	for y in 24:
+		for x in 24:
+			for deep in [false, true]:
+				out[Cosmetics.trail_cell_at(look, deep, 0.0, Vector2i(x, y)).a8] = true
+	for step in 1000:  # (fine steps: PULSE's band alpha changes smoothly with travel)
+		var travel := step * 0.05
+		for deep in [false, true]:
+			out[Cosmetics.trail_cell_at(look, deep, travel, Vector2i(1, 1)).a8] = true
+		var center: Variant = Cosmetics.trail_center(look, travel)
+		if center != null:
+			out[(center as Color).a8] = true
+	return out
 
 
 ## Plays level 1 a moment with trail `style` on skin `skin`; returns "" or what's wrong.
@@ -69,12 +87,25 @@ func _check_style(style: String, skin: String) -> String:
 	var shades := Skins.shades(base)
 	var painted := _painted(game)
 	var alpha: int = {"ink": 150, "glow": 170, "gold": 185, "abyss": Cosmetics.ABYSS_ALPHA}.get(style, 120)
+	# A wheel trail paints per cell (Cosmetics.trail_cell_at): its alphas are the ones its rules give.
+	var alphas := {alpha: true}
+	if Cosmetics.is_wheel(style):
+		alphas = _wheel_alphas(look)
 	if painted.is_empty():
 		why = "nothing painted"
 	for c: Color in painted:
-		if absi(c.a8 - alpha) > 1:
-			why = "alpha %d, want %d" % [c.a8, alpha]
+		var near := false
+		for a: int in alphas:
+			near = near or absi(c.a8 - a) <= 1
+		if not near:
+			why = "alpha %d, want one of %s" % [c.a8, alphas.keys()]
 			break
+	if Cosmetics.is_wheel(style):
+		if float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("fx")) != look.get("fx", 0.0):
+			why = "the shader's fx is not the style's"
+		var base_cell: Color = Cosmetics.trail_cell_at(look, false, 0.0, Vector2i(1, 1))
+		if not look.has("per_cell") or not _has(painted, base_cell) and style != "treasure" and style != "pulse":
+			why = "not the style's own goo"
 	match style:
 		"ink":
 			if not _has(painted, shades.deep):

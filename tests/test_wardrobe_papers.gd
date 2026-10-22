@@ -146,18 +146,20 @@ func _layout() -> void:
 		_check(UIKit.title_bottom() <= g.position.y and g.end.y <= screen.status.get_global_rect().position.y
 			and screen.status.get_global_rect().end.y <= screen._rule.get_global_rect().position.y, "%s: title, grid, status, rule in order" % page)
 		_check(Rect2(Vector2.ZERO, UIKit.SCREEN).encloses(g) and not g.intersects(b) and not g.intersects(p), "%s: the grid on screen, clear of the bottom row" % page)
-	# Every paper's map picture: the same box in its tile as a trail strip's (centred, whole pixels).
+	# Every paper's map picture: centred in its tile like a trail strip in its (smaller) tile, whole pixels.
 	screen.show_page("papers")
 	await process_frame
 	var strip: Control = screen.trail_tiles["ink"].get_child(-1)
+	var strip_tile: Control = screen.trail_tiles["ink"]
+	_check(strip.position == ((strip_tile.size - strip.size) / 2.0).floor(), "a trail strip is centred in its tile (%s in %s)" % [strip.position, strip_tile.size])
 	for id: String in screen.paper_tiles:
 		var tile: Control = screen.paper_tiles[id]
 		var map: TextureRect = tile.get_child(-1)
 		var at := map.position
 		var left := at.x
 		var right := tile.size.x - at.x - map.size.x
-		_check(map.size == Vector2(33, 17) and at == at.round() and absf(left - right) <= 1.0 and at.y == strip.position.y,
-			"%s: its 33x17 map in the tile at %s (left %d, right %d; a trail strip's top %d)" % [id, at, left, right, strip.position.y])
+		_check(map.size == Vector2(33, 17) and at == at.round() and absf(left - right) <= 1.0 and at.y == floorf((tile.size.y - map.size.y) / 2.0),
+			"%s: its 33x17 map in the tile at %s (left %d, right %d; centred top to bottom like a trail strip in its smaller tile)" % [id, at, left, right])
 		_check(Rect2(Vector2.ZERO, tile.size).encloses(Rect2(at, map.size)), "%s: the map inside its tile" % id)
 	_close(screen)
 

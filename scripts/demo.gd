@@ -259,7 +259,7 @@ static func wheel_block_text(block: String) -> String:
 		# i18n: hat wheel status line and hub tour line (demo build: the wheel's hats are used up), max 192px, 1 line
 		return Loc.t("demo.wheel_full", "NO MORE HATS IN THE DEMO")
 	# i18n: hat wheel status line and hub tour line (demo build: the wheel opens after the last demo level), max 192px, 1 line; {level} = the demo's last level (4)
-	return Loc.t("demo.wheel_closed", "SPIN FOR HATS AFTER LEVEL {level}", {level = levels()})
+	return Loc.t("demo.wheel_closed", "SPIN FOR PRIZES AFTER LEVEL {level}", {level = levels()})
 
 
 ## ---------------------------------------------------------------- what the demo leaves out

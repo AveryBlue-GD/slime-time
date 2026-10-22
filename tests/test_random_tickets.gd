@@ -190,7 +190,7 @@ func _initialize() -> void:
 	old.set_value("hats", "spins", 4)
 	var loaded: Node = preload("res://scripts/progress.gd").new()
 	loaded._read(old)
-	_check(loaded.tickets == 40 and loaded.spins == 4 and loaded.spin_cost() == 18, "an old save loads; 4 spins taken -> the next costs 18")
+	_check(loaded.tickets == 40 and loaded.spins == 4 and loaded.spin_cost() == 20, "an old save loads; 4 spins taken -> the next costs 20")
 	var empty := ConfigFile.new()
 	var fresh: Node = preload("res://scripts/progress.gd").new()
 	fresh._read(empty)

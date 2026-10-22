@@ -298,7 +298,7 @@ func _initialize() -> void:
 	Input.action_press("interact")
 	await _physics_frames(2)
 	Input.action_release("interact")
-	_check(hub.hat_wheel.visible and hub.hat_wheel.hats.size() == Hats.LIST.size(), "in dev mode it opens with every hat on the wheel (%d)" % hub.hat_wheel.hats.size())
+	_check(hub.hat_wheel.visible and hub.hat_wheel.hats.size() == Hats.LIST.size() + Cosmetics.wheel_ids().size(), "in dev mode it opens with every prize on the wheel, 12 hats and 10 trails (%d)" % hub.hat_wheel.hats.size())
 	var won: Array[String] = []
 	for spin_number in 3:
 		Input.action_press("interact")
@@ -307,15 +307,17 @@ func _initialize() -> void:
 		_check(hub.hat_wheel.spinning, "spin %d starts the wheel" % (spin_number + 1))
 		for i in int(hub.hat_wheel.SPIN_TIME * 60) + 10:
 			await physics_frame
-		var hat_id: String = progress.selected_hat
-		won.append(hat_id)
+		var prize: String = hub.hat_wheel._won
+		won.append(prize)
 		var under: String = hub.hat_wheel.hats[hub.hat_wheel.wedge_at(hub.hat_wheel.turn)]
-		_check(not hub.hat_wheel.spinning and under == hat_id and hat_id in progress.hats_owned and not hat_id in progress.hats_left() and hub.hat != null,
-			"...lands on %s (the wedge under the pointer): won, worn, and off the wheel (%d left)" % [hat_id, progress.hats_left().size()])
+		var worn: bool = (progress.trail_style == prize and prize in progress.cosmetics_owned) if Cosmetics.is_wheel(prize) \
+			else (progress.selected_hat == prize and prize in progress.hats_owned and hub.hat != null)
+		_check(not hub.hat_wheel.spinning and prize != "" and under == prize and worn and not prize in progress.hats_left(),
+			"...lands on %s (the wedge under the pointer): won, worn, and off the wheel (%d left)" % [prize, progress.hats_left().size()])
 	var unique := {}
 	for id in won:
 		unique[id] = true
-	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() - 3, "three spins, three different hats")
+	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() + Cosmetics.wheel_ids().size() - 3, "three spins, three different prizes")
 	_check(hub.hat.get_parent() == hub.slime and hub.hat.z_index == 0 and hub.slime.get_parent() == hub.world,
 		"the hat is y-sorted with the slime (behind the wheel when the slime is)")
 	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.
@@ -338,9 +340,10 @@ func _initialize() -> void:
 	_check(rainbow_picks > 0 and rainbow_picks < top_hat_picks * 0.5, "the rainbow hat comes up far less often (%d vs %d for the top hat)" % [rainbow_picks, top_hat_picks])
 	wheel.hats = saved_hats
 	progress.hats_owned.assign(Hats.ids())
+	progress.cosmetics_owned.assign(Cosmetics.wheel_ids())
 	hub.hat_wheel._won = ""
 	hub.hat_wheel.refresh("F")
-	_check(hub.hat_wheel.hats.is_empty() and "EVERY HAT" in hub.hat_wheel.result.text and not hub.hat_wheel.spin(), "once every hat is won, the wheel says so and won't spin")
+	_check(hub.hat_wheel.hats.is_empty() and "EVERY PRIZE" in hub.hat_wheel.result.text and not hub.hat_wheel.spin(), "once every prize is won, the wheel says so and won't spin")
 	hub.free()
 	progress.dev_tools = false
 	progress.hats_owned.clear()

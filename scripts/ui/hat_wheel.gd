@@ -33,8 +33,8 @@ signal changed(id: String)
 signal close_requested
 
 const PANEL := Rect2(8, 4, 304, 172)
-const CENTER := Vector2(160, 88)
-const RADIUS := 52.0
+const CENTER := Vector2(160, 92)
+const RADIUS := 48.0
 const SPIN_TIME := 3.6
 const WEDGE_COLORS: Array[Color] = [
 	Color8(200, 60, 70), Color8(236, 200, 80), Color8(60, 170, 170),
@@ -137,6 +137,8 @@ var _last_wedge := -1
 var _kick := 0.0
 var title: Label
 var result: Label
+## The top line of the WHEEL tab: how many prizes are still on the wheel (counts down as you win).
+var prizes_left: Label
 var balance: Label
 var _balance_icon: TextureRect
 ## "wheel" or "shop", and the SHOP's section.
@@ -191,7 +193,7 @@ func _ready() -> void:
 	var panel := UIKit.add_panel(self, PANEL)
 	panel.show_behind_parent = true  # the wheel is drawn by this control, over its panel
 	var text_y := HEADER_Y + UIKit.button_v_margins().x  # the tabs' line box (HEADER_Y + 3 in English)
-	title = _label(Loc.t("wheel.title", "HAT WHEEL"), UIKit.GOLD, text_y)  # on the tabs' text baseline
+	title = _label(Loc.t("wheel.title", "PRIZE WHEEL"), UIKit.GOLD, text_y)  # on the tabs' text baseline
 	# The ticket balance, top right of the panel.
 	balance = UIKit.make_label("", UIKit.FONT, TICKET_TINT)
 	balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -222,6 +224,7 @@ func _ready() -> void:
 
 	wheel_page = _page()
 	result = _label("", UIKit.TEXT, 146, wheel_page)
+	prizes_left = _label("", UIKit.GOLD, HEADER_Y + UIKit.tab_h() + 2, wheel_page)
 	spin_button = UIKit.make_button(Loc.t("wheel.spin", "SPIN"), _on_spin_pressed, Vector2(84, UIKit.button_h()))
 	spin_button.position = Vector2(roundf(CENTER.x - 42), SPIN_BOTTOM - UIKit.button_h())
 	spin_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -230,9 +233,13 @@ func _ready() -> void:
 	for side in 2:
 		var legend := UIKit.make_label("", UIKit.FONT, UIKit.TEXT if side == 0 else RARE_TRIM)
 		legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		legend.size = Vector2(76, 40)
-		legend.position = Vector2(26.0 if side == 0 else 218.0, 70.0)
-		wheel_page.add_child(legend)
+		# (in a box of its own, mirrored either side of the wheel: centered on the box, not the screen)
+		var box := CenterContainer.new()
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.size = Vector2(76, 40)
+		box.position = Vector2(26.0 if side == 0 else 218.0, 70.0)
+		wheel_page.add_child(box)
+		box.add_child(legend)
 		_legends.append(legend)
 
 	shop_page = _page()
@@ -315,7 +322,8 @@ func _layout_wheel_page() -> void:
 	var result_y := spin_y - 5 - UIKit.line_h()
 	if result.position.y != result_y:
 		result.position.y = result_y
-	var top := HEADER_Y + UIKit.tab_h() + 4.0
+	prizes_left.position.y = HEADER_Y + UIKit.tab_h() + 2.0
+	var top := prizes_left.position.y + UIKit.line_h() + 3.0
 	var bottom := result_y - 2.0
 	wheel_radius = minf(RADIUS, floorf((bottom - top - 14.0) / 2.0))
 	wheel_center = Vector2(CENTER.x, top + 10.0 + wheel_radius)
@@ -378,7 +386,7 @@ func show_tab(which: String, focus := true) -> void:
 	var shop := tab == "shop"
 	wheel_page.visible = not shop
 	shop_page.visible = shop
-	title.text = Loc.t("wheel.tab.shop", "SHOP") if shop else Loc.t("wheel.title", "HAT WHEEL")
+	title.text = Loc.t("wheel.tab.shop", "SHOP") if shop else Loc.t("wheel.title", "PRIZE WHEEL")
 	_place_title()
 	for pair: Array in [[wheel_tab, not shop], [shop_tab, shop]]:
 		UIKit.set_selected(pair[0], pair[1])
@@ -455,7 +463,7 @@ func _refresh_wheel() -> void:
 	var can: bool = Progress.can_spin_hats() and not spinning
 	var cost: int = Progress.spin_cost()
 	if Progress.hats_left().is_empty() and _won == "":
-		result.text = Loc.t("wheel.all_won", "EVERY HAT WON! NEW LOOKS IN THE SHOP")
+		result.text = Loc.t("wheel.all_won", "EVERY PRIZE WON! NEW LOOKS IN THE SHOP")
 	elif spinning:
 		result.text = "..."
 	elif _won != "":
@@ -468,10 +476,13 @@ func _refresh_wheel() -> void:
 		result.text = Loc.n("wheel.need_to_spin", "NEED {count} TICKET TO SPIN", "NEED {count} TICKETS TO SPIN", cost)
 	else:
 		# (touch: no key, the SPIN button)
-		if _spin_key == "":
-			result.text = Loc.n("wheel.prizes_left", "{count} PRIZE TO WIN", "{count} PRIZES TO WIN", hats.size())
-		else:
-			result.text = Loc.n("wheel.prizes_left_key", "{count} PRIZE TO WIN - {key} TO SPIN", "{count} PRIZES TO WIN - {key} TO SPIN", hats.size(), {key = _spin_key})
+		# i18n: the hint under the wheel, {key} = the use key's name; max 200px, 1 line
+		result.text = "" if _spin_key == "" else Loc.t("wheel.key_to_spin", "{key} TO SPIN", {key = _spin_key})
+	# The count at the top: what is still on the wheel (the prize being spun for counts until it lands).
+	var left := Progress.hats_left().size() + (1 if spinning else 0)
+	prizes_left.visible = left > 0
+	# i18n: the top line of the prize wheel, {count} = prizes still on the wheel; max 200px, 1 line
+	prizes_left.text = Loc.n("wheel.prizes_left", "{count} PRIZE TO WIN", "{count} PRIZES TO WIN", left)
 	_show_try_on(_won if not spinning else "")  # the hat you just won, on you
 	_refresh_legends()
 	spin_button.disabled = not can
@@ -504,8 +515,8 @@ func _refresh_legends() -> void:
 		count[1 if Progress.is_rare_hat(id) else 0] += 1
 	for side in _legends.size():
 		var legend := _legends[side]
-		legend.visible = on and count[side] > 0
-		if not legend.visible:
+		legend.get_parent().visible = on and count[side] > 0
+		if not legend.get_parent().visible:
 			continue
 		var chance := 100.0 * (Economy.WHEEL_RARE_WEIGHT if side == 1 else Economy.WHEEL_WEIGHT) / total
 		# i18n: the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent

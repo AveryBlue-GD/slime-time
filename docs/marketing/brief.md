@@ -47,7 +47,7 @@ move drains it. Find the golden chalice before you dry up.
 ## The demo (built, not released)
 Free demo from the same code: the intro, the tutorial and **levels 1-4** (web: 1-3), their coins and skins,
 capped upgrades whose prices use exactly the demo's coins, hard level 1, three paying random mazes after
-level 4, the hat wheel (unlocked by finishing the demo, 2 hats max). Later levels are locked and **cut from
+level 4, the prize wheel (unlocked by finishing the demo, 2 hats max). Later levels are locked and **cut from
 the demo files**. A "DEMO" sticker on the title. An end screen teases later areas and has a WISHLIST button
 that appears once a store link exists.
 

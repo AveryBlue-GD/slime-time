@@ -229,9 +229,9 @@ var abilities := {}
 ## Cosmetics bought with tickets (Cosmetics ids; [cosmetics] owned) and the ones worn: a trail
 ## style and a map paper (Cosmetics.DEFAULT_TRAIL / DEFAULT_PAPER when none is).
 var cosmetics_owned: Array[String] = []
-## The hat wheel's look (debug flag --wheel-style=, a comparison test): "rewards" shows each prize on
-## its wedge, "odds" hides them (rarity and chance only) until the wheel stops.
-var wheel_style := "rewards"
+## The prize wheel's look: "odds" (rarity and chance only, the prize shown once it stops; owner
+## 2026-10-22), or with the debug flag --wheel-style=rewards each prize on its wedge (the comparison).
+var wheel_style := "odds"
 var trail_style := Cosmetics.DEFAULT_TRAIL
 var map_paper := Cosmetics.DEFAULT_PAPER
 ## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
@@ -448,7 +448,7 @@ func _ready() -> void:
 			for i in mini(ability_levels.size(), Abilities.LIST.size()):
 				var id: String = Abilities.LIST[i].id
 				abilities[id] = clampi(ability_levels[i].to_int(), 0, Abilities.max_level(id))
-		elif arg.begins_with("--wheel-style="):  # the hat wheel's look: rewards (default) or odds (HatWheel)
+		elif arg.begins_with("--wheel-style="):  # the prize wheel's look: odds (default) or rewards (HatWheel)
 			wheel_style = arg.trim_prefix("--wheel-style=")
 		elif arg.begins_with("--trail="):  # wear (and own) a trail style, e.g. --trail=candy
 			saving_enabled = false

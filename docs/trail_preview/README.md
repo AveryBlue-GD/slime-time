@@ -23,3 +23,12 @@ has two looks, `--wheel-style=rewards` (default: every prize on its wedge) and `
 (gems / stars only, an odds legend, the prize shown once it lands). Shots: `wheel/`
 (`wheel_comparison.png`). Tests still written for a hats-only wheel fail (test_store, test_tickets,
 test_wheel_odds, test_hats).
+
+## Final (2026-10-22, owner's pick)
+
+ODDS is the wheel's look (`--wheel-style=rewards` still shows the other for comparison, debug only).
+HAT WHEEL is now PRIZE WHEEL in every player-facing text. Spins: the first free, then a flat 20
+tickets (Economy.SPIN_COST; 420 for all 22 prizes). "{count} PRIZES TO WIN" sits at the top and
+counts down as prizes are won. The wardrobe's TRAILS page fits all 17 trails in two rows of 9.
+All 117 test suites pass; shots: `wheel/wheel_final_idle.png`, `wheel/wheel_final_landed.png`,
+`wheel/wardrobe_trails.png`.

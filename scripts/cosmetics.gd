@@ -151,7 +151,7 @@ static func wheel_ids() -> Array[String]:
 static func earned_how(id: String) -> String:
 	# i18n: how an earned trail is unlocked, wardrobe info line, max 200px
 	if is_wheel(id):
-		return Loc.t("trail.wheel.unlock", "WIN IT ON THE HAT WHEEL")
+		return Loc.t("trail.wheel.unlock", "WIN IT ON THE PRIZE WHEEL")
 	match id:
 		"abyss":
 			return Loc.t("trail.abyss.unlock", "REACH DESCENT FLOOR 10")
