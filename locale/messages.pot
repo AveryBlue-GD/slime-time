@@ -10,12 +10,12 @@ msgstr ""
 
 #: scripts/abilities.gd
 msgctxt "ability.rifle.name"
-msgid "SLIME RIFLE"
+msgid "SLIME SNIPER"
 msgstr ""
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.name"
-msgid "SLIME SPLAT"
+msgid "GOO GRENADE"
 msgstr ""
 
 #. pun on kamikaze + slime; keep a pun if the language can
@@ -2249,12 +2249,12 @@ msgstr ""
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_rifle"
-msgid "SLIME RIFLE"
+msgid "SLIME SNIPER"
 msgstr ""
 
 #: scripts/ui/key_controls.gd
 msgctxt "keys.ability_splat"
-msgid "SLIME SPLAT"
+msgid "GOO GRENADE"
 msgstr ""
 
 #: scripts/ui/key_controls.gd

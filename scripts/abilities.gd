@@ -30,8 +30,8 @@ static func allowed_in(game: Node) -> bool:
 	return game.is_random() or game.descent
 
 const LIST := [
-	{id = "rifle", name = "SLIME RIFLE", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},  # i18n: ignore (English source; shown via display_name)
-	{id = "splat", name = "SLIME SPLAT", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
+	{id = "rifle", name = "SLIME SNIPER", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},  # i18n: ignore (English source; shown via display_name)
+	{id = "splat", name = "GOO GRENADE", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
 	{id = "kaze", name = "SLIMAKAZE", tag = "WALL DASH", action = "ability_kaze", key = KEY_3},  # i18n: ignore (English source; shown via display_name)
 ]
 
@@ -64,9 +64,9 @@ static func display_name(id: String) -> String:
 	# i18n: ability name, cauldron row and key list, max 110px
 	match id:
 		"rifle":
-			return Loc.t("ability.rifle.name", "SLIME RIFLE")
+			return Loc.t("ability.rifle.name", "SLIME SNIPER")
 		"splat":
-			return Loc.t("ability.splat.name", "SLIME SPLAT")
+			return Loc.t("ability.splat.name", "GOO GRENADE")
 		"kaze":
 			# i18n: pun on kamikaze + slime; keep a pun if the language can
 			return Loc.t("ability.kaze.name", "SLIMAKAZE")

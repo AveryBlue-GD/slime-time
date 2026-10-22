@@ -10,13 +10,17 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: scripts/abilities.gd
+#, fuzzy
+#| msgid "SLIME RIFLE"
 msgctxt "ability.rifle.name"
-msgid "SLIME RIFLE"
+msgid "SLIME SNIPER"
 msgstr "SENAPAN SLIME"
 
 #: scripts/abilities.gd
+#, fuzzy
+#| msgid "SLIME SPLAT"
 msgctxt "ability.splat.name"
-msgid "SLIME SPLAT"
+msgid "GOO GRENADE"
 msgstr "BOM SLIME"
 
 #. pun on kamikaze + slime; keep a pun if the language can
@@ -2259,13 +2263,17 @@ msgid "INTERACT (HUB)"
 msgstr "PAKAI (MARKAS)"
 
 #: scripts/ui/key_controls.gd
+#, fuzzy
+#| msgid "SLIME RIFLE"
 msgctxt "keys.ability_rifle"
-msgid "SLIME RIFLE"
+msgid "SLIME SNIPER"
 msgstr "SENAPAN SLIME"
 
 #: scripts/ui/key_controls.gd
+#, fuzzy
+#| msgid "SLIME SPLAT"
 msgctxt "keys.ability_splat"
-msgid "SLIME SPLAT"
+msgid "GOO GRENADE"
 msgstr "BOM SLIME"
 
 #: scripts/ui/key_controls.gd

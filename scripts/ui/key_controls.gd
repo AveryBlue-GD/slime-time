@@ -59,8 +59,8 @@ static func action_name(action: String) -> String:
 		"jump": return Loc.t("keys.jump", "JUMP (HOLD)")
 		"restart": return Loc.t("keys.restart", "RESTART LEVEL")
 		"interact": return Loc.t("keys.interact", "INTERACT (HUB)")
-		"ability_rifle": return Loc.t("keys.ability_rifle", "SLIME RIFLE")
-		"ability_splat": return Loc.t("keys.ability_splat", "SLIME SPLAT")
+		"ability_rifle": return Loc.t("keys.ability_rifle", "SLIME SNIPER")
+		"ability_splat": return Loc.t("keys.ability_splat", "GOO GRENADE")
 		"ability_kaze": return Loc.t("keys.ability_kaze", "SLIMAKAZE")  # pun: slime + kamikaze
 	return action
 
