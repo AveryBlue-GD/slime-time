@@ -86,6 +86,8 @@ var can_charge := true
 ## Maze helpers: lining up with the 16 px corridor lanes and slipping past corners a leap only
 ## clips. Off in the hub, a round room with no lanes (they'd tug the slime at invisible lines).
 var maze_assist := true
+## Leaps may go diagonally even while Economy.diagonal_leap_on() is off (the hub sets it).
+var diagonal_leaps := false
 var state := State.GLIDE
 ## 0-100 while charging.
 var charge := 0.0
@@ -321,12 +323,18 @@ static func dir_name(v: Vector2) -> String:
 	return DIR_NAMES[wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)]
 
 
-## The way a leap aimed along `aim` goes: `aim` itself, or with diagonal leaps off
-## (Economy.diagonal_leap_on) the stronger axis of it (an exact diagonal goes along x).
-static func leap_dir(aim: Vector2) -> Vector2:
-	if Economy.diagonal_leap_on() or aim.x == 0.0 or aim.y == 0.0:
+## The way a leap aimed along `aim` goes: `aim` itself, or without `diagonal` the stronger axis
+## of it (an exact diagonal goes along x).
+static func leap_dir(aim: Vector2, diagonal: bool) -> Vector2:
+	if diagonal or aim.x == 0.0 or aim.y == 0.0:
 		return aim
 	return Vector2(signf(aim.x), 0.0) if absf(aim.x) >= absf(aim.y) else Vector2(0.0, signf(aim.y))
+
+
+## The way this slime would leap now: `facing`, kept diagonal only in the hub (diagonal_leaps) or
+## while Economy.diagonal_leap_on().
+func leap_aim() -> Vector2:
+	return leap_dir(facing, diagonal_leaps or Economy.diagonal_leap_on())
 
 
 func _ready() -> void:
@@ -481,7 +489,7 @@ func play_celebrate() -> void:
 
 ## Leaps in the facing direction. Called on releasing the jump key (and by tests).
 func launch(charge_value: float) -> void:
-	_jump_dir = leap_dir(facing)
+	_jump_dir = leap_aim()
 	facing = _jump_dir
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
@@ -654,7 +662,7 @@ func _animate() -> void:
 			else:
 				_play("idle")
 		State.CHARGING:
-			_show_frame("charge_" + dir_name(leap_dir(facing)), charge / 100.0)
+			_show_frame("charge_" + dir_name(leap_aim()), charge / 100.0)
 		State.AIRBORNE:
 			var t := _jump_traveled / _jump_distance
 			var jump_name := dir_name(_jump_dir)

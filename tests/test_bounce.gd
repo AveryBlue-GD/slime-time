@@ -17,13 +17,15 @@ func _initialize() -> void:
 	var progress: Node = root.get_node("Progress")
 	progress.save_path = test_save
 	progress.levels_cleared = 1
-	_check(not Economy.DIAGONAL_LEAP and Slime.leap_dir(Vector2(1, 1).normalized()) == Vector2.RIGHT
-		and Slime.leap_dir(Vector2(-0.3, 0.9).normalized()) == Vector2.DOWN
-		and Slime.leap_dir(Vector2.UP) == Vector2.UP,
+	_check(not Economy.DIAGONAL_LEAP and Slime.leap_dir(Vector2(1, 1).normalized(), false) == Vector2.RIGHT
+		and Slime.leap_dir(Vector2(-0.3, 0.9).normalized(), false) == Vector2.DOWN
+		and Slime.leap_dir(Vector2.UP, false) == Vector2.UP,
 		"diagonal leaps are off by default: an aim between two ways leaps along the stronger axis")
-	Economy.diagonal_leap_force = 1  # the corner ricochets below need diagonal leaps (kept for later)
 
 	var game := await _spawn_game()
+	game.slime.facing = Vector2(1, 1).normalized()
+	_check(game.slime.leap_aim() == Vector2.RIGHT, "a level's slime leaps straight (diagonal leaps are hub-only)")
+	Economy.diagonal_leap_force = 1  # the corner ricochets below need diagonal leaps (kept for later)
 	var spot := _dead_end(game, 3)
 	_check(not spot.is_empty(), "found a dead end with an open corridor behind it")
 	var dir: Vector2 = Vector2(spot.dir)

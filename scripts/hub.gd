@@ -404,6 +404,7 @@ func _spawn_slime() -> void:
 	slime = preload("res://scenes/slime.tscn").instantiate()
 	slime.z_index = 0  # y-sorted with the stations
 	slime.maze_assist = false  # no corridor lanes in a round room
+	slime.diagonal_leaps = true  # the hub keeps diagonal leaps (off in every maze, Economy.DIAGONAL_LEAP)
 	world.add_child(slime)
 	slime.position = USE_RING * Vector2(0, -1) + CENTER + Vector2(0, 4) if not _station(return_to).is_empty() else START
 	slime.reset_physics_interpolation()  # placed, not moved

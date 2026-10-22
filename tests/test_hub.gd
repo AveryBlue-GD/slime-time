@@ -89,6 +89,11 @@ func _initialize() -> void:
 	_check(hub._station("coins").view == HubScript.View.BACK and hub._station("random").view == HubScript.View.BACK,
 		"stations up close show their back")
 	_check(hub.near.is_empty() and not hub.prompt.visible, "the slime starts in the room with nothing to use")
+	var aim_facing: Vector2 = hub.slime.facing
+	hub.slime.facing = Vector2(1, 1).normalized()
+	_check(not Economy.diagonal_leap_on() and hub.slime.leap_aim() == Vector2(1, 1).normalized(),
+		"the hub keeps diagonal leaps while every maze has them off")
+	hub.slime.facing = aim_facing
 
 	# --- Away from stations the jump key leaps as usual
 	Input.action_press("jump")
