@@ -1778,8 +1778,22 @@ func _pick_up_tickets(pos: Vector2) -> void:
 		ticket.collect(self)
 		_sfx("coin", -4.0)
 		if paid > 0:
-			# i18n: HUD message, max 200px, 1 line; {count} = tickets just picked up
-			hud.flash_message(Loc.t("hud.ticket_found", "+{count} TICKET", {count = paid}), 1.5)
+			_float_text("+%d" % paid, ticket.position, TicketPickup.GLOW)  # i18n: ignore (a number)
+
+
+## A little "+N" that rises from `at` and fades (in the world, so it never covers the HUD or the slime
+## for long).
+func _float_text(text: String, at: Vector2, color: Color) -> void:
+	var label := UIKit.make_label(text, UIKit.FONT, color)
+	label.z_index = 13  # over the fog and the abilities' glow
+	label.position = (at + Vector2(-8, -14)).round()
+	label.size = Vector2(16, 8)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(label)
+	var tween := label.create_tween()
+	tween.tween_property(label, "position:y", label.position.y - 8.0, 0.8)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_ease(Tween.EASE_IN)
+	tween.tween_callback(label.queue_free)
 
 
 ## Map coin reveal: notes the uncollected coins within the light's reach (straight

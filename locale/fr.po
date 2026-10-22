@@ -463,13 +463,6 @@ msgctxt "hud.area.floor"
 msgid "FLOOR {floor}"
 msgstr "ÉTAGE {floor}"
 
-#. HUD message, max 200px, 1 line; {count} = tickets just picked up
-#. budget: max 200px, lines 1
-#: scripts/game.gd
-msgctxt "hud.ticket_found"
-msgid "+{count} TICKET"
-msgstr ""
-
 #. flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
 #. budget: max 296px, lines 1
 #: scripts/game.gd

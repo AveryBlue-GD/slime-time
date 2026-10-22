@@ -31,6 +31,14 @@ var dashing := false
 var _dash_painted := Vector2.ZERO
 var _dash_dir := Vector2i.ZERO
 var _kaze_uses := 0
+## AIM MODE (owner, 2026-10-22): the SLIME SNIPER / GOO GRENADE key doesn't fire at once; the slime
+## stops (Slime.aim_lock), the direction keys / stick turn the aim (4 ways, shown by the guide drawn
+## here) and JUMP or a left click fires it; the same key again cancels (nothing spent), the other's
+## key switches to it. SLIMAKAZE and the touch buttons still fire at once. "" = not aiming.
+const AIMED: Array[String] = ["rifle", "splat"]
+const AIM_DOT := Color(1.0, 1.0, 1.0, 0.75)
+var aiming := ""
+var aim_dir := Vector2i.RIGHT
 
 
 ## The runner for `owner_game`'s run (added as its child), or null when this run has no abilities.
@@ -76,10 +84,100 @@ func _refresh() -> void:
 func _physics_process(_delta: float) -> void:
 	if dashing:
 		_paint_dash()
+	if aiming != "":
+		_aim_step()
+		return
 	for id: String in levels:
 		if Input.is_action_just_pressed(Abilities.action(id)):
-			use(id)
+			if id in AIMED:
+				start_aim(id)
+			else:
+				use(id)
 			break
+
+
+## Enters aim mode for `id` (see AIMED) if it could fire now; false (a click) if not.
+func start_aim(id: String) -> bool:
+	if not can_use(id):
+		_sfx("click", -10.0)
+		return false
+	aiming = id
+	aim_dir = Abilities.aim(slime.facing)
+	slime.aim_lock = true
+	_sfx("click", -6.0)
+	queue_redraw()
+	return true
+
+
+## Leaves aim mode without firing (nothing spent).
+func cancel_aim() -> void:
+	if aiming == "":
+		return
+	aiming = ""
+	slime.aim_lock = false
+	queue_redraw()
+
+
+## Fires the aimed ability along aim_dir and leaves aim mode. The slime stays locked until the tick
+## is over, so the JUMP press that fired doesn't also start a leap.
+func fire_aim() -> bool:
+	if aiming == "":
+		return false
+	var id := aiming
+	aiming = ""
+	queue_redraw()
+	slime.facing = Vector2(aim_dir)
+	var fired := use(id)
+	slime.set_deferred("aim_lock", false)
+	return fired
+
+
+func _aim_step() -> void:
+	if game.finished or slime.frozen or int(charges.get(aiming, 0)) <= 0:
+		cancel_aim()
+		return
+	var v := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if v != Vector2.ZERO and Abilities.aim(v) != aim_dir:
+		aim_dir = Abilities.aim(v)
+		slime.facing = Vector2(aim_dir)
+		queue_redraw()
+	if Input.is_action_just_pressed("jump"):
+		fire_aim()
+		return
+	for id: String in levels:
+		if Input.is_action_just_pressed(Abilities.action(id)):
+			if id == aiming or not id in AIMED:
+				cancel_aim()  # (the same key again: never mind; SLIMAKAZE's key backs out first)
+			else:
+				aiming = id  # (the other aimed ability: switch to it)
+				queue_redraw()
+			return
+
+
+## A left click (mouse) fires while aiming.
+func _unhandled_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if aiming != "" and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		fire_aim()
+
+
+## The aim guide: SNIPER, a dot on each tile the shot would cross; GRENADE, its blast square where it
+## would land.
+func _draw() -> void:
+	if aiming == "":
+		return
+	var tile := Vector2i((slime.position / Abilities.TILE).floor())
+	var size := float(Abilities.TILE)
+	if aiming == "rifle":
+		for t in Abilities.rifle_tiles(game.maze, tile, aim_dir, Abilities.rifle_range(levels.rifle)):
+			draw_rect(Rect2((Vector2(t) + Vector2(0.5, 0.5)) * size - Vector2.ONE, Vector2(2, 2)), AIM_DOT)
+	else:
+		var land := Abilities.lob_tile(game.maze, tile, aim_dir, Abilities.splat_range(levels.splat))
+		var r := Economy.SPLAT_AREA
+		var box := Rect2(Vector2(land - Vector2i.ONE * r) * size, Vector2.ONE * size * (2 * r + 1))
+		draw_rect(box.grow(-1.0), AIM_DOT, false, 1.0)
+		draw_rect(Rect2((Vector2(land) + Vector2(0.5, 0.5)) * size - Vector2(1.5, 1.5), Vector2(3, 3)), AIM_DOT)
 
 
 ## True if ability `id` can fire right now: owned, a use left, the slime on the ground and free (not
