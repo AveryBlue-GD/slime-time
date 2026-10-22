@@ -18,7 +18,9 @@ extends "res://tests/suite_base.gd"
 ## x2.0 factor, same mazes; only the label changed); the level 4 lines (x1.60, the old level 6 factor,
 ## which had no lines) are new; the story, level 0 and hard lines are byte-identical. Rewritten on purpose
 ## on 2026-10-22 for the second route to the goal (MazeGenerator.add_second_route, normal randomizer only):
-## 3,812 of the MORE SLIME 0 / 4 / 7 lines changed; every story line and every hard line is byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
+## 3,812 of the MORE SLIME 0 / 4 / 7 lines changed; every story line and every hard line is byte-identical.
+## Rewritten on purpose again on 2026-10-22 for the varied maze sizes (Levels.random_size_scale, normal
+## randomizer only): 3,915 of the MORE SLIME 0 / 4 / 7 lines changed; story and hard lines byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
 ## asked route (>= RANDOM_MIN_ROUTE) from the start, and its size at least the level's floor.
 ##   ./tools/godot.sh --path . --headless -s res://tests/test_maze_golden.gd -- --write-golden=/abs/path.txt
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maze_golden.gd

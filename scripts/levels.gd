@@ -408,16 +408,47 @@ static func random_floor_cells(slime_level := 0, hard := false) -> Vector2i:
 ## maze is full size whatever its u; a low-u seed just puts its ticket closer to the start. Shape
 ## from the seed's two dice (18-24 by 10-13, the old base sizes, so a seed keeps its proportions),
 ## within random_floor_cells .. RANDOM_MAX_CELLS. Depends on the seed's dice and the level only.
-static func random_cells(maze_seed: int, slime_level := 0, hard := false) -> Vector2i:
+## `room`: the longest route to size for (-1 = random_max_route_cells; random_config passes the seed's
+## varied random_room_cells).
+static func random_cells(maze_seed: int, slime_level := 0, hard := false, room := -1) -> Vector2i:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
 	var dice := Vector2(rng.randi_range(18, 24), rng.randi_range(10, 13))
-	var room := random_max_route_cells(slime_level, hard)
+	if room < 0:
+		room = random_max_route_cells(slime_level, hard)
 	var side := (room * 1.25 + 12.0) / 4.6  # noise mazes' longest route is ~4.6 x sqrt(cells)
 	var scale := side / sqrt(dice.x * dice.y)
 	var low := random_floor_cells(slime_level, hard)
 	return Vector2i(clampi(roundi(dice.x * scale), low.x, RANDOM_MAX_CELLS.x),
 		clampi(roundi(dice.y * scale), low.y, RANDOM_MAX_CELLS.y))
+
+
+## Randomizer maze sizes vary (owner, 2026-10-22: full size felt too big every time): each seed rolls
+## a share of the full room to size its maze for, RANDOM_SIZE_SCALES with RANDOM_SIZE_WEIGHTS (full
+## size about one maze in five), never below its own route. Hard mode stays full size.
+const RANDOM_SIZE_SCALES: Array[float] = [0.55, 0.7, 0.85, 1.0]
+const RANDOM_SIZE_WEIGHTS: Array[float] = [0.3, 0.3, 0.2, 0.2]
+
+
+## The seed's size share (one of RANDOM_SIZE_SCALES; 1.0 in hard mode). Depends on the seed only.
+static func random_size_scale(maze_seed: int, hard := false) -> float:
+	if hard:
+		return 1.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = maze_seed * 17 + 5
+	var roll := rng.randf()
+	for i in RANDOM_SIZE_SCALES.size():
+		roll -= RANDOM_SIZE_WEIGHTS[i]
+		if roll < 0.0:
+			return RANDOM_SIZE_SCALES[i]
+	return 1.0
+
+
+## The longest route (cells) a seed's maze is sized for at a MORE SLIME level: its size share of the
+## full room (random_max_route_cells), at least its own route.
+static func random_room_cells(maze_seed: int, slime_level := 0, hard := false) -> int:
+	var full := random_max_route_cells(slime_level, hard)
+	return maxi(random_route_cells(maze_seed, hard, slime_level), roundi(full * random_size_scale(maze_seed, hard)))
 
 
 ## The highest MORE SLIME level a seed code can carry (the current tree's top, 7).
@@ -463,13 +494,14 @@ static func parse_seed_code(text: String) -> Vector2i:
 static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Dictionary:
 	var level := 0 if hard else clampi(slime_level, 0, max_slime_level())
 	var u := random_usage(maze_seed, hard)
+	var room := random_room_cells(maze_seed, level, hard)
 	return {
-		cells = random_cells(maze_seed, level, hard),
+		cells = random_cells(maze_seed, level, hard, room),
 		seed = maze_seed,
 		usage = u,
 		target = u,
 		route = random_route_cells(maze_seed, hard, level),
-		room = random_max_route_cells(level, hard),
+		room = room,
 		slime_level = level,
 		tile_cost = 100.0 / random_capacity_tiles(level),
 		tile_level = RANDOM_TILE_LEVEL,

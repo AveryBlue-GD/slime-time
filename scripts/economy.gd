@@ -84,7 +84,7 @@ const RANDOM_CHALICE := true
 ## Share of randomizer mazes (seeded per maze) given a second way to the goal (MazeGenerator.
 ## add_second_route; owner, 2026-10-22: usually, not always; some have one through their own loops).
 const RANDOM_SECOND_ROUTE_SHARE := 0.85
-const RANDOM_TICKETS := 3
+const RANDOM_TICKETS := 5  # always this many (owner, 2026-10-22; TicketPickup.cells_for)
 const RANDOM_TICKET_PAY := 1
 ## A win with no MORE SLIME bought, or on a typed / replayed seed, pays at most this.
 const TICKETS_NO_SLIME_CAP := 1

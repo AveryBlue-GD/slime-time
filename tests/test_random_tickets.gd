@@ -47,6 +47,13 @@ func _initialize() -> void:
 		if MazeGenerator.has_second_route(MazeGenerator.generate_random(Levels.random_config(1000 + i * 7919))):
 			two += 1
 	_check(two >= SEEDS * 0.75 and two < SEEDS, "most random mazes have 2+ routes to the chalice, not all (%d/%d)" % [two, SEEDS])
+	# --- Sizes vary (Levels.RANDOM_SIZE_SCALES): mostly smaller, sometimes full size
+	var shares := {}
+	for i in SEEDS:
+		var share := Levels.random_size_scale(1000 + i * 7919)
+		shares[share] = shares.get(share, 0) + 1
+	_check(shares.size() == Levels.RANDOM_SIZE_SCALES.size() and shares.get(1.0, 0) < SEEDS / 3 and shares.get(1.0, 0) > 0
+		and Levels.random_size_scale(5, true) == 1.0, "maze sizes vary, full size only sometimes %s (hard mode always full)" % [shares])
 	var hard_two := 0
 	for i in 40:
 		var hard_maze := MazeGenerator.generate_random(Levels.random_config(1000 + i * 7919, true))

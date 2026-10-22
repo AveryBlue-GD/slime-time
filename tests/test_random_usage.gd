@@ -63,7 +63,7 @@ func _initialize() -> void:
 		ratio_ok = ratio_ok and r0 >= Levels.RANDOM_MIN_ROUTE and (r0 <= Levels.RANDOM_MIN_ROUTE or absf(r10 * 1.0 / r0 - 2.0) < 0.2)
 	_check(ratio_ok, "route = u x the meter: MORE SLIME 7's route (x2.0) is ~2x level 0's, never under %d cells" % Levels.RANDOM_MIN_ROUTE)
 
-	# --- Size: never under the floor for the level, the same whatever u, growing with MORE SLIME
+	# --- Size: never under the floor for the level, sized for the seed's share of the room (never under its route), growing with MORE SLIME
 	# (random_cells is the start size; generate_random only ever grows it)
 	var under_floor := 0
 	var u_bound := 0
@@ -78,11 +78,12 @@ func _initialize() -> void:
 			area += cells.x * cells.y
 			if cells.x < floor_cells.x or cells.y < floor_cells.y or cells.x > Levels.RANDOM_MAX_CELLS.x or cells.y > Levels.RANDOM_MAX_CELLS.y:
 				under_floor += 1
-			if Levels.random_config(s, false, level).room != room or Levels.random_route_cells(s, false, level) > room:
+			var own: int = Levels.random_config(s, false, level).room
+			if own != Levels.random_room_cells(s, level) or own > room or Levels.random_route_cells(s, false, level) > own:
 				u_bound += 1
 		level_area.append(area / SEEDS)
 	_check(under_floor == 0, "%d seeds x MORE SLIME 0-7: no maze under its level's floor (%s at 0 .. %s at 7) or over %s" % [SEEDS, Levels.random_floor_cells(0), Levels.random_floor_cells(7), Levels.RANDOM_MAX_CELLS])
-	_check(u_bound == 0, "...every maze is sized for the 95% route of its level, so any u fits")
+	_check(u_bound == 0, "...every maze is sized for its share of the 95% route (Levels.RANDOM_SIZE_SCALES), never under its own route")
 	var monotonic := true
 	for level in range(1, level_area.size()):
 		monotonic = monotonic and level_area[level] >= level_area[level - 1]

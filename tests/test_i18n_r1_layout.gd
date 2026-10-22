@@ -36,7 +36,7 @@ const SMALL_ICON_OK: Array[String] = ["pseudo"]
 ## and hi randomizer wins show the slime's top over the panel (their two-line pods push it to row 74-75).
 ## "en dry" / "id dry": the one-line DRIED UP panel (since HEAT's two-line OUT OF TIME! went, 2026-10-20) overlaps the
 ## slime's top rows here only because the test's slime never left the spawn cell; same placement as before HEAT.
-const SLIME_ROOM_OK: Array[String] = ["vi L3", "hi L3", "ar random", "hi random", "en dry", "id dry"]
+const SLIME_ROOM_OK: Array[String] = ["vi L3", "hi L3", "ar random", "hi random", "ko random", "en dry", "id dry"]  # (ko random: since the varied maze sizes, 2026-10-22, its slime sits 1 px under the panel side)
 
 var progress: Node
 var language: Node

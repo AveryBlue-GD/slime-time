@@ -21,33 +21,48 @@ var _time := 0.0
 var _home := Vector2.ZERO
 
 
-## Up to `count` cells for a maze's pickups: its dead ends (never the start or the goal) in a seeded
-## shuffle, each kept SPACING cells from the start and the ones already picked. Same seed, same cells.
+## `count` cells for a maze's pickups (fewer only if the maze has fewer free cells): its dead ends
+## (never the start or the goal) in a seeded shuffle, each kept SPACING cells from the start and the
+## ones already picked; short of that the spacing shrinks, then any other cell off the start-to-goal
+## route makes up the rest. Same seed, same cells.
 static func cells_for(maze: Dictionary, maze_seed: int, count: int) -> Array[Vector2i]:
 	var depths := MazeGenerator.dead_end_depths(maze)
+	var route := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
 	var ends: Array[Vector2i] = []
+	var others: Array[Vector2i] = []
 	for y in maze.cells.y:
 		for x in maze.cells.x:
 			var cell := Vector2i(x, y)
-			if depths.has(cell) and cell != maze.goal and cell != maze.start:
+			if cell == maze.goal or cell == maze.start:
+				continue
+			if depths.has(cell):
 				ends.append(cell)
+			elif not cell in route:
+				others.append(cell)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed * 31 + 11
-	for i in range(ends.size() - 1, 0, -1):  # a seeded shuffle
-		var j := rng.randi_range(0, i)
-		var swap := ends[i]
-		ends[i] = ends[j]
-		ends[j] = swap
+	_shuffle(ends, rng)
+	_shuffle(others, rng)
 	var picked: Array[Vector2i] = []
-	for cell in ends:
-		if picked.size() >= count:
-			break
-		var near := _steps(cell, maze.start) < SPACING
-		for other in picked:
-			near = near or _steps(cell, other) < SPACING
-		if not near:
-			picked.append(cell)
+	for pool: Array[Vector2i] in [ends, others]:
+		for spacing in [SPACING, 3, 1]:
+			for cell in pool:
+				if picked.size() >= count:
+					return picked
+				var near: bool = cell in picked or _steps(cell, maze.start) < spacing
+				for other in picked:
+					near = near or _steps(cell, other) < spacing
+				if not near:
+					picked.append(cell)
 	return picked
+
+
+static func _shuffle(cells: Array[Vector2i], rng: RandomNumberGenerator) -> void:
+	for i in range(cells.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap := cells[i]
+		cells[i] = cells[j]
+		cells[j] = swap
 
 
 static func _steps(a: Vector2i, b: Vector2i) -> int:
