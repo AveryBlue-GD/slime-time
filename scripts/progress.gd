@@ -1709,7 +1709,7 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 			random_paid_seeds.clear()
 		paid = random_tickets_due(attempt, seed_value)
 		if paid > 0:
-			random_paid += 1
+			random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
 			if seed_value != 0:
 				random_paid_seeds.append(seed_value)
 				while random_paid_seeds.size() > PAID_SEEDS_MAX:
@@ -1769,7 +1769,7 @@ func random_tickets_due(attempt := 1, seed_value := 0) -> int:
 func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
 	_check_pay_day()
 	var table := tickets_for_attempt(attempt)
-	var open := utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
+	var open := not Economy.random_daily_cap_on() or utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
 	if not open:
 		return {tickets = 0, table = table, cap = "daily"}
 	if seed_paid_today(seed_value):

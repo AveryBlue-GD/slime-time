@@ -94,6 +94,9 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
   first-try even one level). The randomizer portal goes straight into a random maze, no resume prompt, nothing mentions it, ABYSS is
   hidden unless owned; a saved `[descent_run]`, stats and milestones are kept untouched, and flipping the const restores it all.
   Descent suites force it on; `test_descent_off` covers the off behaviour. (Mentions of Descent in this file describe it when on.)
+- **No daily ticket limit** (owner, 2026-10-22; `Economy.RANDOM_DAILY_CAP := false`, test hook `Economy.random_cap_force`): every
+  fresh randomizer win pays its attempt's 5/4/3/2/1 (a seed still pays once a day, replays 1). True restores the 5-a-day cap;
+  `test_tickets` / `test_attempt_restarts` / `test_save_robust` force it on.
 - **Diagonal leaps** are switched OFF (owner, 2026-10-22; `Economy.DIAGONAL_LEAP := false`, test hook `Economy.diagonal_leap_force`):
   a leap aimed between two ways goes along the stronger axis (`Slime.leap_dir`; charge pose and aim dots follow), gliding is still
   8-way. The hub keeps diagonal leaps (`Slime.diagonal_leaps`, set by `hub.gd`; owner, 2026-10-22). Flipping the const restores

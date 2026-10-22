@@ -48,6 +48,7 @@ var full: Node  # a busy, valid save
 
 
 func _initialize() -> void:
+	Economy.random_cap_force = 1  # the daily ticket cap is off in the game; this suite tests it
 	await process_frame
 	strict = "--qa-strict" in OS.get_cmdline_user_args()
 	trace = "--qa-trace" in OS.get_cmdline_user_args()

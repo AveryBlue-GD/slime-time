@@ -23,6 +23,13 @@ func _initialize() -> void:
 	progress = root.get_node("Progress")
 	progress.save_path = test_save
 	progress.dev_tools = false
+	_check(not Economy.RANDOM_DAILY_CAP and not Economy.random_daily_cap_on(), "there is no daily limit on randomizer payouts by default")
+	progress.random_paid = progress.RANDOM_PAID_PER_DAY
+	progress.random_pay_day = progress.utc_day()
+	_check(progress.random_payout(1).cap != "daily", "...so a win past the old 5 a day still pays")
+	progress.random_paid = 0
+	progress.random_pay_day = 0
+	Economy.random_cap_force = 1  # the cap's own behaviour below (kept so it can come back)
 	progress.hard_mode = false
 	progress.reset_progress()
 

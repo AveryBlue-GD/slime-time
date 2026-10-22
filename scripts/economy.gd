@@ -61,8 +61,18 @@ const OLD_POWER_PER_LEVEL := 2.5
 ## ---------------------------------------------------------------- tickets: faucets (spec A.1)
 ## The randomizer pays by attempt at a maze: attempt 1, 2, 3 ... (later attempts pay the last).
 const RANDOM_ATTEMPT_PAY: Array[int] = [5, 4, 3, 2, 1]
-## Randomizer wins that pay tickets per UTC day.
+## Randomizer wins that pay tickets per UTC day, while RANDOM_DAILY_CAP is on.
 const RANDOM_PAID_PER_DAY := 5
+## ONE switch for that daily cap. Off (owner, 2026-10-22: no daily limit on ticket payouts): every
+## fresh randomizer win pays its attempt's tickets (a seed still pays once a day, replays 1). True
+## again restores the 5-a-day cap; the day's count is kept in the save either way.
+## `random_cap_force` (-1 follow the const, 0 off, 1 on) is a test hook, like `descent_force`.
+const RANDOM_DAILY_CAP := false
+static var random_cap_force := -1
+
+
+static func random_daily_cap_on() -> bool:
+	return RANDOM_DAILY_CAP if random_cap_force < 0 else random_cap_force == 1
 ## A win with no MORE SLIME bought, or on a typed / replayed seed, pays at most this.
 const TICKETS_NO_SLIME_CAP := 1
 const TICKETS_REPLAY_CAP := 1
