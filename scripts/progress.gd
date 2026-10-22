@@ -688,14 +688,14 @@ func load_progress(path := "") -> void:
 	if not _is_this_epoch(file):
 		demo_guard = Demo.on()  # (the demo never overwrites another epoch's save; the full game starts fresh)
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
-	if Demo.on() and _int(file, "meta", "version", 0) > SAVE_VERSION:
+	if Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
 		demo_guard = true  # a newer full game's save: play fresh in memory, never write it
 		return
 	_read(file)
 	_guard_full_save(file)
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
 	# migration doesn't rerun on each launch.
-	if _int(file, "meta", "version", 0) < SAVE_VERSION:
+	if SaveFile.get_int(file, "meta", "version", 0) < SAVE_VERSION:
 		save_progress()
 
 
@@ -754,103 +754,11 @@ func _recover_temp_save(path: String) -> void:
 	else:
 		DirAccess.remove_absolute(g_temp)
 
-## Takes everything from a save (the save file or a loaded save code).
-## Reads a save (`from_code`: a pasted save code, which never brings a saved Descent run with it).
+
+## Takes everything from a save (the save file or a loaded save code; `from_code`: a pasted save code,
+## which never brings a saved Descent run with it). The reading itself is SaveFile.read.
 func _read(file: ConfigFile, from_code := false) -> void:
-	levels_cleared = clampi(_int(file, "progress", "levels_cleared", 0), 0, Levels.COUNT)
-	highest_unlocked = clampi(_int(file, "progress", "highest_unlocked", 1), 1, Levels.COUNT)
-	current_level = clampi(_int(file, "progress", "current_level", 1), 1, highest_unlocked)
-	randoms_won = maxi(_int(file, "progress", "randoms_won", 0), 0)
-	# Saves from before the cues existed have no key: a returning player has seen it all.
-	var returning := levels_cleared > 0 or randoms_won > 0
-	tutorial_seen = maxi(_int(file, "progress", "tutorial_seen", TUTORIAL_MOVE | TUTORIAL_LEAP if returning else 0), 0)
-	# Saves from before the story: a returning player has already played past the intro (and a
-	# beaten game past the finale).
-	story_seen = maxi(_int(file, "progress", "story_seen", (STORY_INTRO if returning else 0) | (STORY_FINALE if levels_cleared >= Levels.COUNT else 0)), 0)
-	var color: Variant = file.get_value("skin", "custom_color", custom_color)
-	custom_color = color if typeof(color) == TYPE_COLOR else custom_color
-	hats_owned.assign(_strings(file.get_value("hats", "owned", [])))
-	hat_dyes_owned.clear()
-	for key in _strings(file.get_value("hats", "dyes", [])):
-		if _dye_key_valid(key) and not key in hat_dyes_owned:
-			hat_dyes_owned.append(key)
-	hat_dyes = {}
-	for key in _strings(file.get_value("hats", "dyes_worn", [])):
-		if key in hat_dyes_owned:
-			hat_dyes[key.get_slice(":", 0)] = key.get_slice(":", 1)
-	selected_hat = _string(file, "skin", "hat", Hats.NONE)
-	hub_skin = _string(file, "skin", "hub", "")
-	var hub_tint: Variant = file.get_value("skin", "hub_custom", hub_custom)
-	hub_custom = hub_tint if typeof(hub_tint) == TYPE_COLOR else hub_custom
-	if not is_hat_unlocked(selected_hat):
-		selected_hat = Hats.NONE
-	sound_on = _bool(file, "settings", "sound_on", true)
-	volume = clampf(_float(file, "settings", "volume", volume), 0.0, 1.0)
-	music_volume = clampf(_float(file, "settings", "music_volume", music_volume), 0.0, 1.0)
-	hard_mode = _bool(file, "settings", "hard_mode", false)
-	reduce_motion = _bool(file, "settings", "reduce_motion", reduce_motion)
-	vibration = _bool(file, "settings", "vibration", vibration)
-	fog_brightness = clampi(_int(file, "settings", "fog_brightness", fog_brightness), FOG_DARK, FOG_BRIGHT)
-	fullscreen = _bool(file, "settings", "fullscreen", false)
-	if not from_code:  # a code never brings a language: the device keeps its own
-		language = _locale_code(_string(file, "settings", "language", ""))
-	skin_notices_seen.assign(_ints(file.get_value("progress", "skin_notices_seen", [])))
-	hard_cleared.assign(_ints(file.get_value("progress", "hard_cleared", [])))
-	best_times = {}
-	for level in range(1, Levels.COUNT + 1):
-		for key in [level, level + HARD_RECORDS]:
-			if file.has_section_key("records", "level_%d" % key):
-				var best := _float(file, "records", "level_%d" % key, 0.0)
-				if best >= MIN_RECORD:  # a 0 s / negative record (hand-made) could never be beaten (S4)
-					best_times[key] = best
-	coins_found = {}
-	for level in range(1, Levels.COUNT + 1):
-		var found: Array = []
-		found.assign(_strings(file.get_value("coins", "level_%d" % level, [])))
-		if not found.is_empty():
-			coins_found[level] = found
-	upgrades = {}
-	var tree := _int(file, "upgrades", "tree", 1)
-	var new_tree := tree >= 2  # levels of the 7 / 4 / 3 tracks (tree 2 prices or later)
-	for upgrade: Dictionary in Upgrades.LIST:
-		var top: int = Upgrades.max_level(upgrade.id) if new_tree else Economy.OLD_TREE_LEVELS
-		var level := clampi(_int(file, "upgrades", upgrade.id, 0), 0, top)
-		if level > 0:
-			upgrades[upgrade.id] = level
-	tree_refund_notice = clampi(_int(file, "upgrades", "refund_notice", 0), 0, Upgrades.full_tree_cost()) if new_tree else 0
-	if not new_tree:
-		_migrate_tree()
-	if tree < Economy.TREE_VERSION:
-		_migrate_prices()
-	if Demo.on() and is_demo_save(file):  # a demo save from older, higher caps: back to today's (the coins return)
-		for id: String in upgrades.keys():
-			if upgrades[id] > Demo.upgrade_cap(id):
-				if Demo.upgrade_cap(id) > 0:
-					upgrades[id] = Demo.upgrade_cap(id)
-				else:
-					upgrades.erase(id)
-	var guarded := Demo.on() and not is_demo_save(file)  # a full save in the demo: in memory only, left alone
-	if is_demo_save(file):  # bought at the demo's prices (Demo.PRICES): over this build's, a level at a time back
-		while _coins_balance() < 0 and _drop_priciest_level():
-			pass
-	while _coins_balance() < 0 and not upgrades.is_empty() and not guarded:  # never spend more than was found
-		upgrades.erase(upgrades.keys()[0])
-	tree_refund_notice = clampi(tree_refund_notice, 0, maxi(coins(), 0))  # (a hand-made save can't claim more)
-	_read_bindings(file)
-	_read_wallet(file)
-	_read_descent(file, from_code)
-	_read_store(file)
-	_read_maps(file)
-	# The skin last, once everything that unlocks skins (levels, hard clears, coins) is loaded.
-	selected_skin = _string(file, "skin", "selected", Skins.DEFAULT)
-	# The saved look is only a wish: what is unlocked is recomputed from the progress above (normal
-	# clears, coins, medals, hard clears) under the current rules (D14: opaque = normal mode, jelly =
-	# hard mode). A look that is not unlocked falls back to that skin's opaque version, then to Lime.
-	set_jelly(_bool(file, "skin", "jelly", false))
-	if not is_skin_unlocked(selected_skin):  # e.g. a skin that moved, or a jelly one not earned on hard
-		set_jelly(false)
-		if not is_skin_unlocked(selected_skin):
-			selected_skin = Skins.DEFAULT
+	SaveFile.read(self, file, from_code)
 
 
 ## Upgrade levels from a save without [upgrades] tree = 2 are levels of the old 3 x 10 tree (level n
@@ -921,77 +829,8 @@ func take_tree_refund_notice() -> int:
 ## The shortest best time kept (S4): a record of 0 s, a negative one or 1e-9 (hand-made saves) could
 ## never be beaten; anything a real frame-stepped run can set (1/60 s and up) is kept.
 const MIN_RECORD := 0.001
-
-
-## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
-## another action falls back to that action's default; if that leaves two actions on one key, every
-## binding goes back to the defaults (the CONTROLS page can change them again).
-func _read_bindings(file: ConfigFile) -> void:
-	var used := {}
-	for action: String in DEFAULT_KEYS:
-		var key := _int(file, "controls", action, DEFAULT_KEYS[action])
-		if key <= 0 or key > KEY_MAX_CODE or used.has(key):
-			key = DEFAULT_KEYS[action]
-		if used.has(key) and action.begins_with("ability_"):
-			# (an ability key missing from an older save, or broken: the first free spare, so the
-			# player's other bindings are kept)
-			for spare in ABILITY_SPARE_KEYS:
-				if not used.has(spare):
-					key = spare
-					break
-		if used.has(key):
-			bindings = DEFAULT_KEYS.duplicate()
-			return
-		used[key] = true
-		bindings[action] = key
-	return
-
-
 ## Largest physical keycode accepted from a save (Godot keycodes stay below KEY_SPECIAL | 0xFF...).
 const KEY_MAX_CODE := (1 << 23) - 1
-
-
-## Tickets, medals and hat-wheel counters. Every key is optional: a save from before them gets
-## zeros. The ticket balance sits under the old [wallet] keys "globs" / "globs_lifetime" (the old
-## clears_paid / hard_clears_paid / retro-grant keys are ignored: tickets now come only from the
-## randomizer, and an existing balance is kept as it is).
-func _read_wallet(file: ConfigFile) -> void:
-	tickets = clampi(_int(file, "wallet", "globs", 0), 0, TICKETS_MAX)
-	tickets_lifetime = clampi(_int(file, "wallet", "globs_lifetime", tickets), 0, 100 * TICKETS_MAX)
-	random_pay_day = maxi(_int(file, "wallet", "random_day", 0), 0)
-	random_paid = clampi(_int(file, "wallet", "random_paid", 0), 0, RANDOM_PAID_PER_DAY)
-	_check_pay_day()
-	random_paid_seeds.assign(_ints(file.get_value("wallet", "paid_seeds", [])).slice(-PAID_SEEDS_MAX))
-	spins = clampi(_int(file, "hats", "spins", 0), 0, SPINS_MAX)
-	rainbow_pity = clampi(_int(file, "hats", "rainbow_pity", 0), 0, RAINBOW_PITY_MAX)
-	medals = {}
-	# A save with best times but no [medals] section at all gets tiers from its best times; otherwise
-	# stored tiers count when 1-3 (anything else is 0).
-	var from_times := not file.has_section("medals") and not best_times.is_empty()
-	for level in range(1, Levels.COUNT + 1):
-		for key in [level, level + HARD_RECORDS]:
-			var stored := _int(file, "medals", "level_%d" % key, 0)
-			var tier := _tier_from_record(key) if from_times else (stored if stored >= TIER_BRONZE and stored <= TIER_GOLD else TIER_NONE)
-			if tier > 0:
-				medals[key] = tier
-
-
-## The ticket store (upgrades v2 batch 2), all optional with defaults: [workshop] levels clamped to
-## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
-## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
-## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
-func _read_descent(file: ConfigFile, from_code := false) -> void:
-	descent_best_floor = clampi(_int(file, "descent", "best_floor", 0), 0, DESCENT_FLOOR_MAX)
-	descent_best_time = clampf(_float(file, "descent", "best_time", 0.0), 0.0, 1.0e7)
-	descent_runs = clampi(_int(file, "descent", "runs", 0), 0, 100 * TICKETS_MAX)
-	descent_pay_day = maxi(_int(file, "descent", "paid_day", 0), 0)
-	descent_paid = clampi(_int(file, "descent", "paid_runs", 0), 0, Economy.DESCENT_PAID_PER_DAY)
-	_check_descent_day()
-	descent_milestones = clampi(_int(file, "descent", "milestones", 0), 0, (1 << Economy.DESCENT_MILESTONES.size()) - 1)
-	descent_run = {}
-	descent_resume = {}
-	if not from_code:
-		descent_resume = read_descent_run(file)
 
 
 ## A saved Descent run ([descent_run], D6) checked and clamped, or {} when there is none or it can't be one
@@ -999,13 +838,13 @@ func _read_descent(file: ConfigFile, from_code := false) -> void:
 ## cleared): such a run is dropped, like any unreadable optional section.
 static func read_descent_run(file: ConfigFile) -> Dictionary:
 	const S := "descent_run"
-	if not file.has_section(S) or _int(file, S, "format", 0) != DESCENT_RUN_FORMAT:
+	if not file.has_section(S) or SaveFile.get_int(file, S, "format", 0) != DESCENT_RUN_FORMAT:
 		return {}
-	var run_seed := _int(file, S, "seed", 0)
-	var floor_no := _int(file, S, "floor", 0)
+	var run_seed := SaveFile.get_int(file, S, "seed", 0)
+	var floor_no := SaveFile.get_int(file, S, "floor", 0)
 	if run_seed < 1 or run_seed > Economy.DESCENT_SEED_MAX or floor_no < 1 or floor_no > DESCENT_FLOOR_MAX:
 		return {}
-	var cleared := _int(file, S, "cleared", floor_no - 1)
+	var cleared := SaveFile.get_int(file, S, "cleared", floor_no - 1)
 	if cleared != floor_no - 1 and cleared != floor_no:
 		return {}
 	var boons := {}
@@ -1030,145 +869,24 @@ static func read_descent_run(file: ConfigFile) -> Dictionary:
 				bonuses.append([clampi(pair[0], 1, DESCENT_FLOOR_MAX), clampi(pair[1], 0, 100)])
 	return {
 		seed = run_seed, floor = floor_no, cleared = cleared,
-		meter = clampf(_float(file, S, "meter", 100.0), 0.0, 100.0),
+		meter = clampf(SaveFile.get_float(file, S, "meter", 100.0), 0.0, 100.0),
 		boons = boons,
-		bladders = clampi(_int(file, S, "bladders", 0), 0, int(boons.get("bladder", 0))),
-		pot = clampi(_int(file, S, "pot", 0), 0, Economy.DESCENT_POT_MAX),
-		time = clampf(_float(file, S, "time", 0.0), 0.0, 1.0e7),
-		wind_used = _bool(file, S, "wind_used", false),
-		slot = clampi(_int(file, S, "slot", 0), 0, Economy.DESCENT_PAID_PER_DAY),
+		bladders = clampi(SaveFile.get_int(file, S, "bladders", 0), 0, int(boons.get("bladder", 0))),
+		pot = clampi(SaveFile.get_int(file, S, "pot", 0), 0, Economy.DESCENT_POT_MAX),
+		time = clampf(SaveFile.get_float(file, S, "time", 0.0), 0.0, 1.0e7),
+		wind_used = SaveFile.get_bool(file, S, "wind_used", false),
+		slot = clampi(SaveFile.get_int(file, S, "slot", 0), 0, Economy.DESCENT_PAID_PER_DAY),
 		bonuses = bonuses.slice(-8),
-		new_best = _bool(file, S, "new_best", false),
-		best_before = clampi(_int(file, S, "best_before", 0), 0, DESCENT_FLOOR_MAX),
+		new_best = SaveFile.get_bool(file, S, "new_best", false),
+		best_before = clampi(SaveFile.get_int(file, S, "best_before", 0), 0, DESCENT_FLOOR_MAX),
 		# (optional, D9: older saves have none = not resumed yet; a boon card is never limited)
-		resumes = 0 if cleared == floor_no else clampi(_int(file, S, "resumes", 0), 0, DESCENT_RESUMES_PER_FLOOR),
+		resumes = 0 if cleared == floor_no else clampi(SaveFile.get_int(file, S, "resumes", 0), 0, DESCENT_RESUMES_PER_FLOOR),
 	}
 
 
+## The ticket store's part of a save (SaveFile.read_store).
 func _read_store(file: ConfigFile) -> void:
-	workshop = {}
-	for id in Workshop.ids():
-		var level := clampi(_int(file, "workshop", id, 0), 0, Workshop.max_level(id))
-		if level > 0:
-			workshop[id] = level
-	abilities = {}
-	for id in Abilities.ids():
-		var ability_level := clampi(_int(file, "abilities", id, 0), 0, Abilities.max_level(id))
-		if ability_level > 0:
-			abilities[id] = ability_level
-	var owned: Array[String] = []
-	for id in _strings(file.get_value("cosmetics", "owned", [])):
-		if Cosmetics.is_earned(id) and not cosmetic_earned(id):
-			continue  # an earned cosmetic (ABYSS) counts only with its milestone
-		if not Cosmetics.get_item(id).is_empty() and not id in owned:
-			owned.append(id)
-	cosmetics_owned.assign(owned)
-	trail_style = _string(file, "cosmetics", "trail", Cosmetics.DEFAULT_TRAIL)
-	if not owns_cosmetic(trail_style) or Cosmetics.kind_of(trail_style) != Cosmetics.TRAIL:
-		trail_style = Cosmetics.DEFAULT_TRAIL
-	map_paper = _string(file, "cosmetics", "paper", Cosmetics.DEFAULT_PAPER)
-	if not owns_cosmetic(map_paper) or Cosmetics.kind_of(map_paper) != Cosmetics.PAPER:
-		map_paper = Cosmetics.DEFAULT_PAPER
-	hats_bought = clampi(_int(file, "hats", "bought", 0), 0, Hats.LIST.size())
-	tickets_spent = clampi(_int(file, "wallet", "tickets_spent", 0), 0, 100 * TICKETS_MAX)
-
-
-## The tier for a level key from its best time against the level's par when it has one, else bronze
-## when the level was cleared, else none. Needs best_times / levels_cleared / hard_cleared read first.
-func _tier_from_record(key: int) -> int:
-	var hard := key > HARD_RECORDS
-	var level := key - HARD_RECORDS if hard else key
-	var best: float = best_times.get(key, -1.0)
-	if is_finite(best) and best > 0.0 and Levels.has_data(level, hard):  # (a demo export lacks later levels' pars)
-		return tier_for(best, Levels.level_par(level, hard))
-	var cleared := (level in hard_cleared) if hard else (level <= levels_cleared)
-	return TIER_BRONZE if cleared else TIER_NONE
-
-
-## Trail map surveys ([maps] level_N, optional). Each is checked by Survey.unpack: anything broken,
-## hostile or out of range is dropped (that level just has no survey yet); keys outside the 20 story
-## levels are ignored. Old version-1 surveys (no layout fingerprint) are dropped by unpack; a survey of
-## another layout is dropped when it's first used (survey_for) or replaced by the next run (record_survey).
-func _read_maps(file: ConfigFile) -> void:
-	maps = {}
-	for level in range(1, Levels.COUNT + 1):
-		for key in [level, level + HARD_RECORDS]:
-			var survey := Survey.unpack(file.get_value("maps", "level_%d" % key, ""))
-			if not survey.is_empty():
-				var coins := _read_seen_coins(file.get_value("maps", "coins_%d" % key, []), survey)
-				if not coins.is_empty():
-					survey.seen_coins = coins
-				maps[key] = survey
-	maps_hint_seen = _bool(file, "maps", "hint_seen", false)
-
-
-## A survey's revealed coins ([maps] coins_N: cell x + y * 256 each, saved beside level_N): only
-## cells inside the survey's maze, no repeats, at most 64 (Progress.map_coins then keeps only the
-## level's real coin cells); anything else is dropped.
-func _read_seen_coins(value: Variant, survey: Dictionary) -> Array:
-	var cells: Array = []
-	if typeof(value) != TYPE_ARRAY and typeof(value) != TYPE_PACKED_INT32_ARRAY and typeof(value) != TYPE_PACKED_INT64_ARRAY:
-		return cells
-	var size := Vector2i((int(survey.w) - 1) / 2, (int(survey.h) - 1) / 2)
-	for code: Variant in value:
-		if typeof(code) != TYPE_INT or cells.size() >= 64:
-			continue
-		var cell := Vector2i(int(code) % 256, int(code) / 256)
-		if int(code) >= 0 and cell.x < size.x and cell.y < size.y and not cell in cells:
-			cells.append(cell)
-	return cells
-
-
-## Type-safe save readers: a wrong-typed value (hand-edited or hostile save) gives the default.
-static func _int(file: ConfigFile, section: String, key: String, default: int) -> int:
-	var v: Variant = file.get_value(section, key, default)
-	if typeof(v) == TYPE_INT:
-		return v
-	if typeof(v) == TYPE_FLOAT and is_finite(v):
-		return int(v)
-	return default
-
-
-static func _float(file: ConfigFile, section: String, key: String, default: float) -> float:
-	var v: Variant = file.get_value(section, key, default)
-	if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and is_finite(float(v)):
-		return float(v)
-	return default
-
-
-static func _bool(file: ConfigFile, section: String, key: String, default: bool) -> bool:
-	var v: Variant = file.get_value(section, key, default)
-	return v if typeof(v) == TYPE_BOOL else default
-
-
-## A saved locale code as written by Language.pick ("es", "pt_BR"...), or "" if it doesn't look like one.
-## Whether it is a supported locale is Language's call.
-static func _locale_code(text: String) -> String:
-	var ok := text.length() <= 8 and RegEx.create_from_string("^[a-z]{2,3}(_[A-Z]{2})?$").search(text) != null
-	return text if ok else ""
-
-
-static func _string(file: ConfigFile, section: String, key: String, default: String) -> String:
-	var v: Variant = file.get_value(section, key, default)
-	return v if typeof(v) == TYPE_STRING else default
-
-
-static func _strings(v: Variant) -> Array[String]:
-	var out: Array[String] = []
-	if typeof(v) == TYPE_ARRAY:
-		for item: Variant in v:
-			if typeof(item) == TYPE_STRING:
-				out.append(item)
-	return out
-
-
-static func _ints(v: Variant) -> Array[int]:
-	var out: Array[int] = []
-	if typeof(v) == TYPE_ARRAY:
-		for item: Variant in v:
-			if typeof(item) == TYPE_INT:
-				out.append(item)
-	return out
+	SaveFile.read_store(self, file)
 
 
 ## Writes the save (if saving is on). Returns false if it couldn't be written: the old file is then
@@ -1259,105 +977,11 @@ static func write_atomic(path: String, text: String) -> bool:
 	return false
 
 
-## Everything that's saved, as a ConfigFile (written to the save file, or turned into a save code).
-## The save as a ConfigFile (`for_code`: for a save code, without the saved Descent run: a run copied to another
-## device could be banked on both).
+## Everything that's saved, as a ConfigFile, written to the save file or turned into a save code
+## (`for_code`: without the saved Descent run, which a code copied to another device could bank on both).
+## The writing itself is SaveFile.write.
 func _write(for_code := false) -> ConfigFile:
-	var file := ConfigFile.new()
-	file.set_value("meta", "version", SAVE_VERSION)
-	file.set_value("meta", "epoch", RELEASE_EPOCH)
-	if Demo.on():
-		file.set_value("meta", "demo", true)  # (the full game reads every demo save and drops the marker)
-	file.set_value("progress", "levels_cleared", levels_cleared)
-	file.set_value("progress", "highest_unlocked", highest_unlocked)
-	file.set_value("progress", "current_level", current_level)
-	file.set_value("progress", "randoms_won", randoms_won)
-	file.set_value("progress", "tutorial_seen", tutorial_seen)
-	file.set_value("progress", "story_seen", story_seen)
-	file.set_value("skin", "selected", selected_skin)
-	file.set_value("skin", "custom_color", custom_color)
-	file.set_value("skin", "jelly", jelly)
-	if hub_skin != "":
-		file.set_value("skin", "hub", hub_skin)
-		file.set_value("skin", "hub_custom", hub_custom)
-	file.set_value("skin", "hat", selected_hat)
-	file.set_value("hats", "owned", hats_owned.duplicate())
-	if not hat_dyes_owned.is_empty():
-		file.set_value("hats", "dyes", hat_dyes_owned.duplicate())
-	var worn: Array[String] = []
-	for hat: String in hat_dyes:
-		worn.append("%s:%s" % [hat, hat_dyes[hat]])
-	if not worn.is_empty():
-		file.set_value("hats", "dyes_worn", worn)
-	file.set_value("settings", "sound_on", sound_on)
-	file.set_value("settings", "volume", volume)
-	file.set_value("settings", "music_volume", music_volume)
-	file.set_value("settings", "hard_mode", hard_mode)
-	file.set_value("settings", "reduce_motion", reduce_motion)
-	file.set_value("settings", "vibration", vibration)
-	file.set_value("settings", "fog_brightness", fog_brightness)
-	if fullscreen:
-		file.set_value("settings", "fullscreen", true)
-	if language != "" and not for_code:
-		file.set_value("settings", "language", language)
-	file.set_value("progress", "skin_notices_seen", skin_notices_seen)
-	file.set_value("progress", "hard_cleared", hard_cleared)
-	for level: int in best_times:
-		file.set_value("records", "level_%d" % level, best_times[level])
-	for level: int in coins_found:
-		file.set_value("coins", "level_%d" % level, coins_found[level])
-	file.set_value("upgrades", "tree", Economy.TREE_VERSION)
-	for id: String in upgrades:
-		file.set_value("upgrades", id, upgrades[id])
-	if tree_refund_notice > 0:
-		file.set_value("upgrades", "refund_notice", tree_refund_notice)
-	for action: String in bindings:
-		file.set_value("controls", action, bindings[action])
-	file.set_value("wallet", "globs", tickets)  # (the old name; see _read_wallet)
-	file.set_value("wallet", "globs_lifetime", tickets_lifetime)
-	file.set_value("wallet", "random_day", random_pay_day)
-	file.set_value("wallet", "random_paid", random_paid)
-	file.set_value("wallet", "paid_seeds", random_paid_seeds)
-	file.set_value("hats", "spins", spins)
-	file.set_value("hats", "rainbow_pity", rainbow_pity)
-	# The ticket store: written only once used, so a save without it stays as small as before.
-	if hats_bought > 0:
-		file.set_value("hats", "bought", hats_bought)
-	if tickets_spent > 0:
-		file.set_value("wallet", "tickets_spent", tickets_spent)
-	for id: String in workshop:
-		file.set_value("workshop", id, workshop[id])
-	for id: String in abilities:
-		file.set_value("abilities", id, abilities[id])
-	if not cosmetics_owned.is_empty():
-		file.set_value("cosmetics", "owned", cosmetics_owned.duplicate())
-	if trail_style != Cosmetics.DEFAULT_TRAIL:
-		file.set_value("cosmetics", "trail", trail_style)
-	if map_paper != Cosmetics.DEFAULT_PAPER:
-		file.set_value("cosmetics", "paper", map_paper)
-	for key: int in medals:
-		file.set_value("medals", "level_%d" % key, medals[key])
-	for key: int in ([] if for_code and dev_tools else maps.keys()):  # a dev session's in-memory maps stay out of save codes
-		file.set_value("maps", "level_%d" % key, Survey.pack(maps[key]))
-		var seen_coins: Array = maps[key].get("seen_coins", [])
-		if not seen_coins.is_empty():
-			file.set_value("maps", "coins_%d" % key, seen_coins.map(func(cell: Vector2i) -> int: return cell.x + cell.y * 256))
-	if maps_hint_seen:
-		file.set_value("maps", "hint_seen", true)
-	# DESCENT records and its daily counter: written only once a run has been played.
-	if descent_best_floor > 0 or descent_runs > 0 or descent_pay_day > 0 or descent_milestones > 0:
-		file.set_value("descent", "best_floor", descent_best_floor)
-		file.set_value("descent", "best_time", descent_best_time)
-		file.set_value("descent", "runs", descent_runs)
-		file.set_value("descent", "paid_day", descent_pay_day)
-		file.set_value("descent", "paid_runs", descent_paid)
-		file.set_value("descent", "milestones", descent_milestones)
-	# A Descent run in progress (D6): written only while one is saved.
-	if not descent_resume.is_empty() and not for_code:
-		file.set_value("descent_run", "format", DESCENT_RUN_FORMAT)
-		for key: String in DESCENT_RESUME_KEYS:
-			file.set_value("descent_run", key, descent_resume[key])
-	return file
+	return SaveFile.write(self, for_code)
 
 
 ## The whole save as a code to copy somewhere safe: SAVE_CODE_PREFIX ("SLIME2-") and the save file, gzipped, in
@@ -1368,12 +992,11 @@ func save_code() -> String:
 	return SAVE_CODE_PREFIX + Marshalls.raw_to_base64(packed)
 
 
-## The save inside a code, or null if it isn't a working Dry Trying save code.
 ## Longest save code read (base64 characters); real ones are a few KB.
 const MAX_SAVE_CODE_LENGTH := 65536
 
 
-## Only codes made by this release epoch work: an old prefix, or a code without this [meta] epoch,
+## The save inside a code, or null if it isn't a working Dry Trying save code. Only codes made by this release epoch work: an old prefix, or a code without this [meta] epoch,
 ## gives null (is_old_code tells those apart from broken codes).
 static func read_code(code: String) -> ConfigFile:
 	code = _clean_code(code)
