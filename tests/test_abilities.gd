@@ -851,8 +851,8 @@ func _store() -> void:
 	root.add_child(screen)
 	await process_frame
 	var rows: Dictionary = screen.ability_rows
-	_check(rows.rifle.cost.text == "30" and not rows.rifle.plus.disabled and rows.splat.plus.disabled and rows.rifle.tag.text == "SHOOTS GOO"
-		and screen.coin_label.text == "30" and "1 2 3" in screen.hint.text, "30 tickets: SLIME RIFLE affordable (30), SPLAT (36) not; tag, pod and keys hint")
+	_check(rows.rifle.cost.text == "30" and not rows.rifle.plus.disabled and not rows.splat.plus.disabled and rows.kaze.plus.disabled and rows.rifle.tag.text == "SHOOTS GOO"
+		and screen.coin_label.text == "30" and "1 2 3" in screen.hint.text, "30 tickets: SLIME RIFLE and SPLAT affordable (30), SLIMAKAZE (50) not; tag, pod and keys hint")
 	rows.rifle.plus.pressed.emit()
 	_check(screen.confirm.visible and screen.confirm_label.text == "BUY SLIME RIFLE 1?" and screen.confirm_price.text == "30" and progress.tickets == 30,
 		"+ opens BUY SLIME RIFLE 1? (nothing spent yet)")

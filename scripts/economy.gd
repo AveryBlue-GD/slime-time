@@ -336,10 +336,10 @@ static func abilities_on() -> bool:
 
 
 ## Doubled along with the doubled payouts (owner, 2026-10-22): first ability 30 tickets = about 5
-## wins; all three maxed = 190 + 216 + 280 = 686.
+## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all three maxed = 190 + 190 + 280 = 660.
 const ABILITIES := {
 	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.0},
-	"splat": {costs = [36, 70, 110], charges = [1, 1, 1], slime = 4.0},
+	"splat": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 4.0},
 	"kaze": {costs = [50, 90, 140], charges = [1, 1, 1], slime = 30.0},
 }
 ## Abilities PASS OVER WALLS (owner buff, 2026-10-15): the rifle shot pierces them, the bomb is
