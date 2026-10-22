@@ -385,8 +385,8 @@ func _papers_tick() -> void:
 
 # ------------------------------------------------------------------ flip
 
-## [from frame, what flips, every N frames]: "skin", "hat", "dye", "trail", "chameleon" flip only
-## that part (the rest stays as it is); "all" re-rolls the whole look; a 4th entry eases `every`
+## [from frame, what flips, every N frames]: "skin", "hat", "dye", "chameleon" flip that part and
+## the trail (the rest stays as it is), "trail" only the trail; "all" re-rolls the whole look; a 4th entry eases `every`
 ## down to that many frames by the next phase.
 const FLIP_PLAN := [
 	[0, "all", 24],
@@ -529,7 +529,8 @@ func _flip(what: String) -> void:
 				_roll_dye()
 			else:
 				look.hat = ""
-			look.trail = _pick(_trails(), look.trail)
+	if what != "trail":  # (the trail changes on every flip)
+		look.trail = _pick(_trails(), look.trail)
 	_show_look()
 
 
