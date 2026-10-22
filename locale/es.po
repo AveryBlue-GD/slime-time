@@ -2737,15 +2737,15 @@ msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
 msgstr "{name}  (ELEGIDO)"
 
-#. max 56px (button 64 wide, 4 px margins), 1 line; the two states are whole strings
-#. budget: max 56px, lines 1
+#. max 72px (the button grows from 64 to fit), 1 line; the two states are whole strings
+#. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.pastel.on"
 msgid "PASTEL: ON"
 msgstr ""
 
-#. max 56px (button 64 wide, 4 px margins), 1 line; the two states are whole strings
-#. budget: max 56px, lines 1
+#. max 72px (the button grows from 64 to fit), 1 line; the two states are whole strings
+#. budget: max 72px, lines 1
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.pastel.off"
 msgid "PASTEL: OFF"

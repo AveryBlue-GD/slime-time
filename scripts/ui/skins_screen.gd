@@ -2,8 +2,7 @@ extends Control
 
 ## Skin select. Slimes are opaque by default (those unlock with the story levels); the JELLY ON / OFF
 ## switch shows the same skins as see-through jelly instead, each unlocked by beating its level on
-## hard mode (D14; the stopwatch opens both versions together with all 30 medals). Once the randomizer is
-## open, PASTEL ON / OFF beside it shows the pastel versions (opaque or jelly) of the presets and the
+## hard mode (D14; the stopwatch opens both versions together with all 30 medals). PASTEL ON / OFF beside it shows the pastel versions (opaque or jelly) of the presets and the
 ## rainbow, unlocked by randomizer wins (Skins.pastel_wins; CHAMELEON and the stopwatch have none, so
 ## they leave the grid). A tile per skin (locked ones are silhouettes); for the custom
 ## skin, once the game is beaten, a color wheel. The page button cycles SKINS -> HATS -> TRAILS -> PAPERS:
@@ -90,7 +89,7 @@ var jelly_button: Button
 ## Which version of the skins the grid shows: pastel (true) or not (false). Skins.pastel follows it
 ## while the skins page is up (the tiles and the preview are made in it), else Progress.pastel.
 var view_pastel := false
-## Skins page, once the randomizer is open (or in dev mode): PASTEL, to the right of JELLY.
+## Skins page (not in the demo): PASTEL, to the right of JELLY.
 var pastel_button: Button
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
@@ -406,9 +405,10 @@ func _fill_skin_grid() -> void:
 			_add_to_grid(_skin_grid, _make_tile(id))
 
 
-## PASTEL shows once the randomizer (which unlocks the pastel skins) is open, never in the demo.
+## PASTEL shows from the start (the locked pastel skins say how many randomizer wins they need, a
+## reason to finish the story; owner, 2026-10-22), never in the demo.
 func _pastel_open() -> bool:
-	return not Demo.on() and (Progress.dev_tools or Progress.is_randomizer_unlocked())
+	return not Demo.on()
 
 
 func _exit_tree() -> void:
