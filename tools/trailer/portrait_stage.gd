@@ -66,14 +66,16 @@ func floor_y() -> float:
 	return stage_size.y - 1.0 - 10.0 * px
 
 
-func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock := false) -> void:
+## `restart` false keeps the routine where it is (the flip view swaps looks mid-move).
+func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock := false, restart := true) -> void:
 	if slime:
 		slime.queue_free()
 	slime = UIKit.make_slime_preview(color, px, rainbow, jelly, clock)
 	add_child(slime)
 	if locked:
 		slime.modulate = Color(0, 0, 0, 0.85)
-	_time = 0.0
+	if restart:
+		_time = 0.0
 	_pose()
 
 

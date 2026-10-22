@@ -22,6 +22,10 @@ extends Node
 ##           the slime on the little stage under it.
 ##   papers  the map of story level --open=N (default 4) on the real paper, big, with the PAPERS page's
 ##           tiles under it; --every=F flips to the next paper from --cycle-at=F (--own-cosmetics=all).
+##   flip    the "how many looks" Short: a big slime acting out the showcase routine while its look flips
+##           (skin incl. jelly / pastel / CHAMELEON colors, hat and dye, trail) through FLIP_PLAN's
+##           phases (skins only, hats, dyes, trails, CHAMELEON colors, then everything, faster and
+##           faster), with the trail strip and the look's names under the stage. Seeded (--rng).
 ## Promo rule (owner, 2026-10-20): the RAINBOW and STOPWATCH skins are only ever shown as the skins
 ## screen's locked silhouettes (one story coin is taken out of the count, so the line under the stage
 ## is true), and never worn.
@@ -123,6 +127,8 @@ func _build() -> void:
 			_build_wheel()
 		"papers":
 			_build_papers()
+		"flip":
+			_build_flip()
 		_:
 			push_error("portrait: no view %s" % view)
 
@@ -374,6 +380,186 @@ func _papers_tick() -> void:
 	_show_paper()
 
 
+# ------------------------------------------------------------------ flip
+
+## [from frame, what flips, every N frames]: "skin", "hat", "dye", "trail", "chameleon" flip only
+## that part (the rest stays as it is); "all" re-rolls the whole look; a 4th entry eases `every`
+## down to that many frames by the next phase.
+const FLIP_PLAN := [
+	[0, "all", 24],
+	[180, "skin", 10],
+	[420, "hat", 12],
+	[630, "dye", 10],
+	[810, "trail", 14],
+	[990, "chameleon", 6],
+	[1170, "all", 8, 2],
+	[1470, "all", 2],
+]
+const FLIP_STAGE := Vector2(172, 130)
+const FLIP_PX := 4
+const NEVER := 1 << 30
+## The secret RAINBOW and STOPWATCH (and the pastel rainbow) are never worn (the promo rule).
+const PRESET_IDS := ["lime", "mint", "lemon", "ocean", "grape", "crimson", "frost", "shadow", "bubblegum", "ember"]
+
+## The look on the stage: skin id (a preset or CHAMELEON), jelly, pastel, CHAMELEON's color, hat
+## ("" = none), dye ("" = the hat's own color), trail style.
+var look := {skin = "ocean", jelly = false, pastel = false, color = Color.WHITE, hat = "tophat", dye = "", trail = Cosmetics.DEFAULT_TRAIL}
+var flip_rng := RandomNumberGenerator.new()
+var flip_hat: Hat
+var trail_rect: TextureRect
+var skin_line: Label
+var hat_line: Label
+var trail_line: Label
+var _flips := 0
+var _next_flip := 0
+
+
+func _build_flip() -> void:
+	flip_rng.seed = int(opts.get("rng", "1"))
+	stage = Stage.new(FLIP_STAGE, FLIP_PX)
+	stage.position = Vector2(4, top)
+	root.add_child(stage)
+	trail_rect = TextureRect.new()
+	trail_rect.scale = Vector2(FLIP_PX, FLIP_PX)
+	trail_rect.position = Vector2(4, top + FLIP_STAGE.y + 3)
+	trail_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(trail_rect)
+	var y := top + FLIP_STAGE.y + 3 + 7 * FLIP_PX + 2
+	skin_line = _label("", UIKit.TEXT, y)
+	hat_line = _label("", UIKit.GOLD, y + 9)
+	trail_line = _label("", UIKit.TEXT_DIM, y + 18)
+	_show_look()
+
+
+## [what flips, every N frames] at frame `at` (FLIP_PLAN).
+func _flip_phase(at: int) -> Array:
+	var phase: Array = FLIP_PLAN[0]
+	var next_at := NEVER
+	for i in FLIP_PLAN.size():
+		if FLIP_PLAN[i][0] <= at:
+			phase = FLIP_PLAN[i]
+			next_at = FLIP_PLAN[i + 1][0] if i + 1 < FLIP_PLAN.size() else NEVER
+	var every: float = phase[2]
+	if phase.size() > 3:
+		var t := clampf(float(at - phase[0]) / float(next_at - phase[0]), 0.0, 1.0)
+		every = lerpf(phase[2], phase[3], t * t)
+	return [phase[1], maxi(roundi(every), 1)]
+
+
+func _flip_tick() -> void:
+	if frame < _next_flip:
+		return
+	var phase := _flip_phase(frame)
+	var every: int = phase[1]
+	if frame > 1:
+		_flip(phase[0])
+		_flips += 1
+		if every >= 6 or _flips % 3 == 0:
+			Sfx.play("click", -10.0)
+	_next_flip = frame + every
+
+
+func _pick(options: Array, current: Variant) -> Variant:
+	var pick: Variant = options[flip_rng.randi_range(0, options.size() - 1)]
+	while options.size() > 1 and pick == current:
+		pick = options[flip_rng.randi_range(0, options.size() - 1)]
+	return pick
+
+
+## CHAMELEON's colors: the skins screen's wheel (ColorWheel: 24 hues x 6 saturations, full value).
+func _chameleon_color() -> Color:
+	var hue := flip_rng.randi_range(0, int(ColorWheel.HUE_STEPS) - 1) / ColorWheel.HUE_STEPS
+	var sat := flip_rng.randi_range(1, int(ColorWheel.SAT_STEPS)) / ColorWheel.SAT_STEPS
+	return Color.from_hsv(hue, sat, 1.0)
+
+
+func _roll_skin() -> void:
+	var before := "%s%s%s" % [look.skin, look.jelly, look.pastel]
+	while "%s%s%s" % [look.skin, look.jelly, look.pastel] == before:
+		look.skin = Skins.CUSTOM if flip_rng.randf() < 0.12 else PRESET_IDS[flip_rng.randi_range(0, PRESET_IDS.size() - 1)]
+		look.jelly = flip_rng.randf() < 0.5
+		look.pastel = look.skin != Skins.CUSTOM and flip_rng.randf() < 0.4
+	if look.skin == Skins.CUSTOM:
+		look.color = _chameleon_color()
+
+
+func _roll_hat() -> void:
+	look.hat = _pick(Array(Hats.ids()), look.hat)
+	look.dye = ""
+
+
+func _roll_dye() -> void:
+	var dyes: Array = [""]
+	dyes.append_array(Hats.dyes_for(look.hat))
+	look.dye = _pick(dyes, look.dye)
+
+
+## The trails a player can wear (ABYSS is DESCENT's, switched off).
+func _trails() -> Array:
+	return Array(Cosmetics.trail_ids()).filter(func(id: String) -> bool: return not Cosmetics.get_item(id).has("earned"))
+
+
+func _flip(what: String) -> void:
+	match what:
+		"skin":
+			_roll_skin()
+		"hat":
+			_roll_hat()
+		"dye":
+			_roll_dye()
+		"trail":
+			look.trail = _pick(_trails(), look.trail)
+		"chameleon":
+			look.skin = Skins.CUSTOM
+			look.pastel = false
+			look.color = _chameleon_color()
+		_:
+			_roll_skin()
+			if flip_rng.randf() < 0.9:
+				_roll_hat()
+				_roll_dye()
+			else:
+				look.hat = ""
+			look.trail = _pick(_trails(), look.trail)
+	_show_look()
+
+
+## The look's base color, as Progress.skin_color gives it (a pastel version: its PASTEL color).
+func _look_color() -> Color:
+	if look.skin == Skins.CUSTOM:
+		return look.color
+	return Skins.PASTEL[look.skin] if look.pastel else Skins.get_preset(look.skin).color
+
+
+func _show_look() -> void:
+	if flip_hat:
+		flip_hat.queue_free()
+		flip_hat = null
+	Skins.pastel = look.pastel  # (read when the material is made)
+	stage.show_skin(look.color if look.skin == Skins.CUSTOM else Skins.get_preset(look.skin).color, false, look.jelly, false, false, false)
+	Skins.pastel = false
+	if look.hat != "":
+		flip_hat = Hat.new()
+		flip_hat.scale = stage.slime.scale
+		stage.add_child(flip_hat)
+		flip_hat.setup(look.hat, stage.slime, null, look.dye)
+	trail_rect.texture = ImageTexture.create_from_image(Cosmetics.trail_preview(look.trail, _look_color(), false, Vector2i(int(FLIP_STAGE.x) / FLIP_PX, 7)))
+	var skin_name := Skins.display_name(look.skin)
+	if look.pastel:
+		skin_name = "PASTEL " + skin_name  # i18n: ignore (marketing scene)
+	if look.jelly:
+		skin_name += " JELLY"  # i18n: ignore (marketing scene)
+	skin_line.text = skin_name
+	skin_line.add_theme_color_override("font_color", Skins.shades(_look_color()).light)
+	if look.hat == "":
+		hat_line.text = ""
+	elif look.dye == "":
+		hat_line.text = Hats.display_name(look.hat)
+	else:
+		hat_line.text = "%s %s" % [Hats.dye_name(look.dye), Hats.display_name(look.hat)]  # i18n: ignore (marketing scene)
+	trail_line.text = Cosmetics.display_name(look.trail)
+
+
 # ------------------------------------------------------------------ frames
 
 func _physics_process(_delta: float) -> void:
@@ -387,6 +573,8 @@ func _physics_process(_delta: float) -> void:
 			_wheel_tick()
 		"papers":
 			_papers_tick()
+		"flip":
+			_flip_tick()
 
 
 func _process(_delta: float) -> void:

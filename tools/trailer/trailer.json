@@ -254,6 +254,16 @@
     "--cycle-at=30",
     "--every=24"
    ]
+  },
+  "flip": {
+   "note": "portrait 'how many looks': the slime's look flips through skins, hats, dyes, trails, CHAMELEON colors, then everything faster and faster (portrait.gd FLIP_PLAN)",
+   "scene": "portrait",
+   "take": "flip",
+   "frames": 1640,
+   "args": [
+    "--skin=ocean",
+    "--rng=7"
+   ]
   }
  },
  "drafts": [
@@ -707,6 +717,104 @@
     "store": [],
     "logo": 0,
     "skin": "ember"
+   }
+  },
+  {
+   "id": "D",
+   "name": "272,544 looks",
+   "music": "trailer_1",
+   "hook": "one slime, its look flipping faster and faster: skins, hats, dyes, trails, CHAMELEON colors, then everything",
+   "beats": [
+    {
+     "take": "flip",
+     "in": 0.0,
+     "dur": 3.0,
+     "color": "gold",
+     "caption": [
+      "DRESS UP",
+      "YOUR SLIME"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 3.0,
+     "dur": 4.0,
+     "color": "lime",
+     "caption": [
+      "48 SKINS"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 7.0,
+     "dur": 3.5,
+     "color": "gold",
+     "caption": [
+      "12 HATS"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 10.5,
+     "dur": 3.0,
+     "color": "bubblegum",
+     "caption": [
+      "11 DYES"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 13.5,
+     "dur": 3.0,
+     "color": "mint",
+     "caption": [
+      "6 TRAILS"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 16.5,
+     "dur": 3.0,
+     "color": "lemon",
+     "caption": [
+      "CHAMELEON:",
+      "144 COLORS"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 19.5,
+     "dur": 5.0,
+     "color": "gold",
+     "caption": [
+      "272,544 LOOKS"
+     ]
+    },
+    {
+     "take": "flip",
+     "in": 24.5,
+     "dur": 2.5,
+     "color": "white",
+     "caption": [
+      "FIND YOURS"
+     ]
+    }
+   ],
+   "end": {
+    "dur": 3.0,
+    "tagline": [
+     "ESCAPE THE FOG",
+     "BEFORE YOU DRY UP"
+    ],
+    "cta": [
+     "COMING SOON"
+    ],
+    "store": [],
+    "logo": 0,
+    "skin": "grape",
+    "args": [
+     "--jelly"
+    ]
    }
   }
  ]
