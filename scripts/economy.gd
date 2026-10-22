@@ -348,13 +348,13 @@ const ABILITIES := {
 ## SLIME RIFLE: the goo shot's speed (px/s) and range (tiles past the slime's own, by level); it
 ## flies straight through walls, stopping only at the range or the maze's outer edge.
 const RIFLE_SPEED := 480.0
-const RIFLE_RANGE := [8, 11, 14]
+const RIFLE_RANGE := [12, 16, 20]  # owner, 2026-10-22: further (was 8, 11, 14)
 ## SLIME SPLAT: lobbed exactly this many tiles ahead (by level; over walls, clamped inside the maze),
 ## in the air this long (s), bursts over the (2 x AREA + 1)^2 tiles around where it lands (a wall
 ## tile too), its glow fading over GLOW_TIME s.
-const SPLAT_RANGE := [4, 5, 6]
+const SPLAT_RANGE := [2, 3, 4]  # owner, 2026-10-22: a shorter throw (was 4, 5, 6)
 const SPLAT_FLIGHT := 0.4
-const SPLAT_AREA := 1
+const SPLAT_AREA := 2  # owner, 2026-10-22: a bigger blast, 5x5 (was 1, 3x3)
 const SPLAT_GLOW_TIME := 1.5
 ## SLIMAKAZE: the dash's speed (px/s) to the first wall, the stun after the impact (s), the screen
 ## shake (px, s; none with Reduce Motion), and the splatter: every floor tile within RADIUS tiles (by

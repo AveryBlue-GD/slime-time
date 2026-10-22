@@ -35,8 +35,10 @@ msgid "SHOOTS GOO"
 msgstr "점액 발사"
 
 #: scripts/abilities.gd
+#, fuzzy
+#| msgid "BOMB 3X3"
 msgctxt "ability.splat.desc"
-msgid "BOMB 3X3"
+msgid "BOMB 5X5"
 msgstr "3X3 폭발"
 
 #: scripts/abilities.gd

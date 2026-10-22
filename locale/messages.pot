@@ -31,7 +31,7 @@ msgstr ""
 
 #: scripts/abilities.gd
 msgctxt "ability.splat.desc"
-msgid "BOMB 3X3"
+msgid "BOMB 5X5"
 msgstr ""
 
 #: scripts/abilities.gd

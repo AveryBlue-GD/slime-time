@@ -16,7 +16,7 @@ extends Node2D
 const Z := 12
 ## The goo trail's radius (game.TRAIL_RADIUS) for the dash's smear, and the bomb's splash (a landing's).
 const TRAIL_RADIUS := Economy.REVEAL_RADIUS
-const BURST_RADIUS := 11.0
+const BURST_RADIUS := 18.0  # (11 for the old 3x3 blast)
 
 var game: Node2D
 var slime: Slime
@@ -188,7 +188,7 @@ func _bomb_burst(tile: Vector2i, at: Vector2) -> void:
 	for t in Abilities.burst_tiles(game.maze, tile):
 		game.reveal_tile(t, false)
 	game._paint_goo(at, BURST_RADIUS)
-	var glow := Fx.make_light(96, Color(game.skin_color, 0.55))
+	var glow := Fx.make_light(32 * (2 * Economy.SPLAT_AREA + 1), Color(game.skin_color, 0.55))  # 96 for a 3x3 blast
 	glow.position = at
 	glow.z_index = 1  # (relative: above this runner, so above the fog)
 	add_child(glow)

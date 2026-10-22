@@ -31,7 +31,7 @@ static func allowed_in(game: Node) -> bool:
 
 const LIST := [
 	{id = "rifle", name = "SLIME SNIPER", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},  # i18n: ignore (English source; shown via display_name)
-	{id = "splat", name = "GOO GRENADE", tag = "BOMB 3X3", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
+	{id = "splat", name = "GOO GRENADE", tag = "BOMB 5X5", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
 	{id = "kaze", name = "SLIMAKAZE", tag = "WALL DASH", action = "ability_kaze", key = KEY_3},  # i18n: ignore (English source; shown via display_name)
 ]
 
@@ -80,8 +80,8 @@ static func tag(id: String) -> String:
 		"rifle":
 			return Loc.t("ability.rifle.desc", "SHOOTS GOO")
 		"splat":
-			# 3X3 is the blast size in tiles
-			return Loc.t("ability.splat.desc", "BOMB 3X3")
+			# 5X5 is the blast size in tiles
+			return Loc.t("ability.splat.desc", "BOMB 5X5")
 		"kaze":
 			return Loc.t("ability.kaze.desc", "WALL DASH")
 	return _item(id).get("tag", "")

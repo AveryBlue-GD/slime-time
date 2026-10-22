@@ -2,7 +2,7 @@ extends "res://tests/suite_base.gd"
 
 ## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1", with the pass-over-walls buff): SLIME RIFLE
 ## (pierces walls: reveals exactly the tiles on its line for its range, floor tiles with the walls around
-## them), SLIME SPLAT (lobbed over walls exactly its range ahead, reveals exactly the 3x3 around it),
+## them), SLIME SPLAT (lobbed over walls exactly its range ahead, reveals exactly the 5x5 around it),
 ## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
 ## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
@@ -165,7 +165,7 @@ func _wall_spot(game: Node2D, reach: int) -> Dictionary:
 
 
 func _rifle() -> void:
-	_check(Abilities.rifle_range(1) == 8 and Abilities.rifle_range(2) == 11 and Abilities.rifle_range(3) == 14, "SLIME RIFLE range 8 / 11 / 14 tiles")
+	_check(Abilities.rifle_range(1) == 12 and Abilities.rifle_range(2) == 16 and Abilities.rifle_range(3) == 20, "SLIME SNIPER range 12 / 16 / 20 tiles")
 	for level in [1, 3]:
 		_state({rifle = level})
 		var game := await _spawn(4)
@@ -251,7 +251,7 @@ func Main() -> GDScript:
 # ---------------------------------------------------------------- SLIME SPLAT
 
 func _splat() -> void:
-	_check(Abilities.splat_range(1) == 4 and Abilities.splat_range(2) == 5 and Abilities.splat_range(3) == 6, "SLIME SPLAT lands 4 / 5 / 6 tiles ahead")
+	_check(Abilities.splat_range(1) == 2 and Abilities.splat_range(2) == 3 and Abilities.splat_range(3) == 4, "GOO GRENADE lands 2 / 3 / 4 tiles ahead")
 	for level in [1, 3]:
 		_state({splat = level})
 		var game := await _spawn(4)
@@ -266,21 +266,27 @@ func _splat() -> void:
 		game.abilities.flush()
 		var after := _snapshot(game)
 		var area := Abilities.burst_tiles(game.maze, land)
-		var ok := area.size() == 9
+		var r := Economy.SPLAT_AREA
+		var want := 0  # the 5x5, clipped to the maze
+		for y in range(land.y - r, land.y + r + 1):
+			for x in range(land.x - r, land.x + r + 1):
+				if x >= 0 and y >= 0 and x < game.maze.size.x and y < game.maze.size.y:
+					want += 1
+		var ok := area.size() == want and want >= 15
 		for t in area:
 			ok = ok and (after[t] == 1 if game.is_wall_tile(t) else after[t] == 64)
 		var stray := []
 		for t in _changed(before, after):
 			if not t in area:
 				stray.append(t)
-		_check(ok and stray.is_empty(), "the burst reveals exactly the 3x3 around the landing tile %s (stray %s)" % [land, stray])
+		_check(ok and stray.is_empty(), "the burst reveals exactly the 5x5 around the landing tile %s (stray %s)" % [land, stray])
 		_check(game.abilities.get_children().any(func(c: Node) -> bool: return c is Sprite2D), "...with a fading glow")
 		await _stop(game)
 	var maze: Dictionary = Levels.story_maze(4, false)
 	var size: Vector2i = maze.size
 	_check(Abilities.lob_tile(maze, Vector2i(1, 1), Vector2i.LEFT, 6) == Vector2i(0, 1)
 		and Abilities.lob_tile(maze, Vector2i(size.x - 2, 1), Vector2i.RIGHT, 6) == Vector2i(size.x - 1, 1)
-		and Abilities.burst_tiles(maze, Vector2i(0, 1)).size() == 6, "near the edge it lands clamped inside the maze, its 3x3 clipped to it")
+		and Abilities.burst_tiles(maze, Vector2i(0, 1)).size() == 12, "near the edge it lands clamped inside the maze, its 5x5 clipped to it")
 
 
 # ---------------------------------------------------------------- SLIMAKAZE
