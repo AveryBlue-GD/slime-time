@@ -85,6 +85,13 @@ const RANDOM_CHALICE := true
 ## add_second_route; owner, 2026-10-22: usually, not always; some have one through their own loops).
 const RANDOM_SECOND_ROUTE_SHARE := 0.85
 const RANDOM_TICKETS := 5  # always this many (owner, 2026-10-22; TicketPickup.cells_for)
+## Test hook: pickups per maze instead of RANDOM_TICKETS (-1 = the const; suites that check the attempt
+## pod's chalice number alone set 0).
+static var random_tickets_force := -1
+
+
+static func random_tickets() -> int:
+	return RANDOM_TICKETS if random_tickets_force < 0 else random_tickets_force
 const RANDOM_TICKET_PAY := 1
 ## A win with no MORE SLIME bought, or on a typed / replayed seed, pays at most this.
 const TICKETS_NO_SLIME_CAP := 1

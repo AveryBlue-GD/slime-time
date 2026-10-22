@@ -1750,7 +1750,7 @@ func _place_coins(maze_seed: int) -> void:
 func _place_tickets() -> void:
 	if not is_random() or descent or training or progress == null or attempt_key == "" or not progress.random_seed_fresh:
 		return
-	for cell in TicketPickup.cells_for(maze, random_seed, Economy.RANDOM_TICKETS):
+	for cell in TicketPickup.cells_for(maze, random_seed, Economy.random_tickets()):
 		if progress.random_ticket_taken(attempt_key, cell):
 			continue
 		var ticket := TicketPickup.new()
@@ -1961,6 +1961,14 @@ func ticket_offer() -> int:
 	return payout().tickets
 
 
+## The tickets the maze's pickups still out would pay (none once the run is over, or for an assisted
+## or dev-toggled run): the attempt pod's TIX AVAILABLE adds them, so it counts down as they're taken.
+func pickup_offer() -> int:
+	if finished or assisted or dev_toggled:
+		return 0
+	return tickets.size() * Economy.RANDOM_TICKET_PAY
+
+
 ## The HUD's attempt pod, derived afresh from `attempt` and ticket_offer() (on the run's first frame
 ## and then whenever any of its inputs changes, see _pod_inputs, so it can never go stale; the HUD
 ## only touches the label when the text changes). The run's first showing pops the pod when its number differs from what it last showed
@@ -1968,7 +1976,7 @@ func ticket_offer() -> int:
 func _refresh_attempt_pod() -> void:
 	if not is_random() or progress == null or attempt_key == "":
 		return
-	var offer := ticket_offer()
+	var offer := ticket_offer() + pickup_offer()  # (the chalice's tickets and the pickups still out)
 	var pop := false
 	if _pod_offer < 0:
 		var before: int = progress.random_offer_shown.get(attempt_key, -1)
@@ -2142,7 +2150,7 @@ func _pick_up_drops(pos: Vector2) -> void:
 func _pod_inputs() -> Array:
 	if progress == null:
 		return []
-	return [attempt, wind_fired, dev_toggled, assisted, finished, won, progress.utc_day(), progress.dev_tools,
+	return [attempt, wind_fired, dev_toggled, assisted, finished, won, tickets.size(), progress.utc_day(), progress.dev_tools,
 		progress.upgrades.get("slime", 0), progress.random_paid, progress.random_pay_day,
 		progress.random_paid_seeds.hash(), progress.random_seed_fresh, progress.descent_paid, progress.descent_pay_day,
 		descent_run.get("pot"), descent_run.get("gain"), descent_run.get("slot"), descent_run.get("ended"),

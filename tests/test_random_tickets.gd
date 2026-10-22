@@ -113,11 +113,16 @@ func _initialize() -> void:
 	_check(game.tickets.all(func(t: TicketPickup) -> bool: return t.z_index < game.fog_sprite.z_index and not t.cell in [game.maze.start, game.maze.goal]),
 		"...under the fog (found by exploring or an ability), never on the start or the chalice")
 	var before_tickets: int = progress.tickets
+	var pod_before: int = game.hud.attempt_label.text.get_slice("TIX AVAILABLE ", 1).to_int()
+	_check(pod_before == game.ticket_offer() + cells.size() * Economy.RANDOM_TICKET_PAY,
+		"TIX AVAILABLE counts the chalice's tickets and the pickups still out (%d)" % pod_before)
 	var first: TicketPickup = game.tickets[0]
 	var first_cell := first.cell
 	game.slime.position = first.position
 	for i in 3:
 		await physics_frame
+	var pod_after: int = game.hud.attempt_label.text.get_slice("TIX AVAILABLE ", 1).to_int()
+	_check(pod_after == pod_before - Economy.RANDOM_TICKET_PAY, "...and counts down as one is taken (%d -> %d)" % [pod_before, pod_after])
 	_check(progress.tickets == before_tickets + Economy.RANDOM_TICKET_PAY and game.tickets.size() == cells.size() - 1
 		and progress.random_ticket_taken(game.attempt_key, first_cell), "touching one pays %d ticket and takes it" % Economy.RANDOM_TICKET_PAY)
 	_check(progress.take_random_ticket(game.attempt_key, first_cell) == 0, "...a taken pickup never pays again (its retries don't put it out)")

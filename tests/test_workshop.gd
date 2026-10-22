@@ -14,6 +14,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.random_tickets_force = 0  # (the attempt pod's chalice number alone: no ticket pickups in these mazes)
 	Economy.coincatch_force = 0  # assumes the instant pickup (coin catch has its own suite)
 	await process_frame
 	progress = root.get_node("Progress")

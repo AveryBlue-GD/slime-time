@@ -19,6 +19,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.random_tickets_force = 0  # (the attempt pod's chalice number alone: no ticket pickups in these mazes)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.save_path = test_save
