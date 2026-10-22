@@ -764,6 +764,11 @@ func _build_hub_menu(root: Control) -> void:
 	for b in order:
 		hub_menu.add_child(b)
 	_layout_hub_menu()
+	_focus_column(order)
+
+
+## Up / down (and Tab) cycle through `order` and wrap around; left / right stay put.
+func _focus_column(order: Array[Button]) -> void:
 	for i in order.size():
 		var b := order[i]
 		b.focus_neighbor_top = b.get_path_to(order[(i + order.size() - 1) % order.size()])
@@ -859,14 +864,7 @@ func _build_portal_menu(root: Control) -> void:
 	portal_menu.add_child(portal_back)
 	_layout_portal_menu()
 	var order: Array[Button] = [maze_button, descent_button, portal_back]
-	for i in order.size():
-		var b := order[i]
-		b.focus_neighbor_top = b.get_path_to(order[(i + order.size() - 1) % order.size()])
-		b.focus_neighbor_bottom = b.get_path_to(order[(i + 1) % order.size()])
-		b.focus_neighbor_left = b.get_path_to(b)
-		b.focus_neighbor_right = b.get_path_to(b)
-		b.focus_previous = b.focus_neighbor_top
-		b.focus_next = b.focus_neighbor_bottom
+	_focus_column(order)
 
 
 ## Title, the two modes (stack_pitch apart), the info line, BACK: gaps of 6 / 3 / 5 / 6 px between

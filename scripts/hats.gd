@@ -22,7 +22,6 @@ static var available := true
 ## How much each missed spin fattens the rainbow hat's wedge.
 const PITY_STEP := 0.15
 const NONE := "none"
-const NONE_NAME := "NO HAT"  # i18n: ignore (English source; shown via display_name)
 ## Each hat is drawn at five fitted widths (rows of hats.png) to fit the slime as it squashes and
 ## stretches (NARROW: stretched into a leap; NORMAL; BROAD: a little squashed; WIDE: squashed flat
 ## to charge or land; SQUEEZED: pressed sideways against a wall in a splat), plus LOOSE, its own

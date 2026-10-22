@@ -19,8 +19,6 @@ const TRAIL := "trail"
 const PAPER := "paper"
 const DEFAULT_TRAIL := "skin"
 const DEFAULT_PAPER := "parchment"
-const DEFAULT_TRAIL_NAME := "SKIN GOO"  # i18n: ignore (English source; shown via display_name)
-const DEFAULT_PAPER_NAME := "PARCHMENT"  # i18n: ignore (English source; shown via display_name)
 
 const LIST := [
 	{id = "ink", kind = TRAIL, name = "INK TRAIL", about = "DEEP INKY GOO"},  # i18n: ignore (English source; shown via display_name)

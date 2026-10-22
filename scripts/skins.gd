@@ -15,15 +15,12 @@ extends RefCounted
 
 const DEFAULT := "lime"
 const CUSTOM := "custom"
-const CUSTOM_NAME := "CHAMELEON"  # i18n: ignore (English source; shown via display_name)
 const RAINBOW := "rainbow"
-const RAINBOW_NAME := "RAINBOW"  # i18n: ignore (English source; shown via display_name)
 ## "stopwatch" unlocks with all 30 normal-mode medals (gold on every level): a pale gold-trimmed
 ## clock-face jelly with a working clock inside (see Stopwatch). Its look is fixed (STOPWATCH_SHADES),
 ## so it has no opaque/jelly unlock of its own: both versions open together (the one exception
 ## to "jelly = hard-mode reward").
 const STOPWATCH := "stopwatch"
-const STOPWATCH_NAME := "STOPWATCH"  # i18n: ignore (English source; shown via display_name)
 ## Stand-in base color (gold) wherever one color is needed (trail, meter, menu text).
 const STOPWATCH_BASE := Color8(240, 190, 60)
 const STOPWATCH_SHADES := {

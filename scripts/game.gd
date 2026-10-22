@@ -1441,16 +1441,7 @@ func toggle_run_map() -> void:
 		return
 	if finished or _leaving() or progress == null:
 		return
-	var survey := Survey.blank(maze)
-	var before: Dictionary = progress.random_map_for(attempt_key) if is_random() else {}
-	if not before.is_empty():
-		Survey.merge_seen(survey, before.seen)
-	Survey.merge_seen(survey, survey_tiles)
-	survey.goal = survey_goal or before.get("goal", false)
-	if survey.goal:
-		Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
-	survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
-	survey.tickets = ticket_cells()
+	var survey := _survey_so_far()
 	_map_mid_run = true
 	slime.aim_lock = true
 	_open_map_view(survey)
@@ -2612,19 +2603,22 @@ func open_random_map() -> void:
 func open_dev_map() -> void:
 	if not dev_enabled() or _leaving() or random_map_view != null:
 		return
-	var survey := dev_full_map()
-	if not dev_bright:
-		survey = Survey.blank(maze)
-		var before: Dictionary = progress.random_map_for(attempt_key) if is_random() else {}
-		if not before.is_empty():
-			Survey.merge_seen(survey, before.seen)
-		Survey.merge_seen(survey, survey_tiles)
-		survey.goal = survey_goal or before.get("goal", false)
-		if survey.goal:
-			Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
-		survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
-		survey.tickets = ticket_cells()
-	_open_map_view(survey)
+	_open_map_view(dev_full_map() if dev_bright else _survey_so_far())
+
+
+## This maze's map as far as this run (and, in a random maze, its earlier tries) has seen it.
+func _survey_so_far() -> Dictionary:
+	var survey := Survey.blank(maze)
+	var before: Dictionary = progress.random_map_for(attempt_key) if is_random() else {}
+	if not before.is_empty():
+		Survey.merge_seen(survey, before.seen)
+	Survey.merge_seen(survey, survey_tiles)
+	survey.goal = survey_goal or before.get("goal", false)
+	if survey.goal:
+		Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
+	survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+	survey.tickets = ticket_cells()
+	return survey
 
 
 ## Dev mode: a map of this whole maze, every tile seen and the goal (chalice / ticket) marked, with this
