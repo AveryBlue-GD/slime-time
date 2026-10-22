@@ -11,6 +11,7 @@ uniform float animate = 1.0;      // 0 = no twinkle (Reduce Motion)
 uniform float rim_dark = 0.55;    // brightness of the shaded edge
 uniform float bevel_lift = 0.42;  // how far the lit edge moves toward white
 uniform float stars = 0.0;        // 1 = the STARRY trail style: 1 px white specks (Cosmetics)
+uniform float fx = 0.0;           // PREVIEW styles: 1 FROST twinkle, 2 TOXIC bubbles, 3 GHOST shimmer
 
 float hash(vec2 p) {
 	vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -48,6 +49,38 @@ void fragment() {
 		if (s > 0.94) {
 			c = mix(c, vec3(1.0), 0.85);
 			a = max(a, 0.9);
+		}
+	}
+	if (fx > 0.5) {
+		float t = TIME * animate;
+		if (fx < 1.5) {
+			// FROST: bright (near-white) cells twinkle, each on its own beat.
+			if (dot(c, vec3(1.0)) > 2.6) {
+				float tw = 0.5 + 0.5 * sin(t * 4.0 + g * 60.0);
+				c = mix(c * 0.85, vec3(1.0), tw);
+			}
+		} else if (fx < 2.5) {
+			// TOXIC: a bubble per 4x4-cell block grows from its center and pops (a 1-cell ring), on its own clock.
+			vec2 block = floor(cell / 4.0);
+			float bh = hash(block + vec2(5.0, 9.0));
+			if (bh > 0.45) {
+				float life = fract(t * 0.35 + bh * 7.0);
+				vec2 centre = block * 4.0 + vec2(1.0 + floor(bh * 2.0), 1.0 + floor(fract(bh * 13.0) * 2.0));
+				float d = length(cell - centre);
+				float r = life * 2.2;
+				if (life < 0.85 && abs(d - r) < 0.55) {
+					c = mix(c, vec3(0.92, 1.0, 0.6), 0.75);
+					a = max(a, 0.85);
+				} else if (life >= 0.85 && d < 1.6 && hash(cell + vec2(floor(t * 8.0))) > 0.6) {
+					c = mix(c, vec3(1.0), 0.6); // the pop: a few specks
+					a = max(a, 0.8);
+				}
+			}
+		} else {
+			// GHOST: a slow wave of alpha and brightness drifts across the trail.
+			float w = 0.5 + 0.5 * sin(t * 1.6 + cell.x * 0.35 + cell.y * 0.22);
+			c = mix(c, vec3(1.0), 0.25 * w);
+			a *= 0.65 + 0.6 * w;
 		}
 	}
 	COLOR = vec4(c, a);

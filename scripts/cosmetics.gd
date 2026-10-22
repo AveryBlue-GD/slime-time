@@ -42,6 +42,19 @@ const LIST := [
 	{id = "prism_paper", kind = PAPER, name = "PRISM PAPER", about = "TURNS THROUGH THE COLORS", flow = "prism"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
+	# PREVIEW (trail-preview branch, ideas/trail-ideas.md): ten proposed trail styles, wearable only
+	# with the debug flag --trail=ID; `earned` keeps them out of the SHOP. Painted per cell
+	# (trail_cell_at); TOXIC / FROST / GHOST also use a trail.gdshader `fx` effect.
+	{id = "dried", kind = TRAIL, name = "DRIED TRAIL", about = "SUN-BAKED CRUST", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "frost", kind = TRAIL, name = "FROST TRAIL", about = "ICY SPARKLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "toxic", kind = TRAIL, name = "TOXIC TRAIL", about = "NEON BUBBLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "pixel", kind = TRAIL, name = "PIXEL TRAIL", about = "TWO-TONE CHECKERS", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "treasure", kind = TRAIL, name = "TREASURE TRAIL", about = "X MARKS THE ROUTE", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "confetti", kind = TRAIL, name = "CONFETTI TRAIL", about = "PARTY SPRINKLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "crystal", kind = TRAIL, name = "CRYSTAL TRAIL", about = "SHINY FACETS", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "moss", kind = TRAIL, name = "MOSS TRAIL", about = "GREEN GOO, TINY FLOWERS", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "ghost", kind = TRAIL, name = "GHOST TRAIL", about = "FAINT AND SHIMMERY", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	{id = "pulse", kind = TRAIL, name = "PULSE TRAIL", about = "GLOWING BANDS", earned = "PREVIEW"},  # i18n: ignore (preview only)
 ]
 
 ## Trail looks: the goo alpha (0-255) of a painted cell, and the trail halo strength (game.gd TRAIL_GLOW).
@@ -62,6 +75,37 @@ const ABYSS := Color8(52, 30, 92)
 const ABYSS_DEEP := Color8(22, 12, 42)
 const ABYSS_ALPHA := 190
 const ABYSS_GLOW := 0.45
+## PREVIEW trail styles (see LIST): their colors (alpha in the color), and the trail.gdshader `fx`.
+const FX_FROST := 1.0
+const FX_TOXIC := 2.0
+const FX_GHOST := 3.0
+const DRIED := Color8(212, 182, 132, 160)
+const DRIED_DEEP := Color8(190, 158, 108, 160)
+const DRIED_CRACK := Color8(84, 58, 36, 210)
+const FROST := Color8(176, 218, 242, 140)
+const FROST_DEEP := Color8(132, 184, 226, 140)
+const FROST_SPARKLE := Color8(250, 253, 255, 230)
+const TOXIC := Color8(184, 244, 44, 165)
+const TOXIC_DEEP := Color8(112, 204, 32, 165)
+const TOXIC_BUBBLE := Color8(234, 255, 150, 220)
+const TREASURE_RED := Color8(200, 36, 40, 230)
+const TREASURE_GAP := Color8(242, 228, 190, 55)
+const TREASURE_DASH := 8.0  # px traveled per dash (and per gap)
+const CONFETTI_PINK := Color8(250, 120, 180, 230)
+const CONFETTI_YELLOW := Color8(252, 224, 80, 230)
+const CONFETTI_CYAN := Color8(90, 224, 240, 230)
+const CONFETTI_WHITE := Color8(252, 252, 252, 230)
+const CRYSTAL_CYAN := Color8(112, 222, 242, 165)
+const CRYSTAL_PINK := Color8(242, 142, 212, 165)
+const CRYSTAL_LILAC := Color8(184, 154, 244, 165)
+const CRYSTAL_GLINT := Color8(255, 255, 255, 235)
+const MOSS := Color8(60, 126, 54, 170)
+const MOSS_DEEP := Color8(38, 92, 40, 170)
+const MOSS_PINK := Color8(244, 134, 184, 235)
+const MOSS_YELLOW := Color8(250, 222, 92, 235)
+const GHOST := Color8(222, 234, 255, 72)
+const GHOST_DEEP := Color8(192, 208, 242, 60)
+const PULSE_BAND := 24.0  # px traveled per pulse band
 
 
 static func get_item(id: String) -> Dictionary:
@@ -232,6 +276,14 @@ static func trail_look(style: String, skin: Color, rainbow := false) -> Dictiona
 			look.candy = true
 		"starry":
 			look.stars = true
+		"dried", "frost", "toxic", "pixel", "treasure", "confetti", "crystal", "moss", "ghost", "pulse":
+			look.style = style
+			look.per_cell = true
+			look.fx = {"frost": FX_FROST, "toxic": FX_TOXIC, "ghost": FX_GHOST}.get(style, 0.0)
+			look.glow = {"dried": 0.06, "frost": 0.35, "toxic": 0.5, "treasure": 0.12, "crystal": 0.65,
+				"moss": 0.15, "ghost": 0.25, "pulse": 0.45}.get(style, TRAIL_GLOW)
+			look.skin_light = Color(shades.light, GOO_ALPHA / 255.0)
+			look.skin_deep = Color(shades.deep, GOO_ALPHA / 255.0)
 		"abyss":  # whatever the skin: near-black violet goo with the starry specks
 			look.light = Color(ABYSS, ABYSS_ALPHA / 255.0)
 			look.deep = Color(ABYSS_DEEP, ABYSS_ALPHA / 255.0)
@@ -253,6 +305,72 @@ static func trail_cell(look: Dictionary, deep: bool, travel: float, rainbow_hue 
 	return look.deep if deep else look.light
 
 
+## The color of trail cell `cell` (trail image coords, 2 px each) for a PREVIEW style (`look.per_cell`):
+## hash / parity / distance rules, no textures. Other looks fall back to trail_cell.
+static func trail_cell_at(look: Dictionary, deep: bool, travel: float, cell: Vector2i, rainbow_hue := 0.0) -> Color:
+	if not look.get("per_cell", false):
+		return trail_cell(look, deep, travel, rainbow_hue)
+	var h := posmod(hash(cell * 7 + Vector2i(3, 11)), 1000)
+	match look.style:
+		"dried":  # mud cracks: rows every 5 cells, each row split at a jittered column, broken lines
+			var row := floori(cell.y / 5.0)
+			var jitter := posmod(hash(Vector2i(row, 91)), 7)
+			var crack := posmod(cell.y, 5) == 0 or posmod(cell.x + jitter + (posmod(cell.y, 5) >> 1), 7) == 0
+			if crack and h % 5 != 0:
+				return DRIED_CRACK
+			return DRIED_DEEP if deep else DRIED
+		"frost":
+			if h % 11 == 0:
+				return FROST_SPARKLE
+			return FROST_DEEP if deep else FROST
+		"toxic":
+			if h % 13 == 0:
+				return TOXIC_BUBBLE
+			return TOXIC_DEEP if deep else TOXIC
+		"pixel":
+			return look.skin_light if posmod(cell.x + cell.y, 2) == 0 else look.skin_deep
+		"treasure":  # the gap; the red dashes are laid along the slime's center (game.gd)
+			return TREASURE_GAP
+		"confetti":
+			if h % 6 == 0:
+				match (h / 6) % 4:
+					0: return CONFETTI_PINK
+					1: return CONFETTI_YELLOW
+					2: return CONFETTI_CYAN
+					_: return CONFETTI_WHITE
+			return look.deep if deep else look.light
+		"crystal":  # 3x3-cell facets, one tint each, a few white glints
+			if h % 19 == 0:
+				return CRYSTAL_GLINT
+			match posmod(hash(Vector2i(floori(cell.x / 3.0), floori(cell.y / 3.0))), 3):
+				0: return CRYSTAL_CYAN.darkened(0.25) if deep else CRYSTAL_CYAN
+				1: return CRYSTAL_PINK.darkened(0.25) if deep else CRYSTAL_PINK
+				_: return CRYSTAL_LILAC.darkened(0.25) if deep else CRYSTAL_LILAC
+		"moss":
+			if h % 29 == 0:
+				return MOSS_PINK
+			if h % 29 == 1:
+				return MOSS_YELLOW
+			return MOSS_DEEP if deep else MOSS
+		"ghost":
+			return GHOST_DEEP if deep else GHOST
+		"pulse":  # static: a brighter band every PULSE_BAND px traveled (no per-cell age to animate)
+			var phase := fposmod(travel / PULSE_BAND, 1.0)
+			var base: Color = look.deep if deep else look.light
+			if phase < 0.35:
+				var lift := sin(phase / 0.35 * PI)
+				return Color(base.lerp(Color.WHITE, 0.45 * lift), lerpf(base.a, 0.8, lift))
+			return base
+	return look.deep if deep else look.light
+
+
+## The center line a style lays over its painted cells (TREASURE's red dashes), or null.
+static func trail_center(look: Dictionary, travel: float) -> Variant:
+	if look.get("style", "") == "treasure" and posmod(floori(travel / TREASURE_DASH), 2) == 0:
+		return TREASURE_RED
+	return null
+
+
 ## A small picture of trail `style` (a wavy goo strip, `size` cells of the trail image; shown at 2x
 ## like the game's 2 px cells) for the wardrobe and the shop. `locked`: a dark silhouette.
 static func trail_preview(style: String, skin: Color, rainbow: bool, size := Vector2i(16, 9), locked := false) -> Image:
@@ -265,7 +383,7 @@ static func trail_preview(style: String, skin: Color, rainbow: bool, size := Vec
 			if absf(y + 0.5 - mid) > 2.4:
 				continue
 			var deep := posmod(hash(Vector2i(x, y)), 5) == 0
-			var c := trail_cell(look, deep, x * 2.0 * 3.0, fposmod(x / float(size.x), 1.0) * 0.83)
+			var c := trail_cell_at(look, deep, x * 2.0 * 3.0, Vector2i(x, y), fposmod(x / float(size.x), 1.0) * 0.83)
 			image.set_pixel(x, y, Color(0.08, 0.08, 0.12, 0.9) if locked else c)
 	return image
 
