@@ -321,6 +321,14 @@ static func dir_name(v: Vector2) -> String:
 	return DIR_NAMES[wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)]
 
 
+## The way a leap aimed along `aim` goes: `aim` itself, or with diagonal leaps off
+## (Economy.diagonal_leap_on) the stronger axis of it (an exact diagonal goes along x).
+static func leap_dir(aim: Vector2) -> Vector2:
+	if Economy.diagonal_leap_on() or aim.x == 0.0 or aim.y == 0.0:
+		return aim
+	return Vector2(signf(aim.x), 0.0) if absf(aim.x) >= absf(aim.y) else Vector2(0.0, signf(aim.y))
+
+
 func _ready() -> void:
 	# Moved on physics ticks, so drawn between them when interpolation is on (the scene root opts out,
 	# Transition); the camera places itself (game.gd) and never interpolates (slime.tscn).
@@ -473,7 +481,8 @@ func play_celebrate() -> void:
 
 ## Leaps in the facing direction. Called on releasing the jump key (and by tests).
 func launch(charge_value: float) -> void:
-	_jump_dir = facing
+	_jump_dir = leap_dir(facing)
+	facing = _jump_dir
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
 	ricochets = 0
@@ -645,7 +654,7 @@ func _animate() -> void:
 			else:
 				_play("idle")
 		State.CHARGING:
-			_show_frame("charge_" + facing_name, charge / 100.0)
+			_show_frame("charge_" + dir_name(leap_dir(facing)), charge / 100.0)
 		State.AIRBORNE:
 			var t := _jump_traveled / _jump_distance
 			var jump_name := dir_name(_jump_dir)

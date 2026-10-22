@@ -17,6 +17,11 @@ func _initialize() -> void:
 	var progress: Node = root.get_node("Progress")
 	progress.save_path = test_save
 	progress.levels_cleared = 1
+	_check(not Economy.DIAGONAL_LEAP and Slime.leap_dir(Vector2(1, 1).normalized()) == Vector2.RIGHT
+		and Slime.leap_dir(Vector2(-0.3, 0.9).normalized()) == Vector2.DOWN
+		and Slime.leap_dir(Vector2.UP) == Vector2.UP,
+		"diagonal leaps are off by default: an aim between two ways leaps along the stronger axis")
+	Economy.diagonal_leap_force = 1  # the corner ricochets below need diagonal leaps (kept for later)
 
 	var game := await _spawn_game()
 	var spot := _dead_end(game, 3)
@@ -67,6 +72,7 @@ func _initialize() -> void:
 		"a weak angled hop barely comes off the wall (%.1f px, %d bounces)" % [soft_zig.along, soft_zig.bounces])
 	game.free()
 
+	Economy.diagonal_leap_force = -1
 	_result()
 	quit(1 if failures else 0)
 

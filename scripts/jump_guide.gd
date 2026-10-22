@@ -30,10 +30,11 @@ func _draw() -> void:
 	draw_rect(Rect2(corner, Vector2(roundf(METER_SIZE.x * amount), METER_SIZE.y)), color)
 
 	var distance := Slime.jump_distance_for(slime.charge)
+	var aim := Slime.leap_dir(slime.facing)
 	var d := DOT_SPACING
 	while d < distance - 2.0:
-		draw_rect(Rect2((slime.facing * d).round(), Vector2.ONE), DOT_COLOR)
+		draw_rect(Rect2((aim * d).round(), Vector2.ONE), DOT_COLOR)
 		d += DOT_SPACING
-	var landing := (slime.facing * distance).round()
+	var landing := (aim * distance).round()
 	for offset: Vector2 in [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
 		draw_rect(Rect2(landing + offset, Vector2.ONE), DOT_COLOR)

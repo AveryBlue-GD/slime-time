@@ -16,6 +16,7 @@ func _initialize() -> void:
 	progress = root.get_node("Progress")
 	progress.save_path = test_save
 	progress.levels_cleared = 3
+	Economy.diagonal_leap_force = 1  # the angled hits below need diagonal leaps (off in the game for now)
 	_check(not Economy.SOFT_BOUNCE_TEST and not Economy.soft_bounce_on(), "the soft bounce test is off by default")
 	var progress_script: GDScript = load("res://scripts/progress.gd")
 	_check(progress_script.game_args(PackedStringArray(["--softbounce"]), false).is_empty()
@@ -29,6 +30,7 @@ func _initialize() -> void:
 	await _reduce_motion()
 	await _fuzz()
 	Economy.softbounce_force = -1
+	Economy.diagonal_leap_force = -1
 	_result()
 	quit(1 if failures else 0)
 

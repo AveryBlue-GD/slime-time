@@ -17,6 +17,7 @@ var leaps: Array = []
 
 func _ready() -> void:
 	Progress.saving_enabled = false
+	Economy.diagonal_leap_force = 1  # its angled leaps need diagonal leaps (off in the game for now)
 	Progress.current_level = 1
 	game = preload("res://scenes/main.tscn").instantiate()
 	add_child(game)

@@ -158,6 +158,20 @@ static func soft_bounce_on() -> bool:
 	return SOFT_BOUNCE_TEST if softbounce_force < 0 else softbounce_force == 1
 
 
+## ---------------------------------------------------------------- DIAGONAL LEAP on / off (owner, 2026-10-22)
+## ONE switch for leaping diagonally. Off (removed for now): a leap aimed between two directions goes
+## along the stronger axis (an exact diagonal goes along x), and the charge pose faces that way too;
+## gliding still moves in 8 directions. True again restores diagonal leaps (corner ricochets,
+## Slime._slip_past_corner skipping them) exactly as before. `diagonal_leap_force` (-1 follow the
+## const, 0 off, 1 on) is a test hook, like `descent_force`.
+const DIAGONAL_LEAP := false
+static var diagonal_leap_force := -1
+
+
+static func diagonal_leap_on() -> bool:
+	return DIAGONAL_LEAP if diagonal_leap_force < 0 else diagonal_leap_force == 1
+
+
 ## A hit at least this square-on (cos of the angle between the leap and the wall's normal; cos 20 deg
 ## = 0.94) is head-on: a splat. Anything shallower glances off.
 const SOFT_BOUNCE_HEAD_ON_COS := 0.94
