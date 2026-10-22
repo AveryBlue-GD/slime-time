@@ -689,6 +689,25 @@ func _inputs() -> void:
 	_check(game.abilities.charges.rifle == 0 and game.abilities.aiming == "" and not game.slime.aim_lock
 		and game.slime.state != Slime.State.CHARGING and game.slime.facing == Vector2.RIGHT, "...JUMP fires it the way it aims, without starting a leap")
 	await _stop(game)
+	# Diagonal aim (8 ways): down + right aims down-right and stays so while the keys are let go
+	game = await _spawn(4)
+	game.abilities.start_aim("rifle")
+	Input.action_press("move_down")
+	Input.action_press("move_right")
+	await _physics_frames(2)
+	_check(game.abilities.aim_dir == Vector2i(1, 1), "down + right aims the shot diagonally (%s)" % game.abilities.aim_dir)
+	Input.action_release("move_down")
+	await _physics_frames(1)
+	Input.action_release("move_right")
+	Input.action_press("jump")
+	await _physics_frames(2)
+	Input.action_release("jump")
+	_check(game.abilities.charges.rifle == 0 and game.slime.facing.is_equal_approx(Vector2(1, 1).normalized()),
+		"...letting go of the keys one after the other still fires it diagonally")
+	_check(Abilities.reach_along(12, Vector2i(1, 1)) == 8 and Abilities.reach_along(12, Vector2i.RIGHT) == 12
+		and Abilities.rifle_tiles(game.maze, Vector2i(1, 1), Vector2i(1, 1), 12).size() <= 9 and Abilities.aim8(Vector2(-1, -1)) == Vector2i(-1, -1),
+		"a diagonal reaches about as far as a straight one (12 straight = 8 diagonal steps)")
+	await _stop(game)
 	game = await _spawn(4)
 	game.abilities.start_aim("splat")
 	var click := InputEventMouseButton.new()

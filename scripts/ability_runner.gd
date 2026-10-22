@@ -39,6 +39,9 @@ const AIMED: Array[String] = ["rifle", "splat"]
 const AIM_DOT := Color(1.0, 1.0, 1.0, 0.75)
 var aiming := ""
 var aim_dir := Vector2i.RIGHT
+## Ticks a straight aim must hold after a diagonal one before it takes over (see _aim_step).
+const AIM_SETTLE := 6
+var _aim_settle := 0
 
 
 ## The runner for `owner_game`'s run (added as its child), or null when this run has no abilities.
@@ -126,8 +129,8 @@ func fire_aim() -> bool:
 	var id := aiming
 	aiming = ""
 	queue_redraw()
-	slime.facing = Vector2(aim_dir)
-	var fired := use(id)
+	slime.facing = Vector2(aim_dir).normalized()
+	var fired := use(id, aim_dir)
 	slime.set_deferred("aim_lock", false)
 	return fired
 
@@ -137,9 +140,15 @@ func _aim_step() -> void:
 		cancel_aim()
 		return
 	var v := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	if v != Vector2.ZERO and Abilities.aim(v) != aim_dir:
-		aim_dir = Abilities.aim(v)
-		slime.facing = Vector2(aim_dir)
+	var want := Abilities.aim8(v)
+	# Letting go of a diagonal never lands both keys on the same tick: a straight aim right after a
+	# diagonal one has to hold AIM_SETTLE ticks first (so the diagonal stays aimed for JUMP).
+	var diagonal_left := aim_dir.x != 0 and aim_dir.y != 0 and (want.x == 0 or want.y == 0)
+	_aim_settle = _aim_settle + 1 if v != Vector2.ZERO and want != aim_dir and diagonal_left else 0
+	if v != Vector2.ZERO and want != aim_dir and (not diagonal_left or _aim_settle >= AIM_SETTLE):
+		aim_dir = want
+		_aim_settle = 0
+		slime.facing = Vector2(aim_dir).normalized()
 		queue_redraw()
 	if Input.is_action_just_pressed("jump"):
 		fire_aim()
@@ -191,11 +200,12 @@ func can_use(id: String) -> bool:
 
 ## Fires ability `id` along the slime's facing. False (nothing spent) if it can't now, or (SLIMAKAZE)
 ## when a wall is right ahead.
-func use(id: String) -> bool:
+## `aimed`: the aim mode's direction (8 ways); zero = the facing snapped to the grid (4 ways).
+func use(id: String, aimed := Vector2i.ZERO) -> bool:
 	if not can_use(id):
 		_sfx("click", -10.0)
 		return false
-	var dir := Abilities.aim(slime.facing)
+	var dir := Abilities.aim(slime.facing) if aimed == Vector2i.ZERO else aimed
 	var tile := Vector2i((slime.position / Abilities.TILE).floor())
 	match id:
 		"rifle":
@@ -234,7 +244,9 @@ func _fire_rifle(tile: Vector2i, dir: Vector2i) -> void:
 	var tiles := Abilities.rifle_tiles(game.maze, tile, dir, Abilities.rifle_range(levels.rifle))
 	var lane := (Vector2(tile) + Vector2(0.5, 0.5)) * Abilities.TILE
 	var from := lane
-	if dir.x != 0:
+	if dir.x != 0 and dir.y != 0:
+		from = lane  # (diagonal: from its tile's centre, along the tiles' diagonal)
+	elif dir.x != 0:
 		from.x = slime.position.x
 	else:
 		from.y = slime.position.y
@@ -242,11 +254,11 @@ func _fire_rifle(tile: Vector2i, dir: Vector2i) -> void:
 	# maze's outer edge), splashing there.
 	var end := (Vector2(tiles[-1]) + Vector2(0.5, 0.5)) * Abilities.TILE
 	if not game.is_wall_tile(tiles[-1]):
-		end += Vector2(dir) * (Abilities.TILE / 2.0 - 3.0)  # (its 2 px streak stays inside its range)
+		end += Vector2(dir).normalized() * (Abilities.TILE / 2.0 - 3.0)  # (its 2 px streak stays inside its range)
 	var shot := GooShot.new()
 	shot.runner = self
 	shot.tiles = tiles
-	shot.dir = Vector2(dir)
+	shot.dir = Vector2(dir).normalized()
 	shot.from = from
 	shot.end = end
 	shot.color = game.skin_color

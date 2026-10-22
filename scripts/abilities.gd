@@ -149,6 +149,21 @@ static func aim(facing: Vector2) -> Vector2i:
 	return Vector2i(0, 1 if facing.y > 0.0 else -1)
 
 
+## `v` (a direction) snapped to one of 8 grid directions, diagonals included (the aim mode of SLIME
+## SNIPER / GOO GRENADE; owner, 2026-10-22). Zero: right.
+static func aim8(v: Vector2) -> Vector2i:
+	if v == Vector2.ZERO:
+		return Vector2i.RIGHT
+	var a := roundf(v.angle() / (PI / 4.0)) * (PI / 4.0)
+	return Vector2i(roundi(cos(a)), roundi(sin(a)))
+
+
+## How many diagonal steps match a straight `reach`: about as far (reach / sqrt 2), at least 1;
+## a straight `dir` keeps `reach`.
+static func reach_along(reach: int, dir: Vector2i) -> int:
+	return reach if dir.x == 0 or dir.y == 0 else maxi(1, roundi(reach / sqrt(2.0)))
+
+
 ## The floor tiles after `from` going `dir`, up to (not including) the first wall; at most `limit`
 ## tiles when limit >= 0.
 static func line_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i, limit := -1) -> Array[Vector2i]:
@@ -188,7 +203,7 @@ static func in_maze(maze: Dictionary, tile: Vector2i) -> bool:
 ## (it pierces them), stopping early at the maze's outer edge.
 static func rifle_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i, reach: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = [from]
-	for i in range(1, reach + 1):
+	for i in range(1, reach_along(reach, dir) + 1):  # (diagonally: about as far, see reach_along)
 		if not in_maze(maze, from + dir * i):
 			break
 		out.append(from + dir * i)
@@ -198,7 +213,7 @@ static func rifle_tiles(maze: Dictionary, from: Vector2i, dir: Vector2i, reach: 
 ## SLIME SPLAT: where the bomb lands: `reach` tiles ahead over any walls, clamped inside the maze
 ## (a wall tile is fine: its 3x3 still bursts).
 static func lob_tile(maze: Dictionary, from: Vector2i, dir: Vector2i, reach: int) -> Vector2i:
-	var to := from + dir * reach
+	var to := from + dir * reach_along(reach, dir)
 	return Vector2i(clampi(to.x, 0, maze.size.x - 1), clampi(to.y, 0, maze.size.y - 1))
 
 
