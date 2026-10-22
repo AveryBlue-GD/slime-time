@@ -844,21 +844,21 @@ func _store() -> void:
 	_check(screen.page == "abilities" and screen.ability_page.visible and screen.ability_rows.size() == 3 and screen.abilities_tab.text == "TICKETS"
 		and "EARN TICKETS" in screen.hint.text and screen.abilities_tab.has_focus(), "TICKETS tab: 3 abilities, locked before any ticket")
 	screen.free()
-	progress.tickets = 15
-	progress.tickets_lifetime = 15
+	progress.tickets = 30
+	progress.tickets_lifetime = 30
 	script.set("open_tab", "abilities")
 	screen = load("res://scenes/upgrades.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
 	var rows: Dictionary = screen.ability_rows
-	_check(rows.rifle.cost.text == "15" and not rows.rifle.plus.disabled and rows.splat.plus.disabled and rows.rifle.tag.text == "SHOOTS GOO"
-		and screen.coin_label.text == "15" and "1 2 3" in screen.hint.text, "15 tickets: SLIME RIFLE affordable (15), SPLAT (18) not; tag, pod and keys hint")
+	_check(rows.rifle.cost.text == "30" and not rows.rifle.plus.disabled and rows.splat.plus.disabled and rows.rifle.tag.text == "SHOOTS GOO"
+		and screen.coin_label.text == "30" and "1 2 3" in screen.hint.text, "30 tickets: SLIME RIFLE affordable (30), SPLAT (36) not; tag, pod and keys hint")
 	rows.rifle.plus.pressed.emit()
-	_check(screen.confirm.visible and screen.confirm_label.text == "BUY SLIME RIFLE 1?" and screen.confirm_price.text == "15" and progress.tickets == 15,
+	_check(screen.confirm.visible and screen.confirm_label.text == "BUY SLIME RIFLE 1?" and screen.confirm_price.text == "30" and progress.tickets == 30,
 		"+ opens BUY SLIME RIFLE 1? (nothing spent yet)")
 	screen.confirm_buy.pressed.emit()
-	_check(progress.ability_level("rifle") == 1 and progress.tickets == 0 and not screen.confirm.visible and rows.rifle.cost.text == "30",
-		"BUY: level 1 for exactly 15 tickets; the next costs 30")
+	_check(progress.ability_level("rifle") == 1 and progress.tickets == 0 and not screen.confirm.visible and rows.rifle.cost.text == "60",
+		"BUY: level 1 for exactly 30 tickets; the next costs 60")
 	progress.abilities = {rifle = 3}
 	progress.tickets = 999
 	screen._refresh()

@@ -60,7 +60,9 @@ const OLD_POWER_PER_LEVEL := 2.5
 
 ## ---------------------------------------------------------------- tickets: faucets (spec A.1)
 ## The randomizer pays by attempt at a maze: attempt 1, 2, 3 ... (later attempts pay the last).
-const RANDOM_ATTEMPT_PAY: Array[int] = [5, 4, 3, 2, 1]
+## Doubled from 5, 4, 3, 2, 1 (owner, 2026-10-22: less grind), with the ability prices doubled too;
+## the 6th attempt and every later one pay 1.
+const RANDOM_ATTEMPT_PAY: Array[int] = [10, 8, 6, 4, 2, 1]
 ## Randomizer wins that pay tickets per UTC day, while RANDOM_DAILY_CAP is on.
 const RANDOM_PAID_PER_DAY := 5
 ## ONE switch for that daily cap. Off (owner, 2026-10-22: no daily limit on ticket payouts): every
@@ -333,12 +335,12 @@ static func abilities_on() -> bool:
 	return ABILITIES_ENABLED if abilities_force < 0 else abilities_force == 1
 
 
-## First ability ~15 tickets = about one day's paid randomizer wins (~16 in ~18 min, A.2); all three
-## maxed = 95 + 108 + 140 = 343.
+## Doubled along with the doubled payouts (owner, 2026-10-22): first ability 30 tickets = about 5
+## wins; all three maxed = 190 + 216 + 280 = 686.
 const ABILITIES := {
-	"rifle": {costs = [15, 30, 50], charges = [1, 1, 1], slime = 2.0},
-	"splat": {costs = [18, 35, 55], charges = [1, 1, 1], slime = 4.0},
-	"kaze": {costs = [25, 45, 70], charges = [1, 1, 1], slime = 30.0},
+	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.0},
+	"splat": {costs = [36, 70, 110], charges = [1, 1, 1], slime = 4.0},
+	"kaze": {costs = [50, 90, 140], charges = [1, 1, 1], slime = 30.0},
 }
 ## Abilities PASS OVER WALLS (owner buff, 2026-10-15): the rifle shot pierces them, the bomb is
 ## lobbed over them, the SLIMAKAZE splatter lands in the corridors beyond (only the dash stops at a

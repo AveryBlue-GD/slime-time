@@ -277,7 +277,7 @@ func _wipe_and_pause() -> void:
 		if current_scene != null and current_scene.scene_file_path.ends_with("hub.tscn") and not root.get_node("Transition").busy:
 			break
 	_check(current_scene != null and current_scene.scene_file_path.ends_with("hub.tscn"), "ticket touched during the wipe: still lands in the hub")
-	_check(progress.tickets - tickets_before in [0, 1, 2, 3, 4, 5], "ticket touched during the wipe pays a sane amount (%d)" % (progress.tickets - tickets_before))
+	_check(progress.tickets - tickets_before in [0, 1, 2, 4, 6, 8, 10], "ticket touched during the wipe pays a sane amount (%d)" % (progress.tickets - tickets_before))
 	# pause spam in a level: Esc / P 200 times, mixed with same-frame doubles
 	var gp := await _start(1)
 	for i in 200:
@@ -583,7 +583,7 @@ func _economy() -> void:
 	progress.reset_progress()
 	progress.day_override = 0
 	progress.upgrades = {"slime": 1}
-	_check(progress.random_tickets_due(1, 5) in [0, 5], "day 0 does not break the payout table")
+	_check(progress.random_tickets_due(1, 5) in [0, 10], "day 0 does not break the payout table")
 	progress.day_override = 9223372036854775807 / 86400
 	progress.random_seed_fresh = true
 	progress.complete_random(false, 77, 1)

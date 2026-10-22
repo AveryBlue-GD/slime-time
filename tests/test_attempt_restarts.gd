@@ -17,7 +17,7 @@ extends "res://tests/suite_base.gd"
 
 var test_save := throwaway_save()
 const GAME_SCENE := "res://scenes/main.tscn"
-const PAY := [5, 4, 3, 2, 1, 1]
+const PAY := [10, 8, 6, 4, 2, 1]
 const ROUTES := ["r_key", "prompt", "pause_keys", "pause_mouse", "pause_after_dryup", "dryup", "upgrades"]
 
 var progress: Node
@@ -42,7 +42,7 @@ func _initialize() -> void:
 			var game := await _start_new_maze()
 			var seed_value: int = game.random_seed
 			var seen: Array[String] = [_pod(game)]
-			var ok := _pod(game) == _text(1, 5)
+			var ok := _pod(game) == _text(1, PAY[0])
 			for n in range(2, 7):
 				game = await _restart(game, route, n % 2 == 0)  # every other one after moving
 				seen.append(_pod(game).replace("\nTIX AVAILABLE ", " k="))
@@ -86,7 +86,7 @@ func _initialize() -> void:
 		var old_seed: int = g.random_seed
 		g = await _restart(g, "pause_keys")
 		g = await _restart(g, "pause_mouse")
-		_check(_pod(g) == _text(3, 3), "%s(attempt 3 before quitting: %s)" % [tag, _pod(g)])
+		_check(_pod(g) == _text(3, PAY[2]), "%s(attempt 3 before quitting: %s)" % [tag, _pod(g)])
 		_find_button(g.pause_menu, "QUIT TO HUB")  # exists
 		_key(KEY_ESCAPE)
 		await process_frame
@@ -95,17 +95,17 @@ func _initialize() -> void:
 		hub._use(hub._station("random"))  # the portal's choice (Descent batch 3): RANDOM MAZE
 		hub.maze_button.pressed.emit()
 		g = await _wait_game(0)
-		_check(g.random_seed != old_seed and _pod(g) == _text(1, 5), "%squit to the hub, then the portal: a new maze at ATTEMPT 1, 5 (%s)" % [tag, _pod(g)])
+		_check(g.random_seed != old_seed and _pod(g) == _text(1, PAY[0]), "%squit to the hub, then the portal: a new maze at ATTEMPT 1, 10 (%s)" % [tag, _pod(g)])
 		g = await _restart(g, "pause_keys")
 		var w := await _win(g)
-		_check(w.shown == _text(2, 4) and w.paid == 4, "%s...its pause restart is attempt 2 and a win pays 4 (%s, +%d)" % [tag, w.shown, w.paid])
+		_check(w.shown == _text(2, PAY[1]) and w.paid == PAY[1], "%s...its pause restart is attempt 2 and a win pays 8 (%s, +%d)" % [tag, w.shown, w.paid])
 		await _wait_choices(g)
 		var won_seed: int = g.random_seed
 		_find_button(g.hud, "NEW MAZE").pressed.emit()
 		var g2 := await _wait_game(g.get_instance_id())
-		_check(g2.random_seed != won_seed and _pod(g2) == _text(1, 5), "%sNEW MAZE: ATTEMPT 1, 5 again (%s)" % [tag, _pod(g2)])
+		_check(g2.random_seed != won_seed and _pod(g2) == _text(1, PAY[0]), "%sNEW MAZE: ATTEMPT 1, 10 again (%s)" % [tag, _pod(g2)])
 		g = await _restart(g2, "pause_mouse")
-		_check(_pod(g) == _text(2, 4), "%s...and counts on from there (%s)" % [tag, _pod(g)])
+		_check(_pod(g) == _text(2, PAY[1]), "%s...and counts on from there (%s)" % [tag, _pod(g)])
 		await _leave(g)
 		_reset_day()
 
@@ -125,7 +125,7 @@ func _initialize() -> void:
 		progress.upgrades = {}
 		g = await _start_new_maze()
 		# No MORE SLIME bought: capped at 1 in normal play; dev mode (everything unlocked) has no such cap.
-		var no_slime_k := [5, 4] if dev else [1, 1]
+		var no_slime_k := [PAY[0], PAY[1]] if dev else [1, 1]
 		_check(_pod(g) == _text(1, no_slime_k[0]), "%sno MORE SLIME: attempt 1 shows %d (%s)" % [tag, no_slime_k[0], _pod(g)])
 		g = await _restart(g, "pause_mouse")
 		w = await _win(g)
@@ -155,10 +155,10 @@ func _initialize() -> void:
 		g = await _restart(g, "pause_keys")
 		g.hud.attempt_label.text = "ATTEMPT 1\nTIX AVAILABLE 5"
 		await process_frame
-		_check(_pod(g) == _text(2, 4), "%sa stale pod is corrected on the next frame (%s)" % [tag, _pod(g)])
+		_check(_pod(g) == _text(2, PAY[1]), "%sa stale pod is corrected on the next frame (%s)" % [tag, _pod(g)])
 		await _leave(g)
 
-	# Dev launch with no MORE SLIME bought (the owner's setup): the pod counts 5, 4, 3, 2, 1, 1 and a win pays what it showed.
+	# Dev launch with no MORE SLIME bought (the owner's setup): the pod counts 10, 8, 6, 4, 2, 1 and a win pays what it showed.
 	_set_mode(true)
 	progress.upgrades = {}
 	var table := []
@@ -168,7 +168,7 @@ func _initialize() -> void:
 			dg = await _restart(dg, "pause_keys")
 		table.append(_k(_pod(dg)))
 	var dw := await _win(dg)
-	_check(table == [5, 4, 3, 2, 1, 1] and dw.shown == _text(6, 1) and dw.paid == 1, "dev mode, no MORE SLIME: the pod counts %s and the win pays 1 (%s)" % [table, dw.shown])
+	_check(table == PAY and dw.shown == _text(6, 1) and dw.paid == 1, "dev mode, no MORE SLIME: the pod counts %s and the win pays 1 (%s)" % [table, dw.shown])
 	await _leave(dg)
 	_reset_day()
 
@@ -195,7 +195,7 @@ func _initialize() -> void:
 	_check(not game.hud.attempt_flashing(), "...for about half a second, then it's back to normal")
 	progress.reduce_motion = true
 	game = await _restart(game, "r_key")
-	_check(not game.hud.attempt_flashing() and _pod(game) == _text(3, 3), "Reduce Motion: the number just changes (%s)" % _pod(game))
+	_check(not game.hud.attempt_flashing() and _pod(game) == _text(3, PAY[2]), "Reduce Motion: the number just changes (%s)" % _pod(game))
 	progress.reduce_motion = false
 	for i in 4:
 		game = await _restart(game, "r_key")

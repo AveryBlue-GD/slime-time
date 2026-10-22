@@ -102,8 +102,8 @@ var current_level := 1
 const SAVE_VERSION := 6
 ## TICKET VOUCHERS: the renewable, cosmetic-and-utility currency (never converted to or from coins).
 ## The ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that
-## maze took (RANDOM_ATTEMPT_PAY: first try 5, then 4, 3, 2, and 1 from the fifth on), at most 5
-## paying wins per UTC day (so at most 25 a day). A player with no MORE SLIME upgrade bought, and a
+## maze took (RANDOM_ATTEMPT_PAY: first try 10, then 8, 6, 4, 2, and 1 from the sixth on); only
+## while Economy.RANDOM_DAILY_CAP is on, at most 5 paying wins per UTC day. A player with no MORE SLIME upgrade bought, and a
 ## typed or replayed seed, get at most 1 per win. Sinks (upgrades v2 batch 2): the hat wheel (free,
 ## then 12, +2 per spin taken, up to 40), hat DYES (10 each, RAINBOW 99; hats are never sold), the WORKSHOP
 ## (ticket utility upgrades) and cosmetics (trail styles, map papers). All numbers: Economy.

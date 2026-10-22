@@ -303,12 +303,12 @@ func _wind_random() -> void:
 	var game := await _spawn(0, 777001)
 	await _physics_frames(3)
 	var before: int = game.payout().tickets
-	_check(game.wind_state == "ready" and before == 5, "randomizer attempt 1 offers 5 with SECOND WIND ready")
+	_check(game.wind_state == "ready" and before == 10, "randomizer attempt 1 offers 10 with SECOND WIND ready")
 	game.slime_remaining = 0.0
 	await _physics_frames(3)
 	await process_frame
-	_check(game.pay_attempt() == 2 and game.payout().tickets == 4 and "TIX AVAILABLE 4" in game.hud.attempt_label.text,
-		"firing it costs one attempt step: a win now pays 4, the pod says so (%s)" % game.hud.attempt_label.text.replace("\n", " / "))
+	_check(game.pay_attempt() == 2 and game.payout().tickets == 8 and "TIX AVAILABLE 8" in game.hud.attempt_label.text,
+		"firing it costs one attempt step: a win now pays 8, the pod says so (%s)" % game.hud.attempt_label.text.replace("\n", " / "))
 	await _stop(game)
 
 

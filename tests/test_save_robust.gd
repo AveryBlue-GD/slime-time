@@ -475,7 +475,7 @@ func _clock() -> void:
 	for i in 7:
 		p.random_seed_fresh = true
 		paid.append(p.complete_random(false, 100 + i, 1))
-	_e("5 paying wins a day then 0: %s" % [paid], paid == [5, 5, 5, 5, 5, 0, 0])
+	_e("5 paying wins a day then 0: %s" % [paid], paid == [10, 10, 10, 10, 10, 0, 0])
 	p.day_override = 19000  # clock moved back ~3 years
 	_e("clock moved back: still capped (forward-only)", p.random_tickets_due(1, 301) == 0)
 	p.day_override = 20001
@@ -484,7 +484,7 @@ func _clock() -> void:
 	_e("next day: pays again (paid today %d)" % p.random_paid, p.random_paid == 1)
 	p.day_override = 20002 + 365 * 3
 	p.random_seed_fresh = true
-	_e("clock moved forward 3 years: cap resets (%d)" % p.random_tickets_due(1, 500), p.random_tickets_due(1, 500) == 5)
+	_e("clock moved forward 3 years: cap resets (%d)" % p.random_tickets_due(1, 500), p.random_tickets_due(1, 500) == 10)
 	# a one-off wrong clock far in the future: win once, set the clock right again
 	var q := _new("clock2")
 	q.upgrades = {"slime": 1}
@@ -493,14 +493,14 @@ func _clock() -> void:
 	q.complete_random(false, 1, 1)
 	q.day_override = 20000  # the clock is corrected
 	q.random_seed_fresh = true
-	_e("after a win under a clock 70 years ahead, the stored day is treated as today (%d)" % (q.random_tickets_due(1, 99)), q.random_tickets_due(1, 99) == 5 and q.random_pay_day == 20000)
+	_e("after a win under a clock 70 years ahead, the stored day is treated as today (%d)" % (q.random_tickets_due(1, 99)), q.random_tickets_due(1, 99) == 10 and q.random_pay_day == 20000)
 	for i in 4:
 		q.random_seed_fresh = true
 		q.complete_random(false, 10 + i, 1)
 	_e("...that win counts toward today's 5 (due now %d)" % q.random_tickets_due(1, 99), q.random_tickets_due(1, 99) == 0)
 	q.day_override = 20001
 	q.random_seed_fresh = true
-	_e("...and the next real day pays again (%d), not in 70 years" % q.random_tickets_due(1, 99), q.random_tickets_due(1, 99) == 5)
+	_e("...and the next real day pays again (%d), not in 70 years" % q.random_tickets_due(1, 99), q.random_tickets_due(1, 99) == 10)
 	# small differences keep the forward-only rule: a day 1-2 ahead (time zones) is not reset
 	q.day_override = 20000
 	q.random_pay_day = 20002
