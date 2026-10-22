@@ -277,6 +277,31 @@
     "--top=92",
     "--no-names"
    ]
+  },
+  "flip_beat": {
+   "note": "draft E: the flip take on the music's beat grid (trailer_1 fitted to a 27.0 s hit = 13 bars, 31.153846 frames a beat; portrait.gd FLIP_BEATS)",
+   "scene": "portrait",
+   "take": "flip",
+   "frames": 1266,
+   "args": [
+    "--skin=ocean",
+    "--rng=7",
+    "--beat=31.153846"
+   ]
+  },
+  "flip_beat_fast": {
+   "note": "draft E's last 3 bars (from beat 40) under the 3-line caption, names hidden",
+   "scene": "portrait",
+   "take": "flip",
+   "frames": 394,
+   "args": [
+    "--skin=ocean",
+    "--rng=7",
+    "--beat=31.153846",
+    "--plan-from-beat=40",
+    "--top=92",
+    "--no-names"
+   ]
   }
  },
  "drafts": [
@@ -823,6 +848,122 @@
      "take": "flip_fast",
      "in": 5.0,
      "dur": 2.5,
+     "color": "white",
+     "caption": [
+      "FIND YOURS"
+     ],
+     "center": "frame",
+     "above": 92
+    }
+   ],
+   "end": {
+    "dur": 3.0,
+    "tagline": [
+     "ESCAPE THE FOG",
+     "BEFORE YOU DRY UP"
+    ],
+    "cta": [
+     "COMING SOON"
+    ],
+    "store": [],
+    "logo": 0,
+    "skin": "grape",
+    "args": [
+     "--jelly"
+    ]
+   }
+  },
+  {
+   "id": "E",
+   "name": "272,544 looks, on the beat",
+   "music": "trailer_1",
+   "hook": "draft D cut to the music: the flips land on its beats and eighths, the captions change on the bar lines",
+   "beats": [
+    {
+     "take": "flip_beat",
+     "in": 0.0,
+     "dur": 2.083333,
+     "color": "gold",
+     "caption": [
+      "DRESS UP",
+      "YOUR SLIME"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat",
+     "in": 2.083333,
+     "dur": 4.15,
+     "color": "lime",
+     "caption": [
+      "48 SKINS"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat",
+     "in": 6.233333,
+     "dur": 4.15,
+     "color": "gold",
+     "caption": [
+      "12 HATS"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat",
+     "in": 10.383333,
+     "dur": 4.15,
+     "color": "bubblegum",
+     "caption": [
+      "11 DYES"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat",
+     "in": 14.533333,
+     "dur": 4.166667,
+     "color": "mint",
+     "caption": [
+      "6 TRAILS"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat",
+     "in": 18.7,
+     "dur": 2.066667,
+     "color": "lemon",
+     "caption": [
+      "CHAMELEON:",
+      "144 COLORS"
+     ],
+     "center": "frame",
+     "above": 70
+    },
+    {
+     "take": "flip_beat_fast",
+     "in": 0.0,
+     "dur": 4.15,
+     "color": "gold",
+     "caption": [
+      "272,544",
+      "DIFFERENT",
+      "LOOKS"
+     ],
+     "center": "frame",
+     "above": 92
+    },
+    {
+     "take": "flip_beat_fast",
+     "in": 4.15,
+     "dur": 2.083333,
      "color": "white",
      "caption": [
       "FIND YOURS"

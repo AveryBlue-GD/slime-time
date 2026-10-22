@@ -29,6 +29,8 @@ extends Node
 ##           The dyes show on the WIZARD HAT (worn on through the trails and CHAMELEON phases).
 ##           --plan-from=F starts FLIP_PLAN at frame F (a later stretch as its own take, e.g. under a
 ##           3-line caption with --top=92); --no-names hides the names (too fast to read there).
+##           --beat=F (frames per beat, the fitted music's: trailer.json draft E) flips on the music's
+##           grid instead, FLIP_BEATS' phases; --plan-from-beat=B starts it at beat B.
 ## Promo rule (owner, 2026-10-20): the RAINBOW and STOPWATCH skins are only ever shown as the skins
 ## screen's locked silhouettes (one story coin is taken out of the count, so the line under the stage
 ## is true), and never worn.
@@ -398,6 +400,19 @@ const FLIP_PLAN := [
 	[1170, "all", 8, 2],
 	[1470, "all", 2],
 ]
+## The beat-synced cut (--beat): [from beat, what flips, every N beats], 4 beats a bar; the captions
+## change on the bar lines (trailer.json draft E).
+const FLIP_BEATS := [
+	[0, "all", 1.0],
+	[4, "skin", 0.5],
+	[12, "hat", 0.5],
+	[20, "dye", 0.5],
+	[28, "trail", 0.5],
+	[36, "chameleon", 0.25],
+	[40, "all", 0.25],
+	[44, "all", 0.125],
+	[48, "all", 0.25],
+]
 const FLIP_STAGE := Vector2(172, 130)
 const FLIP_PX := 4
 const NEVER := 1 << 30
@@ -416,6 +431,7 @@ var hat_line: Label
 var trail_line: Label
 var _flips := 0
 var _next_flip := 0
+var _next_beat := -1.0
 
 
 func _build_flip() -> void:
@@ -452,7 +468,35 @@ func _flip_phase(at: int) -> Array:
 	return [phase[1], maxi(roundi(every), 1)]
 
 
+## The beat-synced flips: each on the frame nearest its beat (or subdivision).
+func _beat_tick() -> void:
+	var per_beat := float(opts.beat)
+	var from := float(opts.get("plan-from-beat", "0"))
+	if _next_beat < 0.0:
+		_next_beat = from + _beat_phase(from)[1]  # (the first look is the downbeat's)
+	if frame < roundi((_next_beat - from) * per_beat):
+		return
+	var phase := _beat_phase(_next_beat)
+	_flip(phase[0])
+	_flips += 1
+	if phase[1] >= 0.25 or _flips % 2 == 0:
+		Sfx.play("click", -10.0)
+	_next_beat += phase[1]
+
+
+## [what flips, every N beats] at beat `at` (FLIP_BEATS).
+func _beat_phase(at: float) -> Array:
+	var phase: Array = FLIP_BEATS[0]
+	for entry: Array in FLIP_BEATS:
+		if entry[0] <= at + 0.001:
+			phase = entry
+	return [phase[1], phase[2]]
+
+
 func _flip_tick() -> void:
+	if opts.has("beat"):
+		_beat_tick()
+		return
 	if frame < _next_flip:
 		return
 	var phase := _flip_phase(frame + _int("plan-from", 0))
