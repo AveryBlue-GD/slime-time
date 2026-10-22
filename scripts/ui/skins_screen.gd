@@ -45,7 +45,6 @@ const LOCKED_INK := Color(0.08, 0.08, 0.12, 0.9)
 static func rule_text(which: String) -> String:
 	match which:
 		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
-		"pastel": return Loc.t("skins.rule_pastel", "PASTEL SKINS UNLOCK BY WINNING RANDOM MAZES")
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
 		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
@@ -244,7 +243,7 @@ func _layout(back: Button) -> void:
 	var rule_last := ink_bottom
 	if UIKit.tall_script():
 		var rules: Array[String] = []
-		for which: String in ["skins", "jelly", "pastel", "hats", "trails", "papers"]:
+		for which: String in ["skins", "jelly", "hats", "trails", "papers"]:
 			rules.append(rule_text(which))
 		rule_last = mini(ink_bottom, UIKit.ink_rows(rules, _rule.get_theme_font("font")).y)
 	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
@@ -929,7 +928,7 @@ func _refresh(focus_id := "") -> void:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
 		UIKit.set_selected(tiles[tile_id], selected)
 	jelly_button.text = _jelly_text(view_jelly)
-	_rule.text = rule_text("pastel" if view_pastel else "jelly" if view_jelly else "skins")
+	_rule.text = "" if view_pastel else rule_text("jelly" if view_jelly else "skins")  # (pastel: each locked tile's status line says its wins)
 	_set_pastel_text()
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
