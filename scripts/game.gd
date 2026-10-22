@@ -295,6 +295,8 @@ var coins: Array[Coin] = []
 var coin_catches: Array[CoinCatch] = []
 ## How many coins this level hides in total.
 var coins_here := 0
+## Randomizer: the ticket pickups still out in this maze (see TicketPickup).
+var tickets: Array[TicketPickup] = []
 ## The goal touching which wins: the chalice in a story level, the TicketGoal in a randomizer maze
 ## (which has no chalice node at all: it is freed in _ready).
 var goal: Area2D
@@ -520,6 +522,7 @@ func _ready() -> void:
 	_build_overlays()
 	_place_coins(config.seed)
 	_count_attempt()
+	_place_tickets()
 	if training:
 		_setup_training()
 	if descent:
@@ -646,6 +649,8 @@ func _physics_process(delta: float) -> void:
 			if light_reach > 0.0:
 				_reveal_light(pos)
 	_pick_up_coins(pos)
+	if not tickets.is_empty():
+		_pick_up_tickets(pos)
 	if training:
 		_training_step(pos, delta)
 	if _coin_reveal and not coins.is_empty():
@@ -1740,6 +1745,43 @@ func _place_coins(maze_seed: int) -> void:
 	hud.set_coins(progress.coins(), progress.coins_found_in(level), coins_here)
 
 
+## Randomizer mazes: puts out the maze's ticket pickups not yet taken (TicketPickup; none on a typed or
+## replayed seed, in Descent or training).
+func _place_tickets() -> void:
+	if not is_random() or descent or training or progress == null or attempt_key == "" or not progress.random_seed_fresh:
+		return
+	for cell in TicketPickup.cells_for(maze, random_seed, Economy.RANDOM_TICKETS):
+		if progress.random_ticket_taken(attempt_key, cell):
+			continue
+		var ticket := TicketPickup.new()
+		ticket.z_index = 6  # under the fog, like a coin: found by exploring (or an ability's reveal)
+		ticket.still = motion_scale() <= 0.0
+		add_child(ticket)
+		ticket.setup(cell, MazeGenerator.cell_center(cell, TILE))
+		tickets.append(ticket)
+
+
+## The ticket pickups' cells still out in this maze (for its MAP).
+func ticket_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for ticket in tickets:
+		cells.append(ticket.cell)
+	return cells
+
+
+func _pick_up_tickets(pos: Vector2) -> void:
+	for ticket in tickets.duplicate():
+		if pos.distance_to(ticket.position) > TicketPickup.REACH:
+			continue
+		tickets.erase(ticket)
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, assisted or dev_toggled)
+		ticket.collect(self)
+		_sfx("coin", -4.0)
+		if paid > 0:
+			# i18n: HUD message, max 200px, 1 line; {count} = tickets just picked up
+			hud.flash_message(Loc.t("hud.ticket_found", "+{count} TICKET", {count = paid}), 1.5)
+
+
 ## Map coin reveal: notes the uncollected coins within the light's reach (straight
 ## line, walls ignored), or all of them under FULL BRIGHT.
 func _reveal_coins(pos: Vector2) -> void:
@@ -1855,7 +1897,7 @@ func clear_line(a: Vector2, b: Vector2) -> bool:
 ## The maze's goal: the scene's chalice in a story level. A randomizer maze has no chalice: it is
 ## freed and a TicketGoal takes its place in the tree (same grab circle, drawn at the same depth).
 func _make_goal() -> void:
-	if not is_random():
+	if not is_random() or Economy.RANDOM_CHALICE:
 		goal = chalice
 		return
 	var ticket := TicketGoal.new()
@@ -1973,7 +2015,7 @@ func _commit_survey() -> void:
 		if won:
 			progress.discard_random_map()  # (cleared: its map is gone)
 		else:
-			progress.record_random_map(attempt_key, maze, survey_tiles, survey_moves, survey_goal)
+			progress.record_random_map(attempt_key, maze, survey_tiles, survey_moves, survey_goal, ticket_cells())
 		return
 	if _survey_done or not _survey_live:
 		return
@@ -2297,13 +2339,19 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		_finish(true, Loc.t("result.floor_cleared", "FLOOR {floor} CLEARED", {floor = int(descent_run.get("floor", 1))}))
 		return
 	if is_random():
-		# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
-		Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
-		_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
-		goal.visible = false
-		_sfx("unlock", CHALICE_VOLUME_DB)
+		var title := Loc.t("result.chalice", "CHALICE CONSUMED!")
+		if goal is TicketGoal:
+			# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
+			Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
+			_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
+			goal.visible = false
+			_sfx("unlock", CHALICE_VOLUME_DB)
+			title = Loc.t("result.ticket_claimed", "TICKET CLAIMED!")  # i18n: result title, max 296px, 1 line
+		else:  # (Economy.RANDOM_CHALICE: the story's chalice, paying the same tickets)
+			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+			_sfx("chalice", CHALICE_VOLUME_DB)
 		var random_text := Loc.lines([
-			Loc.t("result.ticket_claimed", "TICKET CLAIMED!"),  # i18n: result title, max 296px, 1 line
+			title,
 			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
 			Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}),  # i18n: max 296px; {code} = a maze code
 		])
@@ -2513,6 +2561,7 @@ func open_dev_map() -> void:
 		if survey.goal:
 			Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
 		survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+		survey.tickets = ticket_cells()
 	_open_map_view(survey)
 
 
@@ -2525,6 +2574,7 @@ func dev_full_map() -> Dictionary:
 			Survey.mark_seen(survey, Vector2i(x, y))
 	survey.goal = true
 	survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+	survey.tickets = ticket_cells()
 	return survey
 
 

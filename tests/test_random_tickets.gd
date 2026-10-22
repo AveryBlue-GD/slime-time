@@ -41,6 +41,18 @@ func _initialize() -> void:
 	_check(starts.size() >= SEEDS * 0.5, "spawn varies across seeds (%d distinct starts in %d)" % [starts.size(), SEEDS])
 	_check(corner < SEEDS * 0.2, "the old top-left corner is no longer the usual start (%d/%d)" % [corner, SEEDS])
 	_check(wrong_route == 0, "the start-to-ticket route is the length the seed's usage asks for (%d off)" % wrong_route)
+	# --- Usually (not always) more than one route to the chalice (MazeGenerator.add_second_route)
+	var two := 0
+	for i in SEEDS:
+		if MazeGenerator.has_second_route(MazeGenerator.generate_random(Levels.random_config(1000 + i * 7919))):
+			two += 1
+	_check(two >= SEEDS * 0.75 and two < SEEDS, "most random mazes have 2+ routes to the chalice, not all (%d/%d)" % [two, SEEDS])
+	var hard_two := 0
+	for i in 40:
+		var hard_maze := MazeGenerator.generate_random(Levels.random_config(1000 + i * 7919, true))
+		if MazeGenerator.has_second_route(hard_maze):
+			hard_two += 1
+	_check(not Levels.random_config(1, true).second_route, "hard mode mazes get no added route (%d/40 have one anyway)" % hard_two)
 
 	# --- Size scales with MORE SLIME (sized for the 95% route of the meter, which grows), never with u
 	var last_area := 0
@@ -79,15 +91,38 @@ func _initialize() -> void:
 	var used: float = real_tiles * game.slime_cost_per_tile
 	var want: float = Levels.random_usage(4242) * 100.0
 	_check(absf(used - want) < 1.5, "a perfect run uses the seed's usage of the (fixed) meter: %.1f%% (u %.1f%%)" % [used, want])
-	# The goal is the ticket: no chalice node anywhere in the maze, a TicketGoal on the goal cell.
-	_check(game.chalice == null and game.get_node_or_null("Chalice") == null and _find_chalice(game) == null,
-		"a randomizer maze has no chalice node")
-	_check(game.goal is TicketGoal and game.goal.get_parent() == game and game.goal.position == MazeGenerator.cell_center(game.maze.goal, 16),
-		"the ticket stands on the goal cell %s (where the chalice was)" % game.maze.goal)
+	# The goal is the chalice again (Economy.RANDOM_CHALICE), on the goal cell.
+	_check(Economy.RANDOM_CHALICE and game.chalice != null and game.goal == game.chalice and not (game.goal is TicketGoal)
+		and game.goal.position == MazeGenerator.cell_center(game.maze.goal, 16),
+		"the chalice stands on the goal cell %s" % game.maze.goal)
 	_check(not game.goal.visible, "...hidden under the fog until the slime is near")
 	_check((game.goal.get_node("CollisionShape2D").shape as CircleShape2D).radius == TicketGoal.GRAB_RADIUS and TicketGoal.GRAB_RADIUS == 6.0,
 		"...with the chalice's grab circle (so the meter calibration is unchanged)")
 	_check(game.hud.attempt_pod.visible and game.hud.attempt_label.text.begins_with("ATTEMPT "), "the HUD shows the attempt pod (%s)" % game.hud.attempt_label.text)
+	# --- Ticket pickups: Economy.RANDOM_TICKETS in seeded dead ends, under the fog, 1 ticket each, gone on retries
+	var cells := TicketPickup.cells_for(game.maze, 4242, Economy.RANDOM_TICKETS)
+	_check(cells.size() == Economy.RANDOM_TICKETS and game.tickets.size() == cells.size() and cells == TicketPickup.cells_for(game.maze, 4242, Economy.RANDOM_TICKETS),
+		"%d ticket pickups, the same cells every time %s" % [game.tickets.size(), cells])
+	_check(game.tickets.all(func(t: TicketPickup) -> bool: return t.z_index < game.fog_sprite.z_index and not t.cell in [game.maze.start, game.maze.goal]),
+		"...under the fog (found by exploring or an ability), never on the start or the chalice")
+	var before_tickets: int = progress.tickets
+	var first: TicketPickup = game.tickets[0]
+	var first_cell := first.cell
+	game.slime.position = first.position
+	for i in 3:
+		await physics_frame
+	_check(progress.tickets == before_tickets + Economy.RANDOM_TICKET_PAY and game.tickets.size() == cells.size() - 1
+		and progress.random_ticket_taken(game.attempt_key, first_cell), "touching one pays %d ticket and takes it" % Economy.RANDOM_TICKET_PAY)
+	_check(progress.take_random_ticket(game.attempt_key, first_cell) == 0, "...a taken pickup never pays again (its retries don't put it out)")
+	# --- The map: the chalice and the tickets as icons, only on seen cells
+	var survey := Survey.full(game.maze, 10.0)
+	survey.goal = true
+	survey.tickets = game.ticket_cells()
+	var sizes := MapView.layout(game.maze.cells, Vector2i(300, 140))
+	var shown := MapView.render(game.maze, survey, sizes, [] as Array[Vector2i])
+	_check(_px(shown, MapView.CHALICE_COLORS[0]) > 0 and _px(shown, MapView.TICKET_COLORS[0]) > 0, "the map draws the chalice and the tickets (cells %d px)" % sizes.x)
+	var unseen := MapView.render(game.maze, Survey.blank(game.maze).merged({goal = true, tickets = game.ticket_cells()}, true), sizes, [] as Array[Vector2i])
+	_check(_px(unseen, MapView.CHALICE_COLORS[0]) == 0 and _px(unseen, MapView.TICKET_COLORS[0]) == 0, "...none of them on unseen cells")
 	# The two-line pod fits the 320x180 screen without touching the other pods, the area name (moved
 	# under it) or the touch pause button (moved down too).
 	await process_frame
@@ -154,6 +189,15 @@ func _initialize() -> void:
 	_result()
 	quit(0 if failures == 0 else 1)
 
+
+
+func _px(img: Image, color: Color) -> int:
+	var n := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			if img.get_pixel(x, y).is_equal_approx(color):
+				n += 1
+	return n
 
 
 ## Any node in the game made from the chalice scene or script.

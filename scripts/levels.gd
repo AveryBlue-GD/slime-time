@@ -473,6 +473,7 @@ static func random_config(maze_seed: int, hard := false, slime_level := 0) -> Di
 		slime_level = level,
 		tile_cost = 100.0 / random_capacity_tiles(level),
 		tile_level = RANDOM_TILE_LEVEL,
+		second_route = not hard,  # (MazeGenerator.add_second_route; hard mode stays tight)
 	}
 
 

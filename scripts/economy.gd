@@ -75,6 +75,17 @@ static var random_cap_force := -1
 
 static func random_daily_cap_on() -> bool:
 	return RANDOM_DAILY_CAP if random_cap_force < 0 else random_cap_force == 1
+## Randomizer mazes end at the story's chalice again (owner, 2026-10-22), paying the same tickets by
+## attempt; false brings back the gold ticket voucher goal (TicketGoal). Each maze also hides
+## RANDOM_TICKETS ticket pickups (RandomTickets: seeded dead ends, under the fog like story coins),
+## RANDOM_TICKET_PAY each when touched; a maze's taken pickups stay gone on its retries (in memory, per
+## seed code), a typed / replayed seed has none, and an assisted or dev-toggled run's pay nothing.
+const RANDOM_CHALICE := true
+## Share of randomizer mazes (seeded per maze) given a second way to the goal (MazeGenerator.
+## add_second_route; owner, 2026-10-22: usually, not always; some have one through their own loops).
+const RANDOM_SECOND_ROUTE_SHARE := 0.85
+const RANDOM_TICKETS := 3
+const RANDOM_TICKET_PAY := 1
 ## A win with no MORE SLIME bought, or on a typed / replayed seed, pays at most this.
 const TICKETS_NO_SLIME_CAP := 1
 const TICKETS_REPLAY_CAP := 1

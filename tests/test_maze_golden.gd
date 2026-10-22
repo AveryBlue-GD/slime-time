@@ -16,7 +16,9 @@ extends "res://tests/suite_base.gd"
 ## 2026-10-15 for the upgrades v2 coin tree (MORE SLIME 0-7, docs/design/upgrades-v2.md A2.5): the
 ## MORE SLIME 5 / 10 lines became 4 / 7. The level 7 lines carry exactly the old level 10 digests (same
 ## x2.0 factor, same mazes; only the label changed); the level 4 lines (x1.60, the old level 6 factor,
-## which had no lines) are new; the story, level 0 and hard lines are byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
+## which had no lines) are new; the story, level 0 and hard lines are byte-identical. Rewritten on purpose
+## on 2026-10-22 for the second route to the goal (MazeGenerator.add_second_route, normal randomizer only):
+## 3,812 of the MORE SLIME 0 / 4 / 7 lines changed; every story line and every hard line is byte-identical. Also checks every randomizer build is solvable, its ticket exactly the
 ## asked route (>= RANDOM_MIN_ROUTE) from the start, and its size at least the level's floor.
 ##   ./tools/godot.sh --path . --headless -s res://tests/test_maze_golden.gd -- --write-golden=/abs/path.txt
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_maze_golden.gd

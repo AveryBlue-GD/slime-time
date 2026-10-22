@@ -154,8 +154,8 @@ func _initialize() -> void:
 	var same: bool = mine.maze.walls == richer.maze.walls and mine.maze.start == richer.maze.start and mine.maze.goal == richer.maze.goal \
 		and mine.maze.walls == poorer.maze.walls and mine.maze.goal == poorer.maze.goal
 	# the goal ticket stands on the code's goal cell for everyone
-	same = same and mine.goal.position == richer.goal.position and mine.goal.position == poorer.goal.position and mine.goal is TicketGoal
-	_check(same, "code %s: same maze, start and ticket at MORE SLIME 0, 3 and 8" % Levels.seed_code(code_seed, 3))
+	same = same and mine.goal.position == richer.goal.position and mine.goal.position == poorer.goal.position and mine.goal == mine.chalice
+	_check(same, "code %s: same maze, start and chalice at MORE SLIME 0, 3 and 8" % Levels.seed_code(code_seed, 3))
 	var u := Levels.random_usage(code_seed)
 	_check(absf(mine.perfect_usage - u) < 0.02, "the code's own level: a perfect run uses u (%.3f vs %.3f)" % [mine.perfect_usage, u])
 	_check(absf(richer.perfect_usage - mine.perfect_usage * 1.3 / 1.8) < 0.01, "more slime than the code: a smaller share of a bigger meter (%.3f)" % richer.perfect_usage)

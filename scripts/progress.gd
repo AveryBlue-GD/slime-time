@@ -162,6 +162,9 @@ var random_attempts := {}
 ## Not saved: the tickets the attempt pod last showed for each maze (same keys as random_attempts), so
 ## a restart that changes the number can make the pod pop. Cleared with random_attempts.
 var random_offer_shown := {}
+## Not saved: the ticket pickups (TicketPickup cells) taken in each randomizer maze (same keys as
+## random_attempts), so its retries don't put them out again. Cleared with random_attempts.
+var random_tickets_taken := {}
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -1733,6 +1736,22 @@ func begin_random_attempt(key: String) -> int:
 	return random_attempts[key]
 
 
+## True when the ticket pickup at `cell` of the maze under `key` was already taken (this session).
+func random_ticket_taken(key: String, cell: Vector2i) -> bool:
+	return cell in random_tickets_taken.get(key, [])
+
+
+## Takes the ticket pickup at `cell` of the maze under `key` and pays it (unless `unpaid`: an assisted
+## or dev-toggled run takes it for nothing). Returns the tickets paid. Saves.
+func take_random_ticket(key: String, cell: Vector2i, unpaid := false) -> int:
+	if random_ticket_taken(key, cell):
+		return 0
+	var taken: Array = random_tickets_taken.get(key, [])
+	taken.append(cell)
+	random_tickets_taken[key] = taken
+	return 0 if unpaid else add_tickets(Economy.RANDOM_TICKET_PAY)
+
+
 ## Tickets a win pays on attempt `attempt` before any cap: 5, 4, 3, 2, then 1 from the fifth on.
 static func tickets_for_attempt(attempt: int) -> int:
 	return RANDOM_ATTEMPT_PAY[clampi(attempt, 1, RANDOM_ATTEMPT_PAY.size()) - 1]
@@ -2157,7 +2176,8 @@ var random_map_key := ""
 
 ## Adds a try at random maze `key` (its tiles seen and the cells walked) to its map; another maze's
 ## map is dropped first.
-func record_random_map(key: String, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray, goal_seen: bool) -> void:
+func record_random_map(key: String, maze: Dictionary, tiles: PackedByteArray, moves: PackedByteArray, goal_seen: bool,
+		tickets: Array[Vector2i] = []) -> void:
 	if key != random_map_key or not Survey.fits(random_map, maze):
 		random_map = Survey.blank(maze)
 		random_map_key = key
@@ -2165,6 +2185,7 @@ func record_random_map(key: String, maze: Dictionary, tiles: PackedByteArray, mo
 	if goal_seen:
 		Survey.mark_seen(random_map, maze.goal * 2 + Vector2i.ONE)
 	random_map.goal = random_map.goal or goal_seen
+	random_map.tickets = tickets.duplicate()  # the maze's ticket pickups still out (the map shows the seen ones)
 	if not moves.is_empty():
 		random_map.moves = moves.slice(0, Survey.MAX_MOVES)
 		random_map.start = maze.start
@@ -2192,6 +2213,7 @@ func new_random_maze() -> void:
 	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
 	random_attempts.clear()  # a new maze starts counting at attempt 1
 	random_offer_shown.clear()
+	random_tickets_taken.clear()
 
 
 # ---------------------------------------------------------------- skins
@@ -2814,6 +2836,7 @@ func reset_progress() -> void:
 	random_seed_fresh = true
 	random_attempts.clear()
 	random_offer_shown.clear()
+	random_tickets_taken.clear()
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false

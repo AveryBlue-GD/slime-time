@@ -166,7 +166,160 @@ static func generate_random(config: Variant, maze_seed := 0) -> Dictionary:
 			noise_seed = (config.seed * 31 + tries * 7919) % 2147483647
 	SpawnPicker.apply(maze, config.seed, -1, route)
 	maze.route_target = route
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(config.seed) * 7 + 3
+	if config.get("second_route", false) and rng.randf() < Economy.RANDOM_SECOND_ROUTE_SHARE:
+		add_second_route(maze)
 	return maze
+
+
+## A second way to the goal (owner, 2026-10-22: most random mazes have 2+ routes): opens up to
+## SECOND_ROUTE_WALLS walls, each between two side branches hanging off far-apart points of the
+## start-to-goal route, so those stretches of the route can be bypassed (each wall picked to cover the
+## most must-pass passages left). Never a shortcut (the shortest route keeps its length, so the slime
+## usage calibration holds) and never at a dead end (pickups live there). Returns the walls opened.
+const SECOND_ROUTE_WALLS := 3
+
+
+static func add_second_route(maze: Dictionary) -> int:
+	var opened := 0
+	for n in SECOND_ROUTE_WALLS:
+		var must := route_must_pass(maze)
+		if must.count(1) * 2 <= must.size():
+			break  # (most of the way already has another way round)
+		if not _open_bypass(maze, must):
+			break
+		opened += 1
+	return opened
+
+
+static func _open_bypass(maze: Dictionary, must: PackedByteArray) -> bool:
+	var width: int = maze.cells.x
+	var links := cell_links(maze)
+	var from_start := distance_grid(maze, maze.start)
+	var to_goal := distance_grid(maze, maze.goal)
+	var length := from_start[maze.goal.y * width + maze.goal.x]
+	# Which route step each cell's branch hangs off (multi-source BFS from the route).
+	var attach := PackedInt32Array()
+	attach.resize(links.size())
+	attach.fill(-1)
+	var queue := PackedInt32Array()
+	var path := shortest_path(maze, maze.start, maze.goal)
+	for k in path.size():
+		var i: int = path[k].y * width + path[k].x
+		attach[i] = k
+		queue.append(i)
+	var head := 0
+	while head < queue.size():
+		var i := queue[head]
+		head += 1
+		for bit in [1, 2, 4, 8]:
+			if links[i] & bit:
+				var next := link_step(i, bit, width)
+				if attach[next] < 0:
+					attach[next] = attach[i]
+					queue.append(next)
+	# must-pass passages before each route step, so a span's count is one subtraction
+	var before := PackedInt32Array()
+	before.resize(must.size() + 1)
+	for k in must.size():
+		before[k + 1] = before[k] + must[k]
+	var best := Vector2i(-1, -1)
+	var best_dir := 0
+	var best_cover := 1  # (covering a single passage is not a real second way)
+	for i in links.size():
+		if LINK_COUNT[links[i]] <= 1 or attach[i] < 0:
+			continue
+		for d in 2:  # the wall to the right, then the one below
+			var cell := Vector2i(i % width, i / width)
+			var other := cell + (Vector2i.RIGHT if d == 0 else Vector2i.DOWN)
+			if not _inside(other, maze.cells):
+				continue
+			var j := other.y * width + other.x
+			if links[i] & (1 if d == 0 else 4) or LINK_COUNT[links[j]] <= 1 or attach[j] < 0:
+				continue  # (already open, or a dead end)
+			if from_start[i] + 1 + to_goal[j] < length or from_start[j] + 1 + to_goal[i] < length:
+				continue  # a shortcut
+			var cover := before[maxi(attach[i], attach[j])] - before[mini(attach[i], attach[j])]
+			if cover > best_cover:
+				best_cover = cover
+				best = cell
+				best_dir = d
+	if best.x < 0:
+		return false
+	_open_between(maze.walls, maze.size, best, best + (Vector2i.RIGHT if best_dir == 0 else Vector2i.DOWN))
+	return true
+
+
+## For each passage of the start-to-goal route (step k to k + 1): 1 when it is a must-pass (closing
+## it would cut the goal off), else 0.
+static func route_must_pass(maze: Dictionary) -> PackedByteArray:
+	var path := shortest_path(maze, maze.start, maze.goal)
+	var must := PackedByteArray()
+	must.resize(maxi(path.size() - 1, 0))
+	if must.is_empty():
+		return must
+	# Bridges of the passage graph (iterative Tarjan: low-link from the start's DFS tree): a passage
+	# is a must-pass exactly when it is a bridge.
+	var width: int = maze.cells.x
+	var links := cell_links(maze)
+	var count := links.size()
+	var order := PackedInt32Array()
+	order.resize(count)
+	order.fill(-1)
+	var low := PackedInt32Array()
+	low.resize(count)
+	var parent := PackedInt32Array()
+	parent.resize(count)
+	var next_bit := PackedByteArray()
+	next_bit.resize(count)
+	var bridge_child := PackedByteArray()  # 1: the passage from this cell up to its DFS parent is a bridge
+	bridge_child.resize(count)
+	var root: int = maze.start.y * width + maze.start.x
+	var stack := PackedInt32Array([root])
+	var clock := 0
+	order[root] = clock
+	low[root] = clock
+	parent[root] = -1
+	while not stack.is_empty():
+		var at := stack[stack.size() - 1]
+		var advanced := false
+		while next_bit[at] < 4:
+			var bit := 1 << next_bit[at]
+			next_bit[at] += 1
+			if not links[at] & bit:
+				continue
+			var to := link_step(at, bit, width)
+			if order[to] < 0:
+				clock += 1
+				order[to] = clock
+				low[to] = clock
+				parent[to] = at
+				stack.append(to)
+				advanced = true
+				break
+			elif to != parent[at]:
+				low[at] = mini(low[at], order[to])
+		if advanced:
+			continue
+		stack.remove_at(stack.size() - 1)
+		var up := parent[at]
+		if up >= 0:
+			low[up] = mini(low[up], low[at])
+			if low[at] > order[up]:
+				bridge_child[at] = 1
+	for k in must.size():
+		var a: int = path[k].y * width + path[k].x
+		var b: int = path[k + 1].y * width + path[k + 1].x
+		must[k] = 1 if (parent[b] == a and bridge_child[b]) or (parent[a] == b and bridge_child[a]) else 0
+	return must
+
+
+## True when the way to the goal has more than one route: at least half of the route's passages can
+## be gone round (the last stretch into a dead-end goal never can).
+static func has_second_route(maze: Dictionary) -> bool:
+	var must := route_must_pass(maze)
+	return must.size() > 0 and must.count(1) * 2 <= must.size()
 
 
 ## A story level's maze (see Levels.DATA and docs/level-design.md): a growing tree like `generate`

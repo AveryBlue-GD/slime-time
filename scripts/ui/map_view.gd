@@ -309,8 +309,50 @@ static func _draw_marks(image: Image, maze: Dictionary, survey: Dictionary, size
 	var mark := mini(f, maxi(5, f * 2 / 5 | 1))
 	if _cell_seen(survey, survey.start):
 		_draw_ring(image, _centered(cell_rect(survey.start, sizes), mark), pal.start)
+	# Randomizer ticket pickups still out (survey.tickets), on seen cells: little gold tickets.
+	for cell: Vector2i in survey.get("tickets", []):
+		if _cell_seen(survey, cell):
+			_draw_icon(image, cell_rect(cell, sizes), TICKET_ICON, TICKET_COLORS, pal.goal)
 	if survey.goal and _cell_seen(survey, maze.goal):
-		_draw_x(image, _centered(cell_rect(maze.goal, sizes), mini(f, maxi(5, mark))), pal.goal)
+		if f >= ICON_MIN:  # the chalice itself (an X where the cells are too small for it)
+			_draw_icon(image, cell_rect(maze.goal, sizes), CHALICE_ICON, CHALICE_COLORS, pal.goal)
+		else:
+			_draw_x(image, _centered(cell_rect(maze.goal, sizes), mini(f, maxi(5, mark))), pal.goal)
+
+
+## Map icons (5 x 5, rows top to bottom): 1 = fill, 2 = shade; drawn whole-pixel scaled to the cell
+## (1x up to 9 px cells, 2x up to 14, then 3x), centered, outlined in the paper's ink where the cell
+## has room for it (a pixel of the icon's scale round it).
+const ICON_MIN := 5
+const CHALICE_ICON: Array[String] = ["11111", "12221", ".111.", "..1..", ".121."]
+const TICKET_ICON: Array[String] = [".....", "11111", "12.21", "11111", "....."]
+## (Golds of their own: never COIN, so a chalice or ticket never reads as a coin.)
+const CHALICE_COLORS: Array[Color] = [Color8(250, 220, 70), Color8(170, 110, 20)]
+const TICKET_COLORS: Array[Color] = [Color8(255, 176, 80), Color8(190, 104, 40)]
+
+
+static func _draw_icon(image: Image, r: Rect2i, icon: Array[String], colors: Array[Color], outline: Color) -> void:
+	var f := r.size.x
+	if f < ICON_MIN:
+		image.fill_rect(_centered(r, mini(f, 2)), colors[0])
+		return
+	var scale := 1 if f < 10 else (2 if f < 15 else 3)
+	var at := r.position + Vector2i.ONE * ((f - 5 * scale) / 2)
+	var lined := f >= 7 * scale
+	for y in 5:
+		for x in 5:
+			if icon[y][x] == ".":
+				continue
+			if lined:  # the outline: the pixel's neighbours that are empty
+				for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var n := Vector2i(x, y) + d
+					if n.x < 0 or n.y < 0 or n.x >= 5 or n.y >= 5 or icon[n.y][n.x] == ".":
+						image.fill_rect(Rect2i(at + n * scale, Vector2i.ONE * scale), outline)
+	for y in 5:
+		for x in 5:
+			var ch := icon[y][x]
+			if ch != ".":
+				image.fill_rect(Rect2i(at + Vector2i(x, y) * scale, Vector2i.ONE * scale), colors[0] if ch == "1" else colors[1])
 
 
 ## A coin: the square `r` with its corners cut (1 px from 4 px up, 2 px from 8 px up).

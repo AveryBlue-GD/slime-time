@@ -174,7 +174,7 @@ func _initialize() -> void:
 	await physics_frame
 	_check(game.hud.attempt_label.text.ends_with(" 10") and not game.goal.visible, "randomizer: the ticket starts hidden; the pod shows 10 available (%s)" % game.hud.attempt_label.text)
 	game.set_dev_bright(true)
-	_check(game.goal is TicketGoal and game.goal.visible and game.hud.attempt_label.text.ends_with(" 0"), "FULL BRIGHT shows the ticket, and the pod drops to 0 (%s)" % game.hud.attempt_label.text)
+	_check(game.goal == game.chalice and game.goal.visible and game.hud.attempt_label.text.ends_with(" 0"), "FULL BRIGHT shows the chalice, and the pod drops to 0 (%s)" % game.hud.attempt_label.text)
 	game.set_dev_bright(false)
 	_check(not game.goal.visible, "...hidden again when it goes off")
 	var tickets_before: int = progress.tickets
