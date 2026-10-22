@@ -31,7 +31,14 @@ func _initialize() -> void:
 
 	var before: float = game.slime_remaining
 	await _wait_seconds(1.0)
-	_check(game.slime_remaining == before, "standing still costs nothing")
+	_check(game.slime_remaining == before, "with the idle drain off, standing still costs nothing")
+	Economy.idle_drain_force = -1
+	before = game.slime_remaining
+	await _wait_seconds(2.0)
+	var idle_used: float = before - game.slime_remaining
+	_check(Economy.IDLE_DRAIN_ON and absf(idle_used - 2.0 * Economy.IDLE_DRAIN) < 0.1,
+		"standing still drains %.1f%% a second (%.2f%% in 2 s)" % [Economy.IDLE_DRAIN, idle_used])
+	Economy.idle_drain_force = 0
 
 	game.slime.position = start  # back on the start, then push into the wall beside it
 	await physics_frame

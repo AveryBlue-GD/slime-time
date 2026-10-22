@@ -7,7 +7,7 @@ extends Control
 
 ## The actions in each column, top to bottom.
 const COLUMNS := [["move_up", "move_down", "move_left", "move_right", "jump"],
-	["restart", "interact", "ability_rifle", "ability_splat", "ability_kaze"]]
+	["restart", "interact", "ability_rifle", "ability_splat", "ability_kaze"]]  # (SLIME SENSE stays on M: the page's two columns hold five rows each)
 ## A column: a label LABEL_WIDTH wide, GAP, the key button KEY_WIDTH wide; the two columns
 ## COLUMN_GAP apart, centered: 2 x (84 + 4 + 64) + 8 = 312. Rows ROW_GAP apart from ROWS_TOP (8 under
 ## the title's line box); the note line at NOTE_TOP, NOTE_GAP over the bottom row. Other locales
@@ -62,6 +62,7 @@ static func action_name(action: String) -> String:
 		"ability_rifle": return Loc.t("keys.ability_rifle", "SLIME SNIPER")
 		"ability_splat": return Loc.t("keys.ability_splat", "GOO GRENADE")
 		"ability_kaze": return Loc.t("keys.ability_kaze", "SLIMAKAZE")  # pun: slime + kamikaze
+		"ability_sense": return Loc.t("keys.ability_sense", "SLIME SENSE")
 	return action
 
 

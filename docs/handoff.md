@@ -94,6 +94,10 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
   first-try even one level). The randomizer portal goes straight into a random maze, no resume prompt, nothing mentions it, ABYSS is
   hidden unless owned; a saved `[descent_run]`, stats and milestones are kept untouched, and flipping the const restores it all.
   Descent suites force it on; `test_descent_off` covers the off behaviour. (Mentions of Descent in this file describe it when on.)
+- **SLIME SENSE** (owner, 2026-10-22): a fourth ticket ability (`Economy.ABILITIES.sense`, 30 / 60 / 100, 1 / 2 / 3 peeks per attempt), key M
+  (pad: left stick click; not on the CONTROLS page, whose columns hold five rows): opens the maze's map mid-run (`Game.toggle_run_map`),
+  the slime held still and the meter not draining; its key again closes it for free. **Idle drain**: standing still drains
+  `Economy.IDLE_DRAIN` (0.5%) a second in every level once the slime has moved (`Game._idle_drain`; suites turn it off in `suite_base`).
 - **Randomizer goal is the chalice again** (owner, 2026-10-22; `Economy.RANDOM_CHALICE`, false = the TicketGoal voucher): it pays the
   same tickets by attempt. Each maze also hides `Economy.RANDOM_TICKETS` (3) ticket pickups (`TicketPickup`, seeded dead ends, under the
   fog, `RANDOM_TICKET_PAY` 1 each; taken ones stay gone on the maze's retries, none on typed / replayed seeds). Maps draw the chalice and

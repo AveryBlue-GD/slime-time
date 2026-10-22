@@ -90,6 +90,10 @@ func _physics_process(_delta: float) -> void:
 	if aiming != "":
 		_aim_step()
 		return
+	if game.random_map_view != null:  # (a SLIME SENSE peek is up: only its key, to close it)
+		if levels.has("sense") and Input.is_action_just_pressed(Abilities.action("sense")):
+			use("sense")
+		return
 	for id: String in levels:
 		if Input.is_action_just_pressed(Abilities.action(id)):
 			if id in AIMED:
@@ -202,6 +206,8 @@ func can_use(id: String) -> bool:
 ## when a wall is right ahead.
 ## `aimed`: the aim mode's direction (8 ways); zero = the facing snapped to the grid (4 ways).
 func use(id: String, aimed := Vector2i.ZERO) -> bool:
+	if id == "sense":
+		return _peek()
 	if not can_use(id):
 		_sfx("click", -10.0)
 		return false
@@ -221,6 +227,25 @@ func use(id: String, aimed := Vector2i.ZERO) -> bool:
 	if id != "kaze":
 		game.spend_slime(Abilities.slime_cost(id))  # (SLIMAKAZE pays on impact)
 	DevLog.log_event(get_tree(), "ability " + id, game)
+	_refresh()
+	return true
+
+
+## SLIME SENSE: opens the maze's map mid-run (Game.toggle_run_map), one peek per use; with the map
+## up it closes it (free).
+func _peek() -> bool:
+	if game.random_map_view != null:
+		game.toggle_run_map()
+		return false
+	if not can_use("sense"):
+		_sfx("click", -10.0)
+		return false
+	game.toggle_run_map()
+	if game.random_map_view == null:
+		return false
+	charges.sense = int(charges.sense) - 1
+	uses += 1
+	DevLog.log_event(get_tree(), "ability sense", game)
 	_refresh()
 	return true
 

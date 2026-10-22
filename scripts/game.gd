@@ -297,6 +297,8 @@ var coin_catches: Array[CoinCatch] = []
 var coins_here := 0
 ## Randomizer: the ticket pickups still out in this maze (see TicketPickup).
 var tickets: Array[TicketPickup] = []
+## True while the MAP ability's mid-run map is up (toggle_run_map).
+var _map_mid_run := false
 ## The goal touching which wins: the chalice in a story level, the TicketGoal in a randomizer maze
 ## (which has no chalice node at all: it is freed in _ready).
 var goal: Area2D
@@ -640,6 +642,7 @@ func _physics_process(delta: float) -> void:
 		last_slime_pos = pos
 	else:
 		var moved := pos.distance_to(last_slime_pos)
+		_idle_drain(moved, delta)
 		if moved > 0.0:
 			last_slime_pos = pos
 			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
@@ -1417,6 +1420,43 @@ func paint_streak(a: Vector2, b: Vector2, radius := 2.0) -> void:
 	var steps := maxi(ceili(a.distance_to(b) / 2.0), 1)
 	for i in steps + 1:
 		_paint_cells(a.lerp(b, float(i) / steps), radius, false)
+
+
+## Standing still drains too (owner, 2026-10-22): Economy.IDLE_DRAIN percent of the meter a second
+## while the slime is on the ground and not moving (not while charging a leap, before its first move,
+## in training, with dev NO DRAIN, or while a SLIME SENSE peek is up: peeking is free).
+func _idle_drain(moved: float, delta: float) -> void:
+	if dev_no_drain or training or _spawn_at != Vector2.INF or random_map_view != null or not Economy.idle_drain_on():
+		return
+	if moved <= 0.0 and slime.state == Slime.State.GLIDE:
+		slime_remaining = maxf(slime_remaining - Economy.IDLE_DRAIN * delta, 0.0)
+
+
+## SLIME SENSE's peek (randomizer mazes): the maze so far over the screen while the run goes on (the
+## slime held still, the meter not draining); its key, Esc or B close it.
+func toggle_run_map() -> void:
+	if random_map_view != null:
+		if _map_mid_run:
+			random_map_view.close()
+		return
+	if finished or _leaving() or progress == null:
+		return
+	var survey := Survey.blank(maze)
+	var before: Dictionary = progress.random_map_for(attempt_key) if is_random() else {}
+	if not before.is_empty():
+		Survey.merge_seen(survey, before.seen)
+	Survey.merge_seen(survey, survey_tiles)
+	survey.goal = survey_goal or before.get("goal", false)
+	if survey.goal:
+		Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
+	survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+	survey.tickets = ticket_cells()
+	_map_mid_run = true
+	slime.aim_lock = true
+	_open_map_view(survey)
+	random_map_view.closed.connect(func() -> void:
+		_map_mid_run = false
+		slime.set_deferred("aim_lock", false))
 
 
 ## ABILITIES: takes `percent` of the meter (not with dev NO DRAIN).

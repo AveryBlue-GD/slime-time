@@ -37,6 +37,7 @@ func _initialize() -> void:
 	await _shake_spans()
 	await _splatter_rule()
 	await _charges()
+	await _sense()
 	await _inputs()
 	await _touch()
 	await _modes()
@@ -602,10 +603,39 @@ func _splatter_rule() -> void:
 
 # ---------------------------------------------------------------- charges
 
+## SLIME SENSE: a peek opens the maze's map mid-run (one use), its key again closes it for free, the
+## slime holds still and the meter doesn't drain while it is up (the idle drain on); level 2 = 2 peeks.
+func _sense() -> void:
+	_state({sense = 2})
+	var game := await _spawn(4)
+	current_scene = game
+	Economy.idle_drain_force = 1
+	game.slime.position += Vector2(1, 0)  # (it has moved: the idle drain applies)
+	await _physics_frames(2)
+	_check(game.abilities.charges.sense == 2, "SLIME SENSE 2: two peeks per attempt")
+	_check(game.abilities.use("sense") and game.random_map_view != null and game.slime.aim_lock and game.abilities.charges.sense == 1,
+		"a peek opens the maze's map mid-run and holds the slime still")
+	var meter: float = game.slime_remaining
+	await _physics_frames(30)
+	_check(absf(game.slime_remaining - meter) < 0.02 and not game.finished, "...the meter doesn't drain while peeking (%.2f -> %.2f)" % [meter, game.slime_remaining])
+	_check(not game.abilities.use("sense") and game.random_map_view == null and game.abilities.charges.sense == 1, "...its key again closes it for free")
+	await _physics_frames(2)
+	_check(not game.slime.aim_lock, "...and the slime can move again")
+	await _physics_frames(30)
+	_check(game.slime_remaining < meter, "standing still in the maze drains again (%.2f -> %.2f)" % [meter, game.slime_remaining])
+	game.abilities.use("sense")
+	game.abilities.use("sense")
+	_check(not game.abilities.use("sense") and game.random_map_view == null and game.abilities.charges.sense == 0, "no peeks left: it doesn't open")
+	Economy.idle_drain_force = 0
+	current_scene = null
+	await _stop(game)
+
+
 func _charges() -> void:
 	for level in [1, 2, 3]:
 		for id in Abilities.ids():
-			_check(Abilities.charges(id, level) == 1, "%s L%d = exactly 1 charge" % [id, level])
+			var want: int = level if id == "sense" else 1  # (SLIME SENSE: 1 / 2 / 3 peeks)
+			_check(Abilities.charges(id, level) == want, "%s L%d = exactly %d charge(s)" % [id, level, want])
 	_check(Abilities.charges("rifle", 0) == 0, "not owned = 0 charges")
 	_state({rifle = 2, splat = 3})
 	var game := await _spawn(4)
@@ -659,7 +689,7 @@ func _inputs() -> void:
 	for id in Abilities.ids():
 		var events := InputMap.action_get_events(Abilities.action(id))
 		keys.append((events[0] as InputEventKey).physical_keycode if not events.is_empty() else 0)
-	_check(keys == [KEY_1, KEY_2, KEY_3], "actions ability_rifle / _splat / _kaze default to 1 / 2 / 3")
+	_check(keys == [KEY_1, KEY_2, KEY_3, KEY_M], "actions ability_rifle / _splat / _kaze / _sense default to 1 / 2 / 3 / M")
 	var game := await _spawn(4)
 	_aim(game, _dir_with(game, 1))
 	Input.action_press("ability_rifle")
@@ -902,8 +932,8 @@ func _store() -> void:
 	var screen: Control = load("res://scenes/upgrades.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
-	_check(screen.page == "abilities" and screen.ability_page.visible and screen.ability_rows.size() == 3 and screen.abilities_tab.text == "TICKETS"
-		and "EARN TICKETS" in screen.hint.text and screen.abilities_tab.has_focus(), "TICKETS tab: 3 abilities, locked before any ticket")
+	_check(screen.page == "abilities" and screen.ability_page.visible and screen.ability_rows.size() == Abilities.LIST.size() and screen.abilities_tab.text == "TICKETS"
+		and "EARN TICKETS" in screen.hint.text and screen.abilities_tab.has_focus(), "TICKETS tab: %d abilities, locked before any ticket" % Abilities.LIST.size())
 	screen.free()
 	progress.tickets = 30
 	progress.tickets_lifetime = 30

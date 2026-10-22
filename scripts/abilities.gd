@@ -33,6 +33,7 @@ const LIST := [
 	{id = "rifle", name = "SLIME SNIPER", tag = "SHOOTS GOO", action = "ability_rifle", key = KEY_1},  # i18n: ignore (English source; shown via display_name)
 	{id = "splat", name = "GOO GRENADE", tag = "BOMB 5X5", action = "ability_splat", key = KEY_2},  # i18n: ignore (English source; shown via display_name)
 	{id = "kaze", name = "SLIMAKAZE", tag = "WALL DASH", action = "ability_kaze", key = KEY_3},  # i18n: ignore (English source; shown via display_name)
+	{id = "sense", name = "SLIME SENSE", tag = "PEEK AT MAP", action = "ability_sense", key = KEY_M},  # i18n: ignore (English source; shown via display_name)
 ]
 
 ## 8x8 icons in the boon icons' palette letters (BoonIcons.PAL): the goo shot streaking into a wall,
@@ -41,6 +42,7 @@ const ART := {
 	"rifle": ["......xW", "....kk.W", "...kHlkW", "lllklmmW", "...kmnkW", "....kk.W", "......xW", "........"],
 	"splat": ["....Yy..", "...ko...", "..kkkk..", ".kHllmk.", "kHelllmk", "kllmmmnk", ".kmmnnk.", "..kkkk.."],
 	"kaze": [".....kWx", "ee..kHWx", "...kllWx", "eeklllWx", "...kmmWx", "ee..kmWx", ".....kWx", "........"],
+	"sense": ["kkkkkkkk", "kxxWxxxk", "kxWWxWxk", "kxxxxWxk", "kWWxWWxk", "kxxxxlxk", "kxWxxxxk", "kkkkkkkk"],
 }
 
 static var _icons := {}
@@ -70,6 +72,8 @@ static func display_name(id: String) -> String:
 		"kaze":
 			# i18n: pun on kamikaze + slime; keep a pun if the language can
 			return Loc.t("ability.kaze.name", "SLIMAKAZE")
+		"sense":
+			return Loc.t("ability.sense.name", "SLIME SENSE")
 	return _item(id).get("name", "")
 
 
@@ -84,6 +88,8 @@ static func tag(id: String) -> String:
 			return Loc.t("ability.splat.desc", "BOMB 5X5")
 		"kaze":
 			return Loc.t("ability.kaze.desc", "WALL DASH")
+		"sense":
+			return Loc.t("ability.sense.desc", "PEEK AT MAP")
 	return _item(id).get("tag", "")
 
 

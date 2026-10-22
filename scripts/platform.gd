@@ -35,6 +35,7 @@ const PAD_BUTTONS := {
 	move_left = [JOY_BUTTON_DPAD_LEFT], move_right = [JOY_BUTTON_DPAD_RIGHT],
 	jump = [JOY_BUTTON_A], interact = [JOY_BUTTON_X], menu = [JOY_BUTTON_START], restart = [JOY_BUTTON_BACK],
 	ability_rifle = [JOY_BUTTON_LEFT_SHOULDER], ability_splat = [JOY_BUTTON_Y], ability_kaze = [JOY_BUTTON_RIGHT_SHOULDER],
+	ability_sense = [JOY_BUTTON_LEFT_STICK],
 	tab_prev = [JOY_BUTTON_LEFT_SHOULDER], tab_next = [JOY_BUTTON_RIGHT_SHOULDER],
 	ui_accept = [JOY_BUTTON_A], ui_cancel = [JOY_BUTTON_B],  # (Godot 4.7's defaults give pads no accept / cancel)
 }
@@ -42,7 +43,7 @@ const PAD_BUTTONS := {
 const PAD_ONLY_ACTIONS := ["tab_prev", "tab_next"]
 ## Prompt names of the pad buttons (plain text; glyph art later).
 const PAD_NAMES := {jump = "A", interact = "X", menu = "START", restart = "VIEW", ui_cancel = "B", ui_accept = "A",
-	ability_rifle = "LB", ability_splat = "Y", ability_kaze = "RB"}
+	ability_rifle = "LB", ability_splat = "Y", ability_kaze = "RB", ability_sense = "LS"}
 
 ## "" = the real platform; otherwise "desktop", "web", "ios", "android" or "steam" (tests and --platform=).
 static var override := ""

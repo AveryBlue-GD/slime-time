@@ -781,13 +781,13 @@ static func ability_hint() -> String:
 		var action := Abilities.action(id)
 		keys.append(Platform.prompt_for(action, Progress.key_name(Progress.bindings.get(action, 0))))
 	if Platform.using_pad():
-		# i18n: {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
-		return Loc.t("upgrades.hint_pad", "PAD {a} {b} {c} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2]})
+		# i18n: {a} {b} {c} {d} = four pad button names (LB, Y, RB, LS...), not translated; bottom hint, max 300px, 1 line
+		return Loc.t("upgrades.hint_pad", "PAD {a} {b} {c} {d} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2], d = keys[3]})
 	if UIKit.touch_active() or Platform.is_mobile_native():
 		# i18n: bottom hint, max 300px, 1 line
 		return Loc.t("upgrades.hint_touch", "TAP THEIR BUTTONS - RANDOM MAZES")
-	# i18n: {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
-	return Loc.t("upgrades.hint_keys", "KEYS {a} {b} {c} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2]})
+	# i18n: {a} {b} {c} {d} = four key names (1, 2, 3, M ...), not translated; bottom hint, max 300px, 1 line
+	return Loc.t("upgrades.hint_keys", "KEYS {a} {b} {c} {d} - RANDOM MAZES", {a = keys[0], b = keys[1], c = keys[2], d = keys[3]})
 
 
 ## The demo's lock on a cost: FULL (the next level / the ability is in the full game).

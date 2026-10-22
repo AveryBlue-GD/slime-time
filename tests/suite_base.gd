@@ -10,6 +10,10 @@ const BASE_MAIN := preload("res://scenes/main.tscn")
 const I18nMode := preload("res://tests/i18n_mode.gd")
 
 var failures := 0
+
+
+func _init() -> void:
+	Economy.idle_drain_force = 0  # (the suites' meter maths predate the idle drain; test_phase1 turns it on)
 ## Throwaway files this run made through throwaway_save(); _result() deletes them.
 var _temp_files: Array[String] = []
 

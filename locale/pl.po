@@ -30,6 +30,11 @@ msgid "SLIMAKAZE"
 msgstr "SLIMAKAZE"
 
 #: scripts/abilities.gd
+msgctxt "ability.sense.name"
+msgid "SLIME SENSE"
+msgstr ""
+
+#: scripts/abilities.gd
 msgctxt "ability.rifle.desc"
 msgid "SHOOTS GOO"
 msgstr "PLUJE MAZIĄ"
@@ -45,6 +50,11 @@ msgstr "BOMBA 3X3"
 msgctxt "ability.kaze.desc"
 msgid "WALL DASH"
 msgstr "TARAN ŚCIAN"
+
+#: scripts/abilities.gd
+msgctxt "ability.sense.desc"
+msgid "PEEK AT MAP"
+msgstr ""
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
@@ -2316,6 +2326,11 @@ msgctxt "keys.ability_kaze"
 msgid "SLIMAKAZE"
 msgstr "SLIMAKAZE"
 
+#: scripts/ui/key_controls.gd
+msgctxt "keys.ability_sense"
+msgid "SLIME SENSE"
+msgstr ""
+
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/key_controls.gd
@@ -2886,11 +2901,13 @@ msgctxt "upgrades.hint_tickets_locked"
 msgid "EARN TICKETS IN THE RANDOMIZER FIRST"
 msgstr "NAJPIERW ZDOBĄDŹ BILETY W TRYBIE LOSOWYM"
 
-#. {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
+#. {a} {b} {c} {d} = four pad button names (LB, Y, RB, LS...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
+#, fuzzy
+#| msgid "PAD {a} {b} {c} - RANDOM MAZES"
 msgctxt "upgrades.hint_pad"
-msgid "PAD {a} {b} {c} - RANDOM MAZES"
+msgid "PAD {a} {b} {c} {d} - RANDOM MAZES"
 msgstr "PAD {a} {b} {c} - LOSOWE LABIRYNTY"
 
 #. bottom hint, max 300px, 1 line
@@ -2900,11 +2917,13 @@ msgctxt "upgrades.hint_touch"
 msgid "TAP THEIR BUTTONS - RANDOM MAZES"
 msgstr "DOTKNIJ ICH PRZYCISKÓW - LOSOWE LABIRYNTY"
 
-#. {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
+#. {a} {b} {c} {d} = four key names (1, 2, 3, M ...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
+#, fuzzy
+#| msgid "KEYS {a} {b} {c} - RANDOM MAZES"
 msgctxt "upgrades.hint_keys"
-msgid "KEYS {a} {b} {c} - RANDOM MAZES"
+msgid "KEYS {a} {b} {c} {d} - RANDOM MAZES"
 msgstr "KLAWISZE {a} {b} {c} - LOSOWE LABIRYNTY"
 
 #. upgrade row cost column (demo build), max 40px, 1 line

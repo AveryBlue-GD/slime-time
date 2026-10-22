@@ -81,6 +81,17 @@ static func random_daily_cap_on() -> bool:
 ## RANDOM_TICKET_PAY each when touched; a maze's taken pickups stay gone on its retries (in memory, per
 ## seed code), a typed / replayed seed has none, and an assisted or dev-toggled run's pay nothing.
 const RANDOM_CHALICE := true
+## Standing still drains the meter (owner, 2026-10-22; Game._idle_drain): IDLE_DRAIN percent a second
+## in any level once the slime has moved (not charging, not in training, never in the hub, paused or
+## while a SLIME SENSE peek is up). `idle_drain_force` (-1 follow the const, 0 off, 1 on) is a test
+## hook: suite_base turns it off for every suite (their meter maths predate it); test_phase1 tests it.
+const IDLE_DRAIN_ON := true
+const IDLE_DRAIN := 0.5
+static var idle_drain_force := -1
+
+
+static func idle_drain_on() -> bool:
+	return IDLE_DRAIN_ON if idle_drain_force < 0 else idle_drain_force == 1
 ## Share of randomizer mazes (seeded per maze) given a second way to the goal (MazeGenerator.
 ## add_second_route; owner, 2026-10-22: usually, not always; some have one through their own loops).
 const RANDOM_SECOND_ROUTE_SHARE := 0.85
@@ -359,6 +370,9 @@ const ABILITIES := {
 	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.0},
 	"splat": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 4.0},
 	"kaze": {costs = [50, 90, 140], charges = [1, 1, 1], slime = 30.0},
+	# SLIME SENSE (owner, 2026-10-22): peeks at the maze's map mid-run (Game.toggle_run_map), 1 / 2 / 3
+	# per attempt by level; free, and the meter doesn't drain while it is up.
+	"sense": {costs = [30, 60, 100], charges = [1, 2, 3], slime = 0.0},
 }
 ## Abilities PASS OVER WALLS (owner buff, 2026-10-15): the rifle shot pierces them, the bomb is
 ## lobbed over them, the SLIMAKAZE splatter lands in the corridors beyond (only the dash stops at a

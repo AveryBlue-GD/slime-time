@@ -47,7 +47,7 @@ signal pause_tapped
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
 ## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
-const ABILITY_SLOTS: Array[Vector2] = [Vector2(207, 150), Vector2(207, 122), Vector2(181, 136)]
+const ABILITY_SLOTS: Array[Vector2] = [Vector2(207, 150), Vector2(207, 122), Vector2(181, 136), Vector2(181, 108)]
 const ABILITY_RADIUS := 11.0
 const ABILITY_HIT := ABILITY_RADIUS + 2.0
 ## With ability buttons shown, JUMP catches every touch at x >= JUMP_ZONE_X (the full height, the

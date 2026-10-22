@@ -163,7 +163,7 @@ func _screen() -> void:
 	await process_frame
 	await process_frame
 	_check(screen.tickets_tab == null and screen.ticket_page == null and screen.ticket_rows.is_empty()
-		and screen.abilities_tab != null and screen.abilities_tab.text == "TICKETS" and screen.ability_rows.size() == 3
+		and screen.abilities_tab != null and screen.abilities_tab.text == "TICKETS" and screen.ability_rows.size() == Abilities.LIST.size()
 		and screen.page == "coins" and screen.coin_page.visible and screen.rows.size() == 3,
 		"off: the cauldron is the three coin rows and the TICKETS tab holds the abilities (no workshop page)")
 	var bars := {}

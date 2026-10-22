@@ -23,7 +23,7 @@ const TUTORIAL_HUB := 8
 const DEFAULT_KEYS := {
 	move_up = KEY_W, move_down = KEY_S, move_left = KEY_A, move_right = KEY_D,
 	jump = KEY_SPACE, restart = KEY_R, interact = KEY_F,
-	ability_rifle = KEY_1, ability_splat = KEY_2, ability_kaze = KEY_3,
+	ability_rifle = KEY_1, ability_splat = KEY_2, ability_kaze = KEY_3, ability_sense = KEY_M,
 }
 ## Keys an ability action (Abilities v1) takes when a save from before them already uses its default
 ## for another action (first free one), so an older custom binding is never reset.

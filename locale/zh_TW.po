@@ -30,6 +30,11 @@ msgid "SLIMAKAZE"
 msgstr "史萊瑪卡茲"
 
 #: scripts/abilities.gd
+msgctxt "ability.sense.name"
+msgid "SLIME SENSE"
+msgstr ""
+
+#: scripts/abilities.gd
 msgctxt "ability.rifle.desc"
 msgid "SHOOTS GOO"
 msgstr "發射黏液"
@@ -45,6 +50,11 @@ msgstr "3X3爆破"
 msgctxt "ability.kaze.desc"
 msgid "WALL DASH"
 msgstr "穿牆衝刺"
+
+#: scripts/abilities.gd
+msgctxt "ability.sense.desc"
+msgid "PEEK AT MAP"
+msgstr ""
 
 #: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
@@ -2282,6 +2292,11 @@ msgctxt "keys.ability_kaze"
 msgid "SLIMAKAZE"
 msgstr "史萊瑪卡茲"
 
+#: scripts/ui/key_controls.gd
+msgctxt "keys.ability_sense"
+msgid "SLIME SENSE"
+msgstr ""
+
 #. max 296px, 16 px font
 #. budget: max 296px
 #: scripts/ui/key_controls.gd
@@ -2843,11 +2858,13 @@ msgctxt "upgrades.hint_tickets_locked"
 msgid "EARN TICKETS IN THE RANDOMIZER FIRST"
 msgstr "先去隨機模式賺獎券"
 
-#. {a} {b} {c} = three pad button names (A, X, Y...), not translated; bottom hint, max 300px, 1 line
+#. {a} {b} {c} {d} = four pad button names (LB, Y, RB, LS...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
+#, fuzzy
+#| msgid "PAD {a} {b} {c} - RANDOM MAZES"
 msgctxt "upgrades.hint_pad"
-msgid "PAD {a} {b} {c} - RANDOM MAZES"
+msgid "PAD {a} {b} {c} {d} - RANDOM MAZES"
 msgstr "手把 {a} {b} {c} - 限隨機迷宮"
 
 #. bottom hint, max 300px, 1 line
@@ -2857,11 +2874,13 @@ msgctxt "upgrades.hint_touch"
 msgid "TAP THEIR BUTTONS - RANDOM MAZES"
 msgstr "點對應的按鈕 - 限隨機迷宮"
 
-#. {a} {b} {c} = three key names (1, 2, 3 ...), not translated; bottom hint, max 300px, 1 line
+#. {a} {b} {c} {d} = four key names (1, 2, 3, M ...), not translated; bottom hint, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/upgrades_screen.gd
+#, fuzzy
+#| msgid "KEYS {a} {b} {c} - RANDOM MAZES"
 msgctxt "upgrades.hint_keys"
-msgid "KEYS {a} {b} {c} - RANDOM MAZES"
+msgid "KEYS {a} {b} {c} {d} - RANDOM MAZES"
 msgstr "按鍵 {a} {b} {c} - 限隨機迷宮"
 
 #. upgrade row cost column (demo build), max 40px, 1 line

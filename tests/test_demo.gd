@@ -557,8 +557,8 @@ func _check_screens() -> void:
 		for word in ["HEAT", "ENDLESS", "JELLY", "HATS", "LOOP", "HARD MODE", "NEW ABILITIES"]:
 			if word in text:
 				banned.append("%s (%s)" % [text, word])
-	_check(banned.is_empty() and "2 MORE ABILITIES" in lines and "9 MORE HARD LEVELS" in lines
-		and lines[0] == "THE FULL GAME ADDS 2 ABILITIES AND THE SHOP", "...teaser lines only name full-game content %s %s" % [lines, banned])
+	_check(banned.is_empty() and "3 MORE ABILITIES" in lines and "9 MORE HARD LEVELS" in lines
+		and lines[0] == "THE FULL GAME ADDS 3 ABILITIES AND THE SHOP", "...teaser lines only name full-game content %s %s" % [lines, banned])
 	var inside := true
 	for control: Control in [end.keep_button, end.arrows[0], end.arrows[1]]:
 		var rect := control.get_global_rect()
