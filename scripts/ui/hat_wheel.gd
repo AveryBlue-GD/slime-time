@@ -480,6 +480,8 @@ func _refresh_wheel() -> void:
 		result.text = "" if _spin_key == "" else Loc.t("wheel.key_to_spin", "{key} TO SPIN", {key = _spin_key})
 	# The count at the top: what is still on the wheel (the prize being spun for counts until it lands).
 	var left := Progress.hats_left().size() + (1 if spinning else 0)
+	if Platform.is_demo():  # (the demo gives out only Demo.HATS_MAX hats)
+		left = mini(left, maxi(Demo.HATS_MAX - Progress.hats_owned.size() + (1 if spinning else 0), 0))
 	prizes_left.visible = left > 0
 	# i18n: the top line of the prize wheel, {count} = prizes still on the wheel; max 200px, 1 line
 	prizes_left.text = Loc.n("wheel.prizes_left", "{count} PRIZE TO WIN", "{count} PRIZES TO WIN", left)
