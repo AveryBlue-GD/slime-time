@@ -24,6 +24,11 @@ extends Control
 ## Esc / B closes it.
 
 const TILE_SIZE := Vector2(40, 30)
+## The HUB page's AUTO tile: its word in a band at the top, the worn slime this far below the tile's
+## centre (other tiles: 2 px above it).
+const AUTO_LABEL_TOP := 3
+const AUTO_LABEL_HEIGHT := 9
+const AUTO_SLIME_DROP := 4
 const GRID_COLUMNS := 7
 const GRID_GAP := 3
 const GRID_TOP := 23
@@ -525,12 +530,18 @@ func _make_tile(id: String) -> Button:
 func _make_hub_tile(id: String) -> Button:
 	var tile := UIKit.make_button("", func() -> void: _on_hub_tile(id), TILE_SIZE)
 	if id == "":
+		# AUTO: the slime you wear now (the hub follows it), its word centred over it.
+		var worn: String = Progress.selected_skin
+		var slime := UIKit.make_slime_preview(_base_color(worn), 1, worn == Skins.RAINBOW, Progress.jelly, worn == Skins.STOPWATCH)
+		slime.position = TILE_SIZE / 2.0 + Vector2(0, AUTO_SLIME_DROP)
+		tile.add_child(slime)
 		# i18n: wardrobe HUB page tile (the hub follows the worn skin), max 32px, 1 line
 		var label := UIKit.make_label(Loc.t("skins.hub_auto", "AUTO"), UIKit.FONT, UIKit.TEXT)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.size = TILE_SIZE
 		tile.add_child(label)
+		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		label.offset_top = AUTO_LABEL_TOP
+		label.offset_bottom = AUTO_LABEL_TOP + AUTO_LABEL_HEIGHT
 	else:
 		var color: Color = Progress.hub_custom if id == Skins.CUSTOM and Progress.hub_skin == Skins.CUSTOM else _base_color(id)
 		var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, false, id == Skins.STOPWATCH)
