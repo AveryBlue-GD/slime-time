@@ -132,6 +132,16 @@ func _initialize() -> void:
 		"...one station round: the next one comes to the back, facing you")
 	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
 	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)
+	# R turns the room from anywhere (away from the wheel too)
+	hub.slime.position = HubScript.CENTER + Vector2(0, 20)
+	await _physics_frames(2)
+	var turned_from: float = hub.turn
+	Input.action_press("restart")
+	await _physics_frames(2)
+	Input.action_release("restart")
+	_check(hub.turning and hub.near.is_empty() and hub.slime.state == Slime.State.GLIDE, "R turns the room from anywhere in the hub")
+	await _physics_frames(int(HubScript.TURN_TIME * 60) + 4)
+	_check(not hub.turning and not is_equal_approx(hub.turn, turned_from), "...one station round (turn %.2f -> %.2f)" % [turned_from, hub.turn])
 	hub.free()
 
 	# --- Bumping into things is smooth: no lane tugging, no clipping or jumps

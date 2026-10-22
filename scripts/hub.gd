@@ -1417,7 +1417,11 @@ func _physics_process(delta: float) -> void:
 	var touch := _touch_controls != null and _touch_controls.visible
 	slime.can_charge = near.is_empty() or not touch
 	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
-	if not near.is_empty() and used and slime.state == Slime.State.GLIDE:
+	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
+		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
+		# 2026-10-22); holding left turns it the other way.
+		turn_room(-1 if Input.is_action_pressed("move_left") else 1)
+	elif not near.is_empty() and used and slime.state == Slime.State.GLIDE:
 		if near.id == "rotor":
 			turn_room(-1 if Input.is_action_pressed("move_left") else 1)
 		else:
