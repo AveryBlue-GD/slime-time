@@ -439,6 +439,14 @@ msgctxt "hud.area.descent"
 msgid "DESCENT  FLOOR {floor}"
 msgstr "ดำดิ่ง  ชั้น {floor}"
 
+#. HUD area line, max 296px, 1 line (the demo's last maze: a taste of the full game)
+#. line under the area name (the demo's preview maze), max 296px
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.preview"
+msgid "FULL GAME PREVIEW"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
@@ -534,6 +542,13 @@ msgctxt "result.seed"
 msgid "SEED {code}"
 msgstr "ซีด {code}"
 
+#. result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.preview_cleared"
+msgid "PREVIEW CLEARED!"
+msgstr ""
+
 #. result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
@@ -624,6 +639,11 @@ msgctxt "result.choice.restart"
 msgid "RESTART"
 msgstr "เริ่ม​ใหม่"
 
+#: scripts/game.gd
+msgctxt "result.choice.continue"
+msgid "CONTINUE"
+msgstr "ไป​ต่อ"
+
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 62px, lines 1
@@ -664,11 +684,6 @@ msgid "REPLAY MAZE"
 msgstr "เล่น​ด่าน​ซ้ำ"
 
 #: scripts/game.gd
-msgctxt "result.choice.continue"
-msgid "CONTINUE"
-msgstr "ไป​ต่อ"
-
-#: scripts/game.gd
 msgctxt "result.choice.replay"
 msgid "REPLAY"
 msgstr "เล่น​ซ้ำ"
@@ -677,6 +692,30 @@ msgstr "เล่น​ซ้ำ"
 msgctxt "result.choice.next_level"
 msgid "NEXT LEVEL"
 msgstr "ด่าน​ถัดไป"
+
+#. the demo's preview card (its last maze), max 296px each line, 1 line each
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "preview.title"
+msgid "FULL GAME PREVIEW"
+msgstr ""
+
+#: scripts/game.gd
+msgctxt "preview.abilities"
+msgid "EVERY ABILITY UNLOCKED"
+msgstr ""
+
+#: scripts/game.gd
+msgctxt "preview.look"
+msgid "A RANDOM LOOK FROM THE FULL GAME"
+msgstr ""
+
+#. button, max 76px
+#. budget: max 76px
+#: scripts/game.gd
+msgctxt "preview.play"
+msgid "PLAY"
+msgstr ""
 
 #: scripts/hats.gd
 msgctxt "dye.cherry"

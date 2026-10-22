@@ -472,6 +472,8 @@ func _quit() -> void:
 		get_parent().quit_descent()  # DESCENT: the run is banked as it stands (see game.quit_descent)
 	var transition := get_node_or_null("/root/Transition")
 	var target := UIKit.HUB_SCENE
+	if get_parent().get("preview") == true:
+		target = get_parent().preview_exit()  # (the demo's preview maze: QUIT goes on to the end screen)
 	if training:
 		if transition != null and transition.busy:
 			return  # a screen change is already underway (the win row's HUB): the training ends once

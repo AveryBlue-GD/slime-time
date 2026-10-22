@@ -294,6 +294,12 @@ var coins: Array[Coin] = []
 var coin_catches: Array[CoinCatch] = []
 ## How many coins this level hides in total.
 var coins_here := 0
+## The demo's FULL GAME PREVIEW maze (Demo.PREVIEW, Progress.begin_demo_preview): a randomizer maze with no
+## attempts, pickups, pay or records; its card first (the first load only), and its win or dry-up offers only
+## CONTINUE, into the randomizer's end screen (as does the pause menu's QUIT).
+var preview := false
+## True while the preview's card is up (the run waits under it: no clock, no drain).
+var preview_card_up := false
 ## Randomizer: the ticket pickups still out in this maze (see TicketPickup).
 var tickets: Array[TicketPickup] = []
 ## True while the MAP ability's mid-run map is up (toggle_run_map).
@@ -396,6 +402,7 @@ func _ready() -> void:
 			descent_run = progress.descent_run
 		elif progress and progress.mode == progress.MODE_RANDOM:
 			random_seed = progress.random_seed
+			preview = progress.in_demo_preview()
 		else:
 			level = progress.current_level if progress else 1
 	hard_mode = progress.hard_mode if progress and not descent and not training else false  # Descent, training: normal rules only
@@ -427,7 +434,10 @@ func _ready() -> void:
 		var maze_n: int = (progress.randoms_cleared if progress else 0) + 1
 		# i18n: HUD area line, max 296px, 1 line; {n} = which random maze this is; double spaces are
 		# spacing, not words. CODE LV{code} = the slime level the maze code was made at, YOU {own} = the player's.
-		if hard_mode:
+		if preview:
+			# i18n: HUD area line, max 296px, 1 line (the demo's last maze: a taste of the full game)
+			hud.set_level_text(Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
+		elif hard_mode:
 			hud.set_level_text(Loc.t("hud.area.random_hard", "RANDOM MAZE #{n}  HARD", {n = maze_n}))
 		elif seed_level != own_level:
 			hud.set_level_text(Loc.t("hud.area.random_code", "RANDOM MAZE #{n}  CODE LV{code} (YOU {own})",
@@ -517,7 +527,9 @@ func _ready() -> void:
 		# i18n: line under the area name, max 296px
 		hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.floor", "FLOOR {floor}", {floor = int(descent_run.floor)}))
 	else:
-		hud.show_area_name(Themes.display_name(theme), "" if is_random() else Story.level_line(level))
+		# i18n: line under the area name (the demo's preview maze), max 296px
+		var area_line := Loc.t("hud.area.preview", "FULL GAME PREVIEW") if preview else ("" if is_random() else Story.level_line(level))
+		hud.show_area_name(Themes.display_name(theme), area_line)
 	_start_ambience()
 	_build_overlays()
 	_place_coins(config.seed)
@@ -568,6 +580,8 @@ func _ready() -> void:
 		set_dev_no_drain(progress.dev_no_drain)
 	_ease_in.call_deferred()
 	_arm_survey.call_deferred()
+	if preview and not progress.preview_card_shown:
+		_show_preview_card()
 	if descent:
 		if progress.descent_active() and int(descent_run.cleared) >= int(descent_run.floor):
 			# A run resumed on its boon card (saved right after clearing this floor, D6): the floor stays
@@ -631,7 +645,7 @@ func _physics_process(delta: float) -> void:
 	_relight(pos)
 	if training:
 		_training_lines_step(delta)
-	if finished:
+	if finished or preview_card_up:
 		return
 	_survey_step(pos)
 	run_time += delta
@@ -1978,7 +1992,7 @@ func _make_goal() -> void:
 ## Randomizer: counts this start of the maze (an attempt) and shows it with what a win would pay.
 ## Runs in _ready, so the restarted run's very first frame already shows the new count.
 func _count_attempt() -> void:
-	if not is_random() or progress == null:
+	if not is_random() or progress == null or preview:  # (the preview counts no attempts: no pod, pickups or map)
 		return
 	attempt_key = progress.random_attempt_key(random_seed, seed_level, hard_mode)
 	attempt = progress.begin_random_attempt(attempt_key)
@@ -2428,7 +2442,11 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
 			Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}),  # i18n: max 296px; {code} = a maze code
 		])
-		if progress and _is_running_scene():
+		if preview:
+			# i18n: result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
+			title = Loc.t("result.preview_cleared", "PREVIEW CLEARED!")
+			random_text = Loc.lines([title, Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})])
+		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
 			var pastel_skin := Skins.pastel_unlocked_at(progress.randoms_won)
@@ -2588,7 +2606,9 @@ func _offer_retry() -> void:
 			_training_line("")
 		training_beat("dry")
 		return
-	if is_random():
+	if preview:
+		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), leave_preview]], 0)
+	elif is_random():
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], [Loc.t("result.choice.map", "MAP"), open_random_map]], 0)
@@ -2747,7 +2767,9 @@ func _offer_next_steps() -> void:
 		_training_line("")
 		training_beat("chalice")
 		return
-	if is_random():
+	if preview:
+		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), leave_preview]], 0)
+	elif is_random():
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
@@ -2760,6 +2782,48 @@ func _offer_next_steps() -> void:
 	else:
 		hud.show_choices([[Loc.t("result.choice.replay", "REPLAY"), replay], [Loc.t("result.choice.next_level", "NEXT LEVEL"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
+
+
+## The preview's card over its first frame: what this maze is, then PLAY (the run waits under it).
+func _show_preview_card() -> void:
+	progress.preview_card_shown = true
+	preview_card_up = true
+	slime.frozen = true
+	_card_touch = touch_controls.visible
+	touch_controls.hide_controls()
+	# i18n: the demo's preview card (its last maze), max 296px each line, 1 line each
+	hud.show_message(Loc.lines([Loc.t("preview.title", "FULL GAME PREVIEW"),
+		Loc.t("preview.abilities", "EVERY ABILITY UNLOCKED"),
+		Loc.t("preview.look", "A RANDOM LOOK FROM THE FULL GAME")]))
+	hud.show_choices([[Loc.t("preview.play", "PLAY"), _close_preview_card]], 0)  # i18n: button, max 76px
+
+
+var _card_touch := false
+
+
+func _close_preview_card() -> void:
+	if not preview_card_up or _leaving():
+		return
+	preview_card_up = false
+	hud.clear_result()
+	slime.frozen = false
+	touch_controls.visible = _card_touch
+	hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
+
+
+## The preview is over (its CONTINUE): the randomizer's end screen (DemoEnd puts the save's own state back).
+func leave_preview() -> void:
+	if _leaving():
+		return
+	DevLog.route(get_tree(), "CONTINUE (demo preview end)", self)
+	load(DEMO_END_SCRIPT).open(get_tree(), "random")
+
+
+## Where the pause menu's QUIT goes from the preview: the randomizer's end screen (its reason set here).
+func preview_exit() -> String:
+	var end: GDScript = load(DEMO_END_SCRIPT)
+	end.set("from", "random")
+	return end.get("SCENE")  # i18n: ignore (a constant's name)
 
 
 ## Back to the hub, in front of the station this run came from (the archway or the portal).
@@ -2790,6 +2854,12 @@ func play_next() -> void:
 				and not progress.has_seen_story(Demo.RANDOM_END_SEEN_BIT):
 			# The demo's RANDOM_WINS-th randomizer win (or the first NEW MAZE after it, if the player left by
 			# HUB / REPLAY on that win): the end screen's pitch (endless mazes), once.
+			if progress.demo_preview_due():
+				# First the FULL GAME PREVIEW maze (Demo.PREVIEW); its CONTINUE opens the end screen.
+				DevLog.route(get_tree(), "NEW MAZE (demo preview)", self)
+				progress.begin_demo_preview()
+				get_tree().reload_current_scene()
+				return
 			DevLog.route(get_tree(), "NEW MAZE (demo end)", self)
 			load(DEMO_END_SCRIPT).open(get_tree(), "random")
 			return

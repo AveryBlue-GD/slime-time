@@ -228,6 +228,7 @@ const NOTICE_MIN_PAD := UIKit.GAP_M + 1
 
 
 func _ready() -> void:
+	Progress.end_demo_preview()  # (a safety net: the demo's preview maze never lasts past the game scene)
 	Progress.discard_random_map()  # (back in the hub: the random maze's map is gone)
 	var tour_due: bool = Progress.hub_tour_due()
 	if tour_due:

@@ -966,6 +966,16 @@ func show_record(seconds: float) -> void:
 	_queue_fit()
 
 
+## Takes the message and the button row away again (the demo preview's card, once PLAY is pressed).
+func clear_result() -> void:
+	message.visible = false
+	_message_text = ""
+	_choice_root.visible = false
+	for button in choice_buttons:
+		button.queue_free()
+	choice_buttons.clear()
+
+
 ## Shows a row of buttons, each [text, Callable]; button `focus` (default: the last) gets
 ## keyboard focus.
 func show_choices(options: Array, focus := -1) -> void:

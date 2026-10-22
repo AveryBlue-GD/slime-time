@@ -113,6 +113,15 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   `randoms_won`: a dry-up or a fresh portal visit gave the same Dark Dungeon maze and start again, owner bug report.)
   Only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
   pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 4; on the web (left out): FULL GAME.
+- **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the `RANDOM_WINS`-th win's NEW MAZE leads first into
+  one hand-picked maze (`PREVIEW_SEED` 1854 at MORE SLIME `PREVIEW_LEVEL` 3: Sunken Shrine, 33 x 20 cells, a perfect
+  route uses ~64% of the meter) with every ability at its top level and a random full-game look (a skin past the
+  demo's, opaque / jelly / pastel, a hat, sometimes dyed, a trail, a map paper). A card (FULL GAME PREVIEW / PLAY)
+  comes first (once; RESTART goes straight in); no ticket pickups, attempts, pod, pay or records; its win or dry-up
+  offers only CONTINUE and the pause menu's QUIT also goes on to the randomizer's end screen. Nothing borrowed
+  reaches the save: `Progress.begin_demo_preview` saves the seen bit (`PREVIEW_SEEN_BIT` 16: once per save), keeps a
+  `_write()` of the whole state and writes nothing until `end_demo_preview` (DemoEnd, the hub and the title call it)
+  reads that back. Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";
   station dimmed, prompt LOCKED, using it says CLEAR LEVEL 4, tour line SPIN FOR HATS AFTER LEVEL 4, so no free-spin
   promise before it opens). Then as in the full game: the first spin free, later ones cost tickets from the mazes,
