@@ -177,9 +177,8 @@ var hat_wheel: HatWheel
 ## The trapdoor's confirm panel (a dim layer, the panel, QUIT and BACK).
 var quit_menu: Control
 var quit_button: Button
-## Where the dialogs' panels are in the current language (QUIT_PANEL / PORTAL_PANEL / RESUME_PANEL in
-## English; wider or taller for a longer text or a taller script).
-var quit_rect := QUIT_PANEL
+## Where the dialogs' panels are in the current language (PORTAL_PANEL / RESUME_PANEL in English;
+## wider or taller for a longer text or a taller script).
 var resume_rect := RESUME_PANEL
 var resume_panel: Panel
 var portal_panel: Panel
@@ -674,7 +673,7 @@ func _build_quit_menu(root: Control) -> void:
 	quit_menu.add_child(quit_button)
 	back_button = UIKit.make_button(Loc.t("common.back", "BACK"), close_quit_menu, Vector2(56, UIKit.button_h()))
 	quit_menu.add_child(back_button)
-	quit_rect = _layout_pair_dialog(panel, QUIT_PANEL, lines, [quit_button, back_button])
+	_layout_pair_dialog(panel, QUIT_PANEL, lines, [quit_button, back_button])
 	quit_button.focus_next = quit_button.get_path_to(back_button)
 	back_button.focus_next = back_button.get_path_to(quit_button)
 

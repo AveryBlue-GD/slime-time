@@ -30,9 +30,8 @@ var done := false
 ## Nothing more to show (skipped, a station used, or the room turned on past the end).
 var over := false
 var skipped := false
-## Seconds since the tour began, and when it was done (-1 = not yet).
+## Seconds since the tour began.
 var time := 0.0
-var end_time := -1.0
 var hint_shown := false
 var hint_on := false
 var _hint_t := 0.0
@@ -153,7 +152,6 @@ func _on_room_turned(id: String, direction: int) -> void:
 
 func _finish() -> void:
 	done = true
-	end_time = time
 	_layer.visible = false
 	Progress.finish_hub_tour()
 

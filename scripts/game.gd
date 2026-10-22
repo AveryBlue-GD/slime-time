@@ -240,7 +240,6 @@ var elapsed := 0.0
 var last_jump_cost := 0.0
 var skin_color: Color = Skins.get_preset(Skins.DEFAULT).color
 var goo := Color(0, 0, 0)
-var goo_dark := Color(0, 0, 0)
 ## The worn trail style (Progress.trail_style, Cosmetics) and how it paints (Cosmetics.trail_look);
 ## `trail_travel` = px moved on the ground this run (the CANDY style's stripes).
 var trail_style := Cosmetics.DEFAULT_TRAIL
@@ -495,7 +494,6 @@ func _ready() -> void:
 	atmosphere_tint = Skins.atmosphere_color(progress.active_skin(), skin_color) if progress else Color(0, 0, 0, 0)
 	var shades := Skins.shades(skin_color)
 	goo = Color(shades.mid, GOO_ALPHA / 255.0)
-	goo_dark = Color(shades.dark, GOO_ALPHA / 255.0)
 	trail_style = progress.trail_style if progress else Cosmetics.DEFAULT_TRAIL
 	trail_look = Cosmetics.trail_look(trail_style, skin_color, rainbow)
 	slime.apply_skin(skin_color, rainbow, stopwatch)

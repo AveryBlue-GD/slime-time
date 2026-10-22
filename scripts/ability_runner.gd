@@ -29,7 +29,6 @@ var uses := 0
 var flying: Array[Node2D] = []
 var dashing := false
 var _dash_painted := Vector2.ZERO
-var _dash_dir := Vector2i.ZERO
 var _kaze_uses := 0
 ## AIM MODE (owner, 2026-10-22): the SLIME SNIPER / GOO GRENADE key doesn't fire at once; the slime
 ## stops (Slime.aim_lock), the direction keys / stick turn the aim (4 ways, shown by the guide drawn
@@ -342,7 +341,6 @@ func _start_kaze(tile: Vector2i, dir: Vector2i) -> bool:
 	if stop == tile:
 		return false  # a wall right ahead: no room to build up speed
 	dashing = true
-	_dash_dir = dir
 	_dash_painted = slime.position
 	slime.dash(Abilities.dash_point(stop, dir), Vector2(dir), Economy.KAZE_SPEED, Economy.KAZE_STUN)
 	_sfx("jump", -2.0, 0.6)
