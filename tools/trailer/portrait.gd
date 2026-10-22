@@ -26,6 +26,9 @@ extends Node
 ##           (skin incl. jelly / pastel / CHAMELEON colors, hat and dye, trail) through FLIP_PLAN's
 ##           phases (skins only, hats, dyes, trails, CHAMELEON colors, then everything, faster and
 ##           faster), with the trail strip and the look's names under the stage. Seeded (--rng).
+##           The dyes show on the WIZARD HAT (worn on through the trails and CHAMELEON phases).
+##           --plan-from=F starts FLIP_PLAN at frame F (a later stretch as its own take, e.g. under a
+##           3-line caption with --top=92); --no-names hides the names (too fast to read there).
 ## Promo rule (owner, 2026-10-20): the RAINBOW and STOPWATCH skins are only ever shown as the skins
 ## screen's locked silhouettes (one story coin is taken out of the count, so the line under the stage
 ## is true), and never worn.
@@ -398,6 +401,7 @@ const FLIP_PLAN := [
 const FLIP_STAGE := Vector2(172, 130)
 const FLIP_PX := 4
 const NEVER := 1 << 30
+const DYE_HAT := "wizard"
 ## The secret RAINBOW and STOPWATCH (and the pastel rainbow) are never worn (the promo rule).
 const PRESET_IDS := ["lime", "mint", "lemon", "ocean", "grape", "crimson", "frost", "shadow", "bubblegum", "ember"]
 
@@ -428,6 +432,8 @@ func _build_flip() -> void:
 	skin_line = _label("", UIKit.TEXT, y)
 	hat_line = _label("", UIKit.GOLD, y + 9)
 	trail_line = _label("", UIKit.TEXT_DIM, y + 18)
+	for line in [skin_line, hat_line, trail_line]:
+		line.visible = not opts.has("no-names")
 	_show_look()
 
 
@@ -449,7 +455,7 @@ func _flip_phase(at: int) -> Array:
 func _flip_tick() -> void:
 	if frame < _next_flip:
 		return
-	var phase := _flip_phase(frame)
+	var phase := _flip_phase(frame + _int("plan-from", 0))
 	var every: int = phase[1]
 	if frame > 1:
 		_flip(phase[0])
@@ -506,6 +512,9 @@ func _flip(what: String) -> void:
 		"hat":
 			_roll_hat()
 		"dye":
+			if look.hat != DYE_HAT:
+				look.hat = DYE_HAT
+				look.dye = ""
 			_roll_dye()
 		"trail":
 			look.trail = _pick(_trails(), look.trail)

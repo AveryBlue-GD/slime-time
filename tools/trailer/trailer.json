@@ -259,10 +259,23 @@
    "note": "portrait 'how many looks': the slime's look flips through skins, hats, dyes, trails, CHAMELEON colors, then everything faster and faster (portrait.gd FLIP_PLAN)",
    "scene": "portrait",
    "take": "flip",
-   "frames": 1640,
+   "frames": 1180,
    "args": [
     "--skin=ocean",
     "--rng=7"
+   ]
+  },
+  "flip_fast": {
+   "note": "the flip take's last stretch (FLIP_PLAN from frame 1170: everything flips, faster and faster) under a 3-line caption (--top=92), names hidden",
+   "scene": "portrait",
+   "take": "flip",
+   "frames": 480,
+   "args": [
+    "--skin=ocean",
+    "--rng=7",
+    "--plan-from=1170",
+    "--top=92",
+    "--no-names"
    ]
   }
  },
@@ -782,17 +795,19 @@
      ]
     },
     {
-     "take": "flip",
-     "in": 19.5,
+     "take": "flip_fast",
+     "in": 0.0,
      "dur": 5.0,
      "color": "gold",
      "caption": [
-      "272,544 LOOKS"
+      "272,544",
+      "DIFFERENT",
+      "LOOKS"
      ]
     },
     {
-     "take": "flip",
-     "in": 24.5,
+     "take": "flip_fast",
+     "in": 5.0,
      "dur": 2.5,
      "color": "white",
      "caption": [
