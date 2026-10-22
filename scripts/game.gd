@@ -2491,9 +2491,54 @@ var random_map_view: RandomMapView
 func open_random_map() -> void:
 	if _leaving() or progress == null:
 		return
-	var survey: Dictionary = progress.random_map_for(attempt_key)
+	var survey: Dictionary = dev_full_map() if dev_bright else progress.random_map_for(attempt_key)
 	if survey.is_empty():
 		return
+	_open_map_view(survey)
+
+
+## Dev mode (the pause menu's DEV MAP): this maze's map now, any maze (story or random). With FULL BRIGHT
+## on the whole maze and its goal (dev_full_map), else what this run and the maze's earlier tries saw.
+func open_dev_map() -> void:
+	if not dev_enabled() or _leaving() or random_map_view != null:
+		return
+	var survey := dev_full_map()
+	if not dev_bright:
+		survey = Survey.blank(maze)
+		var before: Dictionary = progress.random_map_for(attempt_key) if is_random() else {}
+		if not before.is_empty():
+			Survey.merge_seen(survey, before.seen)
+		Survey.merge_seen(survey, survey_tiles)
+		survey.goal = survey_goal or before.get("goal", false)
+		if survey.goal:
+			Survey.mark_seen(survey, maze.goal * 2 + Vector2i.ONE)
+		survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+	_open_map_view(survey)
+
+
+## Dev mode: a map of this whole maze, every tile seen and the goal (chalice / ticket) marked, with this
+## run's route so far.
+func dev_full_map() -> Dictionary:
+	var survey := Survey.blank(maze)
+	for y in maze.size.y:
+		for x in maze.size.x:
+			Survey.mark_seen(survey, Vector2i(x, y))
+	survey.goal = true
+	survey.moves = survey_moves.slice(0, Survey.MAX_MOVES)
+	return survey
+
+
+## Dev mode (the pause menu's DEV DRAIN): empties the meter, so the slime dries up as it would
+## (a SECOND WIND or a backup bladder still steps in first). The run counts as dev-toggled.
+func dev_drain() -> void:
+	if not dev_enabled() or finished:
+		return
+	dev_toggled = true
+	slime_remaining = 0.0
+	_refresh_dev_badge()
+
+
+func _open_map_view(survey: Dictionary) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	add_child(layer)

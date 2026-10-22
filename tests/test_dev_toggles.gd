@@ -119,6 +119,26 @@ func _initialize() -> void:
 	_check(game.dev_bright and game.dev_no_drain and not game.fog_sprite.visible, "a restart comes back with both still on")
 	game.free()
 
+	# --- DEV MAP (whole maze with BRIGHT on) and DRAIN NOW
+	game = await _spawn(4)
+	var whole: Dictionary = game.dev_full_map()
+	_check(whole.goal and MapView._cell_seen(whole, game.maze.goal) and Survey.completeness(whole, game.maze) >= 0.999,
+		"BRIGHT's map: the whole maze seen, the goal marked (%.0f%%)" % (Survey.completeness(whole, game.maze) * 100.0))
+	game.set_dev_bright(false)
+	current_scene = game
+	game.open_dev_map()
+	_check(game.random_map_view != null, "the pause menu's MAP opens this maze's map")
+	game.random_map_view.close()
+	current_scene = null
+	game.set_dev_no_drain(false)
+	game.dev_drain()
+	for i in 10:
+		await physics_frame
+	_check(game.finished and not game.won and game.dev_toggled, "DRAIN NOW: the slime dries up (a dev-toggled run)")
+	game.free()
+	progress.dev_bright = true  # (both back on: the toggled-run checks below start with them on)
+	progress.dev_no_drain = true
+
 	# --- Never saved
 	progress.saving_enabled = true
 	progress.save_progress()

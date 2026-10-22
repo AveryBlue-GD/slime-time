@@ -48,6 +48,8 @@ var dev_panel: Control
 var bright_button: Button
 var drain_button: Button
 var pastel_button: Button
+var dev_map_button: Button
+var dev_drain_button: Button
 ## What had keyboard focus when the menu opened (e.g. a dry-up / win choice): it gets it back on
 ## resume. And the level's controls kept out of focus while the menu is open (UIKit.lock_focus).
 var _return_focus: Control
@@ -150,7 +152,26 @@ func _build_dev_panel(root: Control) -> void:
 	pastel_button = UIKit.make_button("", func() -> void: _dev_pastel())
 	column.add_child(drain_button)
 	column.add_child(pastel_button)
+	# MAP: this maze's map (the whole of it with BRIGHT on); DRAIN: empty the meter now (a dry-up).
+	dev_map_button = UIKit.make_button("MAP", _dev_map)  # i18n: ignore (dev mode only panel)
+	column.add_child(dev_map_button)
+	dev_drain_button = UIKit.make_button("DRAIN NOW", _dev_drain)  # i18n: ignore (dev mode only panel)
+	column.add_child(dev_drain_button)
+	dev_panel.size.y = 5 + column.get_combined_minimum_size().y + 5
 	_refresh_dev()
+
+
+func _dev_map() -> void:
+	var game := get_parent()
+	if game.has_method("open_dev_map"):
+		game.open_dev_map()
+
+
+func _dev_drain() -> void:
+	var game := get_parent()
+	if game.has_method("dev_drain"):
+		resume()
+		game.dev_drain()
 
 
 func _dev_toggle(setter: String, flag: String) -> void:
@@ -174,7 +195,7 @@ func _refresh_dev() -> void:
 	var bright: bool = game.get("dev_bright") == true
 	var no_drain: bool = game.get("dev_no_drain") == true
 	bright_button.text = "BRIGHT: " + ("ON" if bright else "OFF")
-	drain_button.text = "DRAIN: " + ("OFF" if no_drain else "ON")
+	drain_button.text = "NO DRAIN: " + ("ON" if no_drain else "OFF")  # i18n: ignore (dev mode only panel)
 	pastel_button.text = "PASTEL: " + ("ON" if Skins.pastel else "OFF")  # i18n: ignore (dev mode only panel)
 
 
