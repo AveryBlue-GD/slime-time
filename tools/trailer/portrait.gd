@@ -413,6 +413,12 @@ const FLIP_BEATS := [
 	[36, "chameleon", 0.5],
 	[40, "all", 0.5],
 ]
+## The look a phase's last flip lands on (owner, 2026-10-22): the skins stop on PASTEL OCEAN, worn
+## through the hats and dyes; the dyes stop on the SNOW (white) wizard hat.
+const LANDINGS := {
+	skin = {skin = "ocean", pastel = true, jelly = false},
+	dye = {dye = "snow"},
+}
 const FLIP_STAGE := Vector2(172, 130)
 const FLIP_PX := 4
 const NEVER := 1 << 30
@@ -477,7 +483,7 @@ func _beat_tick() -> void:
 	if frame < roundi((_next_beat - from) * per_beat):
 		return
 	var phase := _beat_phase(_next_beat)
-	_flip(phase[0])
+	_flip(phase[0], _beat_phase(_next_beat + phase[1])[0] != phase[0])
 	_flips += 1
 	if phase[1] >= 0.25 or _flips % 2 == 0:
 		Sfx.play("click", -10.0)
@@ -502,7 +508,7 @@ func _flip_tick() -> void:
 	var phase := _flip_phase(frame + _int("plan-from", 0))
 	var every: int = phase[1]
 	if frame > 1:
-		_flip(phase[0])
+		_flip(phase[0], _flip_phase(frame + every + _int("plan-from", 0))[0] != phase[0])
 		_flips += 1
 		if every >= 6 or _flips % 3 == 0:
 			Sfx.play("click", -10.0)
@@ -549,7 +555,8 @@ func _trails() -> Array:
 	return Array(Cosmetics.trail_ids()).filter(func(id: String) -> bool: return not Cosmetics.get_item(id).has("earned"))
 
 
-func _flip(what: String) -> void:
+## `last`: the phase's last flip (it lands on LANDINGS' look, if the phase has one).
+func _flip(what: String, last := false) -> void:
 	match what:
 		"skin":
 			_roll_skin()
@@ -575,6 +582,8 @@ func _flip(what: String) -> void:
 				look.hat = ""
 	if what != "trail":  # (the trail changes on every flip)
 		look.trail = _pick(_trails(), look.trail)
+	if last and LANDINGS.has(what):
+		look.merge(LANDINGS[what], true)
 	_show_look()
 
 
