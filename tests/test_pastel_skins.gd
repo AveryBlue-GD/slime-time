@@ -82,6 +82,10 @@ func _initialize() -> void:
 	_check(progress.pastel and progress.selected_skin == "mint", "...and the worn Mint (10 wins) turns pastel")
 	screen._refresh("lemon")
 	_check(screen.status.text == "PASTEL LOCKED - WIN 15 RANDOM MAZES (12/15)", "pastel Lemon says what it needs: " + screen.status.text)
+	progress.levels_cleared = 3
+	screen._refresh("ember")
+	_check(screen.status.text == "PASTEL LOCKED - WIN 50 RANDOM MAZES (12/50)", "pastel Ember says its wins even while plain Ember is locked: " + screen.status.text)
+	progress.levels_cleared = Levels.COUNT
 	screen.show_page("hats")
 	_check(Skins.pastel == progress.pastel, "other pages draw the worn look")
 	screen.show_page("skins")

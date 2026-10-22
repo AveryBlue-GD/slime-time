@@ -898,7 +898,7 @@ func _refresh(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_skin
 	var worn_here: bool = view_jelly == Progress.jelly and view_pastel == Progress.pastel
 	if not Progress.is_skin_unlocked(id, view_jelly, view_pastel):
-		if view_pastel and Progress.is_skin_unlocked(id, view_jelly, false):
+		if view_pastel and Progress.randoms_won < Skins.pastel_wins(id) and not Progress.dev_tools:  # (the wins first, even while the plain skin is locked too)
 			# i18n: {count} = random maze wins needed, {have}/{count} = progress; status line, max 300px, 1 line
 			status.text = Loc.n("skins.locked_pastel", "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})", "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})", Skins.pastel_wins(id), {have = mini(Progress.randoms_won, Skins.pastel_wins(id))})
 		elif not Demo.skin_open(id, view_jelly):
