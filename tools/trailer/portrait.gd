@@ -387,6 +387,8 @@ func _papers_tick() -> void:
 
 # ------------------------------------------------------------------ flip
 
+## Flash safety (viewer feedback, 2026-10-22): no phase flips faster than every 10 frames (6 changes, i.e.
+## 3 flashes, a second); the ending and the CHAMELEON colors flip every 15.
 ## [from frame, what flips, every N frames]: "skin", "hat", "dye", "chameleon" flip that part and
 ## the trail (the rest stays as it is), "trail" only the trail; "all" re-rolls the whole look; a 4th entry eases `every`
 ## down to that many frames by the next phase.
@@ -396,11 +398,11 @@ const FLIP_PLAN := [
 	[420, "hat", 12],
 	[630, "dye", 10],
 	[810, "trail", 14],
-	[990, "chameleon", 6],
-	[1170, "all", 8, 2],
-	[1470, "all", 2],
+	[990, "chameleon", 15],
+	[1170, "all", 15],
 ]
-## The beat-synced cut (--beat): [from beat, what flips, every N beats], 4 beats a bar; the captions
+## The beat-synced cut (--beat): [from beat, what flips, every N beats], 4 beats a bar (eighths at most:
+## ~3.9 changes a second, the flash-safety rule above); the captions
 ## change on the bar lines (trailer.json draft E).
 const FLIP_BEATS := [
 	[0, "all", 1.0],
@@ -408,10 +410,8 @@ const FLIP_BEATS := [
 	[12, "hat", 0.5],
 	[20, "dye", 0.5],
 	[28, "trail", 0.5],
-	[36, "chameleon", 0.25],
-	[40, "all", 0.25],
-	[44, "all", 0.125],
-	[48, "all", 0.25],
+	[36, "chameleon", 0.5],
+	[40, "all", 0.5],
 ]
 const FLIP_STAGE := Vector2(172, 130)
 const FLIP_PX := 4

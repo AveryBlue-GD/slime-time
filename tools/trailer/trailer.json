@@ -266,7 +266,7 @@
    ]
   },
   "flip_fast": {
-   "note": "the flip take's last stretch (FLIP_PLAN from frame 1170: everything flips, faster and faster) under a 3-line caption (--top=92), names hidden",
+   "note": "the flip take's last stretch (FLIP_PLAN from frame 1170: everything flips) under a 3-line caption (--top=92), names hidden",
    "scene": "portrait",
    "take": "flip",
    "frames": 480,
@@ -761,7 +761,7 @@
    "id": "D",
    "name": "272,544 looks",
    "music": "trailer_1",
-   "hook": "one slime, its look flipping faster and faster: skins, hats, dyes, trails, CHAMELEON colors, then everything",
+   "hook": "one slime, its look flipping: skins, hats, dyes, trails, CHAMELEON colors, then everything (flash-safe rates)",
    "beats": [
     {
      "take": "flip",

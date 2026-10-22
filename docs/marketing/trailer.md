@@ -182,7 +182,11 @@ gameplay only, because the trails page is too small to read on a phone.
 
 - **D, "272,544 different looks"** (30 s, 2026-10-22): one slime acting out the showcase routine while its look flips
   (portrait view `flip`, `FLIP_PLAN` in portrait.gd): skins, hats, dyes on the WIZARD HAT, trails, CHAMELEON colors, then
-  everything faster and faster; the trail changes on every flip. Captions are centred on the frame, right above the stage.
+  everything; the trail changes on every flip. Captions are centred on the frame, right above the stage. **Flash
+  safety** (viewer feedback, 2026-10-22): no phase flips faster than every 10 frames (3 flashes a second); the
+  ending and the CHAMELEON colors every 15.
+- **E, the same on the beat** (`--beat`, `FLIP_BEATS`): trailer_1 fitted to the 27.0 s hit is 13 bars of 4 beats;
+  the flips land on beats and eighths (never faster), the captions change on the bar lines.
   The count is 334 skin looks (46 + CHAMELEON's 144 colors x 2) x 136 hat looks x 6 trails; recount when trails are added.
 
 ## Later: the horizontal 45-60 s trailer
