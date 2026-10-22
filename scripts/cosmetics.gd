@@ -42,19 +42,20 @@ const LIST := [
 	{id = "prism_paper", kind = PAPER, name = "PRISM PAPER", about = "TURNS THROUGH THE COLORS", flow = "prism"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
-	# PREVIEW (trail-preview branch, ideas/trail-ideas.md): ten proposed trail styles, wearable only
-	# with the debug flag --trail=ID; `earned` keeps them out of the SHOP. Painted per cell
-	# (trail_cell_at); TOXIC / FROST / GHOST also use a trail.gdshader `fx` effect.
-	{id = "dried", kind = TRAIL, name = "DRIED TRAIL", about = "SUN-BAKED CRUST", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "frost", kind = TRAIL, name = "FROST TRAIL", about = "ICY SPARKLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "toxic", kind = TRAIL, name = "TOXIC TRAIL", about = "NEON BUBBLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "pixel", kind = TRAIL, name = "PIXEL TRAIL", about = "TWO-TONE CHECKERS", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "treasure", kind = TRAIL, name = "TREASURE TRAIL", about = "X MARKS THE ROUTE", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "confetti", kind = TRAIL, name = "CONFETTI TRAIL", about = "PARTY SPRINKLES", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "crystal", kind = TRAIL, name = "CRYSTAL TRAIL", about = "SHINY FACETS", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "moss", kind = TRAIL, name = "MOSS TRAIL", about = "GREEN GOO, TINY FLOWERS", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "ghost", kind = TRAIL, name = "GHOST TRAIL", about = "FAINT AND SHIMMERY", earned = "PREVIEW"},  # i18n: ignore (preview only)
-	{id = "pulse", kind = TRAIL, name = "PULSE TRAIL", about = "GLOWING BANDS", earned = "PREVIEW"},  # i18n: ignore (preview only)
+	# Wheel trails (trail-preview branch, ideas/trail-ideas.md): ten trail styles won on the prize wheel
+	# (`wheel`: never sold, Progress.hats_left / win_hat; PULSE, GHOST, PIXEL are rare:
+	# Economy.WHEEL_RARE). Painted per cell (trail_cell_at); TOXIC / FROST / GHOST also use a
+	# trail.gdshader `fx` effect.
+	{id = "dried", kind = TRAIL, name = "DRIED TRAIL", about = "SUN-BAKED CRUST", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "frost", kind = TRAIL, name = "FROST TRAIL", about = "ICY SPARKLES", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "toxic", kind = TRAIL, name = "TOXIC TRAIL", about = "NEON BUBBLES", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "pixel", kind = TRAIL, name = "PIXEL TRAIL", about = "TWO-TONE CHECKERS", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "treasure", kind = TRAIL, name = "TREASURE TRAIL", about = "X MARKS THE ROUTE", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "confetti", kind = TRAIL, name = "CONFETTI TRAIL", about = "PARTY SPRINKLES", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "crystal", kind = TRAIL, name = "CRYSTAL TRAIL", about = "SHINY FACETS", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "moss", kind = TRAIL, name = "MOSS TRAIL", about = "GREEN GOO, TINY FLOWERS", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "ghost", kind = TRAIL, name = "GHOST TRAIL", about = "FAINT AND SHIMMERY", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "pulse", kind = TRAIL, name = "PULSE TRAIL", about = "GLOWING BANDS", wheel = true},  # i18n: ignore (English source; shown via display_name)
 ]
 
 ## Trail looks: the goo alpha (0-255) of a painted cell, and the trail halo strength (game.gd TRAIL_GLOW).
@@ -132,9 +133,25 @@ static func is_earned(id: String) -> bool:
 	return get_item(id).has("earned")
 
 
-## How an earned cosmetic is earned ("" for a sold one).
+## True for a trail won on the prize wheel (never sold, never earned by a milestone).
+static func is_wheel(id: String) -> bool:
+	return get_item(id).get("wheel", false)
+
+
+## The trails the prize wheel can give, in LIST order.
+static func wheel_ids() -> Array[String]:
+	var out: Array[String] = []
+	for item: Dictionary in LIST:
+		if item.get("wheel", false):
+			out.append(item.id)
+	return out
+
+
+## How an earned (or wheel) cosmetic is earned ("" for a sold one).
 static func earned_how(id: String) -> String:
 	# i18n: how an earned trail is unlocked, wardrobe info line, max 200px
+	if is_wheel(id):
+		return Loc.t("trail.wheel.unlock", "WIN IT ON THE HAT WHEEL")
 	match id:
 		"abyss":
 			return Loc.t("trail.abyss.unlock", "REACH DESCENT FLOOR 10")
@@ -145,7 +162,7 @@ static func earned_how(id: String) -> String:
 static func ids(kind := "") -> Array[String]:
 	var out: Array[String] = []
 	for item: Dictionary in LIST:
-		if (kind == "" or item.kind == kind) and not item.has("earned"):
+		if (kind == "" or item.kind == kind) and not item.has("earned") and not item.get("wheel", false):
 			out.append(item.id)
 	return out
 
@@ -239,6 +256,7 @@ static func about(id: String) -> String:
 static func trail_ids() -> Array[String]:
 	var out: Array[String] = [DEFAULT_TRAIL]
 	out.append_array(ids(TRAIL))
+	out.append_array(wheel_ids())
 	for item: Dictionary in LIST:
 		if item.kind == TRAIL and item.has("earned"):
 			out.append(item.id)

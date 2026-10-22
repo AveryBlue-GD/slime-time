@@ -44,6 +44,15 @@ const RIM := Color8(170, 118, 70)
 const RIM_DARK := Color8(88, 54, 34)
 const DIVIDER := Color8(240, 236, 226)
 const PEG := Color8(255, 240, 180)
+const RIM_LIGHT := Color8(222, 170, 110)
+const RIM_SHADE := Color8(128, 82, 46)
+## The marquee bulbs round the rim: how many, lit and unlit.
+const BULBS := 24
+const BULB_ON := Color8(255, 226, 120)
+const BULB_OFF := Color8(110, 70, 40)
+## Rare prizes' wedges (Economy.WHEEL_RARE; the rainbow hat keeps its rainbow in REWARDS) and their trim.
+const RARE_WEDGE := Color8(54, 34, 92)
+const RARE_TRIM := Color8(255, 204, 72)
 const FLAPPER := Color8(176, 40, 54)
 const RAINBOW_RINGS: Array[Color] = [
 	Color8(236, 64, 76), Color8(246, 142, 52), Color8(252, 222, 74),
@@ -157,6 +166,11 @@ var _try_on_root: Node2D
 var _try_on_id := ""
 ## The hue step the flowing (rainbow) hat on the wheel was last drawn at (Hats.flow_step).
 var _flow_step := -1
+var _bulb_drawn := -1
+## The wheel trails' wedge swatches (_trail_badge), made once per id.
+var _swatches := {}
+## ODDS: the two legend labels (COMMON, RARE).
+var _legends: Array[Label] = []
 ## The buy confirm: BUY <NAME>? <price> [ticket], BUY / BACK.
 var confirm: Panel
 var confirm_label: Label
@@ -212,6 +226,14 @@ func _ready() -> void:
 	spin_button.position = Vector2(roundf(CENTER.x - 42), SPIN_BOTTOM - UIKit.button_h())
 	spin_button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	wheel_page.add_child(spin_button)
+	# ODDS (Progress.wheel_style): the odds legend either side of the wheel, COMMON left, RARE right.
+	for side in 2:
+		var legend := UIKit.make_label("", UIKit.FONT, UIKit.TEXT if side == 0 else RARE_TRIM)
+		legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		legend.size = Vector2(76, 40)
+		legend.position = Vector2(26.0 if side == 0 else 218.0, 70.0)
+		wheel_page.add_child(legend)
+		_legends.append(legend)
 
 	shop_page = _page()
 	# HATS / TRAILS / PAPERS: 52 wide in English (equal widths from the longest word), 4 apart, centred
@@ -437,7 +459,7 @@ func _refresh_wheel() -> void:
 	elif spinning:
 		result.text = "..."
 	elif _won != "":
-		result.text = Loc.t("wheel.won", "YOU WON THE {name}!", {name = Hats.display_name(_won)})
+		result.text = Loc.t("wheel.won", "YOU WON THE {name}!", {name = _name_of(_won)})
 	elif not Hats.available and not Progress.dev_tools:
 		result.text = Loc.t("wheel.resting", "THE WHEEL IS RESTING")
 	elif Progress.demo_wheel_block() != "":
@@ -447,10 +469,11 @@ func _refresh_wheel() -> void:
 	else:
 		# (touch: no key, the SPIN button)
 		if _spin_key == "":
-			result.text = Loc.n("wheel.hats_left", "{count} HAT TO WIN", "{count} HATS TO WIN", hats.size())
+			result.text = Loc.n("wheel.prizes_left", "{count} PRIZE TO WIN", "{count} PRIZES TO WIN", hats.size())
 		else:
-			result.text = Loc.n("wheel.hats_left_key", "{count} HAT TO WIN - {key} TO SPIN", "{count} HATS TO WIN - {key} TO SPIN", hats.size(), {key = _spin_key})
+			result.text = Loc.n("wheel.prizes_left_key", "{count} PRIZE TO WIN - {key} TO SPIN", "{count} PRIZES TO WIN - {key} TO SPIN", hats.size(), {key = _spin_key})
 	_show_try_on(_won if not spinning else "")  # the hat you just won, on you
+	_refresh_legends()
 	spin_button.disabled = not can
 	if Progress.hats_left().is_empty():
 		spin_button.text = Loc.t("wheel.spin", "SPIN")
@@ -470,6 +493,28 @@ func _refresh_wheel() -> void:
 		button.focus_mode = Control.FOCUS_NONE if spinning else Control.FOCUS_ALL
 
 
+## ODDS: each tier's chance per prize and how many are left (Progress.wheel_weight; the rainbow hat's
+## pity is left out), hidden in REWARDS and while a won prize stands beside the wheel.
+func _refresh_legends() -> void:
+	var on := Progress.wheel_style == "odds" and _won == "" and not hats.is_empty()
+	var total := 0.0
+	var count := [0, 0]
+	for id in hats:
+		total += Progress.wheel_weight(id, Progress.rainbow_pity)
+		count[1 if Progress.is_rare_hat(id) else 0] += 1
+	for side in _legends.size():
+		var legend := _legends[side]
+		legend.visible = on and count[side] > 0
+		if not legend.visible:
+			continue
+		var chance := 100.0 * (Economy.WHEEL_RARE_WEIGHT if side == 1 else Economy.WHEEL_WEIGHT) / total
+		# i18n: the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+		# with one decimal ("5.6"), {count} = prizes of that tier left on the wheel
+		var tier := Loc.t("wheel.legend.rare", "RARE") if side == 1 else Loc.t("wheel.legend.common", "COMMON")
+		legend.text = "\n".join([tier, Loc.t("wheel.legend.chance", "{chance}% EACH", {chance = "%.1f" % chance}),
+			Loc.n("wheel.legend.left", "{count} LEFT", "{count} LEFT", count[side])])
+
+
 func _on_spin_pressed() -> void:
 	if spin():
 		changed.emit("")
@@ -487,8 +532,10 @@ static func spread_rares(ids: Array[String]) -> Array[String]:
 			rare.append(id)
 		else:
 			plain.append(id)
+	plain = _alternate_kinds(plain)
+	rare = _alternate_kinds(rare)
 	if rare.is_empty() or plain.is_empty():
-		return ids.duplicate()
+		return plain + rare
 	var out: Array[String] = []
 	var next := 0  # the next rare hat to place
 	for i in plain.size():
@@ -497,6 +544,21 @@ static func spread_rares(ids: Array[String]) -> Array[String]:
 		while next < rare.size() and i + 1 >= ceili((next + 1) * plain.size() / float(rare.size())):
 			out.append(rare[next])
 			next += 1
+	return out
+
+
+## `ids` with the hats and the wheel trails taking turns (hat, trail, hat, ...), the leftovers at the end.
+static func _alternate_kinds(ids: Array[String]) -> Array[String]:
+	var hat_ids: Array[String] = []
+	var trail_ids: Array[String] = []
+	for id in ids:
+		(trail_ids if Cosmetics.is_wheel(id) else hat_ids).append(id)
+	var out: Array[String] = []
+	for i in maxi(hat_ids.size(), trail_ids.size()):
+		if i < hat_ids.size():
+			out.append(hat_ids[i])
+		if i < trail_ids.size():
+			out.append(trail_ids[i])
 	return out
 
 
@@ -559,8 +621,9 @@ func spin() -> bool:
 func _process(delta: float) -> void:
 	_kick = maxf(_kick - delta * 6.0, 0.0)
 	if not spinning:
-		if tab == "wheel" and is_visible_in_tree() and Hats.flow_step() != _flow_step:
-			queue_redraw()  # the rainbow hat's colors flow on (Hats.flow_texture)
+		if tab == "wheel" and is_visible_in_tree() and (Hats.flow_step() != _flow_step or _bulb_step() != _bulb_drawn):
+			_bulb_drawn = _bulb_step()
+			queue_redraw()  # the rainbow hat's colors flow on (Hats.flow_texture), the bulbs chase
 		return
 	_t = minf(_t + delta / SPIN_TIME, 1.0)
 	var eased := 1.0 - pow(1.0 - _t, 3.0)  # fast at first, slowing to a stop
@@ -1045,15 +1108,25 @@ func _show_try_on(id: String, dye := "") -> void:
 	for child in _try_on_root.get_children():
 		child.queue_free()
 	var scale := 2 if tab == "wheel" else 1
+	var trail := Cosmetics.is_wheel(id)  # a won wheel trail: the slime (in its own hat) on a strip of it
 	for at: Vector2 in TRY_ON[tab]:
 		var slime := UIKit.make_slime_preview(Progress.skin_color(), scale, Progress.is_rainbow(), null, Progress.is_stopwatch())
 		# (with the wheel, or beside the status lines: lower or higher with them in a taller script)
 		slime.position = at + (Vector2(0, wheel_center.y - CENTER.y) if tab == "wheel" else Vector2(0, status_y - 141.0))
+		if trail:
+			var strip := Sprite2D.new()
+			strip.texture = ImageTexture.create_from_image(trail_swatch(id, Progress.skin_color(), Vector2i(16, 4)))
+			strip.scale = Vector2(scale, scale)
+			strip.position = slime.position + Vector2(0, 9 * scale)
+			_try_on_root.add_child(strip)
 		_try_on_root.add_child(slime)
+		var hat_id := (Progress.selected_hat if trail else id)
+		if hat_id == Hats.NONE:
+			continue
 		var hat := Hat.new()
 		hat.scale = slime.scale
 		_try_on_root.add_child(hat)
-		hat.setup(id, slime, null, dye)
+		hat.setup(hat_id, slime, null, Progress.hat_dye_of(hat_id) if trail else dye)
 
 
 ## A map paper tile (the SHOP's PAPERS).
@@ -1192,57 +1265,185 @@ func _sfx(sound: String, volume_db: float, pitch := 1.0) -> void:
 func _draw() -> void:
 	if tab != "wheel":
 		return
-	# Rim, then a wedge per hat (alternating colors), dividers, pegs, the hub, the hats, the flapper.
-	draw_circle(wheel_center, wheel_radius + 4.0, RIM_DARK)
-	draw_circle(wheel_center, wheel_radius + 3.0, RIM)
+	var odds := Progress.wheel_style == "odds"
+	var c := wheel_center
+	var r := wheel_radius
+	# The frame: a drop shadow, a dark outer ring, the wooden rim with a lit top-left edge, and a
+	# ring of marquee bulbs that chase round (faster while it spins, blinking after a win).
+	draw_circle(c + Vector2(2, 3), r + 7.0, Color(0, 0, 0, 0.35))
+	draw_circle(c, r + 7.0, RIM_DARK)
+	draw_circle(c, r + 6.0, RIM)
+	draw_arc(c, r + 5.5, PI * 0.95, PI * 1.6, 24, RIM_LIGHT, 1.0)
+	draw_arc(c, r + 5.5, PI * -0.05, PI * 0.6, 24, RIM_SHADE, 1.0)
+	draw_circle(c, r + 1.5, RIM_DARK)
+	var chase := _bulb_step()
+	for k in BULBS:
+		var a := TAU * k / BULBS - PI / 2.0
+		var at := (c + Vector2(cos(a), sin(a)) * (r + 4.0)).round()
+		var on := (k + chase) % 3 != 0
+		if _won != "" and not spinning:
+			on = (k + chase) % 2 == 0
+		draw_rect(Rect2(at - Vector2(1, 1), Vector2(2, 2)), BULB_ON if on else BULB_OFF)
+		if on:
+			draw_rect(Rect2(at - Vector2(1, 1), Vector2(1, 1)), Color.WHITE)
 	var n := hats.size()
 	if n == 0:
-		draw_circle(wheel_center, wheel_radius, Color8(52, 30, 24))
+		draw_circle(c, r, Color8(52, 30, 24))
 	var plain := 0  # ordinary wedges so far, for alternating their colors
 	var plain_count := 0
 	for id in hats:
-		if not Hats.get_hat(id).get("flows", false):
+		if not Progress.is_rare_hat(id):
 			plain_count += 1
 	for i in n:
 		var a0 := turn + starts[i]
 		var lit := _won != "" and hats[i] == _won  # the winner, lit up under the pointer
-		if Hats.get_hat(hats[i]).get("flows", false):
-			# The rare hat's sliver: rainbow rings, red on the outside.
+		var rare := Progress.is_rare_hat(hats[i])
+		if rare and not odds and Hats.get_hat(hats[i]).get("flows", false):
+			# The rainbow hat's sliver: rainbow rings, red on the outside, gold trimmed.
 			for k in RAINBOW_RINGS.size():
-				var outer := wheel_radius * (1.0 - k / float(RAINBOW_RINGS.size()))
-				var color := RAINBOW_RINGS[k].lightened(0.4) if lit else RAINBOW_RINGS[k]
-				draw_colored_polygon(_wedge(a0, sizes[i], outer), color)
+				var outer := r * (1.0 - k / float(RAINBOW_RINGS.size()))
+				var ring := RAINBOW_RINGS[k].lightened(0.4) if lit else RAINBOW_RINGS[k]
+				draw_colored_polygon(_wedge(a0, sizes[i], outer), ring)
+			_trim(a0, sizes[i], lit)
 			continue
-		var color := WEDGE_COLORS[plain % WEDGE_COLORS.size()]
-		if plain_count % WEDGE_COLORS.size() == 1 and plain == plain_count - 1 and plain_count > 1:
-			color = WEDGE_COLORS[2]  # keep the last wedge from matching the first
-		plain += 1
-		draw_colored_polygon(_wedge(a0, sizes[i], wheel_radius), color.lightened(0.45) if lit else color)
+		var color: Color
+		if rare:
+			color = RARE_WEDGE
+		else:
+			color = WEDGE_COLORS[plain % WEDGE_COLORS.size()]
+			if plain_count % WEDGE_COLORS.size() == 1 and plain == plain_count - 1 and plain_count > 1:
+				color = WEDGE_COLORS[2]  # keep the last wedge from matching the first
+			plain += 1
+		if lit:
+			color = color.lightened(0.45)
+		# Shading: a dark lip at the rim, the face, and a darker ring round the hub.
+		draw_colored_polygon(_wedge(a0, sizes[i], r), color.darkened(0.35))
+		draw_colored_polygon(_wedge(a0, sizes[i], r - 2.0), color)
+		draw_colored_polygon(_wedge(a0, sizes[i], r * 0.42), color.darkened(0.14))
+		if rare:
+			_trim(a0, sizes[i], lit)
 	for i in n:
 		var a := turn + starts[i]
-		draw_line(wheel_center, wheel_center + Vector2(cos(a), sin(a)) * wheel_radius, DIVIDER, 1.0)
-		var peg := (wheel_center + Vector2(cos(a), sin(a)) * (wheel_radius + 1.5)).round()
-		draw_rect(Rect2(peg - Vector2(1, 1), Vector2(2, 2)), PEG)
+		var dir := Vector2(cos(a), sin(a))
+		draw_line(c + dir * 8.0, c + dir * (r - 1.0), DIVIDER, 1.0)
+		var peg := (c + dir * (r - 1.0)).round()
+		draw_rect(Rect2(peg - Vector2(1, 1), Vector2(2, 2)), RIM_DARK)
+		draw_rect(Rect2(peg - Vector2(1, 1), Vector2(1, 1)), PEG)
 	_flow_step = Hats.flow_step()
-	draw_circle(wheel_center, 6.0, Color8(209, 136, 58))
-	draw_circle(wheel_center, 4.0, Color8(255, 205, 117))
+	# The hub: a bolted brass cap with a red gem.
+	draw_circle(c, 9.0, RIM_DARK)
+	draw_circle(c, 8.0, Color8(209, 136, 58))
+	draw_circle(c, 6.0, Color8(255, 205, 117))
+	draw_arc(c, 5.0, PI * 1.05, PI * 1.45, 6, Color8(255, 244, 200), 1.0)
+	for k in 4:
+		var a := turn + PI / 4.0 + k * PI / 2.0
+		draw_rect(Rect2((c + Vector2(cos(a), sin(a)) * 7.0).round(), Vector2(1, 1)), RIM_DARK)
+	draw_rect(Rect2(c - Vector2(2, 2), Vector2(4, 4)), Color8(110, 18, 30))
+	draw_rect(Rect2(c - Vector2(1, 1), Vector2(2, 2)), FLAPPER)
+	draw_rect(Rect2(c - Vector2(1, 1), Vector2(1, 1)), Color8(255, 190, 190))
+	# The prizes: in REWARDS each wedge shows its prize (ordinary hats staggered in and out so
+	# neighbors don't overlap, trails as a little framed swatch); in ODDS only a gem (common) or a
+	# star (rare), and the prize shows on its wedge once the wheel has landed on it.
 	var atlas: Texture2D = preload("res://assets/sprites/hats.png")
+	var plain_i := 0
 	for i in n:
+		var id := hats[i]
 		var a := turn + starts[i] + sizes[i] / 2.0
-		# Out toward the rim in a thin wedge, where it has the most room.
-		var reach := 0.7 if sizes[i] > 0.4 else 0.8
-		var at := (wheel_center + Vector2(cos(a), sin(a)) * wheel_radius * reach).round()
-		# The loose version (its own shape, inside showing; narrow, so neighbors don't touch). The
-		# rainbow hat flows like it does on a slime (its shader can't go on one draw call).
-		if Hats.get_hat(hats[i]).get("flows", false):
-			draw_texture(Hats.flow_texture(hats[i], Hats.Width.LOOSE, _flow_step), at - Vector2(Hats.FRAME) / 2.0)
+		var dir := Vector2(cos(a), sin(a))
+		var rare := Progress.is_rare_hat(id)
+		if odds and not (id == _won and not spinning):
+			var mark := (c + dir * r * 0.76).round()
+			if rare:
+				_star(mark)
+			else:
+				_gem(mark)
+			continue
+		var reach := 0.84
+		if not rare:
+			reach = 0.74 if plain_i % 2 == 0 else 0.5
+			plain_i += 1
+		if odds:
+			reach = 0.62
+		var at := (c + dir * r * reach).round()
+		if Cosmetics.is_wheel(id):
+			_trail_badge(id, at)
+		elif Hats.get_hat(id).get("flows", false):
+			draw_texture(Hats.flow_texture(id, Hats.Width.LOOSE, _flow_step), at - Vector2(Hats.FRAME) / 2.0)
 		else:
-			draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(hats[i], Hats.Width.LOOSE))
-	# The flapper at the top, kicked aside as it ticks past each wedge.
-	var tip := Vector2(wheel_center.x + roundf(_kick * 2.0), wheel_center.y - wheel_radius + 6.0)
-	var base_y := wheel_center.y - wheel_radius - 7.0
-	draw_colored_polygon(PackedVector2Array([Vector2(wheel_center.x - 4, base_y), Vector2(wheel_center.x + 4, base_y), tip]), FLAPPER)
-	draw_rect(Rect2(wheel_center.x - 5, base_y - 3, 10, 3), Color8(132, 138, 162))
+			draw_texture_rect_region(atlas, Rect2(at - Vector2(Hats.FRAME) / 2.0, Vector2(Hats.FRAME)), Hats.region(id, Hats.Width.LOOSE))
+	# The pointer at the top: a steel housing bolted to the frame and a red flapper, kicked aside as
+	# it ticks past each wedge.
+	var tip := Vector2(c.x + roundf(_kick * 2.0), c.y - r + 7.0)
+	var base_y := c.y - r - 7.0
+	draw_colored_polygon(PackedVector2Array([Vector2(c.x - 5, base_y), Vector2(c.x + 5, base_y), tip + Vector2(0, 1)]), RIM_DARK)
+	draw_colored_polygon(PackedVector2Array([Vector2(c.x - 4, base_y), Vector2(c.x + 4, base_y), tip]), FLAPPER)
+	draw_line(Vector2(c.x - 3, base_y + 1), tip + Vector2(-1, -2), Color8(236, 96, 104), 1.0)
+	draw_rect(Rect2(c.x - 7, base_y - 4, 14, 5), RIM_DARK)
+	draw_rect(Rect2(c.x - 6, base_y - 3, 12, 3), Color8(150, 156, 180))
+	draw_rect(Rect2(c.x - 6, base_y - 3, 12, 1), Color8(206, 212, 230))
+	draw_rect(Rect2(c.x - 5, base_y - 2, 1, 1), RIM_DARK)
+	draw_rect(Rect2(c.x + 4, base_y - 2, 1, 1), RIM_DARK)
+
+
+## Gold trim along a rare wedge's rim and a twinkle near its edge.
+func _trim(a0: float, size: float, lit: bool) -> void:
+	var gold := RARE_TRIM.lightened(0.3) if lit else RARE_TRIM
+	draw_arc(wheel_center, wheel_radius - 1.0, a0, a0 + size, maxi(2, int(size * 30.0)), gold, 2.0)
+	var mid := a0 + size / 2.0
+	var at := (wheel_center + Vector2(cos(mid), sin(mid)) * (wheel_radius - 4.0)).round()
+	if posmod(_bulb_step() + int(mid * 10.0), 4) == 0:
+		draw_rect(Rect2(at - Vector2(0, 1), Vector2(1, 3)), Color.WHITE)
+		draw_rect(Rect2(at - Vector2(1, 0), Vector2(3, 1)), Color.WHITE)
+
+
+## ODDS: a common wedge's mark, a little silver gem.
+func _gem(at: Vector2) -> void:
+	draw_rect(Rect2(at + Vector2(-1, -2), Vector2(3, 5)), RIM_DARK)
+	draw_rect(Rect2(at + Vector2(-2, -1), Vector2(5, 3)), RIM_DARK)
+	draw_rect(Rect2(at + Vector2(-1, -1), Vector2(3, 3)), Color8(196, 214, 236))
+	draw_rect(Rect2(at + Vector2(0, -1), Vector2(1, 3)), Color8(240, 246, 255))
+	draw_rect(Rect2(at + Vector2(-1, -1), Vector2(1, 1)), Color.WHITE)
+
+
+## ODDS: a rare wedge's mark, a gold star.
+func _star(at: Vector2) -> void:
+	draw_rect(Rect2(at + Vector2(-1, -3), Vector2(3, 7)), RIM_DARK)
+	draw_rect(Rect2(at + Vector2(-3, -1), Vector2(7, 3)), RIM_DARK)
+	draw_rect(Rect2(at + Vector2(0, -2), Vector2(1, 5)), RARE_TRIM)
+	draw_rect(Rect2(at + Vector2(-2, 0), Vector2(5, 1)), RARE_TRIM)
+	draw_rect(Rect2(at + Vector2(-1, -1), Vector2(3, 3)), RARE_TRIM)
+	draw_rect(Rect2(at, Vector2(1, 1)), Color.WHITE)
+
+
+## A wheel trail's wedge picture: a dark framed swatch of its goo (Cosmetics.trail_preview).
+func _trail_badge(id: String, at: Vector2) -> void:
+	if not _swatches.has(id):
+		_swatches[id] = ImageTexture.create_from_image(trail_swatch(id, Progress.skin_color(), Vector2i(10, 6)))
+	var box := Rect2(at - Vector2(5, 3), Vector2(10, 6))
+	draw_rect(box.grow(1), RIM_DARK)
+	draw_texture(_swatches[id], box.position)
+	draw_rect(Rect2(box.position, Vector2(box.size.x, 1)), Color(1, 1, 1, 0.25))
+
+
+## A solid patch of trail `id`'s goo, `size` cells: its cell colors (Cosmetics.trail_cell_at) made
+## opaque over dark stone, so a see-through goo still reads small. TREASURE gets its red dashes.
+static func trail_swatch(id: String, skin: Color, size: Vector2i) -> Image:
+	var look := Cosmetics.trail_look(id, skin)
+	var image := Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+	var stone := Color8(58, 54, 66)
+	for y in size.y:
+		for x in size.x:
+			var cell := Vector2i(x, y)
+			var c := Cosmetics.trail_cell_at(look, posmod(hash(cell), 5) == 0, x * 6.0, cell)
+			if y == size.y / 2 and x % 4 < 2 and Cosmetics.trail_center(look, 0.0) != null:
+				c = Cosmetics.trail_center(look, 0.0)
+			image.set_pixel(x, y, stone.lerp(Color(c, 1.0), clampf(c.a * 1.6, 0.0, 1.0)))
+	return image
+
+
+## The marquee bulbs' chase step (a slow walk at rest, a fast one while the wheel turns).
+func _bulb_step() -> int:
+	return int(Time.get_ticks_msec() / (60.0 if spinning else 260.0))
 
 
 ## A wedge of the wheel from angle a0, `size` radians wide, out to `radius`.

@@ -57,6 +57,11 @@ msgid "PEEK AT MAP"
 msgstr ""
 
 #: scripts/cosmetics.gd
+msgctxt "trail.wheel.unlock"
+msgid "WIN IT ON THE HAT WHEEL"
+msgstr ""
+
+#: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
 msgid "REACH DESCENT FLOOR 10"
 msgstr "ATTEINS L’ÉTAGE 10 DE LA DESCENTE"
@@ -2130,18 +2135,18 @@ msgstr[0] "IL FAUT {count} TICKET POUR TOURNER"
 msgstr[1] "IL FAUT {count} TICKETS POUR TOURNER"
 
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left"
-msgid "{count} HAT TO WIN"
-msgid_plural "{count} HATS TO WIN"
-msgstr[0] "{count} CHAPEAU À GAGNER"
-msgstr[1] "{count} CHAPEAUX À GAGNER"
+msgctxt "wheel.prizes_left"
+msgid "{count} PRIZE TO WIN"
+msgid_plural "{count} PRIZES TO WIN"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left_key"
-msgid "{count} HAT TO WIN - {key} TO SPIN"
-msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
-msgstr[0] "{count} CHAPEAU À GAGNER - {key} POUR TOURNER"
-msgstr[1] "{count} CHAPEAUX À GAGNER - {key} POUR TOURNER"
+msgctxt "wheel.prizes_left_key"
+msgid "{count} PRIZE TO WIN - {key} TO SPIN"
+msgid_plural "{count} PRIZES TO WIN - {key} TO SPIN"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_free"
@@ -2152,6 +2157,32 @@ msgstr "TOURNER  GRATUIT"
 msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
 msgstr "TOURNER  {cost}"
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.rare"
+msgid "RARE"
+msgstr ""
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.common"
+msgid "COMMON"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.chance"
+msgid "{chance}% EACH"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.left"
+msgid "{count} LEFT"
+msgid_plural "{count} LEFT"
+msgstr[0] ""
+msgstr[1] ""
 
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
@@ -3186,6 +3217,18 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.hats_left"
+#~ msgid "{count} HAT TO WIN"
+#~ msgid_plural "{count} HATS TO WIN"
+#~ msgstr[0] "{count} CHAPEAU À GAGNER"
+#~ msgstr[1] "{count} CHAPEAUX À GAGNER"
+
+#~ msgctxt "wheel.hats_left_key"
+#~ msgid "{count} HAT TO WIN - {key} TO SPIN"
+#~ msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
+#~ msgstr[0] "{count} CHAPEAU À GAGNER - {key} POUR TOURNER"
+#~ msgstr[1] "{count} CHAPEAUX À GAGNER - {key} POUR TOURNER"
 
 #~ msgctxt "wheel.section.hats"
 #~ msgid "HATS"

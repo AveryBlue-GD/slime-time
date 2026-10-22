@@ -125,15 +125,17 @@ const DYE_PRISM_PRICE := 50
 ## field is not used for the wheel): every hat weighs WHEEL_WEIGHT, a WHEEL_RARE one
 ## WHEEL_RARE_WEIGHT, and the flowing (rainbow) hat gets Hats.PITY_STEP more per spin that missed
 ## it (Progress.rainbow_pity). A hat's chance = its weight / the sum over the hats still on the wheel.
-## With all 12 hats of today's LIST on the wheel and no pity (9 x 1 + 3 x 0.3 = 9.9):
-##   tophat, beanie, party, cap, cowboy, chef, wizard, viking, crown: 10.10 % each (90.91 %)
-##   propeller, raincloud, rainbow: 3.03 % each (9.09 % for the rare ones)
+## The wheel also gives the ten wheel trails (Cosmetics.wheel_ids), weighed the same way: PULSE,
+## GHOST and PIXEL are rare like the three rare hats, the other seven common.
+## With all 12 hats and 10 trails on the wheel and no pity (16 x 1 + 6 x 0.3 = 17.8):
+##   9 common hats + 7 common trails: 5.62 % each (89.89 %)
+##   propeller, raincloud, rainbow, pulse, ghost, pixel: 1.69 % each (10.11 % for the rare ones)
 ## A save's FIRST spin (spins == 0: a fresh save, RESET PROGRESS, a new epoch, a code that never
 ## spun) is still random but never rare: it picks among the non-rare hats left, at their weights
 ## (1 / 9 = 11.11 % each), so wiping a save to farm free spins can't win a rare hat.
 const WHEEL_WEIGHT := 1.0
 const WHEEL_RARE_WEIGHT := 0.3
-const WHEEL_RARE: Array[String] = ["rainbow", "propeller", "raincloud"]
+const WHEEL_RARE: Array[String] = ["rainbow", "propeller", "raincloud", "pulse", "ghost", "pixel"]
 
 ## ---------------------------------------------------------------- tickets: the WORKSHOP (B.2)
 ## Utility upgrades bought with tickets in the cauldron's TICKETS tab: 3 levels each, not

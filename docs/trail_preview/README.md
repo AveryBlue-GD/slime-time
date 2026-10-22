@@ -11,3 +11,15 @@ Ids: dried, frost, toxic, pixel, treasure, confetti, crystal, moss, ghost, pulse
 `trail_center`, animated FROST / TOXIC / GHOST via `fx` in assets/shaders/trail.gdshader).
 PULSE is static (brighter bands by distance traveled). Known preview gaps: wall splat stains keep
 the skin's goo; test_store / test_trails fail (they pin the old trail list and goo alpha).
+
+## Prize wheel (2026-10-22)
+
+The ten trails are prizes on the hat wheel now (`wheel = true` in Cosmetics.LIST: never sold;
+Progress.hats_left lists hats then wheel trails, win_hat owns and wears a won trail). PULSE, GHOST
+and PIXEL are rare (Economy.WHEEL_RARE, weight 0.3, like the rainbow hat, propeller and raincloud);
+the other seven are common (1.0). Full wheel: 16 common at 5.62 % each, 6 rare at 1.69 % each.
+The wheel was redrawn (bulb rim, shaded wedges, gold-trimmed rare wedges, new hub and pointer) and
+has two looks, `--wheel-style=rewards` (default: every prize on its wedge) and `--wheel-style=odds`
+(gems / stars only, an odds legend, the prize shown once it lands). Shots: `wheel/`
+(`wheel_comparison.png`). Tests still written for a hats-only wheel fail (test_store, test_tickets,
+test_wheel_odds, test_hats).

@@ -669,7 +669,7 @@ func _refresh_trails(focus_id := "") -> void:
 		else:
 			status.text = Cosmetics.display_name(id)
 	else:
-		if Cosmetics.is_earned(id):
+		if Cosmetics.is_earned(id) or Cosmetics.is_wheel(id):
 			# i18n: {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 			status.text = Loc.t("skins.name_how", "{name} - {how}", {name = Cosmetics.display_name(id), how = Cosmetics.earned_how(id)})
 		else:
