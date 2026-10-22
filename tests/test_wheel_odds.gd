@@ -1,7 +1,8 @@
 extends "res://tests/suite_base.gd"
 
-## The hat wheel's odds (Economy.WHEEL_*, Progress.wheel_weight / wheel_pick / wheel_pool): the
-## propeller cap is exactly as rare as the rainbow hat, every other hat keeps its old odds; a save's
+## The prize wheel's odds (Economy.WHEEL_*, Progress.wheel_weight / wheel_pick / wheel_pool): 12 hats and
+## 10 wheel trails; the propeller cap, raincloud, PULSE, GHOST and PIXEL are exactly as rare as the
+## rainbow hat, every other prize has the ordinary odds; a save's
 ## FIRST spin (fresh save, RESET PROGRESS, a code that never spun, another epoch's save, a fresh
 ## Progress) is still random but never a rare hat; saves that already spun keep the full odds; later
 ## spins land on a rare hat at the documented rate; the wheel always comes to rest on the hat won.
@@ -21,7 +22,16 @@ func _initialize() -> void:
 	progress.reset_progress()
 
 	# --- The rarity table: propeller == rainbow, everything else as it was
-	var ids := Hats.ids()
+	var ids: Array[String] = Hats.ids() + Cosmetics.wheel_ids()  # every prize, in the wheel's pick order
+	_check(progress.hats_left() == ids, "a fresh wheel holds every hat, then every wheel trail")
+	_check(progress.is_rare_hat("pulse") and progress.is_rare_hat("ghost") and progress.is_rare_hat("pixel")
+		and progress.wheel_weight("pulse") == progress.wheel_weight("rainbow") and progress.wheel_weight("ghost") == progress.wheel_weight("propeller")
+		and progress.wheel_weight("pixel") == progress.wheel_weight("raincloud"), "PULSE, GHOST and PIXEL weigh exactly what the rare hats do")
+	var common_trails := true
+	for id in Cosmetics.wheel_ids():
+		if not id in ["pulse", "ghost", "pixel"]:
+			common_trails = common_trails and not progress.is_rare_hat(id) and progress.wheel_weight(id) == Economy.WHEEL_WEIGHT
+	_check(common_trails, "the other seven wheel trails have the ordinary odds")
 	_check("propeller" in ids and "rainbow" in ids, "(the propeller cap and the rainbow hat are on the wheel)")
 	_check(progress.is_rare_hat("propeller") and progress.is_rare_hat("rainbow"), "the propeller cap and the rainbow hat are the rare ones")
 	_check(progress.wheel_weight("propeller") == progress.wheel_weight("rainbow") and progress.wheel_weight("rainbow") == Economy.WHEEL_RARE_WEIGHT,
@@ -43,9 +53,8 @@ func _initialize() -> void:
 		total += progress.wheel_weight(id)
 		rares += int(progress.is_rare_hat(id))
 	_check(is_equal_approx(total, (ids.size() - rares) * Economy.WHEEL_WEIGHT + rares * Economy.WHEEL_RARE_WEIGHT), "the wheel's total weight is the table's")
-	if ids.size() == 12 and rares == 3:
-		_check(absf(100.0 / total - 10.10) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 3.03) < 0.01,
-			"the documented odds: 10.10 %% per ordinary hat, 3.03 %% per rare one")
+	_check(ids.size() == 22 and rares == 6 and absf(100.0 / total - 5.62) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 1.69) < 0.01,
+		"the documented odds: 22 prizes, 5.62 %% per ordinary one, 1.69 %% per rare one")
 
 	# --- A save's first spin: random, never rare
 	progress.reset_progress()
@@ -53,7 +62,10 @@ func _initialize() -> void:
 	var common_count := 0
 	for id in ids:
 		common_count += int(not progress.is_rare_hat(id))
-	_check(progress.spins == 0 and pool.size() == common_count and not "rainbow" in pool and not "propeller" in pool and not "raincloud" in pool, "a fresh save's first spin leaves the rare hats out")
+	var rare_in_pool := false
+	for id in pool:
+		rare_in_pool = rare_in_pool or progress.is_rare_hat(id)
+	_check(progress.spins == 0 and pool.size() == common_count and not rare_in_pool, "a fresh save's first spin leaves the rare prizes out")
 	var hit := {}
 	var rare_rolls := 0
 	for i in 1000:
@@ -97,7 +109,8 @@ func _initialize() -> void:
 	_check(reborn.spins == 0 and not progress.is_rare_hat(reborn.wheel_pick(reborn.wheel_pool(), 0, 0.99999)), "another epoch's save starts fresh: first spin never rare")
 	# With only rare hats left on a first spin (no real play gets there), the wheel still spins.
 	progress.reset_progress()
-	progress.hats_owned.assign(ids.filter(func(id: String) -> bool: return not progress.is_rare_hat(id)))
+	progress.hats_owned.assign(Hats.ids().filter(func(id: String) -> bool: return not progress.is_rare_hat(id)))
+	progress.cosmetics_owned.assign(Cosmetics.wheel_ids().filter(func(id: String) -> bool: return not progress.is_rare_hat(id)))
 	_check(progress.wheel_pool().size() == ids.size() - common_count, "only rare hats left on a first spin: they stay on (the wheel never jams)")
 
 	# --- Saves that already spun are untouched: the full wheel
@@ -125,7 +138,7 @@ func _initialize() -> void:
 		later_total += progress.wheel_weight(id)
 	var expect: float = Economy.WHEEL_RARE_WEIGHT / later_total
 	var n := 40000
-	var counts := {"rainbow": 0, "propeller": 0, "raincloud": 0}
+	var counts := {"rainbow": 0, "propeller": 0, "raincloud": 0, "pulse": 0, "ghost": 0, "pixel": 0}
 	seed(12345)
 	for i in n:
 		var id: String = progress.wheel_pick(later, 0, randf())
@@ -153,7 +166,7 @@ func _initialize() -> void:
 			mismatches += 1
 			continue
 		var target: String = wheel._target
-		mismatches += int(wheel.hats[wheel.wedge_at(wheel._to)] != target or not target in progress.hats_owned)
+		mismatches += int(wheel.hats[wheel.wedge_at(wheel._to)] != target or not (target in progress.hats_owned or target in progress.cosmetics_owned))
 		rare_first_lands += int(first and progress.is_rare_hat(target))
 		wheel.spinning = false  # (skip the animation: where it stops is already set)
 		wheel.turn = wheel._to
@@ -169,7 +182,8 @@ func _initialize() -> void:
 		if not landed_ids.is_empty():
 			break
 	var landed: String = landed_ids[0] if not landed_ids.is_empty() else ""
-	_check(landed != "" and landed == progress.hats_owned[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed and not progress.is_rare_hat(landed),
+	var owned: Array[String] = progress.hats_owned + progress.cosmetics_owned
+	_check(landed != "" and owned.size() == 1 and landed == owned[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed and not progress.is_rare_hat(landed),
 		"...it lands on exactly the hat it won, an ordinary one (%s)" % landed)
 	# The rare slivers are spread evenly round the wheel, never side by side (the full wheel: 3 ordinary
 	# wedges between each), and the order keeps every hat once.
@@ -184,7 +198,7 @@ func _initialize() -> void:
 	var same: bool = wheel.hats.size() == ids.size()
 	for id in ids:
 		same = same and id in wheel.hats
-	_check(rare_at.size() == 3 and gaps.min() == gaps.max() and gaps.min() == 3 and same, "the full wheel spreads the rare hats evenly: %s ordinary wedges between them" % [gaps])
+	_check(rare_at.size() == 6 and gaps.max() - gaps.min() <= 1 and gaps.min() >= 2 and same, "the full wheel spreads the 6 rare prizes evenly: %s ordinary wedges between them" % [gaps])
 	var some: Array[String] = ["tophat", "beanie", "party", "cap", "propeller", "raincloud", "rainbow"]
 	wheel.hats = some
 	_check(not progress.is_rare_hat(wheel.hats[0]) and progress.is_rare_hat(wheel.hats[2]) and not progress.is_rare_hat(wheel.hats[3]) and progress.is_rare_hat(wheel.hats[-1]),

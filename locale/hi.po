@@ -57,6 +57,11 @@ msgid "PEEK AT MAP"
 msgstr ""
 
 #: scripts/cosmetics.gd
+msgctxt "trail.wheel.unlock"
+msgid "WIN IT ON THE PRIZE WHEEL"
+msgstr ""
+
+#: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
 msgid "REACH DESCENT FLOOR 10"
 msgstr "गहराई में मंज़िल 10 तक पहुँचो"
@@ -259,7 +264,7 @@ msgstr ""
 #. budget: max 192px, lines 1
 #: scripts/demo.gd
 msgctxt "demo.wheel_closed"
-msgid "SPIN FOR HATS AFTER LEVEL {level}"
+msgid "SPIN FOR PRIZES AFTER LEVEL {level}"
 msgstr ""
 
 #: scripts/descent.gd
@@ -846,8 +851,10 @@ msgid "SETTINGS"
 msgstr "सेटिंग्स"
 
 #: scripts/hub.gd
+#, fuzzy
+#| msgid "HAT WHEEL"
 msgctxt "hub.station.wheel"
-msgid "HAT WHEEL"
+msgid "PRIZE WHEEL"
 msgstr "टोपी पहिया"
 
 #: scripts/hub.gd
@@ -1137,14 +1144,14 @@ msgstr ""
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel_free"
-msgid "SPIN FOR HATS, THE FIRST IS FREE"
+msgid "SPIN FOR PRIZES, THE FIRST IS FREE"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel"
-msgid "SPIN FOR HATS, BRING TICKETS"
+msgid "SPIN FOR PRIZES, BRING TICKETS"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
@@ -2087,8 +2094,10 @@ msgid "FLOOR {floor} BONUS +{count}"
 msgstr "मंज़िल {floor} बोनस +{count}"
 
 #: scripts/ui/hat_wheel.gd
+#, fuzzy
+#| msgid "HAT WHEEL"
 msgctxt "wheel.title"
-msgid "HAT WHEEL"
+msgid "PRIZE WHEEL"
 msgstr "टोपी पहिया"
 
 #: scripts/ui/hat_wheel.gd
@@ -2107,8 +2116,10 @@ msgid "SPIN"
 msgstr "घुमाओ"
 
 #: scripts/ui/hat_wheel.gd
+#, fuzzy
+#| msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
 msgctxt "wheel.all_won"
-msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
+msgid "EVERY PRIZE WON! NEW LOOKS IN THE SHOP"
 msgstr "सारी टोपियाँ जीत लीं! दुकान में नए लुक"
 
 #: scripts/ui/hat_wheel.gd
@@ -2128,19 +2139,21 @@ msgid_plural "NEED {count} TICKETS TO SPIN"
 msgstr[0] "घुमाने को {count} टिकट चाहिए"
 msgstr[1] "घुमाने को {count} टिकट चाहिए"
 
+#. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
+#. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left"
-msgid "{count} HAT TO WIN"
-msgid_plural "{count} HATS TO WIN"
-msgstr[0] "जीतने को {count} टोपी बची"
-msgstr[1] "जीतने को {count} टोपियाँ बचीं"
+msgctxt "wheel.key_to_spin"
+msgid "{key} TO SPIN"
+msgstr ""
 
+#. the top line of the prize wheel, {count} = prizes still on the wheel; max 200px, 1 line
+#. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left_key"
-msgid "{count} HAT TO WIN - {key} TO SPIN"
-msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
-msgstr[0] "जीतने को {count} टोपी - {key} से घुमाओ"
-msgstr[1] "जीतने को {count} टोपियाँ - {key} से घुमाओ"
+msgctxt "wheel.prizes_left"
+msgid "{count} PRIZE TO WIN"
+msgid_plural "{count} PRIZES TO WIN"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_free"
@@ -2151,6 +2164,32 @@ msgstr "घुमाओ  मुफ़्त"
 msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
 msgstr "घुमाओ  {cost}"
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.rare"
+msgid "RARE"
+msgstr ""
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.common"
+msgid "COMMON"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.chance"
+msgid "{chance}% EACH"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.left"
+msgid "{count} LEFT"
+msgid_plural "{count} LEFT"
+msgstr[0] ""
+msgstr[1] ""
 
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
@@ -2567,8 +2606,10 @@ msgid "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
 msgstr "हब के इनामी पहिये पर टोपियाँ जीतो"
 
 #: scripts/ui/skins_screen.gd
+#, fuzzy
+#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
 msgctxt "skins.rule_trails"
-msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "इनामी पहिये की दुकान से लकीरें ख़रीदो"
 
 #: scripts/ui/skins_screen.gd
@@ -2762,8 +2803,10 @@ msgstr "जेली: बंद"
 #. status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
+#, fuzzy
+#| msgid "LOCKED - WIN IT ON THE HAT WHEEL"
 msgctxt "skins.locked_hat"
-msgid "LOCKED - WIN IT ON THE HAT WHEEL"
+msgid "LOCKED - WIN IT ON THE PRIZE WHEEL"
 msgstr "लॉक - टोपी पहिये पर जीतो"
 
 #. max 168px, grows to 224px (the button widens, the slimes move out with its ends), 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
@@ -3184,6 +3227,18 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.hats_left"
+#~ msgid "{count} HAT TO WIN"
+#~ msgid_plural "{count} HATS TO WIN"
+#~ msgstr[0] "जीतने को {count} टोपी बची"
+#~ msgstr[1] "जीतने को {count} टोपियाँ बचीं"
+
+#~ msgctxt "wheel.hats_left_key"
+#~ msgid "{count} HAT TO WIN - {key} TO SPIN"
+#~ msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
+#~ msgstr[0] "जीतने को {count} टोपी - {key} से घुमाओ"
+#~ msgstr[1] "जीतने को {count} टोपियाँ - {key} से घुमाओ"
 
 #~ msgctxt "wheel.section.hats"
 #~ msgid "HATS"

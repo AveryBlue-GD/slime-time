@@ -180,9 +180,9 @@ func _check_stripped_full_save() -> void:
 	var tour: Node = load("res://scripts/hub_tour.gd").new()
 	progress.levels_cleared = 0
 	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS, "demo tour: the portal asks for the demo's %d levels (%s)" % [Demo.LEVELS, tour.station_line("random")])
-	_check(tour.station_line("wheel") == "SPIN FOR HATS AFTER LEVEL %d" % Demo.LEVELS, "demo tour: the wheel opens after the last level, no free-spin promise yet (%s)" % tour.station_line("wheel"))
+	_check(tour.station_line("wheel") == "SPIN FOR PRIZES AFTER LEVEL %d" % Demo.LEVELS, "demo tour: the wheel opens after the last level, no free-spin promise yet (%s)" % tour.station_line("wheel"))
 	Platform.override = "web"
-	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS and tour.station_line("wheel") == "SPIN FOR HATS AFTER LEVEL %d" % Demo.LEVELS,
+	_check(tour.station_line("random") == "LOCKED: BEAT %d LEVELS FIRST" % Demo.LEVELS and tour.station_line("wheel") == "SPIN FOR PRIZES AFTER LEVEL %d" % Demo.LEVELS,
 		"web demo tour: randomizer and wheel read as on the desktop, no FULL GAME (%s / %s)" % [tour.station_line("random"), tour.station_line("wheel")])
 	Platform.override = ""
 	tour.free()
@@ -508,7 +508,7 @@ func _check_screens() -> void:
 	hub._show_prompt()
 	_check(hub.prompt_key.text == "FREE", "hub: after the end screen the first spin is FREE (%s)" % hub.prompt_key.text)
 	var tour: Node = load("res://scripts/hub_tour.gd").new()
-	_check(tour.station_line("wheel") == "SPIN FOR HATS, THE FIRST IS FREE", "...the tour says so now (%s)" % tour.station_line("wheel"))
+	_check(tour.station_line("wheel") == "SPIN FOR PRIZES, THE FIRST IS FREE", "...the tour says so now (%s)" % tour.station_line("wheel"))
 	progress.hats_owned.assign(Hats.ids().slice(0, Demo.HATS_MAX))
 	progress.spins = Demo.HATS_MAX
 	progress.tickets = 100

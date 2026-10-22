@@ -1,7 +1,7 @@
 # Trailer drafts (vertical Shorts) and how to re-render them
 
 Started 2026-10-20 for the social-media push (TikTok / YouTube Shorts / Reels). All footage is the real game:
-real levels played by the autopilot or by scripted inputs, and real menus. The wardrobe, hat wheel and map
+real levels played by the autopilot or by scripted inputs, and real menus. The wardrobe, prize wheel and map
 papers beats use portrait rebuilds of those screens, made from the game's own pieces (see "Portrait screens").
 Marketing context: [advisor/demo.md](../advisor/demo.md) (the Shorts feed the web demo and the Steam page).
 
@@ -52,7 +52,7 @@ never read or written.
 |---|---|
 | `tools/trailer/trailer.json` | **what to shoot**: `takes` (named game moments + flags) and `drafts` (beats + end card) |
 | `tools/trailer/take.tscn` / `take.gd` | the director: plays one take (modes `play`, `hops`, `skins`, `hats`, `trails`, `wheel`, `hub`, `maps`, `title`, `win`; flags in the header comment) |
-| `tools/trailer/portrait.tscn` / `portrait.gd` (+ `portrait_stage.gd`) | marketing-only 9:16 rebuilds of the wardrobe, hat wheel and map papers at 180x320 (views `skins`, `wheel`, `papers`; flags in the header comment). The game never loads them |
+| `tools/trailer/portrait.tscn` / `portrait.gd` (+ `portrait_stage.gd`) | marketing-only 9:16 rebuilds of the wardrobe, prize wheel and map papers at 180x320 (views `skins`, `wheel`, `papers`; flags in the header comment). The game never loads them |
 | `tools/trailer/goo_text.py` | captions and the end card's words in the logo's gooey lettering (pure Python, no Godot) |
 | `tools/trailer/card.tscn` / `card.gd` | the animated end card: the logo in the skin's colors over the skins-screen try-on stage (its words come from `goo_text.py`) |
 | `tools/trailer/trailer.py` | renders takes (movie writer, PNG + WAV), captions and cards, then cuts, frames and joins with ffmpeg, adds the contact sheets and README |
@@ -64,7 +64,7 @@ so a take renders the same every time.
 **Full screen (owner, 2026-10-20).** Every beat fills the 9:16 frame edge to edge; there are no bands or borders.
 The game is scaled up **11x with nearest neighbour** (180 x 11 = 1980, so the game's height fills the 1920-px frame).
 That shows a strip about 98 x 175 game pixels, or 6 x 11 tiles. The strip **follows the action**: `take.gd
---track` writes the focus point for every drawn frame (the slime; the try-on slime in the wardrobe; the hat wheel
+--track` writes the focus point for every drawn frame (the slime; the try-on slime in the wardrobe; the prize wheel
 once it opens). `trailer.py` smooths that path both ways (an eased pan with no lag and no jitter, `FOLLOW` = 0.06
 per frame, per beat `"follow"`) and moves the crop in **whole game pixels** through ffmpeg `sendcmd`. A beat can pin
 the view with `"focus": [x, y]` (320x180 pixels) or zoom further in with `"zoom": 12+`.
@@ -72,7 +72,7 @@ the view with `"focus": [x, y]` (320x180 pixels) or zoom further in with `"zoom"
 **No HUD (owner, 2026-10-20).** `take.gd` hides the game's whole HUD on every frame: meter, coins, timer, level
 and area banners, story line, prompts, dry-up and win panels, NEW RECORD. `--keep-hud` shows it for a beat that is
 about it. Menu takes also hide the chrome the crop would cut or the caption would sit on (`_tidy`): every label
-and button in the wardrobe except the skin tiles, the hat wheel's header row, and the map view's title and bottom
+and button in the wardrobe except the skin tiles, the prize wheel's header row, and the map view's title and bottom
 bar.
 
 **Captions** (owner, 2026-10-20) use the DRY TRYING logo's own lettering: `goo_text.py` calls
@@ -168,13 +168,13 @@ keep DESCENT out while it's switched off (D11).
 
 - **A, "Can you escape before you dry up?"** (~28 s): goo splash into the dark Dark Dungeon, the slime runs dry,
   10 themed mazes, a charged leap into the dark, the chalice, then the endgame (random mazes, hard mode, records),
-  then the cosmetics grind (skins, jelly, hat wheel, trails, map papers), then the end card.
+  then the cosmetics grind (skins, jelly, prize wheel, trails, map papers), then the end card.
 - **B, "1000+ ways to dress your slime"** (~27 s): the wardrobe flipping every skin, jelly, 12 hats popping off a
   leaping slime, ANIMATED HATS (owner, 2026-10-20: a close 13x take of the RAINCLOUD hovering and raining over Lime
   on L1, then the PROPELLER CAP spinning on Mint on L2; takes `rain_hat`, `prop_hat`), the wheel, trails, papers;
   then "earn them all" over gameplay, tickets, hard mode.
 - **C, "Beat the story... then the real game starts"** (~22 s): story, then the postgame loop: endless mazes,
-  tickets, hat wheel, hard mode = jelly skins, gold medals, the secret STOPWATCH skin (a locked silhouette), "ONE MORE RUN?".
+  tickets, prize wheel, hard mode = jelly skins, gold medals, the secret STOPWATCH skin (a locked silhouette), "ONE MORE RUN?".
 
 Known rough edges: B's hook caption ("1000+ WAYS TO / DRESS YOUR SLIME") wraps to 3 goo lines. The mid-level shots (`--skip`) start the slime partway along the route, so less of the trail
 is lit than in a real run. The hat hops on level 1 happen in a sparse part of the maze. The trails beat is

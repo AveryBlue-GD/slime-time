@@ -139,7 +139,7 @@ func _full_tour() -> void:
 		maps = "MAPS OF EVERY LEVEL YOU SMEARED", upgrades = "COINS GO IN, STRONGER GOO COMES OUT",
 		quit = "THE TRAPDOOR, FOR BEDTIME", coins = "THE PRACTICE COIN WAS FAKE. SORRY",
 		random = "LOCKED: BEAT ALL %d LEVELS FIRST" % Levels.COUNT, settings = "SOUND, KEYS, FOG. THE BORING SIGN",
-		wheel = "SPIN FOR HATS, THE FIRST IS FREE", wardrobe = "SKINS, HATS, TRAILS. DRY UP IN STYLE",
+		wheel = "SPIN FOR PRIZES, THE FIRST IS FREE", wardrobe = "SKINS, HATS, TRAILS. DRY UP IN STYLE",
 	}
 	var widest := 0
 	for i in range(1, hub.stations.size()):

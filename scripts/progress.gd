@@ -229,6 +229,9 @@ var abilities := {}
 ## Cosmetics bought with tickets (Cosmetics ids; [cosmetics] owned) and the ones worn: a trail
 ## style and a map paper (Cosmetics.DEFAULT_TRAIL / DEFAULT_PAPER when none is).
 var cosmetics_owned: Array[String] = []
+## The prize wheel's look: "odds" (rarity and chance only, the prize shown once it stops; owner
+## 2026-10-22), or with the debug flag --wheel-style=rewards each prize on its wedge (the comparison).
+var wheel_style := "odds"
 var trail_style := Cosmetics.DEFAULT_TRAIL
 var map_paper := Cosmetics.DEFAULT_PAPER
 ## Coins picked up in the story levels: level -> Array of coin keys ("x,y" cells). Each coin can
@@ -445,6 +448,8 @@ func _ready() -> void:
 			for i in mini(ability_levels.size(), Abilities.LIST.size()):
 				var id: String = Abilities.LIST[i].id
 				abilities[id] = clampi(ability_levels[i].to_int(), 0, Abilities.max_level(id))
+		elif arg.begins_with("--wheel-style="):  # the prize wheel's look: odds (default) or rewards (HatWheel)
+			wheel_style = arg.trim_prefix("--wheel-style=")
 		elif arg.begins_with("--trail="):  # wear (and own) a trail style, e.g. --trail=candy
 			saving_enabled = false
 			var style := arg.trim_prefix("--trail=")
@@ -2009,11 +2014,17 @@ func is_hat_unlocked(id: String) -> bool:
 
 
 ## The hats still on the hat wheel: the ones not won yet.
+## Every prize still on the hat wheel: the hats you don't have, then the wheel trails
+## (Cosmetics.wheel_ids, not in the demo) you haven't won (dev mode's free cosmetics don't count).
 func hats_left() -> Array[String]:
 	var left: Array[String] = []
 	for id in Hats.ids():
 		if not id in hats_owned:
 			left.append(id)
+	if not Platform.is_demo():
+		for id in Cosmetics.wheel_ids():
+			if not id in cosmetics_owned:
+				left.append(id)
 	return left
 
 
@@ -2265,7 +2276,7 @@ func cosmetic_price(id: String) -> int:
 
 
 func can_buy_cosmetic(id: String) -> bool:
-	return Demo.shop_open() and not Cosmetics.get_item(id).is_empty() and not Cosmetics.is_earned(id) and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
+	return Demo.shop_open() and not Cosmetics.get_item(id).is_empty() and not Cosmetics.is_earned(id) and not Cosmetics.is_wheel(id) and not owns_cosmetic(id) and cosmetic_price(id) <= tickets
 
 
 ## Buys cosmetic `id` and puts it on (pay + own + wear + save at once). False if it can't.
@@ -2339,6 +2350,12 @@ func store_affordable(where: String) -> bool:
 
 ## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
 func win_hat(id: String) -> void:
+	if Cosmetics.is_wheel(id):  # a wheel trail: yours for good, and worn
+		if not id in cosmetics_owned:
+			cosmetics_owned.append(id)
+			trail_style = id
+			save_progress()
+		return
 	if id in hats_owned or Hats.get_hat(id).is_empty():
 		return
 	hats_owned.append(id)

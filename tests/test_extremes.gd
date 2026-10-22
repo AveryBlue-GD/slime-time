@@ -309,7 +309,7 @@ func _wipe_and_pause() -> void:
 	change_scene_to_file("res://scenes/hub.tscn")
 	await _frames(6)
 	var hub := current_scene
-	var owned_before: int = progress.hats_owned.size()
+	var owned_before: int = progress.hats_owned.size() + progress.cosmetics_owned.size()
 	var tix_before: int = progress.tickets
 	if hub != null and hub.get("hat_wheel") != null:
 		hub.open_hat_wheel()
@@ -317,7 +317,7 @@ func _wipe_and_pause() -> void:
 		var spun: bool = hub.hat_wheel.spin()
 		change_scene_to_file("res://scenes/title.tscn")  # the very same frame
 		await _frames(8)
-		_check(spun and progress.hats_owned.size() == owned_before + 1 and progress.tickets == tix_before - progress.spin_cost_after(1), "a spin on the frame of a scene change: charged %d, won 1 hat, nothing lost" % (tix_before - progress.tickets))
+		_check(spun and progress.hats_owned.size() + progress.cosmetics_owned.size() == owned_before + 1 and progress.tickets == tix_before - progress.spin_cost_after(1), "a spin on the frame of a scene change: charged %d, won 1 prize, nothing lost" % (tix_before - progress.tickets))
 		change_scene_to_file("res://scenes/hub.tscn")
 		await _frames(6)
 		hub = current_scene
@@ -572,12 +572,13 @@ func _economy() -> void:
 	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == cost - 1, "one ticket short (%d of %d): no spin, nothing taken" % [progress.tickets, cost])
 	progress.tickets = cost
 	var won: String = progress.spin_hat(0.1)
-	_check(won != "" and progress.tickets == 0 and progress.hats_owned.has(won), "exactly enough tickets: spin works, balance 0, %s won" % won)
+	_check(won != "" and progress.tickets == 0 and (progress.hats_owned.has(won) or progress.cosmetics_owned.has(won)), "exactly enough tickets: spin works, balance 0, %s won" % won)
 	progress.spins = 9223372036854775807
 	_check(progress.spin_cost() == progress.SPIN_COST_MAX, "spin cost at spins = INT64_MAX stays %d" % progress.spin_cost())
 	progress.hats_owned.assign(Hats.ids())
+	progress.cosmetics_owned.assign(Cosmetics.wheel_ids())
 	progress.tickets = 99999
-	_check(not progress.can_spin_hats() and progress.spin_hat() == "", "all hats won: the wheel can't spin")
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "", "all prizes won: the wheel can't spin")
 	Hats.available = false
 	# daily cap with dev day numbers
 	progress.reset_progress()

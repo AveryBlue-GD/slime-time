@@ -205,25 +205,25 @@ func _initialize() -> void:
 	_check(cost == 0, "the first spin is free")
 	var first: String = progress.spin_hat(0.0)
 	_check(first != "" and first in progress.hats_owned and progress.tickets == 100 and progress.spins == 1, "free spin: hat won, nothing paid (%s)" % first)
-	_check(progress.spin_cost() == 12, "the next one costs 12")
+	_check(progress.spin_cost() == 20, "the next one costs 20")
 	var second: String = progress.spin_hat(0.0)
-	_check(second != "" and second != first and progress.tickets == 88 and progress.hats_owned.size() == 2, "spin 2: pays 12, never a hat you own (%s)" % second)
+	_check(second != "" and second != first and progress.tickets == 80 and progress.hats_owned.size() == 2, "spin 2: pays 20, never a hat you own (%s)" % second)
 	# The whole spin is saved at once: a fresh load sees the payment AND the prize.
 	var reloaded: Node = preload("res://scripts/progress.gd").new()
 	reloaded.save_path = test_save
 	reloaded.load_progress()
-	_check(reloaded.tickets == 88 and second in reloaded.hats_owned and reloaded.spins == 2, "payment and prize are saved together, before any animation")
+	_check(reloaded.tickets == 80 and second in reloaded.hats_owned and reloaded.spins == 2, "payment and prize are saved together, before any animation")
 	reloaded.free()
 	progress.tickets = 5
 	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 5 and progress.hats_owned.size() == 2,
 		"too few tickets: no spin, nothing changes")
-	_check(progress.spin_cost() == 14, "spin 3 costs 14 (12 + 2 per spin taken after the second)")
-	progress.tickets = 13
-	_check(not progress.can_spin_hats(), "13 is not enough for 14")
-	progress.tickets = 14
-	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 14 is enough")
-	_check(progress.spin_cost_after(0) == 0 and progress.spin_cost_after(1) == 12 and progress.spin_cost_after(2) == 14 and progress.spin_cost_after(5) == 20
-		and progress.spin_cost_after(15) == 40 and progress.spin_cost_after(500) == progress.SPIN_COST_MAX, "price progression 0, 12, 14, ... capped at 40")
+	_check(progress.spin_cost() == 20, "spin 3 costs 20 too (a flat price, owner 2026-10-22)")
+	progress.tickets = 19
+	_check(not progress.can_spin_hats(), "19 is not enough for 20")
+	progress.tickets = 20
+	_check(progress.spin_hat() != "" and progress.tickets == 0, "exactly 20 is enough")
+	_check(progress.spin_cost_after(0) == 0 and progress.spin_cost_after(1) == 20 and progress.spin_cost_after(2) == 20 and progress.spin_cost_after(5) == 20
+		and progress.spin_cost_after(15) == 20 and progress.spin_cost_after(500) == progress.SPIN_COST_MAX, "price: the first spin free, then 20 every time")
 	var hostile_spins := [1 << 62, (1 << 62) - 1, 1 << 61, 9_223_372_036_854_775_807, 3_000_000_000, 100000, 21, 22]
 	var safe := true
 	for n in hostile_spins:
@@ -253,12 +253,12 @@ func _initialize() -> void:
 
 	# The wheel node asks Progress first: paid and won the moment spin() returns, before it turns.
 	progress.reset_progress()
-	progress.tickets = 30
+	progress.tickets = 38
 	progress.spins = 1
 	var wheel: Control = load("res://scripts/ui/hat_wheel.gd").new()  # (loaded late: it names the Progress autoload)
 	root.add_child(wheel)
 	await process_frame
-	_check(wheel.spin() and wheel.spinning and progress.tickets == 18 and progress.hats_owned.size() == 1,
+	_check(wheel.spin() and wheel.spinning and progress.tickets == 18 and progress.hats_owned.size() + progress.cosmetics_owned.size() == 1,
 		"the wheel's spin is already paid and won while it's still turning")
 	var landed_ids: Array[String] = []
 	wheel.landed.connect(func(id: String) -> void: landed_ids.append(id))
@@ -267,7 +267,8 @@ func _initialize() -> void:
 		if not landed_ids.is_empty():
 			break
 	var landed: String = landed_ids[0] if not landed_ids.is_empty() else ""
-	_check(landed == progress.hats_owned[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed,
+	var owned_now: Array[String] = progress.hats_owned + progress.cosmetics_owned
+	_check(owned_now.size() == 1 and landed == owned_now[0] and wheel.hats[wheel.wedge_at(wheel.turn)] == landed,
 		"...and the wheel lands on exactly the hat it already won (%s)" % landed)
 	_check(progress.tickets == 18, "landing charges nothing more")
 	wheel.free()
@@ -295,6 +296,7 @@ func _initialize() -> void:
 		miss += 1
 	_check(progress.rainbow_pity == miss, "every spin that misses the rainbow adds pity (%d)" % progress.rainbow_pity)
 	progress.hats_owned.assign(ids.filter(func(id: String) -> bool: return id != "rainbow"))
+	progress.cosmetics_owned.assign(Cosmetics.wheel_ids())  # (the wheel trails won too)
 	_check(progress.spin_hat(0.0) == "rainbow" and progress.rainbow_pity == 0, "the last hat left is the rainbow one, and landing it resets the pity")
 	_check(progress.hats_left().is_empty() and not progress.can_spin_hats(), "an empty wheel can't spin")
 	Hats.available = false

@@ -57,6 +57,11 @@ msgid "PEEK AT MAP"
 msgstr ""
 
 #: scripts/cosmetics.gd
+msgctxt "trail.wheel.unlock"
+msgid "WIN IT ON THE PRIZE WHEEL"
+msgstr ""
+
+#: scripts/cosmetics.gd
 msgctxt "trail.abyss.unlock"
 msgid "REACH DESCENT FLOOR 10"
 msgstr "LLEGA AL PISO 10 DEL DESCENSO"
@@ -259,7 +264,7 @@ msgstr ""
 #. budget: max 192px, lines 1
 #: scripts/demo.gd
 msgctxt "demo.wheel_closed"
-msgid "SPIN FOR HATS AFTER LEVEL {level}"
+msgid "SPIN FOR PRIZES AFTER LEVEL {level}"
 msgstr ""
 
 #: scripts/descent.gd
@@ -846,8 +851,10 @@ msgid "SETTINGS"
 msgstr "AJUSTES"
 
 #: scripts/hub.gd
+#, fuzzy
+#| msgid "HAT WHEEL"
 msgctxt "hub.station.wheel"
-msgid "HAT WHEEL"
+msgid "PRIZE WHEEL"
 msgstr "RULETA DE GORROS"
 
 #: scripts/hub.gd
@@ -1137,14 +1144,14 @@ msgstr ""
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel_free"
-msgid "SPIN FOR HATS, THE FIRST IS FREE"
+msgid "SPIN FOR PRIZES, THE FIRST IS FREE"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.wheel"
-msgid "SPIN FOR HATS, BRING TICKETS"
+msgid "SPIN FOR PRIZES, BRING TICKETS"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
@@ -2088,8 +2095,10 @@ msgid "FLOOR {floor} BONUS +{count}"
 msgstr "BONO DEL PISO {floor}: +{count}"
 
 #: scripts/ui/hat_wheel.gd
+#, fuzzy
+#| msgid "HAT WHEEL"
 msgctxt "wheel.title"
-msgid "HAT WHEEL"
+msgid "PRIZE WHEEL"
 msgstr "RULETA DE GORROS"
 
 #: scripts/ui/hat_wheel.gd
@@ -2108,8 +2117,10 @@ msgid "SPIN"
 msgstr "GIRAR"
 
 #: scripts/ui/hat_wheel.gd
+#, fuzzy
+#| msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
 msgctxt "wheel.all_won"
-msgid "EVERY HAT WON! NEW LOOKS IN THE SHOP"
+msgid "EVERY PRIZE WON! NEW LOOKS IN THE SHOP"
 msgstr "¡GANASTE TODOS! NUEVOS ESTILOS EN LA TIENDA"
 
 #: scripts/ui/hat_wheel.gd
@@ -2129,19 +2140,21 @@ msgid_plural "NEED {count} TICKETS TO SPIN"
 msgstr[0] "NECESITAS {count} BOLETO PARA GIRAR"
 msgstr[1] "NECESITAS {count} BOLETOS PARA GIRAR"
 
+#. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
+#. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left"
-msgid "{count} HAT TO WIN"
-msgid_plural "{count} HATS TO WIN"
-msgstr[0] "QUEDA {count} GORRO POR GANAR"
-msgstr[1] "QUEDAN {count} GORROS POR GANAR"
+msgctxt "wheel.key_to_spin"
+msgid "{key} TO SPIN"
+msgstr ""
 
+#. the top line of the prize wheel, {count} = prizes still on the wheel; max 200px, 1 line
+#. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
-msgctxt "wheel.hats_left_key"
-msgid "{count} HAT TO WIN - {key} TO SPIN"
-msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
-msgstr[0] "QUEDA {count} GORRO - {key} PARA GIRAR"
-msgstr[1] "QUEDAN {count} GORROS - {key} PARA GIRAR"
+msgctxt "wheel.prizes_left"
+msgid "{count} PRIZE TO WIN"
+msgid_plural "{count} PRIZES TO WIN"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.spin_free"
@@ -2152,6 +2165,32 @@ msgstr "GIRAR  GRATIS"
 msgctxt "wheel.spin_cost"
 msgid "SPIN  {cost}"
 msgstr "GIRAR  {cost}"
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.rare"
+msgid "RARE"
+msgstr ""
+
+#. the odds legend beside the wheel, 3 lines of max 76px: the tier, {chance} = a percent
+#. budget: max 76px, lines 3
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.common"
+msgid "COMMON"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.chance"
+msgid "{chance}% EACH"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.legend.left"
+msgid "{count} LEFT"
+msgid_plural "{count} LEFT"
+msgstr[0] ""
+msgstr[1] ""
 
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
@@ -2568,8 +2607,10 @@ msgid "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
 msgstr "GANA GORROS EN LA RULETA DE PREMIOS DE LA BASE"
 
 #: scripts/ui/skins_screen.gd
+#, fuzzy
+#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
 msgctxt "skins.rule_trails"
-msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "COMPRA RASTROS EN LA TIENDA DE LA RULETA"
 
 #: scripts/ui/skins_screen.gd
@@ -2763,8 +2804,10 @@ msgstr "GELATINA: NO"
 #. status line, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
+#, fuzzy
+#| msgid "LOCKED - WIN IT ON THE HAT WHEEL"
 msgctxt "skins.locked_hat"
-msgid "LOCKED - WIN IT ON THE HAT WHEEL"
+msgid "LOCKED - WIN IT ON THE PRIZE WHEEL"
 msgstr "BLOQUEADO - GÁNALO EN LA RULETA DE GORROS"
 
 #. max 168px, grows to 224px (the button widens, the slimes move out with its ends), 1 line, 16 px font; the button text is PLAY on a fresh save, else ENTER THE HUB
@@ -3187,6 +3230,18 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.hats_left"
+#~ msgid "{count} HAT TO WIN"
+#~ msgid_plural "{count} HATS TO WIN"
+#~ msgstr[0] "QUEDA {count} GORRO POR GANAR"
+#~ msgstr[1] "QUEDAN {count} GORROS POR GANAR"
+
+#~ msgctxt "wheel.hats_left_key"
+#~ msgid "{count} HAT TO WIN - {key} TO SPIN"
+#~ msgid_plural "{count} HATS TO WIN - {key} TO SPIN"
+#~ msgstr[0] "QUEDA {count} GORRO - {key} PARA GIRAR"
+#~ msgstr[1] "QUEDAN {count} GORROS - {key} PARA GIRAR"
 
 #~ msgctxt "wheel.section.hats"
 #~ msgid "HATS"

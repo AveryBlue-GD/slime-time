@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
-## 242, workshop 423, cosmetics 240), hats live for players (12 spins = 12 different hats, never a
+## 420, workshop 423, cosmetics 500), the prize wheel live for players (22 spins = 12 hats + 10 trails, never a
 ## duplicate, rainbow pity), hat dyes (hats are never sold; 10 tickets a dye for a won dyeable hat,
 ## worn at once, its own color free, saved), workshop and cosmetic purchases (exact balance, one short,
 ## double buy, max level, not refundable, dev mode free), equip / unequip / fallback, save round trips
@@ -53,9 +53,9 @@ func _fresh(tickets := 0) -> void:
 
 func _totals() -> void:
 	var wheel := 0
-	for taken in Hats.LIST.size():
+	for taken in Hats.LIST.size() + Cosmetics.wheel_ids().size():
 		wheel += progress.spin_cost_after(taken)
-	_check(wheel == 242, "all 12 hats on the wheel cost 0 + 12 + 14 + ... + 32 = 242 (got %d)" % wheel)
+	_check(wheel == 420, "all 22 prizes on the wheel (12 hats, 10 trails) cost 0 + 21 x 20 = 420 (got %d)" % wheel)
 	_check(Workshop.full_cost() == 423 and Workshop.total_cost("wind", 3) == 95 and Workshop.total_cost("magnet", 3) == 82,
 		"the workshop costs 95 + 4 x 82 = 423 (got %d)" % Workshop.full_cost())
 	var cosmetics := 0
@@ -63,7 +63,7 @@ func _totals() -> void:
 		cosmetics += Cosmetics.price(id)
 	_check(cosmetics == 500 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 11
 		and not "rainbow_paper" in Cosmetics.ids(), "5 trails (150) + 11 paper bundles (90 + 7 x 30 + PRISM 50) cost 500 (got %d)" % cosmetics)
-	_check(wheel + Workshop.full_cost() + cosmetics == 1165, "everything but the hat dyes costs 1165 tickets")
+	_check(wheel + Workshop.full_cost() + cosmetics == 1343, "everything but the hat dyes costs 1343 tickets")
 	_check(Economy.DYE_PRICE == 10
 		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
 		"store numbers live in Economy (Progress aliases them)")
@@ -86,19 +86,22 @@ func _hats() -> void:
 	var seen := {}
 	var paid := 0
 	var rainbow_at := -1
-	for i in Hats.LIST.size():
+	var prizes := Hats.LIST.size() + Cosmetics.wheel_ids().size()
+	for i in prizes:
 		var before: int = progress.tickets
 		var hat: String = progress.spin_hat(randf())
 		paid += before - progress.tickets
 		if hat == "rainbow":
 			rainbow_at = i + 1
 		seen[hat] = true
-	_check(seen.size() == Hats.LIST.size() and progress.hats_left().is_empty() and paid == 242 and progress.tickets_spent == 242,
-		"12 spins win 12 different hats (no duplicates) for 242 tickets (paid %d)" % paid)
-	_check(rainbow_at > 0, "the rainbow hat comes by spin 12 at the latest (spin %d)" % rainbow_at)
-	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 758, "an empty wheel can't spin and takes nothing")
+	_check(seen.size() == prizes and progress.hats_owned.size() == Hats.LIST.size() and progress.cosmetics_owned.size() == Cosmetics.wheel_ids().size()
+		and progress.hats_left().is_empty() and paid == 420 and progress.tickets_spent == 420,
+		"22 spins win 12 different hats and 10 different trails (no duplicates) for 420 tickets (paid %d)" % paid)
+	_check(rainbow_at > 0, "the rainbow hat comes by spin 22 at the latest (spin %d)" % rainbow_at)
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 580, "an empty wheel can't spin and takes nothing")
 	# Pity: every miss fattens the rainbow wedge; landing on it resets.
 	_fresh(1000)
+	progress.cosmetics_owned.assign(Cosmetics.wheel_ids())  # (trails won: the rainbow hat is the last wedge)
 	progress.spin_hat(0.0)  # the top hat (first in wheel order), a miss
 	progress.spin_hat(0.0)
 	_check(progress.rainbow_pity == 2 and progress.wheel_weight("rainbow", 2) > progress.wheel_weight("rainbow", 0), "misses build pity (%d)" % progress.rainbow_pity)
@@ -111,9 +114,10 @@ func _hats() -> void:
 	var hat: String = progress.spin_hat(0.5)
 	var file := ConfigFile.new()
 	var ok := file.load(progress.save_path) == OK
-	_check(ok and hat != "" and int(file.get_value("wallet", "globs", -1)) == 18 and hat in file.get_value("hats", "owned", [])
-		and int(file.get_value("hats", "spins", 0)) == 2 and int(file.get_value("wallet", "tickets_spent", 0)) == 12,
-		"a spin is paid, won and saved at once (18 left, %s owned, spent 12 in the file)" % hat)
+	_check(ok and hat != "" and int(file.get_value("wallet", "globs", -1)) == 10
+		and (hat in file.get_value("hats", "owned", []) or hat in file.get_value("cosmetics", "owned", []))
+		and int(file.get_value("hats", "spins", 0)) == 2 and int(file.get_value("wallet", "tickets_spent", 0)) == 20,
+		"a spin is paid, won and saved at once (10 left, %s owned, spent 20 in the file)" % hat)
 	progress.saving_enabled = false
 
 
@@ -382,7 +386,7 @@ func _ui_wheel() -> void:
 	hub.open_hat_wheel()
 	await process_frame
 	var wheel: Control = hub.hat_wheel
-	_check(wheel.visible and wheel.tab == "wheel" and wheel.spin_button.has_focus() and "SPIN  16" in wheel.spin_button.text and wheel.spin_button.icon != null,
+	_check(wheel.visible and wheel.tab == "wheel" and wheel.spin_button.has_focus() and "SPIN  20" in wheel.spin_button.text and wheel.spin_button.icon != null,
 		"the wheel opens on WHEEL, focus on SPIN with its price and the ticket icon (%s)" % wheel.spin_button.text)
 	wheel.shop_tab.pressed.emit()
 	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.is_empty()
@@ -429,16 +433,17 @@ func _ui_wheel() -> void:
 	_check(not wheel.back(), "Esc with no confirm: the hub closes the overlay")
 	hub.close_hat_wheel()
 	_check(not wheel.visible and not hub.slime.frozen, "closed: the slime moves again")
-	# Every hat owned: the wheel is empty and the overlay opens on the SHOP.
+	# Every prize won: the wheel is empty and the overlay opens on the SHOP.
 	progress.hats_owned.assign(Hats.ids())
+	progress.cosmetics_owned.append_array(Cosmetics.wheel_ids())
 	hub.open_hat_wheel()
 	await process_frame
 	_check(wheel.tab == "shop" and wheel.shop_page.visible and wheel.get_viewport().gui_get_focus_owner() != null
-		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every hat won: opens on the SHOP, focus inside")
+		and wheel.is_ancestor_of(wheel.get_viewport().gui_get_focus_owner()), "every prize won: opens on the SHOP, focus inside")
 	wheel.section_buttons["hats"].pressed.emit()
 	_check(wheel.shop_tiles.size() == 12 and wheel.dye_hat == "", "...its DYES section lists all 12 hats")
 	wheel.wheel_tab.pressed.emit()
-	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY HAT" in wheel.result.text and wheel.wheel_tab.has_focus(),
+	_check(wheel.hats.is_empty() and wheel.spin_button.disabled and "EVERY PRIZE" in wheel.result.text and wheel.wheel_tab.has_focus(),
 		"...the WHEEL tab shows an empty wheel that can't spin")
 	hub.close_hat_wheel()
 	current_scene = null
@@ -470,8 +475,8 @@ func _ui_wardrobe() -> void:
 	screen._unhandled_input(esc)
 	_check(screen._picker == null and screen.is_inside_tree() and progress.hat_dye_of("beanie") == "plum", "Esc closes the picker first, nothing changed")
 	screen.page_button.pressed.emit()
-	_check(screen.page == "trails" and screen.trail_tiles.size() == 6 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
-		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (6 tiles: ABYSS is hidden while Descent is off, D11)")
+	_check(screen.page == "trails" and screen.trail_tiles.size() == 16 and screen.page_button.text == "PAPERS" and screen._title.text == "TRAILS",
+		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (16 tiles, the 10 wheel trails too: ABYSS is hidden while Descent is off, D11)")
 	_check(screen.trail_tiles[Cosmetics.DEFAULT_TRAIL].has_focus() and "WEARING" in screen.status.text, "focus on the worn trail")
 	screen.trail_tiles["gold"].pressed.emit()
 	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "30 TIX" in screen.status.text, "an unowned trail says its price, isn't worn")

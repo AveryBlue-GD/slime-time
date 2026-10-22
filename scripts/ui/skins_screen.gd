@@ -26,6 +26,9 @@ extends Control
 ## Esc / B closes it.
 
 const TILE_SIZE := Vector2(40, 30)
+## The TRAILS page fits all 17 trails (ABYSS too) in two rows: smaller tiles, 9 to a row.
+const TRAIL_TILE_SIZE := Vector2(30, 22)
+const TRAIL_COLUMNS := 9
 ## The HUB page's AUTO tile: its word in a band at the top, the worn slime this far below the tile's
 ## centre (other tiles: 2 px above it).
 const AUTO_LABEL_TOP := 3
@@ -46,7 +49,7 @@ static func rule_text(which: String) -> String:
 	match which:
 		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
-		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
+		"trails": return Loc.t("skins.rule_trails", "BUY OR WIN TRAILS AT THE PRIZE WHEEL")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
 		"hub": return Loc.t("skins.rule_hub", "THE HUB TAKES THIS COLOR")
 		"hub_locked": return Loc.t("skins.rule_hub_locked", "BEAT THE STORY TO COLOR THE HUB")
@@ -125,7 +128,7 @@ func _ready() -> void:
 
 	_hat_grid = _make_grid()
 	_fill_hat_grid()
-	_trail_grid = _make_grid()
+	_trail_grid = _make_grid(TRAIL_COLUMNS, TRAIL_TILE_SIZE.x)
 	_fill_trail_grid()
 	_hub_grid = _make_grid()
 	_fill_hub_grid()
@@ -362,24 +365,27 @@ func _centered_label(text: String, color: Color, top: int) -> Label:
 
 ## A tile grid centered across the screen: rows of GRID_COLUMNS tiles, a shorter last row
 ## centered under the others (see _add_to_grid).
-func _make_grid() -> VBoxContainer:
+func _make_grid(columns := GRID_COLUMNS, tile_w := TILE_SIZE.x) -> VBoxContainer:
 	var grid := VBoxContainer.new()
-	grid.position = Vector2(roundf((320 - _grid_width()) / 2.0), GRID_TOP)
+	grid.set_meta("columns", columns)
+	grid.set_meta("tile_w", tile_w)
+	grid.position = Vector2(roundf((320 - _grid_width(columns, tile_w)) / 2.0), GRID_TOP)
 	grid.add_theme_constant_override("separation", GRID_GAP)
 	add_child(grid)
 	return grid
 
 
-func _grid_width() -> float:
-	return GRID_COLUMNS * TILE_SIZE.x + (GRID_COLUMNS - 1) * GRID_GAP
+func _grid_width(columns := GRID_COLUMNS, tile_w := TILE_SIZE.x) -> float:
+	return columns * tile_w + (columns - 1) * GRID_GAP
 
 
 func _add_to_grid(grid: VBoxContainer, tile: Control) -> void:
 	var row: HBoxContainer = grid.get_child(-1) if grid.get_child_count() > 0 else null
-	if row == null or row.get_child_count() >= GRID_COLUMNS:
+	var columns: int = grid.get_meta("columns", GRID_COLUMNS)
+	if row == null or row.get_child_count() >= columns:
 		row = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.custom_minimum_size.x = _grid_width()
+		row.custom_minimum_size.x = _grid_width(columns, grid.get_meta("tile_w", TILE_SIZE.x))
 		row.add_theme_constant_override("separation", GRID_GAP)
 		grid.add_child(row)
 	row.add_child(tile)
@@ -630,19 +636,20 @@ func _make_hat_tile(id: String) -> Button:
 ## 2 px cells through trail.gdshader); a dark silhouette until it's bought.
 func _make_trail_tile(id: String) -> Button:
 	var owned: bool = Progress.owns_cosmetic(id)
-	var tile := UIKit.make_button("", func() -> void: _on_trail_tile(id), TILE_SIZE)
+	var tile := UIKit.make_button("", func() -> void: _on_trail_tile(id), TRAIL_TILE_SIZE)
 	var look := Cosmetics.trail_look(id, Progress.skin_color(), Progress.is_rainbow())
 	var strip := TextureRect.new()
-	strip.texture = ImageTexture.create_from_image(Cosmetics.trail_preview(id, Progress.skin_color(), Progress.is_rainbow(), Vector2i(16, 9), not owned))
-	strip.size = Vector2(32, 18)
+	strip.texture = ImageTexture.create_from_image(Cosmetics.trail_preview(id, Progress.skin_color(), Progress.is_rainbow(), Vector2i(13, 8), not owned))
+	strip.size = Vector2(26, 16)
 	strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	strip.stretch_mode = TextureRect.STRETCH_SCALE
-	strip.position = ((TILE_SIZE - strip.size) / 2.0).floor()
+	strip.position = ((TRAIL_TILE_SIZE - strip.size) / 2.0).floor()
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if owned:
 		var material := ShaderMaterial.new()
 		material.shader = preload("res://assets/shaders/trail.gdshader")
 		material.set_shader_parameter("stars", 1.0 if look.stars else 0.0)
+		material.set_shader_parameter("fx", look.get("fx", 0.0))
 		material.set_shader_parameter("animate", 0.0 if Progress.reduce_motion else 1.0)
 		strip.material = material
 	tile.add_child(strip)
@@ -669,7 +676,7 @@ func _refresh_trails(focus_id := "") -> void:
 		else:
 			status.text = Cosmetics.display_name(id)
 	else:
-		if Cosmetics.is_earned(id):
+		if Cosmetics.is_earned(id) or Cosmetics.is_wheel(id):
 			# i18n: {name} = the trail's name, {how} = its unlock condition; max 300px, 1 line
 			status.text = Loc.t("skins.name_how", "{name} - {how}", {name = Cosmetics.display_name(id), how = Cosmetics.earned_how(id)})
 		else:
@@ -983,7 +990,7 @@ func _refresh_hats(focus_id := "") -> void:
 			status.text = name
 	else:
 		# i18n: status line, max 300px, 1 line
-		status.text = Loc.t("skins.locked_hat", "LOCKED - WIN IT ON THE HAT WHEEL")
+		status.text = Loc.t("skins.locked_hat", "LOCKED - WIN IT ON THE PRIZE WHEEL")
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		UIKit.set_selected(tile, tile_id == Progress.selected_hat)

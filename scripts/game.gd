@@ -1082,6 +1082,7 @@ func _build_overlays() -> void:
 	trail_material.set_shader_parameter("animate", motion_scale())
 	trail_sprite.material = trail_material
 	trail_material.set_shader_parameter("stars", 1.0 if trail_look.get("stars", false) else 0.0)
+	trail_material.set_shader_parameter("fx", trail_look.get("fx", 0.0))
 	_build_trail_glow()
 
 	var fog_material := ShaderMaterial.new()
@@ -1165,6 +1166,17 @@ func _build_outer_fog(inner: ShaderMaterial, inner_rect: Rect2) -> void:
 ## Paints goo on the floor in a disc around pos, then reveals walls next to it.
 func _paint_goo(pos: Vector2, radius: float) -> void:
 	_paint_cells(pos, radius, false)
+	var center: Variant = Cosmetics.trail_center(trail_look, trail_travel)
+	if center != null:  # TREASURE: red dashes down the middle of the trail, over the painted cells
+		var c := _cell_at(pos)
+		var bytes := _rgba8(center)
+		for cy in range(maxi(c.y - 1, 0), mini(c.y + 1, _cells.y - 1) + 1):
+			for cx in range(maxi(c.x - 1, 0), mini(c.x + 1, _cells.x - 1) + 1):
+				var i := (cy * _cells.x + cx) * 4
+				var mid := (Vector2(cx, cy) + Vector2(0.5, 0.5)) * FOG_CELL - BORDER_PX
+				if _trail_bytes[i + 3] != 0 and mid.distance_to(pos) <= 2.0:
+					_trail_bytes.encode_u32(i, bytes)
+					trail_dirty = true
 	_reveal_walls_near(pos, radius)
 
 
@@ -1183,6 +1195,7 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 	var fog := _rgba8(_fog_color(elapsed, elapsed, false))
 	var goo_light := _rgba8(_goo_color(false))
 	var goo_deep := _rgba8(_goo_color(true))
+	var per_cell: bool = trail_look.get("per_cell", false) and not on_walls
 	var walls: PackedByteArray = maze.walls
 	var size: Vector2i = maze.size
 	var runs: PackedInt32Array
@@ -1205,7 +1218,10 @@ func _paint_cells(pos: Vector2, radius: float, on_walls: bool) -> void:
 					_reveal_wall(Vector2i(tx, ty))
 				else:
 					survey_tiles[ty * size.x + tx] = 1
-				_trail_bytes.encode_u32(i, goo_deep if posmod(hash(Vector2i(cx, cy)), 5) == 0 else goo_light)
+				if per_cell:  # a PREVIEW trail style: its color depends on the cell (Cosmetics.trail_cell_at)
+					_trail_bytes.encode_u32(i, _rgba8(Cosmetics.trail_cell_at(trail_look, posmod(hash(Vector2i(cx, cy)), 5) == 0, trail_travel, Vector2i(cx, cy))))
+				else:
+					_trail_bytes.encode_u32(i, goo_deep if posmod(hash(Vector2i(cx, cy)), 5) == 0 else goo_light)
 				_fog_bytes.encode_u32(i, fog)
 				fog_dirty = true
 				trail_dirty = true
