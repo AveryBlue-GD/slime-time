@@ -36,10 +36,16 @@ const STOPWATCH_SHADES := {
 static var jelly := false
 ## Stand-in base color for the rainbow skin wherever one color is needed.
 const RAINBOW_BASE := Color8(230, 60, 60)
-## Dev-only PASTEL look (pause menu DEV panel or --pastel; dev mode only, never saved): presets
-## swap to the soft PASTEL bases (pastel_shades), the stopwatch to STOPWATCH_PASTEL_SHADES and the
-## rainbow to paler bands (shader `pastel_rainbow`). CHAMELEON keeps its own color.
+## PASTEL skins (owner, 2026-10-22): the ten presets and the rainbow each have a soft pastel version
+## (opaque and jelly), unlocked by randomizer wins: one preset every PASTEL_WINS_STEP wins in PRESETS
+## order (Lime at 5 ... Ember at 50) and the rainbow at RAINBOW_PASTEL_WINS, each on top of that skin's
+## own opaque / jelly unlock (pastel_wins, is_unlocked). CHAMELEON and the STOPWATCH have no pastel
+## version. While `pastel` is on (kept in step with Progress.pastel; the skins screen sets it to the
+## version on view) presets swap to the soft PASTEL bases (pastel_shades) and the rainbow to paler
+## bands (shader `pastel_rainbow`).
 static var pastel := false
+const PASTEL_WINS_STEP := 5
+const RAINBOW_PASTEL_WINS := 100
 const PASTEL := {
 	lime = Color8(142, 230, 168),
 	mint = Color8(163, 240, 223),
@@ -51,14 +57,6 @@ const PASTEL := {
 	shadow = Color8(167, 155, 194),
 	bubblegum = Color8(255, 178, 223),
 	ember = Color8(255, 194, 153),
-}
-const STOPWATCH_PASTEL_SHADES := {
-	highlight = Color8(255, 254, 250),
-	light = Color8(253, 249, 238),
-	mid = Color8(248, 241, 226),
-	dark = Color8(234, 222, 196),
-	deep = Color8(240, 200, 140),
-	outline = Color8(176, 136, 104),
 }
 
 const PRESETS := [
@@ -94,11 +92,37 @@ static func jelly_level(id: String) -> int:
 	return maxi(unlock_level(id), 1)
 
 
+## Whether skin `id` has a pastel version (the presets and the rainbow).
+static func has_pastel(id: String) -> bool:
+	return id == RAINBOW or not get_preset(id).is_empty()
+
+
+## Randomizer wins that unlock skin `id`'s pastel version (-1: it has none).
+static func pastel_wins(id: String) -> int:
+	if id == RAINBOW:
+		return RAINBOW_PASTEL_WINS
+	for i in PRESETS.size():
+		if PRESETS[i].id == id:
+			return (i + 1) * PASTEL_WINS_STEP
+	return -1
+
+
+## The skin whose pastel version unlocks at exactly `wins` randomizer wins ("" if none).
+static func pastel_unlocked_at(wins: int) -> String:
+	for id: String in PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [RAINBOW]:
+		if pastel_wins(id) == wins:
+			return id
+	return ""
+
+
 ## Opaque skins (`jelly_version` false) unlock with the story levels (the rainbow with every story
 ## coin found: `coins_found`); jelly ones with the same level beaten on hard mode (`hard_cleared` =
-## those levels). The stopwatch opens both together with all 30 medals.
-static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := false, coins_found := 0, all_medals := false) -> bool:
+## those levels). The stopwatch opens both together with all 30 medals. A pastel version
+## (`pastel_version`) also needs its pastel_wins randomizer wins (`random_wins`).
+static func is_unlocked(id: String, levels_cleared: int, hard_cleared: Array = [], jelly_version := false, coins_found := 0, all_medals := false, pastel_version := false, random_wins := 0) -> bool:
 	if id != RAINBOW and id != CUSTOM and id != STOPWATCH and get_preset(id).is_empty():
+		return false
+	if pastel_version and (not has_pastel(id) or random_wins < pastel_wins(id)):
 		return false
 	if id == STOPWATCH:
 		return all_medals
@@ -215,10 +239,11 @@ static func pastel_shades(base: Color) -> Dictionary:
 	}
 
 
-## The PASTEL base for a preset's color, or null for any other color (CHAMELEON).
+## The PASTEL base for a preset's color (or its pastel color itself), or null for any other color
+## (CHAMELEON).
 static func pastel_base(base: Color) -> Variant:
 	for preset: Dictionary in PRESETS:
-		if (preset.color as Color).is_equal_approx(base):
+		if (preset.color as Color).is_equal_approx(base) or (PASTEL[preset.id] as Color).is_equal_approx(base):
 			return PASTEL[preset.id]
 	return null
 
@@ -235,13 +260,11 @@ static func make_material(base: Color, rainbow := false, clock := false) -> Shad
 static func apply_to(material: ShaderMaterial, base: Color, rainbow := false, clock := false) -> void:
 	material.set_shader_parameter("rainbow", rainbow)
 	material.set_shader_parameter("clock_on", 1.0 if clock else 0.0)
-	material.set_shader_parameter("pastel_rainbow", pastel and rainbow)
+	material.set_shader_parameter("pastel_rainbow", pastel and rainbow and not clock)
 	var colors := STOPWATCH_SHADES if clock else shades(base)
-	if pastel:
+	if pastel and not clock:  # (the stopwatch has no pastel version)
 		var soft: Variant = pastel_base(base)
-		if clock:
-			colors = STOPWATCH_PASTEL_SHADES
-		elif soft != null:
+		if soft != null:
 			colors = pastel_shades(soft)
 	for shade: String in colors:
 		material.set_shader_parameter(shade, colors[shade])

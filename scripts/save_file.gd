@@ -97,12 +97,16 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.selected_skin = get_string(file, "skin", "selected", Skins.DEFAULT)
 	# The saved look is only a wish: what is unlocked is recomputed from the progress above (normal
 	# clears, coins, medals, hard clears) under the current rules (D14: opaque = normal mode, jelly =
-	# hard mode). A look that is not unlocked falls back to that skin's opaque version, then to Lime.
+	# hard mode, pastel = randomizer wins). A look that is not unlocked falls back to that skin
+	# without pastel, then to its opaque version, then to Lime.
 	p.set_jelly(get_bool(file, "skin", "jelly", false))
+	p.set_pastel(get_bool(file, "skin", "pastel", false) and Skins.has_pastel(p.selected_skin))
 	if not p.is_skin_unlocked(p.selected_skin):  # e.g. a skin that moved, or a jelly one not earned on hard
-		p.set_jelly(false)
+		p.set_pastel(false)
 		if not p.is_skin_unlocked(p.selected_skin):
-			p.selected_skin = Skins.DEFAULT
+			p.set_jelly(false)
+			if not p.is_skin_unlocked(p.selected_skin):
+				p.selected_skin = Skins.DEFAULT
 
 
 ## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
@@ -320,6 +324,7 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("skin", "selected", p.selected_skin)
 	file.set_value("skin", "custom_color", p.custom_color)
 	file.set_value("skin", "jelly", p.jelly)
+	file.set_value("skin", "pastel", p.pastel)
 	if p.hub_skin != "":
 		file.set_value("skin", "hub", p.hub_skin)
 		file.set_value("skin", "hub_custom", p.hub_custom)

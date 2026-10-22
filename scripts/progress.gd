@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` the dev-only PASTEL slime look (Skins.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -246,6 +246,9 @@ var return_to_game := false
 ## the opaque normal-mode skins; the jelly versions are the hard-mode reward (saved; skins screen
 ## toggle; D14).
 var jelly := false
+## Pastel: the worn skin in its soft pastel version (Skins.pastel; unlocked by randomizer wins,
+## Skins.pastel_wins). Only ever on with a skin that has one (Skins.has_pastel). Saved; skins screen toggle.
+var pastel := false
 ## Dev mode (--unlock-all): dev-only upgrades (wall power) show up and there are plenty of coins.
 var dev_tools := false
 ## Dev toggles (Game.set_dev_bright / set_dev_no_drain; F1 / F2 in a level): kept for the session so
@@ -462,9 +465,9 @@ func _ready() -> void:
 		elif arg == "--coincatch":  # the coin catch test (Economy.COIN_CATCH_TEST, docs/spring-cleaning/coin-catch-test.md)
 			saving_enabled = false
 			Economy.coincatch_force = 1
-		elif arg == "--pastel":  # the dev-only PASTEL slime look (Skins.pastel; also the pause menu's DEV panel)
+		elif arg == "--pastel":  # wear the PASTEL version of the skin (Progress.pastel, Skins.pastel)
 			saving_enabled = false
-			Skins.pastel = true
+			set_pastel(true)
 		elif arg == "--nocoincatch":  # A/B: the old instant pickup (coin catch is on by default now)
 			saving_enabled = false
 			Economy.coincatch_force = 0
@@ -1294,6 +1297,7 @@ func enable_story_complete() -> void:
 	skin_notices_seen.assign(range(1, Levels.COUNT + 1))
 	selected_skin = Skins.skin_for_level(Levels.COUNT - 1)  # the last first-run skin (level 10's)
 	set_jelly(false)  # the default (opaque) look
+	set_pastel(false)
 	upgrades = {}
 	coins_found = {}
 	best_times = {}
@@ -1986,6 +1990,11 @@ func set_jelly(on: bool) -> void:
 	Skins.jelly = on
 
 
+func set_pastel(on: bool) -> void:
+	pastel = on
+	Skins.pastel = on
+
+
 ## Randomizer mode opens once all the story levels are beaten.
 func is_randomizer_unlocked() -> bool:
 	if Demo.on():  # the demo's randomizer opens after its last level (and not at all where it is left out)
@@ -2346,19 +2355,22 @@ func select_hat(id: String) -> void:
 
 
 ## Whether skin `id` can be worn: opaque (`jelly_version` false, normal-mode unlock) or as jelly
-## (true, its hard-mode unlock); null = in the version worn now.
+## (true, its hard-mode unlock), and in its pastel version (`pastel_version` true: also its randomizer
+## wins, Skins.pastel_wins; never in the demo); null = in the version worn now (pastel only where the
+## skin has one).
 ## Debug flag --promo (promo captures): RAINBOW and STOPWATCH read as locked whatever else is unlocked.
 var promo_secrets_locked := false
 
 
-func is_skin_unlocked(id: String, jelly_version: Variant = null) -> bool:
-	if not Demo.skin_open(id, jelly if jelly_version == null else jelly_version):
+func is_skin_unlocked(id: String, jelly_version: Variant = null, pastel_version: Variant = null) -> bool:
+	var as_pastel: bool = (pastel and Skins.has_pastel(id)) if pastel_version == null else pastel_version
+	if not Demo.skin_open(id, jelly if jelly_version == null else jelly_version) or (as_pastel and Demo.on()):
 		return false  # (a full-game skin: a FULL GAME silhouette in the demo, even with a full save)
 	if promo_secrets_locked and id in [Skins.RAINBOW, Skins.STOPWATCH]:
 		return false  # (promo rule, owner 2026-10-20: the secret skins only ever as locked silhouettes)
 	if dev_tools:
-		return true
-	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned(), all_medals())
+		return not as_pastel or Skins.has_pastel(id)
+	return Skins.is_unlocked(id, levels_cleared, hard_cleared, jelly if jelly_version == null else jelly_version, coins_earned(), all_medals(), as_pastel, randoms_won)
 
 
 ## The skin in use right now: a level's forced first-run skin, else the selected one.
@@ -2421,9 +2433,10 @@ func equip_first_run_skin(level: int) -> String:
 	if skin == "" or level in skin_notices_seen or not is_skin_unlocked(skin, false):  # (its opaque version)
 		return ""
 	skin_notices_seen.append(level)
-	var changed := selected_skin != skin or jelly
+	var changed := selected_skin != skin or jelly or pastel
 	selected_skin = skin
 	set_jelly(false)
+	set_pastel(false)
 	save_progress()
 	return skin if changed else ""
 
@@ -2440,6 +2453,7 @@ func reset_progress() -> void:
 	selected_skin = Skins.DEFAULT
 	hub_skin = ""
 	set_jelly(false)
+	set_pastel(false)
 	selected_hat = Hats.NONE
 	hats_owned.clear()
 	custom_color = Color8(239, 125, 47)
@@ -2556,15 +2570,20 @@ func skin_color() -> Color:
 		return Skins.RAINBOW_BASE
 	if id == Skins.CUSTOM:
 		return custom_color
+	if pastel and skin_override == "":  # (the pastel version's color: its trail, meter and menu text match)
+		return Skins.PASTEL.get(id, Skins.get_preset(id).color)
 	return Skins.get_preset(id).color
 
 
-## Wears skin `id` opaque (`jelly_version` false) or as jelly (true), if that version is unlocked.
-func select_skin(id: String, jelly_version: Variant = null) -> void:
+## Wears skin `id` opaque (`jelly_version` false) or as jelly (true), and pastel or not
+## (`pastel_version`; null = as now, where the skin has one), if that version is unlocked.
+func select_skin(id: String, jelly_version: Variant = null, pastel_version: Variant = null) -> void:
 	var as_jelly: bool = jelly if jelly_version == null else jelly_version
-	if is_skin_unlocked(id, as_jelly):
+	var as_pastel: bool = (pastel if pastel_version == null else pastel_version) and Skins.has_pastel(id)
+	if is_skin_unlocked(id, as_jelly, as_pastel):
 		selected_skin = id
 		set_jelly(as_jelly)
+		set_pastel(as_pastel)
 		save_progress()
 
 

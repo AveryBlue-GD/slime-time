@@ -2415,6 +2415,10 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		if progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
+			var pastel_skin := Skins.pastel_unlocked_at(progress.randoms_won)
+			if pastel_skin != "" and progress.is_skin_unlocked(pastel_skin, false, true):
+				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
+				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)
 			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
 			if paid > 0:
@@ -2913,12 +2917,13 @@ func set_dev_no_drain(on: bool) -> void:
 	_refresh_dev_badge()
 
 
-## PASTEL (dev only, Skins.pastel): the slime wears the soft pastel version of its skin. Looks only,
-## so the run still counts; kept for the session, never saved.
+## PASTEL (dev only, Progress.pastel): the slime wears the pastel version of its skin, where it has
+## one (Skins.has_pastel). Looks only (the trail keeps this run's color), so the run still counts.
 func set_dev_pastel(on: bool) -> void:
-	if not dev_enabled() or on == Skins.pastel:
+	if not dev_enabled() or on == Skins.pastel or (on and not Skins.has_pastel(progress.active_skin())):
 		return
-	Skins.pastel = on
+	progress.set_pastel(on)
+	skin_color = progress.skin_color()
 	slime.apply_skin(skin_color, rainbow, stopwatch)
 
 

@@ -2,7 +2,10 @@ extends Control
 
 ## Skin select. Slimes are opaque by default (those unlock with the story levels); the JELLY ON / OFF
 ## switch shows the same skins as see-through jelly instead, each unlocked by beating its level on
-## hard mode (D14; the stopwatch opens both versions together with all 30 medals). A tile per skin (locked ones are silhouettes); for the custom
+## hard mode (D14; the stopwatch opens both versions together with all 30 medals). Once the randomizer is
+## open, PASTEL ON / OFF beside it shows the pastel versions (opaque or jelly) of the presets and the
+## rainbow, unlocked by randomizer wins (Skins.pastel_wins; CHAMELEON and the stopwatch have none, so
+## they leave the grid). A tile per skin (locked ones are silhouettes); for the custom
 ## skin, once the game is beaten, a color wheel. The page button cycles SKINS -> HATS -> TRAILS -> PAPERS:
 ## the hats page has a tile per hat (plus no hat), each shown on a slime in your skin; the TRAILS page
 ## (upgrades v2 batch 2) a tile per goo trail style (the skin's own goo plus the five sold in the
@@ -43,6 +46,7 @@ const LOCKED_INK := Color(0.08, 0.08, 0.12, 0.9)
 static func rule_text(which: String) -> String:
 	match which:
 		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
+		"pastel": return Loc.t("skins.rule_pastel", "PASTEL SKINS UNLOCK BY WINNING RANDOM MAZES")
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
 		"trails": return Loc.t("skins.rule_trails", "BUY TRAILS IN THE PRIZE WHEEL'S SHOP")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
@@ -83,8 +87,10 @@ var page := "skins"
 var view_jelly := false
 var page_button: Button
 var jelly_button: Button
-## Skins page, dev mode only: PASTEL (Skins.pastel, the session's soft pastel look; never saved),
-## to the right of JELLY.
+## Which version of the skins the grid shows: pastel (true) or not (false). Skins.pastel follows it
+## while the skins page is up (the tiles and the preview are made in it), else Progress.pastel.
+var view_pastel := false
+## Skins page, once the randomizer is open (or in dev mode): PASTEL, to the right of JELLY.
 var pastel_button: Button
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
@@ -112,6 +118,7 @@ func _ready() -> void:
 		if child is Label and child.text == page_title("skins"):
 			_title = child
 	view_jelly = Progress.jelly
+	view_pastel = Progress.pastel
 	# A fresh random color on the wheel every visit (any hue, never washed out).
 	Progress.custom_color = Color.from_hsv(randf(), randf_range(0.55, 1.0), 1.0)
 	Progress.save_progress()
@@ -149,15 +156,16 @@ func _ready() -> void:
 	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), open_color_picker, Vector2(80, UIKit.button_h()))
 	add_child(color_button)
 	_layout(back)
-	pastel_button = UIKit.make_button("", _toggle_pastel, Vector2(64, UIKit.button_h()))
+	var pastel_w: int = UIKit.tab_widths([_pastel_text(true), _pastel_text(false)], 64)[0]
+	pastel_button = UIKit.make_button("", _toggle_pastel, Vector2(pastel_w, UIKit.button_h()))
 	pastel_button.position = Vector2(jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M, jelly_button.position.y)
 	add_child(pastel_button)
 	_set_pastel_text()
 	color_button.position = jelly_button.position
 	color_button.custom_minimum_size.x = jelly_button.size.x
 	color_button.size.x = jelly_button.size.x
-	if Progress.dev_tools and jelly_button.position.y == back.position.y:
-		# (dev mode: JELLY and PASTEL centred together on the bottom row)
+	if _pastel_open() and jelly_button.position.y == back.position.y:
+		# (JELLY and PASTEL centred together on the bottom row)
 		var pair := jelly_button.size.x + UIKit.GAP_M + pastel_button.size.x
 		jelly_button.position.x = UIKit.center_x(pair)
 		pastel_button.position.x = jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M
@@ -237,7 +245,7 @@ func _layout(back: Button) -> void:
 	var rule_last := ink_bottom
 	if UIKit.tall_script():
 		var rules: Array[String] = []
-		for which: String in ["skins", "jelly", "hats", "trails", "papers"]:
+		for which: String in ["skins", "jelly", "pastel", "hats", "trails", "papers"]:
 			rules.append(rule_text(which))
 		rule_last = mini(ink_bottom, UIKit.ink_rows(rules, _rule.get_theme_font("font")).y)
 	var page_w: int = UIKit.tab_widths(titles, _PAGE_MIN_W)[0]  # (the page button alone, top right)
@@ -379,12 +387,14 @@ func _add_to_grid(grid: VBoxContainer, tile: Control) -> void:
 	row.add_child(tile)
 
 
-## (Re)builds the skin tiles for the version on view (opaque or jelly).
+## (Re)builds the skin tiles for the version on view (opaque or jelly, pastel or not; the pastel
+## view leaves out the skins without a pastel version).
 func _fill_skin_grid() -> void:
 	for child in _skin_grid.get_children():
 		_skin_grid.remove_child(child)
 		child.queue_free()
 	tiles.clear()
+	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
 	var ids: Array[String] = []
 	for preset: Dictionary in Skins.PRESETS:
 		ids.append(preset.id)
@@ -392,7 +402,17 @@ func _fill_skin_grid() -> void:
 	ids.append(Skins.RAINBOW)
 	ids.append(Skins.STOPWATCH)
 	for id in ids:
-		_add_to_grid(_skin_grid, _make_tile(id))
+		if not view_pastel or Skins.has_pastel(id):
+			_add_to_grid(_skin_grid, _make_tile(id))
+
+
+## PASTEL shows once the randomizer (which unlocks the pastel skins) is open, never in the demo.
+func _pastel_open() -> bool:
+	return not Demo.on() and (Progress.dev_tools or Progress.is_randomizer_unlocked())
+
+
+func _exit_tree() -> void:
+	Skins.pastel = Progress.pastel  # (the version on view was only for this screen)
 
 
 ## (Re)builds the hat tiles: each on a slime in the skin worn now.
@@ -458,7 +478,8 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
-	pastel_button.visible = page == "skins" and Progress.dev_tools
+	pastel_button.visible = page == "skins" and _pastel_open()
+	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
 	color_button.visible = hats
 	_title.text = page_title(page)
 	page_button.text = page_title(PAGES[(PAGES.find(page) + 1) % PAGES.size()])
@@ -492,7 +513,7 @@ func show_page(which: String) -> void:
 	else:
 		_refresh()
 		_preview(Progress.selected_skin)
-		tiles[Progress.selected_skin].grab_focus()
+		(tiles.get(Progress.selected_skin, tiles[Skins.DEFAULT]) as Button).grab_focus()
 
 
 ## JELLY ON / OFF: shows the other version of every skin.
@@ -501,7 +522,7 @@ func _toggle_jelly() -> void:
 	# The worn skin follows the switch when its other version is unlocked; otherwise it stays
 	# as it is and the status line says the other version is still locked (_refresh).
 	var worn: String = Progress.selected_skin
-	if view_jelly != Progress.jelly and Progress.is_skin_unlocked(worn, view_jelly):
+	if view_jelly != Progress.jelly and Progress.is_skin_unlocked(worn, view_jelly, Progress.pastel):
 		Progress.select_skin(worn, view_jelly)
 		skin_text.recolor()
 		(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
@@ -512,7 +533,7 @@ func _toggle_jelly() -> void:
 
 
 func _make_tile(id: String) -> Button:
-	var unlocked: bool = Progress.is_skin_unlocked(id, view_jelly)
+	var unlocked: bool = Progress.is_skin_unlocked(id, view_jelly, view_pastel)
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), TILE_SIZE)
 	var color: Color = _base_color(id)
 	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly, id == Skins.STOPWATCH)
@@ -757,8 +778,8 @@ func _base_color(id: String) -> Color:
 
 
 func _on_tile(id: String) -> void:
-	if Progress.is_skin_unlocked(id, view_jelly):
-		Progress.select_skin(id, view_jelly)
+	if Progress.is_skin_unlocked(id, view_jelly, view_pastel):
+		Progress.select_skin(id, view_jelly, view_pastel)
 		skin_text.recolor()
 		(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
 	_refresh(id)
@@ -768,7 +789,7 @@ func _on_tile(id: String) -> void:
 ## Plays skin `id` (in the version on view) on the preview stage.
 func _preview(id: String) -> void:
 	var color: Color = _base_color(id)
-	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly), id == Skins.STOPWATCH)
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly, view_pastel), id == Skins.STOPWATCH)
 
 
 func _on_hat_tile(id: String) -> void:
@@ -867,16 +888,20 @@ func _on_custom_changed() -> void:
 	Progress.custom_color = wheel.get_color()
 	Progress.save_progress()
 	Skins.apply_to(big_preview.material, Progress.custom_color)
-	Skins.apply_to(tiles[Skins.CUSTOM].get_meta("preview").material, Progress.custom_color)
+	if tiles.has(Skins.CUSTOM):
+		Skins.apply_to(tiles[Skins.CUSTOM].get_meta("preview").material, Progress.custom_color)
 	skin_text.recolor()
 
 
 ## Updates the status line (for `focus_id`, or the worn skin), the highlights and the custom panel.
 func _refresh(focus_id := "") -> void:
 	var id := focus_id if focus_id != "" else Progress.selected_skin
-	var worn_here: bool = view_jelly == Progress.jelly
-	if not Progress.is_skin_unlocked(id, view_jelly):
-		if not Demo.skin_open(id, view_jelly):
+	var worn_here: bool = view_jelly == Progress.jelly and view_pastel == Progress.pastel
+	if not Progress.is_skin_unlocked(id, view_jelly, view_pastel):
+		if view_pastel and Progress.is_skin_unlocked(id, view_jelly, false):
+			# i18n: {count} = random maze wins needed, {have}/{count} = progress; status line, max 300px, 1 line
+			status.text = Loc.n("skins.locked_pastel", "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})", "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})", Skins.pastel_wins(id), {have = mini(Progress.randoms_won, Skins.pastel_wins(id))})
+		elif not Demo.skin_open(id, view_jelly):
 			# i18n: status line (demo build), max 300px, 1 line; {name} = a skin name
 			status.text = Loc.t("skins.demo_locked", "{name} - IN THE FULL GAME", {name = Skins.display_name(id)})
 		elif id == Skins.STOPWATCH:  # both versions open together
@@ -904,7 +929,8 @@ func _refresh(focus_id := "") -> void:
 		var selected: bool = worn_here and tile_id == Progress.selected_skin
 		UIKit.set_selected(tiles[tile_id], selected)
 	jelly_button.text = _jelly_text(view_jelly)
-	_rule.text = rule_text("jelly" if view_jelly else "skins")
+	_rule.text = rule_text("pastel" if view_pastel else "jelly" if view_jelly else "skins")
+	_set_pastel_text()
 	var custom_ready: bool = worn_here and Progress.selected_skin == Skins.CUSTOM and Progress.is_skin_unlocked(Skins.CUSTOM)
 	# The color wheel while the custom skin is worn, unless another skin was just clicked to preview.
 	custom_panel.visible = custom_ready and page == "skins" and (focus_id == "" or focus_id == Skins.CUSTOM)
@@ -914,11 +940,13 @@ func _refresh(focus_id := "") -> void:
 
 
 ## The JELLY switch's text for either state (its width is measured from both, _layout).
-## PASTEL (dev mode): the soft pastel look on or off for the session; every skin tile, the preview and
-## the custom wheel's slime take it at once (and the hub, levels and screens after this one).
+## PASTEL ON / OFF: shows the pastel (or the plain) version of every skin that has one. The worn skin
+## follows the switch when that version is unlocked, like JELLY.
 func _toggle_pastel() -> void:
-	Skins.pastel = not Skins.pastel
-	_set_pastel_text()
+	view_pastel = not view_pastel
+	var worn: String = Progress.selected_skin
+	if view_pastel != Progress.pastel and Skins.has_pastel(worn) and Progress.is_skin_unlocked(worn, Progress.jelly, view_pastel):
+		Progress.select_skin(worn, Progress.jelly, view_pastel)
 	_fill_skin_grid()
 	Skins.apply_to(big_preview.material, Progress.custom_color)
 	skin_text.recolor()
@@ -928,7 +956,13 @@ func _toggle_pastel() -> void:
 
 
 func _set_pastel_text() -> void:
-	pastel_button.text = "PASTEL: " + ("ON" if Skins.pastel else "OFF")  # i18n: ignore (dev mode only)
+	pastel_button.text = _pastel_text(view_pastel)
+
+
+## The PASTEL switch's text for either state (its width is measured from both, _ready).
+static func _pastel_text(on: bool) -> String:
+	# i18n: max 72px (the button grows from 64 to fit), 1 line; the two states are whole strings
+	return Loc.t("skins.pastel.on", "PASTEL: ON") if on else Loc.t("skins.pastel.off", "PASTEL: OFF")
 
 
 static func _jelly_text(on: bool) -> String:

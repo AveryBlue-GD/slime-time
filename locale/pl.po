@@ -531,6 +531,13 @@ msgctxt "result.seed"
 msgid "SEED {code}"
 msgstr "ZIARNO {code}"
 
+#. result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.new_pastel_skin"
+msgid "NEW PASTEL SKIN: {name}"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "result.level_cleared"
 msgid "LEVEL {level} CLEARED"
@@ -2572,6 +2579,11 @@ msgid "JELLY SKINS UNLOCK ON HARD MODE"
 msgstr "ŻELOWE SKÓRKI ODBLOKUJESZ NA TRUDNYM"
 
 #: scripts/ui/skins_screen.gd
+msgctxt "skins.rule_pastel"
+msgid "PASTEL SKINS UNLOCK BY WINNING RANDOM MAZES"
+msgstr ""
+
+#: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_hats"
 msgid "WIN HATS ON THE PRIZE WHEEL IN THE HUB"
 msgstr "WYGRYWAJ CZAPKI NA KOLE W BAZIE"
@@ -2678,6 +2690,16 @@ msgstr[0] "{name} - {price} BIL. W SKLEPIE"
 msgstr[1] "{name} - {price} BIL. W SKLEPIE"
 msgstr[2] "{name} - {price} BIL. W SKLEPIE"
 
+#. {count} = random maze wins needed, {have}/{count} = progress; status line, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.locked_pastel"
+msgid "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})"
+msgid_plural "PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count})"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
 #. status line (demo build), max 300px, 1 line; {name} = a skin name
 #. budget: max 300px, lines 1
 #: scripts/ui/skins_screen.gd
@@ -2735,6 +2757,20 @@ msgstr "ZABLOKOWANE - UKOŃCZ POZIOM {level}"
 msgctxt "skins.selected"
 msgid "{name}  (SELECTED)"
 msgstr "{name}  (WYBRANA)"
+
+#. max 56px (button 64 wide, 4 px margins), 1 line; the two states are whole strings
+#. budget: max 56px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.pastel.on"
+msgid "PASTEL: ON"
+msgstr ""
+
+#. max 56px (button 64 wide, 4 px margins), 1 line; the two states are whole strings
+#. budget: max 56px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.pastel.off"
+msgid "PASTEL: OFF"
+msgstr ""
 
 #. max 72px (button 80 wide, 4 px margins), 1 line; the two states are whole strings
 #. budget: max 72px, lines 1

@@ -206,14 +206,24 @@ func _wardrobe() -> void:
 			_ok(not stage.intersects(back) and not stage.intersects(page_b) and not stage.intersects(jelly), "wardrobe stage clear of the buttons")
 			_ok(not jelly.intersects(g) and not jelly.intersects(title), "wardrobe JELLY clear of the grid and title", "%s %s" % [jelly, title])
 			_ok(_fits(skins.jelly_button), "wardrobe JELLY fits its word")
+			# PASTEL (once the randomizer is open) sits right of JELLY, the two centred together.
+			var pastel_on: bool = skins.pastel_button.visible
+			if pastel_on and _code == "en":
+				var pastel := _rect(skins.pastel_button)
+				_ok(not stage.intersects(pastel) and not pastel.intersects(page_b) and pastel.position.x > jelly.end.x, "wardrobe PASTEL right of JELLY, clear of the stage and the page button")
+				_ok(_fits(skins.pastel_button), "wardrobe PASTEL fits its word", skins.pastel_button.text)
 			if _code == "en":
-				_ok(g.position.y == 23 and skins.status.offset_top == 89 and skins._rule.offset_top == 100 and stage.position.y == 112 and jelly.position == Vector2(120, 164),
-					"wardrobe English rects pinned")
+				var jelly_x: float = UIKit.center_x(jelly.size.x + UIKit.GAP_M + skins.pastel_button.size.x) if pastel_on else 120.0
+				_ok(g.position.y == 23 and skins.status.offset_top == 89 and skins._rule.offset_top == 100 and stage.position.y == 112 and jelly.position == Vector2(jelly_x, 164),
+					"wardrobe English rects pinned", str(jelly.position))
 	skins.free()
 	for name in ["wardrobe title, grid, status, rule in order", "wardrobe title ink end as measured", "wardrobe BACK / page button mirrored, one width", "wardrobe page button fits its word",
 			"wardrobe on screen", "wardrobe stage under the rule line, by row 176", "wardrobe stage clear of the buttons",
 			"wardrobe JELLY clear of the grid and title", "wardrobe JELLY fits its word"]:
 		_report(name)
+	for name in ["wardrobe PASTEL right of JELLY, clear of the stage and the page button", "wardrobe PASTEL fits its word"]:
+		if _code == "en":
+			_report(name)
 
 
 func _victory() -> void:
