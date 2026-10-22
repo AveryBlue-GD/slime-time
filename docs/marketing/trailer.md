@@ -121,7 +121,8 @@ Content starts at `--top` (70 default: under a 2-line caption; papers 62; 90 und
 Edit `tools/trailer/trailer.json`:
 
 - A beat is `{"take", "in" (s into the take), "dur" (s), "caption": [lines], "sub": [small lines], "color",
-  "at": "top"|"low"|y, optional "focus": [x, y], "follow", "zoom" (>= 11)}`. Colors: `white`, `gold`, a skin id (`lime`, `ocean`,
+  "at": "top"|"low"|y, optional "focus": [x, y], "follow", "zoom" (>= 11), "above": Y (a portrait take: the caption
+  ends just above view y Y, e.g. the stage's `--top`), "center": "frame" (centred on the frame, not the column)}`. Colors: `white`, `gold`, a skin id (`lime`, `ocean`,
   ... `shadow` = INKKY) or `#rrggbb`.
 - A take is `{"take": mode, "frames", "args": [...], "note"}`; a portrait take adds `"scene": "portrait"` and
   `"take"` is then the view (`skins`, `wheel`, `papers`). Args are the game's debug flags (`--level=N`,
@@ -178,6 +179,11 @@ keep DESCENT out while it's switched off (D11).
 Known rough edges: B's hook caption ("1000+ WAYS TO / DRESS YOUR SLIME") wraps to 3 goo lines. The mid-level shots (`--skip`) start the slime partway along the route, so less of the trail
 is lit than in a real run. The hat hops on level 1 happen in a sparse part of the maze. The trails beat is
 gameplay only, because the trails page is too small to read on a phone.
+
+- **D, "272,544 different looks"** (30 s, 2026-10-22): one slime acting out the showcase routine while its look flips
+  (portrait view `flip`, `FLIP_PLAN` in portrait.gd): skins, hats, dyes on the WIZARD HAT, trails, CHAMELEON colors, then
+  everything faster and faster; the trail changes on every flip. Captions are centred on the frame, right above the stage.
+  The count is 334 skin looks (46 + CHAMELEON's 144 colors x 2) x 136 hat looks x 6 trails; recount when trails are added.
 
 ## Later: the horizontal 45-60 s trailer
 

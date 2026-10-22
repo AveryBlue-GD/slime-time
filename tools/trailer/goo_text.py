@@ -34,6 +34,7 @@ CANVAS = (540, 960)            # 1080x1920 / SCALE
 COLUMN = (20, 436)             # captions: x from 20, 436 wide (clear of the right ~15% button rail)
 TOP_Y = 68                     # "top": 136 px on the frame, under the status bar
 LOW_Y = 600                    # "low": 1200 px on the frame
+ABOVE_GAP = 6                  # a beat's "above": the space between the caption and what it sits on
 SAFE_BOTTOM = 768              # the block ends above 80% of the frame (caption, likes, progress bar)
 LINE_PITCH = 62                # line tops apart: 42 px letters + the longest drips + a clear row
 LINE_H = make_title.MARGIN + 7 * make_title.CELL + 24  # one rendered line's height (70)
@@ -236,9 +237,11 @@ def caption_png(path, job):
         y = int(at) * 2  # (a number is a y on the old 270x480 caption canvas)
     else:
         y = LOW_Y if at == "low" else TOP_Y
+    if job.get("above") is not None:  # (the block ends just above this y of a 180x320 portrait view)
+        y = max(int(job["above"]) * CANVAS[1] // 320 - ABOVE_GAP - block_height(len(lines)), TOP_Y)
     y = min(y, SAFE_BOTTOM - block_height(len(lines)))
     c = Canvas()
-    c.block(lines, COLUMN[0] + COLUMN[1] / 2.0, y)
+    c.block(lines, CANVAS[0] / 2.0 if job.get("center") == "frame" else COLUMN[0] + COLUMN[1] / 2.0, y)
     c.save(path)
 
 

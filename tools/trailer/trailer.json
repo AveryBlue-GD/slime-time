@@ -746,7 +746,9 @@
      "caption": [
       "DRESS UP",
       "YOUR SLIME"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip",
@@ -755,7 +757,9 @@
      "color": "lime",
      "caption": [
       "48 SKINS"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip",
@@ -764,7 +768,9 @@
      "color": "gold",
      "caption": [
       "12 HATS"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip",
@@ -773,7 +779,9 @@
      "color": "bubblegum",
      "caption": [
       "11 DYES"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip",
@@ -782,7 +790,9 @@
      "color": "mint",
      "caption": [
       "6 TRAILS"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip",
@@ -792,7 +802,9 @@
      "caption": [
       "CHAMELEON:",
       "144 COLORS"
-     ]
+     ],
+     "center": "frame",
+     "above": 70
     },
     {
      "take": "flip_fast",
@@ -803,7 +815,9 @@
       "272,544",
       "DIFFERENT",
       "LOOKS"
-     ]
+     ],
+     "center": "frame",
+     "above": 92
     },
     {
      "take": "flip_fast",
@@ -812,7 +826,9 @@
      "color": "white",
      "caption": [
       "FIND YOURS"
-     ]
+     ],
+     "center": "frame",
+     "above": 92
     }
    ],
    "end": {

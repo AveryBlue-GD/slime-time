@@ -276,6 +276,8 @@ def caption_job(draft, beat, index):
         "color": beat.get("color", "white"),
         "sub_color": beat.get("sub_color", "white"),
         "at": beat.get("at", "top"),
+        "above": beat.get("above"),
+        "center": beat.get("center", "column"),
         "skin": beat.get("skin", ""),
     }
     key = hashlib.sha1(json.dumps([job, goo_sha()], sort_keys=True).encode()).hexdigest()[:12]
