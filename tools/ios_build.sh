@@ -18,6 +18,8 @@ if [[ -z "$TEAM" ]]; then
 fi
 echo "Team: $TEAM"
 
+# (the build stamp's commit, below: + = uncommitted changes; read before this script edits anything)
+COMMIT="$(git rev-parse --short HEAD)$([[ -n "$(git status --porcelain --untracked-files=no)" ]] && echo "+")"
 # The committed preset keeps its placeholder team; fill the real one for this build only.
 mkdir -p build
 cp export_presets.cfg build/export_presets.cfg.bak
@@ -27,7 +29,6 @@ sed -i '' "s/^application\/app_store_team_id=\"ABCDE12345\"$/application\/app_st
 # The build stamp (owner, 2026-10-23: tell builds apart on the phone): commit (+ = uncommitted changes), time and which
 # app, as this build's application/config/version (the title screen shows it, top left; nothing in other builds); the
 # bundle version is the build time (xcrun devicectl device info apps lists it).
-COMMIT="$(git rev-parse --short HEAD)$([[ -n "$(git status --porcelain --untracked-files=no)" ]] && echo "+")"
 APP_TAG="FULL"
 [[ "${SKIP_DEMO:-}" == "1" ]] && APP_TAG="FULL SKIP"
 [[ "${DEMO_END:-}" == "1" ]] && APP_TAG="DEMO END"
