@@ -98,6 +98,7 @@ func _ready() -> void:
 	if get_tree().current_scene == self:
 		Story.launched = true  # the booted title: no trailer later this run
 	UIKit.setup_screen(self, "")
+	_add_build_stamp()
 	# The logo is drawn in the slime sheet's goo shades, so the skin shader recolors it too.
 	var logo := TextureRect.new()
 	logo.name = "Logo"
@@ -373,3 +374,21 @@ func _quit() -> void:
 ## The intro again (and then back to the title).
 func _replay_story() -> void:
 	Story.play(get_tree(), "intro", UIKit.TITLE_SCENE)
+
+
+## A test build's stamp (tools/ios_build.sh writes application/config/version: commit, time, which app), tiny and dim
+## in the bottom left corner, so builds can be told apart on the phone. Other builds have none (nothing shows).
+func _add_build_stamp() -> void:
+	var stamp := build_stamp()
+	if stamp == "":
+		return
+	print("BUILD " + stamp)
+	var label := UIKit.make_label(stamp, UIKit.FONT, UIKit.TEXT_OFF)  # i18n: ignore (a test build's id: commit and time)
+	label.name = "BuildStamp"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+	label.position = Vector2(UIKit.hud_edge().x, 2)
+
+
+static func build_stamp() -> String:
+	return str(ProjectSettings.get_setting("application/config/version", ""))
