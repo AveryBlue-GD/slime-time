@@ -1404,6 +1404,7 @@ static func text_material() -> ShaderMaterial:
 	if _text_material == null:
 		_text_material = ShaderMaterial.new()
 		_text_material.shader = load("res://assets/shaders/text_drips.gdshader")
+		_text_material.set_shader_parameter("clean_small", Economy.CLEAN_SMALL_TEXT)
 	# New drips every time a screen opens: a fresh seed the first time text is made in each scene.
 	var tree := Engine.get_main_loop() as SceneTree
 	var scene_id := tree.current_scene.get_instance_id() if tree and tree.current_scene else 0

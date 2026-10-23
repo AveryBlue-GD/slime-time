@@ -369,6 +369,9 @@ const COIN_CATCH_FIZZ_DB := -8.0
 ## hub bits (Progress.TUTORIAL_TRAINING / TUTORIAL_HUB) are never written, so saves are byte-identical.
 ## `--tutorial[=maze|hub]` (debug builds only, like every launch flag) sets `tutorial_force` = 1 on a
 ## clean in-memory fresh state (see Progress.enable_tutorial_test); tests set it too.
+## IMP-03: 8 px text (body, buttons, HUD, coach) renders without drips; only 16 px titles drip.
+## false = the old look everywhere.
+const CLEAN_SMALL_TEXT := true
 const TUTORIAL_TEST := true
 static var tutorial_force := -1
 

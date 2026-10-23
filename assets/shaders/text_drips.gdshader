@@ -11,6 +11,8 @@ shader_type canvas_item;
 // Anything drawn with another texture (button frames, icons) passes through untouched.
 
 uniform float seed = 0.0;
+// Economy.CLEAN_SMALL_TEXT: 8 px text grows no drips (they made C read as Ç); 16 px titles still do.
+uniform bool clean_small = true;
 
 varying vec2 world;
 varying vec4 tint;
@@ -66,6 +68,9 @@ void fragment() {
 			float r = hash(vec2(column + fract(seed * 0.618) * 97.0, origin + seed));
 			float drip_len = lone ? (r < 0.015 ? 2.0 : (r < 0.06 ? 1.0 : 0.0))
 				: (r < 0.08 ? 2.0 : (r < 0.3 ? 1.0 : 0.0));
+			if (clean_small && !big_font) {
+				drip_len = 0.0;
+			}
 			if (bottom > 0.5 && row - 7.0 < drip_len) {
 				COLOR = vec4(vec3(160.0 / 255.0) * tint.rgb, tint.a);
 			} else {
