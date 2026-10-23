@@ -109,6 +109,15 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 			p.set_jelly(false)
 			if not p.is_skin_unlocked(p.selected_skin):
 				p.selected_skin = Skins.DEFAULT
+	p.ach_seeded = file.has_section("achievements")
+	p.ach_known = strings(file.get_value("achievements", "known", []))
+	p.ach_flags = clampi(get_int(file, "achievements", "flags", 0), 0, 63)
+	p.medal_milestones_paid = clampi(get_int(file, "achievements", "milestones", 0), 0, 100000)
+	# An old save: its goals are adopted silently and the medal milestones it already passed are paid once (one notice).
+	var paid_before: int = p.medal_milestones_paid
+	p.check_achievements()
+	if p.medal_milestones_paid != paid_before:
+		p.save_progress()
 
 
 ## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
@@ -417,6 +426,10 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("descent", "paid_day", p.descent_pay_day)
 		file.set_value("descent", "paid_runs", p.descent_paid)
 		file.set_value("descent", "milestones", p.descent_milestones)
+	if Economy.ACHIEVEMENTS and p.ach_seeded:
+		file.set_value("achievements", "known", p.ach_known)
+		file.set_value("achievements", "flags", p.ach_flags)
+		file.set_value("achievements", "milestones", p.medal_milestones_paid)
 	if p.daily_day > 0:
 		file.set_value("daily", "day", p.daily_day)
 		file.set_value("daily", "best_ms", p.daily_best_ms)

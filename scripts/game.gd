@@ -2499,6 +2499,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode))
 			if repeat:
 				held_tickets = 0
+			if abilities != null and abilities.uses == 0 and not no_record:
+				progress.note_clean_random_win()
 			if progress.random_daily and not no_record:
 				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0))
 				# i18n: result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words

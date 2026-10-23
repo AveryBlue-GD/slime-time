@@ -111,6 +111,123 @@ msgctxt "hub.tour.skip"
 msgid "SKIP"
 msgstr ""
 
+#: scripts/achievements.gd
+msgctxt "ach.clear_1"
+msgid "BEAT LEVEL 1"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 10
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.clear_story"
+msgid "BEAT THE STORY (ALL {n} LEVELS)"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hard_1"
+msgid "BEAT LEVEL 1 ON HARD"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 10
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hard_all"
+msgid "BEAT ALL {n} LEVELS ON HARD"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a coin count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.coins"
+msgid "FIND {n} COINS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 165
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.coins_all"
+msgid "FIND ALL {n} COINS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.gold_1"
+msgid "WIN YOUR FIRST GOLD MEDAL"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.gold_n"
+msgid "WIN {n} GOLD MEDALS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.rand_1"
+msgid "WIN A RANDOM MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.rand_n"
+msgid "WIN {n} RANDOM MAZES"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.daily_1"
+msgid "WIN A DAILY MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 7
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.daily_7"
+msgid "WIN THE DAILY MAZE {n} DAYS IN A ROW"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.wheel_1"
+msgid "SPIN THE PRIZE WHEEL"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hats_n"
+msgid "OWN {n} HATS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.jelly"
+msgid "WEAR A JELLY SKIN"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.abilities"
+msgid "USE EACH ABILITY ONCE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.clean_win"
+msgid "WIN A RANDOM MAZE USING NO ABILITY"
+msgstr ""
+
 #: scripts/cosmetics.gd
 msgctxt "trail.wheel.unlock"
 msgid "WIN IT ON THE PRIZE WHEEL"
@@ -1027,6 +1144,13 @@ msgctxt "hub.menu.title"
 msgid "MENU"
 msgstr ""
 
+#. hub Esc menu button, max 90px, 1 line; opens the achievements page
+#. budget: max 90px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.menu.achievements"
+msgid "ACHIEVEMENTS"
+msgstr ""
+
 #. hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
 #. budget: max 90px, lines 1
 #: scripts/hub.gd
@@ -1607,6 +1731,20 @@ msgctxt "notice.save_failed"
 msgid "SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS"
 msgstr ""
 
+#. unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.toast"
+msgid "ACHIEVEMENT: {goal}"
+msgstr ""
+
+#. toast, max 296px, 2 lines; {n} = tickets, {medals} = the medal count reached
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.medal_reward"
+msgid "{medals} MEDALS: +{n} TICKETS"
+msgstr ""
+
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
@@ -1771,6 +1909,34 @@ msgstr ""
 msgctxt "tutorial.jump"
 msgid "JUMP"
 msgstr "SAUT"
+
+#. ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (any tier, normal + hard), {next} = the next reward's medal count
+#. budget: max 296px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.header"
+msgid "MEDALS {n} / NEXT REWARD AT {next}"
+msgstr ""
+
+#. page title, max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.title"
+msgid "ACHIEVEMENTS"
+msgstr ""
+
+#. button, max 70px, 1 line; shows the next page of achievements (wraps to the first)
+#. budget: max 70px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.next"
+msgid "NEXT PAGE"
+msgstr ""
+
+#. ACHIEVEMENTS page footer, max 150px, 1 line; {page} / {pages} = this page and the page count, {n} / {total} = unlocked and all goals
+#. budget: max 150px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.count"
+msgid "{n}/{total}  PAGE {page}/{pages}"
+msgstr ""
 
 #. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 #. budget: max 260px, lines 2

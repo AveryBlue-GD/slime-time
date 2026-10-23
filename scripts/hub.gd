@@ -94,7 +94,7 @@ const PORTAL_PANEL := Rect2(70, 37, 180, 105)  # (with the DAILY MAZE button; 89
 const RESUME_PANEL := Rect2(80, 57, 160, 66)
 ## Esc's menu over the hub (MENU, then BACK / SETTINGS / QUIT TO TITLE stacked): PANEL_PAD, the title,
 ## HUB_MENU_TITLE_GAP, three buttons GAP_S apart, PANEL_PAD; centred.
-const HUB_MENU_PANEL := Rect2(94, 53, 132, 74)
+const HUB_MENU_PANEL := Rect2(94, 45, 132, 90)  # (74 tall without the ACHIEVEMENTS button)
 ## Its buttons' width in English (the pause stack's; one width for all three, a longer text widens all of them).
 const HUB_MENU_BUTTON_W := 100
 ## The gap between the title's line box and the first button (4 px under the drips in English).
@@ -207,6 +207,7 @@ var hub_menu_panel: Panel
 var hub_menu_title: Label
 var menu_back: Button
 var menu_settings: Button
+var menu_achievements: Button  # (IMP-07, only while Economy.ACHIEVEMENTS)
 var menu_quit: Button
 ## Where the hub menu's panel is in the current language (HUB_MENU_PANEL in English).
 var hub_menu_rect := HUB_MENU_PANEL
@@ -758,14 +759,25 @@ func _build_hub_menu(root: Control) -> void:
 	hub_menu_title = UIKit.add_label(hub_menu, Loc.t("hub.menu.title", "MENU"), Rect2(), 8, UIKit.GOLD)
 	var size := Vector2(HUB_MENU_BUTTON_W, UIKit.button_h())
 	menu_back = UIKit.make_button(Loc.t("common.back", "BACK"), func() -> void: close_hub_menu(), size)
+	# i18n: hub Esc menu button, max 90px, 1 line; opens the achievements page
+	menu_achievements = UIKit.make_button(Loc.t("hub.menu.achievements", "ACHIEVEMENTS"), _hub_menu_achievements, size)
 	menu_settings = UIKit.make_button(Loc.t("hub.station.settings", "SETTINGS"), _hub_menu_settings, size)
 	# i18n: hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
 	menu_quit = UIKit.make_button(Loc.t("hub.menu.quit_title", "QUIT TO TITLE"), _hub_menu_quit, size)
-	var order: Array[Button] = [menu_back, menu_settings, menu_quit]
+	var order := _hub_menu_buttons()
 	for b in order:
 		hub_menu.add_child(b)
 	_layout_hub_menu()
 	_focus_column(order)
+
+
+## The hub menu's buttons, top to bottom.
+func _hub_menu_buttons() -> Array[Button]:
+	var out: Array[Button] = [menu_back]
+	if Economy.ACHIEVEMENTS:
+		out.append(menu_achievements)
+	out.append_array([menu_settings, menu_quit])
+	return out
 
 
 ## Up / down (and Tab) cycle through `order` and wrap around; left / right stay put.
@@ -783,7 +795,7 @@ func _focus_column(order: Array[Button]) -> void:
 ## The title, HUB_MENU_TITLE_GAP, the three buttons GAP_S apart (equal widths from the longest word),
 ## PANEL_PAD above and below: HUB_MENU_PANEL in English, wider for a longer text, taller for a taller script.
 func _layout_hub_menu() -> void:
-	var buttons: Array[Button] = [menu_back, menu_settings, menu_quit]
+	var buttons := _hub_menu_buttons()
 	var texts := buttons.map(func(b: Button) -> String: return b.text)
 	var bw: int = UIKit.tab_widths(texts, HUB_MENU_BUTTON_W)[0]
 	for b in buttons:
@@ -831,6 +843,14 @@ func _hub_menu_settings() -> void:
 		return
 	close_hub_menu()
 	_leave(_station("settings"), "res://scenes/controls.tscn")
+
+
+## ACHIEVEMENTS: the goals page (BACK returns to the hub in front of the signpost, like SETTINGS).
+func _hub_menu_achievements() -> void:
+	if not hub_menu.visible:
+		return
+	close_hub_menu()
+	_leave(_station("settings"), "res://scenes/achievements.tscn")
 
 
 ## QUIT TO TITLE: the goo wipe to the title (what Esc in the hub did before the menu).

@@ -181,8 +181,8 @@ func _initialize() -> void:
 	_check(hub.hub_menu.visible and hub.slime.frozen and not hub.prompt.visible and hub._touch_controls.menu_open,
 		"Esc in the hub opens MENU over it (slime held, prompt hidden, touch controls aside)")
 	_check(hub.menu_back.has_focus() and hub.hub_menu_title.text == "MENU"
-		and [hub.menu_back.text, hub.menu_settings.text, hub.menu_quit.text] == ["BACK", "SETTINGS", "QUIT TO TITLE"],
-		"...MENU: BACK (focused), SETTINGS, QUIT TO TITLE")
+		and [hub.menu_back.text, hub.menu_achievements.text, hub.menu_settings.text, hub.menu_quit.text] == ["BACK", "ACHIEVEMENTS", "SETTINGS", "QUIT TO TITLE"],
+		"...MENU: BACK (focused), ACHIEVEMENTS (IMP-07), SETTINGS, QUIT TO TITLE")
 	_check(hub.hub_menu_rect == hub.HUB_MENU_PANEL, "...its panel is HUB_MENU_PANEL in English (%s)" % hub.hub_menu_rect)
 	var wrap := InputEventAction.new()
 	wrap.action = "ui_up"

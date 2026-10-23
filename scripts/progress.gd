@@ -223,6 +223,14 @@ var daily_day := 0
 var daily_best_ms := 0
 var daily_streak := 0
 var daily_best_streak := 0
+## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
+## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
+## many medal milestones were paid (Achievements.milestones_due).
+var ach_known: Array[String] = []
+var ach_seeded := true
+var ach_flags := 0
+var medal_milestones_paid := 0
+var _ach_checking := false
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -963,6 +971,7 @@ func _read_store(file: ConfigFile) -> void:
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
+	check_achievements()
 	if demo_guard and saving_enabled and Demo.on():
 		notify_once("demo", Loc.t("notice.demo_unsaved", "DEMO: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 	if not saving_enabled or demo_guard or _preview_save != null:
@@ -1011,6 +1020,54 @@ func report_progress(id: String, value: int) -> void:
 	var events := get_node_or_null("/root/PlatformEvents")
 	if events:
 		events.progress_event.emit(id, value)
+
+
+## Unlocks every goal that is newly met (a toast each, `progress_event` "ach_<id>" = 1 for a store backend), and pays the
+## medal milestones not paid yet. Runs at the top of every save, so the new state is in the file. `silent`: adopt without
+## toasts (the first look at an old save). Dev, story-complete and demo runs unlock nothing (their progress isn't real).
+func check_achievements(silent := false) -> void:
+	if not Economy.ACHIEVEMENTS or _ach_checking or dev_tools or not saving_enabled or Demo.on():
+		return
+	_ach_checking = true
+	if jelly:
+		ach_flags |= Achievements.FLAG_JELLY
+	var fresh_seed := not ach_seeded  # (an old save's first look; a new save starts seeded)
+	ach_seeded = true
+	for id in Achievements.met_ids(self):
+		if id in ach_known:
+			continue
+		ach_known.append(id)
+		if silent or fresh_seed:
+			continue
+		for a in Achievements.list():
+			if a.id == id:
+				# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
+				notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}))
+		report_progress("ach_" + id, 1)
+	var due := Achievements.milestones_due(Achievements.medals_earned(self))
+	if due > medal_milestones_paid:
+		var gain := (due - medal_milestones_paid) * Economy.MEDAL_MILESTONE_TICKETS
+		medal_milestones_paid = due
+		add_tickets(gain, false)
+		if not silent:
+			# i18n: toast, max 296px, 2 lines; {n} = tickets, {medals} = the medal count reached
+			notify_once("medal_ms_%d" % due, Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = due * Economy.MEDAL_MILESTONE_STEP, n = gain}))
+		report_progress("medal_milestone", due)
+	_ach_checking = false
+
+
+## Remembers that ability `id` was used (the ability goal); saved with the next save.
+func note_ability_used(id: String) -> void:
+	var bit: int = {"rifle": Achievements.FLAG_RIFLE, "splat": Achievements.FLAG_SPLAT, "kaze": Achievements.FLAG_KAZE}.get(id, 0)
+	if bit != 0 and not Demo.on():
+		ach_flags |= bit
+
+
+## A won randomizer maze with abilities in hand and none used (call after complete_random saved; the next save keeps it).
+func note_clean_random_win() -> void:
+	if not Demo.on():
+		ach_flags |= Achievements.FLAG_CLEAN_WIN
+		save_progress()
 
 
 ## The app is going to the background (PlatformEvents): every change is already saved the moment it happens
@@ -2768,6 +2825,10 @@ func reset_progress() -> void:
 	daily_best_ms = 0
 	daily_streak = 0
 	daily_best_streak = 0
+	ach_known.clear()
+	ach_seeded = true
+	ach_flags = 0
+	medal_milestones_paid = 0
 	save_progress()
 
 

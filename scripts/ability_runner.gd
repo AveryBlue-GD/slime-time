@@ -223,6 +223,9 @@ func use(id: String, aimed := Vector2i.ZERO) -> bool:
 				return false
 	charges[id] = int(charges[id]) - 1
 	uses += 1
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.note_ability_used(id)
 	if id != "kaze":
 		game.spend_slime(Abilities.slime_cost(id))  # (SLIMAKAZE pays on impact)
 	DevLog.log_event(get_tree(), "ability " + id, game)

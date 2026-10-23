@@ -105,6 +105,13 @@ const ABANDON_COUNTS := true
 const DAILY_MAZE := true
 const DAILY_STREAK_STEP := 7
 const DAILY_STREAK_BONUS := 10
+
+## IMP-07 ACHIEVEMENTS: the hub menu's ACHIEVEMENTS page (scripts/achievements.gd), an unlock toast for each goal and
+## the pooled MEDAL MILESTONES: every MEDAL_MILESTONE_STEP medals earned (any tier, normal + hard) pay MEDAL_MILESTONE_TICKETS
+## tickets once. Off: no page, no toasts, no milestone pay.
+const ACHIEVEMENTS := true
+const MEDAL_MILESTONE_STEP := 10
+const MEDAL_MILESTONE_TICKETS := 5
 ## Test hooks for the three (-1 follow the const, 0 off, 1 on), like `random_cap_force`.
 static var pickups_on_win_force := -1
 static var pay_by_length_force := -1

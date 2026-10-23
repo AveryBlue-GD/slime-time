@@ -98,9 +98,9 @@ func _hub(english: bool) -> void:
 
 	hub.open_hub_menu()
 	await _frames(1)
-	_dialog(hub.hub_menu, [hub.menu_back, hub.menu_settings, hub.menu_quit], "menu", false)
+	_dialog(hub.hub_menu, [hub.menu_back, hub.menu_achievements, hub.menu_settings, hub.menu_quit], "menu", false)
 	panel = _panel_rect(hub.hub_menu)
-	for b: Button in [hub.menu_back, hub.menu_settings, hub.menu_quit]:
+	for b: Button in [hub.menu_back, hub.menu_achievements, hub.menu_settings, hub.menu_quit]:
 		_check(absf(_rect(b).get_center().x - panel.get_center().x) <= 0.5 and _rect(b).size.x == _rect(hub.menu_back).size.x,
 			"%s: hub menu %s centred in the panel, as wide as BACK" % [_code, b.text])
 	_check(_rect(hub.menu_quit).end.y == panel.end.y - UIKit.PANEL_PAD, "%s: hub menu QUIT TO TITLE PANEL_PAD above the bottom" % _code)
