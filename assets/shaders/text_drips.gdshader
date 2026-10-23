@@ -73,6 +73,9 @@ void fragment() {
 			if (clean_small && !big_font) {
 				drip_len = 0.0;
 			}
+			if (clean_big && big_font) {
+				drip_len = 0.0;
+			}
 			if (bottom > 0.5 && row - 7.0 < drip_len) {
 				COLOR = vec4(vec3(160.0 / 255.0) * tint.rgb, tint.a);
 			} else {

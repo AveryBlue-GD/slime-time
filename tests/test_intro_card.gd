@@ -98,6 +98,8 @@ func _initialize() -> void:
 			tagline_clean = true
 	_check(tagline_clean, "the tagline uses the clean 16 px material")
 	_check(UIKit.text_material().get_shader_parameter("clean_big") != true, "the shared heading material keeps its 16 px drips")
+	var shader_src := FileAccess.get_file_as_string("res://assets/shaders/text_drips.gdshader")
+	_check(shader_src.contains("if (clean_big && big_font)"), "the shader reads clean_big and zeroes the 16 px drips")
 	title.queue_free()
 	IntroCard.force = false
 	await process_frame
