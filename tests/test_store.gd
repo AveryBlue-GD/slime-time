@@ -267,7 +267,7 @@ func _saves() -> void:
 	progress.tickets_spent = 873
 	var full: String = progress.save_code()
 	_check(full.length() < 2000 and full.length() < progress.MAX_SAVE_CODE_LENGTH, "a full store's save code stays small (%d chars)" % full.length())
-	_check(progress.RELEASE_EPOCH == 1 and progress.SAVE_VERSION == 6 and full.begins_with("SLIME2-"), "epoch 1, save version 6, SLIME2- codes: unchanged")
+	_check(progress.RELEASE_EPOCH == 1 and progress.SAVE_VERSION == 7 and full.begins_with("SLIME2-"), "epoch 1, save version 7, SLIME2- codes: unchanged")
 	# A save from before the store: every key defaults.
 	var old := ConfigFile.new()
 	old.set_value("meta", "version", 6)

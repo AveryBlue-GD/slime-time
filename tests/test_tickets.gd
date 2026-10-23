@@ -313,7 +313,7 @@ func _initialize() -> void:
 	progress.random_pay_day = 20000
 	progress.random_paid = 2
 	var text: String = progress._write().encode_to_text()
-	_check("[meta]" in text and "version=6" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 6, [wallet] globs and [medals]")
+	_check("[meta]" in text and "version=7" in text and "[wallet]" in text and "[medals]" in text and "globs=37" in text, "the save has [meta] version 7, [wallet] globs and [medals]")
 	_check("clears_paid" not in text and "hard_clears_paid" not in text, "...and no clears_paid keys any more")
 	var file := ConfigFile.new()
 	file.parse(text)
@@ -413,7 +413,7 @@ func _initialize() -> void:
 	_check(veteran.tickets == 37 and veteran.tickets_lifetime == 90, "the balance is kept as it is (%d, lifetime %d), no retro grant" % [veteran.tickets, veteran.tickets_lifetime])
 	_check(veteran.medals_for(1) == 3 and veteran.medals_for(2) == 2 and veteran.medals_for(3) == 1 and veteran.medals_for(7) == 0, "stored tiers are read (%s)" % [veteran.medals])
 	var written: ConfigFile = veteran._write()
-	_check(written.get_value("meta", "version") == 6 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 6 without the paid masks")
+	_check(written.get_value("meta", "version") == 7 and not written.has_section_key("wallet", "clears_paid") and not written.has_section_key("wallet", "hard_clears_paid"), "its next save is version 7 without the paid masks")
 	var again := ConfigFile.new()
 	again.parse(written.encode_to_text())
 	var veteran2: Node = preload("res://scripts/progress.gd").new()
@@ -474,7 +474,7 @@ func _initialize() -> void:
 		"the same save read directly: balance kept, medals as tiers")
 	progress.check_achievements()  # (goals the state meets are adopted at every save; settle them before the snapshot)
 	var snapshot: String = progress._write().encode_to_text()
-	_check("version=6" in snapshot, "...and re-saves as version 6")
+	_check("version=7" in snapshot, "...and re-saves as version 7")
 	var new_code: String = progress.save_code()
 	progress.reset_progress()
 	_check(progress.tickets == 0 and progress.medals.is_empty() and progress.spins == 0 and progress.rainbow_pity == 0 and progress.random_paid == 0,

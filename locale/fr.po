@@ -665,6 +665,13 @@ msgctxt "hud.area.floor"
 msgid "FLOOR {floor}"
 msgstr "ÉTAGE {floor}"
 
+#. short HUD line when a fresh random maze starts on a later attempt because the last maze was left unfinished; max 140px
+#. budget: max 140px
+#: scripts/game.gd
+msgctxt "hud.left_last_maze"
+msgid "LEFT LAST MAZE: ATTEMPT {n}"
+msgstr ""
+
 #. flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
 #. budget: max 296px, lines 1
 #: scripts/game.gd

@@ -670,6 +670,8 @@ func _physics_process(delta: float) -> void:
 	hud.set_time(run_time)
 	if slime.is_airborne():
 		last_slime_pos = pos
+		if attempt_key != "" and progress != null:
+			progress.random_moved = true  # (leap-only scouting counts as trying the maze too)
 	else:
 		var moved := pos.distance_to(last_slime_pos)
 		_idle_drain(moved, delta)
@@ -1870,7 +1872,7 @@ func _pick_up_tickets(pos: Vector2) -> void:
 			continue
 		tickets.erase(ticket)
 		var hold: bool = Economy.pickups_on_win()
-		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit(), hold)
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit() or daily_repeat(), hold)
 		if hold:
 			held_tickets += paid  # (shown as "+N" now, paid when the maze is won)
 		ticket.collect(self)
@@ -2033,6 +2035,9 @@ func _count_attempt() -> void:
 	DevLog.last_route = ""
 	touch_controls.pause_rect.position.y = touch_controls.pause_y_random()  # under the two-line attempt pod
 	_refresh_attempt_pod()
+	if attempt > 1 and attempt == progress.random_attempt_base + 1:  # the first start of a maze that opens past attempt 1: say why
+		# i18n: short HUD line when a fresh random maze starts on a later attempt because the last maze was left unfinished; max 140px
+		hud.flash_message(Loc.t("hud.left_last_maze", "LEFT LAST MAZE: ATTEMPT {n}", {n = mini(attempt, 99)}), 2.5)
 
 
 ## Randomizer: what a win on this run would pay right now and why ({tickets, table, cap}, see
@@ -2060,7 +2065,8 @@ func pay_attempt() -> int:
 
 ## A daily maze already won today: this win pays nothing (its pickups neither).
 func daily_repeat() -> bool:
-	return progress != null and progress.random_daily and progress.daily_won_today()
+	# (compared with the day this run STARTED on: a daily won after UTC midnight must not pay twice)
+	return progress != null and progress.random_daily and progress.daily_won_on(progress.daily_run_day)
 
 
 ## An assisted, dev-toggled or RELAXED run earns no medal, record or ticket.
@@ -2496,10 +2502,10 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
-			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode))
+			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), not repeat or Economy.REPEAT_DAILY_COUNTS)
 			if repeat:
 				held_tickets = 0
-			if abilities != null and abilities.uses == 0 and not no_record:
+			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):
 				progress.note_clean_random_win()
 			if progress.random_daily and not no_record:
 				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0), progress.daily_run_day)

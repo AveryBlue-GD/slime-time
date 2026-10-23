@@ -110,7 +110,9 @@ var current_level := 1
 ## tree = 3 marks the repriced tree (MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39): tree 2 levels are
 ## repriced on load (_migrate_prices), no save version bump needed. Both can still run for a real
 ## player: release-epoch saves were written by builds with tree 1 and tree 2.
-const SAVE_VERSION := 6
+## 7 = the [achievements] section (known goals, flags, medal milestones paid): an older build that rolled such a
+## save back would re-pay the milestones, so it now sees a newer save and keeps it (SAVE_NEWER_GUARD).
+const SAVE_VERSION := 7
 ## TICKET VOUCHERS: the renewable, cosmetic-and-utility currency (never converted to or from coins).
 ## The ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that
 ## maze took (RANDOM_ATTEMPT_PAY: first try 10, then 8, 6, 4, 2, and 1 from the sixth on); only
@@ -186,6 +188,8 @@ var random_tickets_held := {}
 ## from it; and whether the slime moved in the current maze (so leaving it counts as abandoning it).
 var random_attempt_base := 0
 var random_moved := false
+## Not saved: the current random maze was won (replaying it, then leaving, is no abandoning). Cleared with every new maze.
+var random_maze_won := false
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -327,7 +331,7 @@ var language := ""
 const FOG_DARK := 0
 const FOG_NORMAL := 1
 const FOG_BRIGHT := 2
-var fog_brightness := FOG_BRIGHT if Economy.DARK_FOG and Platform.has_touch() else FOG_NORMAL  # (IMP-05: phones start lighter)
+var fog_brightness := FOG_BRIGHT if Economy.DARK_FOG and (Platform.is_mobile_native() or (Platform.is_web() and Platform.has_touch())) else FOG_NORMAL  # (IMP-05: phones start lighter)
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
 ## Record (fastest) clear time per story level, in seconds.
@@ -742,10 +746,17 @@ func load_progress(path := "") -> void:
 	if file == null:
 		if Demo.on():
 			demo_guard = true  # (maybe a newer full game's save the demo can't read: play fresh, never touch it)
+		elif owned and _peek_version(file_path) > SAVE_VERSION and Economy.SAVE_NEWER_GUARD:
+			# A newer game's save the allow-list rejected (a section this build doesn't know): not damaged. Keep a copy, play fresh in memory.
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(newer_backup_path(file_path)))
+			saving_enabled = false
+			notify_once("newer", Loc.t("notice.save_newer", "NEWER SAVE KEPT: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 		elif owned:
 			_set_aside_corrupt(file_path)
 		return
 	if not _is_this_epoch(file):
+		if owned and not Demo.on():  # (a save of another release epoch is replaced by the next save: keep a copy of it first)
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(other_epoch_backup_path(file_path)))
 		demo_guard = Demo.on()  # (the demo never overwrites another epoch's save; the full game starts fresh)
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
 	if Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
@@ -792,6 +803,25 @@ static func _load_checked(path: String) -> ConfigFile:
 const CORRUPT_KEEP := 3
 ## Set when this session's save was found unreadable: where it was moved ("" if it wasn't).
 var corrupt_backup := ""
+
+
+static func other_epoch_backup_path(path: String) -> String:
+	return "%s.oldepoch.cfg" % path.get_basename()
+
+
+## The `version=` number written in the save at `path` without parsing it (0 if there is none): the
+## allow-list can reject a newer build's save, and that must not be mistaken for damage.
+static func _peek_version(path: String) -> int:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() > SaveText.MAX_BYTES:
+		return 0
+	for line in f.get_as_text().split("\n"):
+		var t := line.strip_edges()
+		if t.begins_with("version") and "=" in t:
+			var v := t.get_slice("=", 1).strip_edges()
+			if v.is_valid_int():
+				return v.to_int()
+	return 0
 
 
 static func newer_backup_path(path: String) -> String:
@@ -1467,10 +1497,12 @@ func start_story(level: int) -> void:
 ## random_payout: the attempt table, capped at 1 for a typed / replayed seed or no MORE SLIME bought;
 ## 0 once today's 5 paying wins are used, while assisted (or dev toggles), or for a seed that already
 ## paid today). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0) -> int:
-	randoms_cleared += 1
-	randoms_won += 1
+func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0, counts := true) -> int:
+	if counts:  # (a repeat daily win counts toward nothing unless Economy.REPEAT_DAILY_COUNTS)
+		randoms_cleared += 1
+		randoms_won += 1
 	random_moved = false  # (a win is no abandoning: the next maze starts at attempt 1)
+	random_maze_won = true  # (replaying it and leaving is no abandoning: _abandon_base ignores its attempts)
 	var paid := 0
 	if not assisted:
 		_check_pay_day()
@@ -1489,7 +1521,8 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1, factor :=
 	if seed_value != 0:
 		random_seed_fresh = false  # winning it again is a replay
 	save_progress()
-	report_progress("random_wins", randoms_won)
+	if counts:
+		report_progress("random_wins", randoms_won)
 	return paid
 
 
@@ -1702,8 +1735,9 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
-	random_daily = false
+	# (random_daily stays as it is: new_random_maze reads it to hand the carried abandon penalty on, then clears it)
 	if demo_preview_replay():
+		random_daily = false
 		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
 		return
 	mode = MODE_RANDOM
@@ -1732,6 +1766,7 @@ func start_daily() -> void:
 	random_seed_fresh = true
 	random_attempt_base = 0
 	random_moved = false
+	random_maze_won = false
 	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
@@ -1741,6 +1776,11 @@ func start_daily() -> void:
 ## True when a daily win is already recorded for today.
 func daily_won_today() -> bool:
 	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
+
+
+## True when a daily win is recorded for UTC day `day`.
+func daily_won_on(day: int) -> bool:
+	return daily_day != 0 and daily_day == day and daily_best_ms > 0
 
 
 ## The streak as it stands: 0 once a day was missed (the last win is older than yesterday).
@@ -2168,7 +2208,7 @@ func _abandon_base() -> int:
 	var used := 0
 	for count in random_attempts.values():
 		used = maxi(used, int(count))
-	return mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved else 0
+	return mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved and not random_maze_won else 0
 
 
 func new_random_maze() -> void:
@@ -2187,6 +2227,7 @@ func new_random_maze() -> void:
 	random_attempt_base = random_attempt_carry if from_daily else _abandon_base()
 	random_attempt_carry = 0
 	random_moved = false
+	random_maze_won = false
 	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()

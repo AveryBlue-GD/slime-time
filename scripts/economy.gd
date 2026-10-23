@@ -103,6 +103,8 @@ const ABANDON_COUNTS := true
 ## every 7th day of it. The first win of a day pays like attempt 1; later wins that day pay nothing. False = no
 ## daily option. Hidden in the demo.
 const DAILY_MAZE := true
+## Owner default (Q1, 2026-10-23): winning the daily again the same UTC day counts toward randoms_won / win achievements (false = it doesn't).
+const REPEAT_DAILY_COUNTS := false
 const DAILY_STREAK_STEP := 7
 const DAILY_STREAK_BONUS := 10
 

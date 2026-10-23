@@ -421,7 +421,7 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("descent", "paid_day", p.descent_pay_day)
 		file.set_value("descent", "paid_runs", p.descent_paid)
 		file.set_value("descent", "milestones", p.descent_milestones)
-	if Economy.ACHIEVEMENTS and p.ach_seeded:
+	if Economy.ACHIEVEMENTS and p.ach_seeded and not Demo.on():  # (a demo save carries no goals: the full game would toast them all)
 		file.set_value("achievements", "known", p.ach_known.duplicate())
 		file.set_value("achievements", "flags", p.ach_flags)
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
