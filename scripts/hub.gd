@@ -89,7 +89,7 @@ const BOARD_NAME_GAP := 6
 ## 13 px buttons, 12 px line pitch, centered on the screen.
 const QUIT_PANEL := Rect2(80, 63, 160, 54)
 ## The portal's mode choice (RANDOM MAZE / DESCENT, BACK).
-const PORTAL_PANEL := Rect2(70, 45, 180, 89)
+const PORTAL_PANEL := Rect2(70, 37, 180, 105)  # (with the DAILY MAZE button; 89 tall without it)
 ## A saved DESCENT run's prompt (three lines, RESUME / QUIT RUN).
 const RESUME_PANEL := Rect2(80, 57, 160, 66)
 ## Esc's menu over the hub (MENU, then BACK / SETTINGS / QUIT TO TITLE stacked): PANEL_PAD, the title,
@@ -189,6 +189,7 @@ var back_button: Button
 var portal_menu: Control
 var maze_button: Button
 var descent_button: Button
+var daily_button: Button
 var portal_back: Button
 var portal_info: Label
 ## A Descent run saved by a killed app / closed window (Progress.descent_resume, owner decision D6): shown on
@@ -857,14 +858,24 @@ func _build_portal_menu(root: Control) -> void:
 	portal_title = UIKit.add_label(portal_menu, Loc.t("hub.portal.title", "RANDOMIZER"), Rect2(), 8, UIKit.GOLD)
 	maze_button = UIKit.make_button(Loc.t("hub.portal.random_maze", "RANDOM MAZE"), _start_random_maze, Vector2(120, UIKit.button_h()))
 	portal_menu.add_child(maze_button)
+	daily_button = UIKit.make_button(Loc.t("hub.portal.daily", "DAILY MAZE"), _start_daily_maze, Vector2(120, UIKit.button_h()))
+	portal_menu.add_child(daily_button)
 	descent_button = UIKit.make_button(Loc.t("hub.portal.descent", "DESCENT"), _start_descent, Vector2(120, UIKit.button_h()))
 	portal_menu.add_child(descent_button)
 	portal_info = UIKit.add_label(portal_menu, "", Rect2(), 8, UIKit.TEXT_DIM)
 	portal_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_portal_menu, Vector2(56, UIKit.button_h()))
 	portal_menu.add_child(portal_back)
 	_layout_portal_menu()
-	var order: Array[Button] = [maze_button, descent_button, portal_back]
-	_focus_column(order)
+	_focus_column(_portal_order())
+
+
+## The portal's focus order (the daily only where it is offered).
+func _portal_order() -> Array[Button]:
+	var order: Array[Button] = [maze_button]
+	if daily_button.visible:
+		order.append(daily_button)
+	order.append_array([descent_button, portal_back])
+	return order
 
 
 ## Title, the two modes (stack_pitch apart), the info line, BACK: gaps of 6 / 3 / 5 / 6 px between
@@ -873,22 +884,29 @@ func _build_portal_menu(root: Control) -> void:
 func _layout_portal_menu() -> void:
 	var line := UIKit.line_h()
 	var bh := UIKit.button_h()
-	var mode_w: int = UIKit.tab_widths([maze_button.text, descent_button.text], 120)[0]
+	var modes: Array[Button] = [maze_button]
+	if daily_button.visible:
+		modes.append(daily_button)
+	modes.append(descent_button)
+	var mode_texts: Array[String] = []
+	for b: Button in modes:
+		mode_texts.append(b.text)
+	var mode_w: int = UIKit.tab_widths(mode_texts, 120)[0]
 	var back_w := UIKit.button_w(portal_back.text, 56)
-	for b: Button in [maze_button, descent_button]:
-		UIKit.note_text_w(b, [maze_button.text, descent_button.text], 120)
+	for b: Button in modes:
+		UIKit.note_text_w(b, mode_texts, 120)
 	UIKit.note_text_w(portal_back, [portal_back.text], 56)
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.PANEL_PAD + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
+	var h := text_top + UIKit.PANEL_PAD + line + 6 + bh + UIKit.GAP_S + bh + (bh + UIKit.GAP_S if daily_button.visible else 0) + 5 + line + 6 + bh
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	portal_panel.position = rect.position
 	portal_panel.size = rect.size
 	var y := rect.position.y + text_top
 	_stack_lines([portal_title], rect, y)
 	y += line + 6
-	for b: Button in [maze_button, descent_button]:
+	for b: Button in modes:
 		b.custom_minimum_size = Vector2(mode_w, bh)
 		b.size = b.custom_minimum_size
 		b.position = Vector2(UIKit.center_x(mode_w, rect.position.x, rect.size.x), y)
@@ -901,6 +919,14 @@ func _layout_portal_menu() -> void:
 
 
 func open_portal_menu() -> void:
+	daily_button.visible = Economy.daily_maze()
+	var streak: int = Progress.daily_streak_now()
+	if streak > 0:
+		# i18n: button, max 120px (widens the panel), 1 line; {n} = days in a row with a daily win; the spaces are spacing
+		daily_button.text = Loc.t("hub.portal.daily_streak", "DAILY MAZE  STREAK {n}", {n = streak})
+	else:
+		daily_button.text = Loc.t("hub.portal.daily", "DAILY MAZE")
+	_focus_column(_portal_order())
 	UIKit.relayout(portal_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var best: int = Progress.descent_best_floor
 	var left: int = Progress.descent_paid_left()
@@ -937,6 +963,14 @@ func _start_random_maze() -> void:
 		return
 	portal_menu.visible = false
 	_begin_random_maze()
+
+
+func _start_daily_maze() -> void:
+	if not portal_menu.visible:
+		return
+	portal_menu.visible = false
+	Progress.start_daily()
+	_leave(_station("random"), UIKit.GAME_SCENE)
 
 
 func _begin_random_maze() -> void:

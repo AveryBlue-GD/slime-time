@@ -502,6 +502,13 @@ msgctxt "hud.area.preview"
 msgid "FULL GAME PREVIEW"
 msgstr ""
 
+#. HUD area line, max 296px, 1 line (today's daily maze)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.daily"
+msgid "DAILY MAZE"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
@@ -602,6 +609,20 @@ msgstr "SEED {code}"
 #: scripts/game.gd
 msgctxt "result.preview_cleared"
 msgid "PREVIEW CLEARED!"
+msgstr ""
+
+#. result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily"
+msgid "DAILY: {time} BEST {best}  STREAK {streak}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = tickets, {days} = the streak
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_bonus"
+msgid "{days} DAY STREAK: +{n} TICKETS"
 msgstr ""
 
 #. result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
@@ -1020,9 +1041,21 @@ msgid "RANDOM MAZE"
 msgstr "MÊ CUNG NGẪU NHIÊN"
 
 #: scripts/hub.gd
+msgctxt "hub.portal.daily"
+msgid "DAILY MAZE"
+msgstr ""
+
+#: scripts/hub.gd
 msgctxt "hub.portal.descent"
 msgid "DESCENT"
 msgstr "LẶN SÂU"
+
+#. button, max 120px (widens the panel), 1 line; {n} = days in a row with a daily win; the spaces are spacing
+#. budget: max 120px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.portal.daily_streak"
+msgid "DAILY MAZE  STREAK {n}"
+msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info_best"
@@ -1800,6 +1833,18 @@ msgstr "XÓA TIẾN ĐỘ"
 #: scripts/ui/controls.gd
 msgctxt "settings.training"
 msgid "TRAINING"
+msgstr ""
+
+#. bottom-row button, grows with the text (max 120px), 1 line; the two states are whole strings
+#. budget: max 120px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.level_music.on"
+msgid "LEVEL MUSIC: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.level_music.off"
+msgid "LEVEL MUSIC: OFF"
 msgstr ""
 
 #. panel title, max 270px, 16 px font; grows to 296px, steps down to 8 px past that

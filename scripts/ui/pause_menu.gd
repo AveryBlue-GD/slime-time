@@ -438,6 +438,7 @@ func _submit_seed(text: String) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.random_seed = value
+		progress.random_daily = false
 		progress.random_level = code.y  # -1 (a plain number): the game uses the player's own level
 		progress.random_seed_fresh = false  # a typed seed pays at most 1 ticket
 	resume()

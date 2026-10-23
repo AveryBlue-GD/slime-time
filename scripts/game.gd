@@ -418,7 +418,7 @@ func _ready() -> void:
 			preview = progress.in_demo_preview()
 		else:
 			level = progress.current_level if progress else 1
-	hard_mode = progress.hard_mode if progress and not descent and not training else false  # Descent, training: normal rules only
+	hard_mode = progress.hard_mode if progress and not descent and not training and not progress.random_daily else false  # (the daily: normal rules for everyone) # Descent, training: normal rules only
 	var config: Dictionary
 	if training:
 		training_attempt = Training.begin_run()
@@ -450,6 +450,9 @@ func _ready() -> void:
 		if preview:
 			# i18n: HUD area line, max 296px, 1 line (the demo's last maze: a taste of the full game)
 			hud.set_level_text(Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
+		elif progress and progress.random_daily:
+			# i18n: HUD area line, max 296px, 1 line (today's daily maze)
+			hud.set_level_text(Loc.t("hud.area.daily", "DAILY MAZE"))
 		elif hard_mode:
 			hud.set_level_text(Loc.t("hud.area.random_hard", "RANDOM MAZE #{n}  HARD", {n = maze_n}))
 		elif seed_level != own_level:
@@ -2040,6 +2043,8 @@ func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
 	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, progress.random_length_factor(random_seed, seed_level, hard_mode))
+	if daily_repeat():
+		due = {tickets = 0, table = due.table, cap = "paid"}
 	if no_credit():
 		due.tickets = 0
 	return due
@@ -2048,7 +2053,14 @@ func payout() -> Dictionary:
 ## The attempt a randomizer win is paid for: this run's attempt, one more once SECOND WIND fired
 ## (the extra slime costs one attempt step of the payout; spec B.2).
 func pay_attempt() -> int:
+	if progress != null and progress.random_daily:
+		return 1  # (the daily's first win of the day pays like attempt 1, whatever the retries)
 	return attempt + (1 if wind_fired else 0)
+
+
+## A daily maze already won today: this win pays nothing (its pickups neither).
+func daily_repeat() -> bool:
+	return progress != null and progress.random_daily and progress.daily_won_today()
 
 
 ## An assisted, dev-toggled or RELAXED run earns no medal, record or ticket.
@@ -2483,7 +2495,19 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			random_text = Loc.lines([title, Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})])
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
-			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode))
+			var repeat := daily_repeat()
+			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode))
+			if repeat:
+				held_tickets = 0
+			if progress.random_daily and not no_record:
+				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0))
+				# i18n: result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+				var daily_line := Loc.t("result.daily", "DAILY: {time} BEST {best}  STREAK {streak}",
+					{time = UIKit.format_time(run_time), best = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
+				random_text = Loc.lines([random_text, daily_line])
+				if day.bonus > 0:
+					# i18n: result line, max 296px, 1 line; {n} = tickets, {days} = the streak
+					random_text = Loc.lines([random_text, Loc.t("result.daily_bonus", "{days} DAY STREAK: +{n} TICKETS", {days = day.streak, n = day.bonus})])
 			var pastel_skin := Skins.pastel_unlocked_at(progress.randoms_won)
 			if pastel_skin != "" and progress.is_skin_unlocked(pastel_skin, false, true):
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)

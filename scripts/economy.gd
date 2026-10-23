@@ -98,10 +98,21 @@ const LENGTH_PAY_MAX := 1.4
 ## spent attempt: the next maze starts at the abandoned one's attempt count + 1 (up to the last pay tier);
 ## a win resets it, and the first maze (or one after a win) starts at attempt 1. False = always 1.
 const ABANDON_COUNTS := true
+## IMP-06 DAILY_MAZE: the randomizer portal offers a DAILY MAZE (one seed per UTC day from Progress.daily_seed,
+## normal mode, MORE SLIME 0 so it is the same for everyone), best time, a win streak and a 10-ticket bonus at
+## every 7th day of it. The first win of a day pays like attempt 1; later wins that day pay nothing. False = no
+## daily option. Hidden in the demo.
+const DAILY_MAZE := true
+const DAILY_STREAK_STEP := 7
+const DAILY_STREAK_BONUS := 10
 ## Test hooks for the three (-1 follow the const, 0 off, 1 on), like `random_cap_force`.
 static var pickups_on_win_force := -1
 static var pay_by_length_force := -1
 static var abandon_counts_force := -1
+
+
+static func daily_maze() -> bool:
+	return DAILY_MAZE and not Demo.on()
 
 
 static func pickups_on_win() -> bool:

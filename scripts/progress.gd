@@ -216,6 +216,13 @@ var descent_runs := 0
 var descent_pay_day := 0
 var descent_paid := 0
 var descent_milestones := 0
+## IMP-06 daily maze. `random_daily`: the current random maze is today's daily (runtime only). Saved [daily]:
+## the UTC day of the last daily win, its best time (ms), the streak as of that day, the best streak ever.
+var random_daily := false
+var daily_day := 0
+var daily_best_ms := 0
+var daily_streak := 0
+var daily_best_streak := 0
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -1613,11 +1620,66 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
+	random_daily = false
 	if demo_preview_replay():
 		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
 		return
 	mode = MODE_RANDOM
 	new_random_maze()
+
+
+## The seed of UTC day `day`: the same for everyone, pure integer maths (1 to 2,000,000,000).
+static func daily_seed(day: int) -> int:
+	var x: int = (day * 2654435761 + 40503) & 0xFFFFFFFF
+	x = ((x ^ (x >> 15)) * 2246822519) & 0xFFFFFFFF
+	x = ((x ^ (x >> 13)) * 3266489917) & 0xFFFFFFFF
+	x ^= x >> 16
+	return x % 2_000_000_000 + 1
+
+
+## Starts today's daily maze: its seed, MORE SLIME 0 (everyone's maze is the same), normal rules, attempt 1.
+func start_daily() -> void:
+	mode = MODE_RANDOM
+	discard_random_map()
+	random_daily = true
+	random_seed = daily_seed(utc_day())
+	random_level = 0
+	random_seed_fresh = true
+	random_attempt_base = 0
+	random_moved = false
+	random_attempts.clear()
+	random_offer_shown.clear()
+	random_tickets_taken.clear()
+
+
+## True when a daily win is already recorded for today.
+func daily_won_today() -> bool:
+	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
+
+
+## The streak as it stands: 0 once a day was missed (the last win is older than yesterday).
+func daily_streak_now() -> int:
+	return daily_streak if daily_day != 0 and daily_day >= utc_day() - 1 else 0
+
+
+## Records a daily win of `ms`: best time of the day, the streak (+1 on a new day, 1 after a gap) and the
+## 10-ticket bonus on every 7th day of it. Returns {best_ms, new_best, first, streak, bonus}. Saves.
+func record_daily(ms: int) -> Dictionary:
+	var today := utc_day()
+	var first := not daily_won_today()
+	var bonus := 0
+	if first:
+		daily_streak = daily_streak + 1 if daily_day != 0 and daily_day == today - 1 else 1
+		daily_day = today
+		daily_best_ms = 0
+		daily_best_streak = maxi(daily_best_streak, daily_streak)
+		if daily_streak % Economy.DAILY_STREAK_STEP == 0:
+			bonus = add_tickets(Economy.DAILY_STREAK_BONUS, false)
+	var new_best := daily_best_ms == 0 or ms < daily_best_ms
+	if new_best:
+		daily_best_ms = ms
+	save_progress()
+	return {best_ms = daily_best_ms, new_best = new_best, first = first, streak = daily_streak, bonus = bonus}
 
 
 # ---------------------------------------------------------------- the demo's FULL GAME PREVIEW
@@ -1660,6 +1722,7 @@ func begin_demo_preview() -> void:
 		_preview_live[key] = value.duplicate(true) if value is Dictionary or value is Array else value
 	Demo.preview = true
 	mode = MODE_RANDOM
+	random_daily = false
 	hard_mode = false
 	random_seed = Demo.PREVIEW_SEED
 	random_level = Demo.PREVIEW_LEVEL
@@ -2014,6 +2077,7 @@ func discard_random_map() -> void:
 
 
 func new_random_maze() -> void:
+	random_daily = false
 	discard_random_map()
 	random_seed = randi_range(1, 2_000_000_000)
 	if Demo.gentle_maze(randoms_won):  # (the demo's first mazes: a seed that doesn't ask for most of the meter)
@@ -2700,6 +2764,10 @@ func reset_progress() -> void:
 	descent_pay_day = 0
 	descent_paid = 0
 	descent_milestones = 0
+	daily_day = 0
+	daily_best_ms = 0
+	daily_streak = 0
+	daily_best_streak = 0
 	save_progress()
 
 

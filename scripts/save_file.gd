@@ -174,6 +174,14 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 	p.descent_paid = clampi(get_int(file, "descent", "paid_runs", 0), 0, Economy.DESCENT_PAID_PER_DAY)
 	p._check_descent_day()
 	p.descent_milestones = clampi(get_int(file, "descent", "milestones", 0), 0, (1 << Economy.DESCENT_MILESTONES.size()) - 1)
+	p.daily_day = maxi(get_int(file, "daily", "day", 0), 0)
+	p.daily_best_ms = clampi(get_int(file, "daily", "best_ms", 0), 0, 1000 * 100000)
+	p.daily_streak = clampi(get_int(file, "daily", "streak", 0), 0, 100000)
+	p.daily_best_streak = maxi(clampi(get_int(file, "daily", "best_streak", 0), 0, 100000), p.daily_streak)
+	if p.daily_day > p.utc_day() + p.PAY_DAY_AHEAD:  # a future clock or a hand-made save: no daily on record
+		p.daily_day = 0
+		p.daily_best_ms = 0
+		p.daily_streak = 0
 	p.descent_run = {}
 	p.descent_resume = {}
 	if not from_code:
@@ -409,6 +417,11 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("descent", "paid_day", p.descent_pay_day)
 		file.set_value("descent", "paid_runs", p.descent_paid)
 		file.set_value("descent", "milestones", p.descent_milestones)
+	if p.daily_day > 0:
+		file.set_value("daily", "day", p.daily_day)
+		file.set_value("daily", "best_ms", p.daily_best_ms)
+		file.set_value("daily", "streak", p.daily_streak)
+		file.set_value("daily", "best_streak", p.daily_best_streak)
 	# A Descent run in progress (D6): written only while one is saved.
 	if not p.descent_resume.is_empty() and not for_code:
 		file.set_value("descent_run", "format", p.DESCENT_RUN_FORMAT)
