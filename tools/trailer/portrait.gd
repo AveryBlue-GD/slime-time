@@ -25,7 +25,8 @@ extends Node
 ##   flip    the "how many looks" Short: a big slime acting out the showcase routine while its look flips
 ##           (skin incl. jelly / pastel / CHAMELEON colors, hat and dye, trail) through FLIP_PLAN's
 ##           phases (skins only, hats, dyes, trails, CHAMELEON colors, then everything, faster and
-##           faster), with the trail strip and the look's names under the stage. Seeded (--rng).
+##           faster), with the trail strip and the look's names under the stage, silently (owner,
+##           2026-10-23: no click on each change). Seeded (--rng).
 ##           The dyes show on the WIZARD HAT (worn on through the trails and CHAMELEON phases).
 ##           --plan-from=F starts FLIP_PLAN at frame F (a later stretch as its own take, e.g. under a
 ##           3-line caption with --top=92); --no-names hides the names (too fast to read there).
@@ -485,8 +486,6 @@ func _beat_tick() -> void:
 	var phase := _beat_phase(_next_beat)
 	_flip(phase[0], _beat_phase(_next_beat + phase[1])[0] != phase[0])
 	_flips += 1
-	if phase[1] >= 0.25 or _flips % 2 == 0:
-		Sfx.play("click", -10.0)
 	_next_beat += phase[1]
 
 
@@ -510,8 +509,6 @@ func _flip_tick() -> void:
 	if frame > 1:
 		_flip(phase[0], _flip_phase(frame + every + _int("plan-from", 0))[0] != phase[0])
 		_flips += 1
-		if every >= 6 or _flips % 3 == 0:
-			Sfx.play("click", -10.0)
 	_next_flip = frame + every
 
 
