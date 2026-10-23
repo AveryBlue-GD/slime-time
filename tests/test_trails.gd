@@ -89,7 +89,7 @@ func _check_style(style: String, skin: String) -> String:
 	var alpha: int = {"ink": 150, "glow": 170, "gold": 185, "abyss": Cosmetics.ABYSS_ALPHA}.get(style, 120)
 	# A wheel trail paints per cell (Cosmetics.trail_cell_at): its alphas are the ones its rules give.
 	var alphas := {alpha: true}
-	if Cosmetics.is_wheel(style):
+	if look.get("per_cell", false):
 		alphas = _wheel_alphas(look)
 	if painted.is_empty():
 		why = "nothing painted"
@@ -100,7 +100,7 @@ func _check_style(style: String, skin: String) -> String:
 		if not near:
 			why = "alpha %d, want one of %s" % [c.a8, alphas.keys()]
 			break
-	if Cosmetics.is_wheel(style):
+	if look.get("per_cell", false):
 		if float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("fx")) != look.get("fx", 0.0):
 			why = "the shader's fx is not the style's"
 		var base_cell: Color = Cosmetics.trail_cell_at(look, false, 0.0, Vector2i(1, 1))

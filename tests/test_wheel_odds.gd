@@ -53,8 +53,8 @@ func _initialize() -> void:
 		total += progress.wheel_weight(id)
 		rares += int(progress.is_rare_hat(id))
 	_check(is_equal_approx(total, (ids.size() - rares) * Economy.WHEEL_WEIGHT + rares * Economy.WHEEL_RARE_WEIGHT), "the wheel's total weight is the table's")
-	_check(ids.size() == 22 and rares == 6 and absf(100.0 / total - 5.62) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 1.69) < 0.01,
-		"the documented odds: 22 prizes, 5.62 %% per ordinary one, 1.69 %% per rare one")
+	_check(ids.size() == 27 and rares == 6 and absf(100.0 / total - 4.39) < 0.01 and absf(100.0 * Economy.WHEEL_RARE_WEIGHT / total - 1.32) < 0.01,
+		"the documented odds: 27 prizes, 4.39 %% per ordinary one, 1.32 %% per rare one")
 
 	# --- A save's first spin: random, never rare
 	progress.reset_progress()

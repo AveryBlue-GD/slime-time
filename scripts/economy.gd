@@ -125,11 +125,11 @@ const DYE_PRISM_PRICE := 50
 ## field is not used for the wheel): every hat weighs WHEEL_WEIGHT, a WHEEL_RARE one
 ## WHEEL_RARE_WEIGHT, and the flowing (rainbow) hat gets Hats.PITY_STEP more per spin that missed
 ## it (Progress.rainbow_pity). A hat's chance = its weight / the sum over the hats still on the wheel.
-## The wheel also gives the ten wheel trails (Cosmetics.wheel_ids), weighed the same way: PULSE,
-## GHOST and PIXEL are rare like the three rare hats, the other seven common.
-## With all 12 hats and 10 trails on the wheel and no pity (16 x 1 + 6 x 0.3 = 17.8):
-##   9 common hats + 7 common trails: 5.62 % each (89.89 %)
-##   propeller, raincloud, rainbow, pulse, ghost, pixel: 1.69 % each (10.11 % for the rare ones)
+## The wheel also gives every non-earned trail (Cosmetics.wheel_ids: 15, none sold), weighed the
+## same way: PULSE, GHOST and PIXEL are rare like the three rare hats, the other twelve common.
+## With all 12 hats and 15 trails on the wheel and no pity (21 x 1 + 6 x 0.3 = 22.8):
+##   9 common hats + 12 common trails: 4.39 % each (92.11 %)
+##   propeller, raincloud, rainbow, pulse, ghost, pixel: 1.32 % each (7.89 % for the rare ones)
 ## A save's FIRST spin (spins == 0: a fresh save, RESET PROGRESS, a new epoch, a code that never
 ## spun) is still random but never rare: it picks among the non-rare hats left, at their weights
 ## (1 / 9 = 11.11 % each), so wiping a save to farm free spins can't win a rare hat.
@@ -407,7 +407,6 @@ const KAZE_CHANCE_FAR := 0.4
 ## Ticket prices of the v1 cosmetics (palette / pattern only; Cosmetics has their names and looks).
 ## 20 + 25 + 30 + 35 + 40 + 25 + 25 + 40 = 240.
 const COSMETICS := {
-	"ink": 20, "glow": 25, "gold": 30, "candy": 35, "starry": 40,
 	"blueprint": 25, "night": 25, "goldleaf": 40,
 	# Paper bundles (owner, 2026-10-21): a dye-colored sheet, walls and route; the flowing ones like the hat dyes.
 	"cherry_paper": 30, "tangerine_paper": 30, "butter_paper": 30, "clover_paper": 30, "cobalt_paper": 30,

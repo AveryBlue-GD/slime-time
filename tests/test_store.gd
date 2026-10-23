@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## Ticket store checks (upgrades v2 batch 2, docs/design/upgrades-v2.md C + D): economy totals (wheel
-## 420, workshop 423, cosmetics 500), the prize wheel live for players (22 spins = 12 hats + 10 trails, never a
+## 520, workshop 423, papers 350), the prize wheel live for players (27 spins = 12 hats + 15 trails, never a
 ## duplicate, rainbow pity), hat dyes (hats are never sold; 10 tickets a dye for a won dyeable hat,
 ## worn at once, its own color free, saved), workshop and cosmetic purchases (exact balance, one short,
 ## double buy, max level, not refundable, dev mode free), equip / unequip / fallback, save round trips
@@ -55,15 +55,15 @@ func _totals() -> void:
 	var wheel := 0
 	for taken in Hats.LIST.size() + Cosmetics.wheel_ids().size():
 		wheel += progress.spin_cost_after(taken)
-	_check(wheel == 420, "all 22 prizes on the wheel (12 hats, 10 trails) cost 0 + 21 x 20 = 420 (got %d)" % wheel)
+	_check(wheel == 520, "all 27 prizes on the wheel (12 hats, 15 trails) cost 0 + 26 x 20 = 520 (got %d)" % wheel)
 	_check(Workshop.full_cost() == 423 and Workshop.total_cost("wind", 3) == 95 and Workshop.total_cost("magnet", 3) == 82,
 		"the workshop costs 95 + 4 x 82 = 423 (got %d)" % Workshop.full_cost())
 	var cosmetics := 0
 	for id in Cosmetics.ids():
 		cosmetics += Cosmetics.price(id)
-	_check(cosmetics == 500 and Cosmetics.ids(Cosmetics.TRAIL).size() == 5 and Cosmetics.ids(Cosmetics.PAPER).size() == 11
-		and not "rainbow_paper" in Cosmetics.ids(), "5 trails (150) + 11 paper bundles (90 + 7 x 30 + PRISM 50) cost 500 (got %d)" % cosmetics)
-	_check(wheel + Workshop.full_cost() + cosmetics == 1343, "everything but the hat dyes costs 1343 tickets")
+	_check(cosmetics == 350 and Cosmetics.ids(Cosmetics.TRAIL).is_empty() and Cosmetics.ids(Cosmetics.PAPER).size() == 11
+		and not "rainbow_paper" in Cosmetics.ids(), "no trail is sold; 11 paper bundles (90 + 7 x 30 + PRISM 50) cost 350 (got %d)" % cosmetics)
+	_check(wheel + Workshop.full_cost() + cosmetics == 1293, "everything but the hat dyes costs 1293 tickets")
 	_check(Economy.DYE_PRICE == 10
 		and progress.SPIN_COST == Economy.SPIN_COST and progress.RANDOM_ATTEMPT_PAY == Economy.RANDOM_ATTEMPT_PAY,
 		"store numbers live in Economy (Progress aliases them)")
@@ -95,10 +95,10 @@ func _hats() -> void:
 			rainbow_at = i + 1
 		seen[hat] = true
 	_check(seen.size() == prizes and progress.hats_owned.size() == Hats.LIST.size() and progress.cosmetics_owned.size() == Cosmetics.wheel_ids().size()
-		and progress.hats_left().is_empty() and paid == 420 and progress.tickets_spent == 420,
-		"22 spins win 12 different hats and 10 different trails (no duplicates) for 420 tickets (paid %d)" % paid)
-	_check(rainbow_at > 0, "the rainbow hat comes by spin 22 at the latest (spin %d)" % rainbow_at)
-	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 580, "an empty wheel can't spin and takes nothing")
+		and Cosmetics.wheel_ids().size() == 15 and progress.hats_left().is_empty() and paid == 520 and progress.tickets_spent == 520,
+		"27 spins win 12 different hats and 15 different trails (no duplicates) for 520 tickets (paid %d)" % paid)
+	_check(rainbow_at > 0, "the rainbow hat comes by spin 27 at the latest (spin %d)" % rainbow_at)
+	_check(not progress.can_spin_hats() and progress.spin_hat() == "" and progress.tickets == 480, "an empty wheel can't spin and takes nothing")
 	# Pity: every miss fattens the rainbow wedge; landing on it resets.
 	_fresh(1000)
 	progress.cosmetics_owned.assign(Cosmetics.wheel_ids())  # (trails won: the rainbow hat is the last wedge)
@@ -209,11 +209,15 @@ func _cosmetics() -> void:
 	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and progress.map_paper == Cosmetics.DEFAULT_PAPER
 		and progress.owns_cosmetic(Cosmetics.DEFAULT_TRAIL) and not progress.owns_cosmetic("gold"), "defaults are worn and owned; nothing else")
 	_check(not progress.equip_cosmetic("gold") and progress.trail_style == Cosmetics.DEFAULT_TRAIL, "an unowned style can't be worn")
-	_check(progress.buy_cosmetic("gold") and progress.tickets == 0 and progress.trail_style == "gold", "GOLD trail at exactly 30: bought and worn")
+	_check(not progress.buy_cosmetic("gold") and progress.tickets == 30 and not progress.owns_cosmetic("gold") and Cosmetics.price("gold") == 0,
+		"trails aren't sold (prize wheel only): GOLD can't be bought, nothing taken")
+	progress.win_hat("gold")
+	_check(progress.owns_cosmetic("gold") and progress.trail_style == "gold" and progress.tickets == 30, "GOLD won on the wheel: owned and worn")
 	progress.tickets = 100
-	_check(not progress.buy_cosmetic("gold") and progress.tickets == 100, "no double buy")
+	_check(progress.buy_cosmetic("blueprint") and progress.tickets == 75, "the BLUEPRINT paper: bought for 25")
+	_check(not progress.buy_cosmetic("blueprint") and progress.tickets == 75, "no double buy")
 	progress.tickets = 24
-	_check(not progress.buy_cosmetic("night") and progress.tickets == 24 and progress.map_paper == Cosmetics.DEFAULT_PAPER, "a paper one ticket short: nothing")
+	_check(not progress.buy_cosmetic("night") and progress.tickets == 24 and progress.map_paper == "blueprint", "a paper one ticket short: nothing (BLUEPRINT still worn)")
 	progress.tickets = 25
 	_check(progress.buy_cosmetic("night") and progress.map_paper == "night" and progress.trail_style == "gold", "the NIGHT paper: bought, worn beside the trail")
 	progress.unequip_cosmetic("gold")
@@ -237,7 +241,7 @@ func _saves() -> void:
 	progress.buy_workshop("charge")
 	progress.buy_workshop("sticky")
 	progress.buy_workshop("sticky")
-	progress.buy_cosmetic("candy")
+	progress.win_hat("candy")
 	progress.buy_cosmetic("blueprint")
 	var want := [progress.tickets, progress.tickets_spent, progress.workshop.duplicate(), progress.cosmetics_owned.duplicate(),
 		progress.trail_style, progress.map_paper, progress.hats_bought, progress.spins, progress.hats_owned.duplicate(), progress.hat_dyes_owned.duplicate()]
@@ -421,15 +425,16 @@ func _ui_wheel() -> void:
 	_check(wheel.back() and wheel.dye_hat == "" and wheel.shop_tiles.has("tophat") and wheel.shop_tiles["tophat"].has_focus(), "Esc goes back to the hats first")
 	progress.tickets = 55
 	wheel.refresh("F")
-	wheel.section_buttons["trails"].pressed.emit()
-	_check(wheel.section == "trails" and wheel.shop_tiles.size() == 5, "TRAILS: 5 tiles")
-	wheel.shop_tiles["starry"].pressed.emit()
+	_check(not wheel.section_buttons.has("trails") and wheel.section_buttons.keys() == ["hats", "papers"], "the SHOP sells no trails: DYES and PAPERS only")
+	wheel.section_buttons["papers"].pressed.emit()
+	_check(wheel.section == "papers" and wheel.shop_tiles.size() == 11, "PAPERS: 11 tiles")
+	wheel.shop_tiles["night"].pressed.emit()
 	wheel.confirm_buy.pressed.emit()
-	_check(progress.tickets == 15 and progress.trail_style == "starry", "a trail bought through the confirm is worn")
-	wheel.shop_tiles["glow"].pressed.emit()
-	_check(not wheel.confirm.visible and progress.tickets == 15 and "NEED 25" in wheel.status_line.text, "one it can't afford: no confirm, the line says why")
-	wheel.shop_tiles["starry"].pressed.emit()
-	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "starry" in progress.cosmetics_owned, "pressing a worn trail takes it off")
+	_check(progress.tickets == 30 and progress.map_paper == "night", "a paper bought through the confirm is worn")
+	wheel.shop_tiles["goldleaf"].pressed.emit()
+	_check(not wheel.confirm.visible and progress.tickets == 30 and "NEED 40" in wheel.status_line.text, "one it can't afford: no confirm, the line says why")
+	wheel.shop_tiles["night"].pressed.emit()
+	_check(progress.map_paper == Cosmetics.DEFAULT_PAPER and "night" in progress.cosmetics_owned, "pressing the worn paper takes it off")
 	_check(not wheel.back(), "Esc with no confirm: the hub closes the overlay")
 	hub.close_hat_wheel()
 	_check(not wheel.visible and not hub.slime.frozen, "closed: the slime moves again")
@@ -479,7 +484,8 @@ func _ui_wardrobe() -> void:
 		"the wardrobe's page button goes SKINS -> HATS -> TRAILS -> PAPERS (16 tiles, the 10 wheel trails too: ABYSS is hidden while Descent is off, D11)")
 	_check(screen.trail_tiles[Cosmetics.DEFAULT_TRAIL].has_focus() and "WEARING" in screen.status.text, "focus on the worn trail")
 	screen.trail_tiles["gold"].pressed.emit()
-	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "30 TIX" in screen.status.text, "an unowned trail says its price, isn't worn")
+	_check(progress.trail_style == Cosmetics.DEFAULT_TRAIL and "PRIZE WHEEL" in screen.status.text and not "TIX" in screen.status.text,
+		"an unowned trail says to win it on the prize wheel (no price), isn't worn")
 	screen.trail_tiles["ink"].pressed.emit()
 	_check(progress.trail_style == "ink" and "WEARING" in screen.status.text, "an owned trail is worn")
 	screen.page_button.pressed.emit()

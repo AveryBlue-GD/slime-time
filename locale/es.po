@@ -2133,13 +2133,6 @@ msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
 msgstr "LA RULETA ESTÁ DESCANSANDO"
 
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.need_to_spin"
-msgid "NEED {count} TICKET TO SPIN"
-msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] "NECESITAS {count} BOLETO PARA GIRAR"
-msgstr[1] "NECESITAS {count} BOLETOS PARA GIRAR"
-
 #. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
 #. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2608,9 +2601,9 @@ msgstr "GANA GORROS EN LA RULETA DE PREMIOS DE LA BASE"
 
 #: scripts/ui/skins_screen.gd
 #, fuzzy
-#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+#| msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgctxt "skins.rule_trails"
-msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
+msgid "WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "COMPRA RASTROS EN LA TIENDA DE LA RULETA"
 
 #: scripts/ui/skins_screen.gd
@@ -3230,6 +3223,12 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.need_to_spin"
+#~ msgid "NEED {count} TICKET TO SPIN"
+#~ msgid_plural "NEED {count} TICKETS TO SPIN"
+#~ msgstr[0] "NECESITAS {count} BOLETO PARA GIRAR"
+#~ msgstr[1] "NECESITAS {count} BOLETOS PARA GIRAR"
 
 #~ msgctxt "wheel.hats_left"
 #~ msgid "{count} HAT TO WIN"
