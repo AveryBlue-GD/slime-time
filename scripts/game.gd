@@ -511,7 +511,7 @@ func _ready() -> void:
 		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
 		hud.set_assist(true)
 	# RELAXED as the one assist: extra slime too, growing with the dry-ups on this level (not in training / Descent).
-	if Economy.one_assist() and progress and progress.relaxed and not training and not descent:
+	if Economy.one_assist() and progress and progress.relaxed_on(level) and not training and not descent:
 		slime_cost_per_tile /= 1.0 + progress.relaxed_bonus(level)
 
 	# A new story level's very first attempt equips the skin just earned (see Progress).
@@ -597,7 +597,7 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
-	relaxed_run = progress != null and progress.relaxed and not training
+	relaxed_run = progress != null and progress.relaxed_on(level) and not training
 	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
@@ -2463,6 +2463,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			return
 	_show(goal)
 	var no_record := no_credit()
+	if progress:
+		progress.relaxed_level = 0  # (RELAXED for one level ends with its win; this run keeps relaxed_run for its payout)
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
@@ -2509,7 +2511,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
-			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), not repeat or Economy.REPEAT_DAILY_COUNTS, progress.random_daily)
+			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
 			if repeat:
 				held_tickets = 0
 			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):
@@ -2686,19 +2688,19 @@ func _finish(did_win: bool, text: String) -> void:
 const UPGRADE_HINT_DRY_UPS := 2
 
 
-## The 2nd dry-up with the coins for the next MORE SLIME level in hand shows the UPGRADES hint first; CALM MODE waits for the 3rd.
+## The 2nd dry-up with the coins for the next MORE SLIME level in hand shows the UPGRADES hint first; RELAXED? waits for the 3rd.
 func _upgrade_hint_first() -> bool:
 	return int(progress.dry_ups.get(level, 0)) == UPGRADE_HINT_DRY_UPS and not progress.slime_upgrade_offer().is_empty()
 
 
-## CALM MODE? YES: RELAXED goes on (a saved setting) and the level restarts with the extra slime.
+## RELAXED? YES: RELAXED goes on for this level only (until you leave it or win; the SETTINGS toggle is the saved one)
+## and the level restarts with the extra slime.
 func accept_calm() -> void:
-	progress.relaxed = true
-	progress.save_progress()
-	retry("calm mode")
+	progress.relaxed_level = level
+	retry("relaxed")
 
 
-## CALM MODE? NO: the plain dry-up buttons, and no more asking about this level this session.
+## RELAXED? NO: the plain dry-up buttons, and no more asking about this level this session.
 func decline_calm() -> void:
 	progress.calm_declined[level] = true
 	_offer_retry()
@@ -2725,7 +2727,7 @@ func _offer_retry() -> void:
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], [Loc.t("result.choice.map", "MAP"), open_random_map]], 0)
 	elif progress and progress.calm_offered(level) and not _upgrade_hint_first():
-		# i18n: result choice buttons, max 62px each, 1 line (YES / NO answer the CALM MODE question above them)
+		# i18n: result choice buttons, max 62px each, 1 line (YES / NO answer the RELAXED question above them)
 		hud.show_choices([[Loc.t("result.choice.yes", "YES"), accept_calm], [Loc.t("result.choice.no", "NO"), decline_calm]], 1)
 		hud.show_rewards({calm_offer = true})
 	elif progress and progress.assist_offered(level):

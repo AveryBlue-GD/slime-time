@@ -94,9 +94,18 @@ func _initialize() -> void:
 	pr.relaxed = true
 	_check(not pr.calm_offered(1), "...and it isn't offered once RELAXED is on")
 	pr.relaxed = false
+	pr.hard_mode = true
+	_check(not pr.calm_offered(1), "...never on a hard level")
+	pr.hard_mode = false
+	# YES = RELAXED for that level only
+	pr.relaxed_level = 1
+	_check(pr.relaxed_on(1) and not pr.relaxed_on(2) and not pr.relaxed_on(0) and not pr.relaxed, "YES turns RELAXED on for that level only (not the saved setting)")
+	_check(not pr.calm_offered(1), "...and the offer is gone for it")
+	pr.relaxed_level = 0
+	_check(not Economy.RELAXED_COUNTS_WINS, "RELAXED random wins do not count toward randoms_won by default")
 	game = await _spawn(false)
 	game._offer_retry()
-	_check("CALM MODE? MORE SLIME, NO MEDALS" in " ".join(game.hud.rewards_texts), "the dry-up screen asks CALM MODE? (%s)" % " ".join(game.hud.rewards_texts))
+	_check("RELAXED? MORE SLIME, NO MEDALS" in " ".join(game.hud.rewards_texts), "the dry-up screen asks RELAXED? (%s)" % " ".join(game.hud.rewards_texts))
 	game.free()
 	pr.relaxed = false
 	pr.dry_ups = {}

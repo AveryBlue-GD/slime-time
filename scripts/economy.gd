@@ -157,8 +157,11 @@ static var idle_drain_force := -1
 ## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets
 ## (see Progress.complete_random / Game.no_credit for what it still counts toward).
 ## ONE ASSIST (IMP2-07): RELAXED is the single assist: no idle drain AND +25% slime (+2% per dry-up on that level, max +50%),
-## offered after 3 dry-ups (2 on L8-L10) as "CALM MODE?". False = the old +10% reserve offer and a plain RELAXED.
+## offered after 3 dry-ups (2 on L8-L10) as "RELAXED?" (story levels, never on hard; YES = RELAXED for that level only). False = the old +10% reserve offer and a plain RELAXED.
 const ONE_ASSIST := true
+## Does a RELAXED random win count toward randoms_won (pastel / rainbow / rand_10 / rand_50 rewards, NEXT UNLOCK)?
+## Owner default (Lead, 2026-10-24): no, it pays more slime but is not a "real" win. Coins found in story still count.
+const RELAXED_COUNTS_WINS := false
 static var one_assist_force := -1  # (test hook: -1 follow the const, 0 off, 1 on)
 static func one_assist() -> bool:
 	return ONE_ASSIST if one_assist_force < 0 else one_assist_force == 1

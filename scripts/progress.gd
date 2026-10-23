@@ -162,6 +162,9 @@ const RELAXED_GROWTH := 0.02
 const RELAXED_MAX := 0.50
 ## Levels whose CALM MODE offer was answered NO this session (never saved).
 var calm_declined := {}
+## The story level whose RELAXED offer was answered YES: RELAXED applies to it only (not saved) until the player leaves
+## the level or wins it; 0 = none. The SETTINGS toggle (`relaxed`) is the permanent one.
+var relaxed_level := 0
 var tickets := 0
 var tickets_lifetime := 0
 ## Best medal tier per level (hard mode's under level + HARD_RECORDS): key -> 1..3.
@@ -1559,6 +1562,7 @@ func enable_autoplay() -> void:
 
 func start_story(level: int) -> void:
 	mode = MODE_STORY
+	relaxed_level = 0
 	current_level = clampi(level, 1, highest_unlocked)
 
 
@@ -1801,11 +1805,16 @@ func relaxed_bonus(for_level: int) -> float:
 	return minf(RELAXED_MAX, RELAXED_BONUS + RELAXED_GROWTH * int(dry_ups.get(for_level, 0)))
 
 
-## Whether the dry-up screen asks "CALM MODE?" (ONE ASSIST): RELAXED is off, enough dry-ups on this story level
-## (3, or 2 on L8-L10), and it wasn't answered NO this session.
+## RELAXED applies on `for_level` now: the SETTINGS toggle, or this level's YES to the dry-up offer.
+func relaxed_on(for_level: int) -> bool:
+	return relaxed or (relaxed_level != 0 and relaxed_level == for_level)
+
+
+## Whether the dry-up screen asks "RELAXED?" (ONE ASSIST): RELAXED is off, not hard mode, enough dry-ups on this story
+## level (3, or 2 on L8-L10), and it wasn't answered NO this session.
 func calm_offered(for_level: int) -> bool:
 	var needed := ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER
-	return Economy.one_assist() and not relaxed and not calm_declined.has(for_level) \
+	return Economy.one_assist() and not hard_mode and not relaxed_on(for_level) and not calm_declined.has(for_level) \
 			and for_level >= 1 and for_level <= Levels.COUNT and int(dry_ups.get(for_level, 0)) >= needed
 
 
@@ -3001,6 +3010,7 @@ func reset_progress() -> void:
 	story_seen = 0
 	dry_ups = {}
 	calm_declined = {}
+	relaxed_level = 0
 	tickets = 0
 	tickets_lifetime = 0
 	medals = {}

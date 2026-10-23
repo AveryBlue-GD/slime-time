@@ -133,7 +133,7 @@ func _ready() -> void:
 		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
 	relaxed_button = _column_button(_cell(1, 4), _toggle_relaxed)
 	# i18n: hint under the RELAXED button, max 296px, 1 line (centred under both columns)
-	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "CALM MODE: MORE SLIME, NO MEDALS"), UIKit.FONT, UIKit.TEXT)
+	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS"), UIKit.FONT, UIKit.TEXT)
 	add_child(relaxed_hint)
 	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
 	relaxed_hint.position = Vector2(0, _cell(1, 4).y + UIKit.button_h() + UIKit.GAP_XS)
