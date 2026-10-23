@@ -76,11 +76,11 @@ msgctxt "coach.sense"
 msgid "PEEKS AT THE MAP"
 msgstr ""
 
-#. ability tutorial line (touch, an aimed ability: tap its button, aim with the joystick, JUMP fires), max 192px, 1 line; {name} = ability name, {jump} = the JUMP button's word (touch.jump)
+#. ability tutorial line (touch, an aimed ability: tap its button, then the joystick aims), max 192px, 1 line; {name} = ability name
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
 msgctxt "coach.line_touch_aim"
-msgid "TAP {name}, AIM, PRESS {jump}"
+msgid "TAP {name}, AIM WITH THE STICK"
 msgstr ""
 
 #. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
@@ -112,11 +112,11 @@ msgctxt "touch.jump"
 msgid "JUMP"
 msgstr "LOMPAT"
 
-#. ability tutorial line (touch, the aim is up: JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
+#. ability tutorial line (touch, the aim is up: the joystick aims, JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
 msgctxt "coach.aim_touch"
-msgid "AIM, THEN PRESS {jump}"
+msgid "AIM WITH THE STICK, THEN PRESS {jump}"
 msgstr ""
 
 #. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)

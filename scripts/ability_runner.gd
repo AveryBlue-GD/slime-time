@@ -69,7 +69,6 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	runner.slime.dash_hit.connect(runner._on_dash_hit)
 	owner_game.touch_controls.ability_tapped.connect(runner._touch_tap)
 	owner_game.touch_controls.ability_pressed.connect(runner._touch_aim_start)
-	owner_game.touch_controls.ability_aimed.connect(runner._touch_aim)
 	owner_game.touch_controls.ability_released.connect(runner._touch_aim_end)
 	owner_game.touch_controls.aim_jump_released.connect(runner._touch_aim_jump)
 	runner._refresh()
@@ -158,33 +157,33 @@ func fire_aim() -> bool:
 	return fired
 
 
-## Touch (TouchControls; owner 2026-10-23): an aimed ability's button brings up its aim (again: calls it off; another's
-## switches), the joystick or a drag past its button turns it (8 ways), letting go of JUMP fires it (on the X beside
-## JUMP: calls it off; _touch_aim_jump). The PC's JUMP key still fires on its press (_aim_step).
+## Touch (TouchControls; owner 2026-10-23): an aimed ability's button brings up its aim; from then on the joystick only
+## aims (8 ways, _aim_step; the slime stays) until letting go of JUMP fires it or letting go on the X beside JUMP calls it
+## off (_touch_aim_jump). Its button again does nothing, the other aimed one's switches to it. The PC's JUMP key still
+## fires on its press and the ability's key again cancels (_aim_step / start_aim).
 func _touch_aim_start(id: String) -> void:
 	if aiming == id:
-		cancel_aim()
-		return
+		return  # (only the X calls it off on touch)
 	if aiming != "":
+		if not can_use(id):
+			_sfx("click", -10.0)
+			return  # (the other one can't: keep this aim)
 		cancel_aim()
 	start_aim(id)
 
 
-## Touch: a tap-to-fire ability's button (SLIMAKAZE, SLIME SENSE); an aim that was up is called off first.
+## Touch: a tap-to-fire ability's button (SLIMAKAZE, SLIME SENSE); nothing while an aim is up (dimmed meanwhile).
 func _touch_tap(id: String) -> void:
 	if aiming != "":
-		cancel_aim()
+		_sfx("click", -10.0)
+		return
 	use(id)
 
 
-func _touch_aim(id: String, offset: Vector2) -> void:
-	if aiming != id or offset.length() <= TouchControls.AIM_DRAG:
-		return
-	var want := Abilities.aim8(offset)
-	if want != aim_dir:
-		aim_dir = want
-		slime.facing = Vector2(aim_dir).normalized()
-		queue_redraw()
+## The tree paused (the pause menu, the app in the background): an aim is called off, so the joystick moves again.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PAUSED:
+		cancel_aim()
 
 
 ## Touch: JUMP let go while aiming (TouchControls presses no "jump" then): fire, or call it off (let go on the X).

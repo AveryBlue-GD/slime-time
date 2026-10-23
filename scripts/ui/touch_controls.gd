@@ -10,10 +10,11 @@ extends CanvasLayer
 ##   between the joystick's home and JUMP, over the training line's bottom spot; each ability has its own spot, in
 ##   Abilities order like the HUD strip), with its icon; an ability fires on RELEASE, and only if the finger is still on its button
 ##   (slide off to cancel). An AIMED one (SLIME SNIPER, GOO GRENADE; owner 2026-10-23, as on the PC) aims instead: a tap
-##   brings up its aim guide (AbilityRunner aim mode), the joystick (or a drag off the button) turns it 8 ways, and JUMP
-##   fires it (letting go of the button doesn't); its button again calls it off, another ability's switches. While an
-##   aim is up JUMP wears a blinking gold ring (aim_ring) and doesn't leap: held, it shows a small X just outside its
-##   top right (cancel_center); letting go fires, letting go on the X calls the aim off (owner, 2026-10-23). A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
+##   brings up its aim guide (AbilityRunner aim mode) and from then on the joystick only aims (8 ways; the slime stays)
+##   until JUMP fires it or the X calls it off; its button again does nothing, the other aimed one's switches, the tap
+##   ones (SLIMAKAZE, SLIME SENSE) are dimmed and do nothing meanwhile. While an aim is up JUMP wears a blinking gold
+##   ring (aim_ring) and doesn't leap: held, it shows a small X just outside its top right (cancel_center); letting go
+##   fires, letting go on the X calls the aim off. A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
 ##   misses one never moves or leaps, and JUMP's half never fires an ability. A button the ability tutorial
 ##   holds back (`locked`, AbilityRunner.locked) is dimmed; its tap does nothing.
 ## Shown on touchscreens (Platform.has_touch: also the --touch debug flag); hidden again when a keyboard or a
@@ -69,10 +70,9 @@ var _ability_touch := {}
 var _ability_pos := {}
 ## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use; not the aimed ones).
 signal ability_tapped(id: String)
-## An aimed ability's button: pressed (aim mode up, or off again), dragged (`offset` from its center); `ability_released`
-## only when the controls let go of everything (the app goes away: the aim is called off, `fire` false).
+## An aimed ability's button pressed (its aim comes up, or switches to it); `ability_released` only when the controls let
+## go of everything (the app goes away: the aim is called off, `fire` false).
 signal ability_pressed(id: String)
-signal ability_aimed(id: String, offset: Vector2)
 signal ability_released(id: String, fire: bool)
 ## True while an aim is up (AbilityRunner): JUMP fires it, so JUMP blinks a gold ring.
 var aim_ring := false
@@ -89,8 +89,7 @@ const CANCEL_HIT := 10.0
 const CANCEL_SIZE := 7
 ## JUMP's drawn radius (jump_radius: its word may grow it), kept by the last draw.
 var _jump_r := JUMP_RADIUS
-## How far a finger drags off an aimed button's center before it turns the aim.
-const AIM_DRAG := ABILITY_HIT + 2.0
+
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
@@ -157,10 +156,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and _ability_touch.has(event.index):
 		_ability_pos[event.index] = event.position  # (the held look follows the finger on / off)
-		var slot: int = _ability_touch[event.index]
-		if slot < abilities.size() and aimed(abilities[slot].id):
-			ability_aimed.emit(abilities[slot].id, event.position - slot_center(slot))
-		_canvas.queue_redraw()
+		_canvas.queue_redraw()  # (a drag never aims: the joystick does, owner 2026-10-23)
 		get_viewport().set_input_as_handled()
 
 
@@ -497,7 +493,7 @@ func _draw_controls() -> void:
 		var held := false
 		for index: int in _ability_touch:
 			held = held or (_ability_touch[index] == i and (aimed(item.id) or ability_at(_ability_pos.get(index, at)) == i))
-		var ready: bool = int(item.left) > 0 and not item.get("locked", false)
+		var ready: bool = int(item.left) > 0 and not item.get("locked", false) and (aimed(item.id) or not aim_ring)
 		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
