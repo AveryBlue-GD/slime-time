@@ -59,6 +59,19 @@ func _settings_route() -> void:
 	_check(page.achievements_button != null and safe.encloses(Rect2(page.achievements_button.position, page.achievements_button.size)),
 		"SETTINGS has an ACHIEVEMENTS button inside the safe area (a touch route)")
 	page.free()
+	# BACK returns to where the page was opened from (SETTINGS), once; the hub otherwise.
+	var shot_script: GDScript = load("res://scripts/ui/achievements_screen.gd")
+	shot_script.back_scene = "res://scenes/controls.tscn"
+	var ach: Control = load("res://scenes/achievements.tscn").instantiate()
+	root.add_child(ach)
+	await process_frame
+	_check(ach._back_to == "res://scenes/controls.tscn" and shot_script.back_scene == "", "the achievements page goes back to SETTINGS when opened from it")
+	ach.free()
+	ach = load("res://scenes/achievements.tscn").instantiate()
+	root.add_child(ach)
+	await process_frame
+	_check(ach._back_to == UIKit.HUB_SCENE, "...and to the hub when opened from the hub menu")
+	ach.free()
 
 
 func _notices() -> void:

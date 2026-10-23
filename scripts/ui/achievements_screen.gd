@@ -15,6 +15,9 @@ var rows: Array[Control] = []
 var header: Label
 var count_label: Label
 var back_button: Button
+## Where BACK / Esc goes: the scene that opened this page (SETTINGS sets it), the hub when empty. Read once per visit.
+static var back_scene := ""
+var _back_to := UIKit.HUB_SCENE
 var next_button: Button
 ## The page arrows beside the page count (touch-sized; LEFT / RIGHT turn too).
 var prev_arrow: Button
@@ -84,7 +87,10 @@ static func header_text(p: Node) -> String:
 
 func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("ach.title", "ACHIEVEMENTS"))  # i18n: page title, max 296px, 16 px font
-	back_button = UIKit.add_back_button(self)
+	if back_scene != "":
+		_back_to = back_scene
+		back_scene = ""
+	back_button = UIKit.add_back_button(self, func() -> void: UIKit.go(get_tree(), _back_to))
 	var p: Node = get_node("/root/Progress")
 	p.mark_achievements_seen()
 	header = UIKit.add_label(self, header_text(p), Rect2(0, UIKit.title_bottom() + HEADER_GAP, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
@@ -175,7 +181,7 @@ func _show_page() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		UIKit.go(get_tree(), UIKit.HUB_SCENE)
+		UIKit.go(get_tree(), _back_to)
 	elif event.is_action_pressed("ui_right") or event.is_action_pressed("ui_left"):
 		get_viewport().set_input_as_handled()
 		_turn(1 if event.is_action_pressed("ui_right") else -1)
