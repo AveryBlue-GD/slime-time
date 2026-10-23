@@ -393,16 +393,27 @@ func _ui_wheel() -> void:
 	_check(wheel.visible and wheel.tab == "wheel" and wheel.spin_button.has_focus() and "SPIN  20" in wheel.spin_button.text and wheel.spin_button.icon != null,
 		"the wheel opens on WHEEL, focus on SPIN with its price and the ticket icon (%s)" % wheel.spin_button.text)
 	wheel.shop_tab.pressed.emit()
-	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.is_empty()
-		and "NO HATS TO DYE" in wheel.status.text and wheel.section_buttons["hats"].text == "DYES", "SHOP opens on DYES: no hat won yet, no tiles")
+	var dyeable := Hats.ids().filter(func(h: String) -> bool: return Hats.is_dyeable(h))
+	_check(wheel.tab == "shop" and wheel.shop_page.visible and not wheel.wheel_page.visible and wheel.shop_tiles.keys() == dyeable
+		and dyeable.size() == 12 and wheel.section_buttons["hats"].text == "DYES", "SHOP opens on DYES: every dyeable hat on show, none won yet")
+	_check(wheel.shop_tiles["tophat"].has_focus() and wheel.status.text == "TOP HAT" and wheel.status_line.text == "WIN IT ON THE PRIZE WHEEL",
+		"...a hat not won yet says where to get it (%s / %s)" % [wheel.status.text, wheel.status_line.text])
+	var lock_icons := func(tile: Button) -> int:
+		return tile.find_children("*", "TextureRect", true, false).filter(func(t: TextureRect) -> bool: return t.texture == load("res://assets/ui/icon_lock.png")).size()
+	_check(dyeable.all(func(h: String) -> bool: return lock_icons.call(wheel.shop_tiles[h]) == 1), "...each one locked (a lock icon)")
+	wheel.shop_tiles["tophat"].pressed.emit()
+	_check(wheel.dye_hat == "" and not wheel.shop_tiles.has("tophat:") and not wheel.confirm.visible and progress.tickets == 100,
+		"...pressing a locked hat opens no colors, buys nothing")
 	hub.close_hat_wheel()
 	progress.win_hat("tophat")
 	progress.win_hat("crown")
 	hub.open_hat_wheel()
 	await process_frame
 	wheel.shop_tab.pressed.emit()
-	_check(wheel.shop_tiles.keys() == ["tophat", "crown"] and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
-		"DYES lists the hats won, focus on the first")
+	_check(wheel.shop_tiles.keys() == dyeable and wheel.shop_tiles["tophat"].has_focus() and "PICK" in wheel.status_line.text,
+		"DYES still lists every hat, focus on the first (won)")
+	_check(lock_icons.call(wheel.shop_tiles["tophat"]) == 0 and lock_icons.call(wheel.shop_tiles["crown"]) == 0
+		and lock_icons.call(wheel.shop_tiles["beanie"]) == 1, "...the won ones unlocked, the rest still locked")
 	wheel.shop_tiles["tophat"].pressed.emit()
 	_check(wheel.dye_hat == "tophat" and wheel.shop_tiles.has("tophat:") and wheel.shop_tiles.has("tophat:clover")
 		and not wheel.shop_tiles.has("tophat:midnight") and wheel.shop_tiles.size() == 11 and wheel.shop_tiles.has("tophat:rainbow") and wheel.shop_tiles.has("tophat:prism"),

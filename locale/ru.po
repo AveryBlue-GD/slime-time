@@ -2343,6 +2343,13 @@ msgctxt "wheel.demo_shop"
 msgid "THE SHOP OPENS IN THE FULL GAME"
 msgstr ""
 
+#. SHOP status line (DYES: a hat not won yet), max 240px, 1 line
+#. budget: max 240px, lines 1
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.dye_locked"
+msgid "WIN IT ON THE PRIZE WHEEL"
+msgstr ""
+
 #. SHOP status line (DYES: a dyeable hat's tile), max 240px, 1 line
 #. budget: max 240px, lines 1
 #: scripts/ui/hat_wheel.gd
