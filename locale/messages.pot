@@ -2093,13 +2093,6 @@ msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
 msgstr ""
 
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.need_to_spin"
-msgid "NEED {count} TICKET TO SPIN"
-msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] ""
-msgstr[1] ""
-
 #. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
 #. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2562,7 +2555,7 @@ msgstr ""
 
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_trails"
-msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
+msgid "WIN TRAILS AT THE PRIZE WHEEL"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd

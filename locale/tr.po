@@ -2132,13 +2132,6 @@ msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
 msgstr "ÇARK DİNLENİYOR"
 
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.need_to_spin"
-msgid "NEED {count} TICKET TO SPIN"
-msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
-msgstr[1] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
-
 #. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
 #. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2607,9 +2600,9 @@ msgstr "ŞAPKALARI ÜSTEKİ ÖDÜL ÇARKINDA KAZAN"
 
 #: scripts/ui/skins_screen.gd
 #, fuzzy
-#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+#| msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgctxt "skins.rule_trails"
-msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
+msgid "WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "İZLERİ ÖDÜL ÇARKININ DÜKKANINDAN AL"
 
 #: scripts/ui/skins_screen.gd
@@ -3227,6 +3220,12 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.need_to_spin"
+#~ msgid "NEED {count} TICKET TO SPIN"
+#~ msgid_plural "NEED {count} TICKETS TO SPIN"
+#~ msgstr[0] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
+#~ msgstr[1] "ÇEVİRMEK İÇİN {count} BİLET GEREK"
 
 #~ msgctxt "wheel.hats_left"
 #~ msgid "{count} HAT TO WIN"

@@ -49,7 +49,7 @@ static func rule_text(which: String) -> String:
 	match which:
 		"jelly": return Loc.t("skins.rule_jelly", "JELLY SKINS UNLOCK ON HARD MODE")
 		"hats": return Loc.t("skins.rule_hats", "WIN HATS ON THE PRIZE WHEEL IN THE HUB")
-		"trails": return Loc.t("skins.rule_trails", "BUY OR WIN TRAILS AT THE PRIZE WHEEL")
+		"trails": return Loc.t("skins.rule_trails", "WIN TRAILS AT THE PRIZE WHEEL")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
 		"hub": return Loc.t("skins.rule_hub", "THE HUB TAKES THIS COLOR")
 		"hub_locked": return Loc.t("skins.rule_hub_locked", "BEAT THE STORY TO COLOR THE HUB")
