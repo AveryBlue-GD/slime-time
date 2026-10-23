@@ -118,9 +118,9 @@ func _migration() -> void:
 	_check(p.upgrade_level("slime") == 7 and p.upgrade_level("speed") == 3 and p.upgrade_level("brightness") == 3
 		and p.coins() == 18 and p.tree_refund_notice == 18, "maxed old tree: 7 / 3 / 3 with 18 coins back (SPEED 4 costs 18 again)")
 	var written: ConfigFile = p._write()
-	_check(written.get_value("meta", "version") == 6 and PROGRESS.SAVE_VERSION == 6 and written.get_value("upgrades", "tree") == Economy.TREE_VERSION
+	_check(written.get_value("meta", "version") == 7 and PROGRESS.SAVE_VERSION == 7 and written.get_value("upgrades", "tree") == Economy.TREE_VERSION
 		and written.get_value("upgrades", "refund_notice") == 18 and PROGRESS.RELEASE_EPOCH == 1 and Economy.TREE_VERSION == 3,
-		"the next save is version 6 with [upgrades] tree = 3 and the pending notice (epoch stays 1)")
+		"the next save is version 7 with [upgrades] tree = 3 and the pending notice (epoch stays 1)")
 	var q := _fresh()
 	q._read(written)
 	_check(q.upgrades == p.upgrades and q.coins() == 18 and q.tree_refund_notice == 18, "read back: no second migration, the notice still pending")
@@ -188,9 +188,9 @@ func _save_paths() -> void:
 	p.load_progress()
 	var after := ConfigFile.new()
 	after.load(path)
-	_check(p.upgrade_level("speed") == 3 and after.get_value("meta", "version") == 6 and after.get_value("upgrades", "tree") == 3
+	_check(p.upgrade_level("speed") == 3 and after.get_value("meta", "version") == 7 and after.get_value("upgrades", "tree") == 3
 		and after.get_value("upgrades", "speed") == 3 and after.get_value("upgrades", "refund_notice") == 18,
-		"an old save file is migrated and written back once (version 6, tree 3, levels 7/3/3, notice 18)")
+		"an old save file is migrated and written back once (version 7, tree 3, levels 7/3/3, notice 18)")
 	var p2 := _fresh()
 	p2.save_path = path
 	p2.saving_enabled = true
