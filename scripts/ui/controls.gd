@@ -163,9 +163,9 @@ func _ready() -> void:
 			UIKit.note_text_w(training_button, [training_text], 56)
 			add_child(training_button)
 			training_button.size = training_button.custom_minimum_size
-			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
-	if Economy.LEVEL_MUSIC and language_button == null:
-		# IMP-05: next to the music volume's page, centred in the bottom row (not with the language test's button)
+			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS; left of LEVEL MUSIC when that is there)
+	if Economy.LEVEL_MUSIC:
+		# IMP-05: centred in the bottom row, in both modes (with the language test on, TRAINING steps left of it)
 		# i18n: bottom-row button, grows with the text (max 120px), 1 line; the two states are whole strings
 		var lm_text := Loc.t("settings.level_music.on", "LEVEL MUSIC: ON")
 		level_music_button = UIKit.make_button(lm_text, _toggle_level_music, UIKit.button_size(lm_text, 104))
@@ -173,6 +173,8 @@ func _ready() -> void:
 		add_child(level_music_button)
 		level_music_button.size = level_music_button.custom_minimum_size
 		UIKit.place_bottom_row(level_music_button, 0)
+		if training_button != null and language_button != null:
+			training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
 		_refresh_display_options()
 	sound_button.grab_focus()
 	_build_reset_confirm()
