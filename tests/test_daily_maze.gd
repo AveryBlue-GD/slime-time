@@ -29,10 +29,12 @@ func _initialize() -> void:
 
 	# first win of the day: pays attempt 1, streak 1
 	var t0: int = p.tickets
+	var paid_slots: int = p.random_paid
 	p.start_daily()
 	var paid: int = p.complete_random(false, p.random_seed, 1, 1.0, true, true)
 	var r: Dictionary = p.record_daily(61000)
 	_check(paid == 20 and p.tickets == t0 + 20 and Economy.DAILY_WIN_TICKETS == 20, "the first win of the day pays 20 tickets (%d)" % paid)
+	_check(p.random_paid == paid_slots, "...and uses up none of the day's paying random wins")
 	_check(r.number == 30000 - Economy.DAILY_EPOCH_DAY + 1, "...as DAILY #%d" % r.number)
 	_check(r.first and r.streak == 1 and r.best_ms == 61000 and p.daily_won_today(), "...streak 1, best time kept")
 	# later win the same day: nothing extra, best only improves

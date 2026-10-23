@@ -1585,7 +1585,8 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1, factor :=
 			random_paid_seeds.clear()
 		paid = random_tickets_due(attempt, seed_value, factor, daily)
 		if paid > 0:
-			random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
+			if not daily:  # (the daily has its own once-a-day gate, seed_paid_today: it never uses up a paying random win)
+				random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
 			if seed_value != 0:
 				random_paid_seeds.append(seed_value)
 				while random_paid_seeds.size() > PAID_SEEDS_MAX:
