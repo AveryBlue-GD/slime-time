@@ -571,9 +571,9 @@ func _state_fuzz() -> void:
 				if first == "":
 					first = "run %d step %d: %s" % [run, step, why]
 		# the round trip: file and code both give back exactly this state
-		var text: String = _canon(p._write())
 		p.saving_enabled = true
-		p.save_progress()
+		p.save_progress()  # (settles the achievements: goals met by the state are adopted at every save)
+		var text: String = _canon(p._write())
 		var q := _new_at(p.save_path)
 		q.load_progress()
 		var r := _new("state_code")

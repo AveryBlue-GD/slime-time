@@ -32,7 +32,7 @@ static func list() -> Array[Dictionary]:
 		{id = "coins_all", goal = Loc.t("ach.coins_all", "FIND ALL {n} COINS", {n = coins})},  # i18n: achievement goal, max 270px, 1 line; {n} = 165
 		{id = "gold_1", goal = Loc.t("ach.gold_1", "WIN YOUR FIRST GOLD MEDAL")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "gold_10", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 10})},  # i18n: achievement goal, max 270px, 1 line; {n} = a count
-		{id = "gold_30", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 30})},
+		{id = "gold_20", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 20})},
 		{id = "rand_1", goal = Loc.t("ach.rand_1", "WIN A RANDOM MAZE")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "rand_10", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 10})},  # i18n: achievement goal, max 270px, 1 line; {n} = a count
 		{id = "rand_50", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 50})},
@@ -81,7 +81,7 @@ static func met(p: Node, id: String) -> bool:
 		"coins_all": return p.coins_earned() >= Levels.total_coins()
 		"gold_1": return golds(p) >= 1
 		"gold_10": return golds(p) >= 10
-		"gold_30": return golds(p) >= 30
+		"gold_20": return golds(p) >= 20
 		"rand_1": return p.randoms_won >= 1
 		"rand_10": return p.randoms_won >= 10
 		"rand_50": return p.randoms_won >= 50

@@ -774,7 +774,7 @@ func _build_hub_menu(root: Control) -> void:
 ## The hub menu's buttons, top to bottom.
 func _hub_menu_buttons() -> Array[Button]:
 	var out: Array[Button] = [menu_back]
-	if Economy.ACHIEVEMENTS:
+	if Economy.ACHIEVEMENTS and not Demo.on():
 		out.append(menu_achievements)
 	out.append_array([menu_settings, menu_quit])
 	return out

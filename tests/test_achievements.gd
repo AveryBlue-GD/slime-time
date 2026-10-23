@@ -37,7 +37,7 @@ func _initialize() -> void:
 	var met: Array[String] = Achievements.met_ids(p)
 	for id in ["clear_1", "clear_story", "hard_1", "rand_1", "rand_10", "wheel_1", "daily_1", "daily_7", "gold_1", "gold_10"]:
 		_check(id in met, "%s is met by the crafted state" % id)
-	for id in ["hard_all", "rand_50", "gold_30", "clean_win", "abilities", "hats_6"]:
+	for id in ["hard_all", "rand_50", "gold_20", "clean_win", "abilities", "hats_6"]:
 		_check(not id in met, "%s is not" % id)
 
 	# the first look at the state: toasts once, events once, milestones paid once
@@ -97,6 +97,7 @@ func _initialize() -> void:
 	p.notices.clear()
 	p._notice_keys.clear()
 	p._read(file)
+	p.check_achievements()  # (load_progress runs this after reading an owned real save)
 	var base: int = p.tickets - 20
 	var medal_notes: Array = p.notices.filter(func(s: String) -> bool: return s.contains("MEDALS"))
 	_check(p.notices.size() == 1 and medal_notes.size() == 1, "an old save: one notice (%s)" % str(p.notices))

@@ -472,6 +472,7 @@ func _initialize() -> void:
 	progress._read(old)
 	_check(progress.tickets == 37 and progress.medals_for(1) == 3 and progress.medals_for(2) == 2 and progress.medals_for(3) == 1,
 		"the same save read directly: balance kept, medals as tiers")
+	progress.check_achievements()  # (goals the state meets are adopted at every save; settle them before the snapshot)
 	var snapshot: String = progress._write().encode_to_text()
 	_check("version=6" in snapshot, "...and re-saves as version 6")
 	var new_code: String = progress.save_code()

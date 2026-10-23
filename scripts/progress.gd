@@ -754,6 +754,13 @@ func load_progress(path := "") -> void:
 		return
 	_read(file)
 	_guard_full_save(file)
+	if owned and is_inside_tree():
+		# An old save: its goals are adopted silently and the medal milestones it already passed are paid once (one
+		# notice). Only the real session (the autoload in the tree), so reading a file stays a pure function of it.
+		var paid_before := medal_milestones_paid
+		check_achievements()
+		if medal_milestones_paid != paid_before:
+			save_progress()
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
 	# migration doesn't rerun on each launch.
 	if SaveFile.get_int(file, "meta", "version", 0) < SAVE_VERSION:
@@ -1017,7 +1024,7 @@ func _retry_save() -> void:
 func report_progress(id: String, value: int) -> void:
 	if dev_tools or not saving_enabled:
 		return
-	var events := get_node_or_null("/root/PlatformEvents")
+	var events := get_node_or_null("/root/PlatformEvents") if is_inside_tree() else null
 	if events:
 		events.progress_event.emit(id, value)
 

@@ -113,11 +113,6 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.ach_known = strings(file.get_value("achievements", "known", []))
 	p.ach_flags = clampi(get_int(file, "achievements", "flags", 0), 0, 63)
 	p.medal_milestones_paid = clampi(get_int(file, "achievements", "milestones", 0), 0, 100000)
-	# An old save: its goals are adopted silently and the medal milestones it already passed are paid once (one notice).
-	var paid_before: int = p.medal_milestones_paid
-	p.check_achievements()
-	if p.medal_milestones_paid != paid_before:
-		p.save_progress()
 
 
 ## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
@@ -427,7 +422,7 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("descent", "paid_runs", p.descent_paid)
 		file.set_value("descent", "milestones", p.descent_milestones)
 	if Economy.ACHIEVEMENTS and p.ach_seeded:
-		file.set_value("achievements", "known", p.ach_known)
+		file.set_value("achievements", "known", p.ach_known.duplicate())
 		file.set_value("achievements", "flags", p.ach_flags)
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
 	if p.daily_day > 0:
