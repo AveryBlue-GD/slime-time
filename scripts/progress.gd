@@ -372,6 +372,8 @@ func _ready() -> void:
 		load_progress()
 	if OS.has_feature(SKIP_DEMO_FEATURE) and not _is_test_or_tool_run():
 		skip_demo_levels()
+	if OS.has_feature(DEMO_END_TEST_FEATURE) and Demo.on() and not _is_test_or_tool_run():
+		skip_demo_levels(Demo.levels() - 1)
 	apply_bindings()
 	apply_volume()
 	if fullscreen and save_path == REAL_SAVE_PATH and Platform.remembers_fullscreen():
@@ -1339,14 +1341,19 @@ func enable_story_complete() -> void:
 ## save starts past the demo's story levels (1..Demo.LEVELS cleared with their coins, intro and tutorial
 ## seen), so the full game's later content is one PLAY away. Saved; a save already past them is left as is.
 const SKIP_DEMO_FEATURE := "skip_demo"
+## Demo test builds only (the "iOS Demo" export plus the custom feature `demo_end_test`: DEMO_END=1
+## tools/ios_build.sh): the demo save starts with every demo level but the last cleared, so one chalice
+## opens the end screen. Inert without the `demo` feature.
+const DEMO_END_TEST_FEATURE := "demo_end_test"
 
 
-func skip_demo_levels() -> void:
-	if levels_cleared >= Demo.LEVELS:
+## Clears story levels 1..`last` (default: all the demo's) as above.
+func skip_demo_levels(last := Demo.LEVELS) -> void:
+	if levels_cleared >= last:
 		return
 	story_seen |= STORY_INTRO
 	tutorial_seen |= TUTORIAL_MOVE | TUTORIAL_LEAP | TUTORIAL_TRAINING | TUTORIAL_HUB
-	for level in range(1, Demo.LEVELS + 1):
+	for level in range(1, last + 1):
 		var keys: Array = []
 		keys.assign(Levels.coin_keys(level))
 		coins_found[level] = keys

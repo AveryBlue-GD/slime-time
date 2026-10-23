@@ -25,6 +25,9 @@ const DEMOS := [
 	{twin = "macOS", name = "macOS Demo", path = "build/demo/macos/DryTryingDemo.zip", web = false,
 		options = {"application/bundle_identifier": "com.slimetime.game.demo"}},
 	{twin = "Linux", name = "Linux Demo", path = "build/demo/linux/DryTryingDemo.x86_64", web = false, options = {}},
+	# iPhone test installs only (DEMO_END=1 tools/ios_build.sh): its own bundle id, so it sits beside the full game.
+	{twin = "iOS", name = "iOS Demo", path = "build/demo/ios/DryTryingDemo.ipa", web = false,
+		options = {"application/bundle_identifier": "com.averyblue.drytrying.demo"}},
 	# The Steam demo app (docs/steam-setup.md): the same cut, plus the `steam` feature and the GodotSteam extension.
 	{twin = "Windows Desktop", name = "Windows Steam Demo", path = "build/demo/steam/windows/DryTryingDemo.exe", web = false,
 		steam = true, options = {"application/product_name": "Dry Trying Demo", "application/file_description": "Dry Trying Demo"}},

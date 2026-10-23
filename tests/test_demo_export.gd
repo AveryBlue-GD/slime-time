@@ -192,7 +192,7 @@ func _check_generator() -> void:
 	cfg.parse(SAMPLE)
 	var errors: Array[String] = []
 	var built := DemoExport.build(cfg, errors)
-	_check(errors.size() == 6 and errors.all(func(e: String) -> bool: return "\"macOS\"" in e or "\"Linux\"" in e),
+	_check(errors.size() == 7 and errors.all(func(e: String) -> bool: return "\"macOS\"" in e or "\"Linux\"" in e or "\"iOS\"" in e),
 		"a missing twin is reported (%s)" % [errors])
 	var sections := built.get_sections()
 	_check(sections.slice(0, 4) == PackedStringArray(["preset.0", "preset.0.options", "preset.1", "preset.1.options"]),
