@@ -19,7 +19,10 @@ fi
 echo "Team: $TEAM"
 
 # (the build stamp's commit, below: + = uncommitted changes; read before this script edits anything)
-COMMIT="$(git rev-parse --short HEAD)$([[ -n "$(git status --porcelain --untracked-files=no)" ]] && echo "+")"
+COMMIT="$(git rev-parse --short HEAD)"
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+	COMMIT="$COMMIT+"
+fi
 # The committed preset keeps its placeholder team; fill the real one for this build only.
 mkdir -p build
 cp export_presets.cfg build/export_presets.cfg.bak
