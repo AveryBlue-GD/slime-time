@@ -115,7 +115,8 @@ func _initialize() -> void:
 	game.retry()
 	game = await _current_game()
 	_check(game.attempt == 2 and game.held_tickets == 0 and progress.tickets == 0, "a dry-up retry loses the held ticket (nothing paid)")
-	_check(game.tickets.size() == out - 1 and progress.random_ticket_taken(game.attempt_key, pick_cell), "...and the taken pickup stays gone on the retry")
+	# IMP-02 fix: a pickup that was only held (never paid) is lost with the attempt, so it is back in the maze
+	_check(game.tickets.size() == out and not progress.random_ticket_taken(game.attempt_key, pick_cell), "...and the unpaid pickup is back in the maze on the retry")
 	pick = game.tickets[0]
 	game.slime.position = pick.position
 	await _physics_frames(4)
