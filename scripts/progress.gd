@@ -242,6 +242,8 @@ var daily_best_streak := 0
 var ach_known: Array[String] = []
 var ach_seeded := true
 var ach_flags := 0
+## How many unlocked goals the ACHIEVEMENTS page has shown (saved): more known than seen = the hub's "!" on the signpost.
+var ach_seen := 0
 var medal_milestones_paid := 0
 var _ach_checking := false
 
@@ -834,13 +836,18 @@ static func newer_backup_path(path: String) -> String:
 ## Short toasts waiting for Transition to show (each key once per session).
 var notices: Array[String] = []
 var _notice_keys := {}
+## Notice text -> group ("ach" = an achievement, "reward" = a medal milestone): those are good news, merged when
+## several wait ("+3 ACHIEVEMENTS") and held while a run is in progress; every other notice (an error) shows at once.
+var notice_groups := {}
 
 
-func notify_once(key: String, text: String) -> void:
+func notify_once(key: String, text: String, group := "") -> void:
 	if not Economy.SAVE_NOTICES or _notice_keys.has(key):
 		return
 	_notice_keys[key] = true
 	notices.append(text)
+	if group != "":
+		notice_groups[text] = group
 
 
 static func corrupt_backup_path(path: String, n := 1) -> String:
@@ -1088,7 +1095,7 @@ func check_achievements(silent := false) -> void:
 		for a in Achievements.list():
 			if a.id == id:
 				# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
-				notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}))
+				notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}), "ach")
 		report_progress("ach_" + id, 1)
 	var due := Achievements.milestones_due(Achievements.medals_earned(self))
 	if due > medal_milestones_paid:
@@ -1097,9 +1104,21 @@ func check_achievements(silent := false) -> void:
 		add_tickets(gain, false)
 		if not silent:
 			# i18n: toast, max 296px, 2 lines; {n} = tickets, {medals} = the medal count reached
-			notify_once("medal_ms_%d" % due, Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = due * Economy.MEDAL_MILESTONE_STEP, n = gain}))
+			notify_once("medal_ms_%d" % due, Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = due * Economy.MEDAL_MILESTONE_STEP, n = gain}), "reward")
 		report_progress("medal_milestone", due)
 	_ach_checking = false
+
+
+## Whether an unlocked goal has not been shown on the ACHIEVEMENTS page yet (the hub's "!").
+func has_new_achievement() -> bool:
+	return Economy.ACHIEVEMENTS and not Demo.on() and ach_known.size() > ach_seen
+
+
+## The ACHIEVEMENTS page was opened: every goal unlocked so far is seen. Saved with the next save.
+func mark_achievements_seen() -> void:
+	if ach_known.size() != ach_seen:
+		ach_seen = ach_known.size()
+		save_progress()
 
 
 ## Remembers that ability `id` was used (the ability goal); saved with the next save.
@@ -1781,6 +1800,12 @@ func start_daily() -> void:
 ## True when a daily win is already recorded for today.
 func daily_won_today() -> bool:
 	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
+
+
+## Whole hours (1..24) until the next UTC day's daily (the hub sign's NEW IN {h}H).
+func daily_hours_left() -> int:
+	var into_day := int(Time.get_unix_time_from_system()) % 86400
+	return clampi(ceili((86400 - into_day) / 3600.0), 1, 24)
 
 
 ## True when a daily win is recorded for UTC day `day`.
@@ -2923,6 +2948,7 @@ func reset_progress() -> void:
 	daily_best_streak = 0
 	ach_known.clear()
 	ach_seeded = true
+	ach_seen = 0
 	ach_flags = 0
 	medal_milestones_paid = 0
 	save_progress()

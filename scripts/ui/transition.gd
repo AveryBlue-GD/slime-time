@@ -177,15 +177,26 @@ static func random_rainbow_color() -> Color:
 	return Color.from_hsv(randf() * 0.83, 0.78, 0.95)
 
 
-const NOTICE_TIME := 4.0
+## Each toast stays this long (s), the last NOTICE_FADE of it fading out.
+const NOTICE_TIME := 2.5
+const NOTICE_FADE := 0.3
 var _notice: Control
 var _notice_left := 0.0
 
 
-## Shows Progress.notices one at a time as a short toast along the bottom edge (Progress.notify_once).
+## Whether a run is in progress in the current scene (the maze is being played: not finished, not the result).
+func _run_in_progress() -> bool:
+	var scene := get_tree().current_scene
+	return scene != null and scene.scene_file_path == UIKit.GAME_SCENE and not bool(scene.get("finished"))
+
+
+## Shows Progress.notices one at a time as a short toast at the top centre, inside the safe area, in the
+## menus' goo panel (Progress.notify_once). Good news (an achievement, a medal reward) waits while a run is in
+## progress (it shows on the result or in the hub) and several waiting achievements merge into "+3 ACHIEVEMENTS".
 func _pump_notice(delta: float) -> void:
 	if _notice != null:
 		_notice_left -= delta
+		_notice.modulate.a = clampf(_notice_left / NOTICE_FADE, 0.0, 1.0)
 		if _notice_left <= 0.0:
 			_notice.queue_free()
 			_notice = null
@@ -193,22 +204,45 @@ func _pump_notice(delta: float) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress == null or progress.notices.is_empty():
 		return
-	var text: String = progress.notices.pop_front()
+	var pick := -1
+	for i in progress.notices.size():
+		if progress.notice_groups.get(progress.notices[i], "") == "" or not _run_in_progress():
+			pick = i
+			break
+	if pick < 0:
+		return
+	var text: String = progress.notices[pick]
+	progress.notices.remove_at(pick)
+	var group: String = progress.notice_groups.get(text, "")
+	progress.notice_groups.erase(text)
+	if group == "ach":
+		var merged := 1
+		var rest: Array[String] = []
+		for other in progress.notices:
+			if progress.notice_groups.get(other, "") == "ach":
+				merged += 1
+				progress.notice_groups.erase(other)
+			else:
+				rest.append(other)
+		if merged > 1:
+			progress.notices.assign(rest)
+			# i18n: toast, max 150px, 1 line; {n} = how many achievements unlocked at once (2 or more)
+			text = Loc.t("ach.toast_many", "+{n} ACHIEVEMENTS", {n = merged})
 	var label := UIKit.make_label(text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = UIKit.autowrap_mode()
-	var w := 296.0
+	var safe := UIKit.safe_rect()
+	var w := minf(UIKit.text_w(text), safe.size.x - 2.0 * (UIKit.PANEL_PAD + UIKit.EDGE))
 	label.custom_minimum_size = Vector2(w, 0)
 	var box := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.85)
-	style.set_content_margin_all(UIKit.GAP_S)
-	box.add_theme_stylebox_override("panel", style)
+	box.add_theme_stylebox_override("panel", UIKit.panel_style())
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(label)
 	add_child(box)
-	box.position = Vector2((UIKit.SCREEN.x - w) / 2.0 - UIKit.GAP_S, 0)
 	box.reset_size()
-	box.position.y = UIKit.SCREEN.y - box.size.y - UIKit.GAP_S
+	box.position = Vector2(roundf(safe.position.x + (safe.size.x - box.size.x) / 2.0), safe.position.y + UIKit.EDGE)
 	_notice = box
 	_notice_left = NOTICE_TIME
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx:
+		sfx.play("coin", -14.0, 0.7)  # a short soft chime

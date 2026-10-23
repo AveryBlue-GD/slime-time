@@ -96,6 +96,32 @@ static func met(p: Node, id: String) -> bool:
 	return false
 
 
+## The count a goal with a number shows on the page: Vector2i(done, of) with `done` capped at `of`; (0, 0) = a goal
+## without a number.
+static func progress(p: Node, id: String) -> Vector2i:
+	var pair := Vector2i.ZERO
+	match id:
+		"clear_story": pair = Vector2i(p.levels_cleared, Levels.COUNT)
+		"hard_all": pair = Vector2i(p.hard_cleared.size(), Levels.COUNT)
+		"coins_50": pair = Vector2i(p.coins_earned(), 50)
+		"coins_100": pair = Vector2i(p.coins_earned(), 100)
+		"coins_all": pair = Vector2i(p.coins_earned(), Levels.total_coins())
+		"gold_10": pair = Vector2i(golds(p), 10)
+		"gold_20": pair = Vector2i(golds(p), 20)
+		"rand_10": pair = Vector2i(p.randoms_won, 10)
+		"rand_50": pair = Vector2i(p.randoms_won, 50)
+		"rand_100": pair = Vector2i(p.randoms_won, 100)
+		"daily_7": pair = Vector2i(p.daily_best_streak, 7)
+		"hats_6": pair = Vector2i(p.hats_owned.size(), 6)
+		"abilities":
+			var used := 0
+			for bit: int in [FLAG_RIFLE, FLAG_SPLAT, FLAG_KAZE]:
+				used += 1 if p.ach_flags & bit != 0 else 0
+			pair = Vector2i(used, 3)
+	pair.x = clampi(pair.x, 0, pair.y)
+	return pair
+
+
 ## Every goal met right now, as a list of ids.
 static func met_ids(p: Node) -> Array[String]:
 	var out: Array[String] = []

@@ -2490,11 +2490,13 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		else:  # (Economy.RANDOM_CHALICE: the story's chalice, paying the same tickets)
 			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
 			_sfx("chalice", CHALICE_VOLUME_DB)
-		var random_text := Loc.lines([
+		var random_lines: Array = [
 			title,
 			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
-			Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}),  # i18n: max 296px; {code} = a maze code
-		])
+		]
+		if not (progress and progress.random_daily):  # (the daily's seed is the date: a SEED line says nothing, IMP2-02)
+			random_lines.append(Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}))  # i18n: max 296px; {code} = a maze code
+		var random_text := Loc.lines(random_lines)
 		if preview:
 			# i18n: result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
 			title = Loc.t("result.preview_cleared", "PREVIEW CLEARED!")

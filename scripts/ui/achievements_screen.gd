@@ -16,6 +16,9 @@ var header: Label
 var count_label: Label
 var back_button: Button
 var next_button: Button
+## The page arrows beside the page count (touch-sized; LEFT / RIGHT turn too).
+var prev_arrow: Button
+var next_arrow: Button
 var _row_root: Control
 
 
@@ -51,7 +54,16 @@ func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("ach.title", "ACHIEVEMENTS"))  # i18n: page title, max 296px, 16 px font
 	back_button = UIKit.add_back_button(self)
 	var p: Node = get_node("/root/Progress")
+	p.mark_achievements_seen()
 	header = UIKit.add_label(self, header_text(p), Rect2(0, UIKit.title_bottom() + HEADER_GAP, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
+	# A dark band behind the list, so the dim goals read against the room's colour.
+	var band := ColorRect.new()
+	band.color = Color(0, 0, 0, 0.5)
+	var band_top := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS
+	band.position = Vector2(UIKit.EDGE, band_top)
+	band.size = Vector2(UIKit.SCREEN.x - 2 * UIKit.EDGE, Achievements.PER_PAGE * ROW_H + 2 * UIKit.GAP_XS)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
 	_row_root = Control.new()
 	add_child(_row_root)
 	# i18n: button, max 70px, 1 line; shows the next page of achievements (wraps to the first)
@@ -60,6 +72,11 @@ func _ready() -> void:
 	UIKit.place_bottom_row(next_button, 1)
 	count_label = UIKit.add_label(self, "", Rect2(0, UIKit.bottom_row_y(), UIKit.SCREEN.x, UIKit.button_h()), UIKit.FONT, UIKit.TEXT)
 	count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var arrow_size := Vector2(24, UIKit.button_h())
+	prev_arrow = UIKit.make_button("<", func() -> void: _turn(-1), arrow_size)  # i18n: ignore (an arrow glyph)
+	next_arrow = UIKit.make_button(">", func() -> void: _turn(1), arrow_size)  # i18n: ignore (an arrow glyph)
+	add_child(prev_arrow)
+	add_child(next_arrow)
 	_show_page()
 	(next_button if page_count() > 1 else back_button).grab_focus()
 
@@ -97,9 +114,21 @@ func _show_page() -> void:
 		var label := UIKit.add_label(row, a.goal, Rect2(UIKit.GAP_L * 2 + MARK + UIKit.GAP_L, 0, UIKit.SCREEN.x - 2 * UIKit.GAP_L * 2 - MARK - UIKit.GAP_L, UIKit.line_h()),
 			UIKit.FONT, UIKit.GOLD if on else UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT)
 		label.set_meta("goal", true)
+		var count := Achievements.progress(p, a.id)
+		if count.y > 0:  # a goal with a number: "23/50" at the right edge
+			var count_text := "%d/%d" % [count.x, count.y]  # i18n: ignore (numbers only)
+			var width := UIKit.text_w(count_text)
+			UIKit.add_label(row, count_text, Rect2(UIKit.SCREEN.x - UIKit.GAP_L * 2 - width, 0, width, UIKit.line_h()),
+				UIKit.FONT, UIKit.GOLD if on else UIKit.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
 		rows.append(row)
 	# i18n: ACHIEVEMENTS page footer, max 150px, 1 line; {page} / {pages} = this page and the page count, {n} / {total} = unlocked and all goals
 	count_label.text = Loc.t("ach.count", "{n}/{total}  PAGE {page}/{pages}", {n = unlocked, total = all.size(), page = page + 1, pages = page_count()})
+	var half := UIKit.text_w(count_label.text) / 2.0 + UIKit.GAP_M
+	var arrow_y := float(UIKit.bottom_row_y())
+	prev_arrow.position = Vector2(UIKit.SCREEN.x / 2.0 - half - prev_arrow.size.x, arrow_y)
+	next_arrow.position = Vector2(UIKit.SCREEN.x / 2.0 + half, arrow_y)
+	prev_arrow.visible = page_count() > 1
+	next_arrow.visible = page_count() > 1
 
 
 func _unhandled_input(event: InputEvent) -> void:

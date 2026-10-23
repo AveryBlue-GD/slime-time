@@ -112,6 +112,7 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.ach_seeded = file.has_section("achievements")
 	p.ach_known = strings(file.get_value("achievements", "known", []))
 	p.ach_flags = clampi(get_int(file, "achievements", "flags", 0), 0, 63)
+	p.ach_seen = clampi(get_int(file, "achievements", "seen", 0), 0, 1000)
 	p.medal_milestones_paid = clampi(get_int(file, "achievements", "milestones", 0), 0, 100000)
 
 
@@ -424,6 +425,7 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	if Economy.ACHIEVEMENTS and p.ach_seeded and not Demo.on():  # (a demo save carries no goals: the full game would toast them all)
 		file.set_value("achievements", "known", p.ach_known.duplicate())
 		file.set_value("achievements", "flags", p.ach_flags)
+		file.set_value("achievements", "seen", p.ach_seen)
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
 	if p.daily_day > 0:
 		file.set_value("daily", "day", p.daily_day)

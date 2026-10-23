@@ -7,6 +7,7 @@ extends Control
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 ## The LANGUAGE page (scripts/ui/language_screen.gd), reached from the gated LANGUAGE button.
+const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
 const LANGUAGE_SCENE := "res://scenes/language.tscn"
 const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
 ## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
@@ -82,6 +83,8 @@ var relaxed_button: Button
 var relaxed_hint: Label
 var controls_button: Button
 var reset_button: Button
+## ACHIEVEMENTS, top right (null in the demo).
+var achievements_button: Button
 ## Only with the tutorial gate on (Economy.tutorial_on()): replays the training maze, writes nothing.
 var training_button: Button
 var reset_confirm: Control
@@ -143,6 +146,8 @@ func _ready() -> void:
 	if Economy.languages_on():
 		_build_language_button()
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
+	if Economy.ACHIEVEMENTS and not Demo.on():
+		_build_achievements_button()
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
@@ -280,6 +285,19 @@ func _build_language_button() -> void:
 	label.position = Vector2(x + 10, line_top)
 	label.size = Vector2(text_w, UIKit.line_h())
 	language_button.set_meta("code", code)
+
+
+## ACHIEVEMENTS in the top right corner (IMP2-02, BUG2-03): the way to the goals page on a phone (iOS has no back
+## key for the hub menu's entry), also by pad and keyboard (focus moves to it by position). BACK returns to the hub.
+func _build_achievements_button() -> void:
+	# i18n: settings button (top right corner), max 90px, grows with the text, 1 line; opens the achievements page
+	var text := Loc.t("hub.menu.achievements", "ACHIEVEMENTS")
+	achievements_button = UIKit.make_button(text, func() -> void: UIKit.go(get_tree(), ACHIEVEMENTS_SCENE), UIKit.button_size(text, 90))
+	UIKit.note_text_w(achievements_button, [text], 90)
+	add_child(achievements_button)
+	achievements_button.size = achievements_button.custom_minimum_size
+	var safe := UIKit.safe_rect()
+	achievements_button.position = Vector2(safe.end.x - UIKit.EDGE - achievements_button.size.x, safe.position.y + UIKit.EDGE)
 
 
 ## TRAINING replays the maze (replay = true: nothing is saved, docs/tutorial/design.md section 8).
