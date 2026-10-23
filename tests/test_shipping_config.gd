@@ -66,11 +66,13 @@ func _difficulty_numbers() -> void:
 		"a hard random maze pays the flat 1.4 factor: 14 tickets on the first try")
 	_check(is_equal_approx(Economy.LENGTH_PAY_MIN, 0.4) and is_equal_approx(Economy.LENGTH_PAY_MAX, 1.5), "the length clamp is 0.4-1.5")
 	progress.hard_mode = false
+	Economy.one_assist_force = 0  # (the old reserve; the one-assist offer is covered by test_chill_lane)
 	progress.dry_ups = {7: 2, 8: 2, 10: 2, 3: 2}
 	_check(not progress.assist_offered(7) and not progress.assist_offered(3) and progress.assist_offered(8) and progress.assist_offered(10),
 		"the slime reserve is offered after 2 dry-ups on L8-L10 only")
 	progress.dry_ups = {7: 3, 1: 3}
 	_check(progress.assist_offered(7) and progress.assist_offered(1), "...and after 3 on the earlier levels")
+	Economy.one_assist_force = -1
 	progress.dry_ups = {}
 	var allowances := []
 	for n in range(1, 11):

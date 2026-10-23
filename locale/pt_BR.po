@@ -890,6 +890,20 @@ msgctxt "result.choice.map"
 msgid "MAP"
 msgstr ""
 
+#. result choice buttons, max 62px each, 1 line (YES / NO answer the CALM MODE question above them)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.yes"
+msgid "YES"
+msgstr ""
+
+#. result choice buttons, max 62px each, 1 line (YES / NO answer the CALM MODE question above them)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.no"
+msgid "NO"
+msgstr ""
+
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. budget: max 62px, lines 1
 #: scripts/game.gd
@@ -1563,6 +1577,13 @@ msgctxt "result.relaxed"
 msgid "RELAXED: NO MEDALS, RECORDS OR TICKETS"
 msgstr ""
 
+#. result reward line, max 296px; asked on a dry-up, answered by the YES / NO buttons below
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.calm_offer"
+msgid "CALM MODE? MORE SLIME, NO MEDALS"
+msgstr ""
+
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
 #: scripts/hud.gd
@@ -2094,7 +2115,7 @@ msgstr "MAIS"
 #. budget: max 296px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.relaxed.hint"
-msgid "NO DRAIN WHEN STILL. NO MEDALS."
+msgid "CALM MODE: MORE SLIME, NO MEDALS"
 msgstr ""
 
 #. column buttons, max 112px (button 120 wide, 4 px margins), 1 line

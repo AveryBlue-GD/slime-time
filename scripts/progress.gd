@@ -156,6 +156,12 @@ const ASSIST_AFTER := 3
 const ASSIST_AFTER_LATE := 2
 const ASSIST_LATE_FROM := 8
 const ASSIST_BONUS := 0.10
+## ONE ASSIST (IMP2-07): RELAXED's extra slime: this much, plus RELAXED_GROWTH per dry-up on the level, up to RELAXED_MAX.
+const RELAXED_BONUS := 0.25
+const RELAXED_GROWTH := 0.02
+const RELAXED_MAX := 0.50
+## Levels whose CALM MODE offer was answered NO this session (never saved).
+var calm_declined := {}
 var tickets := 0
 var tickets_lifetime := 0
 ## Best medal tier per level (hard mode's under level + HARD_RECORDS): key -> 1..3.
@@ -1784,8 +1790,23 @@ func all_medals() -> bool:
 ## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups (2+ on L8-L10) on this story level since
 ## it was last cleared (this session), and never on hard mode.
 func assist_offered(for_level: int) -> bool:
-	return not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
+	return not Economy.one_assist() and not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
 			and int(dry_ups.get(for_level, 0)) >= (ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER)
+
+
+## RELAXED's extra slime fraction on `for_level` (0 with ONE_ASSIST off): 25% + 2% per dry-up there, at most 50%.
+func relaxed_bonus(for_level: int) -> float:
+	if not Economy.one_assist():
+		return 0.0
+	return minf(RELAXED_MAX, RELAXED_BONUS + RELAXED_GROWTH * int(dry_ups.get(for_level, 0)))
+
+
+## Whether the dry-up screen asks "CALM MODE?" (ONE ASSIST): RELAXED is off, enough dry-ups on this story level
+## (3, or 2 on L8-L10), and it wasn't answered NO this session.
+func calm_offered(for_level: int) -> bool:
+	var needed := ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER
+	return Economy.one_assist() and not relaxed and not calm_declined.has(for_level) \
+			and for_level >= 1 and for_level <= Levels.COUNT and int(dry_ups.get(for_level, 0)) >= needed
 
 
 ## Chooses to play `for_level`'s next attempt with the reserve. False if it isn't on offer.
@@ -2979,6 +3000,7 @@ func reset_progress() -> void:
 	training_skipped = false
 	story_seen = 0
 	dry_ups = {}
+	calm_declined = {}
 	tickets = 0
 	tickets_lifetime = 0
 	medals = {}

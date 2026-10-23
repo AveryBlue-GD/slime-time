@@ -61,6 +61,45 @@ func _initialize() -> void:
 	var rec: Dictionary = game.progress.record_clear(1, 1.0, 100.0, game.no_credit(), true)
 	_check(int(rec.tier) == 0 and game.progress.medals_for(1) == 0, "RELAXED: no medal recorded")
 	game.free()
+
+	# ONE ASSIST: RELAXED gives 25% more slime, +2% per dry-up on the level, at most +50%
+	var pr: Node = root.get_node("Progress")
+	pr.dry_ups = {}
+	game = await _spawn(false)
+	var plain: float = game.slime_cost_per_tile
+	game.free()
+	game = await _spawn(true)
+	_check(is_equal_approx(game.slime_cost_per_tile, plain / 1.25), "RELAXED: 25% more slime")
+	game.free()
+	pr.dry_ups = {1: 5}
+	game = await _spawn(true)
+	_check(is_equal_approx(game.slime_cost_per_tile, plain / 1.35), "...+2% per dry-up on that level (5 dry-ups: +35%)")
+	game.free()
+	pr.dry_ups = {1: 40}
+	_check(is_equal_approx(pr.relaxed_bonus(1), 0.5), "...capped at +50%")
+	Economy.one_assist_force = 0
+	_check(is_equal_approx(pr.relaxed_bonus(1), 0.0), "ONE_ASSIST off: a plain RELAXED")
+	Economy.one_assist_force = -1
+	# the offer
+	pr.relaxed = false
+	pr.hard_mode = false
+	pr.calm_declined = {}
+	pr.dry_ups = {1: 2, 8: 2}
+	_check(not pr.calm_offered(1) and pr.calm_offered(8), "calm offer: after 3 dry-ups, 2 on L8-L10")
+	pr.dry_ups = {1: 3}
+	_check(pr.calm_offered(1) and not pr.assist_offered(1), "...replaces the old reserve offer")
+	pr.calm_declined[1] = true
+	_check(not pr.calm_offered(1), "NO hides it for the level this session")
+	pr.calm_declined = {}
+	pr.relaxed = true
+	_check(not pr.calm_offered(1), "...and it isn't offered once RELAXED is on")
+	pr.relaxed = false
+	game = await _spawn(false)
+	game._offer_retry()
+	_check("CALM MODE? MORE SLIME, NO MEDALS" in " ".join(game.hud.rewards_texts), "the dry-up screen asks CALM MODE? (%s)" % " ".join(game.hud.rewards_texts))
+	game.free()
+	pr.relaxed = false
+	pr.dry_ups = {}
 	root.get_node("Progress").relaxed = false
 	Economy.idle_drain_force = 0
 	_result()

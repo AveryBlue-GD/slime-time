@@ -822,6 +822,9 @@ func show_rewards(info: Dictionary) -> void:
 		_reward_label("DEV TOGGLES: NO MEDALS, RECORDS OR TICKETS", MEDAL_OWNED)
 	elif info.get("relaxed", false):
 		_reward_label(Loc.t("result.relaxed", "RELAXED: NO MEDALS, RECORDS OR TICKETS"), MEDAL_OWNED)  # i18n: max 296px
+	elif info.get("calm_offer", false):
+		# i18n: result reward line, max 296px; asked on a dry-up, answered by the YES / NO buttons below
+		_reward_label(Loc.t("result.calm_offer", "CALM MODE? MORE SLIME, NO MEDALS"), NEW_BEST_COLOR)
 	elif info.get("offer", false):
 		# i18n: result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 		_reward_label(Loc.t("result.assist_offer", "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS",

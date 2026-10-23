@@ -510,6 +510,9 @@ func _ready() -> void:
 		assisted = true
 		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
 		hud.set_assist(true)
+	# RELAXED as the one assist: extra slime too, growing with the dry-ups on this level (not in training / Descent).
+	if Economy.one_assist() and progress and progress.relaxed and not training and not descent:
+		slime_cost_per_tile /= 1.0 + progress.relaxed_bonus(level)
 
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
@@ -2683,6 +2686,24 @@ func _finish(did_win: bool, text: String) -> void:
 const UPGRADE_HINT_DRY_UPS := 2
 
 
+## The 2nd dry-up with the coins for the next MORE SLIME level in hand shows the UPGRADES hint first; CALM MODE waits for the 3rd.
+func _upgrade_hint_first() -> bool:
+	return int(progress.dry_ups.get(level, 0)) == UPGRADE_HINT_DRY_UPS and not progress.slime_upgrade_offer().is_empty()
+
+
+## CALM MODE? YES: RELAXED goes on (a saved setting) and the level restarts with the extra slime.
+func accept_calm() -> void:
+	progress.relaxed = true
+	progress.save_progress()
+	retry("calm mode")
+
+
+## CALM MODE? NO: the plain dry-up buttons, and no more asking about this level this session.
+func decline_calm() -> void:
+	progress.calm_declined[level] = true
+	_offer_retry()
+
+
 ## The buttons shown after drying up: try again, or go spend coins on upgrades first (the
 ## upgrades screen's PLAY button comes back here).
 func _offer_retry() -> void:
@@ -2703,6 +2724,10 @@ func _offer_retry() -> void:
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], [Loc.t("result.choice.map", "MAP"), open_random_map]], 0)
+	elif progress and progress.calm_offered(level) and not _upgrade_hint_first():
+		# i18n: result choice buttons, max 62px each, 1 line (YES / NO answer the CALM MODE question above them)
+		hud.show_choices([[Loc.t("result.choice.yes", "YES"), accept_calm], [Loc.t("result.choice.no", "NO"), decline_calm]], 1)
+		hud.show_rewards({calm_offer = true})
 	elif progress and progress.assist_offered(level):
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)

@@ -132,11 +132,14 @@ func _ready() -> void:
 		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
 	relaxed_button = _column_button(_cell(1, 4), _toggle_relaxed)
 	# i18n: hint under the RELAXED button, max 296px, 1 line (centred under both columns)
-	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "NO DRAIN WHEN STILL. NO MEDALS."), UIKit.FONT, UIKit.TEXT)
+	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "CALM MODE: MORE SLIME, NO MEDALS"), UIKit.FONT, UIKit.TEXT)
 	add_child(relaxed_hint)
 	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
 	relaxed_hint.position = Vector2(0, _cell(1, 4).y + UIKit.button_h() + UIKit.GAP_XS)
 	relaxed_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	relaxed_hint.visible = false  # (only while the RELAXED button has focus or the pointer over it)
+	for sig in [relaxed_button.focus_entered, relaxed_button.mouse_entered, relaxed_button.focus_exited, relaxed_button.mouse_exited]:
+		sig.connect(_update_relaxed_hint)
 	_refresh_sound()
 	_refresh_display_options()
 
@@ -872,6 +875,10 @@ func _toggle_motion() -> void:
 	Progress.reduce_motion = not Progress.reduce_motion
 	Progress.save_progress()
 	_refresh_display_options()
+
+
+func _update_relaxed_hint() -> void:
+	relaxed_hint.visible = relaxed_button.has_focus() or relaxed_button.is_hovered()
 
 
 func _toggle_relaxed() -> void:

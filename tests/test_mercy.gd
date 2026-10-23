@@ -13,6 +13,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.one_assist_force = 0  # (this suite pins the old +10% reserve; test_chill_lane covers the one-assist RELAXED)
 	Economy.coincatch_force = 0  # assumes the instant pickup (coin catch has its own suite)
 	await process_frame
 	progress = root.get_node("Progress")

@@ -156,6 +156,12 @@ static var idle_drain_force := -1
 ## (R_ALWAYS_RESTARTS: no RESTART / UPGRADES prompt; spending stays on the dry-up screen).
 ## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets
 ## (see Progress.complete_random / Game.no_credit for what it still counts toward).
+## ONE ASSIST (IMP2-07): RELAXED is the single assist: no idle drain AND +25% slime (+2% per dry-up on that level, max +50%),
+## offered after 3 dry-ups (2 on L8-L10) as "CALM MODE?". False = the old +10% reserve offer and a plain RELAXED.
+const ONE_ASSIST := true
+static var one_assist_force := -1  # (test hook: -1 follow the const, 0 off, 1 on)
+static func one_assist() -> bool:
+	return ONE_ASSIST if one_assist_force < 0 else one_assist_force == 1
 const IDLE_GRACE := 4.0
 const R_ALWAYS_RESTARTS := true
 static var r_always_force := -1  # (test hook: -1 follow the const, 0 off = the old RESTART / UPGRADES prompt, 1 on)
