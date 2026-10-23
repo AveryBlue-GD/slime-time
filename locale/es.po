@@ -1103,6 +1103,20 @@ msgctxt "hub.station.wardrobe"
 msgid "COSMETICS"
 msgstr "SKINS Y GORROS"
 
+#. station name / prompt label, max 110px, 1 line; the daily maze (the same maze for everyone today)
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.daily"
+msgid "DAILY MAZE"
+msgstr ""
+
+#. small label over the DAILY sign once today's daily is won, max 60px, 1 line; {h} = whole hours until the next one
+#. budget: max 60px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.daily.next"
+msgid "NEW IN {h}H"
+msgstr ""
+
 #. max 150px each, grows to 280px (the notice widens, centred), 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
@@ -1151,8 +1165,9 @@ msgid "MENU"
 msgstr ""
 
 #. hub Esc menu button, max 90px, 1 line; opens the achievements page
+#. settings button (top right corner), max 90px, grows with the text, 1 line; opens the achievements page
 #. budget: max 90px, lines 1
-#: scripts/hub.gd
+#: scripts/hub.gd scripts/ui/controls.gd
 msgctxt "hub.menu.achievements"
 msgid "ACHIEVEMENTS"
 msgstr ""
@@ -1175,21 +1190,9 @@ msgid "RANDOM MAZE"
 msgstr "LABERINTO AL AZAR"
 
 #: scripts/hub.gd
-msgctxt "hub.portal.daily"
-msgid "DAILY MAZE"
-msgstr ""
-
-#: scripts/hub.gd
 msgctxt "hub.portal.descent"
 msgid "DESCENT"
 msgstr "DESCENSO"
-
-#. button, max 120px (widens the panel), 1 line; {n} = days in a row with a daily win; the spaces are spacing
-#. budget: max 120px, lines 1
-#: scripts/hub.gd
-msgctxt "hub.portal.daily_streak"
-msgid "DAILY MAZE  STREAK {n}"
-msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.portal.info_best"
@@ -1281,6 +1284,13 @@ msgstr "GIRAR"
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
 msgstr "BLOQUEADO"
+
+#. prompt next to the DAILY MAZE name, max 80px, 1 line; {n} = days in a row with a daily win
+#. budget: max 80px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_streak"
+msgid "STREAK {n}"
+msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.best_floor"
@@ -3208,6 +3218,13 @@ msgstr "O SÉCATE EN EL INTENTO"
 msgctxt "touch.jump"
 msgid "JUMP"
 msgstr "SALTA"
+
+#. toast, max 150px, 1 line; {n} = how many achievements unlocked at once (2 or more)
+#. budget: max 150px, lines 1
+#: scripts/ui/transition.gd
+msgctxt "ach.toast_many"
+msgid "+{n} ACHIEVEMENTS"
+msgstr ""
 
 # overflow: COMPRAR is 42px > 40 (ink 41); COMPRA reads wrong on a button, BUY button needs 2 px more
 #. max 40px (button 48 wide, 4 px margins), grows to 60px (both buttons alike, the panel with them), 1 line

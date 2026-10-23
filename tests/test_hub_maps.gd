@@ -148,7 +148,7 @@ func _blocked(hub: Node2D, spot: Vector2, own: Dictionary) -> bool:
 	hub.slime.position = spot
 	var own_gap: float = hub._gap_to(own.sprite.position + (Vector2.ZERO if own.flat else Vector2(0, -2)), hub._footprint(own))
 	var blocked := false
-	for other: Dictionary in hub.stations:
+	for other: Dictionary in hub._all_props():  # (the DAILY MAZE sign beside the portal blocks a side too)
 		if other != own and hub._gap_to(other.sprite.position + (Vector2.ZERO if other.flat else Vector2(0, -2)), hub._footprint(other)) <= own_gap:
 			blocked = true
 	hub.slime.position = keep

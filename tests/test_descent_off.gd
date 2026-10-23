@@ -83,11 +83,22 @@ func _hub() -> void:
 	_check(not hub.resume_menu.visible and not hub.slime.frozen, "hub: no resume prompt on arrival")
 	hub._update_near()
 	hub._use(hub._station("random"))
-	# IMP-06: the portal's menu offers RANDOM MAZE and DAILY MAZE; DESCENT and its info line stay invisible
-	_check(hub.portal_menu.visible and hub.maze_button.visible and hub.daily_button.visible and not hub.descent_button.visible and not hub.portal_info.visible,
-		"the portal menu shows RANDOM MAZE and DAILY MAZE only (Descent off)")
-	_check(not hub._portal_order().has(hub.descent_button) and hub._portal_order().has(hub.daily_button), "...and DESCENT is not in its focus order")
-	hub.daily_button.pressed.emit()
+	# IMP2-06: with Descent off the portal has no menu: one press starts a RANDOM MAZE at once; DAILY MAZE has its own sign
+	_check(not hub.portal_menu.visible and progress.mode == progress.MODE_RANDOM and not progress.random_daily,
+		"the portal starts a random maze at once, no menu (Descent off)")
+	await _wait_scene()
+	var first_scene := current_scene
+	current_scene = null
+	if is_instance_valid(first_scene):
+		first_scene.free()
+	hub = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	for i in 3:
+		await process_frame
+	var sign: Dictionary = hub.extras[0] if not hub.extras.is_empty() else {}
+	_check(not sign.is_empty() and sign.id == "daily", "the hub has the DAILY MAZE sign beside the portal")
+	hub._use(sign)
 	_check(progress.random_daily and progress.mode == progress.MODE_RANDOM, "DAILY MAZE is reachable with Descent off")
 	await _wait_scene()
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/main.tscn" and progress.random_daily, "...and starts today's daily")
@@ -102,8 +113,7 @@ func _hub() -> void:
 		await process_frame
 	hub1._update_near()
 	hub1._use(hub1._station("random"))
-	hub1.maze_button.pressed.emit()
-	_check(not hub1.portal_menu.visible and progress.mode == progress.MODE_RANDOM and not progress.random_daily, "RANDOM MAZE from the menu starts a random maze")
+	_check(not hub1.portal_menu.visible and progress.mode == progress.MODE_RANDOM and not progress.random_daily, "the portal starts a random maze")
 	hub = hub1
 	await _wait_scene()
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/main.tscn" and current_scene.is_random() and not current_scene.descent, "...and it is a random maze")

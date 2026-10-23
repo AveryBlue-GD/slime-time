@@ -31,6 +31,9 @@ the skin shader recolors it to the equipped skin; stone stays off the dried-crus
                            with a goo trail and a red X), a compass, a quill in a pot of goo, a small
                            lantern and a drawer / the desk side-on (board edge-on) / the board's braced back
                            with a rolled scroll; frames: the lantern flame flickering
+- daily_sign.png 16x26 x2 : DAILY MAZE (beside the portal, not on the ring): a small calendar board on a post /
+                           edge-on / its plain back; frames: 0 today's daily waits (gold "!" is drawn by the game),
+                           1 it was won today (a green check on the page)
 - rotor.png     26x36 x4 : the wheel on a stick in the middle: a ship's wheel with handles and a
                            brass hub on a rope-wrapped post, spinning
 (The room itself is drawn live by assets/shaders/hub_room.gdshader, so it can turn.)
@@ -1042,6 +1045,55 @@ def rotor() -> list:
         cv.outline()
         frames.append(cv.px)
     return frames
+
+
+# ----------------------------------------------------------------- DAILY MAZE: the calendar sign
+
+def _daily_post(cv: Canvas) -> None:
+    plank(cv, 7, 12, 2, 13, random.Random(21), vertical=True, tone=2)
+    cv.rect(4, 23, 8, 3, STONE[1])
+    cv.hline(4, 11, 23, STONE[3])
+
+
+def daily_sign(done: bool) -> list:
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(1, 1, 14, 13, WOOD[2])            # the frame
+    cv.hline(1, 14, 1, WOOD[4])
+    cv.rect(2, 2, 12, 11, rgb(226, 212, 176)) # the page
+    cv.rect(2, 2, 12, 3, RED[1])              # the calendar's red band
+    cv.hline(2, 13, 2, RED[2])
+    for x in (4, 11):                         # binder rings
+        cv.put(x, 1, IRON[3])
+    for y in (7, 9, 11):                      # rows of days
+        for x in range(3, 13, 2):
+            cv.put(x, y, rgb(150, 138, 110))
+    if done:                                  # a green check over the days
+        for (x, y) in ((4, 9), (5, 10), (6, 11), (7, 10), (8, 9), (9, 8), (10, 7), (11, 6)):
+            cv.put(x, y, rgb(40, 150, 70))
+            cv.put(x, y + 1, rgb(24, 100, 50))
+    cv.outline()
+    return cv.px
+
+
+def daily_sign_side() -> list:
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(6, 1, 4, 13, WOOD[2])
+    cv.vline(6, 1, 13, WOOD[4])
+    cv.vline(9, 1, 13, WOOD[1])
+    cv.outline()
+    return cv.px
+
+
+def daily_sign_back() -> list:
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(1, 1, 14, 13, WOOD[1])
+    cv.rect(2, 2, 12, 11, WOOD[2])
+    cv.hline(2, 13, 7, WOOD[1])               # a brace across
+    cv.outline()
+    return cv.px
 
 
 def save(name: str, rows_of_frames: list) -> None:

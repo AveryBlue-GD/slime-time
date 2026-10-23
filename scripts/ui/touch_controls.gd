@@ -44,6 +44,12 @@ const PAUSE_TOUCH_MARGIN := 5.0
 ## The pause (or home) button was tapped; emitted just before its `menu` press (the hub tells its home tap
 ## from Esc by it).
 signal pause_tapped
+## A quick tap (down and up within TAP_TIME seconds and TAP_SLOP px) anywhere the joystick / JUMP would take it: the hub
+## glides the slime to a station tapped (IMP2-06). The joystick and JUMP still see the touch as before.
+signal tapped(pos: Vector2)
+const TAP_TIME := 0.3
+const TAP_SLOP := 8.0
+var _tap_start := {}
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
 ## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
@@ -114,9 +120,15 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		visible = true
 		if event.pressed:
+			_tap_start[event.index] = {pos = event.position, at = Time.get_ticks_msec()}
 			_touch_down(event.index, event.position)
 		else:
+			var start: Dictionary = _tap_start.get(event.index, {})
+			_tap_start.erase(event.index)
 			_touch_up(event.index, event.position)
+			if not start.is_empty() and Time.get_ticks_msec() - int(start.at) <= TAP_TIME * 1000.0 \
+					and (event.position - Vector2(start.pos)).length() <= TAP_SLOP:
+				tapped.emit(event.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and event.index == _joy_touch:
 		_move_joystick(event.position)

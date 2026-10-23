@@ -318,6 +318,11 @@ func _initialize() -> void:
 	for id in won:
 		unique[id] = true
 	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() + Cosmetics.wheel_ids().size() - 3, "three spins, three different prizes")
+	if hub.hat == null:
+		# The wheel also pays trails now (15 of its 27 prizes): three spins can all be trails, leaving no hat to look at
+		# (the old ~2-in-3 failure here). Put one on by hand so the y-sorting check below is about the hat, not the luck.
+		progress.win_hat(Hats.ids()[0])
+		hub._put_on_hat()
 	_check(hub.hat.get_parent() == hub.slime and hub.hat.z_index == 0 and hub.slime.get_parent() == hub.world,
 		"the hat is y-sorted with the slime (behind the wheel when the slime is)")
 	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.
