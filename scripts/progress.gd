@@ -152,6 +152,9 @@ const SILVER_FACTOR := 1.3
 ## Slime reserve (ASSIST): after this many dry-ups on one level in a session, the next attempt
 ## can be played with a bit more slime (never on hard mode; no medals, records or tickets).
 const ASSIST_AFTER := 3
+## ...on the last three story levels (L8-L10) already after this many (IMP2-04).
+const ASSIST_AFTER_LATE := 2
+const ASSIST_LATE_FROM := 8
 const ASSIST_BONUS := 0.10
 var tickets := 0
 var tickets_lifetime := 0
@@ -1579,8 +1582,10 @@ static func tickets_for_attempt(attempt: int) -> int:
 static func random_length_factor(seed_value: int, seed_level := 0, hard := false) -> float:
 	if not Economy.pay_by_length():
 		return 1.0
+	if hard:
+		return clampf(Economy.HARD_LENGTH_FACTOR, Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
 	var route := Levels.random_route_cells(seed_value, hard, seed_level)
-	var typical := Levels.random_route_cells_for(roundi(Levels.RANDOM_HARD_TARGET * 1000) if hard else Economy.LENGTH_TYPICAL_PERMILLE, 0 if hard else seed_level)
+	var typical := Levels.random_route_cells_for(Economy.LENGTH_TYPICAL_PERMILLE, seed_level)
 	return clampf(float(route) / float(maxi(typical, 1)), Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
 
 
@@ -1712,11 +1717,11 @@ func all_medals() -> bool:
 
 # ---------------------------------------------------------------- slime reserve (assist)
 
-## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups on this story level since
+## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups (2+ on L8-L10) on this story level since
 ## it was last cleared (this session), and never on hard mode.
 func assist_offered(for_level: int) -> bool:
 	return not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
-			and int(dry_ups.get(for_level, 0)) >= ASSIST_AFTER
+			and int(dry_ups.get(for_level, 0)) >= (ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER)
 
 
 ## Chooses to play `for_level`'s next attempt with the reserve. False if it isn't on offer.
@@ -2311,6 +2316,17 @@ func upgrade_buyable() -> bool:
 		if not upgrade.get("dev", false) and upgrade_level(id) < Demo.upgrade_cap(id) and coins() >= Upgrades.cost(id, upgrade_level(id)):
 			return true
 	return false
+
+
+## The next MORE SLIME level when the coins in hand already pay for it: {percent, cost} (percent = how much
+## further the meter goes, from the real tables), else {}. The dry-up row's UPGRADES hint (IMP2-04).
+func slime_upgrade_offer() -> Dictionary:
+	var level := upgrade_level("slime")
+	var cost := Upgrades.cost("slime", level)
+	if level >= Demo.upgrade_cap("slime") or cost <= 0 or coins() < cost:
+		return {}
+	var gain := Upgrades.slime_factor(level + 1) / maxf(Upgrades.slime_factor(level), 0.01) - 1.0
+	return {percent = roundi(gain * 100.0), cost = cost}
 
 
 func upgrade_level(id: String) -> int:

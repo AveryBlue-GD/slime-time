@@ -826,6 +826,9 @@ func show_rewards(info: Dictionary) -> void:
 		# i18n: result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 		_reward_label(Loc.t("result.assist_offer", "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS",
 			{percent = roundi(Progress.ASSIST_BONUS * 100.0)}), MEDAL_OWNED)
+	elif info.get("upgrade_hint", false):
+		# i18n: result reward line, max 296px; the UPGRADES button buys it; {percent} = extra slime, e.g. 12; {cost} = coins
+		_reward_label(Loc.t("result.upgrade_hint", "+{percent}% SLIME FOR {cost} COINS", {percent = int(info.percent), cost = int(info.cost)}), NEW_BEST_COLOR)
 	elif info.get("assisted", false):
 		_reward_label(Loc.t("result.assisted", "ASSIST: NO MEDALS, RECORDS OR TICKETS"), MEDAL_OWNED)  # i18n: max 296px
 	elif info.has("tier"):

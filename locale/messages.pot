@@ -1502,6 +1502,13 @@ msgctxt "result.assist_offer"
 msgid "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS"
 msgstr ""
 
+#. result reward line, max 296px; the UPGRADES button buys it; {percent} = extra slime, e.g. 12; {cost} = coins
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.upgrade_hint"
+msgid "+{percent}% SLIME FOR {cost} COINS"
+msgstr ""
+
 #. max 296px
 #. budget: max 296px
 #: scripts/hud.gd

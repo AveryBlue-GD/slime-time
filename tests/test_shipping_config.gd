@@ -34,6 +34,8 @@ func _initialize() -> void:
 	await _held_pickups()
 	await _daily_pays_once()
 	await _leap_win_stops()
+	_difficulty_numbers()
+	await _dry_up_row()
 	_result()
 	quit(0 if failures == 0 else 1)
 
@@ -53,6 +55,72 @@ func _length_pay() -> void:
 	var cheapest: int = progress.random_payout(1, 1, Economy.LENGTH_PAY_MIN).tickets
 	var dearest: int = progress.random_payout(1, 1, Economy.LENGTH_PAY_MAX).tickets
 	_check(cheapest >= 1 and cheapest < 10 and dearest > 10, "a first-try win pays %d to %d tickets over the length range" % [cheapest, dearest])
+
+
+## --- IMP2-04 numbers: hard pay factor, length clamp, the reserve after 2 dry-ups on L8-L10, the soft hard allowances
+func _difficulty_numbers() -> void:
+	progress.upgrades = {"slime": 1}
+	progress.random_seed_fresh = true
+	progress.random_paid_seeds.clear()
+	_check(is_equal_approx(progress.random_length_factor(5, -1, true), 1.4) and progress.random_payout(1, 5, 1.4).tickets == 14,
+		"a hard random maze pays the flat 1.4 factor: 14 tickets on the first try")
+	_check(is_equal_approx(Economy.LENGTH_PAY_MIN, 0.4) and is_equal_approx(Economy.LENGTH_PAY_MAX, 1.5), "the length clamp is 0.4-1.5")
+	progress.hard_mode = false
+	progress.dry_ups = {7: 2, 8: 2, 10: 2, 3: 2}
+	_check(not progress.assist_offered(7) and not progress.assist_offered(3) and progress.assist_offered(8) and progress.assist_offered(10),
+		"the slime reserve is offered after 2 dry-ups on L8-L10 only")
+	progress.dry_ups = {7: 3, 1: 3}
+	_check(progress.assist_offered(7) and progress.assist_offered(1), "...and after 3 on the earlier levels")
+	progress.dry_ups = {}
+	var allowances := []
+	for n in range(1, 11):
+		allowances.append(Levels.hard_data(n).allowance)
+	_check(allowances.slice(0, 5) == [1.18, 1.18, 1.19, 1.20, 1.20], "hard L1-L5 allowances are 1.18 / 1.18 / 1.19 / 1.20 / 1.20 %s" % [allowances.slice(0, 5)])
+
+
+## --- The 2nd dry-up with the coins for MORE SLIME in hand highlights UPGRADES and says what it buys
+func _dry_up_row() -> void:
+	progress.upgrades = {}
+	progress.coins_found = {}
+	progress.hard_mode = false
+	progress.dry_ups = {}
+	_check(progress.slime_upgrade_offer().is_empty(), "no coins, no upgrade offer")
+	var cost: int = Upgrades.cost("slime", 0)
+	var cells: Array = []
+	for level in range(1, 4):
+		for i in Levels.COINS[level - 1]:
+			cells.append([level, Vector2i(i, 0)])
+	for pair in cells:
+		if progress.coins() >= cost:
+			break
+		progress.collect_coin(pair[0], pair[1])
+	var offer: Dictionary = progress.slime_upgrade_offer()
+	var expect_pct := roundi((Upgrades.slime_factor(1) / Upgrades.slime_factor(0) - 1.0) * 100.0)
+	_check(progress.coins() >= cost and offer.get("cost", 0) == cost and offer.get("percent", 0) == expect_pct and expect_pct > 0,
+		"%d coins in hand: the offer is +%d%% SLIME FOR %d COINS" % [progress.coins(), expect_pct, cost])
+	var game := await _dry_story(1)
+	_check(game.hud.choice_buttons[0].has_focus() and "SLIME FOR" not in " ".join(game.hud.rewards_texts), "the 1st dry-up: RESTART keeps the focus, no hint")
+	await _stop(game)
+	game = await _dry_story(1)
+	_check(game.hud.choice_buttons[1].has_focus() and ("+%d%% SLIME FOR %d COINS" % [expect_pct, cost]) in " ".join(game.hud.rewards_texts),
+		"the 2nd dry-up: UPGRADES is highlighted with +%d%% SLIME FOR %d COINS (%s)" % [expect_pct, cost, game.hud.rewards_texts])
+	await _stop(game)
+
+
+func _dry_story(level: int) -> Node2D:
+	progress.start_story(level)
+	var game: Node2D = MAIN.instantiate()
+	game.level = level
+	root.add_child(game)
+	current_scene = game
+	await _physics_frames(3)
+	game.slime_remaining = 0.0
+	for i in 200:
+		await physics_frame
+		if not game.hud.choice_buttons.is_empty() and game.hud.choice_buttons[0].is_visible_in_tree():
+			break
+	await _physics_frames(3)
+	return game
 
 
 ## --- Abandon carry (Progress level): NEW MAZE, DAILY -> hub -> RANDOM, replay then leave

@@ -87,13 +87,15 @@ const RANDOM_CHALICE := true
 const PICKUPS_ON_WIN := true
 ## PAY_BY_LENGTH: a random win's table pay (RANDOM_ATTEMPT_PAY) is scaled by the maze's length factor
 ## (Progress.random_length_factor: the seed's route in cells over the route of a typical maze, usage
-## 50%, at the same MORE SLIME level, so upgrades alone don't raise it), clamped to
-## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; the replay / seed-paid / no-MORE-SLIME caps
+## median 578 permille, at the same MORE SLIME level, so upgrades alone don't raise it), clamped to
+## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; a HARD maze pays the flat HARD_LENGTH_FACTOR (its
+## route is always the hard target), so a first-try hard win pays as much as a long normal maze; the replay / seed-paid / no-MORE-SLIME caps
 ## still apply after it. False = the table as is.
 const PAY_BY_LENGTH := true
 const LENGTH_TYPICAL_PERMILLE := 578  # (the usage median, Levels.USAGE_QUANTILES)
-const LENGTH_PAY_MIN := 0.6
-const LENGTH_PAY_MAX := 1.4
+const LENGTH_PAY_MIN := 0.4
+const LENGTH_PAY_MAX := 1.5
+const HARD_LENGTH_FACTOR := 1.4  # (IMP2-04: hard random mazes paid 10 against up to 14 for long normal ones)
 ## ABANDON_COUNTS: NEW MAZE or leaving for the hub after at least one move in a random maze counts as a
 ## spent attempt: the next maze starts at the abandoned one's attempt count + 1 (up to the last pay tier);
 ## a win resets it, and the first maze (or one after a win) starts at attempt 1. False = always 1.
@@ -146,7 +148,8 @@ static var idle_drain_force := -1
 ## Chill lane (IMP-01): standing still drains nothing for the first IDLE_GRACE seconds of being still
 ## (moving resets it), nothing at all while aiming an ability, and R always restarts the run at once
 ## (R_ALWAYS_RESTARTS: no RESTART / UPGRADES prompt; spending stays on the dry-up screen).
-## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets.
+## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets
+## (see Progress.complete_random / Game.no_credit for what it still counts toward).
 const IDLE_GRACE := 4.0
 const R_ALWAYS_RESTARTS := true
 static var r_always_force := -1  # (test hook: -1 follow the const, 0 off = the old RESTART / UPGRADES prompt, 1 on)
@@ -176,7 +179,7 @@ const TICKETS_REPLAY_CAP := 1
 
 ## ---------------------------------------------------------------- tickets: the hat wheel (C.1)
 ## The first spin is free, then every spin costs SPIN_COST (owner, 2026-10-22: a flat 20; SPIN_STEP /
-## SPIN_COST_MAX still allow a rising price): 0, 20, 20 ... = 420 for all 22 prizes.
+## SPIN_COST_MAX still allow a rising price): 0, 20, 20 ... = 520 for all 27 prizes (26 paid spins).
 const SPIN_COST := 20
 const SPIN_STEP := 0
 const SPIN_COST_MAX := 20
@@ -447,7 +450,7 @@ static func abilities_on() -> bool:
 
 
 ## Doubled along with the doubled payouts (owner, 2026-10-22): first ability 30 tickets = about 5
-## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all three maxed = 190 + 190 + 280 = 660.
+## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all four maxed (RIFLE, SPLAT, SLIMAKAZE, SLIME SENSE) = 190 + 190 + 280 + 190 = 850.
 const ABILITIES := {
 	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.0},
 	"splat": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 4.0},

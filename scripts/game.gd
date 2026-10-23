@@ -2665,6 +2665,10 @@ func _finish(did_win: bool, text: String) -> void:
 		_offer_next_steps()
 
 
+## Dry-ups in one story level after which the dry-up row points at UPGRADES (when the coins are there).
+const UPGRADE_HINT_DRY_UPS := 2
+
+
 ## The buttons shown after drying up: try again, or go spend coins on upgrades first (the
 ## upgrades screen's PLAY button comes back here).
 func _offer_retry() -> void:
@@ -2692,8 +2696,13 @@ func _offer_retry() -> void:
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], _map_choice()], 0)
 		hud.show_rewards({assisted = false, offer = true})
 	else:
+		# The 2nd dry-up here with the coins for the next MORE SLIME level in hand: UPGRADES is the highlighted button
+		# and a line says what it buys (IMP2-04; never a nag before that, never without the coins).
+		var offer: Dictionary = progress.slime_upgrade_offer() if progress and int(progress.dry_ups.get(level, 0)) >= UPGRADE_HINT_DRY_UPS else {}
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades],
-			_map_choice()], 0)
+			_map_choice()], 1 if not offer.is_empty() else 0)
+		if not offer.is_empty():
+			hud.show_rewards({upgrade_hint = true, percent = offer.percent, cost = offer.cost})
 
 
 ## Whether this run feeds the random maze's map (Progress.random_map): a randomizer maze (not

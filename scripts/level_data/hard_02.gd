@@ -5,4 +5,4 @@ extends RefCounted
 ## HARD_RUN, v4_steps / v4_target = HARD_V4_STEPS / HARD_V4_TARGETS). One file per hard level so a demo
 ## export can leave out the ones it doesn't have (docs/demo-plan.md). Loaded by path only, never preloaded.
 
-const HARD := {seed = 52223, slime_mult = 1.2, allowance = 1.13, branching = 0.15, run = 0.45, v4_steps = 32, v4_target = 0.90}
+const HARD := {seed = 52223, slime_mult = 1.2, allowance = 1.18, branching = 0.15, run = 0.45, v4_steps = 32, v4_target = 0.90}
