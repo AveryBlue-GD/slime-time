@@ -236,6 +236,8 @@ var daily_day := 0
 var daily_best_ms := 0
 var daily_streak := 0
 var daily_best_streak := 0
+## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
+var daily_saver_day := 0
 ## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
 ## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
 ## many OLD medal milestones (every 10 medals, 5 tickets) were paid: kept as it was, no longer paid (IMP2-03).
@@ -1558,7 +1560,7 @@ func start_story(level: int) -> void:
 ## random_payout: the attempt table, capped at 1 for a typed / replayed seed or no MORE SLIME bought;
 ## 0 once today's 5 paying wins are used, while assisted (or dev toggles), or for a seed that already
 ## paid today). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0, counts := true) -> int:
+func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0, counts := true, daily := false) -> int:
 	if counts:  # (a repeat daily win counts toward nothing unless Economy.REPEAT_DAILY_COUNTS)
 		randoms_cleared += 1
 		randoms_won += 1
@@ -1571,7 +1573,7 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1, factor :=
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(attempt, seed_value, factor)
+		paid = random_tickets_due(attempt, seed_value, factor, daily)
 		if paid > 0:
 			random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
 			if seed_value != 0:
@@ -1667,8 +1669,8 @@ func _check_pay_day() -> void:
 
 
 ## What a randomizer win on `attempt` would pay right now (see random_payout).
-func random_tickets_due(attempt := 1, seed_value := 0, factor := 1.0) -> int:
-	return random_payout(attempt, seed_value, factor).tickets
+func random_tickets_due(attempt := 1, seed_value := 0, factor := 1.0, daily := false) -> int:
+	return random_payout(attempt, seed_value, factor, daily).tickets
 
 
 ## What a randomizer win on `attempt` of the maze `seed_value` would pay right now, and why it is
@@ -1676,8 +1678,12 @@ func random_tickets_due(attempt := 1, seed_value := 0, factor := 1.0) -> int:
 ## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
 ## or "slime" (no MORE SLIME bought: 1; never in dev mode, where everything is unlocked). Assisted / dev-toggled runs are the caller's (they pay 0).
 ## `factor` = random_length_factor of the maze (1.0 = the table as is).
-func random_payout(attempt := 1, seed_value := 0, factor := 1.0) -> Dictionary:
+func random_payout(attempt := 1, seed_value := 0, factor := 1.0, daily := false) -> Dictionary:
 	_check_pay_day()
+	if daily:  # IMP2-05: the first daily win of the day pays a flat Economy.DAILY_WIN_TICKETS, past every cap but the day's own
+		if seed_paid_today(seed_value):
+			return {tickets = 0, table = Economy.DAILY_WIN_TICKETS, cap = "paid"}
+		return {tickets = Economy.DAILY_WIN_TICKETS, table = Economy.DAILY_WIN_TICKETS, cap = ""}
 	var table := tickets_for_attempt(attempt)
 	if factor != 1.0:
 		table = maxi(1, roundi(table * factor))
@@ -1852,20 +1858,47 @@ func daily_won_on(day: int) -> bool:
 	return daily_day != 0 and daily_day == day and daily_best_ms > 0
 
 
-## The streak as it stands: 0 once a day was missed (the last win is older than yesterday).
+## True when the one-per-week streak saver is free on UTC day `day`.
+func daily_saver_ready(day := 0) -> bool:
+	var today := day if day > 0 else utc_day()
+	return daily_saver_day == 0 or today - daily_saver_day >= Economy.DAILY_SAVER_DAYS
+
+
+## True when exactly one day was missed (the last win is the day before yesterday) and the saver is free: winning today
+## keeps the streak (the portal sign says STREAK SAVED).
+func daily_saver_pending() -> bool:
+	return daily_streak > 0 and daily_day != 0 and daily_day == utc_day() - 2 and daily_saver_ready()
+
+
+## The streak as it stands: 0 once a day was missed (the last win is older than yesterday), unless the saver covers it.
 func daily_streak_now() -> int:
+	if daily_saver_pending():
+		return daily_streak
 	return daily_streak if daily_day != 0 and daily_day >= utc_day() - 1 else 0
 
 
-## Records a daily win of `ms`: best time of the day, the streak (+1 on a new day, 1 after a gap) and the
-## 10-ticket bonus on every 7th day of it. Returns {best_ms, new_best, first, streak, bonus}. Saves.
+## "DAILY #n": the day's number counted from Economy.DAILY_EPOCH_DAY (2026-11-01 = #1; at least 1).
+static func daily_number(day: int) -> int:
+	return maxi(day - Economy.DAILY_EPOCH_DAY + 1, 1)
+
+
+## Records a daily win of `ms`: best time of the day, the streak (+1 on a new day, 1 after a gap; one missed day is
+## covered by the saver when it is free) and the 10-ticket bonus on every 7th day of it. Returns {best_ms, new_best,
+## first, streak, bonus, saved, number}. Saves.
 func record_daily(ms: int, day := 0) -> Dictionary:
 	var today := day if day > 0 else utc_day()  # (`day`: the day the daily was started on)
 	var first := not (daily_day != 0 and daily_day == today and daily_best_ms > 0)
 	var bonus := 0
 	var saved := false
 	if first:
-		daily_streak = daily_streak + 1 if daily_day != 0 and daily_day == today - 1 else 1
+		if daily_day != 0 and daily_day == today - 1:
+			daily_streak += 1
+		elif daily_streak > 0 and daily_day != 0 and daily_day == today - 2 and daily_saver_ready(today):
+			daily_streak += 1  # exactly one day missed: the saver keeps the streak
+			daily_saver_day = today
+			saved = true
+		else:
+			daily_streak = 1
 		daily_day = today
 		daily_best_ms = 0
 		daily_best_streak = maxi(daily_best_streak, daily_streak)
@@ -1875,7 +1908,7 @@ func record_daily(ms: int, day := 0) -> Dictionary:
 	if new_best:
 		daily_best_ms = ms
 	save_progress()
-	return {best_ms = daily_best_ms, new_best = new_best, first = first, streak = daily_streak, bonus = bonus}
+	return {best_ms = daily_best_ms, new_best = new_best, first = first, streak = daily_streak, bonus = bonus, saved = saved, number = daily_number(today)}
 
 
 # ---------------------------------------------------------------- the demo's FULL GAME PREVIEW
@@ -2993,6 +3026,7 @@ func reset_progress() -> void:
 	medal_milestones_paid = 0
 	ach_rewarded.clear()
 	medal_ms_mask = 0
+	daily_saver_day = 0
 	save_progress()
 
 

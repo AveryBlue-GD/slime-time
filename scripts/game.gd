@@ -320,6 +320,8 @@ var attempt := 1
 var attempt_key := ""
 ## Economy.PICKUPS_ON_WIN: the tickets the pickups taken this run are worth, paid with the win.
 var held_tickets := 0
+## IMP2-05: the daily win's share line (what the result row's COPY puts on the clipboard), "" outside a recorded daily win.
+var daily_share := ""
 ## What the attempt pod shows for this run (-1 until it first shows).
 var _pod_offer := -1
 var _dev_pod_text := ""  # DevLog only
@@ -2047,7 +2049,7 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
-	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, progress.random_length_factor(random_seed, seed_level, hard_mode))
+	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, progress.random_length_factor(random_seed, seed_level, hard_mode), progress.random_daily)
 	if daily_repeat():
 		due = {tickets = 0, table = due.table, cap = "paid"}
 	if no_credit():
@@ -2504,17 +2506,23 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
-			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), not repeat or Economy.REPEAT_DAILY_COUNTS)
+			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), not repeat or Economy.REPEAT_DAILY_COUNTS, progress.random_daily)
 			if repeat:
 				held_tickets = 0
 			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):
 				progress.note_clean_random_win()
 			if progress.random_daily and not no_record:
 				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0), progress.daily_run_day)
-				# i18n: result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
-				var daily_line := Loc.t("result.daily", "DAILY: {time} BEST {best}  STREAK {streak}",
-					{time = UIKit.format_time(run_time), best = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
+				# i18n: result line, max 296px, 1 line; {n} = the daily's number, {time} = the day's best M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+				var daily_line := Loc.t("result.daily", "DAILY #{n}  {time}  STREAK {streak}",
+					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
 				random_text = Loc.lines([random_text, daily_line])
+				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
+				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
+					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
+				if day.saved:
+					# i18n: result line, max 296px, 1 line (the week's one free streak saver covered a missed day)
+					random_text = Loc.lines([random_text, Loc.t("result.daily_saved", "STREAK SAVED")])
 				if day.bonus > 0:
 					# i18n: result line, max 296px, 1 line; {n} = tickets, {days} = the streak
 					random_text = Loc.lines([random_text, Loc.t("result.daily_bonus", "{days} DAY STREAK: +{n} TICKETS", {days = day.streak, n = day.bonus})])
@@ -2844,6 +2852,18 @@ func go_to_upgrades() -> void:
 	UIKit.go(get_tree(), UPGRADES_SCENE)
 
 
+## COPY on the daily result row: the share line goes on the clipboard from this very button press (the web needs a user
+## gesture for it), and the button says COPIED.
+func copy_daily_share() -> void:
+	if daily_share == "":
+		return
+	DisplayServer.clipboard_set(daily_share)
+	var button: Button = hud.choice_buttons[0] if not hud.choice_buttons.is_empty() else null
+	if button != null and is_instance_valid(button):
+		button.text = Loc.t("result.choice.copied", "COPIED")  # i18n: result choice button after COPY was pressed, max 62px, 1 line
+		_sfx("coin", -6.0)
+
+
 ## The buttons shown after a win.
 func _offer_next_steps() -> void:
 	# The middle button (carry on) has the focus, so SPACE / Enter just keeps going.
@@ -2857,6 +2877,11 @@ func _offer_next_steps() -> void:
 		return
 	if preview:
 		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), leave_preview]], 0)
+	elif is_random() and daily_share != "":
+		# A recorded daily win: COPY first (it is pressed by the player, which a browser needs to allow the clipboard), then the usual row.
+		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+		hud.show_choices([[Loc.t("result.choice.copy", "COPY"), copy_daily_share], [Loc.t("result.choice.replay", "REPLAY"), replay],
+			[Loc.t("result.choice.new_maze", "NEW MAZE"), play_next], [Loc.t("result.choice.hub", "HUB"), go_to_hub]], 2)
 	elif is_random():
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],

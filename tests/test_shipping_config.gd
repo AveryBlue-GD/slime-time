@@ -193,7 +193,7 @@ func _daily_pays_once() -> void:
 	progress.day_override = 30001  # midnight passes during the run
 	game.slime.position = game.goal.position
 	await _physics_frames(10)
-	_check(game.won and progress.tickets > 0 and progress.daily_day == 30000,
+	_check(game.won and progress.tickets == Economy.DAILY_WIN_TICKETS and progress.daily_day == 30000,
 		"the first daily win pays even when midnight passed during the run (%d tickets, recorded for day %d)" % [progress.tickets, progress.daily_day])
 	await _stop(game)
 
@@ -203,7 +203,7 @@ func _daily_pays_once() -> void:
 	game.slime.position = game.goal.position
 	await _physics_frames(10)
 	var paid_after_first: int = progress.tickets
-	_check(game.won and paid_after_first > 0 and progress.daily_won_today(), "day 30001's daily pays once (%d)" % paid_after_first)
+	_check(game.won and paid_after_first == 2 * Economy.DAILY_WIN_TICKETS and progress.daily_won_today(), "day 30001's daily pays once (%d)" % paid_after_first)
 	await _stop(game)
 	var wins: int = progress.randoms_won
 	progress.start_daily()  # the same day again

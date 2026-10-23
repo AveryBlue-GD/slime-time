@@ -109,6 +109,12 @@ const DAILY_MAZE := true
 const REPEAT_DAILY_COUNTS := false
 const DAILY_STREAK_STEP := 7
 const DAILY_STREAK_BONUS := 10
+## IMP2-05: the first daily win of a UTC day pays this many tickets (one wheel spin), exempt from the no-MORE-SLIME cap and the
+## length factor; repeats pay 0. DAILY_EPOCH_DAY = the UTC day number (days since 1970) of "DAILY #1" (2026-11-01).
+## One automatic streak saver per DAILY_SAVER_DAYS days: missing exactly one day keeps the streak.
+const DAILY_WIN_TICKETS := 20
+const DAILY_EPOCH_DAY := 20758
+const DAILY_SAVER_DAYS := 7
 
 ## IMP-07 ACHIEVEMENTS: the hub menu's ACHIEVEMENTS page (scripts/achievements.gd), an unlock toast for each goal and
 ## the pooled MEDAL MILESTONES (IMP2-03: Achievements.MILESTONES at 15 / 30 / 45 / 60 medals earned, any tier, normal + hard,

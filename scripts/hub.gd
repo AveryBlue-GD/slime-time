@@ -1965,6 +1965,9 @@ func _show_prompt(note := "") -> void:
 		var streak: int = Progress.daily_streak_now()
 		if Progress.daily_won_today():
 			prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
+		elif Progress.daily_saver_pending():
+			# i18n: prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
+			prompt_key.text = Loc.t("hub.prompt.daily_saved", "STREAK SAVED")
 		elif streak > 0:
 			# i18n: prompt next to the DAILY MAZE name, max 80px, 1 line; {n} = days in a row with a daily win
 			prompt_key.text = Loc.t("hub.prompt.daily_streak", "STREAK {n}", {n = streak})

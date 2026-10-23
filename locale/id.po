@@ -735,11 +735,25 @@ msgctxt "result.preview_cleared"
 msgid "PREVIEW CLEARED!"
 msgstr ""
 
-#. result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+#. result line, max 296px, 1 line; {n} = the daily's number, {time} = the day's best M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.daily"
-msgid "DAILY: {time} BEST {best}  STREAK {streak}"
+msgid "DAILY #{n}  {time}  STREAK {streak}"
+msgstr ""
+
+#. the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
+#. budget: lines 1
+#: scripts/game.gd
+msgctxt "result.daily_share"
+msgid "Dry Trying DAILY #{n} {time} streak {streak}"
+msgstr ""
+
+#. result line, max 296px, 1 line (the week's one free streak saver covered a missed day)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_saved"
+msgid "STREAK SAVED"
 msgstr ""
 
 #. result line, max 296px, 1 line; {n} = tickets, {days} = the streak
@@ -879,21 +893,37 @@ msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "BANTUAN"
 
+#. result choice button after COPY was pressed, max 62px, 1 line
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.copied"
+msgid "COPIED"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "result.choice.hub"
 msgid "HUB"
 msgstr "MARKAS"
+
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.copy"
+msgid "COPY"
+msgstr ""
+
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.replay"
+msgid "REPLAY"
+msgstr "ULANGI"
 
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
 msgctxt "result.choice.replay_maze"
 msgid "REPLAY MAZE"
-msgstr "ULANGI"
-
-#: scripts/game.gd
-msgctxt "result.choice.replay"
-msgid "REPLAY"
 msgstr "ULANGI"
 
 #: scripts/game.gd
@@ -1289,6 +1319,13 @@ msgstr "PUTAR"
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
 msgstr "TERKUNCI"
+
+#. prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
+#. budget: max 80px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_saved"
+msgid "STREAK SAVED"
+msgstr ""
 
 #. prompt next to the DAILY MAZE name, max 80px, 1 line; {n} = days in a row with a daily win
 #. budget: max 80px, lines 1

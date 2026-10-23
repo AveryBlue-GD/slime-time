@@ -30,16 +30,27 @@ func _initialize() -> void:
 	# first win of the day: pays attempt 1, streak 1
 	var t0: int = p.tickets
 	p.start_daily()
-	var paid: int = p.complete_random(false, p.random_seed, 1, 1.0)
+	var paid: int = p.complete_random(false, p.random_seed, 1, 1.0, true, true)
 	var r: Dictionary = p.record_daily(61000)
-	_check(paid == 10 and p.tickets == t0 + 10, "the first win of the day pays attempt 1 (%d)" % paid)
+	_check(paid == 20 and p.tickets == t0 + 20 and Economy.DAILY_WIN_TICKETS == 20, "the first win of the day pays 20 tickets (%d)" % paid)
+	_check(r.number == 30000 - Economy.DAILY_EPOCH_DAY + 1, "...as DAILY #%d" % r.number)
 	_check(r.first and r.streak == 1 and r.best_ms == 61000 and p.daily_won_today(), "...streak 1, best time kept")
 	# later win the same day: nothing extra, best only improves
 	p.start_daily()
 	var again: int = p.complete_random(true, p.random_seed, 1, 1.0)
 	var r2: Dictionary = p.record_daily(70000)
 	var r3: Dictionary = p.record_daily(55000)
-	_check(again == 0 and p.tickets == t0 + 10, "a second win the same day pays nothing")
+	_check(again == 0 and p.tickets == t0 + 20, "a second win the same day pays nothing")
+	var repeat_pay: int = p.random_payout(1, p.random_seed, 1.0, true).tickets
+	_check(repeat_pay == 0, "...the seed has paid today: the payout is 0 too (%d)" % repeat_pay)
+	var upgrades_before: Dictionary = p.upgrades
+	p.upgrades = {}
+	p.random_seed_fresh = true
+	_check(p.random_payout(1, 424242, 1.0).tickets == p.TICKETS_NO_SLIME_CAP and p.random_payout(1, 424242, 1.0, true).tickets == 20, "the daily's 20 is exempt from the no-MORE-SLIME cap (a normal maze pays %d there)" % p.TICKETS_NO_SLIME_CAP)
+	p.upgrades = upgrades_before
+	p.random_seed_fresh = false
+	_check(p.random_payout(1, 424242, 1.0, true).tickets == 20, "...and from the replay cap")
+	_check(p.random_payout(1, 424242, 1.4, true).tickets == 20, "...and from the length factor")
 	_check(not r2.first and r2.streak == 1 and r2.best_ms == 61000 and not r2.new_best and r3.new_best and r3.best_ms == 55000, "...the streak stays, the best time only improves")
 
 	# save round trip
@@ -61,12 +72,40 @@ func _initialize() -> void:
 		p.day_override = d
 		p.record_daily(60000)
 	_check(p.daily_streak == 7 and p.daily_best_streak == 7, "seven days in a row make a streak of 7")
-	_check(p.tickets == t0 + 10 + 10, "...the 7th day paid 10 tickets once")
+	_check(p.tickets == t0 + 20 + 10, "...the 7th day paid 10 tickets once")
 	p.day_override = 30007
 	_check(p.daily_streak_now() == 7 and not p.daily_won_today(), "the streak shows until the day is missed")
 	p.day_override = 30009
 	_check(p.daily_streak_now() == 0, "a missed day shows 0")
 	var r4: Dictionary = p.record_daily(60000)
-	_check(r4.streak == 1 and p.daily_best_streak == 7 and r4.bonus == 0, "...the next win restarts at 1, the best streak stays 7")
+	_check(r4.streak == 1 and p.daily_best_streak == 7 and r4.bonus == 0 and not r4.saved, "...the next win restarts at 1, the best streak stays 7")
+
+	# the streak saver: one missed day is covered, once per 7 days
+	_check(p.daily_saver_ready(30009) and not p.daily_saver_pending(), "a saver is free and nothing is pending on the day of a win")
+	p.day_override = 30011  # day 30010 missed
+	_check(p.daily_saver_pending() and p.daily_streak_now() == 1, "one missed day with a free saver: the streak shows as kept (pending)")
+	var r5: Dictionary = p.record_daily(60000)
+	_check(r5.saved and r5.streak == 2 and p.daily_saver_day == 30011 and not p.daily_saver_pending(), "...winning keeps it: streak 2, STREAK SAVED")
+	var wfile: ConfigFile = p._write()
+	_check(wfile.get_value("daily", "saver_day", 0) == 30011, "...saver_day is saved")
+	p.daily_saver_day = 0
+	p._read(wfile)
+	_check(p.daily_saver_day == 30011, "...and read back")
+	p.day_override = 30013  # day 30012 missed, the saver was used 2 days ago
+	_check(not p.daily_saver_pending() and p.daily_streak_now() == 0, "a second miss within the week is not covered")
+	var r6: Dictionary = p.record_daily(60000)
+	_check(not r6.saved and r6.streak == 1, "...the streak restarts at 1")
+	for d in range(30014, 30019):
+		p.day_override = d
+		p.record_daily(60000)
+	_check(p.daily_streak == 6, "six days again (%d)" % p.daily_streak)
+	p.day_override = 30020  # 30019 missed; the saver was used 9 days ago
+	var r7: Dictionary = p.record_daily(60000)
+	_check(r7.saved and r7.streak == 7, "a week later the saver is back (%d)" % r7.streak)
+	p.day_override = 30023  # two days missed: not covered
+	var r8: Dictionary = p.record_daily(60000)
+	_check(not r8.saved and r8.streak == 1, "two missed days are never covered")
+	_check(p.daily_number(Economy.DAILY_EPOCH_DAY) == 1 and p.daily_number(Economy.DAILY_EPOCH_DAY + 122) == 123 and p.daily_number(100) == 1, "the day number counts from the epoch (min 1)")
+	_check(Economy.DAILY_EPOCH_DAY * 86400 == int(Time.get_unix_time_from_datetime_string("2026-11-01T00:00:00")), "...2026-11-01 is #1")
 
 	_result()
