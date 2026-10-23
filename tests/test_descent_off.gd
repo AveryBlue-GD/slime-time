@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## DESCENT is cut from the randomizer for now (decision D11): ONE flag, Economy.DESCENT_ENABLED = false. With it off the
-## hub's randomizer portal starts a RANDOM MAZE directly (no mode menu), a saved [descent_run] never prompts and is neither
+## hub's randomizer portal opens RANDOM MAZE / DAILY MAZE only (IMP-06; no DESCENT button), a saved [descent_run] never prompts and is neither
 ## resumed, banked nor dropped (the save file is byte-identical through a load + save), no run can start, the ABYSS trail
 ## is hidden from the wardrobe unless owned (owners keep and can wear it), and flipping the flag back on (Economy.descent_force)
 ## restores all of it. The Descent suites force the flag on; abilities still work in randomizer mazes.
@@ -83,11 +83,29 @@ func _hub() -> void:
 	_check(not hub.resume_menu.visible and not hub.slime.frozen, "hub: no resume prompt on arrival")
 	hub._update_near()
 	hub._use(hub._station("random"))
-	_check(not hub.portal_menu.visible and progress.mode == progress.MODE_RANDOM, "the portal starts a random maze directly (no menu)")
-	for i in 120:
+	# IMP-06: the portal's menu offers RANDOM MAZE and DAILY MAZE; DESCENT and its info line stay invisible
+	_check(hub.portal_menu.visible and hub.maze_button.visible and hub.daily_button.visible and not hub.descent_button.visible and not hub.portal_info.visible,
+		"the portal menu shows RANDOM MAZE and DAILY MAZE only (Descent off)")
+	_check(not hub._portal_order().has(hub.descent_button) and hub._portal_order().has(hub.daily_button), "...and DESCENT is not in its focus order")
+	hub.daily_button.pressed.emit()
+	_check(progress.random_daily and progress.mode == progress.MODE_RANDOM, "DAILY MAZE is reachable with Descent off")
+	await _wait_scene()
+	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/main.tscn" and progress.random_daily, "...and starts today's daily")
+	var daily_scene := current_scene
+	current_scene = null
+	if is_instance_valid(daily_scene):
+		daily_scene.free()
+	var hub1: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub1)
+	current_scene = hub1
+	for i in 3:
 		await process_frame
-		if not root.get_node("Transition").busy:
-			break
+	hub1._update_near()
+	hub1._use(hub1._station("random"))
+	hub1.maze_button.pressed.emit()
+	_check(not hub1.portal_menu.visible and progress.mode == progress.MODE_RANDOM and not progress.random_daily, "RANDOM MAZE from the menu starts a random maze")
+	hub = hub1
+	await _wait_scene()
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/main.tscn" and current_scene.is_random() and not current_scene.descent, "...and it is a random maze")
 	var cs := current_scene
 	_check(Abilities.allowed_in(cs), "abilities are still allowed in it")
@@ -108,6 +126,13 @@ func _hub() -> void:
 	current_scene = null
 	hub2.free()
 	Economy.descent_force = -1
+
+
+func _wait_scene() -> void:
+	for i in 120:
+		await process_frame
+		if not root.get_node("Transition").busy:
+			break
 
 
 func _abyss() -> void:

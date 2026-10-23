@@ -2076,7 +2076,7 @@ func ticket_offer() -> int:
 ## The tickets the maze's pickups still out would pay (none once the run is over, or for an assisted
 ## or dev-toggled run): the attempt pod's TIX AVAILABLE adds them, so it counts down as they're taken.
 func pickup_offer() -> int:
-	if finished or no_credit():
+	if finished or no_credit() or daily_repeat():
 		return 0
 	return tickets.size() * Economy.RANDOM_TICKET_PAY + held_tickets
 
@@ -2502,7 +2502,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			if abilities != null and abilities.uses == 0 and not no_record:
 				progress.note_clean_random_win()
 			if progress.random_daily and not no_record:
-				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0))
+				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0), progress.daily_run_day)
 				# i18n: result line, max 296px, 1 line; {time} / {best} = M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
 				var daily_line := Loc.t("result.daily", "DAILY: {time} BEST {best}  STREAK {streak}",
 					{time = UIKit.format_time(run_time), best = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})

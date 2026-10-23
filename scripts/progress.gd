@@ -219,6 +219,10 @@ var descent_milestones := 0
 ## IMP-06 daily maze. `random_daily`: the current random maze is today's daily (runtime only). Saved [daily]:
 ## the UTC day of the last daily win, its best time (ms), the streak as of that day, the best streak ever.
 var random_daily := false
+## The UTC day the current daily was started on (a daily won past midnight still counts for its own day), and the
+## abandon penalty (attempt base) of the random maze left for the daily, kept for the next random maze. Runtime only.
+var daily_run_day := 0
+var random_attempt_carry := 0
 var daily_day := 0
 var daily_best_ms := 0
 var daily_streak := 0
@@ -1705,8 +1709,11 @@ static func daily_seed(day: int) -> int:
 func start_daily() -> void:
 	mode = MODE_RANDOM
 	discard_random_map()
+	if not random_daily:  # (a random maze left unfinished keeps its abandon penalty for the next random maze)
+		random_attempt_carry = _abandon_base()
 	random_daily = true
-	random_seed = daily_seed(utc_day())
+	daily_run_day = utc_day()
+	random_seed = daily_seed(daily_run_day)
 	random_level = 0
 	random_seed_fresh = true
 	random_attempt_base = 0
@@ -1728,9 +1735,9 @@ func daily_streak_now() -> int:
 
 ## Records a daily win of `ms`: best time of the day, the streak (+1 on a new day, 1 after a gap) and the
 ## 10-ticket bonus on every 7th day of it. Returns {best_ms, new_best, first, streak, bonus}. Saves.
-func record_daily(ms: int) -> Dictionary:
-	var today := utc_day()
-	var first := not daily_won_today()
+func record_daily(ms: int, day := 0) -> Dictionary:
+	var today := day if day > 0 else utc_day()  # (`day`: the day the daily was started on)
+	var first := not (daily_day != 0 and daily_day == today and daily_best_ms > 0)
 	var bonus := 0
 	if first:
 		daily_streak = daily_streak + 1 if daily_day != 0 and daily_day == today - 1 else 1
@@ -2140,7 +2147,16 @@ func discard_random_map() -> void:
 	random_map_key = ""
 
 
+## The attempt the next random maze starts at: the highest attempt reached on the last one, if it was abandoned after a move.
+func _abandon_base() -> int:
+	var used := 0
+	for count in random_attempts.values():
+		used = maxi(used, int(count))
+	return mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved else 0
+
+
 func new_random_maze() -> void:
+	var from_daily := random_daily
 	random_daily = false
 	discard_random_map()
 	random_seed = randi_range(1, 2_000_000_000)
@@ -2152,10 +2168,8 @@ func new_random_maze() -> void:
 	random_level = -1
 	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
 	# a new maze starts counting at attempt 1, unless the last one was abandoned after a move (ABANDON_COUNTS)
-	var used := 0
-	for count in random_attempts.values():
-		used = maxi(used, int(count))
-	random_attempt_base = mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved else 0
+	random_attempt_base = random_attempt_carry if from_daily else _abandon_base()
+	random_attempt_carry = 0
 	random_moved = false
 	random_attempts.clear()
 	random_offer_shown.clear()

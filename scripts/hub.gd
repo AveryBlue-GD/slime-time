@@ -894,7 +894,9 @@ func _portal_order() -> Array[Button]:
 	var order: Array[Button] = [maze_button]
 	if daily_button.visible:
 		order.append(daily_button)
-	order.append_array([descent_button, portal_back])
+	if Economy.descent_on():
+		order.append(descent_button)
+	order.append(portal_back)
 	return order
 
 
@@ -907,7 +909,8 @@ func _layout_portal_menu() -> void:
 	var modes: Array[Button] = [maze_button]
 	if daily_button.visible:
 		modes.append(daily_button)
-	modes.append(descent_button)
+	if Economy.descent_on():
+		modes.append(descent_button)
 	var mode_texts: Array[String] = []
 	for b: Button in modes:
 		mode_texts.append(b.text)
@@ -919,7 +922,7 @@ func _layout_portal_menu() -> void:
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.PANEL_PAD + line + 6 + bh + UIKit.GAP_S + bh + (bh + UIKit.GAP_S if daily_button.visible else 0) + 5 + line + 6 + bh
+	var h := text_top + UIKit.PANEL_PAD + line + 6 + modes.size() * (bh + UIKit.GAP_S) + 5 - UIKit.GAP_S + (line + 6 if portal_info.visible else 0) + bh
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	portal_panel.position = rect.position
 	portal_panel.size = rect.size
@@ -940,6 +943,8 @@ func _layout_portal_menu() -> void:
 
 func open_portal_menu() -> void:
 	daily_button.visible = Economy.daily_maze()
+	descent_button.visible = Economy.descent_on()  # (Descent stays invisible while it is switched off)
+	portal_info.visible = Economy.descent_on()
 	var streak: int = Progress.daily_streak_now()
 	if streak > 0:
 		# i18n: button, max 120px (widens the panel), 1 line; {n} = days in a row with a daily win; the spaces are spacing
@@ -952,7 +957,9 @@ func open_portal_menu() -> void:
 	var left: int = Progress.descent_paid_left()
 	# i18n: max 170px, 1 line; the spaces are spacing, not words
 	var paid := {left = left, total = Economy.DESCENT_PAID_PER_DAY, best = best}
-	if best > 0:
+	if not Economy.descent_on():
+		portal_info.text = ""
+	elif best > 0:
 		portal_info.text = Loc.t("hub.portal.info_best", "BEST FLOOR {best}   PAID RUNS {left}/{total}", paid)
 	else:
 		portal_info.text = Loc.t("hub.portal.info", "PAID RUNS {left}/{total}", paid)
@@ -1745,8 +1752,8 @@ func _use(station: Dictionary) -> void:
 			_leave(station, "res://scenes/controls.tscn")
 		"random":
 			if Progress.is_randomizer_unlocked():
-				if Economy.descent_on():
-					open_portal_menu()  # RANDOM MAZE or DESCENT
+				if Economy.descent_on() or Economy.daily_maze():
+					open_portal_menu()  # RANDOM MAZE, DAILY MAZE, DESCENT
 				else:
 					_begin_random_maze()  # Descent is cut (D11): straight into a random maze
 			elif not Demo.randomizer_open():
