@@ -9,7 +9,7 @@ extends Node2D
 ## `wheel` (the hats as the hat wheel draws them: narrow, 1x, over its wedge colors),
 ## `squeezed` (every hat on the splat frames, 2x), and the real screens players see them on:
 ## `ui_wheel` (the hub's prize wheel), `ui_won` (just after a spin lands), `ui_shop` (the SHOP's
-## DYES section: your dyeable hats), `ui_dyes` (one hat's colors, a dye focused on the try-on slimes),
+## DYES section: every dyeable hat, the ones not won yet locked), `ui_dyes` (one hat's colors, a dye focused on the try-on slimes),
 ## `ui_dyed` (the hub slime in a dyed hat), `ui_wardrobe_color` (the hats page in a dyed hat, COLOR), `ui_hub_page` / `ui_hub_frost` (the HUB page; the hub in FROST), `ui_wardrobe` (the wardrobe's HATS page), `ui_hub` (the hub slime).
 ## ./tools/godot.sh --path . res://tests/demo_hat_audit.tscn -- --unlock-all --out=/abs/dir [--only=lineup,...]
 ## then: python3 -I tools/upscale_png.py OUT/lineup.png OUT/lineup_x4.png 4
@@ -283,6 +283,7 @@ func _ui_won() -> void:
 
 
 func _ui_shop() -> void:
+	_dyed_player()
 	var hub := _hub()
 	await get_tree().process_frame
 	hub.open_hat_wheel()
