@@ -50,6 +50,11 @@ const FOG_LOOKS: Array[Dictionary] = [
 	{fade = FADE_ALPHA, wall = WALL_FOG_ALPHA, deep_gain = 0.55, mist_gain = 0.45, far_dim = 0.22, vig_max = 0.35, light_outer = 115.0},
 	{fade = [0.0, 0.25, 0.42, 0.54, 0.64], wall = 0.2, deep_gain = 0.75, mist_gain = 0.55, far_dim = 0.14, vig_max = 0.25, light_outer = 125.0},
 ]
+## Economy.DARK_FOG: the same looks with the unrevealed mist crushed to near-black (Bright is left alone).
+const FOG_LOOKS_DARK: Array[Dictionary] = [
+	{fade = [0.0, 0.33, 0.55, 0.72, 0.86], wall = 0.36, deep_gain = 0.12, mist_gain = 0.1, far_dim = 0.3, vig_max = 0.45, light_outer = 110.0},
+	{fade = FADE_ALPHA, wall = WALL_FOG_ALPHA, deep_gain = 0.16, mist_gain = 0.13, far_dim = 0.22, vig_max = 0.35, light_outer = 115.0},
+]
 const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
 const FOG_TICKS := 16.0
@@ -1056,6 +1061,8 @@ static func fade_alpha(age: float, table: Array = FADE_ALPHA) -> float:
 ## The fog look chosen in Settings (an entry of FOG_LOOKS).
 func fog_look() -> Dictionary:
 	var level_index: int = progress.fog_brightness if progress else Progress.FOG_NORMAL
+	if Economy.DARK_FOG and level_index < FOG_LOOKS_DARK.size():
+		return FOG_LOOKS_DARK[maxi(level_index, 0)]
 	return FOG_LOOKS[clampi(level_index, 0, FOG_LOOKS.size() - 1)]
 
 

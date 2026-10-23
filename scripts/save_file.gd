@@ -39,6 +39,7 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.sound_on = get_bool(file, "settings", "sound_on", true)
 	p.volume = clampf(get_float(file, "settings", "volume", p.volume), 0.0, 1.0)
 	p.music_volume = clampf(get_float(file, "settings", "music_volume", p.music_volume), 0.0, 1.0)
+	p.level_music = get_bool(file, "settings", "level_music", true)
 	p.hard_mode = get_bool(file, "settings", "hard_mode", false)
 	p.reduce_motion = get_bool(file, "settings", "reduce_motion", p.reduce_motion)
 	p.vibration = get_bool(file, "settings", "vibration", p.vibration)
@@ -341,6 +342,8 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("settings", "sound_on", p.sound_on)
 	file.set_value("settings", "volume", p.volume)
 	file.set_value("settings", "music_volume", p.music_volume)
+	if not p.level_music:
+		file.set_value("settings", "level_music", false)
 	file.set_value("settings", "hard_mode", p.hard_mode)
 	file.set_value("settings", "reduce_motion", p.reduce_motion)
 	file.set_value("settings", "vibration", p.vibration)

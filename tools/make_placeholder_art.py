@@ -620,4 +620,5 @@ if __name__ == "__main__":
         [floor_tile(kind, seed=5000 + variant * 20 + i) for i, kind in enumerate(FLOOR_TYPES)]
         for variant in range(4)
     ]))
-    write_png(OUT.parent.parent / "icon.png", app_icon())
+    # IMP-05: icon.png is 256x256 (the 64 px art scaled 4x, nearest neighbour), for stores and the OS
+    write_png(OUT.parent.parent / "icon.png", ["".join(c * 4 for c in row) for row in app_icon() for _ in range(4)])

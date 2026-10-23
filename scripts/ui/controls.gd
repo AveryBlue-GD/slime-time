@@ -76,6 +76,7 @@ var vibration_button: Button
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
+var level_music_button: Button
 ## RELAXED (no idle drain, no medals; Progress.relaxed) under SAVE CODE / TRAINING, with a hint line under it.
 var relaxed_button: Button
 var relaxed_hint: Label
@@ -163,6 +164,16 @@ func _ready() -> void:
 			add_child(training_button)
 			training_button.size = training_button.custom_minimum_size
 			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
+	if Economy.LEVEL_MUSIC and language_button == null:
+		# IMP-05: next to the music volume's page, centred in the bottom row (not with the language test's button)
+		# i18n: bottom-row button, grows with the text (max 120px), 1 line; the two states are whole strings
+		var lm_text := Loc.t("settings.level_music.on", "LEVEL MUSIC: ON")
+		level_music_button = UIKit.make_button(lm_text, _toggle_level_music, UIKit.button_size(lm_text, 104))
+		UIKit.note_text_w(level_music_button, [lm_text, Loc.t("settings.level_music.off", "LEVEL MUSIC: OFF")], 104)
+		add_child(level_music_button)
+		level_music_button.size = level_music_button.custom_minimum_size
+		UIKit.place_bottom_row(level_music_button, 0)
+		_refresh_display_options()
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -857,6 +868,12 @@ func _toggle_vibration() -> void:
 		Input.vibrate_handheld(60)  # (a sample buzz)
 
 
+func _toggle_level_music() -> void:
+	Progress.level_music = not Progress.level_music
+	Progress.save_progress()
+	_refresh_display_options()
+
+
 func _cycle_fog() -> void:
 	Progress.fog_brightness = (Progress.fog_brightness + 1) % 3
 	Progress.save_progress()
@@ -880,6 +897,11 @@ func _refresh_display_options() -> void:
 			vibration_button.text = Loc.t("settings.vibration.on", "VIBRATION: ON")
 		else:
 			vibration_button.text = Loc.t("settings.vibration.off", "VIBRATION: OFF")
+	if level_music_button:
+		if Progress.level_music:
+			level_music_button.text = Loc.t("settings.level_music.on", "LEVEL MUSIC: ON")
+		else:
+			level_music_button.text = Loc.t("settings.level_music.off", "LEVEL MUSIC: OFF")
 	match Progress.fog_brightness:
 		0:
 			fog_button.text = Loc.t("settings.fog.dark", "FOG: DARK")

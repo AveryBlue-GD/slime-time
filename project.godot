@@ -16,6 +16,10 @@ config/custom_user_dir_name="SlimeTime_R1"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://icon.png"
+boot_splash/bg_color=Color(0.101961, 0.109804, 0.172549, 1)
+boot_splash/image="res://assets/ui/boot_splash.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=false
 config/windows_native_icon="res://icon.ico"
 config/quit_on_go_back=false
 

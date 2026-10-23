@@ -9,6 +9,13 @@ extends Node
 
 const HUB_TRACKS: Array[String] = ["res://assets/music/hub_a.ogg", "res://assets/music/hub_b.ogg", "res://assets/music/hub_c.ogg"]
 const INTRO_TRACK := "res://assets/music/story_intro.ogg"
+## IMP-05: the title's loop and the sparse quiet bed under a level's ambience (Economy.LEVEL_MUSIC, Settings).
+const TITLE_TRACK := "res://assets/music/title.ogg"
+const LEVEL_TRACK := "res://assets/music/level_bed.ogg"
+const TITLE_SCENE := "res://scenes/title.tscn"
+const LEVEL_SCENE := "res://scenes/main.tscn"
+const TITLE_DB := -4.0
+const LEVEL_DB := -3.0  # (the bed is mastered ~12 dB under the hub loops)
 ## The hub and its screens: the hub music starts (or keeps playing) on them.
 const HUB_SCENES: Array[String] = ["res://scenes/hub.tscn", "res://scenes/level_select.tscn", "res://scenes/skins.tscn",
 	"res://scenes/maps.tscn", "res://scenes/upgrades.tscn"]
@@ -51,6 +58,7 @@ func _ready() -> void:
 	_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(_player)
 	get_tree().scene_changed.connect(_on_scene_changed)
+	_on_scene_changed.call_deferred()  # (the main scene, the title, is not announced by scene_changed)
 
 
 func _exit_tree() -> void:
@@ -68,8 +76,23 @@ func _on_scene_changed() -> void:
 func follow_scene(path: String) -> void:
 	if path in HUB_SCENES:
 		play_hub()
+	elif path == TITLE_SCENE and Economy.LEVEL_MUSIC:
+		if current != TITLE_TRACK:
+			_start(TITLE_TRACK, true, TITLE_DB, FADE_IN)
+		else:
+			_fade_to(1.0, FADE_IN)
+	elif path == LEVEL_SCENE and Economy.LEVEL_MUSIC and _level_music_on():
+		if current != LEVEL_TRACK:
+			_start(LEVEL_TRACK, true, LEVEL_DB, 2.5)
+		else:
+			_fade_to(1.0, FADE_IN)
 	elif not path in KEEP_SCENES:
 		stop()
+
+
+func _level_music_on() -> bool:
+	var progress := get_node_or_null("/root/Progress")
+	return progress == null or progress.level_music
 
 
 func is_hub_music() -> bool:

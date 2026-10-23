@@ -284,6 +284,8 @@ var sound_on := true
 ## Settings has a slider for each (UIKit.make_volume_slider); the Master bus stays at 0 dB.
 var volume := 0.8
 var music_volume := 0.8
+## IMP-05 (Economy.LEVEL_MUSIC): the quiet music bed in levels (Settings: LEVEL MUSIC).
+var level_music := true
 const SFX_BUS := "SFX"  # i18n: ignore (an audio bus name)
 const MUSIC_BUS := "Music"  # i18n: ignore (an audio bus name)
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
@@ -304,7 +306,7 @@ var language := ""
 const FOG_DARK := 0
 const FOG_NORMAL := 1
 const FOG_BRIGHT := 2
-var fog_brightness := FOG_NORMAL
+var fog_brightness := FOG_BRIGHT if Economy.DARK_FOG and Platform.has_touch() else FOG_NORMAL  # (IMP-05: phones start lighter)
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
 ## Record (fastest) clear time per story level, in seconds.

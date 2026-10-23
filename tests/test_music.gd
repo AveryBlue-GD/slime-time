@@ -37,6 +37,7 @@ func _initialize() -> void:
 	for screen in ["res://scenes/skins.tscn", "res://scenes/level_select.tscn", "res://scenes/controls.tscn", "res://scenes/hub.tscn"]:
 		music.follow_scene(screen)
 	_check(music.current == first and music._target == 1.0, "the same loop keeps playing on the hub's screens and the settings")
+	progress.level_music = false  # (IMP-05: with LEVEL MUSIC off a level is silent as before)
 	music.follow_scene("res://scenes/main.tscn")
 	_check(music._target == 0.0, "starting a level fades the hub music out")
 	for i in 90:
@@ -56,7 +57,12 @@ func _initialize() -> void:
 	_check(picks.size() == Music.HUB_TRACKS.size() and repeats == 0, "over 40 hub visits all %d loops come up, never the same twice in a row (%d seen, %d repeats)" % [Music.HUB_TRACKS.size(), picks.size(), repeats])
 	music.follow_scene("res://scenes/hub.tscn")
 	music.follow_scene("res://scenes/title.tscn")
-	_check(music._target == 0.0, "going to the title fades the hub music out")
+	_check(music.current == Music.TITLE_TRACK, "IMP-05: going to the title swaps the hub music for the title loop")
+	music.stop(0.0)
+	await process_frame
+	progress.level_music = true
+	music.follow_scene("res://scenes/main.tscn")
+	_check(music.current == Music.LEVEL_TRACK and (music._player.stream as AudioStreamOggVorbis).loop, "IMP-05: a level plays the quiet bed")
 	music.stop(0.0)
 	await process_frame
 

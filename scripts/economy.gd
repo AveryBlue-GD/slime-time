@@ -378,6 +378,11 @@ const COIN_CATCH_FIZZ_DB := -8.0
 ## IMP-03: 8 px text (body, buttons, HUD, coach) renders without drips; only 16 px titles drip.
 ## false = the old look everywhere.
 const CLEAN_SMALL_TEXT := true
+## IMP-05: the unrevealed fog is near-black (Dark / Normal fog looks; Bright keeps its lighter mist, and is
+## the default on touch devices). false = the old murky mid-tone.
+const DARK_FOG := true
+## IMP-05: a sparse quiet music bed under the level ambience (Settings: LEVEL MUSIC, saved). false = silent levels.
+const LEVEL_MUSIC := true
 const TUTORIAL_TEST := true
 static var tutorial_force := -1
 

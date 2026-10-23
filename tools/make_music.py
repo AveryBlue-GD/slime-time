@@ -57,6 +57,7 @@ SR = 44100
 TAU = 2.0 * math.pi
 TAIL = 6.0            # seconds rendered past the end for note and reverb tails
 HUB_LUFS = -18.0
+LEVEL_BED_LUFS = -30.0  # 12 dB under the hub loops
 INTRO_LUFS = -21.0    # the story intro sits further under its sound effects
 TRAILER_LUFS = -14.0
 TP_MAX = -1.2         # dBTP we aim under (the spec is "below -1")
@@ -684,6 +685,51 @@ def hub_C():
     return s, meta
 
 
+def title():
+    """Title screen loop: slow and dark, a hushed pad, a sub bass breath and a few music-box drops; A minor."""
+    s = Song(bpm=60, meter=4, bars=16, swing=0.5, seed=41)
+    C = {"Am9": (33, (48, 52, 55, 59)), "Fmaj7": (29, (48, 52, 55, 57)), "Dm9": (38, (48, 53, 57, 60)),
+         "E7sus": (40, (50, 52, 57, 59)), "E7": (40, (50, 52, 56, 59))}
+    prog = ["Am9", "Fmaj7", "Dm9", (("E7sus", 0, 2), ("E7", 2, 2))]
+    mel = [(0, 64, 2), (3, 60, 1), (4, 62, 3), (8, 57, 2), (10, 60, 1), (12, 59, 3)]
+    for bar in range(s.bars):
+        b0 = bar * 4
+        for name, st, ln in bar_chords(prog, bar, 4):
+            root, chord = C[name]
+            pad_chord(s, chord, b0 + st, ln, gain=0.055, cutoff=650, attack=1.2, release=2.0, table="hollow")
+            if st == 0:
+                s.put("bass", bass(root, s.beats(3.2)), b0, gain=0.4)
+        if bar >= 4 and bar % 2 == 0:
+            s.put("kick", kick(80.0, 38.0, 0.14), b0, gain=0.18)
+    play_melody(s, mel, 16, "pluck", gain=0.2, tau=0.9)
+    play_melody(s, mel, 48, "lead", gain=0.12, cutoff=900)
+    meta = dict(title="Title Drip", mood="slow, dark and hushed; sparse music-box drops over a hollow pad",
+                key="A minor (Am9 - Fmaj7 - Dm9 - E7sus/E7)", bpm=60, meter="4/4",
+                form="4-bar pad intro, 4 bars music-box drops, 4 bars goo voice, 4 bars back to the pad")
+    return s, meta
+
+
+def level_bed():
+    """Level bed: a very quiet low pulse and a slow pad that sit under the theme ambience; D minor, almost static."""
+    s = Song(bpm=48, meter=4, bars=16, swing=0.5, seed=51)
+    C = {"Dm": (26, (45, 50, 53)), "Bb": (34, (46, 50, 53)), "Gm": (31, (46, 50, 55)), "A": (33, (45, 49, 52))}
+    prog = ["Dm", "Dm", "Bb", "Gm", "Dm", "Dm", "Gm", "A"]
+    for bar in range(s.bars):
+        b0 = bar * 4
+        name = prog[bar % len(prog)]
+        root, chord = C[name]
+        pad_chord(s, chord, b0, 4, gain=0.04, cutoff=520, attack=1.6, release=2.4, table="hollow")
+        s.put("bass", bass(root, s.beats(1.6)), b0, gain=0.3)
+        if bar % 2 == 1:
+            s.put("bass", bass(root, s.beats(1.2)), b0 + 2, gain=0.18)
+        if bar % 4 == 3:
+            s.put("pluck2", pluck(chord[-1] + 12, 0.9), b0 + 3, gain=0.05, vel=0.3)
+    meta = dict(title="Level Bed", mood="a barely-there low pulse and pad under the level ambience",
+                key="D minor (Dm - Bb - Gm - A)", bpm=48, meter="4/4",
+                form="16 bars of a static pad with a sub pulse, one drop every fourth bar")
+    return s, meta
+
+
 ## The story intro's shots (scripts/story.gd INTRO: run 4.6 s, chase 4.0, crack 3.9, fall 4.8, splat 6.4) start at
 ## these seconds. Each section of story_intro() starts on its shot, so the game can seek to a shot's start when the
 ## player skips ahead (scripts/music.gd). Change both together.
@@ -924,9 +970,9 @@ def trailer(name: str, hit: float, ring: float):
     return s, meta
 
 
-PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "trailer_1": None, "trailer_2": None}
+PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "title": title, "level_bed": level_bed, "trailer_1": None, "trailer_2": None}
 ## The pieces the game plays (scripts/music.gd): --game writes them as OGG into assets/music/ (lower-case names).
-GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro")
+GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro", "title", "level_bed")
 GAME_DIR = ROOT / "assets" / "music"
 DEFAULT_HIT, DEFAULT_RING = 24.4, 3.6   # draft A's end card starts at 24.4 s
 
@@ -1191,7 +1237,7 @@ def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=Fals
         target = TRAILER_LUFS
     else:
         s, meta = PIECES[name]()
-        target = INTRO_LUFS if name == "story_intro" else HUB_LUFS
+        target = INTRO_LUFS if name == "story_intro" else LEVEL_BED_LUFS if name == "level_bed" else HUB_LUFS
     L, R = mixdown(s, verbose=verbose)
     if not s.loop:
         n = int(round(s.length * SR))
