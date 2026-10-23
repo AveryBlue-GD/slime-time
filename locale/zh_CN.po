@@ -2206,12 +2206,6 @@ msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
 msgstr "转盘正在休息"
 
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.need_to_spin"
-msgid "NEED {count} TICKET TO SPIN"
-msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] "转动需要{count}张奖券"
-
 #. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
 #. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2677,9 +2671,9 @@ msgstr "在大厅的奖品转盘赢取帽子"
 
 #: scripts/ui/skins_screen.gd
 #, fuzzy
-#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+#| msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgctxt "skins.rule_trails"
-msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
+msgid "WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "在奖品转盘的商店购买拖尾"
 
 #: scripts/ui/skins_screen.gd
@@ -3292,6 +3286,11 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.need_to_spin"
+#~ msgid "NEED {count} TICKET TO SPIN"
+#~ msgid_plural "NEED {count} TICKETS TO SPIN"
+#~ msgstr[0] "转动需要{count}张奖券"
 
 #~ msgctxt "wheel.hats_left"
 #~ msgid "{count} HAT TO WIN"

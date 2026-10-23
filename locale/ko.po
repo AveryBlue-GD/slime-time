@@ -2206,12 +2206,6 @@ msgctxt "wheel.resting"
 msgid "THE WHEEL IS RESTING"
 msgstr "룰렛이 쉬는 중"
 
-#: scripts/ui/hat_wheel.gd
-msgctxt "wheel.need_to_spin"
-msgid "NEED {count} TICKET TO SPIN"
-msgid_plural "NEED {count} TICKETS TO SPIN"
-msgstr[0] "돌리려면 티켓 {count}장 필요"
-
 #. the hint under the wheel, {key} = the use key's name; max 200px, 1 line
 #. budget: max 200px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2677,9 +2671,9 @@ msgstr "허브의 모자 룰렛에서 모자를 따세요"
 
 #: scripts/ui/skins_screen.gd
 #, fuzzy
-#| msgid "BUY TRAILS IN THE PRIZE WHEEL'S SHOP"
+#| msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
 msgctxt "skins.rule_trails"
-msgid "BUY OR WIN TRAILS AT THE PRIZE WHEEL"
+msgid "WIN TRAILS AT THE PRIZE WHEEL"
 msgstr "룰렛 상점에서 흔적을 사세요"
 
 #: scripts/ui/skins_screen.gd
@@ -3292,6 +3286,11 @@ msgstr ""
 msgctxt "web.in_app"
 msgid "Plays best in Chrome or Safari: tap the menu (... or the share icon) and choose Open in browser."
 msgstr ""
+
+#~ msgctxt "wheel.need_to_spin"
+#~ msgid "NEED {count} TICKET TO SPIN"
+#~ msgid_plural "NEED {count} TICKETS TO SPIN"
+#~ msgstr[0] "돌리려면 티켓 {count}장 필요"
 
 #~ msgctxt "wheel.hats_left"
 #~ msgid "{count} HAT TO WIN"

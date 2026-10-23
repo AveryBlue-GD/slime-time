@@ -1,8 +1,8 @@
 class_name Cosmetics
 extends RefCounted
 
-## Ticket cosmetics v1 (upgrades v2 batch 2, docs/design/upgrades-v2.md C.2): five goo TRAIL styles
-## and map PAPERS (each a bundle: its sheet, its walls and its route, worn together; Progress.map_paper), sold in the hat wheel's SHOP tab (prices: Economy.COSMETICS), owned for
+## Ticket cosmetics v1 (upgrades v2 batch 2, docs/design/upgrades-v2.md C.2): goo TRAIL styles (won on the prize wheel since 2026-10-23, never sold)
+## and map PAPERS (each a bundle: its sheet, its walls and its route, worn together; Progress.map_paper), the papers sold in the prize wheel's SHOP tab (prices: Economy.COSMETICS), owned for
 ## good (Progress.cosmetics_owned), worn one at a time (Progress.trail_style / map_paper; the
 ## defaults DEFAULT_TRAIL and DEFAULT_PAPER are free and always owned). All palette / pattern work:
 ## no new sprite sheets, and nothing in a shader indexes an array at run time.
@@ -21,11 +21,14 @@ const DEFAULT_TRAIL := "skin"
 const DEFAULT_PAPER := "parchment"
 
 const LIST := [
-	{id = "ink", kind = TRAIL, name = "INK TRAIL", about = "DEEP INKY GOO"},  # i18n: ignore (English source; shown via display_name)
-	{id = "glow", kind = TRAIL, name = "GLOW TRAIL", about = "THICK GLOWING GOO"},  # i18n: ignore (English source; shown via display_name)
-	{id = "gold", kind = TRAIL, name = "GOLD TRAIL", about = "CHALICE GOLD, ANY SKIN"},  # i18n: ignore (English source; shown via display_name)
-	{id = "candy", kind = TRAIL, name = "CANDY TRAIL", about = "SWEET STRIPES"},  # i18n: ignore (English source; shown via display_name)
-	{id = "starry", kind = TRAIL, name = "STARRY TRAIL", about = "SPECKLED WITH STARS"},  # i18n: ignore (English source; shown via display_name)
+	# The first five trails were sold in the SHOP until 2026-10-23; now they are common prizes on the
+	# prize wheel like the rest (`wheel`, owner: "I want them all in the wheel"). One bought before
+	# stays owned (the save keeps every listed cosmetic it holds).
+	{id = "ink", kind = TRAIL, name = "INK TRAIL", about = "DEEP INKY GOO", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "glow", kind = TRAIL, name = "GLOW TRAIL", about = "THICK GLOWING GOO", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "gold", kind = TRAIL, name = "GOLD TRAIL", about = "CHALICE GOLD, ANY SKIN", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "candy", kind = TRAIL, name = "CANDY TRAIL", about = "SWEET STRIPES", wheel = true},  # i18n: ignore (English source; shown via display_name)
+	{id = "starry", kind = TRAIL, name = "STARRY TRAIL", about = "SPECKLED WITH STARS", wheel = true},  # i18n: ignore (English source; shown via display_name)
 	{id = "blueprint", kind = PAPER, name = "BLUEPRINT PAPER", about = "BLUE PAPER, WHITE INK"},  # i18n: ignore (English source; shown via display_name)
 	{id = "night", kind = PAPER, name = "NIGHT PAPER", about = "DARK PAPER, SKIN INK"},  # i18n: ignore (English source; shown via display_name)
 	{id = "goldleaf", kind = PAPER, name = "GOLD LEAF PAPER", about = "CREAM PAPER, GOLD INK"},  # i18n: ignore (English source; shown via display_name)
@@ -42,7 +45,7 @@ const LIST := [
 	{id = "prism_paper", kind = PAPER, name = "PRISM PAPER", about = "TURNS THROUGH THE COLORS", flow = "prism"},  # i18n: ignore (English source; shown via display_name)
 	# Earned, never sold (not in the SHOP; `earned` says how): DESCENT batch 3.
 	{id = "abyss", kind = TRAIL, name = "ABYSS TRAIL", about = "DARK GOO, FAINT STARS", earned = "REACH DESCENT FLOOR 10"},  # i18n: ignore (English source; shown via display_name)
-	# Wheel trails (trail-preview branch, ideas/trail-ideas.md): ten trail styles won on the prize wheel
+	# Wheel trails (trail-preview branch, ideas/trail-ideas.md): ten more trail styles won on the prize wheel
 	# (`wheel`: never sold, Progress.hats_left / win_hat; PULSE, GHOST, PIXEL are rare:
 	# Economy.WHEEL_RARE). Painted per cell (trail_cell_at); TOXIC / FROST / GHOST also use a
 	# trail.gdshader `fx` effect.

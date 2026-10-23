@@ -85,7 +85,8 @@ const SPIN_BOTTOM := 171.0
 const STATUS_BOTTOM := 160.0
 ## The status lines' width when they must wrap (clear of the try-on slimes).
 const STATUS_W := 240.0
-const SECTIONS := ["hats", "trails", "papers"]
+## (Trails are prizes on the wheel, never sold: the SHOP has DYES and PAPERS.)
+const SECTIONS := ["hats", "papers"]
 ## Where the try-on slimes stand (centers): either side of the wheel at 2x after a win, or of the
 ## text under the shop grid at 1x (clear of the grid's last row, whatever hat).
 const TRY_ON := {"wheel": [Vector2(56, 92), Vector2(264, 92)], "shop": [Vector2(30, 154), Vector2(290, 154)]}
@@ -473,7 +474,7 @@ func _refresh_wheel() -> void:
 	elif Progress.demo_wheel_block() != "":
 		result.text = Demo.wheel_block_text(Progress.demo_wheel_block())  # (the demo: hats used up / not open yet)
 	elif not can:
-		result.text = Loc.n("wheel.need_to_spin", "NEED {count} TICKET TO SPIN", "NEED {count} TICKETS TO SPIN", cost)
+		result.text = ""  # (too few tickets: SPIN shows the price and stays dark, owner 2026-10-23)
 	else:
 		# (touch: no key, the SPIN button)
 		# i18n: the hint under the wheel, {key} = the use key's name; max 200px, 1 line
