@@ -1547,7 +1547,7 @@ static func random_length_factor(seed_value: int, seed_level := 0, hard := false
 	if not Economy.pay_by_length():
 		return 1.0
 	var route := Levels.random_route_cells(seed_value, hard, seed_level)
-	var typical := Levels.random_route_cells_for(Economy.LENGTH_TYPICAL_PERMILLE, 0 if hard else seed_level)
+	var typical := Levels.random_route_cells_for(roundi(Levels.RANDOM_HARD_TARGET * 1000) if hard else Economy.LENGTH_TYPICAL_PERMILLE, 0 if hard else seed_level)
 	return clampf(float(route) / float(maxi(typical, 1)), Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
 
 
