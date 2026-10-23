@@ -301,6 +301,13 @@ msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
 msgstr "CIEMNA MAŹ, BLADE GWIAZDY"
 
+#. button (demo: plays the FULL GAME PREVIEW maze), on the win row beside CONTINUE and on the end screen's bottom row, max 120px, 1 line
+#. budget: max 120px, lines 1
+#: scripts/demo.gd
+msgctxt "demo.try_full_game"
+msgid "TRY THE FULL GAME"
+msgstr ""
+
 #. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
 #: scripts/demo.gd

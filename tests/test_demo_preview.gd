@@ -22,6 +22,7 @@ func _initialize() -> void:
 	Demo.strip_test = true
 	Demo.denied.clear()
 	await _check_preview()
+	await _check_try_button()
 	Platform.reset_overrides()
 	Demo.strip_test = false
 	_result()
@@ -97,6 +98,12 @@ func _check_preview() -> void:
 	game.slime.position += Vector2.ZERO
 	await _physics_frames(10)
 	_check(game.slime.hold and game.run_time == clock_held and coach.skip_pod.visible, "the slime is held (no clock) while the line waits, SKIP shown")
+	var locked_ids := func() -> Array:
+		return game.touch_controls.abilities.filter(func(item: Dictionary) -> bool: return item.locked).map(func(item: Dictionary) -> String: return item.id)
+	var splat_left: int = runner.charges.splat
+	_check(not runner.use("splat") and runner.charges.splat == splat_left and not runner.start_aim("kaze") and runner.aiming == "",
+		"only the prompted ability works: GOO GRENADE / SLIMAKAZE do nothing during SLIME SNIPER's line")
+	_check(locked_ids.call() == ["splat", "kaze", "sense"], "...their buttons (and the HUD strip) show dimmed (%s)" % [locked_ids.call()])
 	runner.start_aim("rifle")
 	await _physics_frames(2)
 	_check(game.hud.training_line_text() == AbilityCoach.aim_line(), "aiming: %s" % AbilityCoach.aim_line())
@@ -111,6 +118,11 @@ func _check_preview() -> void:
 		widest = maxf(widest, UIKit.text_w(text))
 	_check(widest <= game.hud.TRAINING_LINE_W, "every coach line fits the line's %d px (widest %d)" % [game.hud.TRAINING_LINE_W, widest])
 	await _physics_frames(2)
+	_check(locked_ids.call() == ["rifle", "kaze", "sense"] and not runner.use("sense") and game.random_map_view == null,
+		"each one unlocks when its line comes up: GOO GRENADE's line, the others held back (%s)" % [locked_ids.call()])
+	coach.skip()
+	await _physics_frames(2)
+	_check(locked_ids.call().is_empty() and runner.locked.is_empty(), "SKIP: every ability works")
 	_check(runner.use("sense") and game.random_map_view != null, "SLIME SENSE peeks at the map")
 	game._close_run_map()
 	await _physics_frames(2)
@@ -193,3 +205,52 @@ func _check_preview() -> void:
 	Platform.demo_override = 1
 	_check(Demo.denied.is_empty(), "the preview loads nothing a stripped demo export leaves out (%s)" % [Demo.denied])
 	current_scene = null
+
+
+## TRY THE FULL GAME (owner, 2026-10-23): the level 4 chalice's win row offers it first (focused, beside CONTINUE)
+## and it goes straight into the preview maze with the ability tutorial, as the randomizer portal does.
+func _check_try_button() -> void:
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO
+	progress.levels_cleared = Demo.LEVELS - 1
+	progress.highest_unlocked = Demo.LEVELS
+	progress.start_story(Demo.LEVELS)
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._on_goal_body_entered(game.slime)
+	await _wait_seconds(game.CHOICE_DELAY + 0.3)
+	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
+	_check(game.won and texts == ["TRY THE FULL GAME", "CONTINUE"] and game.hud.choice_buttons[0].has_focus(),
+		"level %d's chalice: TRY THE FULL GAME (focused) and CONTINUE (%s)" % [Demo.LEVELS, texts])
+	_check(not progress.has_seen_story(progress.STORY_DEMO_PREVIEW), "...the preview not started yet")
+	game.hud.choice_buttons[0].pressed.emit()
+	var preview: Node = null
+	for i in 240:
+		await process_frame
+		if current_scene != null and current_scene != game and current_scene.get("preview") == true:
+			preview = current_scene
+			break
+	_check(preview != null and progress.in_demo_preview() and preview.random_seed == Demo.PREVIEW_SEED,
+		"...pressed: the FULL GAME PREVIEW maze (seed %d)" % (preview.random_seed if preview else 0))
+	if preview:
+		preview._close_preview_card()
+		await physics_frame
+		_check(preview.coach != null and preview.coach.steps.size() + (1 if preview.coach.current != "" else 0) == Abilities.ids().size(),
+			"...with the ability tutorial (every ability)")
+		preview.free()
+	current_scene = null
+	progress.end_demo_preview()
+	_check(not progress.in_demo_preview() and progress.levels_cleared == Demo.LEVELS, "...and afterwards the save is the player's (level %d cleared)" % Demo.LEVELS)
+	progress.hard_mode = true
+	progress.hard_cleared.clear()
+	progress.start_story(1)
+	var hard: Node2D = BASE_MAIN.instantiate()
+	root.add_child(hard)
+	current_scene = hard
+	await physics_frame
+	_check(not hard.can_try_full_game(), "hard level %d (the demo's last hard one): no TRY THE FULL GAME" % Demo.hard_levels())
+	hard.free()
+	current_scene = null
+	progress.hard_mode = false

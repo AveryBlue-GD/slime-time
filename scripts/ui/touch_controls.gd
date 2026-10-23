@@ -6,12 +6,12 @@ extends CanvasLayer
 ##   directions so the slime's lane assist still lines it up with corridors
 ## - right half: the JUMP button (hold to charge, aim with the joystick, release to leap)
 ## - top-right corner: pause
-## - ABILITIES (when the run has any): a small round button each, in a cluster left of the JUMP zone
-##   (ABILITY_SLOTS: each ability has its own spot, SLIMAKAZE the farthest from JUMP), with its icon
-##   and uses left; an ability fires on RELEASE, and only if the finger is still on its button (slide
-##   off to cancel). With buttons shown JUMP catches the right strip x >= JUMP_ZONE_X (not the whole
-##   right half), and a DEAD_RING gap between that zone and the buttons does nothing, so a thumb that
-##   misses JUMP still leaps (or does nothing) and never fires an ability.
+## - ABILITIES (when the run has any): a small round button each, in one row along the bottom (owner, 2026-10-23:
+##   between the joystick's home and JUMP, over the training line's bottom spot; each ability has its own spot, in
+##   Abilities order like the HUD strip), with its icon; an ability fires on RELEASE, and only if the finger is still on its button
+##   (slide off to cancel). A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
+##   misses one never moves or leaps, and JUMP's half never fires an ability. A button the ability tutorial
+##   holds back (`locked`, AbilityRunner.locked) is dimmed; its tap does nothing.
 ## Shown on touchscreens (Platform.has_touch: also the --touch debug flag); hidden again when a keyboard or a
 ## gamepad is used.
 
@@ -45,15 +45,17 @@ const PAUSE_TOUCH_MARGIN := 5.0
 ## from Esc by it).
 signal pause_tapped
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
-## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
-## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
-const ABILITY_SLOTS: Array[Vector2] = [Vector2(207, 150), Vector2(207, 122), Vector2(181, 136), Vector2(181, 108)]
+## ABILITIES: the row's first button center x (in Abilities order: rifle, splat, kaze, sense, ABILITY_STEP
+## apart, centred: x 101..219 with the gold ring, clear of the joystick's home ring (to x 60) and JUMP (from x 256)),
+## its center's lift over the training line's bottom spot (row_y), and the radius (the hit disc is ABILITY_HIT).
+const ABILITY_ROW_X := 115.0
+const ABILITY_STEP := 30.0
+const ABILITY_ROW_LIFT := 18.0
 const ABILITY_RADIUS := 11.0
 const ABILITY_HIT := ABILITY_RADIUS + 2.0
-## With ability buttons shown, JUMP catches every touch at x >= JUMP_ZONE_X (the full height, the
-## letterbox beyond the right edge too; minus pause); without them the whole right half as before.
-const JUMP_ZONE_X := 228.0
-## The gap kept between JUMP's catch zone and every ability hit disc: touches there do nothing.
+## The tutorial's gold ring round a button (ABILITY_RADIUS + COACH_RING, 2 px wide).
+const COACH_RING := 2.0
+## The gap kept round every ability hit disc where touches do nothing (no joystick, no JUMP).
 const DEAD_RING := 8.0
 ## [{id, left, max}] from AbilityRunner.strip (empty: no buttons).
 var abilities: Array[Dictionary] = []
@@ -146,13 +148,13 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
+	elif near_ability(pos):
+		pass  # (the dead ring round the ability buttons: a missed button does nothing)
 	elif pos.x < SCREEN.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
 			_joy_center = joystick_center_for(pos)
 			_move_joystick(pos)
-	elif not catches_jump(pos):
-		pass  # (abilities shown: the dead ring / the buttons' side of the right half)
 	elif _jump_touch == -1:
 		_jump_touch = index
 		_press("jump")
@@ -258,20 +260,44 @@ func ability_at(pos: Vector2) -> int:
 	return -1
 
 
-## The center of the button of `abilities[i]`: its ability's own spot (so SLIMAKAZE never takes the
-## spot nearest JUMP, whatever else is owned).
+## The center of the button of `abilities[i]`: its ability's own spot in the top row (the same whatever
+## else is owned).
 func slot_center(i: int) -> Vector2:
-	return ABILITY_SLOTS[clampi(Abilities.ids().find(abilities[i].id), 0, ABILITY_SLOTS.size() - 1)]
+	return Vector2(ABILITY_ROW_X + ABILITY_STEP * maxi(Abilities.ids().find(abilities[i].id), 0), row_y())
 
 
-## The left edge of JUMP's catch zone (x >= this counts as JUMP; the pause button is checked first).
+## The ability row's center line: over the HUD's bottom pod row (the training line's spot), the gold ring clear of it.
+static func row_y() -> float:
+	return SCREEN.y - UIKit.hud_edge().y - UIKit.pod_h() - ABILITY_ROW_LIFT
+
+
+## True within the dead ring round any ability button (touches there do nothing).
+func near_ability(pos: Vector2) -> bool:
+	for i in abilities.size():
+		if pos.distance_to(slot_center(i)) <= ABILITY_HIT + DEAD_RING:
+			return true
+	return false
+
+
+## The ability buttons' rect on screen, their gold ring included (empty while none show): the HUD's lines keep off it.
+func ability_row_rect() -> Rect2:
+	if not visible or menu_open or abilities.is_empty():
+		return Rect2()
+	var rect := Rect2(slot_center(0), Vector2.ZERO)
+	for i in abilities.size():
+		rect = rect.expand(slot_center(i))
+	return rect.grow(ABILITY_RADIUS + COACH_RING + 1.0)
+
+
+## The left edge of JUMP's catch zone (x >= this counts as JUMP; the pause button and the ability buttons'
+## dead ring are checked first).
 func jump_zone_left() -> float:
-	return JUMP_ZONE_X if not abilities.is_empty() else SCREEN.x / 2.0
+	return SCREEN.x / 2.0
 
 
 ## True if a touch at `pos` (not on pause or a button) goes to JUMP.
 func catches_jump(pos: Vector2) -> bool:
-	return pos.x >= jump_zone_left()
+	return pos.x >= jump_zone_left() and not near_ability(pos)
 
 
 ## The joystick's ring on screen while a thumb holds it (it floats to the thumb in the left half), empty at
@@ -355,20 +381,20 @@ func _draw_controls() -> void:
 	_canvas.draw_arc(JUMP_CENTER, radius, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, jump_baseline(font))).round(), jump_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
-	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used.
+	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used or while the tutorial holds it back.
 	for i in abilities.size():
 		var item: Dictionary = abilities[i]
 		var at := slot_center(i)
 		var held := false
 		for index: int in _ability_touch:
 			held = held or (_ability_touch[index] == i and ability_at(_ability_pos.get(index, at)) == i)
-		var ready := int(item.left) > 0
+		var ready: bool = int(item.left) > 0 and not item.get("locked", false)
 		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
 			Color(1, 1, 1, 0.95 if ready else 0.35))
 		if item.id == coach_id and fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0:
-			_canvas.draw_arc(at, ABILITY_RADIUS + 2.0, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
+			_canvas.draw_arc(at, ABILITY_RADIUS + COACH_RING, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
 	# Pause button: two bars (or the hub's home icon on phones).
 	_canvas.draw_rect(pause_rect, dim)
 	for r: Rect2i in (HOME_PIXELS if home_icon else PAUSE_PIXELS):
