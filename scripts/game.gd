@@ -631,7 +631,9 @@ func _pause_if_backgrounded() -> void:
 
 func _exit_tree() -> void:
 	_commit_survey()  # a run left mid-way (restart, quit to hub, upgrades) still adds what it saw
-	if progress:
+	if progress and not progress.in_demo_preview():
+		# (the demo's preview keeps its borrowed skin over restarts, owner bug 2026-10-23: the skin colours the goo
+		# trail that draws the map; Progress.end_demo_preview puts the player's own back)
 		progress.skin_override = ""
 
 

@@ -93,6 +93,9 @@ static func what(id: String) -> String:
 
 ## The coach line for ability `id`: its key (TAP on touch), its name and what it does.
 static func line(id: String) -> String:
+	if on_touch() and id in AbilityRunner.AIMED:
+		# i18n: ability tutorial line (touch, an aimed ability: hold its button, drag to aim, let go to fire), max 192px, 1 line; {name} = ability name
+		return Loc.t("coach.line_touch_aim", "HOLD {name}, AIM, RELEASE", {name = Abilities.display_name(id)})
 	if on_touch():
 		# i18n: ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 		return Loc.t("coach.line_touch", "TAP {name}: {what}", {name = Abilities.display_name(id), what = what(id)})
@@ -102,6 +105,9 @@ static func line(id: String) -> String:
 
 ## The line while an aimed ability's aim is up: how to fire it.
 static func aim_line() -> String:
+	if on_touch():
+		# i18n: ability tutorial line (touch, the aim is up while the button is held), max 192px, 1 line
+		return Loc.t("coach.aim_touch", "DRAG TO AIM, LET GO TO FIRE")
 	# i18n: ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
 	return Loc.t("coach.aim", "AIM, THEN {key} TO FIRE", {key = key_text("jump")})
 
