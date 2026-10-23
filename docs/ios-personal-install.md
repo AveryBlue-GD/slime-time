@@ -1,0 +1,36 @@
+# Dry Trying on your own iPhone (free, no App Store)
+
+The full game, installed straight from this Mac over a USB cable, signed with a free Apple ID ("Personal Team").
+Free installs stop opening after **7 days**; plug the phone in and press Play in Xcode again to renew (your save stays).
+TestFlight (send it to the phone without a cable, 90-day builds) needs the paid Apple Developer Program, $99/yr.
+
+## Once
+
+1. **Install Xcode**: App Store app on the Mac, search "Xcode", Get. Big download. Open it once and let it install
+   its extra parts (it asks; pick iOS).
+2. **Sign in**: Xcode > Settings (Cmd+,) > Accounts > the + button > Apple ID > your normal Apple ID.
+   A team called "Your Name (Personal Team)" appears.
+3. **Phone**: plug the iPhone into the Mac with its cable, unlock it, tap **Trust** and enter the phone's passcode.
+4. **Developer Mode** (iOS 16+): on the phone, Settings > Privacy & Security > Developer Mode (at the very bottom) > on.
+   The phone restarts; after it, tap Turn On. (If the switch isn't there yet, it shows up after step 5 tries once.)
+
+## Each build (and every 7 days to renew)
+
+5. Plug the phone in and unlock it. In Terminal, in the game folder: `./tools/ios_build.sh`. It exports the game,
+   builds and signs it with your Personal Team (read from Xcode's account settings; or pass the team id) and installs
+   it on the phone. No clicking in Xcode needed.
+6. The first time, the phone says "Untrusted Developer": Settings > General > **VPN & Device Management** > your
+   Apple ID > **Trust**. Then tap the Dry Trying icon.
+
+If the bundle id is ever taken, change `com.averyblue.drytrying` in the `iOS` preset to something unique.
+Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
+
+## Notes
+
+- The preset is `iOS` in `export_presets.cfg` (export project only, iOS 15+ (Xcode 27's minimum), placeholder team `ABCDE12345`; `ios_build.sh` fills the real
+  one for that build only; builds go to `build/ios` and `build/ios-derived`). Icon: `assets/ios/icon_1024.png` from
+  `tools/make_ios_icon.gd` (nearest-neighbor 16x of `icon.png`, no alpha). Landscape only (sensor landscape).
+- Touch controls are the game's own (`TouchControls`: joystick left half, JUMP right half, pause top right).
+- Saves live in the app (`user://` = the app's Documents); deleting the app deletes the save.
+- Store release later needs the paid program, a final bundle id (M8) and the port-time checks in
+  [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md).
