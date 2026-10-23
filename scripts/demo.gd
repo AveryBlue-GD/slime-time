@@ -45,8 +45,9 @@ const RANDOMIZER := true
 const WEB_RANDOMIZER := true
 const HAT_WHEEL := true
 const WEB_HAT_WHEEL := true
-## Randomizer wins before the end screen's pitch (shown once, after the RANDOM_WINS-th win). Every maze
-## is a new random one (random seed and start, a theme drawn from themes()), as in the full game.
+## Randomizer wins before the end screen's pitch (shown once, after the RANDOM_WINS-th win), with every maze a
+## new random one (random seed and start, a theme drawn from themes()), as in the full game. Only while PREVIEW is
+## off: with it on the demo's randomizer is the preview maze from its first use (owner, 2026-10-23).
 const RANDOM_WINS := 3
 ## The first GENTLE_MAZES randomizer mazes (counted by wins) are drawn only from seeds whose perfect route
 ## uses at most GENTLE_MAX_USAGE permille of the meter (Levels.random_usage_permille: about 70% of seeds),
@@ -73,13 +74,14 @@ const END_SCENE := "res://scenes/demo_end.tscn"
 ## map in their colors. Only names and colors: no later level data or art is needed. The first card is
 ## always the area right after the demo's last level (teasers(): 5), then these.
 const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
-## The FULL GAME PREVIEW (owner idea, 2026-10-22): the RANDOM_WINS-th randomizer win leads into one hand-picked
+## The FULL GAME PREVIEW (owner idea, 2026-10-22): the demo's randomizer portal leads into one hand-picked
 ## maze (PREVIEW_SEED at MORE SLIME PREVIEW_LEVEL, a demo theme) played with every ability at its top level and a
 ## random look from the full game (Progress.begin_demo_preview: skin, jelly / pastel, hat + dye, trail, paper), with
 ## no ticket pickups or pay, after a short card (game.gd); its win or dry-up goes straight to the randomizer's end
 ## screen. Everything it borrows is in memory only: the save is not written while it runs and the whole state from
-## before it comes back as it ends (Progress.end_demo_preview). First after the 3rd win (PREVIEW_SEEN_BIT), then every time the
-## randomizer portal is used (Progress.demo_preview_replay: no new seeds); false = no preview.
+## before it comes back as it ends (Progress.end_demo_preview). From the portal's first use after level 4 (owner, 2026-10-23:
+## no random mazes first; the first run has the ability tutorial, PREVIEW_SEEN_BIT), then every time (Progress.demo_preview_replay:
+## no new seeds, RESTART replays it, no NEW MAZE); false = no preview (the RANDOM_WINS random mazes instead).
 const PREVIEW := true
 const PREVIEW_SEED := 1854
 const PREVIEW_LEVEL := 3
@@ -89,7 +91,7 @@ const PREVIEW_SEEN_BIT := 16  # (= Progress.STORY_DEMO_PREVIEW: keep the two in 
 static var preview := false
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)
-## The randomizer's end screen (after RANDOM_WINS wins) was seen (Progress.story_seen bit).
+## The randomizer's end screen (after the preview maze, or RANDOM_WINS wins without it) was seen (Progress.story_seen bit).
 const RANDOM_END_SEEN_BIT := 8  # (= Progress.STORY_DEMO_RANDOM_END: keep the two in step)
 
 ## ---------------------------------------------------------------- tests

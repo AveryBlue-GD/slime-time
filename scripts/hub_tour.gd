@@ -224,6 +224,9 @@ func station_line(id: String) -> String:
 		"random":
 			if Demo.on() and not Demo.randomizer_open():
 				return Demo.full_game_text()  # (the web demo: no randomizer)
+			if Progress.is_randomizer_unlocked() and (Progress.demo_preview_due() or Progress.demo_preview_replay()):
+				# i18n: hub tour line (demo build: the portal plays the FULL GAME PREVIEW maze) in the hub prompt box (the use key follows), max 192px, 1 line
+				return Loc.t("hub.tour.random_preview", "A TASTE OF THE FULL GAME")
 			if Progress.is_randomizer_unlocked():
 				return Loc.t("hub.tour.random", "A NEW MAZE EVERY TIME, NO MERCY")
 			if Demo.on():
