@@ -81,6 +81,41 @@ static func random_daily_cap_on() -> bool:
 ## RANDOM_TICKET_PAY each when touched; a maze's taken pickups stay gone on its retries (in memory, per
 ## seed code), a typed / replayed seed has none, and an assisted or dev-toggled run's pay nothing.
 const RANDOM_CHALICE := true
+## IMP-02 (economy integrity). PICKUPS_ON_WIN: a random maze's ticket pickups are HELD during the run
+## and paid only with the chalice win (a dry-up, restart, NEW MAZE or leaving loses the held ones; a taken
+## pickup stays gone on the maze's retries). False = pay on touch, as before.
+const PICKUPS_ON_WIN := true
+## PAY_BY_LENGTH: a random win's table pay (RANDOM_ATTEMPT_PAY) is scaled by the maze's length factor
+## (Progress.random_length_factor: the seed's route in cells over the route of a typical maze, usage
+## 50%, at the same MORE SLIME level, so upgrades alone don't raise it), clamped to
+## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; the replay / seed-paid / no-MORE-SLIME caps
+## still apply after it. False = the table as is.
+const PAY_BY_LENGTH := true
+const LENGTH_TYPICAL_PERMILLE := 500
+const LENGTH_PAY_MIN := 0.6
+const LENGTH_PAY_MAX := 1.4
+## ABANDON_COUNTS: NEW MAZE or leaving for the hub after at least one move in a random maze counts as a
+## spent attempt: the next maze starts at the abandoned one's attempt count + 1 (up to the last pay tier);
+## a win resets it, and the first maze (or one after a win) starts at attempt 1. False = always 1.
+const ABANDON_COUNTS := true
+## Test hooks for the three (-1 follow the const, 0 off, 1 on), like `random_cap_force`.
+static var pickups_on_win_force := -1
+static var pay_by_length_force := -1
+static var abandon_counts_force := -1
+
+
+static func pickups_on_win() -> bool:
+	return PICKUPS_ON_WIN if pickups_on_win_force < 0 else pickups_on_win_force == 1
+
+
+static func pay_by_length() -> bool:
+	return PAY_BY_LENGTH if pay_by_length_force < 0 else pay_by_length_force == 1
+
+
+static func abandon_counts() -> bool:
+	return ABANDON_COUNTS if abandon_counts_force < 0 else abandon_counts_force == 1
+
+
 ## Standing still drains the meter (owner, 2026-10-22; Game._idle_drain): IDLE_DRAIN percent a second
 ## in any level once the slime has moved (not charging, not in training, never in the hub, paused or
 ## while a SLIME SENSE peek is up). `idle_drain_force` (-1 follow the const, 0 off, 1 on) is a test

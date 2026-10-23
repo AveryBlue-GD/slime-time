@@ -14,6 +14,11 @@ var failures := 0
 
 func _init() -> void:
 	Economy.idle_drain_force = 0  # (the suites' meter maths predate the idle drain; test_phase1 turns it on)
+	# (the suites' ticket maths predate IMP-02: pay on touch, the plain attempt table, every maze starts at attempt 1;
+	# test_economy_integrity turns the three on)
+	Economy.pickups_on_win_force = 0
+	Economy.pay_by_length_force = 0
+	Economy.abandon_counts_force = 0
 ## Throwaway files this run made through throwaway_save(); _result() deletes them.
 var _temp_files: Array[String] = []
 

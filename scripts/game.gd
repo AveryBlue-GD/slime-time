@@ -313,6 +313,8 @@ var seed_level := 0
 ## count, NEW MAZE starts over; Progress.random_attempts) and the key it is counted under.
 var attempt := 1
 var attempt_key := ""
+## Economy.PICKUPS_ON_WIN: the tickets the pickups taken this run are worth, paid with the win.
+var held_tickets := 0
 ## What the attempt pod shows for this run (-1 until it first shows).
 var _pod_offer := -1
 var _dev_pod_text := ""  # DevLog only
@@ -665,6 +667,8 @@ func _physics_process(delta: float) -> void:
 		_idle_drain(moved, delta)
 		if moved > 0.0:
 			last_slime_pos = pos
+			if attempt_key != "" and progress != null:
+				progress.random_moved = true  # (this maze now counts as tried: abandoning it spends the attempt)
 			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			trail_travel += moved
@@ -1853,7 +1857,10 @@ func _pick_up_tickets(pos: Vector2) -> void:
 		if pos.distance_to(ticket.position) > TicketPickup.REACH:
 			continue
 		tickets.erase(ticket)
-		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit())
+		var hold: bool = Economy.pickups_on_win()
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit(), hold)
+		if hold:
+			held_tickets += paid  # (shown as "+N" now, paid when the maze is won)
 		ticket.collect(self)
 		_sfx("coin", -4.0)
 		if paid > 0:
@@ -2023,7 +2030,7 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
-	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed)
+	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, progress.random_length_factor(random_seed, seed_level, hard_mode))
 	if no_credit():
 		due.tickets = 0
 	return due
@@ -2050,7 +2057,7 @@ func ticket_offer() -> int:
 func pickup_offer() -> int:
 	if finished or no_credit():
 		return 0
-	return tickets.size() * Economy.RANDOM_TICKET_PAY
+	return tickets.size() * Economy.RANDOM_TICKET_PAY + held_tickets
 
 
 ## The HUD's attempt pod, derived afresh from `attempt` and ticket_offer() (on the run's first frame
@@ -2234,7 +2241,7 @@ func _pick_up_drops(pos: Vector2) -> void:
 func _pod_inputs() -> Array:
 	if progress == null:
 		return []
-	return [attempt, wind_fired, dev_toggled, assisted, finished, won, tickets.size(), progress.utc_day(), progress.dev_tools,
+	return [attempt, wind_fired, dev_toggled, assisted, finished, won, tickets.size(), held_tickets, progress.utc_day(), progress.dev_tools,
 		progress.upgrades.get("slime", 0), progress.random_paid, progress.random_pay_day,
 		progress.random_paid_seeds.hash(), progress.random_seed_fresh, progress.descent_paid, progress.descent_pay_day,
 		descent_run.get("pot"), descent_run.get("gain"), descent_run.get("slot"), descent_run.get("ended"),
@@ -2467,13 +2474,16 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			random_text = Loc.lines([title, Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})])
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
-			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
+			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode))
 			var pastel_skin := Skins.pastel_unlocked_at(progress.randoms_won)
 			if pastel_skin != "" and progress.is_skin_unlocked(pastel_skin, false, true):
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)
 			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
+			if held_tickets > 0:  # the held pickups, paid now (Economy.PICKUPS_ON_WIN)
+				paid += progress.add_tickets(held_tickets)
+				held_tickets = 0
 			if paid > 0:
 				reward = {tickets = paid, attempt = attempt, cap = due.cap}
 				hud.show_rewards(reward)

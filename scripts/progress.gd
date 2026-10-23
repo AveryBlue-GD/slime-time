@@ -180,6 +180,10 @@ var random_offer_shown := {}
 ## Not saved: the ticket pickups (TicketPickup cells) taken in each randomizer maze (same keys as
 ## random_attempts), so its retries don't put them out again. Cleared with random_attempts.
 var random_tickets_taken := {}
+## Not saved (ABANDON_COUNTS): the attempts an abandoned maze used, the next maze's attempt count starts
+## from it; and whether the slime moved in the current maze (so leaving it counts as abandoning it).
+var random_attempt_base := 0
+var random_moved := false
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -1357,9 +1361,10 @@ func start_story(level: int) -> void:
 ## random_payout: the attempt table, capped at 1 for a typed / replayed seed or no MORE SLIME bought;
 ## 0 once today's 5 paying wins are used, while assisted (or dev toggles), or for a seed that already
 ## paid today). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
+func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0) -> int:
 	randoms_cleared += 1
 	randoms_won += 1
+	random_moved = false  # (a win is no abandoning: the next maze starts at attempt 1)
 	var paid := 0
 	if not assisted:
 		_check_pay_day()
@@ -1367,7 +1372,7 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(attempt, seed_value)
+		paid = random_tickets_due(attempt, seed_value, factor)
 		if paid > 0:
 			random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
 			if seed_value != 0:
@@ -1389,7 +1394,7 @@ static func random_attempt_key(seed_value: int, seed_level: int, hard := false) 
 
 ## Counts one more start of the maze under `key` and returns which attempt this is (1 = first).
 func begin_random_attempt(key: String) -> int:
-	random_attempts[key] = int(random_attempts.get(key, 0)) + 1
+	random_attempts[key] = int(random_attempts.get(key, random_attempt_base)) + 1
 	return random_attempts[key]
 
 
@@ -1400,18 +1405,32 @@ func random_ticket_taken(key: String, cell: Vector2i) -> bool:
 
 ## Takes the ticket pickup at `cell` of the maze under `key` and pays it (unless `unpaid`: an assisted
 ## or dev-toggled run takes it for nothing). Returns the tickets paid. Saves.
-func take_random_ticket(key: String, cell: Vector2i, unpaid := false) -> int:
+## With `held` (Economy.PICKUPS_ON_WIN) nothing is paid here: the amount it is worth is returned and the
+## caller holds it until the maze is won.
+func take_random_ticket(key: String, cell: Vector2i, unpaid := false, held := false) -> int:
 	if random_ticket_taken(key, cell):
 		return 0
 	var taken: Array = random_tickets_taken.get(key, [])
 	taken.append(cell)
 	random_tickets_taken[key] = taken
-	return 0 if unpaid else add_tickets(Economy.RANDOM_TICKET_PAY)
+	if unpaid:
+		return 0
+	return Economy.RANDOM_TICKET_PAY if held else add_tickets(Economy.RANDOM_TICKET_PAY)
 
 
-## Tickets a win pays on attempt `attempt` before any cap: 5, 4, 3, 2, then 1 from the fifth on.
+## Tickets a win pays on attempt `attempt` before any cap: 10, 8, 6, 4, 2, then 1 from the sixth on.
 static func tickets_for_attempt(attempt: int) -> int:
 	return RANDOM_ATTEMPT_PAY[clampi(attempt, 1, RANDOM_ATTEMPT_PAY.size()) - 1]
+
+
+## The pay factor of a maze (Economy.PAY_BY_LENGTH): its route in cells over a typical maze's route at the
+## same MORE SLIME level, clamped. Integer-derived, the same on every platform.
+static func random_length_factor(seed_value: int, seed_level := 0, hard := false) -> float:
+	if not Economy.pay_by_length():
+		return 1.0
+	var route := Levels.random_route_cells(seed_value, hard, seed_level)
+	var typical := Levels.random_route_cells_for(Economy.LENGTH_TYPICAL_PERMILLE, 0 if hard else seed_level)
+	return clampf(float(route) / float(maxi(typical, 1)), Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
 
 
 # ---------------------------------------------------------------- tickets and medals
@@ -1434,17 +1453,20 @@ func _check_pay_day() -> void:
 
 
 ## What a randomizer win on `attempt` would pay right now (see random_payout).
-func random_tickets_due(attempt := 1, seed_value := 0) -> int:
-	return random_payout(attempt, seed_value).tickets
+func random_tickets_due(attempt := 1, seed_value := 0, factor := 1.0) -> int:
+	return random_payout(attempt, seed_value, factor).tickets
 
 
 ## What a randomizer win on `attempt` of the maze `seed_value` would pay right now, and why it is
 ## less than the table says: {tickets, table, cap} with cap "" (full), "daily" (today's paying wins
 ## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
 ## or "slime" (no MORE SLIME bought: 1; never in dev mode, where everything is unlocked). Assisted / dev-toggled runs are the caller's (they pay 0).
-func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
+## `factor` = random_length_factor of the maze (1.0 = the table as is).
+func random_payout(attempt := 1, seed_value := 0, factor := 1.0) -> Dictionary:
 	_check_pay_day()
 	var table := tickets_for_attempt(attempt)
+	if factor != 1.0:
+		table = maxi(1, roundi(table * factor))
 	var open := not Economy.random_daily_cap_on() or utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
 	if not open:
 		return {tickets = 0, table = table, cap = "daily"}
@@ -1576,7 +1598,7 @@ var _preview_save: ConfigFile = null
 ## What isn't in a save but the preview changes (the randomizer's current maze, the worn-skin override).
 var _preview_live := {}
 const _PREVIEW_LIVE_KEYS: Array[String] = ["mode", "random_seed", "random_level", "random_seed_fresh", "randoms_cleared",
-	"random_attempts", "random_offer_shown", "random_tickets_taken", "skin_override", "hard_mode", "current_level", "return_to_game"]
+	"random_attempts", "random_attempt_base", "random_moved", "random_offer_shown", "random_tickets_taken", "skin_override", "hard_mode", "current_level", "return_to_game"]
 
 
 ## The preview's card was shown (once per preview; its restarts go straight in). Not saved.
@@ -1614,6 +1636,7 @@ func begin_demo_preview() -> void:
 	random_level = Demo.PREVIEW_LEVEL
 	random_seed_fresh = false
 	random_attempts.clear()
+	random_attempt_base = 0
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
 	_borrow_preview_look()
@@ -1971,7 +1994,13 @@ func new_random_maze() -> void:
 			random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
 	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
-	random_attempts.clear()  # a new maze starts counting at attempt 1
+	# a new maze starts counting at attempt 1, unless the last one was abandoned after a move (ABANDON_COUNTS)
+	var used := 0
+	for count in random_attempts.values():
+		used = maxi(used, int(count))
+	random_attempt_base = mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved else 0
+	random_moved = false
+	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
 
@@ -2627,6 +2656,8 @@ func reset_progress() -> void:
 	random_paid_seeds.clear()
 	random_seed_fresh = true
 	random_attempts.clear()
+	random_attempt_base = 0
+	random_moved = false
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
 	assist_level = 0
