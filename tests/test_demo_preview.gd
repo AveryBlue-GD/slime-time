@@ -23,6 +23,8 @@ func _initialize() -> void:
 	Demo.denied.clear()
 	await _check_preview()
 	await _check_restarts()
+	await _check_tutorial_restart(true)
+	await _check_tutorial_restart(false)
 	await _check_try_button()
 	Platform.reset_overrides()
 	Demo.strip_test = false
@@ -310,4 +312,64 @@ func _check_restarts() -> void:
 	_check(_fingerprint(game) == first, "...and after R's replay (%s)" % _fingerprint(game))
 	current_scene = null
 	game.free()
+	progress.end_demo_preview()
+
+
+
+## The preview starts over once its ability tutorial is done (owner, 2026-10-23): `skip` = by SKIP, else by using every
+## ability. NOW FOR REAL!, then the same maze and look, a full meter, a fresh clock and charges, no tutorial again, no aim
+## left up, and no save written.
+func _check_tutorial_restart(skip: bool) -> void:
+	var how := "SKIP" if skip else "every ability used"
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
+	progress.levels_cleared = Demo.LEVELS
+	progress.save_progress()
+	progress.start_random()
+	var disk := _disk()  # (the preview's seen bit was saved as it began: nothing after that)
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._close_preview_card()
+	var first := _fingerprint(game)
+	var coach: AbilityCoach = game.coach
+	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
+	var runner: AbilityRunner = game.get("abilities")
+	if skip:
+		runner.start_aim("rifle")
+		coach.skip()
+	else:
+		for id in Abilities.ids():
+			for i in 300:  # (its line up and the slime free to use it: SLIMAKAZE's dash and stun have to end first)
+				if coach.current == id and runner.can_use(id):
+					break
+				await physics_frame
+			runner.use(id)
+			game._close_run_map()
+			await _physics_frames(2)
+		await _wait_seconds(AbilityCoach.GAP + 0.2)
+		_check(game.hud.training_line_text() == AbilityCoach.done_line() and game.slime.hold,
+			"[%s] the last line, the slime held: %s" % [how, game.hud.training_line_text()])
+		await _wait_seconds(AbilityCoach.DONE_TIME)
+	await physics_frame
+	_check(game.hud.training_line_text() == "NOW FOR REAL!" and game.slime.hold and runner.aiming == "" and not game.slime.aim_lock,
+		"[%s] NOW FOR REAL!, the slime held, no aim up (%s)" % [how, game.hud.training_line_text()])
+	var restarted: Node = null
+	for i in 240:
+		await process_frame
+		if current_scene != null and current_scene != game:
+			restarted = current_scene
+			break
+	_check(restarted != null and restarted.preview and _fingerprint(restarted) == first,
+		"[%s] ...then the run starts over: the same maze and look (%s)" % [how, _fingerprint(restarted) if restarted else ""])
+	if restarted:
+		await physics_frame
+		var full: bool = restarted.slime_remaining >= 99.9
+		_check(restarted.coach == null and not restarted.preview_card_up and restarted.run_time < 0.1 and full
+			and restarted.abilities.charges.rifle == Abilities.charges("rifle", Abilities.max_level("rifle")),
+			"[%s] ...no tutorial again, no card, a fresh clock, a full meter and full charges" % how)
+		_check(progress.has_seen_story(progress.STORY_DEMO_PREVIEW_COACHED) and _disk() == disk, "[%s] ...the tutorial marked done, no save written" % how)
+		restarted.free()
+	current_scene = null
 	progress.end_demo_preview()

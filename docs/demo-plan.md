@@ -146,6 +146,11 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   training line pod: key (touch: TAP, the button blinks gold), name and what it does; the slime is held (turning only,
   no clock or drain) until that ability is used, SKIP (F / pad X / tap) ends it. Outside the preview it shows each
   ability's line once, in the first random maze with it (`tutorial_seen` bits 16-128; the demo: SLIME SNIPER).
+  Once the tutorial is done (every line, then THAT'S EVERY ABILITY) or SKIPped, the preview starts over (owner, 2026-10-23:
+  NOW FOR REAL!, then the same maze and look reloaded: a full meter, a fresh clock and charges, nothing opened or revealed,
+  no tutorial again; `AbilityCoach._begin_restart`, `game.restart_after_tutorial`). A tapped aim stops the slime dead
+  (no slide on under a held stick); on the phone a touch's emulated mouse click never fires an aim (it did: the stick
+  then moved the slime again, owner bug 2026-10-23).
   After the preview has played, the randomizer portal always plays it again (`Progress.demo_preview_replay`, owner
   2026-10-22: no new seeds), as just the maze (its tutorial is the first run's: `story_seen` bit 32).
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";

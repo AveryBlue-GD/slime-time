@@ -41,6 +41,7 @@ func _initialize() -> void:
 	await _inputs()
 	await _touch()
 	await _touch_aim()
+	await _touch_aim_held_stick()
 	await _modes()
 	await _store()
 	_saves()
@@ -1002,6 +1003,82 @@ func _touch_aim() -> void:
 	current_scene = null
 	progress.force_touch = false
 	await _stop(game)
+
+
+## On the phone (owner bug 2026-10-23): a thumb holds the stick (the slime gliding) while the other taps SLIME SNIPER. Real
+## events through Input (as iOS sends them, Godot's emulated mouse clicks included): from the tap the slime stops dead
+## (no slide on) and the stick only aims; JUMP let go fires; then the same held stick moves the slime again.
+func _touch_aim_held_stick() -> void:
+	_state({rifle = 3})
+	progress.force_touch = true
+	var game := await _spawn(4)
+	current_scene = game
+	var tc: TouchControls = game.touch_controls
+	var runner: AbilityRunner = game.abilities
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	runner.charges.rifle = 3
+	var dir := _dir_with(game, 1)
+	_place(game, _start_tile(game), dir)
+	await _physics_frames(2)
+	var stick := TouchControls.JOY_HOME
+	_real_touch(0, stick, true)
+	_real_drag(0, stick + Vector2(dir) * 18.0)
+	await _physics_frames(8)
+	_check(game.slime.velocity.length() > 1.0, "the held stick glides the slime (%s)" % game.slime.velocity)
+	var rifle := tc.slot_center(0)
+	_real_touch(1, rifle, true)
+	_real_touch(1, rifle, false)
+	await _physics_frames(1)
+	var at_tap: Vector2 = game.slime.position
+	await _physics_frames(30)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == 3 and game.slime.position == at_tap and game.slime.velocity == Vector2.ZERO,
+		"tap SLIME SNIPER with the stick held: the aim is up, nothing fired, the slime stops dead (moved %s)" % (game.slime.position - at_tap))
+	_check(runner.aim_dir == Abilities.aim8(Vector2(dir)), "...the held stick aims it (%s)" % runner.aim_dir)
+	_real_drag(0, stick + Vector2(-dir.y, dir.x) * 18.0)
+	await _physics_frames(10)
+	_check(runner.aim_dir == Abilities.aim8(Vector2(-dir.y, dir.x)) and game.slime.position == at_tap, "...turning the stick turns the aim, the slime stays (%s)" % runner.aim_dir)
+	_real_touch(2, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(3)
+	_check(runner.aiming == "rifle" and tc.cancel_shown() and game.slime.position == at_tap, "...JUMP held: the X shows, nothing fired, the slime stays")
+	_real_touch(2, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == 2, "...JUMP let go: it fires")
+	_real_drag(0, stick + Vector2(dir) * 18.0)
+	await _physics_frames(15)
+	_check(game.slime.position != at_tap, "...then the held stick moves the slime again")
+	_real_touch(0, stick, false)
+	current_scene = null
+	progress.force_touch = false
+	await _stop(game)
+
+
+## A touch as the device sends it: in window pixels into the root viewport (its whole input path: _input, the GUI,
+## _unhandled_input), followed, for a finger down / up, by the left click Godot emulates from it on the phone.
+func _real_touch(index: int, pos: Vector2, pressed: bool) -> void:
+	var at := root.get_final_transform() * pos
+	var event := InputEventScreenTouch.new()
+	event.index = index
+	event.position = at
+	event.pressed = pressed
+	root.push_input(event)
+	if true:  # (every finger: Godot emulates the mouse from each)
+		var click := InputEventMouseButton.new()
+		click.device = InputEvent.DEVICE_ID_EMULATION
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = at
+		click.global_position = at
+		root.push_input(click)
+
+
+func _real_drag(index: int, pos: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = root.get_final_transform() * pos
+	root.push_input(event)
 
 
 ## A touch drag straight into the controls.

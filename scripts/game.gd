@@ -2836,6 +2836,15 @@ func try_full_game() -> void:
 	get_tree().reload_current_scene()
 
 
+## The preview's ability tutorial is over (AbilityCoach): the same maze from the start, as the pause menu's RESTART does
+## (a reload: a full meter, a fresh clock and charges, nothing opened or revealed; the borrowed look stays).
+func restart_after_tutorial() -> void:
+	if _leaving() or finished:
+		return
+	DevLog.route(get_tree(), "NOW FOR REAL (preview restart)", self)
+	get_tree().reload_current_scene()
+
+
 ## The preview is over (its CONTINUE): the randomizer's end screen (DemoEnd puts the save's own state back).
 func leave_preview() -> void:
 	if _leaving():
