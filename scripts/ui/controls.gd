@@ -10,7 +10,6 @@ const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
 const LANGUAGE_SCENE := "res://scenes/language.tscn"
 const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
-const AchievementsScreen := preload("res://scripts/ui/achievements_screen.gd")
 ## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
 ## (web only) the browser refusing to copy, so the code is shown in the browser's own prompt.
 
@@ -297,7 +296,7 @@ func _build_achievements_button() -> void:
 	# i18n: settings button (top right corner), max 90px, grows with the text, 1 line; opens the achievements page
 	var text := Loc.t("hub.menu.achievements", "ACHIEVEMENTS")
 	achievements_button = UIKit.make_button(text, func() -> void:
-		AchievementsScreen.back_scene = "res://scenes/controls.tscn"  # (BACK returns to SETTINGS)
+		(load("res://scripts/ui/achievements_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"  # (BACK returns to SETTINGS)
 		UIKit.go(get_tree(), ACHIEVEMENTS_SCENE), UIKit.button_size(text, 90))
 	UIKit.note_text_w(achievements_button, [text], 90)
 	add_child(achievements_button)
