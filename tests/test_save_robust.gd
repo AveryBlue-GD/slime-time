@@ -102,7 +102,7 @@ func _initialize() -> void:
 		var now: String = FileAccess.get_md5(path) if FileAccess.file_exists(path) else ""
 		_e("real save %s untouched" % path, now == watched[path])
 	for path in scratch:
-		for f in [path, path + ".tmp", PROGRESS_SCRIPT.corrupt_backup_path(path, 1), PROGRESS_SCRIPT.corrupt_backup_path(path, 2), PROGRESS_SCRIPT.corrupt_backup_path(path, 3)]:
+		for f in [path, path + ".tmp", PROGRESS_SCRIPT.newer_backup_path(path), PROGRESS_SCRIPT.corrupt_backup_path(path, 1), PROGRESS_SCRIPT.corrupt_backup_path(path, 2), PROGRESS_SCRIPT.corrupt_backup_path(path, 3)]:
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	for line in known:
 		print("  KNOWN " + line)

@@ -775,7 +775,7 @@ func _lane_velocity(coord: float) -> float:
 
 
 func _fly(delta: float) -> void:
-	if frozen:
+	if frozen and get_parent().get("finished") == true:  # (only a level's result stops a leap; the hub's menus keep it going)
 		return  # (the level was won mid-leap: no more flight, splat or drain after the result)
 	var step := minf(JUMP_SPEED * delta, _jump_distance - _jump_traveled)
 	var collision := move_and_collide(_jump_dir * step)
