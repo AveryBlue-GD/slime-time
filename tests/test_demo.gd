@@ -91,14 +91,22 @@ func _check_stripped_run() -> void:
 		if not path.ends_with(".import") and ResourceLoader.has_cached(path):
 			loaded.append(path)
 	_check(loaded.is_empty(), "no full-only file was loaded during the demo run (%s)" % [loaded])
-	# Randomizer mazes, played stripped too: each attempt a new random maze (seed, start) in a demo theme.
+	# The randomizer portal after level 4: the FULL GAME PREVIEW maze straight away (owner, 2026-10-23; the rest of it
+	# in tests/test_demo_preview.gd).
+	var tour: Node = load("res://scripts/hub_tour.gd").new()
+	_check(tour.station_line("random") == "A TASTE OF THE FULL GAME", "...its tour line: %s" % tour.station_line("random"))
+	tour.free()
+	progress.start_random()
+	_check(progress.in_demo_preview() and progress.random_seed == Demo.PREVIEW_SEED and progress.mode == progress.MODE_RANDOM,
+		"after level %d the portal plays the preview maze (seed %d), no random maze first" % [Demo.LEVELS, progress.random_seed])
+	progress.end_demo_preview()
+	_check(not progress.in_demo_preview(), "...ended")
+	# Randomizer mazes (Demo.PREVIEW off, or one started another way), played stripped too: each attempt a new
+	# random maze (seed, start) in a demo theme.
 	var seen := {}
 	var starts := {}
 	for attempt in 6:
-		if attempt == 0:
-			progress.start_random()
-		else:
-			progress.new_random_maze()  # (NEW MAZE after a dry-up or a win)
+		_random_maze()  # (attempt 0: a fresh randomizer; later: NEW MAZE after a dry-up or a win)
 		var maze: Node2D = MAIN.instantiate()
 		root.add_child(maze)
 		await physics_frame
@@ -328,7 +336,8 @@ func _check_locks() -> void:
 	Platform.demo_override = 0
 	_check(progress.demo_wheel_block() == "" and progress.can_spin_hats(), "switch off: the wheel spins as always")
 	Platform.demo_override = 1
-	# Randomizer: after level 4, new random mazes (as the full game), the end screen after RANDOM_WINS wins.
+	# Randomizer: opens after level 4; its portal plays the FULL GAME PREVIEW maze (tests/test_demo_preview.gd). Without
+	# Demo.PREVIEW (and for any random maze started another way): new random mazes, the end screen after RANDOM_WINS wins.
 	progress.reset_progress()
 	progress.levels_cleared = Demo.LEVELS - 1
 	_check(not progress.is_randomizer_unlocked(), "randomizer locked before level %d" % Demo.LEVELS)
@@ -367,7 +376,7 @@ func _check_locks() -> void:
 	# Abilities in a maze: a full save's SPLAT / SLIMAKAZE don't work, RIFLE does.
 	progress.abilities = {rifle = 1, splat = 2, kaze = 3}
 	progress.tickets_lifetime = 5
-	progress.start_random()
+	_random_maze()
 	var maze: Node2D = MAIN.instantiate()
 	root.add_child(maze)
 	await physics_frame
@@ -547,18 +556,19 @@ func _check_screens() -> void:
 	_check(names.size() == 5 and names[0] == "TOXIC TUNNELS" and names[-1] == "VOLCANIC VAULT", "...teaser cards of later areas %s" % [names])
 	end.show_card(0)
 	_check(end.feature_label.text == "6 MORE AREAS", "...the first card counts the areas past the demo (%s)" % end.feature_label.text)
-	# Teasers name only full-game content (QA must-fix 4): nothing the demo already gives, no HEAT.
+	# Teasers name only full-game content (QA must-fix 4): nothing the demo already gives, no HEAT. (ENDLESS mazes
+	# are full-game content since 2026-10-23: the demo's randomizer is one preview maze.)
 	var lines: Array[String] = [DemoEnd.top_line(DemoEnd.FROM_RANDOM)]
 	for i in Demo.teasers().size():
 		end.show_card(i)
 		lines.append(end.feature_label.text)
 	var banned: Array[String] = []
 	for text in lines:
-		for word in ["HEAT", "ENDLESS", "JELLY", "HATS", "LOOP", "HARD MODE", "NEW ABILITIES"]:
+		for word in ["HEAT", "JELLY", "HATS", "LOOP", "HARD MODE", "NEW ABILITIES"]:
 			if word in text:
 				banned.append("%s (%s)" % [text, word])
 	_check(banned.is_empty() and "3 MORE ABILITIES" in lines and "9 MORE HARD LEVELS" in lines
-		and lines[0] == "THE FULL GAME ADDS 3 ABILITIES AND THE SHOP", "...teaser lines only name full-game content %s %s" % [lines, banned])
+		and lines[0] == "THE FULL GAME ADDS ENDLESS MAZES AND THE SHOP", "...teaser lines only name full-game content %s %s" % [lines, banned])
 	var inside := true
 	for control: Control in [end.keep_button, end.arrows[0], end.arrows[1]]:
 		var rect := control.get_global_rect()
@@ -572,7 +582,7 @@ func _check_screens() -> void:
 	end.free()
 	Platform.override = ""
 	# Pause menu: no seed typing, no WISHLIST while the URL is empty.
-	progress.start_random()
+	_random_maze()
 	var maze: Node2D = MAIN.instantiate()
 	root.add_child(maze)
 	await physics_frame
@@ -784,3 +794,9 @@ func _open(path: String) -> Node:
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
+
+
+## A demo random maze as the randomizer starts one without Demo.PREVIEW (its portal plays the preview maze instead).
+func _random_maze() -> void:
+	progress.mode = progress.MODE_RANDOM
+	progress.new_random_maze()

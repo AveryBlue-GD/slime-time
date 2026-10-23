@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## The demo's FULL GAME PREVIEW (Demo.PREVIEW, Progress.begin_demo_preview / end_demo_preview, game.gd `preview`):
-## the RANDOM_WINS-th randomizer win leads into one fixed maze with every ability and a borrowed look, its card
+## the randomizer portal's first use after the demo's levels leads into one fixed maze with every ability and a borrowed look, its card
 ## first, no attempts / pickups / pay, CONTINUE only into the end screen; nothing it borrows reaches the save
 ## (none written meanwhile, the state from before put back after); after it the randomizer portal always plays it again
 ## (just the maze: the ability tutorial is its first run's). The ability tutorial (AbilityCoach): a line per ability,
@@ -36,24 +36,24 @@ func _check_preview() -> void:
 	progress.reset_progress()
 	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
 	progress.levels_cleared = Demo.LEVELS
-	progress.randoms_won = Demo.RANDOM_WINS
+	progress.randoms_won = 0
 	progress.tickets = 7
 	progress.tickets_lifetime = 12
 	progress.abilities = {rifle = 1}
 	progress.selected_skin = "lemon"
-	progress.start_random()
+	progress.random_seed = 4242
 	progress.save_progress()
-	_check(progress.demo_preview_due(), "after the demo's randomizer wins the preview is due")
+	_check(progress.demo_preview_due(), "right after the demo's levels the preview is due (no randomizer wins first, owner 2026-10-23)")
 	Platform.demo_override = 0
 	_check(not progress.demo_preview_due(), "...never in the full game")
 	Platform.demo_override = 1
 	var player_seed: int = progress.random_seed
 
-	progress.begin_demo_preview()
+	progress.start_random()  # (the randomizer portal's first use after the demo's END OF THE DEMO screen)
 	var saved_at_start := _disk()
 	_check(progress.in_demo_preview() and Demo.preview and progress.has_seen_story(progress.STORY_DEMO_PREVIEW)
 		and "story_seen=%d" % progress.story_seen in saved_at_start,
-		"begin: the preview runs, its seen bit is saved first (plays once)")
+		"the portal's first use: the preview runs, its seen bit is saved first (its first run plays once)")
 	_check(progress.random_seed == Demo.PREVIEW_SEED and progress.mode == progress.MODE_RANDOM and not progress.hard_mode,
 		"the hand-picked seed, a normal randomizer maze")
 	var all_abilities := true
@@ -117,7 +117,7 @@ func _check_preview() -> void:
 	var tickets_before: int = progress.tickets
 	game._on_goal_body_entered(game.slime)
 	await _wait_seconds(game.CHOICE_DELAY + 0.3)
-	_check(game.won and game.hud.choice_buttons.size() == 1 and progress.tickets == tickets_before and progress.randoms_won == Demo.RANDOM_WINS,
+	_check(game.won and game.hud.choice_buttons.size() == 1 and progress.tickets == tickets_before and progress.randoms_won == 0,
 		"a win pays and counts nothing, CONTINUE only")
 	_check(game.preview_exit() == DemoEnd.SCENE and DemoEnd.from == DemoEnd.FROM_RANDOM, "QUIT in the pause menu goes on to the randomizer's end screen")
 	game.free()
@@ -125,11 +125,19 @@ func _check_preview() -> void:
 	root.add_child(again)
 	current_scene = again
 	await physics_frame
-	_check(again.preview and not again.preview_card_up, "a restart goes straight in (the card is once)")
+	_check(again.preview and not again.preview_card_up and again.random_seed == Demo.PREVIEW_SEED and progress.random_seed == Demo.PREVIEW_SEED,
+		"a restart goes straight in (the card is once), the same maze (seed %d)" % again.random_seed)
 	again._dry_up()
 	await _wait_seconds(again.DRY_CHOICE_DELAY + 0.3)
-	_check(again.hud.choice_buttons.size() == 1, "a dry-up offers CONTINUE only")
+	_check(again.hud.choice_buttons.size() == 1 and again.hud.choice_buttons[0].text == "CONTINUE",
+		"a dry-up offers CONTINUE only (no NEW MAZE: %s)" % again.hud.choice_buttons[0].text)
 	again.free()
+	var reset: Node2D = BASE_MAIN.instantiate()
+	root.add_child(reset)
+	current_scene = reset
+	await physics_frame
+	_check(reset.preview and reset.random_seed == Demo.PREVIEW_SEED, "...and the restart after that dry-up is the same maze again")
+	reset.free()
 
 	# The end: everything from before is back, and saving with it.
 	var seen_then: int = progress.STORY_INTRO | progress.STORY_DEMO_END | progress.STORY_DEMO_PREVIEW
@@ -147,7 +155,7 @@ func _check_preview() -> void:
 	progress.story_seen = seen_then | progress.STORY_DEMO_PREVIEW_COACHED
 	progress.save_progress()
 	var after_first := _disk()
-	_check(not progress.demo_preview_due(), "the 3rd win's preview is once")
+	_check(not progress.demo_preview_due(), "the first entry's preview (with its tutorial) is once")
 	progress.end_demo_preview()  # (twice is harmless)
 	_check(progress._write().encode_to_text() == after_first, "a second end_demo_preview changes nothing")
 	# The randomizer portal after the demo: the preview maze again, without its tutorial.
@@ -161,14 +169,15 @@ func _check_preview() -> void:
 	replay.free()
 	progress.end_demo_preview()
 	_check(progress._write().encode_to_text() == after_first, "...and leaves the save as it was")
-	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END  # (a demo whose preview hasn't played: its own randomizer)
-	# Outside the preview: each ability's line once (the demo's own randomizer: SLIME SNIPER), then never again.
+	# Outside the preview (the full game's randomizer): each ability's line once, for the ones you have (SLIME SNIPER).
+	Platform.demo_override = 0
 	progress.start_random()
+	_check(not progress.in_demo_preview() and progress.random_seed != Demo.PREVIEW_SEED, "the full game's portal: a new random maze")
 	var maze: Node2D = BASE_MAIN.instantiate()
 	root.add_child(maze)
 	current_scene = maze
 	await physics_frame
-	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a demo random maze coaches SLIME SNIPER the first time")
+	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a random maze coaches SLIME SNIPER the first time")
 	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
 	_check(maze.slime.hold and maze.coach.current == "rifle", "...holding the slime")
 	maze.coach.skip()
@@ -181,5 +190,6 @@ func _check_preview() -> void:
 	await physics_frame
 	_check(later.coach == null, "...and not again")
 	later.free()
+	Platform.demo_override = 1
 	_check(Demo.denied.is_empty(), "the preview loads nothing a stripped demo export leaves out (%s)" % [Demo.denied])
 	current_scene = null

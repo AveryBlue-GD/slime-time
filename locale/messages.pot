@@ -1190,6 +1190,13 @@ msgctxt "hub.tour.coins_practice"
 msgid "THE PRACTICE COIN WAS FAKE. SORRY"
 msgstr ""
 
+#. hub tour line (demo build: the portal plays the FULL GAME PREVIEW maze) in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.random_preview"
+msgid "A TASTE OF THE FULL GAME"
+msgstr ""
+
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.random"
 msgid "A NEW MAZE EVERY TIME, NO MERCY"
@@ -1920,11 +1927,11 @@ msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
 msgstr ""
 
-#. demo end screen, line under the title, max 300px, 1 line; {count} = abilities the demo lacks (2)
+#. demo end screen, line under the title, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.end.random"
-msgid "THE FULL GAME ADDS {count} ABILITIES AND THE SHOP"
+msgid "THE FULL GAME ADDS ENDLESS MAZES AND THE SHOP"
 msgstr ""
 
 #. demo end screen, line under the title (the story's voice: the slime climbs to daylight), max 300px, 1 line
