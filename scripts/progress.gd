@@ -180,6 +180,8 @@ var random_offer_shown := {}
 ## Not saved: the ticket pickups (TicketPickup cells) taken in each randomizer maze (same keys as
 ## random_attempts), so its retries don't put them out again. Cleared with random_attempts.
 var random_tickets_taken := {}
+## The taken pickups whose pay is still held for the win (key -> cells): a retry before the win puts them back in the maze.
+var random_tickets_held := {}
 ## Not saved (ABANDON_COUNTS): the attempts an abandoned maze used, the next maze's attempt count starts
 ## from it; and whether the slime moved in the current maze (so leaving it counts as abandoning it).
 var random_attempt_base := 0
@@ -1225,10 +1227,10 @@ static func is_demo_save(file: ConfigFile) -> bool:
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
 ## mode it also unlocks that level's solid skin.
-func complete_level(level: int, save := true) -> void:
+func complete_level(level: int, save := true, credit := true) -> void:
 	if level < 1 or level > Levels.COUNT:
 		return  # (not a story level: a randomizer maze or a Descent floor has level 0)
-	if hard_mode and not level in hard_cleared:
+	if hard_mode and credit and not level in hard_cleared:  # (a no-credit run, e.g. RELAXED, earns no hard-mode skin)
 		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
 	dry_ups.erase(level)
@@ -1498,6 +1500,14 @@ static func random_attempt_key(seed_value: int, seed_level: int, hard := false) 
 
 ## Counts one more start of the maze under `key` and returns which attempt this is (1 = first).
 func begin_random_attempt(key: String) -> int:
+	# A pickup taken but not yet paid (held for the win) was lost with the last attempt: it is in the maze again.
+	var lost: Array = random_tickets_held.get(key, [])
+	if not lost.is_empty():
+		var taken: Array = random_tickets_taken.get(key, [])
+		for cell: Vector2i in lost:
+			taken.erase(cell)
+		random_tickets_taken[key] = taken
+	random_tickets_held.erase(key)
 	random_attempts[key] = int(random_attempts.get(key, random_attempt_base)) + 1
 	return random_attempts[key]
 
@@ -1517,6 +1527,10 @@ func take_random_ticket(key: String, cell: Vector2i, unpaid := false, held := fa
 	var taken: Array = random_tickets_taken.get(key, [])
 	taken.append(cell)
 	random_tickets_taken[key] = taken
+	if held and not unpaid:
+		var cells: Array = random_tickets_held.get(key, [])
+		cells.append(cell)
+		random_tickets_held[key] = cells
 	if unpaid:
 		return 0
 	return Economy.RANDOM_TICKET_PAY if held else add_tickets(Economy.RANDOM_TICKET_PAY)
@@ -1721,6 +1735,7 @@ func start_daily() -> void:
 	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 
 
 ## True when a daily win is already recorded for today.
@@ -1802,6 +1817,7 @@ func begin_demo_preview() -> void:
 	random_attempt_base = 0
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 	_borrow_preview_look()
 	for id in Abilities.ids():
 		abilities[id] = Abilities.max_level(id)
@@ -2174,6 +2190,7 @@ func new_random_maze() -> void:
 	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 
 
 # ---------------------------------------------------------------- skins
@@ -2831,6 +2848,7 @@ func reset_progress() -> void:
 	random_moved = false
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false

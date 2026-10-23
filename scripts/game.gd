@@ -2519,6 +2519,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			if held_tickets > 0:  # the held pickups, paid now (Economy.PICKUPS_ON_WIN)
 				paid += progress.add_tickets(held_tickets)
 				held_tickets = 0
+				progress.random_tickets_held.clear()  # (paid: a replay of this maze doesn't put them back)
 			if paid > 0:
 				reward = {tickets = paid, attempt = attempt, cap = due.cap}
 				hud.show_rewards(reward)
@@ -2542,7 +2543,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	var lines := [Loc.t("result.chalice", "CHALICE CONSUMED!"),
 		Loc.t("result.level_cleared", "LEVEL {level} CLEARED", {level = level})]
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
-	var first_hard_clear: bool = progress != null and hard_mode and not level in progress.hard_cleared
+	var first_hard_clear: bool = progress != null and hard_mode and not no_credit() and not level in progress.hard_cleared
 	var first_story_clear: bool = progress != null and progress.levels_cleared < level
 	# Records: a first clear just sets the record; only beating an existing one celebrates.
 	var best: float = progress.best_time(level) if progress else -1.0
@@ -2652,7 +2653,7 @@ func _finish(did_win: bool, text: String) -> void:
 	if progress:
 		if not is_random() and not descent and not training and no_credit():
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
-			progress.complete_level(level)
+			progress.complete_level(level, true, false)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
 	if _is_running_scene() and not _leaving():
 		_offer_next_steps()

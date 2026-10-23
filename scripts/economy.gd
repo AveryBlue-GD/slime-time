@@ -91,7 +91,7 @@ const PICKUPS_ON_WIN := true
 ## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; the replay / seed-paid / no-MORE-SLIME caps
 ## still apply after it. False = the table as is.
 const PAY_BY_LENGTH := true
-const LENGTH_TYPICAL_PERMILLE := 500
+const LENGTH_TYPICAL_PERMILLE := 578  # (the usage median, Levels.USAGE_QUANTILES)
 const LENGTH_PAY_MIN := 0.6
 const LENGTH_PAY_MAX := 1.4
 ## ABANDON_COUNTS: NEW MAZE or leaving for the hub after at least one move in a random maze counts as a
