@@ -40,6 +40,7 @@ func _initialize() -> void:
 	await _sense()
 	await _inputs()
 	await _touch()
+	await _touch_aim()
 	await _modes()
 	await _store()
 	_saves()
@@ -843,6 +844,66 @@ func _touch() -> void:
 		"lifting the finger on the button fires SLIME RIFLE (no JUMP, nothing left held)")
 	progress.force_touch = false
 	await _stop(game)
+
+
+## Touch aiming (owner, 2026-10-23, as on the PC): holding SLIME SNIPER / GOO GRENADE's button brings up its aim guide,
+## a drag turns it (8 ways), letting go fires along it; back on the button or off the screen calls it off; a tap fires ahead.
+func _touch_aim() -> void:
+	_state({rifle = 3, splat = 3})
+	progress.force_touch = true
+	var game := await _spawn(4)
+	var tc: TouchControls = game.touch_controls
+	var runner: AbilityRunner = game.abilities
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	_place(game, _start_tile(game), _dir_with(game, 1))
+	await _physics_frames(2)
+	var rifle := tc.slot_center(0)
+	var left: int = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	await _physics_frames(1)
+	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left, "touch: holding SLIME SNIPER's button shows its aim (nothing spent)")
+	_drag(tc, 4, rifle + Vector2(0, -40))
+	_check(runner.aim_dir == Vector2i(0, -1), "...dragging up aims up (%s)" % runner.aim_dir)
+	_drag(tc, 4, rifle + Vector2(30, -30))
+	_check(runner.aim_dir == Vector2i(1, -1), "...up-right: a diagonal, 8 ways as on the PC (%s)" % runner.aim_dir)
+	_tap(tc, 4, rifle + Vector2(30, -30), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left - 1 and game.slime.facing.is_equal_approx(Vector2(1, -1).normalized()),
+		"...letting go fires it along the aim")
+	await _physics_frames(30)
+	left = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	_drag(tc, 4, rifle + Vector2(0, -40))
+	_drag(tc, 4, rifle + Vector2(1, 1))
+	_tap(tc, 4, rifle + Vector2(1, 1), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left and not game.slime.aim_lock, "...dragged back onto the button and let go: called off")
+	var splat := tc.slot_center(1)
+	var bombs: int = runner.charges.splat
+	_tap(tc, 5, splat, true)
+	_drag(tc, 5, splat + Vector2(-40, 0))
+	_check(runner.aiming == "splat" and runner.aim_dir == Vector2i(-1, 0), "GOO GRENADE aims the same way (%s)" % runner.aim_dir)
+	_drag(tc, 5, Vector2(splat.x, 200))
+	_tap(tc, 5, Vector2(splat.x, 200), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.splat == bombs, "...let go off the screen: called off")
+	_tap(tc, 5, splat, true)
+	_tap(tc, 5, splat, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.splat == bombs - 1, "...a plain tap fires straight ahead")
+	progress.force_touch = false
+	await _stop(game)
+
+
+## A touch drag straight into the controls.
+func _drag(tc: TouchControls, index: int, pos: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = pos
+	tc._input(event)
 
 
 ## A touch event straight into the controls (viewport coordinates).

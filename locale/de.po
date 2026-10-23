@@ -76,6 +76,13 @@ msgctxt "coach.sense"
 msgid "PEEKS AT THE MAP"
 msgstr ""
 
+#. ability tutorial line (touch, an aimed ability: hold its button, drag to aim, let go to fire), max 192px, 1 line; {name} = ability name
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line_touch_aim"
+msgid "HOLD {name}, AIM, RELEASE"
+msgstr ""
+
 #. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
@@ -88,6 +95,13 @@ msgstr ""
 #: scripts/ability_coach.gd
 msgctxt "coach.line"
 msgid "{key} {name}: {what}"
+msgstr ""
+
+#. ability tutorial line (touch, the aim is up while the button is held), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim_touch"
+msgid "DRAG TO AIM, LET GO TO FIRE"
 msgstr ""
 
 #. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
