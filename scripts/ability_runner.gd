@@ -68,6 +68,9 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	owner_game.add_child(runner)
 	runner.slime.dash_hit.connect(runner._on_dash_hit)
 	owner_game.touch_controls.ability_tapped.connect(runner.use)
+	owner_game.touch_controls.ability_pressed.connect(runner._touch_aim_start)
+	owner_game.touch_controls.ability_aimed.connect(runner._touch_aim)
+	owner_game.touch_controls.ability_released.connect(runner._touch_aim_end)
 	runner._refresh()
 	return runner
 
@@ -149,6 +152,34 @@ func fire_aim() -> bool:
 	var fired := use(id, aim_dir)
 	slime.set_deferred("aim_lock", false)
 	return fired
+
+
+## Touch (TouchControls, an aimed ability's button held): the press brings up the aim, a drag past its button
+## turns it (8 ways), letting go fires it or calls it off.
+func _touch_aim_start(id: String) -> void:
+	if aiming != "" and aiming != id:
+		cancel_aim()
+	if aiming == "":
+		start_aim(id)
+
+
+func _touch_aim(id: String, offset: Vector2) -> void:
+	if aiming != id or offset.length() <= TouchControls.AIM_DRAG:
+		return
+	var want := Abilities.aim8(offset)
+	if want != aim_dir:
+		aim_dir = want
+		slime.facing = Vector2(aim_dir).normalized()
+		queue_redraw()
+
+
+func _touch_aim_end(id: String, fire: bool) -> void:
+	if aiming != id:
+		return
+	if fire:
+		fire_aim()
+	else:
+		cancel_aim()
 
 
 func _aim_step() -> void:

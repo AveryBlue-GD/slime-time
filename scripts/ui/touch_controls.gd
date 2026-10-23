@@ -9,7 +9,9 @@ extends CanvasLayer
 ## - ABILITIES (when the run has any): a small round button each, in one row along the bottom (owner, 2026-10-23:
 ##   between the joystick's home and JUMP, over the training line's bottom spot; each ability has its own spot, in
 ##   Abilities order like the HUD strip), with its icon; an ability fires on RELEASE, and only if the finger is still on its button
-##   (slide off to cancel). A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
+##   (slide off to cancel). An AIMED one (SLIME SNIPER, GOO GRENADE; owner 2026-10-23, as on the PC) aims instead: the press
+##   shows its aim guide (AbilityRunner aim mode), dragging away turns it (8 ways; the joystick too), letting go fires;
+##   a plain tap fires straight ahead; back on the button or off the screen when let go cancels. A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
 ##   misses one never moves or leaps, and JUMP's half never fires an ability. A button the ability tutorial
 ##   holds back (`locked`, AbilityRunner.locked) is dimmed; its tap does nothing.
 ## Shown on touchscreens (Platform.has_touch: also the --touch debug flag); hidden again when a keyboard or a
@@ -63,8 +65,16 @@ var abilities: Array[Dictionary] = []
 ## release, if still on that button.
 var _ability_touch := {}
 var _ability_pos := {}
-## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use).
+## Fingers on an aimed button that went past AIM_DRAG (back on the button then cancels).
+var _ability_dragged := {}
+## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use; not the aimed ones).
 signal ability_tapped(id: String)
+## An aimed ability's button: pressed (aim mode up), dragged (`offset` from its center), let go (`fire` or cancel).
+signal ability_pressed(id: String)
+signal ability_aimed(id: String, offset: Vector2)
+signal ability_released(id: String, fire: bool)
+## How far a finger drags off an aimed button's center before it turns the aim.
+const AIM_DRAG := ABILITY_HIT + 2.0
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
@@ -125,6 +135,12 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and _ability_touch.has(event.index):
 		_ability_pos[event.index] = event.position  # (the held look follows the finger on / off)
+		var slot: int = _ability_touch[event.index]
+		if slot < abilities.size() and aimed(abilities[slot].id):
+			var offset: Vector2 = event.position - slot_center(slot)
+			if offset.length() > AIM_DRAG:
+				_ability_dragged[event.index] = true
+			ability_aimed.emit(abilities[slot].id, offset)
 		_canvas.queue_redraw()
 		get_viewport().set_input_as_handled()
 
@@ -140,6 +156,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 	if slot >= 0:
 		_ability_touch[index] = slot
 		_ability_pos[index] = pos
+		if aimed(abilities[slot].id):
+			ability_pressed.emit(abilities[slot].id)
 	elif pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		_release_pause()  # (a second finger on it: the first one's press ends)
 		_pause_touch = index
@@ -164,9 +182,17 @@ func _touch_down(index: int, pos: Vector2) -> void:
 func _touch_up(index: int, pos: Vector2) -> void:
 	if _ability_touch.has(index):
 		var slot: int = _ability_touch[index]
+		var dragged: bool = _ability_dragged.get(index, false)
 		_ability_touch.erase(index)
 		_ability_pos.erase(index)
-		if slot < abilities.size() and ability_at(pos) == slot:
+		_ability_dragged.erase(index)
+		if slot >= abilities.size():
+			pass
+		elif aimed(abilities[slot].id):
+			# Let go: fires along the aim, unless back on the button after a drag or off the screen (cancel).
+			var cancel := (dragged and ability_at(pos) == slot) or not Rect2(Vector2.ZERO, SCREEN).has_point(pos)
+			ability_released.emit(abilities[slot].id, not cancel)
+		elif ability_at(pos) == slot:
 			ability_tapped.emit(abilities[slot].id)
 	elif index == _pause_touch:
 		_release_pause()
@@ -250,6 +276,11 @@ func set_abilities(items: Array[Dictionary]) -> void:
 	abilities = items.duplicate(true)
 	if _canvas:
 		_canvas.queue_redraw()
+
+
+## True for an ability whose button aims before it fires (AbilityRunner.AIMED).
+static func aimed(id: String) -> bool:
+	return id in AbilityRunner.AIMED
 
 
 ## The index (in `abilities`) of the button under `pos` (-1 = none).
@@ -339,8 +370,13 @@ func _release_all() -> void:
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
 	_release("jump")
-	_ability_touch.clear()  # (nothing fires: an ability only fires on a real release)
+	for index: int in _ability_touch:  # (nothing fires: an ability only fires on a real release; an aim is called off)
+		var slot: int = _ability_touch[index]
+		if slot < abilities.size() and aimed(abilities[slot].id):
+			ability_released.emit(abilities[slot].id, false)
+	_ability_touch.clear()
 	_ability_pos.clear()
+	_ability_dragged.clear()
 	if _canvas:
 		_canvas.queue_redraw()
 
@@ -387,7 +423,7 @@ func _draw_controls() -> void:
 		var at := slot_center(i)
 		var held := false
 		for index: int in _ability_touch:
-			held = held or (_ability_touch[index] == i and ability_at(_ability_pos.get(index, at)) == i)
+			held = held or (_ability_touch[index] == i and (aimed(item.id) or ability_at(_ability_pos.get(index, at)) == i))
 		var ready: bool = int(item.left) > 0 and not item.get("locked", false)
 		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)

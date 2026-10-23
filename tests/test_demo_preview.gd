@@ -22,6 +22,7 @@ func _initialize() -> void:
 	Demo.strip_test = true
 	Demo.denied.clear()
 	await _check_preview()
+	await _check_restarts()
 	await _check_try_button()
 	Platform.reset_overrides()
 	Demo.strip_test = false
@@ -117,6 +118,15 @@ func _check_preview() -> void:
 	for text in [AbilityCoach.aim_line(), AbilityCoach.done_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)):
 		widest = maxf(widest, UIKit.text_w(text))
 	_check(widest <= game.hud.TRAINING_LINE_W, "every coach line fits the line's %d px (widest %d)" % [game.hud.TRAINING_LINE_W, widest])
+	progress.force_touch = true
+	var touch_lines: Array = [AbilityCoach.aim_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id))
+	progress.force_touch = false
+	var touch_widest := 0.0
+	for text: String in touch_lines:
+		touch_widest = maxf(touch_widest, UIKit.text_w(text))
+	_check(touch_lines[1] == "HOLD SLIME SNIPER, AIM, RELEASE" and touch_lines[0] == "DRAG TO AIM, LET GO TO FIRE"
+		and touch_lines[3].begins_with("TAP ") and touch_widest <= game.hud.TRAINING_LINE_W,
+		"on touch the aimed ones say how to aim (%s), all within %d px (widest %d)" % [touch_lines, game.hud.TRAINING_LINE_W, touch_widest])
 	await _physics_frames(2)
 	_check(locked_ids.call() == ["rifle", "kaze", "sense"] and not runner.use("sense") and game.random_map_view == null,
 		"each one unlocks when its line comes up: GOO GRENADE's line, the others held back (%s)" % [locked_ids.call()])
@@ -254,3 +264,47 @@ func _check_try_button() -> void:
 	hard.free()
 	current_scene = null
 	progress.hard_mode = false
+
+
+## A run's own look and maze (the slime's skin colours its goo trail, which draws the map).
+func _fingerprint(game: Node) -> String:
+	return "%d/%d/%s/%s/%d %s %s %s %s" % [game.random_seed, game.seed_level, game.theme, game.maze.get("start"), str(game.maze).hash(),
+		progress.active_skin(), progress.jelly, progress.selected_hat, progress.trail_style]
+
+
+## Bug (owner, 2026-10-23, on the phone): after the first restart the preview's map looked different. Every real
+## restart path (the pause menu's RESTART, R) reloads the scene: the same maze AND the same borrowed look.
+func _check_restarts() -> void:
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
+	progress.levels_cleared = Demo.LEVELS
+	progress.start_random()
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._close_preview_card()
+	var first := _fingerprint(game)
+	var seen: Array[String] = [first]
+	for n in 2:
+		game.pause_menu._restart()  # (a reload of the scene, as on the phone)
+		for i in 120:
+			await process_frame
+			if current_scene != null and current_scene != game:
+				break
+		game = current_scene
+		await physics_frame
+		seen.append(_fingerprint(game))
+	_check(seen.all(func(f: String) -> bool: return f == first) and game.preview,
+		"the preview maze is identical over two pause-menu restarts, its look too (%s)" % [seen])
+	game.replay("R")
+	for i in 120:
+		await process_frame
+		if current_scene != null and current_scene != game:
+			break
+	game = current_scene
+	await physics_frame
+	_check(_fingerprint(game) == first, "...and after R's replay (%s)" % _fingerprint(game))
+	current_scene = null
+	game.free()
+	progress.end_demo_preview()
