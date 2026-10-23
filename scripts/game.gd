@@ -420,7 +420,7 @@ func _ready() -> void:
 			preview = progress.in_demo_preview()
 		else:
 			level = progress.current_level if progress else 1
-	hard_mode = progress.hard_mode if progress and not descent and not training and not progress.random_daily else false  # (the daily: normal rules for everyone) # Descent, training: normal rules only
+	hard_mode = progress.hard_mode if progress and not descent and not training and not (progress.mode == progress.MODE_RANDOM and progress.random_daily) else false  # (the daily: normal rules for everyone; a stale flag must not soften a hard story level) # Descent, training: normal rules only
 	var config: Dictionary
 	if training:
 		training_attempt = Training.begin_run()
