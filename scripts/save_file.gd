@@ -114,6 +114,8 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.ach_flags = clampi(get_int(file, "achievements", "flags", 0), 0, 63)
 	p.ach_seen = clampi(get_int(file, "achievements", "seen", 0), 0, 1000)
 	p.medal_milestones_paid = clampi(get_int(file, "achievements", "milestones", 0), 0, 100000)
+	p.ach_rewarded = strings(file.get_value("achievements", "rewarded", []))
+	p.medal_ms_mask = clampi(get_int(file, "achievements", "ms_mask", 0), 0, (1 << Achievements.MILESTONES.size()) - 1)
 
 
 ## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
@@ -427,6 +429,8 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("achievements", "flags", p.ach_flags)
 		file.set_value("achievements", "seen", p.ach_seen)
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
+		file.set_value("achievements", "rewarded", p.ach_rewarded.duplicate())
+		file.set_value("achievements", "ms_mask", p.medal_ms_mask)
 	if p.daily_day > 0:
 		file.set_value("daily", "day", p.daily_day)
 		file.set_value("daily", "best_ms", p.daily_best_ms)

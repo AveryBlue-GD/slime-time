@@ -39,15 +39,47 @@ class Mark extends Control:
 			draw_rect(Rect2(3, 4, 1, 1), c)
 
 
+## A goal with a reward cosmetic is a taller row (a second line: REWARD: <name>); a page holds PAGE_H px of rows.
+const REWARD_EXTRA := 9
+const PAGE_H := 100
+
+
+## The pages: lists of goal indexes, filled in order until PAGE_H px of rows are used.
+static func pages() -> Array:
+	var out: Array = []
+	var cur: Array[int] = []
+	var h := 0
+	var all := Achievements.list()
+	for i in all.size():
+		var row_h := ROW_H + (REWARD_EXTRA if Achievements.reward_for(all[i].id) != "" else 0)
+		if h + row_h > PAGE_H and not cur.is_empty():
+			out.append(cur)
+			cur = []
+			h = 0
+		cur.append(i)
+		h += row_h
+	if not cur.is_empty():
+		out.append(cur)
+	return out
+
+
 static func page_count() -> int:
-	return ceili(Achievements.list().size() / float(Achievements.PER_PAGE))
+	return pages().size()
 
 
-## The header text: the medals earned (both modes) and the count the next 5 tickets wait at.
+## The header text: the medals earned (both modes) and the next milestone reward with the count it waits at.
 static func header_text(p: Node) -> String:
 	var earned := Achievements.medals_earned(p)
-	# i18n: ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (any tier, normal + hard), {next} = the next reward's medal count
-	return Loc.t("ach.header", "MEDALS {n} / NEXT REWARD AT {next}", {n = earned, next = Achievements.next_milestone(earned)})
+	var next := Achievements.next_milestone(earned)
+	if next == 0:
+		# i18n: ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (every medal milestone reward is won)
+		return Loc.t("ach.header_done", "MEDALS {n} / ALL MEDAL REWARDS WON", {n = earned})
+	var reward_name := ""
+	for m: Dictionary in Achievements.MILESTONES:
+		if int(m.medals) == next:
+			reward_name = Cosmetics.display_name(m.cosmetic)
+	# i18n: ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (any tier, normal + hard), {name} = the next milestone's cosmetic, {next} = its medal count
+	return Loc.t("ach.header_next", "MEDALS {n} / NEXT: {name} AT {next}", {n = earned, name = reward_name, next = next})
 
 
 func _ready() -> void:
@@ -61,7 +93,7 @@ func _ready() -> void:
 	band.color = Color(0, 0, 0, 0.5)
 	var band_top := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS
 	band.position = Vector2(UIKit.EDGE, band_top)
-	band.size = Vector2(UIKit.SCREEN.x - 2 * UIKit.EDGE, Achievements.PER_PAGE * ROW_H + 2 * UIKit.GAP_XS)
+	band.size = Vector2(UIKit.SCREEN.x - 2 * UIKit.EDGE, PAGE_H + 2 * UIKit.GAP_XS)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(band)
 	_row_root = Control.new()
@@ -92,20 +124,29 @@ func _show_page() -> void:
 		r.queue_free()
 	rows.clear()
 	var all := Achievements.list()
-	var first := page * Achievements.PER_PAGE
 	var top := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L
 	var unlocked := 0
 	for a in all:
 		if Achievements.met(p, a.id):
 			unlocked += 1
-	for i in range(first, mini(first + Achievements.PER_PAGE, all.size())):
+	var y := top
+	for i: int in pages()[page]:
 		var a: Dictionary = all[i]
 		var on := Achievements.met(p, a.id)
 		var row := Control.new()
 		row.set_meta("id", a.id)
 		row.set_meta("unlocked", on)
 		_row_root.add_child(row)
-		row.position = Vector2(0, top + (i - first) * ROW_H)
+		row.position = Vector2(0, y)
+		var reward := Achievements.reward_for(a.id)
+		y += ROW_H + (REWARD_EXTRA if reward != "" else 0)
+		if reward != "":
+			var x := UIKit.GAP_L * 2 + MARK + UIKit.GAP_L
+			# i18n: ACHIEVEMENTS page, a goal's reward line, max 200px, 1 line; {name} = the cosmetic it grants (e.g. NIGHT PAPER)
+			var reward_text := Loc.t("ach.reward", "REWARD: {name}", {name = Cosmetics.display_name(reward)})
+			var reward_label := UIKit.add_label(row, reward_text, Rect2(x, ROW_H - 3, UIKit.SCREEN.x - x - UIKit.GAP_L * 2, UIKit.line_h()),
+				UIKit.FONT, UIKit.GOLD if on else UIKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+			reward_label.set_meta("reward", true)
 		var mark := Mark.new()
 		mark.on = on
 		mark.size = Vector2(MARK, MARK)

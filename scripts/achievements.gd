@@ -13,9 +13,6 @@ const FLAG_KAZE := 8
 const FLAG_CLEAN_WIN := 16  ## a randomizer maze won with abilities in the pocket and none used
 const FLAGS_ABILITIES := FLAG_RIFLE | FLAG_SPLAT | FLAG_KAZE
 
-## One page of the list.
-const PER_PAGE := 8
-
 
 ## id, goal text (what the page shows; also the toast's second half). Order = the page's order.
 static func list() -> Array[Dictionary]:
@@ -131,11 +128,58 @@ static func met_ids(p: Node) -> Array[String]:
 	return out
 
 
-## Medals earned per milestone paid, and tickets per milestone.
-static func milestones_due(earned: int) -> int:
-	return earned / Economy.MEDAL_MILESTONE_STEP
+## IMP2-03: a goal's reward, an existing cosmetic (Cosmetics id: a map paper or a trail; never a skin), granted once when the
+## goal is met and shown on the page as "REWARD: <name>".
+const REWARDS := {
+	"clear_story": "goldleaf",
+	"hard_1": "night",
+	"hard_all": "prism_paper",
+	"coins_50": "clover_paper",
+	"gold_10": "butter_paper",
+	"rand_10": "ink",
+	"rand_50": "plum_paper",
+	"daily_7": "candy",
+}
+
+## The pooled medal milestones (medals earned, normal + hard): each grants a named cosmetic, or MEDAL_MILESTONE_TICKETS
+## tickets (one wheel spin) when that cosmetic is already owned. The bit of each in Progress.medal_ms_mask is its index.
+const MILESTONES := [
+	{medals = 15, cosmetic = "blueprint"},
+	{medals = 30, cosmetic = "starry"},
+	{medals = 45, cosmetic = "gold"},
+	{medals = 60, cosmetic = "bubblegum_paper"},
+]
 
 
-## The next milestone's medal count above `earned`.
+## Goal `id`'s reward cosmetic ("" = none).
+static func reward_for(id: String) -> String:
+	return REWARDS.get(id, "")
+
+
+## The milestone indexes reached at `earned` medals.
+static func milestones_reached(earned: int) -> Array[int]:
+	var out: Array[int] = []
+	for i in MILESTONES.size():
+		if earned >= int(MILESTONES[i].medals):
+			out.append(i)
+	return out
+
+
+## The next milestone's medal count above `earned` (0 once every one is reached).
 static func next_milestone(earned: int) -> int:
-	return (earned / Economy.MEDAL_MILESTONE_STEP + 1) * Economy.MEDAL_MILESTONE_STEP
+	for m: Dictionary in MILESTONES:
+		if earned < int(m.medals):
+			return int(m.medals)
+	return 0
+
+
+## Randomizer wins until the next thing a win unlocks (the next pastel skin, the next win goal), 0 when none is left.
+static func wins_to_next_unlock(wins: int) -> int:
+	var best := 0
+	var marks: Array[int] = [1, 10, 50, 100]
+	for id: String in Skins.PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [Skins.RAINBOW]:
+		marks.append(Skins.pastel_wins(id))
+	for mark in marks:
+		if mark > wins and (best == 0 or mark - wins < best):
+			best = mark - wins
+	return best

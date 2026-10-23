@@ -238,13 +238,16 @@ var daily_streak := 0
 var daily_best_streak := 0
 ## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
 ## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
-## many medal milestones were paid (Achievements.milestones_due).
+## many OLD medal milestones (every 10 medals, 5 tickets) were paid: kept as it was, no longer paid (IMP2-03).
+## `ach_rewarded`: the goals whose reward cosmetic was granted; `medal_ms_mask`: the Achievements.MILESTONES paid (bit = index).
 var ach_known: Array[String] = []
 var ach_seeded := true
 var ach_flags := 0
 ## How many unlocked goals the ACHIEVEMENTS page has shown (saved): more known than seen = the hub's "!" on the signpost.
 var ach_seen := 0
 var medal_milestones_paid := 0
+var ach_rewarded: Array[String] = []
+var medal_ms_mask := 0
 var _ach_checking := false
 
 var selected_skin := Skins.DEFAULT
@@ -779,9 +782,7 @@ func load_progress(path := "") -> void:
 	if owned and is_inside_tree():
 		# An old save: its goals are adopted silently and the medal milestones it already passed are paid once (one
 		# notice). Only the real session (the autoload in the tree), so reading a file stays a pure function of it.
-		var paid_before := medal_milestones_paid
-		check_achievements()
-		if medal_milestones_paid != paid_before:
+		if check_achievements():
 			save_progress()
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
 	# migration doesn't rerun on each launch.
@@ -1078,35 +1079,73 @@ func report_progress(id: String, value: int) -> void:
 ## Unlocks every goal that is newly met (a toast each, `progress_event` "ach_<id>" = 1 for a store backend), and pays the
 ## medal milestones not paid yet. Runs at the top of every save, so the new state is in the file. `silent`: adopt without
 ## toasts (the first look at an old save). Dev, story-complete and demo runs unlock nothing (their progress isn't real).
-func check_achievements(silent := false) -> void:
+func check_achievements(silent := false) -> bool:
 	if not Economy.ACHIEVEMENTS or _ach_checking or dev_tools or not saving_enabled or Demo.on():
-		return
+		return false
 	_ach_checking = true
+	var changed := false  # (a reward or a milestone was granted: the caller saves it)
 	if jelly:
 		ach_flags |= Achievements.FLAG_JELLY
 	var fresh_seed := not ach_seeded  # (an old save's first look; a new save starts seeded)
 	ach_seeded = true
+	var announced: Array[String] = []
 	for id in Achievements.met_ids(self):
 		if id in ach_known:
 			continue
 		ach_known.append(id)
 		if silent or fresh_seed:
 			continue
+		announced.append(id)
 		for a in Achievements.list():
 			if a.id == id:
-				# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
-				notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}), "ach")
+				var reward := Achievements.reward_for(id)
+				if reward != "":
+					# i18n: unlock toast with a reward, max 296px, 2 lines; {goal} = the goal text, {name} = the cosmetic won (e.g. NIGHT PAPER)
+					notify_once("ach_" + id, Loc.t("ach.toast_reward", "ACHIEVEMENT: {goal}. REWARD: {name}", {goal = a.goal, name = Cosmetics.display_name(reward)}), "ach")
+				else:
+					# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
+					notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}), "ach")
 		report_progress("ach_" + id, 1)
-	var due := Achievements.milestones_due(Achievements.medals_earned(self))
-	if due > medal_milestones_paid:
-		var gain := (due - medal_milestones_paid) * Economy.MEDAL_MILESTONE_TICKETS
-		medal_milestones_paid = due
-		add_tickets(gain, false)
-		if not silent:
-			# i18n: toast, max 296px, 2 lines; {n} = tickets, {medals} = the medal count reached
-			notify_once("medal_ms_%d" % due, Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = due * Economy.MEDAL_MILESTONE_STEP, n = gain}), "reward")
-		report_progress("medal_milestone", due)
+	# Goal rewards (IMP2-03): once per goal. A save that already had the goal gets it now, in one merged notice.
+	var late: Array[String] = []
+	for id in Achievements.met_ids(self):
+		var reward := Achievements.reward_for(id)
+		if reward == "" or id in ach_rewarded:
+			continue
+		ach_rewarded.append(id)
+		changed = true
+		if not owns_cosmetic(reward):
+			cosmetics_owned.append(reward)
+		if not id in announced and not silent:
+			# i18n: toast, max 296px, 2 lines; {name} = the cosmetic a goal already met just granted (e.g. NIGHT PAPER)
+			late.append(Loc.t("ach.reward_late", "NEW REWARD: {name}", {name = Cosmetics.display_name(reward)}))
+	# Medal milestones (IMP2-03): a named cosmetic each, or a spin's worth of tickets when it is already owned.
+	var earned := Achievements.medals_earned(self)
+	for i in Achievements.MILESTONES.size():
+		var m: Dictionary = Achievements.MILESTONES[i]
+		if earned < int(m.medals) or medal_ms_mask & (1 << i) != 0:
+			continue
+		medal_ms_mask |= 1 << i
+		changed = true
+		var text: String
+		if owns_cosmetic(m.cosmetic):
+			add_tickets(Economy.MEDAL_MILESTONE_TICKETS, false)
+			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {n} = tickets (one wheel spin)
+			text = Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = m.medals, n = Economy.MEDAL_MILESTONE_TICKETS})
+		else:
+			cosmetics_owned.append(m.cosmetic)
+			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {name} = the cosmetic won (e.g. BLUEPRINT PAPER)
+			text = Loc.t("ach.medal_cosmetic", "{medals} MEDALS: {name}", {medals = m.medals, name = Cosmetics.display_name(m.cosmetic)})
+		late.append(text)
+		report_progress("medal_milestone", int(m.medals))
+	# One notice for everything granted now (a save that already had the goals and medals gets a single merged one).
+	if late.size() == 1 and not silent:
+		notify_once("ach_late_" + late[0], late[0], "reward")
+	elif late.size() > 1 and not silent:
+		# i18n: toast, max 296px, 2 lines; {n} = how many goal and medal rewards were granted at once (2 or more)
+		notify_once("ach_late_many_%d_%d" % [ach_rewarded.size(), medal_ms_mask],Loc.t("ach.reward_late_many", "{n} NEW REWARDS FOR YOUR GOALS", {n = late.size()}), "reward")
 	_ach_checking = false
+	return changed
 
 
 ## Whether an unlocked goal has not been shown on the ACHIEVEMENTS page yet (the hub's "!").
@@ -1824,6 +1863,7 @@ func record_daily(ms: int, day := 0) -> Dictionary:
 	var today := day if day > 0 else utc_day()  # (`day`: the day the daily was started on)
 	var first := not (daily_day != 0 and daily_day == today and daily_best_ms > 0)
 	var bonus := 0
+	var saved := false
 	if first:
 		daily_streak = daily_streak + 1 if daily_day != 0 and daily_day == today - 1 else 1
 		daily_day = today
@@ -2951,6 +2991,8 @@ func reset_progress() -> void:
 	ach_seen = 0
 	ach_flags = 0
 	medal_milestones_paid = 0
+	ach_rewarded.clear()
+	medal_ms_mask = 0
 	save_progress()
 
 
