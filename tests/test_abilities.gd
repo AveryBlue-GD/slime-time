@@ -829,29 +829,31 @@ func _touch() -> void:
 			break
 		await physics_frame
 	_place(game, _start_tile(game), _dir_with(game, 1))
-	# Fires on RELEASE, and only on its own button.
+	# SLIME RIFLE aims (owner, 2026-10-23): its button brings the aim up, letting go fires nothing (JUMP does: _touch_aim).
 	_tap(tc, 3, center.rifle, true)
 	await _physics_frames(2)
-	_check(game.abilities.can_use("rifle") and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"), "touching SLIME RIFLE's button doesn't fire it yet")
-	_tap(tc, 3, center.rifle + Vector2(0, 40), false)
-	await _physics_frames(1)
-	_check(game.abilities.charges.rifle == 1, "sliding off the button and letting go cancels it")
-	_tap(tc, 3, center.rifle, true)
-	await _physics_frames(1)
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"),
+		"touching SLIME RIFLE's button brings up its aim, fires nothing")
 	_tap(tc, 3, center.rifle + Vector2(3, 0), false)
 	await _physics_frames(1)
-	_check(game.abilities.charges.rifle == 0 and not Input.is_action_pressed("ability_rifle") and not Input.is_action_pressed("jump"),
-		"lifting the finger on the button fires SLIME RIFLE (no JUMP, nothing left held)")
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("ability_rifle")
+		and not Input.is_action_pressed("jump"), "lifting the finger fires nothing either (the aim stays up, nothing left held)")
+	_tap(tc, 3, center.rifle, true)
+	_tap(tc, 3, center.rifle, false)
+	await _physics_frames(1)
+	_check(game.abilities.aiming == "" and game.abilities.charges.rifle == 1 and not game.slime.aim_lock, "its button again calls the aim off")
 	progress.force_touch = false
 	await _stop(game)
 
 
-## Touch aiming (owner, 2026-10-23, as on the PC): holding SLIME SNIPER / GOO GRENADE's button brings up its aim guide,
-## a drag turns it (8 ways), letting go fires along it; back on the button or off the screen calls it off; a tap fires ahead.
+## Touch aiming (owner, 2026-10-23, as on the PC): SLIME SNIPER / GOO GRENADE's button brings up the aim guide (letting go
+## doesn't fire), the joystick or a drag turns it (8 ways), JUMP fires it (no leap, nothing left held) and blinks a gold ring
+## meanwhile; the same button again calls it off, another ability's switches; SLIME SENSE stays a tap.
 func _touch_aim() -> void:
-	_state({rifle = 3, splat = 3})
+	_state({rifle = 3, splat = 3, sense = 1})
 	progress.force_touch = true
 	var game := await _spawn(4)
+	current_scene = game  # (SLIME SENSE's map locks the focus of the running scene)
 	var tc: TouchControls = game.touch_controls
 	var runner: AbilityRunner = game.abilities
 	for i in 180:
@@ -860,40 +862,100 @@ func _touch_aim() -> void:
 		await physics_frame
 	_place(game, _start_tile(game), _dir_with(game, 1))
 	await _physics_frames(2)
+	runner.charges.rifle = 3  # (a few uses for the steps below)
+	runner.charges.splat = 3
 	var rifle := tc.slot_center(0)
 	var left: int = runner.charges.rifle
 	_tap(tc, 4, rifle, true)
-	await _physics_frames(1)
-	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left, "touch: holding SLIME SNIPER's button shows its aim (nothing spent)")
-	_drag(tc, 4, rifle + Vector2(0, -40))
-	_check(runner.aim_dir == Vector2i(0, -1), "...dragging up aims up (%s)" % runner.aim_dir)
-	_drag(tc, 4, rifle + Vector2(30, -30))
-	_check(runner.aim_dir == Vector2i(1, -1), "...up-right: a diagonal, 8 ways as on the PC (%s)" % runner.aim_dir)
-	_tap(tc, 4, rifle + Vector2(30, -30), false)
+	_tap(tc, 4, rifle, false)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.rifle == left - 1 and game.slime.facing.is_equal_approx(Vector2(1, -1).normalized()),
-		"...letting go fires it along the aim")
+	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left and tc.aim_ring,
+		"touch: a tap on SLIME SNIPER brings up its aim (nothing spent, letting go fires nothing), JUMP's gold ring on")
+	Input.action_press("move_up")
+	await _physics_frames(2)
+	Input.action_release("move_up")
+	_check(runner.aim_dir == Vector2i(0, -1), "...the joystick aims (up: %s)" % runner.aim_dir)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(10)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == left and tc.cancel_shown() and not Input.is_action_pressed("jump")
+		and game.slime.state == Slime.State.GLIDE, "...JUMP held: nothing fires yet, no leap, the X shows by JUMP")
+	var x := tc.cancel_center()
+	_check(x.distance_to(TouchControls.JUMP_CENTER) > TouchControls.JUMP_RADIUS + TouchControls.CANCEL_HIT - 0.01 and x.x < TouchControls.JUMP_CENTER.x + 40
+		and x.y < TouchControls.JUMP_CENTER.y and Rect2(Vector2.ZERO, TouchControls.SCREEN).grow(-TouchControls.CANCEL_HIT).has_point(x)
+		and not tc.ability_row_rect().grow(TouchControls.CANCEL_HIT).has_point(x) and not tc.pause_rect.grow(TouchControls.CANCEL_HIT).has_point(x),
+		"...the X sits just outside JUMP's top right, on screen, clear of JUMP, the ability row and pause (%s)" % x)
+	Platform.safe_area_override = Rect2i(0, 0, 1240, 720)  # (a notch's inset on the right, 40 px of a 1280 window: 10 view px)
+	Platform.window_override = Vector2i(1280, 720)
+	var notched := tc.cancel_center()
+	Platform.safe_area_override = Rect2i()
+	Platform.window_override = Vector2i.ZERO
+	_check(notched.distance_to(TouchControls.JUMP_CENTER) > TouchControls.JUMP_RADIUS + TouchControls.CANCEL_HIT - 0.01 and notched.x <= 310 - TouchControls.CANCEL_HIT,
+		"...with a notch on the right it moves above JUMP, still clear of it (%s)" % notched)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left - 1 and game.slime.facing.is_equal_approx(Vector2.UP)
+		and game.slime.state != Slime.State.CHARGING and not tc.aim_ring and not tc.cancel_shown(),
+		"...JUMP let go: it fires along the aim (no charge starts, the ring and the X gone)")
+	await _physics_frames(10)
+	_check(not Input.is_action_pressed("jump") and game.slime.state == Slime.State.GLIDE, "...nothing held, no leap")
 	await _physics_frames(30)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(2)
+	_check(game.slime.state == Slime.State.CHARGING, "the next JUMP is a real leap again")
+	_tap(tc, 5, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(90)
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	# The X: JUMP held, dragged onto it and let go there: called off, nothing spent, no leap.
 	left = runner.charges.rifle
 	_tap(tc, 4, rifle, true)
-	_drag(tc, 4, rifle + Vector2(0, -40))
-	_drag(tc, 4, rifle + Vector2(1, 1))
-	_tap(tc, 4, rifle + Vector2(1, 1), false)
+	_tap(tc, 4, rifle, false)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_drag(tc, 5, x + Vector2(4, 3))  # (a forgiving disc: a little off its middle)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.rifle == left and not game.slime.aim_lock, "...dragged back onto the button and let go: called off")
+	_check(tc._cancel_hover, "dragged onto the X: it lights up")
+	_tap(tc, 5, x + Vector2(4, 3), false)
+	await _physics_frames(10)
+	_check(runner.aiming == "" and runner.charges.rifle == left and not game.slime.aim_lock and game.slime.state == Slime.State.GLIDE
+		and not Input.is_action_pressed("jump") and not tc.cancel_shown(), "...let go on the X: the aim is called off (nothing spent, no leap)")
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_drag(tc, 5, x)
+	_drag(tc, 5, TouchControls.JUMP_CENTER + Vector2(-6, 4))
+	await _physics_frames(2)
+	_check(not tc._cancel_hover and tc.cancel_shown(), "dragged back off the X: unlit")
+	_tap(tc, 5, TouchControls.JUMP_CENTER + Vector2(-6, 4), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left - 1, "...let go there: it fires")
+	await _physics_frames(30)
+	runner.charges.rifle = 3
+	left = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	_drag(tc, 4, rifle + Vector2(30, -30))
+	_tap(tc, 4, rifle + Vector2(30, -30), false)
+	_check(runner.aiming == "rifle" and runner.aim_dir == Vector2i(1, -1) and runner.charges.rifle == left,
+		"a drag off the button aims too (up-right, 8 ways: %s), let go: still aiming" % runner.aim_dir)
 	var splat := tc.slot_center(1)
-	var bombs: int = runner.charges.splat
-	_tap(tc, 5, splat, true)
-	_drag(tc, 5, splat + Vector2(-40, 0))
-	_check(runner.aiming == "splat" and runner.aim_dir == Vector2i(-1, 0), "GOO GRENADE aims the same way (%s)" % runner.aim_dir)
-	_drag(tc, 5, Vector2(splat.x, 200))
-	_tap(tc, 5, Vector2(splat.x, 200), false)
+	_tap(tc, 4, splat, true)
+	_tap(tc, 4, splat, false)
+	_check(runner.aiming == "splat", "GOO GRENADE's button switches the aim to it")
+	_tap(tc, 4, splat, true)
+	_tap(tc, 4, splat, false)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.splat == bombs, "...let go off the screen: called off")
-	_tap(tc, 5, splat, true)
-	_tap(tc, 5, splat, false)
+	_check(runner.aiming == "" and runner.charges.splat == 3 and not game.slime.aim_lock and not tc.aim_ring, "...and again calls it off (nothing spent)")
+	_tap(tc, 4, splat, true)
+	_tap(tc, 4, splat, false)
+	var sense := tc.slot_center(2)
+	_tap(tc, 6, sense, true)
+	_tap(tc, 6, sense, false)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.splat == bombs - 1, "...a plain tap fires straight ahead")
+	_check(runner.aiming == "" and runner.charges.splat == 3 and game.random_map_view != null,
+		"SLIME SENSE stays a tap: it calls the aim off and peeks")
+	game._close_run_map()
+	current_scene = null
 	progress.force_touch = false
 	await _stop(game)
 

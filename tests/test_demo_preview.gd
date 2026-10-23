@@ -119,13 +119,14 @@ func _check_preview() -> void:
 		widest = maxf(widest, UIKit.text_w(text))
 	_check(widest <= game.hud.TRAINING_LINE_W, "every coach line fits the line's %d px (widest %d)" % [game.hud.TRAINING_LINE_W, widest])
 	progress.force_touch = true
-	var touch_lines: Array = [AbilityCoach.aim_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id))
+	var touch_lines: Array = [AbilityCoach.aim_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)) \
+		+ [AbilityCoach.cancel_line()]
 	progress.force_touch = false
 	var touch_widest := 0.0
 	for text: String in touch_lines:
 		touch_widest = maxf(touch_widest, UIKit.text_w(text))
-	_check(touch_lines[1] == "HOLD SLIME SNIPER, AIM, RELEASE" and touch_lines[0] == "DRAG TO AIM, LET GO TO FIRE"
-		and touch_lines[3].begins_with("TAP ") and touch_widest <= game.hud.TRAINING_LINE_W,
+	_check(touch_lines[1] == "TAP SLIME SNIPER, AIM, PRESS JUMP" and touch_lines[0] == "AIM, THEN PRESS JUMP"
+		and touch_lines[3].begins_with("TAP ") and touch_lines[-1] == "LET GO TO FIRE, DRAG TO X TO CANCEL" and touch_widest <= game.hud.TRAINING_LINE_W,
 		"on touch the aimed ones say how to aim (%s), all within %d px (widest %d)" % [touch_lines, game.hud.TRAINING_LINE_W, touch_widest])
 	await _physics_frames(2)
 	_check(locked_ids.call() == ["rifle", "kaze", "sense"] and not runner.use("sense") and game.random_map_view == null,

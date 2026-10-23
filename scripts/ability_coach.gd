@@ -27,7 +27,8 @@ var current := ""
 var skipped := false
 var _charges_at := 0
 var _wait := START_DELAY
-var _aim_shown := false
+## The aim's line showing ("" = the ability's own line): aim_line, or cancel_line while JUMP is held on touch.
+var _aim_text := ""
 var _done_left := -1.0
 var _layer: CanvasLayer
 var skip_pod: PanelContainer
@@ -94,8 +95,8 @@ static func what(id: String) -> String:
 ## The coach line for ability `id`: its key (TAP on touch), its name and what it does.
 static func line(id: String) -> String:
 	if on_touch() and id in AbilityRunner.AIMED:
-		# i18n: ability tutorial line (touch, an aimed ability: hold its button, drag to aim, let go to fire), max 192px, 1 line; {name} = ability name
-		return Loc.t("coach.line_touch_aim", "HOLD {name}, AIM, RELEASE", {name = Abilities.display_name(id)})
+		# i18n: ability tutorial line (touch, an aimed ability: tap its button, aim with the joystick, JUMP fires), max 192px, 1 line; {name} = ability name, {jump} = the JUMP button's word (touch.jump)
+		return Loc.t("coach.line_touch_aim", "TAP {name}, AIM, PRESS {jump}", {name = Abilities.display_name(id), jump = jump_word()})
 	if on_touch():
 		# i18n: ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 		return Loc.t("coach.line_touch", "TAP {name}: {what}", {name = Abilities.display_name(id), what = what(id)})
@@ -103,11 +104,22 @@ static func line(id: String) -> String:
 	return Loc.t("coach.line", "{key} {name}: {what}", {key = key_text(Abilities.action(id)), name = Abilities.display_name(id), what = what(id)})
 
 
+## The line while JUMP is held on touch with the aim up (its X shows): let go fires, on the X cancels.
+static func cancel_line() -> String:
+	# i18n: ability tutorial line (touch, JUMP held while aiming: letting go fires, letting go on the small X beside JUMP cancels), max 192px, 1 line
+	return Loc.t("coach.aim_cancel", "LET GO TO FIRE, DRAG TO X TO CANCEL")
+
+
+## The touch JUMP button's word (its label: TouchControls draws Loc touch.jump).
+static func jump_word() -> String:
+	return Loc.t("touch.jump", "JUMP")  # i18n: touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
+
+
 ## The line while an aimed ability's aim is up: how to fire it.
 static func aim_line() -> String:
 	if on_touch():
-		# i18n: ability tutorial line (touch, the aim is up while the button is held), max 192px, 1 line
-		return Loc.t("coach.aim_touch", "DRAG TO AIM, LET GO TO FIRE")
+		# i18n: ability tutorial line (touch, the aim is up: JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
+		return Loc.t("coach.aim_touch", "AIM, THEN PRESS {jump}", {jump = jump_word()})
 	# i18n: ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
 	return Loc.t("coach.aim", "AIM, THEN {key} TO FIRE", {key = key_text("jump")})
 
@@ -148,12 +160,12 @@ func _physics_process(delta: float) -> void:
 	if int(runner.charges.get(current, 0)) < _charges_at:
 		_finish_step()
 		return
-	if runner.aiming == current and not _aim_shown:
-		_aim_shown = true
-		game.hud.show_training_line(aim_line())
-	elif runner.aiming != current and _aim_shown:
-		_aim_shown = false  # (the aim was cancelled: back to the ability's own line)
-		game.hud.show_training_line(line(current))
+	var want := ""
+	if runner.aiming == current:
+		want = cancel_line() if game.touch_controls.cancel_shown() else aim_line()
+	if want != _aim_text:
+		_aim_text = want
+		game.hud.show_training_line(want if want != "" else line(current))  # ("": the aim was cancelled, back to the ability's line)
 
 
 func _next() -> void:
@@ -168,7 +180,7 @@ func _next() -> void:
 	current = steps.pop_front()
 	runner.set_locked(current)
 	_charges_at = int(runner.charges.get(current, 0))
-	_aim_shown = false
+	_aim_text = ""
 	game.slime.hold = true
 	game.touch_controls.set_coach(current)
 	game.hud.show_training_line(line(current))
