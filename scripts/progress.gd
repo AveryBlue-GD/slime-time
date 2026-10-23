@@ -728,6 +728,13 @@ func load_progress(path := "") -> void:
 	if Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
 		demo_guard = true  # a newer full game's save: play fresh in memory, never write it
 		return
+	if Economy.SAVE_NEWER_GUARD and not Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
+		# A newer game wrote this: keep a copy, play fresh in memory and never write over it.
+		if owned:
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(newer_backup_path(file_path)))
+			saving_enabled = false
+			notify_once("newer", Loc.t("notice.save_newer", "NEWER SAVE KEPT: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
+		return
 	_read(file)
 	_guard_full_save(file)
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
@@ -757,6 +764,22 @@ const CORRUPT_KEEP := 3
 var corrupt_backup := ""
 
 
+static func newer_backup_path(path: String) -> String:
+	return "%s.newer.cfg" % path.get_basename()
+
+
+## Short toasts waiting for Transition to show (each key once per session).
+var notices: Array[String] = []
+var _notice_keys := {}
+
+
+func notify_once(key: String, text: String) -> void:
+	if not Economy.SAVE_NOTICES or _notice_keys.has(key):
+		return
+	_notice_keys[key] = true
+	notices.append(text)
+
+
 static func corrupt_backup_path(path: String, n := 1) -> String:
 	return "%s.corrupt%s.cfg" % [path.get_basename(), "" if n <= 1 else ".%d" % n]
 
@@ -772,6 +795,7 @@ func _set_aside_corrupt(path: String) -> void:
 	var backup := corrupt_backup_path(path)
 	if DirAccess.rename_absolute(g.call(path), g.call(backup)) == OK or DirAccess.copy_absolute(g.call(path), g.call(backup)) == OK:
 		corrupt_backup = backup
+		notify_once("corrupt", Loc.t("notice.save_damaged", "SAVE WAS DAMAGED: A BACKUP WAS KEPT"))  # i18n: toast, max 296px, 2 lines
 	else:
 		saving_enabled = false
 
@@ -930,11 +954,14 @@ func _read_store(file: ConfigFile) -> void:
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
+	if demo_guard and saving_enabled and Demo.on():
+		notify_once("demo", Loc.t("notice.demo_unsaved", "DEMO: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 	if not saving_enabled or demo_guard or _preview_save != null:
 		return true  # (nothing is written during the demo's FULL GAME PREVIEW: end_demo_preview puts it all back)
 	var ok := write_atomic(save_path, _write().encode_to_text())
 	save_failed = not ok
 	if not ok:
+		notify_once("failed", Loc.t("notice.save_failed", "SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS"))  # i18n: toast, max 296px, 2 lines
 		_schedule_save_retry()
 	else:
 		_retry_delay = SAVE_RETRY_FIRST

@@ -98,5 +98,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _choose_custom() -> void:
+	Progress.set_jelly(false)  # (the custom color has no jelly version: with jelly on, select_skin refused it)
 	Progress.select_skin(Skins.CUSTOM)
 	UIKit.go(get_tree(), "res://scenes/skins.tscn")

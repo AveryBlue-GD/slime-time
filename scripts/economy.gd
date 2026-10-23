@@ -222,6 +222,12 @@ const WIND_REFILL_TIME := 0.4
 ## [descent_run], [descent] stats and milestones are KEPT in the save untouched and come back when
 ## this is true again. `descent_force` (-1 follow the const, 0 off, 1 on) is a test hook, like
 ## `workshop_force`.
+## IMP-04: a save from a NEWER game version is backed up (save.newer.cfg) and never overwritten (saving off for the
+## session); false = the old behaviour (read what fits, overwrite it on the next save).
+const SAVE_NEWER_GUARD := true
+## IMP-04: a short once-per-session notice when a save fails, a damaged save was set aside, a newer save is
+## protected or the demo isn't saving (Progress.notices, shown by Transition).
+const SAVE_NOTICES := true
 const DESCENT_ENABLED := false
 static var descent_force := -1
 

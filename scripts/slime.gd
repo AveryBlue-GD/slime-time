@@ -775,6 +775,8 @@ func _lane_velocity(coord: float) -> float:
 
 
 func _fly(delta: float) -> void:
+	if frozen:
+		return  # (the level was won mid-leap: no more flight, splat or drain after the result)
 	var step := minf(JUMP_SPEED * delta, _jump_distance - _jump_traveled)
 	var collision := move_and_collide(_jump_dir * step)
 	var moved := _moved_along(collision, step)

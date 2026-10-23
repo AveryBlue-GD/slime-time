@@ -1541,6 +1541,8 @@ func _flush_textures() -> void:
 
 
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
+	if finished:
+		return
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * jump_cost_factor
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall and slime.last_hit_glancing:  # soft bounce test: the same penalty, a soft touch

@@ -61,6 +61,7 @@ func _ready() -> void:
 ## held for 2-3 frames. At 60 Hz the frames are exactly what they were without it: interpolation
 ## would only draw everything one tick late there, so it stays off.
 func _process(delta: float) -> void:
+	_pump_notice(delta)
 	if DisplayServer.get_name() != "headless":  # (nothing drawn there, and frames are unpaced)
 		follow_frame_rate(delta / maxf(Engine.time_scale, 0.001))
 
@@ -174,3 +175,40 @@ func _paint() -> void:
 ## A random color from the rainbow (red through violet).
 static func random_rainbow_color() -> Color:
 	return Color.from_hsv(randf() * 0.83, 0.78, 0.95)
+
+
+const NOTICE_TIME := 4.0
+var _notice: Control
+var _notice_left := 0.0
+
+
+## Shows Progress.notices one at a time as a short toast along the bottom edge (Progress.notify_once).
+func _pump_notice(delta: float) -> void:
+	if _notice != null:
+		_notice_left -= delta
+		if _notice_left <= 0.0:
+			_notice.queue_free()
+			_notice = null
+		return
+	var progress := get_node_or_null("/root/Progress")
+	if progress == null or progress.notices.is_empty():
+		return
+	var text: String = progress.notices.pop_front()
+	var label := UIKit.make_label(text)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = UIKit.autowrap_mode()
+	var w := 296.0
+	label.custom_minimum_size = Vector2(w, 0)
+	var box := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.85)
+	style.set_content_margin_all(UIKit.GAP_S)
+	box.add_theme_stylebox_override("panel", style)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(label)
+	add_child(box)
+	box.position = Vector2((UIKit.SCREEN.x - w) / 2.0 - UIKit.GAP_S, 0)
+	box.reset_size()
+	box.position.y = UIKit.SCREEN.y - box.size.y - UIKit.GAP_S
+	_notice = box
+	_notice_left = NOTICE_TIME

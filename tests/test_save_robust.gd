@@ -295,6 +295,8 @@ func _future() -> void:
 			p.load_progress()
 			var accepted: bool = p.levels_cleared == 7
 			var expect: bool = typeof(epoch) == TYPE_INT and epoch == 1
+			if typeof(ver) == TYPE_INT and ver > PROGRESS_SCRIPT.SAVE_VERSION:
+				expect = false  # IMP-04: a newer save is backed up and never read or overwritten
 			_e("version %s epoch %s -> %s" % [ver, epoch, "loaded" if accepted else "fresh"], accepted == expect and _insane(p) == "")
 			p.free()
 	# a save from the future that is loaded then saved loses nothing it understood
@@ -304,13 +306,13 @@ func _future() -> void:
 	var path := _scratch("future2")
 	file.save(path)
 	var p := _new_at(path)
-	p.load_progress()
 	p.saving_enabled = true
+	p.load_progress()
 	p.save_progress()
 	var after := ConfigFile.new()
 	after.load(path)
-	_e("a version 99 save, loaded and saved again, is rewritten as version %s and drops [future] (a downgrade eats unknown data)" % after.get_value("meta", "version"),
-		after.get_value("meta", "version") == PROGRESS_SCRIPT.SAVE_VERSION)
+	_e("a version 99 save is kept as is (IMP-04: backed up, saving off), never downgraded",
+		after.get_value("meta", "version") == 99 and after.has_section_key("future", "new_feature"))
 	p.free()
 
 

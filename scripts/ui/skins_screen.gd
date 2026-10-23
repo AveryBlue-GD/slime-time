@@ -606,7 +606,7 @@ func _refresh_hub(focus_id: Variant = null) -> void:
 	elif id == Progress.hub_skin_in_use():
 		status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = skin_name})
 	else:
-		status.text = name
+		status.text = skin_name
 	for tile_id: String in hub_tiles:
 		UIKit.set_selected(hub_tiles[tile_id], tile_id == Progress.hub_skin_in_use())
 

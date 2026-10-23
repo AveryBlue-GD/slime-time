@@ -1536,6 +1536,34 @@ msgctxt "story.level_10"
 msgid "HOT. THE WAY OUT IS THE CRATER, RUN"
 msgstr "NÓNG. LỐI RA LÀ MIỆNG NÚI LỬA. CHẠY ĐI."
 
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_newer"
+msgid "NEWER SAVE KEPT: PROGRESS NOT SAVED"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_damaged"
+msgid "SAVE WAS DAMAGED: A BACKUP WAS KEPT"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.demo_unsaved"
+msgid "DEMO: PROGRESS NOT SAVED"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_failed"
+msgid "SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS"
+msgstr ""
+
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
