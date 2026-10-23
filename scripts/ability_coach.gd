@@ -6,8 +6,9 @@ extends Node
 ## PREVIEW shows every one on its first run: Progress.STORY_DEMO_PREVIEW_COACHED): the key (on touch: TAP, and that
 ## ability's button blinks gold), the name and what it does. While a line shows the slime is held (Slime.hold: the
 ## direction keys only turn it, to aim; no clock, no drain) until that ability is used (an aimed one first says how to
-## fire once its aim is up). SKIP (a pod under the top right pods: the use key F / pad X, or a tap or click) ends the
-## whole tutorial. A line used or skipped is marked seen. Built by game.gd next to the AbilityRunner; it waits while
+## fire once its aim is up). Only the prompted ability works meanwhile (AbilityRunner.locked, owner 2026-10-23: the
+## others don't fire and show dimmed, also between lines); all of them once it ends. SKIP (a pod under the top right
+## pods: the use key F / pad X, or a tap or click) ends the whole tutorial. A line used or skipped is marked seen. Built by game.gd next to the AbilityRunner; it waits while
 ## the preview's card is up and stops when the run ends.
 
 ## Each ability's Progress.tutorial_seen bit: its coach line was shown (1-8 are the tutorial's own bits).
@@ -54,6 +55,7 @@ static func create(owner_game: Node) -> AbilityCoach:
 	coach.steps = todo
 	owner_game.hud.ensure_training_line()
 	owner_game.add_child(coach)
+	runner_node.set_locked("")  # (none works until its line comes up)
 	return coach
 
 
@@ -121,6 +123,7 @@ func _physics_process(delta: float) -> void:
 	if game.get("preview_card_up") == true:
 		return
 	game.hud.training_slime_rect = game._slime_screen_rect()
+	game.hud.training_buttons_rect = game.touch_controls.ability_row_rect()
 	_refresh_skip()
 	if _done_left >= 0.0:
 		_done_left -= delta
@@ -149,6 +152,7 @@ func _physics_process(delta: float) -> void:
 
 func _next() -> void:
 	if steps.is_empty():
+		runner.set_locked("", true)  # (every line shown: all of them work)
 		if game.get("preview") == true:
 			_done_left = DONE_TIME
 			game.hud.show_training_line(done_line())
@@ -156,6 +160,7 @@ func _next() -> void:
 			_stop()
 		return
 	current = steps.pop_front()
+	runner.set_locked(current)
 	_charges_at = int(runner.charges.get(current, 0))
 	_aim_shown = false
 	game.slime.hold = true
@@ -166,6 +171,7 @@ func _next() -> void:
 func _finish_step() -> void:
 	game.progress.mark_tutorial_seen(bit(current))
 	current = ""
+	runner.set_locked("")  # (between lines: none)
 	_wait = GAP
 	game.slime.hold = false
 	game.touch_controls.set_coach("")
@@ -187,6 +193,7 @@ func skip() -> void:
 
 
 func _stop() -> void:
+	runner.set_locked("", true)
 	game.slime.hold = false
 	game.touch_controls.set_coach("")
 	game.hud.hide_training_line()

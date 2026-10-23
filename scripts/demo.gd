@@ -89,6 +89,12 @@ const PREVIEW_LEVEL := 3
 const PREVIEW_SEEN_BIT := 16  # (= Progress.STORY_DEMO_PREVIEW: keep the two in step)
 ## True while the preview runs (set by Progress.begin_demo_preview / end_demo_preview; never saved).
 static var preview := false
+## TRY THE FULL GAME: the button into the FULL GAME PREVIEW maze (the level 4 win row, the end screen).
+static func try_full_game_text() -> String:
+	# i18n: button (demo: plays the FULL GAME PREVIEW maze), on the win row beside CONTINUE and on the end screen's bottom row, max 120px, 1 line
+	return Loc.t("demo.try_full_game", "TRY THE FULL GAME")
+
+
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)
 ## The randomizer's end screen (after the preview maze, or RANDOM_WINS wins without it) was seen (Progress.story_seen bit).

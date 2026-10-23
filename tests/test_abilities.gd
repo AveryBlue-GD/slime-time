@@ -57,6 +57,8 @@ func _state(levels: Dictionary) -> void:
 	progress.saving_enabled = false
 	progress.dev_tools = false
 	progress.tutorial_seen = 3
+	for id in Abilities.ids():
+		progress.tutorial_seen |= AbilityCoach.bit(id)  # (the ability tutorial is its own test: test_demo_preview)
 	progress.levels_cleared = 10
 	progress.highest_unlocked = 10
 	progress.hard_mode = false
@@ -779,7 +781,7 @@ func _touch() -> void:
 	var jump_pts: Array[Vector2] = []
 	var button_pts: Array[Vector2] = []
 	for y in range(-10, 191, 2):
-		for x in range(150, 341, 2):
+		for x in range(60, 341, 2):
 			var p := Vector2(x, y)
 			if tc.ability_at(p) >= 0:
 				button_pts.append(p)
@@ -804,8 +806,18 @@ func _touch() -> void:
 			_tap(tc, 7, Vector2(-60, -60), false)
 	_check(missed.is_empty(), "a thumb missing JUMP (up to 25 px off its edge, all round) still leaps, never an ability (%s)" % [missed.slice(0, 4)])
 	_check(_charges_left(game) == {rifle = 1, kaze = 1}, "probing every spot (each lifted off its button) fired nothing")
-	_check(center.kaze.distance_to(TouchControls.JUMP_CENTER) > center.rifle.distance_to(TouchControls.JUMP_CENTER),
-		"SLIMAKAZE sits farther from JUMP than SLIME RIFLE")
+	# The buttons: one row along the bottom (owner, 2026-10-23), in Abilities order like the HUD strip, clear of the
+	# joystick's home ring, JUMP, the training line's bottom spot and the HUD's pods, gold ring included.
+	_check(center.rifle.y == center.kaze.y and center.rifle.x < center.kaze.x and center.rifle.y > 120,
+		"the ability buttons sit in one row along the bottom, SLIME RIFLE first (%s / %s)" % [center.rifle, center.kaze])
+	var row := tc.ability_row_rect()
+	var joy := Rect2(TouchControls.JOY_HOME - Vector2.ONE * TouchControls.JOY_RADIUS, Vector2.ONE * TouchControls.JOY_RADIUS * 2.0)
+	var jump_r := TouchControls.JUMP_RADIUS + 6.0  # (the circle grows a little for a longer JUMP word)
+	var jump := Rect2(TouchControls.JUMP_CENTER - Vector2.ONE * jump_r, Vector2.ONE * jump_r * 2.0)
+	var line_top := UIKit.SCREEN.y - UIKit.hud_edge().y - UIKit.pod_h()
+	var clash: Array = game.hud.pod_rects().filter(func(r: Rect2) -> bool: return r.intersects(row))
+	_check(row.has_area() and clash.is_empty() and not row.intersects(joy) and not row.intersects(jump) and row.end.y <= line_top,
+		"...clear of the joystick, JUMP, the training line (top %d) and the HUD pods (%s, %s)" % [line_top, row, clash])
 	var kaze_only: Array[Dictionary] = [{id = "kaze", left = 1, max = 1}]
 	tc.set_abilities(kaze_only)
 	_check(_button_center(tc, 0).distance_to(TouchControls.JUMP_CENTER) > 80.0, "owning only SLIMAKAZE, its button keeps its far spot (%s)" % _button_center(tc, 0))
@@ -847,7 +859,7 @@ func _button_center(tc: TouchControls, i: int) -> Vector2:
 	var sum := Vector2.ZERO
 	var n := 0
 	for y in 180:
-		for x in range(150, 320):
+		for x in range(0, 320):
 			if tc.ability_at(Vector2(x, y)) == i:
 				sum += Vector2(x, y)
 				n += 1

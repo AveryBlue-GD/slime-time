@@ -76,8 +76,14 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   (CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A NEW SKIN); hard: one line, BEAT A LEVEL ON HARD
   FOR ITS JELLY SKIN (the full game's hard line too). The hub archway says LOCKED once the next level is a full-game one.
   The map table keeps the later levels sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
+- **TRY THE FULL GAME** (owner, 2026-10-23): the level 4 chalice's first win row is TRY THE FULL GAME (focused) and
+  CONTINUE; the end screen has it too (bottom left, focused; KEEP PLAYING bottom right). It plays the FULL GAME PREVIEW
+  maze (`Progress.start_random`, as the portal: the ability tutorial on its first run); its CONTINUE opens the end screen.
+  Not on hard mode's last level. In the ability tutorial only the prompted ability works (`AbilityRunner.locked`: the
+  others don't fire and show dimmed, also between lines); all of them after it ends or SKIP. On touch the ability
+  buttons are one row along the bottom (between the joystick and JUMP, over the training line; `TouchControls.ABILITY_ROW_X`), the full game too.
 - **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the last demo level's chalice (level 4) the win row is
-  CONTINUE only the first time (every finisher sees the pitch before the hub and the randomizer), later
+  TRY THE FULL GAME and CONTINUE the first time (every finisher sees the pitch before the hub and the randomizer), later
   REPLAY / CONTINUE / HUB. Also after the third demo maze is first won (top line: the full game's endless mazes
   and 3 abilities). Not from a level tile any more (locked tiles do nothing). Layout: END OF THE DEMO, a story-voice line (THE WAY OUT
   IS STILL UP THERE), WISHLIST (hidden while the URL is empty; focused first when shown), five teaser cards that
