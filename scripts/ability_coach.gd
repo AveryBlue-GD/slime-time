@@ -18,6 +18,9 @@ const START_DELAY := 1.6
 const GAP := 0.6
 ## How long the closing line stays (the preview only).
 const DONE_TIME := 3.0
+## The preview (owner, 2026-10-23): once the tutorial is done (or SKIPped) the run starts over, the same maze and look,
+## a full meter, a fresh clock and charges, nothing the tutorial opened or revealed; RESTART_TIME after its line.
+const RESTART_TIME := 1.2
 
 var game: Node
 var runner: AbilityRunner
@@ -30,6 +33,7 @@ var _wait := START_DELAY
 ## The aim's line showing ("" = the ability's own line): aim_line, or cancel_line while JUMP is held on touch.
 var _aim_text := ""
 var _done_left := -1.0
+var _restart_left := -1.0
 var _layer: CanvasLayer
 var skip_pod: PanelContainer
 var skip_key: Label
@@ -140,12 +144,22 @@ func _physics_process(delta: float) -> void:
 		return
 	if game.get("preview_card_up") == true:
 		return
+	if _restart_left >= 0.0:
+		_restart_left -= delta
+		if _restart_left <= 0.0:
+			_restart_left = -1.0
+			set_physics_process(false)
+			game.restart_after_tutorial()
+		return
 	game.hud.training_slime_rect = game._slime_screen_rect()
 	game.hud.training_buttons_rect = game.touch_controls.ability_row_rect()
 	_refresh_skip()
 	if _done_left >= 0.0:
 		_done_left -= delta
-		if _done_left <= 0.0:
+		if _done_left <= 0.0 and game.get("preview") == true:
+			_done_left = -1.0
+			_begin_restart()
+		elif _done_left <= 0.0:
 			_stop()
 		return
 	if current == "":
@@ -173,6 +187,7 @@ func _next() -> void:
 		runner.set_locked("", true)  # (every line shown: all of them work)
 		if game.get("preview") == true:
 			_done_left = DONE_TIME
+			game.slime.hold = true  # (the run starts over after this line: nothing to play meanwhile)
 			game.hud.show_training_line(done_line())
 		else:
 			_stop()
@@ -207,7 +222,31 @@ func skip() -> void:
 		game.progress.mark_tutorial_seen(bit(id))
 	steps.clear()
 	current = ""
-	_stop()
+	if game.get("preview") == true:
+		_begin_restart()
+	else:
+		_stop()
+
+
+## The preview's tutorial is over (done or SKIPped): NOW FOR REAL!, then the run starts over (game.restart_after_tutorial)
+## without the tutorial (its bit is set in memory: the preview writes no save; Progress.end_demo_preview saves it).
+func _begin_restart() -> void:
+	runner.cancel_aim()
+	runner.set_locked("", true)
+	game.progress.story_seen |= game.progress.STORY_DEMO_PREVIEW_COACHED
+	game.touch_controls.set_coach("")
+	game.slime.hold = true
+	if skip_pod:
+		skip_pod.visible = false
+	current = ""
+	game.hud.show_training_line(restart_line())
+	_restart_left = RESTART_TIME
+
+
+## The line before the preview starts over after its tutorial.
+static func restart_line() -> String:
+	# i18n: ability tutorial (preview): the run starts over now, the tutorial is done; max 192px, 1 line
+	return Loc.t("coach.for_real", "NOW FOR REAL!")
 
 
 func _stop() -> void:

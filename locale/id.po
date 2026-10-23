@@ -133,6 +133,13 @@ msgctxt "coach.done"
 msgid "THAT'S EVERY ABILITY, GOOD LUCK"
 msgstr ""
 
+#. ability tutorial (preview): the run starts over now, the tutorial is done; max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.for_real"
+msgid "NOW FOR REAL!"
+msgstr ""
+
 #. the hub tour's SKIP pod (top right), max 40px, 1 line
 #. budget: max 40px, lines 1
 #: scripts/ability_coach.gd scripts/hub_tour.gd
