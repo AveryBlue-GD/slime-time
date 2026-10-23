@@ -44,9 +44,16 @@ func _check_preview() -> void:
 	progress.tickets = 7
 	progress.tickets_lifetime = 12
 	progress.abilities = {rifle = 1}
+	progress.upgrades = {slime = 2, speed = 1}
+	progress.coins_found = {1: ["a", "b", "c", "d", "e", "f"], 2: ["a", "b", "c", "d", "e", "f", "g", "h", "i"]}  # (15 found, 11 in the upgrades: 4 in hand)
 	progress.selected_skin = "lemon"
 	progress.random_seed = 4242
 	progress.save_progress()
+	var player_upgrades: Dictionary = progress.upgrades.duplicate()
+	var player_coins: int = progress.coins()
+	var caps := {}
+	for id: String in Demo.UPGRADE_CAPS:
+		caps[id] = Demo.upgrade_cap(id)
 	_check(progress.demo_preview_due(), "right after the demo's levels the preview is due (no randomizer wins first, owner 2026-10-23)")
 	Platform.demo_override = 0
 	_check(not progress.demo_preview_due(), "...never in the full game")
@@ -68,6 +75,16 @@ func _check_preview() -> void:
 		and Cosmetics.kind_of(progress.trail_style) == Cosmetics.TRAIL,
 		"a borrowed look: %s%s, hat %s, trail %s" % [progress.active_skin(), " jelly" if progress.jelly else (" pastel" if progress.pastel else ""),
 		progress.selected_hat, progress.trail_style])
+	var maxed := true
+	for id in ["slime", "speed", "brightness"]:
+		maxed = maxed and progress.upgrade_level(id) == Upgrades.max_level(id)
+	_check(maxed and Upgrades.max_level("slime") == 7 and Upgrades.max_level("speed") == 4 and Upgrades.max_level("brightness") == 3
+		and progress.upgrade_level("power") == 0,
+		"the coin upgrades at the full game's top levels (MORE SLIME 7, SPEED 4, BRIGHTNESS 3; no dev wall power): %s" % [progress.upgrades])
+	var caps_now := {}
+	for id: String in caps:
+		caps_now[id] = Demo.upgrade_cap(id)
+	_check(caps_now == caps and not progress.buy_upgrade("slime"), "...the demo's caps stay as they are (%s), nothing can be bought" % [caps_now])
 	progress.tickets += 50
 	progress.save_progress()
 	_check(_disk() == saved_at_start, "no save is written while it runs")
@@ -81,6 +98,10 @@ func _check_preview() -> void:
 	_check(game.preview and game.random_seed == Demo.PREVIEW_SEED and game.seed_level == Demo.PREVIEW_LEVEL,
 		"the game plays the preview maze (seed %d, level %d)" % [game.random_seed, game.seed_level])
 	_check(game.tickets.is_empty() and game.attempt_key == "" and not game.hud.attempt_pod.visible, "no ticket pickups, attempts or pod")
+	var top_speed := 72.0 * Upgrades.speed_factor(4)
+	_check(is_equal_approx(game._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(game.slime.max_speed, top_speed)
+		and is_equal_approx(game.light_reach, Upgrades.light_reach(3)),
+		"the run uses them: meter x%.2f, speed %.1f, light +%.0f px" % [game._applied_slime_factor(), game.slime.max_speed, game.light_reach])
 	var runner: Node = game.get("abilities")
 	_check(runner != null and runner.levels.size() == Abilities.ids().size(), "every ability works in it (%s)" % [runner.levels if runner else {}])
 	_check(game.preview_card_up and game.slime.frozen and game.hud.message.visible and game.hud.choice_buttons.size() == 1,
@@ -154,6 +175,8 @@ func _check_preview() -> void:
 	await physics_frame
 	_check(again.preview and not again.preview_card_up and again.random_seed == Demo.PREVIEW_SEED and progress.random_seed == Demo.PREVIEW_SEED,
 		"a restart goes straight in (the card is once), the same maze (seed %d)" % again.random_seed)
+	_check(is_equal_approx(again._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(again.slime.max_speed, top_speed)
+		and is_equal_approx(again.light_reach, Upgrades.light_reach(3)), "...still with the maxed upgrades")
 	again._dry_up()
 	await _wait_seconds(again.DRY_CHOICE_DELAY + 0.3)
 	_check(again.hud.choice_buttons.size() == 1 and again.hud.choice_buttons[0].text == "CONTINUE",
@@ -177,6 +200,8 @@ func _check_preview() -> void:
 	_check(progress.active_skin() == "lemon" and progress.selected_hat == Hats.NONE and progress.abilities == {rifle = 1}
 		and progress.random_seed == player_seed and progress.skin_override == "",
 		"...the player's skin, hat, abilities and maze")
+	_check(progress.upgrades == player_upgrades and progress.coins() == player_coins and player_coins == 4 and progress.upgrade_level("brightness") == 0,
+		"...the player's own upgrades (%s) and coins (%d)" % [progress.upgrades, progress.coins()])
 	progress.save_progress()
 	_check(_disk() == saved_at_start, "...and the next save writes that")
 	progress.story_seen = seen_then | progress.STORY_DEMO_PREVIEW_COACHED
@@ -369,6 +394,9 @@ func _check_tutorial_restart(skip: bool) -> void:
 		_check(restarted.coach == null and not restarted.preview_card_up and restarted.run_time < 0.1 and full
 			and restarted.abilities.charges.rifle == Abilities.charges("rifle", Abilities.max_level("rifle")),
 			"[%s] ...no tutorial again, no card, a fresh clock, a full meter and full charges" % how)
+		_check(is_equal_approx(restarted._applied_slime_factor(), Upgrades.slime_factor(7))
+			and is_equal_approx(restarted.slime.max_speed, 72.0 * Upgrades.speed_factor(4)) and is_equal_approx(restarted.light_reach, Upgrades.light_reach(3)),
+			"[%s] ...still with the maxed upgrades" % how)
 		_check(progress.has_seen_story(progress.STORY_DEMO_PREVIEW_COACHED) and _disk() == disk, "[%s] ...the tutorial marked done, no save written" % how)
 		restarted.free()
 	current_scene = null

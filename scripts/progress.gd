@@ -1607,7 +1607,7 @@ func demo_preview_due() -> bool:
 
 
 ## Starts the demo's FULL GAME PREVIEW (Demo.PREVIEW): marks it seen (saved, so it plays once), keeps the whole
-## state as it is now, then sets up the preview maze and its borrowed look and abilities, in memory only (no save
+## state as it is now, then sets up the preview maze and its borrowed look, abilities and maxed coin upgrades, in memory only (no save
 ## is written until end_demo_preview). The game scene reloaded after this plays it (game.gd `preview`).
 func begin_demo_preview() -> void:
 	if _preview_save != null:
@@ -1631,6 +1631,11 @@ func begin_demo_preview() -> void:
 	_borrow_preview_look()
 	for id in Abilities.ids():
 		abilities[id] = Abilities.max_level(id)
+	# the coin upgrades at the full game's top levels (owner, 2026-10-23: MORE SLIME 7, SPEED 4, BRIGHTNESS 3), past
+	# the demo's caps; the maze keeps its PREVIEW_LEVEL size. (The ticket workshop is off, Economy.WORKSHOP_ENABLED.)
+	for upgrade: Dictionary in Upgrades.LIST:
+		if not upgrade.get("dev", false):
+			upgrades[upgrade.id] = Upgrades.max_level(upgrade.id)
 
 
 ## A random look from the full game: a skin past the demo's (opaque, jelly or pastel), a hat (sometimes dyed),
@@ -1661,7 +1666,7 @@ func _borrow_preview_look() -> void:
 	map_paper = papers.pick_random()
 
 
-## Ends the preview (if one runs): everything goes back to how it was before it (the borrowed look, abilities,
+## Ends the preview (if one runs): everything goes back to how it was before it (the borrowed look, abilities, upgrades,
 ## the maze's attempts and records alike), and saving is back on.
 func end_demo_preview() -> void:
 	if _preview_save == null:

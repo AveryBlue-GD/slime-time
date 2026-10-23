@@ -133,7 +133,9 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
 - **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the randomizer portal's first use after level 4's END OF
   THE DEMO screen (owner, 2026-10-23; until then it followed the `RANDOM_WINS`-th randomizer win) leads into
   one hand-picked maze (`PREVIEW_SEED` 1854 at MORE SLIME `PREVIEW_LEVEL` 3: Sunken Shrine, 33 x 20 cells, a perfect
-  route uses ~64% of the meter) with every ability at its top level and a random full-game look (a skin past the
+  route uses ~64% of the meter at MORE SLIME 3) with every ability at its top level, the coin upgrades at the full game's
+  top levels (owner, 2026-10-23: MORE SLIME 7, SPEED 4, BRIGHTNESS 3, past the demo's caps; the maze keeps its level-3
+  size, so a perfect route takes ~46% of the meter; the ticket workshop is off, nothing to max) and a random full-game look (a skin past the
   demo's, opaque / jelly / pastel, a hat, sometimes dyed, a trail, a map paper). A card (FULL GAME PREVIEW / PLAY)
   comes first (once; RESTART goes straight in); no ticket pickups, attempts, pod, pay or records; its win or dry-up
   offers only CONTINUE and the pause menu's QUIT also goes on to the randomizer's end screen. Nothing borrowed
