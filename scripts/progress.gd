@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--demo-end` (with `--demo`) starts with levels 1-3 cleared so level 4 (the demo's last) is next (enable_demo_end_test),`--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -405,6 +405,8 @@ func _ready() -> void:
 			story_seen |= STORY_INTRO | STORY_DEMO_END
 			tickets_lifetime = maxi(tickets_lifetime, 1)
 			begin_demo_preview()
+		elif arg == "--demo-end" and Demo.on():  # the demo's last story level next (with --demo; see enable_demo_end_test)
+			enable_demo_end_test()
 		elif arg == "--descent" or arg.begins_with("--descent="):  # a Descent run (--descent=SEED: that run seed)
 			start_descent(arg.trim_prefix("--descent=").to_int() if arg.begins_with("--descent=") else 0)
 		elif arg.begins_with("--skin="):
@@ -1273,6 +1275,17 @@ func take_tutorial_launch() -> String:
 	if which == "maze":
 		return prepare_training(false) if tutorial_due() else ""
 	return TOUR_SCENE if hub_tour_due() else ""
+
+
+## Debug `--demo --demo-end`: a demo player one level from its end, nothing saved: levels 1 to
+## Demo.levels() - 1 cleared the way a chalice clears them (complete_level), the intro and the tutorial
+## seen, so the title goes to the hub with the last demo level (4) next and its chalice shows TRY THE FULL GAME.
+func enable_demo_end_test() -> void:
+	saving_enabled = false
+	story_seen |= STORY_INTRO
+	tutorial_seen |= TUTORIAL_MOVE | TUTORIAL_LEAP | TUTORIAL_TRAINING | TUTORIAL_HUB
+	for level in range(1, Demo.levels()):
+		complete_level(level, false)
 
 
 ## Dev mode, exactly as `--unlock-all` (tools/play.sh --dev) sets it up: every level unlocked,
