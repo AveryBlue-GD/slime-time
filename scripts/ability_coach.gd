@@ -95,8 +95,8 @@ static func what(id: String) -> String:
 ## The coach line for ability `id`: its key (TAP on touch), its name and what it does.
 static func line(id: String) -> String:
 	if on_touch() and id in AbilityRunner.AIMED:
-		# i18n: ability tutorial line (touch, an aimed ability: tap its button, aim with the joystick, JUMP fires), max 192px, 1 line; {name} = ability name, {jump} = the JUMP button's word (touch.jump)
-		return Loc.t("coach.line_touch_aim", "TAP {name}, AIM, PRESS {jump}", {name = Abilities.display_name(id), jump = jump_word()})
+		# i18n: ability tutorial line (touch, an aimed ability: tap its button, then the joystick aims), max 192px, 1 line; {name} = ability name
+		return Loc.t("coach.line_touch_aim", "TAP {name}, AIM WITH THE STICK", {name = Abilities.display_name(id)})
 	if on_touch():
 		# i18n: ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 		return Loc.t("coach.line_touch", "TAP {name}: {what}", {name = Abilities.display_name(id), what = what(id)})
@@ -118,8 +118,8 @@ static func jump_word() -> String:
 ## The line while an aimed ability's aim is up: how to fire it.
 static func aim_line() -> String:
 	if on_touch():
-		# i18n: ability tutorial line (touch, the aim is up: JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
-		return Loc.t("coach.aim_touch", "AIM, THEN PRESS {jump}", {jump = jump_word()})
+		# i18n: ability tutorial line (touch, the aim is up: the joystick aims, JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
+		return Loc.t("coach.aim_touch", "AIM WITH THE STICK, THEN PRESS {jump}", {jump = jump_word()})
 	# i18n: ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
 	return Loc.t("coach.aim", "AIM, THEN {key} TO FIRE", {key = key_text("jump")})
 
@@ -211,6 +211,7 @@ func skip() -> void:
 
 
 func _stop() -> void:
+	runner.cancel_aim()  # (SKIP or the run's end: the joystick moves again)
 	runner.set_locked("", true)
 	game.slime.hold = false
 	game.touch_controls.set_coach("")

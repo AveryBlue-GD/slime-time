@@ -125,15 +125,17 @@ func _check_preview() -> void:
 	var touch_widest := 0.0
 	for text: String in touch_lines:
 		touch_widest = maxf(touch_widest, UIKit.text_w(text))
-	_check(touch_lines[1] == "TAP SLIME SNIPER, AIM, PRESS JUMP" and touch_lines[0] == "AIM, THEN PRESS JUMP"
+	_check(touch_lines[1] == "TAP SLIME SNIPER, AIM WITH THE STICK" and touch_lines[0] == "AIM WITH THE STICK, THEN PRESS JUMP"
 		and touch_lines[3].begins_with("TAP ") and touch_lines[-1] == "LET GO TO FIRE, DRAG TO X TO CANCEL" and touch_widest <= game.hud.TRAINING_LINE_W,
 		"on touch the aimed ones say how to aim (%s), all within %d px (widest %d)" % [touch_lines, game.hud.TRAINING_LINE_W, touch_widest])
 	await _physics_frames(2)
 	_check(locked_ids.call() == ["rifle", "kaze", "sense"] and not runner.use("sense") and game.random_map_view == null,
 		"each one unlocks when its line comes up: GOO GRENADE's line, the others held back (%s)" % [locked_ids.call()])
+	runner.start_aim("splat")
 	coach.skip()
 	await _physics_frames(2)
 	_check(locked_ids.call().is_empty() and runner.locked.is_empty(), "SKIP: every ability works")
+	_check(runner.aiming == "" and not game.slime.aim_lock, "...and an aim that was up is called off (the joystick moves again)")
 	_check(runner.use("sense") and game.random_map_view != null, "SLIME SENSE peeks at the map")
 	game._close_run_map()
 	await _physics_frames(2)

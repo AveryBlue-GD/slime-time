@@ -790,6 +790,7 @@ func _touch() -> void:
 			if Input.is_action_pressed("jump"):
 				jump_pts.append(p)
 			_tap(tc, 7, Vector2(-60, -60), false)  # (lifted far away: an ability doesn't fire)
+			game.abilities.cancel_aim()  # (a tap on SLIME RIFLE's button brings its aim up: the probe is about the hit areas)
 	var gap := INF
 	for b in button_pts:
 		for j in jump_pts:
@@ -841,7 +842,8 @@ func _touch() -> void:
 	_tap(tc, 3, center.rifle, true)
 	_tap(tc, 3, center.rifle, false)
 	await _physics_frames(1)
-	_check(game.abilities.aiming == "" and game.abilities.charges.rifle == 1 and not game.slime.aim_lock, "its button again calls the aim off")
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1, "its button again does nothing (only the X calls it off)")
+	game.abilities.cancel_aim()
 	progress.force_touch = false
 	await _stop(game)
 
@@ -871,10 +873,12 @@ func _touch_aim() -> void:
 	await _physics_frames(2)
 	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left and tc.aim_ring,
 		"touch: a tap on SLIME SNIPER brings up its aim (nothing spent, letting go fires nothing), JUMP's gold ring on")
+	var still: Vector2 = game.slime.position
 	Input.action_press("move_up")
-	await _physics_frames(2)
+	await _physics_frames(20)
 	Input.action_release("move_up")
-	_check(runner.aim_dir == Vector2i(0, -1), "...the joystick aims (up: %s)" % runner.aim_dir)
+	_check(runner.aim_dir == Vector2i(0, -1) and game.slime.position == still,
+		"...the joystick only aims now (up: %s), the slime stays put" % runner.aim_dir)
 	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
 	await _physics_frames(10)
 	_check(runner.aiming == "rifle" and runner.charges.rifle == left and tc.cancel_shown() and not Input.is_action_pressed("jump")
@@ -934,10 +938,12 @@ func _touch_aim() -> void:
 	runner.charges.rifle = 3
 	left = runner.charges.rifle
 	_tap(tc, 4, rifle, true)
+	var before: Vector2i = runner.aim_dir
 	_drag(tc, 4, rifle + Vector2(30, -30))
 	_tap(tc, 4, rifle + Vector2(30, -30), false)
-	_check(runner.aiming == "rifle" and runner.aim_dir == Vector2i(1, -1) and runner.charges.rifle == left,
-		"a drag off the button aims too (up-right, 8 ways: %s), let go: still aiming" % runner.aim_dir)
+	await _physics_frames(2)
+	_check(runner.aiming == "rifle" and runner.aim_dir == before and runner.charges.rifle == left,
+		"a drag off the button doesn't aim (only the joystick does: %s)" % runner.aim_dir)
 	var splat := tc.slot_center(1)
 	_tap(tc, 4, splat, true)
 	_tap(tc, 4, splat, false)
@@ -945,16 +951,45 @@ func _touch_aim() -> void:
 	_tap(tc, 4, splat, true)
 	_tap(tc, 4, splat, false)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.splat == 3 and not game.slime.aim_lock and not tc.aim_ring, "...and again calls it off (nothing spent)")
-	_tap(tc, 4, splat, true)
-	_tap(tc, 4, splat, false)
+	_check(runner.aiming == "splat" and game.slime.aim_lock and tc.aim_ring, "...and again does nothing (still aiming)")
 	var sense := tc.slot_center(2)
 	_tap(tc, 6, sense, true)
 	_tap(tc, 6, sense, false)
 	await _physics_frames(2)
-	_check(runner.aiming == "" and runner.charges.splat == 3 and game.random_map_view != null,
-		"SLIME SENSE stays a tap: it calls the aim off and peeks")
+	_check(runner.aiming == "splat" and game.random_map_view == null and tc.abilities[2].id == "sense",
+		"SLIME SENSE does nothing while aiming (dimmed)")
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_tap(tc, 5, x, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.splat == 3 and not game.slime.aim_lock and not tc.aim_ring, "...the X calls it off (nothing spent)")
+	var moved_from: Vector2 = game.slime.position
+	Input.action_press("move_right")
+	Input.action_press("move_down")
+	await _physics_frames(20)
+	Input.action_release("move_right")
+	Input.action_release("move_down")
+	_check(game.slime.position != moved_from, "...then the joystick moves the slime again")
+	_tap(tc, 6, sense, true)
+	_tap(tc, 6, sense, false)
+	await _physics_frames(2)
+	_check(game.random_map_view != null, "...and SLIME SENSE is a tap again (it peeks)")
 	game._close_run_map()
+	await _physics_frames(2)
+	# Nothing leaves the joystick stuck aiming: the pause menu, a dry-up.
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	await _physics_frames(2)
+	paused = true
+	await process_frame
+	paused = false
+	await _physics_frames(2)
+	_check(runner.aiming == "" and not game.slime.aim_lock and not tc.aim_ring, "a pause calls the aim off (the joystick moves again)")
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	await _physics_frames(2)
+	game._dry_up()
+	await _physics_frames(3)
+	_check(runner.aiming == "" and not game.slime.aim_lock and not tc.aim_ring, "drying up calls it off too")
 	current_scene = null
 	progress.force_touch = false
 	await _stop(game)
