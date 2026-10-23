@@ -182,6 +182,8 @@ var training_slime_rect := Rect2()
 ## The touch joystick's ring on screen (game.gd, every tick; empty without touch controls): it floats to the
 ## thumb anywhere in the left half, so the line keeps off it too.
 var training_joy_rect := Rect2()
+## The touch ability buttons' row (AbilityCoach, every tick; empty without it): the line keeps off it.
+var training_buttons_rect := Rect2()
 var _training_line_covered := false
 const TRAINING_LINE_W := 192
 const TRAINING_LINE_FADE := 4.0  # alpha per second (a quarter second in or out)
@@ -483,12 +485,19 @@ func _place_training_line() -> void:
 	if training_line_top:
 		near = near.grow(TRAINING_LINE_HYSTERESIS)
 	var row_up := _choice_root.visible and not choice_buttons.is_empty()
-	var blocked := row_up or (training_slime_rect.has_area() and training_slime_rect.intersects(near)) 		or (training_joy_rect.has_area() and training_joy_rect.intersects(near))
+	var blocked := row_up or (training_slime_rect.has_area() and training_slime_rect.intersects(near)) 		or (training_joy_rect.has_area() and training_joy_rect.intersects(near)) \
+		or (training_buttons_rect.has_area() and training_buttons_rect.intersects(bottom))
 	var top := Rect2(x, _training_line_top_y(size), size.x, size.y)
 	var top_blocked := training_joy_rect.has_area() and training_joy_rect.intersects(top.grow(UIKit.GAP_M))
 	training_line_top = blocked and not top_blocked
 	training_line.size = size
 	training_line.position = top.position if training_line_top else bottom.position
+
+
+## The touch ability buttons' row (TouchControls.ability_row_rect, a sibling in the game scene), empty without it.
+func _touch_ability_row() -> Rect2:
+	var touch := get_parent().get_node_or_null("TouchControls") if get_parent() else null
+	return touch.ability_row_rect() if touch and touch.has_method("ability_row_rect") else Rect2()
 
 
 ## The line's top up top (see _place_training_line): the second pod row, moved down under any pod it would come
@@ -502,6 +511,8 @@ func _training_line_top_y(size: Vector2) -> float:
 	var pods := pod_rects()
 	if not (time_label.get_parent().get_parent() as Control).visible:
 		pods.pop_back()  # (the timer pod, hidden in training)
+	if training_buttons_rect.has_area():
+		pods.append(training_buttons_rect)
 	var moved := true
 	while moved:
 		moved = false
@@ -739,13 +750,14 @@ func set_abilities(items: Array[Dictionary]) -> void:
 		group.add_theme_constant_override("separation", 2)
 		group.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var icon := Abilities.make_icon(item.id)
-		icon.modulate = Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7)
+		var lit: bool = int(item.left) > 0 and not item.get("locked", false)  # (the tutorial holds the others back)
+		icon.modulate = Color.WHITE if lit else Color(0.5, 0.5, 0.55, 0.7)
 		group.add_child(icon)
 		ability_row.add_child(group)
 		if before.has(item.id) and int(item.left) < int(before[item.id]) and not still:
 			icon.modulate = Color(2.0, 2.0, 2.0)
 			icon.create_tween().tween_property(icon, "modulate",
-				Color.WHITE if int(item.left) > 0 else Color(0.5, 0.5, 0.55, 0.7), 0.35)
+				Color.WHITE if lit else Color(0.5, 0.5, 0.55, 0.7), 0.35)
 	ability_pod.visible = not items.is_empty()
 	_pods_changed()
 
@@ -1113,6 +1125,9 @@ func _fade_area_texts(hold: float) -> void:
 ## and a text that still lands on the slime goes on under it.
 func _place_area_texts() -> void:
 	var pods := pod_rects()
+	var buttons := _touch_ability_row()
+	if buttons.has_area():
+		pods.append(buttons)  # (the touch ability buttons' row: the texts keep off it too)
 	if player_rect.has_area() and not player_rect_live:
 		# (mid-level: the slime has left its spawn, so the texts stay put, moving only down off a pod)
 		var y := _clear_y(area_label, area_label.offset_top, pods)

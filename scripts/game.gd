@@ -2777,8 +2777,12 @@ func _offer_next_steps() -> void:
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
 	elif Demo.on() and level >= Demo.last_level(hard_mode) and progress and not progress.has_seen_story(Demo.END_SEEN_BIT):
-		# The demo's last level, the first time: CONTINUE only, into the end screen (every finisher sees it).
-		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), play_next]], 0)
+		# The demo's last level, the first time: CONTINUE into the end screen (every finisher sees it, also after the
+		# preview), and first, focused, TRY THE FULL GAME (owner, 2026-10-23): the FULL GAME PREVIEW maze right away.
+		var options: Array = [[Loc.t("result.choice.continue", "CONTINUE"), play_next]]
+		if can_try_full_game():
+			options.push_front([Demo.try_full_game_text(), try_full_game])
+		hud.show_choices(options, 0)
 	elif level >= Levels.COUNT or (Demo.on() and level >= Demo.last_level(hard_mode)):
 		hud.show_choices([[Loc.t("result.choice.replay", "REPLAY"), replay], [Loc.t("result.choice.continue", "CONTINUE"), play_next],
 			[Loc.t("result.choice.hub", "HUB"), go_to_hub]], 1)
@@ -2812,6 +2816,22 @@ func _close_preview_card() -> void:
 	slime.frozen = false
 	touch_controls.visible = _card_touch
 	hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
+
+
+## Whether TRY THE FULL GAME is offered on this win: the demo's last story level (not hard mode) with the preview on.
+func can_try_full_game() -> bool:
+	return Demo.on() and not hard_mode and not is_random() and progress != null and level >= Demo.last_level(false) \
+		and (progress.demo_preview_due() or progress.demo_preview_replay())
+
+
+## TRY THE FULL GAME: straight into the FULL GAME PREVIEW maze, as the randomizer portal does (its first run with the
+## ability tutorial); its CONTINUE then opens the end screen.
+func try_full_game() -> void:
+	if _leaving() or progress == null:
+		return
+	DevLog.route(get_tree(), "TRY THE FULL GAME (demo preview)", self)
+	progress.start_random()
+	get_tree().reload_current_scene()
 
 
 ## The preview is over (its CONTINUE): the randomizer's end screen (DemoEnd puts the save's own state back).

@@ -3,7 +3,7 @@ extends "res://tests/suite_base.gd"
 ## The demo build (scripts/demo.gd, docs/demo-plan.md): one switch (Platform.is_demo, forced here with
 ## Platform.demo_override) and its gates. Checks, in this order:
 ## 1. a stripped demo export: with Demo.strip_test on, levels 1-4 are played to the chalice by the autopilot
-##    and the last one leads (CONTINUE only, the first time) to the end screen; nothing full-only was asked
+##    and the last one leads (TRY THE FULL GAME, focused, and CONTINUE the first time) to the end screen; nothing full-only was asked
 ##    for or loaded (no level 5+ / hard 2+ data, no later theme art or ambience in the resource cache);
 ## 2. the full game with the switch off: every knob is the full game's, saves carry no demo marker;
 ## 3. every lock: levels (level select + archway), the per-upgrade caps (and their coin math), abilities (only
@@ -71,7 +71,8 @@ func _check_stripped_run() -> void:
 			game.free()
 			continue
 		var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
-		_check(texts == ["CONTINUE"], "the demo's last level, the first time: CONTINUE only (%s)" % [texts])
+		_check(texts == ["TRY THE FULL GAME", "CONTINUE"] and game.hud.choice_buttons[0].has_focus(),
+			"the demo's last level, the first time: TRY THE FULL GAME (focused) and CONTINUE (%s)" % [texts])
 		game.play_next()
 		var opened := false
 		for i in 240:
@@ -536,8 +537,10 @@ func _check_screens() -> void:
 	# End screen.
 	DemoEnd.from = DemoEnd.FROM_STORY
 	var end: Control = await _open(DemoEnd.SCENE)
-	_check(not end.wishlist_button.visible and end.keep_button.visible and end.get_viewport().gui_get_focus_owner() == end.keep_button,
-		"end screen: WISHLIST hidden (no URL), KEEP PLAYING focused")
+	_check(not end.wishlist_button.visible and end.keep_button.visible and end.try_button != null and end.try_button.text == "TRY THE FULL GAME"
+		and end.get_viewport().gui_get_focus_owner() == end.try_button, "end screen: WISHLIST hidden (no URL), TRY THE FULL GAME focused, KEEP PLAYING")
+	_check(end.try_button.get_global_rect().end.x < end.keep_button.get_global_rect().position.x
+		and end.try_button.get_global_rect().position.x >= UIKit.EDGE, "...side by side on the bottom row, on screen")
 	_check(end.random_hint != null and end.random_hint.text == "NOW TRY THE RANDOMIZER IN THE HUB"
 		and end.random_hint.get_global_rect().end.y <= UIKit.BOTTOM_ROW_Y,
 		"...after the story it points at the randomizer, above KEEP PLAYING")

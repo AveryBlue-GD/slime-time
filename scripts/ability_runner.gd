@@ -38,6 +38,9 @@ const AIMED: Array[String] = ["rifle", "splat"]
 const AIM_DOT := Color(1.0, 1.0, 1.0, 0.75)
 var aiming := ""
 var aim_dir := Vector2i.RIGHT
+## Abilities the tutorial holds back (AbilityCoach, owner 2026-10-23: only the one it prompts can be used): they
+## don't fire (a click), and the strip / touch buttons show them dimmed. Empty = all work.
+var locked: Array[String] = []
 ## Ticks a straight aim must hold after a diagonal one before it takes over (see _aim_step).
 const AIM_SETTLE := 6
 var _aim_settle := 0
@@ -69,13 +72,23 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	return runner
 
 
-## The strip the HUD and the touch buttons show: [{id, left, max}] in Abilities order.
+## The strip the HUD and the touch buttons show: [{id, left, max, locked}] in Abilities order.
 func strip() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for id in Abilities.ids():
 		if levels.has(id):
-			out.append({id = id, left = int(charges[id]), max = Abilities.charges(id, levels[id])})
+			out.append({id = id, left = int(charges[id]), max = Abilities.charges(id, levels[id]), locked = id in locked})
 	return out
+
+
+## Holds back every ability but `allowed` ("": all of them; see locked), or none with `none`.
+func set_locked(allowed: String, none := false) -> void:
+	locked.clear()
+	if not none:
+		for id: String in levels:
+			if id != allowed:
+				locked.append(id)
+	_refresh()
 
 
 func _refresh() -> void:
@@ -196,7 +209,7 @@ func _draw() -> void:
 ## leaping, charging, stunned, dashing, frozen; the run not over) and, for RIFLE / SPLAT, more slime
 ## in the meter than one use costs (SLIMAKAZE may use the last of it).
 func can_use(id: String) -> bool:
-	if int(charges.get(id, 0)) <= 0 or game.finished or slime.frozen or slime.state != Slime.State.GLIDE:
+	if id in locked or int(charges.get(id, 0)) <= 0 or game.finished or slime.frozen or slime.state != Slime.State.GLIDE:
 		return false
 	return id == "kaze" or game.slime_remaining > Abilities.slime_cost(id)
 
@@ -205,6 +218,9 @@ func can_use(id: String) -> bool:
 ## when a wall is right ahead.
 ## `aimed`: the aim mode's direction (8 ways); zero = the facing snapped to the grid (4 ways).
 func use(id: String, aimed := Vector2i.ZERO) -> bool:
+	if id in locked:
+		_sfx("click", -10.0)
+		return false
 	if id == "sense":
 		return _peek()
 	if not can_use(id):
