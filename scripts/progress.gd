@@ -406,7 +406,6 @@ func _ready() -> void:
 			saving_enabled = false
 			levels_cleared = Demo.levels()
 			highest_unlocked = Demo.levels()
-			randoms_won = Demo.RANDOM_WINS
 			story_seen |= STORY_INTRO | STORY_DEMO_END
 			tickets_lifetime = maxi(tickets_lifetime, 1)
 			begin_demo_preview()
@@ -1590,8 +1589,8 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
-	if demo_preview_replay():
-		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
+	if demo_preview_due() or demo_preview_replay():
+		begin_demo_preview()  # (the demo's randomizer is the FULL GAME PREVIEW maze, from its first use on: owner 2026-10-23)
 		return
 	mode = MODE_RANDOM
 	new_random_maze()
@@ -1617,7 +1616,9 @@ func demo_preview_replay() -> bool:
 	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
 
 
-## Whether the RANDOM_WINS-th randomizer win leads into the preview now (a demo with it, not seen yet).
+## Whether the preview's first run is next (a demo with it, not seen yet): the randomizer portal's first use after
+## the demo's levels (owner, 2026-10-23; it used to follow the RANDOM_WINS-th randomizer win, still the fallback in
+## game.gd play_next for a random maze started some other way).
 func demo_preview_due() -> bool:
 	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and not has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
 

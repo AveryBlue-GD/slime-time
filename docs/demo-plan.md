@@ -106,14 +106,17 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   SLIME 3, SPEED 2, BRIGHTNESS 1 (web too): cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
   show FULL); in a maze only RIFLE works (`AbilityRunner.create`).
 - **Hard mode:** level 1 only.
-- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). As in the full game, every
+- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). **Since 2026-10-23 (owner) its
+  portal plays the FULL GAME PREVIEW maze from the first use (below): no random mazes in the demo.** What follows is
+  the fallback with `Demo.PREVIEW` off (or a random maze started another way): as in the full game, every
   maze is a new random one (`Progress.new_random_maze`: a random seed, so a new layout and start; entering the portal,
   NEW MAZE after a dry-up and after a win; RESTART replays the same maze), paying tickets as usual. The end screen's
   pitch follows the `RANDOM_WINS`-th win. (Until 2026-10-20 the demo replayed three fixed seeds picked by
   `randoms_won`: a dry-up or a fresh portal visit gave the same Dark Dungeon maze and start again, owner bug report.)
   Only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
   pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 4; on the web (left out): FULL GAME.
-- **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the `RANDOM_WINS`-th win's NEW MAZE leads first into
+- **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the randomizer portal's first use after level 4's END OF
+  THE DEMO screen (owner, 2026-10-23; until then it followed the `RANDOM_WINS`-th randomizer win) leads into
   one hand-picked maze (`PREVIEW_SEED` 1854 at MORE SLIME `PREVIEW_LEVEL` 3: Sunken Shrine, 33 x 20 cells, a perfect
   route uses ~64% of the meter) with every ability at its top level and a random full-game look (a skin past the
   demo's, opaque / jelly / pastel, a hat, sometimes dyed, a trail, a map paper). A card (FULL GAME PREVIEW / PLAY)
@@ -121,7 +124,9 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   offers only CONTINUE and the pause menu's QUIT also goes on to the randomizer's end screen. Nothing borrowed
   reaches the save: `Progress.begin_demo_preview` saves the seen bit (`PREVIEW_SEEN_BIT` 16: once per save), keeps a
   `_write()` of the whole state and writes nothing until `end_demo_preview` (DemoEnd, the hub and the title call it)
-  reads that back (its first run is the 3rd win's; later ones come from the portal). Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
+  reads that back (every run comes from the portal; `Progress.start_random`: `demo_preview_due` the first time,
+  `demo_preview_replay` after). Its CONTINUE opens the randomizer's end screen (top line THE FULL GAME ADDS ENDLESS
+  MAZES AND THE SHOP). No randomizer wins, so the demo pays no randomizer tickets: the prize wheel's first spin is free. Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
   After PLAY the ability tutorial (`scripts/ability_coach.gd`, owner 2026-10-22) walks through every ability on the
   training line pod: key (touch: TAP, the button blinks gold), name and what it does; the slime is held (turning only,
   no clock or drain) until that ability is used, SKIP (F / pad X / tap) ends it. Outside the preview it shows each

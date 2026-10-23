@@ -51,9 +51,9 @@ static func open(tree: SceneTree, why := FROM_STORY) -> void:
 ## The line under the title (the story voice; after the randomizer, what the full game adds there).
 static func top_line(why: String) -> String:
 	if why == FROM_RANDOM:
-		# Only what the demo doesn't have (its randomizer is already endless, with SLIME RIFLE).
-		# i18n: demo end screen, line under the title, max 300px, 1 line; {count} = abilities the demo lacks (2)
-		return Loc.t("demo.end.random", "THE FULL GAME ADDS {count} ABILITIES AND THE SHOP", {count = more_abilities()})
+		# After the preview maze (it lent every ability): what the demo's randomizer doesn't have.
+		# i18n: demo end screen, line under the title, max 300px, 1 line
+		return Loc.t("demo.end.random", "THE FULL GAME ADDS ENDLESS MAZES AND THE SHOP")
 	# i18n: demo end screen, line under the title (the story's voice: the slime climbs to daylight), max 300px, 1 line
 	return Loc.t("demo.end.line", "THE WAY OUT IS STILL UP THERE")
 
@@ -66,7 +66,7 @@ static func more_abilities() -> int:
 
 ## What's new in a teaser card's area (Demo.teasers() order: the first card, the area right after the
 ## demo, counts the areas still to come). Every line names only full-game content (QA must-fix 4): the demo
-## already has jelly skins, hats, hard level 1, endless random mazes (which loop back) and SLIME RIFLE.
+## already has jelly skins, hats, hard level 1 and SLIME RIFLE (endless mazes are the full game's: its randomizer is one preview maze).
 static func feature_line(level: int) -> String:
 	if level == Demo.levels() + 1:
 		# i18n: demo end screen teaser card, max 168px, 1 line; {count} = story areas past the demo (6, web 7)
