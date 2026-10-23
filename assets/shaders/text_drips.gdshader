@@ -13,6 +13,8 @@ shader_type canvas_item;
 uniform float seed = 0.0;
 // Economy.CLEAN_SMALL_TEXT: 8 px text grows no drips (they made C read as Ç); 16 px titles still do.
 uniform bool clean_small = true;
+// BUG2-05: 16 px text that must read clean (the tagline, ENTER THE HUB) grows no drips; the logo and the big headings keep them.
+uniform bool clean_big = false;
 
 varying vec2 world;
 varying vec4 tint;

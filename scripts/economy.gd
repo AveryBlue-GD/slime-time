@@ -401,6 +401,9 @@ const COIN_CATCH_FIZZ_DB := -8.0
 ## IMP-03: 8 px text (body, buttons, HUD, coach) renders without drips; only 16 px titles drip.
 ## false = the old look everywhere.
 const CLEAN_SMALL_TEXT := true
+## IMP2-01: the 1.8 s launch card (scripts/ui/intro_card.gd) on every cold launch except the first-ever one
+## (the story intro plays then); false = the title opens as before.
+const INTRO_CARD := true
 ## IMP-05: the unrevealed fog is near-black (Dark / Normal fog looks; Bright keeps its lighter mist, and is
 ## the default on touch devices). false = the old murky mid-tone.
 const DARK_FOG := true

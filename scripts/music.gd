@@ -12,6 +12,8 @@ const INTRO_TRACK := "res://assets/music/story_intro.ogg"
 ## IMP-05: the title's loop and the sparse quiet bed under a level's ambience (Economy.LEVEL_MUSIC, Settings).
 const TITLE_TRACK := "res://assets/music/title.ogg"
 const LEVEL_TRACK := "res://assets/music/level_bed.ogg"
+## IMP2-01: the launch card's ~1.2 s sting; the title loop starts as it ends (or at once when the card is skipped).
+const STING_TRACK := "res://assets/music/sting_title.ogg"
 const TITLE_SCENE := "res://scenes/title.tscn"
 const LEVEL_SCENE := "res://scenes/main.tscn"
 const TITLE_DB := -4.0
@@ -77,7 +79,9 @@ func follow_scene(path: String) -> void:
 	if path in HUB_SCENES:
 		play_hub()
 	elif path == TITLE_SCENE and Economy.LEVEL_MUSIC:
-		if current != TITLE_TRACK:
+		if current == STING_TRACK:
+			pass  # the launch card's sting is playing; the loop follows it
+		elif current != TITLE_TRACK:
 			_start(TITLE_TRACK, true, TITLE_DB, FADE_IN)
 		else:
 			_fade_to(1.0, FADE_IN)
@@ -109,6 +113,18 @@ func play_hub() -> void:
 		pick = (pick + 1 + randi() % (HUB_TRACKS.size() - 1)) % HUB_TRACKS.size()
 	_last_hub = pick
 	_start(HUB_TRACKS[pick], true, HUB_DB, FADE_IN)
+
+
+## The launch card's sting, from the top (under the card), then the title loop. Silent with LEVEL_MUSIC off, like the loop.
+func play_sting() -> void:
+	if Economy.LEVEL_MUSIC:
+		_start(STING_TRACK, false, TITLE_DB, 0.0)
+
+
+## The card was skipped: the title loop now (a short fade), the sting cut.
+func skip_sting() -> void:
+	if current == STING_TRACK:
+		_start(TITLE_TRACK, true, TITLE_DB, 0.6)
 
 
 ## The story intro's track, from the top.
@@ -151,6 +167,9 @@ func _fade_to(level: float, seconds: float) -> void:
 
 func _process(delta: float) -> void:
 	if current == "":
+		return
+	if current == STING_TRACK and not _player.playing:
+		_start(TITLE_TRACK, true, TITLE_DB, 0.8)  # the sting ended: the title loop takes over
 		return
 	_level = move_toward(_level, _target, delta * _rate)
 	if (_level <= 0.0 and _target <= 0.0) or not _player.playing:

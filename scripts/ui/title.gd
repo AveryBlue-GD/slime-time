@@ -54,6 +54,8 @@ const TAGLINE_BOTTOM := 176
 const TAGLINE_W := 300
 
 var enter_button: Button
+## The launch card while it plays (null otherwise, and after it is freed).
+var intro_card: IntroCard
 var story_button: Button
 ## QUIT (bottom-right, mirroring STORY): only where the game may close itself (Platform.can_quit, the hub
 ## trapdoor's rule), else null. It quits at once: the title is a deliberate place (no confirm panel).
@@ -76,6 +78,9 @@ static func logo_texture(index := -1) -> Texture2D:
 
 
 func _ready() -> void:
+	# A cold launch = the title the game booted into, not the one after the first-launch story intro (which
+	# sets Story.launched) and not a return from the hub: only that one gets the launch card (IMP2-01).
+	var cold := (get_tree().current_scene == self or IntroCard.force) and not Story.launched
 	Progress.end_demo_preview()  # (a safety net: the demo's preview maze never lasts past the game scene)
 	# The very first launch of a fresh save opens with the animated intro (the launch trailer),
 	# which then wipes into this screen. Only the title the game boots into counts.
@@ -132,6 +137,7 @@ func _ready() -> void:
 
 	enter_button = UIKit.make_button(enter_text, _play if fresh else _enter, Vector2(ENTER_SIZE.x, enter_height(enter_text)))
 	enter_button.add_theme_font_size_override("font_size", UIKit.FONT_BIG)
+	enter_button.material = UIKit.clean_big_material()  # BUG2-05: 16 px button text reads clean, no drips
 	UIKit.use_big_font(enter_button, 16)
 	var shift := UIKit.ink_shift(enter_text, UIKit.FONT_BIG)
 	if UIKit.tall_script() or _marked_locale():
@@ -172,6 +178,7 @@ func _ready() -> void:
 	var parts := [Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "BEFORE YOU DRY UP")]
 	var tagline := UIKit.make_label(Loc.lines(parts), UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tagline.material = UIKit.clean_big_material()  # BUG2-05: the tagline has no drips (the logo and headings keep theirs)
 	var spacing := UIKit.line_spacing() * 2  # (10 in English: the big font's double line spacing)
 	tagline.add_theme_constant_override("line_spacing", spacing)
 	add_child(tagline)
@@ -212,6 +219,26 @@ func _ready() -> void:
 			preview.position.y = slime_y
 	_warm_up_shaders()
 	_start_preload(fresh)
+	if IntroCard.due(cold, Progress):
+		_start_intro_card()
+
+
+## The launch card over the title (the preload and shader warm-up above run underneath it). The title's own UI
+## (everything but the drifting backdrop) is held invisible and fades in as the card hands over.
+func _start_intro_card() -> void:
+	var ui: Array[CanvasItem] = []
+	for child in get_children():
+		if child is CanvasItem and not child is MenuBackdrop:
+			ui.append(child)
+	var set_alpha := func(a: float) -> void:
+		for item in ui:
+			if is_instance_valid(item):
+				item.modulate.a = a
+	var card := IntroCard.new()
+	add_child(card)
+	card.setup(set_alpha, Progress.reduce_motion)
+	card.finished.connect(func() -> void: set_alpha.call(1.0))
+	intro_card = card
 
 
 ## The DEMO sticker (demo builds): its letters are in the slime sheet's goo shades, so the skin shader

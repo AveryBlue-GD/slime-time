@@ -709,6 +709,21 @@ def title():
     return s, meta
 
 
+def sting_title():
+    """IMP2-01: the launch card's ~1.2 s sting: a low goo blop, then a dark A-minor swell (A1 + E2 + A2 + C3) that
+    the title loop (also A minor) takes over from. One-shot, no loop."""
+    s = Song(bpm=60, meter=4, bars=1, swing=0.5, loop=False, extra=-2.8, seed=61)  # 1.2 s
+    s.put("bass", bass(33, 0.9), at=0.02, gain=0.45)
+    s.put("fx", gloop(52, 40, 0.22, 0.10, 14), at=0.02, gain=0.35)
+    s.put("fx", bubble(57, 0.05), at=0.30, gain=0.25)
+    for m in (33, 40, 45, 48):
+        s.put("padL", pad_voice(m, 1.0, -6.0, 520, 0.5, 0.6, "hollow"), at=0.08, gain=0.09, jitter=0)
+        s.put("padR", pad_voice(m, 1.0, 6.0, 520, 0.5, 0.6, "hollow"), at=0.08, gain=0.09, jitter=0)
+    meta = dict(title="Title Sting", mood="low and dark: a goo blop under a slow A-minor swell",
+                key="A minor (A - E - A - C)", bpm=60, meter="4/4", form="one 1.2 s shot, leads into title.ogg")
+    return s, meta
+
+
 def level_bed():
     """Level bed: a very quiet low pulse and a slow pad that sit under the theme ambience; D minor, almost static."""
     s = Song(bpm=48, meter=4, bars=16, swing=0.5, seed=51)
@@ -970,9 +985,9 @@ def trailer(name: str, hit: float, ring: float):
     return s, meta
 
 
-PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "title": title, "level_bed": level_bed, "trailer_1": None, "trailer_2": None}
+PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "title": title, "sting_title": sting_title, "level_bed": level_bed, "trailer_1": None, "trailer_2": None}
 ## The pieces the game plays (scripts/music.gd): --game writes them as OGG into assets/music/ (lower-case names).
-GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro", "title", "level_bed")
+GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro", "title", "sting_title", "level_bed")
 GAME_DIR = ROOT / "assets" / "music"
 DEFAULT_HIT, DEFAULT_RING = 24.4, 3.6   # draft A's end card starts at 24.4 s
 
@@ -1237,7 +1252,7 @@ def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=Fals
         target = TRAILER_LUFS
     else:
         s, meta = PIECES[name]()
-        target = INTRO_LUFS if name == "story_intro" else LEVEL_BED_LUFS if name == "level_bed" else HUB_LUFS
+        target = INTRO_LUFS if name in ("story_intro", "sting_title") else LEVEL_BED_LUFS if name == "level_bed" else HUB_LUFS
     L, R = mixdown(s, verbose=verbose)
     if not s.loop:
         n = int(round(s.length * SR))

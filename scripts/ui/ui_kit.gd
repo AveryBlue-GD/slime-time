@@ -79,6 +79,7 @@ const Lang := preload("res://scripts/language.gd")
 ## mouse event Godot makes from one); a real mouse turns it off. See note_pointer / touch_active.
 static var touch_in_use := false
 static var _text_material: ShaderMaterial
+static var _clean_big_material: ShaderMaterial
 static var _tabular_font: FontFile
 static var _drip_scene := -1
 static var _metrics_code := ""
@@ -1412,6 +1413,16 @@ static func text_material() -> ShaderMaterial:
 		_drip_scene = scene_id
 		_text_material.set_shader_parameter("seed", float(randi() % 10000))
 	return _text_material
+
+
+## The 16 px text without drips (BUG2-05: the title's tagline and ENTER THE HUB read clean; headings keep text_material()).
+static func clean_big_material() -> ShaderMaterial:
+	if _clean_big_material == null:
+		_clean_big_material = ShaderMaterial.new()
+		_clean_big_material.shader = load("res://assets/shaders/text_drips.gdshader")
+		_clean_big_material.set_shader_parameter("clean_small", Economy.CLEAN_SMALL_TEXT)
+		_clean_big_material.set_shader_parameter("clean_big", true)
+	return _clean_big_material
 
 
 static func make_button(text: String, on_press: Callable, min_size := Vector2(0, BUTTON_H)) -> Button:
