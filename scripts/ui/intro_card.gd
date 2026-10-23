@@ -18,6 +18,7 @@ const SKIP_AFTER := 0.15
 const FADE_IN := 0.15
 const SPLASH := "res://assets/ui/boot_splash.png"
 const WORLD := "res://assets/ui/intro_card_world.png"
+const PROGRESS_SCRIPT := preload("res://scripts/progress.gd")
 const SLIME_SHEET := "res://assets/sprites/slime_sheet.png"
 const LOGO := "res://assets/sprites/title/logo_00.png"
 const FOG_SHADER := "res://assets/shaders/intro_fog.gdshader"
@@ -81,7 +82,7 @@ static func env_skips() -> bool:
 		if arg.begins_with("--write-movie") or arg.begins_with("res://tests/") or arg.begins_with("res://tools/") \
 				or arg == "-s" or arg == "--script" or arg.ends_with(".gd"):
 			return true
-	var args := OS.get_cmdline_user_args()  # (no autoload names here: tests load this class before the autoloads exist)
+	var args: PackedStringArray = PROGRESS_SCRIPT.user_args()  # (no autoload names here: tests load this class before the autoloads exist)
 	for arg in args:
 		if arg == "--story-complete" or arg.begins_with("--tutorial"):
 			return true
@@ -91,7 +92,7 @@ static func env_skips() -> bool:
 ## `--intro-card` (0.9 s) or `--intro-card=SECONDS`: the screenshot tool's flag, plays the card frozen at that time;
 ## -1 when absent. (A debug flag: release builds never read it.)
 static func capture_seconds() -> float:
-	for arg in OS.get_cmdline_user_args():
+	for arg in PROGRESS_SCRIPT.user_args():  # debug builds only (Progress.game_args)
 		if arg == "--intro-card":
 			return 0.9
 		if arg.begins_with("--intro-card="):
@@ -263,9 +264,9 @@ func _paint() -> void:
 		var head := mini(int(_slime_pos().x) + 16, 190)
 		for x in range(100, head):
 			var yc := 151 + roundi(3.2 * sin((x - 30) / 8.5))
-			_art.draw_rect(Rect2(x, yc - 3, 1, 1), GOO_LIGHT if (x / 3) % 2 == 0 else GOO_HIGH)
-			_art.draw_rect(Rect2(x, yc - 2, 1, 5), GOO)
-			_art.draw_rect(Rect2(x, yc + 3, 1, 1), GOO_DEEP)
+			_art.draw_rect(Rect2(x, yc - 3, 1, 1), Color(GOO_LIGHT if (x / 3) % 2 == 0 else GOO_HIGH, fade))
+			_art.draw_rect(Rect2(x, yc - 2, 1, 5), Color(GOO, fade))
+			_art.draw_rect(Rect2(x, yc + 3, 1, 1), Color(GOO_DEEP, fade))
 	# The slime, 2x.
 	var frame := _slime_frame()
 	var pos := _slime_pos()
