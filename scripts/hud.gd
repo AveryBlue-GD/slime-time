@@ -373,6 +373,13 @@ func _hook_training() -> void:
 		return
 	training_hooked = true
 	game.connect("training_cue", _on_training_cue)
+	ensure_training_line()
+
+
+## Builds the training line's pod (SPLASHDOWN's direction lines, the demo preview's ability coach) once.
+func ensure_training_line() -> void:
+	if training_line != null:
+		return
 	training_line = PanelContainer.new()
 	training_line.name = "TrainingLine"
 	training_line.add_theme_stylebox_override("panel", UIKit.panel_style(true))
@@ -966,6 +973,16 @@ func show_record(seconds: float) -> void:
 	_queue_fit()
 
 
+## Takes the message and the button row away again (the demo preview's card, once PLAY is pressed).
+func clear_result() -> void:
+	message.visible = false
+	_message_text = ""
+	_choice_root.visible = false
+	for button in choice_buttons:
+		button.queue_free()
+	choice_buttons.clear()
+
+
 ## Shows a row of buttons, each [text, Callable]; button `focus` (default: the last) gets
 ## keyboard focus.
 func show_choices(options: Array, focus := -1) -> void:
@@ -1300,6 +1317,8 @@ func set_skin_color(color: Color, rainbow := false) -> void:
 func _process(delta: float) -> void:
 	if training_hooked:
 		_training_step(delta)
+	elif training_line != null:
+		_training_line_step(delta)  # (the line alone: the demo preview's ability coach)
 	if record_banner.visible:
 		_chalice_clock += delta
 		var frame := int(_chalice_clock * CHALICE_FPS) % 4

@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -17,6 +17,7 @@ const TUTORIAL_LEAP := 2
 ## holds them): the training maze was finished or skipped, and the hub tour was finished or skipped.
 const TUTORIAL_TRAINING := 4
 const TUTORIAL_HUB := 8
+## 16, 32, 64, 128: the ability tutorial's lines were shown (AbilityCoach.BITS).
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
@@ -89,6 +90,10 @@ const STORY_FINALE := 2
 const STORY_DEMO_END := 4
 ## 8 too: the demo's randomizer end screen was seen (Demo.RANDOM_END_SEEN_BIT).
 const STORY_DEMO_RANDOM_END := 8
+## 16 too: the demo's FULL GAME PREVIEW maze was started (Demo.PREVIEW_SEEN_BIT).
+const STORY_DEMO_PREVIEW := 16
+## 32: the preview's ability tutorial has played (AbilityCoach: later preview runs are just the maze).
+const STORY_DEMO_PREVIEW_COACHED := 32
 ## Dry-ups per story level since it was last cleared (not saved); drives the mercy assist.
 var dry_ups := {}
 ## Story level the game scene loads next.
@@ -395,6 +400,14 @@ func _ready() -> void:
 			hard_mode = true
 		elif arg == "--random":
 			start_random()
+		elif arg == "--demo-preview" and Demo.on():  # the demo's FULL GAME PREVIEW maze right away (with --demo; open scenes/main.tscn)
+			saving_enabled = false
+			levels_cleared = Demo.levels()
+			highest_unlocked = Demo.levels()
+			randoms_won = Demo.RANDOM_WINS
+			story_seen |= STORY_INTRO | STORY_DEMO_END
+			tickets_lifetime = maxi(tickets_lifetime, 1)
+			begin_demo_preview()
 		elif arg == "--descent" or arg.begins_with("--descent="):  # a Descent run (--descent=SEED: that run seed)
 			start_descent(arg.trim_prefix("--descent=").to_int() if arg.begins_with("--descent=") else 0)
 		elif arg.begins_with("--skin="):
@@ -913,8 +926,8 @@ func _read_store(file: ConfigFile) -> void:
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
-	if not saving_enabled or demo_guard:
-		return true
+	if not saving_enabled or demo_guard or _preview_save != null:
+		return true  # (nothing is written during the demo's FULL GAME PREVIEW: end_demo_preview puts it all back)
 	var ok := write_atomic(save_path, _write().encode_to_text())
 	save_failed = not ok
 	if not ok:
@@ -1570,8 +1583,111 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
+	if demo_preview_replay():
+		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
+		return
 	mode = MODE_RANDOM
 	new_random_maze()
+
+
+# ---------------------------------------------------------------- the demo's FULL GAME PREVIEW
+
+## The state from before the preview (a save of it) while the preview runs, else null.
+var _preview_save: ConfigFile = null
+## What isn't in a save but the preview changes (the randomizer's current maze, the worn-skin override).
+var _preview_live := {}
+const _PREVIEW_LIVE_KEYS: Array[String] = ["mode", "random_seed", "random_level", "random_seed_fresh", "randoms_cleared",
+	"random_attempts", "random_offer_shown", "random_tickets_taken", "skin_override", "hard_mode", "current_level", "return_to_game"]
+
+
+## The preview's card was shown (once per preview; its restarts go straight in). Not saved.
+var preview_card_shown := false
+
+
+## Whether the randomizer portal plays the preview maze again: a demo whose preview was played (owner, 2026-10-22:
+## after beating the demo the randomizer always takes them back into it, no new seeds).
+func demo_preview_replay() -> bool:
+	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
+
+
+## Whether the RANDOM_WINS-th randomizer win leads into the preview now (a demo with it, not seen yet).
+func demo_preview_due() -> bool:
+	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and not has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
+
+
+## Starts the demo's FULL GAME PREVIEW (Demo.PREVIEW): marks it seen (saved, so it plays once), keeps the whole
+## state as it is now, then sets up the preview maze and its borrowed look and abilities, in memory only (no save
+## is written until end_demo_preview). The game scene reloaded after this plays it (game.gd `preview`).
+func begin_demo_preview() -> void:
+	if _preview_save != null:
+		return
+	mark_story_seen(STORY_DEMO_PREVIEW)
+	preview_card_shown = false
+	_preview_save = _write()
+	_preview_live = {}
+	for key in _PREVIEW_LIVE_KEYS:
+		var value: Variant = get(key)
+		_preview_live[key] = value.duplicate(true) if value is Dictionary or value is Array else value
+	Demo.preview = true
+	mode = MODE_RANDOM
+	hard_mode = false
+	random_seed = Demo.PREVIEW_SEED
+	random_level = Demo.PREVIEW_LEVEL
+	random_seed_fresh = false
+	random_attempts.clear()
+	random_offer_shown.clear()
+	random_tickets_taken.clear()
+	_borrow_preview_look()
+	for id in Abilities.ids():
+		abilities[id] = Abilities.max_level(id)
+
+
+## A random look from the full game: a skin past the demo's (opaque, jelly or pastel), a hat (sometimes dyed),
+## a goo trail and a map paper.
+func _borrow_preview_look() -> void:
+	var skins: Array[String] = []
+	for preset: Dictionary in Skins.PRESETS:
+		if int(preset.unlock) >= Demo.levels():
+			skins.append(preset.id)
+	skin_override = skins.pick_random()
+	set_jelly(randi() % 2 == 0)
+	set_pastel(not jelly and randi() % 2 == 0)
+	var hat_ids := Hats.ids()
+	selected_hat = hat_ids.pick_random()
+	var dyes := Hats.dyes_for(selected_hat)
+	hat_dyes = {}
+	if not dyes.is_empty() and randi() % 2 == 0:
+		var dye: String = dyes.pick_random()
+		hat_dyes_owned.append("%s:%s" % [selected_hat, dye])
+		hat_dyes[selected_hat] = dye
+	var trails: Array[String] = []
+	var papers: Array[String] = []
+	for item: Dictionary in Cosmetics.LIST:
+		if item.has("earned"):
+			continue
+		(trails if item.kind == Cosmetics.TRAIL else papers).append(item.id)
+	trail_style = trails.pick_random()
+	map_paper = papers.pick_random()
+
+
+## Ends the preview (if one runs): everything goes back to how it was before it (the borrowed look, abilities,
+## the maze's attempts and records alike), and saving is back on.
+func end_demo_preview() -> void:
+	if _preview_save == null:
+		return
+	var before := _preview_save
+	_preview_save = null
+	Demo.preview = false
+	_read(before)
+	for key: String in _preview_live:
+		set(key, _preview_live[key])
+	_preview_live = {}
+	mark_story_seen(STORY_DEMO_PREVIEW_COACHED)  # (its ability tutorial has played: replays are just the maze)
+
+
+## True while the demo's FULL GAME PREVIEW runs.
+func in_demo_preview() -> bool:
+	return _preview_save != null
 
 
 # ---------------------------------------------------------------- DESCENT runs (batch 3)
@@ -2610,7 +2726,7 @@ func skin_color() -> Color:
 		return Skins.RAINBOW_BASE
 	if id == Skins.CUSTOM:
 		return custom_color
-	if pastel and skin_override == "":  # (the pastel version's color: its trail, meter and menu text match)
+	if pastel and (skin_override == "" or Demo.preview):  # (the pastel version's color: its trail, meter and menu text match)
 		return Skins.PASTEL.get(id, Skins.get_preset(id).color)
 	return Skins.get_preset(id).color
 

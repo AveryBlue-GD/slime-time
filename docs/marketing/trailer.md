@@ -186,7 +186,9 @@ gameplay only, because the trails page is too small to read on a phone.
   safety** (viewer feedback, 2026-10-22): no phase flips faster than every 10 frames (3 flashes a second); the
   ending and the CHAMELEON colors every 15.
 - **E, the same on the beat** (`--beat`, `FLIP_BEATS`): trailer_1 fitted to the 27.0 s hit is 13 bars of 4 beats;
-  the flips land on beats and eighths (never faster), the captions change on the bar lines.
+  the flips land on beats and eighths (never faster), the captions change on the bar lines, on the same frame as a flip.
+  Both drafts are **one unbroken take** each (owner, 2026-10-22: no cuts between takes, no layout jump); the
+  frame-centred captions may use the frame's width (~15 letters a line), so "DIFFERENT LOOKS" fits on one line.
   The count is 334 skin looks (46 + CHAMELEON's 144 colors x 2) x 136 hat looks x 6 trails; recount when trails are added.
 
 ## Later: the horizontal 45-60 s trailer

@@ -223,10 +223,12 @@ def block_height(n):
 def caption_lines(job):
     """The wrapped [(text, rgb)] of a caption job (trailer.py caption_job)."""
     lines = []
+    # (a caption centred on the frame may use its width but the side margins: about 15 letters a line)
+    width = CANVAS[0] - 2 * COLUMN[0] if job.get("center") == "frame" else COLUMN[1]
     for key, color_key in (("lines", "color"), ("sub", "sub_color")):
         color = color_of(job.get(color_key, "white"), job.get("skin", ""))
         for text in job.get(key, []):
-            lines += [(t, color) for t in wrap(text.upper(), COLUMN[1])]
+            lines += [(t, color) for t in wrap(text.upper(), width)]
     return lines
 
 

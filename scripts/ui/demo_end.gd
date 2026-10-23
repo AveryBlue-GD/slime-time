@@ -88,6 +88,7 @@ static func feature_line(level: int) -> String:
 func _ready() -> void:
 	# i18n: demo end screen title, max 296px, 16 px font
 	UIKit.setup_screen(self, Loc.t("demo.end.title", "END OF THE DEMO"))
+	get_node("/root/Progress").end_demo_preview()  # (after the FULL GAME PREVIEW maze: the save's own state is back)
 	get_node("/root/Progress").mark_story_seen(Demo.END_SEEN_BIT)
 	if from == FROM_RANDOM:
 		get_node("/root/Progress").mark_story_seen(Demo.RANDOM_END_SEEN_BIT)

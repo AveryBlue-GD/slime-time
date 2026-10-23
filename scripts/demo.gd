@@ -73,6 +73,20 @@ const END_SCENE := "res://scenes/demo_end.tscn"
 ## map in their colors. Only names and colors: no later level data or art is needed. The first card is
 ## always the area right after the demo's last level (teasers(): 5), then these.
 const TEASER_LEVELS: Array[int] = [6, 7, 9, 10]
+## The FULL GAME PREVIEW (owner idea, 2026-10-22): the RANDOM_WINS-th randomizer win leads into one hand-picked
+## maze (PREVIEW_SEED at MORE SLIME PREVIEW_LEVEL, a demo theme) played with every ability at its top level and a
+## random look from the full game (Progress.begin_demo_preview: skin, jelly / pastel, hat + dye, trail, paper), with
+## no ticket pickups or pay, after a short card (game.gd); its win or dry-up goes straight to the randomizer's end
+## screen. Everything it borrows is in memory only: the save is not written while it runs and the whole state from
+## before it comes back as it ends (Progress.end_demo_preview). First after the 3rd win (PREVIEW_SEEN_BIT), then every time the
+## randomizer portal is used (Progress.demo_preview_replay: no new seeds); false = no preview.
+const PREVIEW := true
+const PREVIEW_SEED := 1854
+const PREVIEW_LEVEL := 3
+## The preview was started (Progress.story_seen bit, saved before it starts).
+const PREVIEW_SEEN_BIT := 16  # (= Progress.STORY_DEMO_PREVIEW: keep the two in step)
+## True while the preview runs (set by Progress.begin_demo_preview / end_demo_preview; never saved).
+static var preview := false
 ## The end screen was seen (Progress.story_seen bit; the full game ignores it).
 const END_SEEN_BIT := 4  # (= Progress.STORY_DEMO_END: keep the two in step)
 ## The randomizer's end screen (after RANDOM_WINS wins) was seen (Progress.story_seen bit).
@@ -200,7 +214,7 @@ static func hat_wheel_open() -> bool:
 
 ## Ability `id` works / can be bought here.
 static func ability_open(id: String) -> bool:
-	return not on() or id in ABILITIES
+	return not on() or preview or id in ABILITIES
 
 
 ## Skin `id` (opaque, or `jelly`) can be earned / worn in the demo: the opaque skins of the demo's

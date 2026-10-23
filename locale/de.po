@@ -56,6 +56,61 @@ msgctxt "ability.sense.desc"
 msgid "PEEK AT MAP"
 msgstr ""
 
+#: scripts/ability_coach.gd
+msgctxt "coach.rifle"
+msgid "SHOOTS PAST WALLS"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.splat"
+msgid "LOBS GOO OVER WALLS"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.kaze"
+msgid "DASHES INTO A WALL"
+msgstr ""
+
+#: scripts/ability_coach.gd
+msgctxt "coach.sense"
+msgid "PEEKS AT THE MAP"
+msgstr ""
+
+#. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line_touch"
+msgid "TAP {name}: {what}"
+msgstr ""
+
+#. ability tutorial line, max 192px, 1 line; {key} = its key (1, 2, 3, M, a pad button), {name} = ability name, {what} = coach.*
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line"
+msgid "{key} {name}: {what}"
+msgstr ""
+
+#. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim"
+msgid "AIM, THEN {key} TO FIRE"
+msgstr ""
+
+#. ability tutorial's last line, max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.done"
+msgid "THAT'S EVERY ABILITY, GOOD LUCK"
+msgstr ""
+
+#. the hub tour's SKIP pod (top right), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/ability_coach.gd scripts/hub_tour.gd
+msgctxt "hub.tour.skip"
+msgid "SKIP"
+msgstr ""
+
 #: scripts/cosmetics.gd
 msgctxt "trail.wheel.unlock"
 msgid "WIN IT ON THE PRIZE WHEEL"
@@ -439,6 +494,14 @@ msgctxt "hud.area.descent"
 msgid "DESCENT  FLOOR {floor}"
 msgstr "ABSTIEG  EBENE {floor}"
 
+#. HUD area line, max 296px, 1 line (the demo's last maze: a taste of the full game)
+#. line under the area name (the demo's preview maze), max 296px
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.preview"
+msgid "FULL GAME PREVIEW"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
@@ -535,6 +598,13 @@ msgctxt "result.seed"
 msgid "SEED {code}"
 msgstr "SEED {code}"
 
+#. result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.preview_cleared"
+msgid "PREVIEW CLEARED!"
+msgstr ""
+
 #. result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
@@ -627,6 +697,11 @@ msgctxt "result.choice.restart"
 msgid "RESTART"
 msgstr "NEUSTART"
 
+#: scripts/game.gd
+msgctxt "result.choice.continue"
+msgid "CONTINUE"
+msgstr "WEITER"
+
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 62px, lines 1
@@ -667,11 +742,6 @@ msgid "REPLAY MAZE"
 msgstr "WIEDERHOLEN"
 
 #: scripts/game.gd
-msgctxt "result.choice.continue"
-msgid "CONTINUE"
-msgstr "WEITER"
-
-#: scripts/game.gd
 msgctxt "result.choice.replay"
 msgid "REPLAY"
 msgstr "NOCHMAL"
@@ -680,6 +750,30 @@ msgstr "NOCHMAL"
 msgctxt "result.choice.next_level"
 msgid "NEXT LEVEL"
 msgstr "WEITER"
+
+#. the demo's preview card (its last maze), max 296px each line, 1 line each
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "preview.title"
+msgid "FULL GAME PREVIEW"
+msgstr ""
+
+#: scripts/game.gd
+msgctxt "preview.abilities"
+msgid "EVERY ABILITY UNLOCKED"
+msgstr ""
+
+#: scripts/game.gd
+msgctxt "preview.look"
+msgid "A RANDOM LOOK FROM THE FULL GAME"
+msgstr ""
+
+#. button, max 76px
+#. budget: max 76px
+#: scripts/game.gd
+msgctxt "preview.play"
+msgid "PLAY"
+msgstr ""
 
 #: scripts/hats.gd
 msgctxt "dye.cherry"
@@ -1051,13 +1145,6 @@ msgstr ""
 msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "SCHAFF ALLE {count} LEVELS"
-
-#. the hub tour's SKIP pod (top right), max 40px, 1 line
-#. budget: max 40px, lines 1
-#: scripts/hub_tour.gd
-msgctxt "hub.tour.skip"
-msgid "SKIP"
-msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 #. budget: max 192px, lines 1
