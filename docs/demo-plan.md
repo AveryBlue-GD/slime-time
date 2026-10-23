@@ -82,9 +82,12 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   Not on hard mode's last level. In the ability tutorial only the prompted ability works (`AbilityRunner.locked`: the
   others don't fire and show dimmed, also between lines); all of them after it ends or SKIP. On touch the ability
   buttons are one row along the bottom (between the joystick and JUMP, over the training line; `TouchControls.ABILITY_ROW_X`), the full game too.
-  Touch aiming (owner, 2026-10-23, the full game too): holding SLIME SNIPER / GOO GRENADE's button shows the PC's aim
-  guide, a drag (or the joystick) turns it 8 ways, letting go fires; back on the button or off the screen cancels; a tap
-  fires ahead. The tutorial's touch lines: HOLD {name}, AIM, RELEASE / DRAG TO AIM, LET GO TO FIRE. The preview keeps its
+  Touch aiming (owner, 2026-10-23, the full game too): a tap on SLIME SNIPER / GOO GRENADE's button shows the PC's aim
+  guide (letting go fires nothing), the joystick (or a drag off the button) turns it 8 ways, letting go of JUMP fires it
+  (JUMP blinks a gold ring while an aim is up and never leaps then); held, JUMP shows a small X at its top right (above it
+  where a notch cuts in): letting go on the X calls the aim off; the same button again cancels too, another ability's switches.
+  SLIMAKAZE and SLIME SENSE stay tap-to-fire (no aim; a tap calls an aim off first). The tutorial's touch lines:
+  TAP {name}, AIM, PRESS JUMP / AIM, THEN PRESS JUMP / (JUMP held) LET GO TO FIRE, DRAG TO X TO CANCEL. The preview keeps its
   borrowed look over restarts (game.gd `_exit_tree` left the skin override on: a restart showed the player's own skin,
   whose goo trail coloured the map differently; owner bug 2026-10-23).
 - **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the last demo level's chalice (level 4) the win row is

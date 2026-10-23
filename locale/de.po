@@ -76,11 +76,11 @@ msgctxt "coach.sense"
 msgid "PEEKS AT THE MAP"
 msgstr ""
 
-#. ability tutorial line (touch, an aimed ability: hold its button, drag to aim, let go to fire), max 192px, 1 line; {name} = ability name
+#. ability tutorial line (touch, an aimed ability: tap its button, aim with the joystick, JUMP fires), max 192px, 1 line; {name} = ability name, {jump} = the JUMP button's word (touch.jump)
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
 msgctxt "coach.line_touch_aim"
-msgid "HOLD {name}, AIM, RELEASE"
+msgid "TAP {name}, AIM, PRESS {jump}"
 msgstr ""
 
 #. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
@@ -97,11 +97,25 @@ msgctxt "coach.line"
 msgid "{key} {name}: {what}"
 msgstr ""
 
-#. ability tutorial line (touch, the aim is up while the button is held), max 192px, 1 line
+#. ability tutorial line (touch, JUMP held while aiming: letting go fires, letting go on the small X beside JUMP cancels), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim_cancel"
+msgid "LET GO TO FIRE, DRAG TO X TO CANCEL"
+msgstr ""
+
+#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
+#. budget: max 34px
+#: scripts/ability_coach.gd scripts/ui/touch_controls.gd
+msgctxt "touch.jump"
+msgid "JUMP"
+msgstr "HÜPF"
+
+#. ability tutorial line (touch, the aim is up: JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
 msgctxt "coach.aim_touch"
-msgid "DRAG TO AIM, LET GO TO FIRE"
+msgid "AIM, THEN PRESS {jump}"
 msgstr ""
 
 #. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
@@ -2959,13 +2973,6 @@ msgstr "ENTKOMM DEM NEBEL"
 msgctxt "title.tagline.2"
 msgid "BEFORE YOU DRY UP"
 msgstr "ODER VERTROCKNE"
-
-#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
-#. budget: max 34px
-#: scripts/ui/touch_controls.gd
-msgctxt "touch.jump"
-msgid "JUMP"
-msgstr "HÜPF"
 
 #. max 40px (button 48 wide, 4 px margins), grows to 60px (both buttons alike, the panel with them), 1 line
 #. budget: max 40px, lines 1
