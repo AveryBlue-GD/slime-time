@@ -3,8 +3,8 @@ extends "res://tests/suite_base.gd"
 ## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1", with the pass-over-walls buff): SLIME RIFLE
 ## (pierces walls: reveals exactly the tiles on its line for its range, floor tiles with the walls around
 ## them), SLIME SPLAT (lobbed over walls exactly its range ahead, reveals exactly the 5x5 around it),
-## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
-## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
+## SLIMAKAZE (dashes to the wall, costs Economy.ABILITIES.kaze.slime % - into the goal too -, a deterministic splatter over walls;
+## never kills unless the meter holds no more than that), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
 ## their bindings), touch buttons, the HUD strip, OFF in every story level (normal, hard) and hard-mode randomizer / with the flag off, ON in
 ## randomizer mazes and Descent, par and payout untouched, the TICKETS tab purchase flow (exact tickets,
@@ -240,7 +240,7 @@ func _rifle() -> void:
 						streak += 1
 			_check(streak > 0 and streak <= 24, "a thin goo streak crosses a floor tile past the wall (%d of 64 cells goo'd)" % streak)
 			_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.rifle.slime) and game.abilities.charges.rifle == 0,
-				"one shot costs %.0f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
+				"one shot costs %.1f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
 			_check(not game.abilities.use("rifle"), "no charges left: it doesn't fire")
 		await _stop(game)
 	# At the maze's outer edge it stops (nothing outside the maze).
@@ -384,11 +384,11 @@ func _kaze_kill_and_refuse() -> void:
 	var game := await _spawn(6)
 	var dir := _dir_with(game, 2)
 	_aim(game, dir)
-	game.slime_remaining = 20.0
+	game.slime_remaining = Economy.ABILITIES.kaze.slime - 6.0
 	game.abilities.use("kaze")
 	game.abilities.flush()
 	await _physics_frames(game.slime.splat_stun * 60 + 60)
-	_check(game.slime_remaining == 0.0 and game.finished and not game.won, "SLIMAKAZE with 20% left (<= its 30%): the impact dries the slime up")
+	_check(game.slime_remaining == 0.0 and game.finished and not game.won, "SLIMAKAZE with %.0f%% left (<= its %.0f%%): the impact dries the slime up" % [Economy.ABILITIES.kaze.slime - 6.0, Economy.ABILITIES.kaze.slime])
 	await _stop(game)
 	_state({kaze = 1})
 	game = await _spawn(1)
@@ -442,11 +442,11 @@ func _goal_game(kind: String) -> Node2D:
 	return null
 
 
-## SLIMAKAZE dashing into the chalice / ticket pays its 30% there: with <= 30% left it dries up (no
-## win); with more it wins with 30% less (Descent carries that meter to the next floor).
+## SLIMAKAZE dashing into the chalice / ticket pays its cost (Economy.ABILITIES.kaze.slime) there: with no more left it dries up (no
+## win); with more it wins with that much less (Descent carries that meter to the next floor).
 func _kaze_goal() -> void:
 	for kind: String in ["random", "descent"]:
-		for meter: float in [20.0, 60.0]:
+		for meter: float in [Economy.ABILITIES.kaze.slime - 6.0, 60.0]:
 			var game := await _goal_game(kind)
 			if game == null:
 				_check(false, "%s: a goal with a 2-tile corridor into it" % kind)
@@ -463,7 +463,7 @@ func _kaze_goal() -> void:
 			var want := maxf(meter - Economy.ABILITIES.kaze.slime, 0.0)
 			if meter <= Economy.ABILITIES.kaze.slime:
 				_check(fired and game.finished and not game.won and game.slime_remaining == 0.0,
-					"%s: SLIMAKAZE into the goal with %.0f%% left pays 30%% there and dries up (finished %s, won %s, %.1f%%)" % [kind, meter, game.finished, game.won, game.slime_remaining])
+					"%s: SLIMAKAZE into the goal with %.0f%% left pays %.0f%% there and dries up (finished %s, won %s, %.1f%%)" % [kind, meter, Economy.ABILITIES.kaze.slime, game.finished, game.won, game.slime_remaining])
 			else:
 				_check(fired and game.won and is_equal_approx(game.slime_remaining, want),
 					"%s: SLIMAKAZE into the goal with %.0f%% left wins with %.0f%% (won %s, %.1f%%)" % [kind, meter, want, game.won, game.slime_remaining])
@@ -479,7 +479,7 @@ func _kaze_goal() -> void:
 	_place(saved, into.from, into.dir)
 	saved.workshop = {wind = 1}
 	saved.wind_state = "ready"
-	saved.slime_remaining = 20.0
+	saved.slime_remaining = Economy.ABILITIES.kaze.slime - 6.0  # (<= its cost: the impact empties the meter)
 	saved.abilities.use("kaze")
 	for i in 60:
 		if saved.finished:

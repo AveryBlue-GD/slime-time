@@ -368,10 +368,11 @@ static func abilities_on() -> bool:
 
 ## Doubled along with the doubled payouts (owner, 2026-10-22): first ability 30 tickets = about 5
 ## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all three maxed = 190 + 190 + 280 = 660.
+## `slime` cut by 40% (owner, 2026-10-23: too hard; was 2 / 4 / 30).
 const ABILITIES := {
-	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.0},
-	"splat": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 4.0},
-	"kaze": {costs = [50, 90, 140], charges = [1, 1, 1], slime = 30.0},
+	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 1.2},
+	"splat": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 2.4},
+	"kaze": {costs = [50, 90, 140], charges = [1, 1, 1], slime = 18.0},
 	# SLIME SENSE (owner, 2026-10-22): peeks at the maze's map mid-run (Game.toggle_run_map), 1 / 2 / 3
 	# per attempt by level; free, and the meter doesn't drain while it is up.
 	"sense": {costs = [30, 60, 100], charges = [1, 2, 3], slime = 0.0},
