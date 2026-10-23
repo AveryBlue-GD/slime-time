@@ -23,6 +23,11 @@ mkdir -p build
 cp export_presets.cfg build/export_presets.cfg.bak
 trap 'mv build/export_presets.cfg.bak export_presets.cfg' EXIT
 sed -i '' "s/^application\/app_store_team_id=\"ABCDE12345\"$/application\/app_store_team_id=\"$TEAM\"/" export_presets.cfg
+# SKIP_DEMO=1: a test build whose save starts past the demo's levels (Progress.skip_demo_levels).
+if [[ "${SKIP_DEMO:-}" == "1" ]]; then
+	awk '/^name="iOS"$/ {ios = 1} ios && /^custom_features=""$/ {print "custom_features=\"skip_demo\""; ios = 0; next} {print}' \
+		export_presets.cfg > build/export_presets.cfg.tmp && mv build/export_presets.cfg.tmp export_presets.cfg
+fi
 
 rm -rf build/ios
 mkdir -p build/ios
@@ -31,7 +36,7 @@ mkdir -p build/ios
 xcodebuild -project build/ios/DryTrying.xcodeproj -scheme DryTrying -configuration Debug -destination generic/platform=iOS \
 	-allowProvisioningUpdates -allowProvisioningDeviceRegistration -derivedDataPath build/ios-derived -quiet build
 
-DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && /connected/ {for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) {print $i; exit}}')
+DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && (/connected/ || /available/) {for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) {print $i; exit}}')
 if [[ -z "$DEVICE" ]]; then
 	echo "Built, but no iPhone found: plug it in, unlock it, and run this again." >&2
 	exit 1
