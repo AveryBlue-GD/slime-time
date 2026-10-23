@@ -1672,6 +1672,9 @@ func _physics_process(delta: float) -> void:
 	var home_tap := _home_tap  # (the D10 home button's tap: the `menu` press it makes is that tap's)
 	if Input.is_action_just_pressed("menu"):
 		_home_tap = false
+	if not glide_path.is_empty() and (hub_menu.visible or quit_menu.visible or portal_menu.visible or resume_menu.visible
+			or hat_wheel.visible or coin_board.visible):
+		stop_glide()  # (a panel opened mid-glide: our own direction presses must not stay held under it)
 	if hub_menu.visible:
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)

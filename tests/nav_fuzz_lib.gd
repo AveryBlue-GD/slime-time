@@ -407,8 +407,12 @@ func _name(c: Control) -> String:
 ## True when no input action is still held (call after every key/touch was released).
 func stuck_actions() -> Array[String]:
 	var out: Array[String] = []
+	var gliding: Array = []  # (the hub's tap-to-glide presses its own direction actions while it walks: not a stuck key)
+	var scene: Node = (Engine.get_main_loop() as SceneTree).current_scene
+	if scene != null and "glide_path" in scene and not scene.glide_path.is_empty():
+		gliding = scene._glide_held
 	for a in InputMap.get_actions():
-		if Input.is_action_pressed(a):
+		if Input.is_action_pressed(a) and not String(a) in gliding:
 			out.append(String(a))
 	return out
 
