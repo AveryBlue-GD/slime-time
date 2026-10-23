@@ -1548,7 +1548,16 @@ func prop_at(pos: Vector2) -> Dictionary:
 func use_spot(prop: Dictionary) -> Vector2:
 	var offset: Vector2 = prop.sprite.position - CENTER
 	var a := atan2(offset.y / RING.y, offset.x / RING.x)
-	return CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y)
+	var spot := CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y)
+	if prop.has("anchor"):
+		# A sign is used from SIGN_USE_GAP, much closer than a ring station's gap: walk the spot in until it is
+		# 0.5 px from its footprint, so a glide always ends in range (found by a test at several room turns).
+		var at: Vector2 = prop.sprite.position + Vector2(0, -2)
+		for i in 40:
+			if _gap_from(spot, at, _footprint(prop)) <= 0.5:
+				break
+			spot = spot.move_toward(at, 1.0)
+	return spot
 
 
 ## The waypoints from `from` to the spot in front of `prop`: round the ring of spots (clear of the stations and of the
@@ -1580,6 +1589,10 @@ func glide_to(prop: Dictionary) -> void:
 	glide_path = path_to_prop(slime.position, prop)
 
 
+func _exit_tree() -> void:
+	stop_glide()  # (our own action presses must not outlive the hub)
+
+
 func stop_glide() -> void:
 	glide_path.clear()
 	glide_target = ""
@@ -1589,10 +1602,14 @@ func stop_glide() -> void:
 
 
 func _on_tap(pos: Vector2) -> void:
+	if slime.frozen or turning or slime.state != Slime.State.GLIDE:
+		return  # (a use, a turn or a leap is under way: a tap's release must not use a station twice)
 	var prop := prop_at(pos)
 	if prop.is_empty():
 		return
 	if not near.is_empty() and near.id == prop.id:
+		if _touch_controls != null and _touch_controls.catches_jump(pos):
+			return  # (the JUMP press of this very touch already used it)
 		_use(prop)  # (already at it: a tap uses it)
 	else:
 		glide_to(prop)
@@ -1618,8 +1635,15 @@ func _glide_step() -> void:
 	if _touch_controls != null and _touch_controls.joy_vector.length() > 0.2:
 		stop_glide()  # (the joystick is in use)
 		return
+	if glide_path.size() == 1 and not near.is_empty() and near.id == glide_target:
+		stop_glide()  # (in use range of the target: a sign's range is tight, stop where it counts)
+		return
 	var to := glide_path[0] - slime.position
-	if to.length() <= (GLIDE_REACHED if glide_path.size() == 1 else GLIDE_REACHED + 5.0):
+	var reach := GLIDE_REACHED
+	for prop: Dictionary in extras:
+		if prop.id == glide_target:
+			reach = 1.5  # (a sign's use range is tight: walk right up to it)
+	if to.length() <= (reach if glide_path.size() == 1 else reach + 5.0):
 		glide_path.remove_at(0)
 		if glide_path.is_empty():
 			stop_glide()
@@ -1938,7 +1962,12 @@ func _footprint(station: Dictionary) -> float:
 ## How far the slime's edge is from a footprint oval (`radius` wide, half as deep, as the
 ## collision bodies) at `at`, measured from any side. Negative = standing on or in it.
 func _gap_to(at: Vector2, radius: float) -> float:
-	var v := slime.position - at
+	return _gap_from(slime.position, at, radius)
+
+
+## The same gap for a slime standing at `from`.
+func _gap_from(from: Vector2, at: Vector2, radius: float) -> float:
+	var v := from - at
 	if v.is_zero_approx():
 		return -radius
 	var dir := v.normalized()

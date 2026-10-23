@@ -30,18 +30,18 @@ func _achievements_page() -> void:
 	var page: Control = load("res://scenes/achievements.tscn").instantiate()
 	root.add_child(page)
 	await process_frame
-	page._turn(1)  # (the random-maze goals are on the second page)
 	var counts: Array[String] = []
-	for row in page.rows:
-		for label in row.find_children("*", "Label", true, false):
-			if "/" in label.text:
-				counts.append(label.text)
+	for turn_i in page.page_count():  # (the paging changed with IMP2-03: look on every page)
+		for row in page.rows:
+			for label in row.find_children("*", "Label", true, false):
+				if "/" in label.text:
+					counts.append(label.text)
+		page._turn(1)
 	_check("23/50" in counts, "the page shows 23/50 on the 50-maze goal (%s)" % str(counts))
 	_check(page.prev_arrow != null and page.next_arrow != null and page.next_arrow.visible, "the page has < > arrows")
 	var first_goal: String = page.rows[0].get_meta("id")
 	page.next_arrow.pressed.emit()
-	_check(page.page == 2 and page.rows[0].get_meta("id") != first_goal, "the > arrow turns the page")
-	page.prev_arrow.pressed.emit()
+	_check(page.page == 1 and page.rows[0].get_meta("id") != first_goal, "the > arrow turns the page")
 	page.prev_arrow.pressed.emit()
 	_check(page.page == 0, "the < arrow turns it back")
 	var band := false
@@ -136,6 +136,14 @@ func _hub() -> void:
 	hub._use(portal)
 	_check(not hub.portal_menu.visible and progress.mode == progress.MODE_RANDOM and not progress.random_daily, "walking into the portal starts a random maze at once")
 	hub.free()
+	# (the portal's scene change is under way: let it finish and drop the maze it loads, or it frees the next hub)
+	for i in 400:
+		await physics_frame
+		if not root.get_node("Transition").busy and current_scene != null and current_scene.name != "Hub":
+			break
+	if current_scene != null:
+		current_scene.free()
+		current_scene = null
 	# A tap glides to a station.
 	progress.mode = progress.MODE_STORY
 	hub = load("res://scenes/hub.tscn").instantiate()
@@ -154,6 +162,33 @@ func _hub() -> void:
 			arrived = true
 			break
 	_check(arrived, "...the slime glides up to the coin bag")
+	# IMP2-06 fix: the glide to the DAILY sign ends inside its use gap at several room turns.
+	progress.mode = progress.MODE_STORY
+	var all_ok := true
+	var bad := []
+	for k in [0, 2, 4, 6, 8]:
+		hub.turn = -k * hub.step
+		hub._place_all()
+		hub.turning = false
+		hub.slime.position = hub.START
+		await physics_frame
+		hub.glide_to(hub.extras[0])
+		var reached := false
+		for i in 600:
+			await physics_frame
+			if hub.glide_path.is_empty():
+				await physics_frame  # (near updates each frame)
+				reached = hub.near.has("id") and hub.near.id == "daily"
+				break
+		if not reached:
+			all_ok = false
+			bad.append(k)
+	_check(all_ok, "the glide to the DAILY sign ends within its use gap at every turn (failed: %s)" % [bad])
+	# A tap while the slime is busy (frozen / not gliding) does nothing.
+	hub.slime.frozen = true
+	hub._on_tap(hub.extras[0].sprite.position + Vector2(0, -8))
+	_check(hub.glide_path.is_empty(), "a tap while the slime is frozen starts nothing")
+	hub.slime.frozen = false
 	hub.glide_to(hub._station("wheel"))
 	_check(not hub.glide_path.is_empty(), "a new glide starts")
 	var key := InputEventKey.new()

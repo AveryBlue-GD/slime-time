@@ -125,8 +125,9 @@ func _input(event: InputEvent) -> void:
 		else:
 			var start: Dictionary = _tap_start.get(event.index, {})
 			_tap_start.erase(event.index)
+			var claimed: bool = _ability_touch.has(event.index) or event.index == _pause_touch
 			_touch_up(event.index, event.position)
-			if not start.is_empty() and Time.get_ticks_msec() - int(start.at) <= TAP_TIME * 1000.0 \
+			if not claimed and not start.is_empty() and Time.get_ticks_msec() - int(start.at) <= TAP_TIME * 1000.0 \
 					and (event.position - Vector2(start.pos)).length() <= TAP_SLOP:
 				tapped.emit(event.position)
 		get_viewport().set_input_as_handled()
