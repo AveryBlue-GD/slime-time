@@ -34,3 +34,9 @@ Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
 - Saves live in the app (`user://` = the app's Documents); deleting the app deletes the save.
 - Store release later needs the paid program, a final bundle id (M8) and the port-time checks in
   [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md).
+
+## Build stamp
+Every `tools/ios_build.sh` build is stamped: the title screen's top left shows the commit (`+` = built with uncommitted
+changes), the build time and the app (FULL, FULL SKIP, DEMO END), and the bundle version is the build time
+(`xcrun devicectl device info apps` lists it). The old build's app is deleted from the Xcode build folder first, so an
+install is always this build.
