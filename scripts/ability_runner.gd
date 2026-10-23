@@ -126,6 +126,7 @@ func start_aim(id: String) -> bool:
 	aiming = id
 	aim_dir = Abilities.aim(slime.facing)
 	slime.aim_lock = true
+	slime.velocity = Vector2.ZERO  # (it stops dead: a held stick's glide doesn't slide on while it aims, owner 2026-10-23)
 	game.touch_controls.set_aim_ring(true)  # (touch: JUMP fires it, so JUMP blinks)
 	_sfx("click", -6.0)
 	queue_redraw()
