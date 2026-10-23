@@ -67,10 +67,11 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	runner.z_index = Z
 	owner_game.add_child(runner)
 	runner.slime.dash_hit.connect(runner._on_dash_hit)
-	owner_game.touch_controls.ability_tapped.connect(runner.use)
+	owner_game.touch_controls.ability_tapped.connect(runner._touch_tap)
 	owner_game.touch_controls.ability_pressed.connect(runner._touch_aim_start)
 	owner_game.touch_controls.ability_aimed.connect(runner._touch_aim)
 	owner_game.touch_controls.ability_released.connect(runner._touch_aim_end)
+	owner_game.touch_controls.aim_jump_released.connect(runner._touch_aim_jump)
 	runner._refresh()
 	return runner
 
@@ -126,6 +127,7 @@ func start_aim(id: String) -> bool:
 	aiming = id
 	aim_dir = Abilities.aim(slime.facing)
 	slime.aim_lock = true
+	game.touch_controls.set_aim_ring(true)  # (touch: JUMP fires it, so JUMP blinks)
 	_sfx("click", -6.0)
 	queue_redraw()
 	return true
@@ -137,6 +139,7 @@ func cancel_aim() -> void:
 		return
 	aiming = ""
 	slime.aim_lock = false
+	game.touch_controls.set_aim_ring(false)
 	queue_redraw()
 
 
@@ -147,6 +150,7 @@ func fire_aim() -> bool:
 		return false
 	var id := aiming
 	aiming = ""
+	game.touch_controls.set_aim_ring(false)
 	queue_redraw()
 	slime.facing = Vector2(aim_dir).normalized()
 	var fired := use(id, aim_dir)
@@ -154,13 +158,23 @@ func fire_aim() -> bool:
 	return fired
 
 
-## Touch (TouchControls, an aimed ability's button held): the press brings up the aim, a drag past its button
-## turns it (8 ways), letting go fires it or calls it off.
+## Touch (TouchControls; owner 2026-10-23): an aimed ability's button brings up its aim (again: calls it off; another's
+## switches), the joystick or a drag past its button turns it (8 ways), letting go of JUMP fires it (on the X beside
+## JUMP: calls it off; _touch_aim_jump). The PC's JUMP key still fires on its press (_aim_step).
 func _touch_aim_start(id: String) -> void:
-	if aiming != "" and aiming != id:
+	if aiming == id:
 		cancel_aim()
-	if aiming == "":
-		start_aim(id)
+		return
+	if aiming != "":
+		cancel_aim()
+	start_aim(id)
+
+
+## Touch: a tap-to-fire ability's button (SLIMAKAZE, SLIME SENSE); an aim that was up is called off first.
+func _touch_tap(id: String) -> void:
+	if aiming != "":
+		cancel_aim()
+	use(id)
 
 
 func _touch_aim(id: String, offset: Vector2) -> void:
@@ -171,6 +185,16 @@ func _touch_aim(id: String, offset: Vector2) -> void:
 		aim_dir = want
 		slime.facing = Vector2(aim_dir).normalized()
 		queue_redraw()
+
+
+## Touch: JUMP let go while aiming (TouchControls presses no "jump" then): fire, or call it off (let go on the X).
+func _touch_aim_jump(cancel: bool) -> void:
+	if aiming == "":
+		return
+	if cancel:
+		cancel_aim()
+	else:
+		fire_aim()
 
 
 func _touch_aim_end(id: String, fire: bool) -> void:
