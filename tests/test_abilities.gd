@@ -873,6 +873,15 @@ func _touch_aim() -> void:
 	await _physics_frames(2)
 	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left and tc.aim_ring,
 		"touch: a tap on SLIME SNIPER brings up its aim (nothing spent, letting go fires nothing), JUMP's gold ring on")
+	# On a phone every touch also arrives as an emulated left click (Godot's emulate_mouse_from_touch): the tap that
+	# brought the aim up, a thumb on the stick or on JUMP must never fire it (owner bug 2026-10-23: it fired at once).
+	var fake := InputEventMouseButton.new()
+	fake.button_index = MOUSE_BUTTON_LEFT
+	fake.pressed = true
+	fake.device = InputEvent.DEVICE_ID_EMULATION
+	runner._unhandled_input(fake)
+	await _physics_frames(2)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == left, "...a touch's emulated mouse click doesn't fire it (only JUMP does)")
 	var still: Vector2 = game.slime.position
 	Input.action_press("move_up")
 	await _physics_frames(20)

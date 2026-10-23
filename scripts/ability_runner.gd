@@ -234,9 +234,12 @@ func _aim_step() -> void:
 
 
 ## A left click (mouse) fires while aiming.
+## Not a phone's touch: Godot also sends every touch as an emulated left click (emulate_mouse_from_touch), which fired
+## the aim the moment its button, the stick or JUMP was touched (owner bug 2026-10-23); touch fires only by JUMP.
 func _unhandled_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
-	if aiming != "" and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+	if aiming != "" and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
+			and click.device != InputEvent.DEVICE_ID_EMULATION:
 		get_viewport().set_input_as_handled()
 		fire_aim()
 
