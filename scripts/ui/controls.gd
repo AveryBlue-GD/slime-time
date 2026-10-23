@@ -76,6 +76,9 @@ var vibration_button: Button
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
+## RELAXED (no idle drain, no medals; Progress.relaxed) under SAVE CODE / TRAINING, with a hint line under it.
+var relaxed_button: Button
+var relaxed_hint: Label
 var controls_button: Button
 var reset_button: Button
 ## Only with the tutorial gate on (Economy.tutorial_on()): replays the training maze, writes nothing.
@@ -123,6 +126,13 @@ func _ready() -> void:
 	else:
 		fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
 		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
+	relaxed_button = _column_button(_cell(1, 4), _toggle_relaxed)
+	# i18n: hint under the RELAXED button, max 296px, 1 line (centred under both columns)
+	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "NO DRAIN WHEN STILL. NO MEDALS."), UIKit.FONT, UIKit.TEXT)
+	add_child(relaxed_hint)
+	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
+	relaxed_hint.position = Vector2(0, _cell(1, 4).y + UIKit.button_h() + UIKit.GAP_XS)
+	relaxed_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_refresh_sound()
 	_refresh_display_options()
 
@@ -833,6 +843,12 @@ func _toggle_motion() -> void:
 	_refresh_display_options()
 
 
+func _toggle_relaxed() -> void:
+	Progress.relaxed = not Progress.relaxed
+	Progress.save_progress()
+	_refresh_display_options()
+
+
 func _toggle_vibration() -> void:
 	Progress.vibration = not Progress.vibration
 	Progress.save_progress()
@@ -853,6 +869,11 @@ func _refresh_display_options() -> void:
 		motion_button.text = Loc.t("settings.motion.less", "MOTION: LESS")
 	else:
 		motion_button.text = Loc.t("settings.motion.full", "MOTION: FULL")
+	# i18n: max 112px, 1 line; the two states are whole strings (no idle drain, no medals)
+	if Progress.relaxed:
+		relaxed_button.text = Loc.t("settings.relaxed.on", "RELAXED: ON")
+	else:
+		relaxed_button.text = Loc.t("settings.relaxed.off", "RELAXED: OFF")
 	if vibration_button:
 		# i18n: max 112px, 1 line; the two states are whole strings (phones: a buzz on each splat)
 		if Progress.vibration:
@@ -894,6 +915,7 @@ static func column_texts() -> Array[String]:
 		Loc.t("settings.fog.bright", "FOG: BRIGHT"), Loc.t("settings.fullscreen.on", "FULLSCREEN: ON"),
 		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.vibration.on", "VIBRATION: ON"),
 		Loc.t("settings.vibration.off", "VIBRATION: OFF"), Loc.t("settings.controls", "CONTROLS"),
+		Loc.t("settings.relaxed.on", "RELAXED: ON"), Loc.t("settings.relaxed.off", "RELAXED: OFF"),
 		Loc.t("settings.save_code", "SAVE CODE")]
 
 

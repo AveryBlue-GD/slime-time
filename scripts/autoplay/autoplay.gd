@@ -321,13 +321,14 @@ func _drive_game(game: Node, token: int) -> void:
 func _open_restart_prompt(game: Node, token: int, shopping: bool) -> void:
 	_bot_pause = true
 	var prompt: RestartPrompt = game.restart_prompt
-	var press := InputEventAction.new()
-	press.action = "restart"
-	press.pressed = true
-	Input.parse_input_event(press)
-	var release := InputEventAction.new()
-	release.action = "restart"
-	Input.parse_input_event(release)
+	if not Economy.r_always_restarts():  # (R restarts at once otherwise; the bot opens the prompt itself below)
+		var press := InputEventAction.new()
+		press.action = "restart"
+		press.pressed = true
+		Input.parse_input_event(press)
+		var release := InputEventAction.new()
+		release.action = "restart"
+		Input.parse_input_event(release)
 	await _frames(3)
 	if not _alive(token):
 		_bot_pause = false

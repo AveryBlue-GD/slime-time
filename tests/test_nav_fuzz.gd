@@ -64,6 +64,7 @@ const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel"
 
 
 func _initialize() -> void:
+	Economy.r_always_force = 0  # (the fuzz models the RESTART / UPGRADES prompt; test_chill_lane covers R restarting at once)
 	Economy.descent_force = 1  # Descent is switched off in the game (D11); this suite tests it
 	await process_frame
 	for arg in OS.get_cmdline_user_args():

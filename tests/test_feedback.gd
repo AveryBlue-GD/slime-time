@@ -13,6 +13,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.r_always_force = 0  # (these cover the RESTART / UPGRADES prompt; test_chill_lane covers R always restarting)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.save_path = test_save

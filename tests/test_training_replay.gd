@@ -44,9 +44,10 @@ func _initialize() -> void:
 	_check(br.position.x == save_r.position.x and br.size == save_r.size and br.position.y == fog_r.position.y
 		and br.position.y - save_r.position.y == save_r.position.y - ctl_r.position.y,
 		"TRAINING sits in the MORE column under SAVE CODE, on MOTION's row (%s; SAVE CODE %s, MOTION %s)" % [br, save_r, fog_r])
-	page.fog_button.grab_focus()
-	_check(page.fog_button.find_valid_focus_neighbor(SIDE_RIGHT) == b and b.find_valid_focus_neighbor(SIDE_TOP) == page.save_code_button,
-		"focus: right of FOG and under SAVE CODE is TRAINING")
+	page.motion_button.grab_focus()
+	_check(page.motion_button.find_valid_focus_neighbor(SIDE_RIGHT) == b and b.find_valid_focus_neighbor(SIDE_TOP) == page.save_code_button
+		and page.fog_button.find_valid_focus_neighbor(SIDE_RIGHT) == page.relaxed_button,
+		"focus: right of MOTION and under SAVE CODE is TRAINING, right of FOG is RELAXED")
 	b.grab_focus()
 	_check(b.has_focus(), "takes focus")
 	var seen_before: int = progress.tutorial_seen

@@ -284,6 +284,8 @@ const SFX_BUS := "SFX"  # i18n: ignore (an audio bus name)
 const MUSIC_BUS := "Music"  # i18n: ignore (an audio bus name)
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
 var reduce_motion := false
+## RELAXED (SETTINGS, IMP-01): no idle drain; a run played with it earns no medals, records or tickets.
+var relaxed := false
 ## Phones buzz on a splat (Slime._buzz); SETTINGS VIBRATION (Platform.has_vibration) turns it off.
 var vibration := true
 ## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;

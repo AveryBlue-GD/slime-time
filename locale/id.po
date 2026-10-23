@@ -1329,6 +1329,13 @@ msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "RUN HADIAH {slot}/{total}"
 
+#. max 296px
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.relaxed"
+msgid "RELAXED: NO MEDALS, RECORDS OR TICKETS"
+msgstr ""
+
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
 #: scripts/hud.gd
@@ -1735,6 +1742,13 @@ msgctxt "settings.more"
 msgid "MORE"
 msgstr "LAINNYA"
 
+#. hint under the RELAXED button, max 296px, 1 line (centred under both columns)
+#. budget: max 296px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.hint"
+msgid "NO DRAIN WHEN STILL. NO MEDALS."
+msgstr ""
+
 #. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
 #. budget: max 112px, lines 1
 #: scripts/ui/controls.gd
@@ -1911,6 +1925,16 @@ msgstr "GERAKAN: SEDIKIT"
 msgctxt "settings.motion.full"
 msgid "MOTION: FULL"
 msgstr "GERAKAN: PENUH"
+
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.on"
+msgid "RELAXED: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.off"
+msgid "RELAXED: OFF"
+msgstr ""
 
 #: scripts/ui/controls.gd
 msgctxt "settings.vibration.on"

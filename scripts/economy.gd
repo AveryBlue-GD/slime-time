@@ -88,6 +88,17 @@ const RANDOM_CHALICE := true
 const IDLE_DRAIN_ON := true
 const IDLE_DRAIN := 0.5
 static var idle_drain_force := -1
+## Chill lane (IMP-01): standing still drains nothing for the first IDLE_GRACE seconds of being still
+## (moving resets it), nothing at all while aiming an ability, and R always restarts the run at once
+## (R_ALWAYS_RESTARTS: no RESTART / UPGRADES prompt; spending stays on the dry-up screen).
+## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets.
+const IDLE_GRACE := 4.0
+const R_ALWAYS_RESTARTS := true
+static var r_always_force := -1  # (test hook: -1 follow the const, 0 off = the old RESTART / UPGRADES prompt, 1 on)
+
+
+static func r_always_restarts() -> bool:
+	return R_ALWAYS_RESTARTS if r_always_force < 0 else r_always_force == 1
 
 
 static func idle_drain_on() -> bool:

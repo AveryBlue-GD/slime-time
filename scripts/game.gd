@@ -358,6 +358,10 @@ var _last_ambient_event := -1
 var dev_bright := false
 var dev_no_drain := false
 var dev_toggled := false
+## SETTINGS RELAXED was on when this run began (no idle drain; no medal, record or ticket, like ASSIST).
+var relaxed_run := false
+## Seconds the slime has been still on the ground (the idle drain's grace, Economy.IDLE_GRACE).
+var _still_time := 0.0
 var _bright_shown := {}
 ## Trail map survey of this run (story levels only, see Survey / Progress.record_survey): one byte
 ## per maze tile, 1 once revealed (set where the fog is revealed, so it costs a byte write per newly
@@ -578,6 +582,7 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
+	relaxed_run = progress != null and progress.relaxed and not training
 	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
@@ -1459,7 +1464,13 @@ func paint_streak(a: Vector2, b: Vector2, radius := 2.0) -> void:
 func _idle_drain(moved: float, delta: float) -> void:
 	if dev_no_drain or training or _spawn_at != Vector2.INF or random_map_view != null or not Economy.idle_drain_on():
 		return
-	if moved <= 0.0 and slime.state == Slime.State.GLIDE:
+	if moved > 0.0 or slime.state != Slime.State.GLIDE:
+		_still_time = 0.0
+		return
+	if relaxed_run or slime.aim_lock:
+		return  # RELAXED: no idle drain; aiming an ability is thinking time, not waiting
+	_still_time += delta
+	if _still_time > Economy.IDLE_GRACE:
 		slime_remaining = maxf(slime_remaining - Economy.IDLE_DRAIN * delta, 0.0)
 
 
@@ -1842,7 +1853,7 @@ func _pick_up_tickets(pos: Vector2) -> void:
 		if pos.distance_to(ticket.position) > TicketPickup.REACH:
 			continue
 		tickets.erase(ticket)
-		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, assisted or dev_toggled)
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit())
 		ticket.collect(self)
 		_sfx("coin", -4.0)
 		if paid > 0:
@@ -2013,7 +2024,7 @@ func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
 	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed)
-	if dev_toggled or assisted:
+	if no_credit():
 		due.tickets = 0
 	return due
 
@@ -2024,6 +2035,11 @@ func pay_attempt() -> int:
 	return attempt + (1 if wind_fired else 0)
 
 
+## An assisted, dev-toggled or RELAXED run earns no medal, record or ticket.
+func no_credit() -> bool:
+	return assisted or dev_toggled or relaxed_run
+
+
 ## The tickets a win on this run would pay right now (payout().tickets).
 func ticket_offer() -> int:
 	return payout().tickets
@@ -2032,7 +2048,7 @@ func ticket_offer() -> int:
 ## The tickets the maze's pickups still out would pay (none once the run is over, or for an assisted
 ## or dev-toggled run): the attempt pod's TIX AVAILABLE adds them, so it counts down as they're taken.
 func pickup_offer() -> int:
-	if finished or assisted or dev_toggled:
+	if finished or no_credit():
 		return 0
 	return tickets.size() * Economy.RANDOM_TICKET_PAY
 
@@ -2407,7 +2423,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			_dry_up()
 			return
 	_show(goal)
-	var no_record := assisted or dev_toggled
+	var no_record := no_credit()
 	slime.play_celebrate()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
@@ -2464,6 +2480,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif dev_toggled:
 				hud.show_rewards({dev = true})
+			elif relaxed_run:
+				hud.show_rewards({relaxed = true})
 			elif assisted:
 				hud.show_rewards({assisted = true})
 			elif due.cap == "paid":
@@ -2486,7 +2504,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	var time_line := Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})
 	if progress and _is_running_scene():
 		reward = progress.record_clear(level, run_time, par_time, no_record, true)
-		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else reward)
+		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else (reward.merged({relaxed = true}) if relaxed_run else reward))
 		if reward.get("new_best", false):
 			get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 	if no_record:
@@ -2587,7 +2605,7 @@ func _finish(did_win: bool, text: String) -> void:
 			_offer_retry()
 		return
 	if progress:
-		if not is_random() and not descent and not training and (assisted or dev_toggled):
+		if not is_random() and not descent and not training and no_credit():
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level)
 	await get_tree().create_timer(CHOICE_DELAY, false).timeout
@@ -2930,11 +2948,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			replay("R")
 		elif finished:
 			retry("R")  # the dry-up buttons already offer the upgrades
-		elif progress and not hard_mode and progress.coins() > 0 and (not Demo.on() or progress.upgrade_buyable()):
+		elif not Economy.r_always_restarts() and progress and not hard_mode and progress.coins() > 0 and (not Demo.on() or progress.upgrade_buyable()):
 			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
 			DevLog.log_event(get_tree(), "R prompt opened", self)
 		else:
-			retry("R")  # nothing to spend (and no upgrades on hard mode): restart at once
+			retry("R")  # R always restarts at once (Economy.R_ALWAYS_RESTARTS); spending is on the dry-up screen
 
 
 # ---------------------------------------------------------------- dev toggles
