@@ -41,3 +41,9 @@ Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
 `demo_end_test` the demo starts with levels 1-3 cleared: PLAY level 4, grab the chalice, and the end screen opens.
 It counts as one of the 3 Personal Team apps. A new bundle id needs Xcode signed in to the Apple ID (step 2) the
 first time, so it can make the profile.
+
+## Build stamp
+Every `tools/ios_build.sh` build is stamped: the title screen's top left shows the commit (`+` = built with uncommitted
+changes), the build time and the app (FULL, FULL SKIP, DEMO END), and the bundle version is the build time
+(`xcrun devicectl device info apps` lists it). The old build's app is deleted from the Xcode build folder first, so an
+install is always this build.

@@ -21,11 +21,29 @@ if [[ -z "$TEAM" ]]; then
 fi
 echo "Team: $TEAM"
 
+# (the build stamp's commit, below: + = uncommitted changes; read before this script edits anything)
+COMMIT="$(git rev-parse --short HEAD)"
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+	COMMIT="$COMMIT+"
+fi
 # The committed preset keeps its placeholder team; fill the real one for this build only.
 mkdir -p build
 cp export_presets.cfg build/export_presets.cfg.bak
-trap 'mv build/export_presets.cfg.bak export_presets.cfg' EXIT
+cp project.godot build/project.godot.bak
+trap 'mv build/export_presets.cfg.bak export_presets.cfg; mv build/project.godot.bak project.godot' EXIT
 sed -i '' "s/^application\/app_store_team_id=\"ABCDE12345\"$/application\/app_store_team_id=\"$TEAM\"/" export_presets.cfg
+# The build stamp (owner, 2026-10-23: tell builds apart on the phone): commit (+ = uncommitted changes), time and which
+# app, as this build's application/config/version (the title screen shows it, top left; nothing in other builds); the
+# bundle version is the build time (xcrun devicectl device info apps lists it).
+APP_TAG="FULL"
+[[ "${SKIP_DEMO:-}" == "1" ]] && APP_TAG="FULL SKIP"
+[[ "${DEMO_END:-}" == "1" ]] && APP_TAG="DEMO END"
+STAMP="$COMMIT $(date +%m-%d) $(date +%H:%M) $APP_TAG"
+BUILD_NO="$(date +%Y%m%d).$(date +%H%M)"
+awk -v stamp="$STAMP" '{print} /^\[application\]$/ {print ""; print "config/version=\"" stamp "\""}' project.godot > build/project.godot.tmp \
+	&& mv build/project.godot.tmp project.godot
+sed -i '' "s/^application\/version=\"1\"$/application\/version=\"$BUILD_NO\"/" export_presets.cfg
+echo "Build: $STAMP (bundle version $BUILD_NO)"
 # SKIP_DEMO=1: a test build whose save starts past the demo's levels (Progress.skip_demo_levels).
 if [[ "${SKIP_DEMO:-}" == "1" ]]; then
 	awk '/^name="iOS"$/ {ios = 1} ios && /^custom_features=""$/ {print "custom_features=\"skip_demo\""; ios = 0; next} {print}' \
@@ -46,6 +64,7 @@ if [[ "$APP" != "DryTrying" ]]; then
 	/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Dry Trying Demo" "$OUT/$APP/$APP-Info.plist"
 fi
 
+rm -rf "$DERIVED/Build/Products"  # (never an old app: the install below is this build)
 xcodebuild -project "$OUT/$APP.xcodeproj" -scheme "$APP" -configuration Debug -destination generic/platform=iOS \
 	-allowProvisioningUpdates -allowProvisioningDeviceRegistration -derivedDataPath "$DERIVED" -quiet build
 
