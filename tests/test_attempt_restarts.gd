@@ -178,10 +178,10 @@ func _initialize() -> void:
 	_set_mode(true)
 	var game := await _start_new_maze()
 	game.set_dev_bright(true)
-	_check(_pod(game) == _text(1, 0), "dev FULL BRIGHT: the pod shows 0 (%s)" % _pod(game))
+	_check(_pod(game) == _text(1, 10), "dev FULL BRIGHT: dev mode keeps the pod at 10 (%s)" % _pod(game))
 	game = await _restart(game, "pause_keys")
 	var tw := await _win(game)
-	_check(tw.shown == _text(2, 0) and tw.paid == 0, "...still 0 on the restarted run (toggle kept), and a win pays 0 (%s)" % tw.shown)
+	_check(tw.shown == _text(2, 8) and tw.paid == 8, "...still counting on the restarted run (toggle kept), and a win pays the 8 shown (%s)" % tw.shown)
 	progress.dev_bright = false
 	await _leave(game)
 	_reset_day()

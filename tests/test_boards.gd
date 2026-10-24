@@ -309,6 +309,37 @@ func _initialize() -> void:
 	await physics_frame
 	_check(progress.tickets == tix_before + 20 and progress.weekly_paid_week == week + 1, "the next week's first win paid 20")
 	await _drop(game)
+	# dev mode keeps the weekly pay for testing; a plain launch with the dev tools used pays 0
+	progress.weekly_paid = 0
+	progress.weekly_paid_week = 0
+	game = await _spawn(true)
+	game.run_time = par
+	game.dev_toggled = true
+	_check(game.payout().tickets == 0, "not dev mode + dev tools used: the weekly offers 0")
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before and progress.weekly_paid == 0, "not dev mode + dev tools used: the weekly pays 0")
+	await _drop(game)
+	progress.dev_tools = true
+	game = await _spawn(true)
+	game.run_time = par
+	game.dev_toggled = true
+	game._refresh_attempt_pod()
+	_check(game.payout().tickets == 20 and game.hud.attempt_label.text.ends_with("TIX AVAILABLE 20"), "dev mode + dev tools used: the pod still shows 20 (%s)" % game.hud.attempt_label.text.replace("
+", " / "))
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before + 20 and progress.weekly_paid == 20, "dev mode + dev tools used: the weekly pays the 20 shown, in memory")
+	await _drop(game)
+	game = await _spawn(true)
+	game.run_time = par
+	game.dev_toggled = true
+	game.relaxed_run = true
+	_check(game.payout().tickets == 0, "dev mode: a RELAXED weekly still pays 0")
+	await _drop(game)
+	progress.dev_tools = false
 	progress.day_override = monday
 	var wfile := SaveFile.write(progress)
 	var wp: int = progress.weekly_paid

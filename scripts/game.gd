@@ -1977,7 +1977,7 @@ func _pick_up_tickets(pos: Vector2) -> void:
 			continue
 		tickets.erase(ticket)
 		var hold: bool = Economy.pickups_on_win()
-		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_credit() or daily_repeat(), hold)
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_pay() or daily_repeat(), hold)
 		if hold:
 			held_tickets += paid  # (shown as "+N" now, paid when the maze is won)
 		ticket.collect(self)
@@ -2153,12 +2153,12 @@ func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
 	if is_weekly():  # (pays by this run's time against the week's par, the improvement over what the week paid; nothing when assisted / RELAXED)
-		var pay: int = 0 if (assisted or dev_toggled or relaxed_run) else progress.weekly_pay_due(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
+		var pay: int = 0 if (assisted or (dev_toggled and not dev_keeps_pay()) or relaxed_run) else progress.weekly_pay_due(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
 		return {tickets = pay, table = Economy.WEEKLY_PAY_MAX, cap = "" if pay > 0 else "paid"}
 	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, pay_factor(), progress.random_daily)
 	if daily_repeat():
 		due = {tickets = 0, table = due.table, cap = "paid"}
-	if no_credit():
+	if no_pay():
 		due.tickets = 0
 	return due
 
@@ -2189,6 +2189,19 @@ func no_credit() -> bool:
 	return assisted or dev_toggled or relaxed_run or is_weekly()
 
 
+## Debug builds, dev mode only (`--dev`): the dev tools (F1 / F2) do not zero the ticket pay, so the
+## payout system can be tested (the assist and RELAXED still pay nothing; medals and records keep no_credit()).
+func dev_keeps_pay() -> bool:
+	return progress != null and progress.dev_tools and OS.is_debug_build()
+
+
+## No ticket pay for this run: no_credit(), except a dev-toggled run in dev mode (dev_keeps_pay).
+func no_pay() -> bool:
+	if not no_credit():
+		return false
+	return not (dev_toggled and dev_keeps_pay() and not assisted and not relaxed_run and not is_weekly())
+
+
 ## The weekly maze's par time in seconds (Levels.weekly_par of this maze; computed once).
 func weekly_par() -> float:
 	if _weekly_par < 0.0:
@@ -2209,7 +2222,7 @@ func ticket_offer() -> int:
 ## The tickets the maze's pickups still out would pay (none once the run is over, or for an assisted
 ## or dev-toggled run): the attempt pod's TIX AVAILABLE adds them, so it counts down as they're taken.
 func pickup_offer() -> int:
-	if finished or no_credit() or daily_repeat():
+	if finished or no_pay() or daily_repeat():
 		return 0
 	return tickets.size() * Economy.RANDOM_TICKET_PAY + held_tickets
 
@@ -2628,7 +2641,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			_sfx("chalice", CHALICE_VOLUME_DB)
 		var random_lines: Array = [title]
 		# IMP3-07: the daily / weekly line carries the time (DAILY #n  M:SS.cc  STREAK s), so no TIME line over it
-		var time_in_line: bool = progress != null and _is_running_scene() and not preview and ((progress.random_daily and not no_record) 			or (is_weekly() and not (assisted or dev_toggled or relaxed_run)))
+		var time_in_line: bool = progress != null and _is_running_scene() and not preview and ((progress.random_daily and not no_record) 			or (is_weekly() and not (assisted or (dev_toggled and not dev_keeps_pay()) or relaxed_run)))
 		if not time_in_line:
 			random_lines.append(Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}))  # i18n: max 296px; {time} = M:SS.cc
 		if not (progress and progress.random_daily):  # (the daily's seed is the date: a SEED line says nothing, IMP2-02)
@@ -2646,7 +2659,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
-			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), pay_factor(), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
+			var paid: int = progress.complete_random(no_pay() or repeat, random_seed, pay_attempt(), pay_factor(), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
 			if repeat:
 				held_tickets = 0
 			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):
@@ -3081,7 +3094,9 @@ func _place_sting() -> void:
 ## BM-03: the weekly's win (nothing is paid or counted): its board time, share line and ghost.
 func _weekly_result(text: String) -> String:
 	progress.mark_weekly_played(Boards.week_of(progress.daily_run_day))  # (even a RELAXED / assisted win: the sign stops saying NEW)
-	if assisted or dev_toggled or relaxed_run:
+	if assisted or relaxed_run:
+		return text
+	if dev_toggled and not dev_keeps_pay():
 		return text
 	var paid: int = progress.pay_weekly(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
 	var ms := roundi(run_time * 1000.0)
