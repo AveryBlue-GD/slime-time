@@ -77,6 +77,9 @@ func _initialize() -> void:
 	screen.dice_button.pressed.emit()
 	_check(progress.random_look and screen._dice_frame.visible, "the dice toggles ON (lit)")
 	_check(screen.random_look_text().contains("ON"), "status line says ON")
+	_check(screen.status.text == "RANDOM LOOK: ON" and screen.look_note_active, "a press leaves RANDOM LOOK: ON on the status line (touch has no hover)")
+	await create_timer(screen.LOOK_NOTE_TIME + 0.3).timeout
+	_check(screen.status.text != "RANDOM LOOK: ON", "...and it clears after ~2 s")
 	var on_reload: Node = preload("res://scripts/progress.gd").new()
 	on_reload.save_path = test_save
 	on_reload.load_progress()

@@ -231,6 +231,22 @@ func toggle_random_look() -> void:
 		randomize_look()
 	_refresh_dice()
 	_say_random_look()
+	_hold_look_note()
+
+
+## IMP3-04: on touch there is no hover / focus text to read, so after a press the ON / OFF line stays ~2 s, then the
+## status line goes back to the worn skin's name (only if nothing else has taken the line meanwhile).
+const LOOK_NOTE_TIME := 2.0
+var look_note_active := false
+
+
+func _hold_look_note() -> void:
+	look_note_active = true
+	var note := status.text
+	await get_tree().create_timer(LOOK_NOTE_TIME).timeout
+	if look_note_active and is_inside_tree() and status.text == note:
+		status.text = Skins.display_name(Progress.selected_skin)
+	look_note_active = false
 
 
 ## RANDOMIZE: a random complete look from what is owned (never anything locked, never the look worn now).
