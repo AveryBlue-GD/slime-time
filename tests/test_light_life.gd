@@ -33,7 +33,7 @@ func _initialize() -> void:
 	_check(mat.get_shader_parameter("trail_tex") == game.trail_sprite.texture, "the trail texture is shared")
 	await _physics_frames(3)
 	var fx: Vector4 = mat.get_shader_parameter("goal_fx")
-	_check(fx.w == 1.0 and fx.z == 192.0 and Vector2(fx.x, fx.y).is_equal_approx(game.goal.position), "goal rays aimed at the goal")
+	_check(fx.w == (1.0 if LightLife.GOAL_RAYS else 0.0) and fx.z == 192.0, "goal rays follow GOAL_RAYS (off: no chalice hint through the fog)")
 	game._on_goal_body_entered(game.slime)
 	_check(Engine.time_scale == 1.0 and game._hitstop_frames == 2 and not game.is_physics_processing(), "win: 2-frame hit-stop freezes physics only")
 	for i in 4:

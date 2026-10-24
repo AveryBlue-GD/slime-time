@@ -54,7 +54,10 @@ func _initialize() -> void:
 	_check(music.orch_target == [1.0, 0.0, 0.0], "meter back up: TENSION goes")
 	game.slime.position = game.goal.position + Vector2(150, 0)
 	game._orchestra_frame(0.0)
-	_check(game._orch_seen and music.orch_target == [1.0, 0.0, 1.0], "the chalice first seen within 12 tiles: TENSION (and once)")
+	_check(not game._orch_seen and music.orch_target == [1.0, 0.0, 0.0], "the chalice near but still in the fog: no sighting (no hint)")
+	game.reveal_tile(Vector2i(game.goal.position / game.TILE), false)
+	game._orchestra_frame(0.0)
+	_check(game._orch_seen and music.orch_target == [1.0, 0.0, 1.0], "the chalice revealed within 12 tiles: TENSION (and once)")
 	game._orchestra_frame(game.ORCH_TENSE_TIME + 1.0)
 	_check(music.orch_target == [1.0, 0.0, 0.0] and game._orch_seen, "the tension from the sighting lasts a while only")
 

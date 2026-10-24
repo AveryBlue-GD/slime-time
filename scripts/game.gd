@@ -765,7 +765,7 @@ func _low_slime_warning(delta: float) -> void:
 
 
 ## BM-08 GOO ORCHESTRA per frame: tells the music if the slime moves and if the run is tense (the meter is LOW, or
-## the chalice was first seen within 12 tiles in the last ORCH_TENSE_TIME s). The first sighting, once per
+## the chalice was first revealed within 12 tiles in the last ORCH_TENSE_TIME s). The first sighting, once per
 ## attempt, plays the chalice sting and sparks a few gold motes at the chalice (the visual twin for muted
 ## players; the LOW meter's twin is the HUD's red pulsing bar).
 const ORCH_SEE_DIST := 192.0
@@ -779,7 +779,9 @@ func _orchestra_frame(delta: float) -> void:
 	var music := get_node_or_null("/root/Music")
 	if music == null or finished:
 		return
-	if not _orch_seen and is_instance_valid(goal) and slime.position.distance_to(goal.position) <= ORCH_SEE_DIST:
+	# Only once the chalice is actually revealed, so the sting and sparks never hint at it through the fog.
+	if not _orch_seen and is_instance_valid(goal) and slime.position.distance_to(goal.position) <= ORCH_SEE_DIST \
+			and is_revealed_at(goal.position):
 		_orch_seen = true
 		_orch_tense_left = ORCH_TENSE_TIME
 		music.play_orchestra_sting("chalice")
