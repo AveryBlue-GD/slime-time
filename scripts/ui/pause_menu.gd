@@ -28,6 +28,11 @@ const BOTTOM := 176
 ## Two columns (a taller script's buttons that no longer fit one column): COLUMN_W each, GAP_L apart.
 const COLUMN_GAP := UIKit.GAP_L
 
+
+## The gap between the two columns: GAP_L, thumb-sized (UIKit.menu_gap) on a touch screen.
+static func column_gap() -> int:
+	return maxi(COLUMN_GAP, UIKit.menu_gap()) if UIKit.touch_active() else COLUMN_GAP
+
 var buttons: Array[Button] = []
 var wishlist_button: Button
 var sound_button: Button
@@ -87,7 +92,7 @@ func _ready() -> void:
 	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
 	menu.custom_minimum_size = Vector2(_col_w, 0)
 	menu.add_theme_constant_override("v_separation", UIKit.GAP_S)
-	menu.add_theme_constant_override("h_separation", COLUMN_GAP)
+	menu.add_theme_constant_override("h_separation", column_gap())
 	root.add_child(menu)
 	_menu = menu
 	sound_button = UIKit.make_button("", _toggle_sound)
@@ -290,7 +295,7 @@ func _layout(count: int, hud: Node) -> void:
 		_menu.remove_child(last)
 		_last_row.add_child(last)
 		_last_row.visible = true
-	var width := _col_w * columns + COLUMN_GAP * (columns - 1)
+	var width := _col_w * columns + column_gap() * (columns - 1)
 	var panel_w := PANEL_W + width - COLUMN_W
 	var panel_x := UIKit.center_x(panel_w)  # PANEL_X in English
 	# A wider panel keeps GAP_XS under the HUD pods it would reach (when the bottom has the room).
@@ -363,7 +368,7 @@ func _title_slot(hud: Node, own_marks := false, lift := 0) -> int:
 func _column_w(root: Control) -> int:
 	var english := COLUMN_W - VOLUME_BOX_EXTRA - ceili(UIKit.font_for(UIKit.FONT).get_string_size("VOLUME", HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)  # i18n: ignore (English's label, measured for its slider length)
 	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W, ["sfx"])))
-	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - COLUMN_GAP) / 2.0)
+	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - column_gap()) / 2.0)
 	return clampi(VOLUME_BOX_EXTRA + label + english, COLUMN_W, widest)
 
 

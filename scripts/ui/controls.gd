@@ -144,7 +144,7 @@ func _ready() -> void:
 	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"), UIKit.FONT, UIKit.TEXT)
 	add_child(relaxed_hint)
 	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
-	relaxed_hint.position = Vector2(0, _cell(1, rows() - 1).y + UIKit.button_h() + UIKit.GAP_XS)
+	relaxed_hint.position = Vector2(0, minf(_cell(1, rows() - 1).y + UIKit.button_h() + UIKit.GAP_XS, UIKit.bottom_row_y() - UIKit.line_h() - 1))  # (BUG4-05: never over the bottom row at touch pitch)
 	relaxed_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	relaxed_hint.visible = false  # (only while the RELAXED button has focus or the pointer over it)
 	for sig in [relaxed_button.focus_entered, relaxed_button.mouse_entered, relaxed_button.focus_exited, relaxed_button.mouse_exited]:
