@@ -213,7 +213,7 @@ func _wardrobe() -> void:
 				_ok(not stage.intersects(pastel) and not pastel.intersects(page_b) and pastel.position.x > jelly.end.x, "wardrobe PASTEL right of JELLY, clear of the stage and the page button")
 				_ok(_fits(skins.pastel_button), "wardrobe PASTEL fits its word", skins.pastel_button.text)
 			if _code == "en":
-				var jelly_x: float = UIKit.center_x(jelly.size.x + UIKit.GAP_M + skins.pastel_button.size.x) if pastel_on else 74.0
+				var jelly_x: float = UIKit.center_x(jelly.size.x + UIKit.GAP_M + skins.DICE_W + UIKit.GAP_M + skins.pastel_button.size.x) if pastel_on else 74.0
 				_ok(g.position.y == 23 and skins.status.offset_top == 89 and skins._rule.offset_top == 100 and stage.position.y == 112 and jelly.position == Vector2(jelly_x, 164),
 					"wardrobe English rects pinned", str(jelly.position))
 	skins.free()

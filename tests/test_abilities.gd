@@ -1007,7 +1007,7 @@ func _bindings_migration() -> void:
 	for action: String in ["move_up", "move_down", "move_left", "move_right", "restart", "interact"]:
 		file.set_value("controls", action, progress.DEFAULT_KEYS[action])
 	file.set_value("controls", "jump", KEY_1)
-	progress._read_bindings(file)
+	SaveFile._read_bindings(progress, file)
 	_check(progress.bindings.jump == KEY_1 and progress.bindings.ability_rifle == KEY_2 and progress.bindings.ability_splat == KEY_3
 		and progress.bindings.ability_kaze == KEY_4, "an old save with JUMP on 1 keeps it; the abilities get 2 / 3 / 4 (%s)" % [progress.bindings])
 	progress.reset_bindings()

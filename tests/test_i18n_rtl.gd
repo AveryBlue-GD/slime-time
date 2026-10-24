@@ -215,7 +215,7 @@ func _dynamic() -> void:
 	progress.hard_mode = true
 	var ls: Control = await _open("res://scenes/level_select.tscn")
 	await _frames(2)
-	_check(_offscreen(ls).is_empty(), "ar: hard level select inside the screen %s" % _offscreen(ls))
+	_check(_offscreen(ls).is_empty(), "ar: hard level select inside the screen %s" % [_offscreen(ls)])
 	ls.free()
 	progress.hard_mode = false
 

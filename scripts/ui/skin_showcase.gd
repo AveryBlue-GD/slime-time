@@ -201,9 +201,14 @@ func _lay_to(cell_x: int) -> void:
 	_trail.queue_redraw()
 
 
+## Reduce-motion setting; the Progress autoload is fetched via the tree (a global-class script can't name it directly).
+static func _reduce_motion() -> bool:
+	return (Engine.get_main_loop() as SceneTree).root.get_node("Progress").reduce_motion
+
+
 ## Alpha factor of the i-th trail cell: 1 = fresh, quantized to TRAIL_STEPS steps, 0 = gone.
 func _cell_alpha(i: int) -> float:
-	if Progress.reduce_motion:
+	if _reduce_motion():
 		return 1.0 if i >= _trail_xs.size() - TRAIL_STATIC_CELLS else 0.0
 	var left := 1.0 - (_clock - _trail_born[i]) / TRAIL_FADE
 	return ceilf(clampf(left, 0.0, 1.0) * TRAIL_STEPS) / TRAIL_STEPS
@@ -213,7 +218,7 @@ func _cell_alpha(i: int) -> float:
 func _age_trail() -> void:
 	if _trail_xs.is_empty():
 		return
-	while not _trail_xs.is_empty() and (_clock - _trail_born[0] >= TRAIL_FADE or (Progress.reduce_motion and _trail_xs.size() > TRAIL_STATIC_CELLS)):
+	while not _trail_xs.is_empty() and (_clock - _trail_born[0] >= TRAIL_FADE or (_reduce_motion() and _trail_xs.size() > TRAIL_STATIC_CELLS)):
 		_trail_xs.remove_at(0)
 		_trail_born.remove_at(0)
 	_trail.queue_redraw()

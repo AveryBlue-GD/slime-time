@@ -1025,7 +1025,8 @@ static func _queue_mirror(root: Node) -> void:
 	_mirror_deferred.bind(root).call_deferred()
 
 
-static func _mirror_deferred(root: Node) -> void:
+## (`root` is a Variant: a freed node would fail the typed-argument conversion of the deferred call.)
+static func _mirror_deferred(root: Variant) -> void:
 	if not is_instance_valid(root) or not root.has_meta(MIRROR_META):
 		return
 	var state: Dictionary = root.get_meta(MIRROR_META)

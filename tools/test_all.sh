@@ -142,6 +142,11 @@ if [ "$n_results" -ne "$n_jobs" ]; then
 fi
 for entry in "$work"/*.result; do
     read -r r secs label < "$entry"
+    if [ "$r" = PASS ] && grep -q "SCRIPT ERROR" "$work/$(basename "$entry" .result).log"; then
+        echo "$label PASSED but its log has SCRIPT ERROR lines:"
+        grep "SCRIPT ERROR" "$work/$(basename "$entry" .result).log" | head -n 4
+        r=SCRIPTERR
+    fi
     [ "$r" = PASS ] && continue
     failed_jobs=$((failed_jobs + 1))
     failed_names="$failed_names ${label%%#*}"
