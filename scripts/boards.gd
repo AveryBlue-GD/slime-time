@@ -137,9 +137,6 @@ static func write_ghosts(path: String, ghosts: Dictionary) -> bool:
 		var pts: Array[int] = []
 		pts.assign(g.pts)
 		file.set_value(kind, "pts", pts)
-	var f := FileAccess.open(path, FileAccess.WRITE)  # (a ghost is only a replay: a failed write just means no ghost)
-	if f == null:
-		return false
-	f.store_string(file.encode_to_text())
-	f.close()
-	return true
+	# (tmp + rename like the save, so a crash mid-write never leaves half a file; a ghost is only a replay, a failed write
+	# just means no ghost). The Progress autoload comes via the tree: a global-class script can't name it directly.
+	return (Engine.get_main_loop() as SceneTree).root.get_node("Progress").write_atomic(path, file.encode_to_text())

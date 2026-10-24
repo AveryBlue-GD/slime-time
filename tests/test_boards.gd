@@ -119,6 +119,7 @@ func _initialize() -> void:
 	progress._ghosts_loaded = false
 	var back: Dictionary = progress.ghost_for("daily", monday)
 	_check(not back.is_empty() and back.ms == 5500 and back.pts.size() == 60 and back.pts == pts, "the ghost file round trips")
+	_check(not FileAccess.file_exists(progress.ghosts_path() + ".tmp"), "the ghosts file is written atomically (no .tmp left)")
 	_check(FileAccess.get_file_as_bytes(progress.ghosts_path()).size() < 1500, "60 samples are a small file (%d bytes)" % FileAccess.get_file_as_bytes(progress.ghosts_path()).size())
 	_check(Boards.ghost_pos(pts, 0.0) == Vector2i(10, 20) and Boards.ghost_pos(pts, 0.05) == Vector2i(11, 20) and Boards.ghost_pos(pts, 99.0) == Vector2i(128, 20),
 		"replay positions are whole pixels, the last one after the end")
