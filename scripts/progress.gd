@@ -1083,6 +1083,17 @@ var saves_written := 0
 
 func begin_save_batch() -> void:
 	_save_batch += 1
+	if _save_batch == 1:
+		_close_open_save_batch.call_deferred()  # (a batch an error left open must not swallow every later save)
+
+
+func _close_open_save_batch() -> void:
+	if _save_batch <= 0:
+		return
+	_save_batch = 0
+	if _save_batch_dirty:
+		_save_batch_dirty = false
+		save_progress()
 
 
 func end_save_batch() -> void:
