@@ -2645,7 +2645,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
 			var wins_left := Achievements.wins_to_next_unlock(progress.randoms_won)
-			if wins_left > 0 and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
+			if wins_left > 0 and not relaxed_run and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
 				# i18n: result line, max 296px, 1 line; {n} = randomizer wins until the next pastel skin or win goal
 				random_text = Loc.lines([random_text, Loc.n("result.next_unlock", "NEXT UNLOCK IN {n} WIN", "NEXT UNLOCK IN {n} WINS", wins_left, {n = wins_left})])
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)

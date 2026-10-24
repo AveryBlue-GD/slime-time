@@ -105,7 +105,7 @@ func _initialize() -> void:
 	_check(not Economy.RELAXED_COUNTS_WINS, "RELAXED random wins do not count toward randoms_won by default")
 	game = await _spawn(false)
 	game._offer_retry()
-	_check("RELAXED? MORE SLIME, NO MEDALS" in " ".join(game.hud.rewards_texts), "the dry-up screen asks RELAXED? (%s)" % " ".join(game.hud.rewards_texts))
+	_check("RELAXED? MORE SLIME, NO MEDALS OR TICKETS" in " ".join(game.hud.rewards_texts), "the dry-up screen asks RELAXED? (%s)" % " ".join(game.hud.rewards_texts))
 	game.free()
 	pr.relaxed = false
 	pr.dry_ups = {}
