@@ -294,6 +294,27 @@ func _initialize() -> void:
 	progress._ghosts = {}
 	progress._ghosts_loaded = false
 	_check(progress.ghost_for(story_kind, 1).ms == 25000, "the story ghost round trips through the file")
+	# IMP4-01: the file is parsed by warm_ghosts (the hub), never on a level's first frame; SHOW GHOST off still records
+	var parses_before: int = progress.ghost_parse_count
+	progress._ghosts_loaded = false
+	progress.ghost_on = false
+	game = await _spawn_story(1)
+	_check(progress.ghost_parse_count == parses_before and not progress._ghosts_loaded, "a level start does not parse ghosts.cfg when SHOW GHOST is off")
+	_check(game.ghost != null and game.ghost.sprite == null, "SHOW GHOST off: no ghost sprite")
+	game.slime.position += Vector2(24, 0)
+	await _wait_seconds(0.5)
+	game.run_time = 20.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.ghost_for(story_kind, 1).ms == 20000, "SHOW GHOST off still records the run")
+	_check(progress.ghost_parse_count == parses_before + 1, "the file was parsed once, when the result needed it")
+	await _drop(game)
+	progress._ghosts_loaded = false
+	progress.warm_ghosts()
+	_check(progress._ghosts_loaded and progress.ghost_parse_count == parses_before + 2, "warm_ghosts parses once")
+	progress.warm_ghosts()
+	_check(progress.ghost_parse_count == parses_before + 2, "warm_ghosts is a no-op when loaded")
+	progress.ghost_on = true
 	var big := {}
 	var pts_big: Array[int] = []
 	for i in 3000:
@@ -315,9 +336,9 @@ func _initialize() -> void:
 	await process_frame
 	_check(page.rows.size() == 2 * Economy.BOARD_TOP, "the page lists 5 + 5 places")
 	_check(page.daily_button != null and page.weekly_button != null and page.ghost_button != null and page.back_button != null, "PLAY DAILY / PLAY WEEKLY / GHOST / BACK are buttons (touch + pad)")
-	_check(page.ghost_button.text == "GHOST ON", "GHOST ON")
+	_check(page.ghost_button.text == "SHOW GHOST", "SHOW GHOST")
 	page.ghost_button.pressed.emit()
-	_check(not progress.ghost_on and page.ghost_button.text == "GHOST OFF", "the toggle turns the ghost off")
+	_check(not progress.ghost_on and page.ghost_button.text == "NO GHOST", "the toggle turns the ghost off")
 	progress.ghost_on = true
 	_check(page.rows[0].text.begins_with("1  "), "the first place shows (%s)" % page.rows[0].text)
 	for b: Button in [page.daily_button, page.weekly_button, page.ghost_button, page.back_button]:

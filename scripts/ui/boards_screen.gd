@@ -33,8 +33,8 @@ static func row_text(rank: int, board: Array, key: int, weekly: bool) -> String:
 
 
 static func ghost_text(on: bool) -> String:
-	# i18n: boards button, max 70px, 1 line; the ghost of your best run (a translucent slime racing you) is shown
-	return Loc.t("boards.ghost_on", "GHOST ON") if on else Loc.t("boards.ghost_off", "GHOST OFF")  # i18n: boards button, max 70px, 1 line; the ghost is hidden
+	# i18n: boards button, max 70px, 1 line; SHOW GHOST ON = the ghost of your best run (a translucent slime racing you) is shown
+	return Loc.t("boards.ghost_on", "SHOW GHOST") if on else Loc.t("boards.ghost_off", "NO GHOST")  # i18n: boards button, max 70px, 1 line; the ghost is hidden (your runs are still recorded)
 
 
 func _ready() -> void:

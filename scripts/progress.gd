@@ -263,6 +263,8 @@ var hub_seen := {}
 var random_weekly := false
 var _ghosts: Dictionary = {}
 var _ghosts_loaded := false
+## How many times ghosts.cfg was parsed (a test reads it: none on a level's first frame, the hub warms it).
+var ghost_parse_count := 0
 ## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
 ## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
 ## many OLD medal milestones (every 10 medals, 5 tickets) were paid: kept as it was, no longer paid (IMP2-03).
@@ -2101,7 +2103,16 @@ func ghosts_path() -> String:
 func _load_ghosts() -> void:
 	if not _ghosts_loaded:
 		_ghosts_loaded = true
-		_ghosts = Boards.read_ghosts(ghosts_path()) if saving_enabled else {}
+		if saving_enabled:
+			ghost_parse_count += 1
+			_ghosts = Boards.read_ghosts(ghosts_path())
+		else:
+			_ghosts = {}
+
+
+## Parses ghosts.cfg now (the hub calls this behind its transition, so a level's first frame never does).
+func warm_ghosts() -> void:
+	_load_ghosts()
 
 
 ## The best run recorded for `kind`'s `key` (day / week): {key, ms, pts} or {} (nothing, or another day's).

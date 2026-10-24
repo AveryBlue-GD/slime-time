@@ -275,6 +275,7 @@ func _ready() -> void:
 	var tour_due: bool = Progress.hub_tour_due()
 	if tour_due:
 		return_to = ""  # (the tour starts with the archway at the back)
+	Progress.warm_ghosts.call_deferred()  # (IMP4-01: the ghosts file is parsed here, not on a level's first frame)
 	_build_room()
 	_build_stations()
 	_spawn_slime()
