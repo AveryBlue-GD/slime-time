@@ -31,6 +31,8 @@ const LAND_POS := Vector2(156, 114)
 const POCKET_CENTER := Vector2(96, 146)
 const POCKET_RADIUS := 54.0
 const SCREEN := Vector2(320, 180)
+const LEAP_START := 0.46
+const LEAP_TIME := 0.44
 const GROUND_Y := 154.0
 const FOG := Color8(26, 28, 44)
 const GOO := Color8(37, 113, 121)
@@ -211,7 +213,7 @@ func _apply() -> void:
 		var slime := _slime_pos()
 		if t < 1.3:
 			center = slime + Vector2(20, 24)
-			radius = 44.0 * smoothstep(0.62, 1.15, t)
+			radius = 44.0 * smoothstep(0.40, 0.90, t)
 		else:
 			center = center.lerp(Vector2(160, 100), smoothstep(1.3, 1.8, t))
 			radius = lerpf(44.0, 230.0, smoothstep(1.3, 1.8, t))
@@ -223,32 +225,33 @@ func _apply() -> void:
 	_art.queue_redraw()
 
 
-## The slime's top-left corner: at rest, then the leap's parabola (0.70 .. 1.15 s).
+## The slime's top-left corner: at rest, then the leap's parabola (0.46 .. 0.90 s; LIVELY: it blinks and
+## squashes sooner, and the leap is quicker, higher and snappier than the first cut's 0.70 .. 1.15 s).
 func _slime_pos() -> Vector2:
-	var u := clampf((time - 0.70) / 0.45, 0.0, 1.0)
+	var u := clampf((time - LEAP_START) / LEAP_TIME, 0.0, 1.0)
 	var pos := SLIME_POS.lerp(LAND_POS, u)
-	pos.y -= 50.0 * 4.0 * u * (1.0 - u)
+	pos.y -= 62.0 * 4.0 * u * (1.0 - u)
 	return Vector2(roundf(pos.x), roundf(pos.y))
 
 
 ## The slime sheet's frame for this moment: [row, column] (rows: 0 idle, 2 charge, 3 launch, 4 air, 5 land).
 func _slime_frame() -> Vector2i:
 	var t := time
-	if t < 0.20:
+	if t < 0.08:
 		return Vector2i(0, 1)
-	if t < 0.32:
+	if t < 0.16:
 		return Vector2i(0, 3)  # the blink: eyes closed
-	if t < 0.45:
+	if t < 0.22:
 		return Vector2i(0, 1)
-	if t < 0.70:
-		return Vector2i(2, mini(3, int((t - 0.45) / 0.25 * 4.0)))  # squash down
-	if t < 0.78:
-		return Vector2i(3, int((t - 0.70) / 0.04) % 2)  # launch
-	if t < 1.15:
-		return Vector2i(4, mini(3, int((t - 0.78) / 0.37 * 4.0)))  # air
-	if t < 1.35:
-		return Vector2i(5, mini(3, int((t - 1.15) / 0.05)))  # land
-	return Vector2i(0, 0 if int((t - 1.35) * 4.0) % 2 == 0 else 1)
+	if t < LEAP_START:
+		return Vector2i(2, mini(3, int((t - 0.22) / (LEAP_START - 0.22) * 4.0)))  # squash down
+	if t < LEAP_START + 0.06:
+		return Vector2i(3, int((t - LEAP_START) / 0.03) % 2)  # launch
+	if t < LEAP_START + LEAP_TIME:
+		return Vector2i(4, mini(3, int((t - LEAP_START - 0.06) / (LEAP_TIME - 0.06) * 4.0)))  # air
+	if t < 1.1:
+		return Vector2i(5, mini(3, int((t - LEAP_START - LEAP_TIME) / 0.05)))  # land
+	return Vector2i(0, 0 if int((t - 1.1) * 6.0) % 2 == 0 else 1)  # (quick idle bounce)
 
 
 func _paint() -> void:
@@ -260,8 +263,8 @@ func _paint() -> void:
 	var world_a := 1.0 - smoothstep(1.1, 1.5, t)
 	_art.draw_texture(_world, Vector2.ZERO, Color(1, 1, 1, world_a))
 	# The goo trail paints itself ahead of the leaping slime (same ribbon as the splash's, thickest part).
-	if t >= 0.70:
-		var head := mini(int(_slime_pos().x) + 16, 190)
+	if t >= LEAP_START:
+		var head := mini(int(_slime_pos().x) + 16 + roundi(30.0 * clampf((t - LEAP_START) / LEAP_TIME, 0.0, 1.0)), 190)  # (paints ahead of the slime)
 		for x in range(100, head):
 			var yc := 151 + roundi(3.2 * sin((x - 30) / 8.5))
 			_art.draw_rect(Rect2(x, yc - 3, 1, 1), Color(GOO_LIGHT if (x / 3) % 2 == 0 else GOO_HIGH, fade))
@@ -273,12 +276,12 @@ func _paint() -> void:
 	_art.draw_texture_rect_region(_sheet, Rect2(pos, Vector2(40, 40)), Rect2(frame.y * 20, frame.x * 20, 20, 20),
 		Color(1, 1, 1, fade))
 	# The logo: letters and drip stubs, the drips growing downward (0.85 .. 1.15 s).
-	var grow := smoothstep(0.85, 1.15, t)
+	var grow := smoothstep(0.65, 0.95, t)
 	var rows := roundi(lerpf(LOGO_STUB_ROWS, LOGO_ROWS, grow))
 	_art.draw_texture_rect_region(_logo, Rect2(LOGO_POS, Vector2(_logo.get_width(), rows)),
 		Rect2(0, 0, _logo.get_width(), rows), Color(1, 1, 1, fade))
 	# One fat drop leaves the longest drip at 1.0 s, falls and splats on the ground.
-	var fall := t - 1.0
+	var fall := t - 0.8
 	if fall > 0.0:
 		var start_y := LOGO_POS.y + LOGO_ROWS
 		var y := start_y + 0.5 * 780.0 * fall * fall
@@ -286,7 +289,7 @@ func _paint() -> void:
 			_art.draw_rect(Rect2(_drop_x - 1, y, 3, 4), GOO_LIGHT)
 			_art.draw_rect(Rect2(_drop_x - 1, y, 1, 2), GOO_HIGH)
 		else:
-			var s := clampf((t - (1.0 + sqrt(2.0 * (GROUND_Y - start_y) / 780.0))) / 0.35, 0.0, 1.0)
+			var s := clampf((t - (0.8 + sqrt(2.0 * (GROUND_Y - start_y) / 780.0))) / 0.35, 0.0, 1.0)
 			var a := 1.0 - s
 			for i in 4:
 				var dx := (2.0 + 9.0 * s) * (1 if i % 2 == 0 else -1) * (0.55 + 0.45 * (i / 2))

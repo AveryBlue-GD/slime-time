@@ -56,6 +56,12 @@ const TAGLINE_W := 300
 var enter_button: Button
 ## The launch card while it plays (null otherwise, and after it is freed).
 var intro_card: IntroCard
+## The two slimes beside the button hop and glide in their lit pocket (idle that keeps moving); Reduce Motion: still.
+var _idle_slimes: Array[Node2D] = []
+var _idle_base: Array[Vector2] = []
+var _idle_time := 0.0
+const HOP_EVERY := 1.2
+const HOP_TIME := 0.45
 var story_button: Button
 ## QUIT (bottom-right, mirroring STORY): only where the game may close itself (Platform.can_quit, the hub
 ## trapdoor's rule), else null. It quits at once: the title is a deliberate place (no confirm panel).
@@ -217,10 +223,41 @@ func _ready() -> void:
 		slime_y = int(enter_rect.position.y) + floori(enter_size.y / 2.0) - SLIME_LEVEL
 		for preview in previews:
 			preview.position.y = slime_y
+	for preview in previews:
+		_idle_slimes.append(preview)
+		_idle_base.append(preview.position)
+		if not Progress.reduce_motion:
+			(preview as AnimatedSprite2D).speed_scale = 2.0  # (a quicker, bouncier idle between hops)
 	_warm_up_shaders()
 	_start_preload(fresh)
 	if IntroCard.due(cold, Progress):
 		_start_intro_card()
+
+
+func _process(delta: float) -> void:
+	if Progress.reduce_motion or _idle_slimes.is_empty():
+		return
+	_idle_time += delta
+	for i in _idle_slimes.size():
+		var sprite := _idle_slimes[i] as AnimatedSprite2D
+		var side := "e" if i == 0 else "w"  # (each hops toward the button)
+		var phase := fposmod(_idle_time + 0.6 * i, HOP_EVERY) / HOP_TIME  # (the two slimes hop out of step)
+		var offset := Vector2.ZERO
+		if phase < 1.0:  # a hop, gliding 4 px toward the button and back, whole pixels, in its air frames
+			offset = Vector2(roundf(4.0 * sin(PI * phase) * (1.0 if i == 0 else -1.0)), -roundf(9.0 * 4.0 * phase * (1.0 - phase)))
+			_show_frame(sprite, "air_" + side, mini(3, int(phase * 4.0)))
+		elif phase < 1.3:  # the landing squash
+			_show_frame(sprite, "land_" + side, mini(3, int((phase - 1.0) / 0.3 * 4.0)))
+		elif sprite.animation != &"idle":
+			sprite.play("idle")
+		_idle_slimes[i].position = _idle_base[i] + offset
+
+
+func _show_frame(sprite: AnimatedSprite2D, anim: String, frame: int) -> void:
+	if sprite.animation != StringName(anim):
+		sprite.play(anim)
+		sprite.pause()
+	sprite.frame = frame
 
 
 ## The launch card over the title (the preload and shader warm-up above run underneath it). The title's own UI
