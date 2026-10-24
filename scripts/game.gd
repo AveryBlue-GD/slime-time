@@ -1952,6 +1952,8 @@ func _place_coins(maze_seed: int) -> void:
 func _place_tickets() -> void:
 	if not is_random() or descent or training or progress == null or attempt_key == "" or not progress.random_seed_fresh:
 		return
+	if progress.random_daily or is_weekly():  # (the shared mazes pay a flat / timed prize, no pickups; the maze is built before this, from its own seed)
+		return
 	for cell in TicketPickup.cells_for(maze, random_seed, Economy.random_tickets()):
 		if progress.random_ticket_taken(attempt_key, cell):
 			continue

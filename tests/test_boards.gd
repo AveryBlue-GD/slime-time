@@ -355,6 +355,7 @@ func _initialize() -> void:
 	progress.record_ghost("daily", monday, 20000, pts)
 	game = await _spawn(false)
 	_check(not game.is_weekly() and game.ghost != null and game.ghost.kind == "daily" and game.ghost.sprite != null, "a daily with a ghost shows it")
+	_check(game.tickets.is_empty() and game.pickup_offer() == 0 and game.held_tickets == 0, "SHARED-MAZES: the daily spawns no ticket pickups")
 	_check(is_equal_approx(game.ghost.sprite.modulate.a, 0.5) and game.ghost.sprite.get_parent() == game.slime.get_parent(), "one translucent sprite beside the slime")
 	await _wait_seconds(0.3)
 	_check(game.ghost.sprite.position == Vector2(game.ghost.sprite.position.round()), "the ghost sits on whole pixels")

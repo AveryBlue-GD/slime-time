@@ -224,6 +224,8 @@ func _abandon_progress_level() -> void:
 ## --- Held pickups: paid with the win, lost on a dry-up
 func _held_pickups() -> void:
 	progress.tickets = 0
+	progress.random_daily = false
+	progress.random_weekly = false
 	progress.random_paid_seeds.clear()
 	progress.new_random_maze()
 	var game := await _spawn_random(progress.random_seed)
@@ -275,10 +277,7 @@ func _daily_pays_once() -> void:
 	var wins: int = progress.randoms_won
 	progress.start_daily()  # the same day again
 	game = await _spawn_random(progress.random_seed)
-	var pick: TicketPickup = game.tickets[0]
-	game.slime.position = pick.position
-	await _physics_frames(4)
-	_check(game.held_tickets == 0, "a pickup in an already-won daily is worth nothing")
+	_check(game.tickets.is_empty() and game.held_tickets == 0, "SHARED-MAZES: the daily has no ticket pickups at all")
 	progress.day_override = 30002  # midnight again
 	game.run_time = 99.0  # a slow replay (the day's best is far faster)
 	game.slime.position = game.goal.position
