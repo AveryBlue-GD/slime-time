@@ -143,6 +143,17 @@ func _hub() -> void:
 	progress.post_board("weekly", 50000, progress.utc_day())
 	hub._show_prompt()
 	_check(hub.sign_boards and hub.prompt_name.text == "BOARDS", "...and with both done it opens BOARDS (%s)" % hub.prompt_name.text)
+	# BUG4-04: a RELAXED / assisted weekly win posts no board time but still counts as played, and the mark is saved
+	progress.board_weekly.clear()
+	_check(hub.weekly_unplayed(), "BUG4-04: the weekly is unplayed again (board cleared)")
+	progress.mark_weekly_played(Boards.week_of(progress.utc_day()))
+	_check(not hub.weekly_unplayed(), "...a weekly won without a board time is played")
+	var wfile := SaveFile.write(progress)
+	var wk: int = progress.weekly_played_week
+	progress.weekly_played_week = 0
+	SaveFile.read(progress, wfile)
+	_check(progress.weekly_played_week == wk and wk > 0, "...and it survives a save round trip (%d)" % progress.weekly_played_week)
+	progress.weekly_played_week = 0
 	Economy.boards_force = 0
 	progress.daily_day = 0
 	progress.daily_best_ms = 0

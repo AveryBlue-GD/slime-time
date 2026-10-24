@@ -245,6 +245,8 @@ var daily_day := 0
 var daily_best_ms := 0
 var daily_streak := 0
 var daily_best_streak := 0
+## The week (Boards.week_of) whose weekly was won, even a RELAXED / assisted win that posts no board time (saved [boards]).
+var weekly_played_week := 0
 ## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
 var daily_saver_day := 0
 ## BM-03 BOARDS (Economy.BOARDS_TEST): your top times per daily's UTC day / weekly's week number (Boards entries), the best daily ever
@@ -2058,6 +2060,13 @@ func board_for(kind: String, key: int) -> Array:
 	return all.get(key, [])
 
 
+## Remembers that this week's weekly was won (saved), board time or not.
+func mark_weekly_played(week: int) -> void:
+	if week > weekly_played_week:
+		weekly_played_week = week
+		save_progress()
+
+
 ## Posts a finished run's time to the board of `kind` (the run started on UTC day `day`), saves, and tells a store backend
 ## (progress_event `board_daily` / `board_weekly`, value = ms). Returns {rank (0 = not in the top 5), board, key, best_daily}.
 ## RELAXED, assisted and dev runs never call this.
@@ -3255,6 +3264,7 @@ func reset_progress() -> void:
 	board_weekly.clear()
 	hub_seen.clear()
 	board_best_daily_ms = 0
+	weekly_played_week = 0
 	_ghosts = {}
 	_ghosts_loaded = true
 	if saving_enabled and FileAccess.file_exists(ghosts_path()):

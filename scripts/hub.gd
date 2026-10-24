@@ -2074,6 +2074,8 @@ func _update_near() -> void:
 		if best.is_empty() and _gap_to(rotor.position + Vector2(0, -2), ROTOR_RADIUS) < USE_GAP:
 			best = {id = "rotor", name = Loc.t("hub.prompt.rotate", "ROTATE")}
 	if best == near:
+		if not near.is_empty() and near.id == "daily" and Progress.utc_day() != _sign_day:
+			_show_prompt()  # (UTC midnight passed while standing at the sign: the daily / weekly decision is stale)
 		return
 	near = best
 	_show_prompt()
@@ -2104,7 +2106,11 @@ func _gap_from(from: Vector2, at: Vector2, radius: float) -> float:
 func weekly_unplayed() -> bool:
 	if tour != null or not Economy.boards_on() or Demo.on():
 		return false
-	return Progress.board_for("weekly", Boards.week_of(Progress.utc_day())).is_empty()
+	var week := Boards.week_of(Progress.utc_day())
+	return Progress.board_for("weekly", week).is_empty() and Progress.weekly_played_week != week
+
+
+var _sign_day := 0  # (the UTC day the DAILY sign prompt was decided on)
 
 
 func _show_prompt(note := "") -> void:
@@ -2116,6 +2122,7 @@ func _show_prompt(note := "") -> void:
 	prompt_name.text = near.name if line == "" else line
 	sign_weekly = false
 	sign_boards = false
+	_sign_day = Progress.utc_day()
 	if near.id == "daily" and Progress.daily_won_today() and Economy.boards_on() and not Demo.on() and tour == null:
 		sign_weekly = weekly_unplayed()
 		sign_boards = not sign_weekly

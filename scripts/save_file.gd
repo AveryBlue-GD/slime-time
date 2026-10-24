@@ -215,6 +215,7 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 static func _read_boards(p: Node, file: ConfigFile) -> void:
 	p.ghost_on = get_bool(file, "boards", "ghost", true)
 	p.board_best_daily_ms = clampi(get_int(file, "boards", "best_daily_ms", 0), 0, 1000 * 100000)
+	p.weekly_played_week = clampi(get_int(file, "boards", "weekly_played_week", 0), 0, 1000000)
 	for kind: String in ["daily", "weekly"]:
 		var out := {}
 		var raw: Variant = file.get_value("boards", kind, {})
@@ -473,10 +474,11 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	if not for_code and not Demo.on():
 		for station: String in p.hub_seen:
 			file.set_value("hub", "seen_" + station, p.hub_seen[station])
-	if Economy.BOARDS_TEST and not for_code and not Demo.on() and (not p.board_daily.is_empty() or not p.board_weekly.is_empty() or p.board_best_daily_ms > 0 or not p.ghost_on):
+	if Economy.BOARDS_TEST and not for_code and not Demo.on() and (not p.board_daily.is_empty() or not p.board_weekly.is_empty() or p.board_best_daily_ms > 0 or p.weekly_played_week > 0 or not p.ghost_on):
 		file.set_value("boards", "daily", p.board_daily)
 		file.set_value("boards", "weekly", p.board_weekly)
 		file.set_value("boards", "best_daily_ms", p.board_best_daily_ms)
+		file.set_value("boards", "weekly_played_week", p.weekly_played_week)
 		file.set_value("boards", "ghost", p.ghost_on)
 	if p.daily_day > 0:
 		file.set_value("daily", "day", p.daily_day)

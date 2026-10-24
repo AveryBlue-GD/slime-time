@@ -3036,6 +3036,7 @@ func _board_result(text: String, kind: String, ms: int) -> String:
 
 ## BM-03: the weekly's win (nothing is paid or counted): its board time, share line and ghost.
 func _weekly_result(text: String) -> String:
+	progress.mark_weekly_played(Boards.week_of(progress.daily_run_day))  # (even a RELAXED / assisted win: the sign stops saying NEW)
 	if assisted or dev_toggled or relaxed_run:
 		return text
 	var ms := roundi(run_time * 1000.0)
