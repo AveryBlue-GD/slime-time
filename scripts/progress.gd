@@ -331,6 +331,10 @@ var custom_color := Color8(239, 125, 47)
 ## look (opaque) the room and stations take; `hub_custom` = the custom color it was set to (the
 ## wardrobe gives the wheel a fresh color each visit). Only once normal mode is beaten (hub_color_open).
 var hub_skin := ""
+## The wardrobe's RANDOM LOOK toggle ([skin] random_look, default off): each new run starts in a freshly rolled look
+## (LookRoller.roll_for_run). `keep_look_once`: the next scene load is a retry of the same attempt, keep the look (never saved).
+var random_look := false
+var keep_look_once := false
 var hub_custom := Color8(239, 125, 47)
 var sound_on := true
 ## Sound-effects volume, 0-1 (the SFX audio bus: Sfx and the level ambience; saved as `volume`, which

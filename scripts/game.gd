@@ -526,6 +526,7 @@ func _ready() -> void:
 	if progress:
 		if not is_random() and not descent and not hard_mode and not training:
 			equipped = progress.equip_first_run_skin(level)
+		LookRoller.roll_for_run(equipped != "" or training or preview or descent or progress.in_demo_preview())  # (RANDOM LOOK: a new look per run; not when a story level just equipped its earned skin)
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
 		stopwatch = progress.is_stopwatch()
@@ -2959,6 +2960,8 @@ func retry(via := "dry-up RESTART") -> void:
 	if _leaving():  # a screen change is already underway (its wipe would race the reload)
 		return
 	DevLog.route(get_tree(), via, self)
+	if progress:
+		progress.keep_look_once = true  # (a retry of the same attempt keeps the look)
 	if training:
 		# After a dry-up: the next attempt (full meter, the coin kept). R / pause RESTART mid-run: the same
 		# attempt again (attempt 1 keeps its low meter, so the staged dry-up isn't skipped).
@@ -2972,6 +2975,7 @@ func retry_assisted() -> void:
 		return
 	if progress and progress.accept_assist(level):
 		DevLog.route(get_tree(), "ASSIST", self)
+		progress.keep_look_once = true
 		get_tree().reload_current_scene()
 	else:
 		retry()
@@ -3118,6 +3122,8 @@ func replay(via := "REPLAY MAZE") -> void:
 	if _leaving():
 		return
 	DevLog.route(get_tree(), via, self)
+	if progress:
+		progress.keep_look_once = via == "R"  # (R = the same attempt again; REPLAY MAZE on a result rolls anew)
 	if progress and not is_random():
 		progress.start_story(level)
 	get_tree().reload_current_scene()

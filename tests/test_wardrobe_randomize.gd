@@ -57,6 +57,37 @@ func _initialize() -> void:
 	var look: Dictionary = screen.current_look()
 	_check(reloaded.selected_skin == look.skin and reloaded.selected_hat == look.hat and reloaded.trail_style == look.trail and reloaded.map_paper == look.paper, "the look is saved")
 	reloaded.free()
+	# Only on the SKINS page (hats, trails, papers, hub: hidden, so not in the focus order)
+	for pg in ["hats", "trails", "papers", "hub"]:
+		screen.show_page(pg)
+		_check(not screen.dice_button.visible, "no dice on the %s page" % pg)
+	screen.show_page("skins")
+	_check(screen.dice_button.visible, "dice back on the skins page")
+	# The toggle: default OFF, saved, ON rolls once at once, a new run re-rolls, a retry does not
+	_check(not progress.random_look, "RANDOM LOOK is off by default")
+	screen.dice_button.pressed.emit()
+	_check(progress.random_look and screen._dice_frame.visible, "the dice toggles ON (lit)")
+	_check(screen.random_look_text().contains("ON"), "status line says ON")
+	var on_reload: Node = preload("res://scripts/progress.gd").new()
+	on_reload.save_path = test_save
+	on_reload.load_progress()
+	_check(on_reload.random_look, "the toggle is saved")
+	on_reload.free()
+	var rolls := 0
+	for i in 40:
+		var k: String = screen._look_key(screen.current_look())
+		if LookRoller.roll_for_run():
+			rolls += 1
+		var l2: Dictionary = screen.current_look()
+		_check(progress.owns_cosmetic(l2.trail) and progress.is_hat_unlocked(l2.hat), "run roll uses owned things only")
+	_check(rolls == 40, "every run start rolls while ON (%d)" % rolls)
+	var kept: String = screen._look_key(screen.current_look())
+	progress.keep_look_once = true
+	_check(not LookRoller.roll_for_run() and screen._look_key(screen.current_look()) == kept, "a retry keeps the look")
+	_check(not progress.keep_look_once and LookRoller.roll_for_run(), "the keep is used up; the next run rolls")
+	_check(not LookRoller.roll_for_run(true), "skipped (preview / training) rolls nothing")
+	screen.dice_button.pressed.emit()
+	_check(not progress.random_look and not screen._dice_frame.visible and not LookRoller.roll_for_run(), "OFF: nothing rolls")
 	screen.free()
 	# Demo: only demo-available skins, no pastel
 	Platform.demo_override = 1

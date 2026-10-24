@@ -95,6 +95,8 @@ var view_pastel := false
 var pastel_button: Button
 ## RANDOMIZE (a dice icon button, right of JELLY / PASTEL on every page): a random complete look from what is owned.
 var dice_button: Button
+var _dice_icon: TextureRect
+var _dice_frame: ReferenceRect
 ## The dice button's width (a 7 px icon and the button's margins).
 const DICE_W := 16
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
@@ -182,19 +184,53 @@ func _ready() -> void:
 	show_page("skins")
 
 
-## The RANDOMIZE button: the dice icon centred on a button of DICE_W; its name shows on the status line while
-## it has the focus or the pointer (no room for a word beside JELLY and PASTEL at 320 px).
+## The RANDOM LOOK toggle (the dice icon, right of JELLY / PASTEL on the SKINS page): ON re-rolls a look at every run
+## start (LookRoller.roll_for_run) and rolls one now; lit icon and a gold frame while ON. Its state shows on the
+## status line while it has the focus or the pointer (no room for a word beside JELLY and PASTEL at 320 px).
+## Picking a skin / hat / trail by hand leaves it ON (the next run re-rolls).
 func _build_dice() -> void:
-	dice_button = UIKit.make_button("", randomize_look, Vector2(DICE_W, UIKit.button_h()))
+	dice_button = UIKit.make_button("", toggle_random_look, Vector2(DICE_W, UIKit.button_h()))
 	add_child(dice_button)
-	var icon := UIKit.make_icon("dice")
-	icon.position = Vector2((DICE_W - 7) / 2, floori((UIKit.button_h() - 7) / 2.0))
-	dice_button.add_child(icon)
-	var say := func() -> void:
-		# i18n: wardrobe dice button (shown on the status line while it is focused), max 300px, 1 line
-		status.text = Loc.t("skins.randomize", "RANDOMIZE")
-	dice_button.focus_entered.connect(say)
-	dice_button.mouse_entered.connect(say)
+	_dice_icon = UIKit.make_icon("dice")
+	_dice_icon.position = Vector2((DICE_W - 7) / 2, floori((UIKit.button_h() - 7) / 2.0))
+	dice_button.add_child(_dice_icon)
+	_dice_frame = ReferenceRect.new()
+	_dice_frame.editor_only = false
+	_dice_frame.border_color = UIKit.GOLD
+	_dice_frame.border_width = 1.0
+	_dice_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dice_button.add_child(_dice_frame)
+	_dice_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dice_button.focus_entered.connect(_say_random_look)
+	dice_button.mouse_entered.connect(_say_random_look)
+	_refresh_dice()
+
+
+func _say_random_look() -> void:
+	status.text = random_look_text()
+
+
+static func random_look_text() -> String:
+	if Progress.random_look:
+		# i18n: wardrobe dice toggle on the status line, max 300px, 1 line
+		return Loc.t("skins.random_look_on", "RANDOM LOOK: ON")
+	# i18n: wardrobe dice toggle on the status line, max 300px, 1 line
+	return Loc.t("skins.random_look_off", "RANDOM LOOK: OFF")
+
+
+func _refresh_dice() -> void:
+	_dice_icon.modulate = UIKit.GOLD if Progress.random_look else UIKit.TEXT
+	_dice_frame.visible = Progress.random_look
+
+
+## Flips RANDOM LOOK (saved); turning it ON also puts a random look on right away.
+func toggle_random_look() -> void:
+	Progress.random_look = not Progress.random_look
+	Progress.save_progress()
+	if Progress.random_look:
+		randomize_look()
+	_refresh_dice()
+	_say_random_look()
 
 
 ## RANDOMIZE: a random complete look from what is owned (never anything locked, never the look worn now).
@@ -221,52 +257,14 @@ static func _look_key(look: Dictionary) -> String:
 	return "%s|%s|%s|%s|%s|%s|%s" % [look.skin, look.jelly, look.pastel and Skins.has_pastel(look.skin), look.hat, look.dye, look.trail, look.paper]
 
 
-## One random look out of the owned things (the demo's and dev mode's own rules come from Progress's own checks).
+## One random look out of the owned things (LookRoller; the demo's and dev mode's own rules come from Progress's checks).
 func roll_look() -> Dictionary:
-	var ids: Array[String] = []
-	for preset: Dictionary in Skins.PRESETS:
-		ids.append(preset.id)
-	ids.append_array([Skins.CUSTOM, Skins.RAINBOW, Skins.STOPWATCH])
-	var versions: Array[Dictionary] = []  # (skin id first, then one of its owned versions)
-	for id in ids:
-		var own: Array[Dictionary] = []
-		for as_jelly in [false, true]:
-			for as_pastel in ([false, true] if Skins.has_pastel(id) else [false]):
-				if Progress.is_skin_unlocked(id, as_jelly, as_pastel):
-					own.append({skin = id, jelly = as_jelly, pastel = as_pastel})
-		if not own.is_empty():
-			versions.append(own.pick_random())
-	var look: Dictionary = versions.pick_random() if not versions.is_empty() else {skin = Skins.DEFAULT, jelly = false, pastel = false}
-	var hats: Array[String] = [Hats.NONE]
-	for hat in Hats.ids():
-		if Progress.is_hat_unlocked(hat):
-			hats.append(hat)
-	look.hat = hats.pick_random()
-	look.dye = ""
-	if look.hat != Hats.NONE:
-		var dyes := _hat_colors(look.hat)  # ("" = its own color, then the dyes owned)
-		look.dye = dyes.pick_random()
-	var trails: Array[String] = []
-	for id in Cosmetics.trail_ids():
-		if Progress.owns_cosmetic(id) and Progress.cosmetic_visible(id):
-			trails.append(id)
-	look.trail = trails.pick_random() if not trails.is_empty() else Cosmetics.DEFAULT_TRAIL
-	var papers: Array[String] = []
-	for id in Cosmetics.paper_ids():
-		if Progress.owns_cosmetic(id):
-			papers.append(id)
-	look.paper = papers.pick_random() if not papers.is_empty() else Cosmetics.DEFAULT_PAPER
-	return look
+	return LookRoller.roll()
 
 
 ## Puts `look` on the way the pickers do (each saves) and shows it at once.
 func apply_look(look: Dictionary) -> void:
-	Progress.select_skin(look.skin, look.jelly, look.pastel)
-	Progress.select_hat(look.hat)
-	if look.hat != Hats.NONE:
-		Progress.wear_dye(look.hat, look.dye)
-	Progress.equip_cosmetic(look.trail)
-	Progress.equip_cosmetic(look.paper)
+	LookRoller.apply(look)
 	_refresh_after_look()
 
 
@@ -600,7 +598,7 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
-	dice_button.visible = true
+	dice_button.visible = page == "skins"  # (only on the slime page: the roll still picks hat, dye, trail and paper)
 	pastel_button.visible = page == "skins" and _pastel_open()
 	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
 	color_button.visible = hats
@@ -923,18 +921,14 @@ func _on_hat_tile(id: String) -> void:
 
 ## The worn hat's colors to turn through with COLOR: its own, then each dye of it you own.
 func _hat_colors(hat: String) -> Array[String]:
-	var colors: Array[String] = [""]
-	for dye in Hats.dyes_for(hat):
-		if Progress.owns_dye(hat, dye):
-			colors.append(dye)
-	return colors
+	return LookRoller.hat_colors(hat)
 
 
 ## COLOR: the picker of the worn hat's colors (its own and every dye you own of it), two columns of
 ## tiles in a panel centred over the grid; focus on the worn color, locked inside until it closes.
 func open_color_picker() -> void:
 	var hat := Progress.selected_hat
-	var colors := _hat_colors(hat)
+	var colors := LookRoller.hat_colors(hat)
 	if colors.size() < 2:
 		return
 	close_color_picker()
@@ -1112,7 +1106,7 @@ func _refresh_hats(focus_id := "") -> void:
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		UIKit.set_selected(tile, tile_id == Progress.selected_hat)
-	color_button.disabled = _hat_colors(Progress.selected_hat).size() < 2
+	color_button.disabled = LookRoller.hat_colors(Progress.selected_hat).size() < 2
 
 
 func _unhandled_input(event: InputEvent) -> void:

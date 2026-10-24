@@ -459,6 +459,9 @@ func _restart() -> void:
 		get_parent().retry("pause RESTART")  # i18n: ignore (DevLog route name; the next training attempt: full meter, the coin kept)
 		return
 	DevLog.route(get_tree(), "pause RESTART", get_parent())
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.keep_look_once = true  # (the same attempt again keeps the look)
 	get_tree().reload_current_scene()
 
 

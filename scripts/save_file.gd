@@ -32,6 +32,7 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 			p.hat_dyes[key.get_slice(":", 0)] = key.get_slice(":", 1)
 	p.selected_hat = get_string(file, "skin", "hat", Hats.NONE)
 	p.hub_skin = get_string(file, "skin", "hub", "")
+	p.random_look = get_bool(file, "skin", "random_look", false)
 	var hub_tint: Variant = file.get_value("skin", "hub_custom", p.hub_custom)
 	p.hub_custom = hub_tint if typeof(hub_tint) == TYPE_COLOR else p.hub_custom
 	if not p.is_hat_unlocked(p.selected_hat):
@@ -375,6 +376,8 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("skin", "hub", p.hub_skin)
 		file.set_value("skin", "hub_custom", p.hub_custom)
 	file.set_value("skin", "hat", p.selected_hat)
+	if p.random_look:
+		file.set_value("skin", "random_look", true)
 	file.set_value("hats", "owned", p.hats_owned.duplicate())
 	if not p.hat_dyes_owned.is_empty():
 		file.set_value("hats", "dyes", p.hat_dyes_owned.duplicate())
