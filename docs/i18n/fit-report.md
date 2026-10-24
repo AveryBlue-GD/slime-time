@@ -10,142 +10,251 @@ reported here but do not fail them (the other languages are brought in line late
 
 | locale | budget open | budget accepted | screens open | screens accepted |
 |---|---|---|---|---|
-| en | 0 | 3 | 0 | 64 |
-| es | 0 | 0 | 0 | 0 |
-| pt_BR | 0 | 0 | 0 | 0 |
-| fr | 1 | 0 | 1 | 0 |
-| de | 0 | 2 | 0 | 0 |
-| it | 0 | 0 | 0 | 0 |
-| ru | 0 | 0 | 0 | 0 |
-| pl | 0 | 0 | 0 | 0 |
-| tr | 0 | 0 | 0 | 0 |
-| ja | 0 | 0 | 0 | 0 |
-| ko | 0 | 0 | 0 | 0 |
-| zh_CN | 0 | 0 | 0 | 0 |
-| zh_TW | 0 | 0 | 0 | 0 |
-| th | 0 | 0 | 0 | 0 |
-| vi | 0 | 1 | 0 | 0 |
-| id | 0 | 0 | 0 | 0 |
-| ar | 0 | 0 | 0 | 0 |
-| hi | 0 | 0 | 0 | 0 |
-| pseudo | 15 | 3 | 1 | 0 |
-| **total** | 16 | 9 | 2 | 64 |
+| en | 0 | 2 | 0 | 47 |
+| es | 0 | 0 | 18 | 33 |
+| pt_BR | 0 | 0 | 16 | 27 |
+| fr | 2 | 0 | 12 | 27 |
+| de | 1 | 0 | 16 | 31 |
+| it | 0 | 0 | 16 | 31 |
+| ru | 1 | 0 | 14 | 30 |
+| pl | 1 | 0 | 13 | 30 |
+| tr | 1 | 0 | 13 | 24 |
+| ja | 0 | 0 | 32 | 26 |
+| ko | 0 | 0 | 33 | 27 |
+| zh_CN | 0 | 0 | 30 | 17 |
+| zh_TW | 0 | 0 | 36 | 18 |
+| th | 0 | 0 | 59 | 20 |
+| vi | 0 | 0 | 12 | 14 |
+| id | 1 | 0 | 6 | 35 |
+| ar | 0 | 0 | 82 | 25 |
+| hi | 1 | 0 | 72 | 26 |
+| pseudo | 40 | 2 | 34 | 10 |
+| **total** | 48 | 4 | 514 | 498 |
 
 ## budget: what was measured
 
-- budgets: 155 of 479 template entries carry a `max Npx` note
+- budgets: 284 of 626 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 42, pt_BR 27, fr 30, de 48, it 15, ru 37, pl 33, tr 35, ja 2, th 30, vi 29, id 4, ar 28, hi 3, pseudo 68
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 37, fr 38, de 27, it 15, ru 11, pl 7, tr 8, ja 2, th 5, vi 4, id 6, ar 2, hi 4, pseudo 60
 - enforced: every locale (English-only mode: English fails, the other locales are reported)
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
-- states: 67 screen / overlay / HUD states per locale
+- states: 75 screen / overlay / HUD states per locale
 
-## budget: open (16 places)
+## budget: open (42 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
-| budget | hub.tour.coins_practice | THE PRACTICE COIN WAS FAKE. SORRY. | overflow | 1: pseudo | pseudo [______THÉ PRÁÇTÍÇÉ ÇÖÍÑ WÁŚ F: 260x1 vs 192x1 |
-| budget | hub.tour.coins | COINS STILL HIDING IN EACH LEVEL. | overflow | 1: pseudo | pseudo [______ÇÖÍÑŚ ŚTÍŁŁ HÍĐÍÑĞ ÍÑ É: 253x1 vs 192x1 |
-| budget | hub.tour.maps | MAPS OF EVERY LEVEL YOU SMEARED. | overflow | 1: pseudo | pseudo [_____MÁPŚ ÖF ÉVÉRÝ ŁÉVÉŁ ÝÖÜ : 251x1 vs 192x1 |
-| budget | hub.tour.quit | THE TRAPDOOR. FOR BEDTIME. | overflow | 1: pseudo | pseudo [____THÉ TRÁPĐÖÖR. FÖR BÉĐTÍMÉ: 202x1 vs 192x1 |
-| budget | hub.tour.random_locked | LOCKED. BEAT ALL {count} LEVELS FIRST. | overflow | 1: pseudo | pseudo [_______ŁÖÇKÉĐ. BÉÁT ÁŁŁ 88 ŁÉ: 269x1 vs 192x1 |
-| budget | hub.tour.random | A NEW MAZE EVERY TIME. NO MERCY. | overflow | 1: pseudo | pseudo [_____Á ÑÉW MÁŻÉ ÉVÉRÝ TÍMÉ. Ñ: 242x1 vs 192x1 |
-| budget | hub.tour.settings | SOUND, KEYS, FOG. THE BORING SIGN. | overflow | 1: pseudo | pseudo [______ŚÖÜÑĐ, KÉÝŚ, FÖĞ. THÉ B: 253x1 vs 192x1 |
-| budget | hub.tour.story | HOME. IT TURNS. HIT THE WHEEL. | overflow | 1: pseudo | pseudo [_____HÖMÉ. ÍT TÜRÑŚ. HÍT THÉ : 220x1 vs 192x1 |
-| budget | hub.tour.turn_back | HOLD {left} TO TURN IT BACK. | overflow | 1: pseudo | pseudo [_____HÖŁĐ 88 TÖ TÜRÑ ÍT BÁÇK.: 195x1 vs 192x1 |
-| budget | hub.tour.upgrades | COINS GO IN. STRONGER GOO COMES OUT. | overflow | 1: pseudo | pseudo [______ÇÖÍÑŚ ĞÖ ÍÑ. ŚTRÖÑĞÉR Ğ: 276x1 vs 192x1 |
-| budget | hub.tour.wardrobe | SKINS, HATS, TRAILS. DRY UP IN STYLE. | overflow | 1: pseudo | pseudo [______ŚKÍÑŚ, HÁTŚ, TRÁÍŁŚ. ĐR: 273x1 vs 192x1 |
-| budget | hub.tour.wheel_free | SPIN FOR HATS. THE FIRST IS FREE. | overflow | 1: pseudo | pseudo [______ŚPÍÑ FÖR HÁTŚ. THÉ FÍRŚ: 250x1 vs 192x1 |
-| budget | hub.tour.wheel | SPIN FOR HATS. BRING TICKETS. | overflow | 1: pseudo | pseudo [_____ŚPÍÑ FÖR HÁTŚ. BRÍÑĞ TÍÇ: 218x1 vs 192x1 |
-| budget | pause.skip_training | SKIP TRAINING | overflow | 1: pseudo | pseudo [__ŚKÍP TRÁÍÑÍÑĞ__]: 100x1 vs 92x1 |
+| budget | ach.count | {n}/{total}  PAGE {page}/{pages} | overflow | 1: pseudo | pseudo [_____88/10  PÁĞÉ {page}/{page: 222x1 vs 150x1 |
+| budget | boards.play_daily | PLAY DAILY | overflow | 1: pseudo | pseudo [_PŁÁÝ ĐÁÍŁÝ_]: 73x1 vs 70x1 |
+| budget | boards.play_weekly | PLAY WEEKLY | overflow | 1: pseudo | pseudo [_PŁÁÝ WÉÉKŁÝ__]: 86x1 vs 80x1 |
+| budget | coach.done | THAT'S EVERY ABILITY, GOOD LUCK | overflow | 1: pseudo | pseudo [_____THÁT'Ś ÉVÉRÝ ÁBÍŁÍTÝ, ĞÖ: 231x1 vs 192x1 |
+| budget | demo.end.random | THE FULL GAME ADDS {count} ABILITIES AND THE SHOP | overflow | 1: pseudo | pseudo [_________THÉ FÜŁŁ ĞÁMÉ ÁĐĐŚ 8: 343x1 vs 300x1 |
+| budget | demo.full_game | FULL GAME | overflow | 1: pseudo | pseudo [_FÜŁŁ ĞÁMÉ_]: 68x1 vs 52x1 |
+| budget | demo.keep_playing | KEEP PLAYING | overflow | 1: pseudo | pseudo [_KÉÉP PŁÁÝÍÑĞ__]: 90x1 vs 80x1 |
+| budget | demo.teaser.shop | THE SHOP: TRAILS AND PAPERS | overflow | 1: pseudo | pseudo [____THÉ ŚHÖP: TRÁÍŁŚ ÁÑĐ PÁPÉ: 201x1 vs 168x1 |
+| budget | demo.wheel_closed | SPIN FOR PRIZES AFTER LEVEL {level} | overflow | 1: pseudo | pseudo [______ŚPÍÑ FÖR PRÍŻÉŚ ÁFTÉR Ł: 232x1 vs 192x1 |
+| budget | hub.daily.next | NEW IN {h}H | overflow | 1: pseudo | pseudo [_ÑÉW ÍÑ {h}H__]: 84x1 vs 60x1 |
+| budget | hub.menu.achievements | ACHIEVEMENTS | overflow | 1: pseudo | pseudo [_ÁÇHÍÉVÉMÉÑTŚ__]: 94x1 vs 90x1 |
+| budget | hub.menu.quit_title | QUIT TO TITLE | overflow | 1: pseudo | pseudo [__QÜÍT TÖ TÍTŁÉ__]: 96x1 vs 90x1 |
+| budget | hub.prompt.daily_saved | STREAK SAVED | overflow | 1: pseudo | pseudo [_ŚTRÉÁK ŚÁVÉĐ__]: 93x1 vs 80x1 |
+| budget | hub.prompt.demo_clear | CLEAR LEVEL {level} | overflow | 1: pseudo | pseudo [___ÇŁÉÁR ŁÉVÉŁ 10___]: 116x1 vs 110x1 |
+| budget | hub.quit.button | QUIT | overflow | 1: de | de BEENDEN: 42x1 vs 40x1 |
+| budget | hub.tour.coins_practice | THE PRACTICE COIN WAS FAKE. SORRY | overflow | 1: pseudo | pseudo [______THÉ PRÁÇTÍÇÉ ÇÖÍÑ WÁŚ F: 248x1 vs 192x1 |
+| budget | hub.tour.coins | COINS STILL HIDING IN EACH LEVEL | overflow | 1: pseudo | pseudo [_____ÇÖÍÑŚ ŚTÍŁŁ HÍĐÍÑĞ ÍÑ ÉÁ: 235x1 vs 192x1 |
+| budget | hub.tour.maps | MAPS OF EVERY LEVEL YOU SMEARED | overflow | 1: pseudo | pseudo [_____MÁPŚ ÖF ÉVÉRÝ ŁÉVÉŁ ÝÖÜ : 239x1 vs 192x1 |
+| budget | hub.tour.random_locked_demo | LOCKED: BEAT {count} LEVELS FIRST | overflow | 1: pseudo | pseudo [______ŁÖÇKÉĐ: BÉÁT 88 ŁÉVÉŁŚ : 225x1 vs 192x1 |
+| budget | hub.tour.random_locked | LOCKED: BEAT ALL {count} LEVELS FIRST | overflow | 1: pseudo | pseudo [______ŁÖÇKÉĐ: BÉÁT ÁŁŁ 88 ŁÉV: 251x1 vs 192x1 |
+| budget | hub.tour.settings | SOUND, KEYS, FOG. THE BORING SIGN | overflow | 1: pseudo | pseudo [______ŚÖÜÑĐ, KÉÝŚ, FÖĞ. THÉ B: 241x1 vs 192x1 |
+| budget | hub.tour.story | HOME. IT TURNS, HIT THE WHEEL | overflow | 1: pseudo | pseudo [_____HÖMÉ. ÍT TÜRÑŚ, HÍT THÉ : 208x1 vs 192x1 |
+| budget | hub.tour.upgrades | COINS GO IN, STRONGER GOO COMES OUT | overflow | 1: pseudo | pseudo [______ÇÖÍÑŚ ĞÖ ÍÑ, ŚTRÖÑĞÉR Ğ: 256x1 vs 192x1 |
+| budget | hub.tour.wardrobe | SKINS, HATS, TRAILS. DRY UP IN STYLE | overflow | 1: pseudo | pseudo [______ŚKÍÑŚ, HÁTŚ, TRÁÍŁŚ. ĐR: 259x1 vs 192x1 |
+| budget | hub.tour.wheel_free | SPIN FOR PRIZES, THE FIRST IS FREE | overflow | 1: pseudo | pseudo [______ŚPÍÑ FÖR PRÍŻÉŚ, THÉ FÍ: 246x1 vs 192x1 |
+| budget | hub.tour.wheel | SPIN FOR PRIZES, BRING TICKETS | overflow | 1: pseudo | pseudo [_____ŚPÍÑ FÖR PRÍŻÉŚ, BRÍÑĞ T: 218x1 vs 192x1 |
+| budget | hud.left_last_maze | LEFT LAST MAZE: ATTEMPT {n} | overflow | 1: pseudo | pseudo [____ŁÉFT ŁÁŚT MÁŻÉ: ÁTTÉMPT 8: 196x1 vs 140x- |
+| budget | hud.pod.assist | ASSIST +{percent}% | overflow | 1: pseudo | pseudo [___ÁŚŚÍŚT +25%___]: 102x1 vs 60x1 |
+| budget | hud.pod.attempt_lurkers | ATTEMPT {n} LURKERS | overflow | 1: pseudo | pseudo [___ÁTTÉMPT 88 ŁÜRKÉRŚ___]: 142x1 vs 128x1 |
+| budget | notice.save_failed | SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS | overflow | 1: pseudo | pseudo [________ŚÁVÉ FÁÍŁÉĐ: ÇÖPÝ ÝÖÜ: 330x1 vs 296x2 |
+| budget | pause.skip_training | SKIP TRAINING | overflow | 1: pseudo | pseudo [__ŚKÍP TRÁÍÑÍÑĞ__]: 98x1 vs 92x1 |
+| budget | result.choice.new_maze | NEW MAZE | overflow | 6: fr, ru, pl, tr, id, hi | pl NOWY LABIRYNT: 72x1 vs 62x1 |
 | budget | result.choice.restart | RESTART | overflow | 1: fr | fr RECOMMENCER: 66x1 vs 62x1 |
+| budget | skins.locked_pastel | PASTEL LOCKED - WIN {count} RANDOM MAZES ({have}/{count}) | overflow | 2: pseudo, pseudo | pseudo [__________PÁŚTÉŁ ŁÖÇKÉĐ - WÍÑ: 360x1 vs 300x1 |
+| budget | skins.pastel.off | PASTEL: OFF | overflow | 1: pseudo | pseudo [_PÁŚTÉŁ: ÖFF__]: 82x1 vs 72x1 |
+| budget | story.level_7 | COLDER NOW. SLIME DOES NOT SHIVER, IT JIGGLES | overflow | 1: pseudo | pseudo [________ÇÖŁĐÉR ÑÖW. ŚŁÍMÉ ĐÖÉ: 330x1 vs 296x- |
+| budget | story.level_8 | A CELL FOR THE FORGOTTEN. YOU ARE UNFORGETTABLE | overflow | 1: pseudo | pseudo [________Á ÇÉŁŁ FÖR THÉ FÖRĞÖT: 358x1 vs 296x- |
+| budget | training.chalice | FIND THE CHALICE TO GET OUT! | overflow | 1: pseudo | pseudo [_____FÍÑĐ THÉ ÇHÁŁÍÇÉ TÖ ĞÉT : 207x1 vs 184x1 |
+| budget | training.coin_ahead | A COIN IS UP AHEAD, GRAB IT! | overflow | 1: pseudo | pseudo [_____Á ÇÖÍÑ ÍŚ ÜP ÁHÉÁĐ, ĞRÁB: 197x1 vs 184x1 |
+| budget | training.coin_use | COINS BUY UPGRADES IN THE HUB | overflow | 1: pseudo | pseudo [_____ÇÖÍÑŚ BÜÝ ÜPĞRÁĐÉŚ ÍÑ TH: 217x1 vs 184x1 |
 | budget | training.name | SPLASHDOWN | overflow | 1: pseudo | pseudo [_ŚPŁÁŚHĐÖWÑ_]: 158x1 vs 120x1 |
+| budget | wheel.dyes_win | WIN ONE ON THE WHEEL, THEN DYE IT HERE | overflow | 1: pseudo | pseudo [_______WÍÑ ÖÑÉ ÖÑ THÉ WHÉÉŁ, : 279x1 vs 240x1 |
 
 ## budget: accepted in English (the source layout; the same finding in another locale is accepted too)
 
 | screen | node / key | kind | text | other | reason |
 |---|---|---|---|---|---|
-| budget | hud.pod.assist | overflow | ASSIST +25% |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 
-## screens: open (1 places)
+## screens: open (102 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
-| result dry-up | result.choice.map |  | offscreen | 2: fr, pseudo | pseudo [MÁP]: 24x7 vs 69x7 |
+| demo end screen | demo.keep_playing | KEEP PLAYING | grew | 1: pseudo | pseudo [_KÉÉP PŁÁÝÍÑĞ__]: 90x7 vs 92x7 (over English 88x13) |
+| demo end screen | demo.end.try_random | NOW TRY THE RANDOMIZER IN THE HUB | overlap | 1: ar | ar NOW TRY THE RANDOMIZER IN THE : 170x19 vs 320x19 (over KEEP PLAYING) |
+| hat wheel shop | wheel.section.dyes | DYES | overlap | 17: es, pt_BR, fr, de, it, ru, pl, tr, ja, ko, zh_CN, zh_TW, th, vi, ar, hi, pseudo | pseudo [ĐÝÉŚ]: 31x7 vs 50x7 (over [___ŚTÖRÝ - ŁÉVÉŁ 3____]) |
+| hat wheel shop | wheel.section.papers | PAPERS | overlap | 17: es, pt_BR, fr, de, it, ru, pl, tr, ja, ko, zh_CN, zh_TW, th, vi, ar, hi, pseudo | es PAPELES: 42x7 vs 44x7 (over HISTORIA - NIVEL 3) |
+| hat wheel shop | wheel.dyes_win | WIN ONE ON THE WHEEL, THEN DYE IT HERE | overlap | 35: es, es, pt_BR, pt_BR, fr, fr, de, de, it, it, ru, ru, pl, pl, tr, tr, ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, vi, vi, ar, ar, ar, hi, hi, pseudo, pseudo | es WIN ONE ON THE WHEEL, THEN DYE: 188x7 vs 304x10 (over ALEATORIZADOR) |
+| hat wheel shop | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hat wheel wheel | CanvasLayer24/Control0/Control7/Control7/CenterContainer3/La | COMMON / 4.4% EACH / 21 LEFT | overlap | 8: ja, ko, zh_CN, zh_TW, th, ar, ar, hi | ja COMMON / 4.4% EACH / 21 LEFT: 46x44 vs 46x44 (over DAILY MAZE) |
+| hat wheel wheel | CanvasLayer24/Control0/Control7/Control7/CenterContainer4/La | RARE / 1.3% EACH / 6 LEFT | overlap | 3: ar, ar, ar | ar RARE / ⁦1.3%⁩ EACH / ⁦6⁩ LEFT: 44x59 vs 44x59 (over COSMETICS) |
+| hat wheel wheel | CanvasLayer24/Control0/Control7/Control7/Label1 | 27 PRIZES TO WIN | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 27 PRIZES TO WIN: 80x14 vs 304x14 (over ストーリー：レベル3) |
+| hat wheel wheel | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label14 | 4 | overlap | 8: ja, ko, zh_CN, zh_TW, th, vi, ar, hi | ja 4: 6x14 vs 6x14 (over PRIZE WHEEL) |
+| hub coin board | theme.sunken | SUNKEN SHRINE | overlap | 9: ja, ko, zh_CN, zh_TW, th, vi, ar, hi, hi | ja 水没した神殿: 60x14 vs 60x14 (over PRIZE WHEEL) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label16 | 12/12 | overlap | 1: hi | hi 12/12: 26x17 vs 30x17 (over DAILY MAZE) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label18 | 5 | overlap | 1: th | th 5: 6x17 vs 6x17 (over PRIZE WHEEL) |
+| hub coin board | theme.sewers | TOXIC TUNNELS | overlap | 11: ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, hi | ja どくどくトンネル: 80x14 vs 80x14 (over DAILY MAZE) |
+| hub coin board | hub.station.coins | COIN BAG | overlap | 4: ja, ko, zh_CN, vi | zh_CN 钱袋: 20x14 vs 232x14 (over 故事 - 第3 关) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label20 | 14/14 | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | ja 14/14: 26x14 vs 30x14 (over DAILY MAZE) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label22 | 6 | overlap | 9: es, ja, ko, zh_CN, zh_TW, th, ar, hi, pseudo | ja 6: 6x14 vs 10x14 (over ストーリー：レベル3) |
+| hub coin board | theme.catacombs | CREEPY CATACOMBS | overlap | 10: ja, ja, ko, ko, zh_CN, zh_TW, th, ar, hi, pseudo | ja 不気味な地下墓地: 80x14 vs 80x14 (over ストーリー：レベル3) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label24 | 17/17 | overlap | 5: ja, ko, zh_CN, zh_TW, pseudo | ja 17/17: 26x14 vs 30x14 (over 地図テーブル) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label26 | 7 | overlap | 3: th, ar, hi | th 7: 6x17 vs 10x17 (over เนื้อ​เรื่อง - ด่าน 3) |
+| hub coin board | theme.frozen | FROZEN FORTRESS | overlap | 7: ja, ko, th, ar, ar, hi, hi | ja 氷の要塞: 40x14 vs 40x14 (over 地図テーブル) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label28 | 20/20 | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | ja 20/20: 30x14 vs 30x14 (over 地図テーブル) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label2 | 1 | overlap | 1: zh_CN | zh_CN 1: 4x14 vs 6x14 (over COSMETICS) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label30 | 8 | overlap | 9: es, pt_BR, fr, de, it, ru, pl, tr, pseudo | es 8: 6x7 vs 16x10 (over DAILY MAZE) |
+| hub coin board | theme.obsidian | OBSIDIAN OUBLIETTE | overlap | 9: es, pt_BR, fr, de, it, ru, pl, tr, pseudo | es CELDA DE OBSIDIANA: 96x7 vs 96x7 (over DAILY MAZE) |
+| hub coin board | theme.crystal | CRYSTAL CAVERNS | overlap | 1: ar | ar كهوف الكريستال: 88x19 vs 88x19 (over PRIZE WHEEL) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label36 | 27/27 | overlap | 6: ja, ko, th, vi, ar, hi | ja 27/27: 30x14 vs 30x14 (over 強化) |
+| hub coin board | theme.volcanic | VOLCANIC VAULT | overlap | 5: de, it, id, ar, pseudo | de VULKANGEWÖLBE: 78x7 vs 78x7 (over EINSTELLUNGEN) |
+| hub coin board | theme.dungeon | DARK DUNGEON | overlap | 4: ja, ko, zh_CN, zh_TW | ja 暗黒ダンジョン: 70x14 vs 70x14 (over COSMETICS) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label40 | 31/31 | overlap | 1: th | th 31/31: 26x17 vs 30x17 (over อัปเกรด) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label42 | STORY 165/165   IN HAND 165 | overlap | 3: ja, ko, zh_CN | zh_CN 故事 165/165   手头 165: 104x14 vs 232x14 (over DAILY MAZE) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label43 | F TO CLOSE | overlap | 22: es, es, pt_BR, pt_BR, fr, fr, de, de, it, it, ru, ru, pl, pl, tr, tr, ar, ar, hi, hi, pseudo, pseudo | tr KAPATMAK İÇİN F: 78x7 vs 216x10 (over RASTGELE) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label4 | 6/6 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja 6/6: 18x14 vs 30x14 (over ストーリー：レベル3) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label6 | 2 | overlap | 1: zh_CN | zh_CN 2: 6x14 vs 6x14 (over COSMETICS) |
+| hub coin board | theme.mossy | MOSSY MINES | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ja コケむした鉱山: 70x14 vs 70x14 (over COSMETICS) |
+| hub coin board | CanvasLayer24/Control0/Control1/Label8 | 9/9 | overlap | 4: ko, th, ar, hi | ko 9/9: 18x14 vs 30x14 (over COSMETICS) |
+| hub coin board | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub menu | common.back | BACK | overlap | 1: ar | ar رجوع: 24x19 vs 92x19 (over القصة: مستوى ⁦3⁩) |
+| hub menu | hub.menu.title | MENU | overlap | 8: ja, ko, zh_CN, zh_TW, th, vi, ar, hi | ja MENU: 24x14 vs 132x14 (over ストーリー：レベル3) |
+| hub menu | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub notice | hub.notice.reworked | UPGRADES REWORKED | overlap | 8: ja, ko, zh_CN, zh_TW, th, vi, ar, hi | ja 強化システムを刷新: 90x14 vs 90x14 (over ストーリー：レベル3) |
+| hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | COINS RETURNED +888 | overlap | 3: ar, pseudo, pseudo | ar أعيدت العملات ⁦+888⁩: 99x19 vs 99x19 (over طاولة الخرائط) |
+| hub notice | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub portal | hub.portal.random_maze | RANDOM MAZE | overlap | 1: ar | ar متاهة عشوائية: 78x19 vs 112x19 (over القصة: مستوى ⁦3⁩) |
+| hub portal | hub.station.random | RANDOMIZER | overlap | 9: fr, it, ja, ko, zh_CN, zh_TW, th, ar, hi | ar متاهات عشوائية: 84x19 vs 180x19 (over القصة: مستوى ⁦3⁩) |
+| hub portal | CanvasLayer24/Control0/Control4/Label5 | PAID RUNS 2/2 | overlap | 7: ja, ko, zh_CN, zh_TW, th, ar, hi | ar أفضل طابق ⁦1⁩   جولات مدفوعة ⁦: 164x19 vs 180x19 (over DAILY MAZE) |
+| hub portal | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt coins | hub.station.coins | COIN BAG | overlap | 10: es, pt_BR, it, ru, pl, ko, th, id, ar, hi | es BOLSA DE MONEDAS: 88x7 vs 88x7 (over BOLSA DE MONEDAS) |
+| hub prompt coins | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt maps | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt quit | hub.station.quit | QUIT | overlap | 17: es, es, pt_BR, pt_BR, fr, de, de, it, ru, ru, tr, ja, id, ar, ar, hi, hi | es SALIR: 28x7 vs 28x7 (over ALEATORIZADOR) |
+| hub prompt quit | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt random | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label1 |  | overlap | 12: es, pt_BR, de, pl, ja, ko, zh_CN, zh_TW, th, id, ar, hi | es MEJOR PISO 1: 60x7 vs 60x7 (over BOLSA DE MONEDAS) |
+| hub prompt random | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt settings | hub.station.settings | SETTINGS | overlap | 9: es, pt_BR, de, it, pl, tr, id, ar, hi | es AJUSTES: 42x7 vs 42x7 (over BOLSA DE MONEDAS) |
+| hub prompt settings | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt story | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt upgrades | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt wardrobe | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub prompt wheel | hub.station.wheel | PRIZE WHEEL | overlap | 3: es, ar, hi | es PRIZE WHEEL: 60x7 vs 60x7 (over BOLSA DE MONEDAS) |
+| hub prompt wheel | hub.prompt.free | FREE | overlap | 1: ar | ar مجانا: 25x19 vs 25x19 (over متاهات عشوائية) |
+| hub prompt wheel | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label3 | ! | overlap | 1: ar | ar !: 2x19 vs 2x19 (over متاهات عشوائية) |
+| hub prompt wheel | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub quit | hub.station.quit | QUIT | overlap | 6: ja, ko, zh_CN, zh_TW, th, hi | ja やめる: 30x14 vs 48x14 (over DAILY MAZE) |
+| hub quit | common.back | BACK | overlap | 1: ar | ar رجوع: 24x19 vs 48x19 (over DAILY MAZE) |
+| hub quit | hub.quit.title | LEAVE THE HUB? | overlap | 1: ar | ar مغادرة الساحة؟: 79x19 vs 160x19 (over القصة: مستوى ⁦3⁩) |
+| hub quit | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub resume | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub tour end | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub tour hint | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label1 | F | overlap | 1: ar | ar F: 6x19 vs 6x19 (over متاهات عشوائية) |
+| hub tour hint | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub tour story | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label1 | F | overlap | 9: es, pt_BR, de, it, ru, tr, id, ar, hi | es F: 6x7 vs 6x7 (over BOLSA DE MONEDAS) |
+| hub tour story | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub tour wardrobe | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| settings reset confirm | settings.relaxed.off | RELAXED: OFF | overlap | 4: ar, ar, hi, hi | ar RELAXED: OFF: 64x19 vs 112x19 (over LEVEL MUSIC: ON) |
+| settings reset confirm | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
+| settings reset confirm | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
+| settings reset confirm | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
+| settings reset confirm | settings.fog.normal | FOG: NORMAL | overlap | 4: ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings reset confirm | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
+| settings training | settings.relaxed.off | RELAXED: OFF | overlap | 8: zh_TW, zh_TW, th, th, ar, ar, hi, hi | zh_TW RELAXED: OFF: 64x16 vs 112x16 (over LEVEL MUSIC: ON) |
+| settings training | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
+| settings training | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
+| settings training | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
+| settings training | settings.fog.normal | FOG: NORMAL | overlap | 7: zh_TW, zh_TW, th, ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings training | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
+| settings | settings.relaxed.off | RELAXED: OFF | overlap | 8: zh_TW, zh_TW, th, th, ar, ar, hi, hi | zh_TW RELAXED: OFF: 64x16 vs 112x16 (over LEVEL MUSIC: ON) |
+| settings | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
+| settings | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
+| settings | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
+| settings | settings.fog.normal | FOG: NORMAL | overlap | 7: zh_TW, zh_TW, th, ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
+| title | title.story | STORY | overlap | 1: zh_TW | zh_TW 劇情: 24x16 vs 32x16 (over 逃離迷霧 BEFORE YOU DRY UP) |
+| title | hub.station.quit | QUIT | overlap | 1: zh_TW | zh_TW 離開: 24x16 vs 32x16 (over 逃離迷霧 BEFORE YOU DRY UP) |
+| training pause | hub.resume.resume | RESUME | grew | 1: pseudo | pseudo [RÉŚÜMÉ_]: 48x7 vs 98x7 (over English 100x13) |
+| training pause | result.choice.restart | RESTART | grew | 1: pseudo | pseudo [RÉŚTÁRT_]: 54x7 vs 98x7 (over English 100x13) |
+| training pause | settings.sound.on | SOUND: ON | grew | 1: pseudo | pseudo [_ŚÖÜÑĐ: ÖÑ_]: 65x7 vs 98x7 (over English 100x13) |
+| training pause | pause.skip_training | SKIP TRAINING | grew | 1: pseudo | pseudo [__ŚKÍP TRÁÍÑÍÑĞ__]: 98x7 vs 98x7 (over English 100x13) |
+| wardrobe skins | skins.pastel.off | PASTEL: OFF | grew | 1: pseudo | pseudo [_PÁŚTÉŁ: ÖFF__]: 82x7 vs 84x7 (over English 68x13) |
+| wardrobe skins | skins.page_skins | SKINS | overlap | 34: es, es, pt_BR, pt_BR, fr, fr, de, de, it, it, ru, ru, pl, pl, tr, tr, ja, ja, ko, ko, zh_CN, zh_CN, zh_TW, zh_TW, th, th, vi, vi, ar, ar, hi, hi, pseudo, pseudo | pl SKÓRKI: 68x14 vs 320x20 (over Button17) |
 
 ## screens: accepted in English (the source layout; the same finding in another locale is accepted too)
 
 | screen | node / key | kind | text | other | reason |
 |---|---|---|---|---|---|
-| level select HEAT panel | Control9/Label3 | overlap | HEAT 0/10 | GridContainer3/Button2 | English source layout |
-| level select HEAT panel | Control9/Label3 | overlap | HEAT 0/10 | GridContainer3/Button3 | English source layout |
-| level select HEAT panel | heatmod.brittle.name | overlap | BRITTLE | GridContainer3/Button2 | English source layout |
-| level select HEAT panel | Control9/Toggle_brittle/Points | overlap | +1 | GridContainer3/Button2 | English source layout |
-| level select HEAT panel | heatmod.dim.name | overlap | DIM | GridContainer3/Button0 | English source layout |
-| level select HEAT panel | Control9/Toggle_dim/Points | overlap | +1 | GridContainer3/Button0 | English source layout |
-| level select HEAT panel | heatmod.fog.name | overlap | FOG BITES | GridContainer3/Button3 | English source layout |
-| level select HEAT panel | heatmod.fog.name | overlap | FOG BITES | GridContainer3/Button4 | English source layout |
-| level select HEAT panel | Control9/Toggle_fog/Points | overlap | +2 | GridContainer3/Button4 | English source layout |
-| level select HEAT panel | heatmod.grounded.name | overlap | GROUNDED | GridContainer3/Button5 | English source layout |
-| level select HEAT panel | heatmod.grounded.name | overlap | GROUNDED | GridContainer3/Button6 | English source layout |
-| level select HEAT panel | Control9/Toggle_grounded/Points | overlap | +2 | GridContainer3/Button5 | English source layout |
-| level select HEAT panel | heatmod.race.name | overlap | RACE | GridContainer3/Button8 | English source layout |
-| level select HEAT panel | heatmod.race.name | overlap | RACE | GridContainer3/Button9 | English source layout |
-| level select HEAT panel | Control9/Toggle_race/Points | overlap | +3 | GridContainer3/Button9 | English source layout |
-| level select HEAT panel | heatmod.thirsty.name | overlap | THIRSTY | GridContainer3/Button7 | English source layout |
-| level select HEAT panel | Control9/Toggle_thirsty/Points | overlap | +2 | GridContainer3/Button7 | English source layout |
-| level select HEAT panel | GridContainer3/Button0/Label4 | overlap | 0:19.5 | +1 | English source layout |
-| level select HEAT panel | GridContainer3/Button0/Label4 | overlap | 0:19.5 | Control9/Toggle_dim | English source layout |
-| level select HEAT panel | GridContainer3/Button0/Number | overlap | 1 | Control9/Toggle_dim | English source layout |
-| level select HEAT panel | GridContainer3/Button1/Label4 | overlap | 0:26.4 | Control9/Toggle_brittle | English source layout |
-| level select HEAT panel | GridContainer3/Button1/Label4 | overlap | 0:26.4 | Control9/Toggle_dim | English source layout |
-| level select HEAT panel | GridContainer3/Button1/Number | overlap | 2 | Control9/Toggle_dim | English source layout |
-| level select HEAT panel | GridContainer3/Button2/Label4 | overlap | 0:33.9 | +1 | English source layout |
-| level select HEAT panel | GridContainer3/Button2/Label4 | overlap | 0:33.9 | Control9/Toggle_brittle | English source layout |
-| level select HEAT panel | GridContainer3/Button2/Number | overlap | 3 | Control9/Toggle_brittle | English source layout |
-| level select HEAT panel | GridContainer3/Button2/Number | overlap | 3 | HEAT 0/10 | English source layout |
-| level select HEAT panel | GridContainer3/Button3/Label4 | overlap | 0:45.0 | Control9/Toggle_brittle | English source layout |
-| level select HEAT panel | GridContainer3/Button3/Label4 | overlap | 0:45.0 | Control9/Toggle_fog | English source layout |
-| level select HEAT panel | GridContainer3/Button3/Number | overlap | 4 | Control9/Toggle_fog | English source layout |
-| level select HEAT panel | GridContainer3/Button4/Label4 | overlap | 0:55.3 | +2 | English source layout |
-| level select HEAT panel | GridContainer3/Button4/Label4 | overlap | 0:55.3 | Control9/Toggle_fog | English source layout |
-| level select HEAT panel | GridContainer3/Button4/Number | overlap | 5 | Control9/Toggle_fog | English source layout |
-| level select HEAT panel | GridContainer3/Button5/Label4 | overlap | 1:02.9 | +2 | English source layout |
-| level select HEAT panel | GridContainer3/Button5/Label4 | overlap | 1:02.9 | Control9/Toggle_grounded | English source layout |
-| level select HEAT panel | GridContainer3/Button5/Number | overlap | 6 | Control9/Toggle_grounded | English source layout |
-| level select HEAT panel | GridContainer3/Button5/Number | overlap | 6 | GROUNDED | English source layout |
-| level select HEAT panel | GridContainer3/Button6/Label4 | overlap | 1:12.6 | Control9/Toggle_grounded | English source layout |
-| level select HEAT panel | GridContainer3/Button6/Label4 | overlap | 1:12.6 | Control9/Toggle_thirsty | English source layout |
-| level select HEAT panel | GridContainer3/Button6/Number | overlap | 7 | Control9/Toggle_grounded | English source layout |
-| level select HEAT panel | GridContainer3/Button7/Label4 | overlap | 1:21.6 | +2 | English source layout |
-| level select HEAT panel | GridContainer3/Button7/Label4 | overlap | 1:21.6 | Control9/Toggle_thirsty | English source layout |
-| level select HEAT panel | GridContainer3/Button7/Number | overlap | 8 | Control9/Toggle_thirsty | English source layout |
-| level select HEAT panel | GridContainer3/Button7/Number | overlap | 8 | THIRSTY | English source layout |
-| level select HEAT panel | GridContainer3/Button8/Label4 | overlap | 1:38.8 | Control9/Toggle_race | English source layout |
-| level select HEAT panel | GridContainer3/Button8/Label4 | overlap | 1:38.8 | Control9/Toggle_thirsty | English source layout |
-| level select HEAT panel | GridContainer3/Button8/Number | overlap | 9 | Control9/Toggle_race | English source layout |
-| level select HEAT panel | GridContainer3/Button9/Label4 | overlap | 1:43.6 | +3 | English source layout |
-| level select HEAT panel | GridContainer3/Button9/Label4 | overlap | 1:43.6 | Control9/Toggle_race | English source layout |
-| level select HEAT panel | GridContainer3/Button9/Number | overlap | 10 | Control9/Toggle_race | English source layout |
-| level select HEAT panel | GridContainer3/Button9/Number | overlap | 10 | RACE | English source layout |
-| level select HEAT panel | Label5 | overlap | HEAT UP LEVELS BEATEN ON HARD / HEAT 2 4 7 10 PAYS 3 5 7 10  | LESS LIGHT, PATHS FADE FASTER | English source layout |
+| hat wheel wheel | wheel.spin_free | overlap | SPIN  FREE | COIN BAG | English source layout |
+| hat wheel wheel | wheel.spin_free | overlap | SPIN  FREE | RANDOMIZER | English source layout |
+| hat wheel wheel | CanvasLayer24/Control0/Control7/Control7/CenterContainer3/La | overlap | COMMON / 4.4% EACH / 21 LEFT | PRIZE WHEEL | English source layout |
+| hat wheel wheel | CanvasLayer24/Control0/Control7/Control7/CenterContainer4/La | overlap | RARE / 1.3% EACH / 6 LEFT | UPGRADES | English source layout |
+| hub coin board | CanvasLayer24/Control0/Control1/Label10 | overlap | 3 | COSMETICS | English source layout |
+| hub coin board | theme.sandstone | overlap | SANDSTONE SANCTUM | COSMETICS | English source layout |
+| hub coin board | CanvasLayer24/Control0/Control1/Label12 | overlap | 7/7 | MAP TABLE | English source layout |
+| hub coin board | CanvasLayer24/Control0/Control1/Label34 | overlap | 9 | DAILY MAZE | English source layout |
+| hub coin board | theme.crystal | overlap | CRYSTAL CAVERNS | DAILY MAZE | English source layout |
+| hub coin board | CanvasLayer24/Control0/Control1/Label38 | overlap | 10 | SETTINGS | English source layout |
+| hub coin board | theme.mossy | overlap | MOSSY MINES | STORY - LEVEL 1 | English source layout |
+| hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | overlap | COINS RETURNED +888 | STORY - LEVEL 1 | English source layout |
+| hub prompt coins | hub.station.coins | overlap | COIN BAG | RANDOMIZER | English source layout |
+| hub prompt maps | hub.station.map_table | overlap | MAP TABLE | COIN BAG | English source layout |
+| hub prompt maps | hub.station.map_table | overlap | MAP TABLE | RANDOMIZER | English source layout |
+| hub prompt random | hub.station.random | overlap | RANDOMIZER | COIN BAG | English source layout |
+| hub prompt random | hub.station.random | overlap | RANDOMIZER | RANDOMIZER | English source layout |
+| hub prompt settings | hub.station.settings | overlap | SETTINGS | RANDOMIZER | English source layout |
+| hub prompt story | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label0 | overlap | STORY - LEVEL 1 | COIN BAG | English source layout |
+| hub prompt story | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label0 | overlap | STORY - LEVEL 1 | RANDOMIZER | English source layout |
+| hub prompt upgrades | result.choice.upgrades | overlap | UPGRADES | COIN BAG | English source layout |
+| hub prompt upgrades | result.choice.upgrades | overlap | UPGRADES | RANDOMIZER | English source layout |
+| hub prompt wardrobe | hub.station.wardrobe | overlap | COSMETICS | COIN BAG | English source layout |
+| hub prompt wardrobe | hub.station.wardrobe | overlap | COSMETICS | RANDOMIZER | English source layout |
+| hub prompt wheel | hub.station.wheel | overlap | PRIZE WHEEL | RANDOMIZER | English source layout |
+| hub prompt wheel | hub.prompt.free | overlap | FREE | COIN BAG | English source layout |
+| hub prompt wheel | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label3 | overlap | ! | COIN BAG | English source layout |
+| hub tour end | hub.tour.end | overlap | THE WAY UP, WALK IN | COIN BAG | English source layout |
+| hub tour end | hub.tour.end | overlap | THE WAY UP, WALK IN | RANDOMIZER | English source layout |
+| hub tour hint | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label0 | overlap | HOLD A TO TURN IT BACK | COIN BAG | English source layout |
+| hub tour hint | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label0 | overlap | HOLD A TO TURN IT BACK | RANDOMIZER | English source layout |
+| hub tour hint | CanvasLayer24/Control0/PanelContainer0/HBoxContainer0/Label1 | overlap | F | COIN BAG | English source layout |
+| hub tour story | hub.tour.story | overlap | HOME. IT TURNS, HIT THE WHEEL | COIN BAG | English source layout |
+| hub tour story | hub.tour.story | overlap | HOME. IT TURNS, HIT THE WHEEL | RANDOMIZER | English source layout |
+| hub tour wardrobe | hub.tour.wardrobe | overlap | SKINS, HATS, TRAILS. DRY UP IN STYLE | COIN BAG | English source layout |
+| hub tour wardrobe | hub.tour.wardrobe | overlap | SKINS, HATS, TRAILS. DRY UP IN STYLE | RANDOMIZER | English source layout |
 | settings reset confirm | settings.controls | overlap | CONTROLS | ERASE ALL PROGRESS? | English source layout |
 | settings reset confirm | settings.save_code | overlap | SAVE CODE | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | English source layout |
-| settings reset confirm | settings.motion.full | overlap | MOTION: FULL | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | English source layout |
-| settings reset confirm | settings.volume | overlap | VOLUME | ERASE ALL PROGRESS? | English source layout |
-| settings save code | settings.save_code | overlap | SAVE CODE | TO LOAD A SAVE, PASTE ITS CODE HERE | English source layout |
-| settings save code | Button12/Label1 | overlap | ENGLISH | PASTE | English source layout |
-| settings save code | settings.sound.on | overlap | SOUND: ON | COPY THIS CODE TO BACK UP YOUR PROGRESS | English source layout |
-| settings save code | settings.motion.full | overlap | MOTION: FULL | TO LOAD A SAVE, PASTE ITS CODE HERE | English source layout |
+| settings reset confirm | settings.volume_sfx | overlap | SFX | ERASE ALL PROGRESS? | English source layout |
+| settings reset confirm | settings.volume_music | overlap | MUSIC | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | English source layout |
 | settings save code | settings.fullscreen.off | overlap | FULLSCREEN: OFF | COPY THIS CODE TO BACK UP YOUR PROGRESS | English source layout |
-| settings save code | savecode.paste | overlap | PASTE | Button12 | English source layout |
-| settings save code | savecode.load | overlap | LOAD | Button12 | English source layout |
+| settings save code | settings.save_code | overlap | SAVE CODE | TO LOAD A SAVE, PASTE ITS CODE HERE | English source layout |
+| settings save code | Button15/Label1 | overlap | ENGLISH | PASTE | English source layout |
+| settings save code | settings.sound.on | overlap | SOUND: ON | COPY THIS CODE TO BACK UP YOUR PROGRESS | English source layout |
+| settings save code | savecode.paste | overlap | PASTE | Button15 | English source layout |
+| settings save code | savecode.load | overlap | LOAD | Button15 | English source layout |
 | settings save code | settings.more | overlap | MORE | SAVE CODE | English source layout |
