@@ -133,6 +133,21 @@ func _initialize() -> void:
 		lk.step(0.016)
 	_check(before.distance_to(game.slime.position) > 8.0, "contact knocks the slime back")
 	_check(is_equal_approx(game.slime_remaining, 80.0 - Economy.LURKER_HIT), "no second hit while invulnerable")
+
+	# ---- near miss: slow-mo never touches Engine.time_scale, a pause cannot strand it
+	l.near_active = true
+	l.near_hit = false
+	lk.invuln = 0.0
+	lk._near_miss(l, Economy.LURKER_NEAR_MISS_DIST + 20.0)
+	_check(lk.near_misses >= 1 and Engine.time_scale == 1.0, "a near miss leaves Engine.time_scale at 1.0")
+	paused = true
+	for k in 5:
+		await process_frame
+	_check(Engine.time_scale == 1.0, "paused during the slow-mo: Engine.time_scale stays 1.0")
+	paused = false
+	lk._slowmo_until_ms = Time.get_ticks_msec() - 1
+	await process_frame
+	_check(game.is_physics_processing() and Engine.time_scale == 1.0, "slow-mo over: the level runs at full speed again")
 	game.slime_remaining = 10.0
 	lk.invuln = 0.0
 	l.stun = 0.0

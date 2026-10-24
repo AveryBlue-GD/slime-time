@@ -97,6 +97,7 @@ var _push_left := 0.0
 var _push_dir := Vector2.ZERO
 var _trail: Array[Vector2i] = []
 var _slowmo_until_ms := -1
+var _slowmo_acc := 0.0
 var _eyes: EyeLayer
 var _blink := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -278,9 +279,8 @@ static func cell_of(pos: Vector2) -> Vector2i:
 
 
 func _process(_delta: float) -> void:
-	if _slowmo_until_ms >= 0 and Time.get_ticks_msec() >= _slowmo_until_ms:
-		_slowmo_until_ms = -1
-		Engine.time_scale = 1.0
+	if _slowmo_until_ms >= 0:
+		_slowmo_step()
 	if _eyes != null:
 		_eyes.queue_redraw()
 	if invuln > 0.0 and game.finished:
@@ -288,9 +288,31 @@ func _process(_delta: float) -> void:
 		_update_blink()
 
 
+## The near-miss slow-motion never touches Engine.time_scale (it would outlive a pause): the level's
+## physics runs on only SLOWMO_SCALE of the frames, and this node pauses with the tree.
+func _slowmo_step() -> void:
+	_slowmo_acc += SLOWMO_SCALE
+	var run := _slowmo_acc >= 1.0
+	if run:
+		_slowmo_acc -= 1.0
+	if Time.get_ticks_msec() >= _slowmo_until_ms:
+		_slowmo_until_ms = -1
+		run = true
+	_slowmo_set(run)
+
+
+func _slowmo_set(run: bool) -> void:
+	if not is_instance_valid(game) or game._hitstop_frames > 0:
+		return
+	game.set_physics_process(run)
+	if is_instance_valid(slime):
+		slime.set_physics_process(run)
+
+
 func _exit_tree() -> void:
 	if _slowmo_until_ms >= 0:
-		Engine.time_scale = 1.0
+		_slowmo_until_ms = -1
+		_slowmo_set(true)
 	if is_instance_valid(slime):
 		slime.modulate.a = 1.0
 
@@ -412,8 +434,8 @@ func _near_miss(l: Lurker, d: float) -> void:
 		l.near_active = false
 		if not l.near_hit and invuln <= 0.0:
 			near_misses += 1
-			if game.motion_scale() > 0.0 and _slowmo_until_ms < 0 and Engine.time_scale == 1.0:
-				Engine.time_scale = SLOWMO_SCALE
+			if game.motion_scale() > 0.0 and _slowmo_until_ms < 0:
+				_slowmo_acc = 0.0
 				_slowmo_until_ms = Time.get_ticks_msec() + int(Economy.LURKER_SLOWMO * 1000.0)
 
 
@@ -432,7 +454,7 @@ func _hit(l: Lurker) -> void:
 	Fx.burst(game, slime.position, Color8(244, 244, 244), 10, 50.0, _push_dir, 120.0, false)
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		sfx.play("lurk_bonk", -6.0)
+		sfx.play("lurk_bonk", -16.0)
 
 
 func _push_step() -> void:
@@ -493,4 +515,4 @@ func _bonk(l: Lurker, from: Vector2) -> void:
 	Fx.burst(game, l.pos, EYE_COLOR[l.kind], 8, 40.0, Vector2.UP, 160.0, false)
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		sfx.play("lurk_bonk", -9.0, 1.2)
+		sfx.play("lurk_bonk", -18.0, 1.2)
