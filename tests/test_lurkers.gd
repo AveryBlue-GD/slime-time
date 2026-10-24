@@ -1,8 +1,8 @@
 extends "res://tests/suite_base.gd"
 
-## BM-01 LURKERS (Economy.LURKERS_TEST): spawn rules (never in story / hard story / training / demo / RELAXED / CALM DARK /
-## Descent, 1 seed in 3, seeded placement), each hunter's target rule on a small hand-made maze, dormancy, contact
-## (15% of the meter, a knockback, invulnerability, never kills), stun by SLIME SPLAT and by a leap landing, the x1.25 pay,
+## BM-01 LURKERS (Economy.LURKERS_TEST): spawn rules (never in story / hard story / training / demo / the daily / weekly /
+## Descent: forced in hard mode, the SETTINGS LURKERS toggle in normal random mazes, seeded placement), each hunter's target rule on a small hand-made maze, dormancy, contact
+## (15% of the meter, 8% in hard mode, a knockback, invulnerability, never kills), stun by SLIME SPLAT and by a leap landing, the x1.25 pay,
 ## and flag off = no lurkers.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_lurkers.gd
 
@@ -38,6 +38,16 @@ func _spawn_random(seed_value: int) -> Node2D:
 	return game
 
 
+func _spawn_story(level: int) -> Node2D:
+	progress.mode = progress.MODE_STORY
+	progress.start_story(level)
+	var game: Node2D = MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	return game
+
+
 func _drop(game: Node2D) -> void:
 	current_scene = null
 	game.free()
@@ -51,28 +61,26 @@ func _initialize() -> void:
 	_check(Economy.LURKERS_TEST == true, "LURKERS_TEST is on in this test build")
 
 	# ---- the rules
-	Economy.lurkers_force = 1
-	var hits := 0
-	for s in 600:
-		if Lurkers.seed_has_lurkers(1000 + s * 7):
-			hits += 1
-	_check(hits > 140 and hits < 260, "about 1 seed in 3 has lurkers (%d of 600)" % hits)
-	_check(Lurkers.seed_has_lurkers(4242) == Lurkers.seed_has_lurkers(4242), "the same seed always answers the same")
-	_check(Lurkers.allowed(true, false, false, false, false, false, false, false), "a plain random maze may have them")
-	_check(not Lurkers.allowed(false, false, false, false, false, false, false, false), "never in a story level")
-	_check(not Lurkers.allowed(false, true, false, false, false, false, false, false), "never in a hard story level")
-	_check(not Lurkers.allowed(true, false, true, false, false, false, false, false), "never in Descent")
-	_check(not Lurkers.allowed(true, false, false, true, false, false, false, false), "never in training / the tutorial")
-	_check(not Lurkers.allowed(true, false, false, false, true, false, false, false), "never in the demo")
-	_check(not Lurkers.allowed(true, false, false, false, false, true, false, false), "never in a RELAXED run")
-	_check(not Lurkers.allowed(true, false, false, false, false, false, true, false), "never with CALM DARK on")
-	_check(not Lurkers.allowed(true, false, false, false, false, false, false, true), "not during the ability tutorial")
+	Economy.lurkers_force = -1  # (the real rules: LURKERS_TEST on, no flag)
+	# allowed(random, hard, shared, descent, training, demo, toggle, ability_tutorial)
+	_check(Lurkers.allowed(false, true, false, false, false, false, false, false), "a hard story level always has them")
+	_check(Lurkers.allowed(true, true, false, false, false, false, false, false), "a hard random maze always has them (toggle off)")
+	_check(not Lurkers.allowed(false, false, false, false, false, false, true, false), "never in a normal story level")
+	_check(not Lurkers.allowed(true, false, false, false, false, false, false, false), "a normal random maze: none with the toggle off")
+	_check(Lurkers.allowed(true, false, false, false, false, false, true, false), "a normal random maze: lurkers with the toggle on")
+	_check(not Lurkers.allowed(true, false, true, false, false, false, true, false), "never the daily / weekly (shared mazes), toggle on")
+	_check(not Lurkers.allowed(true, true, true, false, false, false, true, false), "...and hard rules never apply to them")
+	_check(not Lurkers.allowed(true, false, false, true, false, false, true, false) and not Lurkers.allowed(false, true, false, true, false, false, true, false), "never in Descent")
+	_check(not Lurkers.allowed(true, false, false, false, true, false, true, false) and not Lurkers.allowed(false, true, false, false, true, false, true, false), "never in training / the tutorial")
+	_check(not Lurkers.allowed(true, false, false, false, false, true, true, false) and not Lurkers.allowed(false, true, false, false, false, true, true, false), "never in the demo")
+	_check(not Lurkers.allowed(true, false, false, false, false, false, true, true), "not during the ability tutorial")
+	_check(Lurkers.story_count(1) == 2 and Lurkers.story_count(3) == 2 and Lurkers.story_count(4) == 3 and Lurkers.story_count(10) == 3, "hard story: 2 lurkers on levels 1-3, then 3")
+	_check(Lurkers.story_seed(5) == Lurkers.story_seed(5) and Lurkers.story_seed(5) != Lurkers.story_seed(6), "a hard story level's lurkers are seeded by the level")
 	Economy.lurkers_force = 2
-	_check(Lurkers.allowed(true, false, false, false, false, false, false, true) and Lurkers.seed_has_lurkers(1),
-		"--lurkers forces them into every random maze (even over the ability tutorial)")
-	_check(not Lurkers.allowed(true, false, false, false, true, false, false, false), "--lurkers still never in the demo")
+	_check(Lurkers.allowed(true, false, false, false, false, false, false, true), "--lurkers forces them into every random maze (even over the ability tutorial)")
+	_check(not Lurkers.allowed(true, false, false, false, false, true, false, false), "--lurkers still never in the demo")
 	Economy.lurkers_force = 0
-	_check(not Lurkers.allowed(true, false, false, false, false, false, false, false), "flag off: not allowed anywhere")
+	_check(not Lurkers.allowed(true, true, false, false, false, false, true, false), "flag off: not allowed anywhere")
 	Economy.lurkers_force = 2
 
 	# ---- placement
@@ -185,24 +193,100 @@ func _initialize() -> void:
 	_check(is_equal_approx(game.pay_factor(), plain * Economy.LURKER_PAY), "a maze with lurkers pays x1.25")
 	await _drop(game)
 
-	# ---- CALM DARK / RELAXED switch them off in a real run, flag off too
-	progress.calm_dark = true
+	# ---- the real rules in real runs
+	Economy.lurkers_force = -1
+	progress.hard_mode = false
+	progress.lurkers_random = false
 	game = await _spawn_random(4321)
-	_check(game.lurkers == null, "CALM DARK: no lurkers")
+	_check(game.lurkers == null, "LURKERS off: a normal random maze has none")
 	await _drop(game)
-	progress.calm_dark = false
+	progress.lurkers_random = true
+	game = await _spawn_random(4321)
+	_check(game.lurkers != null and game.pay_factor() > 0.0, "LURKERS on: a normal random maze has them")
+	await _drop(game)
 	progress.relaxed = true
 	game = await _spawn_random(4321)
-	_check(game.lurkers == null, "RELAXED: no lurkers")
+	_check(game.lurkers != null, "LURKERS on, RELAXED: still there")
 	await _drop(game)
 	progress.relaxed = false
+	progress.start_daily()
+	game = await _spawn_random(progress.random_seed)
+	_check(game.lurkers == null, "the daily has none, even with the toggle on")
+	await _drop(game)
+	progress.start_weekly()
+	game = await _spawn_random(progress.random_seed)
+	_check(game.lurkers == null, "the weekly has none, even with the toggle on")
+	await _drop(game)
+	progress.random_daily = false
+	progress.random_weekly = false
+	progress.lurkers_random = false
+	progress.hard_mode = true
+	game = await _spawn_random(4321)
+	_check(game.lurkers != null and game.lurkers.lurkers.size() >= 2, "a hard random maze: forced (toggle off)")
+	await _drop(game)
+	progress.relaxed = true
+	for lvl in [1, 4]:
+		progress.start_story(lvl)
+		progress.hard_mode = true
+		game = await _spawn_story(lvl)
+		var want := Lurkers.story_count(lvl)
+		_check(game.lurkers != null and game.lurkers.lurkers.size() >= 2 and game.lurkers.lurkers.size() <= want and (lvl > 3 or game.lurkers.lurkers.size() == want), "hard level %d (RELAXED on): up to %d lurkers forced (%d; spacing may fit fewer)" % [lvl, want, game.lurkers.lurkers.size() if game.lurkers else -1])
+		var first: Array = []
+		for hl in game.lurkers.lurkers:
+			first.append(hl.cell)
+		if lvl == 1:
+			var hk: Lurkers = game.lurkers
+			var hl: Lurkers.Lurker = hk.lurkers[0]
+			hl.awake = true
+			hl.wake_t = Lurkers.WAKE_TIME
+			hl.stun = 0.0
+			hk.invuln = 0.0
+			game.slime.position = hl.pos + Vector2(2.0, 0.0)
+			game.slime_remaining = 80.0
+			hk.step(0.016)
+			_check(is_equal_approx(game.slime_remaining, 80.0 - Economy.LURKER_HIT_HARD), "hard contact costs 8%% (%s left)" % game.slime_remaining)
+			game.slime_remaining = 5.0
+			hk.invuln = 0.0
+			hl.stun = 0.0
+			game.slime.position = hl.pos
+			hk.step(0.016)
+			_check(game.slime_remaining >= 1.0 - 0.001 and not game.finished, "a hard hit still never takes the last 1%")
+		await _drop(game)
+		game = await _spawn_story(lvl)
+		var again: Array = []
+		for hl in game.lurkers.lurkers:
+			again.append(hl.cell)
+		_check(again == first, "hard level %d: the same cells every try (learnable)" % lvl)
+		await _drop(game)
+	progress.relaxed = false
+	progress.hard_mode = false
+	progress.start_story(1)
+	game = await _spawn_story(1)
+	_check(game.lurkers == null, "a normal story level has none")
+	await _drop(game)
+	# the toggle's save and the CALM DARK migration
+	progress.lurkers_random = true
+	var q: Node = preload("res://scripts/progress.gd").new()
+	var f := ConfigFile.new()
+	f.set_value("settings", "lurkers", true)
+	SaveFile.read(q, f)
+	_check(q.lurkers_random, "the toggle loads from [settings] lurkers")
+	f.set_value("settings", "calm_dark", true)
+	SaveFile.read(q, f)
+	_check(not q.lurkers_random, "migration: an old CALM DARK save starts with LURKERS off")
+	var g := ConfigFile.new()
+	g.set_value("settings", "calm_dark", false)
+	SaveFile.read(q, g)
+	_check(not q.lurkers_random, "...and a save without the toggle: off")
+	q.free()
+	progress.lurkers_random = false
 	Economy.lurkers_force = 0
 	game = await _spawn_random(4321)
 	_check(game.lurkers == null, "flag off: no lurkers")
 	_check(is_equal_approx(game.pay_factor(), float(progress.random_length_factor(game.random_seed, game.seed_level, game.hard_mode))), "flag off: pay unchanged")
 	await _drop(game)
 	Economy.lurkers_force = 2
-	game = await _spawn_game({level = 1})
+	game = await _spawn_story(1)
 	_check(game.lurkers == null, "a story level never has lurkers")
 	game.queue_free()
 	await physics_frame

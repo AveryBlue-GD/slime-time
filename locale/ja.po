@@ -2207,7 +2207,7 @@ msgid "MORE"
 msgstr "その他"
 
 #. hint under the RELAXED button, max 296px, 1 line (centred under both columns)
-#. hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
+#. hint under the LURKERS button, max 296px, 1 line (centred under both columns)
 #. budget: max 296px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.relaxed.hint"
@@ -2400,11 +2400,11 @@ msgctxt "settings.fullscreen.off"
 msgid "FULLSCREEN: OFF"
 msgstr "全画面：オフ"
 
-#. hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
+#. hint under the LURKERS button, max 296px, 1 line (centred under both columns)
 #. budget: max 296px, lines 1
 #: scripts/ui/controls.gd
-msgctxt "settings.calm_dark.hint"
-msgid "CALM DARK: NO LURKERS"
+msgctxt "settings.lurkers.hint"
+msgid "LURKERS IN RANDOM MAZES (HARD: ALWAYS)"
 msgstr ""
 
 #: scripts/ui/controls.gd
@@ -2428,13 +2428,13 @@ msgid "RELAXED: OFF"
 msgstr ""
 
 #: scripts/ui/controls.gd
-msgctxt "settings.calm_dark.on"
-msgid "CALM DARK: ON"
+msgctxt "settings.lurkers.on"
+msgid "LURKERS: ON"
 msgstr ""
 
 #: scripts/ui/controls.gd
-msgctxt "settings.calm_dark.off"
-msgid "CALM DARK: OFF"
+msgctxt "settings.lurkers.off"
+msgid "LURKERS: OFF"
 msgstr ""
 
 #: scripts/ui/controls.gd

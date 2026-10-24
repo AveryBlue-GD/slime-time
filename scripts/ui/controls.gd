@@ -87,7 +87,7 @@ var level_music_button: Button
 ## RELAXED (no idle drain, no medals; Progress.relaxed) under SAVE CODE / TRAINING, with a hint line under it.
 var relaxed_button: Button
 var relaxed_hint: Label
-## CALM DARK (no lurkers in the random mazes; Progress.calm_dark): the grid's extra row, only with the lurkers test on.
+## LURKERS (ON = lurkers in every normal random maze, Progress.lurkers_random; hard mode always has them): the grid's extra row, only with the lurkers test on.
 var calm_button: Button
 var controls_button: Button
 var reset_button: Button
@@ -910,13 +910,13 @@ func _toggle_motion() -> void:
 
 func _update_relaxed_hint() -> void:
 	var on_calm := calm_button != null and (calm_button.has_focus() or calm_button.is_hovered())
-	# i18n: hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
-	relaxed_hint.text = Loc.t("settings.calm_dark.hint", "CALM DARK: NO LURKERS") if on_calm 		else Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS")
+	# i18n: hint under the LURKERS button, max 296px, 1 line (centred under both columns)
+	relaxed_hint.text = Loc.t("settings.lurkers.hint", "LURKERS IN RANDOM MAZES (HARD: ALWAYS)") if on_calm else Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS")
 	relaxed_hint.visible = on_calm or relaxed_button.has_focus() or relaxed_button.is_hovered()
 
 
 func _toggle_calm() -> void:
-	Progress.calm_dark = not Progress.calm_dark
+	Progress.lurkers_random = not Progress.lurkers_random
 	Progress.save_progress()
 	_refresh_display_options()
 
@@ -959,11 +959,11 @@ func _refresh_display_options() -> void:
 	else:
 		relaxed_button.text = Loc.t("settings.relaxed.off", "RELAXED: OFF")
 	if calm_button != null:
-		# i18n: max 112px, 1 line; the two states are whole strings (ON = no lurkers, the creatures in the fog)
-		if Progress.calm_dark:
-			calm_button.text = Loc.t("settings.calm_dark.on", "CALM DARK: ON")
+		# i18n: max 112px, 1 line; the two states are whole strings (ON = the creatures in the fog of random mazes)
+		if Progress.lurkers_random:
+			calm_button.text = Loc.t("settings.lurkers.on", "LURKERS: ON")
 		else:
-			calm_button.text = Loc.t("settings.calm_dark.off", "CALM DARK: OFF")
+			calm_button.text = Loc.t("settings.lurkers.off", "LURKERS: OFF")
 	if vibration_button:
 		# i18n: max 112px, 1 line; the two states are whole strings (phones: a buzz on each splat)
 		if Progress.vibration:
@@ -1014,11 +1014,11 @@ static func column_texts() -> Array[String]:
 		Loc.t("settings.save_code", "SAVE CODE")] + calm_texts()
 
 
-## CALM DARK's two states (only while the lurkers test is on; they share the column width).
+## LURKERS's two states (only while the lurkers test is on; they share the column width).
 static func calm_texts() -> Array[String]:
 	if rows() == ROWS:
 		return []
-	return [Loc.t("settings.calm_dark.on", "CALM DARK: ON"), Loc.t("settings.calm_dark.off", "CALM DARK: OFF")]
+	return [Loc.t("settings.lurkers.on", "LURKERS: ON"), Loc.t("settings.lurkers.off", "LURKERS: OFF")]
 
 
 ## Every status line the SAVE CODE panel can show (for its width).

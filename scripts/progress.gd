@@ -350,8 +350,10 @@ const MUSIC_BUS := "Music"  # i18n: ignore (an audio bus name)
 var reduce_motion := false
 ## RELAXED (SETTINGS, IMP-01): no idle drain; a run played with it earns no medals, records or tickets.
 var relaxed := false
-## CALM DARK (SETTINGS, BM-01 Economy.LURKERS_TEST): no lurkers in the random mazes. Off by default.
-var calm_dark := false
+## LURKERS (SETTINGS, BM-01 Economy.LURKERS_TEST): ON = lurkers in every normal random maze (not the daily / weekly:
+## they are the same for everyone). Off by default. Hard mode always has them. Replaces CALM DARK ([settings] calm_dark,
+## which is migrated: a save that had it on starts with this off).
+var lurkers_random := false
 ## Phones buzz on a splat (Slime._buzz); SETTINGS VIBRATION (Platform.has_vibration) turns it off.
 var vibration := true
 ## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;

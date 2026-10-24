@@ -1,8 +1,8 @@
 class_name Lurkers
 extends Node
 
-## LURKERS (Economy.LURKERS_TEST, BM-01): pale, goofy, blind creatures living in the fog of 1 random / daily maze
-## in Economy.LURKER_ONE_IN (seeded by the maze, so the daily is the same for everyone). Only their 2 px eye glints
+## LURKERS (Economy.LURKERS_TEST, BM-01): pale, goofy, blind creatures living in the fog of every hard-mode maze (a hard
+## story level: placed by its level, so retries are learnable) and of normal random mazes with SETTINGS LURKERS on (allowed). Only their 2 px eye glints
 ## show through the fog (the EyeLayer, above it); the body, under the fog, shows in the light.
 ## Pac-Man style on the maze grid: a lurker walks cell to cell and, at each cell, takes the open neighbour that is
 ## nearest (straight-line, in cells) to its target, never turning back unless it is a dead end (pick_next).
@@ -105,19 +105,21 @@ var _rng := RandomNumberGenerator.new()
 
 # ---------------------------------------------------------------- rules (static)
 
-## Whether this run may have lurkers at all. `random`: a random or daily maze; the rest are the exclusions.
-static func allowed(random: bool, story_hard: bool, descent: bool, training: bool, demo: bool, relaxed: bool, calm_dark: bool,
+## Whether this run has lurkers. Hard mode (a hard story level, or a hard random maze: `hard`) always does, whatever the
+## settings (RELAXED too); a normal random maze only with SETTINGS LURKERS (`toggle`); never the daily / weekly (`shared`:
+## the same maze for everyone), a normal story level, Descent, training, the demo, nor during the ability tutorial
+## (`--lurkers` = force 2 forces them into every random maze, the tutorial included; `--nolurkers` = none).
+static func allowed(random: bool, hard: bool, shared: bool, descent: bool, training: bool, demo: bool, toggle: bool,
 		ability_tutorial: bool) -> bool:
-	if not Economy.lurkers_on() or not random or story_hard or descent or training or demo or relaxed or calm_dark:
+	if not Economy.lurkers_on() or descent or training or demo:
 		return false
-	return Economy.lurkers_force >= 2 or not ability_tutorial
-
-
-## 1 maze seed in LURKER_ONE_IN has lurkers (all of them with `--lurkers`).
-static func seed_has_lurkers(seed_value: int) -> bool:
+	if hard and not shared:
+		return true
+	if not random:
+		return false
 	if Economy.lurkers_force >= 2:
 		return true
-	return seed_mix(seed_value, 0x1B3C) % Economy.LURKER_ONE_IN == 0
+	return toggle and not shared and not ability_tutorial
 
 
 ## Integer hash (the same on every platform).
@@ -133,9 +135,19 @@ static func count_for(seed_value: int) -> int:
 	return 2 + seed_mix(seed_value, 0x51) % 2
 
 
+## The fixed seed of a hard story level's lurkers (its maze is always the same, so the creatures sit and walk the same
+## way every try) and how many there are (2 on the first levels, then 3).
+static func story_seed(level: int) -> int:
+	return 7100 + level
+
+
+static func story_count(level: int) -> int:
+	return 2 if level <= Economy.LURKER_HARD_FEW_LEVELS else 3
+
+
 ## Where the seed's lurkers sleep: cells at least MIN_START_STEPS along the passages from the start (fewer if the
 ## maze is small), not the goal, SPACING_CELLS apart; in the order CRAWLER, SNIFFER, LANTERN-EATER.
-static func place(the_maze: Dictionary, seed_value: int) -> Array[Vector2i]:
+static func place(the_maze: Dictionary, seed_value: int, count := -1) -> Array[Vector2i]:
 	var dist := MazeGenerator.distances_from(the_maze, the_maze.start)
 	var far := 0
 	for cell: Vector2i in dist:
@@ -149,7 +161,7 @@ static func place(the_maze: Dictionary, seed_value: int) -> Array[Vector2i]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_mix(seed_value, 0x7C)
 	var out: Array[Vector2i] = []
-	var want := count_for(seed_value)
+	var want := count if count > 0 else count_for(seed_value)
 	var tries := 0
 	while out.size() < want and not pool.is_empty() and tries < 200:
 		tries += 1
@@ -214,14 +226,16 @@ static func lantern_target(the_maze: Dictionary, slime_cell: Vector2i, bright: C
 
 ## Builds the run's lurkers (none when the rules say no) as a child of `owner_game`; null when there are none.
 static func create(owner_game: Node) -> Lurkers:
-	var progress: Node = owner_game.progress
 	var random: bool = owner_game.is_random()
-	if not allowed(random, owner_game.hard_mode and not random, owner_game.descent, owner_game.training, Platform.is_demo() or owner_game.preview,
-			owner_game.relaxed_run, progress != null and progress.calm_dark, owner_game.coach != null):
+	var progress: Node = owner_game.progress
+	var shared: bool = random and progress != null and (progress.random_daily or progress.random_weekly)
+	var hard: bool = owner_game.hard_mode
+	if not allowed(random, hard, shared, owner_game.descent, owner_game.training, Platform.is_demo() or owner_game.preview,
+			progress != null and progress.lurkers_random, owner_game.coach != null):
 		return null
-	if not seed_has_lurkers(owner_game.random_seed):
-		return null
-	var cells := place(owner_game.maze, owner_game.random_seed)
+	var seed_value: int = owner_game.random_seed if random else story_seed(owner_game.level)
+	var count := -1 if random else story_count(owner_game.level)
+	var cells := place(owner_game.maze, seed_value, count)
 	if cells.is_empty():
 		return null
 	var node := Lurkers.new()
@@ -230,7 +244,7 @@ static func create(owner_game: Node) -> Lurkers:
 	node.maze = owner_game.maze
 	node.name = "Lurkers"
 	owner_game.add_child(node)
-	node.spawn(cells, owner_game.random_seed)
+	node.spawn(cells, seed_value)
 	return node
 
 
@@ -442,7 +456,7 @@ func _near_miss(l: Lurker, d: float) -> void:
 ## Contact: the meter loses LURKER_HIT percent (never its last 1%), the slime is pushed a tile away and is safe for a while.
 func _hit(l: Lurker) -> void:
 	hits += 1
-	var amount := clampf(game.slime_remaining - 1.0, 0.0, Economy.LURKER_HIT)
+	var amount := clampf(game.slime_remaining - 1.0, 0.0, Economy.LURKER_HIT_HARD if game.hard_mode else Economy.LURKER_HIT)
 	game.spend_slime(amount)
 	invuln = Economy.LURKER_INVULN_TOUCH if Platform.has_touch() else Economy.LURKER_INVULN
 	_blink = 0.0

@@ -375,15 +375,18 @@ static func light_life_on() -> bool:
 ## LANTERN-EATER -> the brightest lit cell near the slime. Dormant until the slime is within LURKER_WAKE_DIST px.
 ## Standing still past IDLE_GRACE = stealth (they wander). Contact: LURKER_HIT percent of the meter, a one-tile
 ## knockback, LURKER_INVULN s of safety (LURKER_INVULN_TOUCH on touch); never kills. SLIME SPLAT stuns them, a leap
-## landing on one bonks it. Those mazes pay LURKER_PAY x. Never in story / hard story / training / the tutorial /
-## the demo / RELAXED runs / with SETTINGS CALM DARK on. `--nolurkers` (debug builds) sets `lurkers_force` = 0,
+## landing on one bonks it. Those mazes pay LURKER_PAY x. Rules (Lurkers.allowed): ALWAYS in hard mode (hard story
+## levels, hard random mazes; even with RELAXED); normal random mazes only with SETTINGS LURKERS on; never in the
+## daily / weekly, normal story, training / the tutorial, Descent or the demo. `--nolurkers` (debug builds) sets `lurkers_force` = 0,
 ## `--lurkers` = 2 (every random maze, for testing); suites force it off (tests/suite_base.gd) unless they test it.
 const LURKERS_TEST := true
 static var lurkers_force := -1
-const LURKER_ONE_IN := 3
 const LURKER_WAKE_DIST := 96.0
 const LURKER_SPEED := 38.0
 const LURKER_HIT := 15.0
+## Hard mode: the allowances are tight, so a contact costs less; hard story levels 1-3 have 2 lurkers, the rest 3.
+const LURKER_HIT_HARD := 8.0
+const LURKER_HARD_FEW_LEVELS := 3
 const LURKER_INVULN := 1.0
 const LURKER_INVULN_TOUCH := 1.5
 const LURKER_CONTACT_DIST := 5.0
