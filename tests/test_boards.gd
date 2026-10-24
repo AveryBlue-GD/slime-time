@@ -100,6 +100,9 @@ func _initialize() -> void:
 	_check(progress.board_for("daily", monday).size() == 1 and Boards.entry_ms(progress.board_for("daily", monday)[0]) == 33000, "boards survive a save and load")
 	_check(progress.board_for("weekly", Boards.week_of(monday)).size() == 1 and not progress.ghost_on, "the weekly board and the GHOST toggle too")
 	progress.ghost_on = true
+	progress.load_code(progress.save_code())
+	_check(progress.board_for("daily", monday).size() == 1 and progress.board_for("weekly", Boards.week_of(monday)).size() == 1 and progress.board_best_daily_ms == 33000,
+		"importing a save code keeps this device's boards")
 
 	# ---- ghosts: record, cap, file round trip
 	var pts: Array[int] = []
@@ -125,8 +128,11 @@ func _initialize() -> void:
 	progress.day_override = monday
 	Economy.abilities_force = 1
 	progress.upgrades["slime"] = 6
+	progress.hard_mode = true
 	var game: Node2D = await _spawn(true)
 	_check(game.is_weekly() and progress.random_weekly and not progress.random_daily, "the weekly run is flagged")
+	_check(not game.hard_mode, "the weekly forces normal rules even with hard mode on")
+	progress.hard_mode = false
 	_check(game.random_seed == Boards.weekly_seed(Boards.week_of(monday)), "its seed is the week's")
 	_check(game.seed_level == Economy.WEEKLY_SLIME, "its maze is MORE SLIME 3 sized")
 	_check(is_equal_approx(game._applied_slime_factor(), Upgrades.slime_factor(Economy.WEEKLY_SLIME)), "its meter is the fixed loadout, not the player's MORE SLIME 6")

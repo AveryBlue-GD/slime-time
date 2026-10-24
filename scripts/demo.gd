@@ -281,7 +281,8 @@ static func wheel_block_text(block: String) -> String:
 ## after the level-10 chalice: Game.VICTORY_SCENE, Story's finale). Add a file here only if no demo
 ## path can reach it (tests/test_demo_export.gd checks that each one exists).
 const FULL_ONLY_FILES: Array[String] = ["res://scenes/victory.tscn", "res://scripts/ui/victory.gd",
-	"res://scenes/achievements.tscn", "res://scripts/ui/achievements_screen.gd"]  # (the hub hides ACHIEVEMENTS in the demo)
+	"res://scenes/achievements.tscn", "res://scripts/ui/achievements_screen.gd",
+	"res://scenes/boards.tscn", "res://scripts/ui/boards_screen.gd"]  # (the hub hides ACHIEVEMENTS in the demo)
 
 
 ## Every res:// file only the full game needs, for the demo export's exclude list (docs/demo-plan.md):

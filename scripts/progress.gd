@@ -699,6 +699,7 @@ func window_mode_changed(mode: int) -> bool:
 func _exit_tree() -> void:
 	if _owns_throwaway_save():
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(ghosts_path()))  # (BM-03: the ghosts' side file)
 
 
 func _owns_throwaway_save() -> bool:

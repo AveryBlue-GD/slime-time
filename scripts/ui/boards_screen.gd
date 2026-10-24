@@ -46,8 +46,9 @@ func _ready() -> void:
 	var today: int = p.utc_day()
 	var week := Boards.week_of(today)
 	var top := UIKit.title_bottom() + HEADER_GAP
-	var x_left := float(UIKit.EDGE + UIKit.GAP_L)
-	var x_right := UIKit.SCREEN.x - UIKit.EDGE - UIKit.GAP_L - COL_W
+	var safe := UIKit.safe_rect()
+	var x_left := safe.position.x + UIKit.EDGE + UIKit.GAP_L
+	var x_right := safe.end.x - UIKit.EDGE - UIKit.GAP_L - COL_W
 	# i18n: boards column header, max 140px, 1 line; {n} = today's daily number
 	_column(x_left, top, Loc.t("boards.daily", "DAILY #{n}", {n = p.daily_number(today)}), p.board_for("daily", today), today, false)
 	# i18n: boards column header, max 140px, 1 line; {n} = this week's weekly number
@@ -63,7 +64,7 @@ func _ready() -> void:
 	ghost_button = _bottom_button(ghost_text(p.ghost_on), _toggle_ghost, 62)
 	# the bottom row, right to left: PLAY WEEKLY, PLAY DAILY, GHOST (BACK is on the left)
 	var y := float(UIKit.bottom_row_y())
-	var x := UIKit.SCREEN.x - UIKit.EDGE
+	var x := safe.end.x - UIKit.EDGE
 	for b: Button in [weekly_button, daily_button, ghost_button]:
 		x -= b.size.x
 		b.position = Vector2(x, y)

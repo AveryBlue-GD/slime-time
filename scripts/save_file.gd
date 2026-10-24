@@ -188,7 +188,8 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 	p.daily_streak = clampi(get_int(file, "daily", "streak", 0), 0, 100000)
 	p.daily_best_streak = maxi(clampi(get_int(file, "daily", "best_streak", 0), 0, 100000), p.daily_streak)
 	p.daily_saver_day = maxi(get_int(file, "daily", "saver_day", 0), 0)
-	_read_boards(p, file)
+	if not from_code:  # (a code carries no boards: importing one keeps this device's)
+		_read_boards(p, file)
 	if p.daily_day > p.utc_day() + p.PAY_DAY_AHEAD:  # a future clock or a hand-made save: no daily on record
 		p.daily_day = 0
 		p.daily_best_ms = 0
