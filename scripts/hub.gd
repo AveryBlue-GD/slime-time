@@ -164,7 +164,7 @@ var badge_layer: Control
 var badges := {}  # id -> Label: the logical state (text "!" or the NEW IN line, visible = news); the "!" is drawn by badge_art
 var badge_art := {}  # id -> {node: TextureRect, on: seconds since the news showed, off: seconds since it went, phase: bob offset}
 var _hint_time := 0.0
-const BADGE_SIZE := Vector2i(7, 9)
+const BADGE_SIZE := Vector2i(7, 10)
 const BADGE_BOB_CYCLE := 1.6  # seconds: 3 steps at rest, 3 steps 1 px up (0,0,0,1,1,1)
 const BADGE_POP_STEP := 0.05  # pop-in: 3 integer steps (3, 1, 0 px low); then a quick fade out over BADGE_FADE
 const BADGE_FADE := 0.12
@@ -679,7 +679,7 @@ func _place_hints() -> void:
 	_hint_time = _time
 
 
-## One station's badge. The "!" is a 7x9 sprite put on the station's own snapped position (the pixel the station
+## One station's badge. The "!" is a 7x10 sprite put on the station's own snapped position (the pixel the station
 ## sprite sits on, so it can't jitter against it while the room turns); it bobs 1 px on a slow cycle with a hold
 ## at each end, pops in over 3 integer steps, fades out quickly, and hides while you stand at the station (its
 ## prompt says it). Reduce Motion: static. The NEW IN line over the sold DAILY sign is a plain label, no bob.

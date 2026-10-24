@@ -1097,8 +1097,8 @@ def daily_sign_back() -> list:
 
 
 def badge() -> list:
-    """The gold "!" news badge over a station (7x9): a plate with a dark mark and a small tail, no text, no drips."""
-    cv = Canvas(7, 9)
+    """The gold "!" news badge over a station (7x10): a plate with a dark mark and a 3x2 tapering tail, no text, no drips."""
+    cv = Canvas(7, 10)
     cv.rect(0, 0, 7, 8, OUTLINE)
     for (x, y) in ((0, 0), (6, 0), (0, 7), (6, 7)):   # rounded corners
         cv.put(x, y, CLEAR)
@@ -1109,7 +1109,11 @@ def badge() -> list:
     for y in (2, 3, 4):                                # the "!": a stem and a dot
         cv.put(3, y, mark)
     cv.put(3, 6, mark)
-    cv.put(3, 8, OUTLINE)                              # the tail
+    for x in (2, 4):                                   # the tail: 3 px wide, 2 tall, tapering to a point (gold, darker edge)
+        cv.put(x, 8, GOLD[1])
+    cv.put(3, 7, GOLD[1])                              # (opens the plate's foot into the tail)
+    cv.put(3, 8, GOLD[2])
+    cv.put(3, 9, GOLD[1])
     return cv.px
 
 
