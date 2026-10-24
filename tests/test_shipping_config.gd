@@ -10,6 +10,7 @@ extends "res://tests/suite_base.gd"
 
 var test_save := throwaway_save()
 const MAIN := preload("res://scenes/main.tscn")
+const Autopilot := preload("res://tests/autopilot.gd")
 
 var progress: Node
 
@@ -19,6 +20,11 @@ func _initialize() -> void:
 	Economy.pickups_on_win_force = -1
 	Economy.pay_by_length_force = -1
 	Economy.abandon_counts_force = -1
+	# (suite_base also switches the big moves off for the older suites; the shipped configuration has none forced)
+	Economy.orchestra_force = -1
+	Economy.lurkers_force = -1
+	Economy.lightlife_force = -1
+	Economy.boards_force = -1
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.save_path = test_save
@@ -36,6 +42,7 @@ func _initialize() -> void:
 	await _leap_win_stops()
 	_difficulty_numbers()
 	await _dry_up_row()
+	await _shipped_runs_play()
 	_result()
 	quit(0 if failures == 0 else 1)
 
@@ -280,3 +287,32 @@ func _stop(game: Node2D) -> void:
 	for i in int(game.CHOICE_DELAY * 60) + 10:
 		await physics_frame
 	game.free()
+
+
+## --- End to end under the shipped configuration (lurkers, boards, lighting and the orchestra at their real settings):
+## a hard random maze (with lurkers), the daily and the weekly each played to the end by the route pilot, no errors.
+func _shipped_runs_play() -> void:
+	progress.upgrades = {"slime": 3}
+	for kind in ["hard", "daily", "weekly"]:
+		progress.hard_mode = kind == "hard"
+		progress.tickets = 0
+		if kind == "daily":
+			progress.start_daily()
+		elif kind == "weekly":
+			progress.start_weekly()
+		else:
+			progress.mode = progress.MODE_RANDOM
+			progress.random_seed = 4242
+		var game := await _spawn_random(progress.random_seed)
+		_check(not progress.hard_mode or game.lurkers != null, "hard random: the shipped lurkers are in the maze")
+		_check(kind == "hard" or game.lurkers == null, "%s: no lurkers" % kind)
+		var pilot := Autopilot.new()
+		game.add_child(pilot)
+		for i in 5400:  # (90 s of game time at most)
+			if game.finished:
+				break
+			await physics_frame
+		_check(game.finished, "%s: the run reached its end (won %s)" % [kind, game.won])
+		pilot.queue_free()
+		await _stop(game)
+	progress.hard_mode = false
