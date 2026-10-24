@@ -1856,10 +1856,11 @@ func assist_offered(for_level: int) -> bool:
 
 
 ## RELAXED's extra slime fraction on `for_level` (0 with ONE_ASSIST off): 25% + 2% per dry-up there, at most 50%.
-func relaxed_bonus(for_level: int) -> float:
+## A random maze (`random`) has no dry-up count of its own: it starts at the base 25% (not the level number's story count).
+func relaxed_bonus(for_level: int, random := false) -> float:
 	if not Economy.one_assist():
 		return 0.0
-	return minf(RELAXED_MAX, RELAXED_BONUS + RELAXED_GROWTH * int(dry_ups.get(for_level, 0)))
+	return minf(RELAXED_MAX, RELAXED_BONUS + RELAXED_GROWTH * (0 if random else int(dry_ups.get(for_level, 0))))
 
 
 ## RELAXED applies on `for_level` now: the SETTINGS toggle, or this level's YES to the dry-up offer.

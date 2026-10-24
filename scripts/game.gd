@@ -519,7 +519,7 @@ func _ready() -> void:
 		hud.set_assist(true)
 	# RELAXED as the one assist: extra slime too, growing with the dry-ups on this level (not in training / Descent).
 	if Economy.one_assist() and progress and progress.relaxed_on(level) and not training and not descent:
-		slime_cost_per_tile /= 1.0 + progress.relaxed_bonus(level)
+		slime_cost_per_tile /= 1.0 + progress.relaxed_bonus(level, is_random())
 
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
