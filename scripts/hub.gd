@@ -676,7 +676,56 @@ func _place_hints() -> void:
 		label.position = Vector2(x, maxf(safe.position.y + 1.0, label_y))
 		if badges.has(station.id):
 			_place_badge(station, label, beside, safe)
+	_clear_badges(safe)
 	_hint_time = _time
+
+
+## A "!" badge never covers a visible station name or another badge (IMP2-06 fix): a badge that would moves to the
+## first clear spot, beside its own station's head (left, then right), then above each overlapping name, then above
+## the badges; whole pixels, inside the safe rect; the bob (already in its position) goes with it. Tested by test_hub_badges.
+func _clear_badges(safe: Rect2) -> void:
+	var taken: Array[Rect2] = []
+	for id: String in name_labels:
+		var label: Label = name_labels[id]
+		if label.visible and name_layer.visible:
+			taken.append(Rect2(label.position, label.size))
+	var placed: Array[Rect2] = []
+	for station: Dictionary in _all_props():
+		if not badge_art.has(station.id):
+			continue
+		var node: TextureRect = badge_art[station.id].node
+		if not node.visible:
+			continue
+		var base := node.position
+		var offsets: Array[Vector2] = [Vector2.ZERO]
+		var half_w := float(station.size.x) / 2.0
+		var head_dy := 0.0
+		offsets.append(Vector2(-half_w - 5.0, head_dy))  # (its x is the station's - 3)
+		offsets.append(Vector2(half_w + 4.0, head_dy))
+		for rect: Rect2 in taken:
+			offsets.append(Vector2(0.0, rect.position.y - BADGE_SIZE.y - 2.0 - base.y))
+		for rect: Rect2 in placed:
+			offsets.append(Vector2(0.0, rect.position.y - BADGE_SIZE.y - 3.0 - base.y))
+		var chosen := Vector2.ZERO
+		for d: Vector2 in offsets:
+			var r := _badge_test_rect(base + d)
+			if safe.grow(-1.0).encloses(r) and not _hits_any(r, taken) and not _hits_any(r, placed):
+				chosen = d
+				break
+		node.position = base + chosen
+		placed.append(_badge_test_rect(node.position))
+
+
+## A badge's footprint for the overlap test: its sprite plus the 1 px of bob and the 1 px tail margin above.
+func _badge_test_rect(pos: Vector2) -> Rect2:
+	return Rect2(pos.x, pos.y - 1.0, BADGE_SIZE.x, BADGE_SIZE.y + 2.0)
+
+
+func _hits_any(r: Rect2, others: Array[Rect2]) -> bool:
+	for o in others:
+		if r.intersects(o):
+			return true
+	return false
 
 
 ## One station's badge. The "!" is a 7x10 sprite put on the station's own snapped position (the pixel the station
