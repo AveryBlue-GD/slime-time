@@ -1427,11 +1427,18 @@ msgctxt "hub.prompt.locked"
 msgid "LOCKED"
 msgstr "KİLİTLİ"
 
-#. prompt next to the WEEKLY MAZE name, max 80px, 1 line; {n} = this week's weekly number (not played yet)
-#. budget: max 80px, lines 1
+#. prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {d} = days left in the week (2..7)
+#. budget: max 130px, lines 1
 #: scripts/hub.gd
-msgctxt "hub.prompt.weekly_new"
-msgid "#{n}  NEW"
+msgctxt "hub.prompt.weekly_ends_d"
+msgid "#{n}  ENDS IN {d}D"
+msgstr ""
+
+#. prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {h} = hours until it ends (1..24)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.weekly_ends_h"
+msgid "#{n}  ENDS IN {h}H"
 msgstr ""
 
 #. prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
@@ -2186,20 +2193,20 @@ msgctxt "boards.date"
 msgid "{m}-{d}"
 msgstr ""
 
-#. boards button, max 70px, 1 line; the ghost of your best run (a translucent slime racing you) is shown
-#. boards button, max 70px, 1 line; the ghost is hidden
+#. boards button, max 70px, 1 line; SHOW GHOST ON = the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden (your runs are still recorded)
 #. budget: max 70px, lines 1
 #: scripts/ui/boards_screen.gd
 msgctxt "boards.ghost_on"
-msgid "GHOST ON"
+msgid "SHOW GHOST"
 msgstr ""
 
-#. boards button, max 70px, 1 line; the ghost of your best run (a translucent slime racing you) is shown
-#. boards button, max 70px, 1 line; the ghost is hidden
+#. boards button, max 70px, 1 line; SHOW GHOST ON = the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden (your runs are still recorded)
 #. budget: max 70px, lines 1
 #: scripts/ui/boards_screen.gd
 msgctxt "boards.ghost_off"
-msgid "GHOST OFF"
+msgid "NO GHOST"
 msgstr ""
 
 #. page title, max 296px, 16 px font
