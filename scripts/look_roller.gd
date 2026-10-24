@@ -52,14 +52,16 @@ static func hat_colors(hat: String) -> Array[String]:
 	return colors
 
 
-## Puts `look` on the way the pickers do (each saves).
+## Puts `look` on the way the pickers do (one save at the end).
 static func apply(look: Dictionary) -> void:
+	_p().begin_save_batch()  # (one save for the whole look, not five)
 	_p().select_skin(look.skin, look.jelly, look.pastel)
 	_p().select_hat(look.hat)
 	if look.hat != Hats.NONE:
 		_p().wear_dye(look.hat, look.dye)
 	_p().equip_cosmetic(look.trail)
 	_p().equip_cosmetic(look.paper)
+	_p().end_save_batch()
 
 
 ## A new look for a run that starts now (RANDOM LOOK on). Not for a retry of the same attempt (`keep_look_once`,

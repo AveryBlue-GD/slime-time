@@ -1066,15 +1066,37 @@ func _read_store(file: ConfigFile) -> void:
 	SaveFile.read_store(self, file)
 
 
+## While > 0 save_progress() only notes that a save is due; end_save_batch() writes it once (LookRoller.apply).
+var _save_batch := 0
+var _save_batch_dirty := false
+## Saves that reached the writer (tests count them).
+var saves_written := 0
+
+
+func begin_save_batch() -> void:
+	_save_batch += 1
+
+
+func end_save_batch() -> void:
+	_save_batch = maxi(0, _save_batch - 1)
+	if _save_batch == 0 and _save_batch_dirty:
+		_save_batch_dirty = false
+		save_progress()
+
+
 ## Writes the save (if saving is on). Returns false if it couldn't be written: the old file is then
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
+	if _save_batch > 0:  # (inside begin_save_batch: one write at the end instead)
+		_save_batch_dirty = true
+		return true
 	check_achievements()
 	if demo_guard and saving_enabled and Demo.on():
 		notify_once("demo", Loc.t("notice.demo_unsaved", "DEMO: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 	if not saving_enabled or demo_guard or _preview_save != null:
 		return true  # (nothing is written during the demo's FULL GAME PREVIEW: end_demo_preview puts it all back)
+	saves_written += 1
 	var ok := write_atomic(save_path, _write().encode_to_text())
 	save_failed = not ok
 	if not ok:

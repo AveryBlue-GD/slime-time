@@ -90,6 +90,12 @@ func _initialize() -> void:
 		var l2: Dictionary = screen.current_look()
 		_check(progress.owns_cosmetic(l2.trail) and progress.is_hat_unlocked(l2.hat), "run roll uses owned things only")
 	_check(rolls == 40, "every run start rolls while ON (%d)" % rolls)
+	progress.saving_enabled = true
+	progress.save_path = test_save
+	var writes_before: int = progress.saves_written
+	LookRoller.roll_for_run()
+	_check(progress.saves_written == writes_before + 1, "a run-start roll writes the save once (%d)" % (progress.saves_written - writes_before))
+	progress.saving_enabled = false
 	var kept: String = screen._look_key(screen.current_look())
 	progress.keep_look_once = true
 	_check(not LookRoller.roll_for_run() and screen._look_key(screen.current_look()) == kept, "a retry keeps the look")
