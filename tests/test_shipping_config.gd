@@ -321,14 +321,26 @@ func _shipped_runs_play() -> void:
 		var game := await _spawn_random(progress.random_seed)
 		_check(not progress.hard_mode or game.lurkers != null, "hard random: the shipped lurkers are in the maze")
 		_check(kind == "hard" or game.lurkers == null, "%s: no lurkers" % kind)
-		var pilot := Autopilot.new()
-		game.add_child(pilot)
-		for i in 5400:  # (90 s of game time at most)
-			if game.finished:
+		var hits := 0
+		var tries := 3 if kind == "hard" else 1  # (BUG4-07: the hard lurker maze may dry up, but only after real lurker hits, and must be won within 3 attempts)
+		for attempt in tries:
+			if attempt > 0:
+				await _stop(game)
+				game = await _spawn_random(progress.random_seed)
+			var pilot := Autopilot.new()
+			game.add_child(pilot)
+			for i in 5400:  # (90 s of game time at most)
+				if game.finished:
+					break
+				await physics_frame
+			if game.lurkers != null:
+				hits += game.lurkers.hits
+			_check(game.finished, "%s: the run reached its end (won %s)" % [kind, game.won])
+			pilot.queue_free()
+			if game.won:
 				break
-			await physics_frame
-		_check(game.finished, "%s: the run reached its end (won %s)" % [kind, game.won])
-		_check(kind == "hard" or game.won, "%s: the pilot wins it (no lurkers to dry it up)" % kind)  # (the hard lurker maze may dry up: it only has to end)
-		pilot.queue_free()
+		_check(game.won, "%s: the pilot wins it%s" % [kind, " within %d attempts" % tries if tries > 1 else ""])
+		if kind == "hard":
+			_check(game.won or hits >= 2, "hard: a run that dried up was hit by the lurkers at least twice (%d)" % hits)
 		await _stop(game)
 	progress.hard_mode = false
