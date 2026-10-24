@@ -80,6 +80,15 @@ func _initialize() -> void:
 	_check(screen.status.text == "RANDOM LOOK: ON" and screen.look_note_active, "a press leaves RANDOM LOOK: ON on the status line (touch has no hover)")
 	await create_timer(screen.LOOK_NOTE_TIME + 0.3).timeout
 	_check(screen.status.text != "RANDOM LOOK: ON", "...and it clears after ~2 s")
+	# IMP3-04: two presses within 2 s: the first press's timer must not restore the line under the second note
+	screen.dice_button.pressed.emit()  # OFF
+	await create_timer(1.5).timeout
+	screen.dice_button.pressed.emit()  # ON again
+	var second_note: String = screen.status.text
+	await create_timer(0.7).timeout  # the first timer fires here
+	_check(screen.status.text == second_note and screen.look_note_active, "a second press keeps its note when the first timer fires (%s)" % screen.status.text)
+	await create_timer(1.6).timeout
+	_check(screen.status.text != second_note and not screen.look_note_active, "...and the latest note clears after its own 2 s")
 	var on_reload: Node = preload("res://scripts/progress.gd").new()
 	on_reload.save_path = test_save
 	on_reload.load_progress()
@@ -98,6 +107,17 @@ func _initialize() -> void:
 	var writes_before: int = progress.saves_written
 	LookRoller.roll_for_run()
 	_check(progress.saves_written == writes_before + 1, "a run-start roll writes the save once (%d)" % (progress.saves_written - writes_before))
+	# BUG3-07: a batch an error left open (begin, no end) is closed after the frame and the save lands
+	writes_before = progress.saves_written
+	progress.begin_save_batch()
+	progress.save_progress()
+	_check(progress.saves_written == writes_before, "inside a batch the save waits")
+	await process_frame
+	await process_frame
+	_check(progress.saves_written == writes_before + 1 and progress._save_batch == 0, "a batch never ended is closed and flushed next frame (%d)" % (progress.saves_written - writes_before))
+	writes_before = progress.saves_written
+	progress.save_progress()
+	_check(progress.saves_written == writes_before + 1, "...and later saves are not swallowed")
 	progress.saving_enabled = false
 	var kept: String = screen._look_key(screen.current_look())
 	progress.keep_look_once = true

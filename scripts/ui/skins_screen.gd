@@ -238,13 +238,18 @@ func toggle_random_look() -> void:
 ## status line goes back to the worn skin's name (only if nothing else has taken the line meanwhile).
 const LOOK_NOTE_TIME := 2.0
 var look_note_active := false
+var _look_note_token := 0  # (only the latest press's timer may restore the line)
 
 
 func _hold_look_note() -> void:
 	look_note_active = true
+	_look_note_token += 1
+	var mine := _look_note_token
 	var note := status.text
 	await get_tree().create_timer(LOOK_NOTE_TIME).timeout
-	if look_note_active and is_inside_tree() and status.text == note:
+	if mine != _look_note_token:
+		return
+	if is_inside_tree() and status.text == note:
 		status.text = Skins.display_name(Progress.selected_skin)
 	look_note_active = false
 
