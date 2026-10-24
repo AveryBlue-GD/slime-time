@@ -59,6 +59,15 @@ func _initialize() -> void:
 				if rects[i].intersects(rects[j]):
 					bad += 1
 					_check(false, "two badges overlap at turn %d (%s %s)" % [step, rects[i], rects[j]])
+	# No Label "!" is drawn but the prompt's own bang (the badges are sprites; the logical labels are invisible).
+	hub.near = hub.stations_by_id("wheel") if hub.has_method("stations_by_id") else {}
+	await _physics_frames(5)
+	var stray := 0
+	for n in hub.find_children("*", "Label", true, false):
+		var l := n as Label
+		if l.text == "!" and l.is_visible_in_tree() and l != hub.prompt_bang and l.self_modulate.a > 0.0 and l.get_theme_color("font_color").a > 0.0:
+			stray += 1
+	_check(stray == 0, "no stray visible ! label in the hub (%d)" % stray)
 	_check(checked > 100, "many badges were checked (%d)" % checked)
 	_check(bad == 0, "no badge covers a name or another badge")
 	current_scene = null

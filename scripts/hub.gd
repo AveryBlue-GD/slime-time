@@ -598,6 +598,7 @@ func _build_hints() -> void:
 			badge_layer.add_child(bang)
 			bang.reset_size()
 			badges[station.id] = bang
+			bang.remove_from_group(SkinText.GROUP)  # (never recoloured by the skin: the "!" is drawn by the sprite)
 			var art := TextureRect.new()
 			art.texture = load(ART + "badge.png")
 			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -641,11 +642,15 @@ func _refresh_badges() -> void:
 			# i18n: small label over the DAILY sign once today's daily is won, max 60px, 1 line; {h} = whole hours until the next one
 			bang.text = Loc.t("hub.daily.next", "NEW IN {h}H", {h = Progress.daily_hours_left()})
 			bang.add_theme_color_override("font_color", UIKit.TEXT_DIM)
+			bang.self_modulate = Color.WHITE
+			bang.material = UIKit.text_material()
 			bang.add_theme_stylebox_override("normal", _badge_style(Color(0.04, 0.03, 0.08, 0.78)))
 			bang.visible = true
 		else:
 			bang.text = "!"
 			bang.add_theme_color_override("font_color", Color(0, 0, 0, 0))  # (the "!" is the badge sprite; this label only holds the state)
+			bang.self_modulate = Color(1, 1, 1, 0)  # (and no drip shader / skin recolour may draw it)
+			bang.material = null
 			bang.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 			bang.visible = has_news(id)
 		bang.reset_size()
