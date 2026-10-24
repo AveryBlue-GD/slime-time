@@ -1382,6 +1382,13 @@ msgctxt "hub.prompt.rotate"
 msgid "ROTATE"
 msgstr "GIRAR"
 
+#. prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.boards"
+msgid "BOARDS"
+msgstr ""
+
 #. prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
 #. budget: max 110px, lines 1
 #: scripts/hub.gd

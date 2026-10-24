@@ -136,12 +136,13 @@ func _hub() -> void:
 	_check(hub.prompt_key.text.begins_with("STREAK 4  ENDS IN ") and (hub.prompt_key.text.ends_with("H") or hub.prompt_key.text.ends_with("M")), "the sign prompt reads the streak and its deadline (%s)" % hub.prompt_key.text)
 	Economy.boards_force = 1
 	_check(hub.weekly_unplayed(), "the weekly is unplayed")
-	hub._sign_t = hub.SIGN_ALT_TIME
-	hub._process(0.0)
-	_check(hub.sign_weekly and hub.prompt_name.text == "WEEKLY MAZE" and hub.prompt_key.text.ends_with("NEW"), "...after a few seconds the prompt offers WEEKLY MAZE (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
-	hub._sign_t = hub.SIGN_ALT_TIME
-	hub._process(0.0)
-	_check(not hub.sign_weekly and hub.prompt_name.text == "DAILY MAZE", "...and back to the daily")
+	_check(not hub.sign_weekly and not hub.sign_boards and hub.prompt_name.text == "DAILY MAZE", "...while the daily is open a press is the daily, never the weekly")
+	progress.daily_day = progress.utc_day()
+	hub._show_prompt()
+	_check(hub.sign_weekly and hub.prompt_name.text == "WEEKLY MAZE" and hub.prompt_key.text.ends_with("NEW"), "...once the daily is won the press is the weekly (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
+	progress.post_board("weekly", 50000, progress.utc_day())
+	hub._show_prompt()
+	_check(hub.sign_boards and hub.prompt_name.text == "BOARDS", "...and with both done it opens BOARDS (%s)" % hub.prompt_name.text)
 	Economy.boards_force = 0
 	progress.daily_day = 0
 	progress.daily_best_ms = 0
