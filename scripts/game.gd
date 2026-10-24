@@ -2641,7 +2641,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				random_text = _board_result(random_text, "daily", roundi(run_time * 1000.0))
 				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
 				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
-					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak}) + share_extra
+					{n = day.number, time = UIKit.format_time(run_time), streak = day.streak}) + share_extra
 				if day.saved:
 					# IMP3-07: a top toast (Transition's notice path), not a line of the result panel
 					# i18n: toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
