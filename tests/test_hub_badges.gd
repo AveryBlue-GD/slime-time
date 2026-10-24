@@ -27,7 +27,11 @@ func _initialize() -> void:
 			hub.badges[id].visible = true
 		hub.near = {}
 		hub._names_t = 0.0
-		await _physics_frames(8)  # (the pop-in is over, the bob has moved)
+		await _physics_frames(3)
+		for id: String in hub.badge_art:
+			_check(not hub.badge_art[id].node.visible, "no badge %s while the names show" % id)
+		hub._names_t = hub.NAMES_TIME
+		await _physics_frames(30)  # (the stagger and the pop-in are over, the bob has moved)
 		var rects: Array[Rect2] = []
 		var labels: Array[Rect2] = []
 		for id: String in hub.name_labels:

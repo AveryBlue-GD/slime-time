@@ -131,9 +131,14 @@ func _hub() -> void:
 	_check(hub.badges["daily"].text.begins_with("NEW IN ") and hub.badges["daily"].text.ends_with("H"), "...NEW IN <h>H after (%s)" % hub.badges["daily"].text)
 	# Names on arrival.
 	_check(hub.name_layer.visible and hub.name_labels.size() == 10, "every station name shows on arrival (%d)" % hub.name_labels.size())
+	var badge_seen := false
 	for i in int(hub.NAMES_TIME * 60) + 30:
 		await physics_frame
+		for id: String in hub.badge_art:
+			badge_seen = badge_seen or (hub.name_layer.visible and hub.badge_art[id].node.visible)
+	_check(not badge_seen, "no ! badge shows while the names show (they come after, see test_hub_badges)")
 	_check(not hub.name_layer.visible, "...and is gone after 3 s")
+
 	# Badges: the wheel's first spin is free; the signpost has news with a new achievement.
 	progress.spins = 0
 	progress.hats_owned.clear()

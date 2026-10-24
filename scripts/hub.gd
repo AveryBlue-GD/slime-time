@@ -168,6 +168,7 @@ const BADGE_SIZE := Vector2i(7, 10)
 const BADGE_BOB_CYCLE := 1.6  # seconds: 3 steps at rest, 3 steps 1 px up (0,0,0,1,1,1)
 const BADGE_POP_STEP := 0.05  # pop-in: 3 integer steps (3, 1, 0 px low); then a quick fade out over BADGE_FADE
 const BADGE_FADE := 0.12
+const BADGE_STAGGER := 0.08  # seconds between badges popping in once the names are gone
 var _names_t := 0.0
 ## A touch tap's glide to a station (Hub.glide_path): the waypoints left; empty = not gliding.
 var glide_path: Array[Vector2] = []
@@ -740,16 +741,23 @@ func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) 
 	var art: Dictionary = badge_art[station.id]
 	var node: TextureRect = art.node
 	var dt := _time - _hint_time
-	var want: bool = bang.text == "!" and bang.visible and near.get("id", "") != station.id
+	var names_up: bool = name_layer != null and name_layer.visible  # (no "!" while the names show, nor while they fade)
+	var want: bool = bang.text == "!" and bang.visible and near.get("id", "") != station.id and not names_up
+	if names_up:
+		art.off = BADGE_FADE
 	if want:
-		art.on = maxf(art.on, 0.0) + dt
+		if art.on < 0.0:  # (just came up: a slight stagger between the badges, none with Reduce Motion)
+			art.on = 0.0 if Progress.reduce_motion else -BADGE_STAGGER * float(badge_art.keys().find(station.id))
+		art.on += dt
 		art.off = 0.0
 	else:
 		art.on = -1.0
 		art.off += dt
 	var alpha := 1.0
 	var drop := 0.0
-	if want:
+	if want and art.on < 0.0:
+		alpha = 0.0
+	elif want:
 		var step := int(art.on / BADGE_POP_STEP)
 		if not Progress.reduce_motion and step < 3:
 			drop = [3.0, 1.0, 0.0][step]
