@@ -35,7 +35,15 @@ var _trail: Node2D
 var _trail_look := {}
 var _trail_color := Color.WHITE
 var _trail_rainbow := false
-var _trail_xs: Array[int] = []
+var _trail_xs: Array[int] = []  # cell x (stage px, even), oldest first
+var _trail_born: Array[float] = []  # _clock when each cell was laid
+var _clock := 0.0
+var _last_cell_x := -1
+## A laid cell fades out over TRAIL_FADE seconds in TRAIL_STEPS integer alpha steps. Reduce Motion: no fade,
+## a static tail of the last TRAIL_STATIC_CELLS cells.
+const TRAIL_FADE := 1.0
+const TRAIL_STEPS := 4
+const TRAIL_STATIC_CELLS := 6
 var _time := 0.0
 var _length := 0.0
 ## The trail band: rows of 2 px cells (stage y = row * 2), around the floor line under the slime's body.
@@ -70,16 +78,20 @@ class TrailLayer extends Node2D:
 		if showcase == null or showcase._trail_look.is_empty():
 			return
 		var look: Dictionary = showcase._trail_look
-		for x in showcase._trail_xs:
+		for i in showcase._trail_xs.size():
+			var x: int = showcase._trail_xs[i]
+			var a := showcase._cell_alpha(i)
+			if a <= 0.0:
+				continue
 			var cx := x / 2
 			var hue := fposmod(x / SkinShowcase.STAGE_SIZE.x, 1.0) * 0.83
 			for cy in range(SkinShowcase.TRAIL_ROWS.x, SkinShowcase.TRAIL_ROWS.y + 1):
 				var deep := posmod(hash(Vector2i(cx, cy)), 5) == 0
 				var c := Cosmetics.trail_cell_at(look, deep, float(x), Vector2i(cx, cy), hue)
-				draw_rect(Rect2(cx * 2, cy * 2, 2, 2), c)
+				draw_rect(Rect2(cx * 2, cy * 2, 2, 2), Color(c.r, c.g, c.b, c.a * a))
 			var center: Variant = Cosmetics.trail_center(look, float(x))
 			if center != null:
-				draw_rect(Rect2(cx * 2, 28, 2, 2), center)
+				draw_rect(Rect2(cx * 2, 28, 2, 2), Color(center.r, center.g, center.b, center.a * a))
 
 
 ## Dungeon floor tiles under the goo frame (so the jelly has ground to show through), mostly plain
@@ -131,8 +143,7 @@ func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock 
 		hat.setup(hat_id, slime, null, outfit.get("dye", ""))
 		hat.modulate = slime.modulate
 	_trail_look = Cosmetics.trail_look(outfit.get("trail", Cosmetics.DEFAULT_TRAIL), color, rainbow) if not locked else {}
-	_trail_xs.clear()
-	_trail.queue_redraw()
+	_clear_trail()
 	_time = 0.0
 	_pose()
 
@@ -168,6 +179,44 @@ func _pose() -> void:
 					_trail.queue_redraw()
 			return
 		t -= step[1]
+
+
+func _clear_trail() -> void:
+	_trail_xs.clear()
+	_trail_born.clear()
+	_last_cell_x = -1
+	_trail.queue_redraw()
+
+
+## Lays a cell under the slime at `cell_x`, filling every cell passed since the last frame (no gaps).
+func _lay_to(cell_x: int) -> void:
+	var from := cell_x if _last_cell_x < 0 else _last_cell_x
+	var dir := 1 if cell_x >= from else -1
+	for x in range(from, cell_x + dir, 2 * dir):
+		if _last_cell_x >= 0 and x == _last_cell_x:
+			continue
+		_trail_xs.append(x)
+		_trail_born.append(_clock)
+	_last_cell_x = cell_x
+	_trail.queue_redraw()
+
+
+## Alpha factor of the i-th trail cell: 1 = fresh, quantized to TRAIL_STEPS steps, 0 = gone.
+func _cell_alpha(i: int) -> float:
+	if Progress.reduce_motion:
+		return 1.0 if i >= _trail_xs.size() - TRAIL_STATIC_CELLS else 0.0
+	var left := 1.0 - (_clock - _trail_born[i]) / TRAIL_FADE
+	return ceilf(clampf(left, 0.0, 1.0) * TRAIL_STEPS) / TRAIL_STEPS
+
+
+## Drops the faded cells and redraws when a cell crossed an alpha step.
+func _age_trail() -> void:
+	if _trail_xs.is_empty():
+		return
+	while not _trail_xs.is_empty() and (_clock - _trail_born[0] >= TRAIL_FADE or (Progress.reduce_motion and _trail_xs.size() > TRAIL_STATIC_CELLS)):
+		_trail_xs.remove_at(0)
+		_trail_born.remove_at(0)
+	_trail.queue_redraw()
 
 
 ## True when the stage is drawn mirrored (an RTL language, under a mirror root). Not is_mirrored():
