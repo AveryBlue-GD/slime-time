@@ -353,6 +353,21 @@ static func coin_catch_on() -> bool:
 	return COIN_CATCH_TEST if coincatch_force < 0 else coincatch_force == 1
 
 
+## ---------------------------------------------------------------- LIGHT & LIFE (BM-09 test, 2026-10-24)
+## ONE switch for the lighting polish inside the fog shader (scripts/light_life.gd, fog.gdshader): the
+## lit pocket tinted by the theme and the skin with a dithered falloff, rim light on walls beside fresh
+## trail, glints on fresh trail that fade with age, a few more theme motes (cap 40), faint pixel god-rays
+## from the goal through the fog within 12 tiles, and a win "sunrise" (a light ring, a 2-frame hit-stop).
+## The deep fog stays near-black. false = the old look exactly (pixel-identical). `--nolightlife`
+## (debug builds) sets `lightlife_force` = 0; suites force it off (tests/suite_base.gd) unless they test it.
+const LIGHT_LIFE_TEST := true
+static var lightlife_force := -1
+
+
+static func light_life_on() -> bool:
+	return LIGHT_LIFE_TEST if lightlife_force < 0 else lightlife_force == 1
+
+
 ## ---------------------------------------------------------------- MAP COIN REVEAL (owner, 2026-10-18; on for everyone 2026-10-21)
 ## The MAP TABLE's trail maps never draw collected coins. An UNCOLLECTED coin is drawn on its map once
 ## a run has "revealed" it: its cell center came within the slime's light (its keep-lit light:

@@ -11,6 +11,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.lightlife_force = 0  # (BM-09 lighting is off here; test_light_life covers it)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.saving_enabled = false

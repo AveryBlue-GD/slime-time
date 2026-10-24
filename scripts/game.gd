@@ -650,6 +650,8 @@ func _pause_if_backgrounded() -> void:
 
 
 func _exit_tree() -> void:
+	if Economy.light_life_on():
+		Engine.time_scale = 1.0  # (a win's hit-stop never outlives the level)
 	_commit_survey()  # a run left mid-way (restart, quit to hub, upgrades) still adds what it saw
 	if progress:
 		progress.skin_override = ""
@@ -770,6 +772,8 @@ func _process(_delta: float) -> void:
 	fog_material.set_shader_parameter("view_center", view_center.round())
 	if motes:
 		motes.follow(view_center)
+	if Economy.light_life_on():
+		_light_life_frame(_delta)
 	var outer_material := outer_fog.material as ShaderMaterial
 	outer_material.set_shader_parameter("slime_px", slime_light.position)
 	outer_material.set_shader_parameter("view_center", view_center.round())
@@ -779,6 +783,30 @@ func _process(_delta: float) -> void:
 	_update_ambience(_delta)
 	_shake_camera(_delta)
 	_flush_textures()
+
+
+## Seconds since the win's sunrise began (-1 = not yet); frames of hit-stop still to go.
+var _sunrise_t := -1.0
+var _hitstop_frames := 0
+
+
+## LIGHT & LIFE per frame: the goal's rays and the sunrise ring into the fog, and the end of the win's hit-stop.
+func _light_life_frame(delta: float) -> void:
+	if _hitstop_frames > 0:
+		_hitstop_frames -= 1
+		if _hitstop_frames == 0:
+			Engine.time_scale = 1.0
+	if _sunrise_t >= 0.0:
+		_sunrise_t += delta
+	var goal_here: bool = is_instance_valid(goal) and not finished
+	LightLife.frame(fog_sprite.material as ShaderMaterial, goal.position if goal_here else Vector2.ZERO, goal_here, _sunrise_t)
+
+
+## LIGHT & LIFE on the win: the sunrise ring starts and the game holds still for 2 frames.
+func _light_life_win() -> void:
+	_sunrise_t = 0.0
+	_hitstop_frames = 2
+	Engine.time_scale = 0.0
 
 
 ## Loads the theme's ambience: its continuous bed (looping, fading in) if it has one, and its
@@ -1149,6 +1177,8 @@ func _build_overlays() -> void:
 		fog_material.set_shader_parameter("fog_deep", fog_colors[0])
 		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
 	fog_sprite.material = fog_material
+	if Economy.light_life_on():
+		LightLife.setup(fog_material, theme, skin_color, trail_sprite.texture)
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
 	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
@@ -2466,6 +2496,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	if progress:
 		progress.relaxed_level = 0  # (RELAXED for one level ends with its win; this run keeps relaxed_run for its payout)
 	slime.play_celebrate()
+	if Economy.light_life_on():
+		_light_life_win()
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
 	if training:

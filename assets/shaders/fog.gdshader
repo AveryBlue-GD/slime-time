@@ -47,6 +47,21 @@ uniform float vig_max = 0.35;
 uniform float light_inner = 32.0;
 uniform float light_outer = 115.0;
 
+// LIGHT & LIFE (Economy.LIGHT_LIFE_TEST, BM-09). All of it is skipped while ll_on is false, so the
+// old look is pixel-identical. Only plain uniforms and bayer4(): no run-time-indexed arrays.
+uniform bool ll_on = false;
+uniform sampler2D trail_tex : filter_nearest;
+// The lit pocket's tint (theme + skin colour), its strength and radius (px) from the slime.
+uniform vec3 ll_tint = vec3(1.0);
+uniform float ll_strength = 0.16;
+uniform float ll_radius = 44.0;
+uniform vec3 ll_glint = vec3(1.0);
+// The goal's world position (xy), how far its pixel god-rays reach (z, px) and how strong they are (w, 0 = off).
+uniform vec4 goal_fx = vec4(0.0);
+uniform vec3 goal_color = vec3(1.0, 0.82, 0.3);
+// Win sunrise: seconds since the win (negative = off), a ring of light sweeping out from the slime.
+uniform float sunrise = -1.0;
+
 
 // The 4x4 Bayer dither matrix (0, 8, 2, 10 / 12, 4, 14, 6 / 3, 11, 1, 9 / 15, 7, 13, 5) worked
 // out instead of looked up: arrays indexed at run time fail to compile on many Android GPUs.
@@ -85,6 +100,25 @@ float cell_alpha(vec4 texel) {
 		alpha += (1.0 - alpha) * wall_shade;
 	}
 	return max(alpha, 1.0 - clamp((now - first_revealed) / reveal_time, 0.0, 1.0));
+}
+
+// x = seconds since the cell was last lit (999 = never revealed), y = 1 for a wall cell.
+vec2 cell_age_wall(vec4 texel) {
+	vec4 bytes = floor(texel * 255.0 + 0.5);
+	float packed = bytes.b * 256.0 + bytes.a;
+	if (packed < 1.0) {
+		return vec2(999.0, 0.0);
+	}
+	return vec2(now - (bytes.r * 256.0 + bytes.g) / TICKS, mod(packed, 2.0));
+}
+
+// How fresh floor trail sits in the cell next door (0..1): the rim light a wall gets from it.
+float rim_from(vec4 fog_texel, vec4 trail_texel) {
+	vec2 aw = cell_age_wall(fog_texel);
+	if (aw.y > 0.5 || aw.x > 2.5) {
+		return 0.0;
+	}
+	return step(0.01, trail_texel.a) * (1.0 - aw.x / 2.5);
 }
 
 float hash(vec2 p) {
@@ -133,9 +167,44 @@ void fragment() {
 	float vig = smoothstep(0.55, 1.15, vd) * vig_max;
 	alpha = max(alpha, vig * step(alpha, 0.999));
 
+	// LIGHT & LIFE: light (rgb, a) added in the clear, plus rim light on walls and a sunrise ring in the fog.
+	vec4 ll = vec4(0.0);
+	float rim = 0.0;
+	float sun = 0.0;
+	if (ll_on && !solid) {
+		float thr = (bayer4(pixel) + 0.5) / 16.0;
+		vec2 aw = cell_age_wall(texture(TEXTURE, UV));
+		if (alpha <= 0.0) {
+			// Tinted pocket: a dithered falloff, small and faint.
+			float t = clamp(1.0 - d / ll_radius, 0.0, 1.0);
+			ll = vec4(ll_tint, floor(t * 4.0 + thr) / 4.0 * ll_strength);
+			// Glints on fresh trail: single pixels that flicker and fade with the trail's age.
+			if (aw.y < 0.5 && aw.x < 3.5 && texture(trail_tex, UV).a > 0.01) {
+				if (hash(pixel + floor(now * 5.0)) > 0.965) {
+					ll = vec4(ll_glint, 0.55 * (1.0 - aw.x / 3.5));
+				}
+			}
+		} else if (aw.y > 0.5) {
+			// Rim light: a wall cell beside fresh trail is lit by it.
+			vec2 t2 = TEXTURE_PIXEL_SIZE;
+			float r = max(max(rim_from(texture(TEXTURE, UV + vec2(t2.x, 0.0)), texture(trail_tex, UV + vec2(t2.x, 0.0))), rim_from(texture(TEXTURE, UV - vec2(t2.x, 0.0)), texture(trail_tex, UV - vec2(t2.x, 0.0)))),
+				max(rim_from(texture(TEXTURE, UV + vec2(0.0, t2.y)), texture(trail_tex, UV + vec2(0.0, t2.y))), rim_from(texture(TEXTURE, UV - vec2(0.0, t2.y)), texture(trail_tex, UV - vec2(0.0, t2.y)))));
+			rim = step(thr, r);
+		}
+		if (sunrise >= 0.0) {
+			float band = 1.0 - abs(d - sunrise * 220.0) / 9.0;
+			sun = step(thr, clamp(band, 0.0, 1.0) * clamp(1.5 - sunrise, 0.0, 1.0));
+		}
+	}
 	if (alpha <= 0.0) {
 		// Fully clear: blending leaves what is underneath whatever the color, so skip the mist.
 		COLOR = vec4(0.0);
+		if (ll.a > 0.0) {
+			COLOR = ll;
+		}
+		if (sun > 0.0) {
+			COLOR = vec4(goal_color, 0.5);
+		}
 	} else {
 		// Drifting mist: two layers of noise moving at different speeds, banded for a pixel look.
 		float n = value_noise(pixel / 30.0 + vec2(now * 0.12, now * 0.04)) * 0.65
@@ -145,6 +214,25 @@ void fragment() {
 		float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
 		vec3 rgb = mix(fog_deep.rgb * deep_gain, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
 		rgb = mix(rgb, vec3(0.0), vig * step(0.999, alpha));
+		if (ll_on && !solid) {
+			// Chalice god-rays: pixel streaks in the fog around the goal, brighter the nearer it is.
+			if (goal_fx.w > 0.0 && alpha > 0.4) {
+				vec2 gv = world_px - goal_fx.xy;
+				float gr = length(gv);
+				if (gr > 4.0 && gr < goal_fx.z) {
+					float ray = floor((atan(gv.y, gv.x) + now * 0.08) * 3.183);
+					float on = step(0.5, hash(vec2(ray, 7.0)));
+					float k = (1.0 - gr / goal_fx.z) * goal_fx.w * (0.65 + 0.35 * sin(now * 1.6 + ray));
+					rgb = mix(rgb, goal_color, 0.55 * on * step((bayer4(pixel) + 0.5) / 16.0, k * 0.6));
+				} else if (gr <= 4.0 || (gr < 12.0 && hash(pixel + floor(now * 4.0)) > 0.9)) {
+					rgb = mix(rgb, goal_color, 0.5 * goal_fx.w);
+				}
+			}
+			alpha *= 1.0 - 0.5 * rim;
+			rgb = mix(rgb, ll_tint, 0.35 * rim);
+			alpha *= 1.0 - 0.5 * sun;
+			rgb = mix(rgb, goal_color, 0.5 * sun);
+		}
 		COLOR = vec4(rgb, alpha);
 	}
 }
