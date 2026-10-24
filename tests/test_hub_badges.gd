@@ -68,6 +68,19 @@ func _initialize() -> void:
 		if l.text == "!" and l.is_visible_in_tree() and l != hub.prompt_bang and l.self_modulate.a > 0.0 and l.get_theme_color("font_color").a > 0.0:
 			stray += 1
 	_check(stray == 0, "no stray visible ! label in the hub (%d)" % stray)
+	# IMP3-03: the UPGRADES / WHEEL news waits for something newly affordable since the station was last used.
+	progress.hub_seen.clear()
+	progress.tickets = 500
+	_check(progress.hub_news("wheel", true), "never opened: an affordable wheel has news")
+	progress.hub_mark_seen("wheel")
+	_check(not progress.hub_news("wheel", true), "opened, nothing new: no news")
+	progress.tickets += 5
+	_check(progress.hub_news("wheel", true) and not progress.hub_news("wheel", false), "more money and affordable: news again; not affordable: none")
+	progress.hub_mark_seen("wheel")
+	progress.tickets -= 50
+	_check(not progress.hub_news("wheel", true) and progress.hub_seen["wheel"] == progress.tickets, "spent: the marker follows down")
+	progress.tickets += 1
+	_check(progress.hub_news("wheel", true), "gaining after the spend is news")
 	_check(checked > 100, "many badges were checked (%d)" % checked)
 	_check(bad == 0, "no badge covers a name or another badge")
 	current_scene = null

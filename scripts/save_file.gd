@@ -189,6 +189,11 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 	p.daily_streak = clampi(get_int(file, "daily", "streak", 0), 0, 100000)
 	p.daily_best_streak = maxi(clampi(get_int(file, "daily", "best_streak", 0), 0, 100000), p.daily_streak)
 	p.daily_saver_day = maxi(get_int(file, "daily", "saver_day", 0), 0)
+	p.hub_seen = {}
+	for station: String in ["upgrades", "wheel"]:
+		var seen := clampi(get_int(file, "hub", "seen_" + station, -1), -1, 100000000)
+		if seen >= 0:
+			p.hub_seen[station] = seen
 	if not from_code:  # (a code carries no boards: importing one keeps this device's)
 		_read_boards(p, file)
 	if p.daily_day > p.utc_day() + p.PAY_DAY_AHEAD:  # a future clock or a hand-made save: no daily on record
@@ -465,6 +470,9 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
 		file.set_value("achievements", "rewarded", p.ach_rewarded.duplicate())
 		file.set_value("achievements", "ms_mask", p.medal_ms_mask)
+	if not for_code and not Demo.on():
+		for station: String in p.hub_seen:
+			file.set_value("hub", "seen_" + station, p.hub_seen[station])
 	if Economy.BOARDS_TEST and not for_code and not Demo.on() and (not p.board_daily.is_empty() or not p.board_weekly.is_empty() or p.board_best_daily_ms > 0 or not p.ghost_on):
 		file.set_value("boards", "daily", p.board_daily)
 		file.set_value("boards", "weekly", p.board_weekly)

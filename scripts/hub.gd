@@ -625,9 +625,9 @@ func has_news(id: String) -> bool:
 		return false
 	match id:
 		"upgrades":
-			return Progress.upgrade_buyable() or Progress.store_affordable("upgrades")
+			return Progress.hub_news("upgrades", Progress.upgrade_buyable() or Progress.store_affordable("upgrades"))
 		"wheel":
-			return not Progress.dev_tools and Demo.hat_wheel_open() and Progress.can_spin_hats()
+			return not Progress.dev_tools and Demo.hat_wheel_open() and Progress.hub_news("wheel", Progress.can_spin_hats())
 		"settings":
 			return Progress.has_new_achievement()
 		"daily":
@@ -2129,7 +2129,7 @@ func _show_prompt(note := "") -> void:
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
 	# "!" when something in that station's store is affordable (the cheapest unowned item).
-	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id)
+	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id) and Progress.hub_news(near.id, true)
 	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
 	# (the goo's top room is the marks this line has: a line without any sits as in English)
@@ -2166,6 +2166,8 @@ func _station(id: String) -> Dictionary:
 func _use(station: Dictionary) -> void:
 	if tour != null:
 		tour.station_used(station.id)
+	if station.id in ["upgrades", "wheel"] and not Progress.dev_tools:
+		Progress.hub_mark_seen(station.id)  # (IMP3-03: its "!" waits for something newly affordable)
 	match station.id:
 		"story":
 			_leave(station, "res://scenes/level_select.tscn")

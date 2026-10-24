@@ -254,6 +254,10 @@ var board_daily := {}
 var board_weekly := {}
 var board_best_daily_ms := 0
 var ghost_on := true
+## IMP3-03 [hub] seen: per hub station ("upgrades" / "wheel") the money in hand (coins + tickets / tickets) when it was last
+## opened (-1 = never). Its "!" shows only when the store is affordable AND you hold more than then (something became
+## newly affordable); opening the station clears it.
+var hub_seen := {}
 var random_weekly := false
 var _ghosts: Dictionary = {}
 var _ghosts_loaded := false
@@ -2986,6 +2990,29 @@ func _wear(id: String) -> void:
 
 ## The cheapest thing in the store not owned yet (hat spin, hat dye, workshop level, cosmetic)
 ## is affordable: the hub prompts show a "!" (spec C.3).
+func hub_wealth(id: String) -> int:
+	return tickets + (coins() if id == "upgrades" else 0)
+
+
+## Marks station `id` as opened now (its "!" waits for more money). Saves.
+func hub_mark_seen(id: String) -> void:
+	hub_seen[id] = hub_wealth(id)
+	save_progress()
+
+
+## True when station `id` ("upgrades" / "wheel") has something newly affordable: affordable now and more money than at the last
+## visit. Spending in the station lowers the marker with it (no "!" for what is left over).
+func hub_news(id: String, affordable: bool) -> bool:
+	if not affordable:
+		return false
+	var wealth := hub_wealth(id)
+	var seen: int = hub_seen.get(id, -1)
+	if seen > wealth:
+		hub_seen[id] = wealth  # (spent since: the marker follows down)
+		return false
+	return wealth > seen
+
+
 func store_affordable(where: String) -> bool:
 	if dev_tools:
 		return false
@@ -3201,6 +3228,7 @@ func reset_progress() -> void:
 	daily_best_streak = 0
 	board_daily.clear()
 	board_weekly.clear()
+	hub_seen.clear()
 	board_best_daily_ms = 0
 	_ghosts = {}
 	_ghosts_loaded = true
