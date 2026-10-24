@@ -247,6 +247,8 @@ var daily_streak := 0
 var daily_best_streak := 0
 ## The week (Boards.week_of) whose weekly was won, even a RELAXED / assisted win that posts no board time (saved [boards]).
 var weekly_played_week := 0
+## The UTC day a daily was last started (won or lost): the hub sign then offers an unplayed weekly (saved [boards] daily_attempted_day).
+var daily_attempted_day := 0
 ## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
 var daily_saver_day := 0
 ## BM-03 BOARDS (Economy.BOARDS_TEST): your top times per daily's UTC day / weekly's week number (Boards entries), the best daily ever
@@ -1947,6 +1949,9 @@ func start_daily() -> void:
 	random_daily = true
 	random_weekly = false
 	daily_run_day = utc_day()
+	if daily_attempted_day != daily_run_day:
+		daily_attempted_day = daily_run_day
+		save_progress()
 	random_seed = daily_seed(daily_run_day)
 	random_level = 0
 	random_seed_fresh = true
@@ -1962,6 +1967,16 @@ func start_daily() -> void:
 ## True when a daily win is already recorded for today.
 func daily_won_today() -> bool:
 	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
+
+
+## True when today's daily was started (won or lost).
+func daily_attempted_today() -> bool:
+	return daily_attempted_day != 0 and daily_attempted_day == utc_day()
+
+
+## Whole days (1..7) left in this UTC week, today included (Monday 7 ... Sunday 1).
+func weekly_days_left() -> int:
+	return 7 - Boards.weekday(utc_day())
 
 
 ## Whole minutes (1..1440) until the next UTC day's daily (the streak line's last hour).
@@ -3295,6 +3310,7 @@ func reset_progress() -> void:
 	hub_seen.clear()
 	board_best_daily_ms = 0
 	weekly_played_week = 0
+	daily_attempted_day = 0
 	_ghosts = {}
 	_ghosts_loaded = true
 	if saving_enabled and FileAccess.file_exists(ghosts_path()):

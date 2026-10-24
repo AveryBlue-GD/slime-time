@@ -127,6 +127,7 @@ func _hub() -> void:
 	_check(gap > 18.0 and gap < 40.0, "...next to the portal (%.0f px)" % gap)
 	_check(hub.badges.has("daily") and hub.badges["daily"].visible and hub.badges["daily"].text == "!", "a gold ! on the sign until today's daily is won")
 	# IMP3-03: a live streak shows its deadline; the weekly alternates in while unplayed; the press starts what the prompt names.
+	progress.day_override = 19998  # (a Wednesday, UTC: weekday 2)
 	progress.daily_day = progress.utc_day() - 1
 	progress.daily_best_ms = 40000
 	progress.daily_streak = 4
@@ -137,9 +138,29 @@ func _hub() -> void:
 	Economy.boards_force = 1
 	_check(hub.weekly_unplayed(), "the weekly is unplayed")
 	_check(not hub.sign_weekly and not hub.sign_boards and hub.prompt_name.text == "DAILY MAZE", "...while the daily is open a press is the daily, never the weekly")
+	# IMP4-02: a daily tried today (lost) also hands the sign to the unplayed weekly; so does a weekend
+	progress.daily_attempted_day = progress.utc_day()
+	hub._show_prompt()
+	_check(hub.sign_weekly and not hub.sign_boards and hub.prompt_name.text == "WEEKLY MAZE", "IMP4-02: a lost daily offers the weekly (%s)" % hub.prompt_name.text)
+	_check(hub.prompt_key.text.ends_with("ENDS IN 5D") and hub.prompt_key.text.begins_with("#"), "...the key names what ends (%s)" % hub.prompt_key.text)
+	progress.daily_attempted_day = 0
+	progress.day_override = 20001  # a Saturday
+	hub._show_prompt()
+	_check(hub.sign_weekly and hub.prompt_key.text.ends_with("ENDS IN 2D"), "IMP4-02: on a Saturday the weekly comes first (%s)" % hub.prompt_key.text)
+	progress.day_override = 20002  # a Sunday: the last day
+	hub._show_prompt()
+	_check(hub.sign_weekly and hub.prompt_key.text.ends_with("H"), "IMP4-02: on Sunday the weekly ends in hours (%s)" % hub.prompt_key.text)
+	progress.day_override = 19998
+	progress.start_daily()
+	_check(progress.daily_attempted_today(), "IMP4-02: starting the daily records the attempt")
+	var afile := SaveFile.write(progress)
+	progress.daily_attempted_day = 0
+	SaveFile.read(progress, afile)
+	_check(progress.daily_attempted_today(), "...and it survives a save round trip")
+	progress.daily_attempted_day = 0
 	progress.daily_day = progress.utc_day()
 	hub._show_prompt()
-	_check(hub.sign_weekly and hub.prompt_name.text == "WEEKLY MAZE" and hub.prompt_key.text.ends_with("NEW"), "...once the daily is won the press is the weekly (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
+	_check(hub.sign_weekly and hub.prompt_name.text == "WEEKLY MAZE", "...once the daily is won the press is the weekly (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
 	progress.post_board("weekly", 50000, progress.utc_day())
 	hub._show_prompt()
 	_check(hub.sign_boards and hub.prompt_name.text == "BOARDS", "...and with both done it opens BOARDS (%s)" % hub.prompt_name.text)
@@ -154,6 +175,7 @@ func _hub() -> void:
 	SaveFile.read(progress, wfile)
 	_check(progress.weekly_played_week == wk and wk > 0, "...and it survives a save round trip (%d)" % progress.weekly_played_week)
 	progress.weekly_played_week = 0
+	progress.day_override = -1
 	Economy.boards_force = 0
 	progress.daily_day = 0
 	progress.daily_best_ms = 0

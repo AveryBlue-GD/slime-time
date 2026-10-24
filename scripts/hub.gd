@@ -2124,9 +2124,11 @@ func _show_prompt(note := "") -> void:
 	sign_weekly = false
 	sign_boards = false
 	_sign_day = Progress.utc_day()
-	if near.id == "daily" and Progress.daily_won_today() and Economy.boards_on() and not Demo.on() and tour == null:
-		sign_weekly = weekly_unplayed()
-		sign_boards = not sign_weekly
+	if near.id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
+		# IMP4-02: an unplayed weekly comes first once today's daily was tried (won or lost) or on Saturday / Sunday
+		var daily_done: bool = Progress.daily_won_today()
+		sign_weekly = weekly_unplayed() and (daily_done or Progress.daily_attempted_today() or Boards.weekday(Progress.utc_day()) >= 5)
+		sign_boards = daily_done and not sign_weekly
 	if near.id == "daily" and sign_boards and line == "" and note == "":
 		prompt_name.text = Loc.t("hub.station.boards", "BOARDS")  # i18n: prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
 	elif near.id == "daily" and sign_weekly and line == "" and note == "":
@@ -2142,8 +2144,13 @@ func _show_prompt(note := "") -> void:
 	elif near.id == "daily" and sign_boards:
 		prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
 	elif near.id == "daily" and sign_weekly:
-		# i18n: prompt next to the WEEKLY MAZE name, max 80px, 1 line; {n} = this week's weekly number (not played yet)
-		prompt_key.text = Loc.t("hub.prompt.weekly_new", "#{n}  NEW", {n = Boards.weekly_number(Boards.week_of(Progress.utc_day()))})
+		var wk_n: int = Boards.weekly_number(Boards.week_of(Progress.utc_day()))
+		if Progress.weekly_days_left() > 1:
+			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {d} = days left in the week (2..7)
+			prompt_key.text = Loc.t("hub.prompt.weekly_ends_d", "#{n}  ENDS IN {d}D", {n = wk_n, d = Progress.weekly_days_left()})
+		else:
+			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {h} = hours until it ends (1..24)
+			prompt_key.text = Loc.t("hub.prompt.weekly_ends_h", "#{n}  ENDS IN {h}H", {n = wk_n, h = Progress.daily_hours_left()})
 	elif near.id == "daily":
 		var streak: int = Progress.daily_streak_now()
 		if Progress.daily_won_today():
