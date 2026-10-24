@@ -35,7 +35,7 @@ def body(frame: int, kind: int) -> list[list[str]]:
                 edge = any(not (0 <= x + dx < SIZE and 0 <= y + dy < SIZE and inside(x + dx, y + dy))
                            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
                 if edge:
-                    g[y][x] = "W"
+                    g[y][x] = "k"  # IMP3-07: a dark 1 px outline, so the pale body reads inside the lit pocket
                 elif x + y < 10:
                     g[y][x] = "x"
     ey = eye_y(frame)

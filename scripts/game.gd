@@ -842,8 +842,7 @@ func _light_life_frame(delta: float) -> void:
 			_hitstop_set(false)
 	if _sunrise_t >= 0.0:
 		_sunrise_t += delta
-	var goal_here: bool = is_instance_valid(goal) and not finished
-	LightLife.frame(fog_sprite.material as ShaderMaterial, goal.position if goal_here else Vector2.ZERO, goal_here, _sunrise_t, motion_scale() > 0.0)
+	LightLife.frame(fog_sprite.material as ShaderMaterial, _sunrise_t, motion_scale() > 0.0)
 
 
 ## LIGHT & LIFE on the win: the sunrise ring starts and the game holds still for 2 frames.
@@ -2604,10 +2603,11 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		else:  # (Economy.RANDOM_CHALICE: the story's chalice, paying the same tickets)
 			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
 			_sfx("chalice", CHALICE_VOLUME_DB)
-		var random_lines: Array = [
-			title,
-			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
-		]
+		var random_lines: Array = [title]
+		# IMP3-07: the daily / weekly line carries the time (DAILY #n  M:SS.cc  STREAK s), so no TIME line over it
+		var time_in_line: bool = progress != null and _is_running_scene() and not preview and ((progress.random_daily and not no_record) 			or (is_weekly() and not (assisted or dev_toggled or relaxed_run)))
+		if not time_in_line:
+			random_lines.append(Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}))  # i18n: max 296px; {time} = M:SS.cc
 		if not (progress and progress.random_daily):  # (the daily's seed is the date: a SEED line says nothing, IMP2-02)
 			random_lines.append(Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}))  # i18n: max 296px; {code} = a maze code
 		var random_text := Loc.lines(random_lines)
@@ -2636,8 +2636,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
 					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
 				if day.saved:
-					# i18n: result line, max 296px, 1 line (the week's one free streak saver covered a missed day)
-					random_text = Loc.lines([random_text, Loc.t("result.daily_saved", "STREAK SAVED")])
+					# IMP3-07: a top toast (Transition's notice path), not a line of the result panel
+					# i18n: toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
+					progress.notify_once("daily_saved_%d" % progress.daily_run_day, Loc.t("result.daily_saved", "STREAK SAVED"))
 				if day.bonus > 0:
 					# i18n: result line, max 296px, 1 line; {n} = tickets, {days} = the streak
 					random_text = Loc.lines([random_text, Loc.t("result.daily_bonus", "{days} DAY STREAK: +{n} TICKETS", {days = day.streak, n = day.bonus})])
@@ -2646,7 +2647,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
 			var wins_left := Achievements.wins_to_next_unlock(progress.randoms_won)
-			if wins_left > 0 and not relaxed_run and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
+			if wins_left > 0 and not relaxed_run and not progress.random_daily and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
 				# i18n: result line, max 296px, 1 line; {n} = randomizer wins until the next pastel skin or win goal
 				random_text = Loc.lines([random_text, Loc.n("result.next_unlock", "NEXT UNLOCK IN {n} WIN", "NEXT UNLOCK IN {n} WINS", wins_left, {n = wins_left})])
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)

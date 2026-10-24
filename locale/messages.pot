@@ -757,7 +757,7 @@ msgctxt "result.daily_share"
 msgid "Dry Trying DAILY #{n} {time} streak {streak}"
 msgstr ""
 
-#. result line, max 296px, 1 line (the week's one free streak saver covered a missed day)
+#. toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.daily_saved"

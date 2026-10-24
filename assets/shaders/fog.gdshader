@@ -57,7 +57,6 @@ uniform float ll_strength = 0.16;
 uniform float ll_radius = 44.0;
 uniform vec3 ll_glint = vec3(1.0);
 // The goal's world position (xy), how far its pixel god-rays reach (z, px) and how strong they are (w, 0 = off).
-uniform vec4 goal_fx = vec4(0.0);
 uniform vec3 goal_color = vec3(1.0, 0.82, 0.3);
 // Win sunrise: seconds since the win (negative = off), a ring of light sweeping out from the slime.
 uniform float sunrise = -1.0;
@@ -222,21 +221,8 @@ void fragment() {
 		vec3 rgb = mix(fog_deep.rgb * deep_gain, fog_mist.rgb * mist_gain, clamp(band, 0.0, 1.0));
 		rgb = mix(rgb, vec3(0.0), vig * step(0.999, alpha));
 		if (ll_on && !solid) {
-			// Chalice god-rays: pixel streaks in the fog around the goal, brighter the nearer it is.
-			if (goal_fx.w > 0.0 && alpha > 0.4) {
-				vec2 gv = world_px - goal_fx.xy;
-				float gr = length(gv);
-				if (gr > 4.0 && gr < goal_fx.z) {
-					float ray = floor((atan(gv.y, gv.x) + now * 0.08) * 3.183);
-					float on = step(0.5, hash(vec2(ray, 7.0)));
-					float k = (1.0 - gr / goal_fx.z) * goal_fx.w * (0.65 + 0.35 * sin(now * 1.6 + ray));
-					rgb = mix(rgb, goal_color, 0.55 * on * step((bayer4(pixel) + 0.5) / 16.0, k * 0.6));
-				} else if (gr <= 4.0 || (gr < 12.0 && hash(pixel + floor(now * 4.0)) > 0.9)) {
-					rgb = mix(rgb, goal_color, 0.5 * goal_fx.w);
-				}
-			}
-			alpha *= 1.0 - 0.5 * rim;
-			rgb = mix(rgb, ll_tint, 0.35 * rim);
+			alpha *= 1.0 - 0.7 * rim;  // (IMP3-07: strong enough to read at 1x)
+			rgb = mix(rgb, ll_tint, 0.6 * rim);
 			alpha *= 1.0 - 0.5 * sun;
 			rgb = mix(rgb, goal_color, 0.5 * sun);
 		}
