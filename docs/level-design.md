@@ -589,4 +589,6 @@ frames used to add nothing to `run_time` (about 0.16 s off per near miss). Since
 a paused tree adds nothing), when the slow-mo ends and when the goal is reached inside it. Hard medals, bests and
 ghost clocks are therefore the time the player lived through; a pinned ghost time only changes when a run beats it.
 The hard result shows the lurker contacts: "LEVEL n CLEARED  LURKER HITS n" (folded into the level line, so the
-result stays at 5 lines) and a "LURKER HITS n" line on a hard random maze.
+result stays at 5 lines; the last level's title is rebuilt, so it gets its own "LURKER HITS n" line) and a "LURKER HITS n"
+line on a hard random maze. Known quirk: a hit-stop (2 frames) that lands inside a slow-mo window is added back by
+`settle_clock` (it is wall time inside the window), while a hit-stop outside a window is not counted (about 0.03 s).

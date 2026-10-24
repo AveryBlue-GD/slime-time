@@ -319,6 +319,15 @@ func _initialize() -> void:
 ") <= 4, "IMP4-05: the hard result names the lurker hits, at most 5 lines (%s)" % game.hud.message.text.replace("
 ", " | "))
 	await _drop(game)
+	progress.start_story(Levels.COUNT)
+	game = await _spawn_story(Levels.COUNT)
+	game.lurkers.hits = 3
+	game.run_time = 40.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check("LURKER HITS 3" in game.hud.message.text, "IMP4-05: the last hard level keeps the lurker hits line (%s)" % game.hud.message.text.replace("
+", " | "))
+	await _drop(game)
 	progress.relaxed = false
 	progress.hard_mode = false
 	progress.start_story(1)

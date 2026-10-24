@@ -2728,6 +2728,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		# The last level: one title line instead of CHALICE CONSUMED / LEVEL n CLEARED (lines 0-1).
 		# i18n: result title, max 296px, 1 line; {count} = number of story levels
 		lines = [Loc.n("result.escaped_all", "YOU ESCAPED ALL {count} MAZE!", "YOU ESCAPED ALL {count} MAZES!", Levels.COUNT), time_line]
+		if hard_mode and lurkers != null:  # (IMP4-05: the folded level line is gone with the rebuild, so the hits get their own line)
+			# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
+			lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
 	if first_hard_clear:
 		var jelly := _skins_unlocked_jelly_by(level)
 		if not jelly.is_empty():

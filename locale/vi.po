@@ -743,6 +743,7 @@ msgid "SEED {code}"
 msgstr "SEED {code}"
 
 #. result line, max 296px, 1 line; {n} = how many times lurkers touched the slime in this hard maze
+#. result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.lurker_hits"
