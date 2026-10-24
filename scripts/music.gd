@@ -20,7 +20,7 @@ const ORCH_TRACKS: Array[String] = ["res://assets/music/orch_base.ogg", "res://a
 const ORCH_CHALICE_STING := "res://assets/music/orch_chalice_sting.ogg"
 const ORCH_WIN_STING := "res://assets/music/orch_win_sting.ogg"
 const ORCH_SMOOTH := 0.5
-const ORCH_STING_DB := -2.0
+const ORCH_STING_DB := -6.5  # (about 4 dB over the bed)
 ## Ducking under splat, coin and win sounds: down DUCK_DB quickly, held DUCK_HOLD s, then back at DUCK_RECOVER dB/s.
 const DUCK_DB := -5.0
 const DUCK_HOLD := 0.3
@@ -222,7 +222,9 @@ func _start_orchestra() -> void:
 ## Gameplay's view of the run, every frame: the slime is moving, the run is tense (low meter, or the chalice
 ## just seen). PULSE follows moving, TENSION follows tense; the levels glide there over ORCH_SMOOTH seconds.
 func orchestra_state(moving: bool, tense: bool) -> void:
-	orch_target = [1.0, 1.0 if moving else 0.0, 1.0 if tense else 0.0]
+	orch_target[0] = 1.0  # (in place: no new Array every tick)
+	orch_target[1] = 1.0 if moving else 0.0
+	orch_target[2] = 1.0 if tense else 0.0
 
 
 ## The level's theme: the layers' playback pitch (an unknown theme plays at 1).
@@ -240,7 +242,7 @@ func duck() -> void:
 
 ## The chalice-spotted sting (kind "chalice") or the win sting ("win"), over the music, on the same bus.
 func play_orchestra_sting(kind: String) -> void:
-	if not Economy.orchestra_on() or not Economy.LEVEL_MUSIC or not _level_music_on():
+	if not orchestra_usable() or not Economy.LEVEL_MUSIC or not _level_music_on():
 		return
 	var progress := get_node_or_null("/root/Progress")
 	if progress and not progress.sound_on:
@@ -269,6 +271,8 @@ func _start(path: String, loop: bool, db: float, fade: float) -> void:
 			layer.stop()
 		orch_active = false
 	current = path
+	duck_db = 0.0
+	_duck_hold = 0.0
 	_player.stream = stream
 	_base_db = db
 	_level = 0.0

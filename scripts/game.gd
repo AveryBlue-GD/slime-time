@@ -772,11 +772,14 @@ const ORCH_SEE_DIST := 192.0
 const ORCH_TENSE_TIME := 8.0
 const ORCH_MOVING_SPEED := 6.0
 var _orch_seen := false
+var _music_node: Node  # (cached for _orchestra_frame)
 var _orch_tense_left := 0.0
 
 
 func _orchestra_frame(delta: float) -> void:
-	var music := get_node_or_null("/root/Music")
+	if _music_node == null or not is_instance_valid(_music_node):
+		_music_node = get_node_or_null("/root/Music")
+	var music := _music_node
 	if music == null or finished:
 		return
 	# Only once the chalice is actually revealed, so the sting and sparks never hint at it through the fog.
