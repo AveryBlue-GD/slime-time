@@ -1096,6 +1096,23 @@ def daily_sign_back() -> list:
     return cv.px
 
 
+def badge() -> list:
+    """The gold "!" news badge over a station (7x9): a plate with a dark mark and a small tail, no text, no drips."""
+    cv = Canvas(7, 9)
+    cv.rect(0, 0, 7, 8, OUTLINE)
+    for (x, y) in ((0, 0), (6, 0), (0, 7), (6, 7)):   # rounded corners
+        cv.put(x, y, CLEAR)
+    cv.rect(1, 1, 5, 6, GOLD[2])
+    cv.hline(1, 5, 1, GOLD[3])                         # the top highlight
+    cv.hline(1, 5, 6, GOLD[1])                         # the shaded foot
+    mark = rgb(40, 22, 8)
+    for y in (2, 3, 4):                                # the "!": a stem and a dot
+        cv.put(3, y, mark)
+    cv.put(3, 6, mark)
+    cv.put(3, 8, OUTLINE)                              # the tail
+    return cv.px
+
+
 def save(name: str, rows_of_frames: list) -> None:
     """Writes a sheet: one row per view, its frames side by side."""
     rows = []
@@ -1118,6 +1135,7 @@ if __name__ == "__main__":
         "hatch": [hatch()] * 3,
         "maptable": [maptable(), maptable_side(), maptable_back()],
         "rotor": [rotor()],
+        "badge": [[badge()]],
     }
     for name, rows in sheets.items():
         save(name, rows)

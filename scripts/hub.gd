@@ -161,7 +161,13 @@ var extras: Array[Dictionary] = []
 var name_layer: Control
 var name_labels := {}
 var badge_layer: Control
-var badges := {}
+var badges := {}  # id -> Label: the logical state (text "!" or the NEW IN line, visible = news); the "!" is drawn by badge_art
+var badge_art := {}  # id -> {node: TextureRect, on: seconds since the news showed, off: seconds since it went, phase: bob offset}
+var _hint_time := 0.0
+const BADGE_SIZE := Vector2i(7, 9)
+const BADGE_BOB_CYCLE := 1.6  # seconds: 3 steps at rest, 3 steps 1 px up (0,0,0,1,1,1)
+const BADGE_POP_STEP := 0.05  # pop-in: 3 integer steps (3, 1, 0 px low); then a quick fade out over BADGE_FADE
+const BADGE_FADE := 0.12
 var _names_t := 0.0
 ## A touch tap's glide to a station (Hub.glide_path): the waypoints left; empty = not gliding.
 var glide_path: Array[Vector2] = []
@@ -591,6 +597,13 @@ func _build_hints() -> void:
 			badge_layer.add_child(bang)
 			bang.reset_size()
 			badges[station.id] = bang
+			var art := TextureRect.new()
+			art.texture = load(ART + "badge.png")
+			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			art.size = Vector2(BADGE_SIZE)
+			art.visible = false
+			badge_layer.add_child(art)
+			badge_art[station.id] = {node = art, on = -1.0, off = BADGE_FADE, phase = float(badge_art.size()) * 0.4}
 	_refresh_badges()
 	_place_hints()
 
@@ -631,8 +644,8 @@ func _refresh_badges() -> void:
 			bang.visible = true
 		else:
 			bang.text = "!"
-			bang.add_theme_color_override("font_color", Color(0.1, 0.06, 0.02))  # (dark mark on a gold plate: legible on any floor)
-			bang.add_theme_stylebox_override("normal", _badge_style(UIKit.GOLD))
+			bang.add_theme_color_override("font_color", Color(0, 0, 0, 0))  # (the "!" is the badge sprite; this label only holds the state)
+			bang.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 			bang.visible = has_news(id)
 		bang.reset_size()
 
@@ -662,13 +675,46 @@ func _place_hints() -> void:
 		var label_y: float = at.y - station.size.y - label.size.y - 1.0 if beside else minf(at.y + 2.0, safe.end.y - label.size.y - 1.0)
 		label.position = Vector2(x, maxf(safe.position.y + 1.0, label_y))
 		if badges.has(station.id):
-			var bang: Label = badges[station.id]
-			var bob := 0.0 if Progress.reduce_motion else float(int(_time * 3.0) % 2)
-			if beside:
-				bang.position = Vector2(roundf(at.x - bang.size.x / 2.0), maxf(safe.position.y + 1.0, label.position.y - bang.size.y - 1.0 - bob))
-			else:
-				bang.position = Vector2(roundf(at.x - bang.size.x / 2.0 + station.size.x / 2.0 - 3.0),
-					maxf(safe.position.y + 1.0, at.y - station.size.y - bang.size.y - 1.0 - bob))
+			_place_badge(station, label, beside, safe)
+	_hint_time = _time
+
+
+## One station's badge. The "!" is a 7x9 sprite put on the station's own snapped position (the pixel the station
+## sprite sits on, so it can't jitter against it while the room turns); it bobs 1 px on a slow cycle with a hold
+## at each end, pops in over 3 integer steps, fades out quickly, and hides while you stand at the station (its
+## prompt says it). Reduce Motion: static. The NEW IN line over the sold DAILY sign is a plain label, no bob.
+func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) -> void:
+	var bang: Label = badges[station.id]
+	var at: Vector2 = station.sprite.position
+	if beside:
+		bang.position = Vector2(roundf(at.x - bang.size.x / 2.0), maxf(safe.position.y + 1.0, label.position.y - bang.size.y - 1.0))
+	var art: Dictionary = badge_art[station.id]
+	var node: TextureRect = art.node
+	var dt := _time - _hint_time
+	var want: bool = bang.text == "!" and bang.visible and near.get("id", "") != station.id
+	if want:
+		art.on = maxf(art.on, 0.0) + dt
+		art.off = 0.0
+	else:
+		art.on = -1.0
+		art.off += dt
+	var alpha := 1.0
+	var drop := 0.0
+	if want:
+		var step := int(art.on / BADGE_POP_STEP)
+		if not Progress.reduce_motion and step < 3:
+			drop = [3.0, 1.0, 0.0][step]
+			alpha = [0.4, 0.8, 1.0][step]
+	else:
+		alpha = 0.0 if Progress.reduce_motion or art.off >= BADGE_FADE else snappedf(1.0 - art.off / BADGE_FADE, 0.25)
+	node.visible = alpha > 0.0
+	if not node.visible:
+		return
+	var bob := 0.0
+	if not Progress.reduce_motion and int(fposmod(_time + art.phase, BADGE_BOB_CYCLE) / (BADGE_BOB_CYCLE / 6.0)) >= 3:
+		bob = 1.0
+	node.modulate.a = alpha
+	node.position = Vector2(roundf(at.x) - 3.0, maxf(safe.position.y + 1.0, at.y - station.size.y - BADGE_SIZE.y - 1.0 - bob + drop))
 
 
 ## Once after the upgrades v2 migration gave coins back (Progress.take_tree_refund_notice, which
