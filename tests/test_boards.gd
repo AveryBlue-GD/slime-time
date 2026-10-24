@@ -170,7 +170,12 @@ func _initialize() -> void:
 	progress.upgrades["speed"] = 5
 	progress.upgrades["brightness"] = 5
 	progress.hard_mode = true
+	Economy.workshop_force = 1
+	progress.workshop = {"charge": 2, "magnet": 1}
 	var game: Node2D = await _spawn(true)
+	_check(game.workshop.is_empty() and game.workshop_level("charge") == 0, "BUG4-17: the weekly's fixed loadout takes no workshop levels")
+	Economy.workshop_force = -1
+	progress.workshop = {}
 	_check(game.is_weekly() and progress.random_weekly and not progress.random_daily, "the weekly run is flagged")
 	_check(not game.hard_mode, "the weekly forces normal rules even with hard mode on")
 	progress.hard_mode = false

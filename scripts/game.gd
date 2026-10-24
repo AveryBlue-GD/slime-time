@@ -1708,8 +1708,8 @@ func workshop_level(id: String) -> int:
 ## already cleared on normal). None of it touches par (set before), the route or the meter.
 func _apply_workshop() -> void:
 	workshop = {}
-	if progress == null or hard_mode:
-		return
+	if progress == null or hard_mode or is_weekly():
+		return  # (the weekly is a fixed loadout for everyone: no workshop levels either)
 	for id in Workshop.ids():
 		if progress.workshop_level(id) > 0:
 			workshop[id] = progress.workshop_level(id)

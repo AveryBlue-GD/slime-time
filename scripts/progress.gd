@@ -1083,6 +1083,7 @@ var _save_batch_dirty := false
 var saves_written := 0
 
 
+## Note: inside a batch `save_failed` and `check_achievements` (both part of the real write) wait for the closing write.
 func begin_save_batch() -> void:
 	_save_batch += 1
 	if _save_batch == 1:
