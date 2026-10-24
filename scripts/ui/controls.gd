@@ -224,7 +224,19 @@ func _plan_page() -> void:
 	heading_y = UIKit.title_bottom() + HEADING_GAP
 	first_row = heading_y + UIKit.line_h() + UIKit.GAP_M
 	var bottom := UIKit.bottom_row_y() - UIKit.GAP_M
-	for gap: int in [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]:
+	var gaps: Array[int] = [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]
+	if UIKit.touch_active():
+		# IMP3-04: a 22 px pitch (TOUCH_MIN) for every row, headings and first row pulled up to make the room; a
+		# script too tall for it falls back to the usual rows below
+		var tight := UIKit.title_bottom() + 3
+		var tight_first := tight + UIKit.line_h() + 2
+		var touch_step := maxi(UIKit.TOUCH_MIN, UIKit.button_h() + ROW_GAP)
+		if tight_first + (rows() - 1) * touch_step + UIKit.button_h() <= bottom + UIKit.GAP_M - 2:
+			heading_y = tight
+			first_row = tight_first
+			row_step = touch_step
+			return
+	for gap: int in gaps:
 		row_step = UIKit.button_h() + gap
 		if first_row + (rows() - 1) * row_step + UIKit.button_h() <= bottom:
 			break

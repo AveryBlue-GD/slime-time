@@ -244,6 +244,7 @@ func open() -> void:
 ## under the title's ink instead of its line box, then a taller script's title rises until its first
 ## ink is on TITLE_Y (English's first ink row; CJK: 6 empty rows on top), then two columns.
 func _layout(count: int, hud: Node) -> void:
+	_menu.add_theme_constant_override("v_separation", UIKit.menu_gap())  # (touch: a 22 px pitch, IMP3-04)
 	var title_y := _title_slot(hud)
 	var menu_top := title_y + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD  # MENU_TOP in English
 	var note_h := UIKit.line_h() + int(UIKit.metrics().ink_below) + int(UIKit.metrics().ink_above) + UIKit.GAP_M if descent_note.visible else 0
@@ -310,7 +311,7 @@ func _layout(count: int, hud: Node) -> void:
 	_menu.size = Vector2.ZERO
 	if _last_row and _last_row.visible:
 		var rows := ceili(count / 2.0)
-		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
+		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.menu_gap()))
 		_last_row.size = Vector2(_col_w, UIKit.button_h())
 	_panel.position = Vector2(panel_x, menu_top - UIKit.PANEL_PAD)
 	_panel.size = Vector2(panel_w, UIKit.PANEL_PAD * 2 + _stack_h(count, columns))
@@ -369,7 +370,7 @@ func _column_w(root: Control) -> int:
 ## The button stack's height for `count` buttons in `columns` columns.
 func _stack_h(count: int, columns: int) -> int:
 	var rows := ceili(count / float(columns))
-	return rows * UIKit.button_h() + (rows - 1) * UIKit.GAP_S
+	return rows * UIKit.button_h() + (rows - 1) * UIKit.menu_gap()
 
 
 ## PAUSED's line box top: TITLE_Y, lower by the title's accent room.

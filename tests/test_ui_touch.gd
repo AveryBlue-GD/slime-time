@@ -93,6 +93,9 @@ func _initialize() -> void:
 	for path in ["res://scenes/level_select.tscn", "res://scenes/controls.tscn", "res://scenes/key_controls.tscn", "res://scenes/skins.tscn", "res://scenes/maps.tscn", "res://scenes/title.tscn"]:
 		var screen: Node = await _open(path)
 		_check_exclusive(screen, path.get_file())
+		if path.ends_with("/controls.tscn") and not path.contains("key_"):
+			_check_pitch([screen.sound_button, screen.motion_button, screen.fog_button], "settings left column")
+			_check_pitch([screen.controls_button, screen.save_code_button, screen.relaxed_button], "settings right column")
 		if path.ends_with("title.tscn"):
 			for b: Button in [screen.story_button, screen.quit_button]:
 				_check(_span(b).x >= UIKit.TOUCH_MIN and _span(b).y >= UIKit.TOUCH_MIN, "title %s: hit area %s" % [b.text, _span(b)])
@@ -107,6 +110,7 @@ func _initialize() -> void:
 	hub.close_quit_menu()
 	hub.open_portal_menu()
 	await _frames(2)
+	_check(hub.portal_back.position.y - hub.maze_button.position.y >= UIKit.TOUCH_MIN, "portal: BACK is a touch pitch under the maze button")
 	_check_exclusive(hub, "hub portal")
 	hub.close_portal_menu()
 	hub.open_hub_menu()
@@ -114,6 +118,7 @@ func _initialize() -> void:
 	for b: Button in [hub.menu_back, hub.menu_achievements, hub.menu_settings, hub.menu_quit]:
 		_check(_span(b).x >= UIKit.TOUCH_MIN and _span(b).y >= 16.0, "hub menu %s: hit area %s (a stack: its pitch tall)" % [b.text, _span(b)])
 	_check_exclusive(hub, "hub menu")
+	_check_pitch([hub.menu_back, hub.menu_achievements, hub.menu_settings, hub.menu_quit], "hub menu")
 	hub.free()
 
 	# In a level: the pause stack (pitch 16: each button gets its share of the 3 px gaps) and the
@@ -123,6 +128,7 @@ func _initialize() -> void:
 	game.pause_menu.open()
 	await _frames(2)
 	_check_exclusive(game.pause_menu, "pause menu")
+	_check_pitch(game.pause_menu.buttons, "pause menu")
 	for b: Button in game.pause_menu.buttons:
 		if b.is_visible_in_tree():
 			_check(_span(b).y >= 16.0, "pause %s: hit area %s tall (its pitch)" % [b.text, _span(b).y])
@@ -209,3 +215,21 @@ func _open(path: String) -> Node:
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
+
+
+## IMP3-04: with touch in use the visible buttons of one column sit at least TOUCH_MIN apart (top to top).
+func _check_pitch(buttons: Array, tag: String) -> void:
+	var tops := {}
+	for b: Button in buttons:
+		if b.is_visible_in_tree():
+			var key := int(b.global_position.x)
+			if not tops.has(key):
+				tops[key] = []
+			tops[key].append(b.global_position.y)
+	var worst := 999.0
+	for key in tops:
+		var ys: Array = tops[key]
+		ys.sort()
+		for i in range(1, ys.size()):
+			worst = minf(worst, ys[i] - ys[i - 1])
+	_check(worst >= UIKit.TOUCH_MIN, "%s: button pitch %s >= %d on touch" % [tag, worst, UIKit.TOUCH_MIN])

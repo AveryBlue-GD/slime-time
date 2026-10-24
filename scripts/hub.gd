@@ -1075,7 +1075,8 @@ func _layout_hub_menu() -> void:
 	var w := maxf(HUB_MENU_PANEL.size.x, bw + 2 * DIALOG_INSET)
 	w = maxf(w, _widest([hub_menu_title]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP + buttons.size() * bh + (buttons.size() - 1) * UIKit.GAP_S + UIKit.PANEL_PAD
+	var gap := UIKit.menu_gap()  # (touch: a 22 px pitch, IMP3-04)
+	var h := text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP + buttons.size() * bh + (buttons.size() - 1) * gap + UIKit.PANEL_PAD
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	hub_menu_panel.position = rect.position
 	hub_menu_panel.size = rect.size
@@ -1085,7 +1086,7 @@ func _layout_hub_menu() -> void:
 		b.custom_minimum_size = Vector2(bw, bh)
 		b.size = b.custom_minimum_size
 		b.position = Vector2(UIKit.center_x(bw, rect.position.x, rect.size.x), y)
-		y += bh + UIKit.GAP_S
+		y += bh + gap
 	hub_menu_rect = rect
 
 
@@ -1187,7 +1188,9 @@ func _layout_portal_menu() -> void:
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.PANEL_PAD + line + 6 + modes.size() * (bh + UIKit.GAP_S) + 5 - UIKit.GAP_S + (line + 6 if portal_info.visible else 0) + bh
+	var gap := UIKit.menu_gap()  # (touch: a 22 px pitch between the buttons, IMP3-04)
+	var below := maxi(5, gap)  # (the last mode to the info line / BACK)
+	var h := text_top + UIKit.PANEL_PAD + line + 6 + modes.size() * (bh + gap) + below - gap + (line + 6 if portal_info.visible else 0) + bh
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	portal_panel.position = rect.position
 	portal_panel.size = rect.size
@@ -1198,8 +1201,8 @@ func _layout_portal_menu() -> void:
 		b.custom_minimum_size = Vector2(mode_w, bh)
 		b.size = b.custom_minimum_size
 		b.position = Vector2(UIKit.center_x(mode_w, rect.position.x, rect.size.x), y)
-		y += bh + UIKit.GAP_S
-	y += 5 - UIKit.GAP_S
+		y += bh + gap
+	y += below - gap
 	_stack_lines([portal_info], rect, y)
 	portal_back.custom_minimum_size = Vector2(back_w, bh)
 	portal_back.size = portal_back.custom_minimum_size

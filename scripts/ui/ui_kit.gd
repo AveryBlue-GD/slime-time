@@ -205,6 +205,12 @@ static func stack_pitch(gap := GAP_S) -> int:
 	return button_h() + gap
 
 
+## IMP3-04: the gap of a stack of menu buttons: GAP_S, or while touch is in use the one that makes the pitch TOUCH_MIN
+## (22 px: a thumb's width; 9 px between 13 px buttons in English). Built at layout time, so a menu opened after a tap has it.
+static func menu_gap() -> int:
+	return maxi(GAP_S, TOUCH_MIN - button_h()) if touch_active() else GAP_S
+
+
 ## The title's line box: top (TITLE_Y in English, lower by the accents' head room), height (20 in
 ## English: 14 body + 4 drips + 2 shadow; a taller script's title: its line box + the 2 px shadow, its
 ## glyphs have no drips and the box holds their descent) and bottom (22 in English: where a page's
