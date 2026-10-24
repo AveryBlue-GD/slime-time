@@ -1357,6 +1357,16 @@ func flash_message(text: String, seconds: float) -> void:
 		message.visible = false
 
 
+## IMP3-06: `text` (the COPY share line) replaces the result text for `seconds`, then the result comes back, so a clipboard the
+## browser blocked still leaves the line to read or screenshot.
+func show_share_line(text: String, seconds: float) -> void:
+	var previous := _message_text
+	show_message(text)
+	await get_tree().create_timer(seconds).timeout
+	if is_instance_valid(message) and _message_text == _break_long(text):
+		show_message(previous)
+
+
 func show_message(text: String) -> void:
 	text = _break_long(text)
 	message.text = text

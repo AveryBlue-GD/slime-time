@@ -373,6 +373,9 @@ var relaxed_run := false
 var lurkers: Lurkers
 ## BM-03: the daily / weekly's ghost recorder and racer (null elsewhere), and the split against it shown on the result.
 var ghost: GhostRacer = null
+## IMP3-06: the BOARD place / ghost split tail of the share line, and how long COPY shows the line on the result (s).
+var share_extra := ""
+const COPY_SHOW_TIME := 3.0
 ## Seconds the slime has been still on the ground (the idle drain's grace, Economy.IDLE_GRACE).
 var _still_time := 0.0
 var _bright_shown := {}
@@ -2634,7 +2637,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				random_text = _board_result(random_text, "daily", roundi(run_time * 1000.0))
 				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
 				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
-					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
+					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak}) + share_extra
 				if day.saved:
 					# IMP3-07: a top toast (Transition's notice path), not a line of the result panel
 					# i18n: toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
@@ -3007,7 +3010,10 @@ func _board_result(text: String, kind: String, ms: int) -> String:
 	if not Economy.boards_on() or progress == null:
 		return text
 	var post: Dictionary = progress.post_board(kind, ms, progress.daily_run_day)
+	share_extra = ""
 	if post.rank > 0:
+		# i18n: part of the share line COPY puts on the clipboard, plain ASCII; {place} = 1..5, the place on your local board
+		share_extra = " " + Loc.t("result.share_board", "BOARD #{place}", {place = post.rank})
 		# i18n: result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
 		text = Loc.lines([text, Loc.t("result.board_place", "BOARD PLACE {place}", {place = post.rank})])
 	if ghost != null:
@@ -3015,6 +3021,8 @@ func _board_result(text: String, kind: String, ms: int) -> String:
 		if split != "":
 			# i18n: result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
 			text = Loc.lines([text, Loc.t("result.ghost_split", "VS GHOST {split}", {split = split})])
+			# i18n: part of the share line COPY puts on the clipboard, plain ASCII; {split} = the time against your ghost, e.g. -0.8s
+			share_extra += " " + Loc.t("result.share_ghost", "vs ghost {split}", {split = split})
 	return text
 
 
@@ -3028,7 +3036,7 @@ func _weekly_result(text: String) -> String:
 	# i18n: result line, max 296px, 1 line; {n} = the weekly's number, {time} = this run's M:SS.cc
 	text = Loc.lines([text, Loc.t("result.weekly", "WEEKLY #{n}  {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})])
 	# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
-	daily_share = Loc.t("result.weekly_share", "Dry Trying WEEKLY #{n} {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})
+	daily_share = Loc.t("result.weekly_share", "Dry Trying WEEKLY #{n} {time}", {n = n, time = UIKit.format_time(ms / 1000.0)}) + share_extra
 	return text
 
 
@@ -3038,6 +3046,7 @@ func copy_daily_share() -> void:
 	if daily_share == "":
 		return
 	DisplayServer.clipboard_set(daily_share)
+	hud.show_share_line(daily_share, COPY_SHOW_TIME)  # (BEN3-11: the line stays readable even when a browser blocks the clipboard)
 	var button: Button = hud.choice_buttons[0] if not hud.choice_buttons.is_empty() else null
 	if button != null and is_instance_valid(button):
 		button.text = Loc.t("result.choice.copied", "COPIED")  # i18n: result choice button after COPY was pressed, max 62px, 1 line

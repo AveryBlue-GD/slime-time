@@ -168,7 +168,11 @@ func _initialize() -> void:
 	_check(progress.randoms_won == wins_before, "a weekly win counts toward nothing")
 	_check(game.daily_share.begins_with("Dry Trying WEEKLY #"), "the weekly result has a share line (%s)" % game.daily_share)
 	_check(not progress.ghost_for("weekly", Boards.week_of(monday)).is_empty(), "the winning run became the weekly ghost")
+	_check(game.daily_share.contains(" BOARD #"), "the weekly share line carries the local place (%s)" % game.daily_share)
+	game.copy_daily_share()
+	_check("Dry Trying WEEKLY" in game.hud.message.text, "COPY shows the share line on the result (%s)" % game.hud.message.text)
 	await _wait_seconds(4.0)
+	_check("CHALICE" in game.hud.message.text, "the result text comes back after the share line")
 	var labels: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 	_check(labels == ["COPY", "REPLAY", "BOARDS", "HUB"], "the weekly result row carries COPY / REPLAY / BOARDS / HUB (%s)" % [labels])
 	await _drop(game)
@@ -194,6 +198,7 @@ func _initialize() -> void:
 	game._on_goal_body_entered(game.slime)
 	await physics_frame
 	_check(game.finished, "the daily win ran")
+	_check(game.daily_share.contains("vs ghost +"), "the daily share line carries the split (%s)" % game.daily_share)
 	_check(progress.board_for("daily", monday).size() == min(before + 1, 5), "a normal daily posts")
 	await _drop(game)
 	progress.ghost_on = false
