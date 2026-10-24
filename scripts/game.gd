@@ -653,8 +653,6 @@ func _pause_if_backgrounded() -> void:
 
 
 func _exit_tree() -> void:
-	if Economy.light_life_on():
-		Engine.time_scale = 1.0  # (a win's hit-stop never outlives the level)
 	_commit_survey()  # a run left mid-way (restart, quit to hub, upgrades) still adds what it saw
 	if progress:
 		progress.skin_override = ""
@@ -827,7 +825,7 @@ func _light_life_frame(delta: float) -> void:
 	if _hitstop_frames > 0:
 		_hitstop_frames -= 1
 		if _hitstop_frames == 0:
-			Engine.time_scale = 1.0
+			_hitstop_set(false)
 	if _sunrise_t >= 0.0:
 		_sunrise_t += delta
 	var goal_here: bool = is_instance_valid(goal) and not finished
@@ -838,7 +836,15 @@ func _light_life_frame(delta: float) -> void:
 func _light_life_win() -> void:
 	_sunrise_t = 0.0
 	_hitstop_frames = 2
-	Engine.time_scale = 0.0
+	_hitstop_set(true)
+
+
+## The hit-stop pauses only this level's physics (never Engine.time_scale, which would also stop the
+## timers that restore it); _process keeps running and counts the 2 frames down.
+func _hitstop_set(on: bool) -> void:
+	set_physics_process(not on)
+	if is_instance_valid(slime):
+		slime.set_physics_process(not on)
 
 
 ## Loads the theme's ambience: its continuous bed (looping, fading in) if it has one, and its
