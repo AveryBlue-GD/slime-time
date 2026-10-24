@@ -196,6 +196,13 @@ msgstr ""
 #. achievement goal, max 270px, 1 line
 #. budget: max 270px, lines 1
 #: scripts/achievements.gd
+msgctxt "ach.weekly_1"
+msgid "WIN A WEEKLY MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
 msgctxt "ach.wheel_1"
 msgid "SPIN THE PRIZE WHEEL"
 msgstr ""
@@ -972,6 +979,13 @@ msgctxt "result.choice.replay"
 msgid "REPLAY"
 msgstr "दोबारा"
 
+#. result choice button on a daily / weekly win, max 62px, 1 line; opens the BOARDS page (your best times)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.boards"
+msgid "BOARDS"
+msgstr ""
+
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
 #: scripts/game.gd
@@ -1368,10 +1382,24 @@ msgctxt "hub.prompt.rotate"
 msgid "ROTATE"
 msgstr "घुमाओ"
 
+#. prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.weekly"
+msgid "WEEKLY MAZE"
+msgstr ""
+
 #: scripts/hub.gd
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
 msgstr "लॉक"
+
+#. prompt next to the WEEKLY MAZE name, max 80px, 1 line; {n} = this week's weekly number (not played yet)
+#. budget: max 80px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.weekly_new"
+msgid "#{n}  NEW"
+msgstr ""
 
 #. prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
 #. budget: max 80px, lines 1
@@ -1380,11 +1408,18 @@ msgctxt "hub.prompt.daily_saved"
 msgid "STREAK SAVED"
 msgstr ""
 
-#. prompt next to the DAILY MAZE name, max 80px, 1 line; {n} = days in a row with a daily win
-#. budget: max 80px, lines 1
+#. prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {m} = minutes until the streak ends (1..59)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_streak_m"
+msgid "STREAK {n}  ENDS IN {m}M"
+msgstr ""
+
+#. prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {h} = hours until the streak ends (1..24)
+#. budget: max 130px, lines 1
 #: scripts/hub.gd
 msgctxt "hub.prompt.daily_streak"
-msgid "STREAK {n}"
+msgid "STREAK {n}  ENDS IN {h}H"
 msgstr ""
 
 #: scripts/hub.gd
@@ -2148,11 +2183,18 @@ msgctxt "boards.daily"
 msgid "DAILY #{n}"
 msgstr ""
 
-#. boards column header, max 140px, 1 line; {n} = this week's weekly number
-#. budget: max 140px, lines 1
+#. boards column header, max 148px, 1 line; {n} = this week's weekly number, {d} = days left in the week incl. today (1..7)
+#. budget: max 148px, lines 1
 #: scripts/ui/boards_screen.gd
-msgctxt "boards.weekly"
-msgid "WEEKLY #{n}"
+msgctxt "boards.weekly_ends"
+msgid "WEEKLY #{n}  ENDS IN {d}D"
+msgstr ""
+
+#. boards page when no time is kept yet, max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.empty"
+msgid "YOUR BEST TIMES LIVE HERE. PLAY DAILY TO START"
 msgstr ""
 
 #. boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)

@@ -36,6 +36,7 @@ static func list() -> Array[Dictionary]:
 		{id = "rand_100", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 100})},
 		{id = "daily_1", goal = Loc.t("ach.daily_1", "WIN A DAILY MAZE")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "daily_7", goal = Loc.t("ach.daily_7", "WIN THE DAILY MAZE {n} DAYS IN A ROW", {n = 7})},  # i18n: achievement goal, max 270px, 1 line; {n} = 7
+		{id = "weekly_1", goal = Loc.t("ach.weekly_1", "WIN A WEEKLY MAZE")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "wheel_1", goal = Loc.t("ach.wheel_1", "SPIN THE PRIZE WHEEL")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "hats_6", goal = Loc.t("ach.hats_n", "OWN {n} HATS", {n = 6})},  # i18n: achievement goal, max 270px, 1 line; {n} = a count
 		{id = "jelly", goal = Loc.t("ach.jelly", "WEAR A JELLY SKIN")},  # i18n: achievement goal, max 270px, 1 line
@@ -85,6 +86,7 @@ static func met(p: Node, id: String) -> bool:
 		"rand_100": return p.randoms_won >= 100
 		"daily_1": return p.daily_day > 0 or p.daily_best_streak > 0
 		"daily_7": return p.daily_best_streak >= 7
+		"weekly_1": return not p.board_weekly.is_empty()
 		"wheel_1": return p.spins >= 1 or not p.hats_owned.is_empty()
 		"hats_6": return p.hats_owned.size() >= 6
 		"jelly": return f & FLAG_JELLY != 0 or p.jelly

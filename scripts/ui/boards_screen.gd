@@ -18,6 +18,7 @@ var weekly_button: Button
 var ghost_button: Button
 var rows: Array[Label] = []
 var footer: Label
+var empty_note: Label
 
 
 ## The text of one place on a board: "1  0:32.40  10-24" ("-" while empty). `weekly`: the date is the day of the week it was set.
@@ -52,7 +53,13 @@ func _ready() -> void:
 	# i18n: boards column header, max 140px, 1 line; {n} = today's daily number
 	_column(x_left, top, Loc.t("boards.daily", "DAILY #{n}", {n = p.daily_number(today)}), p.board_for("daily", today), today, false)
 	# i18n: boards column header, max 140px, 1 line; {n} = this week's weekly number
-	_column(x_right, top, Loc.t("boards.weekly", "WEEKLY #{n}", {n = Boards.weekly_number(week)}), p.board_for("weekly", week), week, true)
+	var days_left: int = clampi(Boards.week_start(week) + 7 - today, 1, 7)  # (the weekly's last day is Sunday: 1 = today)
+	# i18n: boards column header, max 148px, 1 line; {n} = this week's weekly number, {d} = days left in the week incl. today (1..7)
+	_column(x_right, top, Loc.t("boards.weekly_ends", "WEEKLY #{n}  ENDS IN {d}D", {n = Boards.weekly_number(week), d = days_left}), p.board_for("weekly", week), week, true)
+	if p.board_for("daily", today).is_empty() and p.board_for("weekly", week).is_empty():
+		var row_y := top + UIKit.line_h() + HEADER_GAP + 2 * ROW_H + 2
+		# i18n: boards page when no time is kept yet, max 296px, 1 line
+		empty_note = UIKit.add_label(self, Loc.t("boards.empty", "YOUR BEST TIMES LIVE HERE. PLAY DAILY TO START"), Rect2(0, row_y, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
 	var best_y := top + UIKit.line_h() + HEADER_GAP + Economy.BOARD_TOP * ROW_H + UIKit.GAP_L
 	var best_text := UIKit.format_time(p.board_best_daily_ms / 1000.0) if p.board_best_daily_ms > 0 else "-"  # i18n: ignore (a time or a dash)
 	# i18n: boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)
@@ -87,6 +94,7 @@ func _column(x: float, top: float, header: String, board: Array, key: int, weekl
 		var label := UIKit.add_label(self, row_text(rank, board, key, weekly), Rect2(x, y, COL_W, UIKit.line_h()),
 			UIKit.FONT, UIKit.TEXT if rank <= board.size() else UIKit.TEXT_OFF, HORIZONTAL_ALIGNMENT_LEFT)
 		label.set_meta("rank", rank)
+		label.visible = rank <= board.size() + 1  # (the first empty place shows, the ones after it wait)
 		rows.append(label)
 		y += ROW_H
 

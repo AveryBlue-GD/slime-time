@@ -158,6 +158,9 @@ func _initialize() -> void:
 	_check(progress.randoms_won == wins_before, "a weekly win counts toward nothing")
 	_check(game.daily_share.begins_with("Dry Trying WEEKLY #"), "the weekly result has a share line (%s)" % game.daily_share)
 	_check(not progress.ghost_for("weekly", Boards.week_of(monday)).is_empty(), "the winning run became the weekly ghost")
+	await _wait_seconds(4.0)
+	var labels: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
+	_check(labels == ["COPY", "REPLAY", "BOARDS", "HUB"], "the weekly result row carries COPY / REPLAY / BOARDS / HUB (%s)" % [labels])
 	await _drop(game)
 
 	# ---- a daily race against that kind of ghost; the split; RELAXED posts nothing
@@ -203,6 +206,27 @@ func _initialize() -> void:
 	for b: Button in [page.daily_button, page.weekly_button, page.ghost_button, page.back_button]:
 		_check(b.position.x >= 0 and b.position.x + b.size.x <= 320 and b.position.y + b.size.y <= 180, "%s fits the screen" % b.text)
 	page.free()
+	await process_frame
+	# IMP3-03: nothing kept yet: a hint line, only the first empty place of each column, the weekly's days left in its header
+	var saved_daily: Dictionary = progress.board_daily
+	var saved_weekly: Dictionary = progress.board_weekly
+	progress.board_daily = {}
+	progress.board_weekly = {}
+	var empty: Control = BOARDS_SCENE.instantiate()
+	root.add_child(empty)
+	await process_frame
+	var shown := 0
+	for r: Label in empty.rows:
+		shown += 1 if r.visible else 0
+	_check(empty.empty_note != null and shown == 2, "the empty page shows a hint and one place per column (%d)" % shown)
+	empty.free()
+	progress.board_daily = saved_daily
+	progress.board_weekly = saved_weekly
+	var full: Control = BOARDS_SCENE.instantiate()
+	root.add_child(full)
+	await process_frame
+	_check(full.empty_note == null, "no hint once a time is kept")
+	full.free()
 	await process_frame
 
 	# ---- demo and flag off
