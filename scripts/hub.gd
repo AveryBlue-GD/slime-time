@@ -1904,11 +1904,12 @@ func _process(delta: float) -> void:
 		_names_t += delta
 		name_layer.modulate.a = clampf((NAMES_TIME - _names_t) / NAMES_FADE, 0.0, 1.0)
 		name_layer.visible = _names_t < NAMES_TIME
-		# (IMP4-03: the two bottom names sit flush against the sign's prompt, so they wait while it is up)
-		var sign_up: bool = prompt.visible and near.get("id", "") == "daily"
-		for id: String in ["random", "coins"]:
-			if name_labels.has(id):
-				(name_labels[id] as Label).visible = not sign_up
+		# (IMP4-03 / BUG4-06: a station name under the sign's prompt waits while it is up: the prompt's goo face is
+		# translucent at its top rows, so a name behind it showed through as stray pixels over the lumps)
+		var up_rect := prompt.get_global_rect().grow(1.0) if prompt.visible else Rect2()
+		for id: String in name_labels:
+			var under: Label = name_labels[id]
+			under.visible = not (prompt.visible and up_rect.intersects(Rect2(under.global_position, under.size)))
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	var lit_rotor := Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	rotor.self_modulate = lit_rotor

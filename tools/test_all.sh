@@ -116,6 +116,14 @@ run_job() { # "suite|label|args": runs one headless job, leaves <label>.log and 
         r=TIMEOUT
         echo "TIMEOUT: $label killed after ${JOB_TIMEOUT:-600} s" >> "$work/$file.log"
     elif grep -q "RESULT: PASS" "$work/$file.log"; then r=PASS; else r=FAIL; fi
+    # BUG4-16: the save fuzz's engine ERROR lines (Condition "err != 1", ~7.7k of them, not mutable from GDScript) become one count line
+    local noise
+    noise="$(grep -c 'ERROR: Condition "err != 1"' "$work/$file.log")"
+    if [ "${noise:-0}" -gt 0 ]; then
+        awk '/^ERROR: Condition "err != 1"/ { skip = 1; next } skip && /^[ \t]/ { next } { skip = 0; print }' "$work/$file.log" > "$work/$file.log.t"
+        mv "$work/$file.log.t" "$work/$file.log"
+        echo "(collapsed $noise engine ERROR lines 'Condition err != 1' from the save fuzz)" >> "$work/$file.log"
+    fi
     # the job's own throwaway files (a crash or a kill never reaches the suite's _result())
     local pid ud="$HOME/Library/Application Support/SlimeTime_R1"
     [ -d "$ud" ] || ud="$HOME/.local/share/godot/app_userdata/SlimeTime_R1"
@@ -142,16 +150,16 @@ if [ "$n_results" -ne "$n_jobs" ]; then
 fi
 for entry in "$work"/*.result; do
     read -r r secs label < "$entry"
-    if [ "$r" = PASS ] && grep -q "SCRIPT ERROR" "$work/$(basename "$entry" .result).log"; then
-        echo "$label PASSED but its log has SCRIPT ERROR lines:"
-        grep "SCRIPT ERROR" "$work/$(basename "$entry" .result).log" | head -n 4
+    if [ "$r" = PASS ] && grep -qE "SCRIPT ERROR|USER ERROR" "$work/$(basename "$entry" .result).log"; then
+        echo "$label PASSED but its log has SCRIPT ERROR / USER ERROR lines:"
+        grep -E "SCRIPT ERROR|USER ERROR" "$work/$(basename "$entry" .result).log" | head -n 4
         r=SCRIPTERR
     fi
     [ "$r" = PASS ] && continue
     failed_jobs=$((failed_jobs + 1))
     failed_names="$failed_names ${label%%#*}"
     if [ "$r" = TIMEOUT ]; then echo "$label TIMEOUT:"; else echo "$label FAILED:"; fi
-    grep -E "FAIL|SCRIPT ERROR|Parse|TIMEOUT" "$work/$(basename "$entry" .result).log" | head -n 8
+    grep -E "FAIL|SCRIPT ERROR|USER ERROR|Parse|TIMEOUT" "$work/$(basename "$entry" .result).log" | head -n 8
 done
 failed=$(echo $failed_names | tr ' ' '\n' | sort -u | grep -c .)
 if [ -n "$TIMES" ]; then

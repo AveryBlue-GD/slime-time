@@ -35,6 +35,7 @@ Godot isn't on PATH; `tools/godot.ps1` finds the winget-installed console binary
 - Re-import assets after adding/changing files: `.\tools\godot.ps1 --path . --headless --import`
 - Smoke-run a scene for errors: `.\tools\godot.ps1 --path . --headless --quit-after 20 res://scenes/title.tscn`
 - Tests (run each): `.\tools\godot.ps1 --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_phase5.gd` (prints `RESULT: PASS`; `--quit-after` stops a test that errors out instead of hanging)
+- Every suite, in parallel: `.\tools\test_all.ps1 [-Jobs N] [-Times] [-KeepLogs dir] [suite ...]` (twin of `test_all.sh`; a PASS log with SCRIPT ERROR / USER ERROR fails)
 - Screenshot: `.\tools\screenshot.ps1 [-Frames 30] [-Scene res://tests/demo.tscn] [-Level N] [-GameArgs --unlock-all,--skin=custom,--random]` → `.screens/latest.png` (view it with Read). Each run clears `.screens/`.
 - Inspect a screenshot up close: `python tools/upscale_png.py .screens/latest.png .screens/zoom.png 4 [x y w h]`
 
