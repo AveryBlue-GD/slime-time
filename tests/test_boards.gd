@@ -336,6 +336,10 @@ func _initialize() -> void:
 	for r: Label in empty.rows:
 		shown += 1 if r.visible else 0
 	_check(empty.empty_note != null and shown == 2, "the empty page shows a hint and one place per column (%d)" % shown)
+	var resets := false
+	for n in empty.find_children("*", "Label", true, false):
+		resets = resets or (n as Label).text == "RESETS 00:00 UTC"
+	_check(resets, "BUG4-20: the empty page says when the boards reset")
 	empty.free()
 	progress.board_daily = saved_daily
 	progress.board_weekly = saved_weekly

@@ -60,6 +60,8 @@ func _ready() -> void:
 		var row_y := top + UIKit.line_h() + HEADER_GAP + 2 * ROW_H + 2
 		# i18n: boards page when no time is kept yet, max 296px, 1 line
 		empty_note = UIKit.add_label(self, Loc.t("boards.empty", "YOUR BEST TIMES LIVE HERE. PLAY DAILY TO START"), Rect2(0, row_y, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
+		# i18n: boards page note under the hint, max 296px, 1 line; the daily and the weekly end at 00:00 UTC (all players share the clock)
+		UIKit.add_label(self, Loc.t("boards.resets", "RESETS 00:00 UTC"), Rect2(0, row_y + UIKit.line_h() + 2, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
 	var best_y := top + UIKit.line_h() + HEADER_GAP + Economy.BOARD_TOP * ROW_H + UIKit.GAP_L
 	var best_text := UIKit.format_time(p.board_best_daily_ms / 1000.0) if p.board_best_daily_ms > 0 else "-"  # i18n: ignore (a time or a dash)
 	# i18n: boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)

@@ -2199,6 +2199,13 @@ msgctxt "boards.empty"
 msgid "YOUR BEST TIMES LIVE HERE. PLAY DAILY TO START"
 msgstr ""
 
+#. boards page note under the hint, max 296px, 1 line; the daily and the weekly end at 00:00 UTC (all players share the clock)
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.resets"
+msgid "RESETS 00:00 UTC"
+msgstr ""
+
 #. boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)
 #. budget: max 296px, lines 1
 #: scripts/ui/boards_screen.gd
