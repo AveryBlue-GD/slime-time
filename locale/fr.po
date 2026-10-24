@@ -757,6 +757,13 @@ msgctxt "result.daily"
 msgid "DAILY #{n}  {time}  STREAK {streak}"
 msgstr ""
 
+#. result line, max 296px, 1 line; {n} = the daily's number, {time} = this run M:SS.cc, {best} = the day's best M:SS.cc
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_best"
+msgid "DAILY #{n}  {time}  BEST {best}"
+msgstr ""
+
 #. the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
 #. budget: lines 1
 #: scripts/game.gd

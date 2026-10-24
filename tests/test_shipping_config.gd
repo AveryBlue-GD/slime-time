@@ -233,8 +233,12 @@ func _daily_pays_once() -> void:
 	await _physics_frames(4)
 	_check(game.held_tickets == 0, "a pickup in an already-won daily is worth nothing")
 	progress.day_override = 30002  # midnight again
+	game.run_time = 99.0  # a slow replay (the day's best is far faster)
 	game.slime.position = game.goal.position
 	await _physics_frames(10)
+	_check(game.hud._message_text.contains(UIKit.format_time(99.0)) and game.hud._message_text.contains("BEST"),
+		"IMP3-07: a slower daily replay shows THIS run's time and the day's BEST (%s)" % game.hud._message_text.replace("
+", " | "))
 	_check(game.won and progress.tickets == paid_after_first and int(game.reward.get("tickets", 0)) == 0,
 		"winning the same day's daily again pays nothing, midnight or not (%d)" % progress.tickets)
 	_check(progress.randoms_won == wins,

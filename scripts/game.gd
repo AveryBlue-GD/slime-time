@@ -2632,7 +2632,11 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0), progress.daily_run_day)
 				# i18n: result line, max 296px, 1 line; {n} = the daily's number, {time} = the day's best M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
 				var daily_line := Loc.t("result.daily", "DAILY #{n}  {time}  STREAK {streak}",
-					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
+					{n = day.number, time = UIKit.format_time(run_time), streak = day.streak})
+				if roundi(run_time * 1000.0) != int(day.best_ms):  # a slower replay: this run's time, and the day's best in place of the streak
+					# i18n: result line, max 296px, 1 line; {n} = the daily's number, {time} = this run M:SS.cc, {best} = the day's best M:SS.cc
+					daily_line = Loc.t("result.daily_best", "DAILY #{n}  {time}  BEST {best}",
+						{n = day.number, time = UIKit.format_time(run_time), best = UIKit.format_time(day.best_ms / 1000.0)})
 				random_text = Loc.lines([random_text, daily_line])
 				random_text = _board_result(random_text, "daily", roundi(run_time * 1000.0))
 				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row

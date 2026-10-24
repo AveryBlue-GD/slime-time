@@ -56,7 +56,7 @@ uniform vec3 ll_tint = vec3(1.0);
 uniform float ll_strength = 0.16;
 uniform float ll_radius = 44.0;
 uniform vec3 ll_glint = vec3(1.0);
-// The goal's world position (xy), how far its pixel god-rays reach (z, px) and how strong they are (w, 0 = off).
+// The goal glow colour.
 uniform vec3 goal_color = vec3(1.0, 0.82, 0.3);
 // Win sunrise: seconds since the win (negative = off), a ring of light sweeping out from the slime.
 uniform float sunrise = -1.0;
