@@ -3272,6 +3272,13 @@ msgctxt "skins.hat_color"
 msgid "COLOR"
 msgstr ""
 
+#. wardrobe dice button (shown on the status line while it is focused), max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.randomize"
+msgid "RANDOMIZE"
+msgstr ""
+
 #. wardrobe HUB page tile (the hub follows the worn skin), max 32px, 1 line
 #. budget: max 32px, lines 1
 #: scripts/ui/skins_screen.gd

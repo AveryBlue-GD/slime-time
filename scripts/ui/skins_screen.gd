@@ -93,6 +93,10 @@ var jelly_button: Button
 var view_pastel := false
 ## Skins page (not in the demo): PASTEL, to the right of JELLY.
 var pastel_button: Button
+## RANDOMIZE (a dice icon button, right of JELLY / PASTEL on every page): a random complete look from what is owned.
+var dice_button: Button
+## The dice button's width (a 7 px icon and the button's margins).
+const DICE_W := 16
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
 ## The color picker: a dim sheet, its panel, its tiles by dye ("" = the hat's own), the focus lock.
@@ -165,12 +169,125 @@ func _ready() -> void:
 	color_button.position = jelly_button.position
 	color_button.custom_minimum_size.x = jelly_button.size.x
 	color_button.size.x = jelly_button.size.x
-	if _pastel_open() and jelly_button.position.y == back.position.y:
-		# (JELLY and PASTEL centred together on the bottom row)
-		var pair := jelly_button.size.x + UIKit.GAP_M + pastel_button.size.x
-		jelly_button.position.x = UIKit.center_x(pair)
+	_build_dice()
+	var last_switch: Button = pastel_button if _pastel_open() else jelly_button
+	if jelly_button.position.y == back.position.y:
+		# (JELLY, PASTEL and the dice centred together on the bottom row)
+		var group := jelly_button.size.x + UIKit.GAP_M + DICE_W
+		if _pastel_open():
+			group += UIKit.GAP_M + pastel_button.size.x
+		jelly_button.position.x = UIKit.center_x(group)
 		pastel_button.position.x = jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M
+	dice_button.position = Vector2(last_switch.position.x + last_switch.size.x + UIKit.GAP_M, jelly_button.position.y)
 	show_page("skins")
+
+
+## The RANDOMIZE button: the dice icon centred on a button of DICE_W; its name shows on the status line while
+## it has the focus or the pointer (no room for a word beside JELLY and PASTEL at 320 px).
+func _build_dice() -> void:
+	dice_button = UIKit.make_button("", randomize_look, Vector2(DICE_W, UIKit.button_h()))
+	add_child(dice_button)
+	var icon := UIKit.make_icon("dice")
+	icon.position = Vector2((DICE_W - 7) / 2, floori((UIKit.button_h() - 7) / 2.0))
+	dice_button.add_child(icon)
+	var say := func() -> void:
+		# i18n: wardrobe dice button (shown on the status line while it is focused), max 300px, 1 line
+		status.text = Loc.t("skins.randomize", "RANDOMIZE")
+	dice_button.focus_entered.connect(say)
+	dice_button.mouse_entered.connect(say)
+
+
+## RANDOMIZE: a random complete look from what is owned (never anything locked, never the look worn now).
+## Returns true when a new look was put on.
+func randomize_look() -> bool:
+	var before := _look_key(current_look())
+	var look := roll_look()
+	if _look_key(look) == before:
+		look = roll_look()  # (once more: the same look twice in a row is allowed to stand if the pool is one)
+	if _look_key(look) == before:
+		_refresh_after_look()
+		return false
+	apply_look(look)
+	return true
+
+
+## The look worn now: {skin, jelly, pastel, hat, dye, trail, paper}.
+func current_look() -> Dictionary:
+	return {skin = Progress.selected_skin, jelly = Progress.jelly, pastel = Progress.pastel, hat = Progress.selected_hat,
+		dye = Progress.hat_dye_of(Progress.selected_hat), trail = Progress.trail_style, paper = Progress.map_paper}
+
+
+static func _look_key(look: Dictionary) -> String:
+	return "%s|%s|%s|%s|%s|%s|%s" % [look.skin, look.jelly, look.pastel and Skins.has_pastel(look.skin), look.hat, look.dye, look.trail, look.paper]
+
+
+## One random look out of the owned things (the demo's and dev mode's own rules come from Progress's own checks).
+func roll_look() -> Dictionary:
+	var ids: Array[String] = []
+	for preset: Dictionary in Skins.PRESETS:
+		ids.append(preset.id)
+	ids.append_array([Skins.CUSTOM, Skins.RAINBOW, Skins.STOPWATCH])
+	var versions: Array[Dictionary] = []  # (skin id first, then one of its owned versions)
+	for id in ids:
+		var own: Array[Dictionary] = []
+		for as_jelly in [false, true]:
+			for as_pastel in ([false, true] if Skins.has_pastel(id) else [false]):
+				if Progress.is_skin_unlocked(id, as_jelly, as_pastel):
+					own.append({skin = id, jelly = as_jelly, pastel = as_pastel})
+		if not own.is_empty():
+			versions.append(own.pick_random())
+	var look: Dictionary = versions.pick_random() if not versions.is_empty() else {skin = Skins.DEFAULT, jelly = false, pastel = false}
+	var hats: Array[String] = [Hats.NONE]
+	for hat in Hats.ids():
+		if Progress.is_hat_unlocked(hat):
+			hats.append(hat)
+	look.hat = hats.pick_random()
+	look.dye = ""
+	if look.hat != Hats.NONE:
+		var dyes := _hat_colors(look.hat)  # ("" = its own color, then the dyes owned)
+		look.dye = dyes.pick_random()
+	var trails: Array[String] = []
+	for id in Cosmetics.trail_ids():
+		if Progress.owns_cosmetic(id) and Progress.cosmetic_visible(id):
+			trails.append(id)
+	look.trail = trails.pick_random() if not trails.is_empty() else Cosmetics.DEFAULT_TRAIL
+	var papers: Array[String] = []
+	for id in Cosmetics.paper_ids():
+		if Progress.owns_cosmetic(id):
+			papers.append(id)
+	look.paper = papers.pick_random() if not papers.is_empty() else Cosmetics.DEFAULT_PAPER
+	return look
+
+
+## Puts `look` on the way the pickers do (each saves) and shows it at once.
+func apply_look(look: Dictionary) -> void:
+	Progress.select_skin(look.skin, look.jelly, look.pastel)
+	Progress.select_hat(look.hat)
+	if look.hat != Hats.NONE:
+		Progress.wear_dye(look.hat, look.dye)
+	Progress.equip_cosmetic(look.trail)
+	Progress.equip_cosmetic(look.paper)
+	_refresh_after_look()
+
+
+## Brings every page up to the worn look (the tiles, the stage, the status line) and keeps the focus on the dice.
+func _refresh_after_look() -> void:
+	view_jelly = Progress.jelly
+	view_pastel = Progress.pastel
+	skin_text.recolor()
+	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
+	(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
+	Skins.apply_to(big_preview.material, Progress.custom_color)
+	_fill_skin_grid()
+	_fill_hat_grid()
+	_fill_trail_grid()
+	_refresh()
+	_refresh_hats()
+	_refresh_trails()
+	_refresh_papers()
+	_preview(Progress.selected_skin)
+	dice_button.grab_focus()
+	status.text = Skins.display_name(Progress.selected_skin)
 
 
 ## Fits the page to the locale's text sizes (docs/ui-rules.md section 10), the first plan that fits
@@ -483,6 +600,7 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
+	dice_button.visible = true
 	pastel_button.visible = page == "skins" and _pastel_open()
 	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
 	color_button.visible = hats

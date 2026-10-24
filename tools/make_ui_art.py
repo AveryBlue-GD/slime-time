@@ -124,6 +124,16 @@ ICONS = {
         "..eee...",
         "........",
     ],
+    "dice": [  # the RANDOMIZE button in the wardrobe: a die showing five
+        "eeeeeee.",
+        "eg111ge.",
+        "e11111e.",
+        "e11g11e.",
+        "e11111e.",
+        "eg111ge.",
+        "eeeeeee.",
+        "........",
+    ],
     "check": [
         "........",
         "......ee",
