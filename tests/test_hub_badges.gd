@@ -31,6 +31,9 @@ func _initialize() -> void:
 		for id: String in hub.badge_art:
 			_check(not hub.badge_art[id].node.visible, "no badge %s while the names show" % id)
 		hub._names_t = hub.NAMES_TIME
+		for id: String in hub.badges:  # (a refresh may have reset the forced news)
+			hub.badges[id].text = "!"
+			hub.badges[id].visible = true
 		await _physics_frames(30)  # (the stagger and the pop-in are over, the bob has moved)
 		var rects: Array[Rect2] = []
 		var labels: Array[Rect2] = []

@@ -746,7 +746,7 @@ func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) 
 	if names_up:
 		art.off = BADGE_FADE
 	if want:
-		if art.on < 0.0:  # (just came up: a slight stagger between the badges, none with Reduce Motion)
+		if art.on <= -1.0:  # (just came up: a slight stagger between the badges, none with Reduce Motion)
 			art.on = 0.0 if Progress.reduce_motion else -BADGE_STAGGER * float(badge_art.keys().find(station.id))
 		art.on += dt
 		art.off = 0.0
