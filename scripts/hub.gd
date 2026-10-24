@@ -1906,10 +1906,15 @@ func _process(delta: float) -> void:
 		name_layer.visible = _names_t < NAMES_TIME
 		# (IMP4-03 / BUG4-06: a station name under the sign's prompt waits while it is up: the prompt's goo face is
 		# translucent at its top rows, so a name behind it showed through as stray pixels over the lumps)
+		# (and every name waits while an overlay is open: the panels' faces are translucent too)
+		var overlay_up := false
+		for node: Control in [coin_board, quit_menu, portal_menu, resume_menu, hub_menu, hat_wheel]:
+			if node != null and node.visible:
+				overlay_up = true
 		var up_rect := prompt.get_global_rect().grow(1.0) if prompt.visible else Rect2()
 		for id: String in name_labels:
 			var under: Label = name_labels[id]
-			under.visible = not (prompt.visible and up_rect.intersects(Rect2(under.global_position, under.size)))
+			under.visible = not (overlay_up or (prompt.visible and up_rect.intersects(Rect2(under.global_position, under.size))))
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	var lit_rotor := Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	rotor.self_modulate = lit_rotor
