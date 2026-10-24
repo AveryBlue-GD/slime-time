@@ -165,6 +165,39 @@ func _abandon_progress_level() -> void:
 	progress.new_random_maze()
 	_check(SaveFile.write(progress).get_value("wallet", "attempt_base", 0) == 0, "...and a fresh maze saves no base")
 
+	# BUG2-10 round 2: the penalty also survives a kill in the hub after NEW MAZE, before the next maze's first move, and in a daily
+	progress.reset_progress()
+	progress.new_random_maze()
+	progress.begin_random_attempt("m1")
+	progress.begin_random_attempt("m1")
+	progress.random_moved = true
+	progress.new_random_maze()  # NEW MAZE: base 2, not moved yet
+	var hub_kill := SaveFile.write(progress)
+	progress.reset_progress()
+	SaveFile.read(progress, hub_kill)
+	progress.new_random_maze()
+	_check(progress.begin_random_attempt("m2") == 3, "BUG2-10: a kill after NEW MAZE (before its first move) keeps the penalty")
+	progress.reset_progress()
+	progress.new_random_maze()
+	progress.begin_random_attempt("d1")
+	progress.begin_random_attempt("d1")
+	progress.random_moved = true
+	progress.start_daily()
+	progress.begin_random_attempt("daily")
+	progress.random_moved = true
+	var daily_kill := SaveFile.write(progress)
+	progress.reset_progress()
+	SaveFile.read(progress, daily_kill)
+	progress.new_random_maze()
+	_check(progress.begin_random_attempt("d2") == 3, "BUG2-10: a kill during the daily keeps the random maze's penalty")
+	progress.reset_progress()
+	progress.new_random_maze()
+	progress.begin_random_attempt("w1")
+	progress.random_moved = true
+	progress.complete_random(false, 778, 1, 1.0)
+	progress.new_random_maze()
+	_check(SaveFile.write(progress).get_value("wallet", "attempt_base", 0) == 0, "...a won maze leaves no penalty to save")
+
 	# a maze left for the daily keeps its penalty for the next random maze; the daily's own retries add nothing
 	progress.new_random_maze()
 	progress.begin_random_attempt("b1")

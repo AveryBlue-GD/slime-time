@@ -434,7 +434,14 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("wallet", "random_day", p.random_pay_day)
 	file.set_value("wallet", "random_paid", p.random_paid)
 	file.set_value("wallet", "paid_seeds", p.random_paid_seeds)
-	var abandon: int = p._abandon_base() if not for_code and not p.random_daily and not p.random_weekly else 0  # (BUG2-10: a maze left after a move keeps its attempts across an app kill)
+	# (BUG2-10: the penalty a kill must not drop: a maze left after a move, the base already carried into the NEXT maze (hub
+	# after NEW MAZE, before its first move), or the one parked while the daily / weekly is played)
+	var abandon: int = 0
+	if not for_code:
+		if p.random_daily or p.random_weekly:
+			abandon = p.random_attempt_carry
+		else:
+			abandon = maxi(p._abandon_base(), p.random_attempt_base if not p.random_maze_won else 0)
 	if abandon > 0:
 		file.set_value("wallet", "attempt_base", abandon)
 	file.set_value("hats", "spins", p.spins)
