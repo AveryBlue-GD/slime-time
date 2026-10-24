@@ -11,6 +11,7 @@ var pins: Array[Vector2] = []
 
 func _ready() -> void:
 	Progress.saving_enabled = false
+	Economy.lurkers_force = 2  # (the same as --lurkers, so the scene also runs without the flag)
 	Progress.mode = Progress.MODE_RANDOM
 	Progress.random_seed = 4321
 	Progress.reduce_motion = false
@@ -24,6 +25,9 @@ func _physics_process(_delta: float) -> void:
 	frame += 1
 	if frame == 3:
 		var lk: Lurkers = game.lurkers
+		if lk == null:
+			push_warning("demo_lurkers: no lurkers in this maze")
+			return
 		var start: Vector2i = game.maze.start
 		var near := MazeGenerator.open_neighbors(game.maze, start)
 		var far: Array[Vector2i] = []
