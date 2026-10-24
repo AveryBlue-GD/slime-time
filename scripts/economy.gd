@@ -430,6 +430,9 @@ const BOARDS_TEST := true
 static var boards_force := -1
 const BOARD_TOP := 5
 const WEEKLY_SLIME := 3
+## ...and its SPEED / BRIGHTNESS levels (a mid-game player's), so a weekly time is comparable whatever the player bought.
+const WEEKLY_SPEED := 2
+const WEEKLY_BRIGHTNESS := 1
 const GHOST_HZ := 10
 const GHOST_MAX := 3000
 

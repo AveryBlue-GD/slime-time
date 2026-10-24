@@ -128,6 +128,8 @@ func _initialize() -> void:
 	progress.day_override = monday
 	Economy.abilities_force = 1
 	progress.upgrades["slime"] = 6
+	progress.upgrades["speed"] = 5
+	progress.upgrades["brightness"] = 5
 	progress.hard_mode = true
 	var game: Node2D = await _spawn(true)
 	_check(game.is_weekly() and progress.random_weekly and not progress.random_daily, "the weekly run is flagged")
@@ -136,6 +138,10 @@ func _initialize() -> void:
 	_check(game.random_seed == Boards.weekly_seed(Boards.week_of(monday)), "its seed is the week's")
 	_check(game.seed_level == Economy.WEEKLY_SLIME, "its maze is MORE SLIME 3 sized")
 	_check(is_equal_approx(game._applied_slime_factor(), Upgrades.slime_factor(Economy.WEEKLY_SLIME)), "its meter is the fixed loadout, not the player's MORE SLIME 6")
+	_check(is_equal_approx(game.light_reach, Upgrades.light_reach(Economy.WEEKLY_BRIGHTNESS)) and game.light_reach != Upgrades.light_reach(5),
+		"its light is the fixed BRIGHTNESS %d, not the player's 5" % Economy.WEEKLY_BRIGHTNESS)
+	_check(is_equal_approx(game.slime.max_speed, 72.0 * Upgrades.speed_factor(Economy.WEEKLY_SPEED)),
+		"its speed is the fixed SPEED %d, not the player's 5" % Economy.WEEKLY_SPEED)
 	_check(game.abilities == null, "no abilities in the weekly")
 	_check(game.payout().tickets == 0 and game.no_credit(), "it pays nothing")
 	_check(game.ghost != null and game.ghost.kind == "weekly", "a weekly run records")

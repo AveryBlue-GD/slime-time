@@ -1687,11 +1687,12 @@ func _apply_upgrades() -> void:
 	if progress == null or hard_mode:  # hard mode is played without upgrades
 		return
 	slime_cost_per_tile /= _applied_slime_factor()
-	var speed := Upgrades.speed_factor(progress.upgrade_level("speed"))
+	var weekly := is_weekly()  # (BM-03: the weekly's loadout is fixed, SPEED and BRIGHTNESS too)
+	var speed := Upgrades.speed_factor(Economy.WEEKLY_SPEED if weekly else progress.upgrade_level("speed"))
 	slime.max_speed *= speed
 	slime.acceleration *= speed
-	light_reach = Upgrades.light_reach(progress.upgrade_level("brightness"))
-	wall_power = progress.upgrade_level("power")
+	light_reach = Upgrades.light_reach(Economy.WEEKLY_BRIGHTNESS if weekly else progress.upgrade_level("brightness"))
+	wall_power = 0 if weekly else progress.upgrade_level("power")
 
 
 ## The ticket workshop's level of `id` on this run: 0 in hard mode (it is the pure skill track) and
