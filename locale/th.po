@@ -1615,7 +1615,7 @@ msgstr ""
 #. budget: max 296px
 #: scripts/hud.gd
 msgctxt "result.calm_offer"
-msgid "RELAXED? MORE SLIME, NO MEDALS"
+msgid "RELAXED? MORE SLIME, NO MEDALS OR TICKETS"
 msgstr ""
 
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
@@ -2206,12 +2206,12 @@ msgctxt "settings.more"
 msgid "MORE"
 msgstr "เพิ่ม​เติม"
 
-#. hint under the RELAXED button, max 296px, 1 line (centred under both columns)
+#. hint under the RELAXED button, max 296px (about 49 characters), 1 line (centred under both columns)
 #. hint under the LURKERS button, max 296px, 1 line (centred under both columns)
 #. budget: max 296px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.relaxed.hint"
-msgid "RELAXED: MORE SLIME, NO MEDALS"
+msgid "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"
 msgstr ""
 
 #. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
