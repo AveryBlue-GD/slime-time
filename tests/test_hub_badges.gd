@@ -95,6 +95,13 @@ func _initialize() -> void:
 	_check(not progress.hub_news("wheel", true) and progress.hub_seen["wheel"] == progress.tickets, "spent: the marker follows down")
 	progress.tickets += 1
 	_check(progress.hub_news("wheel", true), "gaining after the spend is news")
+	# [hub] seen_upgrades / seen_wheel survive a save round trip
+	progress.hub_seen = {"upgrades": 123, "wheel": 45}
+	var seen_file: ConfigFile = progress._write()
+	_check(seen_file.get_value("hub", "seen_upgrades", -1) == 123 and seen_file.get_value("hub", "seen_wheel", -1) == 45, "[hub] seen_upgrades / seen_wheel are written")
+	progress.hub_seen = {}
+	progress._read(seen_file)
+	_check(progress.hub_seen.get("upgrades", -1) == 123 and progress.hub_seen.get("wheel", -1) == 45, "...and read back")
 	_check(checked > 100, "many badges were checked (%d)" % checked)
 	_check(bad == 0, "no badge covers a name or another badge")
 	current_scene = null

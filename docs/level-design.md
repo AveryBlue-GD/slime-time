@@ -579,3 +579,12 @@ Tightest: L1 with THIRSTY (7.4% left after the autopilot's walk, which uses 92.6
 the countdown. Heat 10 on every level and heat 9 (BRITTLE in place of GROUNDED) on L1-3 are also played in
 `test_heat` (the full sweep takes ~2-3 min, so it is a bench, not a suite). Knobs: `Economy.HEAT_MODS`
 (`thirsty.drain` is the one that could break winnability: keep it under 1 / 0.875 = 1.14 for L1's perfect route).
+
+
+## 11. Lurker near-miss slow-mo and the run clock (BUG3-12, 2026-10-24)
+
+The lurker near-miss slow-mo (`Economy.LURKER_SLOWMO`, 0.3 s) skips physics frames (`Lurkers._slowmo_step`), and a
+skipped frame adds nothing to `run_time` or to the ghost clock: each near miss therefore takes about 0.16 s off the
+recorded time. Hard story ghosts and hard runs with lurkers are affected (daily, weekly and normal runs have no
+lurkers). Left as is on purpose (not made exact: adding the skipped frames back would change every pinned ghost
+time and best); a hard ghost is simply a little faster than the wall clock, the same for every run.

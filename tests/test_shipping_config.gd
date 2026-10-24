@@ -328,6 +328,7 @@ func _shipped_runs_play() -> void:
 				break
 			await physics_frame
 		_check(game.finished, "%s: the run reached its end (won %s)" % [kind, game.won])
+		_check(kind == "hard" or game.won, "%s: the pilot wins it (no lurkers to dry it up)" % kind)  # (the hard lurker maze may dry up: it only has to end)
 		pilot.queue_free()
 		await _stop(game)
 	progress.hard_mode = false
