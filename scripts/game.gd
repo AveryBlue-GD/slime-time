@@ -371,6 +371,8 @@ var dev_toggled := false
 var relaxed_run := false
 ## BM-01 (Economy.LURKERS_TEST): this run's lurkers (null = none).
 var lurkers: Lurkers
+## BM-03: the daily / weekly's ghost recorder and racer (null elsewhere), and the split against it shown on the result.
+var ghost: GhostRacer = null
 ## Seconds the slime has been still on the ground (the idle drain's grace, Economy.IDLE_GRACE).
 var _still_time := 0.0
 var _bright_shown := {}
@@ -457,6 +459,9 @@ func _ready() -> void:
 		elif progress and progress.random_daily:
 			# i18n: HUD area line, max 296px, 1 line (today's daily maze)
 			hud.set_level_text(Loc.t("hud.area.daily", "DAILY MAZE"))
+		elif is_weekly():
+			# i18n: HUD area line, max 296px, 1 line; {n} = the weekly's number (this week's maze, the same for everyone)
+			hud.set_level_text(Loc.t("hud.area.weekly", "WEEKLY #{n}", {n = Boards.weekly_number(Boards.week_of(progress.daily_run_day))}))
 		elif hard_mode:
 			hud.set_level_text(Loc.t("hud.area.random_hard", "RANDOM MAZE #{n}  HARD", {n = maze_n}))
 		elif seed_level != own_level:
@@ -601,6 +606,7 @@ func _ready() -> void:
 	_flush_textures()
 	relaxed_run = progress != null and progress.relaxed_on(level) and not training
 	lurkers = Lurkers.create(self)  # (BM-01: the fog's creatures, in some random mazes)
+	ghost = GhostRacer.create(self)  # (BM-03: records a daily / weekly run, races the best earlier one)
 	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
@@ -676,6 +682,8 @@ func _physics_process(delta: float) -> void:
 	_survey_step(pos)
 	run_time += delta
 	hud.set_time(run_time)
+	if ghost != null:
+		ghost.step(run_time, pos)
 	if slime.is_airborne():
 		last_slime_pos = pos
 		if attempt_key != "" and progress != null:
@@ -1661,6 +1669,8 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 
 ## The MORE SLIME factor applied to this run (1 in hard mode, which has no upgrades).
 func _applied_slime_factor() -> float:
+	if is_weekly():
+		return Upgrades.slime_factor(Economy.WEEKLY_SLIME)  # (BM-03: the weekly's fixed loadout)
 	return 1.0 if progress == null or hard_mode else Upgrades.slime_factor(progress.upgrade_level("slime"))
 
 
@@ -2154,7 +2164,12 @@ func daily_repeat() -> bool:
 
 ## An assisted, dev-toggled or RELAXED run earns no medal, record or ticket.
 func no_credit() -> bool:
-	return assisted or dev_toggled or relaxed_run
+	return assisted or dev_toggled or relaxed_run or is_weekly()
+
+
+## BM-03: this run is the WEEKLY maze (a board time only: no pay, no record, no abilities).
+func is_weekly() -> bool:
+	return Economy.boards_on() and progress != null and progress.random_weekly and is_random()
 
 
 ## The tickets a win on this run would pay right now (payout().tickets).
@@ -2591,6 +2606,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			# i18n: result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
 			title = Loc.t("result.preview_cleared", "PREVIEW CLEARED!")
 			random_text = Loc.lines([title, Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})])
+		elif progress and _is_running_scene() and is_weekly():
+			random_text = _weekly_result(random_text)
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
@@ -2605,6 +2622,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				var daily_line := Loc.t("result.daily", "DAILY #{n}  {time}  STREAK {streak}",
 					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
 				random_text = Loc.lines([random_text, daily_line])
+				random_text = _board_result(random_text, "daily", roundi(run_time * 1000.0))
 				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
 				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
 					{n = day.number, time = UIKit.format_time(day.best_ms / 1000.0), streak = day.streak})
@@ -2960,6 +2978,37 @@ func go_to_upgrades() -> void:
 	if progress:
 		progress.return_to_game = true
 	UIKit.go(get_tree(), UPGRADES_SCENE)
+
+
+## BM-03: posts the win to the board of `kind` (the caller made sure the run counts: not RELAXED, assisted or dev), keeps the
+## ghost and adds the BOARD place and the split against the ghost raced to the result text.
+func _board_result(text: String, kind: String, ms: int) -> String:
+	if not Economy.boards_on() or progress == null:
+		return text
+	var post: Dictionary = progress.post_board(kind, ms, progress.daily_run_day)
+	if post.rank > 0:
+		# i18n: result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
+		text = Loc.lines([text, Loc.t("result.board_place", "BOARD PLACE {place}", {place = post.rank})])
+	if ghost != null:
+		var split := ghost.finish(ms)
+		if split != "":
+			# i18n: result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+			text = Loc.lines([text, Loc.t("result.ghost_split", "VS GHOST {split}", {split = split})])
+	return text
+
+
+## BM-03: the weekly's win (nothing is paid or counted): its board time, share line and ghost.
+func _weekly_result(text: String) -> String:
+	if assisted or dev_toggled or relaxed_run:
+		return text
+	var ms := roundi(run_time * 1000.0)
+	text = _board_result(text, "weekly", ms)
+	var n := Boards.weekly_number(Boards.week_of(progress.daily_run_day))
+	# i18n: result line, max 296px, 1 line; {n} = the weekly's number, {time} = this run's M:SS.cc
+	text = Loc.lines([text, Loc.t("result.weekly", "WEEKLY #{n}  {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})])
+	# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
+	daily_share = Loc.t("result.weekly_share", "Dry Trying WEEKLY #{n} {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})
+	return text
 
 
 ## COPY on the daily result row: the share line goes on the clipboard from this very button press (the web needs a user

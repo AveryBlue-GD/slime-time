@@ -416,6 +416,25 @@ static func orchestra_on() -> bool:
 	return ORCHESTRA_TEST if orchestra_force < 0 else orchestra_force == 1
 
 
+## ---------------------------------------------------------------- BOARDS & GHOSTS (BM-03, local only, no network)
+## Your own top BOARD_TOP times for each day's DAILY MAZE and each ISO week's WEEKLY MAZE (a seed from the week, MORE SLIME
+## WEEKLY_SLIME, no abilities, so it is the same for everyone), a BOARDS page (the hub's daily sign, SETTINGS), the best run of
+## the day / week recorded at GHOST_HZ (positions only, at most GHOST_MAX samples) and replayed as a translucent slime
+## on later attempts with a "+1.2s" split at the chalice. Every post goes out as `board_daily` / `board_weekly` through
+## PlatformEvents.progress_event for a future Steam / Game Center backend. RELAXED runs post nothing; hidden in the demo.
+## `--noboards` (debug builds) sets `boards_force` = 0; suites force it off (tests/suite_base.gd) unless they test it.
+const BOARDS_TEST := true
+static var boards_force := -1
+const BOARD_TOP := 5
+const WEEKLY_SLIME := 3
+const GHOST_HZ := 10
+const GHOST_MAX := 3000
+
+
+static func boards_on() -> bool:
+	return (BOARDS_TEST if boards_force < 0 else boards_force == 1) and daily_maze() and not Demo.on()
+
+
 ## ---------------------------------------------------------------- MAP COIN REVEAL (owner, 2026-10-18; on for everyone 2026-10-21)
 ## The MAP TABLE's trail maps never draw collected coins. An UNCOLLECTED coin is drawn on its map once
 ## a run has "revealed" it: its cell center came within the slime's light (its keep-lit light:

@@ -8,6 +8,7 @@ extends Control
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 ## The LANGUAGE page (scripts/ui/language_screen.gd), reached from the gated LANGUAGE button.
 const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
+const BOARDS_SCENE := "res://scenes/boards.tscn"
 const LANGUAGE_SCENE := "res://scenes/language.tscn"
 const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
 ## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
@@ -92,6 +93,7 @@ var controls_button: Button
 var reset_button: Button
 ## ACHIEVEMENTS, top right (null in the demo).
 var achievements_button: Button
+var boards_button: Button  # (BM-03, only while Economy.boards_on())
 ## Only with the tutorial gate on (Economy.tutorial_on()): replays the training maze, writes nothing.
 var training_button: Button
 var reset_confirm: Control
@@ -162,6 +164,8 @@ func _ready() -> void:
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	if Economy.ACHIEVEMENTS and not Demo.on():
 		_build_achievements_button()
+		if Economy.boards_on():
+			_build_boards_button()
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
@@ -314,6 +318,20 @@ func _build_achievements_button() -> void:
 	achievements_button.size = achievements_button.custom_minimum_size
 	var safe := UIKit.safe_rect()
 	achievements_button.position = Vector2(safe.end.x - UIKit.EDGE - achievements_button.size.x, safe.position.y + UIKit.EDGE)
+
+
+## BOARDS under ACHIEVEMENTS (BM-03): the daily / weekly top times and the ghost toggle; BACK returns to SETTINGS.
+func _build_boards_button() -> void:
+	# i18n: settings button (top right corner, under ACHIEVEMENTS), max 90px, grows with the text, 1 line; opens the boards page
+	var text := Loc.t("settings.boards", "BOARDS")
+	boards_button = UIKit.make_button(text, func() -> void:
+		(load("res://scripts/ui/boards_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"
+		UIKit.go(get_tree(), BOARDS_SCENE), UIKit.button_size(text, 90))
+	UIKit.note_text_w(boards_button, [text], 90)
+	add_child(boards_button)
+	boards_button.size = boards_button.custom_minimum_size
+	var safe := UIKit.safe_rect()
+	boards_button.position = Vector2(safe.end.x - UIKit.EDGE - boards_button.size.x, achievements_button.position.y + achievements_button.size.y + UIKit.GAP_S)
 
 
 ## TRAINING replays the maze (replay = true: nothing is saved, docs/tutorial/design.md section 8).

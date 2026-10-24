@@ -2070,8 +2070,11 @@ func _use(station: Dictionary) -> void:
 		"settings":
 			_leave(station, "res://scenes/controls.tscn")
 		"daily":
-			Progress.start_daily()
-			_leave(_station("random"), UIKit.GAME_SCENE)
+			if Economy.boards_on():
+				_leave(station, "res://scenes/boards.tscn")  # BM-03: the BOARDS page (PLAY DAILY / PLAY WEEKLY start from there)
+			else:
+				Progress.start_daily()
+				_leave(_station("random"), UIKit.GAME_SCENE)
 		"random":
 			if Progress.is_randomizer_unlocked():
 				if Economy.descent_on():

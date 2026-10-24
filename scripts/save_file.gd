@@ -188,6 +188,7 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 	p.daily_streak = clampi(get_int(file, "daily", "streak", 0), 0, 100000)
 	p.daily_best_streak = maxi(clampi(get_int(file, "daily", "best_streak", 0), 0, 100000), p.daily_streak)
 	p.daily_saver_day = maxi(get_int(file, "daily", "saver_day", 0), 0)
+	_read_boards(p, file)
 	if p.daily_day > p.utc_day() + p.PAY_DAY_AHEAD:  # a future clock or a hand-made save: no daily on record
 		p.daily_day = 0
 		p.daily_best_ms = 0
@@ -203,6 +204,29 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 ## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
 ## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
 ## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
+## BM-03 [boards]: {key: [entries]} for the daily and weekly boards (every entry an int, sorted, at most BOARD_TOP), the best daily.
+static func _read_boards(p: Node, file: ConfigFile) -> void:
+	p.ghost_on = get_bool(file, "boards", "ghost", true)
+	p.board_best_daily_ms = clampi(get_int(file, "boards", "best_daily_ms", 0), 0, 1000 * 100000)
+	for kind: String in ["daily", "weekly"]:
+		var out := {}
+		var raw: Variant = file.get_value("boards", kind, {})
+		if typeof(raw) == TYPE_DICTIONARY:
+			for key: Variant in raw:
+				if typeof(key) == TYPE_INT and key > 0 and key < 1000000:
+					var board := ints(raw[key])
+					board = board.filter(func(e: int) -> bool: return e >= 0 and (e >> 3) < 1000 * 100000)
+					board.sort()  # (entries sort by ms: the ms are the high bits)
+					if board.size() > Economy.BOARD_TOP:
+						board.resize(Economy.BOARD_TOP)
+					if not board.is_empty():
+						out[key] = board
+		if kind == "daily":
+			p.board_daily = out
+		else:
+			p.board_weekly = out
+
+
 static func read_store(p: Node, file: ConfigFile) -> void:
 	p.workshop = {}
 	for id in Workshop.ids():
@@ -437,6 +461,11 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("achievements", "milestones", p.medal_milestones_paid)
 		file.set_value("achievements", "rewarded", p.ach_rewarded.duplicate())
 		file.set_value("achievements", "ms_mask", p.medal_ms_mask)
+	if Economy.BOARDS_TEST and not for_code and not Demo.on() and (not p.board_daily.is_empty() or not p.board_weekly.is_empty() or p.board_best_daily_ms > 0 or not p.ghost_on):
+		file.set_value("boards", "daily", p.board_daily)
+		file.set_value("boards", "weekly", p.board_weekly)
+		file.set_value("boards", "best_daily_ms", p.board_best_daily_ms)
+		file.set_value("boards", "ghost", p.ghost_on)
 	if p.daily_day > 0:
 		file.set_value("daily", "day", p.daily_day)
 		file.set_value("daily", "best_ms", p.daily_best_ms)

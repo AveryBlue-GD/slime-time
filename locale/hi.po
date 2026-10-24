@@ -626,6 +626,13 @@ msgctxt "hud.area.daily"
 msgid "DAILY MAZE"
 msgstr ""
 
+#. HUD area line, max 296px, 1 line; {n} = the weekly's number (this week's maze, the same for everyone)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.weekly"
+msgid "WEEKLY #{n}"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
@@ -910,6 +917,34 @@ msgstr ""
 msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "मदद"
+
+#. result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.board_place"
+msgid "BOARD PLACE {place}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.ghost_split"
+msgid "VS GHOST {split}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = the weekly's number, {time} = this run's M:SS.cc
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.weekly"
+msgid "WEEKLY #{n}  {time}"
+msgstr ""
+
+#. the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
+#. budget: lines 1
+#: scripts/game.gd
+msgctxt "result.weekly_share"
+msgid "Dry Trying WEEKLY #{n} {time}"
+msgstr ""
 
 #. result choice button after COPY was pressed, max 62px, 1 line
 #. budget: max 62px, lines 1
@@ -2077,6 +2112,70 @@ msgctxt "ach.count"
 msgid "{n}/{total}  PAGE {page}/{pages}"
 msgstr ""
 
+#. boards row, month-day of a time you set; {m} = month 1-12, {d} = day 1-31; 8 chars at most
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.date"
+msgid "{m}-{d}"
+msgstr ""
+
+#. boards button, max 70px, 1 line; the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.ghost_on"
+msgid "GHOST ON"
+msgstr ""
+
+#. boards button, max 70px, 1 line; the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.ghost_off"
+msgid "GHOST OFF"
+msgstr ""
+
+#. page title, max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.title"
+msgid "BOARDS"
+msgstr ""
+
+#. boards column header, max 140px, 1 line; {n} = today's daily number
+#. budget: max 140px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.daily"
+msgid "DAILY #{n}"
+msgstr ""
+
+#. boards column header, max 140px, 1 line; {n} = this week's weekly number
+#. budget: max 140px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.weekly"
+msgid "WEEKLY #{n}"
+msgstr ""
+
+#. boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.best"
+msgid "BEST DAILY {time}"
+msgstr ""
+
+#. boards button, max 70px, 1 line; starts today's daily maze
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.play_daily"
+msgid "PLAY DAILY"
+msgstr ""
+
+#. boards button, max 80px, 1 line; starts this week's weekly maze
+#. budget: max 80px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.play_weekly"
+msgid "PLAY WEEKLY"
+msgstr ""
+
 #. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 #. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
@@ -2161,6 +2260,13 @@ msgstr ""
 #: scripts/ui/controls.gd
 msgctxt "settings.level_music.off"
 msgid "LEVEL MUSIC: OFF"
+msgstr ""
+
+#. settings button (top right corner, under ACHIEVEMENTS), max 90px, grows with the text, 1 line; opens the boards page
+#. budget: max 90px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.boards"
+msgid "BOARDS"
 msgstr ""
 
 #. panel title, max 270px, 16 px font; grows to 296px, steps down to 8 px past that

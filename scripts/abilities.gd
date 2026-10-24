@@ -27,6 +27,8 @@ const TILE := 16
 static func allowed_in(game: Node) -> bool:
 	if game == null or game.hard_mode:
 		return false
+	if game.has_method("is_weekly") and game.is_weekly():
+		return false  # (BM-03: the weekly maze's fixed loadout has no abilities)
 	return game.is_random() or game.descent
 
 const LIST := [

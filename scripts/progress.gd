@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nolightlife` turns off the Light & Life lighting (Economy.LIGHT_LIFE_TEST), `--noorchestra` turns off the layered level music (Economy.ORCHESTRA_TEST), `--nolurkers` turns off the fog lurkers (Economy.LURKERS_TEST), `--lurkers` puts them in every random maze, `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nolightlife` turns off the Light & Life lighting (Economy.LIGHT_LIFE_TEST), `--noorchestra` turns off the layered level music (Economy.ORCHESTRA_TEST), `--noboards` turns off the local boards and ghosts (Economy.BOARDS_TEST), `--nolurkers` turns off the fog lurkers (Economy.LURKERS_TEST), `--lurkers` puts them in every random maze, `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -247,6 +247,16 @@ var daily_streak := 0
 var daily_best_streak := 0
 ## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
 var daily_saver_day := 0
+## BM-03 BOARDS (Economy.BOARDS_TEST): your top times per daily's UTC day / weekly's week number (Boards entries), the best daily ever
+## (ms, 0 = none) and the GHOST toggle. Saved [boards]. `random_weekly`: the current random maze is this week's weekly (runtime
+## only; mutually exclusive with `random_daily`). The ghosts (best run of the day / week) live in the side file ghosts_path().
+var board_daily := {}
+var board_weekly := {}
+var board_best_daily_ms := 0
+var ghost_on := true
+var random_weekly := false
+var _ghosts: Dictionary = {}
+var _ghosts_loaded := false
 ## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
 ## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
 ## many OLD medal milestones (every 10 medals, 5 tickets) were paid: kept as it was, no longer paid (IMP2-03).
@@ -552,6 +562,9 @@ func _ready() -> void:
 		elif arg == "--lurkers":  # test: lurkers in every random maze (Economy.LURKERS_TEST)
 			saving_enabled = false
 			Economy.lurkers_force = 2
+		elif arg == "--noboards":  # A/B: no boards, weekly maze or ghost (Economy.BOARDS_TEST)
+			saving_enabled = false
+			Economy.boards_force = 0
 		elif arg == "--noorchestra":  # A/B: the plain IMP-05 level bed (Economy.ORCHESTRA_TEST)
 			saving_enabled = false
 			Economy.orchestra_force = 0
@@ -1874,6 +1887,7 @@ func start_daily() -> void:
 	if not random_daily:  # (a random maze left unfinished keeps its abandon penalty for the next random maze)
 		random_attempt_carry = _abandon_base()
 	random_daily = true
+	random_weekly = false
 	daily_run_day = utc_day()
 	random_seed = daily_seed(daily_run_day)
 	random_level = 0
@@ -1954,6 +1968,94 @@ func record_daily(ms: int, day := 0) -> Dictionary:
 		daily_best_ms = ms
 	save_progress()
 	return {best_ms = daily_best_ms, new_best = new_best, first = first, streak = daily_streak, bonus = bonus, saved = saved, number = daily_number(today)}
+
+
+# ---------------------------------------------------------------- BM-03 boards and ghosts
+
+## Starts this week's WEEKLY maze: the week's seed, a fixed loadout (MORE SLIME Economy.WEEKLY_SLIME, no abilities), normal rules.
+## Pays nothing and counts toward nothing (it only posts a board time).
+func start_weekly() -> void:
+	mode = MODE_RANDOM
+	discard_random_map()
+	if not random_daily and not random_weekly:
+		random_attempt_carry = _abandon_base()
+	random_daily = false
+	random_weekly = true
+	daily_run_day = utc_day()  # (the day it was started on, for the board)
+	random_seed = Boards.weekly_seed(Boards.week_of(daily_run_day))
+	random_level = Economy.WEEKLY_SLIME
+	random_seed_fresh = true
+	random_attempt_base = 0
+	random_moved = false
+	random_maze_won = false
+	random_attempts.clear()
+	random_offer_shown.clear()
+	random_tickets_taken.clear()
+	random_tickets_held.clear()
+
+
+## The board of `kind` ("daily" / "weekly") for the day / week `key`.
+func board_for(kind: String, key: int) -> Array:
+	var all: Dictionary = board_weekly if kind == "weekly" else board_daily
+	return all.get(key, [])
+
+
+## Posts a finished run's time to the board of `kind` (the run started on UTC day `day`), saves, and tells a store backend
+## (progress_event `board_daily` / `board_weekly`, value = ms). Returns {rank (0 = not in the top 5), board, key, best_daily}.
+## RELAXED, assisted and dev runs never call this.
+func post_board(kind: String, ms: int, day: int) -> Dictionary:
+	var weekly := kind == "weekly"
+	var key := Boards.week_of(day) if weekly else day
+	var all: Dictionary = board_weekly if weekly else board_daily
+	var board := Boards.inserted(all.get(key, []), ms, day)
+	all[key] = board
+	_prune_boards(all, Boards.KEEP_WEEKS if weekly else Boards.KEEP_DAYS)
+	var best_daily := false
+	if not weekly and (board_best_daily_ms == 0 or ms < board_best_daily_ms):
+		board_best_daily_ms = ms
+		best_daily = true
+	save_progress()
+	report_progress("board_weekly" if weekly else "board_daily", ms)
+	return {rank = Boards.rank_of(board, ms, day), board = board, key = key, best_daily = best_daily}
+
+
+static func _prune_boards(all: Dictionary, keep: int) -> void:
+	var keys := all.keys()
+	keys.sort()
+	while keys.size() > keep:
+		all.erase(keys.pop_front())
+
+
+func ghosts_path() -> String:
+	return "user://ghosts.cfg" if save_path == REAL_SAVE_PATH else save_path.get_basename() + "_ghosts.cfg"
+
+
+func _load_ghosts() -> void:
+	if not _ghosts_loaded:
+		_ghosts_loaded = true
+		_ghosts = Boards.read_ghosts(ghosts_path()) if saving_enabled else {}
+
+
+## The best run recorded for `kind`'s `key` (day / week): {key, ms, pts} or {} (nothing, or another day's).
+func ghost_for(kind: String, key: int) -> Dictionary:
+	_load_ghosts()
+	var g: Dictionary = _ghosts.get(kind, {})
+	return g if int(g.get("key", 0)) == key else {}
+
+
+## Keeps `pts` (packed positions) as the ghost of `kind` / `key` when it beats the one there (or replaces another day's).
+## Returns true when it was kept. Capped at Economy.GHOST_MAX samples; written to the side file when saving is on.
+func record_ghost(kind: String, key: int, ms: int, pts: Array) -> bool:
+	if pts.size() < 2 or pts.size() > Economy.GHOST_MAX or ms <= 0:
+		return false
+	_load_ghosts()
+	var old := ghost_for(kind, key)
+	if not old.is_empty() and int(old.ms) <= ms:
+		return false
+	_ghosts[kind] = {key = key, ms = ms, pts = pts.duplicate()}
+	if saving_enabled and not demo_guard and _preview_save == null:
+		Boards.write_ghosts(ghosts_path(), _ghosts)
+	return true
 
 
 # ---------------------------------------------------------------- the demo's FULL GAME PREVIEW
@@ -2360,8 +2462,9 @@ func _abandon_base() -> int:
 
 
 func new_random_maze() -> void:
-	var from_daily := random_daily
+	var from_daily := random_daily or random_weekly
 	random_daily = false
+	random_weekly = false
 	discard_random_map()
 	random_seed = randi_range(1, 2_000_000_000)
 	if Demo.gentle_maze(randoms_won):  # (the demo's first mazes: a seed that doesn't ask for most of the meter)
@@ -3066,6 +3169,13 @@ func reset_progress() -> void:
 	daily_best_ms = 0
 	daily_streak = 0
 	daily_best_streak = 0
+	board_daily.clear()
+	board_weekly.clear()
+	board_best_daily_ms = 0
+	_ghosts = {}
+	_ghosts_loaded = true
+	if saving_enabled and FileAccess.file_exists(ghosts_path()):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(ghosts_path()))
 	ach_known.clear()
 	ach_seeded = true
 	ach_seen = 0
