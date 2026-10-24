@@ -22,6 +22,7 @@ func _initialize() -> void:
 	var bad := 0
 	for step in 72:
 		hub.turn = TAU * step / 72.0
+		hub._place_all()
 		for id: String in hub.badges:
 			hub.badges[id].text = "!"
 			hub.badges[id].visible = true
@@ -49,6 +50,19 @@ func _initialize() -> void:
 			var r := Rect2(node.position, Vector2(hub.BADGE_SIZE))
 			rects.append(r)
 			_check(node.position == node.position.round(), "badge %s on whole pixels" % id)
+			# IMP3-03: the badge stays with its station through the turn (within its head rect: the sprite's width
+			# plus a badge on each side, from the head up to a badge or two above it)
+			var prop: Dictionary = {}
+			for candidate: Dictionary in hub._all_props():
+				if candidate.id == id:
+					prop = candidate
+			var at: Vector2 = prop.sprite.position
+			var head := Rect2(at.x - prop.size.x / 2.0 - 12.0, at.y - prop.size.y - 2.0 * hub.BADGE_SIZE.y - 8.0, prop.size.x + 24.0, 2.0 * hub.BADGE_SIZE.y + 12.0)
+			head.position.y = maxf(head.position.y, safe.position.y)  # (a station at the very top: its badge sits on the safe edge)
+			head.size.y = maxf(head.size.y, 2.0 * hub.BADGE_SIZE.y + 12.0)
+			if not head.encloses(r):
+				bad += 1
+				_check(false, "badge %s follows its station at turn %d (%s outside head rect %s)" % [id, step, r, head])
 			_check(safe.encloses(r), "badge %s inside the safe rect (%s)" % [id, r])
 			for l in labels:
 				if r.intersects(l):

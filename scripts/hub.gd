@@ -784,7 +784,7 @@ func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) 
 	if not Progress.reduce_motion and int(fposmod(_time + art.phase, BADGE_BOB_CYCLE) / (BADGE_BOB_CYCLE / 6.0)) >= 3:
 		bob = 1.0
 	node.modulate.a = alpha
-	node.position = Vector2(roundf(at.x) - 3.0, maxf(safe.position.y + 1.0, at.y - station.size.y - BADGE_SIZE.y - 1.0 - bob + drop))
+	node.position = Vector2(roundf(at.x) - 3.0, maxf(safe.position.y + 2.0, at.y - station.size.y - BADGE_SIZE.y - 1.0 - bob + drop))
 
 
 ## Once after the upgrades v2 migration gave coins back (Progress.take_tree_refund_notice, which
