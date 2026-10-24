@@ -16,6 +16,7 @@ func _initialize() -> void:
 	root.add_child(hub)
 	current_scene = hub
 	await _physics_frames(3)
+	hub.names_force_all = true  # (the worst case for the overlap rule)
 	var safe := UIKit.safe_rect()
 	var checked := 0
 	var shifted := 0
@@ -26,13 +27,12 @@ func _initialize() -> void:
 			hub.badges[id].text = "!"
 			hub.badges[id].visible = true
 		hub.near = {}
-		hub._names_t = 0.0
 		await _physics_frames(8)  # (the pop-in is over, the bob has moved)
 		var rects: Array[Rect2] = []
 		var labels: Array[Rect2] = []
 		for id: String in hub.name_labels:
 			var label: Label = hub.name_labels[id]
-			if label.visible and hub.name_layer.visible:
+			if label.visible:
 				labels.append(Rect2(label.position, label.size))
 		for id: String in hub.badge_art:
 			var node: TextureRect = hub.badge_art[id].node
