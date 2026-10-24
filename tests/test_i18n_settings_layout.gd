@@ -231,9 +231,8 @@ func _title() -> void:
 	if page.enter_button.get_combined_minimum_size().x > enter.size.x or page.enter_button.get_combined_minimum_size().y > enter.size.y:
 		bad.append("ENTER's text does not fit %s" % enter)
 	var slimes: Array[float] = []
-	for child in page.get_children():
-		if child is AnimatedSprite2D:
-			slimes.append(child.position.x)
+	for base in page._idle_base:  # (the resting spots; the slimes themselves hop)
+		slimes.append(base.x)
 	if slimes.size() != 2 or slimes[0] + slimes[1] != 320 or slimes[0] != enter.position.x - page.SLIME_OUT:
 		bad.append("slimes %s not symmetric to ENTER %s" % [slimes, enter])
 	var tagline: Label = null
