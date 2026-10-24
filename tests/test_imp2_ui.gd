@@ -126,6 +126,26 @@ func _hub() -> void:
 	var gap: float = sign.sprite.position.distance_to(portal.sprite.position)
 	_check(gap > 18.0 and gap < 40.0, "...next to the portal (%.0f px)" % gap)
 	_check(hub.badges.has("daily") and hub.badges["daily"].visible and hub.badges["daily"].text == "!", "a gold ! on the sign until today's daily is won")
+	# IMP3-03: a live streak shows its deadline; the weekly alternates in while unplayed; the press starts what the prompt names.
+	progress.daily_day = progress.utc_day() - 1
+	progress.daily_best_ms = 40000
+	progress.daily_streak = 4
+	hub.near = sign
+	hub.sign_weekly = false
+	hub._show_prompt()
+	_check(hub.prompt_key.text.begins_with("STREAK 4  ENDS IN ") and (hub.prompt_key.text.ends_with("H") or hub.prompt_key.text.ends_with("M")), "the sign prompt reads the streak and its deadline (%s)" % hub.prompt_key.text)
+	Economy.boards_force = 1
+	_check(hub.weekly_unplayed(), "the weekly is unplayed")
+	hub._sign_t = hub.SIGN_ALT_TIME
+	hub._process(0.0)
+	_check(hub.sign_weekly and hub.prompt_name.text == "WEEKLY MAZE" and hub.prompt_key.text.ends_with("NEW"), "...after a few seconds the prompt offers WEEKLY MAZE (%s %s)" % [hub.prompt_name.text, hub.prompt_key.text])
+	hub._sign_t = hub.SIGN_ALT_TIME
+	hub._process(0.0)
+	_check(not hub.sign_weekly and hub.prompt_name.text == "DAILY MAZE", "...and back to the daily")
+	Economy.boards_force = 0
+	progress.daily_day = 0
+	progress.daily_best_ms = 0
+	progress.daily_streak = 0
 	progress.record_daily(41000, progress.utc_day())
 	hub._refresh_badges()
 	_check(hub.badges["daily"].text.begins_with("NEW IN ") and hub.badges["daily"].text.ends_with("H"), "...NEW IN <h>H after (%s)" % hub.badges["daily"].text)

@@ -3035,6 +3035,15 @@ func copy_daily_share() -> void:
 		_sfx("coin", -6.0)
 
 
+## BOARDS on a daily / weekly result row: the page opens, BACK returns to the hub (the result row is not a place to come back to).
+func open_boards() -> void:
+	if _leaving():
+		return
+	(load("res://scripts/ui/boards_screen.gd") as GDScript).set("back_scene", HUB_SCENE)
+	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random")
+	UIKit.go(get_tree(), "res://scenes/boards.tscn")
+
+
 ## The buttons shown after a win.
 func _offer_next_steps() -> void:
 	# The middle button (carry on) has the focus, so SPACE / Enter just keeps going.
@@ -3049,10 +3058,17 @@ func _offer_next_steps() -> void:
 	if preview:
 		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), leave_preview]], 0)
 	elif is_random() and daily_share != "":
-		# A recorded daily win: COPY first (it is pressed by the player, which a browser needs to allow the clipboard), then the usual row.
+		# A recorded daily / weekly win: COPY first (it is pressed by the player, which a browser needs to allow the clipboard), then
+		# REPLAY, BOARDS (IMP3-03: the top times) and HUB; the NEW MAZE button makes room (the portal is a step from the hub).
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
-		hud.show_choices([[Loc.t("result.choice.copy", "COPY"), copy_daily_share], [Loc.t("result.choice.replay", "REPLAY"), replay],
-			[Loc.t("result.choice.new_maze", "NEW MAZE"), play_next], [Loc.t("result.choice.hub", "HUB"), go_to_hub]], 2)
+		var row := [[Loc.t("result.choice.copy", "COPY"), copy_daily_share], [Loc.t("result.choice.replay", "REPLAY"), replay]]
+		if Economy.boards_on():
+			# i18n: result choice button on a daily / weekly win, max 62px, 1 line; opens the BOARDS page (your best times)
+			row.append([Loc.t("result.choice.boards", "BOARDS"), open_boards])
+		else:
+			row.append([Loc.t("result.choice.new_maze", "NEW MAZE"), play_next])
+		row.append([Loc.t("result.choice.hub", "HUB"), go_to_hub])
+		hud.show_choices(row, 1)
 	elif is_random():
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],

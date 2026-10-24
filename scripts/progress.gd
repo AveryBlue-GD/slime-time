@@ -1940,6 +1940,11 @@ func daily_won_today() -> bool:
 	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
 
 
+## Whole minutes (1..1440) until the next UTC day's daily (the streak line's last hour).
+func daily_minutes_left() -> int:
+	return clampi(ceili((86400 - int(Time.get_unix_time_from_system()) % 86400) / 60.0), 1, 1440)
+
+
 ## Whole hours (1..24) until the next UTC day's daily (the hub sign's NEW IN {h}H).
 func daily_hours_left() -> int:
 	var into_day := int(Time.get_unix_time_from_system()) % 86400

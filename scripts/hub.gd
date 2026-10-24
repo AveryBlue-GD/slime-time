@@ -187,6 +187,11 @@ var rotor: Sprite2D
 var rotor_base: Sprite2D
 ## The station (or {id = "rotor"}) the slime is next to ({} = none).
 var near: Dictionary = {}
+## IMP3-03: at the DAILY sign while this week's weekly is unplayed, the prompt alternates DAILY MAZE / WEEKLY MAZE every
+## SIGN_ALT_TIME s (the first line at arrival is the daily); `sign_weekly` = the weekly is the one shown (and started).
+const SIGN_ALT_TIME := 3.0
+var sign_weekly := false
+var _sign_t := 0.0
 var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
@@ -742,7 +747,11 @@ func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) 
 	var bang: Label = badges[station.id]
 	var at: Vector2 = station.sprite.position
 	if beside:
-		bang.position = Vector2(roundf(at.x - bang.size.x / 2.0), maxf(safe.position.y + 1.0, label.position.y - bang.size.y - 1.0))
+		# (the NEW IN line sits on the sign's head like the "!"; above the name while the names show)
+		var head_y: float = at.y - station.size.y - bang.size.y - 1.0
+		if name_layer != null and name_layer.visible:
+			head_y = minf(head_y, label.position.y - bang.size.y - 1.0)
+		bang.position = Vector2(roundf(at.x - bang.size.x / 2.0), maxf(safe.position.y + 1.0, head_y))
 	var art: Dictionary = badge_art[station.id]
 	var node: TextureRect = art.node
 	var dt := _time - _hint_time
@@ -1871,6 +1880,12 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	_place_hints()
+	if near.get("id", "") == "daily" and weekly_unplayed():
+		_sign_t += delta
+		if _sign_t >= SIGN_ALT_TIME:
+			_sign_t = 0.0
+			sign_weekly = not sign_weekly
+			_show_prompt()
 	for station in stations:
 		if not station.anims.is_empty():
 			_play_idle_anims(station, delta)
@@ -2063,6 +2078,8 @@ func _update_near() -> void:
 	if best == near:
 		return
 	near = best
+	sign_weekly = false
+	_sign_t = 0.0
 	_show_prompt()
 
 
@@ -2087,6 +2104,13 @@ func _gap_from(from: Vector2, at: Vector2, radius: float) -> float:
 	return v.length() - edge - Slime.RADIUS
 
 
+## Whether this week's weekly can be started from the DAILY sign and has not been won yet (BOARDS on, not the demo).
+func weekly_unplayed() -> bool:
+	if tour != null or not Economy.boards_on() or Demo.on():
+		return false
+	return Progress.board_for("weekly", Boards.week_of(Progress.utc_day())).is_empty()
+
+
 func _show_prompt(note := "") -> void:
 	prompt.visible = not near.is_empty()
 	if near.is_empty():
@@ -2094,6 +2118,8 @@ func _show_prompt(note := "") -> void:
 	var price := false
 	var line: String = tour.line_for(near.id) if tour != null and note == "" else ""
 	prompt_name.text = near.name if line == "" else line
+	if near.id == "daily" and sign_weekly and line == "" and note == "":
+		prompt_name.text = Loc.t("hub.station.weekly", "WEEKLY MAZE")  # i18n: prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
 	if note != "":
 		prompt_key.text = note
 	elif line != "":
@@ -2102,6 +2128,9 @@ func _show_prompt(note := "") -> void:
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: the next level is a full-game one, shown as plainly locked)
 	elif (near.id == "random" and not Demo.randomizer_open()) or (near.id == "wheel" and not Demo.hat_wheel_open()):
 		prompt_key.text = Demo.full_game_text()
+	elif near.id == "daily" and sign_weekly:
+		# i18n: prompt next to the WEEKLY MAZE name, max 80px, 1 line; {n} = this week's weekly number (not played yet)
+		prompt_key.text = Loc.t("hub.prompt.weekly_new", "#{n}  NEW", {n = Boards.weekly_number(Boards.week_of(Progress.utc_day()))})
 	elif near.id == "daily":
 		var streak: int = Progress.daily_streak_now()
 		if Progress.daily_won_today():
@@ -2110,8 +2139,14 @@ func _show_prompt(note := "") -> void:
 			# i18n: prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
 			prompt_key.text = Loc.t("hub.prompt.daily_saved", "STREAK SAVED")
 		elif streak > 0:
-			# i18n: prompt next to the DAILY MAZE name, max 80px, 1 line; {n} = days in a row with a daily win
-			prompt_key.text = Loc.t("hub.prompt.daily_streak", "STREAK {n}", {n = streak})
+			# IMP3-03: the streak ends with today (UTC): the time left, in hours, or in minutes under the last hour
+			var mins: int = Progress.daily_minutes_left()
+			if mins < 60:
+				# i18n: prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {m} = minutes until the streak ends (1..59)
+				prompt_key.text = Loc.t("hub.prompt.daily_streak_m", "STREAK {n}  ENDS IN {m}M", {n = streak, m = mins})
+			else:
+				# i18n: prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {h} = hours until the streak ends (1..24)
+				prompt_key.text = Loc.t("hub.prompt.daily_streak", "STREAK {n}  ENDS IN {h}H", {n = streak, h = Progress.daily_hours_left()})
 		else:
 			prompt_key.text = ""
 	elif near.id == "random" and not Progress.is_randomizer_unlocked():
@@ -2180,11 +2215,11 @@ func _use(station: Dictionary) -> void:
 		"settings":
 			_leave(station, "res://scenes/controls.tscn")
 		"daily":
-			if Economy.boards_on():
-				_leave(station, "res://scenes/boards.tscn")  # BM-03: the BOARDS page (PLAY DAILY / PLAY WEEKLY start from there)
+			if sign_weekly:  # (the prompt shows WEEKLY MAZE: that is what the press starts; a press in the first seconds is the daily)
+				Progress.start_weekly()
 			else:
 				Progress.start_daily()
-				_leave(_station("random"), UIKit.GAME_SCENE)
+			_leave(_station("random"), UIKit.GAME_SCENE)
 		"random":
 			if Progress.is_randomizer_unlocked():
 				if Economy.descent_on():
