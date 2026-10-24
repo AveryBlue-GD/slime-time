@@ -691,14 +691,14 @@ func _physics_process(delta: float) -> void:
 	if slime.is_airborne():
 		last_slime_pos = pos
 		if attempt_key != "" and progress != null:
-			progress.random_moved = true  # (leap-only scouting counts as trying the maze too)
+			_note_moved()  # (leap-only scouting counts as trying the maze too)
 	else:
 		var moved := pos.distance_to(last_slime_pos)
 		_idle_drain(moved, delta)
 		if moved > 0.0:
 			last_slime_pos = pos
 			if attempt_key != "" and progress != null:
-				progress.random_moved = true  # (this maze now counts as tried: abandoning it spends the attempt)
+				_note_moved()  # (this maze now counts as tried: abandoning it spends the attempt)
 			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			trail_travel += moved
@@ -1695,6 +1695,13 @@ func _apply_upgrades() -> void:
 	slime.acceleration *= speed
 	light_reach = Upgrades.light_reach(Economy.WEEKLY_BRIGHTNESS if weekly else progress.upgrade_level("brightness"))
 	wall_power = 0 if weekly else progress.upgrade_level("power")
+
+
+## The random maze now counts as tried; the first time, one save so an app kill keeps the attempt (BUG2-10).
+func _note_moved() -> void:
+	if not progress.random_moved:
+		progress.random_moved = true
+		progress.save_progress()
 
 
 ## The ticket workshop's level of `id` on this run: 0 in hard mode (it is the pure skill track) and

@@ -156,6 +156,11 @@ static func _read_wallet(p: Node, file: ConfigFile) -> void:
 	p.random_paid = clampi(get_int(file, "wallet", "random_paid", 0), 0, p.RANDOM_PAID_PER_DAY)
 	p._check_pay_day()
 	p.random_paid_seeds.assign(ints(file.get_value("wallet", "paid_seeds", [])).slice(-p.PAID_SEEDS_MAX))
+	var saved_attempts := clampi(get_int(file, "wallet", "attempt_base", 0), 0, p.RANDOM_ATTEMPT_PAY.size() - 1)
+	if saved_attempts > 0:  # (the last maze was left after a move and the app was killed: its attempts still count)
+		p.random_attempts = {"saved": saved_attempts}
+		p.random_moved = true
+		p.random_maze_won = false
 	p.spins = clampi(get_int(file, "hats", "spins", 0), 0, p.SPINS_MAX)
 	p.rainbow_pity = clampi(get_int(file, "hats", "rainbow_pity", 0), 0, p.RAINBOW_PITY_MAX)
 	# A save or code from before the wheel had a seed gets one from its own text, so loading the same
@@ -427,6 +432,9 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("wallet", "random_day", p.random_pay_day)
 	file.set_value("wallet", "random_paid", p.random_paid)
 	file.set_value("wallet", "paid_seeds", p.random_paid_seeds)
+	var abandon: int = p._abandon_base() if not for_code and not p.random_daily and not p.random_weekly else 0  # (BUG2-10: a maze left after a move keeps its attempts across an app kill)
+	if abandon > 0:
+		file.set_value("wallet", "attempt_base", abandon)
 	file.set_value("hats", "spins", p.spins)
 	file.set_value("hats", "rainbow_pity", p.rainbow_pity)
 	if p.wheel_seed == 0:

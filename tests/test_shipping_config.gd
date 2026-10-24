@@ -151,6 +151,20 @@ func _abandon_progress_level() -> void:
 	progress.new_random_maze()
 	_check(progress.begin_random_attempt("a2") == 2, "abandoning a moved maze through NEW MAZE: the next one is attempt 2")
 
+	# BUG2-10: an app kill after a move keeps the attempt (saved with the wallet, read back as an abandoned maze)
+	progress.new_random_maze()
+	progress.begin_random_attempt("k1")
+	progress.begin_random_attempt("k1")
+	progress.random_moved = true
+	var killed := SaveFile.write(progress)
+	progress.reset_progress()
+	_check(progress._abandon_base() == 0, "BUG2-10: a fresh state has no abandon base")
+	SaveFile.read(progress, killed)
+	progress.new_random_maze()
+	_check(progress.begin_random_attempt("k2") == 3, "BUG2-10: after an app kill the next maze opens at attempt 3 (attempt 2 was in play)")
+	progress.new_random_maze()
+	_check(SaveFile.write(progress).get_value("wallet", "attempt_base", 0) == 0, "...and a fresh maze saves no base")
+
 	# a maze left for the daily keeps its penalty for the next random maze; the daily's own retries add nothing
 	progress.new_random_maze()
 	progress.begin_random_attempt("b1")
