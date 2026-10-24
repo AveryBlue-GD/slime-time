@@ -724,6 +724,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
+	if Economy.orchestra_on():
+		_orchestra_frame(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
 		if wind_state == "ready":
 			_second_wind()
@@ -749,6 +751,31 @@ func _low_slime_warning(delta: float) -> void:
 	if _heartbeat_left <= 0.0:
 		_sfx("heartbeat", -9.0)
 		_heartbeat_left = lerpf(HEARTBEAT_FAST, HEARTBEAT_SLOW, slime_remaining / hud.LOW_PERCENT)
+
+
+## BM-08 GOO ORCHESTRA per frame: tells the music if the slime moves and if the run is tense (the meter is LOW, or
+## the chalice was first seen within 12 tiles in the last ORCH_TENSE_TIME s). The first sighting, once per
+## attempt, plays the chalice sting and sparks a few gold motes at the chalice (the visual twin for muted
+## players; the LOW meter's twin is the HUD's red pulsing bar).
+const ORCH_SEE_DIST := 192.0
+const ORCH_TENSE_TIME := 8.0
+const ORCH_MOVING_SPEED := 6.0
+var _orch_seen := false
+var _orch_tense_left := 0.0
+
+
+func _orchestra_frame(delta: float) -> void:
+	var music := get_node_or_null("/root/Music")
+	if music == null or finished:
+		return
+	if not _orch_seen and is_instance_valid(goal) and slime.position.distance_to(goal.position) <= ORCH_SEE_DIST:
+		_orch_seen = true
+		_orch_tense_left = ORCH_TENSE_TIME
+		music.play_orchestra_sting("chalice")
+		Fx.burst(self, goal.position, CHALICE_GOLD, 6, 22.0)
+	_orch_tense_left = maxf(_orch_tense_left - delta, 0.0)
+	var low: bool = slime_remaining < hud.LOW_PERCENT and slime_remaining > 0.0
+	music.orchestra_state(slime.velocity.length() > ORCH_MOVING_SPEED, low or _orch_tense_left > 0.0)
 
 
 func _process(_delta: float) -> void:
@@ -812,6 +839,8 @@ func _light_life_win() -> void:
 ## Loads the theme's ambience: its continuous bed (looping, fading in) if it has one, and its
 ## one-off sounds.
 func _start_ambience() -> void:
+	if Economy.orchestra_on() and has_node("/root/Music"):
+		get_node("/root/Music").set_orchestra_theme(theme)  # (BM-08: the layers play at this theme's pitch)
 	var bed_path := "res://assets/sounds/ambient_%s.wav" % theme
 	if ResourceLoader.exists(bed_path):
 		var stream := load(bed_path) as AudioStreamWAV
@@ -2498,6 +2527,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	slime.play_celebrate()
 	if Economy.light_life_on():
 		_light_life_win()
+	if Economy.orchestra_on() and has_node("/root/Music"):
+		get_node("/root/Music").play_orchestra_sting("win")
+		get_node("/root/Music").orchestra_state(false, false)
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
 	if training:

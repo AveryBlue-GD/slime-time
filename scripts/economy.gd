@@ -368,6 +368,24 @@ static func light_life_on() -> bool:
 	return LIGHT_LIFE_TEST if lightlife_force < 0 else lightlife_force == 1
 
 
+## ---------------------------------------------------------------- GOO ORCHESTRA (BM-08 test, 2026-10-24)
+## Level music as three synced layers (assets/music/orch_*.ogg from tools/make_music.py): BASE always, PULSE
+## while the slime moves, TENSION on a low meter or after the chalice is first seen within 12 tiles, each faded
+## over 0.5 s (Music); the music ducks ~5 dB for 0.3 s under splat, coin and win sounds; a short sting when the
+## chalice is first seen (once per attempt) and one over the win; each coin within 2 s of the last one plays a
+## semitone higher (cap +6). Each theme plays the layers at its own pitch (Music.ORCH_THEME_PITCH). On the
+## web one pre-mixed bed (the IMP-05 one) plays instead of three streams. false = the IMP-05 bed exactly.
+## `--noorchestra` (debug builds) sets `orchestra_force` = 0; suites force it off (tests/suite_base.gd).
+const ORCHESTRA_TEST := true
+const ORCH_COIN_WINDOW := 2.0
+const ORCH_COIN_MAX := 6
+static var orchestra_force := -1
+
+
+static func orchestra_on() -> bool:
+	return ORCHESTRA_TEST if orchestra_force < 0 else orchestra_force == 1
+
+
 ## ---------------------------------------------------------------- MAP COIN REVEAL (owner, 2026-10-18; on for everyone 2026-10-21)
 ## The MAP TABLE's trail maps never draw collected coins. An UNCOLLECTED coin is drawn on its map once
 ## a run has "revealed" it: its cell center came within the slime's light (its keep-lit light:

@@ -14,6 +14,21 @@ const TITLE_TRACK := "res://assets/music/title.ogg"
 const LEVEL_TRACK := "res://assets/music/level_bed.ogg"
 ## IMP2-01: the launch card's ~1.2 s sting; the title loop starts as it ends (or at once when the card is skipped).
 const STING_TRACK := "res://assets/music/sting_title.ogg"
+## BM-08 GOO ORCHESTRA (Economy.ORCHESTRA_TEST): the level music as three synced layers (BASE, PULSE, TENSION), all
+## the same length, started together, each faded by gameplay (orchestra_state) over ORCH_SMOOTH seconds.
+const ORCH_TRACKS: Array[String] = ["res://assets/music/orch_base.ogg", "res://assets/music/orch_pulse.ogg", "res://assets/music/orch_tension.ogg"]
+const ORCH_CHALICE_STING := "res://assets/music/orch_chalice_sting.ogg"
+const ORCH_WIN_STING := "res://assets/music/orch_win_sting.ogg"
+const ORCH_SMOOTH := 0.5
+const ORCH_STING_DB := -2.0
+## Ducking under splat, coin and win sounds: down DUCK_DB quickly, held DUCK_HOLD s, then back at DUCK_RECOVER dB/s.
+const DUCK_DB := -5.0
+const DUCK_HOLD := 0.3
+const DUCK_ATTACK := 80.0
+const DUCK_RECOVER := 20.0
+## Each theme plays the same three files at its own pitch: low and dark, the colder / deeper ones lowest.
+const ORCH_THEME_PITCH := {dungeon = 1.0, mossy = 0.97, sandstone = 1.04, sunken = 0.93, sewers = 0.95, catacombs = 0.89,
+	frozen = 1.06, obsidian = 0.87, crystal = 1.1, volcanic = 0.91}
 const TITLE_SCENE := "res://scenes/title.tscn"
 const LEVEL_SCENE := "res://scenes/main.tscn"
 const TITLE_DB := -4.0
@@ -45,6 +60,16 @@ var _level := 0.0
 var _target := 0.0
 var _rate := 1.0
 var _last_hub := -1
+## The orchestra: its three players, where each layer's level (0..1) is heading and where it is, the duck (dB,
+## 0 or below) and how long it is still held, the sting player.
+var orch_active := false
+var _orch: Array[AudioStreamPlayer] = []
+var orch_target: Array[float] = [1.0, 0.0, 0.0]
+var orch_level: Array[float] = [0.0, 0.0, 0.0]
+var duck_db := 0.0
+var _duck_hold := 0.0
+var _orch_pitch := 1.0
+var _sting_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -59,6 +84,17 @@ func _ready() -> void:
 	# decode a whole 25-77 s track into the browser in one go each time one starts, a freeze in the game.
 	_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(_player)
+	for i in ORCH_TRACKS.size():
+		var layer := AudioStreamPlayer.new()
+		layer.volume_db = -80.0
+		layer.bus = BUS
+		layer.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+		add_child(layer)
+		_orch.append(layer)
+	_sting_player = AudioStreamPlayer.new()
+	_sting_player.bus = BUS
+	_sting_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	add_child(_sting_player)
 	get_tree().scene_changed.connect(_on_scene_changed)
 	_on_scene_changed.call_deferred()  # (the main scene, the title, is not announced by scene_changed)
 
@@ -66,6 +102,11 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	_player.stop()
 	_player.stream = null  # (nothing left holding the stream at quit)
+	for layer in _orch:
+		layer.stop()
+		layer.stream = null
+	_sting_player.stop()
+	_sting_player.stream = null
 
 
 func _on_scene_changed() -> void:
@@ -86,7 +127,12 @@ func follow_scene(path: String) -> void:
 		else:
 			_fade_to(1.0, FADE_IN)
 	elif path == LEVEL_SCENE and Economy.LEVEL_MUSIC and _level_music_on():
-		if current != LEVEL_TRACK:
+		if orchestra_usable():
+			if current != ORCH_TRACKS[0]:
+				_start_orchestra()
+			else:
+				_fade_to(1.0, FADE_IN)
+		elif current != LEVEL_TRACK:
 			_start(LEVEL_TRACK, true, LEVEL_DB, 2.5)
 		else:
 			_fade_to(1.0, FADE_IN)
@@ -97,6 +143,12 @@ func follow_scene(path: String) -> void:
 func _level_music_on() -> bool:
 	var progress := get_node_or_null("/root/Progress")
 	return progress == null or progress.level_music
+
+
+## Three layers (not the single IMP-05 bed): the flag is on, and not the web, where three streams at once in the
+## single-thread build are a risk (it plays the one pre-mixed bed; not tried there).
+func orchestra_usable() -> bool:
+	return Economy.orchestra_on() and not Platform.is_web()
 
 
 func is_hub_music() -> bool:
@@ -139,6 +191,69 @@ func seek_shot(seconds: float) -> void:
 		_player.seek(seconds)
 
 
+## Starts the three layers together (one frame); the shared _level fades them in, BASE is the one that is up.
+func _start_orchestra() -> void:
+	var streams: Array[AudioStreamOggVorbis] = []
+	for path in ORCH_TRACKS:
+		var stream := load(path) as AudioStreamOggVorbis
+		if stream == null:
+			return
+		stream.loop = true
+		streams.append(stream)
+	_player.stop()
+	orch_active = true
+	current = ORCH_TRACKS[0]
+	_base_db = LEVEL_DB
+	_level = 0.0
+	orch_target = [1.0, 0.0, 0.0]
+	orch_level = [0.0, 0.0, 0.0]
+	duck_db = 0.0
+	_duck_hold = 0.0
+	_fade_to(1.0, 2.5)
+	for i in _orch.size():
+		_orch[i].stream = streams[i]
+		_orch[i].pitch_scale = _orch_pitch
+		_orch[i].volume_db = -80.0
+	_apply_volume()
+	for layer in _orch:
+		layer.play()
+
+
+## Gameplay's view of the run, every frame: the slime is moving, the run is tense (low meter, or the chalice
+## just seen). PULSE follows moving, TENSION follows tense; the levels glide there over ORCH_SMOOTH seconds.
+func orchestra_state(moving: bool, tense: bool) -> void:
+	orch_target = [1.0, 1.0 if moving else 0.0, 1.0 if tense else 0.0]
+
+
+## The level's theme: the layers' playback pitch (an unknown theme plays at 1).
+func set_orchestra_theme(theme: String) -> void:
+	_orch_pitch = float(ORCH_THEME_PITCH.get(theme, 1.0))
+	for layer in _orch:
+		layer.pitch_scale = _orch_pitch
+
+
+## A splat, coin or win sound: the level music ducks DUCK_DB for DUCK_HOLD s, then comes back.
+func duck() -> void:
+	if current == LEVEL_TRACK or orch_active:
+		_duck_hold = DUCK_HOLD
+
+
+## The chalice-spotted sting (kind "chalice") or the win sting ("win"), over the music, on the same bus.
+func play_orchestra_sting(kind: String) -> void:
+	if not Economy.orchestra_on() or not Economy.LEVEL_MUSIC or not _level_music_on():
+		return
+	var progress := get_node_or_null("/root/Progress")
+	if progress and not progress.sound_on:
+		return
+	var stream := load(ORCH_WIN_STING if kind == "win" else ORCH_CHALICE_STING) as AudioStreamOggVorbis
+	if stream == null:
+		return
+	stream.loop = false
+	_sting_player.stream = stream
+	_sting_player.volume_db = ORCH_STING_DB
+	_sting_player.play()
+
+
 func stop(fade := FADE_OUT) -> void:
 	if current != "":
 		_fade_to(0.0, fade)
@@ -149,6 +264,10 @@ func _start(path: String, loop: bool, db: float, fade: float) -> void:
 	if stream == null:
 		return
 	stream.loop = loop
+	if orch_active:
+		for layer in _orch:
+			layer.stop()
+		orch_active = false
 	current = path
 	_player.stream = stream
 	_base_db = db
@@ -168,13 +287,20 @@ func _fade_to(level: float, seconds: float) -> void:
 func _process(delta: float) -> void:
 	if current == "":
 		return
+	if _duck_hold > 0.0:
+		_duck_hold -= delta
+		duck_db = move_toward(duck_db, DUCK_DB, delta * DUCK_ATTACK)
+	elif duck_db < 0.0:
+		duck_db = move_toward(duck_db, 0.0, delta * DUCK_RECOVER)
+	if orch_active:
+		for i in orch_level.size():
+			orch_level[i] = move_toward(orch_level[i], orch_target[i], delta / ORCH_SMOOTH)
 	if current == STING_TRACK and not _player.playing:
 		_start(TITLE_TRACK, true, TITLE_DB, 0.8)  # the sting ended: the title loop takes over
 		return
 	_level = move_toward(_level, _target, delta * _rate)
-	if (_level <= 0.0 and _target <= 0.0) or not _player.playing:
-		_player.stop()
-		current = ""
+	if (_level <= 0.0 and _target <= 0.0) or not (_orch[0].playing if orch_active else _player.playing):
+		_stop_all()
 		return
 	_apply_volume()
 
@@ -184,6 +310,22 @@ func _process(delta: float) -> void:
 func _apply_volume() -> void:
 	var progress := get_node_or_null("/root/Progress")
 	var on: bool = progress == null or progress.sound_on
-	var db := snappedf(_base_db + linear_to_db(_level), 0.1) if on and _level > 0.0 else -80.0
+	if orch_active:
+		for i in _orch.size():
+			var lvl := _level * orch_level[i]
+			var layer_db := snappedf(_base_db + duck_db + linear_to_db(lvl), 0.1) if on and lvl > 0.001 else -80.0
+			if not is_equal_approx(_orch[i].volume_db, layer_db):
+				_orch[i].volume_db = layer_db
+		return
+	var duck := duck_db if current == LEVEL_TRACK else 0.0
+	var db := snappedf(_base_db + duck + linear_to_db(_level), 0.1) if on and _level > 0.0 else -80.0
 	if not is_equal_approx(_player.volume_db, db):
 		_player.volume_db = db
+
+
+func _stop_all() -> void:
+	_player.stop()
+	for layer in _orch:
+		layer.stop()
+	orch_active = false
+	current = ""

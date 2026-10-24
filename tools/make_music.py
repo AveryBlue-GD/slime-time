@@ -985,9 +985,103 @@ def trailer(name: str, hit: float, ring: float):
     return s, meta
 
 
-PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "title": title, "sting_title": sting_title, "level_bed": level_bed, "trailer_1": None, "trailer_2": None}
+# ---------------------------------------------------------------- BM-08 GOO ORCHESTRA (Economy.ORCHESTRA_TEST)
+# Three layers of one level bed, all 8 bars at 48 BPM (40 s) in D minor so they loop at exactly the same length
+# and start together (scripts/music.gd fades each one with gameplay): BASE (always), PULSE (while the slime
+# moves), TENSION (low meter, chalice in sight). Mono, quiet, with a mid-range voice (0.6-2 kHz) a phone speaker
+# can play. Two one-shot stings (chalice spotted, win). Per-theme flavour is a playback pitch in the game.
+ORCH_PROG = ["Dm", "Dm", "Bb", "Gm", "Dm", "Dm", "Gm", "A"]
+ORCH_C = {"Dm": (26, (50, 53, 57), 62), "Bb": (34, (46, 53, 58), 65), "Gm": (31, (50, 55, 58), 62), "A": (33, (49, 52, 57), 64)}
+
+
+def _orch_song(seed):
+    return Song(bpm=48, meter=4, bars=8, swing=0.5, seed=seed)
+
+
+def orch_base():
+    """BASE: a sparse hollow pad, a soft sub breath and a slow goo-voice line an octave up for the phone speakers."""
+    s = _orch_song(81)
+    for bar in range(s.bars):
+        b0 = bar * 4
+        root, chord, top = ORCH_C[ORCH_PROG[bar]]
+        pad_chord(s, chord, b0, 4, gain=0.05, cutoff=1100, attack=1.6, release=2.4, table="hollow")
+        s.put("bass", bass(root, s.beats(1.6)), b0, gain=0.22)
+        if bar % 2 == 1:
+            s.put("lead", lead(top + 7, s.beats(2.4), cutoff=1800), b0 + 1, gain=0.06, vel=0.2)
+    meta = dict(title="Orchestra BASE", mood="a sparse hollow pad, a sub breath and a slow mid-range goo voice",
+                key="D minor (Dm - Bb - Gm - A)", bpm=48, meter="4/4", form="8 bars, loops with PULSE and TENSION")
+    return s, meta
+
+
+def orch_pulse():
+    """PULSE: a soft bass beat and sparse goo drops (plucks, 0.6-2 kHz partials) that walk the chord."""
+    s = _orch_song(82)
+    for bar in range(s.bars):
+        b0 = bar * 4
+        root, chord, top = ORCH_C[ORCH_PROG[bar]]
+        for beat in range(4):
+            s.put("bass", bass(root + (12 if beat == 3 else 0), s.beats(0.45)), b0 + beat, gain=0.16 if beat % 2 == 0 else 0.1)
+        s.put("kick", kick(85.0, 40.0, 0.12), b0, gain=0.1)
+        s.put("kick", kick(85.0, 40.0, 0.12), b0 + 2, gain=0.07)
+        for k, m in enumerate((chord[1] + 12, chord[2] + 12, top + 12, chord[2] + 12)):
+            s.put("pluck", pluck(m, 0.5, 0.9), b0 + k + 0.5, gain=0.07, vel=0.35)
+    meta = dict(title="Orchestra PULSE", mood="a low heartbeat of bass and goo drops, only while the slime moves",
+                key="D minor (Dm - Bb - Gm - A)", bpm=48, meter="4/4", form="8 bars, on the beat")
+    return s, meta
+
+
+def orch_tension():
+    """TENSION: a minor-second drone (D against Eb), a slow double heartbeat and a thin high goo voice."""
+    s = _orch_song(83)
+    for bar in range(s.bars):
+        b0 = bar * 4
+        root, chord, top = ORCH_C[ORCH_PROG[bar]]
+        pad_chord(s, (chord[0] + 12, chord[0] + 13, chord[1] + 12), b0, 4, gain=0.05, cutoff=1500, attack=1.4, release=2.0, table="soft")
+        s.put("kick", kick(70.0, 36.0, 0.14), b0, gain=0.18)
+        s.put("kick", kick(70.0, 36.0, 0.14), b0 + 0.5, gain=0.12)
+        s.put("kick", kick(70.0, 36.0, 0.14), b0 + 2, gain=0.15)
+        s.put("kick", kick(70.0, 36.0, 0.14), b0 + 2.5, gain=0.1)
+        if bar % 2 == 0:
+            s.put("lead", lead(top + 13, s.beats(3.0), cutoff=2000), b0 + 0.5, gain=0.05, vel=0.2)
+    meta = dict(title="Orchestra TENSION", mood="a minor-second drone and a double heartbeat, for a low meter or a chalice in sight",
+                key="D minor (D against Eb)", bpm=48, meter="4/4", form="8 bars")
+    return s, meta
+
+
+def orch_chalice_sting():
+    """The chalice is in sight: two rising goo drops over a low swell, 1.6 s."""
+    s = Song(bpm=60, meter=4, bars=1, swing=0.5, loop=False, extra=-2.4, seed=84)
+    s.put("pluck", pluck(62, 0.6, 0.9), at=0.05, gain=0.3, jitter=0)
+    s.put("pluck", pluck(69, 0.8, 0.9), at=0.3, gain=0.3, jitter=0)
+    s.put("pluck", pluck(74, 0.9, 0.8), at=0.55, gain=0.22, jitter=0)
+    for m in (38, 45, 50, 57):
+        s.put("padL", pad_voice(m, 1.1, -6.0, 1100, 0.3, 0.6, "hollow"), at=0.0, gain=0.07, jitter=0)
+        s.put("padR", pad_voice(m, 1.1, 6.0, 1100, 0.3, 0.6, "hollow"), at=0.0, gain=0.07, jitter=0)
+    meta = dict(title="Orchestra chalice sting", mood="two rising goo drops over a low swell", key="D minor", bpm=60,
+                meter="4/4", form="one 1.6 s shot")
+    return s, meta
+
+
+def orch_win_sting():
+    """The win: a warm D major lift (the pad turns major) with a rising drop run, 3 s, over the win sound."""
+    s = Song(bpm=60, meter=4, bars=1, swing=0.5, loop=False, extra=-1.0, seed=85)
+    for k, m in enumerate((62, 66, 69, 74, 78)):
+        s.put("pluck", pluck(m, 0.9, 0.9), at=0.05 + 0.16 * k, gain=0.26, jitter=0)
+    s.put("bass", bass(38, 2.0), at=0.05, gain=0.4)
+    for m in (50, 57, 62, 66):
+        s.put("padL", pad_voice(m, 2.0, -6.0, 1300, 0.25, 0.9, "hollow"), at=0.05, gain=0.08, jitter=0)
+        s.put("padR", pad_voice(m, 2.0, 6.0, 1300, 0.25, 0.9, "hollow"), at=0.05, gain=0.08, jitter=0)
+    meta = dict(title="Orchestra win sting", mood="a warm D major lift", key="D major", bpm=60, meter="4/4", form="one 3 s shot")
+    return s, meta
+
+
+ORCH_PIECES = {"orch_base": -31.0, "orch_pulse": -34.0, "orch_tension": -34.0, "orch_chalice_sting": -22.0, "orch_win_sting": -22.0}
+ORCH_KBPS = 56   # mono Vorbis, in the game
+
+
+PIECES = {"hub_A": hub_A, "hub_B": hub_B, "hub_C": hub_C, "story_intro": story_intro, "title": title, "sting_title": sting_title, "level_bed": level_bed, "orch_base": orch_base, "orch_pulse": orch_pulse, "orch_tension": orch_tension, "orch_chalice_sting": orch_chalice_sting, "orch_win_sting": orch_win_sting, "trailer_1": None, "trailer_2": None}
 ## The pieces the game plays (scripts/music.gd): --game writes them as OGG into assets/music/ (lower-case names).
-GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro", "title", "sting_title", "level_bed")
+GAME_PIECES = ("hub_A", "hub_B", "hub_C", "story_intro", "title", "sting_title", "level_bed", "orch_base", "orch_pulse", "orch_tension", "orch_chalice_sting", "orch_win_sting")
 GAME_DIR = ROOT / "assets" / "music"
 DEFAULT_HIT, DEFAULT_RING = 24.4, 3.6   # draft A's end card starts at 24.4 s
 
@@ -1252,8 +1346,11 @@ def render(name, ffmpeg, out_wav, hit=None, ring=None, extras=True, verbose=Fals
         target = TRAILER_LUFS
     else:
         s, meta = PIECES[name]()
-        target = INTRO_LUFS if name in ("story_intro", "sting_title") else LEVEL_BED_LUFS if name == "level_bed" else HUB_LUFS
+        target = ORCH_PIECES[name] if name in ORCH_PIECES else INTRO_LUFS if name in ("story_intro", "sting_title") else LEVEL_BED_LUFS if name == "level_bed" else HUB_LUFS
     L, R = mixdown(s, verbose=verbose)
+    if name in ORCH_PIECES:  # (mono: both channels the same; the game's copy is encoded with one channel)
+        L = array("d", map(mul, map(add, L, R), repeat(0.5)))
+        R = array("d", L)
     if not s.loop:
         n = int(round(s.length * SR))
         L, R = L[:n], R[:n]
@@ -1361,8 +1458,9 @@ def main():
         for n in names:
             if n in GAME_PIECES:
                 dest = GAME_DIR / ("%s.ogg" % n.lower())
+                enc = ["-ac", "1", "-c:a", "libvorbis", "-b:a", "%dk" % ORCH_KBPS] if n in ORCH_PIECES else _vorbis_args(ffmpeg, GAME_QUALITY)
                 subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(OUT / ("%s.wav" % n)),
-                                "-map_metadata", "-1"] + _vorbis_args(ffmpeg, GAME_QUALITY) + [str(dest)], check=True, timeout=600)
+                                "-map_metadata", "-1"] + enc + [str(dest)], check=True, timeout=600)
                 print("game copy %s  %.0f KB" % (dest.relative_to(ROOT).as_posix(), dest.stat().st_size / 1024), flush=True)
 
 

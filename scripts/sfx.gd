@@ -14,6 +14,12 @@ const BUS := "SFX"  # i18n: ignore (an audio bus name)
 const VARY := {land = 0.05, splat = 0.04, click = 0.03, coin = 0.04, jump = 0.03, pause = 0.02, crumble = 0.04, unlock = 0.02, clank = 0.06, goo_shot = 0.05, goo_burst = 0.04}
 const VARY_DB := 1.5
 
+## BM-08 (Economy.ORCHESTRA_TEST): these sounds duck the level music (when louder than DUCK_MIN_DB), and the coin
+## chain's step and the time of the last coin.
+const DUCKERS: Array[String] = ["splat", "coin", "coin_fizz", "chalice"]
+const DUCK_MIN_DB := -12.0
+var _chain := 0
+var _chain_ms := -1
 var _players := {}
 var _last_frame := {}
 var _unlocked := false
@@ -53,6 +59,13 @@ func play(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress and not progress.sound_on:
 		return
+	if Economy.orchestra_on():
+		if sound_name == "coin" or sound_name == "coin_fizz":
+			pitch *= coin_chain_pitch(Time.get_ticks_msec())
+		if sound_name in DUCKERS and volume_db > DUCK_MIN_DB:
+			var music := get_node_or_null("/root/Music")
+			if music:
+				music.duck()
 	var frame := Engine.get_process_frames()
 	if VARY.has(sound_name):
 		if _last_frame.get(sound_name, -1) == frame:
@@ -69,6 +82,17 @@ func play(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	player.volume_db = volume_db
 	player.pitch_scale = pitch
 	player.play()
+
+
+## BM-08: each coin within ORCH_COIN_WINDOW s of the previous one plays a semitone higher (cap ORCH_COIN_MAX),
+## after a longer gap it starts again at the plain pitch. Returns the pitch factor and counts this coin.
+func coin_chain_pitch(now_ms: int) -> float:
+	if _chain_ms < 0 or now_ms - _chain_ms > int(Economy.ORCH_COIN_WINDOW * 1000.0):
+		_chain = 0
+	else:
+		_chain = mini(_chain + 1, Economy.ORCH_COIN_MAX)
+	_chain_ms = now_ms
+	return pow(2.0, _chain / 12.0)
 
 
 func stop(sound_name: String) -> void:
