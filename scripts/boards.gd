@@ -126,12 +126,66 @@ static func valid_kind(kind: String) -> bool:
 	return false
 
 
-## The ghosts file must stay under SaveText.MAX_BYTES (256 KB) to be read back; 22 ghosts of a normal length (a 90 s clear
-## is ~900 samples, ~11 KB) fit, and past this size the largest story ghosts are dropped.
+## The ghosts file must stay under SaveText.MAX_BYTES (256 KB) to be read back. Samples are stored delta-encoded (see
+## encode_pts: ~2 bytes a sample, base64), so 20 story ghosts of 1,200 samples are ~65 KB; past this size the oldest-touched
+## kinds are dropped (never the one just recorded).
 const MAX_FILE_BYTES := 240 * 1024
 
 
+## Samples -> base64 text: the first sample as 4 absolute bytes, then each step as (dx, dy) signed bytes; a step outside
+## -127..127 is the marker -128 followed by the 4 absolute bytes.
+static func encode_pts(pts: Array) -> String:
+	var out := PackedByteArray()
+	var px := 0
+	var py := 0
+	for i in pts.size():
+		var v := int(pts[i])
+		var x := v & 0xFFFF
+		var y := (v >> 16) & 0xFFFF
+		if i > 0 and absi(x - px) <= 127 and absi(y - py) <= 127:
+			out.append((x - px) & 0xFF)
+			out.append((y - py) & 0xFF)
+		else:
+			if i > 0:
+				out.append(0x80)
+				out.append(0)
+			out.append(x & 0xFF)
+			out.append(x >> 8)
+			out.append(y & 0xFF)
+			out.append(y >> 8)
+		px = x
+		py = y
+	return Marshalls.raw_to_base64(out)
+
+
+static func decode_pts(text: String) -> Array[int]:
+	var out: Array[int] = []
+	var b := Marshalls.base64_to_raw(text)
+	var n := b.size()
+	var i := 0
+	var px := 0
+	var py := 0
+	while i < n and out.size() <= Economy.GHOST_MAX:
+		if out.is_empty() or b[i] == 0x80:
+			if not out.is_empty():
+				i += 2
+			if i + 4 > n:
+				break
+			px = b[i] | (b[i + 1] << 8)
+			py = b[i + 2] | (b[i + 3] << 8)
+			i += 4
+		else:
+			if i + 2 > n:
+				break
+			px += b[i] - 256 if b[i] > 127 else b[i]
+			py += b[i + 1] - 256 if b[i + 1] > 127 else b[i + 1]
+			i += 2
+		out.append(px | (py << 16))
+	return out
+
+
 ## The saved ghosts: {"daily": {key, ms, pts}, "weekly": {...}, "story_3": {...}, "hard_3": {...}} (a kind with no valid ghost is missing).
+## The section order is the touch order (oldest first). `pts` is the encoded text (or, from an older file, an int list).
 static func read_ghosts(path: String) -> Dictionary:
 	var out := {}
 	if not FileAccess.file_exists(path):
@@ -142,7 +196,8 @@ static func read_ghosts(path: String) -> Dictionary:
 	for kind: String in file.get_sections():
 		if not valid_kind(kind):
 			continue
-		var pts := SaveFile.ints(file.get_value(kind, "pts", []))
+		var raw: Variant = file.get_value(kind, "pts", [])
+		var pts: Array[int] = decode_pts(raw) if raw is String else SaveFile.ints(raw)
 		var ms := SaveFile.get_int(file, kind, "ms", 0)
 		var key := SaveFile.get_int(file, kind, "key", 0)
 		if key > 0 and ms > 0 and pts.size() > 1 and pts.size() <= Economy.GHOST_MAX:
@@ -156,24 +211,26 @@ static func _ghosts_text(ghosts: Dictionary) -> String:
 		var g: Dictionary = ghosts[kind]
 		file.set_value(kind, "key", g.key)
 		file.set_value(kind, "ms", g.ms)
-		var pts: Array[int] = []
-		pts.assign(g.pts)
-		file.set_value(kind, "pts", pts)
+		file.set_value(kind, "pts", encode_pts(g.pts))
 	return file.encode_to_text()
 
 
-## Writes the file; when it would pass MAX_FILE_BYTES the longest story ghosts are dropped from `ghosts` first.
-static func write_ghosts(path: String, ghosts: Dictionary) -> bool:
+## Writes the file; when it would pass MAX_FILE_BYTES the oldest-touched kinds (first in `ghosts`) are dropped from
+## `ghosts` first, never `keep` (the kind just recorded). Returns true when the file was written and holds `keep`.
+static func write_ghosts(path: String, ghosts: Dictionary, keep: String = "") -> bool:
 	var text := _ghosts_text(ghosts)
 	while text.length() > MAX_FILE_BYTES:
-		var worst := ""
+		var oldest := ""
 		for kind: String in ghosts:
-			if kind != "daily" and kind != "weekly" and (worst == "" or ghosts[kind].pts.size() > ghosts[worst].pts.size()):
-				worst = kind
-		if worst == "":
+			if kind != keep:
+				oldest = kind
+				break
+		if oldest == "":
 			break
-		ghosts.erase(worst)
+		ghosts.erase(oldest)
 		text = _ghosts_text(ghosts)
+	if text.length() > MAX_FILE_BYTES:
+		return false
 	# (tmp + rename like the save, so a crash mid-write never leaves half a file; a ghost is only a replay, a failed write
 	# just means no ghost). The Progress autoload comes via the tree: a global-class script can't name it directly.
 	return (Engine.get_main_loop() as SceneTree).root.get_node("Progress").write_atomic(path, text)

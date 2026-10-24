@@ -2102,7 +2102,7 @@ func ghost_for(kind: String, key: int) -> Dictionary:
 
 
 ## Keeps `pts` (packed positions) as the ghost of `kind` / `key` when it beats the one there (or replaces another day's).
-## Returns true when it was kept. Capped at Economy.GHOST_MAX samples; written to the side file when saving is on.
+## Returns true when it was kept (and, when saving, survived the file write). Capped at Economy.GHOST_MAX samples; written to the side file when saving is on.
 func record_ghost(kind: String, key: int, ms: int, pts: Array) -> bool:
 	if pts.size() < 2 or pts.size() > Economy.GHOST_MAX or ms <= 0:
 		return false
@@ -2110,9 +2110,10 @@ func record_ghost(kind: String, key: int, ms: int, pts: Array) -> bool:
 	var old := ghost_for(kind, key)
 	if not old.is_empty() and int(old.ms) <= ms:
 		return false
+	_ghosts.erase(kind)  # (re-added last: the dict order is the touch order, the oldest-touched kind is trimmed first)
 	_ghosts[kind] = {key = key, ms = ms, pts = pts.duplicate()}
 	if saving_enabled and not demo_guard and _preview_save == null:
-		Boards.write_ghosts(ghosts_path(), _ghosts)
+		return Boards.write_ghosts(ghosts_path(), _ghosts, kind) and _ghosts.has(kind)
 	return true
 
 

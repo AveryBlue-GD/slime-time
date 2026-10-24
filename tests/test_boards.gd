@@ -133,6 +133,34 @@ func _initialize() -> void:
 	_check(FileAccess.get_file_as_bytes(progress.ghosts_path()).size() < 1500, "60 samples are a small file (%d bytes)" % FileAccess.get_file_as_bytes(progress.ghosts_path()).size())
 	_check(Boards.ghost_pos(pts, 0.0) == Vector2i(10, 20) and Boards.ghost_pos(pts, 0.05) == Vector2i(11, 20) and Boards.ghost_pos(pts, 99.0) == Vector2i(128, 20),
 		"replay positions are whole pixels, the last one after the end")
+	# BUG4-01: 20 story ghosts of 1,200 samples (a slow player's whole story) survive a write / read round trip, small
+	progress.saving_enabled = true
+	var long_pts: Array[int] = []
+	for i in 1200:
+		long_pts.append(Boards.pack(Vector2(40 + (i * 7) % 600 + (300 if i == 600 else 0), 30 + (i * 3) % 400)))
+	var all_ok := true
+	for lv in range(1, 11):
+		all_ok = progress.record_ghost(Boards.story_kind(lv, false), 1, 90000 + lv, long_pts) and all_ok
+		all_ok = progress.record_ghost(Boards.story_kind(lv, true), 1, 90000 + lv, long_pts) and all_ok
+	_check(all_ok, "all 20 story ghosts are kept")
+	var big_size := FileAccess.get_file_as_bytes(progress.ghosts_path()).size()
+	_check(big_size < 120 * 1024, "20 ghosts of 1,200 samples are well under the cap (%d bytes)" % big_size)
+	progress._ghosts = {}
+	progress._ghosts_loaded = false
+	var survived := 0
+	for lv in range(1, 11):
+		for h in [false, true]:
+			if progress.ghost_for(Boards.story_kind(lv, h), 1).get("pts", []) == long_pts:
+				survived += 1
+	_check(survived == 20, "20 ghosts of 1,200 samples survive the round trip (%d)" % survived)
+	# over the cap: the oldest-touched kind goes, the one just recorded stays
+	var fat := {}
+	for k in ["story_1", "story_2", "story_3"]:
+		fat[k] = {key = 1, ms = 1000, pts = long_pts}
+	var tiny := Boards.write_ghosts(progress.ghosts_path(), fat, "story_3")
+	_check(tiny and fat.size() == 3, "a file under the cap drops nothing")
+	progress.saving_enabled = false
+
 	progress.saving_enabled = false
 
 	# ---- the weekly maze: seed, fixed loadout, no abilities, no pay
