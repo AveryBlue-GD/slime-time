@@ -51,6 +51,7 @@ static func setup(material: ShaderMaterial, theme: String, skin: Color, trail_te
 
 
 ## Per frame: the goal's rays (position, or strength 0 when there is no goal / the level is over) and the sunrise clock.
-static func frame(material: ShaderMaterial, goal_pos: Vector2, rays: bool, sunrise_t: float) -> void:
+static func frame(material: ShaderMaterial, goal_pos: Vector2, rays: bool, sunrise_t: float, motion := true) -> void:
 	material.set_shader_parameter("goal_fx", Vector4(goal_pos.x, goal_pos.y, GOAL_REACH, 1.0 if rays and GOAL_RAYS else 0.0))
+	material.set_shader_parameter("ll_motion", motion)
 	material.set_shader_parameter("sunrise", sunrise_t if sunrise_t >= 0.0 and sunrise_t < SUNRISE_TIME else -1.0)

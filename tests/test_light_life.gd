@@ -42,6 +42,19 @@ func _initialize() -> void:
 	await _wait_seconds(0.4)
 	_check(game._sunrise_t > 0.0, "the sunrise clock runs")
 	_check(float(mat.get_shader_parameter("sunrise")) >= 0.0, "sunrise reaches the fog")
+	_check(mat.get_shader_parameter("ll_motion") == true, "motion on: the fog's ll_motion is true")
+	game.queue_free()
+	await process_frame
+
+	# Reduce Motion: ll_motion false (no glint flicker, no sunrise ring) and no hit-stop
+	progress.reduce_motion = true
+	game = await _spawn_game({level = 10})
+	mat = game.fog_sprite.material as ShaderMaterial
+	await _physics_frames(3)
+	_check(mat.get_shader_parameter("ll_motion") == false, "Reduce Motion: ll_motion is false")
+	game._on_goal_body_entered(game.slime)
+	_check(game._hitstop_frames == 0 and game.is_physics_processing(), "Reduce Motion: no hit-stop")
+	progress.reduce_motion = false
 	game.queue_free()
 	Economy.lightlife_force = -1
 	_result()

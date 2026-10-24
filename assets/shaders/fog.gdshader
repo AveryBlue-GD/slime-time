@@ -61,6 +61,10 @@ uniform vec4 goal_fx = vec4(0.0);
 uniform vec3 goal_color = vec3(1.0, 0.82, 0.3);
 // Win sunrise: seconds since the win (negative = off), a ring of light sweeping out from the slime.
 uniform float sunrise = -1.0;
+// false = Reduce Motion: no glint flicker, no sunrise ring.
+uniform bool ll_motion = true;
+// Light drawn over the slime would wash its skin: none within this radius (px) of the slime's centre.
+const float LL_BODY = 10.0;
 
 
 // The 4x4 Bayer dither matrix (0, 8, 2, 10 / 12, 4, 14, 6 / 3, 11, 1, 9 / 15, 7, 13, 5) worked
@@ -178,9 +182,12 @@ void fragment() {
 			// Tinted pocket: a dithered falloff, small and faint.
 			float t = clamp(1.0 - d / ll_radius, 0.0, 1.0);
 			ll = vec4(ll_tint, floor(t * 4.0 + thr) / 4.0 * ll_strength);
+			if (d < LL_BODY) {
+				ll = vec4(0.0);
+			}
 			// Glints on fresh trail: single pixels that flicker and fade with the trail's age.
-			if (aw.y < 0.5 && aw.x < 3.5 && texture(trail_tex, UV).a > 0.01) {
-				if (hash(pixel + floor(now * 5.0)) > 0.965) {
+			if (ll_motion && aw.y < 0.5 && aw.x < 3.5 && texture(trail_tex, UV).a > 0.01) {
+				if (d >= LL_BODY && hash(pixel + floor(now * 5.0)) > 0.965) {
 					ll = vec4(ll_glint, 0.55 * (1.0 - aw.x / 3.5));
 				}
 			}
@@ -191,7 +198,7 @@ void fragment() {
 				max(rim_from(texture(TEXTURE, UV + vec2(0.0, t2.y)), texture(trail_tex, UV + vec2(0.0, t2.y))), rim_from(texture(TEXTURE, UV - vec2(0.0, t2.y)), texture(trail_tex, UV - vec2(0.0, t2.y)))));
 			rim = step(thr, r);
 		}
-		if (sunrise >= 0.0) {
+		if (ll_motion && sunrise >= 0.0) {
 			float band = 1.0 - abs(d - sunrise * 220.0) / 9.0;
 			sun = step(thr, clamp(band, 0.0, 1.0) * clamp(1.5 - sunrise, 0.0, 1.0));
 		}

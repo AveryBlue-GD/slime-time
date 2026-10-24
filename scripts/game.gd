@@ -839,14 +839,15 @@ func _light_life_frame(delta: float) -> void:
 	if _sunrise_t >= 0.0:
 		_sunrise_t += delta
 	var goal_here: bool = is_instance_valid(goal) and not finished
-	LightLife.frame(fog_sprite.material as ShaderMaterial, goal.position if goal_here else Vector2.ZERO, goal_here, _sunrise_t)
+	LightLife.frame(fog_sprite.material as ShaderMaterial, goal.position if goal_here else Vector2.ZERO, goal_here, _sunrise_t, motion_scale() > 0.0)
 
 
 ## LIGHT & LIFE on the win: the sunrise ring starts and the game holds still for 2 frames.
 func _light_life_win() -> void:
 	_sunrise_t = 0.0
-	_hitstop_frames = 2
-	_hitstop_set(true)
+	if motion_scale() > 0.0:  # (Reduce Motion: no hit-stop)
+		_hitstop_frames = 2
+		_hitstop_set(true)
 
 
 ## The hit-stop pauses only this level's physics (never Engine.time_scale, which would also stop the
