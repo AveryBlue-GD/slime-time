@@ -911,7 +911,8 @@ func _on_tile(id: String) -> void:
 ## Plays skin `id` (in the version on view) on the preview stage.
 func _preview(id: String) -> void:
 	var color: Color = _base_color(id)
-	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly, view_pastel), id == Skins.STOPWATCH)
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly, view_pastel), id == Skins.STOPWATCH,
+		{hat = Progress.selected_hat, dye = Progress.hat_dye_of(Progress.selected_hat), trail = Progress.trail_style})
 
 
 func _on_hat_tile(id: String) -> void:

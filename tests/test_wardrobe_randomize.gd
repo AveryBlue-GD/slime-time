@@ -63,6 +63,15 @@ func _initialize() -> void:
 		_check(not screen.dice_button.visible, "no dice on the %s page" % pg)
 	screen.show_page("skins")
 	_check(screen.dice_button.visible, "dice back on the skins page")
+	# The skins preview wears the worn hat and leaves the worn trail
+	progress.select_hat(Hats.LIST[0].id)
+	progress.equip_cosmetic("ink")
+	screen._preview(progress.selected_skin)
+	_check(screen.showcase.hat != null and screen.showcase.hat.hat_id == Hats.LIST[0].id, "the preview slime wears the worn hat")
+	_check(not screen.showcase._trail_look.is_empty(), "the preview leaves the worn trail")
+	progress.select_hat(Hats.NONE)
+	screen._preview(progress.selected_skin)
+	_check(screen.showcase.hat == null, "no hat, none drawn")
 	# The toggle: default OFF, saved, ON rolls once at once, a new run re-rolls, a retry does not
 	_check(not progress.random_look, "RANDOM LOOK is off by default")
 	screen.dice_button.pressed.emit()

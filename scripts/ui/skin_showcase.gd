@@ -28,8 +28,18 @@ const ROUTINE := [
 ]
 
 var slime: AnimatedSprite2D
+## The worn hat on the previewed slime (null = none) and the trail it leaves (the worn style, painted
+## by `_trail` along the floor as the slime glides; Cosmetics.trail_look / trail_cell_at, 2 px cells like the game).
+var hat: Hat
+var _trail: Node2D
+var _trail_look := {}
+var _trail_color := Color.WHITE
+var _trail_rainbow := false
+var _trail_xs: Array[int] = []
 var _time := 0.0
 var _length := 0.0
+## The trail band: rows of 2 px cells (stage y = row * 2), around the floor line under the slime's body.
+const TRAIL_ROWS := Vector2i(11, 17)
 
 
 func _ready() -> void:
@@ -45,8 +55,31 @@ func _ready() -> void:
 	frame.size = STAGE_SIZE
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(frame)
+	_trail = TrailLayer.new()
+	_trail.showcase = self
+	add_child(_trail)
 	for step: Array in ROUTINE:
 		_length += step[1]
+
+
+## The stage's trail painter (under the slime, over the floor).
+class TrailLayer extends Node2D:
+	var showcase: SkinShowcase
+
+	func _draw() -> void:
+		if showcase == null or showcase._trail_look.is_empty():
+			return
+		var look: Dictionary = showcase._trail_look
+		for x in showcase._trail_xs:
+			var cx := x / 2
+			var hue := fposmod(x / SkinShowcase.STAGE_SIZE.x, 1.0) * 0.83
+			for cy in range(SkinShowcase.TRAIL_ROWS.x, SkinShowcase.TRAIL_ROWS.y + 1):
+				var deep := posmod(hash(Vector2i(cx, cy)), 5) == 0
+				var c := Cosmetics.trail_cell_at(look, deep, float(x), Vector2i(cx, cy), hue)
+				draw_rect(Rect2(cx * 2, cy * 2, 2, 2), c)
+			var center: Variant = Cosmetics.trail_center(look, float(x))
+			if center != null:
+				draw_rect(Rect2(cx * 2, 28, 2, 2), center)
 
 
 ## Dungeon floor tiles under the goo frame (so the jelly has ground to show through), mostly plain
@@ -78,21 +111,39 @@ func _lay_floor() -> void:
 
 ## Shows skin `color` (`rainbow`, `jelly` = see-through, `locked` = silhouette) and
 ## starts the routine from the top.
-func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock := false) -> void:
+func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock := false, outfit := {}) -> void:
 	if slime:
 		slime.queue_free()
+	if hat:
+		hat.queue_free()
+		hat = null
 	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly, clock)
 	add_child(slime)
 	UIKit.keep_ltr(slime)  # (placed mirrored by _pose every frame, not by UIKit's one-off Node2D mirror)
 	if locked:
 		slime.modulate = Color(0, 0, 0, 0.85)
+	# `outfit` = {hat, dye, trail}: the look worn now, so the whole look is seen before choosing.
+	var hat_id: String = outfit.get("hat", Hats.NONE)
+	if hat_id != Hats.NONE:
+		hat = Hat.new()
+		hat.scale = slime.scale
+		add_child(hat)
+		hat.setup(hat_id, slime, null, outfit.get("dye", ""))
+		hat.modulate = slime.modulate
+	_trail_look = Cosmetics.trail_look(outfit.get("trail", Cosmetics.DEFAULT_TRAIL), color, rainbow) if not locked else {}
+	_trail_xs.clear()
+	_trail.queue_redraw()
 	_time = 0.0
 	_pose()
 
 
 func _process(delta: float) -> void:
 	if slime and is_visible_in_tree():
+		var before := _time
 		_time = fmod(_time + delta, _length)
+		if _time < before and not _trail_xs.is_empty():  # (the routine looped: a clean floor)
+			_trail_xs.clear()
+			_trail.queue_redraw()
 		_pose()
 
 
@@ -110,6 +161,11 @@ func _pose() -> void:
 				x = STAGE_SIZE.x - x
 			var lift: float = step[4] * sin(progress * PI)
 			slime.position = Vector2(roundf(x), roundf(FLOOR_Y - lift))
+			if lift == 0.0 and not _trail_look.is_empty() and step[2] != step[3]:
+				var cell_x := int(slime.position.x) / 2 * 2
+				if not cell_x in _trail_xs:
+					_trail_xs.append(cell_x)
+					_trail.queue_redraw()
 			return
 		t -= step[1]
 
