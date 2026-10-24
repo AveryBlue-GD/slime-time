@@ -129,23 +129,11 @@ func _hub() -> void:
 	progress.record_daily(41000, progress.utc_day())
 	hub._refresh_badges()
 	_check(hub.badges["daily"].text.begins_with("NEW IN ") and hub.badges["daily"].text.ends_with("H"), "...NEW IN <h>H after (%s)" % hub.badges["daily"].text)
-	# Names only when close.
-	for i in 30:
+	# Names on arrival.
+	_check(hub.name_layer.visible and hub.name_labels.size() == 10, "every station name shows on arrival (%d)" % hub.name_labels.size())
+	for i in int(hub.NAMES_TIME * 60) + 30:
 		await physics_frame
-	var shown_far := 0
-	for id: String in hub.name_labels:
-		if hub.name_labels[id].visible:
-			shown_far += 1
-	_check(hub.name_labels.size() == 10 and shown_far <= hub.NAMES_MAX, "no all-names on arrival (%d shown)" % shown_far)
-	var st: Dictionary = hub._station("upgrades")
-	hub.slime.position = st.sprite.position + Vector2(0, 14)
-	for i in 30:
-		await physics_frame
-	_check(hub.name_labels["upgrades"].visible and hub.name_labels["upgrades"].modulate.a == 1.0, "a station's name shows when the slime is close")
-	hub.slime.position = st.sprite.position + Vector2(0, 14 + hub.NAMES_NEAR + 80)
-	for i in 30:
-		await physics_frame
-	_check(not hub.name_labels["upgrades"].visible, "...and is gone when it walks away")
+	_check(not hub.name_layer.visible, "...and is gone after 3 s")
 	# Badges: the wheel's first spin is free; the signpost has news with a new achievement.
 	progress.spins = 0
 	progress.hats_owned.clear()

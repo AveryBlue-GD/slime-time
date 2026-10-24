@@ -8,8 +8,8 @@ extends Node2D
 ## - coin bag: a board of the coins found in each story level (no screen change)
 ## - portal: RANDOMIZER (dimmed and locked until the story is beaten); one press starts a random maze (with DESCENT
 ##   on, a choice of the two). Beside it stands the small DAILY MAZE sign (not on the ring): a gold "!" until
-##   today's daily is won, then a check and "NEW IN 5H". A station's name shows only while you are close to it,
-##   and a "!" marks news (an affordable upgrade or spin, a new achievement). On a touchscreen a tap on
+##   today's daily is won, then a check and "NEW IN 5H". Every station's name shows for NAMES_TIME seconds when
+##   you arrive, and a "!" marks news (an affordable upgrade or spin, a new achievement). On a touchscreen a tap on
 ##   a station glides the slime there.
 ## - wardrobe: COSMETICS (pages SKINS / HATS / TRAILS / PAPERS)
 ## - cauldron: UPGRADES
@@ -107,14 +107,9 @@ const HUB_MENU_TITLE_GAP := 6
 ## box and the buttons (4 px under the drips in English).
 const DIALOG_INSET := 16.0
 const DIALOG_GAP := 6.0
-## A station's name shows only while the slime is this close (px from its footprint; USE_GAP is 9, so it
-## appears just before the prompt), the nearest NAMES_MAX at most; fades in / out over NAMES_IN / NAMES_OUT.
-const NAMES_NEAR := 40.0
-const NAMES_MAX := 2
-const NAMES_IN := 0.15
-const NAMES_OUT := 0.2
-## Test hook: every name up at once (the worst case for the badge-vs-name overlap rule).
-var names_force_all := false
+## The station names fade in on arrival and are gone after this many seconds (the last NAMES_FADE of it fading).
+const NAMES_TIME := 3.0
+const NAMES_FADE := 0.5
 ## The DAILY MAZE sign stands this far (px along the ring) from the portal, toward the next station.
 const SIGN_GAP := 30.0
 ## The sign is used from this close (a ring station's USE_GAP is 9): standing at the portal or the next station
@@ -162,7 +157,7 @@ var hat: Hat
 ## Props that stand beside a station instead of on the ring (the DAILY MAZE sign, beside the portal): same
 ## dictionaries as `stations`, plus `anchor` (the ring station it stands by). Empty while the daily is off.
 var extras: Array[Dictionary] = []
-## The station names (shown only when the slime is close, _update_names) and the "!" badges: id -> Label.
+## The station names (shown NAMES_TIME seconds on arrival) and the "!" badges: id -> Label.
 var name_layer: Control
 var name_labels := {}
 var badge_layer: Control
@@ -173,6 +168,7 @@ const BADGE_SIZE := Vector2i(7, 10)
 const BADGE_BOB_CYCLE := 1.6  # seconds: 3 steps at rest, 3 steps 1 px up (0,0,0,1,1,1)
 const BADGE_POP_STEP := 0.05  # pop-in: 3 integer steps (3, 1, 0 px low); then a quick fade out over BADGE_FADE
 const BADGE_FADE := 0.12
+var _names_t := 0.0
 ## A touch tap's glide to a station (Hub.glide_path): the waypoints left; empty = not gliding.
 var glide_path: Array[Vector2] = []
 var glide_target := ""
@@ -571,7 +567,7 @@ func _build_ui() -> void:
 			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
 
 
-## The station names (only when the slime is near) and the "!" badges (news at a station), drawn over the room
+## The station names (on arrival, NAMES_TIME seconds) and the "!" badges (news at a station), drawn over the room
 ## and under the menus; positioned with their station each frame (_place_hints). Not under `root`: they
 ## follow the room, which is never mirrored.
 func _build_hints() -> void:
@@ -595,8 +591,6 @@ func _build_hints() -> void:
 		label.add_theme_stylebox_override("normal", back)
 		name_layer.add_child(label)
 		label.reset_size()
-		label.modulate.a = 0.0
-		label.visible = false
 		name_labels[station.id] = label
 		if station.id in ["upgrades", "wheel", "settings", "daily"]:
 			var bang := UIKit.make_label("!", UIKit.FONT, UIKit.GOLD)
@@ -693,7 +687,7 @@ func _clear_badges(safe: Rect2) -> void:
 	var taken: Array[Rect2] = []
 	for id: String in name_labels:
 		var label: Label = name_labels[id]
-		if label.visible:
+		if label.visible and name_layer.visible:
 			taken.append(Rect2(label.position, label.size))
 	var placed: Array[Rect2] = []
 	for station: Dictionary in _all_props():
@@ -1879,7 +1873,10 @@ func _process(delta: float) -> void:
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
 	for prop: Dictionary in extras:
 		prop.sprite.self_modulate = Color(1.25, 1.25, 1.25) if prop == near else Color.WHITE
-	_update_names(delta)
+	if name_layer != null:
+		_names_t += delta
+		name_layer.modulate.a = clampf((NAMES_TIME - _names_t) / NAMES_FADE, 0.0, 1.0)
+		name_layer.visible = _names_t < NAMES_TIME
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	var lit_rotor := Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	rotor.self_modulate = lit_rotor
@@ -2035,34 +2032,6 @@ func _sfx_stop(sound: String) -> void:
 func _set_frame(station: Dictionary, frame: int) -> void:
 	var row: int = 0 if station.flat else station.view
 	station.sprite.region_rect = Rect2(frame * station.size.x, row * station.size.y, station.size.x, station.size.y)
-
-
-## Fades each station's name in while the slime is within NAMES_NEAR of it (the nearest NAMES_MAX only; the
-## tour's lit station always), out otherwise. Reduce Motion: no fade.
-func _update_names(delta: float) -> void:
-	if name_layer == null or slime == null:
-		return
-	var gaps: Array = []
-	for station: Dictionary in _all_props():
-		var gap := _gap_to(station.sprite.position + (Vector2.ZERO if station.flat else Vector2(0, -2)), _footprint(station))
-		if gap < NAMES_NEAR:
-			gaps.append([gap, station.id])
-	gaps.sort_custom(func(a, b): return a[0] < b[0])
-	var shown: Array[String] = []
-	if names_force_all:
-		shown.append_array(name_labels.keys())
-	for i in mini(NAMES_MAX, gaps.size()):
-		shown.append(gaps[i][1])
-	if tour != null:
-		shown.append(tour.lit_id())
-	for id: String in name_labels:
-		var label: Label = name_labels[id]
-		var on := id in shown
-		if Progress.reduce_motion:
-			label.modulate.a = 1.0 if on else 0.0
-		else:
-			label.modulate.a = clampf(label.modulate.a + (delta / NAMES_IN if on else -delta / NAMES_OUT), 0.0, 1.0)
-		label.visible = label.modulate.a > 0.0
 
 
 func _update_near() -> void:
