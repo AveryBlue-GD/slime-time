@@ -132,6 +132,29 @@ func _initialize() -> void:
 		"...one station round: the next one comes to the back, facing you")
 	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
 	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)
+	# IMP3-06: F on a WEAR IT toast wears the item and is spent: it does not also use the station next to the slime
+	var tr: Node = root.get_node("Transition")
+	progress.cosmetics_owned.append("night")
+	progress.map_paper = Cosmetics.DEFAULT_PAPER
+	progress.notice_wear["WEAR TEST"] = "night"
+	progress.notices.append("WEAR TEST")
+	tr._notice_left = 0.0
+	await _physics_frames(4)
+	hub.slime.position = hub.rotor.position + Vector2(0, 8)
+	await _physics_frames(2)
+	_check(tr._notice_wear == "night" and not hub.near.is_empty(), "a WEAR IT toast is up beside a station")
+	var f := InputEventAction.new()
+	f.action = "interact"
+	f.pressed = true
+	Input.parse_input_event(f)
+	await _physics_frames(2)
+	var f_up := InputEventAction.new()
+	f_up.action = "interact"
+	f_up.pressed = false
+	Input.parse_input_event(f_up)
+	await _physics_frames(2)
+	_check(progress.map_paper == "night" and not hub.turning, "F wears the item and the station does NOT open (turning %s)" % hub.turning)
+	await _physics_frames(30)
 	# R turns the room from anywhere (away from the wheel too)
 	hub.slime.position = HubScript.CENTER + Vector2(0, 20)
 	await _physics_frames(2)

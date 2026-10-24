@@ -133,7 +133,7 @@ func _physics_process(delta: float) -> void:
 			_next()
 		return
 	game.touch_controls.step_coach(delta)
-	if Input.is_action_just_pressed("interact"):
+	if _interact_pressed():
 		skip()
 		return
 	if int(runner.charges.get(current, 0)) < _charges_at:
@@ -257,3 +257,11 @@ func _input(event: InputEvent) -> void:
 	if (touch or click) and skip_rect().has_point(event.position):
 		get_viewport().set_input_as_handled()
 		skip()
+
+
+## F pressed this frame, unless it was spent wearing a toast's item (Transition.interact_free).
+func _interact_pressed() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	if transition != null:
+		return transition.interact_free()
+	return Input.is_action_just_pressed("interact")

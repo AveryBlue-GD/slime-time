@@ -184,6 +184,7 @@ const NOTICE_FADE := 0.3
 const NOTICE_WEAR_TIME := 5.0
 var _notice: Control
 var _notice_left := 0.0
+var _wore_msec := -1000  # (when F last wore a toast item: that press is spent, see interact_free)
 var _notice_wear := ""  # (the cosmetic id the toast up now offers, "" = none)
 
 
@@ -270,7 +271,7 @@ func _pump_notice(delta: float) -> void:
 
 ## The second line of a toast that offers a cosmetic: the key (or a tap on the toast) wears it.
 func _wear_hint() -> String:
-	if Platform.has_touch():
+	if UIKit.touch_active():
 		return Loc.t("notice.wear_touch", "TAP: WEAR IT")  # i18n: toast action line, max 150px, 1 line; touch screens (tap the toast)
 	var key := Platform.prompt_for("interact", Progress.key_name(Progress.bindings.interact))
 	return Loc.t("notice.wear_key", "PRESS {key}: WEAR IT", {key = key})  # i18n: toast action line, max 150px, 1 line; {key} = the use key's name (e.g. F) or the pad button
@@ -297,6 +298,13 @@ func _on_notice_input(event: InputEvent) -> void:
 		wear_notice()
 
 
+## True when F was just pressed and was not spent wearing a toast's item (the hub, the coach: the
+## polled `interact` must not also use the station next to the slime).
+func interact_free() -> bool:
+	return Input.is_action_just_pressed("interact") and Time.get_ticks_msec() - _wore_msec > 150
+
+
 func _input(event: InputEvent) -> void:
 	if _notice_wear != "" and event.is_action_pressed("interact") and wear_notice():
+		_wore_msec = Time.get_ticks_msec()
 		get_viewport().set_input_as_handled()

@@ -1817,7 +1817,7 @@ func _physics_process(delta: float) -> void:
 	if hat_wheel.visible:
 		# Only the interact key (F / X) or the SPIN button spins: never JUMP, which a touchscreen presses for any
 		# tap on the right half (a paid spin by accident, audit H4).
-		var pressed := Input.is_action_just_pressed("interact")
+		var pressed := _interact_pressed()
 		if hat_wheel.spinning:
 			return
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
@@ -1867,7 +1867,7 @@ func _physics_process(delta: float) -> void:
 	# such key, so right next to one JUMP uses it instead of leaping.
 	var touch := _touch_controls != null and _touch_controls.visible
 	slime.can_charge = near.is_empty() or not touch
-	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
+	var used := _interact_pressed() or (touch and Input.is_action_just_pressed("jump"))
 	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
 		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
 		# 2026-10-22); holding left turns it the other way.
@@ -2270,3 +2270,11 @@ func _sfx(sound: String, pitch := 1.0) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
 		sfx.play(sound, -6.0, pitch)
+
+
+## F pressed this frame, unless it was spent wearing a toast's item (Transition.interact_free).
+func _interact_pressed() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	if transition != null:
+		return transition.interact_free()
+	return Input.is_action_just_pressed("interact")
