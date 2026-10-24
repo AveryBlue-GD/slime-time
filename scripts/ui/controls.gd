@@ -164,8 +164,6 @@ func _ready() -> void:
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	if Economy.ACHIEVEMENTS and not Demo.on():
 		_build_achievements_button()
-		if Economy.boards_on():
-			_build_boards_button()
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
@@ -199,6 +197,8 @@ func _ready() -> void:
 		if training_button != null and language_button != null:
 			training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
 		_refresh_display_options()
+	if Economy.ACHIEVEMENTS and not Demo.on() and Economy.boards_on():
+		_build_boards_button()  # (IMP4-03: the bottom row, right of BACK; the corner keeps ACHIEVEMENTS alone)
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -332,9 +332,9 @@ func _build_achievements_button() -> void:
 	achievements_button.position = Vector2(safe.end.x - UIKit.EDGE - achievements_button.size.x, safe.position.y + UIKit.EDGE)
 
 
-## BOARDS under ACHIEVEMENTS (BM-03): the daily / weekly top times and the ghost toggle; BACK returns to SETTINGS.
+## BOARDS in the bottom row beside BACK (BM-03, IMP4-03): the daily / weekly top times and the ghost toggle; BACK returns to SETTINGS.
 func _build_boards_button() -> void:
-	# i18n: settings button (top right corner, under ACHIEVEMENTS), max 90px, grows with the text, 1 line; opens the boards page
+	# i18n: settings button (bottom row, right of BACK), max 90px, grows with the text, 1 line; opens the boards page
 	var text := Loc.t("settings.boards", "BOARDS")
 	boards_button = UIKit.make_button(text, func() -> void:
 		(load("res://scripts/ui/boards_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"
@@ -342,8 +342,9 @@ func _build_boards_button() -> void:
 	UIKit.note_text_w(boards_button, [text], 90)
 	add_child(boards_button)
 	boards_button.size = boards_button.custom_minimum_size
-	var safe := UIKit.safe_rect()
-	boards_button.position = Vector2(safe.end.x - UIKit.EDGE - boards_button.size.x, achievements_button.position.y + achievements_button.size.y + UIKit.GAP_S)
+	UIKit.place_bottom_row(boards_button, -1)
+	var back := UIKit.back_size("BACK")
+	boards_button.position.x += back.x + UIKit.GAP_S
 
 
 ## TRAINING replays the maze (replay = true: nothing is saved, docs/tutorial/design.md section 8).
