@@ -152,6 +152,25 @@ func _initialize() -> void:
 	p.cosmetics_owned.erase("night")
 	p.check_achievements()
 	_check(p.notices.size() == 1 and p.notices[0] == "NEW REWARD: NIGHT PAPER", "one late reward: " + str(p.notices))
+	_check(p.notice_wear.get("NEW REWARD: NIGHT PAPER", "") == "night", "...and it offers WEAR IT for that paper")
+	# IMP3-06 WEAR IT: the toast carries the action; pressing it wears the item with one save
+	var tr: Node = root.get_node("Transition")
+	tr._notice_left = 0.0
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(tr._notice != null and tr._notice_wear == "night", "the toast is up with WEAR IT")
+	var hint_text := ""
+	for lbl in tr._notice.find_children("*", "Label", true, false):
+		hint_text += (lbl as Label).text + "|"
+	_check(hint_text.contains("WEAR IT"), "...its second line says WEAR IT (%s)" % hint_text)
+	p.map_paper = Cosmetics.DEFAULT_PAPER
+	var saves_before: int = p.saves_written
+	_check(tr.wear_notice() and p.map_paper == "night", "wearing it equips the paper")
+	_check(p.saves_written == saves_before + 1, "...with one save (%d)" % (p.saves_written - saves_before))
+	_check(not tr.wear_notice(), "...and only once")
+	tr._notice_left = 0.0
+	await process_frame
 
 	# the page
 	var scene: Control = load("res://scenes/achievements.tscn").instantiate()

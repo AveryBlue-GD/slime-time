@@ -889,15 +889,19 @@ var _notice_keys := {}
 ## Notice text -> group ("ach" = an achievement, "reward" = a medal milestone): those are good news, merged when
 ## several wait ("+3 ACHIEVEMENTS") and held while a run is in progress; every other notice (an error) shows at once.
 var notice_groups := {}
+## IMP3-06 WEAR IT: notice text -> the cosmetic id that toast grants (its toast offers to wear it: Transition).
+var notice_wear := {}
 
 
-func notify_once(key: String, text: String, group := "") -> void:
+func notify_once(key: String, text: String, group := "", wear := "") -> void:
 	if not Economy.SAVE_NOTICES or _notice_keys.has(key):
 		return
 	_notice_keys[key] = true
 	notices.append(text)
 	if group != "":
 		notice_groups[text] = group
+	if wear != "":
+		notice_wear[text] = wear
 
 
 static func corrupt_backup_path(path: String, n := 1) -> String:
@@ -1172,13 +1176,14 @@ func check_achievements(silent := false) -> bool:
 				var reward := Achievements.reward_for(id)
 				if reward != "":
 					# i18n: unlock toast with a reward, max 296px, 2 lines; {goal} = the goal text, {name} = the cosmetic won (e.g. NIGHT PAPER)
-					notify_once("ach_" + id, Loc.t("ach.toast_reward", "ACHIEVEMENT: {goal}. REWARD: {name}", {goal = a.goal, name = Cosmetics.display_name(reward)}), "ach")
+					notify_once("ach_" + id, Loc.t("ach.toast_reward", "ACHIEVEMENT: {goal}. REWARD: {name}", {goal = a.goal, name = Cosmetics.display_name(reward)}), "ach", reward)
 				else:
 					# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
 					notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}), "ach")
 		report_progress("ach_" + id, 1)
 	# Goal rewards (IMP2-03): once per goal. A save that already had the goal gets it now, in one merged notice.
 	var late: Array[String] = []
+	var late_wear: Array[String] = []  # (the cosmetic each late text grants, "" = tickets)
 	for id in Achievements.met_ids(self):
 		var reward := Achievements.reward_for(id)
 		if reward == "" or id in ach_rewarded:
@@ -1190,6 +1195,7 @@ func check_achievements(silent := false) -> bool:
 		if not id in announced and not silent:
 			# i18n: toast, max 296px, 2 lines; {name} = the cosmetic a goal already met just granted (e.g. NIGHT PAPER)
 			late.append(Loc.t("ach.reward_late", "NEW REWARD: {name}", {name = Cosmetics.display_name(reward)}))
+			late_wear.append(reward)
 	# Medal milestones (IMP2-03): a named cosmetic each, or a spin's worth of tickets when it is already owned.
 	var earned := Achievements.medals_earned(self)
 	for i in Achievements.MILESTONES.size():
@@ -1203,15 +1209,17 @@ func check_achievements(silent := false) -> bool:
 			add_tickets(Economy.MEDAL_MILESTONE_TICKETS, false)
 			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {n} = tickets (one wheel spin)
 			text = Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = m.medals, n = Economy.MEDAL_MILESTONE_TICKETS})
+			late_wear.append("")
 		else:
 			cosmetics_owned.append(m.cosmetic)
 			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {name} = the cosmetic won (e.g. BLUEPRINT PAPER)
 			text = Loc.t("ach.medal_cosmetic", "{medals} MEDALS: {name}", {medals = m.medals, name = Cosmetics.display_name(m.cosmetic)})
+			late_wear.append(m.cosmetic)
 		late.append(text)
 		report_progress("medal_milestone", int(m.medals))
 	# One notice for everything granted now (a save that already had the goals and medals gets a single merged one).
 	if late.size() == 1 and not silent:
-		notify_once("ach_late_" + late[0], late[0], "reward")
+		notify_once("ach_late_" + late[0], late[0], "reward", late_wear[0])
 	elif late.size() > 1 and not silent:
 		# i18n: toast, max 296px, 2 lines; {n} = how many goal and medal rewards were granted at once (2 or more)
 		notify_once("ach_late_many_%d_%d" % [ach_rewarded.size(), medal_ms_mask],Loc.t("ach.reward_late_many", "{n} NEW REWARDS FOR YOUR GOALS", {n = late.size()}), "reward")
