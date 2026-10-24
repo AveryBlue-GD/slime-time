@@ -742,6 +742,13 @@ msgctxt "result.seed"
 msgid "SEED {code}"
 msgstr "ซีด {code}"
 
+#. result line, max 296px, 1 line; {n} = how many times lurkers touched the slime in this hard maze
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.lurker_hits"
+msgid "LURKER HITS {n}"
+msgstr ""
+
 #. result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
@@ -803,6 +810,13 @@ msgstr[0] ""
 msgctxt "result.level_cleared"
 msgid "LEVEL {level} CLEARED"
 msgstr "ผ่าน​ด่าน {level} แล้ว"
+
+#. result line, max 296px, 1 line; {level} = the level number, {n} = how many times lurkers touched the slime; the spaces are spacing
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.level_cleared_hits"
+msgid "LEVEL {level} CLEARED  LURKER HITS {n}"
+msgstr ""
 
 #. max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 #. budget: max 296px, lines 1

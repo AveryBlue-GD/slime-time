@@ -184,6 +184,28 @@ func _initialize() -> void:
 	lk._slowmo_until_ms = Time.get_ticks_msec() - 1
 	await process_frame
 	_check(game.is_physics_processing() and Engine.time_scale == 1.0, "slow-mo over: the level runs at full speed again")
+	# IMP4-05: the slow-mo's skipped frames are added back: run_time tracks the frames lived through (1 tick = 1/60 s here)
+	l.near_active = true
+	l.near_hit = false
+	lk.invuln = 0.0
+	lk._clock_wall = 0.0
+	var rt0: float = game.run_time
+	var misses0 := lk.near_misses
+	lk._near_miss(l, Economy.LURKER_NEAR_MISS_DIST + 20.0)
+	var frames := 0
+	if lk._slowmo_until_ms >= 0:
+		for k in 18:  # (headless frames run faster than the slow-mo's wall-clock window: expire it by hand)
+			await physics_frame
+			frames += 1
+		lk._slowmo_until_ms = Time.get_ticks_msec() - 1
+		for k in 3:
+			await physics_frame
+			frames += 1
+		var gained: float = game.run_time - rt0
+		_check(lk.near_misses == misses0 + 1 and absf(gained - frames / 60.0) <= 2.0 / 60.0 + 0.001,
+			"IMP4-05: run_time after a near miss matches the frames lived through (%.3f vs %.3f s)" % [gained, frames / 60.0])
+	else:
+		_check(game.motion_scale() <= 0.0, "IMP4-05: no slow-mo only with Reduce Motion (no clock change)")
 	game.slime_remaining = 10.0
 	lk.invuln = 0.0
 	l.stun = 0.0
@@ -286,6 +308,17 @@ func _initialize() -> void:
 			again.append(hl.cell)
 		_check(again == first, "hard level %d: the same cells every try (learnable)" % lvl)
 		await _drop(game)
+	progress.hard_mode = true
+	progress.start_story(1)
+	game = await _spawn_story(1)
+	game.lurkers.hits = 2
+	game.run_time = 40.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check("LURKER HITS 2" in game.hud.message.text and game.hud.message.text.count("
+") <= 4, "IMP4-05: the hard result names the lurker hits, at most 5 lines (%s)" % game.hud.message.text.replace("
+", " | "))
+	await _drop(game)
 	progress.relaxed = false
 	progress.hard_mode = false
 	progress.start_story(1)

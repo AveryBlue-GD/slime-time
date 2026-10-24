@@ -581,10 +581,12 @@ the countdown. Heat 10 on every level and heat 9 (BRITTLE in place of GROUNDED) 
 (`thirsty.drain` is the one that could break winnability: keep it under 1 / 0.875 = 1.14 for L1's perfect route).
 
 
-## 11. Lurker near-miss slow-mo and the run clock (BUG3-12, 2026-10-24)
+## 11. Lurker near-miss slow-mo and the run clock (BUG3-12, 2026-10-24; exact clock IMP4-05)
 
-The lurker near-miss slow-mo (`Economy.LURKER_SLOWMO`, 0.3 s) skips physics frames (`Lurkers._slowmo_step`), and a
-skipped frame adds nothing to `run_time` or to the ghost clock: each near miss therefore takes about 0.16 s off the
-recorded time. Hard story ghosts and hard runs with lurkers are affected (daily, weekly and normal runs have no
-lurkers). Left as is on purpose (not made exact: adding the skipped frames back would change every pinned ghost
-time and best); a hard ghost is simply a little faster than the wall clock, the same for every run.
+The lurker near-miss slow-mo (`Economy.LURKER_SLOWMO`, 0.3 s) skips physics frames (`Lurkers._slowmo_step`). Those
+frames used to add nothing to `run_time` (about 0.16 s off per near miss). Since IMP4-05 the clock is exact:
+`Lurkers.settle_clock` adds the skipped time back (the slow-mo's own frame time minus what the physics ticks added;
+a paused tree adds nothing), when the slow-mo ends and when the goal is reached inside it. Hard medals, bests and
+ghost clocks are therefore the time the player lived through; a pinned ghost time only changes when a run beats it.
+The hard result shows the lurker contacts: "LEVEL n CLEARED  LURKER HITS n" (folded into the level line, so the
+result stays at 5 lines) and a "LURKER HITS n" line on a hard random maze.

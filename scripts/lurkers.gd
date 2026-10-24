@@ -92,6 +92,9 @@ var elapsed := 0.0
 var invuln := 0.0
 var hits := 0
 var near_misses := 0
+## IMP4-05: the slow-mo's frame time so far and the run clock when it began (see settle_clock).
+var _clock_wall := 0.0
+var _clock_rt0 := 0.0
 var bonks := 0
 var _push_left := 0.0
 var _push_dir := Vector2.ZERO
@@ -305,6 +308,7 @@ func _process(_delta: float) -> void:
 ## The near-miss slow-motion never touches Engine.time_scale (it would outlive a pause): the level's
 ## physics runs on only SLOWMO_SCALE of the frames, and this node pauses with the tree.
 func _slowmo_step() -> void:
+	_clock_wall += get_process_delta_time()
 	_slowmo_acc += SLOWMO_SCALE
 	var run := _slowmo_acc >= 1.0
 	if run:
@@ -312,7 +316,23 @@ func _slowmo_step() -> void:
 	if Time.get_ticks_msec() >= _slowmo_until_ms:
 		_slowmo_until_ms = -1
 		run = true
+		settle_clock()
 	_slowmo_set(run)
+
+
+## IMP4-05: the physics frames the slow-mo skipped are added back to the run clock (and so to the medal and ghost
+## times): the clock is the time the player lived through. `_clock_wall` counts the slow-mo's own frame time (a
+## paused tree adds nothing); what the physics ticks did not add of it is what was skipped.
+func settle_clock() -> void:
+	if _clock_wall <= 0.0 or not is_instance_valid(game):
+		_clock_wall = 0.0
+		return
+	var lost: float = _clock_wall - (game.run_time - _clock_rt0)
+	_clock_wall = 0.0
+	if lost > 0.0 and not game.finished:
+		game.run_time += lost
+		game.hud.set_time(game.run_time)
+	_clock_rt0 = game.run_time
 
 
 func _slowmo_set(run: bool) -> void:
@@ -450,6 +470,8 @@ func _near_miss(l: Lurker, d: float) -> void:
 			near_misses += 1
 			if game.motion_scale() > 0.0 and _slowmo_until_ms < 0:
 				_slowmo_acc = 0.0
+				_clock_wall = 0.0
+				_clock_rt0 = game.run_time
 				_slowmo_until_ms = Time.get_ticks_msec() + int(Economy.LURKER_SLOWMO * 1000.0)
 
 

@@ -2573,6 +2573,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			_dry_up()
 			return
 	_show(goal)
+	if lurkers != null:
+		lurkers.settle_clock()  # (IMP4-05: a win inside the slow-mo still reads the exact clock)
 	var no_record := no_credit()
 	if progress:
 		progress.relaxed_level = 0  # (RELAXED for one level ends with its win; this run keeps relaxed_run for its payout)
@@ -2620,6 +2622,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			random_lines.append(Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}))  # i18n: max 296px; {time} = M:SS.cc
 		if not (progress and progress.random_daily):  # (the daily's seed is the date: a SEED line says nothing, IMP2-02)
 			random_lines.append(Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}))  # i18n: max 296px; {code} = a maze code
+		if hard_mode and lurkers != null:
+			# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime in this hard maze
+			random_lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
 		var random_text := Loc.lines(random_lines)
 		if preview:
 			# i18n: result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
@@ -2692,6 +2697,10 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	# i18n: result title lines, max 296px each, 1 line each
 	var lines := [Loc.t("result.chalice", "CHALICE CONSUMED!"),
 		Loc.t("result.level_cleared", "LEVEL {level} CLEARED", {level = level})]
+	if hard_mode and lurkers != null:
+		# IMP4-05: folded into the level line (the result stays at most 5 lines)
+		# i18n: result line, max 296px, 1 line; {level} = the level number, {n} = how many times lurkers touched the slime; the spaces are spacing
+		lines[1] = Loc.t("result.level_cleared_hits", "LEVEL {level} CLEARED  LURKER HITS {n}", {level = level, n = lurkers.hits})
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
 	var first_hard_clear: bool = progress != null and hard_mode and not no_credit() and not level in progress.hard_cleared
 	var first_story_clear: bool = progress != null and progress.levels_cleared < level
