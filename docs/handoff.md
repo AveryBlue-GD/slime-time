@@ -134,7 +134,7 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 Only a plain launch touches the real save: `user://save.cfg` in the release dir `SlimeTime_R1` (`~/Library/Application
 Support/SlimeTime_R1/save.cfg` on macOS). The pre-release save (`.../Godot/app_userdata/Slime Time/save.cfg`) is never read. Tests,
 tools, headless, movie, screenshot and dev runs write a throwaway file; `--story` / `--autoplay` use clean in-memory state. Saves
-and codes carry `[meta] epoch` (`Progress.RELEASE_EPOCH` = 1, codes `SLIME2-`); save version 6. Saves are atomic and untrusted
+and codes carry `[meta] epoch` (`Progress.RELEASE_EPOCH` = 1, codes `SLIME2-`); save version 7. Saves are atomic and untrusted
 text passes `scripts/save_text.gd` first ([qa-release-report.md](qa-release-report.md)). Fresh-start policy and how to bump
 it: [itch-release.md](itch-release.md). Never run the game when the owner may be playing.
 

@@ -94,8 +94,10 @@ func _initialize() -> void:
 	print("  [%d ms] _full_round_trip()" % (Time.get_ticks_msec() - t0))
 	_disk_full()
 	print("  [%d ms] _disk_full()" % (Time.get_ticks_msec() - t0))
+	print("  NOTE: the code fuzz makes zlib refuse ~7.7k broken streams; the engine prints one 'Condition \"err != 1\"' line each (expected, counted as noise, not a failure)")
 	_code_fuzz()
 	print("  [%d ms] _code_fuzz()" % (Time.get_ticks_msec() - t0))
+	_e("the fuzz's harmless engine messages stay bounded (%d)" % errlog.noise, errlog.noise < 20000)
 	_e("whole suite: %d engine/script errors (%s)" % [errlog.count, "; ".join(errlog.lines)], errlog.count == 0)
 
 	for path: String in watched:
