@@ -86,15 +86,20 @@ func _initialize() -> void:
 	progress.hub_seen.clear()
 	progress.tickets = 500
 	_check(progress.hub_news("wheel", true), "never opened: an affordable wheel has news")
+	var saves_before: int = progress.saves_written
 	progress.hub_mark_seen("wheel")
+	_check(progress.saves_written == saves_before, "BUG4-08: opening a station writes no save")
 	_check(not progress.hub_news("wheel", true), "opened, nothing new: no news")
 	progress.tickets += 5
-	_check(progress.hub_news("wheel", true) and not progress.hub_news("wheel", false), "more money and affordable: news again; not affordable: none")
+	_check(not progress.hub_news("wheel", true), "BUG4-12: one more coin for the same item is no news")
+	_check(not progress.hub_news("wheel", false), "not affordable: none")
+	progress.tickets = 0
+	_check(not progress.hub_news("wheel", false) and not progress.hub_seen.has("wheel"), "broke: the marker is cleared")
+	progress.tickets = 500
+	_check(progress.hub_news("wheel", true), "affordable again after being broke is news")
 	progress.hub_mark_seen("wheel")
-	progress.tickets -= 50
-	_check(not progress.hub_news("wheel", true) and progress.hub_seen["wheel"] == progress.tickets, "spent: the marker follows down")
-	progress.tickets += 1
-	_check(progress.hub_news("wheel", true), "gaining after the spend is news")
+	progress.hub_seen["wheel"] = progress.hub_seen["wheel"] + 100  # (the visit saw only a dearer item: a cheaper one now is news)
+	_check(progress.hub_news("wheel", true), "a cheaper item than the visit's cheapest is news")
 	# [hub] seen_upgrades / seen_wheel survive a save round trip
 	progress.hub_seen = {"upgrades": 123, "wheel": 45}
 	var seen_file: ConfigFile = progress._write()

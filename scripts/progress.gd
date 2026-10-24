@@ -3022,38 +3022,34 @@ func _wear(id: String) -> void:
 		map_paper = id
 
 
-## The cheapest thing in the store not owned yet (hat spin, hat dye, workshop level, cosmetic)
-## is affordable: the hub prompts show a "!" (spec C.3).
-func hub_wealth(id: String) -> int:
-	return tickets + (coins() if id == "upgrades" else 0)
-
-
-## Marks station `id` as opened now (its "!" waits for more money). Saves.
+## Marks station `id` as opened now: its "!" waits for something cheaper than what was affordable at this visit (BUG4-12).
+## In memory only: the station's own saves (and the next one) persist it, so opening a station writes nothing (BUG4-08).
 func hub_mark_seen(id: String) -> void:
-	hub_seen[id] = hub_wealth(id)
-	save_progress()
+	var cheapest := hub_cheapest(id)
+	if cheapest > TICKETS_MAX:
+		hub_seen.erase(id)
+	else:
+		hub_seen[id] = cheapest
 
 
-## True when station `id` ("upgrades" / "wheel") has something newly affordable: affordable now and more money than at the last
-## visit. Spending in the station lowers the marker with it (no "!" for what is left over).
+## True when station `id` ("upgrades" / "wheel") has something new to buy: affordable now (`affordable`), and either nothing
+## was affordable at the last visit or something cheaper than that visit's cheapest is. Nothing affordable clears the marker.
 func hub_news(id: String, affordable: bool) -> bool:
 	if not affordable:
+		hub_seen.erase(id)
 		return false
-	var wealth := hub_wealth(id)
 	var seen: int = hub_seen.get(id, -1)
-	if seen > wealth:
-		hub_seen[id] = wealth  # (spent since: the marker follows down)
-		return false
-	return wealth > seen
+	return seen < 0 or hub_cheapest(id) < seen
 
 
-func store_affordable(where: String) -> bool:
+## The price of the cheapest thing in `where`'s ticket store still to buy (TICKETS_MAX + 1 = nothing).
+func store_cheapest(where: String) -> int:
 	if dev_tools:
-		return false
+		return TICKETS_MAX + 1
 	var cheapest := TICKETS_MAX + 1
 	if where == "upgrades":
 		if not workshop_open() and not abilities_open():
-			return false
+			return TICKETS_MAX + 1
 		if workshop_open():
 			for id in Workshop.ids():
 				if workshop_level(id) < Workshop.max_level(id):
@@ -3066,7 +3062,7 @@ func store_affordable(where: String) -> bool:
 		if Hats.available and not hats_left().is_empty() and Demo.hat_wheel_open() and demo_wheel_block() == "":
 			cheapest = mini(cheapest, spin_cost())
 		if not Demo.shop_open():
-			return cheapest <= tickets  # (the demo: the SHOP is in the full game)
+			return cheapest  # (the demo: the SHOP is in the full game)
 		for id in Cosmetics.ids():
 			if not owns_cosmetic(id):
 				cheapest = mini(cheapest, cosmetic_price(id))
@@ -3074,7 +3070,29 @@ func store_affordable(where: String) -> bool:
 			for dye in Hats.dyes_for(hat):
 				if not owns_dye(hat, dye):
 					cheapest = mini(cheapest, dye_price(dye))
-	return cheapest <= tickets
+	return cheapest
+
+
+func store_affordable(where: String) -> bool:
+	return store_cheapest(where) <= tickets
+
+
+## The price of the cheapest thing station `id` ("upgrades" / "wheel") lets you pay for right now (TICKETS_MAX + 1 = none).
+func hub_cheapest(id: String) -> int:
+	var cheapest := TICKETS_MAX + 1
+	var store := store_cheapest(id)
+	if store <= tickets:
+		cheapest = store
+	if id == "upgrades":
+		for upgrade: Dictionary in Upgrades.LIST:
+			var uid: String = upgrade.id
+			if not upgrade.get("dev", false) and upgrade_level(uid) < Demo.upgrade_cap(uid):
+				var cost := Upgrades.cost(uid, upgrade_level(uid))
+				if cost <= coins():
+					cheapest = mini(cheapest, cost)
+	elif can_spin_hats():
+		cheapest = mini(cheapest, spin_cost())
+	return cheapest
 
 
 ## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
