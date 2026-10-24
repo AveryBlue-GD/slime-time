@@ -107,6 +107,14 @@ static func pastel_wins(id: String) -> int:
 	return -1
 
 
+## Every randomizer-win count that unlocks a pastel version (the presets, then the rainbow): the achievements page's reward road.
+static func pastel_marks() -> Array[int]:
+	var out: Array[int] = []
+	for id: String in PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [RAINBOW]:
+		out.append(pastel_wins(id))
+	return out
+
+
 ## The skin whose pastel version unlocks at exactly `wins` randomizer wins ("" if none).
 static func pastel_unlocked_at(wins: int) -> String:
 	for id: String in PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [RAINBOW]:

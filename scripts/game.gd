@@ -2658,6 +2658,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 					# IMP3-07: a top toast (Transition's notice path), not a line of the result panel
 					# i18n: toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
 					progress.notify_once("daily_saved_%d" % progress.daily_run_day, Loc.t("result.daily_saved", "STREAK SAVED"))
+					_place_sting()
 				if day.bonus > 0:
 					# i18n: result line, max 296px, 1 line; {n} = tickets, {days} = the streak
 					random_text = Loc.lines([random_text, Loc.t("result.daily_bonus", "{days} DAY STREAK: +{n} TICKETS", {days = day.streak, n = day.bonus})])
@@ -2665,6 +2666,8 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			if pastel_skin != "" and progress.is_skin_unlocked(pastel_skin, false, true):
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
+				# (BUG4-13: the same words as a toast that offers WEAR IT, the pastel look of that skin)
+				progress.notify_once("pastel_" + pastel_skin, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)}), "reward", "skin:%s:pastel" % pastel_skin)
 			var wins_left := Achievements.wins_to_next_unlock(progress.randoms_won)
 			if wins_left > 0 and not relaxed_run and not progress.random_daily and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
 				# i18n: result line, max 296px, 1 line; {n} = randomizer wins until the next pastel skin or win goal
@@ -3040,6 +3043,7 @@ func _board_result(text: String, kind: String, ms: int) -> String:
 		share_extra = " " + Loc.t("result.share_board", "BOARD #{place}", {place = post.rank})
 		# i18n: result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
 		text = Loc.lines([text, Loc.t("result.board_place", "BOARD PLACE {place}", {place = post.rank})])
+		_place_sting()
 	if ghost != null:
 		var split := ghost.finish(ms)
 		if split != "":
@@ -3048,6 +3052,16 @@ func _board_result(text: String, kind: String, ms: int) -> String:
 			# i18n: part of the share line COPY puts on the clipboard, plain ASCII; {split} = the time against your ghost, e.g. -0.8s
 			share_extra += " " + Loc.t("result.share_ghost", "vs ghost {split}", {split = split})
 	return text
+
+
+## IMP4-07: the short "saved / place" sting after the win's chalice (desktop and web; Sfx.play_place).
+func _place_sting() -> void:
+	if not _is_running_scene():
+		return
+	get_tree().create_timer(0.7).timeout.connect(func() -> void:
+		var sfx := get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play_place())
 
 
 ## BM-03: the weekly's win (nothing is paid or counted): its board time, share line and ghost.

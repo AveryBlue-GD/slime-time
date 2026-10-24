@@ -2192,6 +2192,13 @@ msgctxt "ach.next"
 msgid "NEXT PAGE"
 msgstr ""
 
+#. ACHIEVEMENTS page, the reward road's label (randomizer wins), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.road"
+msgid "WINS"
+msgstr ""
+
 #. ACHIEVEMENTS page, a goal's reward line, max 200px, 1 line; {name} = the cosmetic it grants (e.g. NIGHT PAPER)
 #. budget: max 200px, lines 1
 #: scripts/ui/achievements_screen.gd

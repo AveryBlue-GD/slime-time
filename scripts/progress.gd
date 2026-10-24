@@ -3034,6 +3034,31 @@ func equip_cosmetic(id: String) -> bool:
 	return true
 
 
+## BUG4-13: what a WEAR IT toast can offer: a cosmetic id, "skin:<id>" / "skin:<id>:pastel" (a skin, in its pastel version),
+## or "hat:<id>" (a hat); true when it is owned / unlocked right now.
+func can_wear(id: String) -> bool:
+	if id.begins_with("skin:"):
+		var parts := id.split(":")
+		return parts.size() >= 2 and is_skin_unlocked(parts[1], false, parts.size() >= 3 and parts[2] == "pastel")
+	if id.begins_with("hat:"):
+		return is_hat_unlocked(id.trim_prefix("hat:"))
+	return owns_cosmetic(id)
+
+
+## Wears what a WEAR IT toast offered (see can_wear); one save. False when it can't be worn.
+func wear_reward(id: String) -> bool:
+	if not can_wear(id):
+		return false
+	if id.begins_with("skin:"):
+		var parts := id.split(":")
+		select_skin(parts[1], false, parts.size() >= 3 and parts[2] == "pastel")  # saves
+		return true
+	if id.begins_with("hat:"):
+		select_hat(id.trim_prefix("hat:"))  # saves
+		return true
+	return equip_cosmetic(id)
+
+
 ## Takes off cosmetic `id` if it is worn (back to its kind's default). Saves.
 func unequip_cosmetic(id: String) -> void:
 	if trail_style == id:

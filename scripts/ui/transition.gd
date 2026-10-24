@@ -249,7 +249,7 @@ func _pump_notice(delta: float) -> void:
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", UIKit.GAP_XS)
 	column.add_child(label)
-	if wear != "" and progress.owns_cosmetic(wear):
+	if wear != "" and progress.can_wear(wear):
 		var hint := UIKit.make_label(_wear_hint())
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(hint)
@@ -284,7 +284,7 @@ func wear_notice() -> bool:
 	var id := _notice_wear
 	_notice_wear = ""
 	var progress := get_node_or_null("/root/Progress")
-	if progress == null or not progress.equip_cosmetic(id):
+	if progress == null or not progress.wear_reward(id):
 		return false
 	_notice_left = minf(_notice_left, 0.8)
 	_wore_msec = Time.get_ticks_msec()  # (a tap wearing it is spent too: see wore_recently)

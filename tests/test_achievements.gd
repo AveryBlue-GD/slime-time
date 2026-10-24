@@ -62,7 +62,10 @@ func _initialize() -> void:
 	for id in Achievements.REWARDS:
 		var kind: String = Cosmetics.kind_of(Achievements.REWARDS[id])
 		_check(kind == Cosmetics.PAPER or kind == Cosmetics.TRAIL, "reward of %s is an existing paper or trail" % id)
-	_check(Achievements.REWARDS.size() >= 7 and Achievements.REWARDS.size() <= 9, "about 8 goals grant a reward (%d)" % Achievements.REWARDS.size())
+	_check(Achievements.REWARDS.size() >= 7 and Achievements.REWARDS.size() <= 12, "about 11 goals grant a reward (%d)" % Achievements.REWARDS.size())
+	for id in ["weekly_1", "rand_25", "gold_15"]:  # IMP4-07: the dead zones and the weekly pay existing papers
+		_check(Achievements.ids().has(id) and Cosmetics.kind_of(Achievements.reward_for(id)) == Cosmetics.PAPER, "%s is a goal paying a paper (%s)" % [id, Achievements.reward_for(id)])
+	_check(Achievements.wins_to_next_unlock(24) == 1 and Achievements.progress(p, "rand_25") == Vector2i(12, 25), "the win goal at 25 counts in NEXT UNLOCK and shows 12/25")
 	var all_rewards: Array = Achievements.REWARDS.values() + Achievements.MILESTONES.map(func(m: Dictionary) -> String: return m.cosmetic)
 	var uniq := {}
 	for cos: String in all_rewards:
@@ -132,7 +135,7 @@ func _initialize() -> void:
 	p.notices.clear()
 	p._notice_keys.clear()
 	var changed: bool = p.check_achievements()
-	_check(changed and p.medal_milestones_paid == 4 and p.medal_ms_mask == 15 and p.ach_rewarded.size() == 5 and p.tickets == tk2, "...paid once on load (the old 4 stay 4, no tickets)")
+	_check(changed and p.medal_milestones_paid == 4 and p.medal_ms_mask == 15 and p.ach_rewarded.size() == 6 and p.tickets == tk2, "...paid once on load (the old 4 stay 4, no tickets)")
 	_check(p.notices.size() == 1 and p.notices[0].contains("NEW REWARDS"), "...in one merged notice (%s)" % str(p.notices))
 	_check(not p.check_achievements() and p.notices.size() == 1, "...and not again")
 
@@ -175,6 +178,32 @@ func _initialize() -> void:
 	tr._notice_left = 0.0
 	await process_frame
 
+	# IMP4-07 / BUG4-13: the three new paying goals pay once; WEAR IT also wears a pastel skin and a wheel hat (one save each)
+	p.randoms_won = 25
+	p.board_weekly = {"best": [1000]}
+	p.notices.clear()
+	p.check_achievements()
+	for id in ["rand_25", "weekly_1"]:
+		_check(id in p.ach_rewarded and p.owns_cosmetic(Achievements.reward_for(id)), "%s paid %s" % [id, Achievements.reward_for(id)])
+	var owned_now: int = p.cosmetics_owned.size()
+	p.check_achievements()
+	p.check_achievements()
+	_check(p.cosmetics_owned.size() == owned_now, "...once per goal")
+	p.levels_cleared = 10
+	p.randoms_won = 5
+	p.dev_tools = false
+	_check(p.can_wear("skin:lime:pastel") and p.can_wear("hat:" + Hats.ids()[0]) == p.is_hat_unlocked(Hats.ids()[0]), "can_wear understands skin: and hat: ids")
+	saves_before = p.saves_written
+	p.selected_skin = "mint"
+	p.set_pastel(false)
+	_check(p.wear_reward("skin:lime:pastel") and p.selected_skin == "lime" and p.pastel and p.saves_written == saves_before + 1, "WEAR IT: the pastel skin is worn with one save")
+	p.hats_owned.append(Hats.ids()[0])
+	p.selected_hat = Hats.NONE
+	saves_before = p.saves_written
+	_check(p.wear_reward("hat:" + Hats.ids()[0]) and p.selected_hat == Hats.ids()[0] and p.saves_written == saves_before + 1, "WEAR IT: a hat is worn with one save")
+	_check(not p.wear_reward("skin:rainbow:pastel"), "...a pastel look not unlocked yet is not worn")
+	p.set_pastel(false)
+
 	# the page
 	var scene: Control = load("res://scenes/achievements.tscn").instantiate()
 	root.add_child(scene)
@@ -190,6 +219,8 @@ func _initialize() -> void:
 				reward_labels += 1
 				_check(c.text.begins_with("REWARD: "), "reward line: " + c.text)
 	_check(reward_labels >= 2, "page 1 shows REWARD lines (%d)" % reward_labels)
+	var road := scene.find_children("*", "Control", true, false).filter(func(c: Node) -> bool: return c.has_meta("road"))
+	_check(road.size() == 6, "the reward road: WINS, the track and four numbers (%d)" % road.size())
 	scene.next_button.pressed.emit()
 	await process_frame
 	_check(scene.page == 1 and scene.rows.size() > 0, "NEXT PAGE turns the page")

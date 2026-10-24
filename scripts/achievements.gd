@@ -29,9 +29,11 @@ static func list() -> Array[Dictionary]:
 		{id = "coins_all", goal = Loc.t("ach.coins_all", "FIND ALL {n} COINS", {n = coins})},  # i18n: achievement goal, max 270px, 1 line; {n} = 165
 		{id = "gold_1", goal = Loc.t("ach.gold_1", "WIN YOUR FIRST GOLD MEDAL")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "gold_10", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 10})},  # i18n: achievement goal, max 270px, 1 line; {n} = a count
+		{id = "gold_15", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 15})},
 		{id = "gold_20", goal = Loc.t("ach.gold_n", "WIN {n} GOLD MEDALS", {n = 20})},
 		{id = "rand_1", goal = Loc.t("ach.rand_1", "WIN A RANDOM MAZE")},  # i18n: achievement goal, max 270px, 1 line
 		{id = "rand_10", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 10})},  # i18n: achievement goal, max 270px, 1 line; {n} = a count
+		{id = "rand_25", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 25})},
 		{id = "rand_50", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 50})},
 		{id = "rand_100", goal = Loc.t("ach.rand_n", "WIN {n} RANDOM MAZES", {n = 100})},
 		{id = "daily_1", goal = Loc.t("ach.daily_1", "WIN A DAILY MAZE")},  # i18n: achievement goal, max 270px, 1 line
@@ -79,9 +81,11 @@ static func met(p: Node, id: String) -> bool:
 		"coins_all": return p.coins_earned() >= Levels.total_coins()
 		"gold_1": return golds(p) >= 1
 		"gold_10": return golds(p) >= 10
+		"gold_15": return golds(p) >= 15
 		"gold_20": return golds(p) >= 20
 		"rand_1": return p.randoms_won >= 1
 		"rand_10": return p.randoms_won >= 10
+		"rand_25": return p.randoms_won >= 25
 		"rand_50": return p.randoms_won >= 50
 		"rand_100": return p.randoms_won >= 100
 		"daily_1": return p.daily_day > 0 or p.daily_best_streak > 0
@@ -106,8 +110,10 @@ static func progress(p: Node, id: String) -> Vector2i:
 		"coins_100": pair = Vector2i(p.coins_earned(), 100)
 		"coins_all": pair = Vector2i(p.coins_earned(), Levels.total_coins())
 		"gold_10": pair = Vector2i(golds(p), 10)
+		"gold_15": pair = Vector2i(golds(p), 15)
 		"gold_20": pair = Vector2i(golds(p), 20)
 		"rand_10": pair = Vector2i(p.randoms_won, 10)
+		"rand_25": pair = Vector2i(p.randoms_won, 25)
 		"rand_50": pair = Vector2i(p.randoms_won, 50)
 		"rand_100": pair = Vector2i(p.randoms_won, 100)
 		"daily_7": pair = Vector2i(p.daily_best_streak, 7)
@@ -138,6 +144,9 @@ const REWARDS := {
 	"hard_all": "prism_paper",
 	"coins_50": "clover_paper",
 	"gold_10": "butter_paper",
+	"gold_15": "tangerine_paper",  # (IMP4-07: the dead zones between 10 and 20 golds / 10 and 50 wins, and the weekly, now pay;
+	"rand_25": "cherry_paper",  # the three papers no other goal, milestone or wheel gives)
+	"weekly_1": "cobalt_paper",
 	"rand_10": "ink",
 	"rand_50": "plum_paper",
 	"daily_7": "candy",
@@ -178,7 +187,7 @@ static func next_milestone(earned: int) -> int:
 ## Randomizer wins until the next thing a win unlocks (the next pastel skin, the next win goal), 0 when none is left.
 static func wins_to_next_unlock(wins: int) -> int:
 	var best := 0
-	var marks: Array[int] = [1, 10, 50, 100]
+	var marks: Array[int] = [1, 10, 25, 50, 100]
 	for id: String in Skins.PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [Skins.RAINBOW]:
 		marks.append(Skins.pastel_wins(id))
 	for mark in marks:

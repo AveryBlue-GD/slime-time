@@ -42,9 +42,34 @@ class Mark extends Control:
 			draw_rect(Rect2(3, 4, 1, 1), c)
 
 
+## IMP4-07 (BEN3-06 light): the reward road, one strip above the bottom row: WINS 0..100 as a track (gold up to your
+## randomizer wins, dim after), a short tick at each pastel skin's win count, a tall tick and the number at each win
+## goal (10 25 50 100), and a bright block where you are. Whole pixels only; 8 px numbers.
+class Road extends Control:
+	var wins := 0
+
+	func _draw() -> void:
+		var y := 3
+		var x0 := 0
+		var span := int(size.x) - 1
+		var here := roundi(float(span) * clampf(float(wins) / ROAD_MAX, 0.0, 1.0))
+		draw_rect(Rect2(x0, y, span + 1, 1), UIKit.TEXT_OFF)
+		draw_rect(Rect2(x0, y, here, 1), UIKit.GOLD)
+		for mark in Skins.pastel_marks():
+			var x := roundi(float(span) * float(mark) / ROAD_MAX)
+			draw_rect(Rect2(x, y - 1, 1, 3), UIKit.GOLD if wins >= mark else UIKit.TEXT_OFF)
+		for mark in ROAD_GOALS:
+			var x := roundi(float(span) * float(mark) / ROAD_MAX)
+			draw_rect(Rect2(x, y - 2, 1, 5), UIKit.GOLD if wins >= mark else UIKit.TEXT_DIM)
+		draw_rect(Rect2(here - 1, y - 2, 3, 5), UIKit.TEXT)  # (you are here)
+
+const ROAD_MAX := 100.0
+const ROAD_GOALS: Array[int] = [10, 25, 50, 100]
+
+
 ## A goal with a reward cosmetic is a taller row (a second line: REWARD: <name>); a page holds PAGE_H px of rows.
 const REWARD_EXTRA := 9
-const PAGE_H := 100
+const PAGE_H := 88  # (was 100: the reward road strip sits under the band, IMP4-07)
 
 
 ## The pages: lists of goal indexes, filled in order until PAGE_H px of rows are used.
@@ -104,6 +129,7 @@ func _ready() -> void:
 	add_child(band)
 	_row_root = Control.new()
 	add_child(_row_root)
+	_add_road(p)
 	# i18n: button, max 70px, 1 line; shows the next page of achievements (wraps to the first)
 	next_button = UIKit.make_button(Loc.t("ach.next", "NEXT PAGE"), func() -> void: _turn(1))
 	add_child(next_button)
@@ -117,6 +143,29 @@ func _ready() -> void:
 	add_child(next_arrow)
 	_show_page()
 	(next_button if page_count() > 1 else back_button).grab_focus()
+
+
+## The reward road strip (see Road), between the list's band and the bottom row.
+func _add_road(p: Node) -> void:
+	var y := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS + PAGE_H + 2 * UIKit.GAP_XS + UIKit.GAP_XS
+	var label_w := UIKit.text_w("WINS") + UIKit.GAP_L  # i18n: ignore (measuring only)
+	var left := UIKit.EDGE + UIKit.GAP_L
+	var road_label := UIKit.add_label(self, Loc.t("ach.road", "WINS"), Rect2(left, y, label_w, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT)  # i18n: ACHIEVEMENTS page, the reward road's label (randomizer wins), max 40px, 1 line
+	road_label.set_meta("road", "label")
+	var x0 := left + label_w
+	var road := Road.new()
+	road.wins = p.randoms_won
+	road.position = Vector2(x0, y)
+	road.size = Vector2(UIKit.SCREEN.x - UIKit.EDGE - UIKit.GAP_L - 10 - x0, UIKit.line_h())
+	road.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	road.set_meta("road", "track")
+	add_child(road)
+	for mark in ROAD_GOALS:
+		var text := str(mark)  # i18n: ignore (numbers only)
+		var w := UIKit.text_w(text)
+		var cx := x0 + roundi(road.size.x - 1.0) * mark / int(ROAD_MAX)
+		var number := UIKit.add_label(self, text, Rect2(cx - w / 2 if mark < 100 else cx - w + 1, y + 5, w, UIKit.line_h() - 5), UIKit.FONT, UIKit.GOLD if p.randoms_won >= mark else UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+		number.set_meta("road", "number")
 
 
 func _turn(step: int) -> void:

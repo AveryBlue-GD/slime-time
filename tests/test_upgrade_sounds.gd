@@ -16,8 +16,12 @@ func _initialize() -> void:
 	p.dev_tools = true  # (dev coins: plenty to spend; saving is off)
 	p.dev_coins = 500
 	p.reduce_motion = false
-	for name in ["upgrade", "upgrade_max", "refund"]:
+	for name in ["upgrade", "upgrade_max", "refund", "place"]:
 		_check(name in Sfx.SOUNDS and FileAccess.file_exists("res://assets/sounds/%s.wav" % name), "%s is a loaded sound" % name)
+	# IMP4-07: the 0.3 s "saved / place" sting exists, is short, and plays on desktop / web (not on a phone)
+	var place := load("res://assets/sounds/place.wav") as AudioStreamWAV
+	_check(place != null and place.get_length() > 0.2 and place.get_length() < 0.45, "the place sting is about 0.3 s")
+	_check(root.get_node("Sfx").play_place() == not Platform.is_mobile_native(), "Sfx.play_place plays off phones only")
 	var screen: Control = load("res://scenes/upgrades.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
