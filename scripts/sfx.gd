@@ -55,11 +55,9 @@ func _input(event: InputEvent) -> void:
 		player.play()
 
 
-## IMP4-07: the short "saved / place" sting (a new board place, STREAK SAVED), on desktop and web only: a phone keeps its
-## quiet result screen. Returns true when it played.
+## IMP4-07: the short "saved / place" sting (a new board place, STREAK SAVED), on every platform, like the other result
+## sounds. Returns true when it played.
 func play_place() -> bool:
-	if Platform.is_mobile_native():
-		return false
 	play("place", -8.0)
 	return true
 
