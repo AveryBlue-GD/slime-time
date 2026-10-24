@@ -334,12 +334,12 @@ func _build_achievements_button() -> void:
 
 ## BOARDS in the bottom row beside BACK (BM-03, IMP4-03): the daily / weekly top times and the ghost toggle; BACK returns to SETTINGS.
 func _build_boards_button() -> void:
-	# i18n: settings button (bottom row, right of BACK), max 90px, grows with the text, 1 line; opens the boards page
+	# i18n: settings button (bottom row, right of BACK), max 56px, grows with the text, 1 line; opens the boards page
 	var text := Loc.t("settings.boards", "BOARDS")
 	boards_button = UIKit.make_button(text, func() -> void:
 		(load("res://scripts/ui/boards_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"
-		UIKit.go(get_tree(), BOARDS_SCENE), UIKit.button_size(text, 90))
-	UIKit.note_text_w(boards_button, [text], 90)
+		UIKit.go(get_tree(), BOARDS_SCENE), UIKit.button_size(text, 56))
+	UIKit.note_text_w(boards_button, [text], 56)
 	add_child(boards_button)
 	boards_button.size = boards_button.custom_minimum_size
 	UIKit.place_bottom_row(boards_button, -1)
