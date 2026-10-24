@@ -1048,6 +1048,13 @@ msgctxt "preview.play"
 msgid "PLAY"
 msgstr ""
 
+#. toast, max 296px, 1 line; the first time a pale copy of your best run races you in a story level
+#. budget: max 296px, lines 1
+#: scripts/ghost_racer.gd
+msgctxt "ghost.intro"
+msgid "A PALE SLIME RACES YOUR BEST RUN"
+msgstr ""
+
 #: scripts/hats.gd
 msgctxt "dye.cherry"
 msgid "CHERRY"
@@ -1646,6 +1653,13 @@ msgstr "DENEME {n}"
 #: scripts/hud.gd
 msgctxt "hud.pod.attempt_lurkers"
 msgid "ATTEMPT {n} LURKERS"
+msgstr ""
+
+#. HUD attempt pod, line 1 on a NORMAL maze with lurkers (they pay a premium), max 128px; {n} = which try at this maze, {x} = the pay factor, e.g. 1.25
+#. budget: max 128px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.attempt_lurkers_x"
+msgid "ATTEMPT {n} LURKERS X{x}"
 msgstr ""
 
 #. HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
@@ -2351,8 +2365,8 @@ msgctxt "settings.level_music.off"
 msgid "LEVEL MUSIC: OFF"
 msgstr ""
 
-#. settings button (top right corner, under ACHIEVEMENTS), max 90px, grows with the text, 1 line; opens the boards page
-#. budget: max 90px, lines 1
+#. settings button (bottom row, right of BACK), max 56px, grows with the text, 1 line; opens the boards page
+#. budget: max 56px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.boards"
 msgid "BOARDS"

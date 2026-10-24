@@ -258,6 +258,8 @@ var board_daily := {}
 var board_weekly := {}
 var board_best_daily_ms := 0
 var ghost_on := true
+## IMP4-04: the one-time "a pale slime races your best run" toast was shown (saved as [boards] ghost_intro).
+var ghost_intro_seen := false
 ## IMP3-03 [hub] seen: per hub station ("upgrades" / "wheel") the money in hand (coins + tickets / tickets) when it was last
 ## opened (-1 = never). Its "!" shows only when the store is affordable AND you hold more than then (something became
 ## newly affordable); opening the station clears it.
@@ -3293,6 +3295,7 @@ func reset_progress() -> void:
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false
+	ghost_intro_seen = false
 	descent_run = {}
 	descent_resume = {}
 	descent_best_floor = 0

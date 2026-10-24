@@ -2217,7 +2217,7 @@ func _refresh_attempt_pod() -> void:
 		pop = before >= 0 and before != offer and motion_scale() > 0.0
 	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
-	hud.set_attempt(attempt, offer, pop, lurkers != null)
+	hud.set_attempt(attempt, offer, pop, lurkers != null, lurkers != null and not hard_mode)
 	if hud.attempt_label.text != _dev_pod_text:
 		_dev_pod_text = hud.attempt_label.text
 		DevLog.log_event(get_tree(), "pod text changed", self)

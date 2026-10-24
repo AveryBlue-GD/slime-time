@@ -106,6 +106,16 @@ func _initialize() -> void:
 	var game: Node2D = await _spawn_random(4321)
 	var lk: Lurkers = game.lurkers
 	_check(lk != null and lk.lurkers.size() >= 2, "a random maze with --lurkers has lurkers")
+	game.hud.set_attempt(2, 5, false, true, true)
+	_check("LURKERS X1.25" in game.hud.attempt_label.text, "IMP4-04: a normal maze with lurkers shows the x1.25 premium on the pod (%s)" % game.hud.attempt_label.text)
+	game.hud.set_attempt(99, 5, false, true, true)
+	await process_frame
+	var pod_w: float = game.hud.attempt_label.get_minimum_size().x
+	_check(pod_w <= 130.0, "IMP4-04: ATTEMPT 99 LURKERS X1.25 fits the pod's 128px budget (%.0f)" % pod_w)
+	game.hud.set_attempt(2, 5, false, true, false)
+	_check("LURKERS" in game.hud.attempt_label.text and not ("X1.25" in game.hud.attempt_label.text), "IMP4-04: hard shows no premium")
+	game._refresh_attempt_pod()
+	_check(not game.hard_mode and "X1.25" in game.hud.attempt_label.text, "IMP4-04: the game's own pod carries X1.25 on a normal random maze")
 	var cell0 := Lurkers.cell_of(game.slime.position)
 	_check(lk.target_for(Lurkers.Kind.CRAWLER) == cell0, "CRAWLER heads for the slime's cell")
 	lk._trail.clear()

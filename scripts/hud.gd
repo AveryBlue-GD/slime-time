@@ -626,13 +626,16 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 ## nothing. Called every frame by the game (only a changed text touches the label).
 ## `pop`: the number just changed (a restart): the TIX AVAILABLE line flashes bright twice and
 ## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
-func set_attempt(attempt: int, payout: int, pop := false, lurkers := false) -> void:
+func set_attempt(attempt: int, payout: int, pop := false, lurkers := false, premium := false) -> void:
 	var tix := _tix_line(payout)
 	# i18n: HUD attempt pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {n} = which try at this maze
 	var first := Loc.t("hud.pod.attempt", "ATTEMPT {n}", {n = mini(attempt, 99)})
 	if lurkers:
 		# i18n: HUD attempt pod, line 1 on a maze with lurkers (creatures in the fog), max 128px; {n} = which try at this maze
 		first = Loc.t("hud.pod.attempt_lurkers", "ATTEMPT {n} LURKERS", {n = mini(attempt, 99)})
+		if premium:
+			# i18n: HUD attempt pod, line 1 on a NORMAL maze with lurkers (they pay a premium), max 128px; {n} = which try at this maze, {x} = the pay factor, e.g. 1.25
+			first = Loc.t("hud.pod.attempt_lurkers_x", "ATTEMPT {n} LURKERS X{x}", {n = mini(attempt, 99), x = Economy.LURKER_PAY})
 	var text := Loc.lines([first, tix])
 	if text == attempt_label.text and attempt_pod.visible and not pop:
 		return  # called every frame: only a change touches the label

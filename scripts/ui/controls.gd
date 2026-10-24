@@ -343,7 +343,7 @@ func _build_boards_button() -> void:
 	add_child(boards_button)
 	boards_button.size = boards_button.custom_minimum_size
 	UIKit.place_bottom_row(boards_button, -1)
-	var back := UIKit.back_size("BACK")
+	var back := UIKit.back_size()
 	boards_button.position.x += back.x + UIKit.GAP_S
 
 

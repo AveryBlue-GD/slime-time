@@ -56,7 +56,18 @@ static func _create_story(owner_game: Node2D, progress: Node) -> GhostRacer:
 		racer.best = progress.ghost_for(racer.kind, racer.key)
 		if not racer.best.is_empty():
 			racer._make_sprite()
+			racer._intro_toast(progress)
 	return racer
+
+
+## IMP4-04: the first time a story ghost shows up, say what the pale slime is (once, saved).
+func _intro_toast(progress: Node) -> void:
+	if progress.ghost_intro_seen:
+		return
+	progress.ghost_intro_seen = true
+	progress.save_progress()
+	# i18n: toast, max 296px, 1 line; the first time a pale copy of your best run races you in a story level
+	progress.notify_once("ghost_intro", Loc.t("ghost.intro", "A PALE SLIME RACES YOUR BEST RUN"))
 
 
 func _make_sprite() -> void:

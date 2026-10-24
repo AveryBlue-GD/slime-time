@@ -263,8 +263,14 @@ func _initialize() -> void:
 	_check(not story_ghost.is_empty() and story_ghost.ms == 30000, "the first clear becomes the level's ghost")
 	_check(progress.ghost_for(Boards.story_kind(1, true), 1).is_empty(), "the hard ghost of that level is separate")
 	await _drop(game)
+	_check(not progress.ghost_intro_seen and not ("PALE SLIME" in "".join(progress.notices)), "IMP4-04: no ghost yet, no ghost intro")
 	game = await _spawn_story(1)
 	_check(game.ghost.sprite != null and game.ghost.best.ms == 30000, "the next attempt races the ghost")
+	_check(progress.ghost_intro_seen and "A PALE SLIME RACES YOUR BEST RUN" in progress.notices, "IMP4-04: the first story ghost announces itself once (saved flag)")
+	progress.notices.clear()
+	await _drop(game)
+	game = await _spawn_story(1)
+	_check(progress.notices.is_empty(), "IMP4-04: the intro is not repeated")
 	game.run_time = 35.0
 	game._on_goal_body_entered(game.slime)
 	await physics_frame
