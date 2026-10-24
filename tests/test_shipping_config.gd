@@ -384,6 +384,11 @@ func _shipped_runs_play() -> void:
 				hits += game.lurkers.hits
 			_check(game.finished, "%s: the run reached its end (won %s)" % [kind, game.won])
 			pilot.queue_free()
+			if kind == "weekly" and game.won:
+				print("PARCAL par=%.2f time=%.2f ratio=%.3f" % [game.weekly_par(), game.run_time, game.run_time / game.weekly_par()])
+			if kind == "weekly" and game.won:
+				var par: float = game.weekly_par()
+				_check(game.run_time >= par and game.run_time <= par * 1.15, "weekly: the route pilot lands 0-15 %% over par (%.2f s vs par %.2f s)" % [game.run_time, par])
 			if game.won:
 				break
 		_check(game.won, "%s: the pilot wins it%s" % [kind, " within %d attempts" % tries if tries > 1 else ""])

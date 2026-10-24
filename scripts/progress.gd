@@ -247,6 +247,9 @@ var daily_streak := 0
 var daily_best_streak := 0
 ## The week (Boards.week_of) whose weekly was won, even a RELAXED / assisted win that posts no board time (saved [boards]).
 var weekly_played_week := 0
+## The week (Boards.week_of) that weekly_paid tickets were paid for (saved [boards] weekly_paid_week / weekly_paid).
+var weekly_paid_week := 0
+var weekly_paid := 0
 ## The UTC day a daily was last started (won or lost): the hub sign then offers an unplayed weekly (saved [boards] daily_attempted_day).
 var daily_attempted_day := 0
 ## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
@@ -2087,6 +2090,24 @@ func mark_weekly_played(week: int) -> void:
 		save_progress()
 
 
+## What a weekly win of `week` in `time` s on a maze of par `par` pays now: its total worth minus what the week already paid.
+func weekly_pay_due(week: int, time: float, par: float) -> int:
+	var paid := weekly_paid if weekly_paid_week == week else 0
+	return maxi(Economy.weekly_pay(time, par) - paid, 0)
+
+
+## Pays a weekly win (saved): only the improvement over this week's earlier pay. Returns the tickets added.
+func pay_weekly(week: int, time: float, par: float) -> int:
+	var due := weekly_pay_due(week, time, par)
+	if due <= 0:
+		return 0
+	weekly_paid = (weekly_paid if weekly_paid_week == week else 0) + due
+	weekly_paid_week = week
+	var added := add_tickets(due, false)
+	save_progress()
+	return added
+
+
 ## Posts a finished run's time to the board of `kind` (the run started on UTC day `day`), saves, and tells a store backend
 ## (progress_event `board_daily` / `board_weekly`, value = ms). Returns {rank (0 = not in the top 5), board, key, best_daily}.
 ## RELAXED, assisted and dev runs never call this.
@@ -3338,6 +3359,8 @@ func reset_progress() -> void:
 	hub_seen.clear()
 	board_best_daily_ms = 0
 	weekly_played_week = 0
+	weekly_paid_week = 0
+	weekly_paid = 0
 	daily_attempted_day = 0
 	_ghosts = {}
 	_ghosts_loaded = true

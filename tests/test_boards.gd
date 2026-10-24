@@ -201,11 +201,15 @@ func _initialize() -> void:
 	_check(is_equal_approx(game.slime.max_speed, 72.0 * Upgrades.speed_factor(Economy.WEEKLY_SPEED)),
 		"its speed is the fixed SPEED %d, not the player's 5" % Economy.WEEKLY_SPEED)
 	_check(game.abilities == null, "no abilities in the weekly")
-	_check(game.payout().tickets == 0 and game.no_credit(), "it pays nothing")
+	_check(game.payout().tickets == Economy.WEEKLY_PAY_MAX and game.no_credit(), "an unpaid week offers %d tickets, but earns no credit" % Economy.WEEKLY_PAY_MAX)
+	_check(game.weekly_par() > 3.0 and "PAR " in game.hud.attempt_label.text and "TIX AVAILABLE %d" % Economy.WEEKLY_PAY_MAX in game.hud.attempt_label.text, "the pod shows the par and the tickets (%s)" % game.hud.attempt_label.text.replace("
+", " / "))
+	_check(game.pickup_offer() == 0, "the weekly has no pickups")
 	_check(game.ghost != null and game.ghost.kind == "weekly", "a weekly run records")
 	_check(game.hud.level_label.text.begins_with("WEEKLY #"), "the HUD names it (%s)" % game.hud.level_label.text)
 	# record a short run, then win it
 	var wins_before: int = progress.randoms_won
+	var tix_before: int = progress.tickets
 	game.slime.position += Vector2(24, 0)
 	await _wait_seconds(0.5)
 	_check(game.ghost.rec.size() >= 4, "samples are recorded at 10 per second (%d in 0.5 s)" % game.ghost.rec.size())
@@ -213,6 +217,8 @@ func _initialize() -> void:
 	await physics_frame
 	_check(progress.board_for("weekly", Boards.week_of(monday)).size() == 2, "the weekly win posted a board time")
 	_check(progress.randoms_won == wins_before, "a weekly win counts toward nothing")
+	_check(progress.tickets == tix_before + 20 and progress.weekly_paid == 20 and progress.weekly_paid_week == Boards.week_of(monday), "a quick weekly win paid the full 20 tickets")
+	_check(game.payout().tickets == 0, "...and the pod now reads 0")
 	_check(game.daily_share.begins_with("Dry Trying WEEKLY #"), "the weekly result has a share line (%s)" % game.daily_share)
 	_check(not progress.ghost_for("weekly", Boards.week_of(monday)).is_empty(), "the winning run became the weekly ghost")
 	_check(game.daily_share.contains(" BOARD #"), "the weekly share line carries the local place (%s)" % game.daily_share)
@@ -223,6 +229,94 @@ func _initialize() -> void:
 	var labels: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 	_check(labels == ["COPY", "REPLAY", "BOARDS", "HUB"], "the weekly result row carries COPY / REPLAY / BOARDS / HUB (%s)" % [labels])
 	await _drop(game)
+
+	# ---- WEEKLY-PAY: the pay curve, pay-on-improvement, the live pod, the next week, RELAXED, the save
+	_check(Economy.weekly_pay(60.0, 60.0) == 20 and Economy.weekly_pay(66.0, 60.0) == 20, "at par (and up to par / 0.9) a weekly is worth 20")
+	_check(Economy.weekly_pay(90.0, 60.0) == 12 and Economy.weekly_pay(120.0, 60.0) == 2 and Economy.weekly_pay(180.0, 60.0) == 2, "1.5 x par is worth 12, 2 x par and slower 2")
+	var week: int = Boards.week_of(monday)
+	progress.random_weekly = true
+	progress.weekly_paid = 0
+	progress.weekly_paid_week = 0
+	game = await _spawn(true)
+	var par: float = game.weekly_par()
+	game.run_time = par * 3.0
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before + 2 and progress.weekly_paid == 2, "3 x par pays the 2 minimum")
+	await _drop(game)
+	game = await _spawn(true)
+	game.run_time = par * 1.5
+	_check(game.payout().tickets == Economy.weekly_pay(par * 1.5, par) - 2, "the offer is the curve minus what the week paid")
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before + 10 and progress.weekly_paid == 12, "1.5 x par pays the improvement (12 - 2)")
+	await _drop(game)
+	game = await _spawn(true)
+	game.run_time = par
+	_check(game.payout().tickets == 8, "improving to par offers the remaining 8")
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before + 8 and progress.weekly_paid == 20, "par pays the remaining 8 (20 in all)")
+	await _drop(game)
+	game = await _spawn(true)
+	game.run_time = par
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before and progress.weekly_paid == 20, "a replay at the same time pays nothing")
+	await _drop(game)
+	# the live pod: 8 already paid this week
+	progress.weekly_paid = 8
+	progress.weekly_paid_week = week
+	game = await _spawn(true)
+	par = game.weekly_par()
+	var zero_ratio := 0.0
+	for ratio in [0.0, 1.0, 1.0 / Economy.WEEKLY_PAR_WINDOW, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5]:
+		game.run_time = par * ratio
+		game._refresh_attempt_pod()
+		var want: int = maxi(Economy.weekly_pay(par * ratio, par) - 8, 0)
+		_check(game.payout().tickets == want and game.hud.attempt_label.text.ends_with("TIX AVAILABLE %d" % want), "pod at %.2f x par: %d = the payout (%s)" % [ratio, want, game.hud.attempt_label.text.replace("
+", " / ")])
+		if want == 0 and zero_ratio == 0.0:
+			zero_ratio = ratio
+	_check(Economy.weekly_pay(par, par) - 8 == 12, "8 paid: the pod shows 12 at par")
+	_check(zero_ratio > 1.0 / Economy.WEEKLY_PAR_WINDOW, "...and counts down to 0 (at %.1f x par)" % zero_ratio)
+	game.run_time = par * zero_ratio
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before and progress.weekly_paid == 8, "a win where pay(t) <= 8 pays 0")
+	await _drop(game)
+	# the next ISO week starts over; a RELAXED run pays nothing and does not use the week up
+	progress.day_override = monday + 7
+	game = await _spawn(true)
+	game.run_time = par
+	_check(game.payout().tickets == 20, "the next ISO week offers the full 20 again")
+	game.relaxed_run = true
+	_check(game.payout().tickets == 0, "a RELAXED weekly offers nothing")
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before and progress.weekly_paid_week == week, "a RELAXED weekly win pays nothing and does not count")
+	await _drop(game)
+	game = await _spawn(true)
+	game.run_time = 0.5
+	tix_before = progress.tickets
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.tickets == tix_before + 20 and progress.weekly_paid_week == week + 1, "the next week's first win paid 20")
+	await _drop(game)
+	progress.day_override = monday
+	var wfile := SaveFile.write(progress)
+	var wp: int = progress.weekly_paid
+	var wpw: int = progress.weekly_paid_week
+	progress.weekly_paid = 0
+	progress.weekly_paid_week = 0
+	SaveFile.read(progress, wfile)
+	_check(progress.weekly_paid == wp and progress.weekly_paid_week == wpw and wp > 0, "weekly_paid / weekly_paid_week survive a save round trip (%d, %d)" % [progress.weekly_paid, progress.weekly_paid_week])
 
 	# ---- a daily race against that kind of ghost; the split; RELAXED posts nothing
 	progress.random_weekly = false

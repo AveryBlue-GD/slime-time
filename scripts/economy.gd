@@ -128,6 +128,19 @@ static var pay_by_length_force := -1
 static var abandon_counts_force := -1
 
 
+## What a weekly finished in `time` seconds is worth in total on a maze of par `par` (the pod and the payout both use this).
+static func weekly_pay(time: float, par: float) -> int:
+	if par <= 0.0:
+		return WEEKLY_PAY_MIN
+	var ratio := time / par
+	var full := 1.0 / WEEKLY_PAR_WINDOW
+	if ratio <= full:
+		return WEEKLY_PAY_MAX
+	if ratio >= WEEKLY_PAR_FLOOR:
+		return WEEKLY_PAY_MIN
+	return WEEKLY_PAY_MIN + floori((WEEKLY_PAY_MAX - WEEKLY_PAY_MIN) * (WEEKLY_PAR_FLOOR - ratio) / (WEEKLY_PAR_FLOOR - full))
+
+
 static func daily_maze() -> bool:
 	return DAILY_MAZE and not Demo.on()
 
@@ -430,6 +443,17 @@ static func orchestra_on() -> bool:
 const BOARDS_TEST := true
 static var boards_force := -1
 const BOARD_TOP := 5
+## The weekly pays by time against its PAR (Levels.weekly_par: the maze's shortest route at the fixed SPEED, plus a cost per turn):
+## WEEKLY_PAY_MAX tickets at a run time <= par / WEEKLY_PAR_WINDOW, linearly down to WEEKLY_PAY_MIN at WEEKLY_PAR_FLOOR x par (and
+## slower). Each win pays only the improvement over what the week already paid, so a faster replay earns more, never twice.
+## Past the no-MORE-SLIME cap and the random-pay slot (like the daily); no pickups, win credit, medal or goal count.
+const WEEKLY_PAY_MAX := 20
+const WEEKLY_PAY_MIN := 2
+const WEEKLY_PAR_WINDOW := 0.9
+const WEEKLY_PAR_FLOOR := 2.0
+## Par's cost per turn of the route, as a share of (top speed / acceleration) seconds. 0.0: calibrated against the route pilot, which
+## loses nothing at the corners of these mazes (it finishes 5-6 % over par on ten weeks; any turn cost put par over its time).
+const WEEKLY_PAR_TURN := 0.0
 const WEEKLY_SLIME := 3
 ## ...and its SPEED / BRIGHTNESS levels (a mid-game player's), so a weekly time is comparable whatever the player bought.
 const WEEKLY_SPEED := 2

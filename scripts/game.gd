@@ -272,6 +272,7 @@ var stopwatch := false
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
+var _weekly_par := -1.0
 ## Wall splats this run, the par time the medal tiers are measured against (seconds; the solution path at the base gliding speed plus slack, so speed
 ## upgrades don't move it), whether this attempt is played with the slime reserve (ASSIST: no
 ## medals, records or tickets), and what the win paid (Progress.record_clear / complete_random).
@@ -2151,6 +2152,9 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
+	if is_weekly():  # (pays by this run's time against the week's par, the improvement over what the week paid; nothing when assisted / RELAXED)
+		var pay: int = 0 if (assisted or dev_toggled or relaxed_run) else progress.weekly_pay_due(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
+		return {tickets = pay, table = Economy.WEEKLY_PAY_MAX, cap = "" if pay > 0 else "paid"}
 	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, pay_factor(), progress.random_daily)
 	if daily_repeat():
 		due = {tickets = 0, table = due.table, cap = "paid"}
@@ -2185,6 +2189,13 @@ func no_credit() -> bool:
 	return assisted or dev_toggled or relaxed_run or is_weekly()
 
 
+## The weekly maze's par time in seconds (Levels.weekly_par of this maze; computed once).
+func weekly_par() -> float:
+	if _weekly_par < 0.0:
+		_weekly_par = Levels.weekly_par(maze)
+	return _weekly_par
+
+
 ## BM-03: this run is the WEEKLY maze (a board time only: no pay, no record, no abilities).
 func is_weekly() -> bool:
 	return Economy.boards_on() and progress != null and progress.random_weekly and is_random()
@@ -2217,7 +2228,7 @@ func _refresh_attempt_pod() -> void:
 		pop = before >= 0 and before != offer and motion_scale() > 0.0
 	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
-	hud.set_attempt(attempt, offer, pop, lurkers != null, lurkers != null and not hard_mode)
+	hud.set_attempt(attempt, offer, pop, lurkers != null, lurkers != null and not hard_mode, weekly_par() if is_weekly() else 0.0)
 	if hud.attempt_label.text != _dev_pod_text:
 		_dev_pod_text = hud.attempt_label.text
 		DevLog.log_event(get_tree(), "pod text changed", self)
@@ -2384,7 +2395,7 @@ func _pick_up_drops(pos: Vector2) -> void:
 func _pod_inputs() -> Array:
 	if progress == null:
 		return []
-	return [attempt, wind_fired, dev_toggled, assisted, finished, won, tickets.size(), held_tickets, progress.utc_day(), progress.dev_tools,
+	return [attempt, wind_fired, ticket_offer() if is_weekly() else 0, dev_toggled, assisted, finished, won, tickets.size(), held_tickets, progress.utc_day(), progress.dev_tools,
 		progress.upgrades.get("slime", 0), progress.random_paid, progress.random_pay_day,
 		progress.random_paid_seeds.hash(), progress.random_seed_fresh, progress.descent_paid, progress.descent_pay_day,
 		descent_run.get("pot"), descent_run.get("gain"), descent_run.get("slot"), descent_run.get("ended"),
@@ -3072,6 +3083,7 @@ func _weekly_result(text: String) -> String:
 	progress.mark_weekly_played(Boards.week_of(progress.daily_run_day))  # (even a RELAXED / assisted win: the sign stops saying NEW)
 	if assisted or dev_toggled or relaxed_run:
 		return text
+	var paid: int = progress.pay_weekly(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
 	var ms := roundi(run_time * 1000.0)
 	text = _board_result(text, "weekly", ms)
 	var n := Boards.weekly_number(Boards.week_of(progress.daily_run_day))
@@ -3079,6 +3091,10 @@ func _weekly_result(text: String) -> String:
 	text = Loc.lines([text, Loc.t("result.weekly", "WEEKLY #{n}  {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})])
 	# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
 	daily_share = Loc.t("result.weekly_share", "Dry Trying WEEKLY #{n} {time}", {n = n, time = UIKit.format_time(ms / 1000.0)}) + share_extra
+	if paid > 0:
+		reward = {tickets = paid, attempt = attempt, cap = ""}
+		hud.show_rewards(reward)
+		get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 	return text
 
 

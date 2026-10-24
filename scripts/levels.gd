@@ -195,6 +195,23 @@ static func par_for_path(path_tiles: float, speed := PAR_SPEED) -> float:
 	return path_tiles * TILE / speed * PAR_SLACK + PAR_EXTRA
 
 
+## The weekly's par (seconds): the maze's shortest route at the weekly's fixed SPEED glide, a cost per turn (Economy.WEEKLY_PAR_TURN x
+## top speed / acceleration, the time a corner costs) and the start-up. Recomputed from the maze, never stored.
+static func weekly_par(maze: Dictionary) -> float:
+	var f := Upgrades.speed_factor(Economy.WEEKLY_SPEED)
+	var v := PAR_SPEED * f
+	var acc := 420.0 * f
+	var path := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
+	if path.size() < 2:
+		return 0.0
+	var dist := (path.size() - 1) * MazeGenerator.CELL_SPAN * TILE - GRAB_REACH
+	var turns := 0
+	for i in range(2, path.size()):
+		if path[i] - path[i - 1] != path[i - 1] - path[i - 2]:
+			turns += 1
+	return dist / v + turns * Economy.WEEKLY_PAR_TURN * v / acc + v / (2.0 * acc)
+
+
 ## Par for a story level (cached; builds its maze once), without playing the level.
 static func level_par(level: int, hard := false) -> float:
 	var key := level + (100 if hard else 0)

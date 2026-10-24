@@ -1697,6 +1697,13 @@ msgctxt "hud.pod.attempt_lurkers_x"
 msgid "ATTEMPT {n} LURKERS X{x}"
 msgstr ""
 
+#. HUD attempt pod, line 1 on the weekly maze, max 80px; {time} = the maze's par as M:SS, e.g. 1:20
+#. budget: max 80px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.par"
+msgid "PAR {time}"
+msgstr ""
+
 #. HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
 #: scripts/hud.gd

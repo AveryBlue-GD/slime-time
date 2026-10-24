@@ -626,7 +626,7 @@ func set_coins(total: int, found: int, here: int, pop := false) -> void:
 ## nothing. Called every frame by the game (only a changed text touches the label).
 ## `pop`: the number just changed (a restart): the TIX AVAILABLE line flashes bright twice and
 ## fades back (ATTEMPT_POP_*, about half a second, after the restart's goo wipe has cleared the top).
-func set_attempt(attempt: int, payout: int, pop := false, lurkers := false, premium := false) -> void:
+func set_attempt(attempt: int, payout: int, pop := false, lurkers := false, premium := false, par := 0.0) -> void:
 	var tix := _tix_line(payout)
 	# i18n: HUD attempt pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {n} = which try at this maze
 	var first := Loc.t("hud.pod.attempt", "ATTEMPT {n}", {n = mini(attempt, 99)})
@@ -636,6 +636,9 @@ func set_attempt(attempt: int, payout: int, pop := false, lurkers := false, prem
 		if premium:
 			# i18n: HUD attempt pod, line 1 on a NORMAL maze with lurkers (they pay a premium), max 128px; {n} = which try at this maze, {x} = the pay factor, e.g. 1.25
 			first = Loc.t("hud.pod.attempt_lurkers_x", "ATTEMPT {n} LURKERS X{x}", {n = mini(attempt, 99), x = Economy.LURKER_PAY})
+	if par > 0.0:  # the weekly: its par time on line 1 (the tickets on line 2 count down live along the pay curve)
+		# i18n: HUD attempt pod, line 1 on the weekly maze, max 80px; {time} = the maze's par as M:SS, e.g. 1:20
+		first = Loc.t("hud.pod.par", "PAR {time}", {time = "%d:%02d" % [ceili(par) / 60, ceili(par) % 60]})
 	var text := Loc.lines([first, tix])
 	if text == attempt_label.text and attempt_pod.visible and not pop:
 		return  # called every frame: only a change touches the label
