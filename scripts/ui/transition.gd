@@ -304,8 +304,10 @@ func _on_notice_input(event: InputEvent) -> void:
 ## True when a touch at `pos` (viewport pixels) is on a WEAR IT toast: it wears the item and the touch is spent
 ## (TouchControls then neither moves, leaps, uses nor glides on it).
 func tap_toast(pos: Vector2) -> bool:
-	if _notice == null or _notice_wear == "" or not _notice.get_global_rect().has_point(pos):
+	if _notice == null or not _notice.get_global_rect().has_point(pos):
 		return false
+	if _notice_wear == "":
+		return wore_recently()  # (the emulated mouse click arrives BEFORE the touch and already wore it: still spent)
 	wear_notice()
 	return true
 
