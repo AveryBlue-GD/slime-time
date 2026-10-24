@@ -458,7 +458,7 @@ func _hit(l: Lurker) -> void:
 	hits += 1
 	var amount := clampf(game.slime_remaining - 1.0, 0.0, Economy.LURKER_HIT_HARD if game.hard_mode else Economy.LURKER_HIT)
 	game.spend_slime(amount)
-	invuln = (Economy.LURKER_INVULN_TOUCH_HARD if game.hard_mode else Economy.LURKER_INVULN_TOUCH) if Platform.is_mobile_native() else Economy.LURKER_INVULN
+	invuln = (Economy.LURKER_INVULN_TOUCH_HARD if game.hard_mode else Economy.LURKER_INVULN_TOUCH) if Platform.is_mobile_native() or UIKit.touch_active() else Economy.LURKER_INVULN
 	_blink = 0.0
 	var away := slime.position - l.pos
 	_push_dir = away.normalized() if away.length() > 0.1 else Vector2.UP

@@ -140,6 +140,24 @@ func _initialize() -> void:
 	for k in 8:
 		lk.step(0.016)
 	_check(before.distance_to(game.slime.position) > 8.0, "contact knocks the slime back")
+	# BUG3-13: a touch player (a phone browser too, not only a native build) gets the longer grace
+	var saved_hits: int = lk.hits
+	var saved_invuln: float = lk.invuln
+	var saved_remaining: float = game.slime_remaining
+	var saved_pos: Vector2 = game.slime.position
+	UIKit.touch_in_use = true
+	lk._hit(l)
+	var want_touch: float = Economy.LURKER_INVULN_TOUCH_HARD if game.hard_mode else Economy.LURKER_INVULN_TOUCH
+	_check(is_equal_approx(lk.invuln, want_touch), "touch input: the longer contact grace (%.2f)" % lk.invuln)
+	UIKit.touch_in_use = false
+	lk._hit(l)
+	_check(is_equal_approx(lk.invuln, Economy.LURKER_INVULN), "no touch: the desktop grace (%.2f)" % lk.invuln)
+	lk.hits = saved_hits
+	lk.invuln = saved_invuln
+	lk._push_left = 0.0
+	l.stun = 0.0
+	game.slime_remaining = saved_remaining
+	game.slime.position = saved_pos
 	_check(is_equal_approx(game.slime_remaining, 80.0 - Economy.LURKER_HIT), "no second hit while invulnerable")
 
 	# ---- near miss: slow-mo never touches Engine.time_scale, a pause cannot strand it
