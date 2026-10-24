@@ -119,6 +119,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		visible = true
+		var transition := get_node_or_null("/root/Transition")
+		if event.pressed and transition != null and transition.tap_toast(event.position):
+			get_viewport().set_input_as_handled()  # (a tap on the WEAR IT toast wears the item and nothing else)
+			return
 		if event.pressed:
 			_tap_start[event.index] = {pos = event.position, at = Time.get_ticks_msec()}
 			_touch_down(event.index, event.position)

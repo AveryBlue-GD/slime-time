@@ -1722,6 +1722,8 @@ func stop_glide() -> void:
 
 
 func _on_tap(pos: Vector2) -> void:
+	if _wore_toast_item():
+		return  # (the tap wore a toast's item: only that)
 	if slime.frozen or turning or slime.state != Slime.State.GLIDE:
 		return  # (a use, a turn or a leap is under way: a tap's release must not use a station twice)
 	var prop := prop_at(pos)
@@ -1867,7 +1869,7 @@ func _physics_process(delta: float) -> void:
 	# such key, so right next to one JUMP uses it instead of leaping.
 	var touch := _touch_controls != null and _touch_controls.visible
 	slime.can_charge = near.is_empty() or not touch
-	var used := _interact_pressed() or (touch and Input.is_action_just_pressed("jump"))
+	var used := _interact_pressed() or (touch and Input.is_action_just_pressed("jump") and not _wore_toast_item())
 	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
 		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
 		# 2026-10-22); holding left turns it the other way.
@@ -2270,6 +2272,12 @@ func _sfx(sound: String, pitch := 1.0) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
 		sfx.play(sound, -6.0, pitch)
+
+
+## True within 150 ms of wearing a toast's item (a tap or a key): that touch must not also leap, use or glide.
+func _wore_toast_item() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	return transition != null and transition.wore_recently()
 
 
 ## F pressed this frame, unless it was spent wearing a toast's item (Transition.interact_free).

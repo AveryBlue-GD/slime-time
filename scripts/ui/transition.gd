@@ -287,6 +287,9 @@ func wear_notice() -> bool:
 	if progress == null or not progress.equip_cosmetic(id):
 		return false
 	_notice_left = minf(_notice_left, 0.8)
+	_wore_msec = Time.get_ticks_msec()  # (a tap wearing it is spent too: see wore_recently)
+	if _notice != null:
+		_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE  # (worn: the box no longer eats taps meant for the hub)
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
 		sfx.play("coin", -10.0, 1.0)
@@ -296,6 +299,20 @@ func wear_notice() -> bool:
 func _on_notice_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		wear_notice()
+
+
+## True when a touch at `pos` (viewport pixels) is on a WEAR IT toast: it wears the item and the touch is spent
+## (TouchControls then neither moves, leaps, uses nor glides on it).
+func tap_toast(pos: Vector2) -> bool:
+	if _notice == null or _notice_wear == "" or not _notice.get_global_rect().has_point(pos):
+		return false
+	wear_notice()
+	return true
+
+
+## True for 150 ms after a toast's item was worn (by key or tap): the hub ignores `tapped` / `jump` meanwhile.
+func wore_recently() -> bool:
+	return Time.get_ticks_msec() - _wore_msec <= 150
 
 
 ## True when F was just pressed and was not spent wearing a toast's item (the hub, the coach: the

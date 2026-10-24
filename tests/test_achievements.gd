@@ -166,9 +166,12 @@ func _initialize() -> void:
 	_check(hint_text.contains("WEAR IT"), "...its second line says WEAR IT (%s)" % hint_text)
 	p.map_paper = Cosmetics.DEFAULT_PAPER
 	var saves_before: int = p.saves_written
-	_check(tr.wear_notice() and p.map_paper == "night", "wearing it equips the paper")
+	_check(not tr.tap_toast(Vector2(-50, -50)) and p.map_paper == Cosmetics.DEFAULT_PAPER, "BUG4-02: a touch outside the toast neither wears nor is spent")
+	_check(not tr.wore_recently(), "...no guard window yet")
+	_check(tr.tap_toast(tr._notice.get_global_rect().get_center()) and p.map_paper == "night", "wearing it (a tap on the toast) equips the paper")
+	_check(tr.wore_recently() and tr._notice.mouse_filter == Control.MOUSE_FILTER_IGNORE, "...the tap is spent (the hub ignores tapped / jump for 150 ms) and the box stops eating taps")
 	_check(p.saves_written == saves_before + 1, "...with one save (%d)" % (p.saves_written - saves_before))
-	_check(not tr.wear_notice(), "...and only once")
+	_check(not tr.wear_notice() and not tr.tap_toast(Vector2(160, 20)), "...and only once")
 	tr._notice_left = 0.0
 	await process_frame
 
