@@ -222,7 +222,7 @@ static func write_ghosts(path: String, ghosts: Dictionary, keep: String = "") ->
 	while text.length() > MAX_FILE_BYTES:
 		var oldest := ""
 		for kind: String in ghosts:
-			if kind != keep:
+			if kind != keep and kind != "daily" and kind != "weekly":  # (the board ghosts are protected from the trim)
 				oldest = kind
 				break
 		if oldest == "":

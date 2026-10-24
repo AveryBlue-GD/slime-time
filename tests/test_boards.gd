@@ -159,6 +159,20 @@ func _initialize() -> void:
 		fat[k] = {key = 1, ms = 1000, pts = long_pts}
 	var tiny := Boards.write_ghosts(progress.ghosts_path(), fat, "story_3")
 	_check(tiny and fat.size() == 3, "a file under the cap drops nothing")
+	# BUG4-01: really over the cap (escaped samples, ~8 bytes each): the oldest-touched story kinds go, never the one just
+	# recorded, the daily or the weekly (those two are the OLDEST here)
+	var wild: Array[int] = []
+	for i in 1200:
+		wild.append(Boards.pack(Vector2((i * 997) % 3000, (i * 613) % 2500)))
+	var huge := {"daily": {key = 1, ms = 1000, pts = wild}, "weekly": {key = 1, ms = 1000, pts = wild}}
+	for i in 40:
+		huge["k%d" % i] = {key = 1, ms = 1000, pts = wild}
+	huge["story_3"] = {key = 1, ms = 1000, pts = wild}
+	var wrote := Boards.write_ghosts(progress.ghosts_path(), huge, "story_3")
+	_check(wrote and huge.size() < 43, "a file over the cap drops kinds and still writes (%d left)" % huge.size())
+	_check(huge.has("story_3") and huge.has("daily") and huge.has("weekly"), "...never the kind just recorded nor the daily / weekly")
+	_check(not huge.has("k0") and huge.has("k39"), "...and the oldest-touched kind goes first, the newest stays")
+	_check(FileAccess.get_file_as_bytes(progress.ghosts_path()).size() <= Boards.MAX_FILE_BYTES, "...under the cap")
 	progress.saving_enabled = false
 
 	progress.saving_enabled = false
