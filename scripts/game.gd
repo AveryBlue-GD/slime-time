@@ -2724,6 +2724,14 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		# i18n: max 296px, 1 line; {name} = a skin name
 		lines.append(Loc.t("result.all_medals_skin", "ALL MEDALS! NEW SKIN: {name}", {name = Skins.display_name(Skins.STOPWATCH)}))
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
+	if ghost != null and lines.size() < 5:
+		# IMP3-06: the best earlier clear of this level (and mode) raced as the pale ghost; a faster clear becomes the new ghost
+		var split := ghost.finish(roundi(run_time * 1000.0))
+		if split != "":
+			# i18n: result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+			lines.append(Loc.t("result.ghost_split", "VS GHOST {split}", {split = split}))
+	elif ghost != null:
+		ghost.finish(roundi(run_time * 1000.0))
 	_finish(true, Loc.lines(lines))
 
 

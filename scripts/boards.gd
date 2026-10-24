@@ -111,7 +111,27 @@ static func ghost_pos(pts: Array, t: float) -> Vector2i:
 
 # ---------------------------------------------------------------- the ghosts file
 
-## The saved ghosts: {"daily": {key, ms, pts}, "weekly": {...}} (a kind with no valid ghost is missing).
+## Ghost kinds: the daily / weekly, and one best clear per story level and mode ("story_3", "hard_3": the key is the level).
+static func story_kind(level: int, hard: bool) -> String:
+	return "%s_%d" % ["hard" if hard else "story", level]
+
+
+static func valid_kind(kind: String) -> bool:
+	if kind == "daily" or kind == "weekly":
+		return true
+	for prefix: String in ["story_", "hard_"]:
+		if kind.begins_with(prefix) and kind.substr(prefix.length()).is_valid_int():
+			var n := kind.substr(prefix.length()).to_int()
+			return n >= 1 and n <= Levels.COUNT and str(n) == kind.substr(prefix.length())
+	return false
+
+
+## The ghosts file must stay under SaveText.MAX_BYTES (256 KB) to be read back; 22 ghosts of a normal length (a 90 s clear
+## is ~900 samples, ~11 KB) fit, and past this size the largest story ghosts are dropped.
+const MAX_FILE_BYTES := 240 * 1024
+
+
+## The saved ghosts: {"daily": {key, ms, pts}, "weekly": {...}, "story_3": {...}, "hard_3": {...}} (a kind with no valid ghost is missing).
 static func read_ghosts(path: String) -> Dictionary:
 	var out := {}
 	if not FileAccess.file_exists(path):
@@ -119,7 +139,9 @@ static func read_ghosts(path: String) -> Dictionary:
 	var file := SaveText.parse(FileAccess.get_file_as_bytes(path))  # allow-list first, like the save
 	if file == null:
 		return out
-	for kind: String in ["daily", "weekly"]:
+	for kind: String in file.get_sections():
+		if not valid_kind(kind):
+			continue
 		var pts := SaveFile.ints(file.get_value(kind, "pts", []))
 		var ms := SaveFile.get_int(file, kind, "ms", 0)
 		var key := SaveFile.get_int(file, kind, "key", 0)
@@ -128,7 +150,7 @@ static func read_ghosts(path: String) -> Dictionary:
 	return out
 
 
-static func write_ghosts(path: String, ghosts: Dictionary) -> bool:
+static func _ghosts_text(ghosts: Dictionary) -> String:
 	var file := ConfigFile.new()
 	for kind: String in ghosts:
 		var g: Dictionary = ghosts[kind]
@@ -137,6 +159,21 @@ static func write_ghosts(path: String, ghosts: Dictionary) -> bool:
 		var pts: Array[int] = []
 		pts.assign(g.pts)
 		file.set_value(kind, "pts", pts)
+	return file.encode_to_text()
+
+
+## Writes the file; when it would pass MAX_FILE_BYTES the longest story ghosts are dropped from `ghosts` first.
+static func write_ghosts(path: String, ghosts: Dictionary) -> bool:
+	var text := _ghosts_text(ghosts)
+	while text.length() > MAX_FILE_BYTES:
+		var worst := ""
+		for kind: String in ghosts:
+			if kind != "daily" and kind != "weekly" and (worst == "" or ghosts[kind].pts.size() > ghosts[worst].pts.size()):
+				worst = kind
+		if worst == "":
+			break
+		ghosts.erase(worst)
+		text = _ghosts_text(ghosts)
 	# (tmp + rename like the save, so a crash mid-write never leaves half a file; a ghost is only a replay, a failed write
 	# just means no ghost). The Progress autoload comes via the tree: a global-class script can't name it directly.
-	return (Engine.get_main_loop() as SceneTree).root.get_node("Progress").write_atomic(path, file.encode_to_text())
+	return (Engine.get_main_loop() as SceneTree).root.get_node("Progress").write_atomic(path, text)

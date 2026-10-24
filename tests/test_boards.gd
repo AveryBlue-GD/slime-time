@@ -24,6 +24,16 @@ func _spawn(weekly: bool) -> Node2D:
 	return game
 
 
+func _spawn_story(level: int) -> Node2D:
+	progress.start_story(level)
+	var game: Node2D = MAIN.instantiate()
+	game.level = level
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	return game
+
+
 func _drop(game: Node2D) -> void:
 	current_scene = null
 	game.free()
@@ -191,6 +201,75 @@ func _initialize() -> void:
 	_check(game.ghost != null and game.ghost.sprite == null, "GHOST off: it records but shows no ghost")
 	await _drop(game)
 	progress.ghost_on = true
+
+	# ---- IMP3-06: a story level's best clear is a ghost per level and mode (a throwaway file, never the real one)
+	progress.start_story(1)
+	progress.random_daily = false
+	progress.random_weekly = false
+	progress.saving_enabled = true
+	progress.demo_guard = false
+	progress._ghosts = {}
+	progress._ghosts_loaded = true
+	_check(not progress.ghosts_path().begins_with("user://ghosts.cfg"), "the story ghost test writes a throwaway file")
+	var story_kind := Boards.story_kind(1, false)
+	_check(story_kind == "story_1" and Boards.story_kind(10, true) == "hard_10" and Boards.valid_kind("hard_10") and not Boards.valid_kind("story_11") and not Boards.valid_kind("story_01"),
+		"story ghost kinds are story_N / hard_N for the 10 levels")
+	game = await _spawn_story(1)
+	_check(game.ghost != null and game.ghost.kind == story_kind and game.ghost.key == 1 and game.ghost.sprite == null, "a story level records (no ghost yet)")
+	game.slime.position += Vector2(24, 0)
+	await _wait_seconds(0.5)
+	game.run_time = 30.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	var story_ghost: Dictionary = progress.ghost_for(story_kind, 1)
+	_check(not story_ghost.is_empty() and story_ghost.ms == 30000, "the first clear becomes the level's ghost")
+	_check(progress.ghost_for(Boards.story_kind(1, true), 1).is_empty(), "the hard ghost of that level is separate")
+	await _drop(game)
+	game = await _spawn_story(1)
+	_check(game.ghost.sprite != null and game.ghost.best.ms == 30000, "the next attempt races the ghost")
+	game.run_time = 35.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.ghost_for(story_kind, 1).ms == 30000, "a slower clear keeps the ghost")
+	_check("VS GHOST +5.0s" in game.hud.message.text, "the story result shows VS GHOST +5.0s (%s)" % game.hud.message.text)
+	await _drop(game)
+	game = await _spawn_story(1)
+	game.relaxed_run = true
+	game.run_time = 10.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.ghost_for(story_kind, 1).ms == 30000, "a RELAXED clear records nothing")
+	await _drop(game)
+	game = await _spawn_story(1)
+	game.assisted = true
+	game.run_time = 10.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.ghost_for(story_kind, 1).ms == 30000, "an assisted clear records nothing")
+	await _drop(game)
+	game = await _spawn_story(1)
+	game.run_time = 25.0
+	game._on_goal_body_entered(game.slime)
+	await physics_frame
+	_check(progress.ghost_for(story_kind, 1).ms == 25000, "a faster clear replaces the ghost")
+	await _drop(game)
+	progress._ghosts = {}
+	progress._ghosts_loaded = false
+	_check(progress.ghost_for(story_kind, 1).ms == 25000, "the story ghost round trips through the file")
+	var big := {}
+	var pts_big: Array[int] = []
+	for i in 3000:
+		pts_big.append(Boards.pack(Vector2(i * 7 % 900, i * 13 % 900)))
+	for l in range(1, 11):
+		big[Boards.story_kind(l, false)] = {key = l, ms = 1000, pts = pts_big.duplicate()}
+		big[Boards.story_kind(l, true)] = {key = l, ms = 1000, pts = pts_big.duplicate()}
+	big["daily"] = {key = 5, ms = 1000, pts = pts_big.duplicate()}
+	Boards.write_ghosts(progress.ghosts_path(), big)
+	_check(FileAccess.get_file_as_bytes(progress.ghosts_path()).size() <= Boards.MAX_FILE_BYTES + 64 and big.has("daily") and Boards.read_ghosts(progress.ghosts_path()).has("daily"),
+		"20 maximal story ghosts are trimmed to fit the readable size (%d bytes)" % FileAccess.get_file_as_bytes(progress.ghosts_path()).size())
+	progress._ghosts = {}
+	progress._ghosts_loaded = true
+	progress.saving_enabled = false
 
 	# ---- the BOARDS page
 	var page: Control = BOARDS_SCENE.instantiate()
