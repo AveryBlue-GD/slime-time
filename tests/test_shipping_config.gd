@@ -71,6 +71,17 @@ func _difficulty_numbers() -> void:
 	progress.random_paid_seeds.clear()
 	_check(is_equal_approx(progress.random_length_factor(5, -1, true), 1.4) and progress.random_payout(1, 5, 1.4).tickets == 14,
 		"a hard random maze pays the flat 1.4 factor: 14 tickets on the first try")
+	var pay_game: Node2D = load("res://scripts/game.gd").new()  # IMP3-01: the lurker premium never applies on hard (pay_factor), only on normal
+	pay_game.progress = progress
+	pay_game.random_seed = 5
+	pay_game.seed_level = -1
+	pay_game.hard_mode = true
+	pay_game.lurkers = Lurkers.new()
+	_check(is_equal_approx(pay_game.pay_factor(), 1.4), "a hard maze with lurkers pays 1.4, no x1.25 premium")
+	pay_game.hard_mode = false
+	_check(is_equal_approx(pay_game.pay_factor(), progress.random_length_factor(5, -1, false) * Economy.LURKER_PAY), "a normal maze with lurkers keeps the x1.25")
+	pay_game.lurkers.free()
+	pay_game.free()
 	_check(is_equal_approx(Economy.LENGTH_PAY_MIN, 0.4) and is_equal_approx(Economy.LENGTH_PAY_MAX, 1.5), "the length clamp is 0.4-1.5")
 	progress.hard_mode = false
 	Economy.one_assist_force = 0  # (the old reserve; the one-assist offer is covered by test_chill_lane)

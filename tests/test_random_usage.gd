@@ -52,7 +52,7 @@ func _initialize() -> void:
 	var usage_src := source.substr(source.find("static func random_usage_permille"), 600)
 	_check(not "randf" in usage_src, "the usage roll uses an integer draw only")
 	_check(Levels.random_route_cells(4242, false, 3) == Levels.random_route_cells(4242, false, 3), "route cells are a pure function of seed + level")
-	_check(Levels.random_usage(4242, true) == Levels.RANDOM_HARD_TARGET and Levels.random_route_cells(4242, true, 10) == Levels.random_route_cells(4242, true, 0), "hard mode: fixed 90%, no upgrade growth")
+	_check(Levels.random_usage(4242, true) == Levels.RANDOM_HARD_USAGE and Levels.random_route_cells(4242, true, 10) == Levels.random_route_cells(4242, true, 0), "hard mode: fixed 90%, no upgrade growth")
 
 	# --- Route scales with the meter: MORE SLIME 10 asks for twice the route of level 0
 	var ratio_ok := true

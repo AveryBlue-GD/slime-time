@@ -99,7 +99,9 @@ static func hard_data(level: int) -> Dictionary:
 ## perfect run used: they define the base meter (hard_meter_tiles) and the start size (hard_start_cells).
 ## The largest hard maze (cells), like the randomizer's RANDOM_MAX_CELLS (web build performance).
 const HARD_MAX_CELLS := Vector2i(36, 20)
-const RANDOM_HARD_TARGET := 0.9
+const RANDOM_HARD_TARGET := 0.9  # (the hard random route length: maze layout and seeds)
+## IMP3-01: the share of the meter a perfect hard random run uses (allowance 1.18): two lurker hits (4 each) still leave 1.08.
+const RANDOM_HARD_USAGE := 0.85
 
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
 ## Upgrades.full_tree_cost() (165): finding every coin maxes the whole upgrade tree. Each level
@@ -360,7 +362,7 @@ static func random_usage_permille(maze_seed: int) -> int:
 
 
 static func random_usage(maze_seed: int, hard := false) -> float:
-	return RANDOM_HARD_TARGET if hard else random_usage_permille(maze_seed) / 1000.0
+	return RANDOM_HARD_USAGE if hard else random_usage_permille(maze_seed) / 1000.0
 
 
 ## Tiles a full meter glides at a MORE SLIME level (the player's capacity).

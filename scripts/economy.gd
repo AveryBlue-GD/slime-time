@@ -89,7 +89,7 @@ const PICKUPS_ON_WIN := true
 ## (Progress.random_length_factor: the seed's route in cells over the route of a typical maze, usage
 ## median 578 permille, at the same MORE SLIME level, so upgrades alone don't raise it), clamped to
 ## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; a HARD maze pays the flat HARD_LENGTH_FACTOR (its
-## route is always the hard target), so a first-try hard win pays as much as a long normal maze; the replay / seed-paid / no-MORE-SLIME caps
+## route is always the hard target; no LURKER_PAY on top, IMP3-01), so a first-try hard win pays as much as a long normal maze; the replay / seed-paid / no-MORE-SLIME caps
 ## still apply after it. False = the table as is.
 const PAY_BY_LENGTH := true
 const LENGTH_TYPICAL_PERMILLE := 578  # (the usage median, Levels.USAGE_QUANTILES)
@@ -375,7 +375,7 @@ static func light_life_on() -> bool:
 ## LANTERN-EATER -> the brightest lit cell near the slime. Dormant until the slime is within LURKER_WAKE_DIST px.
 ## Standing still past IDLE_GRACE = stealth (they wander). Contact: LURKER_HIT percent of the meter, a one-tile
 ## knockback, LURKER_INVULN s of safety (LURKER_INVULN_TOUCH on touch); never kills. SLIME SPLAT stuns them, a leap
-## landing on one bonks it. Those mazes pay LURKER_PAY x. Rules (Lurkers.allowed): ALWAYS in hard mode (hard story
+## landing on one bonks it. Normal random mazes with lurkers pay LURKER_PAY x (hard pays only HARD_LENGTH_FACTOR, no premium). Rules (Lurkers.allowed): ALWAYS in hard mode (hard story
 ## levels, hard random mazes; even with RELAXED); normal random mazes only with SETTINGS LURKERS on; never in the
 ## daily / weekly, normal story, training / the tutorial, Descent or the demo. `--nolurkers` (debug builds) sets `lurkers_force` = 0,
 ## `--lurkers` = 2 (every random maze, for testing); suites force it off (tests/suite_base.gd) unless they test it.
@@ -385,10 +385,11 @@ const LURKER_WAKE_DIST := 96.0
 const LURKER_SPEED := 38.0
 const LURKER_HIT := 15.0
 ## Hard mode: the allowances are tight, so a contact costs less; hard story levels 1-3 have 2 lurkers, the rest 3.
-const LURKER_HIT_HARD := 8.0
+const LURKER_HIT_HARD := 4.0  # (IMP3-01: two hits on a 1.18+ allowance stay finishable: 1.18 x 0.92 = 1.086)
 const LURKER_HARD_FEW_LEVELS := 3
 const LURKER_INVULN := 1.0
 const LURKER_INVULN_TOUCH := 1.5
+const LURKER_INVULN_TOUCH_HARD := 2.0  # (IMP3-01: hard on a touch screen: a longer safe window)
 const LURKER_CONTACT_DIST := 5.0
 const LURKER_NEAR_MISS_DIST := 8.0
 const LURKER_SLOWMO := 0.3

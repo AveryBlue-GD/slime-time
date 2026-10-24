@@ -2150,10 +2150,11 @@ func payout() -> Dictionary:
 	return due
 
 
-## The maze's pay factor: its length factor, x Economy.LURKER_PAY when it has lurkers (BM-01).
+## The maze's pay factor: its length factor, x Economy.LURKER_PAY when a NORMAL maze has lurkers (BM-01; hard pays
+## only its flat HARD_LENGTH_FACTOR, IMP3-01).
 func pay_factor() -> float:
 	var factor: float = progress.random_length_factor(random_seed, seed_level, hard_mode)
-	return factor * Economy.LURKER_PAY if lurkers != null else factor
+	return factor * Economy.LURKER_PAY if lurkers != null and not hard_mode else factor
 
 
 ## The attempt a randomizer win is paid for: this run's attempt, one more once SECOND WIND fired

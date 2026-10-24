@@ -53,6 +53,14 @@ func _check_tables() -> void:
 	_check(rising and _col("allowance")[0] >= 1.08 and _col("allowance")[0] <= 1.20
 		and _col("allowance")[-1] >= 1.25 and _col("allowance")[-1] <= 1.30,
 		"the allowance rises with the level, ~1.18 at L1 to 1.25-1.30 at L10 %s" % [_col("allowance")])
+	# IMP3-01: two lurker hits must always leave a finishable run (allowance x (1 - 2 hits) >= 1.08).
+	var hit_floor := 1.0 - 2.0 * Economy.LURKER_HIT_HARD / 100.0
+	var budget_ok := true
+	for al in _col("allowance"):
+		budget_ok = budget_ok and float(al) * hit_floor >= 1.08 - 0.0001
+	_check(budget_ok, "every hard story allowance survives two lurker hits (>= 1.08) %s" % [_col("allowance")])
+	_check((1.0 / Levels.RANDOM_HARD_USAGE) * hit_floor >= 1.08 - 0.0001 and Levels.random_usage(7, true) == Levels.RANDOM_HARD_USAGE,
+		"the hard random meter use %.2f survives two lurker hits (>= 1.08)" % Levels.RANDOM_HARD_USAGE)
 	for level in range(1, Levels.COUNT + 1):
 		var i := level - 1
 		var config := Levels.get_config(level, true)
