@@ -152,10 +152,11 @@ func _process(delta: float) -> void:
 	if slime and is_visible_in_tree():
 		var before := _time
 		_time = fmod(_time + delta, _length)
-		if _time < before and not _trail_xs.is_empty():  # (the routine looped: a clean floor)
-			_trail_xs.clear()
-			_trail.queue_redraw()
+		_clock += delta
+		if _time < before:  # (the routine looped: the tail just fades on)
+			_last_cell_x = -1
 		_pose()
+		_age_trail()
 
 
 func _pose() -> void:
@@ -173,10 +174,9 @@ func _pose() -> void:
 			var lift: float = step[4] * sin(progress * PI)
 			slime.position = Vector2(roundf(x), roundf(FLOOR_Y - lift))
 			if lift == 0.0 and not _trail_look.is_empty() and step[2] != step[3]:
-				var cell_x := int(slime.position.x) / 2 * 2
-				if not cell_x in _trail_xs:
-					_trail_xs.append(cell_x)
-					_trail.queue_redraw()
+				_lay_to(int(slime.position.x) / 2 * 2)
+			else:
+				_last_cell_x = -1
 			return
 		t -= step[1]
 
