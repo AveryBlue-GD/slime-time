@@ -4,7 +4,7 @@ extends Node
 ## Each sound gets a few players so quick repeats overlap instead of cutting each other off.
 ## Muted when Progress.sound_on is false.
 
-const SOUNDS: Array[String] = ["squish", "charge", "jump", "land", "splat", "chalice", "unlock", "dry", "click", "pause", "coin", "crumble", "jingle", "upgrade", "heartbeat", "lowwarn", "whoosh", "crack", "clank", "sunrise", "huh", "grumble", "goo_shot", "goo_lob", "goo_burst", "kaze", "coin_fizz"]
+const SOUNDS: Array[String] = ["squish", "charge", "jump", "land", "splat", "chalice", "unlock", "dry", "click", "pause", "coin", "crumble", "jingle", "upgrade", "heartbeat", "lowwarn", "whoosh", "crack", "clank", "sunrise", "huh", "grumble", "goo_shot", "goo_lob", "goo_burst", "kaze", "coin_fizz", "lurk_growl", "lurk_bonk"]
 const VOICES := 3
 ## The audio bus (its SFX slider in SETTINGS; Progress.SFX_BUS, made by Progress.ensure_bus).
 const BUS := "SFX"  # i18n: ignore (an audio bus name)
@@ -16,7 +16,7 @@ const VARY_DB := 1.5
 
 ## BM-08 (Economy.ORCHESTRA_TEST): these sounds duck the level music (when louder than DUCK_MIN_DB), and the coin
 ## chain's step and the time of the last coin.
-const DUCKERS: Array[String] = ["splat", "coin", "coin_fizz", "chalice"]
+const DUCKERS: Array[String] = ["splat", "coin", "coin_fizz", "chalice", "lurk_bonk"]
 const DUCK_MIN_DB := -12.0
 var _chain := 0
 var _chain_ms := -1

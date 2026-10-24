@@ -37,6 +37,11 @@ static func copy_by_hand_message() -> String:
 ## locale's button_h() / line_h() under its title_bottom(), and the row gap closes to GAP_M / GAP_S only
 ## when the five rows would not end above the bottom row otherwise (Devanagari).
 const ROWS := 5
+
+
+## The grid's rows: one more for CALM DARK while the lurkers test (Economy.LURKERS_TEST, BM-01) is on.
+static func rows() -> int:
+	return ROWS + (1 if Economy.lurkers_on() and not Demo.on() else 0)
 const COL_W := 120
 const COL_L := 36
 const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
@@ -81,6 +86,8 @@ var level_music_button: Button
 ## RELAXED (no idle drain, no medals; Progress.relaxed) under SAVE CODE / TRAINING, with a hint line under it.
 var relaxed_button: Button
 var relaxed_hint: Label
+## CALM DARK (no lurkers in the random mazes; Progress.calm_dark): the grid's extra row, only with the lurkers test on.
+var calm_button: Button
 var controls_button: Button
 var reset_button: Button
 ## ACHIEVEMENTS, top right (null in the demo).
@@ -135,11 +142,15 @@ func _ready() -> void:
 	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS"), UIKit.FONT, UIKit.TEXT)
 	add_child(relaxed_hint)
 	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
-	relaxed_hint.position = Vector2(0, _cell(1, 4).y + UIKit.button_h() + UIKit.GAP_XS)
+	relaxed_hint.position = Vector2(0, _cell(1, rows() - 1).y + UIKit.button_h() + UIKit.GAP_XS)
 	relaxed_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	relaxed_hint.visible = false  # (only while the RELAXED button has focus or the pointer over it)
 	for sig in [relaxed_button.focus_entered, relaxed_button.mouse_entered, relaxed_button.focus_exited, relaxed_button.mouse_exited]:
 		sig.connect(_update_relaxed_hint)
+	if rows() > ROWS:
+		calm_button = _column_button(_cell(1, ROWS), _toggle_calm)
+		for sig in [calm_button.focus_entered, calm_button.mouse_entered, calm_button.focus_exited, calm_button.mouse_exited]:
+			sig.connect(_update_relaxed_hint)
 	_refresh_sound()
 	_refresh_display_options()
 
@@ -211,7 +222,7 @@ func _plan_page() -> void:
 	var bottom := UIKit.bottom_row_y() - UIKit.GAP_M
 	for gap: int in [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]:
 		row_step = UIKit.button_h() + gap
-		if first_row + (ROWS - 1) * row_step + UIKit.button_h() <= bottom:
+		if first_row + (rows() - 1) * row_step + UIKit.button_h() <= bottom:
 			break
 
 
@@ -880,7 +891,16 @@ func _toggle_motion() -> void:
 
 
 func _update_relaxed_hint() -> void:
-	relaxed_hint.visible = relaxed_button.has_focus() or relaxed_button.is_hovered()
+	var on_calm := calm_button != null and (calm_button.has_focus() or calm_button.is_hovered())
+	# i18n: hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
+	relaxed_hint.text = Loc.t("settings.calm_dark.hint", "CALM DARK: NO LURKERS") if on_calm 		else Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS")
+	relaxed_hint.visible = on_calm or relaxed_button.has_focus() or relaxed_button.is_hovered()
+
+
+func _toggle_calm() -> void:
+	Progress.calm_dark = not Progress.calm_dark
+	Progress.save_progress()
+	_refresh_display_options()
 
 
 func _toggle_relaxed() -> void:
@@ -920,6 +940,12 @@ func _refresh_display_options() -> void:
 		relaxed_button.text = Loc.t("settings.relaxed.on", "RELAXED: ON")
 	else:
 		relaxed_button.text = Loc.t("settings.relaxed.off", "RELAXED: OFF")
+	if calm_button != null:
+		# i18n: max 112px, 1 line; the two states are whole strings (ON = no lurkers, the creatures in the fog)
+		if Progress.calm_dark:
+			calm_button.text = Loc.t("settings.calm_dark.on", "CALM DARK: ON")
+		else:
+			calm_button.text = Loc.t("settings.calm_dark.off", "CALM DARK: OFF")
 	if vibration_button:
 		# i18n: max 112px, 1 line; the two states are whole strings (phones: a buzz on each splat)
 		if Progress.vibration:
@@ -967,7 +993,14 @@ static func column_texts() -> Array[String]:
 		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.vibration.on", "VIBRATION: ON"),
 		Loc.t("settings.vibration.off", "VIBRATION: OFF"), Loc.t("settings.controls", "CONTROLS"),
 		Loc.t("settings.relaxed.on", "RELAXED: ON"), Loc.t("settings.relaxed.off", "RELAXED: OFF"),
-		Loc.t("settings.save_code", "SAVE CODE")]
+		Loc.t("settings.save_code", "SAVE CODE")] + calm_texts()
+
+
+## CALM DARK's two states (only while the lurkers test is on; they share the column width).
+static func calm_texts() -> Array[String]:
+	if rows() == ROWS:
+		return []
+	return [Loc.t("settings.calm_dark.on", "CALM DARK: ON"), Loc.t("settings.calm_dark.off", "CALM DARK: OFF")]
 
 
 ## Every status line the SAVE CODE panel can show (for its width).

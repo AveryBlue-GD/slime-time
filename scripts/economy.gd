@@ -368,6 +368,36 @@ static func light_life_on() -> bool:
 	return LIGHT_LIFE_TEST if lightlife_force < 0 else lightlife_force == 1
 
 
+## ---------------------------------------------------------------- LURKERS (BM-01 test, 2026-10-24)
+## Pale, blind creatures in the fog of 1 random / daily maze in LURKERS_ONE_IN (seeded, so the daily is the same for
+## everyone), 2-3 each (scripts/lurkers.gd). Only their eye glints show through the fog; the body shows in the light.
+## Three one-rule hunters on the maze grid: CRAWLER -> the slime, SNIFFER -> the trail (3 cells behind the slime),
+## LANTERN-EATER -> the brightest lit cell near the slime. Dormant until the slime is within LURKER_WAKE_DIST px.
+## Standing still past IDLE_GRACE = stealth (they wander). Contact: LURKER_HIT percent of the meter, a one-tile
+## knockback, LURKER_INVULN s of safety (LURKER_INVULN_TOUCH on touch); never kills. SLIME SPLAT stuns them, a leap
+## landing on one bonks it. Those mazes pay LURKER_PAY x. Never in story / hard story / training / the tutorial /
+## the demo / RELAXED runs / with SETTINGS CALM DARK on. `--nolurkers` (debug builds) sets `lurkers_force` = 0,
+## `--lurkers` = 2 (every random maze, for testing); suites force it off (tests/suite_base.gd) unless they test it.
+const LURKERS_TEST := true
+static var lurkers_force := -1
+const LURKER_ONE_IN := 3
+const LURKER_WAKE_DIST := 96.0
+const LURKER_SPEED := 38.0
+const LURKER_HIT := 15.0
+const LURKER_INVULN := 1.0
+const LURKER_INVULN_TOUCH := 1.5
+const LURKER_CONTACT_DIST := 5.0
+const LURKER_NEAR_MISS_DIST := 8.0
+const LURKER_SLOWMO := 0.3
+const LURKER_PAY := 1.25
+const LURKER_STUN_SPLAT := 4.0
+const LURKER_STUN_BONK := 2.0
+
+
+static func lurkers_on() -> bool:
+	return LURKERS_TEST if lurkers_force < 0 else lurkers_force >= 1
+
+
 ## ---------------------------------------------------------------- GOO ORCHESTRA (BM-08 test, 2026-10-24)
 ## Level music as three synced layers (assets/music/orch_*.ogg from tools/make_music.py): BASE always, PULSE
 ## while the slime moves, TENSION on a low meter or after the chalice is first seen within 12 tiles, each faded

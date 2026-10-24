@@ -1526,6 +1526,13 @@ msgctxt "hud.pod.attempt"
 msgid "ATTEMPT {n}"
 msgstr "ครั้ง​ที่ {n}"
 
+#. HUD attempt pod, line 1 on a maze with lurkers (creatures in the fog), max 128px; {n} = which try at this maze
+#. budget: max 128px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.attempt_lurkers"
+msgid "ATTEMPT {n} LURKERS"
+msgstr ""
+
 #. HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
@@ -2101,6 +2108,7 @@ msgid "MORE"
 msgstr "เพิ่ม​เติม"
 
 #. hint under the RELAXED button, max 296px, 1 line (centred under both columns)
+#. hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
 #. budget: max 296px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.relaxed.hint"
@@ -2286,6 +2294,13 @@ msgctxt "settings.fullscreen.off"
 msgid "FULLSCREEN: OFF"
 msgstr "เต็ม​จอ: ปิด"
 
+#. hint under the CALM DARK button, max 296px, 1 line (centred under both columns)
+#. budget: max 296px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.calm_dark.hint"
+msgid "CALM DARK: NO LURKERS"
+msgstr ""
+
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.less"
 msgid "MOTION: LESS"
@@ -2304,6 +2319,16 @@ msgstr ""
 #: scripts/ui/controls.gd
 msgctxt "settings.relaxed.off"
 msgid "RELAXED: OFF"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.calm_dark.on"
+msgid "CALM DARK: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.calm_dark.off"
+msgid "CALM DARK: OFF"
 msgstr ""
 
 #: scripts/ui/controls.gd

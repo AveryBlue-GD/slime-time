@@ -265,6 +265,10 @@ SOUNDS = {
     "kaze": lambda: mix(bloop(220, 30, 0.6, 0.55, wobble=0.14, wobble_rate=14, release=0.35),
                         wet_thud(0.5, 0.55, seed=104, release=0.35), crunch(0.25, 0.3, seed=105),
                         gurgle(0.8, 18, 200, 800, 0.2, seed=106, falling=True)),
+    # BM-01 LURKERS: a very quiet, low, slow growl (the proximity cue) and a dull bonk on contact.
+    "lurk_growl": lambda: mix(bloop(58, 46, 0.9, 0.3, wobble=0.22, wobble_rate=19, attack=0.25, release=0.45, shape="tri"),
+                              bloop(87, 70, 0.8, 0.12, wobble=0.25, wobble_rate=13, attack=0.3, release=0.4, shape="tri")),
+    "lurk_bonk": lambda: mix(bloop(150, 55, 0.18, 0.5, release=0.1), wet_thud(0.14, 0.4, seed=111, release=0.1)),
     # Pause: two soft bloops, down then lower.
     "pause": lambda: seq(bloop(360, 280, 0.08, 0.35, release=0.03), bloop(260, 180, 0.1, 0.35, release=0.05)),
 }

@@ -322,8 +322,11 @@ func _throw_splat(tile: Vector2i, dir: Vector2i) -> void:
 
 
 func _bomb_burst(tile: Vector2i, at: Vector2) -> void:
-	for t in Abilities.burst_tiles(game.maze, tile):
+	var burst := Abilities.burst_tiles(game.maze, tile)
+	for t in burst:
 		game.reveal_tile(t, false)
+	if game.lurkers != null:
+		game.lurkers.stun_tiles(burst, Economy.LURKER_STUN_SPLAT)  # (BM-01: the splat stuns lurkers in its blast)
 	game._paint_goo(at, BURST_RADIUS)
 	var glow := Fx.make_light(32 * (2 * Economy.SPLAT_AREA + 1), Color(game.skin_color, 0.55))  # 96 for a 3x3 blast
 	glow.position = at

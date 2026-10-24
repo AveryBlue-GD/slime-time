@@ -44,6 +44,7 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.reduce_motion = get_bool(file, "settings", "reduce_motion", p.reduce_motion)
 	p.vibration = get_bool(file, "settings", "vibration", p.vibration)
 	p.relaxed = get_bool(file, "settings", "relaxed", false)
+	p.calm_dark = get_bool(file, "settings", "calm_dark", false)
 	p.fog_brightness = clampi(get_int(file, "settings", "fog_brightness", p.fog_brightness), p.FOG_DARK, p.FOG_BRIGHT)
 	p.fullscreen = get_bool(file, "settings", "fullscreen", false)
 	if not from_code:  # a code never brings a language: the device keeps its own
@@ -370,6 +371,8 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("settings", "fullscreen", true)
 	if p.relaxed:
 		file.set_value("settings", "relaxed", true)
+	if p.calm_dark:
+		file.set_value("settings", "calm_dark", true)
 	if p.language != "" and not for_code:
 		file.set_value("settings", "language", p.language)
 	file.set_value("progress", "skin_notices_seen", p.skin_notices_seen)

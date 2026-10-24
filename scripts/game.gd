@@ -369,6 +369,8 @@ var dev_no_drain := false
 var dev_toggled := false
 ## SETTINGS RELAXED was on when this run began (no idle drain; no medal, record or ticket, like ASSIST).
 var relaxed_run := false
+## BM-01 (Economy.LURKERS_TEST): this run's lurkers (null = none).
+var lurkers: Lurkers
 ## Seconds the slime has been still on the ground (the idle drain's grace, Economy.IDLE_GRACE).
 var _still_time := 0.0
 var _bright_shown := {}
@@ -598,6 +600,7 @@ func _ready() -> void:
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
 	relaxed_run = progress != null and progress.relaxed_on(level) and not training
+	lurkers = Lurkers.create(self)  # (BM-01: the fog's creatures, in some random mazes)
 	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
@@ -692,6 +695,8 @@ func _physics_process(delta: float) -> void:
 			_paint_goo(pos, TRAIL_RADIUS)
 			if light_reach > 0.0:
 				_reveal_light(pos)
+	if lurkers != null:
+		lurkers.step(delta)
 	_pick_up_coins(pos)
 	if not tickets.is_empty():
 		_pick_up_tickets(pos)
@@ -1620,6 +1625,8 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 	if finished:
 		return
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * jump_cost_factor
+	if lurkers != null:
+		lurkers.on_landing(slime.position)  # (a leap landed on a lurker bonks it)
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall and slime.last_hit_glancing:  # soft bounce test: the same penalty, a soft touch
 		splats += 1
@@ -2111,12 +2118,18 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
-	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, progress.random_length_factor(random_seed, seed_level, hard_mode), progress.random_daily)
+	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, pay_factor(), progress.random_daily)
 	if daily_repeat():
 		due = {tickets = 0, table = due.table, cap = "paid"}
 	if no_credit():
 		due.tickets = 0
 	return due
+
+
+## The maze's pay factor: its length factor, x Economy.LURKER_PAY when it has lurkers (BM-01).
+func pay_factor() -> float:
+	var factor: float = progress.random_length_factor(random_seed, seed_level, hard_mode)
+	return factor * Economy.LURKER_PAY if lurkers != null else factor
 
 
 ## The attempt a randomizer win is paid for: this run's attempt, one more once SECOND WIND fired
@@ -2165,7 +2178,7 @@ func _refresh_attempt_pod() -> void:
 		pop = before >= 0 and before != offer and motion_scale() > 0.0
 	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
-	hud.set_attempt(attempt, offer, pop)
+	hud.set_attempt(attempt, offer, pop, lurkers != null)
 	if hud.attempt_label.text != _dev_pod_text:
 		_dev_pod_text = hud.attempt_label.text
 		DevLog.log_event(get_tree(), "pod text changed", self)
@@ -2575,7 +2588,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
 			var repeat := daily_repeat()
-			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), progress.random_length_factor(random_seed, seed_level, hard_mode), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
+			var paid: int = progress.complete_random(no_record or repeat, random_seed, pay_attempt(), pay_factor(), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
 			if repeat:
 				held_tickets = 0
 			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):

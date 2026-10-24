@@ -20,6 +20,7 @@ func _init() -> void:
 	Economy.pay_by_length_force = 0
 	Economy.abandon_counts_force = 0
 	Economy.orchestra_force = 0  # (BM-08 layered level music is off for the older suites; test_orchestra turns it on)
+	Economy.lurkers_force = 0  # (BM-01 lurkers are off for the older suites; test_lurkers turns them on)
 	Economy.lightlife_force = 0  # (BM-09 lighting is off for the older suites; test_light_life turns it on)
 ## Throwaway files this run made through throwaway_save(); _result() deletes them.
 var _temp_files: Array[String] = []
