@@ -573,7 +573,9 @@ func _change(id: String, up: bool) -> void:
 	if changed and up and id == "brightness":
 		_show_preview(Upgrades.reveal_radius(before), Upgrades.reveal_radius(before + 1))
 	if changed and up:
-		_upgrade_sound(Progress.upgrade_level(id), Upgrades.max_level(id))
+		_upgrade_sound(Progress.upgrade_level(id), Upgrades.max_level(id), rows[id].pips)
+	elif changed:
+		_play("refund", -6.0)
 	_refresh()
 
 
@@ -628,9 +630,9 @@ func _buy_confirmed() -> void:
 	_close_confirm(false)
 	if kind == "ability":
 		if Progress.buy_ability(id):
-			_upgrade_sound(Progress.ability_level(id), Abilities.max_level(id))
+			_upgrade_sound(Progress.ability_level(id), Abilities.max_level(id), ability_rows[id].pips)
 	elif Progress.buy_workshop(id):
-		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id))
+		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id), ticket_rows[id].pips)
 	_refresh()
 	var focus_rows := ability_rows if kind == "ability" else ticket_rows
 	if focus_rows.has(id):
@@ -702,12 +704,27 @@ func _end_preview() -> void:
 	hint.visible = true
 
 
-## A power-up swell, a little higher for each level.
-func _upgrade_sound(level: int, top_level: int) -> void:
+## The power-up (a rising arpeggio and lock-in blip, a little higher for each level; the track's last level
+## adds a run of sparkles) and a gold pulse over the bar's pips (none with Reduce Motion). `last_played`
+## says which sound it was (tests).
+var last_played := ""
+
+
+func _upgrade_sound(level: int, top_level: int, pips: Array = []) -> void:
+	var top := maxi(top_level - 1, 1)
+	_play("upgrade_max" if level >= top_level else "upgrade", -4.0, 1.0 + 0.3 * (level - 1) / top)
+	if not Progress.reduce_motion and not pips.is_empty():
+		var tween := create_tween().set_parallel(true)
+		for pip: ColorRect in pips:
+			pip.modulate = Color(2.2, 1.8, 0.9)
+			tween.tween_property(pip, "modulate", Color.WHITE, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
+	last_played = sound
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		var top := maxi(top_level - 1, 1)
-		sfx.play("upgrade", -4.0, 1.0 + 0.3 * (level - 1) / top)
+		sfx.play(sound, volume_db, pitch)
 
 
 func _refresh() -> void:

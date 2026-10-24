@@ -208,15 +208,23 @@ SOUNDS = {
     # bubbles over a dull sinking blup (quiet and dark, no metal).
     "coin_fizz": lambda: mix(bloop(170, 95, 0.32, 0.22, wobble=0.05, wobble_rate=11, attack=0.02, release=0.2),
                              gurgle(0.45, 10, 260, 520, 0.08, seed=71, falling=True)),
-    # Upgrade bought: the slime swells with power (a low wobbling surge), a climbing phrase of
-    # round tones settles on a held note with a soft ring on top, and bubbles rise through it.
-    # The upgrades screen pitches it up a little per level bought.
-    "upgrade": lambda: mix(bloop(110, 300, 0.3, 0.34, wobble=0.06, wobble_rate=9, attack=0.03, release=0.1),
-                           [0.0] * int(0.12 * RATE) + seq(
-                               *(bloop(f, f * 1.01, 0.07, 0.24, shape="tri", release=0.03) for f in (196, 247, 294)),
-                               bloop(392, 394, 0.42, 0.22, wobble=0.015, wobble_rate=6, shape="tri", release=0.36)),
-                           [0.0] * int(0.33 * RATE) + chime_tone(784, 0.4, 0.1),
-                           gurgle(0.6, 12, 260, 700, 0.08, seed=61)),
+    # Upgrade bought (~0.75 s): a goo bubble swells into a rising four-note phrase of round tones, a bright
+    # lock-in blip lands on the top note (a bubble pop and a held bell), and a shimmer of high chimes and rising
+    # bubbles trails off. The upgrades screen pitches it up a little per level bought.
+    "upgrade": lambda: mix(bloop(110, 330, 0.3, 0.32, wobble=0.06, wobble_rate=9, attack=0.03, release=0.1),
+                           [0.0] * int(0.1 * RATE) + seq(
+                               *(bloop(f, f * 1.012, 0.085, 0.24, shape="tri", release=0.03) for f in (220, 277, 330, 440))),
+                           [0.0] * int(0.44 * RATE) + mix(bubble(880, 0.07, 0.3, rise=1.6),
+                                                            bloop(659, 662, 0.3, 0.2, wobble=0.012, wobble_rate=6, shape="tri", release=0.26),
+                                                            chime_tone(1319, 0.34, 0.12)),
+                           [0.0] * int(0.5 * RATE) + chime_tone(1976, 0.26, 0.05),
+                           [0.0] * int(0.1 * RATE) + gurgle(0.6, 12, 260, 760, 0.07, seed=61)),
+    # The last level of a track: the same power-up with a run of sparkles climbing over the lock-in.
+    "upgrade_max": lambda: mix(SOUNDS["upgrade"](),
+                               [0.0] * int(0.5 * RATE) + seq(*(chime_tone(f, 0.12, 0.1) for f in (1319, 1568, 1976, 2637)))),
+    # Level taken back out (the - button): a gentle slide down, three soft falling notes.
+    "refund": lambda: mix(bloop(300, 110, 0.22, 0.2, wobble=0.04, release=0.1),
+                          seq(*(bloop(f, f * 0.99, 0.07, 0.16, shape="tri", release=0.03) for f in (440, 330, 220)))),
     # Gold skin, gliding: a little jingle of coins.
     "jingle": lambda: mix(chime_tone(784, 0.12, 0.3), [0.0] * int(0.03 * RATE) + chime_tone(1047, 0.12, 0.22),
                           [0.0] * int(0.06 * RATE) + chime_tone(880, 0.14, 0.18)),
