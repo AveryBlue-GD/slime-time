@@ -264,7 +264,7 @@ func _initialize() -> void:
 	game._on_goal_body_entered(game.slime)
 	await physics_frame
 	_check(progress.ghost_for(story_kind, 1).ms == 30000, "a slower clear keeps the ghost")
-	_check("VS GHOST +5.0s" in game.hud.message.text, "the story result shows VS GHOST +5.0s (%s)" % game.hud.message.text)
+	_check("+5.0s" in game.hud.message.text and "VS GHOST" in game.hud.message.text, "the story result shows the split VS GHOST +5.0s (%s)" % game.hud.message.text)
 	await _drop(game)
 	game = await _spawn_story(1)
 	game.relaxed_run = true

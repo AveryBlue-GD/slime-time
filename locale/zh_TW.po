@@ -854,6 +854,13 @@ msgctxt "result.all_medals_skin"
 msgid "ALL MEDALS! NEW SKIN: {name}"
 msgstr "獎牌全收集！新造型：{name}"
 
+#. result line, max 296px, 1 line; {time} = M:SS.cc, {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster); the two spaces are spacing
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.time_ghost"
+msgid "TIME {time}  {split} VS GHOST"
+msgstr ""
+
 #. result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
 #. budget: max 296px, lines 1
 #: scripts/game.gd
