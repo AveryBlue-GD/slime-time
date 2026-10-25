@@ -61,8 +61,27 @@ func _ready() -> void:
 		hopper.play("celebrate")
 		hopper.frame = i % 4
 		add_child(hopper)
-	var star := UIKit.make_slime_preview(Progress.custom_color, 2)
+	# SPR-04 / CON-01: the centre slime at 1x like the others (a ring of gold sparkles; kept on its row) - one pixel grid
+	var star := UIKit.make_slime_preview(Progress.custom_color)
 	star.position = Vector2(160, star_y)
+	var sparks: Array[ColorRect] = []
+	for offset: Vector2 in [Vector2(-14, -8), Vector2(14, -8), Vector2(-17, 3), Vector2(17, 3), Vector2(-9, 12), Vector2(9, 12)]:
+		var spark := ColorRect.new()
+		spark.color = UIKit.GOLD
+		spark.size = Vector2(1, 1)
+		spark.position = Vector2(160, star_y) + offset
+		spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(spark)
+		sparks.append(spark)
+	var twinkle := create_tween().set_loops()
+	twinkle.tween_callback(func() -> void:
+		for i in sparks.size():
+			sparks[i].visible = (i % 2 == 0))
+	twinkle.tween_interval(0.4)
+	twinkle.tween_callback(func() -> void:
+		for i in sparks.size():
+			sparks[i].visible = (i % 2 == 1))
+	twinkle.tween_interval(0.4)
 	star.play("celebrate")
 	star.modulate = Color(1.3, 1.3, 1.3)
 	add_child(star)

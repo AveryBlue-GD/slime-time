@@ -129,7 +129,7 @@ func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock 
 	if hat:
 		hat.queue_free()
 		hat = null
-	slime = UIKit.make_slime_preview(color, 2, rainbow, jelly, clock)
+	slime = UIKit.make_slime_preview(color, 1, rainbow, jelly, clock)
 	add_child(slime)
 	UIKit.keep_ltr(slime)  # (placed mirrored by _pose every frame, not by UIKit's one-off Node2D mirror)
 	if locked:

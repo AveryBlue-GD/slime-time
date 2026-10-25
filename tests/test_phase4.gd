@@ -48,7 +48,7 @@ func _initialize() -> void:
 	await _wait_seconds(0.2)
 	Input.action_press("jump")
 	await _wait_seconds(0.8)
-	_check(slime.sprite.animation.begins_with("charge_") and slime.sprite.frame == 2,
+	_check(slime.sprite.animation.begins_with("charge_") and slime.sprite.frame == 1,
 		"charging shows charge frames that follow the meter (frame %d at %.0f%%)" % [slime.sprite.frame, slime.charge])
 	slime.facing = Vector2(hop.dir)
 	var splat_anim: String = "splat_" + StartDirs.ANIMS[hop.dir]

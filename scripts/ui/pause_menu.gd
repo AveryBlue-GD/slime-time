@@ -237,6 +237,8 @@ func open() -> void:
 	if _focus_lock.is_empty():
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
 	_sfx("pause")
+	UIKit.pop_in(_panel)  # ANI-12: the panel and its buttons settle in 3 whole-pixel steps
+	UIKit.pop_in(_menu)
 
 
 ## Lays the menu out for `count` buttons (docs/ui-rules.md section 10): PAUSED, then the panel

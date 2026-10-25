@@ -322,7 +322,7 @@ func _make_tile(level: int) -> Button:
 	var locked := survey.is_empty() or not Survey.fits(survey, maze)
 	button.disabled = locked
 	button.set_meta("level", level)
-	var name_label := UIKit.make_label(Themes.display_name(Themes.for_level(level)), 8, UIKit.TEXT_OFF if locked else UIKit.TEXT)
+	var name_label := UIKit.make_label(Themes.display_name(Themes.for_level(level)), 8, UIKit.TEXT_DIM if locked else UIKit.TEXT)
 	name_label.position = Vector2(TEXT_X, _name_y)
 	button.add_child(name_label)
 	button.set_meta("name_label", name_label)

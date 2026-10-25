@@ -34,6 +34,11 @@ PAL.update({
     "O": (10, 10, 20, 235),     # HUD pod dark outline
     "H": (112, 130, 158, 235),  # HUD pod top highlight
     # Icon shades (tinted in game).
+    "3": (226, 232, 240, 255),  # silver medal mid / dark
+    "4": (140, 150, 180, 255),
+    "5": (246, 190, 130, 255),  # bronze medal light / mid / dark
+    "6": (214, 140, 84, 255),
+    "7": (140, 84, 50, 255),
     "1": (215, 215, 215, 255),
     "2": (150, 150, 150, 255),
 })
@@ -103,24 +108,53 @@ ICONS = {
         "oooooooo",
         "........",
     ],
-    "medal": [  # a ribbon and a disc: gold when earned, dim when not
-        ".e....e.",
-        "..e..e..",
-        "..e11e..",
-        ".e1111e.",
-        ".e1221e.",
-        ".e1111e.",
-        "..eeee..",
-        "........",
+    "medal": [  # CON-04 reward icon: full colour, k outline; V ribbon in ruby `i`, gold disc `y o Y`
+        "ii....ii",
+        ".ii..ii.",
+        "..iiii..",
+        "..kkkk..",
+        ".kYyyyk.",
+        ".kyyoyk.",
+        ".kyooyk.",
+        "..kkkk..",
     ],
-    "globe": [  # the LANGUAGE button in SETTINGS: outline, the meridian and the equator in full
-        # white over a dimmer sea; tinted like the text next to it
+    "medal_silver": [  # the same medal in silver (tier 2 on the result panel)
+        "ii....ii",
+        ".ii..ii.",
+        "..iiii..",
+        "..kkkk..",
+        ".ke333k.",
+        ".k3334k.",
+        ".k3443k.",
+        "..kkkk..",
+    ],
+    "medal_bronze": [  # and in bronze (tier 1)
+        "ii....ii",
+        ".ii..ii.",
+        "..iiii..",
+        "..kkkk..",
+        ".k5666k.",
+        ".k6676k.",
+        ".k6776k.",
+        "..kkkk..",
+    ],
+    "medal_off": [  # not (yet) earned: white shades, tinted dim in game
+        "22....22",
+        ".22..22.",
+        "..2222..",
+        "..kkkk..",
+        ".ke111k.",
+        ".k1121k.",
+        ".k1221k.",
+        "..kkkk..",
+    ],
+    "globe": [  # the LANGUAGE button in SETTINGS: a ring, land (light) on a dimmer sea; tinted like the text
         "..eee...",
-        ".e2e2e..",
-        "e22e22e.",
-        "eeeeeee.",
-        "e22e22e.",
-        ".e2e2e..",
+        ".e112e..",
+        "e11222e.",
+        "e12211e.",
+        "e22111e.",
+        ".e221e..",
         "..eee...",
         "........",
     ],
@@ -149,27 +183,28 @@ ICONS = {
 
 # Checkbox (9x9) and slider grabber (5x9), drawn in the button colors.
 WIDGETS = {
+    # UI-03: a light 1 px frame (H, >= 3:1 on the panel) so an unchecked box is visible; off = dark inside.
     "check_off": [
-        ".kkkkkkk.",
-        "kFFFFFFFk",
-        "kFfffffhk",
-        "kFfffffhk",
-        "kFfffffhk",
-        "kFfffffhk",
-        "kFfffffhk",
-        "khhhhhhhk",
-        ".kkkkkkk.",
+        ".HHHHHHH.",
+        "HsssssssH",
+        "HsssssssH",
+        "HsssssssH",
+        "HsssssssH",
+        "HsssssssH",
+        "HsssssssH",
+        "HsssssssH",
+        ".HHHHHHH.",
     ],
     "check_on": [
-        ".kkkkkkk.",
-        "kFFFFFFFk",
-        "kFffffeek",
-        "kFfffee1k",
-        "kFeeee1hk",
-        "kFfee1fhk",
-        "kFfe1ffhk",
-        "khhhhhhhk",
-        ".kkkkkkk.",
+        ".HHHHHHH.",
+        "HFFFFFFFH",
+        "HFffffeeH",
+        "HFfffee1H",
+        "HFeeee1hH",
+        "HFfee1fhH",
+        "HFfe1ffhH",
+        "HhhhhhhhH",
+        ".HHHHHHH.",
     ],
     "grabber": [
         ".kkk.",
@@ -194,6 +229,20 @@ WIDGETS = {
         ".kkk.",
     ],
 }
+
+
+UTILITY = ("drop", "clock", "lock", "dice", "globe", "check")
+
+
+def outlined(rows: list[str]) -> list[str]:
+    out = [list(r) for r in rows]
+    for y, row in enumerate(rows):
+        for x, c in enumerate(row):
+            if c == ".":
+                near = ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                if any(0 <= nx < len(row) and 0 <= ny < len(rows) and rows[ny][nx] != "." for nx, ny in near):
+                    out[y][x] = "k"
+    return ["".join(r) for r in out]
 
 
 def _pixels(png: bytes) -> tuple[bytes, bytes]:
@@ -223,6 +272,8 @@ if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     write_png(OUT / "hud_pod.png", HUD_POD)
     for name, rows in ICONS.items():
+        if name in UTILITY:  # CON-04: a 1 px `k` outline wherever the 8x8 cell has room for it
+            rows = outlined(rows)
         write_png(OUT / f"icon_{name}.png", rows)
     for name, rows in WIDGETS.items():
         write_png(OUT / f"{name}.png", rows)

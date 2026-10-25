@@ -89,7 +89,7 @@ const SHAKE_MAX := 3.0
 const TRAIL_GLOW := Cosmetics.TRAIL_GLOW
 const SLIME_LIGHT_SIZE := 112
 ## Drawn above the fog (z 11), so it lights the unexplored ground around the slime a little.
-const SLIME_LIGHT_STRENGTH := 0.14
+const SLIME_LIGHT_STRENGTH := 0.12
 ## Camera kick on a splat: px pushed toward the wall at full power (decays with the shake).
 const KICK_MAX := 3.0
 ## The low-slime warning: a heartbeat every HEARTBEAT_SLOW s at LOW_PERCENT, speeding to HEARTBEAT_FAST at 0.
@@ -793,7 +793,7 @@ func _orchestra_frame(delta: float) -> void:
 		_orch_seen = true
 		_orch_tense_left = ORCH_TENSE_TIME
 		music.play_orchestra_sting("chalice")
-		Fx.burst(self, goal.position, CHALICE_GOLD, 6, 22.0)
+		Fx.burst(self, goal.position, CHALICE_GOLD, 6, 22.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 	_orch_tense_left = maxf(_orch_tense_left - delta, 0.0)
 	var low: bool = slime_remaining < hud.LOW_PERCENT and slime_remaining > 0.0
 	music.orchestra_state(slime.velocity.length() > ORCH_MOVING_SPEED, low or _orch_tense_left > 0.0)
@@ -826,7 +826,7 @@ func _process(_delta: float) -> void:
 	outer_material.set_shader_parameter("slime_px", slime_light.position)
 	outer_material.set_shader_parameter("view_center", view_center.round())
 	if rainbow:
-		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
+		slime_light.modulate = Color(LightLife.light_color(theme, hud.goo_color), SLIME_LIGHT_STRENGTH)
 	_lead_camera(_delta)
 	_update_ambience(_delta)
 	_shake_camera(_delta)
@@ -972,6 +972,14 @@ func _set_pixel_cam(on: bool) -> void:
 		camera.position = _look_ahead.round()
 
 
+## ANI-05: the shake runs on a fixed 30 Hz clock (the same on 60 and 144 Hz displays) as a damped
+## oscillation along the push direction (or a random axis picked per shake), with a little
+## perpendicular wobble on the first two ticks; the last ~40 % of the time it has settled at 0.
+const SHAKE_HZ := 30.0
+const SHAKE_FREQ := 12.0
+var _shake_axis := Vector2.RIGHT
+
+
 func _shake_camera(delta: float) -> void:
 	if shake_left <= 0.0 or motion_scale() <= 0.0:
 		shake_left = 0.0
@@ -980,9 +988,15 @@ func _shake_camera(delta: float) -> void:
 		camera.offset = Vector2.ZERO
 		return
 	shake_left = maxf(shake_left - delta, 0.0)
-	var fade := minf(shake_left / maxf(shake_span, 0.001), 1.0)
-	var strength := ceilf(shake_strength * fade)
-	camera.offset = (Vector2(randf_range(-strength, strength), randf_range(-strength, strength)) + kick * fade).round()
+	var span := maxf(shake_span, 0.001)
+	var tick := floori((span - shake_left) * SHAKE_HZ)
+	var t := tick / SHAKE_HZ
+	var fade := clampf(1.0 - t / (span * 0.6), 0.0, 1.0)
+	var swing := cos(t * TAU * SHAKE_FREQ) * ceilf(shake_strength * fade) * (1.0 if fade > 0.0 else 0.0)
+	var offset := _shake_axis * swing + kick * fade
+	if tick < 2:
+		offset += _shake_axis.orthogonal() * (1.0 if tick == 0 else -1.0) * minf(shake_strength, 2.0) * 0.5
+	camera.offset = offset.round()
 
 
 ## A screen shake of `strength` px fading over `time` s with a `push` (px) toward a side; nothing
@@ -993,6 +1007,7 @@ func shake(strength: float, time: float, push := Vector2.ZERO) -> void:
 	shake_span = time
 	shake_strength = strength
 	kick = push
+	_shake_axis = push.normalized() if push.length() > 0.1 else [Vector2.RIGHT, Vector2.DOWN, Vector2(1, 1).normalized(), Vector2(1, -1).normalized()][randi() % 4]
 
 
 ## Adds the distance moved since last frame; past the next mark, a glimmer appears.
@@ -1239,7 +1254,7 @@ func _build_overlays() -> void:
 		LightLife.setup(fog_material, theme, skin_color, trail_sprite.texture)
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
-	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
+	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(LightLife.light_color(theme, skin_color), SLIME_LIGHT_STRENGTH))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
@@ -1248,19 +1263,20 @@ func _build_overlays() -> void:
 		move_child(motes, bedrock_layer.get_index() + 1)  # on the floor: under trail, chalice and slime
 
 
-## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same
-## texture, so it updates with it): the 2 px cells blur into a faint halo and the goo glows.
+## An additive copy of the trail drawn over it (child of the trail sprite, same texture, so it
+## updates with it; nearest filtering, a dithered one-cell halo): the goo glows.
 func _build_trail_glow() -> void:
 	for old in trail_sprite.get_children():
 		old.queue_free()
 	var glow := Sprite2D.new()
 	glow.texture = trail_sprite.texture
 	glow.centered = false
-	glow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	var material := CanvasItemMaterial.new()
-	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://assets/shaders/trail_glow.gdshader")
+	material.set_shader_parameter("strength", trail_look.get("glow", TRAIL_GLOW))
+	material.set_shader_parameter("cell_px", float(FOG_CELL))
 	glow.material = material
-	glow.modulate = Color(1, 1, 1, trail_look.get("glow", TRAIL_GLOW))
 	trail_sprite.add_child(glow)
 
 
@@ -2084,13 +2100,13 @@ func _show_coins(pop := false) -> void:
 ## A solid slime has no see-through body: the coin glides into it, then pops.
 func _fly_coin_in(coin: Coin) -> void:
 	if coin.position.distance_to(slime.position) <= Coin.REACH:
-		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
+		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		coin.queue_free()
 		return
 	var tween := coin.create_tween()
 	tween.tween_property(coin, "global_position", slime.global_position, 0.12)
 	tween.tween_callback(func() -> void:
-		Fx.burst(self, slime.position, Color8(255, 214, 110), 14, 45.0)
+		Fx.burst(self, slime.position, Color8(255, 214, 110), 14, 45.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		coin.queue_free())
 
 
@@ -2563,7 +2579,7 @@ func _break_wall(tile: Vector2i) -> void:
 			else:
 				fillet_layer.erase_cell(near)
 	var center := (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
-	Fx.burst(self, center, Color8(148, 140, 150), 24, 60.0)
+	Fx.burst(self, center, Fx.DUST_BASE, 24, 60.0, Vector2.UP, 180.0, false, Fx.Preset.DUST)
 	shake(SHAKE_MAX, SHAKE_TIME, kick)  # (keeps the landing's shove)
 	_sfx("crumble")
 
@@ -2614,7 +2630,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
 	if training:
 		# SPLASHDOWN's chalice: the fanfare, nothing recorded or paid, then the HUB-only row.
-		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		# i18n: result lines, max 296px each, 1 line each (the training maze's win)
 		_finish(true, Loc.lines([Loc.t("result.chalice", "CHALICE CONSUMED!"),
@@ -2622,7 +2638,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		return
 	if descent:
 		# The floor's exit: the chalice fanfare, the floor's tickets into the pot, then the boon card.
-		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		var gain: int = progress.clear_descent_floor(slime_remaining, run_time, dev_toggled) if progress else 0
 		DevLog.log_event(get_tree(), "descent floor cleared", self, "pot+%d" % gain)
@@ -2633,13 +2649,13 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		var title := Loc.t("result.chalice", "CHALICE CONSUMED!")
 		if goal is TicketGoal:
 			# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
-			Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
+			Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 			_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
 			goal.visible = false
 			_sfx("unlock", CHALICE_VOLUME_DB)
 			title = Loc.t("result.ticket_claimed", "TICKET CLAIMED!")  # i18n: result title, max 296px, 1 line
 		else:  # (Economy.RANDOM_CHALICE: the story's chalice, paying the same tickets)
-			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 			_sfx("chalice", CHALICE_VOLUME_DB)
 		var random_lines: Array = [title]
 		# IMP3-07: the daily / weekly line carries the time (DAILY #n  M:SS.cc  STREAK s), so no TIME line over it
@@ -2720,7 +2736,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				hud.show_rewards({capped = true})
 		_finish(true, random_text)
 		return
-	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	# The result text, one whole translated line per entry (Loc.lines joins them in _finish's call).
 	# i18n: result title lines, max 296px each, 1 line each
@@ -2826,6 +2842,40 @@ func _dry_up() -> void:
 	_finish(false, Loc.t("result.dried_up", "DRIED UP"))
 
 
+## ANI-01: the dry-up plays out before DRIED UP shows (~0.9 s): the slime's light shrinks to nothing and a few grey
+## crust flakes fall off it. A jump / accept / use press (or R, which retries) ends the hold early.
+const DRY_HOLD := 0.9
+
+
+func _dry_hold() -> void:
+	var fog_material := fog_sprite.material as ShaderMaterial
+	var inner: float = fog_material.get_shader_parameter("light_inner") if fog_material.get_shader_parameter("light_inner") != null else 32.0
+	var outer: float = fog_material.get_shader_parameter("light_outer") if fog_material.get_shader_parameter("light_outer") != null else 115.0
+	var base_scale := slime_light.scale
+	var flakes_at := 0.45
+	var t := 0.0
+	var flaked := false
+	while t < DRY_HOLD and is_inside_tree():
+		await get_tree().process_frame
+		if not is_inside_tree() or not is_instance_valid(slime) or _leaving():
+			break
+		t += get_process_delta_time()
+		var k := 1.0 - clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0)
+		k = floorf(k * 6.0) / 6.0  # (whole steps, no smooth blur)
+		slime_light.scale = base_scale * k
+		fog_material.set_shader_parameter("light_inner", inner * maxf(k, 0.2))
+		fog_material.set_shader_parameter("light_outer", outer * maxf(k, 0.2))
+		if not flaked and t >= flakes_at:
+			flaked = true
+			Fx.burst(self, slime.position, Fx.DUST_BASE, 8, 40.0, Vector2.UP, 180.0, false, Fx.Preset.DUST)
+		if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("interact"):
+			break
+	if is_instance_valid(slime_light):
+		slime_light.scale = Vector2.ZERO
+	if hat:
+		hat.pop(Vector2.ZERO, 0.45)
+
+
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
 ## result. After a dry-up it retries automatically (a story level again, or a freshly shuffled
 ## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
@@ -2842,13 +2892,25 @@ func _finish(did_win: bool, text: String) -> void:
 	slime.frozen = true
 	touch_controls.hide_controls()
 	hud.result_slime_rect = _slime_screen_rect()  # (a re-fitted result panel covers or clears the slime)
-	hud.show_message(text)
+	# ANI-01 / ANI-02: in a played level the result is staged (a dry-up holds ~0.9 s on the drying slime first;
+	# a win drops the panel in and ticks its lines on). Tests and Reduce Motion show it at once.
+	var staged := _is_running_scene() and motion_scale() > 0.0
+	var dry_hold := staged and not did_win and not descent
+	if not dry_hold:
+		hud.show_message(text)
+	if staged and did_win:
+		hud.stage_result()
 	level_finished.emit(did_win)
 	if not _is_running_scene():
 		return
 	if not did_win:
 		# The delay pauses with the game (false = not while paused), and the buttons are skipped
 		# if the player has left for the menu meanwhile.
+		if dry_hold:
+			await _dry_hold()
+			if not (is_inside_tree() and _is_running_scene() and not _leaving()):
+				return
+			hud.show_message(text)
 		await get_tree().create_timer(DESCENT_SUMMARY_DELAY if descent else DRY_CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
 			_offer_retry()
@@ -2857,7 +2919,11 @@ func _finish(did_win: bool, text: String) -> void:
 		if not is_random() and not descent and not training and no_credit():
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
 			progress.complete_level(level, true, false)
-	await get_tree().create_timer(CHOICE_DELAY, false).timeout
+	while hud.staging and is_inside_tree():
+		await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	await get_tree().create_timer(CHOICE_DELAY if not staged else 0.25, false).timeout
 	if _is_running_scene() and not _leaving():
 		_offer_next_steps()
 

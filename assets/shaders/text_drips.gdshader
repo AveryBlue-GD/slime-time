@@ -56,6 +56,12 @@ void fragment() {
 			}
 			float column = floor(px.x / unit);
 			float bottom = texture(TEXTURE, vec2(px.x, ((top + 6.5) * unit)) / atlas).a;
+			// A drip only where a stroke ends going down: the pixel above (row 5) is inked too. Under a curved
+			// bottom arc (C S G J U O Q 0 3 5 6 8 9) that is false, so no drip turns them into Ç / Ş.
+			float above = texture(TEXTURE, vec2(px.x, (top + 5.5) * unit) / atlas).a;
+			if (above < 0.5) {
+				bottom = 0.0;
+			}
 			// A lone bottom pixel: nothing beside it on the letter's bottom row.
 			bool lone = texture(TEXTURE, vec2(px.x - unit, (top + 6.5) * unit) / atlas).a < 0.5
 				&& texture(TEXTURE, vec2(px.x + unit, (top + 6.5) * unit) / atlas).a < 0.5;
@@ -69,7 +75,7 @@ void fragment() {
 			}
 			float r = hash(vec2(column + fract(seed * 0.618) * 97.0, origin + seed));
 			float drip_len = lone ? (r < 0.015 ? 2.0 : (r < 0.06 ? 1.0 : 0.0))
-				: (r < 0.08 ? 2.0 : (r < 0.3 ? 1.0 : 0.0));
+				: (r < 0.2 ? 2.0 : (r < 0.7 ? 1.0 : 0.0));
 			if (clean_small && !big_font) {
 				drip_len = 0.0;
 			}

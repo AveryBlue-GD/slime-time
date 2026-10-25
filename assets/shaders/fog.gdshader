@@ -124,6 +124,10 @@ float rim_from(vec4 fog_texel, vec4 trail_texel) {
 	return step(0.01, trail_texel.a) * (1.0 - aw.x / 2.5);
 }
 
+float thr_shadow(vec2 pixel) {
+	return (bayer4(pixel) + 0.5) / 16.0;
+}
+
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -178,9 +182,9 @@ void fragment() {
 		float thr = (bayer4(pixel) + 0.5) / 16.0;
 		vec2 aw = cell_age_wall(texture(TEXTURE, UV));
 		if (alpha <= 0.0) {
-			// Tinted pocket: a dithered falloff, small and faint.
+			// Tinted pocket: a 3-step dithered falloff, the same Bayer matrix as the lantern sprite's.
 			float t = clamp(1.0 - d / ll_radius, 0.0, 1.0);
-			ll = vec4(ll_tint, floor(t * 4.0 + thr) / 4.0 * ll_strength);
+			ll = vec4(ll_tint, floor(t * 3.0 + thr) / 3.0 * ll_strength);
 			if (d < LL_BODY) {
 				ll = vec4(0.0);
 			}
@@ -202,11 +206,34 @@ void fragment() {
 			sun = step(thr, clamp(band, 0.0, 1.0) * clamp(1.5 - sunrise, 0.0, 1.0));
 		}
 	}
+	// ENV-06: contact shadow on the floor next to a wall: the first pixel row south of a wall is
+	// darkened, the second only on every other pixel (Bayer), and one pixel column east of a wall
+	// is dithered. Lighter on the goo so the trail stays the brightest thing on the floor.
+	float shadow = 0.0;
+	if (!solid && alpha < 0.999) {
+		vec2 tp = TEXTURE_PIXEL_SIZE;
+		if (cell_age_wall(texture(TEXTURE, UV)).y < 0.5) {
+			vec2 local = floor(fract(UV / tp) * (map_size * tp));
+			float edge = 0.0;
+			if (cell_age_wall(texture(TEXTURE, UV - vec2(0.0, tp.y))).y > 0.5) {
+				edge = local.y < 0.5 ? 1.0 : step(thr_shadow(pixel), 0.5);
+			}
+			if (cell_age_wall(texture(TEXTURE, UV - vec2(tp.x, 0.0))).y > 0.5 && local.x < 0.5) {
+				edge = max(edge, step(thr_shadow(pixel), 0.35));
+			}
+			float on_trail = ll_on ? step(0.01, texture(trail_tex, UV).a) : 0.0;
+			shadow = edge * mix(0.35, 0.2, on_trail);
+		}
+	}
 	if (alpha <= 0.0) {
 		// Fully clear: blending leaves what is underneath whatever the color, so skip the mist.
 		COLOR = vec4(0.0);
 		if (ll.a > 0.0) {
 			COLOR = ll;
+		}
+		if (shadow > 0.0) {
+			// (a lit pixel keeps its light: the shadow darkens what is under it)
+			COLOR = vec4(0.0, 0.0, 0.0, shadow);
 		}
 		if (sun > 0.0) {
 			COLOR = vec4(goal_color, 0.5);
@@ -225,6 +252,11 @@ void fragment() {
 			rgb = mix(rgb, ll_tint, 0.6 * rim);
 			alpha *= 1.0 - 0.5 * sun;
 			rgb = mix(rgb, goal_color, 0.5 * sun);
+		}
+		if (shadow > 0.0) {
+			float shaded = alpha + (1.0 - alpha) * shadow;
+			rgb *= alpha / shaded;
+			alpha = shaded;
 		}
 		COLOR = vec4(rgb, alpha);
 	}

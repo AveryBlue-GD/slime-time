@@ -98,7 +98,7 @@ var dice_button: Button
 var _dice_icon: TextureRect
 var _dice_frame: ReferenceRect
 ## The dice button's width (a 7 px icon and the button's margins).
-const DICE_W := 16
+const DICE_W := 22  # (UI-11: at least UIKit.TOUCH_MIN wide)
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
 ## The color picker: a dim sheet, its panel, its tiles by dye ("" = the hat's own), the focus lock.
@@ -163,7 +163,10 @@ func _ready() -> void:
 	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), open_color_picker, Vector2(80, UIKit.button_h()))
 	add_child(color_button)
 	_layout(back)
-	var pastel_w: int = UIKit.tab_widths([_pastel_text(true), _pastel_text(false)], 64)[0]
+	# UI-11: JELLY and PASTEL are siblings of one width.
+	var pastel_w: int = maxi(UIKit.tab_widths([_pastel_text(true), _pastel_text(false)], 64)[0], int(jelly_button.size.x))
+	jelly_button.custom_minimum_size.x = pastel_w
+	jelly_button.size.x = pastel_w
 	pastel_button = UIKit.make_button("", _toggle_pastel, Vector2(pastel_w, UIKit.button_h()))
 	pastel_button.position = Vector2(jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M, jelly_button.position.y)
 	add_child(pastel_button)

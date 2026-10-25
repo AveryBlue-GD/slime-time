@@ -271,20 +271,26 @@
    "fps": 0,
    "loop": false
   },
-  "recover": {
+  "hurt": {
    "row": 45,
    "frames": 2,
    "fps": 12,
    "loop": false
   },
-  "dry": {
+  "recover": {
    "row": 46,
+   "frames": 2,
+   "fps": 12,
+   "loop": false
+  },
+  "dry": {
+   "row": 47,
    "frames": 4,
    "fps": 6,
    "loop": false
   },
   "celebrate": {
-   "row": 47,
+   "row": 48,
    "frames": 4,
    "fps": 8,
    "loop": true

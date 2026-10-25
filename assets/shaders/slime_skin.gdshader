@@ -30,6 +30,11 @@ uniform float rainbow_width = 16.0;
 uniform float gloss = 0.0;
 uniform float shine_motion = 1.0;
 uniform float charge = 0.0;
+// Hit flash (0-1): the whole body goes white for a moment (a lurker's touch). `rim` (0/1): the outline goes white
+// (a fully charged leap). `ghost` (0/1): a SLIMAKAZE afterimage, the skin's deep shade on a checker of its pixels.
+uniform float hit = 0.0;
+uniform float rim = 0.0;
+uniform float ghost = 0.0;
 // Stopwatch skin (0 = off): a clock face inside the body. `clock_face` = center x, center y and the
 // two radii (px, in the sprite's local space; the script refits it to every squashed or stretched
 // frame, so the clock squashes and stretches with the slime) and `clock_hands` = the hour, minute
@@ -171,10 +176,13 @@ void fragment() {
 	int source = shade >= 0 ? shade : crust_from;
 	if (gloss > 0.0 && shade >= 0) {
 		vec2 gp = floor(local_pos);
-		// Backlit crescent: the dark underside lets light through on a dithered edge.
-		float under = clamp((gp.y - 1.0) / 5.0, 0.0, 1.0) * 0.8;
-		if ((shade == 3 || shade == 4) && bayer2(gp) + 0.125 < under) {
-			source = shade - 1;
+		// Backlit crescent (SPR-11): a clean 1 px band, the deep shade along the underside lifted one step
+		// (the pixel below it is the outline or empty), no checker.
+		if (shade == 4 && gp.y > 1.0) {
+			vec4 below = texture(TEXTURE, UV + vec2(0.0, TEXTURE_PIXEL_SIZE.y));
+			if (below.a < 0.5 || goo_shade(below.rgb) == 5) {
+				source = 3;
+			}
 		}
 		// Shine: a thin diagonal band sweeps over the top of the body, then rests a while.
 		float t = shine_motion > 0.5 ? TIME : 1.7;
@@ -204,6 +212,15 @@ void fragment() {
 	if (crust_from >= 0) {
 		float grey = dot(rgb, vec3(0.3, 0.59, 0.11));
 		rgb = mix(vec3(grey), rgb, 0.55) * 0.8;
+	}
+	if (ghost > 0.5) {
+		if (texel.a < 0.5 || mod(floor(local_pos.x) + floor(local_pos.y), 2.0) > 0.5) {
+			discard;
+		}
+		rgb = deep.rgb;
+	}
+	if (rim > 0.5 && shade == 5) {
+		rgb = vec3(1.0);
 	}
 	bool inked = false;
 	if (clock_on > 0.5 && texel.a > 0.5 && crust_from < 0 && shade != 5) {
@@ -242,6 +259,10 @@ void fragment() {
 	if (shade >= 0 && !inked) {
 		float jelly_amount = translucency * mix(1.0, 0.28, clock_on);
 		alpha *= mix(1.0, jelly_alpha(shade), jelly_amount);
+	}
+	if (hit > 0.0 && texel.a > 0.5) {
+		rgb = mix(rgb, vec3(1.0), hit);
+		alpha = mix(alpha, texel.a, hit);
 	}
 	COLOR = vec4(rgb, alpha) * tint;
 }

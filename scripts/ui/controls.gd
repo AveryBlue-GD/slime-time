@@ -199,6 +199,15 @@ func _ready() -> void:
 		_refresh_display_options()
 	if Economy.ACHIEVEMENTS and not Demo.on() and Economy.boards_on():
 		_build_boards_button()  # (IMP4-03: the bottom row, right of BACK; the corner keeps ACHIEVEMENTS alone)
+		if level_music_button != null and language_button == null:
+			# UI-11: BOARDS + LEVEL MUSIC are an equal-gap pair (GAP_L) centred between BACK and RESET.
+			var from_x := float(UIKit.EDGE) + UIKit.back_size().x
+			var span := reset_button.position.x - from_x
+			var pair := boards_button.size.x + UIKit.GAP_L + level_music_button.size.x
+			boards_button.position.x = UIKit.center_x(pair, from_x, span)
+			level_music_button.position.x = boards_button.position.x + boards_button.size.x + UIKit.GAP_L
+			if training_button != null and training_button.position.y == boards_button.position.y:
+				training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()

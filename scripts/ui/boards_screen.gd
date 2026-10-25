@@ -50,6 +50,10 @@ func _ready() -> void:
 	var safe := UIKit.safe_rect()
 	var x_left := safe.position.x + UIKit.EDGE + UIKit.GAP_L
 	var x_right := safe.end.x - UIKit.EDGE - UIKit.GAP_L - COL_W
+	# UI-06: both columns, the empty-state note and the best time live in one goo panel.
+	var panel_top := top - UIKit.PANEL_INK_TOP
+	var panel_bottom := top + UIKit.line_h() + HEADER_GAP + Economy.BOARD_TOP * ROW_H + UIKit.GAP_L + UIKit.line_h() + UIKit.GAP_M
+	UIKit.add_panel(self, Rect2(safe.position.x + UIKit.EDGE, panel_top, safe.size.x - 2 * UIKit.EDGE, panel_bottom - panel_top))
 	# i18n: boards column header, max 140px, 1 line; {n} = today's daily number
 	_column(x_left, top, Loc.t("boards.daily", "DAILY #{n}", {n = p.daily_number(today)}), p.board_for("daily", today), today, false)
 	# i18n: boards column header, max 140px, 1 line; {n} = this week's weekly number

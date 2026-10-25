@@ -28,6 +28,7 @@ const TEXT_CLEARANCE := 2
 ## part of the pod. English keeps TEXT_CLEARANCE there too (its source layout, side_clearance()).
 const TEXT_SIDE_CLEARANCE := UIKit.GAP_XL
 const FRAME_COLOR := Color8(26, 28, 44)
+const TRACK_COLOR := Color8(40, 34, 52)  # (the meter's sunken track)
 const LOW_COLOR := Color8(220, 40, 50)
 const GOLD := Color8(255, 205, 117)
 const CHALICE_FPS := 5.0
@@ -40,6 +41,7 @@ var _drop: TextureRect
 var _low := false
 var _pulse := 0.0
 var goo_color := Color8(239, 125, 47)
+var _track_outline: Control
 var _rainbow := false
 var _hue := 0.0
 var label: Label
@@ -194,8 +196,9 @@ func _ready() -> void:
 	var vignette_material := ShaderMaterial.new()
 	vignette_material.shader = preload("res://assets/shaders/atmosphere.gdshader")
 	vignette_material.set_shader_parameter("mist_strength", 0.0)
-	# Corners only and light: it must not darken the lit trail (the fog shader has its own edge fall-off).
-	vignette_material.set_shader_parameter("vignette_strength", 0.3)
+	# Corners only and faint: the fog shader already has the world-aware edge fall-off (ENV-05), so this
+	# one only adds a hint (0.3 stacked a second vignette on the first).
+	vignette_material.set_shader_parameter("vignette_strength", 0.1)
 	vignette_material.set_shader_parameter("vignette_start", 0.6)
 	vignette_material.set_shader_parameter("vignette_end", 1.15)
 	vignette.material = vignette_material
@@ -340,6 +343,9 @@ func _ready() -> void:
 	message = _make_label(SkinText.ROLE_TITLE)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	message.add_theme_color_override("font_shadow_color", UIKit.BG)  # UI-10: the standard 1 px shadow
+	message.add_theme_constant_override("shadow_offset_x", 0)
+	message.add_theme_constant_override("shadow_offset_y", 1)
 	message_box.add_child(message)
 	rewards_row = HBoxContainer.new()
 	rewards_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -519,7 +525,7 @@ func set_slime(percent: float) -> void:
 	fill.offset_right = fill.offset_left + roundf(BAR_SIZE.x * clampf(percent, 0.0, 100.0) / 100.0)
 	_shine.offset_right = _shine.offset_left + fill.size.x
 	_low = percent < LOW_PERCENT
-	fill.color = LOW_COLOR if _low else goo_color
+	fill.color = LOW_COLOR if _low else _meter_color()
 	if not _low:
 		fill.modulate = Color.WHITE
 	label.text = Loc.t("hud.slime_percent", "{percent}%", {percent = ceili(percent)})  # i18n: slime meter, max 24px, grows to 40px (the pod widens)
@@ -580,12 +586,28 @@ func _build_meter() -> Control:
 	meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_add_rect(meter, Vector2.ZERO, BAR_SIZE + Vector2(2, 2), FRAME_COLOR)
-	_add_rect(meter, Vector2.ONE, BAR_SIZE, Color8(40, 34, 52))
-	fill = _add_rect(meter, Vector2.ONE, BAR_SIZE, goo_color)
+	_add_rect(meter, Vector2.ONE, BAR_SIZE, TRACK_COLOR)
+	# UI-04: the empty segments are hollow 1 px outlines in the skin's colour (the fill drawn over them)
+	_track_outline = Control.new()
+	_track_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_track_outline.position = Vector2.ONE
+	_track_outline.size = BAR_SIZE
+	_track_outline.draw.connect(func() -> void:
+		var c := Color(_meter_color(), 0.55)
+		for i in SEGMENTS:
+			var w := float(CHUNK) if i < SEGMENTS - 1 else BAR_SIZE.x - float(i * (CHUNK + 1))
+			_track_outline.draw_rect(Rect2(i * (CHUNK + 1), 0, w, BAR_SIZE.y), c, false, 1.0))
+	meter.add_child(_track_outline)
+	fill = _add_rect(meter, Vector2.ONE, BAR_SIZE, _meter_color())
 	_shine = _add_rect(meter, Vector2.ONE, Vector2(BAR_SIZE.x, 1), Color(1, 1, 1, 0.35))
 	for i in range(1, SEGMENTS):
 		_add_rect(meter, Vector2(i * (CHUNK + 1), 1), Vector2(1, BAR_SIZE.y), Color(FRAME_COLOR, 0.6))
 	return meter
+
+
+## UI-04: the skin's colour lightened until it reads 3:1 on the track (hue kept).
+func _meter_color() -> Color:
+	return UIKit.lift_to_contrast(goo_color, TRACK_COLOR, 3.0)
 
 
 func _add_rect(parent: Control, at: Vector2, rect_size: Vector2, color: Color) -> ColorRect:
@@ -849,7 +871,10 @@ func show_rewards(info: Dictionary) -> void:
 		var best: int = info.best
 		for i in range(1, 4):
 			var color: Color = TIER_COLORS[tier] if tier >= i else (MEDAL_OWNED if best >= i else MEDAL_OFF)
-			rewards_row.add_child(UIKit.make_icon("medal", color))
+			# CON-04: a reward icon is full colour (gold / silver / bronze art); unearned ones are tinted white shades
+			var earned: bool = tier >= i
+			var medal_icon: String = ["medal_off", "medal_bronze", "medal_silver", "medal"][tier] if earned else "medal_off"
+			rewards_row.add_child(UIKit.make_icon(medal_icon, Color.WHITE if earned else color))
 		_reward_label(_medal_name(tier), TIER_COLORS[tier])
 		if info.new_best:
 			_reward_label(Loc.t("result.new_best", "NEW BEST!"), NEW_BEST_COLOR)  # i18n: medal row, max 90px
@@ -988,6 +1013,13 @@ func _reward_label(text: String, color: Color) -> void:
 func show_record(seconds: float) -> void:
 	record_time_label.text = UIKit.format_time(seconds)
 	record_banner.visible = true
+	# UI-12: one reward voice - the banner says it, so the panel's NEW BEST! goes
+	var best_text := Loc.t("result.new_best", "NEW BEST!")
+	for child in rewards_row.get_children():
+		if child is Label and (child as Label).text == best_text:
+			rewards_row.remove_child(child)
+			child.queue_free()
+	rewards_texts.erase(best_text)
 	_queue_fit()
 
 
@@ -1046,7 +1078,7 @@ func _build_choice_row() -> void:
 func _build_record_banner() -> void:
 	record_banner = CenterContainer.new()
 	record_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	record_banner.offset_top = 109
+	record_banner.offset_top = 112  # (UI-12: clear of the panel's bottom drips)
 	record_banner.offset_bottom = 150
 	record_banner.visible = false
 	add_child(record_banner)
@@ -1073,10 +1105,10 @@ func _make_chalice() -> TextureRect:
 	frame.atlas = preload("res://assets/sprites/chalice_sheet.png")
 	frame.region = Rect2(Vector2.ZERO, CHALICE_FRAME)
 	chalice.texture = frame
-	# Drawn at 2x (whole pixels stay crisp) to match the big NEW RECORD! text.
+	# CON-01: drawn at 1x like the chalice in the maze (only the big text is 2x).
 	chalice.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	chalice.stretch_mode = TextureRect.STRETCH_SCALE
-	chalice.custom_minimum_size = CHALICE_FRAME * 2
+	chalice.custom_minimum_size = CHALICE_FRAME
 	chalice.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_chalices.append(chalice)
 	return chalice
@@ -1326,7 +1358,9 @@ func set_level_text(text: String) -> void:
 
 func set_skin_color(color: Color, rainbow := false) -> void:
 	goo_color = color
-	fill.color = color
+	fill.color = _meter_color()
+	if _track_outline:
+		_track_outline.queue_redraw()
 	_drop.modulate = color
 	_rainbow = rainbow
 
@@ -1352,7 +1386,7 @@ func _process(delta: float) -> void:
 	goo_color = Color.from_hsv(_hue, 0.8, 0.95)
 	_drop.modulate = goo_color
 	if fill.color != LOW_COLOR:
-		fill.color = goo_color
+		fill.color = _meter_color()
 
 
 ## Shows a message for a few seconds (unless something else replaces it meanwhile).
@@ -1378,7 +1412,94 @@ func show_message(text: String) -> void:
 	message.text = text
 	_message_text = text
 	message.visible = true
+	message.visible_ratio = 1.0
 	_queue_fit()
+
+
+## ANI-02: the win's result staged over ~1.2 s instead of landing in one frame: a beat on the slime and chalice,
+## the panel drops in (8 px above, 2 px low, home), its lines tick on one per 0.08 s, the medals and the reward
+## row flash white and drop 1 px, the NEW RECORD banner last. Called right after show_message (same frame); `staging`
+## is true until done. A key press shows it all at once; Reduce Motion never stages.
+var staging := false
+
+
+func stage_result() -> void:
+	if staging or not message.visible or (progress_node() != null and progress_node().reduce_motion):
+		return
+	staging = true
+	var late: Array[Control] = []
+	for node: Control in [rewards_row, _rewards_row2]:
+		if node != null and node.visible:
+			late.append(node)
+	var banner := record_banner.visible
+	_message_panel.modulate.a = 0.0
+	for node in late:
+		node.modulate.a = 0.0
+	record_banner.modulate.a = 0.0
+	var lines := message.text.split("\n")
+	message.visible_ratio = 0.0
+	var skipped := not await _stage_wait(0.25)
+	if is_instance_valid(message) and is_inside_tree():
+		_message_panel.modulate.a = 1.0
+		UIKit.pop_in(_message_panel, [[-8.0, 0.04], [2.0, 0.04]])
+		var total := message.text.length()
+		var shown := 0
+		for i in lines.size():
+			shown += lines[i].length() + (1 if i < lines.size() - 1 else 0)
+			message.visible_ratio = 1.0 if i == lines.size() - 1 else float(shown) / float(maxi(total, 1))
+			if not skipped:
+				skipped = not await _stage_wait(0.08)
+		message.visible_ratio = 1.0
+		for node in late:
+			node.modulate = Color(2.2, 2.2, 2.2, 1.0)  # (a 1-frame white flash; the drop is 1 px)
+			UIKit.pop_in(node, [[1.0, 0.05]])
+			if not is_inside_tree():
+				continue
+			_unflash(node)
+		if not late.is_empty() and not skipped:
+			skipped = not await _stage_wait(0.12)
+		if banner and is_instance_valid(record_banner) and is_inside_tree():
+			record_banner.modulate = Color(2.2, 2.2, 2.2, 1.0)
+			UIKit.pop_in(record_banner, [[1.0, 0.05]])
+			_unflash(record_banner)
+			if not skipped:
+				await _stage_wait(0.12)
+	if is_instance_valid(message):
+		_message_panel.modulate = Color.WHITE
+		message.visible_ratio = 1.0
+		for node in late:
+			node.modulate = Color.WHITE
+		record_banner.modulate = Color.WHITE
+	staging = false
+
+
+## Ends the 1-frame white flash after 0.05 s; the tween belongs to the node, so a freed node cancels it
+## (a tree timer with a lambda capturing the node errors once it is freed).
+func _unflash(node: Control) -> void:
+	if node == null or not node.is_inside_tree():
+		return
+	var tw := node.create_tween()
+	tw.tween_interval(0.05)
+	tw.tween_property(node, "modulate", Color.WHITE, 0.0)
+
+
+## Waits `seconds` (not while paused); false if a key press cut it short.
+func progress_node() -> Node:
+	return get_node_or_null("/root/Progress")
+
+
+func _stage_wait(seconds: float) -> bool:
+	var left := seconds
+	while left > 0.0:
+		if not is_inside_tree():
+			return false
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_inside_tree():
+			return false
+		left -= get_process_delta_time()
+		if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("interact"):
+			return false
+	return true
 
 
 ## The result screen in a taller script (docs/ui-rules.md section 10): English keeps its source
@@ -1396,6 +1517,8 @@ func _queue_fit() -> void:
 func _fit_result() -> void:
 	_fit_queued = false
 	if UIKit.button_h() == UIKit.BUTTON_H or not message.visible:
+		if message.visible:
+			_away_from_slime()
 		return  # (English metrics: the source layout as built)
 	var metrics := UIKit.metrics()
 	_message_panel.custom_minimum_size.x = 0  # (_cover_sides may widen it again below)
@@ -1461,6 +1584,36 @@ func _fit_result() -> void:
 	else:
 		_message_center.offset_top = y
 		_message_center.offset_bottom = y + _panel_size().y - UIKit.SCREEN.y
+
+
+## UI-09 (English metrics): the result panel sits on the side of the screen away from the slime - above it, else
+## below it - when it fits there, and stays centred (the source layout) when it does not.
+func _away_from_slime() -> void:
+	_message_center.offset_top = 20
+	_message_center.offset_bottom = -40
+	var s := result_slime_rect
+	if not s.has_area():
+		return
+	var h := _message_panel.get_combined_minimum_size().y
+	var w := _message_panel.get_combined_minimum_size().x
+	var x := floorf((UIKit.SCREEN.x - w) / 2.0)
+	var centred := 20.0 + floorf((UIKit.SCREEN.y - 60.0 - h) / 2.0)
+	if s.position.x >= x + w or s.end.x <= x or centred >= s.end.y or centred + h <= s.position.y:
+		return  # (already clear of the slime)
+	var limit := float(UIKit.choice_y()) - UIKit.GAP_XS
+	if record_banner.visible:
+		limit = minf(limit, _banner_ink_top() - UIKit.GAP_XS)
+	var above := s.position.y - UIKit.GAP_XS - h
+	var below := s.end.y + UIKit.GAP_XS
+	var y := -1.0
+	if above >= _panel_top():
+		y = above
+	elif below + h <= limit:
+		y = below
+	if y < 0.0:
+		return
+	_message_center.offset_top = y
+	_message_center.offset_bottom = y + h - UIKit.SCREEN.y
 
 
 ## The result panel's size as it will be laid out: its rows' width + the style's side margins, or the
@@ -1581,7 +1734,7 @@ func _set_banner_compact(on: bool) -> void:
 	else:
 		UIKit.use_big_font(_banner_title, 16)
 	for chalice in _chalices:
-		chalice.custom_minimum_size = CHALICE_FRAME * (1 if on else 2)
+		chalice.custom_minimum_size = CHALICE_FRAME
 
 
 ## The area name's line top under the timer pod (AREA_TOP in English): lower by a taller pod and by

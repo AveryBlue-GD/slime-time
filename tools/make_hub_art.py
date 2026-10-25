@@ -333,18 +333,32 @@ def portal() -> list:
 
 
 def portal_side() -> list:
+    """SPR-03: the 3/4 view: the ring about half as wide with its thickness showing, the vortex
+    squashed inside it."""
     frames = []
-    glow = [rgb(84, 40, 150), rgb(140, 84, 220), rgb(214, 180, 255)]
+    swirl = [rgb(36, 16, 66), rgb(80, 38, 146), rgb(136, 82, 218), rgb(212, 178, 255)]
     for f in range(6):
         cv = Canvas(30, 40)
-        cv.ellipse(15, 18, 4.5, 17, lambda x, y, u, v: STONE[3] if u < -0.3 else STONE[2] if u < 0.3 else STONE[1])
-        for y in range(4, 33):  # a sliver of the vortex on the side facing the center
-            cv.put(19, y, glow[(y + f) % 3])
-            if (y + f * 2) % 7 == 0:
-                cv.put(20, y, glow[2])
-        for i in range(4):
-            cv.put(13, 6 + i * 8, RUNE[1] if (i + f) % 4 == 0 else RUNE[0])
-        _plinth(cv, 12, 34)
+        cv.ellipse(18, 18, 7.5, 17, lambda x, y, u, v: STONE[1] if u > 0.3 else STONE[0])  # the ring's depth
+        cv.ellipse(15, 18, 7.5, 17, _ring)
+
+        def vortex(x, y, u, v):
+            r = math.hypot(u, v)
+            a = math.atan2(v, u) + r * 5.0 - f * (math.pi / 3)
+            band = (math.sin(a * 2) + 1) / 2 * (1 - r * 0.6)
+            return swirl[min(3, int(band * 4))] if r > 0.16 else swirl[3]
+        cv.ellipse(14, 18, 4.6, 13, vortex)
+        for i in range(8):
+            a = i / 8 * math.tau - math.pi / 2
+            if math.cos(a) > 0.5:
+                continue
+            cv.put(round(15 + math.cos(a) * 6.5), round(18 + math.sin(a) * 15), RUNE[1] if (i + f) % 4 == 0 else RUNE[0])
+        rng = random.Random(f)
+        for _ in range(3):
+            a = rng.uniform(0, math.tau)
+            d = rng.uniform(2, 5)
+            cv.put(round(14 + math.cos(a) * d), round(18 + math.sin(a) * d * 1.8), rgb(244, 232, 255))
+        _plinth(cv, 16, 34)
         cv.outline()
         frames.append(cv.px)
     return frames
@@ -629,10 +643,13 @@ def _wheel_stand(cv: Canvas, cx: int) -> None:
 WHEEL_FRAMES = 24
 
 
-def _wheel_front(k: int) -> list:
+def _wheel_front(k: int, squash: float = 1.0) -> list:
+    """squash < 1 is the 3/4 view (SPR-03): the same wheel turned away, its face about half as
+    wide and the rim's thickness showing on the far side."""
     cv = Canvas(32, 40)
     _wheel_stand(cv, 16)
     turn = k / WHEEL_FRAMES * math.tau
+    fx = 16 if squash >= 1.0 else 14.5
 
     def face(x, y, u, v):
         r = math.hypot(u, v)
@@ -644,15 +661,22 @@ def _wheel_front(k: int) -> list:
         if (a * 6) % 1 < 0.07:
             return rgb(240, 236, 226)  # divider lines
         return WEDGES[int(a * 6) % 6]
-    cv.ellipse(16, 15, 13.5, 13.5, face)
+    if squash < 1.0:  # the rim's thickness, seen past the face
+        cv.ellipse(fx + 2.5, 15, 13.5 * squash, 13.5, lambda x, y, u, v: WOOD[1] if u + v * 0.3 < 0.4 else WOOD[0])
+    cv.ellipse(fx, 15, 13.5 * squash, 13.5, face)
     for i in range(12):  # pegs round the rim
         a = i / 12 * math.tau + turn
-        cv.put(round(16 + math.cos(a) * 12.4), round(15 + math.sin(a) * 12.4), GOLD[3])
+        if squash < 1.0 and math.cos(a) < -0.2:
+            continue  # on the hidden half
+        cv.put(round(fx + math.cos(a) * 12.4 * squash), round(15 + math.sin(a) * 12.4), GOLD[3])
     for a6 in range(0, 6, 2):  # little hats on alternate wedges
         ang = (a6 + 0.5) / 6 * math.tau - math.pi + turn
-        hx, hy = round(16 + math.cos(ang) * 7.5), round(15 + math.sin(ang) * 7.5)
+        hx, hy = round(fx + math.cos(ang) * 7.5 * squash), round(15 + math.sin(ang) * 7.5)
         cv.rect(hx - 1, hy, 3, 1, OUTLINE)
         cv.rect(hx, hy - 2, 1, 2, OUTLINE)
+    if squash < 1.0:  # the hub peg
+        cv.ellipse(fx, 15, 1.6, 2.2, GOLD[2])
+        cv.put(round(fx), 14, GOLD[3])
     cv.rect(15, 0, 3, 2, IRON[3])  # the flapper, kicked over when a peg is passing
     kick = 1 if k % 2 else 0
     cv.put(16 + kick, 2, RED[2])
@@ -666,19 +690,7 @@ def wheel() -> list:
 
 
 def wheel_side() -> list:
-    frames = []
-    for k in range(WHEEL_FRAMES):
-        cv = Canvas(32, 40)
-        _wheel_stand(cv, 16)
-        for y in range(2, 29):  # edge-on: a thin rim, its colors and pegs rolling past
-            cv.put(15, y, WOOD[3])
-            cv.put(16, y, WEDGES[((y + k) // 4) % 6])
-            if (y + k) % 4 == 1:
-                cv.put(17, y, GOLD[3])
-        cv.rect(15, 0, 3, 2, IRON[3])
-        cv.outline()
-        frames.append(cv.px)
-    return frames
+    return [_wheel_front(k, 0.5) for k in range(WHEEL_FRAMES)]
 
 
 def wheel_back() -> list:
@@ -708,7 +720,9 @@ def wheel_back() -> list:
 
 # ----------------------------------------------------------------- SETTINGS: the gear post
 
-def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, back=False) -> None:
+def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, back=False,
+          sx: float = 1.0, depth: int = 0) -> None:
+    """sx < 1 squashes it for the 3/4 view; depth = px of the gear's thickness showing on the right."""
     def g(x, y, u, v):
         rr = math.hypot(u, v)
         a = math.atan2(v, u) + turn
@@ -719,7 +733,10 @@ def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, b
         if back:
             return IRON[1] if rr > 0.5 else IRON[2]
         return IRON[4] if (u + v < -0.7) else IRON[3] if u + v < 0 else IRON[2]
-    cv.ellipse(cx, cy, r, r, g)
+    if depth:
+        for d in range(depth, 0, -1):
+            cv.ellipse(cx + d, cy, r * sx, r, lambda x, y, u, v: None if g(x, y, u, v) is None else IRON[1])
+    cv.ellipse(cx, cy, r * sx, r, g)
 
 
 def _post(cv: Canvas, x: int, top: int) -> None:
@@ -752,18 +769,16 @@ def signpost() -> list:
 
 
 def signpost_side() -> list:
+    """SPR-03: the 3/4 view, both gears turned half away with their thickness showing."""
     frames = []
     for k in range(GEAR_FRAMES):
         cv = Canvas(24, 34)
         _post(cv, 10, 12)
-        for y in range(1, 16):  # the big gear edge-on, its teeth rolling past
-            cv.put(13, y, IRON[3])
-            cv.put(14, y, IRON[2])
-            if (y + k) % 3 == 0:
-                cv.put(15, y, IRON[2])
-        for y in range(11, 19):  # the small one, rolling the other way
-            cv.put(15, y, IRON[3] if (y - k) % 2 else IRON[2])
-        cv.vline(9, 19, 26, IRON[2])   # the wrench, side on
+        _gear(cv, 12, 8, 7.5, 8, k * BIG_STEP, sx=0.55, depth=2)
+        _gear(cv, 17, 14.5, 4.0, 6, 0.3 - k * SMALL_STEP, sx=0.55, depth=1)
+        cv.vline(11, 19, 26, IRON[3])  # a wrench hanging off the post, turned
+        cv.vline(12, 19, 26, IRON[2])
+        cv.put(11, 18, IRON[2])
         cv.outline()
         frames.append(cv.px)
     return frames
@@ -948,10 +963,17 @@ def _maptable_front(f: int) -> list:
 def _maptable_side(f: int) -> list:
     cv = Canvas(30, 36)
     rng = random.Random(32)
-    cv.rect(8, 1, 2, 21, WOOD[1])             # the board edge-on, at the desk's back
-    cv.vline(8, 1, 21, WOOD[3])
-    cv.vline(10, 3, 17, PARCHMENT[2])         # the map's edge, toward the center
-    cv.put(10, 3, RED[2])
+    cv.rect(5, 1, 8, 19, WOOD[1])             # SPR-03: the board in 3/4, its map squashed to 5 px
+    cv.vline(5, 1, 19, WOOD[3])
+    cv.hline(5, 12, 1, WOOD[3])
+    cv.rect(7, 3, 5, 15, PARCHMENT[2])
+    cv.vline(7, 3, 17, PARCHMENT[3])
+    cv.hline(7, 11, 17, PARCHMENT[1])
+    for y in (6, 9, 12):
+        cv.hline(8, 10, y, PARCHMENT[1])
+    cv.put(10, 8, RED[2])
+    cv.put(9, 9, RED[1])
+    cv.vline(13, 2, 19, WOOD[0])              # the board's thickness
     cv.rect(7, 21, 16, 3, WOOD[2])            # the desk top, end-on (its depth)
     cv.hline(7, 22, 21, WOOD[4])
     plank(cv, 8, 24, 14, 6, rng, vertical=False, tone=1)  # the desk's side
@@ -1077,11 +1099,21 @@ def daily_sign(done: bool) -> list:
 
 
 def daily_sign_side() -> list:
+    """SPR-03: the calendar board in 3/4: the page about 7 px wide, the frame's thickness beside it."""
     cv = Canvas(16, 26)
     _daily_post(cv)
-    cv.rect(6, 1, 4, 13, WOOD[2])
-    cv.vline(6, 1, 13, WOOD[4])
-    cv.vline(9, 1, 13, WOOD[1])
+    cv.rect(3, 1, 9, 13, WOOD[2])             # the frame, its right edge in shade
+    cv.hline(3, 11, 1, WOOD[4])
+    cv.vline(11, 2, 13, WOOD[1])
+    cv.vline(12, 3, 13, WOOD[0])
+    cv.rect(4, 2, 6, 11, rgb(206, 192, 158))  # the page, squashed
+    cv.rect(4, 2, 6, 3, RED[1])
+    cv.hline(4, 9, 2, RED[2])
+    for y in (7, 9, 11):
+        for x in (5, 7, 9):
+            cv.put(x, y, rgb(140, 128, 102))
+    cv.put(5, 1, IRON[3])
+    cv.put(8, 1, IRON[3])
     cv.outline()
     return cv.px
 
@@ -1139,6 +1171,7 @@ if __name__ == "__main__":
         "hatch": [hatch()] * 3,
         "maptable": [maptable(), maptable_side(), maptable_back()],
         "rotor": [rotor()],
+        "daily_sign": [[daily_sign(False), daily_sign(True)], [daily_sign_side()] * 2, [daily_sign_back()] * 2],
         "badge": [[badge()]],
     }
     for name, rows in sheets.items():

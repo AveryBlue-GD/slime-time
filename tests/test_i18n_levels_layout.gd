@@ -111,7 +111,7 @@ func _level_select(hard: bool) -> void:
 	var source_fit: bool = UIKit.button_h() == UIKit.BUTTON_H and UIKit.line_h() == UIKit.TEXT_BODY
 	_check(ls.pages == (1 if source_fit else 2), _tag(tag + ": %d page(s)" % ls.pages))
 	if english:
-		_check(grid.position == Vector2(34, 22) and panel == Rect2(14, 113, 292, 48) and box.position == Vector2(32, 145),
+		_check(grid.position == Vector2(34, 22) and panel == Rect2(14, 117, 292, 44) and box.position == Vector2(32, 145),
 			_tag(tag + ": the English rects (grid %s, panel %s, checkbox %s)" % [grid, panel, box]))
 	_check(absf(grid.get_center().x - 160.0) <= 0.5 and absf(panel.get_center().x - 160.0) <= 0.5,
 		_tag(tag + ": grid and panel centred (%s, %s)" % [grid, panel]))
@@ -126,7 +126,7 @@ func _level_select(hard: bool) -> void:
 		_tag(tag + ": the checkbox's text GAP_M over the panel's bottom (%s)" % box))
 	var info: Label = ls.info
 	var lines_h := UIKit.text_block_h(2)
-	_check(info.position.y >= panel.position.y + ls.INFO_PAD and ls._info_top + lines_h + UIKit.GAP_L <= box.position.y + 0.5
+	_check(info.position.y >= panel.position.y + ls.INFO_PAD and ls._info_top + lines_h + UIKit.GAP_M <= box.position.y + 0.5
 		and _text_w(info) <= panel.size.x - 2 * UIKit.GAP_M, _tag(tag + ": the info lines inside the panel, over the checkbox"))
 	# Tiles: the shown page; digits on the slimy font's own line boxes.
 	var shown: Array[int] = []

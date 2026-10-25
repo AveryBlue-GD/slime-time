@@ -110,6 +110,16 @@ static func header_text(p: Node) -> String:
 	return Loc.t("ach.header_next", "MEDALS {n} / NEXT: {name} AT {next}", {n = earned, name = reward_name, next = next})
 
 
+## The goo panel's top and height: the rows sit panel_v_margins() inside it (clear of the band and its lumps).
+static func _band_top() -> int:
+	return UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS
+
+
+static func _panel_h() -> int:
+	var m := UIKit.panel_v_margins()
+	return m.x + PAGE_H + m.y
+
+
 func _ready() -> void:
 	UIKit.setup_screen(self, Loc.t("ach.title", "ACHIEVEMENTS"))  # i18n: page title, max 296px, 16 px font
 	if back_scene != "":
@@ -119,14 +129,9 @@ func _ready() -> void:
 	var p: Node = get_node("/root/Progress")
 	p.mark_achievements_seen()
 	header = UIKit.add_label(self, header_text(p), Rect2(0, UIKit.title_bottom() + HEADER_GAP, UIKit.SCREEN.x, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM)
-	# A dark band behind the list, so the dim goals read against the room's colour.
-	var band := ColorRect.new()
-	band.color = Color(0, 0, 0, 0.5)
-	var band_top := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS
-	band.position = Vector2(UIKit.EDGE, band_top)
-	band.size = Vector2(UIKit.SCREEN.x - 2 * UIKit.EDGE, PAGE_H + 2 * UIKit.GAP_XS)
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(band)
+	# UI-07: the list sits in a goo panel (not an unbordered black slab).
+	var band_top := _band_top()
+	var band := UIKit.add_panel(self, Rect2(UIKit.EDGE, band_top, UIKit.SCREEN.x - 2 * UIKit.EDGE, _panel_h()))
 	_row_root = Control.new()
 	add_child(_row_root)
 	_add_road(p)
@@ -147,7 +152,7 @@ func _ready() -> void:
 
 ## The reward road strip (see Road), between the list's band and the bottom row.
 func _add_road(p: Node) -> void:
-	var y := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L - UIKit.GAP_XS + PAGE_H + 2 * UIKit.GAP_XS + UIKit.GAP_XS
+	var y := _band_top() + _panel_h() + UIKit.GAP_XS
 	var label_w := UIKit.text_w("WINS") + UIKit.GAP_L  # i18n: ignore (measuring only)
 	var left := UIKit.EDGE + UIKit.GAP_L
 	var road_label := UIKit.add_label(self, Loc.t("ach.road", "WINS"), Rect2(left, y, label_w, UIKit.line_h()), UIKit.FONT, UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT)  # i18n: ACHIEVEMENTS page, the reward road's label (randomizer wins), max 40px, 1 line
@@ -179,7 +184,7 @@ func _show_page() -> void:
 		r.queue_free()
 	rows.clear()
 	var all := Achievements.list()
-	var top := UIKit.title_bottom() + HEADER_GAP + UIKit.line_h() + UIKit.GAP_L
+	var top := _band_top() + UIKit.panel_v_margins().x
 	var unlocked := 0
 	for a in all:
 		if Achievements.met(p, a.id):

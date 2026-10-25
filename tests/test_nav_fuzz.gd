@@ -981,7 +981,10 @@ func _game() -> void:
 	game = await _fresh_scene(L.GAME)
 	await L.frames(20)
 	game._on_goal_body_entered(game.slime)
-	await L.frames(60)
+	for _i in 20:  # (the result is staged ~1.2 s on purpose, ANI-02: poll for the buttons, bounded)
+		await L.frames(15)
+		if game.won and game.hud.choice_buttons.size() == 3:
+			break
 	check(game.won and game.hud.choice_buttons.size() == 3, "WIN-CHOICES", "win shows REPLAY / NEXT LEVEL / HUB")
 	inv("win choices")
 	await esc()

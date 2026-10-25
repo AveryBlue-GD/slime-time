@@ -103,13 +103,13 @@ THEMES = {
         "name": "OBSIDIAN OUBLIETTE",
         "layouts": ("slabs", "ashlar", "blocks"), "decos": ("gloss", "vein"), "floor": "tiles",
         "kinds": {"moss": "plain", "worn": "plain"},
-        "pal": {"k": (6, 6, 10), "x": (154, 144, 214), "w": (72, 68, 104), "W": (42, 40, 62), "z": (28, 26, 44),
-                "f": (24, 22, 34), "F": (14, 12, 22), "h": (32, 30, 46), "v": (124, 72, 176), "V": (82, 42, 124),
+        "pal": {"k": (24, 20, 40), "x": (190, 180, 238), "w": (92, 86, 130), "W": (54, 50, 78), "z": (36, 32, 56),
+                "f": (36, 32, 50), "F": (22, 18, 34), "h": (46, 42, 64), "v": (124, 72, 176), "V": (82, 42, 124),
                 "d": (32, 22, 52), "B": (124, 104, 184), "u": (182, 172, 202), "g": (210, 204, 240)},
     },
     "crystal": {
         "name": "CRYSTAL CAVERNS",
-        "layouts": ("rocks", "rubble", "cobble"), "decos": ("crystal", "sparkle"), "floor": "dirt",
+        "layouts": ("rocks", "facets", "cobble"), "decos": ("crystal", "sparkle"), "floor": "dirt",
         "kinds": {"moss": "shards", "worn": "shards"},
         "pal": {"k": (22, 10, 32), "x": (198, 162, 232), "w": (142, 102, 182), "W": (94, 62, 132), "z": (66, 42, 94),
                 "f": (38, 28, 56), "F": (26, 18, 40), "h": (50, 38, 72), "v": (122, 222, 232), "V": (72, 152, 182),
@@ -118,10 +118,10 @@ THEMES = {
     },
     "volcanic": {
         "name": "VOLCANIC VAULT",
-        "layouts": ("rocks", "cobble", "rubble"), "decos": ("lava", "embers"), "floor": "dirt",
+        "layouts": ("rocks", "cobble", "seams"), "decos": ("lava", "embers"), "floor": "dirt",
         "kinds": {"cracked": "lava_crack", "puddle": "lava_pool", "moss": "ash"},
-        "pal": {"k": (14, 8, 8), "x": (132, 98, 92), "w": (92, 66, 64), "W": (62, 42, 42), "z": (44, 30, 30),
-                "f": (38, 24, 22), "F": (24, 14, 12), "h": (52, 32, 28), "v": (90, 84, 82), "V": (60, 56, 54),
+        "pal": {"k": (34, 22, 22), "x": (176, 122, 96), "w": (126, 82, 66), "W": (84, 52, 44), "z": (58, 34, 30),
+                "f": (54, 32, 26), "F": (34, 20, 16), "h": (70, 42, 34), "v": (90, 84, 82), "V": (60, 56, 54),
                 "d": (240, 112, 32), "B": (255, 222, 92), "u": (172, 152, 142),
                 "L": (255, 224, 96), "O": (242, 112, 32), "R": (152, 40, 20)},
     },
@@ -262,7 +262,68 @@ def layout_rubble(g, rng):
                     g[y][x] = "W"
 
 
-LAYOUTS = {"bricks": layout_bricks, "blocks": layout_blocks, "rocks": layout_rocks, "slabs": layout_slabs,
+def layout_facets(g, rng):
+    """ENV-09: irregular crystal plates (a seamless Voronoi, angular distance), a dark seam on each
+    plate's right / bottom edge and a lit `x` edge on its top / left."""
+    pts = [(rng.uniform(0, 16), rng.uniform(0, 16)) for _ in range(rng.randint(6, 8))]
+    tones = [rng.choice("wwWWq") if rng.random() > 0.15 else "c" for _ in pts]
+
+    def plate(x, y):
+        best, bi = 1e9, 0
+        for i, (px, py) in enumerate(pts):
+            dx = min(abs(x + 0.5 - px), 16 - abs(x + 0.5 - px))
+            dy = min(abs(y + 0.5 - py), 16 - abs(y + 0.5 - py))
+            d = max(dx, dy) * 0.6 + (dx + dy) * 0.4
+            if d < best:
+                best, bi = d, i
+        return bi
+
+    cell = [[plate(x, y) for x in range(16)] for y in range(16)]
+    for y in range(16):
+        for x in range(16):
+            me = cell[y][x]
+            if cell[y][(x + 1) % 16] != me or cell[(y + 1) % 16][x] != me:
+                g[y][x] = "z"
+            elif cell[y][(x - 1) % 16] != me or cell[(y - 1) % 16][x] != me:
+                g[y][x] = "x"
+            else:
+                g[y][x] = tones[me]
+
+
+def layout_seams(g, rng):
+    """ENV-03: dark basalt columns (4-5 px wide); about half the tiles carry a course seam on row 7
+    that glows: `O` segments with an `L` core, `R` at the ends."""
+    x0 = 0
+    shade_cols = []
+    while x0 < 16:
+        width = 4 if (16 - x0) in (4, 8) or rng.random() < 0.5 else 5
+        width = min(width, 16 - x0)
+        shade_cols.append((x0, x0 + width, rng.choice("wwW")))
+        x0 += width
+    for a, b, shade in shade_cols:
+        for y in range(16):
+            for x in range(a, b):
+                if x == b - 1:
+                    g[y][x] = "z"
+                elif x == a:
+                    g[y][x] = "x" if shade == "w" and y % 5 else "w"
+                else:
+                    g[y][x] = shade if rng.random() > 0.1 else "W"
+    for x in range(16):
+        g[7][x] = "z"
+    if rng.random() < 0.55:
+        x = rng.randrange(0, 4)
+        while x < 15:
+            seg = rng.randint(3, 6)
+            for i in range(seg):
+                if x + i < 16:
+                    g[7][x + i] = "R" if i in (0, seg - 1) else "O"
+            if seg >= 4 and x + seg // 2 < 16:
+                g[7][x + seg // 2] = "L"
+            x += seg + rng.randint(2, 4)
+
+
+LAYOUTS = {"facets": layout_facets, "seams": layout_seams, "bricks": layout_bricks, "blocks": layout_blocks, "rocks": layout_rocks, "slabs": layout_slabs,
            "cobble": layout_cobble, "ashlar": layout_ashlar, "soldier": layout_soldier, "rubble": layout_rubble}
 
 
@@ -392,10 +453,15 @@ def deco_frost(g, rng, open_sides):
 
 
 def deco_gloss(g, rng, open_sides):
-    start = rng.randrange(-8, 10)
-    for i in range(16):
-        for w_ in range(2):
-            put(g, start + i + w_, i, "g" if w_ == 0 else "x", only_opaque=True)
+    """SPR-09: a short glint (3-6 px, either diagonal), on only half of the gloss variants."""
+    if rng.random() < 0.5:
+        return
+    n = rng.randint(3, 6)
+    sx, sy = rng.randrange(1, 15 - n), rng.randrange(1, 15 - n)
+    flip = rng.random() < 0.5
+    for i in range(n):
+        put(g, sx + i, sy + (n - 1 - i if flip else i), "g", only_opaque=True)
+        put(g, sx + i + 1, sy + (n - 1 - i if flip else i), "x", only_opaque=True)
 
 
 def deco_vein(g, rng, open_sides):
@@ -404,13 +470,23 @@ def deco_vein(g, rng, open_sides):
 
 
 def deco_crystal(g, rng, open_sides):
-    for _ in range(rng.randint(1, 2)):
-        bx, by = rng.randrange(3, 13), rng.randrange(8, 15)
-        for height, dx in ((rng.randint(4, 7), 0), (rng.randint(3, 5), -2), (rng.randint(2, 4), 2)):
-            x = bx + dx
-            for i in range(height):
-                put(g, x, by - i, "C" if i > height - 2 else "c")
-                put(g, x + 1, by - i, "q" if i < height - 1 else "c")
+    """ENV-09: a 6x8 cluster of three pointed shards (`C` tip, `c` body, `q` base, `k` outline);
+    about 3 in 4 variants carry one (1 in 4 tiles overall)."""
+    if rng.random() < 0.25:
+        return
+    ox, oy = rng.randrange(2, 9), rng.randrange(1, 7)
+    for sx, h in ((0, rng.randint(5, 6)), (2, 8), (4, rng.randint(4, 6))):
+        top = oy + 8 - h
+        for i in range(h):
+            y = top + i
+            w_ = 1 if i < 2 else 2
+            for dx in range(w_):
+                px = ox + sx + dx
+                body = "C" if i == 0 else ("q" if i >= h - 2 else "c")
+                put(g, px, y, body)
+            put(g, ox + sx - 1, y, "k")
+            put(g, ox + sx + w_, y, "k")
+        put(g, ox + sx, top - 1, "k")
 
 
 def deco_sparkle(g, rng, open_sides):
@@ -423,7 +499,7 @@ def deco_sparkle(g, rng, open_sides):
 
 
 def deco_lava(g, rng, open_sides):
-    for _ in range(2):
+    for _ in range(3):
         x, y = rng.randrange(2, 14), rng.randrange(2, 14)
         main = rng.choice(art.DIRS8)
         for _ in range(rng.randint(6, 11)):
@@ -443,6 +519,11 @@ def deco_embers(g, rng, open_sides):
 DECOS = {name[5:]: fn for name, fn in globals().items() if name.startswith("deco_")}
 
 
+def _wall_luma(theme: dict) -> float:
+    r, g, b = theme["pal"].get("w", art.PAL["w"][:3])[:3]
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
 def themed_wall(theme: dict, layout: str, mask: int, damage: int, style: int, seed: int) -> list[str]:
     """Same steps as make_placeholder_art.wall_tile, with the given construction and the theme's
     decorations."""
@@ -459,8 +540,11 @@ def themed_wall(theme: dict, layout: str, mask: int, damage: int, style: int, se
     if style:
         DECOS[theme["decos"][style - 1]](g, rng, open_sides)
 
-    for _ in range([0, 2, 3, 4][damage]):
-        crack(g, rng, rng.randint(5, 10))
+    n_cracks = [0, 2, 3, 4][damage]
+    if _wall_luma(theme) > 120:  # ENV-07: bright themes get at most two cracks a tile
+        n_cracks = min(n_cracks, 2)
+    for _ in range(n_cracks):
+        crack(g, rng, rng.randint(5, 10), two_tone=True)
     chips = [0, 0, rng.randint(2, 3), rng.randint(4, 5)][damage]
     max_depth = [0, 0, 2, 4][damage]
     for _ in range(chips):

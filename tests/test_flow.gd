@@ -54,7 +54,7 @@ func _initialize() -> void:
 	await physics_frame
 	_check(game.DRY_CHOICE_DELAY <= 0.3 and game.DRY_CHOICE_DELAY < game.CHOICE_DELAY, "dry-up buttons come up fast")
 	game._dry_up()
-	await _physics_frames(40)
+	await _physics_frames(int((game.DRY_HOLD + game.DRY_CHOICE_DELAY) * 60) + 15)  # (the dry-up hold, ANI-01)
 	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 	_check(texts == ["RESTART", "NEW MAZE", "UPGRADES", "MAP"], "a random dry-up offers RESTART first, then NEW MAZE, UPGRADES and MAP")
 	_check(progress.random_seed == 4321 and game.hud.message.text == "DRIED UP", "...and keeps the same maze")

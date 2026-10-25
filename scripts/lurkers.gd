@@ -17,11 +17,53 @@ enum Kind { CRAWLER, SNIFFER, LANTERN }
 
 const SHEET := preload("res://assets/sprites/lurkers.png")  # tools/make_lurkers.py
 const TILE := 16
-const FRAME := 12
-const FRAMES := 4
-## The eye glints' pixel in the 12x12 frame: x of the two eyes, y per frame (tools/make_lurkers.py prints them).
-const EYE_X: Array[int] = [4, 7]
-const EYE_Y: Array[int] = [6, 6, 5, 6]
+const FRAME := 16
+const FRAMES := 12
+## Sheet frames (tools/make_lurkers.py): 0 dormant, 1-4 creep (8 fps), 5-6 notice, 7-9 lunge, 10-11 stunned (4 fps).
+const F_DORMANT := 0
+const F_CREEP := 1
+const F_NOTICE := 5
+const F_LUNGE := 7
+const F_STUN := 10
+const LUNGE_DIST := 26.0
+const EYES: Array = [  # [kind][frame] = eye pixels (x, y) facing right; tools/make_lurkers.py prints them
+	[[],
+		[Vector2i(9, 10), Vector2i(11, 10)],
+		[Vector2i(9, 10), Vector2i(11, 10)],
+		[Vector2i(9, 10), Vector2i(11, 10)],
+		[Vector2i(9, 10), Vector2i(11, 10)],
+		[Vector2i(8, 8), Vector2i(11, 8)],
+		[Vector2i(9, 9), Vector2i(11, 9)],
+		[Vector2i(8, 10), Vector2i(10, 10)],
+		[Vector2i(10, 10), Vector2i(13, 10)],
+		[Vector2i(10, 9), Vector2i(12, 9)],
+		[],
+		[]],
+	[[],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 5), Vector2i(8, 5)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(6, 9), Vector2i(8, 9)],
+		[Vector2i(8, 8), Vector2i(10, 8)],
+		[Vector2i(8, 7), Vector2i(10, 7)],
+		[],
+		[]],
+	[[],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(7, 5), Vector2i(9, 5)],
+		[Vector2i(7, 7), Vector2i(9, 7)],
+		[Vector2i(6, 8), Vector2i(8, 8)],
+		[Vector2i(8, 8), Vector2i(11, 8)],
+		[Vector2i(8, 7), Vector2i(10, 7)],
+		[],
+		[]],
+]
 const EYE_COLOR: Array[Color] = [Color8(255, 240, 180), Color8(255, 138, 150), Color8(244, 244, 244)]
 const BODY_Z := 6  # under the fog (z 10), like a coin
 const EYE_Z := 12  # over the fog (10) and the slime's lantern (11)
@@ -39,6 +81,7 @@ const LANTERN_RADIUS := 4
 const LANTERN_MIN := 0.15
 const GROWL_NEAR := 160.0
 const BLINK_GAP := 0.08
+const HIT_SHOW := 0.12
 const SLOWMO_SCALE := 0.45
 
 
@@ -55,6 +98,8 @@ class Lurker:
 	var near_active := false
 	var near_hit := false
 	var growl_left := 0.0
+	var face := 1  # 1 = facing right (the sheet), -1 = flipped
+	var dist := 999.0  # distance to the slime at the last tick (the lunge frames)
 	var sprite: Sprite2D
 
 	## Eyes show once awake, past the eye-open, and not while stunned.
@@ -79,8 +124,9 @@ class EyeLayer extends Node2D:
 			var frame := owner_lurkers.frame_of(l)
 			var color: Color = EYE_COLOR[l.kind]
 			color.a = 0.7 + 0.3 * sin(t * 3.0 + index)
-			for ex in EYE_X:
-				draw_rect(Rect2(base + Vector2(ex, EYE_Y[frame]), Vector2.ONE), color)
+			for e: Vector2i in EYES[l.kind][frame]:
+				var ex := e.x if l.face >= 0 else FRAME - 1 - e.x
+				draw_rect(Rect2(base + Vector2(ex, e.y), Vector2.ONE), color)
 
 
 var game: Node
@@ -278,15 +324,25 @@ func spawn(cells: Array[Vector2i], seed_value: int) -> void:
 		_show(l)
 
 
-## Which of the 4 sheet frames `l` shows now: shut eyes while dormant, waking or stunned, else the 3-frame wobble.
+## Which of the 12 sheet frames `l` shows now: dormant, notice while waking, stunned (2 frames at 4 fps), lunge when
+## the slime is close (crouch, stretch, snap back by distance), else the 4-frame creep at 8 fps.
 func frame_of(l: Lurker) -> int:
-	if not l.awake or l.wake_t < WAKE_TIME * 0.5 or l.stun > 0.0:
-		return 3
-	return int(elapsed * 6.0 + float(lurkers.find(l))) % 3
+	if not l.awake:
+		return F_DORMANT
+	if l.stun > 0.0:
+		return F_STUN + int(elapsed * 4.0 + float(lurkers.find(l))) % 2
+	if l.wake_t < WAKE_TIME:
+		return F_NOTICE + (0 if l.wake_t < WAKE_TIME * 0.5 else 1)
+	if l.dist < LUNGE_DIST:
+		return F_LUNGE + (0 if l.dist > LUNGE_DIST * 0.75 else (1 if l.dist > LUNGE_DIST * 0.45 else 2))
+	return F_CREEP + int(elapsed * 8.0 + float(lurkers.find(l))) % 4
 
 
 func _show(l: Lurker) -> void:
 	l.sprite.position = l.pos.round()
+	if l.awake and l.dist < LUNGE_DIST and l.stun <= 0.0 and absf(slime.position.x - l.pos.x) > 1.0:
+		l.face = 1 if slime.position.x > l.pos.x else -1
+	l.sprite.flip_h = l.face < 0
 	l.sprite.frame = l.kind * FRAMES + frame_of(l)
 
 
@@ -348,7 +404,7 @@ func _exit_tree() -> void:
 		_slowmo_until_ms = -1
 		_slowmo_set(true)
 	if is_instance_valid(slime):
-		slime.modulate.a = 1.0
+		_show_slime(true)
 
 
 ## One physics tick of the lurkers (game._physics_process, while the run is live).
@@ -365,6 +421,7 @@ func step(delta: float) -> void:
 	var stealth: bool = game._still_time > Economy.IDLE_GRACE
 	for l in lurkers:
 		var d := spos.distance_to(l.pos)
+		l.dist = d
 		if not l.awake:
 			if d <= Economy.LURKER_WAKE_DIST:
 				_wake(l, stealth)
@@ -435,6 +492,8 @@ func _advance(l: Lurker, delta: float, stealth: bool) -> void:
 	var goal := MazeGenerator.cell_center(l.to, TILE)
 	var to_goal := goal - l.pos
 	var step := speed * delta
+	if absf(to_goal.x) > 0.5 and l.dist >= LUNGE_DIST:
+		l.face = 1 if to_goal.x > 0.0 else -1
 	if to_goal.length() <= step:
 		l.pos = goal
 		l.prev = l.cell
@@ -481,10 +540,11 @@ func _hit(l: Lurker) -> void:
 	var amount := clampf(game.slime_remaining - 1.0, 0.0, Economy.LURKER_HIT_HARD if game.hard_mode else Economy.LURKER_HIT)
 	game.spend_slime(amount)
 	invuln = (Economy.LURKER_INVULN_TOUCH_HARD if game.hard_mode else Economy.LURKER_INVULN_TOUCH) if Platform.is_mobile_native() or UIKit.touch_active() else Economy.LURKER_INVULN
-	_blink = 0.0
+	_blink = HIT_SHOW  # the white flash and the ouch eyes show first, then the blink starts
 	var away := slime.position - l.pos
 	_push_dir = away.normalized() if away.length() > 0.1 else Vector2.UP
 	_push_left = float(TILE)
+	slime.hurt(_push_dir)
 	l.stun = RECOIL
 	game.shake(2.5, 0.2)
 	Fx.burst(game, slime.position, Color8(244, 244, 244), 10, 50.0, _push_dir, 120.0, false)
@@ -504,13 +564,18 @@ func _push_step() -> void:
 
 
 func _update_blink() -> void:
-	if invuln <= 0.0:
-		slime.modulate.a = 1.0
-	elif game.motion_scale() <= 0.0:
-		slime.modulate.a = 0.6
+	# ANI-04: the safe time blinks by visibility (never alpha: half-see-through is the hard-mode jelly look)
+	if invuln <= 0.0 or game.motion_scale() <= 0.0:
+		_show_slime(true)
 	elif _blink <= 0.0:
 		_blink = BLINK_GAP
-		slime.modulate.a = 0.45 if slime.modulate.a > 0.9 else 1.0
+		_show_slime(not slime.sprite.visible)
+
+
+func _show_slime(on: bool) -> void:
+	slime.sprite.visible = on
+	if is_instance_valid(game.hat):
+		game.hat.visible = on
 
 
 ## SLIME SPLAT: every awake lurker standing on one of `tiles` is stunned for `seconds`.

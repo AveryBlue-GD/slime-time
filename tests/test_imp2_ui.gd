@@ -46,8 +46,8 @@ func _achievements_page() -> void:
 	_check(page.page == 0, "the < arrow turns it back")
 	var band := false
 	for child in page.get_children():
-		band = band or (child is ColorRect and child.color.a > 0.3 and child.color.v < 0.1)
-	_check(band, "a dark band sits behind the list")
+		band = band or (child is Panel and child.size.x > 200.0)  # (UI-07: a goo panel, no longer a bare black slab)
+	_check(band, "a goo panel sits behind the list")
 	page.free()
 
 

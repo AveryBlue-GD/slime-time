@@ -108,6 +108,8 @@ const HUB_MENU_TITLE_GAP := 6
 const DIALOG_INSET := 16.0
 const DIALOG_GAP := 6.0
 ## The station names fade in on arrival and are gone after this many seconds (the last NAMES_FADE of it fading).
+## A station name keeps this many px off every other prop's sprite (UI-14).
+const LABEL_PROP_GAP := 2.0
 const NAMES_TIME := 3.0
 const NAMES_FADE := 0.5
 ## The DAILY MAZE sign stands this far (px along the ring) from the portal, toward the next station.
@@ -684,11 +686,67 @@ func _place_hints() -> void:
 		# (the name under the feet; the sign beside the portal wears its name over its head, clear of the portal's)
 		var beside: bool = station.has("anchor")
 		var label_y: float = at.y - station.size.y - label.size.y - 1.0 if beside else minf(at.y + 2.0, safe.end.y - label.size.y - 1.0)
-		label.position = Vector2(x, maxf(safe.position.y + 1.0, label_y))
+		# UI-05: on a touchscreen a name never sits under the joystick or the JUMP circle: it moves above its prop.
+		if _touch_controls != null and _touch_controls.visible and not beside:
+			var spot := Rect2(x, label_y, label.size.x, label.size.y)
+			for circle: Rect2 in _touch_circles():
+				if spot.intersects(circle):
+					# (sideways off the circle if that is close, else above the prop)
+					var side_x := INF
+					for cand: float in [circle.end.x + 1.0, circle.position.x - label.size.x - 1.0]:
+						if absf(cand - x) <= 40.0 and absf(cand - x) < absf(side_x - x) and cand > safe.position.x and cand + label.size.x < safe.end.x:
+							side_x = cand
+					if side_x != INF:
+						x = side_x
+					else:
+						label_y = at.y - station.size.y - label.size.y - 1.0
+					break
+		label.position = Vector2(_clear_x_of_props(station, label, x, maxf(safe.position.y + 1.0, label_y), safe),
+			maxf(safe.position.y + 1.0, label_y))
 		if badges.has(station.id):
 			_place_badge(station, label, beside, safe)
 	_clear_badges(safe)
 	_hint_time = _time
+
+
+## The touch circles at rest (the joystick's home and the JUMP button, grown for a longer JUMP word) that a
+## station name keeps clear of (UI-05).
+func _touch_circles() -> Array[Rect2]:
+	var joy_r: float = _touch_controls.JOY_RADIUS + 1.0
+	var jump_r: float = _touch_controls.JUMP_RADIUS + 5.0
+	return [Rect2(_touch_controls.JOY_HOME - Vector2.ONE * joy_r, Vector2.ONE * joy_r * 2.0),
+		Rect2(_touch_controls.JUMP_CENTER - Vector2.ONE * jump_r, Vector2.ONE * jump_r * 2.0)]
+
+
+## UI-14: a name label stays at least LABEL_PROP_GAP px off every other prop's sprite (the DAILY MAZE name sat
+## across the SETTINGS post): the label slides sideways to the nearest clear spot inside the safe rect.
+func _clear_x_of_props(station: Dictionary, label: Label, x: float, y: float, safe: Rect2) -> float:
+	var rect := Rect2(x, y, label.size.x, label.size.y)
+	var hits: Array[Rect2] = []
+	for other: Dictionary in _all_props():
+		if other.id == station.id:
+			continue
+		var at: Vector2 = other.sprite.position
+		var box := Rect2(at.x - other.size.x / 2.0, at.y - other.size.y, other.size.x, other.size.y).grow(LABEL_PROP_GAP)
+		if box.intersects(rect):
+			hits.append(box)
+	if hits.is_empty():
+		return x
+	var best := x
+	var best_d := INF
+	for box: Rect2 in hits:
+		for cand: float in [box.position.x - label.size.x, box.end.x]:
+			var r := Rect2(cand, y, label.size.x, label.size.y)
+			if cand < safe.position.x + 1.0 or cand + label.size.x > safe.end.x - 1.0:
+				continue
+			var clear := true
+			for other_box: Rect2 in hits:
+				if other_box.intersects(r):
+					clear = false
+			if clear and absf(cand - x) < best_d and absf(cand - x) <= 30.0:
+				best = cand
+				best_d = absf(cand - x)
+	return roundf(best)
 
 
 ## A "!" badge never covers a visible station name or another badge (IMP2-06 fix): a badge that would moves to the
@@ -1397,7 +1455,7 @@ func _build_ticket_pod(root: Control) -> void:
 	row.add_child(UIKit.make_icon("ticket", Color.WHITE))
 	ticket_label = UIKit.make_label("", 8, Color8(255, 226, 150))
 	row.add_child(ticket_label)
-	row.add_child(UIKit.make_icon("medal", UIKit.GOLD))
+	row.add_child(UIKit.make_icon("medal", Color.WHITE))  # CON-04: a reward icon, full colour
 	medal_label = UIKit.make_label("", 8, UIKit.GOLD)
 	row.add_child(medal_label)
 	_refresh_tickets()

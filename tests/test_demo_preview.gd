@@ -127,7 +127,7 @@ func _check_preview() -> void:
 	await physics_frame
 	_check(again.preview and not again.preview_card_up, "a restart goes straight in (the card is once)")
 	again._dry_up()
-	await _wait_seconds(again.DRY_CHOICE_DELAY + 0.3)
+	await _wait_seconds(again.DRY_HOLD + again.DRY_CHOICE_DELAY + 0.3)
 	_check(again.hud.choice_buttons.size() == 1, "a dry-up offers CONTINUE only")
 	again.free()
 

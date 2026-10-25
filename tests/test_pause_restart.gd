@@ -19,10 +19,10 @@ func _initialize() -> void:
 	await _dry_up(game)
 	_check(game.finished and not game.won, "the slime dries up")
 	game.pause_menu.open()
-	await _frames(int(game.CHOICE_DELAY * 60) + 60)
+	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 60)
 	_check(current_scene == game and paused and game.pause_menu.visible, "pausing holds everything (nothing reloads underneath)")
 	game.pause_menu.resume()
-	await _frames(int(game.CHOICE_DELAY * 60) + 10)
+	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 10)
 	_check(current_scene == game and game.hud.choice_buttons.size() == 3, "after resuming, RESTART, UPGRADES and MAP appear (no automatic restart)")
 	game.hud.choice_buttons[0].pressed.emit()
 	await _frames(5)
@@ -31,7 +31,7 @@ func _initialize() -> void:
 	# --- UPGRADES, then PLAY goes back into the level
 	game = current_scene
 	await _dry_up(game)
-	await _frames(int(game.CHOICE_DELAY * 60) + 10)
+	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 10)
 	game.hud.choice_buttons[1].pressed.emit()
 	await _frames(40)
 	_check(current_scene != null and current_scene.scene_file_path == "res://scenes/upgrades.tscn", "UPGRADES opens the upgrades screen")
@@ -47,7 +47,7 @@ func _initialize() -> void:
 	await _dry_up(game)
 	game.pause_menu.open()
 	game.pause_menu._quit()
-	await _frames(int(game.CHOICE_DELAY * 60) + 60)
+	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 60)
 	_check(current_scene != null and current_scene.scene_file_path == UIKit.HUB_SCENE and not paused,
 		"quitting to the hub lands in the hub, unpaused (%s)" % (current_scene.scene_file_path if current_scene else "none"))
 

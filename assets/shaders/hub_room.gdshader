@@ -64,7 +64,7 @@ vec3 mist(vec2 pixel) {
 		+ value_noise(pixel / 12.0 - vec2(now * 0.2, now * 0.07)) * 0.35;
 	float swell = value_noise(pixel / 90.0 + vec2(now * 0.03, -now * 0.02));
 	float band = floor(n * n * 5.0 * (0.7 + 0.6 * swell)) / 4.0;
-	return mix(fog_deep.rgb * 0.35, fog_mist.rgb * 0.25, clamp(band, 0.0, 1.0));
+	return mix(fog_deep.rgb * 0.42, fog_mist.rgb * 0.36, clamp(band, 0.0, 1.0));  // (near-black, but moving: the island floats in fog, not void)
 }
 
 float rim_inner(float plan_angle) {
@@ -82,7 +82,16 @@ vec3 floor_tile(vec2 plan) {
 	} else if (h < 0.24) {
 		col = mix(deep.rgb, outline.rgb, 0.5);      // a darker cube
 	}
-	if (f.x < 0.1 || f.y < 0.1) {
+	// Two more cube shades and a darker seam every third row of cubes (ENV-11).
+	float h2 = hash(cell + vec2(31.7, 9.1));
+	if (h >= 0.24) {
+		if (h2 < 0.14) {
+			col = mix(deep.rgb, dark.rgb, 0.22);
+		} else if (h2 < 0.26) {
+			col = mix(deep.rgb, outline.rgb, 0.25);
+		}
+	}
+	if (f.x < 0.1 || f.y < 0.1 || (mod(cell.y, 3.0) < 0.5 && f.y < 0.18)) {
 		return outline.rgb;                         // the gaps between cubes
 	}
 	if (f.y < 0.2) {
@@ -99,6 +108,13 @@ vec3 floor_tile(vec2 plan) {
 		if (length(b1) < 0.09 || length(b2) < 0.07) {
 			col = light.rgb;                        // bubbles
 		}
+	}
+	// Bubble clusters that straddle two cubes (a 2x2 block of cubes shares them).
+	vec2 tb = t * 0.5;
+	vec2 fb = fract(tb);
+	if (hash(floor(tb) + vec2(5.3, 2.9)) > 0.8
+		&& (length(fb - vec2(0.45, 0.5)) < 0.07 || length(fb - vec2(0.58, 0.42)) < 0.05 || length(fb - vec2(0.52, 0.62)) < 0.04)) {
+		col = light.rgb;
 	}
 	if (h > 0.78 && length(f - vec2(0.24, 0.3)) < 0.07) {
 		col = mix(col, mid.rgb, 0.7);               // a glint on some cubes
@@ -118,6 +134,14 @@ void fragment() {
 
 	if (d <= inner) {
 		col = floor_tile(plan);
+		// A goo drain under the wheel in the middle: a dark sump, a ring and rune dashes round it (turns with the room).
+		float pr = length(plan);
+		if (pr < 0.165) {
+			col = mix(col, outline.rgb, 0.55);
+		} else if (pr < 0.2) {
+			float dash = mod(plan_angle * 12.0 / 6.2831853 + 12.0, 1.0);
+			col = pr < 0.178 ? mid.rgb : (dash < 0.55 ? light.rgb : dark.rgb);
+		}
 		// The back rim's shadow across the floor.
 		if (q.y < 0.0 && d > inner - 0.06 && mod(px.x + px.y, 2.0) > 0.5) {
 			col = mix(col, outline.rgb, 0.7);

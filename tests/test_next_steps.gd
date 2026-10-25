@@ -41,8 +41,9 @@ func _initialize() -> void:
 	_check(next.level == 1, "REPLAY loads the same level again (got %d)" % next.level)
 	_drop(next)
 
-	# The win buttons come up CHOICE_DELAY (0.6 s) after the win on every level, the last one included (it used to
-	# carry a dead 5 s delay that was never waited): none at 0.5 s, there at 0.7 s.
+	# The win buttons come up after the staged result (ANI-02: panel drop-in, lines, medals, banner, ~0.9 s) plus 0.25 s
+	# on every level, the last one included (it used to carry a dead 5 s delay that was never waited): none at 0.5 s,
+	# there by 1.6 s.
 	for win_level in [1, Levels.COUNT]:
 		game = await _spawn_story(win_level)
 		game.slime.position = game.goal.position
@@ -50,8 +51,11 @@ func _initialize() -> void:
 		_check(game.finished and game.won, "level %d: touching the goal wins" % win_level)
 		await _physics_frames(int(0.5 * 60) - 2)
 		_check(game.hud.choice_buttons.is_empty(), "level %d: no buttons yet 0.5 s after the win" % win_level)
-		await _physics_frames(int(0.2 * 60))
-		_check(_texts(game).size() == 3 and game.hud.choice_buttons[1].has_focus(), "level %d: the 3 buttons are up 0.7 s after the win (%s)" % [win_level, _texts(game)])
+		for i in int(1.1 * 60):
+			if not game.hud.choice_buttons.is_empty():
+				break
+			await _physics_frames(1)
+		_check(_texts(game).size() == 3 and game.hud.choice_buttons[1].has_focus(), "level %d: the 3 buttons are up by 1.6 s after the win (%s)" % [win_level, _texts(game)])
 		_drop(game)
 
 	# Story win -> HUB goes back to the hub, in front of the archway.
@@ -101,7 +105,7 @@ func _initialize() -> void:
 	Input.action_press(open_action)
 	await _physics_frames(20)
 	Input.action_release(open_action)
-	await _physics_frames(int(game.CHOICE_DELAY * 60) + 5)
+	await _physics_frames(int((game.DRY_HOLD + game.DRY_CHOICE_DELAY) * 60) + 10)  # (the dry-up plays out first, ANI-01)
 	_check(game.finished and _texts(game) == ["RESTART", "UPGRADES", "MAP"], "drying up offers %s" % [_texts(game)])
 	_check(not game.won, "...and it's not a win")
 	_drop(game)
@@ -137,6 +141,10 @@ func _spawn(settings: Dictionary) -> Node2D:
 func _win(game: Node2D) -> void:
 	game.slime.position = game.goal.position
 	await _physics_frames(int(game.CHOICE_DELAY * 60) + 10)
+	for i in 90:  # (the staged result, ANI-02)
+		if not game.hud.choice_buttons.is_empty():
+			break
+		await _physics_frames(1)
 
 
 ## Waits for a button's scene reload and returns the new level scene.

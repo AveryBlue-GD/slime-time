@@ -44,7 +44,7 @@ func _initialize() -> void:
 	await _physics_frames(5)
 	_check(game.hat.region_rect.position.y == Hats.Width.NORMAL * Hats.FRAME.y, "at rest it's the normal-width hat")
 	Input.action_press("jump")
-	await _physics_frames(70)
+	await _physics_frames(95)
 	_check(game.hat.region_rect.position.y == Hats.Width.WIDE * Hats.FRAME.y, "squashed down to charge, the slime wears it wider")
 	Input.action_release("jump")
 	await _physics_frames(90)

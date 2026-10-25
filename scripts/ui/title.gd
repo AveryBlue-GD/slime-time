@@ -39,7 +39,7 @@ const SLIME_OUT := 20
 const SLIME_Y := 112
 ## The 2x slime's ink around its position (measured: body, eyes and shadow), and how far above the
 ## button's middle its position goes to stand level with the button (ink centred on the button's rows).
-const SLIME_INK := Rect2(-16, -12, 32, 30)
+const SLIME_INK := Rect2(-8, -6, 16, 15)
 const SLIME_LEVEL := 3
 ## Demo builds only (Platform.is_demo()): the DEMO sticker (tools/make_demo_sticker.py, 65x40, pre-tilted
 ## pixel art) at this top-left corner, under the logo's D by the left slime (over its hat, on purpose).
@@ -119,6 +119,13 @@ func _ready() -> void:
 	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 12)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
+	if not Progress.reduce_motion:
+		var drip := LogoDrip.new()  # ANI-11: one drip on the logo now and then stretches, drops and splats
+		drip.name = "LogoDrip"
+		drip.position = logo.position
+		drip.material = logo.material  # (same skin recolor as the logo it grows from)
+		add_child(drip)
+		drip.setup(logo.texture.get_image())
 	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
 	var fresh: bool = Progress.is_fresh_save()
 	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
@@ -129,7 +136,7 @@ func _ready() -> void:
 	# it taller (enter_height), the slimes staying level with its middle.
 	var previews: Array[Node2D] = []
 	for i in 2:
-		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow(), null, Progress.is_stopwatch())
+		var preview := UIKit.make_slime_preview(Progress.skin_color(), 1, Progress.is_rainbow(), null, Progress.is_stopwatch())
 		add_child(preview)
 		previews.append(preview)
 		if Progress.selected_hat != Hats.NONE:  # the hat you're wearing, at the same 2x size
@@ -437,3 +444,96 @@ func _quit() -> void:
 ## The intro again (and then back to the title).
 func _replay_story() -> void:
 	Story.play(get_tree(), "intro", UIKit.TITLE_SCENE)
+
+
+## ANI-11: a living drip on the logo. Every 1.5-3 s one of the logo's own drip tips stretches 2 px over
+## 3 frames, then a 2x3 droplet falls 6-10 px, splats 3 px wide and fades in 4 steps. All in whole pixels,
+## in the logo's own goo shades (sampled from its pixels, so the skin shader recolours it with the logo).
+class LogoDrip extends Node2D:
+	const STRETCH := 0.05  # s per stretch frame (3 frames)
+	const FALL := 0.3
+	const SPLAT := 0.1
+	const FADE_STEP := 0.08  # 4 steps
+	var tips: Array[Vector2i] = []  # x, bottom row of each drip tip
+	var cols: Array[Color] = []  # per tip: outline, mid, dark (as drawn in the logo)
+	var _wait := 2.0
+	var _t := 0.0
+	var _tip := -1
+	var _fall := 8
+	var _rng := RandomNumberGenerator.new()
+
+	func setup(img: Image) -> void:
+		_rng.randomize()
+		if img == null or img.is_compressed():
+			set_process(false)
+			return
+		var w := img.get_width()
+		var h := img.get_height()
+		var bottom: Array[int] = []
+		for x in w:
+			var b := -1
+			for y in range(h - 1, -1, -1):
+				var c := img.get_pixel(x, y)
+				if c.a > 0.5 and c.r8 + c.g8 + c.b8 > 40:  # (not the near-black drop shadow)
+					b = y
+					break
+			bottom.append(b)
+		for x in range(4, w - 4):
+			var b := bottom[x]
+			if b < 6 or b + 12 >= h + 40:
+				continue
+			var ok := b >= bottom[x - 1] and b >= bottom[x + 1] and b >= bottom[x - 2] and b >= bottom[x + 2]
+			if ok and b - mini(bottom[x - 4], bottom[x + 4]) >= 4 and b > bottom[x - 1] - 1 and (tips.is_empty() or x - tips[-1].x > 5):
+				tips.append(Vector2i(x, b))
+				cols.append(img.get_pixel(x, b))
+				cols.append(img.get_pixel(x, b - 2))
+				cols.append(img.get_pixel(x, b - 4))
+		if tips.is_empty():
+			set_process(false)
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if _tip < 0:
+			if _t >= _wait:
+				_tip = _rng.randi() % tips.size()
+				_fall = _rng.randi_range(6, 10)
+				_t = 0.0
+		elif _t >= 3.0 * STRETCH + FALL + SPLAT + 4.0 * FADE_STEP:
+			_tip = -1
+			_t = 0.0
+			_wait = _rng.randf_range(1.5, 3.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		if _tip < 0:
+			return
+		var tip := tips[_tip]
+		var edge := cols[_tip * 3]
+		var mid := cols[_tip * 3 + 1]
+		var dark := cols[_tip * 3 + 2]
+		var t := _t
+		var stretch_end := 3.0 * STRETCH
+		if t < stretch_end:
+			var rows := 1 if t < STRETCH else 2
+			for r in rows:
+				draw_rect(Rect2(tip.x - 1, tip.y + 1 + r, 3 if r == 0 else 1, 1), edge if r == rows - 1 else dark)
+			draw_rect(Rect2(tip.x, tip.y + 1, 1, rows), mid if rows > 1 else dark)
+			return
+		t -= stretch_end
+		var top := tip.y + 3
+		if t < FALL:
+			var k := t / FALL
+			var y := top + roundi((_fall - 3) * k * k)
+			draw_rect(Rect2(tip.x - 1, y, 2, 3), edge)
+			draw_rect(Rect2(tip.x - 1, y + 1, 1, 1), mid)
+			return
+		t -= FALL
+		var ground := top + _fall - 3 + 2
+		var alpha := 1.0
+		if t >= SPLAT:
+			alpha = 1.0 - floorf((t - SPLAT) / FADE_STEP) * 0.25
+		if alpha <= 0.0:
+			return
+		var c := Color(dark, alpha)
+		draw_rect(Rect2(tip.x - 2, ground, 5, 1), Color(edge, alpha))
+		draw_rect(Rect2(tip.x - 1, ground, 3, 1), c)

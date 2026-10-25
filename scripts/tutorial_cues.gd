@@ -18,7 +18,9 @@ const KEY := 9.0
 ## Room kept each side of a translated key word that widens its key (draw_key).
 const KEY_PAD := 2.0
 const KEY_FILL := Color8(26, 28, 44)
-const KEY_EDGE := Color8(244, 244, 244)
+const KEY_EDGE := Color8(244, 244, 244)  # the letters and arrowheads
+## CON-09: the keycap's 1 px rim, the HUD pod family (TEXT_DIM on the dark fill), not a white slab.
+const KEY_RIM := Color8(148, 176, 194)
 
 var game: Node
 var slime: Slime
@@ -156,7 +158,7 @@ static func draw_key(canvas: Variant, center_top: Vector2, text: String, width: 
 	var height := key.y + top_pad
 	var top := center_top - Vector2(floorf(width / 2.0), height - KEY)
 	var rect := Rect2(top.round(), Vector2(width, height))
-	canvas.draw_rect(rect, Color(KEY_EDGE, alpha))
+	canvas.draw_rect(rect, Color(KEY_RIM, alpha))
 	canvas.draw_rect(rect.grow(-1.0), Color(KEY_FILL, alpha))
 	var center := rect.position + rect.size / 2.0
 	if arrow:

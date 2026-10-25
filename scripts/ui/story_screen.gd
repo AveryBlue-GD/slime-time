@@ -225,7 +225,7 @@ class Cover extends Control:
 	func _draw_skip(alpha: float) -> void:
 		if alpha <= 0.0:
 			return
-		var ff := Color(Color8(84, 78, 110), alpha * 0.9)
+		var ff := Color(UIKit.TEXT_DIM, alpha * 0.9)
 		if screen.touch_skip:
 			draw_rect(SKIP_POD, Color(Color8(20, 18, 32), alpha))
 			draw_rect(SKIP_POD.grow(-0.5), Color(screen.art.goo.dark, alpha), false, 1.0)
@@ -761,7 +761,7 @@ class StageArt extends Node2D:
 
 	func _draw_pops(canvas: CanvasItem) -> void:
 		var heroes := _heroes()
-		var sc := 2.0 if zoom < 1.5 else 1.0  # same size on screen at 1x and 2x
+		var sc := 1.0  # SPR-04: bubble icons at 1x like every other sprite
 		for pop in pops:
 			var age: float = t - pop.at
 			if age < 0.0 or age > pop.life or (pop.icon == "huh" and age >= pop.life - 0.001):
@@ -1016,10 +1016,14 @@ class StageArt extends Node2D:
 		_draw_parts(canvas, false)
 		_draw_pops(canvas)
 
-	## A banded halo (hard rings, like the game's lights).
+	## A dithered halo (3 steps broken up by the game's world-locked Bayer matrix, like the lights in
+	## the levels: Fx.halo_texture). `alpha` is the strength of one step, as the old stacked rings.
 	func _halo(canvas: CanvasItem, c: Vector2, r: float, color: Color, alpha := 0.07) -> void:
-		for i in 3:
-			canvas.draw_circle(c.round(), roundf(r * (1.0 - i * 0.3)), Color(color, alpha))
+		var centre := c.round()
+		var radius := maxi(int(roundf(r)), 1)
+		var top_left := centre - Vector2(radius, radius)
+		var texture := Fx.halo_texture(radius, 3, posmod(int(top_left.x), 4), posmod(int(top_left.y), 4))
+		canvas.draw_texture(texture, top_left, Color(color, minf(alpha * 3.0, 1.0)))
 
 	## How lit a spot is, in ramp steps 0-5; `dither` (from _bayer) breaks the edges between steps
 	## into a checker, like hand-dithered pixel art.

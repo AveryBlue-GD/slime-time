@@ -46,6 +46,8 @@ EMBLEMS = {
     "crystal": [".###.", "#####", "#####", ".###.", "..#.."],
     "volcanic": ["..#..", ".##..", ".###.", "#####", ".###."],
 }
+OUTLINE_FLOOR = {"obsidian": (30, 24, 52)}
+GOLD, GOLD_SHADOW, GOLD_GLINT = (255, 205, 117, 255), (209, 136, 58, 255), (255, 240, 180, 255)  # PAL y o Y
 THEME_ORDER = ["dungeon", "mossy", "sandstone", "sunken", "sewers", "catacombs", "frozen", "obsidian",
                "crystal", "volcanic"]
 
@@ -57,6 +59,8 @@ def mix(a: tuple, b: tuple, f: float) -> tuple:
 def coin_frame(theme: str, k: int) -> list[list[tuple]]:
     rim, face, light, shine, emblem = [(*c, 255) for c in COINS[theme]]
     outline = mix(rim, (0, 0, 0), 0.5)
+    if theme in OUTLINE_FLOOR:  # CON-03: a tinted dark, never near-black
+        outline = tuple(max(a, b) for a, b in zip(outline, OUTLINE_FLOOR[theme])) + (255,)
     shade = mix(face, rim, 0.45)  # the face's shadowed lower-right
     ridge = mix(rim, (0, 0, 0), 0.25)
     angle = k * math.pi / FRAMES
@@ -124,6 +128,19 @@ def coin_frame(theme: str, k: int) -> list[list[tuple]]:
         for x in range(SIZE):
             if (x, y) in body and any((x + dx, y + dy) not in body for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 out[y][x] = outline
+    if theme != "dungeon":  # SPR-10 / CON-07: every themed coin keeps a gold rim and a gold glint
+        ring = [(x, y) for x, y in body if in_face(x, y) and out[y][x] != outline
+                and any((x + dx, y + dy) not in body or out[y + dy][x + dx] == outline
+                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+        best = None
+        for x, y in ring:
+            u, v = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+            lit = -0.6 * u - 0.8 * v
+            out[y][x] = GOLD if lit > -0.1 else GOLD_SHADOW
+            if best is None or lit > best[0]:
+                best = (lit, x, y)
+        if best and rx >= 2.2:
+            out[best[2]][best[1]] = GOLD_GLINT
     return out
 
 

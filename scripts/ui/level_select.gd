@@ -123,7 +123,7 @@ func _layout() -> void:
 	var lines_h := UIKit.text_block_h(2)
 	# The checkbox's text keeps 4 px of its box under it (4.5 in English) off the panel's bottom goo.
 	var box_text_h := UIKit.text_block_h(hard_mode_box.text.count("\n") + 1)
-	var panel_h := top_pad + lines_h + UIKit.GAP_L + int(box.y) + maxi(0, UIKit.GAP_M - floori((box.y - box_text_h) / 2.0))
+	var panel_h := top_pad + lines_h + UIKit.GAP_M + int(box.y)  # (UI-13: HARD pulled up under its help lines) + maxi(0, UIKit.GAP_M - floori((box.y - box_text_h) / 2.0))
 	if "\n" in hard_mode_box.text and not UIKit.tall_script():
 		panel_h += 1  # (two slimy lines: the last one's drips end 4 rows over the bottom edge, as one line's do, not on its band)
 	var panel_bottom := UIKit.bottom_row_y() - GRID_GAP
@@ -138,7 +138,7 @@ func _layout() -> void:
 	_info_top = panel.position.y + top_pad
 	_info_h = lines_h
 	_place_info()
-	hard_mode_box.position = Vector2(UIKit.center_x(box.x), _info_top + lines_h + UIKit.GAP_L)  # (under the two-line block, whichever mode's text)
+	hard_mode_box.position = Vector2(UIKit.center_x(box.x), _info_top + lines_h + UIKit.GAP_M)  # (under the two-line block, whichever mode's text)
 	UIKit.align_checkbox(hard_mode_box)
 	var grid_y := float(UIKit.title_bottom())
 	if pages > 1:

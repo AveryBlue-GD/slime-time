@@ -1369,6 +1369,63 @@ static func add_skin_text(root: Control) -> SkinText:
 	return skin_text
 
 
+## WCAG relative luminance of a colour (sRGB).
+static func luminance(c: Color) -> float:
+	var out := 0.0
+	var k := [0.2126, 0.7152, 0.0722]
+	var ch := [c.r, c.g, c.b]
+	for i in 3:
+		var v: float = ch[i]
+		out += k[i] * (v / 12.92 if v <= 0.04045 else pow((v + 0.055) / 1.055, 2.4))
+	return out
+
+
+## Contrast ratio of two colours (1..21).
+static func contrast(a: Color, b: Color) -> float:
+	var la := luminance(a)
+	var lb := luminance(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+## The shared contrast helper (M3: meter fill 3:1, message text 4.5:1): `color` lightened toward white, as little as
+## it takes, until it reads `ratio`:1 on `on`. A colour that already does is returned as is; the hue stays.
+static func lift_to_contrast(color: Color, on: Color, ratio: float) -> Color:
+	if contrast(color, on) >= ratio:
+		return color
+	var lo := 0.0
+	var hi := 1.0
+	for i in 12:
+		var mid := (lo + hi) / 2.0
+		if contrast(color.lerp(Color.WHITE, mid), on) >= ratio:
+			hi = mid
+		else:
+			lo = mid
+	return Color(color.lerp(Color.WHITE, hi), color.a)
+
+
+## ANI-12: a control settles into place in 3 whole-pixel steps (4 px low, 1 px high, home) over ~0.1 s. Off with
+## Reduce Motion (and in headless / test runs of a node that is not in the tree).
+## `steps`: [[y offset, seconds], ...] before it is home (the default: 4 px low, 1 px high).
+static func pop_in(node: Control, steps: Array = [[4.0, 0.034], [-1.0, 0.033]]) -> void:
+	if node == null or not node.is_inside_tree() or DisplayServer.get_name() == "headless":
+		return  # (nothing to see headless; keeps layout tests deterministic)
+	var progress := node.get_node_or_null("/root/Progress")
+	if progress != null and progress.reduce_motion:
+		return
+	var tree := node.get_tree()
+	await tree.process_frame  # (a container has placed it by now)
+	if not is_instance_valid(node):
+		return
+	var home := node.position
+	for step: Array in steps:
+		if not is_instance_valid(node):
+			return
+		node.position = home + Vector2(0, step[0])
+		await tree.create_timer(step[1], true, false, true).timeout
+	if is_instance_valid(node):
+		node.position = home
+
+
 static func make_label(text: String, font_size := FONT, color := TEXT) -> Label:
 	var label := Label.new()
 	label.text = text

@@ -115,8 +115,9 @@ func _check_style(style: String, skin: String) -> String:
 				why = "not chalice gold"
 		"glow":
 			var glow: Sprite2D = game.trail_sprite.get_child(0)
-			if not is_equal_approx(glow.modulate.a, Cosmetics.GLOW_TRAIL_GLOW):
-				why = "halo %.2f" % glow.modulate.a
+			var strength := float((glow.material as ShaderMaterial).get_shader_parameter("strength"))
+			if not is_equal_approx(strength, Cosmetics.GLOW_TRAIL_GLOW):
+				why = "halo %.2f" % strength
 		"starry":
 			if float((game.trail_sprite.material as ShaderMaterial).get_shader_parameter("stars")) != 1.0:
 				why = "the shader's stars are off"

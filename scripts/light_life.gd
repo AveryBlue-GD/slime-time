@@ -8,7 +8,7 @@ extends RefCounted
 const SUNRISE_TIME := 1.6
 ## Light pocket: radius (px) and strength of the tint over the clear ground.
 const POCKET_RADIUS := 44.0
-const POCKET_STRENGTH := 0.25
+const POCKET_STRENGTH := 0.3
 const GLINT := Color(1.0, 1.0, 0.9)
 const GOLD := Color(1.0, 0.82, 0.3)
 ## How much of the skin colour is mixed into the theme's light.
@@ -32,7 +32,16 @@ const THEME_LIGHT := {
 ## The tint of the lit pocket: the theme's light leaning toward the worn skin colour.
 static func pocket_tint(theme: String, skin: Color) -> Color:
 	var base: Color = THEME_LIGHT.get(theme, Color(0.9, 0.95, 1.0))
-	return base.lerp(Color(skin, 1.0), SKIN_MIX)
+	return base.lerp(light_color(theme, skin), SKIN_MIX)
+
+
+## ENV-02: the colour a skin lights the world with. Every skin lights equally strongly and only the
+## hue differs: the skin's hue at full value (saturation capped at 0.7), so dark skins (INKKY) are no
+## dimmer than pale ones; near-grey skins use the theme's own light.
+static func light_color(theme: String, skin: Color) -> Color:
+	if skin.s < 0.1:
+		return THEME_LIGHT.get(theme, Color(0.9, 0.95, 1.0))
+	return Color.from_hsv(skin.h, minf(skin.s, 0.7), 1.0)
 
 
 ## Pushes the static settings into the maze fog's material.

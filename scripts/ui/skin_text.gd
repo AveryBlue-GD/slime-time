@@ -167,7 +167,7 @@ func _recolor_theme(theme: Theme, rainbow: bool, base: Color) -> void:
 static func color_for(role: String, skin: Color) -> Color:
 	match role:
 		ROLE_TITLE:
-			return Color.from_hsv(skin.h, minf(skin.s, 0.75), maxf(skin.v, 0.95))
+			return UIKit.lift_to_contrast(Color.from_hsv(skin.h, minf(skin.s, 0.75), maxf(skin.v, 0.95)), UIKit.BG, 4.5)  # (UI-10: >= 4.5:1 on the panel)
 		ROLE_DIM:
 			return Color.from_hsv(skin.h, skin.s * 0.35, 0.72)
 		_:

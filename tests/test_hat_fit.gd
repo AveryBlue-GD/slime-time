@@ -9,7 +9,7 @@ extends "res://tests/suite_base.gd"
 
 ## Animations a hat is worn through (it's popped off for launch and air, so those only need to fit;
 ## a hovering hat, the raincloud, stays on through them, so it's checked on every frame).
-const WORN := ["idle", "glide_", "charge_", "land_", "splat_", "recover", "celebrate"]
+const WORN := ["idle", "glide_", "hurt", "charge_", "land_", "splat_", "recover", "celebrate"]
 ## Brims (and horns) may reach this far past the widest part of the head, outline included.
 const MAX_OVERHANG := 3
 ## How far above the top of the head a hat may reach (cones and pompoms included).

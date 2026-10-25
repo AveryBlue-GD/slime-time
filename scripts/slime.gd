@@ -68,6 +68,17 @@ const RECOVER_ANIM_TIME := 0.15
 const SQUISH_INTERVAL := 0.28
 ## Share of a jump spent on the launch frames before the airborne frames.
 const LAUNCH_SHARE := 0.15
+## The launch frames show for at least this many physics ticks each, whatever the leap's length (ANI-08).
+const LAUNCH_TICKS := 2
+## Hit feedback (ANI-04): the body is white for HIT_WHITE_TICKS ticks, the "ouch" eyes stay for HURT_TICKS, and the sprite
+## is shoved 1 px away for RECOIL_TICKS. A full charge flashes the rim for FULL_FLASH_TICKS ticks (ANI-09).
+const HIT_WHITE_TICKS := 2
+const HURT_TICKS := 14
+const RECOIL_TICKS := 4
+const FULL_FLASH_TICKS := 4
+## SLIMAKAZE afterimages (ANI-10): how many ticks behind the slime each one sits, and the compress frame's length.
+const GHOST_LAG: Array[int] = [3, 6]
+const DASH_COMPRESS_TICKS := 2
 ## Gliding faster than this flicks goo droplets off behind the slime.
 const DRIP_SPEED := 30.0
 ## Animation suffixes for 8 directions, in 45-degree steps clockwise from east (y points down).
@@ -147,6 +158,18 @@ var _recover_after := RECOVER_ANIM_TIME
 ## whatever the tick set, taken off again at the start of the next one).
 var catch_t := -1.0
 var _hop_px := 0.0
+var _air_ticks := 0
+var _hurt_ticks := 0
+var _recoil := Vector2.ZERO
+var _flash_ticks := 0
+var _was_full := false
+var _fx_material: ShaderMaterial
+var _fx_hit := 0.0
+var _fx_rim := 0.0
+var _dash_ticks := 0
+var _ghosts: Array[Sprite2D] = []
+var _ghost_trail: Array[Vector2] = []
+var _ghost_fade := 0
 
 static var _sprite_frames: SpriteFrames
 ## Top-center of the body for each animation frame (see head_point), and the sheet's pixels.
@@ -200,7 +223,10 @@ static func splat_side(wall_normal: Vector2) -> String:
 ## Top-center of the slime's body in a frame, relative to the sprite's center: where a hat sits.
 ## Found from the sheet's pixels (the topmost row of the body), so it follows every squash,
 ## stretch and bounce of the animation. Whole pixels: a body that's an odd pixel off center (a
-## half-pixel center) keeps the hat where it was rather than flicking it a pixel each frame.
+## half-pixel center) keeps the hat where it was rather than flicking it a pixel each frame,
+## unless the dome is half a pixel off the middle and the whole body leans a pixel or more that
+## way (a glide's stretch with its trailing tail): then the half pixel goes with the body, so a
+## wide brim stays balanced over it instead of hanging 4 px off the tail end.
 static func head_point(anim: String, frame: int) -> Vector2:
 	var key := "%s:%d" % [anim, frame]
 	if _heads.has(key):
@@ -210,7 +236,17 @@ static func head_point(anim: String, frame: int) -> Vector2:
 	if not rows.is_empty():
 		var top: Vector3i = rows[0]
 		var center := (top.y + top.z + 1) / 2.0 - FRAME_SIZE / 2.0
-		point = Vector2(float(int(center)), top.x - FRAME_SIZE / 2.0)  # int() rounds +-0.5 to 0
+		var x := float(int(center))  # int() rounds +-0.5 to 0
+		if absf(center) == 0.5:  # (a dome half a pixel off the middle; splats against a wall stay as they are)
+			var left := top.y
+			var right := top.z
+			for r: Vector3i in rows:
+				left = mini(left, r.y)
+				right = maxi(right, r.z)
+			var lean := (left + right + 1) / 2.0 - FRAME_SIZE / 2.0
+			if absf(lean) >= 1.0 and signf(lean) == signf(center):
+				x = center + 0.5 * signf(center)
+		point = Vector2(x, top.x - FRAME_SIZE / 2.0)
 	_heads[key] = point
 	return point
 
@@ -431,6 +467,8 @@ func dash(target: Vector2, dir: Vector2, speed: float, stun: float) -> void:
 	_soft_hold_left = 0.0
 	_jump_buffer_left = 0.0
 	state = State.DASH
+	_dash_ticks = 0
+	_start_ghosts()
 	_sfx_stop("charge")
 	launched.emit(dir * speed, position.distance_to(target) / maxf(speed, 1.0))
 
@@ -502,6 +540,7 @@ func launch(charge_value: float) -> void:
 	facing = _jump_dir
 	_jump_distance = jump_distance_for(charge_value)
 	_jump_traveled = 0.0
+	_air_ticks = 0
 	ricochets = 0
 	_soft = Economy.soft_bounce_on()
 	last_hit_glancing = false
@@ -581,6 +620,9 @@ func _physics_process(delta: float) -> void:
 	_drips.emitting = state == State.GLIDE and not frozen and velocity.length() > DRIP_SPEED
 	if _drips.emitting:
 		_drips.direction = -velocity.normalized()
+	if state == State.AIRBORNE:
+		_air_ticks += 1
+	_update_feedback()
 	_animate()
 	if catch_t >= 0.0:
 		_catch_hop_step(delta)
@@ -668,6 +710,9 @@ func _animate() -> void:
 			_show_frame("splat_" + _splat_side, 0.0)  # the first squashed frame, held
 		return  # hit-stop: the picture holds on the moment of impact
 	var facing_name := dir_name(facing)
+	if _hurt_ticks > 0 and state == State.GLIDE:
+		_show_frame("hurt", 0.0 if _hurt_ticks > HURT_TICKS - 4 else 0.99)
+		return
 	match state:
 		State.GLIDE:
 			if _catch_frames():
@@ -682,18 +727,112 @@ func _animate() -> void:
 			else:
 				_play("idle")
 		State.CHARGING:
-			_show_frame("charge_" + dir_name(leap_aim()), charge / 100.0)
+			# ANI-09: frame 3 (eyes shut, sparkles) arrives only at 100%
+			_show_frame("charge_" + dir_name(leap_aim()), (minf(charge / 100.0 * 3.0, 3.0) + 0.01) / 4.0)
 		State.AIRBORNE:
 			var t := _jump_traveled / _jump_distance
 			var jump_name := dir_name(_jump_dir)
-			if t < LAUNCH_SHARE:
-				_show_frame("launch_" + jump_name, t / LAUNCH_SHARE)
+			var launch_ticks := LAUNCH_TICKS * 2  # (2 launch frames, each at least LAUNCH_TICKS ticks)
+			if _air_ticks < launch_ticks:
+				# ANI-08: by time, not distance: a 1-tile hop is far past 15% after one tick
+				_show_frame("launch_" + jump_name, float(_air_ticks) / launch_ticks)
 			else:
 				_show_frame("air_" + jump_name, (t - LAUNCH_SHARE) / (1.0 - LAUNCH_SHARE))
 		State.STUNNED:
 			_show_frame("splat_" + _splat_side, 1.0 - _stun_left / maxf(_stun_total, 0.001))
 		State.DASH:
-			_show_frame("air_" + dir_name(_jump_dir), 0.5)
+			if _dash_ticks < DASH_COMPRESS_TICKS:
+				_show_frame("launch_" + dir_name(_jump_dir), 0.0)  # the compress, then the dash
+			else:
+				_show_frame("air_" + dir_name(_jump_dir), 0.5)
+
+
+## ANI-04 / ANI-09 / ANI-10: one tick of the hit flash, the recoil, the full-charge rim flash and the afterimages.
+func _update_feedback() -> void:
+	if _hurt_ticks > 0:
+		_hurt_ticks -= 1
+	if _special_anim != "":
+		_hurt_ticks = 0
+	var hit_now := 1.0 if _hurt_ticks > HURT_TICKS - HIT_WHITE_TICKS else 0.0
+	var full := state == State.CHARGING and charge >= 100.0
+	if full and not _was_full:
+		_flash_ticks = FULL_FLASH_TICKS
+	_was_full = full
+	var rim_now := 1.0 if _flash_ticks > 0 else 0.0
+	_flash_ticks = maxi(_flash_ticks - 1, 0)
+	var mat := sprite.material as ShaderMaterial
+	if mat != null and (mat != _fx_material or not is_equal_approx(hit_now, _fx_hit) or not is_equal_approx(rim_now, _fx_rim)):
+		_fx_material = mat
+		_fx_hit = hit_now
+		_fx_rim = rim_now
+		mat.set_shader_parameter("hit", hit_now)
+		mat.set_shader_parameter("rim", rim_now)
+	# 1 px recoil: the sprite sits one pixel off, away from the blow, for a few ticks
+	var want := _recoil if _hurt_ticks > HURT_TICKS - RECOIL_TICKS else Vector2.ZERO
+	if sprite.offset != want:
+		sprite.offset = want
+	if state == State.DASH:
+		_dash_ticks += 1
+	_step_ghosts()
+
+
+## The slime was hit (a lurker): white body for 2 ticks, a 1 px recoil away along `away`, then "ouch" eyes.
+func hurt(away: Vector2) -> void:
+	_hurt_ticks = HURT_TICKS
+	_recoil = Vector2(signf(away.x) if absf(away.x) > 0.3 else 0.0, signf(away.y) if absf(away.y) > 0.3 else 0.0)
+	var progress := get_node_or_null("/root/Progress")
+	if progress and progress.reduce_motion:
+		_recoil = Vector2.ZERO
+
+
+func is_hurt() -> bool:
+	return _hurt_ticks > 0
+
+
+## SLIMAKAZE: two dithered afterimages of the skin's deep shade trail the dash (previous positions).
+func _start_ghosts() -> void:
+	_ghost_trail.clear()
+	_ghost_fade = 0
+	for g in _ghosts:
+		g.visible = false
+	if _ghosts.is_empty():
+		for i in GHOST_LAG.size():
+			var g := Sprite2D.new()
+			g.top_level = true
+			g.show_behind_parent = true
+			g.visible = false
+			add_child(g)
+			_ghosts.append(g)
+
+
+func _step_ghosts() -> void:
+	if _ghosts.is_empty():
+		return
+	if state == State.DASH:
+		_ghost_fade = GHOST_LAG[GHOST_LAG.size() - 1] + 2
+		_ghost_trail.push_front(global_position)
+		if _ghost_trail.size() > GHOST_LAG[GHOST_LAG.size() - 1] + 1:
+			_ghost_trail.pop_back()
+	elif _ghost_fade > 0:
+		_ghost_fade -= 1
+	else:
+		for g in _ghosts:
+			g.visible = false
+		return
+	var mat := sprite.material as ShaderMaterial
+	for i in _ghosts.size():
+		var g := _ghosts[i]
+		var lag: int = GHOST_LAG[i]
+		var shown := state == State.DASH and _ghost_trail.size() > lag and _dash_ticks > DASH_COMPRESS_TICKS
+		if state != State.DASH and _ghost_fade > 0:
+			shown = _ghost_trail.size() > lag and _ghost_fade > lag * 0.6
+		g.visible = shown
+		if shown:
+			g.texture = sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+			if g.material == null and mat != null:
+				g.material = mat.duplicate()
+				(g.material as ShaderMaterial).set_shader_parameter("ghost", 1.0)
+			g.global_position = _ghost_trail[lag].round()
 
 
 func _play(anim: String) -> void:
