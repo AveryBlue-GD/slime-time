@@ -400,22 +400,23 @@ static func _draw_x(image: Image, r: Rect2i, color: Color) -> void:
 ##   lit, the rest dark; `route` 0 = none, 1 = a last try (faint), 2 = a best clear (solid): the
 ##   example route, only over lit cells; at 100% the frame turns gold.
 ## Cached: the same arguments give the same ImageTexture, so the tiles cost nothing after the first.
-static func preview(level: int, hard: bool, percent: int, route: int, locked: bool, theme := "") -> ImageTexture:
+## `plain`: never the gold "fully uncovered" frame (gold is for rewards; the demo end screen's cards).
+static func preview(level: int, hard: bool, percent: int, route: int, locked: bool, theme := "", plain := false) -> ImageTexture:
 	var ex := example(level, hard)
 	var total: int = ex.order.size()
 	var lit := 0
 	if not locked:
 		lit = total if percent >= 100 else clampi(floori(percent * total / 100.0), 1 if percent > 0 else 0, total - 1)
-	var key := "%d|%d|%d|%d|%d|%s" % [level, int(hard), lit, route if not locked else 0, int(locked), theme]
+	var key := "%d|%d|%d|%d|%d|%s|%d" % [level, int(hard), lit, route if not locked else 0, int(locked), theme, int(plain)]
 	if _previews.has(key):
 		return _previews[key]
-	var texture := ImageTexture.create_from_image(preview_image(ex, lit, route if not locked else 0, locked, theme))
+	var texture := ImageTexture.create_from_image(preview_image(ex, lit, route if not locked else 0, locked, theme, plain))
 	_previews[key] = texture
 	return texture
 
 
 ## The preview's pixels (see `preview`): `ex` from `example`, `lit` cells lit.
-static func preview_image(ex: Dictionary, lit: int, route: int, locked: bool, theme := "") -> Image:
+static func preview_image(ex: Dictionary, lit: int, route: int, locked: bool, theme := "", plain := false) -> Image:
 	var pal := palette(theme)
 	var px := map_size(EXAMPLE_CELLS, EXAMPLE_SIZES)
 	var image := Image.create_empty(px.x + 2, px.y + 2, false, Image.FORMAT_RGBA8)
@@ -434,7 +435,7 @@ static func preview_image(ex: Dictionary, lit: int, route: int, locked: bool, th
 			pal.route = pal.faint
 		_draw_route(inner, seen, ex.route, EXAMPLE_SIZES, pal)
 	image.blit_rect(inner, Rect2i(Vector2i.ZERO, px), Vector2i.ONE)
-	_draw_mini_frame(image, pal.frame, theme, locked, lit == ex.order.size() and lit > 0)
+	_draw_mini_frame(image, pal.frame, theme, locked, lit == ex.order.size() and lit > 0 and not plain)
 	return image
 
 

@@ -14,6 +14,8 @@ gem in the caverns, a flame in the vault. Coin.GLOW (scripts/coin.gd) matches ea
 import math
 from pathlib import Path
 
+from art_checks import outline_problems
+from make_placeholder_art import PAL
 from upscale_png import write_png  # writes rows of RGBA tuples
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "sprites"
@@ -47,7 +49,7 @@ EMBLEMS = {
     "volcanic": ["..#..", ".##..", ".###.", "#####", ".###."],
 }
 OUTLINE_FLOOR = {"obsidian": (30, 24, 52)}
-GOLD, GOLD_SHADOW, GOLD_GLINT = (255, 205, 117, 255), (209, 136, 58, 255), (255, 240, 180, 255)  # PAL y o Y
+GOLD, GOLD_SHADOW, GOLD_GLINT = PAL["y"], PAL["o"], PAL["Y"]  # CON-06: named from the shared palette
 THEME_ORDER = ["dungeon", "mossy", "sandstone", "sunken", "sewers", "catacombs", "frozen", "obsidian",
                "crystal", "volcanic"]
 
@@ -65,9 +67,9 @@ def coin_frame(theme: str, k: int) -> list[list[tuple]]:
     ridge = mix(rim, (0, 0, 0), 0.25)
     angle = k * math.pi / FRAMES
     turn = abs(math.cos(angle))
-    rx = max(5.0 * turn, 0.8)
     ry = 5.0
     thick = round(2.0 * math.sin(angle))  # the edge you see as it turns
+    rx = max(5.0 * turn - thick / 2.0, 0.8)  # SPR-24: the edge is part of the width, so the spin only narrows
     cx = SIZE / 2.0 - thick / 2.0
     cy = SIZE / 2.0
 
@@ -144,7 +146,25 @@ def coin_frame(theme: str, k: int) -> list[list[tuple]]:
     return out
 
 
+def check() -> int:
+    """CON-06 / M32: no outline darker than a max channel of 16, and the two sheets agree."""
+    bad = 0
+    for theme in THEME_ORDER:
+        rim = COINS[theme][0]
+        o = mix((*rim, 255), (0, 0, 0), 0.5)
+        if theme in OUTLINE_FLOOR:
+            o = tuple(max(a, b) for a, b in zip(o, OUTLINE_FLOOR[theme]))
+        for msg in outline_problems({"coin " + theme: o}):
+            print(msg)
+            bad += 1
+    print("coins check: %s" % ("OK" if not bad else "FAIL"))
+    return 1 if bad else 0
+
+
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv:
+        sys.exit(check())
     rows = []
     for theme in THEME_ORDER:
         frames = [coin_frame(theme, k) for k in range(FRAMES)]

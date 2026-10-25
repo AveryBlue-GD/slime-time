@@ -20,6 +20,13 @@ func _initialize() -> void:
 		Economy.lightlife_force = 0
 		_check(Ambient.amount_for(theme, false) <= Ambient.MAX_AMOUNT, "%s motes unchanged off" % theme)
 
+	# ENV-21: every preset skin lights within +-10% of the same luminance (strength x full-value luma)
+	for preset: Dictionary in Skins.PRESETS:
+		var c: Color = preset.color
+		var lum: float = LightLife.luminance(LightLife.light_color("dungeon", c)) * LightLife.strength_scale(c)
+		print("light luma ", preset.id, " ", snappedf(lum, 0.001))
+		_check(absf(lum / LightLife.LIGHT_LUMA_TARGET - 1.0) <= 0.1, "%s skin light is within 10%% of the target luminance" % preset.id)
+
 	var off: Node2D = await _spawn_game({level = 1})
 	var off_mat := off.fog_sprite.material as ShaderMaterial
 	_check(off_mat.get_shader_parameter("ll_on") != true, "flag off: the fog's ll_on stays false")

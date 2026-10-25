@@ -46,6 +46,8 @@ uniform float deep_gain = 0.55;
 uniform float vig_max = 0.35;
 uniform float light_inner = 32.0;
 uniform float light_outer = 115.0;
+// ANI-25: 0 = off .. 1 = closed to a 12 px circle around the slime (the game steps it in quarters).
+uniform float lights_out = 0.0;
 
 // LIGHT & LIFE (Economy.LIGHT_LIFE_TEST, BM-09). All of it is skipped while ll_on is false, so the
 // old look is pixel-identical. Only plain uniforms and bayer4(): no run-time-indexed arrays.
@@ -174,6 +176,13 @@ void fragment() {
 	float vig = smoothstep(0.55, 1.15, vd) * vig_max;
 	alpha = max(alpha, vig * step(alpha, 0.999));
 
+	// ANI-25: the dry-up's lights-out: a ring closing on the slime, 4 Bayer steps wide, nothing smooth.
+	float lo = 0.0;
+	if (lights_out > 0.0) {
+		float ring = clamp((d - mix(260.0, 12.0, lights_out)) / 24.0, 0.0, 1.0);
+		lo = floor(ring * 4.0 + threshold) / 4.0;
+	}
+
 	// LIGHT & LIFE: light (rgb, a) added in the clear, plus rim light on walls and a sunrise ring in the fog.
 	vec4 ll = vec4(0.0);
 	float rim = 0.0;
@@ -215,14 +224,18 @@ void fragment() {
 		if (cell_age_wall(texture(TEXTURE, UV)).y < 0.5) {
 			vec2 local = floor(fract(UV / tp) * (map_size * tp));
 			float edge = 0.0;
+			float tsh = thr_shadow(pixel);
 			if (cell_age_wall(texture(TEXTURE, UV - vec2(0.0, tp.y))).y > 0.5) {
-				edge = local.y < 0.5 ? 1.0 : step(thr_shadow(pixel), 0.5);
+				edge = local.y < 0.5 ? 1.0 : step(tsh, 0.5);
+			} else if (cell_age_wall(texture(TEXTURE, UV - vec2(0.0, 2.0 * tp.y))).y > 0.5 && local.y < 0.5) {
+				edge = step(tsh, 0.25);  // ENV-24: a third, sparser row under the first cell
 			}
-			if (cell_age_wall(texture(TEXTURE, UV - vec2(tp.x, 0.0))).y > 0.5 && local.x < 0.5) {
-				edge = max(edge, step(thr_shadow(pixel), 0.35));
+			if (cell_age_wall(texture(TEXTURE, UV - vec2(tp.x, 0.0))).y > 0.5) {
+				edge = max(edge, local.x < 0.5 ? step(tsh, 0.5) : step(tsh, 0.25));
 			}
 			float on_trail = ll_on ? step(0.01, texture(trail_tex, UV).a) : 0.0;
-			shadow = edge * mix(0.35, 0.2, on_trail);
+			// ENV-24: readable on the goo (3 dithered rows), a bit stronger still on bare floor
+			shadow = edge * mix(0.35, 0.3, on_trail);
 		}
 	}
 	if (alpha <= 0.0) {
@@ -232,11 +245,15 @@ void fragment() {
 			COLOR = ll;
 		}
 		if (shadow > 0.0) {
-			// (a lit pixel keeps its light: the shadow darkens what is under it)
-			COLOR = vec4(0.0, 0.0, 0.0, shadow);
+			// ENV-24: darken instead of replace: the light pocket's colour keeps its hue, dimmed by the shadow
+			float na = 1.0 - (1.0 - shadow) * (1.0 - ll.a);
+			COLOR = vec4(ll.rgb * ll.a * (1.0 - shadow) / na, na);
 		}
 		if (sun > 0.0) {
 			COLOR = vec4(goal_color, 0.5);
+		}
+		if (lo > 0.0) {
+			COLOR = vec4(0.0, 0.0, 0.0, lo);  // ANI-25
 		}
 	} else {
 		// Drifting mist: two layers of noise moving at different speeds, banded for a pixel look.
@@ -257,6 +274,10 @@ void fragment() {
 			float shaded = alpha + (1.0 - alpha) * shadow;
 			rgb *= alpha / shaded;
 			alpha = shaded;
+		}
+		if (lo > 0.0) {
+			rgb *= 1.0 - lo;  // ANI-25
+			alpha = alpha + (1.0 - alpha) * lo;
 		}
 		COLOR = vec4(rgb, alpha);
 	}

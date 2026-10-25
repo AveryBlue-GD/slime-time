@@ -25,3 +25,30 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	_glow.modulate.a = GLOW_STRENGTH * (0.7 + 0.3 * sin(_time * PULSE_SPEED))
+
+
+## ANI-02: the win consumes the chalice (sheet frames 4 tilt toward the slime, 5 gulp, 6 gone; ~0.25 s). The slime gulps on
+## frame 5 and then celebrates. Node-bound tween, so leaving the tree stops it; the slime is checked before each call.
+func consume(slime: Node2D) -> void:
+	var toward := signf(slime.global_position.x - global_position.x)
+	sprite.flip_h = toward < 0.0
+	sprite.frame = 4
+	var tween := create_tween()
+	tween.tween_interval(0.08)
+	tween.tween_callback(_gulp.bind(slime))
+	tween.tween_interval(0.08)
+	tween.tween_callback(_gone.bind(slime))
+
+
+func _gulp(slime: Node2D) -> void:
+	sprite.frame = 5
+	if is_instance_valid(slime):
+		slime.play_gulp()
+
+
+func _gone(slime: Node2D) -> void:
+	sprite.frame = 6
+	sprite.visible = false
+	_glow.visible = false
+	if is_instance_valid(slime):
+		slime.play_celebrate()

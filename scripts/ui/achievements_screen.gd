@@ -25,21 +25,18 @@ var next_arrow: Button
 var _row_root: Control
 
 
-## A 7x7 check box: outline, and a pixel-art check inside when `on`.
+## UI-27: a goal's mark, no box: a small gold tick when met (7x7 cell), a small dim dot when not.
 class Mark extends Control:
 	var on := false
 
 	func _draw() -> void:
-		var c := UIKit.GOLD if on else UIKit.TEXT_OFF
-		draw_rect(Rect2(0, 0, MARK, 1), c)
-		draw_rect(Rect2(0, MARK - 1, MARK, 1), c)
-		draw_rect(Rect2(0, 0, 1, MARK), c)
-		draw_rect(Rect2(MARK - 1, 0, 1, MARK), c)
-		if on:
-			for p: Vector2i in [Vector2i(1, 3), Vector2i(2, 4), Vector2i(3, 3), Vector2i(4, 2), Vector2i(5, 1)]:
-				draw_rect(Rect2(p.x, p.y, 1, 1), c)
-			draw_rect(Rect2(2, 3, 1, 1), c)
-			draw_rect(Rect2(3, 4, 1, 1), c)
+		if not on:
+			draw_rect(Rect2(MARK / 2 - 1, MARK / 2 - 1, 2, 2), UIKit.TEXT_OFF)
+			return
+		for p: Vector2i in [Vector2i(0, 3), Vector2i(1, 4), Vector2i(2, 5), Vector2i(3, 4), Vector2i(4, 3), Vector2i(5, 2), Vector2i(6, 1)]:
+			draw_rect(Rect2(p.x, p.y, 1, 1), UIKit.GOLD)
+		for p: Vector2i in [Vector2i(1, 3), Vector2i(2, 4), Vector2i(3, 3), Vector2i(4, 2), Vector2i(5, 1)]:
+			draw_rect(Rect2(p.x, p.y, 1, 1), UIKit.GOLD.darkened(0.25))  # (the tick's under edge: 2 px thick, not a hairline)
 
 
 ## IMP4-07 (BEN3-06 light): the reward road, one strip above the bottom row: WINS 0..100 as a track (gold up to your
@@ -136,7 +133,8 @@ func _ready() -> void:
 	add_child(_row_root)
 	_add_road(p)
 	# i18n: button, max 70px, 1 line; shows the next page of achievements (wraps to the first)
-	next_button = UIKit.make_button(Loc.t("ach.next", "NEXT PAGE"), func() -> void: _turn(1))
+	var next_text := Loc.t("ach.next", "NEXT PAGE")
+	next_button = UIKit.make_button(next_text, func() -> void: _turn(1), UIKit.button_size(next_text, 0))  # (UI-30: the text plus BUTTON_TEXT_PAD each side)
 	add_child(next_button)
 	UIKit.place_bottom_row(next_button, 1)
 	count_label = UIKit.add_label(self, "", Rect2(0, UIKit.bottom_row_y(), UIKit.SCREEN.x, UIKit.button_h()), UIKit.FONT, UIKit.TEXT)
@@ -169,7 +167,8 @@ func _add_road(p: Node) -> void:
 		var text := str(mark)  # i18n: ignore (numbers only)
 		var w := UIKit.text_w(text)
 		var cx := x0 + roundi(road.size.x - 1.0) * mark / int(ROAD_MAX)
-		var number := UIKit.add_label(self, text, Rect2(cx - w / 2 if mark < 100 else cx - w + 1, y + 5, w, UIKit.line_h() - 5), UIKit.FONT, UIKit.GOLD if p.randoms_won >= mark else UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+		# (UI-30: the numbers sit 2 clear rows under the ticks, which end on row y + 5)
+		var number := UIKit.add_label(self, text, Rect2(cx - w / 2 if mark < 100 else cx - w + 1, y + 8, w, UIKit.line_h() - 5), UIKit.FONT, UIKit.GOLD if p.randoms_won >= mark else UIKit.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 		number.set_meta("road", "number")
 
 

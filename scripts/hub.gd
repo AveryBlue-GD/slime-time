@@ -591,7 +591,7 @@ func _build_hints() -> void:
 	for station: Dictionary in _all_props():
 		var label := UIKit.make_label(station.name, UIKit.FONT, UIKit.TEXT)
 		var back := StyleBoxFlat.new()
-		back.bg_color = Color(0.04, 0.03, 0.08, 0.78)
+		back.bg_color = UIKit.DEEP  # (CON-23: opaque plate)
 		back.content_margin_left = 3
 		back.content_margin_right = 2
 		back.content_margin_top = 1
@@ -651,7 +651,7 @@ func _refresh_badges() -> void:
 			bang.add_theme_color_override("font_color", UIKit.TEXT_DIM)
 			bang.self_modulate = Color.WHITE
 			bang.material = UIKit.text_material()
-			bang.add_theme_stylebox_override("normal", _badge_style(Color(0.04, 0.03, 0.08, 0.78)))
+			bang.add_theme_stylebox_override("normal", _badge_style(UIKit.DEEP))
 			bang.visible = true
 		else:
 			bang.text = "!"
@@ -678,31 +678,13 @@ func _place_hints() -> void:
 	if name_layer == null:
 		return
 	var safe := UIKit.safe_rect()
+	var placed: Array[Rect2] = []
 	for station: Dictionary in _all_props():
 		var label: Label = name_labels[station.id]
-		var at: Vector2 = station.sprite.position
-		var half := label.size.x / 2.0
-		var x := clampf(roundf(at.x - half), safe.position.x + 1.0, safe.end.x - label.size.x - 1.0)
 		# (the name under the feet; the sign beside the portal wears its name over its head, clear of the portal's)
 		var beside: bool = station.has("anchor")
-		var label_y: float = at.y - station.size.y - label.size.y - 1.0 if beside else minf(at.y + 2.0, safe.end.y - label.size.y - 1.0)
-		# UI-05: on a touchscreen a name never sits under the joystick or the JUMP circle: it moves above its prop.
-		if _touch_controls != null and _touch_controls.visible and not beside:
-			var spot := Rect2(x, label_y, label.size.x, label.size.y)
-			for circle: Rect2 in _touch_circles():
-				if spot.intersects(circle):
-					# (sideways off the circle if that is close, else above the prop)
-					var side_x := INF
-					for cand: float in [circle.end.x + 1.0, circle.position.x - label.size.x - 1.0]:
-						if absf(cand - x) <= 40.0 and absf(cand - x) < absf(side_x - x) and cand > safe.position.x and cand + label.size.x < safe.end.x:
-							side_x = cand
-					if side_x != INF:
-						x = side_x
-					else:
-						label_y = at.y - station.size.y - label.size.y - 1.0
-					break
-		label.position = Vector2(_clear_x_of_props(station, label, x, maxf(safe.position.y + 1.0, label_y), safe),
-			maxf(safe.position.y + 1.0, label_y))
+		label.position = _solve_label(station, label, beside, safe, placed)
+		placed.append(Rect2(label.position, label.size))
 		if badges.has(station.id):
 			_place_badge(station, label, beside, safe)
 	_clear_badges(safe)
@@ -718,35 +700,86 @@ func _touch_circles() -> Array[Rect2]:
 		Rect2(_touch_controls.JUMP_CENTER - Vector2.ONE * jump_r, Vector2.ONE * jump_r * 2.0)]
 
 
-## UI-14: a name label stays at least LABEL_PROP_GAP px off every other prop's sprite (the DAILY MAZE name sat
-## across the SETTINGS post): the label slides sideways to the nearest clear spot inside the safe rect.
-func _clear_x_of_props(station: Dictionary, label: Label, x: float, y: float, safe: Rect2) -> float:
-	var rect := Rect2(x, y, label.size.x, label.size.y)
-	var hits: Array[Rect2] = []
+## UI-24: the one-pass label solver. Candidates, in order of preference (below the feet, above the head, then
+## each of those slid sideways, then left and right of the prop; the portal's sign starts above): the first
+## that sits inside the safe rect and touches no other prop's sprite (LABEL_PROP_GAP off), no touch circle
+## (joystick, JUMP) and no label already placed is taken; when none is free, the least overlapping one.
+func _solve_label(station: Dictionary, label: Label, beside: bool, safe: Rect2, placed: Array[Rect2]) -> Vector2:
+	var at: Vector2 = station.sprite.position
+	var size := label.size
+	var cx := roundf(at.x - size.x / 2.0)
+	var below: float = minf(at.y + 2.0, safe.end.y - size.y - 1.0)
+	var above: float = at.y - station.size.y - size.y - 1.0
+	var mid_y: float = at.y - station.size.y / 2.0 - size.y / 2.0
+	var obstacles: Array[Rect2] = []
 	for other: Dictionary in _all_props():
 		if other.id == station.id:
 			continue
-		var at: Vector2 = other.sprite.position
-		var box := Rect2(at.x - other.size.x / 2.0, at.y - other.size.y, other.size.x, other.size.y).grow(LABEL_PROP_GAP)
-		if box.intersects(rect):
-			hits.append(box)
-	if hits.is_empty():
-		return x
-	var best := x
-	var best_d := INF
-	for box: Rect2 in hits:
-		for cand: float in [box.position.x - label.size.x, box.end.x]:
-			var r := Rect2(cand, y, label.size.x, label.size.y)
-			if cand < safe.position.x + 1.0 or cand + label.size.x > safe.end.x - 1.0:
-				continue
-			var clear := true
-			for other_box: Rect2 in hits:
-				if other_box.intersects(r):
-					clear = false
-			if clear and absf(cand - x) < best_d and absf(cand - x) <= 30.0:
-				best = cand
-				best_d = absf(cand - x)
-	return roundf(best)
+		var op: Vector2 = other.sprite.position
+		obstacles.append(Rect2(op.x - other.size.x / 2.0, op.y - other.size.y, other.size.x, other.size.y).grow(LABEL_PROP_GAP))
+	if _touch_controls != null and _touch_controls.visible:
+		for circle: Rect2 in _touch_circles():  # (a name on a touch circle costs more than one on a prop)
+			for _w in (40 if station.id == "settings" or station.id == "quit" else 3):  # (SETTINGS and QUIT must stay clear)
+				obstacles.append(circle)
+	if ticket_label != null and ticket_label.is_inside_tree():  # (the ticket / medal pod in the corner)
+		var pod := ticket_label.get_parent() as Control
+		if pod != null:
+			obstacles.append(pod.get_global_rect().grow(4.0))
+	obstacles.append_array(placed)
+	# (attached candidates only: straight below / above, then right / left, centred on the prop's axis, each at the
+	# tight gap and at GAP_S; never slid away, so a name always reads as its own prop's)
+	var cands: Array[Vector2] = []
+	var gaps: Array[float] = [0.0, float(UIKit.GAP_S)]
+	var half_w: float = station.size.x / 2.0
+	for g: float in gaps:
+		var by: float = (below if not beside else above)
+		var ay: float = (above if not beside else below)
+		if g > 0.0:
+			by += g if not beside else -g
+			ay += -g if not beside else g
+		cands.append(Vector2(cx, by))
+		cands.append(Vector2(cx, ay))
+	for g: float in gaps:
+		cands.append(Vector2(at.x + half_w + LABEL_PROP_GAP + 1.0 + g, mid_y))
+		cands.append(Vector2(at.x - half_w - size.x - LABEL_PROP_GAP - 1.0 - g, mid_y))
+	# (last resorts, still on the prop: slid along its edge, nearer one side)
+	for shift: float in [6.0, 12.0, 18.0, 24.0, 30.0, 36.0, 44.0]:
+		for y: float in [below if not beside else above, above if not beside else below]:
+			cands.append(Vector2(cx - shift, y))
+			cands.append(Vector2(cx + shift, y))
+	for dy: float in [-12.0, 12.0, -24.0, 24.0]:  # (and the sides, raised or lowered along the prop)
+		cands.append(Vector2(at.x + half_w + LABEL_PROP_GAP + 1.0, mid_y + dy))
+		cands.append(Vector2(at.x - half_w - size.x - LABEL_PROP_GAP - 1.0, mid_y + dy))
+	var own := Vector2(at.x, at.y - station.size.y / 2.0)
+	var others: Array[Vector2] = []
+	for other: Dictionary in _all_props():
+		if other.id != station.id:
+			others.append(Vector2(other.sprite.position.x, other.sprite.position.y - other.size.y / 2.0))
+	var best := cands[0]
+	var best_cost := INF
+	var inner := safe.grow(-1.0)
+	for c: Vector2 in cands:
+		var r := Rect2(roundf(c.x), roundf(c.y), size.x, size.y)
+		# (a name pushed against a screen edge is judged where it ends up)
+		r.position = Vector2(clampf(r.position.x, inner.position.x, maxf(inner.position.x, inner.end.x - size.x)),
+			clampf(r.position.y, inner.position.y, maxf(inner.position.y, inner.end.y - size.y)))
+		var cost := 0.0
+		for o: Rect2 in obstacles:
+			var hit := o.intersection(r)
+			if hit.has_area():
+				cost += 10.0 + hit.get_area()
+		# (the name's centre must be nearer its own prop than any other: a hard rule, the least wrong when none is)
+		var centre := r.get_center()
+		var d_own := centre.distance_to(own)
+		for op2: Vector2 in others:
+			var d_other := centre.distance_to(op2)
+			if d_other <= d_own:
+				cost += 5000.0 + (d_own - d_other)
+		cost += d_own * 0.01  # (all else equal, the one closest to the prop)
+		if cost < best_cost - 0.0001:
+			best_cost = cost
+			best = r.position
+	return best
 
 
 ## A "!" badge never covers a visible station name or another badge (IMP2-06 fix): a badge that would moves to the

@@ -446,16 +446,19 @@ func _replay_story() -> void:
 	Story.play(get_tree(), "intro", UIKit.TITLE_SCENE)
 
 
-## ANI-11: a living drip on the logo. Every 1.5-3 s one of the logo's own drip tips stretches 2 px over
-## 3 frames, then a 2x3 droplet falls 6-10 px, splats 3 px wide and fades in 4 steps. All in whole pixels,
+## ANI-11 / ANI-29: a living drip on the logo. Every 1.5-3 s one of the logo's own drip tips stretches 2 px over
+## 3 frames, then a 2x3 droplet (lit top pixel, body, outline foot) falls 8-14 px under gravity (1, 1, 2, 2, 3 px
+## per 0.05 s step, then 3), splats 5 px wide and fades in 4 steps. All in whole pixels,
 ## in the logo's own goo shades (sampled from its pixels, so the skin shader recolours it with the logo).
 class LogoDrip extends Node2D:
 	const STRETCH := 0.05  # s per stretch frame (3 frames)
-	const FALL := 0.3
+	const FALL := 0.4  # (8 gravity steps: enough for 14 px; it rests on the ground row for any spare steps)
+	const STEP := 0.05  # s per gravity step
+	const DROP: Array[int] = [0, 1, 2, 4, 6, 9]  # px fallen after each step (1, 1, 2, 2, 3), then 3 more per step
 	const SPLAT := 0.1
 	const FADE_STEP := 0.08  # 4 steps
 	var tips: Array[Vector2i] = []  # x, bottom row of each drip tip
-	var cols: Array[Color] = []  # per tip: outline, mid, dark (as drawn in the logo)
+	var cols: Array[Color] = []  # per tip: outline, mid, dark, lit (as drawn in the logo)
 	var _wait := 2.0
 	var _t := 0.0
 	var _tip := -1
@@ -474,7 +477,7 @@ class LogoDrip extends Node2D:
 			var b := -1
 			for y in range(h - 1, -1, -1):
 				var c := img.get_pixel(x, y)
-				if c.a > 0.5 and c.r8 + c.g8 + c.b8 > 40:  # (not the near-black drop shadow)
+				if c.a > 0.5 and c.r8 + c.g8 + c.b8 > 90:  # (not the DEEP drop shadow, 16 16 28)
 					b = y
 					break
 			bottom.append(b)
@@ -488,6 +491,12 @@ class LogoDrip extends Node2D:
 				cols.append(img.get_pixel(x, b))
 				cols.append(img.get_pixel(x, b - 2))
 				cols.append(img.get_pixel(x, b - 4))
+				var lit := img.get_pixel(x, b - 2)
+				for dy in range(1, 9):  # the lightest pixel in the stem above the tip: the droplet's glint
+					var c := img.get_pixel(x, b - dy)
+					if c.a > 0.5 and c.get_luminance() > lit.get_luminance():
+						lit = c
+				cols.append(lit)
 		if tips.is_empty():
 			set_process(false)
 
@@ -496,7 +505,7 @@ class LogoDrip extends Node2D:
 		if _tip < 0:
 			if _t >= _wait:
 				_tip = _rng.randi() % tips.size()
-				_fall = _rng.randi_range(6, 10)
+				_fall = _rng.randi_range(8, 14)
 				_t = 0.0
 		elif _t >= 3.0 * STRETCH + FALL + SPLAT + 4.0 * FADE_STEP:
 			_tip = -1
@@ -508,9 +517,10 @@ class LogoDrip extends Node2D:
 		if _tip < 0:
 			return
 		var tip := tips[_tip]
-		var edge := cols[_tip * 3]
-		var mid := cols[_tip * 3 + 1]
-		var dark := cols[_tip * 3 + 2]
+		var edge := cols[_tip * 4]
+		var mid := cols[_tip * 4 + 1]
+		var dark := cols[_tip * 4 + 2]
+		var lit := cols[_tip * 4 + 3]
 		var t := _t
 		var stretch_end := 3.0 * STRETCH
 		if t < stretch_end:
@@ -522,10 +532,12 @@ class LogoDrip extends Node2D:
 		t -= stretch_end
 		var top := tip.y + 3
 		if t < FALL:
-			var k := t / FALL
-			var y := top + roundi((_fall - 3) * k * k)
-			draw_rect(Rect2(tip.x - 1, y, 2, 3), edge)
-			draw_rect(Rect2(tip.x - 1, y + 1, 1, 1), mid)
+			var step := int(t / STEP)
+			var fallen: int = DROP[step] if step < DROP.size() else DROP[-1] + (step - DROP.size() + 1) * 3
+			var y := top + mini(fallen, _fall - 3)
+			draw_rect(Rect2(tip.x - 1, y, 2, 3), mid)
+			draw_rect(Rect2(tip.x - 1, y, 1, 1), lit)
+			draw_rect(Rect2(tip.x - 1, y + 2, 2, 1), edge)
 			return
 		t -= FALL
 		var ground := top + _fall - 3 + 2

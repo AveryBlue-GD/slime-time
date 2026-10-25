@@ -98,7 +98,7 @@ func _column(x: float, top: float, header: String, board: Array, key: int, weekl
 	var y := top + UIKit.line_h() + HEADER_GAP
 	for rank in range(1, Economy.BOARD_TOP + 1):
 		var label := UIKit.add_label(self, row_text(rank, board, key, weekly), Rect2(x, y, COL_W, UIKit.line_h()),
-			UIKit.FONT, UIKit.TEXT if rank <= board.size() else UIKit.TEXT_OFF, HORIZONTAL_ALIGNMENT_LEFT)
+			UIKit.FONT, UIKit.TEXT if rank <= board.size() else UIKit.lift_to_contrast(UIKit.TEXT_OFF, UIKit.BG, 4.5), HORIZONTAL_ALIGNMENT_LEFT)
 		label.set_meta("rank", rank)
 		label.visible = rank <= board.size() + 1  # (the first empty place shows, the ones after it wait)
 		rows.append(label)

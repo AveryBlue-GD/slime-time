@@ -163,11 +163,18 @@ func _recolor_theme(theme: Theme, rainbow: bool, base: Color) -> void:
 			focus.border_color = color_for(ROLE_TITLE, button_base)
 
 
+## The font's letter body renders this share of the text colour (UI-23).
+const BODY_SHADE := 0.88
+
+
 ## Text color for a role, built from a skin color (kept bright enough to read on dark).
 static func color_for(role: String, skin: Color) -> Color:
 	match role:
 		ROLE_TITLE:
-			return UIKit.lift_to_contrast(Color.from_hsv(skin.h, minf(skin.s, 0.75), maxf(skin.v, 0.95)), UIKit.BG, 4.5)  # (UI-10: >= 4.5:1 on the panel)
+			# (UI-10 / UI-23: >= 4.5:1 on the panel, for the font's body shade too, which renders BODY_SHADE of the colour)
+			var base := Color.from_hsv(skin.h, minf(skin.s, 0.75), maxf(skin.v, 0.95))
+			var lifted := UIKit.lift_to_contrast(Color(base.r * BODY_SHADE, base.g * BODY_SHADE, base.b * BODY_SHADE), UIKit.BG, 4.5)
+			return Color(minf(lifted.r / BODY_SHADE, 1.0), minf(lifted.g / BODY_SHADE, 1.0), minf(lifted.b / BODY_SHADE, 1.0))
 		ROLE_DIM:
 			return Color.from_hsv(skin.h, skin.s * 0.35, 0.72)
 		_:

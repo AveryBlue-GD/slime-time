@@ -73,9 +73,11 @@ const LAUNCH_TICKS := 2
 ## Hit feedback (ANI-04): the body is white for HIT_WHITE_TICKS ticks, the "ouch" eyes stay for HURT_TICKS, and the sprite
 ## is shoved 1 px away for RECOIL_TICKS. A full charge flashes the rim for FULL_FLASH_TICKS ticks (ANI-09).
 const HIT_WHITE_TICKS := 2
-const HURT_TICKS := 14
+const HURT_TICKS := 24  # ANI-26: ~0.4 s; the lurkers' invulnerability blink starts after it (HIT_SHOW)
 const RECOIL_TICKS := 4
 const FULL_FLASH_TICKS := 4
+## ANI-30: ticks each full-charge sparkle layout shows.
+const FULL_SPARKLE_TICKS := 8
 ## SLIMAKAZE afterimages (ANI-10): how many ticks behind the slime each one sits, and the compress frame's length.
 const GHOST_LAG: Array[int] = [3, 6]
 const DASH_COMPRESS_TICKS := 2
@@ -526,6 +528,16 @@ func play_dry_up() -> void:
 	sprite.play("dry")
 
 
+## ANI-02: the slime's gulp as the chalice is consumed: the squashed first `land` frame, held until play_celebrate().
+func play_gulp() -> void:
+	_special_anim = "gulp"
+	sprite.position.y = 0.0
+	_hop_px = 0.0
+	catch_t = -1.0
+	sprite.pause()
+	_show_frame("land_" + dir_name(facing), 0.0)
+
+
 func play_celebrate() -> void:
 	_special_anim = "celebrate"
 	sprite.position.y = 0.0
@@ -728,7 +740,10 @@ func _animate() -> void:
 				_play("idle")
 		State.CHARGING:
 			# ANI-09: frame 3 (eyes shut, sparkles) arrives only at 100%
-			_show_frame("charge_" + dir_name(leap_aim()), (minf(charge / 100.0 * 3.0, 3.0) + 0.01) / 4.0)
+			var cframe := int(minf(charge / 100.0 * 3.0, 3.0) + 0.01)
+			if cframe == 3:
+				cframe += (Engine.get_physics_frames() / FULL_SPARKLE_TICKS) % 2  # ANI-30: the two sparkle layouts alternate
+			_show_frame("charge_" + dir_name(leap_aim()), (float(cframe) + 0.5) / 5.0)
 		State.AIRBORNE:
 			var t := _jump_traveled / _jump_distance
 			var jump_name := dir_name(_jump_dir)
@@ -744,7 +759,7 @@ func _animate() -> void:
 			if _dash_ticks < DASH_COMPRESS_TICKS:
 				_show_frame("launch_" + dir_name(_jump_dir), 0.0)  # the compress, then the dash
 			else:
-				_show_frame("air_" + dir_name(_jump_dir), 0.5)
+				_show_frame("air_" + dir_name(_jump_dir), 0.0)  # ANI-27: the full stretch frame for the whole dash
 
 
 ## ANI-04 / ANI-09 / ANI-10: one tick of the hit flash, the recoil, the full-charge rim flash and the afterimages.
@@ -789,7 +804,7 @@ func is_hurt() -> bool:
 	return _hurt_ticks > 0
 
 
-## SLIMAKAZE: two dithered afterimages of the skin's deep shade trail the dash (previous positions).
+## SLIMAKAZE (ANI-27): two outline-only afterimages in the skin's outline colour (the near one a solid ring, the far one dotted) trail the dash (previous positions).
 func _start_ghosts() -> void:
 	_ghost_trail.clear()
 	_ghost_fade = 0
@@ -831,7 +846,7 @@ func _step_ghosts() -> void:
 			g.texture = sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 			if g.material == null and mat != null:
 				g.material = mat.duplicate()
-				(g.material as ShaderMaterial).set_shader_parameter("ghost", 1.0)
+				(g.material as ShaderMaterial).set_shader_parameter("ghost", 1.0 if i == 0 else 2.0)
 			g.global_position = _ghost_trail[lag].round()
 
 

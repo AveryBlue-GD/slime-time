@@ -187,7 +187,7 @@ func _screen() -> void:
 		var lit := 0
 		for id: String in screen.rows:
 			for pip: ColorRect in screen.rows[id].pips:
-				lit += 1 if pip.color != Color8(74, 70, 96) else 0
+				lit += 1 if pip.color != screen.HudTrack.COLOR else 0  # (UI-32: empty pips are the HUD meter track)
 		var want := 0
 		for id: String in state:
 			want += state[id]

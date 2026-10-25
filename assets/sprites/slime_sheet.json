@@ -15,7 +15,7 @@
   },
   "charge_e": {
    "row": 2,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -45,7 +45,7 @@
   },
   "charge_se": {
    "row": 7,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -75,7 +75,7 @@
   },
   "charge_s": {
    "row": 12,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -105,7 +105,7 @@
   },
   "charge_sw": {
    "row": 17,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -135,7 +135,7 @@
   },
   "charge_w": {
    "row": 22,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -165,7 +165,7 @@
   },
   "charge_nw": {
    "row": 27,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -195,7 +195,7 @@
   },
   "charge_n": {
    "row": 32,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },
@@ -225,7 +225,7 @@
   },
   "charge_ne": {
    "row": 37,
-   "frames": 4,
+   "frames": 5,
    "fps": 0,
    "loop": false
   },

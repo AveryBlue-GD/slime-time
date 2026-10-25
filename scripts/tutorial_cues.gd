@@ -17,10 +17,10 @@ const MAX_FADE_STEP := 1.0 / 30.0
 const KEY := 9.0
 ## Room kept each side of a translated key word that widens its key (draw_key).
 const KEY_PAD := 2.0
-const KEY_FILL := Color8(26, 28, 44)
-const KEY_EDGE := Color8(244, 244, 244)  # the letters and arrowheads
+const KEY_FILL := UIKit.BG  # CON-25: the keycap is a mini goo button, the same in the tutorial, CONTROLS and the ability coach
+const KEY_EDGE := UIKit.TEXT  # the letters and arrowheads
 ## CON-09: the keycap's 1 px rim, the HUD pod family (TEXT_DIM on the dark fill), not a white slab.
-const KEY_RIM := Color8(148, 176, 194)
+const KEY_RIM := UIKit.TEXT_DIM
 
 var game: Node
 var slime: Slime

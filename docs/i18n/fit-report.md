@@ -10,37 +10,37 @@ reported here but do not fail them (the other languages are brought in line late
 
 | locale | budget open | budget accepted | screens open | screens accepted |
 |---|---|---|---|---|
-| en | 0 | 3 | 0 | 12 |
-| es | 0 | 1 | 2 | 0 |
-| pt_BR | 0 | 1 | 2 | 0 |
-| fr | 2 | 1 | 2 | 0 |
-| de | 1 | 1 | 2 | 0 |
-| it | 0 | 1 | 2 | 0 |
-| ru | 1 | 1 | 2 | 0 |
-| pl | 1 | 1 | 2 | 0 |
-| tr | 1 | 1 | 2 | 0 |
-| ja | 0 | 0 | 3 | 1 |
-| ko | 0 | 0 | 3 | 1 |
-| zh_CN | 0 | 0 | 3 | 1 |
-| zh_TW | 0 | 0 | 13 | 1 |
-| th | 0 | 0 | 25 | 1 |
-| vi | 0 | 1 | 3 | 0 |
-| id | 1 | 1 | 0 | 1 |
-| ar | 0 | 0 | 49 | 1 |
-| hi | 1 | 0 | 48 | 1 |
-| pseudo | 49 | 3 | 24 | 1 |
-| **total** | 57 | 16 | 187 | 21 |
+| en | 0 | 3 | 0 | 123 |
+| es | 0 | 1 | 6 | 112 |
+| pt_BR | 0 | 1 | 6 | 112 |
+| fr | 2 | 1 | 10 | 112 |
+| de | 1 | 1 | 6 | 112 |
+| it | 0 | 1 | 2 | 112 |
+| ru | 1 | 1 | 6 | 112 |
+| pl | 1 | 1 | 2 | 112 |
+| tr | 1 | 1 | 6 | 112 |
+| ja | 0 | 0 | 7 | 112 |
+| ko | 0 | 0 | 2 | 112 |
+| zh_CN | 0 | 0 | 3 | 112 |
+| zh_TW | 0 | 0 | 13 | 112 |
+| th | 0 | 0 | 8 | 112 |
+| vi | 0 | 1 | 2 | 112 |
+| id | 1 | 1 | 0 | 112 |
+| ar | 0 | 0 | 32 | 112 |
+| hi | 1 | 0 | 19 | 112 |
+| pseudo | 49 | 3 | 24 | 112 |
+| **total** | 57 | 16 | 154 | 2139 |
 
 ## budget: what was measured
 
-- budgets: 303 of 647 template entries carry a `max Npx` note
+- budgets: 302 of 646 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 37, fr 38, de 27, it 15, ru 11, pl 7, tr 8, ja 2, th 5, vi 4, id 6, ar 2, hi 4, pseudo 60
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 37, fr 38, de 27, it 15, ru 11, pl 7, tr 8, ja 2, ko 1, zh_CN 1, zh_TW 1, th 5, vi 4, id 6, ar 2, hi 8, pseudo 60
 - enforced: every locale (English-only mode: English fails, the other locales are reported)
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
@@ -110,47 +110,20 @@ reported here but do not fail them (the other languages are brought in line late
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 
-## screens: open (65 places)
+## screens: open (38 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
 | demo end screen | demo.keep_playing | KEEP PLAYING | grew | 1: pseudo | pseudo [_KÉÉP PŁÁÝÍÑĞ__]: 90x7 vs 92x7 (over English 88x13) |
 | demo end screen | demo.end.try_random | NOW TRY THE RANDOMIZER IN THE HUB | overlap | 1: ar | ar NOW TRY THE RANDOMIZER IN THE : 170x19 vs 320x19 (over KEEP PLAYING) |
 | demo skin locked | skins.jelly.off | JELLY: OFF | grew | 1: pseudo | pseudo [_JÉŁŁÝ: ÖFF_]: 70x7 vs 84x7 (over English 80x13) |
-| hub notice | hub.notice.reworked | UPGRADES REWORKED | overlap | 8: ja, ko, zh_CN, zh_TW, th, vi, ar, hi | ja 強化システムを刷新: 90x14 vs 90x14 (over ストーリー：レベル3) |
-| hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | COINS RETURNED +888 | overlap | 4: ar, hi, pseudo, pseudo | ar أعيدت العملات ⁦+888⁩: 99x19 vs 99x19 (over طاولة الخرائط) |
-| hub notice | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub notice | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt coins | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt coins | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt maps | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt maps | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt quit | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt quit | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt random | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt random | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt settings | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt settings | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt story | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt story | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt upgrades | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt upgrades | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt wardrobe | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt wardrobe | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub prompt wheel | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub prompt wheel | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub resume | CanvasLayer25/Control0/Label0 |  | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub resume | hub.station.wheel |  | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub tour end | CanvasLayer25/Control0/Label0 | STORY - LEVEL 3 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub tour end | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub tour hint | CanvasLayer25/Control0/Label0 | STORY - LEVEL 3 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub tour hint | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub tour story | CanvasLayer25/Control0/Label0 | STORY - LEVEL 3 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub tour story | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub tour wardrobe | CanvasLayer25/Control0/Label0 | STORY - LEVEL 3 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub tour wardrobe | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
-| hub | CanvasLayer25/Control0/Label0 | STORY - LEVEL 1 | overlap | 2: ar, hi | ar القصة: مستوى ⁦3⁩: 83x19 vs 83x19 (over طاولة الخرائط) |
-| hub | hub.station.wheel | PRIZE WHEEL | overlap | 3: th, ar, hi | th PRIZE WHEEL: 60x17 vs 60x17 (over DAILY MAZE) |
+| hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | COINS RETURNED +888 | overlap | 7: ja, zh_CN, zh_TW, ar, hi, pseudo, pseudo | zh_CN 金币已退还 +888: 76x14 vs 76x14 (over COSMETICS) |
+| hub tour end | hub.station.map_table | MAP TABLE | overlap | 9: es, pt_BR, fr, fr, de, ru, tr, ja, hi | es MESA DE MAPAS: 70x7 vs 70x7 (over SKIP) |
+| hub tour hint | hub.station.map_table | MAP TABLE | overlap | 9: es, pt_BR, fr, fr, de, ru, tr, ja, hi | es MESA DE MAPAS: 70x7 vs 70x7 (over SKIP) |
+| hub tour story | hub.station.map_table | MAP TABLE | overlap | 9: es, pt_BR, fr, fr, de, ru, tr, ja, hi | es MESA DE MAPAS: 70x7 vs 70x7 (over SKIP) |
+| hub tour wardrobe | hub.station.map_table | MAP TABLE | overlap | 9: es, pt_BR, fr, fr, de, ru, tr, ja, hi | es MESA DE MAPAS: 70x7 vs 70x7 (over SKIP) |
+| result win L10 | result.new_record | NEW RECORD! | overlap | 8: ar, ar, ar, ar, ar, ar, ar, ar | ar رقم قياسي جديد!: 88x19 vs 88x19 (over 0:00.0) |
+| result win L3 | result.new_record | NEW RECORD! | overlap | 8: ar, ar, ar, ar, ar, ar, ar, ar | ar رقم قياسي جديد!: 88x19 vs 88x19 (over 0:13.6) |
 | settings reset confirm | settings.relaxed.off | RELAXED: OFF | overlap | 4: ar, ar, hi, hi | ar RELAXED: OFF: 64x19 vs 112x19 (over LEVEL MUSIC: ON) |
 | settings reset confirm | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
 | settings reset confirm | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
@@ -184,7 +157,118 @@ reported here but do not fail them (the other languages are brought in line late
 
 | screen | node / key | kind | text | other | reason |
 |---|---|---|---|---|---|
-| hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | overlap | COINS RETURNED +888 | STORY - LEVEL 1 | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L10 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:00.0 | 0:00.0 | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | result.new_record | overlap | NEW RECORD! | NEW RECORD! | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
+| result win L3 | HUD/CenterContainer7/HBoxContainer0/BoxContainer1/Label1/Lab | overlap | 0:13.6 | 0:13.6 | English source layout |
 | settings reset confirm | settings.controls | overlap | CONTROLS | ERASE ALL PROGRESS? | English source layout |
 | settings reset confirm | settings.save_code | overlap | SAVE CODE | LEVELS, RECORDS, COINS, UPGRADES AND / SKINS WILL BE GONE FO | English source layout |
 | settings reset confirm | settings.volume_sfx | overlap | SFX | ERASE ALL PROGRESS? | English source layout |

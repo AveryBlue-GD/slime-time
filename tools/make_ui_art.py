@@ -18,7 +18,8 @@ from make_placeholder_art import write_png as _write_png
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "ui"
 
-PAL.update({
+UI_PAL = dict(PAL)  # CON-06: this generator's letters live in a copy, never in the shared PAL
+UI_PAL.update({
     # Button faces (purple-grey, matching the floor tones).
     "a": (72, 62, 94, 255),     # hover body
     "A": (104, 92, 130, 255),   # hover highlight
@@ -29,10 +30,10 @@ PAL.update({
     "p": (30, 30, 48, 235),     # panel body
     "P": (44, 44, 68, 240),     # panel top light
     "r": (62, 74, 96, 255),     # panel rim (stone stain)
-    "q": (26, 28, 44, 190),     # HUD pod body (translucent)
-    "Q": (62, 74, 96, 235),     # HUD pod rim
-    "O": (10, 10, 20, 235),     # HUD pod dark outline
-    "H": (112, 130, 158, 235),  # HUD pod top highlight
+    "q": (26, 28, 44, 255),     # HUD pod body (CON-23: opaque, a small surface)
+    "Q": (62, 74, 96, 255),     # HUD pod rim
+    "O": (16, 16, 28, 255),     # HUD pod dark outline (CON-22: the DEEP token, UIKit.DEEP)
+    "H": (112, 130, 158, 255),  # HUD pod top highlight
     # Icon shades (tinted in game).
     "3": (226, 232, 240, 255),  # silver medal mid / dark
     "4": (140, 150, 180, 255),
@@ -41,6 +42,7 @@ PAL.update({
     "7": (140, 84, 50, 255),
     "1": (215, 215, 215, 255),
     "2": (150, 150, 150, 255),
+    "8": (112, 14, 34, 255),    # dark ruby (the medal ribbon's second tone)
 })
 
 
@@ -88,15 +90,15 @@ ICONS = {
         "e112211e",
         "eeeeeeee",
     ],
-    "coin": [  # drawn in gold (not tinted): shown with a white modulate
-        "..kkkk..",
-        ".kYyyyk.",
-        "kYyyyyok",
-        "kyyoyyok",
-        "kyyoyyok",
-        "kyyyyook",
-        ".kyoook.",
-        "..kkkk..",
+    "coin": [  # drawn in gold (not tinted): shown with a white modulate; M22: dark-gold `J` outline, not `k`
+        "..JJJJ..",
+        ".JYyyyJ.",
+        "JYyyyyoJ",
+        "JyyoyyoJ",
+        "JyyoyyoJ",
+        "JyyyyooJ",
+        ".JyoooJ.",
+        "..JJJJ..",
     ],
     "ticket": [  # drawn in gold (not tinted): a voucher with a notch bitten out of each side
         "........",
@@ -108,44 +110,44 @@ ICONS = {
         "oooooooo",
         "........",
     ],
-    "medal": [  # CON-04 reward icon: full colour, k outline; V ribbon in ruby `i`, gold disc `y o Y`
-        "ii....ii",
-        ".ii..ii.",
-        "..iiii..",
-        "..kkkk..",
-        ".kYyyyk.",
-        ".kyyoyk.",
-        ".kyooyk.",
-        "..kkkk..",
+    "medal": [  # SPR-21 / UI-22 / CON-04 reward icon: 6x4 gold disc (the dominant mass) in a dark-gold `J` outline, narrow two-tone ruby ribbon `i` / `8`
+        ".ii..88.",
+        "..i..8..",
+        ".JJJJJJ.",
+        "JYYyyyoJ",
+        "JYyyyyoJ",
+        "JyyyyooJ",
+        ".JooooJ.",
+        "..JJJJ..",
     ],
     "medal_silver": [  # the same medal in silver (tier 2 on the result panel)
-        "ii....ii",
-        ".ii..ii.",
-        "..iiii..",
-        "..kkkk..",
-        ".ke333k.",
-        ".k3334k.",
-        ".k3443k.",
-        "..kkkk..",
+        ".ii..88.",
+        "..i..8..",
+        ".WWWWWW.",
+        "Wee3334W",
+        "We33334W",
+        "W333344W",
+        ".W4444W.",
+        "..WWWW..",
     ],
     "medal_bronze": [  # and in bronze (tier 1)
-        "ii....ii",
-        ".ii..ii.",
-        "..iiii..",
-        "..kkkk..",
-        ".k5666k.",
-        ".k6676k.",
-        ".k6776k.",
-        "..kkkk..",
+        ".ii..88.",
+        "..i..8..",
+        ".ZZZZZZ.",
+        "Z556667Z",
+        "Z566667Z",
+        "Z666677Z",
+        ".Z7777Z.",
+        "..ZZZZ..",
     ],
-    "medal_off": [  # not (yet) earned: white shades, tinted dim in game
-        "22....22",
-        ".22..22.",
-        "..2222..",
-        "..kkkk..",
-        ".ke111k.",
-        ".k1121k.",
-        ".k1221k.",
+    "medal_off": [  # not (yet) earned: cool PAL greys (W / z / k), tinted dim in game
+        ".WW..zz.",
+        "..W..z..",
+        ".kkkkkk.",
+        "kxxwwwWk",
+        "kxwwwwWk",
+        "kwwwwWWk",
+        ".kWWWWk.",
         "..kkkk..",
     ],
     "globe": [  # the LANGUAGE button in SETTINGS: a ring, land (light) on a dimmer sea; tinted like the text
@@ -263,12 +265,18 @@ def write_png(path: Path, rows: list[str]) -> None:
     """Writes the PNG, but keeps an existing file's bytes when its pixels are unchanged (zlib builds
     differ between machines, and the shipped art must stay byte-identical)."""
     old = path.read_bytes() if path.exists() else None
-    _write_png(path, rows)
+    _write_png(path, rows, UI_PAL)
     if old is not None and old != path.read_bytes() and _pixels(old) == _pixels(path.read_bytes()):
         path.write_bytes(old)
 
 
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv:  # M32: no near-black outline colour among the UI letters
+        from art_checks import outline_problems
+        bad = outline_problems({"UI " + c: UI_PAL[c] for c in "kOG" if c in UI_PAL})
+        print(chr(10).join(bad) or "ui art check: OK")
+        sys.exit(1 if bad else 0)
     OUT.mkdir(parents=True, exist_ok=True)
     write_png(OUT / "hud_pod.png", HUD_POD)
     for name, rows in ICONS.items():

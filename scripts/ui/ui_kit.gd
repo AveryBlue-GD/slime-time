@@ -9,6 +9,8 @@ const HUB_SCENE := "res://scenes/hub.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 const BG := Color8(26, 28, 44)
+## CON-22: the one dark navy below BG (drop shadows, pod rims, label plates, locked fills); no near-black tier beyond it.
+const DEEP := Color8(16, 16, 28)
 const BUTTON := Color8(51, 44, 64)
 const BUTTON_PRESSED := Color8(37, 113, 121)
 const TEXT := Color8(244, 244, 244)
@@ -549,6 +551,16 @@ static func noted_text_w(control: Control) -> int:
 	if button_w(String(control.get("text")), note.min_w, note.font_size, note.extra) > w:
 		return -1
 	return w
+
+
+## The check box's slot (UI-26): the 9 x 9 box on a 9 x 16 transparent sheet, CHECK_BOX_TOP rows down.
+const CHECK_BOX_TOP := 3
+static func _check_slot(file: String) -> Texture2D:
+	var box: Image = (load(UI_DIR + file) as Texture2D).get_image()
+	var sheet := Image.create(box.get_width(), 16, false, Image.FORMAT_RGBA8)
+	sheet.blit_rect(box, Rect2i(Vector2i.ZERO, box.get_size()), Vector2i(0, CHECK_BOX_TOP))
+	return ImageTexture.create_from_image(sheet)
+
 
 
 ## A CheckBox's width past its text, as button_w's `extra` (note_text_w(box, [text], 0, FONT,
@@ -1183,6 +1195,14 @@ static func make_theme() -> Theme:
 		theme.set_stylebox(state, "CheckBox", StyleBoxEmpty.new())
 	theme.set_icon("unchecked", "CheckBox", load(UI_DIR + "check_off.png"))
 	theme.set_icon("checked", "CheckBox", load(UI_DIR + "check_on.png"))
+	# UI-26: Godot reserves the widest of all its check / radio icons for the box's slot (the default radio icons are
+	# 16 px: the 9 px box sat 12 px from its label and 3 px high). Every slot gets the box on a 9 x 16 sheet, its rows
+	# centred on the text body (CHECK_BOX_TOP), so the box is attached to its label (a taller script keeps the old slot).
+	if not tall_script():
+		for icon_name in ["unchecked", "unchecked_disabled", "radio_unchecked", "radio_unchecked_disabled"]:
+			theme.set_icon(icon_name, "CheckBox", _check_slot("check_off.png"))
+		for icon_name in ["checked", "checked_disabled", "radio_checked", "radio_checked_disabled"]:
+			theme.set_icon(icon_name, "CheckBox", _check_slot("check_on.png"))
 	theme.set_constant("h_separation", "CheckBox", 4)
 	theme.set_color("font_color", "Label", TEXT)
 	# The font's line box is only the 7 px letter body (the drips hang below it), so lines are
@@ -1354,7 +1374,7 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		label.offset_top = title_top()  # TITLE_Y / TITLE_Y + 20 in English
 		label.offset_bottom = title_bottom()
-		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
+		label.add_theme_color_override("font_shadow_color", DEEP)
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 2)
 	mirror_root(root)  # (right-to-left languages only: flipped once the screen is built)
@@ -1413,9 +1433,13 @@ static func pop_in(node: Control, steps: Array = [[4.0, 0.034], [-1.0, 0.033]]) 
 	if progress != null and progress.reduce_motion:
 		return
 	var tree := node.get_tree()
+	var shown_a := node.modulate.a
+	node.modulate.a = 0.0  # (ANI-22: not drawn at home for the frame the container needs to place it)
 	await tree.process_frame  # (a container has placed it by now)
 	if not is_instance_valid(node):
 		return
+	if node.modulate.a == 0.0:
+		node.modulate.a = shown_a
 	var home := node.position
 	for step: Array in steps:
 		if not is_instance_valid(node):
@@ -1444,6 +1468,31 @@ static func make_label(text: String, font_size := FONT, color := TEXT) -> Label:
 
 ## 16 px text uses the 2x font, whose letter gaps are split evenly so centered titles sit exactly
 ## on center (the 8 px font, scaled up, would put them a pixel right).
+## UI-28: a full 1 px outline round a label's text (8 copies behind it, in `color`), for text over the
+## world. The copies follow the label's text, font and size whenever it redraws.
+static func outline_label(label: Label, color := DEEP) -> void:
+	var copies: Array[Label] = []
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			var c := Label.new()
+			c.show_behind_parent = true
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			c.position = Vector2(dx, dy)
+			c.add_theme_color_override("font_color", color)
+			label.add_child(c)
+			copies.append(c)
+	label.draw.connect(func() -> void:
+		for c in copies:
+			c.text = label.text
+			c.size = label.size
+			c.horizontal_alignment = label.horizontal_alignment
+			c.add_theme_font_size_override("font_size", label.get_theme_font_size("font_size"))
+			c.add_theme_font_override("font", label.get_theme_font("font")))
+	label.queue_redraw()
+
+
 static func use_big_font(control: Control, font_size: int) -> void:
 	if font_size == FONT_BIG:
 		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))

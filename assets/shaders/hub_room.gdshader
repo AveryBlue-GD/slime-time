@@ -139,8 +139,13 @@ void fragment() {
 		if (pr < 0.165) {
 			col = mix(col, outline.rgb, 0.55);
 		} else if (pr < 0.2) {
-			float dash = mod(plan_angle * 12.0 / 6.2831853 + 12.0, 1.0);
-			col = pr < 0.178 ? mid.rgb : (dash < 0.55 ? light.rgb : dark.rgb);
+			// ENV-27: eight rune marks (2-3 px) on a darker groove, lit only on the top arc (no UI-marker dashes).
+			float seg = plan_angle * 8.0 / 6.2831853 + 8.0;
+			float f = fract(seg);
+			float odd = mod(floor(seg), 2.0);
+			bool mark = (f > 0.18 && f < 0.5) || (odd > 0.5 && f > 0.66 && f < 0.78) || (odd < 0.5 && f > 0.62 && f < 0.7 && pr > 0.178);
+			vec3 lit_rune = q.y < 0.0 ? light.rgb : mid.rgb;
+			col = pr < 0.178 ? deep.rgb : (mark ? lit_rune : dark.rgb);
 		}
 		// The back rim's shadow across the floor.
 		if (q.y < 0.0 && d > inner - 0.06 && mod(px.x + px.y, 2.0) > 0.5) {

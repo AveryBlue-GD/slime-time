@@ -217,7 +217,7 @@ func _ready() -> void:
 	# Left pod: goo drop, segmented meter, percent.
 	var meter_row := _make_pod(left_bar)
 	meter_pod = meter_row.get_parent()
-	_drop = UIKit.make_icon("drop", goo_color)
+	_drop = UIKit.make_icon("drop", _drop_color())
 	meter_row.add_child(_drop)
 	meter_row.add_child(_build_meter())
 	label = _make_label()
@@ -1055,6 +1055,26 @@ func show_choices(options: Array, focus := -1) -> void:
 	_queue_fit()
 	_skin_text.recolor()
 	choice_buttons[focus].grab_focus()
+	if is_inside_tree() and DisplayServer.get_name() != "headless" and not (progress_node() != null and progress_node().reduce_motion):
+		for i in choice_buttons.size():
+			_stagger_button(choice_buttons[i], i * 2)
+
+
+## ANI-23: a result button settles in `ticks` frames after the first (they stay pressable: a quick retry is kept).
+func _stagger_button(button: Control, ticks: int) -> void:
+	button.modulate.a = 0.0
+	for i in ticks:
+		await get_tree().process_frame
+		if not is_instance_valid(button):
+			return
+	if is_instance_valid(button):
+		button.modulate.a = 1.0
+		UIKit.pop_in(button, [[2.0, 0.034]])
+
+
+## ANI-23: the DRIED UP panel eases in like the win panel (a 2 px drop; off with Reduce Motion).
+func pop_in_message() -> void:
+	UIKit.pop_in(_message_panel, [[-6.0, 0.04], [2.0, 0.04]])
 
 
 func _build_choice_row() -> void:
@@ -1073,6 +1093,11 @@ func _build_choice_row() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UIKit.CHOICE_GAP)
 	center.add_child(row)
+
+
+## UI-29: the pod's drop icon lifted to 4.5:1 on the pod body (the dark skins' goo colours were 2.3:1).
+func _drop_color() -> Color:
+	return UIKit.lift_to_contrast(goo_color, UIKit.BG, 4.5)
 
 
 func _build_record_banner() -> void:
@@ -1123,6 +1148,7 @@ func _gold_label(text: String, size: int) -> Label:
 	l.add_theme_color_override("font_color", GOLD)
 	l.material = UIKit.text_material()
 	UIKit.use_big_font(l, size)
+	UIKit.outline_label(l)  # UI-28: reads on any floor
 	return l
 
 
@@ -1361,7 +1387,7 @@ func set_skin_color(color: Color, rainbow := false) -> void:
 	fill.color = _meter_color()
 	if _track_outline:
 		_track_outline.queue_redraw()
-	_drop.modulate = color
+	_drop.modulate = _drop_color()
 	_rainbow = rainbow
 
 
@@ -1384,7 +1410,7 @@ func _process(delta: float) -> void:
 		return
 	_hue = fposmod(_hue + delta * 0.25, 0.83)
 	goo_color = Color.from_hsv(_hue, 0.8, 0.95)
-	_drop.modulate = goo_color
+	_drop.modulate = _drop_color()
 	if fill.color != LOW_COLOR:
 		fill.color = _meter_color()
 
@@ -1421,6 +1447,7 @@ func show_message(text: String) -> void:
 ## row flash white and drop 1 px, the NEW RECORD banner last. Called right after show_message (same frame); `staging`
 ## is true until done. A key press shows it all at once; Reduce Motion never stages.
 var staging := false
+const RESULT_SLIME_GAP := 8.0  # UI-25
 
 
 func stage_result() -> void:
@@ -1465,6 +1492,7 @@ func stage_result() -> void:
 			if not skipped:
 				await _stage_wait(0.12)
 	if is_instance_valid(message):
+		message.custom_minimum_size = Vector2.ZERO
 		_message_panel.modulate = Color.WHITE
 		message.visible_ratio = 1.0
 		for node in late:
@@ -1603,13 +1631,16 @@ func _away_from_slime() -> void:
 	var limit := float(UIKit.choice_y()) - UIKit.GAP_XS
 	if record_banner.visible:
 		limit = minf(limit, _banner_ink_top() - UIKit.GAP_XS)
-	var above := s.position.y - UIKit.GAP_XS - h
-	var below := s.end.y + UIKit.GAP_XS
 	var y := -1.0
-	if above >= _panel_top():
-		y = above
-	elif below + h <= limit:
-		y = below
+	for gap: float in [RESULT_SLIME_GAP, float(UIKit.GAP_XS)]:  # (UI-25: 8 px clear of the slime incl. hat, else the tight gap)
+		var above := s.position.y - gap - h
+		var below := s.end.y + gap
+		if above >= _panel_top():
+			y = above
+		elif below + h <= limit:
+			y = below
+		if y >= 0.0:
+			break
 	if y < 0.0:
 		return
 	_message_center.offset_top = y

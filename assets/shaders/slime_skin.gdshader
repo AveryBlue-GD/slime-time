@@ -31,7 +31,7 @@ uniform float gloss = 0.0;
 uniform float shine_motion = 1.0;
 uniform float charge = 0.0;
 // Hit flash (0-1): the whole body goes white for a moment (a lurker's touch). `rim` (0/1): the outline goes white
-// (a fully charged leap). `ghost` (0/1): a SLIMAKAZE afterimage, the skin's deep shade on a checker of its pixels.
+// (a fully charged leap). `ghost` (0/1): a SLIMAKAZE afterimage (ANI-27), the sheet's outline ring in the skin's outline colour (2 = on a checker).
 uniform float hit = 0.0;
 uniform float rim = 0.0;
 uniform float ghost = 0.0;
@@ -214,10 +214,11 @@ void fragment() {
 		rgb = mix(vec3(grey), rgb, 0.55) * 0.8;
 	}
 	if (ghost > 0.5) {
-		if (texel.a < 0.5 || mod(floor(local_pos.x) + floor(local_pos.y), 2.0) > 0.5) {
+		// ANI-27: an outline-only silhouette (a 1 px ring, interior clear) in the skin's outline colour; ghost 2 is dotted
+		if (texel.a < 0.5 || shade != 5 || (ghost > 1.5 && mod(floor(local_pos.x) + floor(local_pos.y), 2.0) > 0.5)) {
 			discard;
 		}
-		rgb = deep.rgb;
+		rgb = outline.rgb;
 	}
 	if (rim > 0.5 && shade == 5) {
 		rgb = vec3(1.0);

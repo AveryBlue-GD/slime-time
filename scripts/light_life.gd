@@ -44,13 +44,28 @@ static func light_color(theme: String, skin: Color) -> Color:
 	return Color.from_hsv(skin.h, minf(skin.s, 0.7), 1.0)
 
 
+## ENV-21: Rec.709-ish luminance of a colour (the shared helper for "equal light by brightness").
+static func luminance(c: Color) -> float:
+	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+
+
+## ENV-21: how much to scale the light's strength so every skin lights about equally: Crimson / Grape /
+## Ocean (low luminance at full value) get more, Lemon / Frost no more than before. Hue is untouched;
+## the radius is untouched (a small pool).
+const LIGHT_LUMA_TARGET := 0.75
+static func strength_scale(skin: Color) -> float:
+	if skin.s < 0.1:
+		return 1.0
+	return clampf(LIGHT_LUMA_TARGET / maxf(luminance(light_color("", skin)), 0.35), 0.85, 1.6)
+
+
 ## Pushes the static settings into the maze fog's material.
 static func setup(material: ShaderMaterial, theme: String, skin: Color, trail_texture: Texture2D) -> void:
 	var tint := pocket_tint(theme, skin)
 	material.set_shader_parameter("ll_on", true)
 	material.set_shader_parameter("trail_tex", trail_texture)
 	material.set_shader_parameter("ll_tint", Vector3(tint.r, tint.g, tint.b))
-	material.set_shader_parameter("ll_strength", POCKET_STRENGTH)
+	material.set_shader_parameter("ll_strength", POCKET_STRENGTH * strength_scale(skin))
 	material.set_shader_parameter("ll_radius", POCKET_RADIUS)
 	material.set_shader_parameter("ll_glint", Vector3(GLINT.r, GLINT.g, GLINT.b))
 	material.set_shader_parameter("goal_color", Vector3(GOLD.r, GOLD.g, GOLD.b))

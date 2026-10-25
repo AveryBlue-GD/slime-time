@@ -8,7 +8,7 @@ Outputs (all 16x16 tiles/frames):
   stretch a ~14 px body), one animation per row
   (the JSON lists each animation's row, frame count, fps and looping)
 - shadow.png : shadow under the slime while it's in the air
-- chalice_sheet.png : 4 frames of 16x20, a glint sliding along the rim
+- chalice_sheet.png : 7 frames of 16x20, a glint sliding along the rim (0-3), then tilt / gulp / gone (4-6, ANI-02)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
 (The wall and fillet tile drawing functions here are imported by make_theme_art.py, which writes the
  per-theme atlases; the unthemed walls.png and fillets.png were unused and are no longer written.)
@@ -452,9 +452,11 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
             for ox, oy, part in shapes:
                 if (ex + ox, ey + oy) in inside:
                     g[ey + oy][ex + ox] = colors["spec"] if part == "w" else (PAL_BLUSH if part == "M" else colors["eye"])
-        if len(spots) == 2 and ly2 > 0.3 and eyes in ("open", "happy"):
+        if len(spots) == 2 and ly2 > 0.3 and eyes in ("open", "happy", "x"):
             mx, my = int(math.floor(ax - 0.5)), ey + 3
-            mouth = [(0, 0), (1, 0)] if eyes == "open" else [(-1, 0), (0, 1), (1, 1), (2, 0)]
+            # ANI-26: the hurt face gets a 2 px open mouth (2x2 ring-less "o"), only in the hurt row
+            mouth = {"open": [(0, 0), (1, 0)], "x": [(0, 0), (1, 0), (0, 1), (1, 1)]}.get(
+                eyes, [(-1, 0), (0, 1), (1, 1), (2, 0)])
             for ox, oy in mouth:
                 if (mx + ox, my + oy) in inside:
                     g[my + oy][mx + ox] = colors["outline"]
@@ -504,7 +506,8 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
             slime(sx=1 + 0.05 * i, sy=1 - 0.11 * i, shift=(0, 0.6 * i), look=u, eyes="closed" if i == 3 else "open",
                   extras=[(3, 3, "Y"), (16, 5, "y")] if i == 3 else ())  # ANI-09: two sparkle pixels at full charge
             for i in range(4)
-        ], 0, False)
+        ] + [slime(sx=1.15, sy=0.67, shift=(0, 1.8), look=u, eyes="closed", extras=[(15, 3, "Y"), (4, 6, "y")])],  # ANI-30: 3b, the sparkles swap sides
+            0, False)
         anims[f"launch_{name}"] = ([
             slime(along=0.8, perp=1.1, d=vec, look=u), slime(along=1.25, perp=0.8, d=vec, look=u, ground=False),
         ], 0, False)
@@ -521,7 +524,8 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
                   extras=splat_droplets(vec, i))
             for i, (a, p, off) in enumerate([(0.45, 1.15, 3.0), (0.6, 1.1, 2.4), (0.8, 1.04, 1.2), (0.95, 1.0, 0.3)])
         ], 0, False)
-    anims["hurt"] = ([slime(sx=1.1, sy=0.9, eyes="x", shift=(0, 0.5)), slime(eyes="x")], 12, False)  # ANI-04: the "ouch" eyes
+    # ANI-04 / ANI-26: the "ouch" eyes on the normal eye row (eye_dy cancels the 0.5 px shift) and a 2 px open mouth
+    anims["hurt"] = ([slime(sx=1.1, sy=0.9, eyes="x", shift=(0, 0.5), eye_dy=-1.0), slime(eyes="x")], 12, False)
     anims["recover"] = ([slime(sx=1.05, sy=0.95), slime(sx=0.97, sy=1.04)], 12, False)
     anims["dry"] = ([
         slime(sx=0.95, sy=0.95, eyes="closed"),
@@ -582,9 +586,32 @@ def chalice_frame(glint: int) -> list[str]:
     return ["".join(r) for r in g]
 
 
+def chalice_gulp_frames() -> list[list[str]]:
+    """ANI-02: the chalice is consumed. 4 tilt (top half 1 px toward the slime), 5 gulp (2 px shorter from the top, only the
+    chalice's own ramp j J Z + outline Q), 6 gone (empty)."""
+    base = [list(r) for r in chalice_frame(0)]
+    tilt = [r[:] for r in base]
+    for y in range(CHALICE_H // 2):
+        tilt[y] = ["."] + base[y][:-1]
+    tilt = ["".join(r) for r in tilt]
+    squash = {"Y": "j", "y": "j", "e": "j", "M": "J", "i": "J", "a": "Z"}
+    rows = ["".join(squash.get(c, c) for c in r) for r in ("".join(r) for r in base)]
+    top = next(y for y, r in enumerate(rows) if r.strip("."))
+    body = rows[top + 2:]  # the rim and the opening go in first
+    body = ["." * CHALICE_W] * (CHALICE_H - len(body)) + body
+    gulp = []
+    for y, r in enumerate(body):
+        r = list(r)
+        for x in range(CHALICE_W):
+            if r[x] != "." and r[x] != "Q" and (y == 0 or body[y - 1][x] == "."):
+                r[x] = "Q"  # a fresh closed outline on the new top
+        gulp.append("".join(r))
+    return [tilt, gulp, ["." * CHALICE_W] * CHALICE_H]
+
+
 def chalice_frames() -> list[list[str]]:
-    """The chalice with a glint sliding along its rim."""
-    return [chalice_frame(k) for k in range(4)]
+    """The chalice with a glint sliding along its rim, then the three ANI-02 consumed frames (4-6)."""
+    return [chalice_frame(k) for k in range(4)] + chalice_gulp_frames()
 
 
 def app_icon() -> list[str]:
@@ -616,10 +643,11 @@ SHADOW = ["." * 16] * 6 + [
 
 # ---------------------------------------------------------------- output
 
-def write_png(path: Path, rows: list[str]) -> None:
+def write_png(path: Path, rows: list[str], pal: dict | None = None) -> None:
+    pal = PAL if pal is None else pal  # CON-06: generators pass their own derived palette
     h, w = len(rows), len(rows[0])
     assert all(len(r) == w for r in rows), f"{path.name}: rows must all be {w} wide"
-    raw = b"".join(b"\x00" + b"".join(bytes(PAL[c]) for c in row) for row in rows)
+    raw = b"".join(b"\x00" + b"".join(bytes(pal[c]) for c in row) for row in rows)
 
     def chunk(tag: bytes, data: bytes) -> bytes:
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))

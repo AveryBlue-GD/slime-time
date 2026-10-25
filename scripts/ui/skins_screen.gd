@@ -43,7 +43,7 @@ const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
 ## A locked paper's silhouette (the trails' locked dark, Cosmetics.trail_preview).
-const LOCKED_INK := Color(0.08, 0.08, 0.12, 0.9)
+const LOCKED_INK := Color8(26, 28, 44, 230)  # SPR-28: the palette k navy, not a near-black
 ## The tip line of a page. i18n: one line, max 300px.
 static func rule_text(which: String) -> String:
 	match which:
@@ -684,7 +684,7 @@ func _make_tile(id: String) -> Button:
 	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly, id == Skins.STOPWATCH)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
-		preview.modulate = Color(0, 0, 0, 0.85)
+		Skins.lock_look(preview)  # SPR-28
 		preview.pause()
 	tile.add_child(preview)
 	tile.set_meta("preview", preview)
@@ -713,7 +713,7 @@ func _make_hub_tile(id: String) -> Button:
 		var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, false, id == Skins.STOPWATCH)
 		preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 		if not _hub_choosable(id):
-			preview.modulate = Color(0, 0, 0, 0.85)
+			Skins.lock_look(preview)  # SPR-28
 			preview.pause()
 		tile.add_child(preview)
 	tile.focus_entered.connect(func() -> void:
@@ -766,7 +766,7 @@ func _make_hat_tile(id: String) -> Button:
 		if not unlocked:
 			hat.modulate = Color(0, 0, 0, 0.85)
 	if not unlocked:
-		preview.modulate = Color(0, 0, 0, 0.85)
+		Skins.lock_look(preview)  # SPR-28
 		preview.pause()
 	hat_tiles[id] = tile
 	return tile

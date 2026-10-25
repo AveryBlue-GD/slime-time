@@ -812,13 +812,6 @@ msgctxt "result.level_cleared"
 msgid "LEVEL {level} CLEARED"
 msgstr "レベル{level}クリア"
 
-#. result line, max 296px, 1 line; {level} = the level number, {n} = how many times lurkers touched the slime; the spaces are spacing
-#. budget: max 296px, lines 1
-#: scripts/game.gd
-msgctxt "result.level_cleared_hits"
-msgid "LEVEL {level} CLEARED  LURKER HITS {n}"
-msgstr ""
-
 #. max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 #. budget: max 296px, lines 1
 #: scripts/game.gd

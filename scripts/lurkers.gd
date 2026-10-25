@@ -26,6 +26,14 @@ const F_NOTICE := 5
 const F_LUNGE := 7
 const F_STUN := 10
 const LUNGE_DIST := 26.0
+## ANI-28: a lunge starts once on entering LUNGE_DIST: crouch 4 ticks, stretch 4 (the contact window), snap back 3, then
+## LUNGE_COOLDOWN s before it can start again. Timing only; hitboxes, speeds and damage are the same.
+const LUNGE_CROUCH_TICKS := 4
+const LUNGE_STRETCH_TICKS := 4
+const LUNGE_SNAP_TICKS := 3
+const LUNGE_COOLDOWN := 1.2
+## After a hit the attacker shows the notice hop (sheet frame 5) this long, never the stunned frames.
+const HIT_POSE := 0.3
 const EYES: Array = [  # [kind][frame] = eye pixels (x, y) facing right; tools/make_lurkers.py prints them
 	[[],
 		[Vector2i(9, 10), Vector2i(11, 10)],
@@ -34,8 +42,8 @@ const EYES: Array = [  # [kind][frame] = eye pixels (x, y) facing right; tools/m
 		[Vector2i(9, 10), Vector2i(11, 10)],
 		[Vector2i(8, 8), Vector2i(11, 8)],
 		[Vector2i(9, 9), Vector2i(11, 9)],
-		[Vector2i(8, 10), Vector2i(10, 10)],
-		[Vector2i(10, 10), Vector2i(13, 10)],
+		[Vector2i(9, 10), Vector2i(11, 10)],
+		[Vector2i(10, 10), Vector2i(12, 10)],
 		[Vector2i(10, 9), Vector2i(12, 9)],
 		[],
 		[]],
@@ -46,7 +54,7 @@ const EYES: Array = [  # [kind][frame] = eye pixels (x, y) facing right; tools/m
 		[Vector2i(7, 7), Vector2i(9, 7)],
 		[Vector2i(7, 5), Vector2i(8, 5)],
 		[Vector2i(7, 7), Vector2i(9, 7)],
-		[Vector2i(6, 9), Vector2i(8, 9)],
+		[Vector2i(7, 9), Vector2i(9, 9)],
 		[Vector2i(8, 8), Vector2i(10, 8)],
 		[Vector2i(8, 7), Vector2i(10, 7)],
 		[],
@@ -58,13 +66,21 @@ const EYES: Array = [  # [kind][frame] = eye pixels (x, y) facing right; tools/m
 		[Vector2i(7, 7), Vector2i(9, 7)],
 		[Vector2i(7, 5), Vector2i(9, 5)],
 		[Vector2i(7, 7), Vector2i(9, 7)],
-		[Vector2i(6, 8), Vector2i(8, 8)],
-		[Vector2i(8, 8), Vector2i(11, 8)],
+		[Vector2i(7, 8), Vector2i(9, 8)],
+		[Vector2i(8, 8), Vector2i(10, 8)],
 		[Vector2i(8, 7), Vector2i(10, 7)],
 		[],
 		[]],
 ]
-const EYE_COLOR: Array[Color] = [Color8(255, 240, 180), Color8(255, 138, 150), Color8(244, 244, 244)]
+const EYE_COLOR: Array[Color] = [Color8(240, 96, 64), Color8(255, 138, 150), Color8(244, 244, 244)]  # (no amber / gold: gold is for rewards)
+## SPR-23: where the "dizzy" pixels orbit a stunned lurker: the head's top centre on stun frames 10 and 11
+## (tools/make_lurkers.py prints it), facing right.
+const DIZZY: Array = [
+	[Vector2i(7, 9), Vector2i(7, 9)],
+	[Vector2i(6, 7), Vector2i(5, 6)],
+	[Vector2i(8, 6), Vector2i(8, 6)],
+]
+const DIZZY_COLOR := Color8(230, 236, 255)
 const BODY_Z := 6  # under the fog (z 10), like a coin
 const EYE_Z := 12  # over the fog (10) and the slime's lantern (11)
 const WAKE_TIME := 0.5
@@ -81,7 +97,7 @@ const LANTERN_RADIUS := 4
 const LANTERN_MIN := 0.15
 const GROWL_NEAR := 160.0
 const BLINK_GAP := 0.08
-const HIT_SHOW := 0.12
+const HIT_SHOW := 0.4  # ANI-26: the hurt row (HURT_TICKS = 24 ticks) shows first, then the blink starts
 const SLOWMO_SCALE := 0.45
 
 
@@ -94,6 +110,10 @@ class Lurker:
 	var awake := false
 	var wake_t := 0.0
 	var stun := 0.0
+	var struck := false  # the stun is only the recoil of a hit it dealt (notice hop, no dizzy pixels), not a real stun
+	var recoil_t := 0.0
+	var lunge_t := -1  # ANI-28: ticks into the lunge, -1 = none
+	var lunge_cool := 0.0
 	var slide := 0.0
 	var near_active := false
 	var near_hit := false
@@ -102,12 +122,12 @@ class Lurker:
 	var dist := 999.0  # distance to the slime at the last tick (the lunge frames)
 	var sprite: Sprite2D
 
-	## Eyes show once awake, past the eye-open, and not while stunned.
+	## Eyes show once awake, past the eye-open, and not while stunned (the attacker of a hit keeps them).
 	func eyes_open() -> bool:
-		return awake and wake_t >= WAKE_TIME * 0.5 and stun <= 0.0
+		return awake and wake_t >= WAKE_TIME * 0.5 and (stun <= 0.0 or struck)
 
 
-## Draws the eye glints above the fog.
+## Draws the eye glints (and a stunned lurker's dizzy pixels) above the fog.
 class EyeLayer extends Node2D:
 	var owner_lurkers: Lurkers
 
@@ -118,6 +138,8 @@ class EyeLayer extends Node2D:
 		var index := 0
 		for l in owner_lurkers.lurkers:
 			index += 1
+			if l.awake and l.stun > 0.0 and not l.struck:
+				_draw_dizzy(l, index, t)
 			if not l.eyes_open():
 				continue
 			var base := (l.pos.round() - Vector2(FRAME / 2, FRAME / 2)).round()
@@ -127,6 +149,17 @@ class EyeLayer extends Node2D:
 			for e: Vector2i in EYES[l.kind][frame]:
 				var ex := e.x if l.face >= 0 else FRAME - 1 - e.x
 				draw_rect(Rect2(base + Vector2(ex, e.y), Vector2.ONE), color)
+
+	func _draw_dizzy(l: Lurker, index: int, t: float) -> void:
+		# SPR-23: three pale pixels orbit 2 px above the head, stepping a sixth of a turn per stun frame (4 fps)
+		var base := (l.pos.round() - Vector2(FRAME / 2, FRAME / 2)).round()
+		var step := int(t * 4.0 + float(index))
+		var top: Vector2i = DIZZY[l.kind][step % 2]
+		var cx := top.x if l.face >= 0 else FRAME - 1 - top.x
+		for i in 3:
+			var angle := TAU * (float(i) / 3.0 + float(step % 6) / 6.0)
+			var offset := Vector2(roundf(cos(angle) * 3.0), roundf(sin(angle) * 1.5) - 3.0)
+			draw_rect(Rect2(base + Vector2(cx, top.y) + offset, Vector2.ONE), DIZZY_COLOR)
 
 
 var game: Node
@@ -324,23 +357,25 @@ func spawn(cells: Array[Vector2i], seed_value: int) -> void:
 		_show(l)
 
 
-## Which of the 12 sheet frames `l` shows now: dormant, notice while waking, stunned (2 frames at 4 fps), lunge when
-## the slime is close (crouch, stretch, snap back by distance), else the 4-frame creep at 8 fps.
+## Which of the 12 sheet frames `l` shows now: dormant, notice while waking, stunned (2 frames at 4 fps), the timed lunge
+## (crouch, stretch, snap back; ANI-28), else the 4-frame creep at 8 fps.
 func frame_of(l: Lurker) -> int:
 	if not l.awake:
 		return F_DORMANT
 	if l.stun > 0.0:
+		if l.struck:  # ANI-28: the attacker of a hit hops (notice frame), it is not stunned
+			return F_NOTICE if l.recoil_t > 0.0 else F_CREEP
 		return F_STUN + int(elapsed * 4.0 + float(lurkers.find(l))) % 2
 	if l.wake_t < WAKE_TIME:
 		return F_NOTICE + (0 if l.wake_t < WAKE_TIME * 0.5 else 1)
-	if l.dist < LUNGE_DIST:
-		return F_LUNGE + (0 if l.dist > LUNGE_DIST * 0.75 else (1 if l.dist > LUNGE_DIST * 0.45 else 2))
+	if l.lunge_t >= 0:
+		return F_LUNGE + (0 if l.lunge_t < LUNGE_CROUCH_TICKS else (1 if l.lunge_t < LUNGE_CROUCH_TICKS + LUNGE_STRETCH_TICKS else 2))
 	return F_CREEP + int(elapsed * 8.0 + float(lurkers.find(l))) % 4
 
 
 func _show(l: Lurker) -> void:
 	l.sprite.position = l.pos.round()
-	if l.awake and l.dist < LUNGE_DIST and l.stun <= 0.0 and absf(slime.position.x - l.pos.x) > 1.0:
+	if l.awake and (l.lunge_t >= 0 or l.dist < LUNGE_DIST) and l.stun <= 0.0 and absf(slime.position.x - l.pos.x) > 1.0:
 		l.face = 1 if slime.position.x > l.pos.x else -1
 	l.sprite.flip_h = l.face < 0
 	l.sprite.frame = l.kind * FRAMES + frame_of(l)
@@ -431,12 +466,31 @@ func step(delta: float) -> void:
 		if l.wake_t >= WAKE_TIME:
 			_advance(l, delta, stealth)
 		_proximity(l, d, delta)
+		_lunge_step(l, d, delta)
 		if l.stun <= 0.0 and invuln <= 0.0 and not airborne and not game.finished:
 			if d <= Economy.LURKER_CONTACT_DIST:
 				_hit(l)
 				l.near_hit = true
 		_near_miss(l, d)
 		_show(l)
+
+
+## ANI-28: the lunge is a timed state: it starts once when the slime comes within LUNGE_DIST (and the cooldown is over), then
+## runs crouch / stretch / snap on ticks, whatever the slime does meanwhile (no flicker). A stun ends it.
+func _lunge_step(l: Lurker, d: float, delta: float) -> void:
+	l.recoil_t = maxf(l.recoil_t - delta, 0.0)
+	l.lunge_cool = maxf(l.lunge_cool - delta, 0.0)
+	if l.stun > 0.0 or l.wake_t < WAKE_TIME:
+		l.lunge_t = -1
+		return
+	if l.lunge_t < 0:
+		if d < LUNGE_DIST and l.lunge_cool <= 0.0:
+			l.lunge_t = 0
+		return
+	l.lunge_t += 1
+	if l.lunge_t >= LUNGE_CROUCH_TICKS + LUNGE_STRETCH_TICKS + LUNGE_SNAP_TICKS:
+		l.lunge_t = -1
+		l.lunge_cool = LUNGE_COOLDOWN
 
 
 func _wake(l: Lurker, stealth: bool) -> void:
@@ -546,6 +600,10 @@ func _hit(l: Lurker) -> void:
 	_push_left = float(TILE)
 	slime.hurt(_push_dir)
 	l.stun = RECOIL
+	l.struck = true  # ANI-28: it shows the notice hop for HIT_POSE, not the stunned frames
+	l.recoil_t = HIT_POSE
+	l.lunge_t = -1
+	l.lunge_cool = LUNGE_COOLDOWN
 	game.shake(2.5, 0.2)
 	Fx.burst(game, slime.position, Color8(244, 244, 244), 10, 50.0, _push_dir, 120.0, false)
 	var sfx := get_node_or_null("/root/Sfx")
@@ -584,6 +642,7 @@ func stun_tiles(tiles: Array[Vector2i], seconds: float) -> int:
 	for l in lurkers:
 		if l.awake and Vector2i((l.pos / TILE).floor()) in tiles:
 			l.stun = maxf(l.stun, seconds)
+			l.struck = false
 			count += 1
 	return count
 
@@ -601,6 +660,7 @@ func on_landing(pos: Vector2) -> int:
 func _bonk(l: Lurker, from: Vector2) -> void:
 	bonks += 1
 	l.stun = Economy.LURKER_STUN_BONK
+	l.struck = false
 	l.slide = SLIDE_TIME
 	l.pos = MazeGenerator.cell_center(cell_of(l.pos), TILE)
 	l.cell = cell_of(l.pos)

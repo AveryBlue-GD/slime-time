@@ -28,11 +28,12 @@ const JUMP_CENTER := Vector2(280, 140)
 const JUMP_RADIUS := 19.0
 ## Room kept between the JUMP word's ink and the ring (jump_radius grows the circle to keep it).
 const JUMP_TEXT_CLEAR := 2.0
-const PAUSE_RECT := Rect2(302, 35, 15, 13)
+const PAUSE_RECT := Rect2(301, 35, 15, 13)  # (UI-27: its right edge on the HUD pods' column, x 316)
 ## Where the pause button really is: PAUSE_RECT, moved down under the randomizer's taller attempt
 ## pod by game.gd (`pause_rect.position.y = PAUSE_Y_RANDOM`).
 const PAUSE_Y_RANDOM := 44.0
 var pause_rect := PAUSE_RECT
+var _pause_pod: StyleBox
 ## Draws a small house instead of the pause bars (owner decision D10): the hub sets it on iOS / Android, where its
 ## button goes back to the title (and its STORY replay). Same rect and tap.
 var home_icon := false:
@@ -387,7 +388,9 @@ func _draw_controls() -> void:
 		if item.id == coach_id and fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0:
 			_canvas.draw_arc(at, ABILITY_RADIUS + 2.0, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
 	# Pause button: two bars (or the hub's home icon on phones).
-	_canvas.draw_rect(pause_rect, dim)
+	if _pause_pod == null:
+		_pause_pod = UIKit.panel_style(true)  # UI-27: the HUD pod frame, not a borderless dark box
+	_pause_pod.draw(_canvas.get_canvas_item(), pause_rect)
 	for r: Rect2i in (HOME_PIXELS if home_icon else PAUSE_PIXELS):
 		_canvas.draw_rect(Rect2(pause_rect.position + Vector2(r.position), Vector2(r.size)), Color(color, 0.9))
 

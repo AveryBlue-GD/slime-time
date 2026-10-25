@@ -815,8 +815,35 @@ static func demo_full_text() -> String:
 
 func _color_pips(pips: Array, level: int, skin: Color, cap := 99) -> void:
 	for i in pips.size():
-		# (past the demo's cap: a darker, locked pip)
-		(pips[i] as ColorRect).color = skin if i < level else (Color8(74, 70, 96) if i < cap else Color8(40, 38, 54))
+		var pip := pips[i] as ColorRect
+		var on: bool = i < level
+		# UI-32, the HUD meter's segment style: a filled pip is the skin's goo with a 1 px lit top row; an empty one is
+		# the sunken track inside a hollow 1 px outline (past the demo's cap: a darker, locked outline).
+		pip.color = skin if on else HudTrack.COLOR
+		var seg := pip.get_node_or_null("Seg") as Control
+		if seg == null:
+			seg = HudTrack.new()
+			seg.name = "Seg"
+			seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pip.add_child(seg)
+		seg.position = Vector2.ZERO
+		seg.size = pip.size
+		seg.set("filled", on)
+		seg.set("outline", Color(skin, 0.55) if i < cap else Color8(60, 56, 78))
+		seg.queue_redraw()
+
+
+## One upgrade pip's overlay (UI-32): the lit top row of a filled pip, the hollow outline of an empty one.
+class HudTrack extends Control:
+	const COLOR := Color8(40, 34, 52)  # (the HUD meter's sunken track)
+	var filled := false
+	var outline := Color.WHITE
+
+	func _draw() -> void:
+		if filled:
+			draw_rect(Rect2(0, 0, size.x, 1), Color(1, 1, 1, 0.35))
+		else:
+			draw_rect(Rect2(Vector2.ZERO, size), outline, false, 1.0)
 
 
 ## Leaves: back into the level after a dry-up, otherwise to the hub.

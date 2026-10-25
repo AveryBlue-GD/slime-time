@@ -721,15 +721,17 @@ def wheel_back() -> list:
 # ----------------------------------------------------------------- SETTINGS: the gear post
 
 def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, back=False,
-          sx: float = 1.0, depth: int = 0) -> None:
+          sx: float = 1.0, depth: int = 0, valley: float = 0.78) -> None:
     """sx < 1 squashes it for the 3/4 view; depth = px of the gear's thickness showing on the right."""
     def g(x, y, u, v):
         rr = math.hypot(u, v)
         a = math.atan2(v, u) + turn
-        if rr > (1.0 if math.cos(a * teeth) > 0.2 else 0.78):
+        if rr > (1.0 if math.cos(a * teeth) > 0.2 else valley):
             return None
         if rr < 0.28:
             return IRON[0]
+        if depth and rr > 0.8 and u > 0.1:
+            return IRON[1]  # SPR-25: the rim band on the far (right) side, the gear's thickness
         if back:
             return IRON[1] if rr > 0.5 else IRON[2]
         return IRON[4] if (u + v < -0.7) else IRON[3] if u + v < 0 else IRON[2]
@@ -737,6 +739,9 @@ def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, b
         for d in range(depth, 0, -1):
             cv.ellipse(cx + d, cy, r * sx, r, lambda x, y, u, v: None if g(x, y, u, v) is None else IRON[1])
     cv.ellipse(cx, cy, r * sx, r, g)
+    if depth:  # SPR-25: the axle, a 2x2 dark hub with a light dot offset toward the viewer
+        cv.rect(round(cx) - 1, round(cy) - 1, 2, 2, IRON[0])
+        cv.put(round(cx) - 1, round(cy) - 1, IRON[4])
 
 
 def _post(cv: Canvas, x: int, top: int) -> None:
@@ -774,8 +779,8 @@ def signpost_side() -> list:
     for k in range(GEAR_FRAMES):
         cv = Canvas(24, 34)
         _post(cv, 10, 12)
-        _gear(cv, 12, 8, 7.5, 8, k * BIG_STEP, sx=0.55, depth=2)
-        _gear(cv, 17, 14.5, 4.0, 6, 0.3 - k * SMALL_STEP, sx=0.55, depth=1)
+        _gear(cv, 12, 8, 7.5, 8, k * BIG_STEP, sx=0.62, depth=2, valley=0.7)
+        _gear(cv, 17, 14.5, 4.0, 6, 0.3 - k * SMALL_STEP, sx=0.62, depth=1, valley=0.62)
         cv.vline(11, 19, 26, IRON[3])  # a wrench hanging off the post, turned
         cv.vline(12, 19, 26, IRON[2])
         cv.put(11, 18, IRON[2])

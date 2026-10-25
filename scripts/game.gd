@@ -826,7 +826,7 @@ func _process(_delta: float) -> void:
 	outer_material.set_shader_parameter("slime_px", slime_light.position)
 	outer_material.set_shader_parameter("view_center", view_center.round())
 	if rainbow:
-		slime_light.modulate = Color(LightLife.light_color(theme, hud.goo_color), SLIME_LIGHT_STRENGTH)
+		slime_light.modulate = Color(LightLife.light_color(theme, hud.goo_color), SLIME_LIGHT_STRENGTH * LightLife.strength_scale(hud.goo_color))
 	_lead_camera(_delta)
 	_update_ambience(_delta)
 	_shake_camera(_delta)
@@ -1254,7 +1254,7 @@ func _build_overlays() -> void:
 		LightLife.setup(fog_material, theme, skin_color, trail_sprite.texture)
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
-	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(LightLife.light_color(theme, skin_color), SLIME_LIGHT_STRENGTH))
+	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(LightLife.light_color(theme, skin_color), SLIME_LIGHT_STRENGTH * LightLife.strength_scale(skin_color)))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
@@ -2620,7 +2620,10 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	var no_record := no_credit()
 	if progress:
 		progress.relaxed_level = 0  # (RELAXED for one level ends with its win; this run keeps relaxed_run for its payout)
-	slime.play_celebrate()
+	if is_instance_valid(chalice) and goal == chalice and _is_running_scene() and motion_scale() > 0.0:
+		chalice.call("consume", slime)  # ANI-02: tilt, gulp, gone (~0.25 s, the result panel's own beat), then the celebrate
+	else:
+		slime.play_celebrate()
 	if Economy.light_life_on():
 		_light_life_win()
 	if Economy.orchestra_on() and has_node("/root/Music"):
@@ -2742,10 +2745,6 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	# i18n: result title lines, max 296px each, 1 line each
 	var lines := [Loc.t("result.chalice", "CHALICE CONSUMED!"),
 		Loc.t("result.level_cleared", "LEVEL {level} CLEARED", {level = level})]
-	if hard_mode and lurkers != null:
-		# IMP4-05: folded into the level line (the result stays at most 5 lines)
-		# i18n: result line, max 296px, 1 line; {level} = the level number, {n} = how many times lurkers touched the slime; the spaces are spacing
-		lines[1] = Loc.t("result.level_cleared_hits", "LEVEL {level} CLEARED  LURKER HITS {n}", {level = level, n = lurkers.hits})
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
 	var first_hard_clear: bool = progress != null and hard_mode and not no_credit() and not level in progress.hard_cleared
 	var first_story_clear: bool = progress != null and progress.levels_cleared < level
@@ -2766,6 +2765,9 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		# i18n: max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 		time_line = Loc.t("result.time_best", "TIME {time}   BEST {best}", {time = UIKit.format_time(run_time), best = UIKit.format_time(best)})
 	lines.append(time_line)
+	if hard_mode and lurkers != null and level < Levels.COUNT:  # (UI-31: the hits on their own line, not folded into the level line)
+		# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
+		lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
 	if level >= Levels.COUNT:
 		# The last level: one title line instead of CHALICE CONSUMED / LEVEL n CLEARED (lines 0-1).
 		# i18n: result title, max 296px, 1 line; {count} = number of story levels
@@ -2865,6 +2867,10 @@ func _dry_hold() -> void:
 		slime_light.scale = base_scale * k
 		fog_material.set_shader_parameter("light_inner", inner * maxf(k, 0.2))
 		fog_material.set_shader_parameter("light_outer", outer * maxf(k, 0.2))
+		# ANI-25: a dithered lights-out closes on the crust in 4 steps (the fog shader's Bayer, no alpha fade)
+		var out_k := floorf(clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0) * 4.0) / 4.0
+		fog_material.set_shader_parameter("lights_out", out_k)
+		(outer_fog.material as ShaderMaterial).set_shader_parameter("lights_out", out_k)
 		if not flaked and t >= flakes_at:
 			flaked = true
 			Fx.burst(self, slime.position, Fx.DUST_BASE, 8, 40.0, Vector2.UP, 180.0, false, Fx.Preset.DUST)
@@ -2911,6 +2917,7 @@ func _finish(did_win: bool, text: String) -> void:
 			if not (is_inside_tree() and _is_running_scene() and not _leaving()):
 				return
 			hud.show_message(text)
+			hud.pop_in_message()
 		await get_tree().create_timer(DESCENT_SUMMARY_DELAY if descent else DRY_CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
 			_offer_retry()

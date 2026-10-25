@@ -95,7 +95,7 @@ THEMES = {
         "name": "FROZEN FORTRESS",
         "layouts": ("blocks", "slabs", "rocks"), "decos": ("icicles", "frost"), "floor": "ice",
         "kinds": {"moss": "snow", "puddle": "ice_sheet", "worn": "snow"},
-        "pal": {"k": (16, 24, 50), "x": (236, 248, 255), "w": (172, 208, 238), "W": (112, 152, 202), "z": (80, 114, 172),
+        "pal": {"k": (16, 24, 50), "x": (206, 224, 240), "w": (138, 170, 206), "W": (92, 124, 170), "z": (64, 92, 144),
                 "f": (40, 56, 94), "F": (30, 42, 74), "h": (56, 76, 116), "v": (196, 224, 244), "V": (142, 182, 222),
                 "d": (82, 132, 192), "B": (204, 232, 255), "u": (222, 232, 242), "I": (255, 255, 255)},
     },
@@ -103,13 +103,13 @@ THEMES = {
         "name": "OBSIDIAN OUBLIETTE",
         "layouts": ("slabs", "ashlar", "blocks"), "decos": ("gloss", "vein"), "floor": "tiles",
         "kinds": {"moss": "plain", "worn": "plain"},
-        "pal": {"k": (24, 20, 40), "x": (190, 180, 238), "w": (92, 86, 130), "W": (54, 50, 78), "z": (36, 32, 56),
-                "f": (36, 32, 50), "F": (22, 18, 34), "h": (46, 42, 64), "v": (124, 72, 176), "V": (82, 42, 124),
+        "pal": {"k": (22, 20, 34), "x": (178, 182, 198), "w": (80, 82, 92), "W": (50, 51, 60), "z": (34, 34, 44),
+                "f": (32, 32, 40), "F": (20, 20, 28), "h": (42, 42, 52), "v": (124, 72, 176), "V": (82, 42, 124),
                 "d": (32, 22, 52), "B": (124, 104, 184), "u": (182, 172, 202), "g": (210, 204, 240)},
     },
     "crystal": {
         "name": "CRYSTAL CAVERNS",
-        "layouts": ("rocks", "facets", "cobble"), "decos": ("crystal", "sparkle"), "floor": "dirt",
+        "layouts": ("facets", "rocks", "cobble"), "decos": ("crystal", "sparkle"), "floor": "dirt",
         "kinds": {"moss": "shards", "worn": "shards"},
         "pal": {"k": (22, 10, 32), "x": (198, 162, 232), "w": (142, 102, 182), "W": (94, 62, 132), "z": (66, 42, 94),
                 "f": (38, 28, 56), "F": (26, 18, 40), "h": (50, 38, 72), "v": (122, 222, 232), "V": (72, 152, 182),
@@ -118,7 +118,7 @@ THEMES = {
     },
     "volcanic": {
         "name": "VOLCANIC VAULT",
-        "layouts": ("rocks", "cobble", "seams"), "decos": ("lava", "embers"), "floor": "dirt",
+        "layouts": ("seams", "rocks", "cobble"), "decos": ("lava", "embers"), "floor": "dirt",
         "kinds": {"cracked": "lava_crack", "puddle": "lava_pool", "moss": "ash"},
         "pal": {"k": (34, 22, 22), "x": (176, 122, 96), "w": (126, 82, 66), "W": (84, 52, 44), "z": (58, 34, 30),
                 "f": (54, 32, 26), "F": (34, 20, 16), "h": (70, 42, 34), "v": (90, 84, 82), "V": (60, 56, 54),
@@ -480,13 +480,16 @@ def deco_crystal(g, rng, open_sides):
         for i in range(h):
             y = top + i
             w_ = 1 if i < 2 else 2
+            lean = 1 if (sx == 4 and i < h // 2) else 0   # ENV-27: one shard leans out
             for dx in range(w_):
-                px = ox + sx + dx
+                px = ox + sx + dx + lean
                 body = "C" if i == 0 else ("q" if i >= h - 2 else "c")
+                if i == 2 and dx == 0 and sx == 2:
+                    body = "x"                              # ENV-27: a 1 px glint on the lit side
                 put(g, px, y, body)
-            put(g, ox + sx - 1, y, "k")
-            put(g, ox + sx + w_, y, "k")
-        put(g, ox + sx, top - 1, "k")
+            put(g, ox + sx - 1 + lean, y, "q")              # ENV-27: lighter outline on the lit (left) side
+            put(g, ox + sx + w_ + lean, y, "k")
+        put(g, ox + sx + (1 if sx == 4 and h // 2 > 0 else 0), top - 1, "q")
 
 
 def deco_sparkle(g, rng, open_sides):
@@ -1428,6 +1431,11 @@ if __name__ == "__main__":
     if "--check" in sys.argv:  # tests: are the checked-in atlases exactly what this file draws (twice over)?
         second = all_atlases()
         bad = [p.name for p, px in first.items() if px != second[p] or read_png_pixels(p) != px]
+        from art_checks import outline_problems  # M32: every theme outline keeps a max channel >= 16
+        dark = outline_problems({"theme %s k" % t: d["pal"]["k"] for t, d in THEMES.items() if "k" in d["pal"]})
+        for msg in dark:
+            print(msg)
+        bad += dark
         print("theme art check: %d atlases, %s" % (len(first), "OK" if not bad else "DIFFER: " + ", ".join(bad)))
         sys.exit(1 if bad else 0)
     for path, pixels in first.items():

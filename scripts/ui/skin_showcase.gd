@@ -133,7 +133,7 @@ func show_skin(color: Color, rainbow: bool, jelly: bool, locked := false, clock 
 	add_child(slime)
 	UIKit.keep_ltr(slime)  # (placed mirrored by _pose every frame, not by UIKit's one-off Node2D mirror)
 	if locked:
-		slime.modulate = Color(0, 0, 0, 0.85)
+		Skins.lock_look(slime)  # SPR-28
 	# `outfit` = {hat, dye, trail}: the look worn now, so the whole look is seen before choosing.
 	var hat_id: String = outfit.get("hat", Hats.NONE)
 	if hat_id != Hats.NONE:

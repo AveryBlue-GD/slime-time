@@ -19,7 +19,9 @@ static var from := FROM_STORY
 const CARD_TIME := 3.2
 ## The teaser card: a goo panel with the map (2x) on its left and three text lines beside it.
 const CARD := Rect2(28, 58, 264, 58)
-const MAP_POS := Vector2(38, 67)
+## CON-01: the map at 1x (35 x 19 with its frame), centred in the card's left column (x 28..116).
+const MAP_SIZE := Vector2(35, 19)
+const MAP_POS := Vector2(28 + 44 - 18, 58 + 20)
 const TEXT_X := 116
 const TEXT_W := 168
 const DOTS_Y := 122
@@ -109,7 +111,6 @@ func _ready() -> void:
 
 	UIKit.add_panel(self, CARD)
 	map_rect = TextureRect.new()
-	map_rect.scale = Vector2(2, 2)
 	map_rect.position = MAP_POS
 	map_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(map_rect)
@@ -162,13 +163,19 @@ func show_card(index: int) -> void:
 	_clock = 0.0
 	var level: int = levels[card]
 	var theme := Themes.for_level(level)
-	map_rect.texture = MapView.preview(level, false, 100, 2, false, theme)
+	map_rect.texture = MapView.preview(level, false, 100, 2, false, theme, true)
 	area_label.text = Themes.display_name(theme)
 	# i18n: demo end screen teaser card, {level} = a story level number; max 168px, 1 line
 	level_label.text = Loc.t("demo.teaser.level", "LEVEL {level} - FULL GAME", {level = level})
 	feature_label.text = feature_line(level)
 	for i in dots.size():
-		dots[i].color = UIKit.GOLD if i == card else UIKit.TEXT_OFF
+		dots[i].color = _skin_color() if i == card else UIKit.TEXT_OFF  # (CON-26: not gold, gold is for rewards)
+
+
+func _skin_color() -> Color:
+	var progress := get_node_or_null("/root/Progress")
+	var base: Color = progress.skin_color() if progress else Skins.get_preset(Skins.DEFAULT).color
+	return SkinText.color_for(SkinText.ROLE_TITLE, base)
 
 
 func _flip(step: int) -> void:

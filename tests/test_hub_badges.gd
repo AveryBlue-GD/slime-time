@@ -20,7 +20,10 @@ func _initialize() -> void:
 	var checked := 0
 	var shifted := 0
 	var bad := 0
-	for step in 72:
+	for idx in 144:  # (a full turn on the desktop, then a full turn with the touch controls showing)
+		var step := idx % 72
+		if hub._touch_controls != null:
+			hub._touch_controls.visible = idx >= 72
 		hub.turn = TAU * step / 72.0
 		hub._place_all()
 		for id: String in hub.badges:
@@ -36,12 +39,35 @@ func _initialize() -> void:
 			hub.badges[id].text = "!"
 			hub.badges[id].visible = true
 		await _physics_frames(30)  # (the stagger and the pop-in are over, the bob has moved)
+		hub._place_hints()  # (solved afresh for this turn, as the hub does when the names show)
 		var rects: Array[Rect2] = []
 		var labels: Array[Rect2] = []
 		for id: String in hub.name_labels:
 			var label: Label = hub.name_labels[id]
 			if label.visible and hub.name_layer.visible:
 				labels.append(Rect2(label.position, label.size))
+		# UI-24: no station name sits across another prop's sprite (the SETTINGS name on the DAILY sign, DAILY MAZE
+		# over the portal), nor across a touch circle when the touch controls show
+		for st: Dictionary in hub._all_props():
+			var nl: Label = hub.name_labels[st.id]
+			var nr := Rect2(nl.position, nl.size)
+			for other: Dictionary in hub._all_props():
+				if other.id == st.id:
+					continue
+				var op: Vector2 = other.sprite.position
+				var box := Rect2(op.x - other.size.x / 2.0, op.y - other.size.y, other.size.x, other.size.y)
+				_check(box.intersection(nr).get_area() <= 0.6 * nr.get_area(), "the name %s stays off the %s prop at turn step %d (%s vs %s)" % [st.id, other.id, step, nr, box])
+			# every name is nearer its own prop than any other (it reads as that prop's)
+			var nc := nr.get_center()
+			var d_own := nc.distance_to(Vector2(st.sprite.position.x, st.sprite.position.y - st.size.y / 2.0))
+			for other: Dictionary in hub._all_props():
+				if other.id != st.id:
+					var d_other := nc.distance_to(Vector2(other.sprite.position.x, other.sprite.position.y - other.size.y / 2.0))
+					_check(d_own < d_other, "the name %s is nearer its own prop than %s at idx %d (%.1f vs %.1f)" % [st.id, other.id, idx, d_own, d_other])
+			if hub._touch_controls != null and hub._touch_controls.visible:
+				for circle: Rect2 in hub._touch_circles():
+					if st.id == "settings" or st.id == "quit":  # (the others stay attached and may graze a circle)
+						_check(not circle.intersects(nr), "the name %s stays off the touch circles at idx %d (%s)" % [st.id, idx, nr])
 		for id: String in hub.badge_art:
 			var node: TextureRect = hub.badge_art[id].node
 			if not node.visible:
