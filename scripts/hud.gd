@@ -1464,6 +1464,9 @@ func stage_result() -> void:
 		node.modulate.a = 0.0
 	record_banner.modulate.a = 0.0
 	var lines := message.text.split("\n")
+	# ANI-21: the panel is laid out at its FINAL size (every line shaped) before its first visible frame; the lines
+	# tick on by character count without re-shaping, so only the drop-in moves the panel's edge.
+	message.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
 	message.visible_ratio = 0.0
 	var skipped := not await _stage_wait(0.25)
 	if is_instance_valid(message) and is_inside_tree():
@@ -1493,6 +1496,7 @@ func stage_result() -> void:
 				await _stage_wait(0.12)
 	if is_instance_valid(message):
 		message.custom_minimum_size = Vector2.ZERO
+		message.visible_characters_behavior = TextServer.VC_CHARS_BEFORE_SHAPING
 		_message_panel.modulate = Color.WHITE
 		message.visible_ratio = 1.0
 		for node in late:

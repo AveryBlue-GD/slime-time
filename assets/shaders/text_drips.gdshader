@@ -30,9 +30,13 @@ float hash(vec2 p) {
 
 // The font's alpha at atlas pixel (x, y). (Macros, not functions: a function cannot be handed the built-in TEXTURE.)
 #define INK(x, y) texture(TEXTURE, vec2((x), (y)) / atlas).a
-// A column where a drip may hang: a stroke end (inked above the bottom row) or the left end of a round bottom run (or the point of a V / W).
-// (Whether the glyph has other bottom ink, i.e. is not a lone T / I / 1 stem, is checked by the caller.)
-#define DRIP_COLUMN(x) (INK((x), (top + 6.5) * unit) > 0.5 && (INK((x), (top + 5.5) * unit) > 0.5 	|| (INK((x) - unit, (top + 6.5) * unit) < 0.5 && (INK((x) + unit, (top + 6.5) * unit) > 0.5 	|| (INK((x) - unit, (top + 5.5) * unit) > 0.5 && INK((x) + unit, (top + 5.5) * unit) > 0.5)))))
+// ITER-3 whitelist (UI-41..43): a drip may hang only where it cannot change a letter's reading.
+//  STEM: a free-standing vertical stem whose foot has no ink beside it on the last two rows (H K M N R X legs: ink all the way up the column, so not A, whose extended leg read as A-ogonek, not
+//        D B P U J Q G O S C, not the serif ends of I, not the points of V W Y, never a lone T / Y / F / P / 1 stem).
+//  FLAT: the middle of a flat 5-wide bottom bar (E L Z): NOT USED (macro kept): it read as a cedilla (E -> Ę).
+// Digits (main atlas columns 154..210) never drip. Round bottoms never drip. tests/test_title_drips.gd mirrors this.
+#define STEM_COLUMN(x) (INK((x), (top + 0.5) * unit) > 0.5 && INK((x), (top + 6.5) * unit) > 0.5 && INK((x), (top + 5.5) * unit) > 0.5 && INK((x) - unit, (top + 6.5) * unit) < 0.5 && INK((x) + unit, (top + 6.5) * unit) < 0.5 && INK((x) - unit, (top + 5.5) * unit) < 0.5 && INK((x) + unit, (top + 5.5) * unit) < 0.5)
+#define FLAT_COLUMN(x) (INK((x) - 2.0 * unit, (top + 6.5) * unit) > 0.5 && INK((x) - unit, (top + 6.5) * unit) > 0.5 && INK((x), (top + 6.5) * unit) > 0.5 && INK((x) + unit, (top + 6.5) * unit) > 0.5 && INK((x) + 2.0 * unit, (top + 6.5) * unit) > 0.5 && INK((x) - 3.0 * unit, (top + 6.5) * unit) < 0.5 && INK((x) + 3.0 * unit, (top + 6.5) * unit) < 0.5)
 // An empty atlas column: the gap between two glyphs.
 #define GLYPH_GAP(x) (INK((x), (top + 0.5) * unit) + INK((x), (top + 1.5) * unit) + INK((x), (top + 2.5) * unit) + INK((x), (top + 3.5) * unit) 	+ INK((x), (top + 4.5) * unit) + INK((x), (top + 5.5) * unit) + INK((x), (top + 6.5) * unit) < 0.5)
 
@@ -64,44 +68,30 @@ void fragment() {
 			}
 			float column = floor(px.x / unit);
 			float bottom = INK(px.x, (top + 6.5) * unit);
-			// UI-21 / CON-24, the drip floor. A column may drip if it is a stroke end (the pixel above is inked) or the
-			// LEFT end of a round bottom (C S G O U 0 ...): never the middle of a curve, never the tail of a Q. A glyph's
-			// PRIMARY column is its leftmost drip column; every other glyph in a line (picked by its place on screen, so
-			// the text and its shadow agree) must drip there, 2 font units long (4 px at 16 px). The other columns drip
-			// 1 unit by chance. A drip is body coloured with a lit bulb, like the logo's. tests/test_title_drips.gd
-			// mirrors these rules.
-			// (Every stem is one pixel wide in this font; a glyph whose bottom row has a single ink pixel (T I Y 1 4 7 F P V)
-			// is `lone`: off the floor it rarely drips, as a drip there reads as a longer stroke.)
-			bool here = DRIP_COLUMN(px.x);
+			// Whitelisted columns only (STEM_COLUMN / FLAT_COLUMN); about 1 drip per 2-3 letters, picked by the
+			// letter's place on screen and `seed` (the text and its shadow agree), 1 or 2 font units long
+			// (the atlas holds 2 drip rows). Body coloured with a lit bulb, like the logo's.
 			bool others = false;
-			bool primary = here;
 			bool stop_l = false;
 			bool stop_r = false;
-			float start_k = 0.0;  // how many columns to the left this glyph starts
 			for (int i = 1; i <= 5; i++) {
 				float xl = px.x - float(i) * unit;
 				float xr = px.x + float(i) * unit;
 				if (GLYPH_GAP(xl)) {
 					stop_l = true;
 				}
-				if (!stop_l) {
-					start_k = float(i);
-				}
 				if (GLYPH_GAP(xr)) {
 					stop_r = true;
 				}
 				if (!stop_l && INK(xl, (top + 6.5) * unit) > 0.5) {
 					others = true;
-					if (DRIP_COLUMN(xl)) {
-						primary = false;
-					}
 				}
 				if (!stop_r && INK(xr, (top + 6.5) * unit) > 0.5) {
 					others = true;
 				}
 			}
-			bool can = here;
-			bool lone = here && !others;  // (a T / I / Y / 1 stem: a lone drip is rarer unless the floor forces it)
+			bool digit = !ext && column >= 154.0 && column < 211.0;
+			bool can = !digit && (others && STEM_COLUMN(px.x));
 			// No drip in a column that carries a mark under the baseline.
 			if (ext) {
 				vec4 under1 = texture(TEXTURE, vec2(px.x, (top + 7.5) * unit) / atlas);
@@ -111,15 +101,9 @@ void fragment() {
 				}
 			}
 			float r = hash(vec2(column + fract(seed * 0.618) * 97.0, origin + seed));
-			float glyph_x = floor(origin + px.x - start_k * unit);  // the glyph's own left edge on screen
-			bool forced = fract(glyph_x / (big_font ? 24.0 : 12.0)) < 0.75;
 			float drip_len = 0.0;
-			if (can && bottom > 0.5) {
-				if (primary) {
-					drip_len = forced ? 2.0 : (lone ? (r < 0.15 ? 2.0 : 0.0) : (r < 0.3 ? 2.0 : (r < 0.55 ? 1.0 : 0.0)));
-				} else {
-					drip_len = r < 0.3 ? 1.0 : 0.0;
-				}
+			if (can && bottom > 0.5 && r < 0.85) {
+				drip_len = fract(r * 37.0) < 0.5 ? 1.0 : 2.0;
 			}
 			if (clean_small && !big_font) {
 				drip_len = 0.0;

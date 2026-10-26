@@ -49,12 +49,34 @@ func _initialize() -> void:
 		game.slime.position = game.goal.position
 		await _physics_frames(2)
 		_check(game.finished and game.won, "level %d: touching the goal wins" % win_level)
-		await _physics_frames(int(0.5 * 60) - 2)
+		# ANI-21: the result panel is laid out at its final size before its first visible frame; while the lines tick on
+		# its size never changes, and its position only moves by the drop-in (none at all once the staging is over).
+		var panel_rects: Array[Rect2] = []
+		var was_staging := false
+		for i in int(0.5 * 60) - 2:
+			await _physics_frames(1)
+			was_staging = was_staging or game.hud.staging
+			if game.hud.message.visible:
+				panel_rects.append(game.hud._message_panel.get_global_rect())
 		_check(game.hud.choice_buttons.is_empty(), "level %d: no buttons yet 0.5 s after the win" % win_level)
 		for i in int(1.1 * 60):
 			if not game.hud.choice_buttons.is_empty():
 				break
 			await _physics_frames(1)
+			was_staging = was_staging or game.hud.staging
+			if game.hud.message.visible:
+				panel_rects.append(game.hud._message_panel.get_global_rect())
+		if not panel_rects.is_empty():
+			var sizes_equal := true
+			for r in panel_rects:
+				sizes_equal = sizes_equal and r.size == panel_rects[0].size
+			_check(sizes_equal, "level %d: the result panel never changes size while the lines tick on (%s)" % [win_level, panel_rects.map(func(r: Rect2) -> Vector2: return r.size).slice(0, 4)])
+			var settled := panel_rects[panel_rects.size() - 1]
+			var tail_ok := true
+			for r in panel_rects.slice(maxi(0, panel_rects.size() - 10)):
+				tail_ok = tail_ok and r == settled
+			_check(tail_ok, "level %d: the result panel rect stays fixed once the drop-in ends" % win_level)
+			print("INFO level %d: staged=%s, panel samples=%d, rect %s" % [win_level, was_staging, panel_rects.size(), settled])
 		_check(_texts(game).size() == 3 and game.hud.choice_buttons[1].has_focus(), "level %d: the 3 buttons are up by 1.6 s after the win (%s)" % [win_level, _texts(game)])
 		_drop(game)
 
