@@ -26,6 +26,8 @@ const JOY_HOME := Vector2(40, 140)
 ## Mirrors the joystick's home (40, 140): both 40 px in from their side edge, on one center line.
 const JUMP_CENTER := Vector2(280, 140)
 const JUMP_RADIUS := 19.0
+## Room round the JUMP circle that still counts as the button (on_jump_button).
+const JUMP_BUTTON_MARGIN := 4.0
 ## Room kept between the JUMP word's ink and the ring (jump_radius grows the circle to keep it).
 const JUMP_TEXT_CLEAR := 2.0
 const PAUSE_RECT := Rect2(301, 35, 15, 13)  # (UI-27: its right edge on the HUD pods' column, x 316)
@@ -46,11 +48,16 @@ const PAUSE_TOUCH_MARGIN := 5.0
 ## from Esc by it).
 signal pause_tapped
 ## A quick tap (down and up within TAP_TIME seconds and TAP_SLOP px) anywhere the joystick / JUMP would take it: the hub
-## glides the slime to a station tapped (IMP2-06). The joystick and JUMP still see the touch as before.
+## glides the slime to a station tapped (IMP2-06). The joystick and JUMP still see the touch as before. A touch that
+## `tap_claim` takes is emitted on its release whatever its length, and never reaches the joystick or JUMP.
 signal tapped(pos: Vector2)
 const TAP_TIME := 0.3
 const TAP_SLOP := 8.0
 var _tap_start := {}
+## Set by a scene whose things are tapped (the hub: the station you stand at, owner 2026-10-21): true if a touch at
+## `pos` lands on one, so it goes to `tapped` (on release) instead of the joystick or JUMP.
+var tap_claim := Callable()
+var _tap_touch := -1
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
 ## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
 ## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
@@ -130,7 +137,7 @@ func _input(event: InputEvent) -> void:
 		else:
 			var start: Dictionary = _tap_start.get(event.index, {})
 			_tap_start.erase(event.index)
-			var claimed: bool = _ability_touch.has(event.index) or event.index == _pause_touch
+			var claimed: bool = _ability_touch.has(event.index) or event.index == _pause_touch 					or event.index == _tap_touch  # (a claimed tap is emitted by _touch_up)
 			_touch_up(event.index, event.position)
 			if not claimed and not start.is_empty() and Time.get_ticks_msec() - int(start.at) <= TAP_TIME * 1000.0 \
 					and (event.position - Vector2(start.pos)).length() <= TAP_SLOP:
@@ -164,6 +171,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
+	elif _tap_touch == -1 and tap_claim.is_valid() and tap_claim.call(pos):
+		_tap_touch = index
 	elif pos.x < SCREEN.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
@@ -186,6 +195,9 @@ func _touch_up(index: int, pos: Vector2) -> void:
 			ability_tapped.emit(abilities[slot].id)
 	elif index == _pause_touch:
 		_release_pause()
+	elif index == _tap_touch:
+		_tap_touch = -1
+		tapped.emit(pos)
 	elif index == _joy_touch:
 		_joy_touch = -1
 		_joy_center = JOY_HOME
@@ -292,6 +304,12 @@ func catches_jump(pos: Vector2) -> bool:
 	return pos.x >= jump_zone_left()
 
 
+## True if a touch at `pos` is on the JUMP circle itself (drawn at JUMP_CENTER), not just in JUMP's half: there a
+## touch always leaps, whatever is under it (the hub claims taps on stations elsewhere in that half).
+func on_jump_button(pos: Vector2) -> bool:
+	return pos.distance_to(JUMP_CENTER) <= JUMP_RADIUS + JUMP_BUTTON_MARGIN
+
+
 ## The joystick's ring on screen while a thumb holds it (it floats to the thumb in the left half), empty at
 ## rest (the ring at JOY_HOME, clear of everything by layout) or while the controls are hidden. The training
 ## direction line keeps off it (HUD).
@@ -327,6 +345,8 @@ func _release_all() -> void:
 	_release_pause()
 	_joy_touch = -1
 	_jump_touch = -1
+	_tap_touch = -1  # (nothing opens: a tap only counts on a real release)
+	_tap_start.clear()  # (nor glides: a touch that outlived this is no tap)
 	_joy_center = JOY_HOME
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)

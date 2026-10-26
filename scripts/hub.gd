@@ -120,6 +120,8 @@ const SIGN_USE_GAP := 5.0
 const SIGN_SIZE := Vector2i(16, 26)
 ## A tap within this many px of a station (its sprite box grown) glides the slime there.
 const TAP_GROW := 6.0
+## Room around the near station's sprite (and the prompt) that still counts as a tap on it (view px).
+const TAP_MARGIN := 4.0
 const GLIDE_REACHED := 5.0
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
@@ -569,6 +571,7 @@ func _build_ui() -> void:
 	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
 	_touch_controls.pause_tapped.connect(func() -> void:
 		_home_tap = _touch_controls.home_icon)  # (elsewhere its `menu` press opens the hub menu, like Esc)
+	_touch_controls.tap_claim = _claims_touch  # (the station you stand at opens on release; JUMP only leaps)
 	_touch_controls.tapped.connect(_on_tap)
 	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
 		if hat_wheel.visible:
@@ -1813,20 +1816,57 @@ func stop_glide() -> void:
 	_glide_held.clear()
 
 
+## True if a touch at `pos` (view px) is on the station or wheel the slime stands at, or on its prompt: the touch
+## controls then keep it from the joystick and JUMP and hand it to _on_tap on release (owner, 2026-10-21).
+func tap_hits(pos: Vector2) -> bool:
+	if near.is_empty() or turning or slime.frozen or _blocking_overlay():
+		return false
+	if prompt != null and prompt.visible and prompt.get_global_rect().grow(TAP_MARGIN).has_point(pos):
+		return true
+	if near.id == "rotor":
+		for sprite: Sprite2D in [rotor, rotor_base]:
+			if sprite != null and (sprite.get_global_transform_with_canvas() * sprite.get_rect()).grow(TAP_MARGIN).has_point(pos):
+				return true
+		return false
+	return prop_at(pos).get("id", "") == near.id 			or (near.sprite.get_global_transform_with_canvas() * near.sprite.get_rect()).grow(TAP_MARGIN).has_point(pos)
+
+
+## The touches the touch controls hand to _on_tap (on release) instead of the joystick / JUMP: one on the station
+## or wheel the slime stands at (tap_hits, owner 2026-10-21), and one on another station in JUMP's half but off the
+## JUMP circle, so that tap glides there (IMP2-06) instead of leaping. In the joystick's half a quick tap on a
+## station still reaches the joystick too (no move) and glides on release.
+func _claims_touch(pos: Vector2) -> bool:
+	if tap_hits(pos):
+		return true
+	if _touch_controls == null or not _touch_controls.catches_jump(pos) or _touch_controls.on_jump_button(pos):
+		return false
+	if slime.frozen or turning or slime.state != Slime.State.GLIDE or _blocking_overlay():
+		return false
+	return not prop_at(pos).is_empty()
+
+
+## An overlay that takes the room's taps (its own buttons answer them).
+func _blocking_overlay() -> bool:
+	return hub_menu.visible or quit_menu.visible or portal_menu.visible or resume_menu.visible 			or hat_wheel.visible or coin_board.visible
+
+
+## A tap (TouchControls.tapped): on the station / wheel the slime stands at (a claimed touch, tap_hits) it uses it; a
+## quick tap on another station glides the slime there (IMP2-06).
 func _on_tap(pos: Vector2) -> void:
 	if _wore_toast_item():
 		return  # (the tap wore a toast's item: only that)
 	if slime.frozen or turning or slime.state != Slime.State.GLIDE:
 		return  # (a use, a turn or a leap is under way: a tap's release must not use a station twice)
-	var prop := prop_at(pos)
-	if prop.is_empty():
+	if tap_hits(pos):
+		if near.id == "rotor":
+			turn_room(1)
+		else:
+			_use(near)  # (already at it: a tap uses it)
 		return
-	if not near.is_empty() and near.id == prop.id:
-		if _touch_controls != null and _touch_controls.catches_jump(pos):
-			return  # (the JUMP press of this very touch already used it)
-		_use(prop)  # (already at it: a tap uses it)
-	else:
-		glide_to(prop)
+	var prop := prop_at(pos)
+	if prop.is_empty() or (not near.is_empty() and near.id == prop.id):
+		return  # (nothing there, or a joystick / JUMP touch that only reached the station on its way)
+	glide_to(prop)
 
 
 ## A real key, button or new touch hands the slime back (our own glide presses are actions, not events).
@@ -1957,11 +1997,9 @@ func _physics_process(delta: float) -> void:
 			room_turned.emit(back_station().id, _turn_dir)
 	_glide_step()
 	_update_near()
-	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
-	# such key, so right next to one JUMP uses it instead of leaping.
-	var touch := _touch_controls != null and _touch_controls.visible
-	slime.can_charge = near.is_empty() or not touch
-	var used := _interact_pressed() or (touch and Input.is_action_just_pressed("jump") and not _wore_toast_item())
+	# The interact key (F) uses the station or wheel you're next to; on a touchscreen a tap on it (or on its
+	# prompt) does (tap_hits, _on_tap). JUMP always leaps (owner, 2026-10-21).
+	var used := _interact_pressed()
 	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
 		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
 		# 2026-10-22); holding left turns it the other way.

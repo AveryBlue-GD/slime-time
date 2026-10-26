@@ -150,7 +150,7 @@ permissions/*=false                      ; the game needs none (no internet, no 
 Project settings already set for it: `quit_on_go_back=false`, sensor landscape, `rendering_method.mobile=gl_compatibility`,
 `import_etc2_astc=true`.
 
-## iOS preset (port-time; not in the repo)
+## iOS preset (in the repo since 2026-10-21 as `iOS`, personal install: [../ios-personal-install.md](../ios-personal-install.md); `tests/test_ios_port.gd` checks it)
 
 Needs full Xcode (not just the Command Line Tools), an Apple Developer Team ID and provisioning.
 
@@ -165,11 +165,12 @@ application/app_store_team_id="<Team ID>"
 application/bundle_identifier="<owner's reverse-DNS id>"   ; M8
 application/export_method_release=0     ; App Store
 application/export_method_debug=1       ; Development
+application/icon_interpolation=0        ; nearest: the smaller icons Godot makes from the 1024 one stay crisp (M9)
 application/provisioning_profile_uuid_release=""           ; or automatic signing in Xcode
 application/targeted_device_family=2    ; iPhone and iPad
 application/short_version="1.0.0"
 application/version="1"
-application/min_ios_version="14.0"
+application/min_ios_version="15.0"
 architectures/arm64=true
 user_data/accessible_from_files_app=false
 user_data/accessible_from_itunes_sharing=false

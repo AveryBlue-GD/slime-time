@@ -1177,12 +1177,14 @@ func _variants() -> void:
 	var hub: Node2D = await _fresh_scene(L.HUB)
 	inv("hub touch")
 	check(hub_to("maps"), "HUB-TP", "map table reachable (touch)")
-	# JUMP uses the station on a touchscreen: press the jump action
-	L.action("jump", true)
+	# a tap on the station opens it on a touchscreen (JUMP only leaps, owner 2026-10-21)
+	var table: Sprite2D = hub.near.get("sprite") if hub.near.has("sprite") else null
+	var at: Vector2 = (table.get_global_transform_with_canvas() * table.get_rect()).get_center() if table else Vector2.ZERO
+	hub._touch_controls._touch_down(0, at)
 	await L.frames(2)
-	L.action("jump", false)
+	hub._touch_controls._touch_up(0, at)
 	await L.settle()
-	check(L.kind() == "maps", "TOUCH-USE", "JUMP next to the map table opens it on touch (got %s)" % L.kind())
+	check(L.kind() == "maps", "TOUCH-USE", "a tap on the map table opens it on touch (got %s)" % L.kind())
 	inv("maps touch")
 	# the touch pause button must not leave the menu action held
 	L.progress.start_story(2)
