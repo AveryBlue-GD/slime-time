@@ -1184,11 +1184,11 @@ msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "打通全部{count}關"
 
-#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-#. budget: max 192px, lines 1
+#. hub prompt during the first hub tour (a station that opens once the tour is done), max 110px, 1 line
+#. budget: max 110px, lines 1
 #: scripts/hub_tour.gd
-msgctxt "hub.tour.end"
-msgid "THE WAY UP, WALK IN"
+msgctxt "hub.tour.after"
+msgid "AFTER THE TOUR"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
@@ -1196,6 +1196,13 @@ msgstr ""
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.turn_back"
 msgid "HOLD {left} TO TURN IT BACK"
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.end"
+msgid "THE WAY UP, WALK IN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line

@@ -1558,7 +1558,13 @@ func _escape_ladder() -> bool:
 			if g.pause_menu.visible:
 				var qb := button_with(g, "QUIT TO HUB")
 				if qb == null:
-					qb = button_with(g, "SKIP TRAINING")  # (the same button in the SPLASHDOWN training maze)
+					qb = button_with(g, "SKIP TRAINING")  # (the same button in the SPLASHDOWN training maze, on a replay)
+				if qb == null and g.get("training") == true:
+					# (the first training run has no SKIP TRAINING: leave it the way its win row's HUB does)
+					g.pause_menu.resume()
+					UIKit.go(self, g.leave_training(false))
+					await L.settle(240)
+					continue
 				if qb:
 					await L.click(qb.get_global_rect().get_center(), 1)
 					await L.settle(240)

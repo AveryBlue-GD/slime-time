@@ -159,7 +159,7 @@ press of the use key at the wheel: the room turns one station clockwise, the sta
   prompt already shows (FREE).
 - The tour is over when the archway comes back round. Using the archway opens the level select with level 1
   focused, and the player plays level 1 as today.
-- **Skippable at any time:** Esc / B / the touch SKIP ends the tour (the first Esc in the tour skips the tour
+- **Skippable at any time** (the SETTINGS replay only since 2026-10-27, section 16): Esc / B / the touch SKIP ends the tour (the first Esc in the tour skips the tour
   and doesn't go to the title). Walking off and using any station also ends it quietly. Either way
   `TUTORIAL_HUB` is set and the tour never comes back (except from the TRAINING replay).
 - Never blocking: the slime can move, leap and use stations during the tour. Nothing is locked.
@@ -399,3 +399,22 @@ dry-up and gone at the chalice, back with its full time after R mid-run on attem
 budget, centred, off the slime / pods / banner / touch controls, top / bottom with hysteresis, a held joystick near either
 spot; none in a story level), `test_i18n_screens` states `training coin use`, `training dry-up coin use`,
 `training chalice line`.
+
+## 16. No skipping by accident (owner, 2026-10-27)
+
+The owner asked that a first-time player can't skip the tutorial by accident: it is walked through in full and ends
+with the player walked to the station that leads on (the story archway). This replaces "skippable at any time" and
+"never blocking" (sections 2 and 5) for the **first** run only; the SETTINGS replay keeps the old behaviour.
+
+- **Training maze:** the pause menu has no SKIP TRAINING on a first run (`pause_menu._training_locked()`: training and not
+  `Progress.training_replay`), so the maze is left through its chalice. The dry-up row is RESTART only, so there is no
+  dead end. The replay keeps SKIP TRAINING.
+- **Hub tour (`HubTour.guided`, true unless `Progress.tour_replay`):** no SKIP pod; Esc / START / the touch pause button
+  open the hub MENU as anywhere else and B does nothing to the tour; every station answers AFTER THE TOUR (`blocks()`,
+  `wait_note()`) until the room has come round. Then the room holds still (`holds_room()`: the wheel and a leap into it
+  do nothing), the archway stays lit, a gold arrow on the floor points into it, and THE WAY UP, WALK IN shows in the
+  prompt box wherever the slime is (`guide_line()`), by any station but the archway, whose own prompt shows when the
+  slime reaches it. Only the archway opens, and only using it saves `TUTORIAL_HUB` (`station_used`), so leaving the hub
+  before that (MENU, QUIT TO TITLE, closing the game) brings the tour back from the start next time.
+- Tests: `test_hub_tour` (`_full_tour`, `_no_skips`, `_station_ends_it` for both kinds; the replay keeps `_skips`),
+  `test_training_maze` (`_skip`), `test_nav_fuzz`'s escape ladder leaves a first training run the way its HUB does.

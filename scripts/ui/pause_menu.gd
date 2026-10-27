@@ -4,7 +4,8 @@ extends CanvasLayer
 ## randomizer maze it also shows the maze's SEED (press it to copy the number or type another
 ## one: that maze is rebuilt, the same for anyone with the seed). Runs while the tree is paused;
 ## everything else in the level freezes. In the SPLASHDOWN training maze QUIT TO HUB reads SKIP TRAINING:
-## the training ends (Progress.finish_training(true), through game.leave_training) and the hub opens.
+## the training ends (Progress.finish_training(true), through game.leave_training) and the hub opens. That is
+## the SETTINGS replay only: on the first run the button is hidden, so the maze is played to its chalice.
 
 ## The button column (100 wide, 13 px buttons 3 apart) on its panel, centered under PAUSED.
 const PANEL_X := 100
@@ -212,6 +213,9 @@ func open() -> void:
 		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
 	# i18n: pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
 	buttons[3].text = Loc.t("pause.skip_training", "SKIP TRAINING") if _training() else Loc.t("pause.quit_hub", "QUIT TO HUB")
+	# The first training run can't be left early (owner, 2026-10-27): no SKIP TRAINING; the SETTINGS replay keeps it.
+	var locked := _training_locked()
+	buttons[3].visible = not locked
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
 	descent_note.visible = false
@@ -220,7 +224,7 @@ func open() -> void:
 		descent_note.visible = true
 		# i18n: max 300px, 1 line, under the panel
 		descent_note.text = Loc.t("pause.quit_cashes", "QUITTING CASHES OUT THE POT") if game.won else Loc.t("pause.quit_banks", "QUITTING BANKS HALF THE POT")
-	_layout(5 + (1 if seed_button.visible else 0) - (1 if descent else 0) + (1 if wishlist_button.visible else 0), hud)
+	_layout(5 + (1 if seed_button.visible else 0) - (1 if descent else 0) + (1 if wishlist_button.visible else 0) - (1 if locked else 0), hud)
 	if random:
 		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true
@@ -465,7 +469,15 @@ func _training() -> bool:
 	return get_parent().get("training") == true
 
 
+## True over the first (not replayed) training run: SKIP TRAINING is hidden and does nothing.
+func _training_locked() -> bool:
+	var progress := get_node_or_null("/root/Progress")
+	return _training() and not (progress != null and progress.training_replay)
+
+
 func _quit() -> void:
+	if _training_locked():
+		return
 	var training := _training()
 	DevLog.log_event(get_tree(), "skip training (pause)" if training else "quit to hub (pause)", get_parent())
 	if get_parent().has_method("quit_descent"):
