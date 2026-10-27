@@ -4,7 +4,7 @@ extends Node
 ## in-memory state, nothing saved). Prints "CAPTURE <name> <frame>" at each moment for picking movie frames.
 ##   --shot=tour      the hub tour: the first line, each turn's line (CAPTURE turn<N>), the turn-back hint,
 ##                    the end line (THE WAY UP, WALK IN)
-##   --shot=pause     the training maze with the pause menu open (SKIP TRAINING)
+##   --shot=pause     the training maze with the pause menu open (a first run: no SKIP TRAINING)
 ##   --shot=settings  SETTINGS with the TRAINING button
 ##   --shot=hub_plain the hub by the wheel with the gate off (the ROTATE prompt as before)
 ##   --shot=settings_plain / l1_cue / l1_dry  gate off: SETTINGS, level 1's move glyph, level 1's dry-up row

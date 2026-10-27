@@ -246,7 +246,7 @@ func _tutorial() -> void:
 		["training coin use", "coin_use"], ["training dry-up coin use", "dry_coin"], ["training chalice line", "chalice"]]
 	for st: Array in states:
 		seed(20261017)
-		progress.prepare_training(false)
+		progress.prepare_training(st[1] == "pause")  # (SKIP TRAINING: only a SETTINGS replay's pause menu has it)
 		var game := await _spawn_game({})
 		await _frames(3)
 		match st[1]:

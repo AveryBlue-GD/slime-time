@@ -4,8 +4,11 @@ extends "res://tests/suite_base.gd"
 ## when Progress.hub_tour_due() (gate on, training done, no TUTORIAL_HUB yet, or a SETTINGS replay); the
 ## slime starts by the wheel; each time the player turns the room, the station now at the back is lit and
 ## its line shows in the prompt box (with the use key: F / X; none on touch); the turn-back hint shows once;
-## a full turn ends at the archway (finish_hub_tour, TUTORIAL_HUB saved); Esc / B / the SKIP pod / using
-## a station ends it at any step; the web's 8 stations (no trapdoor) too; gate off: no tour, as today.
+## a full turn ends at the archway. The first visit is guided (owner, 2026-10-27): no SKIP pod, Esc opens the
+## hub MENU and B does nothing to it, the other stations say AFTER THE TOUR, and at the end the room holds
+## still, THE WAY UP, WALK IN shows wherever the slime is, an arrow points into the archway, and only using
+## the archway saves TUTORIAL_HUB. A SETTINGS replay is the free tour: Esc / B / the SKIP pod / using a
+## station ends it at any step. The web's 8 stations (no trapdoor) too; gate off: no tour, as today.
 ## An autopilot reads each line for READ_TIME seconds, turns, then walks to the archway: the tour's length.
 ## Run: ./tools/godot.sh --path . --headless --fixed-fps 60 --quit-after 300000 -s res://tests/test_hub_tour.gd
 
@@ -31,6 +34,7 @@ func _initialize() -> void:
 
 	await _gate_off()
 	await _full_tour()
+	await _no_skips()
 	await _skips()
 	await _station_ends_it()
 	await _devices()
@@ -45,14 +49,16 @@ func _initialize() -> void:
 	quit(1 if failures > 0 else 0)
 
 
-## A save the tour is due for: the training done (gate on), no TUTORIAL_HUB.
-func _due_save() -> void:
+## A save the tour is due for: the training done (gate on), no TUTORIAL_HUB. `replay`: the SETTINGS replay's
+## tour (the free one, skippable) instead of the first, guided one.
+func _due_save(replay := false) -> void:
 	Economy.tutorial_force = 1
 	progress.reset_progress()
 	progress.dev_tools = false
 	progress.tutorial_seen = progress.TUTORIAL_MOVE | progress.TUTORIAL_LEAP | progress.TUTORIAL_TRAINING
 	progress.training_skipped = false
 	progress.training_coin = true
+	progress.tour_replay = replay
 	HubScript.return_to = "settings"  # (the tour ignores it: it starts at the archway)
 
 
@@ -129,10 +135,7 @@ func _full_tour() -> void:
 		"...the slime starts next to the wheel")
 	_check(hub.prompt_name.text == "HOME. IT TURNS, HIT THE WHEEL" and hub.prompt_key.text == "F" and hub.prompt.visible,
 		"...the prompt box says HOME. IT TURNS, HIT THE WHEEL F")
-	_check(tour.skip_pod.visible and tour.skip_label.text == "SKIP" and tour.skip_key.text == "ESC", "...with a SKIP ESC pod top right")
-	var pod := Rect2(tour.skip_pod.position, tour.skip_pod.size)
-	_check(pod.end.x == 320 - UIKit.HUD_EDGE and pod.position.y == UIKit.HUD_EDGE and pod.size.y == UIKit.POD_H,
-		"...a 14 px pod HUD_EDGE from the corner (%s)" % pod)
+	_check(tour.guided and tour.skip_pod == null and tour.arrow == null, "...guided (the first visit): no SKIP pod, no arrow yet")
 	var heard: Array = []
 	hub.room_turned.connect(func(id: String, _dir: int) -> void: heard.append(id))
 	var expected := {
@@ -160,24 +163,66 @@ func _full_tour() -> void:
 	_check(widest <= 192 and hub.prompt.size.x <= 320 - 2 * UIKit.EDGE, "every line fits its 192 px budget (widest %d px)" % widest)
 	_check(not progress.has_seen_tutorial(progress.TUTORIAL_HUB), "...nothing saved before the end")
 	await _turn(hub)
-	_check(hub.back_station().id == "story" and tour.done and progress.has_seen_tutorial(progress.TUTORIAL_HUB) and not progress.hub_tour_due(),
-		"a full turn ends at the archway: TUTORIAL_HUB saved, no longer due")
-	_check(hub.prompt_name.text == "THE WAY UP, WALK IN" and hub.prompt_key.text == "" and not tour._layer.visible,
-		"...THE WAY UP, WALK IN (no key); the SKIP pod gone")
-	_check(_saved_bits() & progress.TUTORIAL_HUB != 0, "...written to the save")
+	_check(hub.back_station().id == "story" and tour.done and not tour.over and not progress.has_seen_tutorial(progress.TUTORIAL_HUB)
+		and progress.hub_tour_due(), "a full turn ends at the archway: done, but not saved before the archway is used")
+	_check(hub.prompt_name.text == "THE WAY UP, WALK IN" and hub.prompt_key.text == "", "...THE WAY UP, WALK IN (no key)")
+	var story: Dictionary = hub._station("story")
+	_check(tour.arrow != null and tour.arrow.position.distance_to(story.sprite.position) <= TourScript.ARROW_BELOW + TourScript.ARROW_BOB + 1.0,
+		"...an arrow on the floor in front of the archway")
+	_check(story.sprite.self_modulate == Color(1.25, 1.25, 1.25), "...the archway lit")
 	await _wait_seconds(TourScript.HINT_DELAY + 0.5)
 	_check(hub.prompt_name.text == "THE WAY UP, WALK IN", "...the last line stays")
 	await _turn(hub)
-	_check(tour.over and hub.prompt_name.text == "ROTATE", "turning on past the end: the hub's own ROTATE again")
-	_check(not tour.back_pressed(), "after the tour, Esc / B are the hub's again (Esc opens the hub menu)")
+	_check(not tour.over and hub.back_station().id == "story" and hub.prompt_name.text == "THE WAY UP, WALK IN",
+		"the wheel again: the room holds still, the archway stays at the back")
+	hub.slime.position = hub.rotor.position + Vector2(70, 20)
+	await _physics_frames(3)
+	_check(hub.near.is_empty() and hub.prompt.visible and hub.prompt_name.text == "THE WAY UP, WALK IN",
+		"...away from everything the line still shows")
+	hub.slime.position = hub._station("coins").sprite.position + Vector2(0, -14)
+	await _physics_frames(3)
+	_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "THE WAY UP, WALK IN", "...by another station too")
+	await _press("interact")
+	_check(not hub.coin_board.visible and not tour.over and hub.prompt_name.text == "COIN BAG" and hub.prompt_key.text == "AFTER THE TOUR",
+		"...which stays shut: COIN BAG AFTER THE TOUR")
+	_check(not tour.back_pressed() and not tour.over, "Esc / B don't end it (Esc opens the hub menu)")
+	_check(tour.blocks("maps") and not tour.blocks("story"), "only the archway is open")
+	tour.station_used("story")  # (the archway's use; its level select isn't opened here)
+	_check(tour.over and tour.arrow == null and progress.has_seen_tutorial(progress.TUTORIAL_HUB) and not progress.hub_tour_due()
+		and _saved_bits() & progress.TUTORIAL_HUB != 0, "using the archway ends the tour: TUTORIAL_HUB saved, no longer due")
 	await _close(hub)
 
 
-# --- Skip at every step: Esc, B, a tap or a left click on the SKIP pod
+# --- The guided tour can't be skipped: Esc opens the hub menu (the tour stays), B, a tap or a click top right do nothing
+func _no_skips() -> void:
+	for step in [0, 4, 8]:
+		await _due_save()
+		var hub := await _open()
+		var tour: Node = hub.tour
+		for i in step:
+			await _turn(hub)
+		await _press("ui_cancel")
+		_check(not tour.over and not hub.hub_menu.visible, "guided, %d turns: B does nothing" % step)
+		var corner := Vector2(320 - UIKit.HUD_EDGE - 10, UIKit.HUD_EDGE + 7)
+		_send_touch(0, corner, true)
+		await _physics_frames(2)
+		_send_touch(0, corner, false)
+		_send_click(corner, MOUSE_BUTTON_LEFT)
+		await _physics_frames(2)
+		_check(not tour.over, "...a tap or a click where the SKIP pod was: nothing")
+		await _press("menu")
+		_check(not tour.over and hub.hub_menu.visible and not progress.has_seen_tutorial(progress.TUTORIAL_HUB),
+			"...Esc opens the hub menu; the tour stays, nothing saved")
+		await _press("menu")
+		_check(not hub.hub_menu.visible and not hub.slime.frozen and not tour.over, "...and Esc closes it again")
+		await _close(hub)
+
+
+# --- A SETTINGS replay's tour: skip at every step with Esc, B, a tap or a left click on the SKIP pod
 func _skips() -> void:
 	var ways := ["menu", "ui_cancel", "touch", "click"]
 	for step in 9:
-		await _due_save()
+		await _due_save(true)
 		var hub := await _open()
 		var tour: Node = hub.tour
 		for i in step:
@@ -198,10 +243,9 @@ func _skips() -> void:
 			await _physics_frames(2)
 		else:
 			await _press(how)
-		var saved: bool = progress.has_seen_tutorial(progress.TUTORIAL_HUB)
-		_check(tour.over and tour.skipped and saved and not hub.slime.frozen and not tour._layer.visible
-			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB != 0,
-			"skip after %d turns (%s): over, finish_hub_tour saved HUB, still in the hub, ROTATE again" % [step, how])
+		_check(tour.over and tour.skipped and not progress.tour_replay and not hub.slime.frozen and not tour._layer.visible
+			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB == 0,
+			"replay, skip after %d turns (%s): over, still in the hub, ROTATE again, nothing saved" % [step, how])
 		_check(not hub.hub_menu.visible, "...the skipping press doesn't also open the hub menu (%s)" % how)
 		if how == "menu":
 			await _press("menu")
@@ -221,25 +265,35 @@ func _send_click(at: Vector2, button: MouseButton) -> void:
 		Input.parse_input_event(event)
 
 
-# --- Using a station ends the tour quietly
+# --- Guided: the stations wait for the tour; a replay: using a station ends the tour quietly
 func _station_ends_it() -> void:
-	await _due_save()
-	var hub := await _open()
-	var tour: Node = hub.tour
-	await _turn(hub)
-	var bag: Dictionary = hub._station("coins")
-	hub.slime.position = bag.sprite.position + Vector2(0, -14)
-	await _physics_frames(3)
-	_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "COIN BAG", "away from the wheel: the station's own prompt (COIN BAG)")
-	await _press("interact")
-	_check(hub.coin_board.visible and tour.over and not tour.skipped and progress.has_seen_tutorial(progress.TUTORIAL_HUB),
-		"using a station (the coin bag) ends the tour quietly, saved")
-	await _close(hub)
+	for replay in [false, true]:
+		await _due_save(replay)
+		var hub := await _open()
+		var tour: Node = hub.tour
+		await _turn(hub)
+		var bag: Dictionary = hub._station("coins")
+		hub.slime.position = bag.sprite.position + Vector2(0, -14)
+		await _physics_frames(3)
+		_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "COIN BAG", "away from the wheel: the station's own prompt (COIN BAG)")
+		await _press("interact")
+		if replay:
+			_check(hub.coin_board.visible and tour.over and not tour.skipped and not progress.tour_replay,
+				"replay: using a station (the coin bag) ends the tour quietly")
+		else:
+			_check(not hub.coin_board.visible and not tour.over and hub.prompt_key.text == "AFTER THE TOUR"
+				and not progress.has_seen_tutorial(progress.TUTORIAL_HUB), "guided: the coin bag stays shut, AFTER THE TOUR")
+			hub.slime.position = hub._station("story").sprite.position + Vector2(0, 16)
+			await _physics_frames(3)
+			await _press("interact")
+			_check(hub.near.get("id", "") == "story" and not hub.slime.frozen and not tour.over and hub.prompt_key.text == "AFTER THE TOUR",
+				"guided: the archway too, before the room has come round")
+		await _close(hub)
 
 
 # --- Pad and touch: the right glyphs (Platform seam)
 func _devices() -> void:
-	await _due_save()
+	await _due_save(true)  # (a replay: its SKIP pod's key too)
 	var hub := await _open()
 	var tour: Node = hub.tour
 	Platform.last_input = Platform.INPUT_PAD
@@ -288,7 +342,7 @@ func _layout() -> void:
 		_check(bad.is_empty(), "%s: every tour line's prompt box centred, on screen, clear of the touch controls (%s)" % [device, ", ".join(bad)])
 		_check(widest <= 192.0, "%s: the widest tour line is within its 192 px budget (%d px)" % [device, widest])
 		await _close(hub)
-	await _due_save()
+	await _due_save(true)  # (the SKIP pod: a replay's)
 	var hub2 := await _open()
 	var tour2: Node = hub2.tour
 	for device in ["keys", "pad", "touch"]:
