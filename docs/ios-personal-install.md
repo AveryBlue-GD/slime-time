@@ -36,10 +36,10 @@ Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
   [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md).
 
 ## Which device
-`ios_build.sh` installs on the one iPhone / iPad it can reach. A device paired over Wi-Fi counts too, so with an iPad
-nearby it stops and lists both: install the build it just made with `xcrun devicectl device install app --device <Identifier>
-build/ios-derived/Build/Products/Debug-iphoneos/DryTrying.app`, or run `DEVICE=<Identifier> ./tools/ios_build.sh`.
-The full game is the app **Dry Trying**; **Dry Trying Demo** is a separate app (bundle id `...drytrying.demo`).
+`ios_build.sh` builds for, signs for and installs on the one iPhone / iPad it can reach. A device paired over Wi-Fi
+counts too, so with an iPad nearby it stops before building and lists both: run `DEVICE=<Identifier> ./tools/ios_build.sh`
+with the Identifier from that list. Each device needs its own build (a free Personal Team profile only installs on the
+device it was signed for). The full game is the app **Dry Trying**; **Dry Trying Demo** is a separate app (bundle id `...drytrying.demo`).
 
 ## Build stamp
 Every `tools/ios_build.sh` build is stamped: the title screen's top left shows the commit (`+` = built with uncommitted
