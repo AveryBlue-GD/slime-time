@@ -206,10 +206,10 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
-	elif near_ability(pos):
-		pass  # (the dead ring round the ability buttons: a missed button does nothing)
 	elif _tap_touch == -1 and tap_claim.is_valid() and tap_claim.call(pos):
 		_tap_touch = index
+	elif near_ability(pos):
+		pass  # (the dead ring round the ability buttons: a missed button does nothing)
 	elif pos.x < SCREEN.x / 2.0:
 		if _joy_touch == -1:
 			_joy_touch = index
@@ -458,9 +458,9 @@ func _release_all() -> void:
 	_release_pause()
 	_joy_touch = -1
 	_jump_touch = -1
+	_tap_touch = -1  # (nothing opens: a tap only counts on a real release)
 	_aim_jump_touch = -1  # (the aim stays up: nothing fires without a real release)
 	_cancel_hover = false
-	_tap_touch = -1  # (nothing opens: a tap only counts on a real release)
 	_tap_start.clear()  # (nor glides: a touch that outlived this is no tap)
 	_joy_center = JOY_HOME
 	joy_vector = Vector2.ZERO
