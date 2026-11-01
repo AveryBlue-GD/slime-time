@@ -509,14 +509,15 @@ func _ui_wardrobe() -> void:
 	_check(progress.map_paper == "prism_paper" and Cosmetics.style_flows(progress.map_paper) and "WEARING" in screen.status.text
 		and (screen.paper_tiles["prism_paper"].get_child(0) as TextureRect).material != null, "an owned paper is worn whole; PRISM's tile flows")
 	screen.page_button.pressed.emit()
-	_check(screen.page == "hub" and screen.hub_tiles.size() == 14 and screen.hub_tiles[""].has_focus() and "BEAT THE STORY" in screen._rule.text,
-		"...then HUB (AUTO + 13 skins), shut before normal mode is beaten")
+	_check(screen.page == "hub" and screen.hub_tiles.size() == 14 and screen.hub_tiles[""].has_focus() and screen._rule.text == "THE HUB TAKES THIS COLOR"
+		and not "BEAT" in screen.status.text, "...then HUB (AUTO + 13 skins), open from the start (owner, 2026-11-01), its rule shown once")
+	var mint_open: bool = progress.is_skin_unlocked("mint", false)
 	screen.hub_tiles["mint"].pressed.emit()
-	_check(progress.hub_skin_in_use() == "" and progress.hub_color() == progress.skin_color(), "...a skin can't be picked yet: the hub follows the worn skin")
+	_check(progress.hub_skin_in_use() == ("mint" if mint_open else ""), "...a skin you have colors the hub before the story is beaten (mint %s)" % mint_open)
+	progress.hub_skin = ""
 	progress.levels_cleared = Levels.COUNT
 	progress.selected_skin = "lime"
 	screen.show_page("hub")
-	_check(not "BEAT" in screen._rule.text, "normal mode beaten: the HUB page opens")
 	screen.hub_tiles["frost"].pressed.emit()
 	_check(progress.hub_skin_in_use() == "frost" and progress.hub_color() == Skins.get_preset("frost").color and progress.skin_color() == Skins.get_preset("lime").color
 		and "WEARING" in screen.status.text, "an unlocked skin colors the hub; the slime keeps its own")

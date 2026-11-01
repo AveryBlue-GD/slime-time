@@ -14,8 +14,7 @@ extends Control
 ## drawn on it (MapView.render; PRISM flowing, MapView.flow_material); pressing an owned one wears it
 ## whole (its sheet, walls and route: Progress.map_paper).
 ## The HUB page (owner, 2026-10-21) picks the hub's color: AUTO (it follows the worn skin) or any skin
-## you have unlocked (a slime in it, opaque); shut (silhouettes) until normal mode is beaten
-## (Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
+## you have unlocked (a slime in it, opaque), open from the start (owner, 2026-11-01; Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
 ## just picked shows on them at once.
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
@@ -52,7 +51,6 @@ static func rule_text(which: String) -> String:
 		"trails": return Loc.t("skins.rule_trails", "WIN TRAILS AT THE PRIZE WHEEL")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
 		"hub": return Loc.t("skins.rule_hub", "THE HUB TAKES THIS COLOR")
-		"hub_locked": return Loc.t("skins.rule_hub_locked", "BEAT THE STORY TO COLOR THE HUB")
 	return Loc.t("skins.rule_skins", "NEW LEVELS EQUIP YOUR NEWEST SKIN")
 
 
@@ -649,7 +647,7 @@ func show_page(which: String) -> void:
 		_refresh_papers()
 		paper_tiles[Progress.map_paper].grab_focus()
 	elif hub:
-		_rule.text = rule_text("hub" if Progress.hub_color_open() else "hub_locked")
+		_rule.text = rule_text("hub")  # (once: the status line under it names the color, never this rule again)
 		custom_panel.visible = false
 		showcase.visible = false
 		_fill_hub_grid()
@@ -742,7 +740,7 @@ func _refresh_hub(focus_id: Variant = null) -> void:
 	var skin_name := Loc.t("skins.hub_auto_line", "AUTO - YOUR SKIN'S COLOR") if id == "" else Skins.display_name(id)  # i18n: wardrobe HUB page status, max 240px, 1 line
 	if not _hub_choosable(id):
 		# i18n: wardrobe HUB page status line, max 300px, 1 line
-		status.text = rule_text("hub_locked") if not Progress.hub_color_open() else Loc.t("skins.locked_hub", "{name} - UNLOCK THIS SKIN FIRST", {name = skin_name})
+		status.text = Loc.t("skins.locked_hub", "{name} - UNLOCK THIS SKIN FIRST", {name = skin_name})
 	elif id == Progress.hub_skin_in_use():
 		status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = skin_name})
 	else:
@@ -988,7 +986,7 @@ func open_color_picker() -> void:
 		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
 		swatch.size = Vector2(5, 5)
 		swatch.position = Vector2(4, UIKit.button_v_margins().x + 1)
-		swatch.material = Hats.flow_material() if Hats.dye_flows(dye) else null
+		swatch.material = Hats.swatch_material(dye)  # (PRISM turns as one, RAINBOW runs as a gradient)
 		tile.add_child(swatch)
 		var dye_label := UIKit.make_label(Hats.dye_name(dye), UIKit.FONT, UIKit.TEXT)
 		dye_label.position = Vector2(12, UIKit.button_v_margins().x)

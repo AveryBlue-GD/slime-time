@@ -112,10 +112,34 @@ static func key_label(physical: Key) -> Key:
 	return shown if shown != KEY_NONE else physical
 
 
-## SETTINGS shows VIBRATION (in FULLSCREEN's cell): phones and tablets, native or in a browser. A desktop
-## (touchscreen laptops too) keeps FULLSCREEN; no vibrator there anyway.
-static func has_vibration() -> bool:
+## A phone or tablet (native, or a touchscreen in a browser): played by touch, not by keys. A desktop (touchscreen
+## laptops too) is not one.
+static func is_touch_device() -> bool:
 	return has_touch() and not is_desktop()
+
+
+## Tests: 1 / 0 = an iPad or not (instead of the device's model name), -1 = real.
+static var ipad_override := -1
+
+
+## An iPad (the native iOS app on one: its model name starts "iPad"). No iPad has a vibration motor (only iPhones
+## have the Taptic Engine; the iPad Pro's haptics are in the Apple Pencil Pro, not the tablet), so
+## Input.vibrate_handheld does nothing there.
+static func is_ipad() -> bool:
+	if ipad_override >= 0:
+		return ipad_override == 1
+	return is_ios() and OS.get_model_name().begins_with("iPad")
+
+
+## SETTINGS shows VIBRATION (in FULLSCREEN's cell): phones, native or in a browser, but not iPads (no motor, owner
+## 2026-11-01: the setting is hidden where it does nothing) nor browsers without the Vibration API (every iOS
+## browser). A desktop (touchscreen laptops too) keeps FULLSCREEN; no vibrator there anyway.
+static func has_vibration() -> bool:
+	if not is_touch_device() or is_ipad():
+		return false
+	if kind() == "web" and DisplayServer.get_name() != "headless" and OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("typeof navigator.vibrate === 'function'", true))
+	return true
 
 
 ## The frame-rate cap: 60 on the web and on phones / tablets (physics runs 60 ticks and interpolation stays
@@ -368,6 +392,7 @@ static func reset_overrides() -> void:
 	demo_override = -1
 	steam_deck_override = -1
 	pads_override = -1
+	ipad_override = -1
 	steam_override = null
 	_steam = null
 	_steam_tried = false

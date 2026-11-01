@@ -261,6 +261,10 @@ func _check_try_button() -> void:
 	await physics_frame
 	game._on_goal_body_entered(game.slime)
 	await _wait_seconds(game.CHOICE_DELAY + 0.3)
+	for i in 300:  # (a played level stages its result panel first, ANI-02: the row comes after it)
+		if not game.hud.choice_buttons.is_empty():
+			break
+		await physics_frame
 	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 	_check(game.won and texts == ["TRY THE FULL GAME", "CONTINUE"] and game.hud.choice_buttons[0].has_focus(),
 		"level %d's chalice: TRY THE FULL GAME (focused) and CONTINUE (%s)" % [Demo.LEVELS, texts])

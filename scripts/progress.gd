@@ -18,6 +18,8 @@ const TUTORIAL_LEAP := 2
 const TUTORIAL_TRAINING := 4
 const TUTORIAL_HUB := 8
 ## 16, 32, 64, 128: the ability tutorial's lines were shown (AbilityCoach.BITS).
+## The prize wheel's first-visit guide (HatWheel coach, owner 2026-11-01) was played through to its free spin.
+const TUTORIAL_WHEEL := 256
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
@@ -344,7 +346,7 @@ var all_coins_debug := false
 var custom_color := Color8(239, 125, 47)
 ## The hub's color ([skin] hub, owner 2026-10-21): "" = AUTO (the worn skin's), else a skin id whose
 ## look (opaque) the room and stations take; `hub_custom` = the custom color it was set to (the
-## wardrobe gives the wheel a fresh color each visit). Only once normal mode is beaten (hub_color_open).
+## wardrobe gives the wheel a fresh color each visit). Open from the start (hub_color_open).
 var hub_skin := ""
 ## The wardrobe's RANDOM LOOK toggle ([skin] random_look, default off): each new run starts in a freshly rolled look
 ## (LookRoller.roll_for_run). `keep_look_once`: the next scene load is a retry of the same attempt, keep the look (never saved).
@@ -379,11 +381,11 @@ var fullscreen := false
 ## had one stays byte-identical. Never in save codes (a device preference): a loaded code keeps it. Set
 ## only by Language.pick; kept by RESET PROGRESS.
 var language := ""
-## Fog brightness: FOG_DARK, FOG_NORMAL (the default look) or FOG_BRIGHT (see Game.fog_look).
+## Fog brightness: FOG_DARK, FOG_NORMAL or FOG_BRIGHT (the default for a new save; see Game.fog_look).
 const FOG_DARK := 0
 const FOG_NORMAL := 1
 const FOG_BRIGHT := 2
-var fog_brightness := FOG_BRIGHT if Economy.DARK_FOG and (Platform.is_mobile_native() or (Platform.is_web() and Platform.has_touch())) else FOG_NORMAL  # (IMP-05: phones start lighter)
+var fog_brightness := FOG_BRIGHT  # (owner, 2026-11-01: every new save starts BRIGHT on every platform; SETTINGS FOG still cycles it)
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
 ## Record (fastest) clear time per story level, in seconds.
@@ -3419,9 +3421,10 @@ func reset_progress() -> void:
 	save_progress()
 
 
-## Whether the hub's color can be chosen: normal mode beaten (all story levels cleared), or dev mode.
+## Whether the hub's color can be chosen: always (owner, 2026-11-01: the player's choice from the start, no longer
+## locked behind beating the story). Kept as a seam so the wardrobe's HUB page asks one place.
 func hub_color_open() -> bool:
-	return dev_tools or levels_cleared >= Levels.COUNT
+	return true
 
 
 ## The skin the hub wears: "" = AUTO (the worn skin's), or the chosen one while it's allowed.

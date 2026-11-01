@@ -152,7 +152,7 @@ press of the use key at the wheel: the room turns one station clockwise, the sta
 | 6 | SETTINGS | SOUND, KEYS, FOG. THE BORING SIGN |
 | 7 | HAT WHEEL | SPIN FOR HATS. THE FIRST SPIN IS FREE. |
 | 8 | COSMETICS | SKINS, HATS, TRAILS. DRY UP IN STYLE |
-| 9 | archway again | THE WAY UP, WALK IN *(use-key glyph over the archway; the line stays until it is used)* |
+| 9 | archway again | THE WAY UP  WALK IN *(use-key glyph over the archway; the line stays until it is used)* |
 
 - On step 2 a second line: HOLD LEFT TO TURN BACK (once).
 - The lines describe and never recommend (D12: no "buy MORE SLIME"). The hat wheel line states a fact the
@@ -412,7 +412,7 @@ with the player walked to the station that leads on (the story archway). This re
 - **Hub tour (`HubTour.guided`, true unless `Progress.tour_replay`):** no SKIP pod; Esc / START / the touch pause button
   open the hub MENU as anywhere else and B does nothing to the tour; every station answers AFTER THE TOUR (`blocks()`,
   `wait_note()`) until the room has come round. Then the room holds still (`holds_room()`: the wheel and a leap into it
-  do nothing), the archway stays lit, a gold arrow on the floor points into it, and THE WAY UP, WALK IN shows in the
+  do nothing), the archway stays lit, a gold arrow on the floor points into it, and THE WAY UP  WALK IN shows in the
   prompt box wherever the slime is (`guide_line()`), by any station but the archway, whose own prompt shows when the
   slime reaches it. Only the archway opens, and only using it saves `TUTORIAL_HUB` (`station_used`), so leaving the hub
   before that (MENU, QUIT TO TITLE, closing the game) brings the tour back from the start next time.

@@ -120,8 +120,10 @@ const SIGN_USE_GAP := 5.0
 const SIGN_SIZE := Vector2i(16, 26)
 ## A tap within this many px of a station (its sprite box grown) glides the slime there.
 const TAP_GROW := 6.0
+## A station's name label: tapped anywhere on it or this close round it (px) counts as a tap on the station.
+const LABEL_TAP_GROW := 5.0
 ## Room around the near station's sprite (and the prompt) that still counts as a tap on it (view px).
-const TAP_MARGIN := 4.0
+const TAP_MARGIN := 8.0  # (owner, 2026-11-01: more grace round the prompt, was 4)
 const GLIDE_REACHED := 5.0
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
@@ -1756,6 +1758,13 @@ func prop_at(pos: Vector2) -> Dictionary:
 			box = Rect2(prop.sprite.position - Vector2(prop.size) / 2.0, Vector2(prop.size)).grow(TAP_GROW)
 		if box.has_point(pos):
 			return prop
+	# Its name label counts too, all of it and LABEL_TAP_GROW round it (owner, 2026-11-01: a tap anywhere on a
+	# station's name, not just next to the station, must reach it instead of the joystick).
+	if name_layer != null and name_layer.visible:
+		for prop: Dictionary in _all_props():
+			var label: Label = name_labels.get(prop.id)
+			if label != null and label.visible and label.get_global_rect().grow(LABEL_TAP_GROW).has_point(pos):
+				return prop
 	return {}
 
 
@@ -2261,31 +2270,32 @@ func _show_prompt(note := "") -> void:
 	if not prompt.visible:
 		return
 	var price := false
+	var near_id: String = near.get("id", "")  # (empty while the guided tour's last line shows with nothing in reach)
 	var line: String = tour.line_for(near.get("id", "")) if tour != null and note == "" else ""
-	prompt_name.text = near.name if line == "" else line
+	prompt_name.text = near.get("name", "") if line == "" else line
 	sign_weekly = false
 	sign_boards = false
 	_sign_day = Progress.utc_day()
-	if near.id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
+	if near_id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
 		# IMP4-02: an unplayed weekly comes first once today's daily was tried (won or lost) or on Saturday / Sunday
 		var daily_done: bool = Progress.daily_won_today()
 		sign_weekly = weekly_unplayed() and (daily_done or Progress.daily_attempted_today() or Boards.weekday(Progress.utc_day()) >= 5)
 		sign_boards = daily_done and not sign_weekly
-	if near.id == "daily" and sign_boards and line == "" and note == "":
+	if near_id == "daily" and sign_boards and line == "" and note == "":
 		prompt_name.text = Loc.t("hub.station.boards", "BOARDS")  # i18n: prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
-	elif near.id == "daily" and sign_weekly and line == "" and note == "":
+	elif near_id == "daily" and sign_weekly and line == "" and note == "":
 		prompt_name.text = Loc.t("hub.station.weekly", "WEEKLY MAZE")  # i18n: prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
 	if note != "":
 		prompt_key.text = note
 	elif line != "":
 		prompt_key.text = tour.key_text()  # (the tour's line by the wheel: the key that turns the room)
-	elif near.id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
+	elif near_id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: the next level is a full-game one, shown as plainly locked)
-	elif (near.id == "random" and not Demo.randomizer_open()) or (near.id == "wheel" and not Demo.hat_wheel_open()):
+	elif (near_id == "random" and not Demo.randomizer_open()) or (near_id == "wheel" and not Demo.hat_wheel_open()):
 		prompt_key.text = Demo.full_game_text()
-	elif near.id == "daily" and sign_boards:
+	elif near_id == "daily" and sign_boards:
 		prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
-	elif near.id == "daily" and sign_weekly:
+	elif near_id == "daily" and sign_weekly:
 		var wk_n: int = Boards.weekly_number(Boards.week_of(Progress.utc_day()))
 		if Progress.weekly_days_left() > 1:
 			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {d} = days left in the week (2..7)
@@ -2293,7 +2303,7 @@ func _show_prompt(note := "") -> void:
 		else:
 			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {h} = hours until it ends (1..24)
 			prompt_key.text = Loc.t("hub.prompt.weekly_ends_h", "#{n}  ENDS IN {h}H", {n = wk_n, h = Progress.daily_hours_left()})
-	elif near.id == "daily":
+	elif near_id == "daily":
 		var streak: int = Progress.daily_streak_now()
 		if Progress.daily_won_today():
 			prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
@@ -2311,22 +2321,22 @@ func _show_prompt(note := "") -> void:
 				prompt_key.text = Loc.t("hub.prompt.daily_streak", "STREAK {n}  ENDS IN {h}H", {n = streak, h = Progress.daily_hours_left()})
 		else:
 			prompt_key.text = ""
-	elif near.id == "random" and not Progress.is_randomizer_unlocked():
+	elif near_id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
-	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
+	elif near_id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
 		prompt_key.text = Loc.t("hub.prompt.best_floor", "BEST FLOOR {floor}", {floor = Progress.descent_best_floor})  # Descent's record
-	elif near.id == "wheel" and Progress.demo_wheel_block() != "":
+	elif near_id == "wheel" and Progress.demo_wheel_block() != "":
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: before its end screen, or its hats used up)
-	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
+	elif near_id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
 		prompt_key.text = Loc.t("hub.prompt.shop", "SHOP")  # every hat won: the overlay opens on its SHOP
-	elif near.id == "wheel":
+	elif near_id == "wheel":
 		var cost: int = Progress.spin_cost()  # the next spin's price, with the ticket icon
 		prompt_key.text = Loc.t("hub.prompt.free", "FREE") if cost == 0 else str(cost)
 		price = cost > 0
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
 	# "!" when something in that station's store is affordable (the cheapest unowned item).
-	prompt_bang.visible = note == "" and line == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id) and Progress.hub_news(near.id, true)
+	prompt_bang.visible = note == "" and line == "" and near_id in ["wheel", "upgrades"] and Progress.store_affordable(near_id) and Progress.hub_news(near_id, true)
 	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
 	# (the goo's top room is the marks this line has: a line without any sits as in English)

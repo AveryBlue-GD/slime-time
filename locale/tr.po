@@ -1560,11 +1560,11 @@ msgctxt "hub.tour.turn_back"
 msgid "HOLD {left} TO TURN IT BACK"
 msgstr ""
 
-#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; the two spaces are spacing (owner, 2026-11-01: no stop between the two parts)
 #. budget: max 192px, lines 1
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.end"
-msgid "THE WAY UP, WALK IN"
+msgid "THE WAY UP  WALK IN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
@@ -2405,8 +2405,6 @@ msgctxt "settings.relaxed.hint"
 msgid "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"
 msgstr ""
 
-#. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
-#. budget: max 112px, lines 1
 #: scripts/ui/controls.gd
 msgctxt "settings.controls"
 msgid "CONTROLS"
@@ -2979,6 +2977,31 @@ msgid_plural "{count} LEFT"
 msgstr[0] ""
 msgstr[1] ""
 
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.count"
+msgid "WON PRIZES LEAVE THE WHEEL"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.common"
+msgid "GEMS ARE COMMON PRIZES"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.rare"
+msgid "STARS ARE RARE PRIZES"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.spin"
+msgid "YOUR FIRST SPIN IS FREE"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.pointer"
+msgid "THE POINTER PICKS YOUR PRIZE"
+msgstr ""
+
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -3326,6 +3349,13 @@ msgctxt "pause.skip_training"
 msgid "SKIP TRAINING"
 msgstr ""
 
+#. pause menu button, max 92px, 1 line (the first training run: skips the training maze and the hub tour)
+#. budget: max 92px, lines 1
+#: scripts/ui/pause_menu.gd
+msgctxt "pause.skip_tutorial"
+msgid "SKIP TUTORIAL"
+msgstr ""
+
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
@@ -3346,6 +3376,13 @@ msgstr "ÇIKARSAN KASANIN YARISINI ALIRSIN"
 msgctxt "pause.seed"
 msgid "SEED {code}"
 msgstr "TOHUM {code}"
+
+#. pause menu button after one press of SKIP TUTORIAL, max 92px, 1 line: press it again to skip
+#. budget: max 92px, lines 1
+#: scripts/ui/pause_menu.gd
+msgctxt "pause.skip_sure"
+msgid "SURE? AGAIN"
+msgstr ""
 
 #. random maze map view title, max 296px, 1 line
 #. budget: max 296px, lines 1
@@ -3415,11 +3452,6 @@ msgstr ""
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_hub"
 msgid "THE HUB TAKES THIS COLOR"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
-msgctxt "skins.rule_hub_locked"
-msgid "BEAT THE STORY TO COLOR THE HUB"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd

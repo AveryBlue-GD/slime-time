@@ -59,7 +59,7 @@ func _initialize() -> void:
 	_check(not back_en.has_meta(UIKit.MIRROR_META) and not back_en.is_layout_rtl(), "back in English: a new screen is not mirrored")
 	back_en.free()
 	language.disable()
-	Economy.languages_force = -1
+	Economy.languages_force = 0
 	Economy.forced_locale = ""
 	Economy.descent_force = -1
 	_result()
@@ -69,6 +69,10 @@ func _initialize() -> void:
 # ------------------------------------------------------------------ gate off / English
 
 func _gate_off() -> void:
+	# The gate ships ON (owner, 2026-11-01); these checks run with it forced off, as a test flag would.
+	Economy.languages_force = 0
+	language.disable()
+	TranslationServer.set_locale("en")
 	_check(not Economy.languages_on() and not UIKit.rtl() and not Loc.isolate_ltr, "gate off: left to right, no isolates")
 	var settings: Control = await _open("res://scenes/controls.tscn")
 	_check(not settings.has_meta(UIKit.MIRROR_META) and not settings.is_layout_rtl(), "gate off: no mirror root, nothing RTL")

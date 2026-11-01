@@ -22,31 +22,31 @@ reported here but do not fail them (the other languages are brought in line late
 | ja | 0 | 0 | 7 | 112 |
 | ko | 0 | 0 | 2 | 112 |
 | zh_CN | 0 | 0 | 3 | 112 |
-| zh_TW | 0 | 0 | 13 | 112 |
+| zh_TW | 0 | 0 | 11 | 112 |
 | th | 0 | 0 | 8 | 112 |
 | vi | 0 | 1 | 2 | 112 |
 | id | 1 | 1 | 0 | 112 |
-| ar | 0 | 0 | 32 | 112 |
+| ar | 0 | 0 | 33 | 112 |
 | hi | 1 | 0 | 19 | 112 |
-| pseudo | 49 | 3 | 24 | 112 |
-| **total** | 57 | 16 | 154 | 2139 |
+| pseudo | 54 | 3 | 25 | 112 |
+| **total** | 62 | 16 | 154 | 2139 |
 
 ## budget: what was measured
 
-- budgets: 302 of 646 template entries carry a `max Npx` note
+- budgets: 311 of 660 template entries carry a `max Npx` note
 - fonts: pixel.fnt at 8 px (pixel_big.fnt at 16 px for notes saying 16 px font) + the locale's fallback (Language.set_locale)
 - limits: each call site's max Npx, or its grows to Npx where the screen widens the box for the text (wraps: wrapped there, line count and longest word measured); enforced for every locale
 - placeholders: filled with tests/test_i18n_fit.gd SAMPLES (numbers 88 / 888, times 8:88.88, names BUBBLEGUM; {about} / {how} empty)
 
 ## screens: what was measured
 
-- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 37, fr 38, de 27, it 15, ru 11, pl 7, tr 8, ja 2, ko 1, zh_CN 1, zh_TW 1, th 5, vi 4, id 6, ar 2, hi 8, pseudo 60
+- deliberate_widths: buttons wider than in English exactly as UIKit's sizing helpers make them for their text (not findings): es 31, pt_BR 37, fr 39, de 27, it 15, ru 11, pl 7, tr 8, ja 2, ko 1, zh_CN 1, zh_TW 1, th 5, vi 4, id 6, ar 2, hi 8, pseudo 58
 - enforced: every locale (English-only mode: English fails, the other locales are reported)
 - measured: every visible Label / Button with text: width and lines vs its box, ink inside 320x180, overlaps with other texts and buttons, buttons grown past their English size
 - not_measured: draw_string text (tutorial key caps, touch JUMP), textures (logo), the web shell
 - states: 75 screen / overlay / HUD states per locale
 
-## budget: open (51 places)
+## budget: open (56 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
@@ -56,11 +56,15 @@ reported here but do not fail them (the other languages are brought in line late
 | budget | boards.play_daily | PLAY DAILY | overflow | 1: pseudo | pseudo [_PŁÁÝ ĐÁÍŁÝ_]: 73x1 vs 70x1 |
 | budget | boards.play_weekly | PLAY WEEKLY | overflow | 1: pseudo | pseudo [_PŁÁÝ WÉÉKŁÝ__]: 86x1 vs 80x1 |
 | budget | boards.weekly_ends | WEEKLY #{n}  ENDS IN {d}D | overflow | 1: pseudo | pseudo [____WÉÉKŁÝ #88  ÉÑĐŚ ÍÑ {d}Đ_: 182x1 vs 148x1 |
+| budget | coach.aim_cancel | LET GO TO FIRE, DRAG TO X TO CANCEL | overflow | 1: pseudo | pseudo [______ŁÉT ĞÖ TÖ FÍRÉ, ĐRÁĞ TÖ: 251x1 vs 192x1 |
+| budget | coach.aim_touch | AIM WITH THE STICK, THEN PRESS {jump} | overflow | 1: pseudo | pseudo [______ÁÍM WÍTH THÉ ŚTÍÇK, THÉ: 276x1 vs 192x1 |
 | budget | coach.done | THAT'S EVERY ABILITY, GOOD LUCK | overflow | 1: pseudo | pseudo [_____THÁT'Ś ÉVÉRÝ ÁBÍŁÍTÝ, ĞÖ: 231x1 vs 192x1 |
-| budget | demo.end.random | THE FULL GAME ADDS {count} ABILITIES AND THE SHOP | overflow | 1: pseudo | pseudo [_________THÉ FÜŁŁ ĞÁMÉ ÁĐĐŚ 8: 343x1 vs 300x1 |
+| budget | coach.line_touch_aim | TAP {name}, AIM WITH THE STICK | overflow | 1: pseudo | pseudo [_____TÁP BUBBLEGUM, ÁÍM WÍTH : 234x1 vs 192x1 |
+| budget | demo.end.random | THE FULL GAME ADDS ENDLESS MAZES AND THE SHOP | overflow | 1: pseudo | pseudo [________THÉ FÜŁŁ ĞÁMÉ ÁĐĐŚ ÉÑ: 344x1 vs 300x1 |
 | budget | demo.full_game | FULL GAME | overflow | 1: pseudo | pseudo [_FÜŁŁ ĞÁMÉ_]: 68x1 vs 52x1 |
 | budget | demo.keep_playing | KEEP PLAYING | overflow | 1: pseudo | pseudo [_KÉÉP PŁÁÝÍÑĞ__]: 90x1 vs 80x1 |
 | budget | demo.teaser.shop | THE SHOP: TRAILS AND PAPERS | overflow | 1: pseudo | pseudo [____THÉ ŚHÖP: TRÁÍŁŚ ÁÑĐ PÁPÉ: 201x1 vs 168x1 |
+| budget | demo.try_full_game | TRY THE FULL GAME | overflow | 1: pseudo | pseudo [__TRÝ THÉ FÜŁŁ ĞÁMÉ___]: 126x1 vs 120x1 |
 | budget | demo.wheel_closed | SPIN FOR PRIZES AFTER LEVEL {level} | overflow | 1: pseudo | pseudo [______ŚPÍÑ FÖR PRÍŻÉŚ ÁFTÉR Ł: 232x1 vs 192x1 |
 | budget | hub.daily.next | NEW IN {h}H | overflow | 1: pseudo | pseudo [_ÑÉW ÍÑ {h}H__]: 84x1 vs 60x1 |
 | budget | hub.menu.achievements | ACHIEVEMENTS | overflow | 1: pseudo | pseudo [_ÁÇHÍÉVÉMÉÑTŚ__]: 94x1 vs 90x1 |
@@ -88,6 +92,7 @@ reported here but do not fail them (the other languages are brought in line late
 | budget | hud.pod.attempt_lurkers | ATTEMPT {n} LURKERS | overflow | 1: pseudo | pseudo [___ÁTTÉMPT 88 ŁÜRKÉRŚ___]: 142x1 vs 128x1 |
 | budget | notice.save_failed | SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS | overflow | 1: pseudo | pseudo [________ŚÁVÉ FÁÍŁÉĐ: ÇÖPÝ ÝÖÜ: 330x1 vs 296x2 |
 | budget | pause.skip_training | SKIP TRAINING | overflow | 1: pseudo | pseudo [__ŚKÍP TRÁÍÑÍÑĞ__]: 98x1 vs 92x1 |
+| budget | pause.skip_tutorial | SKIP TUTORIAL | overflow | 1: pseudo | pseudo [__ŚKÍP TÜTÖRÍÁŁ__]: 100x1 vs 92x1 |
 | budget | result.calm_offer | RELAXED? MORE SLIME, NO MEDALS OR TICKETS | overflow | 1: pseudo | pseudo [_______RÉŁÁXÉĐ? MÖRÉ ŚŁÍMÉ, Ñ: 312x1 vs 296x- |
 | budget | result.choice.new_maze | NEW MAZE | overflow | 6: fr, ru, pl, tr, id, hi | pl NOWY LABIRYNT: 72x1 vs 62x1 |
 | budget | result.choice.restart | RESTART | overflow | 1: fr | fr RECOMMENCER: 66x1 vs 62x1 |
@@ -110,12 +115,13 @@ reported here but do not fail them (the other languages are brought in line late
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 | budget | hud.pod.tix_available | overflow | TIX AVAILABLE 88 |  | English source over its own budget note |
 
-## screens: open (38 places)
+## screens: open (39 places)
 
 | screen | node / key | English | kind | locales | widest (text vs box) |
 |---|---|---|---|---|---|
 | demo end screen | demo.keep_playing | KEEP PLAYING | grew | 1: pseudo | pseudo [_KÉÉP PŁÁÝÍÑĞ__]: 90x7 vs 92x7 (over English 88x13) |
-| demo end screen | demo.end.try_random | NOW TRY THE RANDOMIZER IN THE HUB | overlap | 1: ar | ar NOW TRY THE RANDOMIZER IN THE : 170x19 vs 320x19 (over KEEP PLAYING) |
+| demo end screen | demo.try_full_game | TRY THE FULL GAME | grew | 1: pseudo | pseudo [__TRÝ THÉ FÜŁŁ ĞÁMÉ___]: 126x7 vs 128x7 (over English 100x13) |
+| demo end screen | demo.end.try_random | NOW TRY THE RANDOMIZER IN THE HUB | overlap | 2: ar, ar | ar NOW TRY THE RANDOMIZER IN THE : 170x19 vs 320x19 (over KEEP PLAYING) |
 | demo skin locked | skins.jelly.off | JELLY: OFF | grew | 1: pseudo | pseudo [_JÉŁŁÝ: ÖFF_]: 70x7 vs 84x7 (over English 80x13) |
 | hub notice | CanvasLayer24/Control0/PanelContainer8/VBoxContainer0/Label1 | COINS RETURNED +888 | overlap | 7: ja, zh_CN, zh_TW, ar, hi, pseudo, pseudo | zh_CN 金币已退还 +888: 76x14 vs 76x14 (over COSMETICS) |
 | hub tour end | hub.station.map_table | MAP TABLE | overlap | 9: es, pt_BR, fr, fr, de, ru, tr, ja, hi | es MESA DE MAPAS: 70x7 vs 70x7 (over SKIP) |
@@ -128,19 +134,19 @@ reported here but do not fail them (the other languages are brought in line late
 | settings reset confirm | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
 | settings reset confirm | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
 | settings reset confirm | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
-| settings reset confirm | settings.fog.normal | FOG: NORMAL | overlap | 4: ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings reset confirm | settings.fog.bright | FOG: BRIGHT | overlap | 4: ar, ar, hi, hi | ar الضباب: ساطع: 70x19 vs 112x19 (over LEVEL MUSIC: ON) |
 | settings reset confirm | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
 | settings training | settings.relaxed.off | RELAXED: OFF | overlap | 8: zh_TW, zh_TW, th, th, ar, ar, hi, hi | zh_TW RELAXED: OFF: 64x16 vs 112x16 (over LEVEL MUSIC: ON) |
 | settings training | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
 | settings training | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
 | settings training | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
-| settings training | settings.fog.normal | FOG: NORMAL | overlap | 7: zh_TW, zh_TW, th, ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings training | settings.fog.bright | FOG: BRIGHT | overlap | 6: zh_TW, th, ar, ar, hi, hi | ar الضباب: ساطع: 70x19 vs 112x19 (over LEVEL MUSIC: ON) |
 | settings training | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
 | settings | settings.relaxed.off | RELAXED: OFF | overlap | 8: zh_TW, zh_TW, th, th, ar, ar, hi, hi | zh_TW RELAXED: OFF: 64x16 vs 112x16 (over LEVEL MUSIC: ON) |
 | settings | common.back | BACK | overlap | 1: pseudo | pseudo [BÁÇK]: 30x7 vs 32x7 (over [_TRÁÍÑÍÑĞ_]) |
 | settings | settings.reset | RESET PROGRESS | overlap | 1: pseudo | pseudo [__RÉŚÉT PRÖĞRÉŚŚ__]: 110x7 vs 112x7 (over [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]) |
 | settings | settings.level_music.on | LEVEL MUSIC: ON | grew | 1: pseudo | pseudo [__ŁÉVÉŁ MÜŚÍÇ: ÖÑ__]: 106x7 vs 108x7 (over English 104x13) |
-| settings | settings.fog.normal | FOG: NORMAL | overlap | 7: zh_TW, zh_TW, th, ar, ar, hi, hi | hi कोहरा: सामान्य: 72x17 vs 112x17 (over LEVEL MUSIC: ON) |
+| settings | settings.fog.bright | FOG: BRIGHT | overlap | 6: zh_TW, th, ar, ar, hi, hi | ar الضباب: ساطع: 70x19 vs 112x19 (over LEVEL MUSIC: ON) |
 | settings | hub.station.settings | SETTINGS | overlap | 1: pseudo | pseudo [_ŚÉTTÍÑĞŚ_]: 128x14 vs 320x20 (over [_ÁÇHÍÉVÉMÉÑTŚ__]) |
 | title | title.story | STORY | overlap | 1: zh_TW | zh_TW 劇情: 24x16 vs 32x16 (over 逃離迷霧 BEFORE YOU DRY UP) |
 | title | hub.station.quit | QUIT | overlap | 1: zh_TW | zh_TW 離開: 24x16 vs 32x16 (over 逃離迷霧 BEFORE YOU DRY UP) |

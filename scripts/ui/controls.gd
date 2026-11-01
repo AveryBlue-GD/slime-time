@@ -80,6 +80,9 @@ var music_slider: HSlider
 var fullscreen_button: Button
 ## Phones and tablets (Platform.has_vibration): VIBRATION ON / OFF in FULLSCREEN's cell (fullscreen_button null).
 var vibration_button: Button
+## The MORE column's next free row (its buttons fill it from the top: VIBRATION / FULLSCREEN, CONTROLS, SAVE CODE,
+## then LANGUAGE or TRAINING; RELAXED keeps row 4).
+var _more_row := 0
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
@@ -134,11 +137,16 @@ func _ready() -> void:
 	music_slider = _volume_row(2, "music")
 	motion_button = _column_button(_cell(0, 3), _toggle_motion)
 	fog_button = _column_button(_cell(0, 4), _cycle_fog)
+	# The MORE column fills from the top (owner, 2026-11-01): a phone / tablet has no CONTROLS (its touch controls
+	# can't be rebound; key rebinding is for keyboards) and an iPad no VIBRATION (no motor), so the buttons below
+	# move up instead of leaving gaps.
 	if Platform.has_vibration():  # (phones: VIBRATION in FULLSCREEN's cell; the web's TAP TO PLAY goes full screen)
-		vibration_button = _column_button(_cell(1, 0), _toggle_vibration)
-	else:
-		fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
+		vibration_button = _column_button(_cell(1, _more_row), _toggle_vibration)
+		_more_row += 1
+	elif not Platform.is_mobile_native():  # (an iPad app: no window to make full screen either)
+		fullscreen_button = _column_button(_cell(1, _more_row), func() -> void: Progress.toggle_fullscreen())
 		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
+		_more_row += 1
 	relaxed_button = _column_button(_cell(1, 4), _toggle_relaxed)
 	# i18n: hint under the RELAXED button, max 296px (about 49 characters), 1 line (centred under both columns)
 	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"), UIKit.FONT, UIKit.TEXT)
@@ -157,10 +165,14 @@ func _ready() -> void:
 	_refresh_display_options()
 
 	# i18n: column buttons, max 112px (button 120 wide, 4 px margins), 1 line
-	controls_button = _column_button(_cell(1, 1), _open_controls, Loc.t("settings.controls", "CONTROLS"))
-	save_code_button = _column_button(_cell(1, 2), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
+	if not Platform.is_touch_device():
+		controls_button = _column_button(_cell(1, _more_row), _open_controls, Loc.t("settings.controls", "CONTROLS"))
+		_more_row += 1
+	save_code_button = _column_button(_cell(1, _more_row), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
+	_more_row += 1
 	if Economy.languages_on():
 		_build_language_button()
+		_more_row += 1
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
 	if Economy.ACHIEVEMENTS and not Demo.on():
 		_build_achievements_button()
@@ -174,11 +186,15 @@ func _ready() -> void:
 	UIKit.place_bottom_row(reset_button, 1)
 	if Economy.tutorial_on():
 		# The MORE column under SAVE CODE (docs/tutorial/design.md section 2), beside FOG: a full 4 x 2 grid.
-		# With the language test on, LANGUAGE has that cell: then centred in the bottom row instead.
+		# With LANGUAGE in that cell: beside LURKERS in the OPTIONS column's extra row, else the bottom row.
 		# i18n: column button, max 112px (button 120 wide, 4 px margins); in the bottom row (languages on) it grows with the text, 1 line
 		var training_text := Loc.t("settings.training", "TRAINING")
-		if language_button == null:
-			training_button = _column_button(_cell(1, 3), _start_training, training_text)
+		if _more_row < ROWS - 1:
+			training_button = _column_button(_cell(1, _more_row), _start_training, training_text)  # (a free MORE cell)
+		elif rows() > ROWS:
+			# LANGUAGE took the last MORE cell: the OPTIONS column's extra row, beside LURKERS (the bottom row is full
+			# with BOARDS and LEVEL MUSIC).
+			training_button = _column_button(_cell(0, ROWS), _start_training, training_text)
 		else:
 			training_button = UIKit.make_button(training_text, _start_training, UIKit.button_size(training_text, 56))
 			UIKit.note_text_w(training_button, [training_text], 56)
@@ -194,13 +210,14 @@ func _ready() -> void:
 		add_child(level_music_button)
 		level_music_button.size = level_music_button.custom_minimum_size
 		UIKit.place_bottom_row(level_music_button, 0)
-		if training_button != null and language_button != null:
+		if training_button != null and training_button.position.y == level_music_button.position.y:
 			training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
 		_refresh_display_options()
 	if Economy.ACHIEVEMENTS and not Demo.on() and Economy.boards_on():
 		_build_boards_button()  # (IMP4-03: the bottom row, right of BACK; the corner keeps ACHIEVEMENTS alone)
-		if level_music_button != null and language_button == null:
-			# UI-11: BOARDS + LEVEL MUSIC are an equal-gap pair (GAP_L) centred between BACK and RESET.
+		if level_music_button != null and (training_button == null or training_button.position.y != level_music_button.position.y):
+			# UI-11: BOARDS + LEVEL MUSIC are an equal-gap pair (GAP_L) centred between BACK and RESET (TRAINING not in
+			# the bottom row: it would make three).
 			var from_x := float(UIKit.EDGE) + UIKit.back_size().x
 			var span := reset_button.position.x - from_x
 			var pair := boards_button.size.x + UIKit.GAP_L + level_music_button.size.x
@@ -208,6 +225,16 @@ func _ready() -> void:
 			level_music_button.position.x = boards_button.position.x + boards_button.size.x + UIKit.GAP_L
 			if training_button != null and training_button.position.y == boards_button.position.y:
 				training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
+		elif level_music_button != null and training_button != null:
+			# TRAINING in the bottom row too (LANGUAGE has its MORE cell and there is no LURKERS row): the three in a
+			# row, GAP_S apart, centred between BACK and RESET.
+			var from_x := float(UIKit.EDGE) + UIKit.back_size().x
+			var span := reset_button.position.x - from_x
+			var row := training_button.size.x + boards_button.size.x + level_music_button.size.x + 2 * UIKit.GAP_S
+			training_button.position.x = UIKit.center_x(row, from_x, span)
+			boards_button.position.x = training_button.position.x + training_button.size.x + UIKit.GAP_S
+			boards_button.position.y = training_button.position.y
+			level_music_button.position.x = boards_button.position.x + boards_button.size.x + UIKit.GAP_S
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -290,7 +317,7 @@ func _build_language_button() -> void:
 	var language := LanguageScreen.lang()
 	var code: String = language.locale
 	var h: int = maxi(UIKit.button_h(), int(LanguageScreen.Lang.metrics(code).button_h))
-	var at := _cell(1, 3)
+	var at := _cell(1, _more_row)
 	language_button = UIKit.make_button("", _open_language, Vector2(col_w, h))
 	LanguageScreen.fit_styles(language_button, false)
 	language_button.position = at

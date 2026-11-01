@@ -5,12 +5,12 @@ extends Node
 ## The player turns the room (the hub never turns itself): each time the room comes to rest, the station
 ## now at the back is lit and one short line about it shows in the hub's own prompt box (where ROTATE
 ## would be), with the use key after it. Once (from the second turn on, after HINT_DELAY seconds) the line
-## says how to turn the room back. A full turn of the room ends back at the archway: THE WAY UP, WALK IN
+## says how to turn the room back. A full turn of the room ends back at the archway: THE WAY UP  WALK IN
 ## (no key; walk to the archway, which opens the level select on level 1 as always) and the tour is done.
 ## The first visit is GUIDED (owner, 2026-10-27: no skipping it by accident, walk the player all the way to
 ## the archway): no SKIP pod, Esc / B open the hub's own MENU as anywhere else, the other stations answer
 ## AFTER THE TOUR until the room has come round, then the room holds still with the archway lit, an arrow
-## on the floor in front of it and THE WAY UP, WALK IN on screen wherever the slime is, until the archway
+## on the floor in front of it and THE WAY UP  WALK IN on screen wherever the slime is, until the archway
 ## is used (only then is TUTORIAL_HUB saved, so leaving the hub before that brings the tour back).
 ## A SETTINGS replay is the old free tour: never blocking, skippable at any time with Esc / B (the hub
 ## asks the tour before it goes to the title), the touch pause button (it presses `menu`) or a tap on the
@@ -295,7 +295,7 @@ func line_for(near_id: String) -> String:
 
 
 func _end_line() -> String:
-	return Loc.t("hub.tour.end", "THE WAY UP, WALK IN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+	return Loc.t("hub.tour.end", "THE WAY UP  WALK IN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; the two spaces are spacing (owner, 2026-11-01: no stop between the two parts)
 
 
 ## The line for the station at the back of the room.

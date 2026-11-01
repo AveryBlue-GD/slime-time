@@ -6,7 +6,7 @@ extends "res://tests/suite_base.gd"
 ## its line shows in the prompt box (with the use key: F / X; none on touch); the turn-back hint shows once;
 ## a full turn ends at the archway. The first visit is guided (owner, 2026-10-27): no SKIP pod, Esc opens the
 ## hub MENU and B does nothing to it, the other stations say AFTER THE TOUR, and at the end the room holds
-## still, THE WAY UP, WALK IN shows wherever the slime is, an arrow points into the archway, and only using
+## still, THE WAY UP  WALK IN shows wherever the slime is, an arrow points into the archway, and only using
 ## the archway saves TUTORIAL_HUB. A SETTINGS replay is the free tour: Esc / B / the SKIP pod / using a
 ## station ends it at any step. The web's 8 stations (no trapdoor) too; gate off: no tour, as today.
 ## An autopilot reads each line for READ_TIME seconds, turns, then walks to the archway: the tour's length.
@@ -165,23 +165,23 @@ func _full_tour() -> void:
 	await _turn(hub)
 	_check(hub.back_station().id == "story" and tour.done and not tour.over and not progress.has_seen_tutorial(progress.TUTORIAL_HUB)
 		and progress.hub_tour_due(), "a full turn ends at the archway: done, but not saved before the archway is used")
-	_check(hub.prompt_name.text == "THE WAY UP, WALK IN" and hub.prompt_key.text == "", "...THE WAY UP, WALK IN (no key)")
+	_check(hub.prompt_name.text == "THE WAY UP  WALK IN" and hub.prompt_key.text == "", "...THE WAY UP  WALK IN (no key)")
 	var story: Dictionary = hub._station("story")
 	_check(tour.arrow != null and tour.arrow.position.distance_to(story.sprite.position) <= TourScript.ARROW_BELOW + TourScript.ARROW_BOB + 1.0,
 		"...an arrow on the floor in front of the archway")
 	_check(story.sprite.self_modulate == Color(1.25, 1.25, 1.25), "...the archway lit")
 	await _wait_seconds(TourScript.HINT_DELAY + 0.5)
-	_check(hub.prompt_name.text == "THE WAY UP, WALK IN", "...the last line stays")
+	_check(hub.prompt_name.text == "THE WAY UP  WALK IN", "...the last line stays")
 	await _turn(hub)
-	_check(not tour.over and hub.back_station().id == "story" and hub.prompt_name.text == "THE WAY UP, WALK IN",
+	_check(not tour.over and hub.back_station().id == "story" and hub.prompt_name.text == "THE WAY UP  WALK IN",
 		"the wheel again: the room holds still, the archway stays at the back")
 	hub.slime.position = hub.rotor.position + Vector2(70, 20)
 	await _physics_frames(3)
-	_check(hub.near.is_empty() and hub.prompt.visible and hub.prompt_name.text == "THE WAY UP, WALK IN",
+	_check(hub.near.is_empty() and hub.prompt.visible and hub.prompt_name.text == "THE WAY UP  WALK IN",
 		"...away from everything the line still shows")
 	hub.slime.position = hub._station("coins").sprite.position + Vector2(0, -14)
 	await _physics_frames(3)
-	_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "THE WAY UP, WALK IN", "...by another station too")
+	_check(hub.near.get("id", "") == "coins" and hub.prompt_name.text == "THE WAY UP  WALK IN", "...by another station too")
 	await _press("interact")
 	_check(not hub.coin_board.visible and not tour.over and hub.prompt_name.text == "COIN BAG" and hub.prompt_key.text == "AFTER THE TOUR",
 		"...which stays shut: COIN BAG AFTER THE TOUR")
@@ -338,7 +338,7 @@ func _layout() -> void:
 			widest = maxf(widest, hub.prompt_name.get_combined_minimum_size().x)
 			if step < hub.stations.size():
 				await _turn(hub)
-		_check(tour.done and hub.prompt_name.text == "THE WAY UP, WALK IN", "%s: the walk ends on the last line" % device)
+		_check(tour.done and hub.prompt_name.text == "THE WAY UP  WALK IN", "%s: the walk ends on the last line" % device)
 		_check(bad.is_empty(), "%s: every tour line's prompt box centred, on screen, clear of the touch controls (%s)" % [device, ", ".join(bad)])
 		_check(widest <= 192.0, "%s: the widest tour line is within its 192 px budget (%d px)" % [device, widest])
 		await _close(hub)
@@ -430,7 +430,7 @@ func _timing() -> void:
 		frames += Engine.get_physics_frames() - before
 		if frames > 60 * 120:
 			break
-	await _wait_seconds(READ_TIME)  # (THE WAY UP, WALK IN)
+	await _wait_seconds(READ_TIME)  # (THE WAY UP  WALK IN)
 	frames += int(READ_TIME * 60)
 	var walk_from := Engine.get_physics_frames()
 	await _walk(hub, [hub.rotor.position + Vector2(-22, 8), hub.rotor.position + Vector2(-22, -40), hub._station("story").sprite.position + Vector2(0, 16)])

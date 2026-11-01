@@ -246,7 +246,7 @@ func _fallback_to_english(template: Dictionary, catalogs: Dictionary) -> void:
 					wrong.append("%s: %s" % [ctx, got])
 		_check(wrong.is_empty(), "%s: Godot returns each translation, English where untranslated%s" % [code, _list(wrong)])
 	language.disable()
-	Economy.languages_force = -1
+	Economy.languages_force = 0
 	Economy.forced_locale = ""
 	progress.language = ""
 	_check(not Economy.languages_on() and TranslationServer.get_loaded_locales().is_empty(), "gate back off, nothing loaded")

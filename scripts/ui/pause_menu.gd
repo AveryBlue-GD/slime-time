@@ -218,9 +218,14 @@ func open() -> void:
 		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
 	# i18n: pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
 	buttons[3].text = Loc.t("pause.skip_training", "SKIP TRAINING") if _training() else Loc.t("pause.quit_hub", "QUIT TO HUB")
-	# The first training run can't be left early (owner, 2026-10-27): no SKIP TRAINING; the SETTINGS replay keeps it.
+	# The first training run can't be left BY ACCIDENT (owner, 2026-10-27), but it can be skipped on purpose (owner,
+	# 2026-11-01): SKIP TUTORIAL asks once more (a second press) and then skips the training and the hub tour.
 	var locked := _training_locked()
-	buttons[3].visible = not locked
+	_skip_armed = false
+	if locked:
+		# i18n: pause menu button, max 92px, 1 line (the first training run: skips the training maze and the hub tour)
+		buttons[3].text = Loc.t("pause.skip_tutorial", "SKIP TUTORIAL")
+	buttons[3].visible = true
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
 	descent_note.visible = false
@@ -229,7 +234,7 @@ func open() -> void:
 		descent_note.visible = true
 		# i18n: max 300px, 1 line, under the panel
 		descent_note.text = Loc.t("pause.quit_cashes", "QUITTING CASHES OUT THE POT") if game.won else Loc.t("pause.quit_banks", "QUITTING BANKS HALF THE POT")
-	_layout(5 + (1 if seed_button.visible else 0) - (1 if descent else 0) + (1 if wishlist_button.visible else 0) - (1 if locked else 0), hud)
+	_layout(5 + (1 if seed_button.visible else 0) - (1 if descent else 0) + (1 if wishlist_button.visible else 0), hud)
 	if random:
 		seed_button.text = seed_text(Levels.seed_code(game.random_seed, game.seed_level))
 	get_tree().paused = true
@@ -482,15 +487,26 @@ func _training() -> bool:
 	return get_parent().get("training") == true
 
 
-## True over the first (not replayed) training run: SKIP TRAINING is hidden and does nothing.
+## True over the first (not replayed) training run: its button is SKIP TUTORIAL, which asks once more first.
 func _training_locked() -> bool:
 	var progress := get_node_or_null("/root/Progress")
 	return _training() and not (progress != null and progress.training_replay)
 
 
+## SKIP TUTORIAL was pressed once: the next press skips (the menu reopening disarms it).
+var _skip_armed := false
+
+
 func _quit() -> void:
 	if _training_locked():
-		return
+		if not _skip_armed:
+			_skip_armed = true
+			# i18n: pause menu button after one press of SKIP TUTORIAL, max 92px, 1 line: press it again to skip
+			buttons[3].text = Loc.t("pause.skip_sure", "SURE? AGAIN")
+			return
+		var progress := get_node_or_null("/root/Progress")
+		if progress != null:
+			progress.mark_tutorial_seen(progress.TUTORIAL_HUB)  # (the hub tour is skipped with it)
 	var training := _training()
 	DevLog.log_event(get_tree(), "skip training (pause)" if training else "quit to hub (pause)", get_parent())
 	if get_parent().has_method("quit_descent"):

@@ -195,6 +195,7 @@ func _hub() -> void:
 	await _tap(JOY_BUTTON_B)
 	_check(not hub.coin_board.visible, "B closes the coin board")
 	progress.tickets = 300
+	progress.tutorial_seen |= progress.TUTORIAL_WHEEL  # (the first-visit wheel guide holds the SHOP: test_wheel_odds covers it)
 	_near(hub, "wheel")
 	await _tap(JOY_BUTTON_X)
 	_check(hub.hat_wheel.visible and hub.hat_wheel.tab == "wheel", "X opens the hat wheel")

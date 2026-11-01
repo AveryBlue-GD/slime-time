@@ -38,7 +38,12 @@ func _initialize() -> void:
 
 
 func _gate_off() -> void:
-	_check(not Economy.LANGUAGES_TEST and not Economy.languages_on(), "the languages gate is off by default")
+	_check(Economy.LANGUAGES_TEST and not Economy.LANGUAGES_FOLLOW_OS, "the languages gate ships on, a new player starting in English")
+	# The gate ships ON (owner, 2026-11-01); these checks run with it forced off, as a test flag would.
+	Economy.languages_force = 0
+	language.disable()
+	TranslationServer.set_locale("en")
+	_check(not Economy.languages_on(), "the languages gate forced off")
 	_check(not language.active and language.loaded_catalogs().is_empty(), "gate off: Language loaded nothing")
 	_check(TranslationServer.get_loaded_locales().is_empty(), "gate off: TranslationServer has no translation")
 	_check(language.locale == "en" and not language.is_rtl(), "gate off: English, left to right")
@@ -186,7 +191,7 @@ func _save_gate_on() -> void:
 
 func _cleanup() -> void:
 	language.disable()
-	Economy.languages_force = -1
+	Economy.languages_force = 0
 	Economy.forced_locale = ""
 	progress.language = ""
 	_check(not Economy.languages_on() and Loc.t("test.portal.random_maze", "RANDOM MAZE") == "RANDOM MAZE",

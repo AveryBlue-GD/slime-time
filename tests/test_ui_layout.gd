@@ -156,6 +156,7 @@ func _hub() -> void:
 	await _frames(2)
 	_check_screen(hub.coin_board, "hub coin board")
 	hub.close_coin_board()
+	progress.tutorial_seen |= progress.TUTORIAL_WHEEL  # (the first-visit wheel guide holds the SHOP: test_wheel_odds covers it)
 	hub.open_hat_wheel()
 	await _frames(2)
 	for tab in ["wheel", "shop"]:

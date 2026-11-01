@@ -552,7 +552,13 @@ static func tutorial_on() -> bool:
 ## `--languages` (debug builds only, like every launch flag) sets `languages_force` = 1 (the saved choice
 ## or the OS locale); `--lang=xx` also forces locale xx for that run (`forced_locale`, never saved).
 ## Tests set both too.
-const LANGUAGES_TEST := false
+## ON for everyone (owner, 2026-11-01: the LANGUAGE button on every platform, phones and tablets too). Lines not
+## translated yet show in English (Loc falls back to the source text).
+const LANGUAGES_TEST := true
+## A new player starts in English, not in the OS language (LANGUAGES_FOLLOW_OS false), while the translations are
+## unfinished: a half-translated first launch reads worse than English; LANGUAGE in SETTINGS picks one. The
+## `--languages` / `--lang=xx` test flags still follow the OS / the flag.
+const LANGUAGES_FOLLOW_OS := false
 static var languages_force := -1
 static var forced_locale := ""
 

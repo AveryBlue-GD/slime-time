@@ -12,6 +12,7 @@ var last_result := -1  # -1 = not finished, 0 = lost, 1 = won
 
 
 func _initialize() -> void:
+	(Engine.get_main_loop() as SceneTree).root.get_node("Progress").fog_brightness = 1  # FOG_NORMAL: these checks measure the standard look (new saves start BRIGHT)
 	var game := await _spawn()
 	var start: Vector2 = game.slime.position
 	_check(game.fog_alpha_at(start) == 0.0, "floor under the slime is revealed at start")

@@ -154,6 +154,20 @@ of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-e
 
 Added by the review team and kept behind switches in `scripts/economy.gd` (each has a `--no...` debug flag and a suite `*_force` so older suites run without it): **lurkers** (`LURKERS_TEST`, `--nolurkers` / `--lurkers`; always in hard mazes, SETTINGS toggle in normal random mazes, never in the daily / weekly or the demo); **boards and ghosts** (`BOARDS_TEST`, `--noboards`: daily and weekly top-5 boards, the weekly maze with a fixed loadout MORE SLIME 3 / SPEED 2 / BRIGHTNESS 1, ghost replays in `ghosts.cfg`); **orchestra** (`ORCHESTRA_TEST`, `--noorchestra`: three synced level-music layers plus stings, desktop only, excluded from the Web exports); **Light & Life** (`LIGHT_LIFE_TEST`, `--nolightlife`: the new lighting); the **launch intro card** (`INTRO_CARD`, 1.8 s on every cold launch but the first). Suites: `test_lurkers`, `test_boards`, `test_orchestra`, `test_light_life`, `test_shipping_config` (the shipped configuration end to end).
 
+## Mobile sync and owner polish (2026-11-01, branch `claude/mobile-sync-polish`)
+
+GitHub had two diverged lines (`visual-review/ios-prep`: weekly mazes, visual review, coin-grab / chalice gulp; `claude/demo-chalice-tutorial`:
+guided hub tour, touch aiming, demo preview, build stamp; the Oct 31 iPhone / iPad build came from the second, so it lacked the first's
+animations). `claude/mobile-sync-polish` merges both; build every platform from it (or its merge target). Owner changes on top: hub colour
+open from the start (`Progress.hub_color_open()` true); new saves start on fog BRIGHT; the story intro / finale is one continuous sequence
+(a press only lights the skip mark, Esc / B / the skip pod skip it all, a thin progress line instead of shot pips); first training run's
+pause menu has SKIP TUTORIAL (press twice; skips training and hub tour); the prize wheel's first visit is a guide with gold arrows
+(`Progress.TUTORIAL_WHEEL` = 256); hub station names are tappable (label rect + `LABEL_TAP_GROW`, `TAP_MARGIN` 8); phones / tablets have
+no CONTROLS (`Platform.is_touch_device()`), iPads no VIBRATION (`Platform.is_ipad()`: no iPad has a vibration motor; the setting hides at
+run time, one App Store binary); the LANGUAGE picker is on everywhere (`Economy.LANGUAGES_TEST` true, `LANGUAGES_FOLLOW_OS` false: new
+players start in English until the catch-up); the rainbow hat dye's swatches use its flowing gradient (`Hats.swatch_material`). Not
+reproduced headless: the story stuck on each shot's first frame after several restarts (check Reduce Motion and frame times on the device).
+
 ## Open tasks and open questions
 
 1. Real-device checks on Android and iPhone (web zip, checklist above); the native ports follow the port-time checklist.
@@ -168,7 +182,7 @@ Added by the review team and kept behind switches in `scripts/economy.gd` (each 
    ([phase3-ui.md](spring-cleaning/phase3-ui.md) remaining issues), a manual check on the Mac that the remembered fullscreen
    follows the green button / F11 across a relaunch, pad glyphs and remapping.
 8. **Localization, owner calls (D15):**
-   a. Ship the languages: flip `Economy.LANGUAGES_TEST` and `LANGUAGES_ENABLED` in `tools/web_shell.html` together (`python3 tools/i18n_extract.py --check` enforces they match).
+   a. (Gate flipped ON 2026-11-01, English first; the owner may still choose OS-locale first or off again.) Ship the languages: flip `Economy.LANGUAGES_TEST` and `LANGUAGES_ENABLED` in `tools/web_shell.html` together (`python3 tools/i18n_extract.py --check` enforces they match).
    b. Native-speaker review of every locale; doubts are listed in `docs/i18n/glossary/<locale>.md` (esp. ar, hi, th).
    c. Fonts: Arabic uses Noto Kufi Arabic; the pixel bitmap-font option's license is unconfirmed. Thai / Hindi use non-pixel Noto fonts drawn without antialiasing.
    d. Not verified: a real web export with the .po files and fonts, the web shell in a browser, touch / gamepad on real devices with mirrored Arabic.

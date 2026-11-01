@@ -203,6 +203,57 @@ func _initialize() -> void:
 	wheel.hats = some
 	_check(not progress.is_rare_hat(wheel.hats[0]) and progress.is_rare_hat(wheel.hats[2]) and not progress.is_rare_hat(wheel.hats[3]) and progress.is_rare_hat(wheel.hats[-1]),
 		"with fewer hats left the rare ones still don't bunch where they can be split (%s)" % [wheel.hats])
+	# After rare wins the rest re-spread round the wheel (owner, 2026-11-01): as even as the counts allow.
+	var rare_ids: Array[String] = []
+	for id in ids:
+		if progress.is_rare_hat(id):
+			rare_ids.append(id)
+	var even_ok := true
+	var worst := ""
+	for won in range(1, rare_ids.size() - 1):
+		var left: Array[String] = []
+		for id in ids:
+			if not id in rare_ids.slice(0, won):
+				left.append(id)
+		wheel.hats = left
+		var at: Array[int] = []
+		for i in wheel.hats.size():
+			if progress.is_rare_hat(wheel.hats[i]):
+				at.append(i)
+		var g: Array[int] = []
+		for k in at.size():
+			g.append(posmod(at[(k + 1) % at.size()] - at[k], wheel.hats.size()) - 1)
+		if g.max() - g.min() > 1:
+			even_ok = false
+			worst = "%d won: %s" % [won, g]
+	_check(even_ok, "after 1-4 rare wins the rare prizes left stay evenly spread (%s)" % worst)
+	# The first visit's guide: arrows on the count, COMMON, RARE, then SPIN; the overlay is held until the free spin lands.
+	progress.reset_progress()
+	progress.dev_tools = false
+	Hats.available = true
+	wheel.refresh("F", true)
+	_check(wheel.coach == 0 and wheel.coach_step() == "count" and wheel.result.text == wheel.coach_line() and wheel.coach_target().size() == 2,
+		"first visit: the guide starts on the prizes-left count, its line under the wheel")
+	_check(wheel.back() and wheel.shop_tab.disabled and wheel.close_button.disabled, "...the overlay is held: Esc / B, SHOP and BACK do nothing")
+	wheel.show_tab("shop")
+	_check(wheel.tab == "wheel", "...and LB / RB can't switch to the SHOP")
+	var steps: Array[String] = []
+	for i in int(wheel.COACH_STEP * 3 * 60) + 30:
+		await process_frame
+		if not wheel.coach_step() in steps:
+			steps.append(wheel.coach_step())
+	_check(steps == ["count", "common", "rare", "spin"] and wheel.coach_step() == "spin", "...then COMMON, RARE and SPIN in turn (%s)" % [steps])
+	var guided_lands: Array[String] = []
+	wheel.landed.connect(func(id: String) -> void: guided_lands.append(id))
+	_check(wheel.spin() and wheel.coach_step() == "pointer", "...the free spin: the arrow moves to the pointer")
+	for i in int(wheel.SPIN_TIME * 60) + 60:
+		await physics_frame
+		if not guided_lands.is_empty():
+			break
+	_check(wheel.coach == -1 and progress.has_seen_tutorial(progress.TUTORIAL_WHEEL) and not wheel.back() and not wheel.shop_tab.disabled,
+		"...it lands: the guide is done, saved as seen, the overlay free again")
+	wheel.refresh("F", true)
+	_check(wheel.coach == -1, "...and it never comes back")
 	wheel.free()
 	fresh.free()
 	reborn.free()

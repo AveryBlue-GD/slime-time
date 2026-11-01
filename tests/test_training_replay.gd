@@ -15,6 +15,10 @@ func _initialize() -> void:
 	progress.save_path = test_save
 	progress.saving_enabled = true
 	progress.dev_tools = false
+	# The MORE column layout checked here is the one without LANGUAGE (the gate forced off; with it on, TRAINING
+	# sits beside LURKERS or in the bottom row: test_settings_layout checks that page for overlaps).
+	Economy.languages_force = 0
+	root.get_node("Language").disable()
 	progress.reset_progress()
 	progress.save_progress()
 	Economy.tutorial_force = 0
