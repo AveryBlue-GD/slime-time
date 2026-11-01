@@ -2266,14 +2266,14 @@ func _show_prompt(note := "") -> void:
 	sign_weekly = false
 	sign_boards = false
 	_sign_day = Progress.utc_day()
-	if near.id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
+	if near.get("id", "") == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
 		# IMP4-02: an unplayed weekly comes first once today's daily was tried (won or lost) or on Saturday / Sunday
 		var daily_done: bool = Progress.daily_won_today()
 		sign_weekly = weekly_unplayed() and (daily_done or Progress.daily_attempted_today() or Boards.weekday(Progress.utc_day()) >= 5)
 		sign_boards = daily_done and not sign_weekly
-	if near.id == "daily" and sign_boards and line == "" and note == "":
+	if near.get("id", "") == "daily" and sign_boards and line == "" and note == "":
 		prompt_name.text = Loc.t("hub.station.boards", "BOARDS")  # i18n: prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
-	elif near.id == "daily" and sign_weekly and line == "" and note == "":
+	elif near.get("id", "") == "daily" and sign_weekly and line == "" and note == "":
 		prompt_name.text = Loc.t("hub.station.weekly", "WEEKLY MAZE")  # i18n: prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
 	if note != "":
 		prompt_key.text = note
