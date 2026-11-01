@@ -3653,13 +3653,6 @@ msgctxt "title.tagline.2"
 msgid "BEFORE YOU DRY UP"
 msgstr "YOKSA KURURSUN"
 
-#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
-#. budget: max 34px
-#: scripts/ui/touch_controls.gd
-msgctxt "touch.jump"
-msgid "JUMP"
-msgstr "ZIPLA"
-
 #. toast, max 150px, 1 line; {n} = how many achievements unlocked at once (2 or more)
 #. budget: max 150px, lines 1
 #: scripts/ui/transition.gd
