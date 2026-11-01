@@ -559,11 +559,51 @@ func _add_build_stamp() -> void:
 	if stamp == "":
 		return
 	print("BUILD " + stamp)
-	var label := UIKit.make_label(stamp, UIKit.FONT, UIKit.TEXT_OFF)  # i18n: ignore (a test build's id: commit and time)
+	var label := UIKit.make_label(stamp + (DEV_MARK if Progress.dev_tools else ""), UIKit.FONT, UIKit.TEXT_OFF)  # i18n: ignore (a test build's id: commit and time)
 	label.name = "BuildStamp"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	label.position = Vector2(UIKit.hud_edge().x, 2)
+	stamp_label = label
+
+
+## Dev mode on a phone (owner, 2026-11-01: test builds have no launch flags): DEV_TAPS taps on the build stamp
+## (or within DEV_TAP_GROW px of it), each within DEV_TAP_GAP s of the last, turn dev mode on for this session,
+## exactly as `--dev` (Progress.enable_dev_mode: everything unlocked, the pause menu's DEV panel, nothing saved;
+## the next launch is the normal save again). Only where the stamp shows (tools/ios_build.sh test builds) and in
+## debug builds; a store build has neither.
+const DEV_TAPS := 5
+const DEV_TAP_GAP := 0.8
+const DEV_TAP_GROW := 10.0
+const DEV_MARK := "  DEV"  # i18n: ignore (a test build's dev-mode mark, beside the stamp)
+var stamp_label: Label
+var _dev_taps := 0
+var _dev_tap_time := -100.0
+
+
+func _input(event: InputEvent) -> void:
+	if stamp_label == null or Progress.dev_tools or not OS.is_debug_build():
+		return
+	# (a touch also sends an emulated click: only the touch counts)
+	var tap: bool = (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed
+		and event.button_index == MOUSE_BUTTON_LEFT and event.device != InputEvent.DEVICE_ID_EMULATION)
+	if tap and dev_tap(event.position, Time.get_ticks_msec() / 1000.0):
+		get_viewport().set_input_as_handled()
+
+
+## One tap at `pos` (screen px) at time `now` (s): true when it was on the stamp (counted). The DEV_TAPS-th
+## turns dev mode on.
+func dev_tap(pos: Vector2, now: float) -> bool:
+	if not stamp_label.get_global_rect().grow(DEV_TAP_GROW).has_point(pos):
+		return false
+	_dev_taps = _dev_taps + 1 if now - _dev_tap_time <= DEV_TAP_GAP else 1
+	_dev_tap_time = now
+	if _dev_taps >= DEV_TAPS:
+		Progress.enable_dev_mode()
+		stamp_label.text = build_stamp() + DEV_MARK
+		Sfx.play("unlock")
+		print("DEV MODE ON (this session, nothing saved)")
+	return true
 
 
 static func build_stamp() -> String:

@@ -40,3 +40,8 @@ Every `tools/ios_build.sh` build is stamped: the title screen's top left shows t
 changes), the build time and the app (FULL, FULL SKIP, DEMO END), and the bundle version is the build time
 (`xcrun devicectl device info apps` lists it). The old build's app is deleted from the Xcode build folder first, so an
 install is always this build.
+
+**Dev mode on the phone:** tap the build stamp 5 times quickly (within 0.8 s of each other). It turns on dev mode for
+this session, exactly as `--dev` on the desktop: every level open, plenty of coins, the pause menu's DEV panel (FULL
+BRIGHT / NO DRAIN), nothing saved. The stamp then reads `... DEV`. Close and reopen the app to go back to the normal save.
+Only builds with a stamp have it (`tools/ios_build.sh` debug exports); a store build has neither (`tests/test_build_stamp.gd`).
