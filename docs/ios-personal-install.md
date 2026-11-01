@@ -35,6 +35,12 @@ Free Personal Team limits: 3 apps per phone at once, the 7-day expiry above.
 - Store release later needs the paid program, a final bundle id (M8) and the port-time checks in
   [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md).
 
+## Which device
+`ios_build.sh` installs on the one iPhone / iPad it can reach. A device paired over Wi-Fi counts too, so with an iPad
+nearby it stops and lists both: install the build it just made with `xcrun devicectl device install app --device <Identifier>
+build/ios-derived/Build/Products/Debug-iphoneos/DryTrying.app`, or run `DEVICE=<Identifier> ./tools/ios_build.sh`.
+The full game is the app **Dry Trying**; **Dry Trying Demo** is a separate app (bundle id `...drytrying.demo`).
+
 ## Build stamp
 Every `tools/ios_build.sh` build is stamped: the title screen's top left shows the commit (`+` = built with uncommitted
 changes), the build time and the app (FULL, FULL SKIP, DEMO END), and the bundle version is the build time

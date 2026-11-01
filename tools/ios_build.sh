@@ -55,10 +55,25 @@ rm -rf build/ios-derived/Build/Products  # (never an old app: the install below 
 xcodebuild -project build/ios/DryTrying.xcodeproj -scheme DryTrying -configuration Debug -destination generic/platform=iOS \
 	-allowProvisioningUpdates -allowProvisioningDeviceRegistration -derivedDataPath build/ios-derived -quiet build
 
-DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && (/connected/ || /available/) {for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) {print $i; exit}}')
+# DEVICE=<Identifier> picks the iPhone / iPad (`xcrun devicectl list devices`). Without it, the one reachable device is
+# used; with more than one (a Wi-Fi-paired iPad counts), the script stops and lists them instead of guessing.
+DEVICE="${DEVICE:-}"
+if [[ -z "$DEVICE" ]]; then
+	FOUND=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && (/connected/ || /available/)')
+	COUNT=$(printf '%s\n' "$FOUND" | grep -c . || true)
+	if [[ "$COUNT" -gt 1 ]]; then
+		echo "Built, but more than one iPhone / iPad is reachable:" >&2
+		printf '%s\n' "$FOUND" >&2
+		echo "Install this build on one of them (its Identifier from the list):" >&2
+		echo "  xcrun devicectl device install app --device <Identifier> build/ios-derived/Build/Products/Debug-iphoneos/DryTrying.app" >&2
+		echo "or next time: DEVICE=<Identifier> ./tools/ios_build.sh" >&2
+		exit 1
+	fi
+	DEVICE=$(printf '%s\n' "$FOUND" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) {print $i; exit}}')
+fi
 if [[ -z "$DEVICE" ]]; then
 	echo "Built, but no iPhone found: plug it in, unlock it, and run this again." >&2
 	exit 1
 fi
 xcrun devicectl device install app --device "$DEVICE" build/ios-derived/Build/Products/Debug-iphoneos/DryTrying.app
-echo "Installed on the iPhone. Open Dry Trying on the phone."
+echo "Installed on device $DEVICE. Open Dry Trying (the full game, not Dry Trying Demo) there."
