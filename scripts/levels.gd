@@ -99,7 +99,9 @@ static func hard_data(level: int) -> Dictionary:
 ## perfect run used: they define the base meter (hard_meter_tiles) and the start size (hard_start_cells).
 ## The largest hard maze (cells), like the randomizer's RANDOM_MAX_CELLS (web build performance).
 const HARD_MAX_CELLS := Vector2i(36, 20)
-const RANDOM_HARD_TARGET := 0.9
+const RANDOM_HARD_TARGET := 0.9  # (the hard random route length: maze layout and seeds)
+## IMP3-01: the share of the meter a perfect hard random run uses (allowance 1.18): two lurker hits (4 each) still leave 1.08.
+const RANDOM_HARD_USAGE := 0.85
 
 ## Coins hidden at dead ends in each story level (never in randomizer mazes). They add up to
 ## Upgrades.full_tree_cost() (165): finding every coin maxes the whole upgrade tree. Each level
@@ -191,6 +193,23 @@ static var _par_cache := {}
 
 static func par_for_path(path_tiles: float, speed := PAR_SPEED) -> float:
 	return path_tiles * TILE / speed * PAR_SLACK + PAR_EXTRA
+
+
+## The weekly's par (seconds): the maze's shortest route at the weekly's fixed SPEED glide, a cost per turn (Economy.WEEKLY_PAR_TURN x
+## top speed / acceleration, the time a corner costs) and the start-up. Recomputed from the maze, never stored.
+static func weekly_par(maze: Dictionary) -> float:
+	var f := Upgrades.speed_factor(Economy.WEEKLY_SPEED)
+	var v := PAR_SPEED * f
+	var acc := 420.0 * f
+	var path := MazeGenerator.shortest_path(maze, maze.start, maze.goal)
+	if path.size() < 2:
+		return 0.0
+	var dist := (path.size() - 1) * MazeGenerator.CELL_SPAN * TILE - GRAB_REACH
+	var turns := 0
+	for i in range(2, path.size()):
+		if path[i] - path[i - 1] != path[i - 1] - path[i - 2]:
+			turns += 1
+	return dist / v + turns * Economy.WEEKLY_PAR_TURN * v / acc + v / (2.0 * acc)
 
 
 ## Par for a story level (cached; builds its maze once), without playing the level.
@@ -360,7 +379,7 @@ static func random_usage_permille(maze_seed: int) -> int:
 
 
 static func random_usage(maze_seed: int, hard := false) -> float:
-	return RANDOM_HARD_TARGET if hard else random_usage_permille(maze_seed) / 1000.0
+	return RANDOM_HARD_USAGE if hard else random_usage_permille(maze_seed) / 1000.0
 
 
 ## Tiles a full meter glides at a MORE SLIME level (the player's capacity).

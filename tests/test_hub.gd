@@ -132,6 +132,29 @@ func _initialize() -> void:
 		"...one station round: the next one comes to the back, facing you")
 	var floor_turn: float = (hub.room.material as ShaderMaterial).get_shader_parameter("turn")
 	_check(is_equal_approx(floor_turn, hub.turn) and not is_zero_approx(floor_turn), "...and the floor and rim turn with it (turn %.2f)" % floor_turn)
+	# IMP3-06: F on a WEAR IT toast wears the item and is spent: it does not also use the station next to the slime
+	var tr: Node = root.get_node("Transition")
+	progress.cosmetics_owned.append("night")
+	progress.map_paper = Cosmetics.DEFAULT_PAPER
+	progress.notice_wear["WEAR TEST"] = "night"
+	progress.notices.append("WEAR TEST")
+	tr._notice_left = 0.0
+	await _physics_frames(4)
+	hub.slime.position = hub.rotor.position + Vector2(0, 8)
+	await _physics_frames(2)
+	_check(tr._notice_wear == "night" and not hub.near.is_empty(), "a WEAR IT toast is up beside a station")
+	var f := InputEventAction.new()
+	f.action = "interact"
+	f.pressed = true
+	Input.parse_input_event(f)
+	await _physics_frames(2)
+	var f_up := InputEventAction.new()
+	f_up.action = "interact"
+	f_up.pressed = false
+	Input.parse_input_event(f_up)
+	await _physics_frames(2)
+	_check(progress.map_paper == "night" and not hub.turning, "F wears the item and the station does NOT open (turning %s)" % hub.turning)
+	await _physics_frames(30)
 	# R turns the room from anywhere (away from the wheel too)
 	hub.slime.position = HubScript.CENTER + Vector2(0, 20)
 	await _physics_frames(2)
@@ -181,8 +204,8 @@ func _initialize() -> void:
 	_check(hub.hub_menu.visible and hub.slime.frozen and not hub.prompt.visible and hub._touch_controls.menu_open,
 		"Esc in the hub opens MENU over it (slime held, prompt hidden, touch controls aside)")
 	_check(hub.menu_back.has_focus() and hub.hub_menu_title.text == "MENU"
-		and [hub.menu_back.text, hub.menu_settings.text, hub.menu_quit.text] == ["BACK", "SETTINGS", "QUIT TO TITLE"],
-		"...MENU: BACK (focused), SETTINGS, QUIT TO TITLE")
+		and [hub.menu_back.text, hub.menu_achievements.text, hub.menu_settings.text, hub.menu_quit.text] == ["BACK", "ACHIEVEMENTS", "SETTINGS", "QUIT TO TITLE"],
+		"...MENU: BACK (focused), ACHIEVEMENTS (IMP-07), SETTINGS, QUIT TO TITLE")
 	_check(hub.hub_menu_rect == hub.HUB_MENU_PANEL, "...its panel is HUB_MENU_PANEL in English (%s)" % hub.hub_menu_rect)
 	var wrap := InputEventAction.new()
 	wrap.action = "ui_up"
@@ -318,6 +341,11 @@ func _initialize() -> void:
 	for id in won:
 		unique[id] = true
 	_check(unique.size() == 3 and progress.hats_left().size() == Hats.LIST.size() + Cosmetics.wheel_ids().size() - 3, "three spins, three different prizes")
+	if hub.hat == null:
+		# The wheel also pays trails now (15 of its 27 prizes): three spins can all be trails, leaving no hat to look at
+		# (the old ~2-in-3 failure here). Put one on by hand so the y-sorting check below is about the hat, not the luck.
+		progress.win_hat(Hats.ids()[0])
+		hub._put_on_hat()
 	_check(hub.hat.get_parent() == hub.slime and hub.hat.z_index == 0 and hub.slime.get_parent() == hub.world,
 		"the hat is y-sorted with the slime (behind the wheel when the slime is)")
 	# The rainbow hat is the rare one: a thinner wedge, and landed on less often.

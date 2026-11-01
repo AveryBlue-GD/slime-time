@@ -136,7 +136,8 @@ static func is_earned(id: String) -> bool:
 	return get_item(id).has("earned")
 
 
-## True for a trail won on the prize wheel (never sold, never earned by a milestone).
+## True for a trail won on the prize wheel (never sold). A few are also granted by a goal or a medal milestone
+## (Achievements.REWARDS / MILESTONES, IMP2-03): the wheel stays a route to them.
 static func is_wheel(id: String) -> bool:
 	return get_item(id).get("wheel", false)
 

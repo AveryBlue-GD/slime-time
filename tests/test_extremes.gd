@@ -362,7 +362,7 @@ func _settings_combos() -> void:
 						game.slime.position += Vector2(3, 0)
 						await _frames(3)
 						var sprite_material := game.slime.sprite.material as ShaderMaterial
-						if game.motion_scale() != (0.0 if reduce else 1.0) or game.fog_look() != game.FOG_LOOKS[fog] \
+						if game.motion_scale() != (0.0 if reduce else 1.0) or game.fog_look() != (game.FOG_LOOKS_DARK[fog] if Economy.DARK_FOG and fog < game.FOG_LOOKS_DARK.size() else game.FOG_LOOKS[fog]) \
 								or is_equal_approx(float(sprite_material.get_shader_parameter("translucency")), 0.0) == jelly \
 								or game.level != 1 + combos % 10 or game.hard_mode != (combos % 3 == 0):
 							unapplied.append("#%d reduce=%s fog=%d jelly=%s" % [combos, reduce, fog, jelly])

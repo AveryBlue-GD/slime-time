@@ -63,8 +63,10 @@ func _check_stripped_run() -> void:
 			if game.finished:
 				break
 		_check(game.won, "demo level %d: the autopilot reaches the chalice (%s)" % [level, Themes.for_level(level)])
-		for i in int(game.CHOICE_DELAY * 60) + 10:
+		for i in 240:  # (the result is staged ~1.2 s on purpose, ANI-02: poll for the buttons, bounded)
 			await physics_frame
+			if not game.hud.choice_buttons.is_empty():
+				break
 		if level < Demo.LEVELS:
 			_check(game.hud.choice_buttons.size() == 3, "...level %d offers REPLAY / NEXT LEVEL / HUB" % level)
 			current_scene = null

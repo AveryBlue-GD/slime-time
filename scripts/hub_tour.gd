@@ -7,15 +7,28 @@ extends Node
 ## would be), with the use key after it. Once (from the second turn on, after HINT_DELAY seconds) the line
 ## says how to turn the room back. A full turn of the room ends back at the archway: THE WAY UP, WALK IN
 ## (no key; walk to the archway, which opens the level select on level 1 as always) and the tour is done.
-## Never blocking: the slime moves, leaps and uses stations as usual. Skippable at any time: Esc / B (the
-## hub asks the tour before it goes to the title), the touch pause button (it presses `menu`) or a tap on
-## the SKIP pod top right. Skipping, finishing at the archway or using any station ends it for good
-## (Progress.finish_hub_tour: TUTORIAL_HUB is saved, except on a SETTINGS replay).
+## The first visit is GUIDED (owner, 2026-10-27: no skipping it by accident, walk the player all the way to
+## the archway): no SKIP pod, Esc / B open the hub's own MENU as anywhere else, the other stations answer
+## AFTER THE TOUR until the room has come round, then the room holds still with the archway lit, an arrow
+## on the floor in front of it and THE WAY UP, WALK IN on screen wherever the slime is, until the archway
+## is used (only then is TUTORIAL_HUB saved, so leaving the hub before that brings the tour back).
+## A SETTINGS replay is the old free tour: never blocking, skippable at any time with Esc / B (the hub
+## asks the tour before it goes to the title), the touch pause button (it presses `menu`) or a tap on the
+## SKIP pod top right; skipping, finishing at the archway or using any station ends it.
 
 ## Where the slime starts: beside the wheel (from hub.rotor.position), well inside USE_GAP of it.
 const SPAWN_FROM_WHEEL := Vector2(0, 8)
 ## Seconds a station line stays before the turn-back hint takes its place (once, from the second turn on).
 const HINT_DELAY := 3.0
+## The guided tour's arrow on the floor in front of the archway: px below the archway's foot, its size, and
+## how far (px) and how fast it bobs towards the archway.
+const ARROW_BELOW := 6.0
+const ARROW_HALF := 3  # (the head 7 px wide: 2 x 3 + 1)
+const ARROW_BOB := 1.0
+const ARROW_BOB_SPEED := 4.0
+
+## The first-time tour (not a SETTINGS replay): nothing skips it and it walks the player to the archway.
+var guided := false
 
 var hub: Node2D
 ## The station at the back of the room now.
@@ -39,14 +52,19 @@ var _layer: CanvasLayer
 var skip_pod: PanelContainer
 var skip_label: Label
 var skip_key: Label
+## The guided tour's arrow to the archway (made at the end of the turn; null before and on a replay).
+var arrow: Node2D
+var _arrow_t := 0.0
 
 
 func setup(the_hub: Node2D) -> void:
 	hub = the_hub
+	guided = not Progress.tour_replay
 	back_id = hub.back_station().id
 	seen[back_id] = true
 	hub.room_turned.connect(_on_room_turned)
-	_build_skip()
+	if not guided:
+		_build_skip()
 
 
 ## The SKIP pod in the top right corner (top left right-to-left: the ticket pod's mirror; a HUD pod like it, HUD edge from the corner): SKIP and
@@ -106,7 +124,7 @@ func _process(delta: float) -> void:
 		return
 	if not done:
 		time += delta
-		if _skip_key_text() != skip_key.text:
+		if skip_key != null and _skip_key_text() != skip_key.text:
 			_layout_skip()  # (keyboard / pad / touch: the key the player uses now)
 		if not hint_shown and turns >= 2 and not hub.turning and hub.near.get("id", "") == "rotor":
 			_hint_t += delta
@@ -116,12 +134,16 @@ func _process(delta: float) -> void:
 				hub._show_prompt()
 	if hub.near.get("id", "") == "rotor" and hub.prompt_key.text != key_text() and not hub.prompt_name.text.is_empty():
 		hub._show_prompt()  # (the use key for the device in use now)
+	if arrow != null:
+		_arrow_t += delta
+		var bob := 0.0 if Progress.reduce_motion else roundf(ARROW_BOB * (0.5 + 0.5 * sin(_arrow_t * ARROW_BOB_SPEED)))
+		arrow.position = _arrow_at() - Vector2(0, bob)
 
 
 ## A tap or a left click on the SKIP pod skips (seen before the touch controls, which would take a tap
 ## for a JUMP).
 func _input(event: InputEvent) -> void:
-	if over or done:
+	if over or done or skip_pod == null:
 		return
 	var touch: bool = event is InputEventScreenTouch and event.pressed
 	var click: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
@@ -152,17 +174,47 @@ func _on_room_turned(id: String, direction: int) -> void:
 
 func _finish() -> void:
 	done = true
-	_layer.visible = false
-	Progress.finish_hub_tour()
+	if _layer != null:
+		_layer.visible = false
+	if guided:
+		_make_arrow()  # (saved once the archway is used: station_used)
+	else:
+		Progress.finish_hub_tour()
 
 
-## Esc / B from the hub: true when it skipped the tour (the hub then stays; the press is used up).
+## Esc / B from the hub: true when it skipped the tour (the hub then stays; the press is used up). The
+## guided tour never skips: false, and the hub opens its MENU as usual (the tour stays as it is).
 func back_pressed() -> bool:
+	if guided and not over:
+		return false
 	if over or done:
 		over = true
 		return false
 	skip()
 	return true
+
+
+## True while the guided tour keeps the player from using `id`: every station until the room has come
+## round, then everything but the archway.
+func blocks(id: String) -> bool:
+	return guided and not over and (not done or id != "story")
+
+
+## The note by a station blocks() keeps shut (in the prompt box, after its name).
+func wait_note() -> String:
+	# i18n: hub prompt during the first hub tour (a station that opens once the tour is done), max 110px, 1 line
+	return Loc.t("hub.tour.after", "AFTER THE TOUR")
+
+
+## True when the guided tour is done and waits at the archway: the room holds still (the wheel, a leap
+## into it) so the archway stays at the back.
+func holds_room() -> bool:
+	return guided and done and not over
+
+
+## The guided tour's line for the prompt box with nothing next to the slime ("" = none, the box hides).
+func guide_line() -> String:
+	return line_for("") if holds_room() else ""
 
 
 ## Ends the tour at once (Esc / B / SKIP): saved as seen, the prompt by the wheel says ROTATE again.
@@ -176,11 +228,43 @@ func skip() -> void:
 	hub._show_prompt()
 
 
-## A station was used: the tour ends quietly (saved as seen).
+## A station was used: the tour ends quietly (saved as seen). In the guided tour that is only ever the
+## archway at the end (blocks() keeps the rest shut): the walk is over and TUTORIAL_HUB is saved now.
 func station_used(_id: String) -> void:
 	if not done:
 		_finish()
+	if guided:
+		Progress.finish_hub_tour()
 	over = true
+	if arrow != null:
+		arrow.queue_free()
+		arrow = null
+
+
+## The guided tour's end: a gold arrow on the floor in front of the archway, pointing into it.
+func _make_arrow() -> void:
+	arrow = Node2D.new()
+	arrow.z_index = -1  # on the floor (over the stations' pools, under the slime and the station sprites)
+	arrow.draw.connect(_draw_arrow)
+	hub.add_child(arrow)
+	arrow.position = _arrow_at()
+	arrow.queue_redraw()
+
+
+func _arrow_at() -> Vector2:
+	return (hub._station("story").sprite.position + Vector2(0, ARROW_BELOW)).round()
+
+
+## An upward pixel arrow (2 ARROW_HALF + 1 wide, a 3 px stem), its tip at the node's origin, outlined in the
+## dark shadow so it reads on the floor.
+func _draw_arrow() -> void:
+	var half := ARROW_HALF
+	for outline in [true, false]:
+		var color: Color = Color8(44, 22, 14) if outline else UIKit.GOLD
+		var grow := 1 if outline else 0
+		for row in half + 1:  # the head: row r is 2r + 1 px wide
+			arrow.draw_rect(Rect2(-row - grow, row - grow, 2 * row + 1 + 2 * grow, 1 + 2 * grow), color)
+		arrow.draw_rect(Rect2(-1 - grow, half + 1 - grow, 3 + 2 * grow, 3 + 2 * grow), color)  # the stem
 
 
 ## The station the hub lights up for the tour ("" = none): the one at the back while the room is still.
@@ -197,13 +281,21 @@ func key_text() -> String:
 
 ## The tour's line in the prompt box for the station or wheel next to the slime ("" = the hub's own prompt).
 func line_for(near_id: String) -> String:
-	if over or near_id != "rotor":
+	if over:
+		return ""
+	if holds_room() and near_id != "story":
+		return _end_line()  # (the guided end: wherever the slime is, until the archway)
+	if near_id != "rotor":
 		return ""
 	if done:
-		return Loc.t("hub.tour.end", "THE WAY UP, WALK IN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+		return _end_line()
 	if hint_on:
 		return Loc.t("hub.tour.turn_back", "HOLD {left} TO TURN IT BACK", {left = _left_name()})  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
 	return station_line(back_id)
+
+
+func _end_line() -> String:
+	return Loc.t("hub.tour.end", "THE WAY UP, WALK IN")  # i18n: hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
 
 
 ## The line for the station at the back of the room.

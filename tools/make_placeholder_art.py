@@ -8,7 +8,7 @@ Outputs (all 16x16 tiles/frames):
   stretch a ~14 px body), one animation per row
   (the JSON lists each animation's row, frame count, fps and looping)
 - shadow.png : shadow under the slime while it's in the air
-- chalice_sheet.png : 4 frames of 16x20, a glint sliding along the rim
+- chalice_sheet.png : 7 frames of 16x20, a glint sliding along the rim (0-3), then tilt / gulp / gone (4-6, ANI-02)
 - floors.png : 8 columns (FLOOR_TYPES order) x 4 rows (variants)
 (The wall and fillet tile drawing functions here are imported by make_theme_art.py, which writes the
  per-theme atlases; the unthemed walls.png and fillets.png were unused and are no longer written.)
@@ -101,14 +101,32 @@ def put(g, x, y, c, only_opaque=False) -> None:
         g[y][x] = c
 
 
-def crack(g, rng, length: int, color="k") -> None:
-    """A mostly-straight jagged line from a random point."""
+def crack(g, rng, length: int, color="k", two_tone=False) -> None:
+    """A mostly-straight jagged line from a random point. two_tone (ENV-07): a stain-coloured
+    body (`z`), 1-2 `k` pixels at the deepest point (the middle) and a lit `x` pixel under / right
+    of a few segments; it draws the same path, so the random stream is the same as the plain one."""
     x, y = rng.randrange(2, 14), rng.randrange(2, 14)
     main = rng.choice(DIRS8)
+    path = []
     for _ in range(length):
-        put(g, x, y, color, only_opaque=True)
+        path.append((x, y))
+        if not two_tone:
+            put(g, x, y, color, only_opaque=True)
         dx, dy = main if rng.random() < 0.65 else rng.choice(DIRS8)
         x, y = x + dx, y + dy
+    if two_tone:
+        for px, py in path:
+            put(g, px, py, "z", only_opaque=True)
+        mid = len(path) // 2
+        for px, py in path[mid:mid + 2]:
+            put(g, px, py, "k", only_opaque=True)
+        on = set(path)
+        for i, (px, py) in enumerate(path):
+            if i % 3 == 1:
+                for lx, ly in ((px, py + 1), (px + 1, py)):
+                    if (lx, ly) not in on and 0 <= lx < 16 and 0 <= ly < 16 and g[ly][lx] in "wWx":
+                        g[ly][lx] = "x"
+                        break
 
 
 def blob(g, rng, cx, cy, radius: float, colors: str, density=0.85) -> None:
@@ -331,6 +349,7 @@ DIR_NAMES = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
 DIR_VECS = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
 CARDINALS = {"e": (1, 0), "s": (0, 1), "w": (-1, 0), "n": (0, -1)}
 FRAME = 20
+PAL_BLUSH = "M"  # ruby glint, the happy face's blush
 ## Light comes from the top-left, a little in front.
 LIGHT = (-0.45, -0.65, 0.62)
 ## Brightness bands (dot of the dome's normal with LIGHT), brightest first.
@@ -343,7 +362,7 @@ def unit(v) -> tuple[float, float]:
 
 
 def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=(0, 1),
-          eyes="open", colors=GOO, extras=(), ground=True) -> list[str]:
+          eyes="open", colors=GOO, extras=(), ground=True, eye_dy=0.0) -> list[str]:
     """Top-down slime blob centered in a FRAME x FRAME frame.
 
     The base body is an ellipse with 7x6 px radii, scaled by sx/sy, then stretched by
@@ -411,7 +430,7 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
 
     if look is not None and eyes != "none":
         lx2, ly2 = unit(look)
-        ax, ay = cx + lx2 * 2.2, cy - 0.5 + ly2 * 2.0
+        ax, ay = cx + lx2 * 2.2, cy - 0.5 + ly2 * 2.0 + eye_dy
         if ly2 < -0.8:
             spots = []                                 # facing away: back of the head
         elif ly2 < -0.3:
@@ -424,17 +443,20 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
             # (dx, dy, part): "e" = eye, "w" = glint
             "open": [(0, -1, "w"), (1, -1, "e"), (0, 0, "e"), (1, 0, "e"), (0, 1, "e"), (1, 1, "e")],
             "closed": [(0, 1, "e"), (1, 1, "e")],
-            "happy": [(0, 0, "e"), (1, 0, "e"), (-1, 1, "e"), (2, 1, "e")],
+            "happy": [(0, -1, "e"), (1, -1, "e"), (-1, 0, "e"), (2, 0, "e"),   # SPR-06: ^ ^ on the normal eye row + blush
+                      (0, 2, "M"), (1, 2, "M")],
             "x": [(-1, -1, "e"), (1, -1, "e"), (0, 0, "e"), (-1, 1, "e"), (1, 1, "e")],
         }[eyes]
         for spot in spots:
             ex = int(math.floor(spot))
             for ox, oy, part in shapes:
                 if (ex + ox, ey + oy) in inside:
-                    g[ey + oy][ex + ox] = colors["spec"] if part == "w" else colors["eye"]
-        if len(spots) == 2 and ly2 > 0.3 and eyes in ("open", "happy"):
+                    g[ey + oy][ex + ox] = colors["spec"] if part == "w" else (PAL_BLUSH if part == "M" else colors["eye"])
+        if len(spots) == 2 and ly2 > 0.3 and eyes in ("open", "happy", "x"):
             mx, my = int(math.floor(ax - 0.5)), ey + 3
-            mouth = [(0, 0), (1, 0)] if eyes == "open" else [(-1, 0), (0, 1), (1, 1), (2, 0)]
+            # ANI-26: the hurt face gets a 2 px open mouth (2x2 ring-less "o"), only in the hurt row
+            mouth = {"open": [(0, 0), (1, 0)], "x": [(0, 0), (1, 0), (0, 1), (1, 1)]}.get(
+                eyes, [(-1, 0), (0, 1), (1, 1), (2, 0)])
             for ox, oy in mouth:
                 if (mx + ox, my + oy) in inside:
                     g[my + oy][mx + ox] = colors["outline"]
@@ -443,6 +465,17 @@ def slime(along=1.0, perp=1.0, d=(1, 0), sx=1.0, sy=1.0, shift=(0.0, 0.0), look=
         if 0 <= x < FRAME and 0 <= y < FRAME and g[y][x] in ".":
             g[y][x] = c
     return ["".join(r) for r in g]
+
+
+def glide_tail(u, along: float) -> list[tuple[int, int, str]]:
+    """ANI-07: two goo pixels dragging behind a gliding slime (deep shade, against the motion)."""
+    back = 7.0 * along + 1.6
+    px, py = -u[1], u[0]
+    pts = []
+    for dist, off in ((back, 0.0), (back + 1.0, 0.6)):
+        pts.append((int(math.floor(FRAME / 2 + 0.6 * u[0] - u[0] * dist + px * off)),
+                    int(math.floor(FRAME / 2 + 0.6 * u[1] - u[1] * dist + py * off)), "D"))
+    return pts
 
 
 def splat_droplets(vec, frame: int) -> list[tuple[int, int, str]]:
@@ -462,14 +495,19 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
     }
     for name, vec in zip(DIR_NAMES, DIR_VECS):
         u = unit(vec)
+        # ANI-07: a visible scoot: along 1.15 -> 0.9, perp 0.9 -> 1.06, eyes bob 1 px on frames 1 / 3, a 2 px goo tail on frame 0
         anims[f"glide_{name}"] = ([
-            slime(along=a, perp=p, d=vec, shift=(u[0] * k, u[1] * k), look=u)
-            for a, p, k in [(1.12, 0.9, 0.6), (1.0, 1.0, 0.0), (0.9, 1.05, -0.5), (1.0, 1.0, 0.0)]
+            slime(along=a, perp=p, d=vec, shift=(u[0] * k, u[1] * k), look=u, eye_dy=bob, extras=tail)
+            for a, p, k, bob, tail in [
+                (1.15, 0.9, 0.7, 0.0, glide_tail(u, 1.15)), (1.0, 1.0, 0.0, 1.0, ()),
+                (0.9, 1.06, -0.6, 0.0, ()), (1.0, 1.0, 0.0, 1.0, ())]
         ], 10, True)
         anims[f"charge_{name}"] = ([
-            slime(sx=1 + 0.05 * i, sy=1 - 0.11 * i, shift=(0, 0.6 * i), look=u, eyes="closed" if i == 3 else "open")
+            slime(sx=1 + 0.05 * i, sy=1 - 0.11 * i, shift=(0, 0.6 * i), look=u, eyes="closed" if i == 3 else "open",
+                  extras=[(3, 3, "Y"), (16, 5, "y")] if i == 3 else ())  # ANI-09: two sparkle pixels at full charge
             for i in range(4)
-        ], 0, False)
+        ] + [slime(sx=1.15, sy=0.67, shift=(0, 1.8), look=u, eyes="closed", extras=[(15, 3, "Y"), (4, 6, "y")])],  # ANI-30: 3b, the sparkles swap sides
+            0, False)
         anims[f"launch_{name}"] = ([
             slime(along=0.8, perp=1.1, d=vec, look=u), slime(along=1.25, perp=0.8, d=vec, look=u, ground=False),
         ], 0, False)
@@ -486,6 +524,8 @@ def slime_animations() -> dict[str, tuple[list[list[str]], int, bool]]:
                   extras=splat_droplets(vec, i))
             for i, (a, p, off) in enumerate([(0.45, 1.15, 3.0), (0.6, 1.1, 2.4), (0.8, 1.04, 1.2), (0.95, 1.0, 0.3)])
         ], 0, False)
+    # ANI-04 / ANI-26: the "ouch" eyes on the normal eye row (eye_dy cancels the 0.5 px shift) and a 2 px open mouth
+    anims["hurt"] = ([slime(sx=1.1, sy=0.9, eyes="x", shift=(0, 0.5), eye_dy=-1.0), slime(eyes="x")], 12, False)
     anims["recover"] = ([slime(sx=1.05, sy=0.95), slime(sx=0.97, sy=1.04)], 12, False)
     anims["dry"] = ([
         slime(sx=0.95, sy=0.95, eyes="closed"),
@@ -546,9 +586,32 @@ def chalice_frame(glint: int) -> list[str]:
     return ["".join(r) for r in g]
 
 
+def chalice_gulp_frames() -> list[list[str]]:
+    """ANI-02: the chalice is consumed. 4 tilt (top half 1 px toward the slime), 5 gulp (2 px shorter from the top, only the
+    chalice's own ramp j J Z + outline Q), 6 gone (empty)."""
+    base = [list(r) for r in chalice_frame(0)]
+    tilt = [r[:] for r in base]
+    for y in range(CHALICE_H // 2):
+        tilt[y] = ["."] + base[y][:-1]
+    tilt = ["".join(r) for r in tilt]
+    squash = {"Y": "j", "y": "j", "e": "j", "M": "J", "i": "J", "a": "Z"}
+    rows = ["".join(squash.get(c, c) for c in r) for r in ("".join(r) for r in base)]
+    top = next(y for y, r in enumerate(rows) if r.strip("."))
+    body = rows[top + 2:]  # the rim and the opening go in first
+    body = ["." * CHALICE_W] * (CHALICE_H - len(body)) + body
+    gulp = []
+    for y, r in enumerate(body):
+        r = list(r)
+        for x in range(CHALICE_W):
+            if r[x] != "." and r[x] != "Q" and (y == 0 or body[y - 1][x] == "."):
+                r[x] = "Q"  # a fresh closed outline on the new top
+        gulp.append("".join(r))
+    return [tilt, gulp, ["." * CHALICE_W] * CHALICE_H]
+
+
 def chalice_frames() -> list[list[str]]:
-    """The chalice with a glint sliding along its rim."""
-    return [chalice_frame(k) for k in range(4)]
+    """The chalice with a glint sliding along its rim, then the three ANI-02 consumed frames (4-6)."""
+    return [chalice_frame(k) for k in range(4)] + chalice_gulp_frames()
 
 
 def app_icon() -> list[str]:
@@ -580,10 +643,11 @@ SHADOW = ["." * 16] * 6 + [
 
 # ---------------------------------------------------------------- output
 
-def write_png(path: Path, rows: list[str]) -> None:
+def write_png(path: Path, rows: list[str], pal: dict | None = None) -> None:
+    pal = PAL if pal is None else pal  # CON-06: generators pass their own derived palette
     h, w = len(rows), len(rows[0])
     assert all(len(r) == w for r in rows), f"{path.name}: rows must all be {w} wide"
-    raw = b"".join(b"\x00" + b"".join(bytes(PAL[c]) for c in row) for row in rows)
+    raw = b"".join(b"\x00" + b"".join(bytes(pal[c]) for c in row) for row in rows)
 
     def chunk(tag: bytes, data: bytes) -> bytes:
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
@@ -620,4 +684,5 @@ if __name__ == "__main__":
         [floor_tile(kind, seed=5000 + variant * 20 + i) for i, kind in enumerate(FLOOR_TYPES)]
         for variant in range(4)
     ]))
-    write_png(OUT.parent.parent / "icon.png", app_icon())
+    # IMP-05: icon.png is 256x256 (the 64 px art scaled 4x, nearest neighbour), for stores and the OS
+    write_png(OUT.parent.parent / "icon.png", ["".join(c * 4 for c in row) for row in app_icon() for _ in range(4)])

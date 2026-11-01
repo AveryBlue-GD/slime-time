@@ -32,6 +32,7 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 			p.hat_dyes[key.get_slice(":", 0)] = key.get_slice(":", 1)
 	p.selected_hat = get_string(file, "skin", "hat", Hats.NONE)
 	p.hub_skin = get_string(file, "skin", "hub", "")
+	p.random_look = get_bool(file, "skin", "random_look", false)
 	var hub_tint: Variant = file.get_value("skin", "hub_custom", p.hub_custom)
 	p.hub_custom = hub_tint if typeof(hub_tint) == TYPE_COLOR else p.hub_custom
 	if not p.is_hat_unlocked(p.selected_hat):
@@ -39,9 +40,12 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 	p.sound_on = get_bool(file, "settings", "sound_on", true)
 	p.volume = clampf(get_float(file, "settings", "volume", p.volume), 0.0, 1.0)
 	p.music_volume = clampf(get_float(file, "settings", "music_volume", p.music_volume), 0.0, 1.0)
+	p.level_music = get_bool(file, "settings", "level_music", true)
 	p.hard_mode = get_bool(file, "settings", "hard_mode", false)
 	p.reduce_motion = get_bool(file, "settings", "reduce_motion", p.reduce_motion)
 	p.vibration = get_bool(file, "settings", "vibration", p.vibration)
+	p.relaxed = get_bool(file, "settings", "relaxed", false)
+	p.lurkers_random = get_bool(file, "settings", "lurkers", false) and not get_bool(file, "settings", "calm_dark", false)
 	p.fog_brightness = clampi(get_int(file, "settings", "fog_brightness", p.fog_brightness), p.FOG_DARK, p.FOG_BRIGHT)
 	p.fullscreen = get_bool(file, "settings", "fullscreen", false)
 	if not from_code:  # a code never brings a language: the device keeps its own
@@ -107,6 +111,14 @@ static func read(p: Node, file: ConfigFile, from_code := false) -> void:
 			p.set_jelly(false)
 			if not p.is_skin_unlocked(p.selected_skin):
 				p.selected_skin = Skins.DEFAULT
+	p.ach_seeded = file.has_section("achievements")
+	p.ach_known = strings(file.get_value("achievements", "known", []))
+	p.ach_flags = clampi(get_int(file, "achievements", "flags", 0), 0, 63)
+	# (a save from before the page-seen counter: everything already known counts as seen, no stale "!")
+	p.ach_seen = clampi(get_int(file, "achievements", "seen", p.ach_known.size() if file.has_section("achievements") else 0), 0, 1000)
+	p.medal_milestones_paid = clampi(get_int(file, "achievements", "milestones", 0), 0, 100000)
+	p.ach_rewarded = strings(file.get_value("achievements", "rewarded", []))
+	p.medal_ms_mask = clampi(get_int(file, "achievements", "ms_mask", 0), 0, (1 << Achievements.MILESTONES.size()) - 1)
 
 
 ## Key bindings from [controls] (S6): a key that is missing, not a key code, or already taken by
@@ -144,6 +156,11 @@ static func _read_wallet(p: Node, file: ConfigFile) -> void:
 	p.random_paid = clampi(get_int(file, "wallet", "random_paid", 0), 0, p.RANDOM_PAID_PER_DAY)
 	p._check_pay_day()
 	p.random_paid_seeds.assign(ints(file.get_value("wallet", "paid_seeds", [])).slice(-p.PAID_SEEDS_MAX))
+	var saved_attempts := clampi(get_int(file, "wallet", "attempt_base", 0), 0, p.RANDOM_ATTEMPT_PAY.size() - 1)
+	if saved_attempts > 0:  # (the last maze was left after a move and the app was killed: its attempts still count)
+		p.random_attempts = {"saved": saved_attempts}
+		p.random_moved = true
+		p.random_maze_won = false
 	p.spins = clampi(get_int(file, "hats", "spins", 0), 0, p.SPINS_MAX)
 	p.rainbow_pity = clampi(get_int(file, "hats", "rainbow_pity", 0), 0, p.RAINBOW_PITY_MAX)
 	# A save or code from before the wheel had a seed gets one from its own text, so loading the same
@@ -172,6 +189,23 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 	p.descent_paid = clampi(get_int(file, "descent", "paid_runs", 0), 0, Economy.DESCENT_PAID_PER_DAY)
 	p._check_descent_day()
 	p.descent_milestones = clampi(get_int(file, "descent", "milestones", 0), 0, (1 << Economy.DESCENT_MILESTONES.size()) - 1)
+	p.daily_day = maxi(get_int(file, "daily", "day", 0), 0)
+	p.daily_best_ms = clampi(get_int(file, "daily", "best_ms", 0), 0, 1000 * 100000)
+	p.daily_streak = clampi(get_int(file, "daily", "streak", 0), 0, 100000)
+	p.daily_best_streak = maxi(clampi(get_int(file, "daily", "best_streak", 0), 0, 100000), p.daily_streak)
+	p.daily_saver_day = maxi(get_int(file, "daily", "saver_day", 0), 0)
+	p.hub_seen = {}
+	for station: String in ["upgrades", "wheel"]:
+		var seen := clampi(get_int(file, "hub", "seen_" + station, -1), -1, 100000000)
+		if seen >= 0:
+			p.hub_seen[station] = seen
+	if not from_code:  # (a code carries no boards: importing one keeps this device's)
+		_read_boards(p, file)
+	if p.daily_day > p.utc_day() + p.PAY_DAY_AHEAD:  # a future clock or a hand-made save: no daily on record
+		p.daily_day = 0
+		p.daily_best_ms = 0
+		p.daily_streak = 0
+		p.daily_saver_day = 0
 	p.descent_run = {}
 	p.descent_resume = {}
 	if not from_code:
@@ -182,6 +216,34 @@ static func _read_descent(p: Node, file: ConfigFile, from_code := false) -> void
 ## each track (unknown keys ignored), [cosmetics] owned (allow-listed ids only, no repeats) and the
 ## worn trail / paper (back to the default unless owned), [hats] bought, [wallet] tickets_spent.
 ## Tickets can't be re-derived, so nothing is dropped as "couldn't have paid": only clamped.
+## BM-03 [boards]: {key: [entries]} for the daily and weekly boards (every entry an int, sorted, at most BOARD_TOP), the best daily.
+static func _read_boards(p: Node, file: ConfigFile) -> void:
+	p.ghost_on = get_bool(file, "boards", "ghost", true)
+	p.ghost_intro_seen = get_bool(file, "boards", "ghost_intro", false)
+	p.board_best_daily_ms = clampi(get_int(file, "boards", "best_daily_ms", 0), 0, 1000 * 100000)
+	p.weekly_played_week = clampi(get_int(file, "boards", "weekly_played_week", 0), 0, 1000000)
+	p.weekly_paid_week = clampi(get_int(file, "boards", "weekly_paid_week", 0), 0, 1000000)
+	p.weekly_paid = clampi(get_int(file, "boards", "weekly_paid", 0), 0, Economy.WEEKLY_PAY_MAX)
+	p.daily_attempted_day = clampi(get_int(file, "boards", "daily_attempted_day", 0), 0, 1000000)
+	for kind: String in ["daily", "weekly"]:
+		var out := {}
+		var raw: Variant = file.get_value("boards", kind, {})
+		if typeof(raw) == TYPE_DICTIONARY:
+			for key: Variant in raw:
+				if typeof(key) == TYPE_INT and key > 0 and key < 1000000:
+					var board := ints(raw[key])
+					board = board.filter(func(e: int) -> bool: return e >= 0 and (e >> 3) < 1000 * 100000)
+					board.sort()  # (entries sort by ms: the ms are the high bits)
+					if board.size() > Economy.BOARD_TOP:
+						board.resize(Economy.BOARD_TOP)
+					if not board.is_empty():
+						out[key] = board
+		if kind == "daily":
+			p.board_daily = out
+		else:
+			p.board_weekly = out
+
+
 static func read_store(p: Node, file: ConfigFile) -> void:
 	p.workshop = {}
 	for id in Workshop.ids():
@@ -329,6 +391,8 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("skin", "hub", p.hub_skin)
 		file.set_value("skin", "hub_custom", p.hub_custom)
 	file.set_value("skin", "hat", p.selected_hat)
+	if p.random_look:
+		file.set_value("skin", "random_look", true)
 	file.set_value("hats", "owned", p.hats_owned.duplicate())
 	if not p.hat_dyes_owned.is_empty():
 		file.set_value("hats", "dyes", p.hat_dyes_owned.duplicate())
@@ -340,12 +404,18 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("settings", "sound_on", p.sound_on)
 	file.set_value("settings", "volume", p.volume)
 	file.set_value("settings", "music_volume", p.music_volume)
+	if not p.level_music:
+		file.set_value("settings", "level_music", false)
 	file.set_value("settings", "hard_mode", p.hard_mode)
 	file.set_value("settings", "reduce_motion", p.reduce_motion)
 	file.set_value("settings", "vibration", p.vibration)
 	file.set_value("settings", "fog_brightness", p.fog_brightness)
 	if p.fullscreen:
 		file.set_value("settings", "fullscreen", true)
+	if p.relaxed:
+		file.set_value("settings", "relaxed", true)
+	if p.lurkers_random:
+		file.set_value("settings", "lurkers", true)
 	if p.language != "" and not for_code:
 		file.set_value("settings", "language", p.language)
 	file.set_value("progress", "skin_notices_seen", p.skin_notices_seen)
@@ -366,6 +436,16 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 	file.set_value("wallet", "random_day", p.random_pay_day)
 	file.set_value("wallet", "random_paid", p.random_paid)
 	file.set_value("wallet", "paid_seeds", p.random_paid_seeds)
+	# (BUG2-10: the penalty a kill must not drop: a maze left after a move, the base already carried into the NEXT maze (hub
+	# after NEW MAZE, before its first move), or the one parked while the daily / weekly is played)
+	var abandon: int = 0
+	if not for_code:
+		if p.random_daily or p.random_weekly:
+			abandon = p.random_attempt_carry
+		else:
+			abandon = maxi(p._abandon_base(), p.random_attempt_base if not p.random_maze_won else 0)
+	if abandon > 0:
+		file.set_value("wallet", "attempt_base", abandon)
 	file.set_value("hats", "spins", p.spins)
 	file.set_value("hats", "rainbow_pity", p.rainbow_pity)
 	if p.wheel_seed == 0:
@@ -403,6 +483,34 @@ static func write(p: Node, for_code := false) -> ConfigFile:
 		file.set_value("descent", "paid_day", p.descent_pay_day)
 		file.set_value("descent", "paid_runs", p.descent_paid)
 		file.set_value("descent", "milestones", p.descent_milestones)
+	if Economy.ACHIEVEMENTS and p.ach_seeded and not Demo.on():  # (a demo save carries no goals: the full game would toast them all)
+		file.set_value("achievements", "known", p.ach_known.duplicate())
+		file.set_value("achievements", "flags", p.ach_flags)
+		file.set_value("achievements", "seen", p.ach_seen)
+		file.set_value("achievements", "milestones", p.medal_milestones_paid)
+		file.set_value("achievements", "rewarded", p.ach_rewarded.duplicate())
+		file.set_value("achievements", "ms_mask", p.medal_ms_mask)
+	if not for_code and not Demo.on():
+		for station: String in p.hub_seen:
+			file.set_value("hub", "seen_" + station, p.hub_seen[station])
+	if Economy.BOARDS_TEST and not for_code and not Demo.on() and (not p.board_daily.is_empty() or not p.board_weekly.is_empty() or p.board_best_daily_ms > 0 or p.weekly_played_week > 0 or p.weekly_paid_week > 0 or p.daily_attempted_day > 0 or not p.ghost_on or p.ghost_intro_seen):
+		file.set_value("boards", "daily", p.board_daily)
+		file.set_value("boards", "weekly", p.board_weekly)
+		file.set_value("boards", "best_daily_ms", p.board_best_daily_ms)
+		file.set_value("boards", "weekly_played_week", p.weekly_played_week)
+		file.set_value("boards", "weekly_paid_week", p.weekly_paid_week)
+		file.set_value("boards", "weekly_paid", p.weekly_paid)
+		file.set_value("boards", "daily_attempted_day", p.daily_attempted_day)
+		file.set_value("boards", "ghost", p.ghost_on)
+		if p.ghost_intro_seen:
+			file.set_value("boards", "ghost_intro", true)
+	if p.daily_day > 0:
+		file.set_value("daily", "day", p.daily_day)
+		file.set_value("daily", "best_ms", p.daily_best_ms)
+		file.set_value("daily", "streak", p.daily_streak)
+		file.set_value("daily", "best_streak", p.daily_best_streak)
+		if p.daily_saver_day > 0:
+			file.set_value("daily", "saver_day", p.daily_saver_day)
 	# A Descent run in progress (D6): written only while one is saved.
 	if not p.descent_resume.is_empty() and not for_code:
 		file.set_value("descent_run", "format", p.DESCENT_RUN_FORMAT)

@@ -136,12 +136,12 @@ func _hub() -> void:
 	_check_screen(hub.hub_menu, "hub menu")
 	_check_dialog(hub.hub_menu, hub.HUB_MENU_PANEL, "hub menu")
 	var stack_ok := true
-	for i in 3:
-		var b: Button = [hub.menu_back, hub.menu_settings, hub.menu_quit][i]
+	for i in 4:
+		var b: Button = [hub.menu_back, hub.menu_achievements, hub.menu_settings, hub.menu_quit][i]
 		stack_ok = stack_ok and _rect(b).size == Vector2(hub.HUB_MENU_BUTTON_W, UIKit.button_h()) \
 			and absf(_rect(b).get_center().x - 160.0) <= 0.5 \
 			and _rect(b).position.y == _rect(hub.menu_back).position.y + i * (UIKit.button_h() + UIKit.GAP_S)
-	_check(stack_ok, "hub menu: BACK / SETTINGS / QUIT TO TITLE stacked GAP_S apart, equal widths, centred")
+	_check(stack_ok, "hub menu: BACK / ACHIEVEMENTS / SETTINGS / QUIT TO TITLE stacked GAP_S apart, equal widths, centred")
 	hub.close_hub_menu()
 	# A saved Descent run's prompt (phase 5, D6).
 	progress.descent_resume = {seed = 5, floor = 12, cleared = 11, meter = 50.0, boons = {}, bladders = 0, pot = 30, time = 600.0,

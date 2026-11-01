@@ -9,6 +9,9 @@ const MAZE_CELLS := Vector2i(30, 18)
 const MAZE_SEED := 4242
 ## Drift speed in px per second; it ping-pongs across the part of the maze wider than the screen.
 const DRIFT_SPEED := 5.0
+## ENV-26: near-black, not the lifted navy of UIKit.BG, so the blacks stay black (UI-06 text contrast holds: darker is better).
+const SCRIM := Color(0.039, 0.039, 0.071)
+const SCRIM_ALPHA := 0.7
 const DIM := Color(0.3, 0.3, 0.38)
 
 var _maze_root: Node2D
@@ -54,6 +57,13 @@ func _ready() -> void:
 			layers[i].tile_set = tile_set
 			layers[i].tile_map_data = _cells[i]
 	_travel = _cached_travel
+
+	# UI-06: a scrim over the maze so hint text on the backdrop reads (the maze stays as texture).
+	var scrim := ColorRect.new()
+	scrim.color = Color(SCRIM, SCRIM_ALPHA)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(scrim)
 
 	var mist := ColorRect.new()
 	var material := ShaderMaterial.new()

@@ -8,6 +8,8 @@ var frame := 0
 
 
 func _ready() -> void:
+	if OS.get_cmdline_user_args().has("--calm"):
+		Progress.dry_ups[3] = 3  # the CALM MODE? offer
 	if OS.get_cmdline_user_args().has("--dry-ups"):
 		Progress.dry_ups[3] = 2
 	game = preload("res://scenes/main.tscn").instantiate()

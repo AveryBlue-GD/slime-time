@@ -50,6 +50,11 @@ const FOG_LOOKS: Array[Dictionary] = [
 	{fade = FADE_ALPHA, wall = WALL_FOG_ALPHA, deep_gain = 0.55, mist_gain = 0.45, far_dim = 0.22, vig_max = 0.35, light_outer = 115.0},
 	{fade = [0.0, 0.25, 0.42, 0.54, 0.64], wall = 0.2, deep_gain = 0.75, mist_gain = 0.55, far_dim = 0.14, vig_max = 0.25, light_outer = 125.0},
 ]
+## Economy.DARK_FOG: the same looks with the unrevealed mist crushed to near-black (Bright is left alone).
+const FOG_LOOKS_DARK: Array[Dictionary] = [
+	{fade = [0.0, 0.33, 0.55, 0.72, 0.86], wall = 0.36, deep_gain = 0.12, mist_gain = 0.1, far_dim = 0.3, vig_max = 0.45, light_outer = 110.0},
+	{fade = FADE_ALPHA, wall = WALL_FOG_ALPHA, deep_gain = 0.16, mist_gain = 0.13, far_dim = 0.22, vig_max = 0.35, light_outer = 115.0},
+]
 const UNREVEALED := Color(0, 0, 0, 0)
 ## Fog times are stored as 16-bit counts of 1/FOG_TICKS seconds (up to ~68 minutes).
 const FOG_TICKS := 16.0
@@ -84,7 +89,7 @@ const SHAKE_MAX := 3.0
 const TRAIL_GLOW := Cosmetics.TRAIL_GLOW
 const SLIME_LIGHT_SIZE := 112
 ## Drawn above the fog (z 11), so it lights the unexplored ground around the slime a little.
-const SLIME_LIGHT_STRENGTH := 0.14
+const SLIME_LIGHT_STRENGTH := 0.12
 ## Camera kick on a splat: px pushed toward the wall at full power (decays with the shake).
 const KICK_MAX := 3.0
 ## The low-slime warning: a heartbeat every HEARTBEAT_SLOW s at LOW_PERCENT, speeding to HEARTBEAT_FAST at 0.
@@ -267,6 +272,7 @@ var stopwatch := false
 var hard_mode := false
 ## Seconds spent on this maze (stops on pause and when the maze ends).
 var run_time := 0.0
+var _weekly_par := -1.0
 ## Wall splats this run, the par time the medal tiers are measured against (seconds; the solution path at the base gliding speed plus slack, so speed
 ## upgrades don't move it), whether this attempt is played with the slime reserve (ASSIST: no
 ## medals, records or tickets), and what the win paid (Progress.record_clear / complete_random).
@@ -313,6 +319,10 @@ var seed_level := 0
 ## count, NEW MAZE starts over; Progress.random_attempts) and the key it is counted under.
 var attempt := 1
 var attempt_key := ""
+## Economy.PICKUPS_ON_WIN: the tickets the pickups taken this run are worth, paid with the win.
+var held_tickets := 0
+## IMP2-05: the daily win's share line (what the result row's COPY puts on the clipboard), "" outside a recorded daily win.
+var daily_share := ""
 ## What the attempt pod shows for this run (-1 until it first shows).
 var _pod_offer := -1
 var _dev_pod_text := ""  # DevLog only
@@ -358,6 +368,17 @@ var _last_ambient_event := -1
 var dev_bright := false
 var dev_no_drain := false
 var dev_toggled := false
+## SETTINGS RELAXED was on when this run began (no idle drain; no medal, record or ticket, like ASSIST).
+var relaxed_run := false
+## BM-01 (Economy.LURKERS_TEST): this run's lurkers (null = none).
+var lurkers: Lurkers
+## BM-03: the daily / weekly's ghost recorder and racer (null elsewhere), and the split against it shown on the result.
+var ghost: GhostRacer = null
+## IMP3-06: the BOARD place / ghost split tail of the share line, and how long COPY shows the line on the result (s).
+var share_extra := ""
+const COPY_SHOW_TIME := 3.0
+## Seconds the slime has been still on the ground (the idle drain's grace, Economy.IDLE_GRACE).
+var _still_time := 0.0
 var _bright_shown := {}
 ## Trail map survey of this run (story levels only, see Survey / Progress.record_survey): one byte
 ## per maze tile, 1 once revealed (set where the fog is revealed, so it costs a byte write per newly
@@ -407,7 +428,7 @@ func _ready() -> void:
 			preview = progress.in_demo_preview()
 		else:
 			level = progress.current_level if progress else 1
-	hard_mode = progress.hard_mode if progress and not descent and not training else false  # Descent, training: normal rules only
+	hard_mode = progress.hard_mode if progress and not descent and not training and not (progress.mode == progress.MODE_RANDOM and (progress.random_daily or progress.random_weekly)) else false  # (the daily and the weekly: normal rules for everyone; a stale flag must not soften a hard story level) # Descent, training: normal rules only
 	var config: Dictionary
 	if training:
 		training_attempt = Training.begin_run()
@@ -439,6 +460,12 @@ func _ready() -> void:
 		if preview:
 			# i18n: HUD area line, max 296px, 1 line (the demo's last maze: a taste of the full game)
 			hud.set_level_text(Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
+		elif progress and progress.random_daily:
+			# i18n: HUD area line, max 296px, 1 line (today's daily maze)
+			hud.set_level_text(Loc.t("hud.area.daily", "DAILY MAZE"))
+		elif is_weekly():
+			# i18n: HUD area line, max 296px, 1 line; {n} = the weekly's number (this week's maze, the same for everyone)
+			hud.set_level_text(Loc.t("hud.area.weekly", "WEEKLY #{n}", {n = Boards.weekly_number(Boards.week_of(progress.daily_run_day))}))
 		elif hard_mode:
 			hud.set_level_text(Loc.t("hud.area.random_hard", "RANDOM MAZE #{n}  HARD", {n = maze_n}))
 		elif seed_level != own_level:
@@ -494,12 +521,16 @@ func _ready() -> void:
 		assisted = true
 		slime_cost_per_tile /= 1.0 + Progress.ASSIST_BONUS
 		hud.set_assist(true)
+	# RELAXED as the one assist: extra slime too, growing with the dry-ups on this level (not in training / Descent).
+	if Economy.one_assist() and progress and progress.relaxed_on(level) and not training and not descent:
+		slime_cost_per_tile /= 1.0 + progress.relaxed_bonus(level, is_random())
 
 	# A new story level's very first attempt equips the skin just earned (see Progress).
 	var equipped := ""
 	if progress:
 		if not is_random() and not descent and not hard_mode and not training:
 			equipped = progress.equip_first_run_skin(level)
+		LookRoller.roll_for_run(equipped != "" or training or preview or descent or progress.in_demo_preview())  # (RANDOM LOOK: a new look per run; not when a story level just equipped its earned skin)
 		skin_color = progress.skin_color()
 		rainbow = progress.is_rainbow()
 		stopwatch = progress.is_stopwatch()
@@ -578,6 +609,9 @@ func _ready() -> void:
 
 	_paint_goo(slime.position, TRAIL_RADIUS)
 	_flush_textures()
+	relaxed_run = progress != null and progress.relaxed_on(level) and not training
+	lurkers = Lurkers.create(self)  # (BM-01: the fog's creatures, in some random mazes)
+	ghost = GhostRacer.create(self)  # (BM-03: records a daily / weekly run, races the best earlier one)
 	if dev_enabled():  # the dev toggles stay as they were across restarts (never saved)
 		set_dev_bright(progress.dev_bright)
 		set_dev_no_drain(progress.dev_no_drain)
@@ -655,19 +689,27 @@ func _physics_process(delta: float) -> void:
 	_survey_step(pos)
 	run_time += delta
 	hud.set_time(run_time)
+	if ghost != null:
+		ghost.step(run_time, pos)
 	if slime.is_airborne():
 		last_slime_pos = pos
+		if attempt_key != "" and progress != null:
+			_note_moved()  # (leap-only scouting counts as trying the maze too)
 	else:
 		var moved := pos.distance_to(last_slime_pos)
 		_idle_drain(moved, delta)
 		if moved > 0.0:
 			last_slime_pos = pos
+			if attempt_key != "" and progress != null:
+				_note_moved()  # (this maze now counts as tried: abandoning it spends the attempt)
 			if not slime.knocked_back and not dev_no_drain:  # a splat's knockback slide is already paid for
 				slime_remaining = maxf(slime_remaining - moved * slime_cost_per_tile / TILE, 0.0)
 			trail_travel += moved
 			_paint_goo(pos, TRAIL_RADIUS)
 			if light_reach > 0.0:
 				_reveal_light(pos)
+	if lurkers != null:
+		lurkers.step(delta)
 	_pick_up_coins(pos)
 	if not tickets.is_empty():
 		_pick_up_tickets(pos)
@@ -700,6 +742,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		hud.set_slime(slime_remaining)
 	_low_slime_warning(delta)
+	if Economy.orchestra_on():
+		_orchestra_frame(delta)
 	if slime_remaining <= 0.0 and not slime.is_airborne():
 		if wind_state == "ready":
 			_second_wind()
@@ -727,6 +771,36 @@ func _low_slime_warning(delta: float) -> void:
 		_heartbeat_left = lerpf(HEARTBEAT_FAST, HEARTBEAT_SLOW, slime_remaining / hud.LOW_PERCENT)
 
 
+## BM-08 GOO ORCHESTRA per frame: tells the music if the slime moves and if the run is tense (the meter is LOW, or
+## the chalice was first revealed within 12 tiles in the last ORCH_TENSE_TIME s). The first sighting, once per
+## attempt, plays the chalice sting and sparks a few gold motes at the chalice (the visual twin for muted
+## players; the LOW meter's twin is the HUD's red pulsing bar).
+const ORCH_SEE_DIST := 192.0
+const ORCH_TENSE_TIME := 8.0
+const ORCH_MOVING_SPEED := 6.0
+var _orch_seen := false
+var _music_node: Node  # (cached for _orchestra_frame)
+var _orch_tense_left := 0.0
+
+
+func _orchestra_frame(delta: float) -> void:
+	if _music_node == null or not is_instance_valid(_music_node):
+		_music_node = get_node_or_null("/root/Music")
+	var music := _music_node
+	if music == null or finished:
+		return
+	# Only once the chalice is actually revealed, so the sting and sparks never hint at it through the fog.
+	if not _orch_seen and is_instance_valid(goal) and slime.position.distance_to(goal.position) <= ORCH_SEE_DIST \
+			and is_revealed_at(goal.position):
+		_orch_seen = true
+		_orch_tense_left = ORCH_TENSE_TIME
+		music.play_orchestra_sting("chalice")
+		Fx.burst(self, goal.position, CHALICE_GOLD, 6, 22.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
+	_orch_tense_left = maxf(_orch_tense_left - delta, 0.0)
+	var low: bool = slime_remaining < hud.LOW_PERCENT and slime_remaining > 0.0
+	music.orchestra_state(slime.velocity.length() > ORCH_MOVING_SPEED, low or _orch_tense_left > 0.0)
+
+
 func _process(_delta: float) -> void:
 	_pause_if_backgrounded()
 	if is_random() or descent:
@@ -748,20 +822,56 @@ func _process(_delta: float) -> void:
 	fog_material.set_shader_parameter("view_center", view_center.round())
 	if motes:
 		motes.follow(view_center)
+	if Economy.light_life_on():
+		_light_life_frame(_delta)
 	var outer_material := outer_fog.material as ShaderMaterial
 	outer_material.set_shader_parameter("slime_px", slime_light.position)
 	outer_material.set_shader_parameter("view_center", view_center.round())
 	if rainbow:
-		slime_light.modulate = Color(hud.goo_color, SLIME_LIGHT_STRENGTH)
+		slime_light.modulate = Color(LightLife.light_color(theme, hud.goo_color), SLIME_LIGHT_STRENGTH * LightLife.strength_scale(hud.goo_color))
 	_lead_camera(_delta)
 	_update_ambience(_delta)
 	_shake_camera(_delta)
 	_flush_textures()
 
 
+## Seconds since the win's sunrise began (-1 = not yet); frames of hit-stop still to go.
+var _sunrise_t := -1.0
+var _hitstop_frames := 0
+
+
+## LIGHT & LIFE per frame: the goal's rays and the sunrise ring into the fog, and the end of the win's hit-stop.
+func _light_life_frame(delta: float) -> void:
+	if _hitstop_frames > 0:
+		_hitstop_frames -= 1
+		if _hitstop_frames == 0:
+			_hitstop_set(false)
+	if _sunrise_t >= 0.0:
+		_sunrise_t += delta
+	LightLife.frame(fog_sprite.material as ShaderMaterial, _sunrise_t, motion_scale() > 0.0)
+
+
+## LIGHT & LIFE on the win: the sunrise ring starts and the game holds still for 2 frames.
+func _light_life_win() -> void:
+	_sunrise_t = 0.0
+	if motion_scale() > 0.0:  # (Reduce Motion: no hit-stop)
+		_hitstop_frames = 2
+		_hitstop_set(true)
+
+
+## The hit-stop pauses only this level's physics (never Engine.time_scale, which would also stop the
+## timers that restore it); _process keeps running and counts the 2 frames down.
+func _hitstop_set(on: bool) -> void:
+	set_physics_process(not on)
+	if is_instance_valid(slime):
+		slime.set_physics_process(not on)
+
+
 ## Loads the theme's ambience: its continuous bed (looping, fading in) if it has one, and its
 ## one-off sounds.
 func _start_ambience() -> void:
+	if Economy.orchestra_on() and has_node("/root/Music"):
+		get_node("/root/Music").set_orchestra_theme(theme)  # (BM-08: the layers play at this theme's pitch)
 	var bed_path := "res://assets/sounds/ambient_%s.wav" % theme
 	if ResourceLoader.exists(bed_path):
 		var stream := load(bed_path) as AudioStreamWAV
@@ -864,6 +974,14 @@ func _set_pixel_cam(on: bool) -> void:
 		camera.position = _look_ahead.round()
 
 
+## ANI-05: the shake runs on a fixed 30 Hz clock (the same on 60 and 144 Hz displays) as a damped
+## oscillation along the push direction (or a random axis picked per shake), with a little
+## perpendicular wobble on the first two ticks; the last ~40 % of the time it has settled at 0.
+const SHAKE_HZ := 30.0
+const SHAKE_FREQ := 12.0
+var _shake_axis := Vector2.RIGHT
+
+
 func _shake_camera(delta: float) -> void:
 	if shake_left <= 0.0 or motion_scale() <= 0.0:
 		shake_left = 0.0
@@ -872,9 +990,15 @@ func _shake_camera(delta: float) -> void:
 		camera.offset = Vector2.ZERO
 		return
 	shake_left = maxf(shake_left - delta, 0.0)
-	var fade := minf(shake_left / maxf(shake_span, 0.001), 1.0)
-	var strength := ceilf(shake_strength * fade)
-	camera.offset = (Vector2(randf_range(-strength, strength), randf_range(-strength, strength)) + kick * fade).round()
+	var span := maxf(shake_span, 0.001)
+	var tick := floori((span - shake_left) * SHAKE_HZ)
+	var t := tick / SHAKE_HZ
+	var fade := clampf(1.0 - t / (span * 0.6), 0.0, 1.0)
+	var swing := cos(t * TAU * SHAKE_FREQ) * ceilf(shake_strength * fade) * (1.0 if fade > 0.0 else 0.0)
+	var offset := _shake_axis * swing + kick * fade
+	if tick < 2:
+		offset += _shake_axis.orthogonal() * (1.0 if tick == 0 else -1.0) * minf(shake_strength, 2.0) * 0.5
+	camera.offset = offset.round()
 
 
 ## A screen shake of `strength` px fading over `time` s with a `push` (px) toward a side; nothing
@@ -885,6 +1009,7 @@ func shake(strength: float, time: float, push := Vector2.ZERO) -> void:
 	shake_span = time
 	shake_strength = strength
 	kick = push
+	_shake_axis = push.normalized() if push.length() > 0.1 else [Vector2.RIGHT, Vector2.DOWN, Vector2(1, 1).normalized(), Vector2(1, -1).normalized()][randi() % 4]
 
 
 ## Adds the distance moved since last frame; past the next mark, a glimmer appears.
@@ -1049,6 +1174,8 @@ static func fade_alpha(age: float, table: Array = FADE_ALPHA) -> float:
 ## The fog look chosen in Settings (an entry of FOG_LOOKS).
 func fog_look() -> Dictionary:
 	var level_index: int = progress.fog_brightness if progress else Progress.FOG_NORMAL
+	if Economy.DARK_FOG and level_index < FOG_LOOKS_DARK.size():
+		return FOG_LOOKS_DARK[maxi(level_index, 0)]
 	return FOG_LOOKS[clampi(level_index, 0, FOG_LOOKS.size() - 1)]
 
 
@@ -1125,9 +1252,11 @@ func _build_overlays() -> void:
 		fog_material.set_shader_parameter("fog_deep", fog_colors[0])
 		fog_material.set_shader_parameter("fog_mist", fog_colors[1])
 	fog_sprite.material = fog_material
+	if Economy.light_life_on():
+		LightLife.setup(fog_material, theme, skin_color, trail_sprite.texture)
 	_build_outer_fog(fog_material, Rect2(-BORDER_PX, Vector2(cells * FOG_CELL)))
 
-	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(skin_color, SLIME_LIGHT_STRENGTH))
+	slime_light = Fx.make_light(SLIME_LIGHT_SIZE + int(light_reach * 2.0), Color(LightLife.light_color(theme, skin_color), SLIME_LIGHT_STRENGTH * LightLife.strength_scale(skin_color)))
 	slime_light.z_index = 11  # above the fog (z 10), so the lantern shows on unexplored ground
 	add_child(slime_light)
 	motes = Ambient.create(theme, progress != null and progress.reduce_motion, atmosphere_tint)
@@ -1136,19 +1265,20 @@ func _build_overlays() -> void:
 		move_child(motes, bedrock_layer.get_index() + 1)  # on the floor: under trail, chalice and slime
 
 
-## An additive, smoothed copy of the trail drawn over it (child of the trail sprite, same
-## texture, so it updates with it): the 2 px cells blur into a faint halo and the goo glows.
+## An additive copy of the trail drawn over it (child of the trail sprite, same texture, so it
+## updates with it; nearest filtering, a dithered one-cell halo): the goo glows.
 func _build_trail_glow() -> void:
 	for old in trail_sprite.get_children():
 		old.queue_free()
 	var glow := Sprite2D.new()
 	glow.texture = trail_sprite.texture
 	glow.centered = false
-	glow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	var material := CanvasItemMaterial.new()
-	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://assets/shaders/trail_glow.gdshader")
+	material.set_shader_parameter("strength", trail_look.get("glow", TRAIL_GLOW))
+	material.set_shader_parameter("cell_px", float(FOG_CELL))
 	glow.material = material
-	glow.modulate = Color(1, 1, 1, trail_look.get("glow", TRAIL_GLOW))
 	trail_sprite.add_child(glow)
 
 
@@ -1461,7 +1591,13 @@ func paint_streak(a: Vector2, b: Vector2, radius := 2.0) -> void:
 func _idle_drain(moved: float, delta: float) -> void:
 	if dev_no_drain or training or _spawn_at != Vector2.INF or random_map_view != null or not Economy.idle_drain_on():
 		return
-	if moved <= 0.0 and slime.state == Slime.State.GLIDE:
+	if moved > 0.0 or slime.state != Slime.State.GLIDE:
+		_still_time = 0.0
+		return
+	if relaxed_run or slime.aim_lock:
+		return  # RELAXED: no idle drain; aiming an ability is thinking time, not waiting
+	_still_time += delta
+	if _still_time > Economy.IDLE_GRACE:
 		slime_remaining = maxf(slime_remaining - Economy.IDLE_DRAIN * delta, 0.0)
 
 
@@ -1528,7 +1664,11 @@ func _flush_textures() -> void:
 
 
 func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vector2) -> void:
+	if finished:
+		return
 	last_jump_cost = slime.last_jump_traveled / TILE * slime_cost_per_tile * jump_cost_factor
+	if lurkers != null:
+		lurkers.on_landing(slime.position)  # (a leap landed on a lurker bonks it)
 	_paint_goo(slime.position, LANDING_RADIUS)
 	if hit_wall and slime.last_hit_glancing:  # soft bounce test: the same penalty, a soft touch
 		splats += 1
@@ -1557,6 +1697,8 @@ func _on_jump_landed(intended_distance: float, hit_wall: bool, wall_normal: Vect
 
 ## The MORE SLIME factor applied to this run (1 in hard mode, which has no upgrades).
 func _applied_slime_factor() -> float:
+	if is_weekly():
+		return Upgrades.slime_factor(Economy.WEEKLY_SLIME)  # (BM-03: the weekly's fixed loadout)
 	return 1.0 if progress == null or hard_mode else Upgrades.slime_factor(progress.upgrade_level("slime"))
 
 
@@ -1566,11 +1708,19 @@ func _apply_upgrades() -> void:
 	if progress == null or hard_mode:  # hard mode is played without upgrades
 		return
 	slime_cost_per_tile /= _applied_slime_factor()
-	var speed := Upgrades.speed_factor(progress.upgrade_level("speed"))
+	var weekly := is_weekly()  # (BM-03: the weekly's loadout is fixed, SPEED and BRIGHTNESS too)
+	var speed := Upgrades.speed_factor(Economy.WEEKLY_SPEED if weekly else progress.upgrade_level("speed"))
 	slime.max_speed *= speed
 	slime.acceleration *= speed
-	light_reach = Upgrades.light_reach(progress.upgrade_level("brightness"))
-	wall_power = progress.upgrade_level("power")
+	light_reach = Upgrades.light_reach(Economy.WEEKLY_BRIGHTNESS if weekly else progress.upgrade_level("brightness"))
+	wall_power = 0 if weekly else progress.upgrade_level("power")
+
+
+## The random maze now counts as tried; the first time, one save so an app kill keeps the attempt (BUG2-10).
+func _note_moved() -> void:
+	if not progress.random_moved:
+		progress.random_moved = true
+		progress.save_progress()
 
 
 ## The ticket workshop's level of `id` on this run: 0 in hard mode (it is the pure skill track) and
@@ -1584,8 +1734,8 @@ func workshop_level(id: String) -> int:
 ## already cleared on normal). None of it touches par (set before), the route or the meter.
 func _apply_workshop() -> void:
 	workshop = {}
-	if progress == null or hard_mode:
-		return
+	if progress == null or hard_mode or is_weekly():
+		return  # (the weekly is a fixed loadout for everyone: no workshop levels either)
 	for id in Workshop.ids():
 		if progress.workshop_level(id) > 0:
 			workshop[id] = progress.workshop_level(id)
@@ -1820,6 +1970,8 @@ func _place_coins(maze_seed: int) -> void:
 func _place_tickets() -> void:
 	if not is_random() or descent or training or progress == null or attempt_key == "" or not progress.random_seed_fresh:
 		return
+	if progress.random_daily or is_weekly():  # (the shared mazes pay a flat / timed prize, no pickups; the maze is built before this, from its own seed)
+		return
 	for cell in TicketPickup.cells_for(maze, random_seed, Economy.random_tickets()):
 		if progress.random_ticket_taken(attempt_key, cell):
 			continue
@@ -1844,7 +1996,10 @@ func _pick_up_tickets(pos: Vector2) -> void:
 		if pos.distance_to(ticket.position) > TicketPickup.REACH:
 			continue
 		tickets.erase(ticket)
-		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, assisted or dev_toggled)
+		var hold: bool = Economy.pickups_on_win()
+		var paid: int = progress.take_random_ticket(attempt_key, ticket.cell, no_pay() or daily_repeat(), hold)
+		if hold:
+			held_tickets += paid  # (shown as "+N" now, paid when the maze is won)
 		ticket.collect(self)
 		_sfx("coin", -4.0)
 		if paid > 0:
@@ -1947,13 +2102,13 @@ func _show_coins(pop := false) -> void:
 ## A solid slime has no see-through body: the coin glides into it, then pops.
 func _fly_coin_in(coin: Coin) -> void:
 	if coin.position.distance_to(slime.position) <= Coin.REACH:
-		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0)
+		Fx.burst(self, coin.position, Color8(255, 214, 110), 14, 45.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		coin.queue_free()
 		return
 	var tween := coin.create_tween()
 	tween.tween_property(coin, "global_position", slime.global_position, 0.12)
 	tween.tween_callback(func() -> void:
-		Fx.burst(self, slime.position, Color8(255, 214, 110), 14, 45.0)
+		Fx.burst(self, slime.position, Color8(255, 214, 110), 14, 45.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		coin.queue_free())
 
 
@@ -2005,6 +2160,9 @@ func _count_attempt() -> void:
 	DevLog.last_route = ""
 	touch_controls.pause_rect.position.y = touch_controls.pause_y_random()  # under the two-line attempt pod
 	_refresh_attempt_pod()
+	if attempt > 1 and attempt == progress.random_attempt_base + 1:  # the first start of a maze that opens past attempt 1: say why
+		# i18n: short HUD line when a fresh random maze starts on a later attempt because the last maze was left unfinished; max 140px
+		hud.flash_message(Loc.t("hud.left_last_maze", "LEFT LAST MAZE: ATTEMPT {n}", {n = mini(attempt, 99)}), 2.5)
 
 
 ## Randomizer: what a win on this run would pay right now and why ({tickets, table, cap}, see
@@ -2014,16 +2172,66 @@ func _count_attempt() -> void:
 func payout() -> Dictionary:
 	if not is_random() or progress == null:
 		return {tickets = 0, table = 0, cap = ""}
-	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed)
-	if dev_toggled or assisted:
+	if is_weekly():  # (pays by this run's time against the week's par, the improvement over what the week paid; nothing when assisted / RELAXED)
+		var pay: int = 0 if (assisted or (dev_toggled and not dev_keeps_pay()) or relaxed_run) else progress.weekly_pay_due(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
+		return {tickets = pay, table = Economy.WEEKLY_PAY_MAX, cap = "" if pay > 0 else "paid"}
+	var due: Dictionary = progress.random_payout(pay_attempt(), random_seed, pay_factor(), progress.random_daily)
+	if daily_repeat():
+		due = {tickets = 0, table = due.table, cap = "paid"}
+	if no_pay():
 		due.tickets = 0
 	return due
+
+
+## The maze's pay factor: its length factor, x Economy.LURKER_PAY when a NORMAL maze has lurkers (BM-01; hard pays
+## only its flat HARD_LENGTH_FACTOR, IMP3-01).
+func pay_factor() -> float:
+	var factor: float = progress.random_length_factor(random_seed, seed_level, hard_mode)
+	return factor * Economy.LURKER_PAY if lurkers != null and not hard_mode else factor
 
 
 ## The attempt a randomizer win is paid for: this run's attempt, one more once SECOND WIND fired
 ## (the extra slime costs one attempt step of the payout; spec B.2).
 func pay_attempt() -> int:
+	if progress != null and progress.random_daily:
+		return 1  # (the daily's first win of the day pays like attempt 1, whatever the retries)
 	return attempt + (1 if wind_fired else 0)
+
+
+## A daily maze already won today: this win pays nothing (its pickups neither).
+func daily_repeat() -> bool:
+	# (compared with the day this run STARTED on: a daily won after UTC midnight must not pay twice)
+	return progress != null and progress.random_daily and progress.daily_won_on(progress.daily_run_day)
+
+
+## An assisted, dev-toggled or RELAXED run earns no medal, record or ticket.
+func no_credit() -> bool:
+	return assisted or dev_toggled or relaxed_run or is_weekly()
+
+
+## Debug builds, dev mode only (`--dev`): the dev tools (F1 / F2) do not zero the ticket pay, so the
+## payout system can be tested (the assist and RELAXED still pay nothing; medals and records keep no_credit()).
+func dev_keeps_pay() -> bool:
+	return progress != null and progress.dev_tools and OS.is_debug_build()
+
+
+## No ticket pay for this run: no_credit(), except a dev-toggled run in dev mode (dev_keeps_pay).
+func no_pay() -> bool:
+	if not no_credit():
+		return false
+	return not (dev_toggled and dev_keeps_pay() and not assisted and not relaxed_run and not is_weekly())
+
+
+## The weekly maze's par time in seconds (Levels.weekly_par of this maze; computed once).
+func weekly_par() -> float:
+	if _weekly_par < 0.0:
+		_weekly_par = Levels.weekly_par(maze)
+	return _weekly_par
+
+
+## BM-03: this run is the WEEKLY maze (a board time only: no pay, no record, no abilities).
+func is_weekly() -> bool:
+	return Economy.boards_on() and progress != null and progress.random_weekly and is_random()
 
 
 ## The tickets a win on this run would pay right now (payout().tickets).
@@ -2034,9 +2242,9 @@ func ticket_offer() -> int:
 ## The tickets the maze's pickups still out would pay (none once the run is over, or for an assisted
 ## or dev-toggled run): the attempt pod's TIX AVAILABLE adds them, so it counts down as they're taken.
 func pickup_offer() -> int:
-	if finished or assisted or dev_toggled:
+	if finished or no_pay() or daily_repeat():
 		return 0
-	return tickets.size() * Economy.RANDOM_TICKET_PAY
+	return tickets.size() * Economy.RANDOM_TICKET_PAY + held_tickets
 
 
 ## The HUD's attempt pod, derived afresh from `attempt` and ticket_offer() (on the run's first frame
@@ -2053,7 +2261,7 @@ func _refresh_attempt_pod() -> void:
 		pop = before >= 0 and before != offer and motion_scale() > 0.0
 	_pod_offer = offer
 	progress.random_offer_shown[attempt_key] = offer
-	hud.set_attempt(attempt, offer, pop)
+	hud.set_attempt(attempt, offer, pop, lurkers != null, lurkers != null and not hard_mode, weekly_par() if is_weekly() else 0.0)
 	if hud.attempt_label.text != _dev_pod_text:
 		_dev_pod_text = hud.attempt_label.text
 		DevLog.log_event(get_tree(), "pod text changed", self)
@@ -2220,7 +2428,7 @@ func _pick_up_drops(pos: Vector2) -> void:
 func _pod_inputs() -> Array:
 	if progress == null:
 		return []
-	return [attempt, wind_fired, dev_toggled, assisted, finished, won, tickets.size(), progress.utc_day(), progress.dev_tools,
+	return [attempt, wind_fired, ticket_offer() if is_weekly() else 0, dev_toggled, assisted, finished, won, tickets.size(), held_tickets, progress.utc_day(), progress.dev_tools,
 		progress.upgrades.get("slime", 0), progress.random_paid, progress.random_pay_day,
 		progress.random_paid_seeds.hash(), progress.random_seed_fresh, progress.descent_paid, progress.descent_pay_day,
 		descent_run.get("pot"), descent_run.get("gain"), descent_run.get("slot"), descent_run.get("ended"),
@@ -2373,7 +2581,7 @@ func _break_wall(tile: Vector2i) -> void:
 			else:
 				fillet_layer.erase_cell(near)
 	var center := (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
-	Fx.burst(self, center, Color8(148, 140, 150), 24, 60.0)
+	Fx.burst(self, center, Fx.DUST_BASE, 24, 60.0, Vector2.UP, 180.0, false, Fx.Preset.DUST)
 	shake(SHAKE_MAX, SHAKE_TIME, kick)  # (keeps the landing's shove)
 	_sfx("crumble")
 
@@ -2409,13 +2617,25 @@ func _on_goal_body_entered(body: Node2D) -> void:
 			_dry_up()
 			return
 	_show(goal)
-	var no_record := assisted or dev_toggled
-	slime.play_celebrate()
+	if lurkers != null:
+		lurkers.settle_clock()  # (IMP4-05: a win inside the slow-mo still reads the exact clock)
+	var no_record := no_credit()
+	if progress:
+		progress.relaxed_level = 0  # (RELAXED for one level ends with its win; this run keeps relaxed_run for its payout)
+	if is_instance_valid(chalice) and goal == chalice and _is_running_scene() and motion_scale() > 0.0:
+		chalice.call("consume", slime)  # ANI-02: tilt, gulp, gone (~0.25 s, the result panel's own beat), then the celebrate
+	else:
+		slime.play_celebrate()
+	if Economy.light_life_on():
+		_light_life_win()
+	if Economy.orchestra_on() and has_node("/root/Music"):
+		get_node("/root/Music").play_orchestra_sting("win")
+		get_node("/root/Music").orchestra_state(false, false)
 	if hat:
 		hat.pop(Vector2.ZERO, 0.45)  # tossed up in celebration
 	if training:
 		# SPLASHDOWN's chalice: the fanfare, nothing recorded or paid, then the HUB-only row.
-		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		# i18n: result lines, max 296px each, 1 line each (the training maze's win)
 		_finish(true, Loc.lines([Loc.t("result.chalice", "CHALICE CONSUMED!"),
@@ -2423,7 +2643,7 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		return
 	if descent:
 		# The floor's exit: the chalice fanfare, the floor's tickets into the pot, then the boon card.
-		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+		Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 		_sfx("chalice", CHALICE_VOLUME_DB)
 		var gain: int = progress.clear_descent_floor(slime_remaining, run_time, dev_toggled) if progress else 0
 		DevLog.log_event(get_tree(), "descent floor cleared", self, "pot+%d" % gain)
@@ -2434,38 +2654,85 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		var title := Loc.t("result.chalice", "CHALICE CONSUMED!")
 		if goal is TicketGoal:
 			# The ticket is the prize: it pops into gold sparks and the ticket chime plays.
-			Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0)
+			Fx.burst(self, goal.position, TicketGoal.GLOW.lightened(0.25), 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 			_bright_shown.erase(goal)  # taken: FULL BRIGHT going off later doesn't bring it back
 			goal.visible = false
 			_sfx("unlock", CHALICE_VOLUME_DB)
 			title = Loc.t("result.ticket_claimed", "TICKET CLAIMED!")  # i18n: result title, max 296px, 1 line
 		else:  # (Economy.RANDOM_CHALICE: the story's chalice, paying the same tickets)
-			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+			Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 			_sfx("chalice", CHALICE_VOLUME_DB)
-		var random_text := Loc.lines([
-			title,
-			Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}),  # i18n: max 296px; {time} = M:SS.cc
-			Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}),  # i18n: max 296px; {code} = a maze code
-		])
+		var random_lines: Array = [title]
+		# IMP3-07: the daily / weekly line carries the time (DAILY #n  M:SS.cc  STREAK s), so no TIME line over it
+		var time_in_line: bool = progress != null and _is_running_scene() and not preview and ((progress.random_daily and not no_record) 			or (is_weekly() and not (assisted or (dev_toggled and not dev_keeps_pay()) or relaxed_run)))
+		if not time_in_line:
+			random_lines.append(Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}))  # i18n: max 296px; {time} = M:SS.cc
+		if not (progress and progress.random_daily):  # (the daily's seed is the date: a SEED line says nothing, IMP2-02)
+			random_lines.append(Loc.t("result.seed", "SEED {code}", {code = Levels.seed_code(random_seed, seed_level)}))  # i18n: max 296px; {code} = a maze code
+		if hard_mode and lurkers != null:
+			# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime in this hard maze
+			random_lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
+		var random_text := Loc.lines(random_lines)
 		if preview:
 			# i18n: result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
 			title = Loc.t("result.preview_cleared", "PREVIEW CLEARED!")
 			random_text = Loc.lines([title, Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})])
+		elif progress and _is_running_scene() and is_weekly():
+			random_text = _weekly_result(random_text)
 		elif progress and _is_running_scene():
 			var due := payout()  # before the win is recorded: exactly what the pod shows
-			var paid: int = progress.complete_random(no_record, random_seed, pay_attempt())
+			var repeat := daily_repeat()
+			var paid: int = progress.complete_random(no_pay() or repeat, random_seed, pay_attempt(), pay_factor(), (not repeat or Economy.REPEAT_DAILY_COUNTS) and (not relaxed_run or Economy.RELAXED_COUNTS_WINS), progress.random_daily)
+			if repeat:
+				held_tickets = 0
+			if abilities != null and abilities.uses == 0 and not no_record and (not repeat or Economy.REPEAT_DAILY_COUNTS):
+				progress.note_clean_random_win()
+			if progress.random_daily and not no_record:
+				var day: Dictionary = progress.record_daily(roundi(run_time * 1000.0), progress.daily_run_day)
+				# i18n: result line, max 296px, 1 line; {n} = the daily's number, {time} = the day's best M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+				var daily_line := Loc.t("result.daily", "DAILY #{n}  {time}  STREAK {streak}",
+					{n = day.number, time = UIKit.format_time(run_time), streak = day.streak})
+				if roundi(run_time * 1000.0) != int(day.best_ms):  # a slower replay: this run's time, and the day's best in place of the streak
+					# i18n: result line, max 296px, 1 line; {n} = the daily's number, {time} = this run M:SS.cc, {best} = the day's best M:SS.cc
+					daily_line = Loc.t("result.daily_best", "DAILY #{n}  {time}  BEST {best}",
+						{n = day.number, time = UIKit.format_time(run_time), best = UIKit.format_time(day.best_ms / 1000.0)})
+				random_text = Loc.lines([random_text, daily_line])
+				random_text = _board_result(random_text, "daily", roundi(run_time * 1000.0))
+				# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
+				daily_share = Loc.t("result.daily_share", "Dry Trying DAILY #{n} {time} streak {streak}",
+					{n = day.number, time = UIKit.format_time(run_time), streak = day.streak}) + share_extra
+				if day.saved:
+					# IMP3-07: a top toast (Transition's notice path), not a line of the result panel
+					# i18n: toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
+					progress.notify_once("daily_saved_%d" % progress.daily_run_day, Loc.t("result.daily_saved", "STREAK SAVED"))
+					_place_sting()
+				if day.bonus > 0:
+					# i18n: result line, max 296px, 1 line; {n} = tickets, {days} = the streak
+					random_text = Loc.lines([random_text, Loc.t("result.daily_bonus", "{days} DAY STREAK: +{n} TICKETS", {days = day.streak, n = day.bonus})])
 			var pastel_skin := Skins.pastel_unlocked_at(progress.randoms_won)
 			if pastel_skin != "" and progress.is_skin_unlocked(pastel_skin, false, true):
 				# i18n: result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
 				random_text = Loc.lines([random_text, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)})])
+				# (BUG4-13: the same words as a toast that offers WEAR IT, the pastel look of that skin)
+				progress.notify_once("pastel_" + pastel_skin, Loc.t("result.new_pastel_skin", "NEW PASTEL SKIN: {name}", {name = Skins.display_name(pastel_skin)}), "reward", "skin:%s:pastel" % pastel_skin)
+			var wins_left := Achievements.wins_to_next_unlock(progress.randoms_won)
+			if wins_left > 0 and not relaxed_run and not progress.random_daily and Economy.ACHIEVEMENTS and not Demo.on() and (not repeat or Economy.REPEAT_DAILY_COUNTS):
+				# i18n: result line, max 296px, 1 line; {n} = randomizer wins until the next pastel skin or win goal
+				random_text = Loc.lines([random_text, Loc.n("result.next_unlock", "NEXT UNLOCK IN {n} WIN", "NEXT UNLOCK IN {n} WINS", wins_left, {n = wins_left})])
 			DevLog.log_event(get_tree(), "win", self, "paid=%d" % paid)
 			assert(paid == due.tickets, "a randomizer win pays what the attempt pod shows")
+			if held_tickets > 0:  # the held pickups, paid now (Economy.PICKUPS_ON_WIN)
+				paid += progress.add_tickets(held_tickets)
+				held_tickets = 0
+				progress.random_tickets_held.clear()  # (paid: a replay of this maze doesn't put them back)
 			if paid > 0:
 				reward = {tickets = paid, attempt = attempt, cap = due.cap}
 				hud.show_rewards(reward)
 				get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 			elif dev_toggled:
 				hud.show_rewards({dev = true})
+			elif relaxed_run:
+				hud.show_rewards({relaxed = true})
 			elif assisted:
 				hud.show_rewards({assisted = true})
 			elif due.cap == "paid":
@@ -2474,21 +2741,21 @@ func _on_goal_body_entered(body: Node2D) -> void:
 				hud.show_rewards({capped = true})
 		_finish(true, random_text)
 		return
-	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0)
+	Fx.burst(self, goal.position, CHALICE_GOLD, 28, 60.0, Vector2.UP, 180.0, false, Fx.Preset.GOLD)
 	_sfx("chalice", CHALICE_VOLUME_DB)
 	# The result text, one whole translated line per entry (Loc.lines joins them in _finish's call).
 	# i18n: result title lines, max 296px each, 1 line each
 	var lines := [Loc.t("result.chalice", "CHALICE CONSUMED!"),
 		Loc.t("result.level_cleared", "LEVEL {level} CLEARED", {level = level})]
 	# Read before the clear is recorded: these name what this win unlocks for the first time.
-	var first_hard_clear: bool = progress != null and hard_mode and not level in progress.hard_cleared
+	var first_hard_clear: bool = progress != null and hard_mode and not no_credit() and not level in progress.hard_cleared
 	var first_story_clear: bool = progress != null and progress.levels_cleared < level
 	# Records: a first clear just sets the record; only beating an existing one celebrates.
 	var best: float = progress.best_time(level) if progress else -1.0
 	var time_line := Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)})
 	if progress and _is_running_scene():
 		reward = progress.record_clear(level, run_time, par_time, no_record, true)
-		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else reward)
+		hud.show_rewards(reward.merged({dev = true}) if dev_toggled else (reward.merged({relaxed = true}) if relaxed_run else reward))
 		if reward.get("new_best", false):
 			get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
 	if no_record:
@@ -2500,10 +2767,16 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		# i18n: max 296px, 1 line; {time} / {best} = M:SS.cc; the three spaces are spacing, not words
 		time_line = Loc.t("result.time_best", "TIME {time}   BEST {best}", {time = UIKit.format_time(run_time), best = UIKit.format_time(best)})
 	lines.append(time_line)
+	if hard_mode and lurkers != null and level < Levels.COUNT:  # (UI-31: the hits on their own line, not folded into the level line)
+		# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
+		lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
 	if level >= Levels.COUNT:
 		# The last level: one title line instead of CHALICE CONSUMED / LEVEL n CLEARED (lines 0-1).
 		# i18n: result title, max 296px, 1 line; {count} = number of story levels
 		lines = [Loc.n("result.escaped_all", "YOU ESCAPED ALL {count} MAZE!", "YOU ESCAPED ALL {count} MAZES!", Levels.COUNT), time_line]
+		if hard_mode and lurkers != null:  # (IMP4-05: the folded level line is gone with the rebuild, so the hits get their own line)
+			# i18n: result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
+			lines.append(Loc.t("result.lurker_hits", "LURKER HITS {n}", {n = lurkers.hits}))
 	if first_hard_clear:
 		var jelly := _skins_unlocked_jelly_by(level)
 		if not jelly.is_empty():
@@ -2526,6 +2799,18 @@ func _on_goal_body_entered(body: Node2D) -> void:
 		# i18n: max 296px, 1 line; {name} = a skin name
 		lines.append(Loc.t("result.all_medals_skin", "ALL MEDALS! NEW SKIN: {name}", {name = Skins.display_name(Skins.STOPWATCH)}))
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: _sfx("unlock"))
+	if ghost != null:
+		# IMP3-06: the best earlier clear of this level (and mode) raced as the pale ghost; a faster clear becomes the new ghost
+		var split := ghost.finish(roundi(run_time * 1000.0))
+		if split != "":
+			var at := lines.find(time_line)
+			if at >= 0 and (time_line == Loc.t("result.time", "TIME {time}", {time = UIKit.format_time(run_time)}) or lines.size() >= 5):
+				# BUG4-04-3: folded into the TIME line, so a five-line record result (medal + skin + coins) never drops it
+				# i18n: result line, max 296px, 1 line; {time} = M:SS.cc, {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster); the two spaces are spacing
+				lines[at] = Loc.t("result.time_ghost", "TIME {time}  {split} VS GHOST", {time = UIKit.format_time(run_time), split = split})
+			else:
+				# i18n: result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+				lines.append(Loc.t("result.ghost_split", "VS GHOST {split}", {split = split}))
 	_finish(true, Loc.lines(lines))
 
 
@@ -2561,6 +2846,44 @@ func _dry_up() -> void:
 	_finish(false, Loc.t("result.dried_up", "DRIED UP"))
 
 
+## ANI-01: the dry-up plays out before DRIED UP shows (~0.9 s): the slime's light shrinks to nothing and a few grey
+## crust flakes fall off it. A jump / accept / use press (or R, which retries) ends the hold early.
+const DRY_HOLD := 0.9
+
+
+func _dry_hold() -> void:
+	var fog_material := fog_sprite.material as ShaderMaterial
+	var inner: float = fog_material.get_shader_parameter("light_inner") if fog_material.get_shader_parameter("light_inner") != null else 32.0
+	var outer: float = fog_material.get_shader_parameter("light_outer") if fog_material.get_shader_parameter("light_outer") != null else 115.0
+	var base_scale := slime_light.scale
+	var flakes_at := 0.45
+	var t := 0.0
+	var flaked := false
+	while t < DRY_HOLD and is_inside_tree():
+		await get_tree().process_frame
+		if not is_inside_tree() or not is_instance_valid(slime) or _leaving():
+			break
+		t += get_process_delta_time()
+		var k := 1.0 - clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0)
+		k = floorf(k * 6.0) / 6.0  # (whole steps, no smooth blur)
+		slime_light.scale = base_scale * k
+		fog_material.set_shader_parameter("light_inner", inner * maxf(k, 0.2))
+		fog_material.set_shader_parameter("light_outer", outer * maxf(k, 0.2))
+		# ANI-25: a dithered lights-out closes on the crust in 4 steps (the fog shader's Bayer, no alpha fade)
+		var out_k := floorf(clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0) * 4.0) / 4.0
+		fog_material.set_shader_parameter("lights_out", out_k)
+		(outer_fog.material as ShaderMaterial).set_shader_parameter("lights_out", out_k)
+		if not flaked and t >= flakes_at:
+			flaked = true
+			Fx.burst(self, slime.position, Fx.DUST_BASE, 8, 40.0, Vector2.UP, 180.0, false, Fx.Preset.DUST)
+		if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("interact"):
+			break
+	if is_instance_valid(slime_light):
+		slime_light.scale = Vector2.ZERO
+	if hat:
+		hat.pop(Vector2.ZERO, 0.45)
+
+
 ## Freezes play and shows the result. When this is the running scene (not a test), records the
 ## result. After a dry-up it retries automatically (a story level again, or a freshly shuffled
 ## random maze); after a win it offers REPLAY or NEXT (see _offer_next_steps).
@@ -2577,24 +2900,63 @@ func _finish(did_win: bool, text: String) -> void:
 	slime.frozen = true
 	touch_controls.hide_controls()
 	hud.result_slime_rect = _slime_screen_rect()  # (a re-fitted result panel covers or clears the slime)
-	hud.show_message(text)
+	# ANI-01 / ANI-02: in a played level the result is staged (a dry-up holds ~0.9 s on the drying slime first;
+	# a win drops the panel in and ticks its lines on). Tests and Reduce Motion show it at once.
+	var staged := _is_running_scene() and motion_scale() > 0.0
+	var dry_hold := staged and not did_win and not descent
+	if not dry_hold:
+		hud.show_message(text)
+	if staged and did_win:
+		hud.stage_result()
 	level_finished.emit(did_win)
 	if not _is_running_scene():
 		return
 	if not did_win:
 		# The delay pauses with the game (false = not while paused), and the buttons are skipped
 		# if the player has left for the menu meanwhile.
+		if dry_hold:
+			await _dry_hold()
+			if not (is_inside_tree() and _is_running_scene() and not _leaving()):
+				return
+			hud.show_message(text)
+			hud.pop_in_message()
 		await get_tree().create_timer(DESCENT_SUMMARY_DELAY if descent else DRY_CHOICE_DELAY, false).timeout
 		if _is_running_scene() and not _leaving():
 			_offer_retry()
 		return
 	if progress:
-		if not is_random() and not descent and not training and (assisted or dev_toggled):
+		if not is_random() and not descent and not training and no_credit():
 			# An unassisted clear was already recorded with its payment (record_clear, finish).
-			progress.complete_level(level)
-	await get_tree().create_timer(CHOICE_DELAY, false).timeout
+			progress.complete_level(level, true, false)
+	while hud.staging and is_inside_tree():
+		await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	await get_tree().create_timer(CHOICE_DELAY if not staged else 0.25, false).timeout
 	if _is_running_scene() and not _leaving():
 		_offer_next_steps()
+
+
+## Dry-ups in one story level after which the dry-up row points at UPGRADES (when the coins are there).
+const UPGRADE_HINT_DRY_UPS := 2
+
+
+## The 2nd dry-up with the coins for the next MORE SLIME level in hand shows the UPGRADES hint first; RELAXED? waits for the 3rd.
+func _upgrade_hint_first() -> bool:
+	return int(progress.dry_ups.get(level, 0)) == UPGRADE_HINT_DRY_UPS and not progress.slime_upgrade_offer().is_empty()
+
+
+## RELAXED? YES: RELAXED goes on for this level only (until you leave it or win; the SETTINGS toggle is the saved one)
+## and the level restarts with the extra slime.
+func accept_calm() -> void:
+	progress.relaxed_level = level
+	retry("relaxed")
+
+
+## RELAXED? NO: the plain dry-up buttons, and no more asking about this level this session.
+func decline_calm() -> void:
+	progress.calm_declined[level] = true
+	_offer_retry()
 
 
 ## The buttons shown after drying up: try again, or go spend coins on upgrades first (the
@@ -2617,6 +2979,10 @@ func _offer_retry() -> void:
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], [Loc.t("result.choice.map", "MAP"), open_random_map]], 0)
+	elif progress and progress.calm_offered(level) and not _upgrade_hint_first():
+		# i18n: result choice buttons, max 62px each, 1 line (YES / NO answer the RELAXED question above them)
+		hud.show_choices([[Loc.t("result.choice.yes", "YES"), accept_calm], [Loc.t("result.choice.no", "NO"), decline_calm]], 1)
+		hud.show_rewards({calm_offer = true})
 	elif progress and progress.assist_offered(level):
 		# Three dry-ups here: the slime reserve is on offer (optional; RESTART stays the default).
 		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
@@ -2624,8 +2990,13 @@ func _offer_retry() -> void:
 			[Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades], _map_choice()], 0)
 		hud.show_rewards({assisted = false, offer = true})
 	else:
+		# The 2nd dry-up here with the coins for the next MORE SLIME level in hand: UPGRADES is the highlighted button
+		# and a line says what it buys (IMP2-04; never a nag before that, never without the coins).
+		var offer: Dictionary = progress.slime_upgrade_offer() if progress and int(progress.dry_ups.get(level, 0)) >= UPGRADE_HINT_DRY_UPS else {}
 		hud.show_choices([[Loc.t("result.choice.restart", "RESTART"), retry], [Loc.t("result.choice.upgrades", "UPGRADES"), go_to_upgrades],
-			_map_choice()], 0)
+			_map_choice()], 1 if not offer.is_empty() else 0)
+		if not offer.is_empty():
+			hud.show_rewards({upgrade_hint = true, percent = offer.percent, cost = offer.cost})
 
 
 ## Whether this run feeds the random maze's map (Progress.random_map): a randomizer maze (not
@@ -2734,6 +3105,8 @@ func retry(via := "dry-up RESTART") -> void:
 	if _leaving():  # a screen change is already underway (its wipe would race the reload)
 		return
 	DevLog.route(get_tree(), via, self)
+	if progress:
+		progress.keep_look_once = true  # (a retry of the same attempt keeps the look)
 	if training:
 		# After a dry-up: the next attempt (full meter, the coin kept). R / pause RESTART mid-run: the same
 		# attempt again (attempt 1 keeps its low meter, so the staged dry-up isn't skipped).
@@ -2747,6 +3120,7 @@ func retry_assisted() -> void:
 		return
 	if progress and progress.accept_assist(level):
 		DevLog.route(get_tree(), "ASSIST", self)
+		progress.keep_look_once = true
 		get_tree().reload_current_scene()
 	else:
 		retry()
@@ -2759,6 +3133,83 @@ func go_to_upgrades() -> void:
 	if progress:
 		progress.return_to_game = true
 	UIKit.go(get_tree(), UPGRADES_SCENE)
+
+
+## BM-03: posts the win to the board of `kind` (the caller made sure the run counts: not RELAXED, assisted or dev), keeps the
+## ghost and adds the BOARD place and the split against the ghost raced to the result text.
+func _board_result(text: String, kind: String, ms: int) -> String:
+	if not Economy.boards_on() or progress == null:
+		return text
+	var post: Dictionary = progress.post_board(kind, ms, progress.daily_run_day)
+	share_extra = ""
+	if post.rank > 0:
+		# i18n: part of the share line COPY puts on the clipboard, plain ASCII; {place} = 1..5, the place on your local board
+		share_extra = " " + Loc.t("result.share_board", "BOARD #{place}", {place = post.rank})
+		# i18n: result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
+		text = Loc.lines([text, Loc.t("result.board_place", "BOARD PLACE {place}", {place = post.rank})])
+		_place_sting()
+	if ghost != null:
+		var split := ghost.finish(ms)
+		if split != "":
+			# i18n: result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+			text = Loc.lines([text, Loc.t("result.ghost_split", "VS GHOST {split}", {split = split})])
+			# i18n: part of the share line COPY puts on the clipboard, plain ASCII; {split} = the time against your ghost, e.g. -0.8s
+			share_extra += " " + Loc.t("result.share_ghost", "vs ghost {split}", {split = split})
+	return text
+
+
+## IMP4-07: the short "saved / place" sting after the win's chalice (desktop and web; Sfx.play_place).
+func _place_sting() -> void:
+	if not _is_running_scene():
+		return
+	get_tree().create_timer(0.7).timeout.connect(func() -> void:
+		var sfx := get_node_or_null("/root/Sfx")
+		if sfx:
+			sfx.play_place())
+
+
+## BM-03: the weekly's win (nothing is paid or counted): its board time, share line and ghost.
+func _weekly_result(text: String) -> String:
+	progress.mark_weekly_played(Boards.week_of(progress.daily_run_day))  # (even a RELAXED / assisted win: the sign stops saying NEW)
+	if assisted or relaxed_run:
+		return text
+	if dev_toggled and not dev_keeps_pay():
+		return text
+	var paid: int = progress.pay_weekly(Boards.week_of(progress.daily_run_day), run_time, weekly_par())
+	var ms := roundi(run_time * 1000.0)
+	text = _board_result(text, "weekly", ms)
+	var n := Boards.weekly_number(Boards.week_of(progress.daily_run_day))
+	# i18n: result line, max 296px, 1 line; {n} = the weekly's number, {time} = this run's M:SS.cc
+	text = Loc.lines([text, Loc.t("result.weekly", "WEEKLY #{n}  {time}", {n = n, time = UIKit.format_time(ms / 1000.0)})])
+	# i18n: the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
+	daily_share = Loc.t("result.weekly_share", "Dry Trying WEEKLY #{n} {time}", {n = n, time = UIKit.format_time(ms / 1000.0)}) + share_extra
+	if paid > 0:
+		reward = {tickets = paid, attempt = attempt, cap = ""}
+		hud.show_rewards(reward)
+		get_tree().create_timer(0.9).timeout.connect(func() -> void: _sfx("coin", -6.0))
+	return text
+
+
+## COPY on the daily result row: the share line goes on the clipboard from this very button press (the web needs a user
+## gesture for it), and the button says COPIED.
+func copy_daily_share() -> void:
+	if daily_share == "":
+		return
+	DisplayServer.clipboard_set(daily_share)
+	hud.show_share_line(daily_share, COPY_SHOW_TIME)  # (BEN3-11: the line stays readable even when a browser blocks the clipboard)
+	var button: Button = hud.choice_buttons[0] if not hud.choice_buttons.is_empty() else null
+	if button != null and is_instance_valid(button):
+		button.text = Loc.t("result.choice.copied", "COPIED")  # i18n: result choice button after COPY was pressed, max 62px, 1 line
+		_sfx("coin", -6.0)
+
+
+## BOARDS on a daily / weekly result row: the page opens, BACK returns to the hub (the result row is not a place to come back to).
+func open_boards() -> void:
+	if _leaving():
+		return
+	(load("res://scripts/ui/boards_screen.gd") as GDScript).set("back_scene", HUB_SCENE)
+	(load("res://scripts/hub.gd") as GDScript).set("return_to", "random")
+	UIKit.go(get_tree(), "res://scenes/boards.tscn")
 
 
 ## The buttons shown after a win.
@@ -2774,6 +3225,18 @@ func _offer_next_steps() -> void:
 		return
 	if preview:
 		hud.show_choices([[Loc.t("result.choice.continue", "CONTINUE"), leave_preview]], 0)
+	elif is_random() and daily_share != "":
+		# A recorded daily / weekly win: COPY first (it is pressed by the player, which a browser needs to allow the clipboard), then
+		# REPLAY, BOARDS (IMP3-03: the top times) and HUB; the NEW MAZE button makes room (the portal is a step from the hub).
+		# i18n: result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+		var row := [[Loc.t("result.choice.copy", "COPY"), copy_daily_share], [Loc.t("result.choice.replay", "REPLAY"), replay]]
+		if Economy.boards_on():
+			# i18n: result choice button on a daily / weekly win, max 62px, 1 line; opens the BOARDS page (your best times)
+			row.append([Loc.t("result.choice.boards", "BOARDS"), open_boards])
+		else:
+			row.append([Loc.t("result.choice.new_maze", "NEW MAZE"), play_next])
+		row.append([Loc.t("result.choice.hub", "HUB"), go_to_hub])
+		hud.show_choices(row, 1)
 	elif is_random():
 		# i18n: result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 		hud.show_choices([[Loc.t("result.choice.replay_maze", "REPLAY MAZE"), replay], [Loc.t("result.choice.new_maze", "NEW MAZE"), play_next],
@@ -2874,6 +3337,8 @@ func replay(via := "REPLAY MAZE") -> void:
 	if _leaving():
 		return
 	DevLog.route(get_tree(), via, self)
+	if progress:
+		progress.keep_look_once = via == "R"  # (R = the same attempt again; REPLAY MAZE on a result rolls anew)
 	if progress and not is_random():
 		progress.start_story(level)
 	get_tree().reload_current_scene()
@@ -2961,11 +3426,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			replay("R")
 		elif finished:
 			retry("R")  # the dry-up buttons already offer the upgrades
-		elif progress and not hard_mode and progress.coins() > 0 and (not Demo.on() or progress.upgrade_buyable()):
+		elif not Economy.r_always_restarts() and progress and not hard_mode and progress.coins() > 0 and (not Demo.on() or progress.upgrade_buyable()):
 			restart_prompt.open()  # coins in hand: restart, or spend them on upgrades first
 			DevLog.log_event(get_tree(), "R prompt opened", self)
 		else:
-			retry("R")  # nothing to spend (and no upgrades on hard mode): restart at once
+			retry("R")  # R always restarts at once (Economy.R_ALWAYS_RESTARTS); spending is on the dry-up screen
 
 
 # ---------------------------------------------------------------- dev toggles

@@ -120,6 +120,7 @@ func _initialize() -> void:
 	paused = false
 
 	await _hat_wheel_taps()
+	await _hub_station_taps()
 	_result()
 	quit(1 if failures else 0)
 
@@ -159,6 +160,68 @@ func _hat_wheel_taps() -> void:
 	_check(not wheel.visible and not hub._touch_controls.menu_open and progress.tickets == tickets, "touch: BACK closes the overlay, nothing spent")
 	current_scene = null
 	hub.free()
+	progress.force_touch = false
+	await process_frame
+
+
+## Owner, 2026-10-21: in the hub JUMP never uses a station on a touchscreen (it leaps, as anywhere); a tap on the
+## station the slime stands at (or on its prompt) opens it.
+func _hub_station_taps() -> void:
+	progress.force_touch = true
+	progress.saving_enabled = false
+	var hub_script: GDScript = load("res://scripts/hub.gd")
+	hub_script.return_to = "upgrades"
+	var hub: Node2D = load("res://scenes/hub.tscn").instantiate()
+	root.add_child(hub)
+	current_scene = hub
+	await _physics_frames(3)
+	hub._touch_controls.visible = true
+	_check(hub.near.get("id", "") == "upgrades", "hub touch: the slime starts at UPGRADES")
+	var station: Sprite2D = hub.near.sprite
+	var on_it: Vector2 = (station.get_global_transform_with_canvas() * station.get_rect()).get_center()
+	# IMP2-06 with the owner rule: a quick tap on ANOTHER station is not the near one's and glides there, in either
+	# half (JUMP's half: claimed, so it doesn't leap; the joystick's half: the joystick sees it too, without a move).
+	var left_id := ""  # (a station in the joystick's half at this turn)
+	for prop: Dictionary in hub.stations:
+		if prop.id != "upgrades" and prop.sprite.get_global_transform_with_canvas().origin.x < 130.0:
+			left_id = prop.id
+	_check(left_id != "", "hub touch: a station stands in the joystick's half")
+	for id in ["coins", left_id]:
+		var other: Dictionary = hub._station(id)
+		var other_at: Vector2 = other.sprite.get_global_transform_with_canvas().origin + Vector2(0, -8)
+		_check(not hub.tap_hits(other_at), "hub touch: a tap on %s is not a tap on the near station" % id)
+		_send_touch(0, other_at, true)
+		await _physics_frames(1)
+		_send_touch(0, other_at, false)
+		await _physics_frames(1)
+		_check(not hub.glide_path.is_empty() and hub.glide_target == id and not hub.slime.frozen 				and hub.slime.state == Slime.State.GLIDE, "hub touch: a quick tap on %s %s glides there, no leap" % [id, other_at])
+		hub.stop_glide()
+		hub.slime.position = hub.USE_RING * Vector2(0, -1) + hub.CENTER + Vector2(0, 4)
+		await _physics_frames(3)
+	_check(hub._touch_controls.on_jump_button(TouchControls.JUMP_CENTER) and not hub._claims_touch(TouchControls.JUMP_CENTER),
+			"hub touch: the JUMP circle is never claimed")
+	var jump_at := Vector2(300, 170)
+	_check(not hub.tap_hits(jump_at), "hub touch: a tap on the empty right half is not a tap on the station")
+	_send_touch(0, jump_at, true)
+	await _physics_frames(3)
+	_check(hub.slime.state == Slime.State.CHARGING and not hub.slime.frozen, "hub touch: JUMP next to a station leaps (charges), it doesn't open it")
+	_send_touch(0, jump_at, false)
+	for i in 120:
+		await physics_frame
+		if hub.slime.state == Slime.State.GLIDE:
+			break
+	hub.slime.position = hub.USE_RING * Vector2(0, -1) + hub.CENTER + Vector2(0, 4)  # (back at the station after the leap)
+	await _physics_frames(3)
+	_check(hub.near.get("id", "") == "upgrades" and hub.tap_hits(on_it), "hub touch: a tap on the station counts (%s)" % on_it)
+	_send_touch(0, on_it, true)
+	await _physics_frames(2)
+	_check(not Input.is_action_pressed("jump") and not hub.slime.frozen, "hub touch: pressing on the station is no JUMP, and opens on release")
+	_send_touch(0, on_it, false)
+	await _physics_frames(2)
+	_check(hub.slime.frozen, "hub touch: tapping the station opens it")
+	current_scene = null
+	hub.free()
+	hub_script.return_to = ""
 	progress.force_touch = false
 	await process_frame
 

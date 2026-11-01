@@ -387,7 +387,7 @@ func _keycaps(pen: Pen) -> Array[Dictionary]:
 		var a := lines[i].split(" ")
 		var b := lines[i + 1].split(" ")
 		var c := lines[i + 2]
-		if a[0] == "rect" and b[0] == "rect" and c.begins_with("text ") and a[5].begins_with(TutorialCues.KEY_EDGE.to_html(false)):
+		if a[0] == "rect" and b[0] == "rect" and c.begins_with("text ") and a[5].begins_with(TutorialCues.KEY_RIM.to_html(false)):
 			var t := c.split(" ")
 			out.append({rect = Rect2(float(a[1]), float(a[2]), float(a[3]), float(a[4])), baseline = float(t[2]), text = c.get_slice("'", 1)})
 	return out
