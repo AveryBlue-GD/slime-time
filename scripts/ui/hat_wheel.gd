@@ -135,6 +135,17 @@ var _to := 0.0
 var _t := 0.0
 var _won := ""
 var _target := ""
+## The first visit's guide (owner, 2026-11-01: arrows show what each part of the wheel means as the player
+## spins it): a gold arrow points at one thing at a time, its line in the result line under the wheel. Steps
+## (COACH_STEPS): the prizes-left count, the COMMON and RARE legends (ODDS look only), each COACH_STEP seconds,
+## then SPIN (FREE) until it is pressed, then the pointer while the wheel turns. Meanwhile the overlay is held
+## (no SHOP, no BACK, Esc does nothing: the free spin is the way on; the slime is held by the hub as always).
+## Once the spin lands it is saved as seen (Progress.TUTORIAL_WHEEL). -1 = off.
+const COACH_STEPS: Array[String] = ["count", "common", "rare", "spin", "pointer"]
+const COACH_STEP := 2.6
+var coach := -1
+var _coach_t := 0.0
+var _coach_arrow: CoachArrow
 var _last_wedge := -1
 var _kick := 0.0
 var title: Label
@@ -289,6 +300,10 @@ func _ready() -> void:
 	_try_on_root = Node2D.new()  # (under the confirm and its dim sheet)
 	add_child(_try_on_root)
 	_build_confirm()
+	_coach_arrow = CoachArrow.new()
+	_coach_arrow.wheel = self
+	_coach_arrow.visible = false
+	add_child(_coach_arrow)
 	_layout_wheel_page()
 	show_tab("wheel", false)
 
@@ -365,6 +380,8 @@ func modal() -> Control:
 ## Esc / B: closes the confirm if it's open (true); false = nothing to close here (the hub then
 ## closes the overlay).
 func back() -> bool:
+	if coach >= 0:
+		return true  # (the guide holds the overlay until its free spin)
 	if confirm.visible:
 		close_confirm()
 		return true
@@ -382,7 +399,7 @@ func back() -> bool:
 ## Switches between the WHEEL and the SHOP and focuses something on it.
 func show_tab(which: String, focus := true) -> void:
 	UIKit.relayout(self)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
-	if spinning:
+	if spinning or (coach >= 0 and which != "wheel"):
 		return
 	tab = which
 	var shop := tab == "shop"
@@ -448,6 +465,8 @@ func refresh(spin_key: String, opening := false) -> void:
 		dye_hat = ""
 		_try_on_id = ""  # (the skin may have changed since: dress new ones)
 		close_confirm()
+		coach = 0 if coach_due() else -1
+		_coach_t = 0.0
 		show_tab("shop" if Progress.hats_left().is_empty() else "wheel")
 	elif tab == "shop":
 		show_section(section, false)
@@ -504,8 +523,12 @@ func _refresh_wheel() -> void:
 	# when it can't spin (mid-spin it keeps the focus it has).
 	spin_button.focus_mode = Control.FOCUS_ALL if can or spinning else Control.FOCUS_NONE
 	for button: Button in [wheel_tab, shop_tab, close_button]:
-		button.disabled = spinning
-		button.focus_mode = Control.FOCUS_NONE if spinning else Control.FOCUS_ALL
+		button.disabled = spinning or coach >= 0
+		button.focus_mode = Control.FOCUS_NONE if spinning or coach >= 0 else Control.FOCUS_ALL
+	if coach >= 0:
+		result.text = coach_line()
+	_coach_arrow.visible = coach >= 0 and tab == "wheel"
+	_coach_arrow.queue_redraw()
 
 
 ## ODDS: each tier's chance per prize and how many are left (Progress.wheel_weight; the rainbow hat's
@@ -626,6 +649,8 @@ func spin() -> bool:
 	_t = 0.0
 	_won = ""
 	spinning = true
+	if coach >= 0:
+		coach = COACH_STEPS.find("pointer")
 	_last_wedge = wedge_at(turn)
 	if is_visible_in_tree():
 		spin_button.grab_focus()  # (the tabs are about to go dark)
@@ -635,6 +660,8 @@ func spin() -> bool:
 
 func _process(delta: float) -> void:
 	_kick = maxf(_kick - delta * 6.0, 0.0)
+	if coach >= 0 and is_visible_in_tree():
+		_coach_tick(delta)
 	if not spinning:
 		if tab == "wheel" and is_visible_in_tree() and (Hats.flow_step() != _flow_step or _bulb_step() != _bulb_drawn):
 			_bulb_drawn = _bulb_step()
@@ -652,6 +679,9 @@ func _process(delta: float) -> void:
 		spinning = false
 		turn = fposmod(turn, TAU)
 		_won = _target
+		if coach >= 0:
+			coach = -1  # (the guide's done: saved, and the overlay is free again)
+			Progress.mark_tutorial_seen(Progress.TUTORIAL_WHEEL)
 		_sfx("unlock", -4.0)
 		_refresh_wheel()
 		var owner := get_viewport().gui_get_focus_owner()
@@ -659,6 +689,98 @@ func _process(delta: float) -> void:
 			(spin_button if not spin_button.disabled else wheel_tab).grab_focus()
 		landed.emit(_won)
 	queue_redraw()
+
+
+# ---------------------------------------------------------------- the first visit's guide
+
+## The guide plays on the first visit with the free spin waiting (the tutorial on, not dev mode, a prize to win).
+func coach_due() -> bool:
+	return Economy.tutorial_on() and not Progress.dev_tools and not Progress.has_seen_tutorial(Progress.TUTORIAL_WHEEL) \
+		and not Progress.hats_left().is_empty() and Progress.can_spin_hats() and Progress.spin_cost() == 0
+
+
+## The step on now ("" = off).
+func coach_step() -> String:
+	return COACH_STEPS[coach] if coach >= 0 and coach < COACH_STEPS.size() else ""
+
+
+func _coach_tick(delta: float) -> void:
+	_coach_t += delta
+	var step := coach_step()
+	if step in ["count", "common", "rare"] and (_coach_t >= COACH_STEP or not _coach_target_shown(step)):
+		coach += 1
+		_coach_t = 0.0
+		while coach_step() in ["common", "rare"] and not _coach_target_shown(coach_step()):
+			coach += 1  # (the REWARDS look has no legends)
+		_refresh_wheel()
+	_coach_arrow.queue_redraw()  # (it bobs)
+
+
+func _coach_target_shown(step: String) -> bool:
+	match step:
+		"common":
+			return _legends[0].get_parent().visible
+		"rare":
+			return _legends[1].get_parent().visible
+		"count":
+			return prizes_left.visible
+	return true
+
+
+## The guide's line under the wheel for the step on now.
+func coach_line() -> String:
+	# i18n: the prize wheel's first-visit guide, in the line under the wheel; max 200px, 1 line each
+	match coach_step():
+		"count":
+			return Loc.t("wheel.coach.count", "WON PRIZES LEAVE THE WHEEL")
+		"common":
+			return Loc.t("wheel.coach.common", "GEMS ARE COMMON PRIZES")
+		"rare":
+			return Loc.t("wheel.coach.rare", "STARS ARE RARE PRIZES")
+		"spin":
+			return Loc.t("wheel.coach.spin", "YOUR FIRST SPIN IS FREE")
+		"pointer":
+			return Loc.t("wheel.coach.pointer", "THE POINTER PICKS YOUR PRIZE")
+	return ""
+
+
+## Where the guide's arrow points now: [tip, direction] (whole pixels; a direction along one axis).
+func coach_target() -> Array:
+	match coach_step():
+		"count":
+			var w := UIKit.text_w(prizes_left.text)
+			return [Vector2(roundf(CENTER.x - w / 2.0) - 3.0, prizes_left.position.y + floorf(UIKit.line_h() / 2.0)), Vector2.RIGHT]
+		"common", "rare":
+			var legend := _legends[0 if coach_step() == "common" else 1]
+			var box := legend.get_parent() as Control
+			return [Vector2(roundf(box.position.x + box.size.x / 2.0), box.position.y + legend.position.y - 3.0), Vector2.DOWN]
+		"spin":
+			return [Vector2(spin_button.position.x - 3.0, spin_button.position.y + floorf(spin_button.size.y / 2.0)), Vector2.RIGHT]
+		"pointer":
+			return [Vector2(wheel_center.x - 8.0, wheel_center.y - wheel_radius - 2.0), Vector2.RIGHT]
+	return []
+
+
+## The guide's gold arrow (like the hub tour's floor arrow): a 7 px head and a 3 px stem, bobbing 1 px along
+## its direction, a dark shadow under it so it reads on the wheel's colors.
+class CoachArrow extends Node2D:
+	const BOB_SPEED := 5.0
+	var wheel: Control
+
+	func _draw() -> void:
+		var target: Array = wheel.coach_target()
+		if target.is_empty():
+			return
+		var dir: Vector2 = target[1]
+		var bob := roundf(sin(Time.get_ticks_msec() / 1000.0 * BOB_SPEED)) * dir
+		draw_set_transform(target[0] + bob, dir.angle())
+		for pass_i in 2:
+			var off := Vector2(1, 1).rotated(-dir.angle()) if pass_i == 0 else Vector2.ZERO
+			var color := Color8(16, 16, 28) if pass_i == 0 else UIKit.GOLD
+			for i in 4:  # the head: columns 1, 3, 5, 7 px tall back from the tip
+				draw_rect(Rect2(Vector2(-i - 1, -i) + off, Vector2(1, 2 * i + 1)), color)
+			draw_rect(Rect2(Vector2(-10, -1) + off, Vector2(6, 3)), color)  # the stem
+		draw_set_transform(Vector2.ZERO)
 
 
 # ---------------------------------------------------------------- the SHOP
@@ -932,7 +1054,7 @@ func _make_tile(id: String) -> Button:
 		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
 		swatch.size = Vector2(SWATCH, SWATCH)
 		swatch.position = Vector2(TILE_PAD, text_y + 1)
-		swatch.material = Hats.flow_material() if Hats.dye_flows(dye) else null  # (the RAINBOW swatch flows too)
+		swatch.material = Hats.swatch_material(dye)  # (PRISM turns as one, RAINBOW runs as a gradient)
 		tile.add_child(swatch)
 		name_label.position.x += SWATCH_ROOM
 	tile.add_child(name_label)

@@ -14,8 +14,7 @@ extends Control
 ## drawn on it (MapView.render; PRISM flowing, MapView.flow_material); pressing an owned one wears it
 ## whole (its sheet, walls and route: Progress.map_paper).
 ## The HUB page (owner, 2026-10-21) picks the hub's color: AUTO (it follows the worn skin) or any skin
-## you have unlocked (a slime in it, opaque); shut (silhouettes) until normal mode is beaten
-## (Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
+## you have unlocked (a slime in it, opaque), open from the start (owner, 2026-11-01; Progress.hub_color_open). The hats and trails pages are rebuilt each time they're shown, so a skin
 ## just picked shows on them at once.
 ##
 ## Layout (320x180, mirrored left/right): title, a 7-wide grid, the status line, a hint, the
@@ -43,7 +42,7 @@ const CUSTOM_TOP := 112
 const WHEEL_SIZE := 48
 const WHEEL_GAP := 40
 ## A locked paper's silhouette (the trails' locked dark, Cosmetics.trail_preview).
-const LOCKED_INK := Color(0.08, 0.08, 0.12, 0.9)
+const LOCKED_INK := Color8(26, 28, 44, 230)  # SPR-28: the palette k navy, not a near-black
 ## The tip line of a page. i18n: one line, max 300px.
 static func rule_text(which: String) -> String:
 	match which:
@@ -52,7 +51,6 @@ static func rule_text(which: String) -> String:
 		"trails": return Loc.t("skins.rule_trails", "WIN TRAILS AT THE PRIZE WHEEL")
 		"papers": return Loc.t("skins.rule_papers", "BUY MAP PAPERS IN THE PRIZE WHEEL'S SHOP")
 		"hub": return Loc.t("skins.rule_hub", "THE HUB TAKES THIS COLOR")
-		"hub_locked": return Loc.t("skins.rule_hub_locked", "BEAT THE STORY TO COLOR THE HUB")
 	return Loc.t("skins.rule_skins", "NEW LEVELS EQUIP YOUR NEWEST SKIN")
 
 
@@ -93,6 +91,12 @@ var jelly_button: Button
 var view_pastel := false
 ## Skins page (not in the demo): PASTEL, to the right of JELLY.
 var pastel_button: Button
+## RANDOMIZE (a dice icon button, right of JELLY / PASTEL on every page): a random complete look from what is owned.
+var dice_button: Button
+var _dice_icon: TextureRect
+var _dice_frame: ReferenceRect
+## The dice button's width (a 7 px icon and the button's margins).
+const DICE_W := 22  # (UI-11: at least UIKit.TOUCH_MIN wide)
 ## Hats page: COLOR, in JELLY's place (opens the color picker; disabled when the worn hat has no dye).
 var color_button: Button
 ## The color picker: a dim sheet, its panel, its tiles by dye ("" = the hat's own), the focus lock.
@@ -157,7 +161,10 @@ func _ready() -> void:
 	color_button = UIKit.make_button(Loc.t("skins.hat_color", "COLOR"), open_color_picker, Vector2(80, UIKit.button_h()))
 	add_child(color_button)
 	_layout(back)
-	var pastel_w: int = UIKit.tab_widths([_pastel_text(true), _pastel_text(false)], 64)[0]
+	# UI-11: JELLY and PASTEL are siblings of one width.
+	var pastel_w: int = maxi(UIKit.tab_widths([_pastel_text(true), _pastel_text(false)], 64)[0], int(jelly_button.size.x))
+	jelly_button.custom_minimum_size.x = pastel_w
+	jelly_button.size.x = pastel_w
 	pastel_button = UIKit.make_button("", _toggle_pastel, Vector2(pastel_w, UIKit.button_h()))
 	pastel_button.position = Vector2(jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M, jelly_button.position.y)
 	add_child(pastel_button)
@@ -165,12 +172,142 @@ func _ready() -> void:
 	color_button.position = jelly_button.position
 	color_button.custom_minimum_size.x = jelly_button.size.x
 	color_button.size.x = jelly_button.size.x
-	if _pastel_open() and jelly_button.position.y == back.position.y:
-		# (JELLY and PASTEL centred together on the bottom row)
-		var pair := jelly_button.size.x + UIKit.GAP_M + pastel_button.size.x
-		jelly_button.position.x = UIKit.center_x(pair)
+	_build_dice()
+	var last_switch: Button = pastel_button if _pastel_open() else jelly_button
+	if jelly_button.position.y == back.position.y:
+		# (JELLY, PASTEL and the dice centred together on the bottom row)
+		var group := jelly_button.size.x + UIKit.GAP_M + DICE_W
+		if _pastel_open():
+			group += UIKit.GAP_M + pastel_button.size.x
+		jelly_button.position.x = UIKit.center_x(group)
 		pastel_button.position.x = jelly_button.position.x + jelly_button.size.x + UIKit.GAP_M
+	dice_button.position = Vector2(last_switch.position.x + last_switch.size.x + UIKit.GAP_M, jelly_button.position.y)
 	show_page("skins")
+
+
+## The RANDOM LOOK toggle (the dice icon, right of JELLY / PASTEL on the SKINS page): ON re-rolls a look at every run
+## start (LookRoller.roll_for_run) and rolls one now; lit icon and a gold frame while ON. Its state shows on the
+## status line while it has the focus or the pointer (no room for a word beside JELLY and PASTEL at 320 px).
+## Picking a skin / hat / trail by hand leaves it ON (the next run re-rolls).
+func _build_dice() -> void:
+	dice_button = UIKit.make_button("", toggle_random_look, Vector2(DICE_W, UIKit.button_h()))
+	add_child(dice_button)
+	_dice_icon = UIKit.make_icon("dice")
+	_dice_icon.position = Vector2((DICE_W - 7) / 2, floori((UIKit.button_h() - 7) / 2.0))
+	dice_button.add_child(_dice_icon)
+	_dice_frame = ReferenceRect.new()
+	_dice_frame.editor_only = false
+	_dice_frame.border_color = UIKit.GOLD
+	_dice_frame.border_width = 1.0
+	_dice_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dice_button.add_child(_dice_frame)
+	_dice_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dice_button.focus_entered.connect(_say_random_look)
+	dice_button.mouse_entered.connect(_say_random_look)
+	_refresh_dice()
+
+
+func _say_random_look() -> void:
+	status.text = random_look_text()
+
+
+static func random_look_text() -> String:
+	if Progress.random_look:
+		# i18n: wardrobe dice toggle on the status line, max 300px, 1 line
+		return Loc.t("skins.random_look_on", "RANDOM LOOK: ON")
+	# i18n: wardrobe dice toggle on the status line, max 300px, 1 line
+	return Loc.t("skins.random_look_off", "RANDOM LOOK: OFF")
+
+
+func _refresh_dice() -> void:
+	_dice_icon.modulate = UIKit.GOLD if Progress.random_look else UIKit.TEXT
+	_dice_frame.visible = Progress.random_look
+
+
+## Flips RANDOM LOOK (saved); turning it ON also puts a random look on right away.
+func toggle_random_look() -> void:
+	Progress.random_look = not Progress.random_look
+	Progress.save_progress()
+	if Progress.random_look:
+		randomize_look()
+	_refresh_dice()
+	_say_random_look()
+	_hold_look_note()
+
+
+## IMP3-04: on touch there is no hover / focus text to read, so after a press the ON / OFF line stays ~2 s, then the
+## status line goes back to the worn skin's name (only if nothing else has taken the line meanwhile).
+const LOOK_NOTE_TIME := 2.0
+var look_note_active := false
+var _look_note_token := 0  # (only the latest press's timer may restore the line)
+
+
+func _hold_look_note() -> void:
+	look_note_active = true
+	_look_note_token += 1
+	var mine := _look_note_token
+	var note := status.text
+	await get_tree().create_timer(LOOK_NOTE_TIME).timeout
+	if mine != _look_note_token:
+		return
+	if is_inside_tree() and status.text == note:
+		status.text = Skins.display_name(Progress.selected_skin)
+	look_note_active = false
+
+
+## RANDOMIZE: a random complete look from what is owned (never anything locked, never the look worn now).
+## Returns true when a new look was put on.
+func randomize_look() -> bool:
+	var before := _look_key(current_look())
+	var look := roll_look()
+	if _look_key(look) == before:
+		look = roll_look()  # (once more: the same look twice in a row is allowed to stand if the pool is one)
+	if _look_key(look) == before:
+		_refresh_after_look()
+		return false
+	apply_look(look)
+	return true
+
+
+## The look worn now: {skin, jelly, pastel, hat, dye, trail, paper}.
+func current_look() -> Dictionary:
+	return {skin = Progress.selected_skin, jelly = Progress.jelly, pastel = Progress.pastel, hat = Progress.selected_hat,
+		dye = Progress.hat_dye_of(Progress.selected_hat), trail = Progress.trail_style, paper = Progress.map_paper}
+
+
+static func _look_key(look: Dictionary) -> String:
+	return "%s|%s|%s|%s|%s|%s|%s" % [look.skin, look.jelly, look.pastel and Skins.has_pastel(look.skin), look.hat, look.dye, look.trail, look.paper]
+
+
+## One random look out of the owned things (LookRoller; the demo's and dev mode's own rules come from Progress's checks).
+func roll_look() -> Dictionary:
+	return LookRoller.roll()
+
+
+## Puts `look` on the way the pickers do (each saves) and shows it at once.
+func apply_look(look: Dictionary) -> void:
+	LookRoller.apply(look)
+	_refresh_after_look()
+
+
+## Brings every page up to the worn look (the tiles, the stage, the status line) and keeps the focus on the dice.
+func _refresh_after_look() -> void:
+	view_jelly = Progress.jelly
+	view_pastel = Progress.pastel
+	skin_text.recolor()
+	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
+	(big_preview.material as ShaderMaterial).set_shader_parameter("translucency", 1.0 if Progress.jelly else 0.0)
+	Skins.apply_to(big_preview.material, Progress.custom_color)
+	_fill_skin_grid()
+	_fill_hat_grid()
+	_fill_trail_grid()
+	_refresh()
+	_refresh_hats()
+	_refresh_trails()
+	_refresh_papers()
+	_preview(Progress.selected_skin)
+	dice_button.grab_focus()
+	status.text = Skins.display_name(Progress.selected_skin)
 
 
 ## Fits the page to the locale's text sizes (docs/ui-rules.md section 10), the first plan that fits
@@ -483,6 +620,7 @@ func show_page(which: String) -> void:
 	_trail_grid.visible = trails
 	_paper_grid.visible = papers
 	jelly_button.visible = page == "skins"
+	dice_button.visible = page == "skins"  # (only on the slime page: the roll still picks hat, dye, trail and paper)
 	pastel_button.visible = page == "skins" and _pastel_open()
 	Skins.pastel = view_pastel if page == "skins" else Progress.pastel
 	color_button.visible = hats
@@ -509,7 +647,7 @@ func show_page(which: String) -> void:
 		_refresh_papers()
 		paper_tiles[Progress.map_paper].grab_focus()
 	elif hub:
-		_rule.text = rule_text("hub" if Progress.hub_color_open() else "hub_locked")
+		_rule.text = rule_text("hub")  # (once: the status line under it names the color, never this rule again)
 		custom_panel.visible = false
 		showcase.visible = false
 		_fill_hub_grid()
@@ -544,7 +682,7 @@ func _make_tile(id: String) -> Button:
 	var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, view_jelly, id == Skins.STOPWATCH)
 	preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 	if not unlocked:
-		preview.modulate = Color(0, 0, 0, 0.85)
+		Skins.lock_look(preview)  # SPR-28
 		preview.pause()
 	tile.add_child(preview)
 	tile.set_meta("preview", preview)
@@ -573,7 +711,7 @@ func _make_hub_tile(id: String) -> Button:
 		var preview := UIKit.make_slime_preview(color, 1, id == Skins.RAINBOW, false, id == Skins.STOPWATCH)
 		preview.position = TILE_SIZE / 2.0 + Vector2(0, -2)
 		if not _hub_choosable(id):
-			preview.modulate = Color(0, 0, 0, 0.85)
+			Skins.lock_look(preview)  # SPR-28
 			preview.pause()
 		tile.add_child(preview)
 	tile.focus_entered.connect(func() -> void:
@@ -602,11 +740,11 @@ func _refresh_hub(focus_id: Variant = null) -> void:
 	var skin_name := Loc.t("skins.hub_auto_line", "AUTO - YOUR SKIN'S COLOR") if id == "" else Skins.display_name(id)  # i18n: wardrobe HUB page status, max 240px, 1 line
 	if not _hub_choosable(id):
 		# i18n: wardrobe HUB page status line, max 300px, 1 line
-		status.text = rule_text("hub_locked") if not Progress.hub_color_open() else Loc.t("skins.locked_hub", "{name} - UNLOCK THIS SKIN FIRST", {name = skin_name})
+		status.text = Loc.t("skins.locked_hub", "{name} - UNLOCK THIS SKIN FIRST", {name = skin_name})
 	elif id == Progress.hub_skin_in_use():
 		status.text = Loc.t("skins.wearing", "{name}  (WEARING)", {name = skin_name})
 	else:
-		status.text = name
+		status.text = skin_name
 	for tile_id: String in hub_tiles:
 		UIKit.set_selected(hub_tiles[tile_id], tile_id == Progress.hub_skin_in_use())
 
@@ -626,7 +764,7 @@ func _make_hat_tile(id: String) -> Button:
 		if not unlocked:
 			hat.modulate = Color(0, 0, 0, 0.85)
 	if not unlocked:
-		preview.modulate = Color(0, 0, 0, 0.85)
+		Skins.lock_look(preview)  # SPR-28
 		preview.pause()
 	hat_tiles[id] = tile
 	return tile
@@ -795,7 +933,8 @@ func _on_tile(id: String) -> void:
 ## Plays skin `id` (in the version on view) on the preview stage.
 func _preview(id: String) -> void:
 	var color: Color = _base_color(id)
-	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly, view_pastel), id == Skins.STOPWATCH)
+	showcase.show_skin(color, id == Skins.RAINBOW, view_jelly, not Progress.is_skin_unlocked(id, view_jelly, view_pastel), id == Skins.STOPWATCH,
+		{hat = Progress.selected_hat, dye = Progress.hat_dye_of(Progress.selected_hat), trail = Progress.trail_style})
 
 
 func _on_hat_tile(id: String) -> void:
@@ -805,18 +944,14 @@ func _on_hat_tile(id: String) -> void:
 
 ## The worn hat's colors to turn through with COLOR: its own, then each dye of it you own.
 func _hat_colors(hat: String) -> Array[String]:
-	var colors: Array[String] = [""]
-	for dye in Hats.dyes_for(hat):
-		if Progress.owns_dye(hat, dye):
-			colors.append(dye)
-	return colors
+	return LookRoller.hat_colors(hat)
 
 
 ## COLOR: the picker of the worn hat's colors (its own and every dye you own of it), two columns of
 ## tiles in a panel centred over the grid; focus on the worn color, locked inside until it closes.
 func open_color_picker() -> void:
 	var hat := Progress.selected_hat
-	var colors := _hat_colors(hat)
+	var colors := LookRoller.hat_colors(hat)
 	if colors.size() < 2:
 		return
 	close_color_picker()
@@ -851,7 +986,7 @@ func open_color_picker() -> void:
 		swatch.color = Hats.dye_color(dye) if dye != "" else UIKit.TEXT_DIM
 		swatch.size = Vector2(5, 5)
 		swatch.position = Vector2(4, UIKit.button_v_margins().x + 1)
-		swatch.material = Hats.flow_material() if Hats.dye_flows(dye) else null
+		swatch.material = Hats.swatch_material(dye)  # (PRISM turns as one, RAINBOW runs as a gradient)
 		tile.add_child(swatch)
 		var dye_label := UIKit.make_label(Hats.dye_name(dye), UIKit.FONT, UIKit.TEXT)
 		dye_label.position = Vector2(12, UIKit.button_v_margins().x)
@@ -994,7 +1129,7 @@ func _refresh_hats(focus_id := "") -> void:
 	for tile_id: String in hat_tiles:
 		var tile: Button = hat_tiles[tile_id]
 		UIKit.set_selected(tile, tile_id == Progress.selected_hat)
-	color_button.disabled = _hat_colors(Progress.selected_hat).size() < 2
+	color_button.disabled = LookRoller.hat_colors(Progress.selected_hat).size() < 2
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -4,7 +4,8 @@ extends CanvasLayer
 ## randomizer maze it also shows the maze's SEED (press it to copy the number or type another
 ## one: that maze is rebuilt, the same for anyone with the seed). Runs while the tree is paused;
 ## everything else in the level freezes. In the SPLASHDOWN training maze QUIT TO HUB reads SKIP TRAINING:
-## the training ends (Progress.finish_training(true), through game.leave_training) and the hub opens.
+## the training ends (Progress.finish_training(true), through game.leave_training) and the hub opens. That is
+## the SETTINGS replay only: on the first run the button is hidden, so the maze is played to its chalice.
 
 ## The button column (100 wide, 13 px buttons 3 apart) on its panel, centered under PAUSED.
 const PANEL_X := 100
@@ -27,6 +28,11 @@ const NOTE_ROOM := NOTE_Y - (MENU_TOP + 3 * UIKit.GAP_S + 4 * UIKit.BUTTON_H + U
 const BOTTOM := 176
 ## Two columns (a taller script's buttons that no longer fit one column): COLUMN_W each, GAP_L apart.
 const COLUMN_GAP := UIKit.GAP_L
+
+
+## The gap between the two columns: GAP_L, thumb-sized (UIKit.menu_gap) on a touch screen.
+static func column_gap() -> int:
+	return maxi(COLUMN_GAP, UIKit.menu_gap()) if UIKit.touch_active() else COLUMN_GAP
 
 var buttons: Array[Button] = []
 var wishlist_button: Button
@@ -87,7 +93,7 @@ func _ready() -> void:
 	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
 	menu.custom_minimum_size = Vector2(_col_w, 0)
 	menu.add_theme_constant_override("v_separation", UIKit.GAP_S)
-	menu.add_theme_constant_override("h_separation", COLUMN_GAP)
+	menu.add_theme_constant_override("h_separation", column_gap())
 	root.add_child(menu)
 	_menu = menu
 	sound_button = UIKit.make_button("", _toggle_sound)
@@ -212,6 +218,14 @@ func open() -> void:
 		hud.cover_area_texts()  # (they would show through around PAUSED; back on close)
 	# i18n: pause menu button, max 92px, 1 line (the training maze's QUIT TO HUB: leaves the tutorial maze)
 	buttons[3].text = Loc.t("pause.skip_training", "SKIP TRAINING") if _training() else Loc.t("pause.quit_hub", "QUIT TO HUB")
+	# The first training run can't be left BY ACCIDENT (owner, 2026-10-27), but it can be skipped on purpose (owner,
+	# 2026-11-01): SKIP TUTORIAL asks once more (a second press) and then skips the training and the hub tour.
+	var locked := _training_locked()
+	_skip_armed = false
+	if locked:
+		# i18n: pause menu button, max 92px, 1 line (the first training run: skips the training maze and the hub tour)
+		buttons[3].text = Loc.t("pause.skip_tutorial", "SKIP TUTORIAL")
+	buttons[3].visible = true
 	var descent: bool = game.get("descent") == true
 	restart_button.visible = not descent
 	descent_note.visible = false
@@ -232,6 +246,8 @@ func open() -> void:
 	if _focus_lock.is_empty():
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
 	_sfx("pause")
+	UIKit.pop_in(_panel)  # ANI-12: the panel and its buttons settle in 3 whole-pixel steps
+	UIKit.pop_in(_menu)
 
 
 ## Lays the menu out for `count` buttons (docs/ui-rules.md section 10): PAUSED, then the panel
@@ -244,6 +260,7 @@ func open() -> void:
 ## under the title's ink instead of its line box, then a taller script's title rises until its first
 ## ink is on TITLE_Y (English's first ink row; CJK: 6 empty rows on top), then two columns.
 func _layout(count: int, hud: Node) -> void:
+	_menu.add_theme_constant_override("v_separation", UIKit.menu_gap())  # (touch: a 22 px pitch, IMP3-04)
 	var title_y := _title_slot(hud)
 	var menu_top := title_y + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD  # MENU_TOP in English
 	var note_h := UIKit.line_h() + int(UIKit.metrics().ink_below) + int(UIKit.metrics().ink_above) + UIKit.GAP_M if descent_note.visible else 0
@@ -289,7 +306,7 @@ func _layout(count: int, hud: Node) -> void:
 		_menu.remove_child(last)
 		_last_row.add_child(last)
 		_last_row.visible = true
-	var width := _col_w * columns + COLUMN_GAP * (columns - 1)
+	var width := _col_w * columns + column_gap() * (columns - 1)
 	var panel_w := PANEL_W + width - COLUMN_W
 	var panel_x := UIKit.center_x(panel_w)  # PANEL_X in English
 	# A wider panel keeps GAP_XS under the HUD pods it would reach (when the bottom has the room).
@@ -310,7 +327,7 @@ func _layout(count: int, hud: Node) -> void:
 	_menu.size = Vector2.ZERO
 	if _last_row and _last_row.visible:
 		var rows := ceili(count / 2.0)
-		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
+		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.menu_gap()))
 		_last_row.size = Vector2(_col_w, UIKit.button_h())
 	_panel.position = Vector2(panel_x, menu_top - UIKit.PANEL_PAD)
 	_panel.size = Vector2(panel_w, UIKit.PANEL_PAD * 2 + _stack_h(count, columns))
@@ -362,14 +379,14 @@ func _title_slot(hud: Node, own_marks := false, lift := 0) -> int:
 func _column_w(root: Control) -> int:
 	var english := COLUMN_W - VOLUME_BOX_EXTRA - ceili(UIKit.font_for(UIKit.FONT).get_string_size("VOLUME", HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)  # i18n: ignore (English's label, measured for its slider length)
 	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W, ["sfx"])))
-	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - COLUMN_GAP) / 2.0)
+	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - column_gap()) / 2.0)
 	return clampi(VOLUME_BOX_EXTRA + label + english, COLUMN_W, widest)
 
 
 ## The button stack's height for `count` buttons in `columns` columns.
 func _stack_h(count: int, columns: int) -> int:
 	var rows := ceili(count / float(columns))
-	return rows * UIKit.button_h() + (rows - 1) * UIKit.GAP_S
+	return rows * UIKit.button_h() + (rows - 1) * UIKit.menu_gap()
 
 
 ## PAUSED's line box top: TITLE_Y, lower by the title's accent room.
@@ -438,6 +455,8 @@ func _submit_seed(text: String) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.random_seed = value
+		progress.random_daily = false
+		progress.random_weekly = false
 		progress.random_level = code.y  # -1 (a plain number): the game uses the player's own level
 		progress.random_seed_fresh = false  # a typed seed pays at most 1 ticket
 	resume()
@@ -457,6 +476,9 @@ func _restart() -> void:
 		get_parent().retry("pause RESTART")  # i18n: ignore (DevLog route name; the next training attempt: full meter, the coin kept)
 		return
 	DevLog.route(get_tree(), "pause RESTART", get_parent())
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.keep_look_once = true  # (the same attempt again keeps the look)
 	get_tree().reload_current_scene()
 
 
@@ -465,7 +487,26 @@ func _training() -> bool:
 	return get_parent().get("training") == true
 
 
+## True over the first (not replayed) training run: its button is SKIP TUTORIAL, which asks once more first.
+func _training_locked() -> bool:
+	var progress := get_node_or_null("/root/Progress")
+	return _training() and not (progress != null and progress.training_replay)
+
+
+## SKIP TUTORIAL was pressed once: the next press skips (the menu reopening disarms it).
+var _skip_armed := false
+
+
 func _quit() -> void:
+	if _training_locked():
+		if not _skip_armed:
+			_skip_armed = true
+			# i18n: pause menu button after one press of SKIP TUTORIAL, max 92px, 1 line: press it again to skip
+			buttons[3].text = Loc.t("pause.skip_sure", "SURE? AGAIN")
+			return
+		var progress := get_node_or_null("/root/Progress")
+		if progress != null:
+			progress.mark_tutorial_seen(progress.TUTORIAL_HUB)  # (the hub tour is skipped with it)
 	var training := _training()
 	DevLog.log_event(get_tree(), "skip training (pause)" if training else "quit to hub (pause)", get_parent())
 	if get_parent().has_method("quit_descent"):

@@ -333,16 +333,18 @@ hard level under par), `test_autoplay`, `test_maze_golden`, `test_spawn_picker`,
 
 | Lvl | size (v4) | route cells (v4) | meter tiles (v4) | allowance table / real | perfect run uses | dead ends (v4) | par s (v4) |
 |---|---|---|---|---|---|---|---|
-| 1 | 12x7 (10x6) | 27 (25) | 60.8 (55.3) | 1.12 / 1.143 | 87.5% | 13 (8) | 17.0 (15.8) |
-| 2 | 15x9 (12x7) | 37 (32) | 84.2 (70.2) | 1.13 / 1.151 | 86.9% | 25 (11) | 23.0 (20.0) |
-| 3 | 16x10 (13x8) | 48 (39) | 110.3 (84.8) | 1.14 / 1.158 | 86.3% | 25 (12) | 29.6 (24.2) |
-| 4 | 23x12 (15x8) | 64 (48) | 146.4 (104.6) | 1.15 / 1.151 | 86.9% | 48 (25) | 39.2 (29.6) |
-| 5 | 21x12 (16x9) | 79 (57) | 184.5 (123.0) | 1.17 / 1.174 | 85.2% | 45 (20) | 48.2 (35.0) |
+| 1 | 10x6 (10x6) | 26 (25) | 60.8 (55.3) | 1.18 / 1.192 | 83.9% | 10 (8) | 16.4 (15.8) |
+| 2 | 15x8 (12x7) | 36 (32) | 84.2 (70.2) | 1.18 / 1.187 | 84.3% | 21 (11) | 22.4 (20.0) |
+| 3 | 16x10 (13x8) | 46 (39) | 110.3 (84.8) | 1.19 / 1.212 | 82.5% | 25 (12) | 28.4 (24.2) |
+| 4 | 19x10 (15x8) | 61 (48) | 146.4 (104.6) | 1.20 / 1.210 | 82.6% | 34 (25) | 37.4 (29.6) |
+| 5 | 21x11 (16x9) | 77 (57) | 184.5 (123.0) | 1.20 / 1.206 | 82.9% | 39 (20) | 47.0 (35.0) |
 | 6 | 22x12 (18x10) | 90 (63) | 215.4 (134.6) | 1.19 / 1.202 | 83.2% | 40 (28) | 54.8 (38.6) |
 | 7 | 27x14 (20x11) | 104 (71) | 252.7 (148.6) | 1.21 / 1.219 | 82.0% | 51 (34) | 63.2 (43.4) |
 | 8 | 30x16 (22x12) | 117 (77) | 287.2 (159.6) | 1.23 / 1.232 | 81.2% | 63 (50) | 71.0 (47.0) |
 | 9 | 33x18 (24x13) | 142 (93) | 359.0 (189.0) | 1.26 / 1.268 | 78.9% | 72 (67) | 86.0 (56.6) |
 | 10 | 36x20 (26x14) | 149 (96) | 382.4 (191.2) | 1.28 / 1.287 | 77.7% | 116 (68) | 90.2 (58.4) |
+
+IMP2-04 (2026-10-24): H1-H5 allowances softened from 1.12 / 1.13 / 1.14 / 1.15 / 1.17 to 1.18 / 1.18 / 1.19 / 1.20 / 1.20 (rows 1-5 above are re-measured; H6-H10 unchanged, so H6 at 1.19 sits one hundredth under H5); hard 5's maze seed moved 55041 -> 55042 (the old one had no start whose farthest cell was the chalice at route 77). A hard random maze pays the flat `Economy.HARD_LENGTH_FACTOR` 1.4 (14 tickets on the first try) and the normal length clamp is `LENGTH_PAY_MIN`..`LENGTH_PAY_MAX` 0.4-1.5. The slime reserve (ASSIST) is offered after 3 dry-ups on L1-L7 and after 2 on L8-L10 (`Progress.ASSIST_AFTER_LATE`); on the 2nd dry-up of a story level with the coins for the next MORE SLIME level in hand, the dry-up row highlights UPGRADES and says `+N% SLIME FOR M COINS`.
 
 Allowance before: 1.12 (L1) .. 1.00 (L10). L1 deliberately stays at today's 1.12 rather than the
 owner's "about 1.08" example (that would have made L1 tighter than before, against "early levels
@@ -577,3 +579,16 @@ Tightest: L1 with THIRSTY (7.4% left after the autopilot's walk, which uses 92.6
 the countdown. Heat 10 on every level and heat 9 (BRITTLE in place of GROUNDED) on L1-3 are also played in
 `test_heat` (the full sweep takes ~2-3 min, so it is a bench, not a suite). Knobs: `Economy.HEAT_MODS`
 (`thirsty.drain` is the one that could break winnability: keep it under 1 / 0.875 = 1.14 for L1's perfect route).
+
+
+## 11. Lurker near-miss slow-mo and the run clock (BUG3-12, 2026-10-24; exact clock IMP4-05)
+
+The lurker near-miss slow-mo (`Economy.LURKER_SLOWMO`, 0.3 s) skips physics frames (`Lurkers._slowmo_step`). Those
+frames used to add nothing to `run_time` (about 0.16 s off per near miss). Since IMP4-05 the clock is exact:
+`Lurkers.settle_clock` adds the skipped time back (the slow-mo's own frame time minus what the physics ticks added;
+a paused tree adds nothing), when the slow-mo ends and when the goal is reached inside it. Hard medals, bests and
+ghost clocks are therefore the time the player lived through; a pinned ghost time only changes when a run beats it.
+The hard result shows the lurker contacts: "LEVEL n CLEARED  LURKER HITS n" (folded into the level line, so the
+result stays at 5 lines; the last level's title is rebuilt, so it gets its own "LURKER HITS n" line) and a "LURKER HITS n"
+line on a hard random maze. Known quirk: a hit-stop (2 frames) that lands inside a slow-mo window is added back by
+`settle_clock` (it is wall time inside the window), while a hit-stop outside a window is not counted (about 0.03 s).

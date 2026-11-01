@@ -8,6 +8,8 @@ extends Node2D
 ## and nothing is made with Reduce Motion on.
 
 const MAX_AMOUNT := 28
+## Economy.LIGHT_LIFE_TEST: a few more motes per theme, capped here.
+const LIGHT_LIFE_MAX := 40
 ## Half the emission area: a little more than half the 320x180 screen so nothing pops in.
 const REACH := Vector2(176.0, 100.0)
 ## Draw order: above the floor, goo trail and fillets (z 1-2), under coins and the fog (z 10).
@@ -52,6 +54,8 @@ static func look(theme: String) -> Dictionary:
 static func amount_for(theme: String, reduce_motion: bool) -> int:
 	if reduce_motion:
 		return 0
+	if Economy.light_life_on():
+		return mini(int(int(look(theme).get("amount", 0)) * 1.4), LIGHT_LIFE_MAX)
 	return mini(int(look(theme).get("amount", 0)), MAX_AMOUNT)
 
 

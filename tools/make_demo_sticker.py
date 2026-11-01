@@ -19,7 +19,8 @@ import math
 from pathlib import Path
 
 from make_font import GLYPHS
-from make_placeholder_art import PAL, write_png
+from make_placeholder_art import PAL
+from make_placeholder_art import write_png as _write_png
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "sprites" / "title" / "demo_sticker.png"
 WORD = "DEMO"
@@ -37,9 +38,15 @@ SHADOW = (2, 2)
 DRIPS = {"D": [(1, 3)], "E": [(4, 2)], "M": [(4, 4), (0, 1)], "O": []}
 
 # Paper colors (fixed: none is a goo shade or a dry-crust grey, so the skin shader keeps them).
-PAL["c"] = (240, 232, 206, 255)  # cream paper
-PAL["p"] = (168, 170, 182, 255)  # the paper's grey underside (the peeled flap)
-PAL["s"] = (0, 0, 0, 110)  # soft drop shadow
+STICKER_PAL = {**PAL,  # CON-06: a derived palette, the shared PAL stays untouched
+               "c": (240, 232, 206, 255),  # cream paper
+               "p": (168, 170, 182, 255),  # the paper's grey underside (the peeled flap)
+               "s": (0, 0, 0, 110)}  # soft drop shadow
+
+
+def write_png(path, rows):
+    _write_png(path, rows, STICKER_PAL)
+
 # Also used: "u" (bone: the paper's lower edge), "k" (outline), goo "l" / "m" / "n" and outline "G".
 
 

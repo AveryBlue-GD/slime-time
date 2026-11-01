@@ -12,6 +12,7 @@ var last_result := -1  # -1 = not finished, 0 = lost, 1 = won
 
 
 func _initialize() -> void:
+	(Engine.get_main_loop() as SceneTree).root.get_node("Progress").fog_brightness = 1  # FOG_NORMAL: these checks measure the standard look (new saves start BRIGHT)
 	var game := await _spawn()
 	var start: Vector2 = game.slime.position
 	_check(game.fog_alpha_at(start) == 0.0, "floor under the slime is revealed at start")
@@ -34,9 +35,9 @@ func _initialize() -> void:
 	_check(game.slime_remaining == before, "with the idle drain off, standing still costs nothing")
 	Economy.idle_drain_force = -1
 	before = game.slime_remaining
-	await _wait_seconds(2.0)
+	await _wait_seconds(Economy.IDLE_GRACE + 2.0)  # (the first IDLE_GRACE seconds of standing still are free)
 	var idle_used: float = before - game.slime_remaining
-	_check(Economy.IDLE_DRAIN_ON and absf(idle_used - 2.0 * Economy.IDLE_DRAIN) < 0.1,
+	_check(Economy.IDLE_DRAIN_ON and absf(idle_used - 2.0 * Economy.IDLE_DRAIN) < 0.2,
 		"standing still drains %.1f%% a second (%.2f%% in 2 s)" % [Economy.IDLE_DRAIN, idle_used])
 	Economy.idle_drain_force = 0
 

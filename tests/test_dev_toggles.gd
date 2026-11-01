@@ -165,7 +165,7 @@ func _initialize() -> void:
 	progress.dev_bright = false
 	progress.dev_no_drain = false
 
-	# --- Randomizer: FULL BRIGHT shows the ticket goal; a toggled run pays no tickets (the pod says 0)
+	# --- Randomizer: FULL BRIGHT shows the ticket goal; in dev mode a toggled run keeps its pay for testing (a plain launch pays 0, see test_boards)
 	progress.upgrades = {"slime": 1}
 	progress.mode = progress.MODE_RANDOM
 	game = MAIN.instantiate()
@@ -175,14 +175,14 @@ func _initialize() -> void:
 	await physics_frame
 	_check(game.hud.attempt_label.text.ends_with(" 10") and not game.goal.visible, "randomizer: the ticket starts hidden; the pod shows 10 available (%s)" % game.hud.attempt_label.text)
 	game.set_dev_bright(true)
-	_check(game.goal == game.chalice and game.goal.visible and game.hud.attempt_label.text.ends_with(" 0"), "FULL BRIGHT shows the chalice, and the pod drops to 0 (%s)" % game.hud.attempt_label.text)
+	_check(game.goal == game.chalice and game.goal.visible and game.hud.attempt_label.text.ends_with(" 10"), "FULL BRIGHT shows the chalice, and in dev mode the pod keeps 10 (%s)" % game.hud.attempt_label.text)
 	game.set_dev_bright(false)
 	_check(not game.goal.visible, "...hidden again when it goes off")
 	var tickets_before: int = progress.tickets
 	game.slime.position = game.goal.position
 	for i in 10:
 		await physics_frame
-	_check(game.won and progress.tickets == tickets_before and "DEV" in " ".join(game.hud.rewards_texts), "a dev-toggled randomizer win pays no tickets: %s" % " ".join(game.hud.rewards_texts))
+	_check(game.won and progress.tickets == tickets_before + 10, "a dev-toggled randomizer win in dev mode still pays the 10 shown: %s" % " ".join(game.hud.rewards_texts))
 	current_scene = null
 	game.free()
 	progress.mode = progress.MODE_STORY

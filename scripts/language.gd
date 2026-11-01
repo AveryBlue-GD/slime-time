@@ -216,7 +216,8 @@ func enable() -> void:
 		_load_catalogs()
 	var progress := get_node_or_null("/root/Progress")
 	var saved: String = progress.language if progress else ""
-	set_locale(choose_locale(saved, Economy.forced_locale, OS.get_locale()))
+	var os_locale := OS.get_locale() if Economy.LANGUAGES_FOLLOW_OS or Economy.languages_force == 1 else ""
+	set_locale(choose_locale(saved, Economy.forced_locale, os_locale))
 
 
 ## Undoes enable() (tests): removes every catalog this autoload added and restores the locale.

@@ -90,6 +90,26 @@ static func _fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dic
 	patches.seed = tile_seed
 	patches.frequency = CONSTRUCTION_FREQUENCY
 
+	# ENV-28: the construction per wall tile, then a one-tile mixed ring where two patches meet (each
+	# edge tile takes the neighbour's construction half the time, by a coordinate hash, so the
+	# change is ragged instead of a straight cut on a tile edge).
+	var constructions := {}
+	for y in maze.size.y:
+		for x in maze.size.x:
+			var t := Vector2i(x, y)
+			if MazeGenerator.is_wall(maze, t):
+				constructions[t] = construction_at(patches, t)
+	var mixed := {}
+	for t in constructions:
+		var own: int = constructions[t]
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var other: int = constructions.get(t + d, own)
+			if other != own and (hash(Vector3i(t.x, t.y, tile_seed)) & 1) == 0:
+				mixed[t] = other
+				break
+	for t in mixed:
+		constructions[t] = mixed[t]
+
 	for y in maze.size.y:
 		for x in maze.size.x:
 			var tile := Vector2i(x, y)
@@ -99,7 +119,7 @@ static func _fill(floor_layer: TileMapLayer, wall_layer: TileMapLayer, maze: Dic
 			var damage := rng.rand_weighted(damage_weights)
 			var style := rng.rand_weighted(style_weights)
 			wall_damage[tile] = damage
-			var construction := construction_at(patches, tile)
+			var construction: int = constructions[tile]
 			wall_layer.set_cell(tile, WALL_SOURCE, Vector2i(mask, construction * 12 + damage * 3 + style))
 
 	# Floor goes under walls too, so broken-off chunks of wall show floor through them.

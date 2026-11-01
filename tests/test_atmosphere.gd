@@ -8,6 +8,7 @@ var failures := 0
 
 
 func _initialize() -> void:
+	Economy.lightlife_force = 0  # (BM-09 lighting is off here; test_light_life covers it)
 	await process_frame
 	var plain := Themes.fog_colors("sewers")
 	var grape := Themes.fog_colors("sewers", Skins.atmosphere_color("grape", Skins.get_preset("grape").color))

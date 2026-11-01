@@ -7,6 +7,8 @@ extends Control
 
 const KEY_CONTROLS_SCENE := "res://scenes/key_controls.tscn"
 ## The LANGUAGE page (scripts/ui/language_screen.gd), reached from the gated LANGUAGE button.
+const ACHIEVEMENTS_SCENE := "res://scenes/achievements.tscn"
+const BOARDS_SCENE := "res://scenes/boards.tscn"
 const LANGUAGE_SCENE := "res://scenes/language.tscn"
 const LanguageScreen := preload("res://scripts/ui/language_screen.gd")
 ## What the SAVE CODE panel says: a code from an older build (it never loads), a successful copy, and
@@ -36,6 +38,11 @@ static func copy_by_hand_message() -> String:
 ## locale's button_h() / line_h() under its title_bottom(), and the row gap closes to GAP_M / GAP_S only
 ## when the five rows would not end above the bottom row otherwise (Devanagari).
 const ROWS := 5
+
+
+## The grid's rows: one more for CALM DARK while the lurkers test (Economy.LURKERS_TEST, BM-01) is on.
+static func rows() -> int:
+	return ROWS + (1 if Economy.lurkers_on() and not Demo.on() else 0)
 const COL_W := 120
 const COL_L := 36
 const COL_R := COL_L + COL_W + UIKit.GAP_L  # 164
@@ -73,11 +80,23 @@ var music_slider: HSlider
 var fullscreen_button: Button
 ## Phones and tablets (Platform.has_vibration): VIBRATION ON / OFF in FULLSCREEN's cell (fullscreen_button null).
 var vibration_button: Button
+## The MORE column's next free row (its buttons fill it from the top: VIBRATION / FULLSCREEN, CONTROLS, SAVE CODE,
+## then LANGUAGE or TRAINING; RELAXED keeps row 4).
+var _more_row := 0
 ## REDUCE MOTION (no shake, kick or hit-stop) and FOG brightness (DARK / NORMAL / BRIGHT).
 var motion_button: Button
 var fog_button: Button
+var level_music_button: Button
+## RELAXED (no idle drain, no medals; Progress.relaxed) under SAVE CODE / TRAINING, with a hint line under it.
+var relaxed_button: Button
+var relaxed_hint: Label
+## LURKERS (ON = lurkers in every normal random maze, Progress.lurkers_random; hard mode always has them): the grid's extra row, only with the lurkers test on.
+var calm_button: Button
 var controls_button: Button
 var reset_button: Button
+## ACHIEVEMENTS, top right (null in the demo).
+var achievements_button: Button
+var boards_button: Button  # (BM-03, only while Economy.boards_on())
 ## Only with the tutorial gate on (Economy.tutorial_on()): replays the training maze, writes nothing.
 var training_button: Button
 var reset_confirm: Control
@@ -118,20 +137,45 @@ func _ready() -> void:
 	music_slider = _volume_row(2, "music")
 	motion_button = _column_button(_cell(0, 3), _toggle_motion)
 	fog_button = _column_button(_cell(0, 4), _cycle_fog)
+	# The MORE column fills from the top (owner, 2026-11-01): a phone / tablet has no CONTROLS (its touch controls
+	# can't be rebound; key rebinding is for keyboards) and an iPad no VIBRATION (no motor), so the buttons below
+	# move up instead of leaving gaps.
 	if Platform.has_vibration():  # (phones: VIBRATION in FULLSCREEN's cell; the web's TAP TO PLAY goes full screen)
-		vibration_button = _column_button(_cell(1, 0), _toggle_vibration)
-	else:
-		fullscreen_button = _column_button(_cell(1, 0), func() -> void: Progress.toggle_fullscreen())
+		vibration_button = _column_button(_cell(1, _more_row), _toggle_vibration)
+		_more_row += 1
+	elif not Platform.is_mobile_native():  # (an iPad app: no window to make full screen either)
+		fullscreen_button = _column_button(_cell(1, _more_row), func() -> void: Progress.toggle_fullscreen())
 		fullscreen_button.disabled = not Progress.fullscreen_available()  # (iPhone Safari: no Fullscreen API)
+		_more_row += 1
+	relaxed_button = _column_button(_cell(1, 4), _toggle_relaxed)
+	# i18n: hint under the RELAXED button, max 296px (about 49 characters), 1 line (centred under both columns)
+	relaxed_hint = UIKit.make_label(Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"), UIKit.FONT, UIKit.TEXT)
+	add_child(relaxed_hint)
+	relaxed_hint.size = Vector2(UIKit.SCREEN.x, UIKit.line_h())
+	relaxed_hint.position = Vector2(0, minf(_cell(1, rows() - 1).y + UIKit.button_h() + UIKit.GAP_XS, UIKit.bottom_row_y() - UIKit.line_h() - 1))  # (BUG4-05: never over the bottom row at touch pitch)
+	relaxed_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	relaxed_hint.visible = false  # (only while the RELAXED button has focus or the pointer over it)
+	for sig in [relaxed_button.focus_entered, relaxed_button.mouse_entered, relaxed_button.focus_exited, relaxed_button.mouse_exited]:
+		sig.connect(_update_relaxed_hint)
+	if rows() > ROWS:
+		calm_button = _column_button(_cell(1, ROWS), _toggle_calm)
+		for sig in [calm_button.focus_entered, calm_button.mouse_entered, calm_button.focus_exited, calm_button.mouse_exited]:
+			sig.connect(_update_relaxed_hint)
 	_refresh_sound()
 	_refresh_display_options()
 
 	# i18n: column buttons, max 112px (button 120 wide, 4 px margins), 1 line
-	controls_button = _column_button(_cell(1, 1), _open_controls, Loc.t("settings.controls", "CONTROLS"))
-	save_code_button = _column_button(_cell(1, 2), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
+	if not Platform.is_touch_device():
+		controls_button = _column_button(_cell(1, _more_row), _open_controls, Loc.t("settings.controls", "CONTROLS"))
+		_more_row += 1
+	save_code_button = _column_button(_cell(1, _more_row), _open_codes, Loc.t("settings.save_code", "SAVE CODE"))
+	_more_row += 1
 	if Economy.languages_on():
 		_build_language_button()
+		_more_row += 1
 	UIKit.add_back_button(self)  # the standard BACK, bottom left like every screen
+	if Economy.ACHIEVEMENTS and not Demo.on():
+		_build_achievements_button()
 	# The destructive one, alone at the bottom right, away from the everyday buttons.
 	# i18n: max 84px (RESET_SIZE 92 wide), grows to 160px (button_size: the button widens), 1 line
 	var reset_text := Loc.t("settings.reset", "RESET PROGRESS")
@@ -142,17 +186,55 @@ func _ready() -> void:
 	UIKit.place_bottom_row(reset_button, 1)
 	if Economy.tutorial_on():
 		# The MORE column under SAVE CODE (docs/tutorial/design.md section 2), beside FOG: a full 4 x 2 grid.
-		# With the language test on, LANGUAGE has that cell: then centred in the bottom row instead.
+		# With LANGUAGE in that cell: beside LURKERS in the OPTIONS column's extra row, else the bottom row.
 		# i18n: column button, max 112px (button 120 wide, 4 px margins); in the bottom row (languages on) it grows with the text, 1 line
 		var training_text := Loc.t("settings.training", "TRAINING")
-		if language_button == null:
-			training_button = _column_button(_cell(1, 3), _start_training, training_text)
+		if _more_row < ROWS - 1:
+			training_button = _column_button(_cell(1, _more_row), _start_training, training_text)  # (a free MORE cell)
+		elif rows() > ROWS:
+			# LANGUAGE took the last MORE cell: the OPTIONS column's extra row, beside LURKERS (the bottom row is full
+			# with BOARDS and LEVEL MUSIC).
+			training_button = _column_button(_cell(0, ROWS), _start_training, training_text)
 		else:
 			training_button = UIKit.make_button(training_text, _start_training, UIKit.button_size(training_text, 56))
 			UIKit.note_text_w(training_button, [training_text], 56)
 			add_child(training_button)
 			training_button.size = training_button.custom_minimum_size
-			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS)
+			UIKit.place_bottom_row(training_button, 0)  # (centred between BACK and RESET PROGRESS; left of LEVEL MUSIC when that is there)
+	if Economy.LEVEL_MUSIC:
+		# IMP-05: centred in the bottom row, in both modes (with the language test on, TRAINING steps left of it)
+		# i18n: bottom-row button, grows with the text (max 120px), 1 line; the two states are whole strings
+		var lm_text := Loc.t("settings.level_music.on", "LEVEL MUSIC: ON")
+		level_music_button = UIKit.make_button(lm_text, _toggle_level_music, UIKit.button_size(lm_text, 104))
+		UIKit.note_text_w(level_music_button, [lm_text, Loc.t("settings.level_music.off", "LEVEL MUSIC: OFF")], 104)
+		add_child(level_music_button)
+		level_music_button.size = level_music_button.custom_minimum_size
+		UIKit.place_bottom_row(level_music_button, 0)
+		if training_button != null and training_button.position.y == level_music_button.position.y:
+			training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
+		_refresh_display_options()
+	if Economy.ACHIEVEMENTS and not Demo.on() and Economy.boards_on():
+		_build_boards_button()  # (IMP4-03: the bottom row, right of BACK; the corner keeps ACHIEVEMENTS alone)
+		if level_music_button != null and (training_button == null or training_button.position.y != level_music_button.position.y):
+			# UI-11: BOARDS + LEVEL MUSIC are an equal-gap pair (GAP_L) centred between BACK and RESET (TRAINING not in
+			# the bottom row: it would make three).
+			var from_x := float(UIKit.EDGE) + UIKit.back_size().x
+			var span := reset_button.position.x - from_x
+			var pair := boards_button.size.x + UIKit.GAP_L + level_music_button.size.x
+			boards_button.position.x = UIKit.center_x(pair, from_x, span)
+			level_music_button.position.x = boards_button.position.x + boards_button.size.x + UIKit.GAP_L
+			if training_button != null and training_button.position.y == boards_button.position.y:
+				training_button.position.x = level_music_button.position.x - UIKit.GAP_S - training_button.size.x
+		elif level_music_button != null and training_button != null:
+			# TRAINING in the bottom row too (LANGUAGE has its MORE cell and there is no LURKERS row): the three in a
+			# row, GAP_S apart, centred between BACK and RESET.
+			var from_x := float(UIKit.EDGE) + UIKit.back_size().x
+			var span := reset_button.position.x - from_x
+			var row := training_button.size.x + boards_button.size.x + level_music_button.size.x + 2 * UIKit.GAP_S
+			training_button.position.x = UIKit.center_x(row, from_x, span)
+			boards_button.position.x = training_button.position.x + training_button.size.x + UIKit.GAP_S
+			boards_button.position.y = training_button.position.y
+			level_music_button.position.x = boards_button.position.x + boards_button.size.x + UIKit.GAP_S
 	sound_button.grab_focus()
 	_build_reset_confirm()
 	_build_code_panel()
@@ -178,9 +260,21 @@ func _plan_page() -> void:
 	heading_y = UIKit.title_bottom() + HEADING_GAP
 	first_row = heading_y + UIKit.line_h() + UIKit.GAP_M
 	var bottom := UIKit.bottom_row_y() - UIKit.GAP_M
-	for gap: int in [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]:
+	var gaps: Array[int] = [ROW_GAP, UIKit.GAP_M, UIKit.GAP_S]
+	if UIKit.touch_active():
+		# IMP3-04: a 22 px pitch (TOUCH_MIN) for every row, headings and first row pulled up to make the room; a
+		# script too tall for it falls back to the usual rows below
+		var tight := UIKit.title_bottom() + 3
+		var tight_first := tight + UIKit.line_h() + 2
+		var touch_step := maxi(UIKit.TOUCH_MIN, UIKit.button_h() + ROW_GAP)
+		if tight_first + (rows() - 1) * touch_step + UIKit.button_h() <= bottom + UIKit.GAP_M - 2:
+			heading_y = tight
+			first_row = tight_first
+			row_step = touch_step
+			return
+	for gap: int in gaps:
 		row_step = UIKit.button_h() + gap
-		if first_row + (ROWS - 1) * row_step + UIKit.button_h() <= bottom:
+		if first_row + (rows() - 1) * row_step + UIKit.button_h() <= bottom:
 			break
 
 
@@ -223,7 +317,7 @@ func _build_language_button() -> void:
 	var language := LanguageScreen.lang()
 	var code: String = language.locale
 	var h: int = maxi(UIKit.button_h(), int(LanguageScreen.Lang.metrics(code).button_h))
-	var at := _cell(1, 3)
+	var at := _cell(1, _more_row)
 	language_button = UIKit.make_button("", _open_language, Vector2(col_w, h))
 	LanguageScreen.fit_styles(language_button, false)
 	language_button.position = at
@@ -257,6 +351,36 @@ func _build_language_button() -> void:
 	label.position = Vector2(x + 10, line_top)
 	label.size = Vector2(text_w, UIKit.line_h())
 	language_button.set_meta("code", code)
+
+
+## ACHIEVEMENTS in the top right corner (IMP2-02, BUG2-03): the way to the goals page on a phone (iOS has no back
+## key for the hub menu's entry), also by pad and keyboard (focus moves to it by position). BACK returns to the hub.
+func _build_achievements_button() -> void:
+	# i18n: settings button (top right corner), max 90px, grows with the text, 1 line; opens the achievements page
+	var text := Loc.t("hub.menu.achievements", "ACHIEVEMENTS")
+	achievements_button = UIKit.make_button(text, func() -> void:
+		(load("res://scripts/ui/achievements_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"  # (BACK returns to SETTINGS)
+		UIKit.go(get_tree(), ACHIEVEMENTS_SCENE), UIKit.button_size(text, 90))
+	UIKit.note_text_w(achievements_button, [text], 90)
+	add_child(achievements_button)
+	achievements_button.size = achievements_button.custom_minimum_size
+	var safe := UIKit.safe_rect()
+	achievements_button.position = Vector2(safe.end.x - UIKit.EDGE - achievements_button.size.x, safe.position.y + UIKit.EDGE)
+
+
+## BOARDS in the bottom row beside BACK (BM-03, IMP4-03): the daily / weekly top times and the ghost toggle; BACK returns to SETTINGS.
+func _build_boards_button() -> void:
+	# i18n: settings button (bottom row, right of BACK), max 56px, grows with the text, 1 line; opens the boards page
+	var text := Loc.t("settings.boards", "BOARDS")
+	boards_button = UIKit.make_button(text, func() -> void:
+		(load("res://scripts/ui/boards_screen.gd") as GDScript).back_scene = "res://scenes/controls.tscn"
+		UIKit.go(get_tree(), BOARDS_SCENE), UIKit.button_size(text, 56))
+	UIKit.note_text_w(boards_button, [text], 56)
+	add_child(boards_button)
+	boards_button.size = boards_button.custom_minimum_size
+	UIKit.place_bottom_row(boards_button, -1)
+	var back := UIKit.back_size()
+	boards_button.position.x += back.x + UIKit.GAP_S
 
 
 ## TRAINING replays the maze (replay = true: nothing is saved, docs/tutorial/design.md section 8).
@@ -833,12 +957,37 @@ func _toggle_motion() -> void:
 	_refresh_display_options()
 
 
+func _update_relaxed_hint() -> void:
+	var on_calm := calm_button != null and (calm_button.has_focus() or calm_button.is_hovered())
+	# i18n: hint under the LURKERS button, max 296px, 1 line (centred under both columns)
+	relaxed_hint.text = Loc.t("settings.lurkers.hint", "LURKERS IN RANDOM MAZES (HARD: ALWAYS)") if on_calm else Loc.t("settings.relaxed.hint", "RELAXED: MORE SLIME, NO MEDALS OR TICKETS")
+	relaxed_hint.visible = on_calm or relaxed_button.has_focus() or relaxed_button.is_hovered()
+
+
+func _toggle_calm() -> void:
+	Progress.lurkers_random = not Progress.lurkers_random
+	Progress.save_progress()
+	_refresh_display_options()
+
+
+func _toggle_relaxed() -> void:
+	Progress.relaxed = not Progress.relaxed
+	Progress.save_progress()
+	_refresh_display_options()
+
+
 func _toggle_vibration() -> void:
 	Progress.vibration = not Progress.vibration
 	Progress.save_progress()
 	_refresh_display_options()
 	if Progress.vibration:
 		Input.vibrate_handheld(60)  # (a sample buzz)
+
+
+func _toggle_level_music() -> void:
+	Progress.level_music = not Progress.level_music
+	Progress.save_progress()
+	_refresh_display_options()
 
 
 func _cycle_fog() -> void:
@@ -853,12 +1002,28 @@ func _refresh_display_options() -> void:
 		motion_button.text = Loc.t("settings.motion.less", "MOTION: LESS")
 	else:
 		motion_button.text = Loc.t("settings.motion.full", "MOTION: FULL")
+	# i18n: max 112px, 1 line; the two states are whole strings (no idle drain, no medals)
+	if Progress.relaxed:
+		relaxed_button.text = Loc.t("settings.relaxed.on", "RELAXED: ON")
+	else:
+		relaxed_button.text = Loc.t("settings.relaxed.off", "RELAXED: OFF")
+	if calm_button != null:
+		# i18n: max 112px, 1 line; the two states are whole strings (ON = the creatures in the fog of random mazes)
+		if Progress.lurkers_random:
+			calm_button.text = Loc.t("settings.lurkers.on", "LURKERS: ON")
+		else:
+			calm_button.text = Loc.t("settings.lurkers.off", "LURKERS: OFF")
 	if vibration_button:
 		# i18n: max 112px, 1 line; the two states are whole strings (phones: a buzz on each splat)
 		if Progress.vibration:
 			vibration_button.text = Loc.t("settings.vibration.on", "VIBRATION: ON")
 		else:
 			vibration_button.text = Loc.t("settings.vibration.off", "VIBRATION: OFF")
+	if level_music_button:
+		if Progress.level_music:
+			level_music_button.text = Loc.t("settings.level_music.on", "LEVEL MUSIC: ON")
+		else:
+			level_music_button.text = Loc.t("settings.level_music.off", "LEVEL MUSIC: OFF")
 	match Progress.fog_brightness:
 		0:
 			fog_button.text = Loc.t("settings.fog.dark", "FOG: DARK")
@@ -894,7 +1059,15 @@ static func column_texts() -> Array[String]:
 		Loc.t("settings.fog.bright", "FOG: BRIGHT"), Loc.t("settings.fullscreen.on", "FULLSCREEN: ON"),
 		Loc.t("settings.fullscreen.off", "FULLSCREEN: OFF"), Loc.t("settings.vibration.on", "VIBRATION: ON"),
 		Loc.t("settings.vibration.off", "VIBRATION: OFF"), Loc.t("settings.controls", "CONTROLS"),
-		Loc.t("settings.save_code", "SAVE CODE")]
+		Loc.t("settings.relaxed.on", "RELAXED: ON"), Loc.t("settings.relaxed.off", "RELAXED: OFF"),
+		Loc.t("settings.save_code", "SAVE CODE")] + calm_texts()
+
+
+## LURKERS's two states (only while the lurkers test is on; they share the column width).
+static func calm_texts() -> Array[String]:
+	if rows() == ROWS:
+		return []
+	return [Loc.t("settings.lurkers.on", "LURKERS: ON"), Loc.t("settings.lurkers.off", "LURKERS: OFF")]
 
 
 ## Every status line the SAVE CODE panel can show (for its width).

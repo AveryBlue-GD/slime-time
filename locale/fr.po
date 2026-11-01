@@ -146,6 +146,130 @@ msgctxt "hub.tour.skip"
 msgid "SKIP"
 msgstr ""
 
+#: scripts/achievements.gd
+msgctxt "ach.clear_1"
+msgid "BEAT LEVEL 1"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 10
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.clear_story"
+msgid "BEAT THE STORY (ALL {n} LEVELS)"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hard_1"
+msgid "BEAT LEVEL 1 ON HARD"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 10
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hard_all"
+msgid "BEAT ALL {n} LEVELS ON HARD"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a coin count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.coins"
+msgid "FIND {n} COINS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 165
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.coins_all"
+msgid "FIND ALL {n} COINS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.gold_1"
+msgid "WIN YOUR FIRST GOLD MEDAL"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.gold_n"
+msgid "WIN {n} GOLD MEDALS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.rand_1"
+msgid "WIN A RANDOM MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.rand_n"
+msgid "WIN {n} RANDOM MAZES"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.daily_1"
+msgid "WIN A DAILY MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = 7
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.daily_7"
+msgid "WIN THE DAILY MAZE {n} DAYS IN A ROW"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.weekly_1"
+msgid "WIN A WEEKLY MAZE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.wheel_1"
+msgid "SPIN THE PRIZE WHEEL"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line; {n} = a count
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.hats_n"
+msgid "OWN {n} HATS"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.jelly"
+msgid "WEAR A JELLY SKIN"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.abilities"
+msgid "USE EACH ABILITY ONCE"
+msgstr ""
+
+#. achievement goal, max 270px, 1 line
+#. budget: max 270px, lines 1
+#: scripts/achievements.gd
+msgctxt "ach.clean_win"
+msgid "WIN A RANDOM MAZE USING NO ABILITY"
+msgstr ""
+
 #: scripts/cosmetics.gd
 msgctxt "trail.wheel.unlock"
 msgid "WIN IT ON THE PRIZE WHEEL"
@@ -544,6 +668,20 @@ msgctxt "hud.area.preview"
 msgid "FULL GAME PREVIEW"
 msgstr ""
 
+#. HUD area line, max 296px, 1 line (today's daily maze)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.daily"
+msgid "DAILY MAZE"
+msgstr ""
+
+#. HUD area line, max 296px, 1 line; {n} = the weekly's number (this week's maze, the same for everyone)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "hud.area.weekly"
+msgid "WEEKLY #{n}"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "hud.area.random_hard"
 msgid "RANDOM MAZE #{n}  HARD"
@@ -582,6 +720,13 @@ msgstr "NOUVEAU SKIN ÉQUIPÉ : {name}"
 msgctxt "hud.area.floor"
 msgid "FLOOR {floor}"
 msgstr "ÉTAGE {floor}"
+
+#. short HUD line when a fresh random maze starts on a later attempt because the last maze was left unfinished; max 140px
+#. budget: max 140px
+#: scripts/game.gd
+msgctxt "hud.left_last_maze"
+msgid "LEFT LAST MAZE: ATTEMPT {n}"
+msgstr ""
 
 #. flash message, max 296px, 1 line; {count} = tickets paid, {floor} = the floor reached
 #. budget: max 296px, lines 1
@@ -640,11 +785,54 @@ msgctxt "result.seed"
 msgid "SEED {code}"
 msgstr "GRAINE {code}"
 
+#. result line, max 296px, 1 line; {n} = how many times lurkers touched the slime in this hard maze
+#. result line, max 296px, 1 line; {n} = how many times lurkers touched the slime
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.lurker_hits"
+msgid "LURKER HITS {n}"
+msgstr ""
+
 #. result title (the demo's preview maze won; nothing is paid), max 296px, 1 line
 #. budget: max 296px, lines 1
 #: scripts/game.gd
 msgctxt "result.preview_cleared"
 msgid "PREVIEW CLEARED!"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = the daily's number, {time} = the day's best M:SS.cc, {streak} = days in a row; the spaces are spacing, not words
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily"
+msgid "DAILY #{n}  {time}  STREAK {streak}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = the daily's number, {time} = this run M:SS.cc, {best} = the day's best M:SS.cc
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_best"
+msgid "DAILY #{n}  {time}  BEST {best}"
+msgstr ""
+
+#. the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the daily's number, {time} = M:SS.cc, {streak} = days in a row
+#. budget: lines 1
+#: scripts/game.gd
+msgctxt "result.daily_share"
+msgid "Dry Trying DAILY #{n} {time} streak {streak}"
+msgstr ""
+
+#. toast, max 296px, 1 line (the week's one free streak saver covered a missed day)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_saved"
+msgid "STREAK SAVED"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = tickets, {days} = the streak
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.daily_bonus"
+msgid "{days} DAY STREAK: +{n} TICKETS"
 msgstr ""
 
 #. result line, max 296px, 1 line; {name} = a skin name (its pastel version just unlocked)
@@ -653,6 +841,15 @@ msgstr ""
 msgctxt "result.new_pastel_skin"
 msgid "NEW PASTEL SKIN: {name}"
 msgstr ""
+
+#. result line, max 296px, 1 line; {n} = randomizer wins until the next pastel skin or win goal
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.next_unlock"
+msgid "NEXT UNLOCK IN {n} WIN"
+msgid_plural "NEXT UNLOCK IN {n} WINS"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scripts/game.gd
 msgctxt "result.level_cleared"
@@ -711,6 +908,20 @@ msgctxt "result.all_medals_skin"
 msgid "ALL MEDALS! NEW SKIN: {name}"
 msgstr "TOUTES LES MÉDAILLES ! NOUVEAU SKIN : {name}"
 
+#. result line, max 296px, 1 line; {time} = M:SS.cc, {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster); the two spaces are spacing
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.time_ghost"
+msgid "TIME {time}  {split} VS GHOST"
+msgstr ""
+
+#. result line, max 296px, 1 line; {split} = the time against your ghost, e.g. +1.2s (slower) or -0.8s (faster)
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.ghost_split"
+msgid "VS GHOST {split}"
+msgstr ""
+
 #. flash message, max 296px, 1 line each; {name} = a skin name
 #. budget: max 296px, lines 1
 #: scripts/game.gd
@@ -764,6 +975,20 @@ msgctxt "result.choice.map"
 msgid "MAP"
 msgstr ""
 
+#. result choice buttons, max 62px each, 1 line (YES / NO answer the RELAXED question above them)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.yes"
+msgid "YES"
+msgstr ""
+
+#. result choice buttons, max 62px each, 1 line (YES / NO answer the RELAXED question above them)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.no"
+msgid "NO"
+msgstr ""
+
 #. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
 #. budget: max 62px, lines 1
 #: scripts/game.gd
@@ -771,10 +996,71 @@ msgctxt "result.choice.assist"
 msgid "ASSIST"
 msgstr "AIDE"
 
+#. part of the share line COPY puts on the clipboard, plain ASCII; {place} = 1..5, the place on your local board
+#: scripts/game.gd
+msgctxt "result.share_board"
+msgid "BOARD #{place}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {place} = 1..5, your place on today's / this week's board of your own times
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.board_place"
+msgid "BOARD PLACE {place}"
+msgstr ""
+
+#. part of the share line COPY puts on the clipboard, plain ASCII; {split} = the time against your ghost, e.g. -0.8s
+#: scripts/game.gd
+msgctxt "result.share_ghost"
+msgid "vs ghost {split}"
+msgstr ""
+
+#. result line, max 296px, 1 line; {n} = the weekly's number, {time} = this run's M:SS.cc
+#. budget: max 296px, lines 1
+#: scripts/game.gd
+msgctxt "result.weekly"
+msgid "WEEKLY #{n}  {time}"
+msgstr ""
+
+#. the line COPY puts on the clipboard to paste to friends, 1 line; keep the game's name; {n} = the weekly's number, {time} = M:SS.cc
+#. budget: lines 1
+#: scripts/game.gd
+msgctxt "result.weekly_share"
+msgid "Dry Trying WEEKLY #{n} {time}"
+msgstr ""
+
+#. result choice button after COPY was pressed, max 62px, 1 line
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.copied"
+msgid "COPIED"
+msgstr ""
+
 #: scripts/game.gd
 msgctxt "result.choice.hub"
 msgid "HUB"
 msgstr "QG"
+
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.copy"
+msgid "COPY"
+msgstr ""
+
+#. result choice buttons, max 62px each, 1 line (four share the row: 72 px buttons)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.replay"
+msgid "REPLAY"
+msgstr "REJOUER"
+
+#. result choice button on a daily / weekly win, max 62px, 1 line; opens the BOARDS page (your best times)
+#. budget: max 62px, lines 1
+#: scripts/game.gd
+msgctxt "result.choice.boards"
+msgid "BOARDS"
+msgstr ""
 
 #. result choice buttons, max 76px each, grows to 88px (tab_widths: the three alike), 1 line
 #. budget: max 76px, lines 1
@@ -782,11 +1068,6 @@ msgstr "QG"
 msgctxt "result.choice.replay_maze"
 msgid "REPLAY MAZE"
 msgstr "MÊME LABY"
-
-#: scripts/game.gd
-msgctxt "result.choice.replay"
-msgid "REPLAY"
-msgstr "REJOUER"
 
 #: scripts/game.gd
 msgctxt "result.choice.next_level"
@@ -815,6 +1096,13 @@ msgstr ""
 #: scripts/game.gd
 msgctxt "preview.play"
 msgid "PLAY"
+msgstr ""
+
+#. toast, max 296px, 1 line; the first time a pale copy of your best run races you in a story level
+#. budget: max 296px, lines 1
+#: scripts/ghost_racer.gd
+msgctxt "ghost.intro"
+msgid "A PALE SLIME RACES YOUR BEST RUN"
 msgstr ""
 
 #: scripts/hats.gd
@@ -1000,6 +1288,20 @@ msgctxt "hub.station.wardrobe"
 msgid "COSMETICS"
 msgstr "SKINS & CHAPEAUX"
 
+#. station name / prompt label, max 110px, 1 line; the daily maze (the same maze for everyone today)
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.daily"
+msgid "DAILY MAZE"
+msgstr ""
+
+#. small label over the DAILY sign once today's daily is won, max 60px, 1 line; {h} = whole hours until the next one
+#. budget: max 60px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.daily.next"
+msgid "NEW IN {h}H"
+msgstr ""
+
 #. max 150px each, grows to 280px (the notice widens, centred), 1 line each
 #. budget: max 150px, lines 1
 #: scripts/hub.gd
@@ -1046,6 +1348,14 @@ msgstr "RETOUR"
 #: scripts/hub.gd
 msgctxt "hub.menu.title"
 msgid "MENU"
+msgstr ""
+
+#. hub Esc menu button, max 90px, 1 line; opens the achievements page
+#. settings button (top right corner), max 90px, grows with the text, 1 line; opens the achievements page
+#. budget: max 90px, lines 1
+#: scripts/hub.gd scripts/ui/controls.gd
+msgctxt "hub.menu.achievements"
+msgid "ACHIEVEMENTS"
 msgstr ""
 
 #. hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
@@ -1156,10 +1466,59 @@ msgctxt "hub.prompt.rotate"
 msgid "ROTATE"
 msgstr "TOURNER"
 
+#. prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.boards"
+msgid "BOARDS"
+msgstr ""
+
+#. prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
+#. budget: max 110px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.station.weekly"
+msgid "WEEKLY MAZE"
+msgstr ""
+
 #: scripts/hub.gd
 msgctxt "hub.prompt.locked"
 msgid "LOCKED"
 msgstr "VERROUILLÉ"
+
+#. prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {d} = days left in the week (2..7)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.weekly_ends_d"
+msgid "#{n}  ENDS IN {d}D"
+msgstr ""
+
+#. prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {h} = hours until it ends (1..24)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.weekly_ends_h"
+msgid "#{n}  ENDS IN {h}H"
+msgstr ""
+
+#. prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
+#. budget: max 80px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_saved"
+msgid "STREAK SAVED"
+msgstr ""
+
+#. prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {m} = minutes until the streak ends (1..59)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_streak_m"
+msgid "STREAK {n}  ENDS IN {m}M"
+msgstr ""
+
+#. prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {h} = hours until the streak ends (1..24)
+#. budget: max 130px, lines 1
+#: scripts/hub.gd
+msgctxt "hub.prompt.daily_streak"
+msgid "STREAK {n}  ENDS IN {h}H"
+msgstr ""
 
 #: scripts/hub.gd
 msgctxt "hub.prompt.best_floor"
@@ -1188,11 +1547,11 @@ msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "FINIS LES {count} NIVEAUX"
 
-#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-#. budget: max 192px, lines 1
+#. hub prompt during the first hub tour (a station that opens once the tour is done), max 110px, 1 line
+#. budget: max 110px, lines 1
 #: scripts/hub_tour.gd
-msgctxt "hub.tour.end"
-msgid "THE WAY UP, WALK IN"
+msgctxt "hub.tour.after"
+msgid "AFTER THE TOUR"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
@@ -1200,6 +1559,13 @@ msgstr ""
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.turn_back"
 msgid "HOLD {left} TO TURN IT BACK"
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; the two spaces are spacing (owner, 2026-11-01: no stop between the two parts)
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.end"
+msgid "THE WAY UP  WALK IN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
@@ -1347,6 +1713,27 @@ msgctxt "hud.pod.attempt"
 msgid "ATTEMPT {n}"
 msgstr "ESSAI {n}"
 
+#. HUD attempt pod, line 1 on a maze with lurkers (creatures in the fog), max 128px; {n} = which try at this maze
+#. budget: max 128px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.attempt_lurkers"
+msgid "ATTEMPT {n} LURKERS"
+msgstr ""
+
+#. HUD attempt pod, line 1 on a NORMAL maze with lurkers (they pay a premium), max 128px; {n} = which try at this maze, {x} = the pay factor, e.g. 1.25
+#. budget: max 128px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.attempt_lurkers_x"
+msgid "ATTEMPT {n} LURKERS X{x}"
+msgstr ""
+
+#. HUD attempt pod, line 1 on the weekly maze, max 80px; {time} = the maze's par as M:SS, e.g. 1:20
+#. budget: max 80px, lines 1
+#: scripts/hud.gd
+msgctxt "hud.pod.par"
+msgid "PAR {time}"
+msgstr ""
+
 #. HUD pot pod, line 1, max 80px, grows to 128px (the pod widens under the timer row); {count} = tickets in the pot, {gain} = just added
 #. budget: max 80px, lines 1
 #: scripts/hud.gd
@@ -1385,12 +1772,33 @@ msgctxt "hud.pod.paid_run"
 msgid "PAID RUN {slot}/{total}"
 msgstr "PAYÉE {slot}/{total}"
 
+#. max 296px
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.relaxed"
+msgid "RELAXED: NO MEDALS, RECORDS OR TICKETS"
+msgstr ""
+
+#. result reward line, max 296px; asked on a dry-up, answered by the YES / NO buttons below
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.calm_offer"
+msgid "RELAXED? MORE SLIME, NO MEDALS OR TICKETS"
+msgstr ""
+
 #. result reward line, max 296px; wraps onto 2 lines past that (broken at a space), lines 2; {percent} = extra slime, e.g. 25
 #. budget: max 296px, lines 2
 #: scripts/hud.gd
 msgctxt "result.assist_offer"
 msgid "ASSIST: +{percent}% SLIME, NO MEDALS/TICKETS"
 msgstr "AIDE : +{percent}% DE SLIME, SANS MÉDAILLES/TICKETS"
+
+#. result reward line, max 296px; the UPGRADES button buys it; {percent} = extra slime, e.g. 12; {cost} = coins
+#. budget: max 296px
+#: scripts/hud.gd
+msgctxt "result.upgrade_hint"
+msgid "+{percent}% SLIME FOR {cost} COINS"
+msgstr ""
 
 #. max 296px
 #. budget: max 296px
@@ -1588,6 +1996,76 @@ msgctxt "story.level_10"
 msgid "HOT. THE WAY OUT IS THE CRATER, RUN"
 msgstr "IL FAIT CHAUD. LA SORTIE, C’EST LE CRATÈRE. COURS."
 
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_newer"
+msgid "NEWER SAVE KEPT: PROGRESS NOT SAVED"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_damaged"
+msgid "SAVE WAS DAMAGED: A BACKUP WAS KEPT"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.demo_unsaved"
+msgid "DEMO: PROGRESS NOT SAVED"
+msgstr ""
+
+#. toast, max 296px, 2 lines
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "notice.save_failed"
+msgid "SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS"
+msgstr ""
+
+#. unlock toast with a reward, max 296px, 2 lines; {goal} = the goal text, {name} = the cosmetic won (e.g. NIGHT PAPER)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.toast_reward"
+msgid "ACHIEVEMENT: {goal}. REWARD: {name}"
+msgstr ""
+
+#. unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.toast"
+msgid "ACHIEVEMENT: {goal}"
+msgstr ""
+
+#. toast, max 296px, 2 lines; {name} = the cosmetic a goal already met just granted (e.g. NIGHT PAPER)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.reward_late"
+msgid "NEW REWARD: {name}"
+msgstr ""
+
+#. toast, max 296px, 2 lines; {medals} = the medal count reached, {n} = tickets (one wheel spin)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.medal_reward"
+msgid "{medals} MEDALS: +{n} TICKETS"
+msgstr ""
+
+#. toast, max 296px, 2 lines; {medals} = the medal count reached, {name} = the cosmetic won (e.g. BLUEPRINT PAPER)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.medal_cosmetic"
+msgid "{medals} MEDALS: {name}"
+msgstr ""
+
+#. toast, max 296px, 2 lines; {n} = how many goal and medal rewards were granted at once (2 or more)
+#. budget: max 296px, lines 2
+#: scripts/progress.gd
+msgctxt "ach.reward_late_many"
+msgid "{n} NEW REWARDS FOR YOUR GOALS"
+msgstr ""
+
 #: scripts/skins.gd
 msgctxt "skin.custom"
 msgid "CHAMELEON"
@@ -1753,6 +2231,133 @@ msgctxt "tutorial.jump"
 msgid "JUMP"
 msgstr "SAUT"
 
+#. ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (every medal milestone reward is won)
+#. budget: max 296px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.header_done"
+msgid "MEDALS {n} / ALL MEDAL REWARDS WON"
+msgstr ""
+
+#. ACHIEVEMENTS page header, max 296px, 1 line; {n} = medals earned (any tier, normal + hard), {name} = the next milestone's cosmetic, {next} = its medal count
+#. budget: max 296px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.header_next"
+msgid "MEDALS {n} / NEXT: {name} AT {next}"
+msgstr ""
+
+#. page title, max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.title"
+msgid "ACHIEVEMENTS"
+msgstr ""
+
+#. button, max 70px, 1 line; shows the next page of achievements (wraps to the first)
+#. budget: max 70px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.next"
+msgid "NEXT PAGE"
+msgstr ""
+
+#. ACHIEVEMENTS page, the reward road's label (randomizer wins), max 40px, 1 line
+#. budget: max 40px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.road"
+msgid "WINS"
+msgstr ""
+
+#. ACHIEVEMENTS page, a goal's reward line, max 200px, 1 line; {name} = the cosmetic it grants (e.g. NIGHT PAPER)
+#. budget: max 200px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.reward"
+msgid "REWARD: {name}"
+msgstr ""
+
+#. ACHIEVEMENTS page footer, max 150px, 1 line; {page} / {pages} = this page and the page count, {n} / {total} = unlocked and all goals
+#. budget: max 150px, lines 1
+#: scripts/ui/achievements_screen.gd
+msgctxt "ach.count"
+msgid "{n}/{total}  PAGE {page}/{pages}"
+msgstr ""
+
+#. boards row, month-day of a time you set; {m} = month 1-12, {d} = day 1-31; 8 chars at most
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.date"
+msgid "{m}-{d}"
+msgstr ""
+
+#. boards button, max 70px, 1 line; SHOW GHOST ON = the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden (your runs are still recorded)
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.ghost_on"
+msgid "SHOW GHOST"
+msgstr ""
+
+#. boards button, max 70px, 1 line; SHOW GHOST ON = the ghost of your best run (a translucent slime racing you) is shown
+#. boards button, max 70px, 1 line; the ghost is hidden (your runs are still recorded)
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.ghost_off"
+msgid "NO GHOST"
+msgstr ""
+
+#. page title, max 296px, 16 px font
+#. budget: max 296px
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.title"
+msgid "BOARDS"
+msgstr ""
+
+#. boards column header, max 140px, 1 line; {n} = today's daily number
+#. budget: max 140px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.daily"
+msgid "DAILY #{n}"
+msgstr ""
+
+#. boards column header, max 148px, 1 line; {n} = this week's weekly number, {d} = days left in the week incl. today (1..7)
+#. budget: max 148px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.weekly_ends"
+msgid "WEEKLY #{n}  ENDS IN {d}D"
+msgstr ""
+
+#. boards page when no time is kept yet, max 296px, 1 line
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.empty"
+msgid "YOUR BEST TIMES LIVE HERE. PLAY DAILY TO START"
+msgstr ""
+
+#. boards page note under the hint, max 296px, 1 line; the daily and the weekly end at 00:00 UTC (all players share the clock)
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.resets"
+msgid "RESETS 00:00 UTC"
+msgstr ""
+
+#. boards footer, max 296px, 1 line; {time} = your best daily time ever (M:SS.cc, or a dash)
+#. budget: max 296px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.best"
+msgid "BEST DAILY {time}"
+msgstr ""
+
+#. boards button, max 70px, 1 line; starts today's daily maze
+#. budget: max 70px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.play_daily"
+msgid "PLAY DAILY"
+msgstr ""
+
+#. boards button, max 80px, 1 line; starts this week's weekly maze
+#. budget: max 80px, lines 1
+#: scripts/ui/boards_screen.gd
+msgctxt "boards.play_weekly"
+msgid "PLAY WEEKLY"
+msgstr ""
+
 #. status line in the SAVE CODE panel, max 260px; the panel grows to 296px, then wraps onto 2 lines, lines 2
 #. budget: max 260px, lines 2
 #: scripts/ui/controls.gd
@@ -1793,8 +2398,14 @@ msgctxt "settings.more"
 msgid "MORE"
 msgstr "PLUS"
 
-#. column buttons, max 112px (button 120 wide, 4 px margins), 1 line
-#. budget: max 112px, lines 1
+#. hint under the RELAXED button, max 296px (about 49 characters), 1 line (centred under both columns)
+#. hint under the LURKERS button, max 296px, 1 line (centred under both columns)
+#. budget: max 296px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.hint"
+msgid "RELAXED: MORE SLIME, NO MEDALS OR TICKETS"
+msgstr ""
+
 #: scripts/ui/controls.gd
 msgctxt "settings.controls"
 msgid "CONTROLS"
@@ -1817,6 +2428,25 @@ msgstr "TOUT EFFACER"
 #: scripts/ui/controls.gd
 msgctxt "settings.training"
 msgid "TRAINING"
+msgstr ""
+
+#. bottom-row button, grows with the text (max 120px), 1 line; the two states are whole strings
+#. budget: max 120px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.level_music.on"
+msgid "LEVEL MUSIC: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.level_music.off"
+msgid "LEVEL MUSIC: OFF"
+msgstr ""
+
+#. settings button (bottom row, right of BACK), max 56px, grows with the text, 1 line; opens the boards page
+#. budget: max 56px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.boards"
+msgid "BOARDS"
 msgstr ""
 
 #. panel title, max 270px, 16 px font; grows to 296px, steps down to 8 px past that
@@ -1960,6 +2590,13 @@ msgctxt "settings.fullscreen.off"
 msgid "FULLSCREEN: OFF"
 msgstr "PLEIN ÉCRAN : NON"
 
+#. hint under the LURKERS button, max 296px, 1 line (centred under both columns)
+#. budget: max 296px, lines 1
+#: scripts/ui/controls.gd
+msgctxt "settings.lurkers.hint"
+msgid "LURKERS IN RANDOM MAZES (HARD: ALWAYS)"
+msgstr ""
+
 #: scripts/ui/controls.gd
 msgctxt "settings.motion.less"
 msgid "MOTION: LESS"
@@ -1969,6 +2606,26 @@ msgstr "EFFETS : RÉDUITS"
 msgctxt "settings.motion.full"
 msgid "MOTION: FULL"
 msgstr "EFFETS : COMPLETS"
+
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.on"
+msgid "RELAXED: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.relaxed.off"
+msgid "RELAXED: OFF"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.lurkers.on"
+msgid "LURKERS: ON"
+msgstr ""
+
+#: scripts/ui/controls.gd
+msgctxt "settings.lurkers.off"
+msgid "LURKERS: OFF"
+msgstr ""
 
 #: scripts/ui/controls.gd
 msgctxt "settings.vibration.on"
@@ -2321,6 +2978,31 @@ msgid_plural "{count} LEFT"
 msgstr[0] ""
 msgstr[1] ""
 
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.count"
+msgid "WON PRIZES LEAVE THE WHEEL"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.common"
+msgid "GEMS ARE COMMON PRIZES"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.rare"
+msgid "STARS ARE RARE PRIZES"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.spin"
+msgid "YOUR FIRST SPIN IS FREE"
+msgstr ""
+
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.coach.pointer"
+msgid "THE POINTER PICKS YOUR PRIZE"
+msgstr ""
+
 #. max 44px, grows to 56px (tab_widths: the three alike), 1 line; hat dyes (colors)
 #. budget: max 44px, lines 1
 #: scripts/ui/hat_wheel.gd
@@ -2668,6 +3350,13 @@ msgctxt "pause.skip_training"
 msgid "SKIP TRAINING"
 msgstr ""
 
+#. pause menu button, max 92px, 1 line (the first training run: skips the training maze and the hub tour)
+#. budget: max 92px, lines 1
+#: scripts/ui/pause_menu.gd
+msgctxt "pause.skip_tutorial"
+msgid "SKIP TUTORIAL"
+msgstr ""
+
 #. max 300px, 1 line, under the panel
 #. budget: max 300px, lines 1
 #: scripts/ui/pause_menu.gd
@@ -2688,6 +3377,13 @@ msgstr "QUITTER ENCAISSE LA MOITIÉ DU POT"
 msgctxt "pause.seed"
 msgid "SEED {code}"
 msgstr "GRAINE {code}"
+
+#. pause menu button after one press of SKIP TUTORIAL, max 92px, 1 line: press it again to skip
+#. budget: max 92px, lines 1
+#: scripts/ui/pause_menu.gd
+msgctxt "pause.skip_sure"
+msgid "SURE? AGAIN"
+msgstr ""
 
 #. random maze map view title, max 296px, 1 line
 #. budget: max 296px, lines 1
@@ -2760,11 +3456,6 @@ msgid "THE HUB TAKES THIS COLOR"
 msgstr ""
 
 #: scripts/ui/skins_screen.gd
-msgctxt "skins.rule_hub_locked"
-msgid "BEAT THE STORY TO COLOR THE HUB"
-msgstr ""
-
-#: scripts/ui/skins_screen.gd
 msgctxt "skins.rule_skins"
 msgid "NEW LEVELS EQUIP YOUR NEWEST SKIN"
 msgstr "LES NOUVEAUX NIVEAUX ÉQUIPENT TON DERNIER SKIN"
@@ -2799,6 +3490,20 @@ msgstr "SKINS"
 #: scripts/ui/skins_screen.gd
 msgctxt "skins.hat_color"
 msgid "COLOR"
+msgstr ""
+
+#. wardrobe dice toggle on the status line, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.random_look_on"
+msgid "RANDOM LOOK: ON"
+msgstr ""
+
+#. wardrobe dice toggle on the status line, max 300px, 1 line
+#. budget: max 300px, lines 1
+#: scripts/ui/skins_screen.gd
+msgctxt "skins.random_look_off"
+msgid "RANDOM LOOK: OFF"
 msgstr ""
 
 #. wardrobe HUB page tile (the hub follows the worn skin), max 32px, 1 line
@@ -2980,6 +3685,27 @@ msgstr "FUIS LA BRUME"
 msgctxt "title.tagline.2"
 msgid "BEFORE YOU DRY UP"
 msgstr "OU SÈCHE EN ESSAYANT"
+
+#. toast, max 150px, 1 line; {n} = how many achievements unlocked at once (2 or more)
+#. budget: max 150px, lines 1
+#: scripts/ui/transition.gd
+msgctxt "ach.toast_many"
+msgid "+{n} ACHIEVEMENTS"
+msgstr ""
+
+#. toast action line, max 150px, 1 line; touch screens (tap the toast)
+#. budget: max 150px, lines 1
+#: scripts/ui/transition.gd
+msgctxt "notice.wear_touch"
+msgid "TAP: WEAR IT"
+msgstr ""
+
+#. toast action line, max 150px, 1 line; {key} = the use key's name (e.g. F) or the pad button
+#. budget: max 150px, lines 1
+#: scripts/ui/transition.gd
+msgctxt "notice.wear_key"
+msgid "PRESS {key}: WEAR IT"
+msgstr ""
 
 #. max 40px (button 48 wide, 4 px margins), grows to 60px (both buttons alike, the panel with them), 1 line
 #. budget: max 40px, lines 1

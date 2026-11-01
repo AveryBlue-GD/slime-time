@@ -4,9 +4,10 @@ extends Control
 ## STORY button) and the finale (after level 10), each a run of short animated shots drawn in code
 ## at 320x180 behind letterbox bars. The story is wordless: no text is drawn anywhere on this
 ## screen (tests/test_story.gd checks it); beats are told by staging, light and pixel pictograms.
-## A shot moves on by itself after its time; any key, click or tap moves on early; Esc skips the
-## lot; on a touchscreen the fast-forward mark in the bottom bar is a pod (drawn, wordless) whose tap
-## skips the lot. Reduce Motion freezes each shot on a still (its `still` moment, particles and all) with no
+## The shots play as ONE continuous sequence (owner, 2026-11-01: no more shot-by-shot skipping): each moves on by
+## itself after its time, a key, click or tap no longer jumps to the next shot, and a thin progress line in the
+## bottom bar runs over the whole sequence (it replaced the per-shot pips). Esc / B / START skip the lot; on a
+## touchscreen the fast-forward mark in the bottom bar is a pod (drawn, wordless) whose tap skips the lot. Reduce Motion freezes each shot on a still (its `still` moment, particles and all) with no
 ## shake or zoom, and holds each still at least CALM_HOLD seconds.
 ##
 ## Drawing: StageArt (a Node2D moved and scaled as the camera: zooms, bounces, shakes) draws the
@@ -19,8 +20,6 @@ signal done
 const SCREEN := Vector2(320, 180)
 const BAR_TOP := 14.0
 const BAR_BOTTOM := 36.0
-## Input is ignored for this long after a shot starts, so a held key can't skip it.
-const GRACE := 0.25
 ## A Reduce Motion still stays up at least this long, to read it.
 const CALM_HOLD := 4.5
 const INK := Color8(9, 8, 16)
@@ -38,6 +37,9 @@ var calm := false
 var leave_on_finish := true
 ## A touchscreen: the fast-forward pod is shown from the start and a tap on it skips the lot.
 var touch_skip := false
+## A press that doesn't skip lights the fast-forward mark up for this long (s), counting down.
+const HINT_TIME := 1.5
+var hint_time := 0.0
 
 var art: StageArt
 var cover: Cover
@@ -98,6 +100,18 @@ func shot_start(i: int) -> float:
 	return at
 
 
+## How far through the whole sequence it is (0..1): the progress line in the bottom bar.
+func progress_ratio() -> float:
+	var total := 0.0
+	var done_t := 0.0
+	for k in cards.size():
+		var length: float = maxf(cards[k].time, CALM_HOLD) if calm else float(cards[k].time)
+		if k < index:
+			done_t += length
+		total += length
+	return clampf((done_t + minf(_age, card_length())) / maxf(total, 0.001), 0.0, 1.0)
+
+
 ## How long the current shot stays up before moving on by itself.
 func card_length() -> float:
 	var card: Dictionary = cards[index]
@@ -139,6 +153,7 @@ func _process(delta: float) -> void:
 		return
 	var prev := _age
 	_age += delta
+	hint_time = maxf(hint_time - delta, 0.0)
 	if not calm:
 		_bars = minf(_bars + delta / 0.5, 1.0)
 		art.step(prev, _age, delta)
@@ -150,7 +165,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if finished:
 		return
-	if event.is_action_pressed("menu") or (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE):
+	if event.is_action_pressed("menu") or event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE):
 		get_viewport().set_input_as_handled()
 		finish()
 		return
@@ -162,9 +177,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		or (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]) \
 		or (event is InputEventScreenTouch and event.pressed) \
 		or (event is InputEventJoypadButton and event.pressed)
-	if pressed and _age >= GRACE:
+	if pressed:
+		# One continuous sequence: any other press only brings the fast-forward mark up (bright for a moment),
+		# so the player sees how to skip; it never cuts to the next shot.
 		get_viewport().set_input_as_handled()
-		advance()
+		hint_time = HINT_TIME
 
 
 ## A Node2D that draws with someone else's function (the stage's foreground).
@@ -184,6 +201,8 @@ func _skip_tapped(event: InputEvent) -> bool:
 ## Screen-space overlay: letterbox bars, the fade at each shot's start and the finale's gold, the
 ## depth gauge (fall, splat) and the shot pips with a fast-forward mark (skip) in the bars.
 class Cover extends Control:
+	## The progress line's width (px).
+	const PROGRESS_W := 60.0
 	var screen: Control
 
 	func _ready() -> void:
@@ -204,28 +223,27 @@ class Cover extends Control:
 			draw_rect(Rect2(0, top, SCREEN.x, 1), Color8(30, 26, 44))
 			draw_rect(Rect2(0, SCREEN.y - bottom - 1, SCREEN.x, 1), Color8(30, 26, 44))
 		var alpha := clampf((screen._age - 0.8) / 0.5, 0.0, 1.0) if screen.index == 0 and not screen.calm else 1.0
-		_draw_pips(alpha)
-		_draw_skip(1.0 if screen.touch_skip else alpha)
+		_draw_progress(alpha)
+		_draw_skip(1.0 if screen.touch_skip or screen.hint_time > 0.0 else alpha)
 
-	## One pip per shot (past ones dim goo, the current one bright).
-	func _draw_pips(alpha: float) -> void:
+	## One thin line for the whole sequence (it fills in goo as the story plays; whole pixels).
+	func _draw_progress(alpha: float) -> void:
 		if alpha <= 0.0:
 			return
 		var goo: Dictionary = screen.art.goo
-		var n: int = screen.cards.size()
-		var x0 := roundf(160.0 - (n * 6.0 - 2.0) * 0.5)
-		var y := SCREEN.y - 20.0
-		for i in n:
-			var c: Color = goo.light if i == screen.index else (goo.dark if i < screen.index else Color8(44, 40, 62))
-			# The current pip grows a row above and below (4x5), so it stays centered on the row.
-			var current: bool = i == screen.index
-			draw_rect(Rect2(x0 + i * 6.0, y - (1.0 if current else 0.0), 4, 5 if current else 3), Color(c, alpha))
+		var w := PROGRESS_W
+		var x0 := roundf(160.0 - w * 0.5)
+		var y := SCREEN.y - 19.0
+		draw_rect(Rect2(x0, y, w, 1), Color(Color8(44, 40, 62), alpha))
+		var filled := floorf(w * screen.progress_ratio())
+		if filled > 0.0:
+			draw_rect(Rect2(x0, y, filled, 1), Color(goo.light, alpha))
 
 	## The fast-forward mark; on touch inside a pod (a dark fill with a 1 px goo edge) and brighter, as a button.
 	func _draw_skip(alpha: float) -> void:
 		if alpha <= 0.0:
 			return
-		var ff := Color(Color8(84, 78, 110), alpha * 0.9)
+		var ff := Color(UIKit.TEXT_DIM, alpha * 0.9)
 		if screen.touch_skip:
 			draw_rect(SKIP_POD, Color(Color8(20, 18, 32), alpha))
 			draw_rect(SKIP_POD.grow(-0.5), Color(screen.art.goo.dark, alpha), false, 1.0)
@@ -761,7 +779,7 @@ class StageArt extends Node2D:
 
 	func _draw_pops(canvas: CanvasItem) -> void:
 		var heroes := _heroes()
-		var sc := 2.0 if zoom < 1.5 else 1.0  # same size on screen at 1x and 2x
+		var sc := 1.0  # SPR-04: bubble icons at 1x like every other sprite
 		for pop in pops:
 			var age: float = t - pop.at
 			if age < 0.0 or age > pop.life or (pop.icon == "huh" and age >= pop.life - 0.001):
@@ -1016,10 +1034,14 @@ class StageArt extends Node2D:
 		_draw_parts(canvas, false)
 		_draw_pops(canvas)
 
-	## A banded halo (hard rings, like the game's lights).
+	## A dithered halo (3 steps broken up by the game's world-locked Bayer matrix, like the lights in
+	## the levels: Fx.halo_texture). `alpha` is the strength of one step, as the old stacked rings.
 	func _halo(canvas: CanvasItem, c: Vector2, r: float, color: Color, alpha := 0.07) -> void:
-		for i in 3:
-			canvas.draw_circle(c.round(), roundf(r * (1.0 - i * 0.3)), Color(color, alpha))
+		var centre := c.round()
+		var radius := maxi(int(roundf(r)), 1)
+		var top_left := centre - Vector2(radius, radius)
+		var texture := Fx.halo_texture(radius, 3, posmod(int(top_left.x), 4), posmod(int(top_left.y), 4))
+		canvas.draw_texture(texture, top_left, Color(color, minf(alpha * 3.0, 1.0)))
 
 	## How lit a spot is, in ramp steps 0-5; `dither` (from _bayer) breaks the edges between steps
 	## into a checker, like hand-dithered pixel art.

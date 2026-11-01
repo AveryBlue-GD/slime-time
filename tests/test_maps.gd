@@ -33,6 +33,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.one_assist_force = 0  # (the old +10% reserve offer is what this suite uses for an assisted run)
 	await process_frame
 	progress = root.get_node("Progress")
 	progress.day_override = 40000  # pinned UTC day: the daily pay caps cannot roll over mid-run

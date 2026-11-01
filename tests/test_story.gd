@@ -1,6 +1,6 @@
 extends "res://tests/suite_base.gd"
 
-## The story: the intro shows only on a fresh save (any key advances, Esc skips, seen is saved and
+## The story: the intro shows only on a fresh save (one continuous sequence: a key only lights the skip mark, Esc skips, seen is saved and
 ## reset by RESET PROGRESS), old saves count as seen, every level banner line fits the 320 px
 ## screen in the pixel font, the story itself is wordless (no text drawn by any shot, no labels on
 ## the screen), the animated shots play through by themselves in time (drawing every shot), Reduce
@@ -68,16 +68,17 @@ func _initialize() -> void:
 	screen._unhandled_input(wheel)
 	_check(screen.index == 0, "mouse wheel / trackpad scrolling doesn't advance the story")
 	screen._unhandled_input(_key(KEY_SPACE))
-	_check(screen.index == 1, "any key goes to the next card")
-	screen._unhandled_input(_key(KEY_SPACE))  # too soon after the last one: ignored
-	_check(screen.index == 1, "...but not within the grace period")
+	_check(screen.index == 0 and not screen.finished and screen.hint_time > 0.0, "one continuous sequence: a key doesn't cut to the next shot, it lights the skip mark")
+	var ratio_before: float = screen.progress_ratio()
+	await _frames(20)
+	_check(screen.progress_ratio() > ratio_before and screen.progress_ratio() < 0.2, "...and the progress line runs over the whole sequence (%.3f)" % screen.progress_ratio())
 	await _frames(20)
 	screen._unhandled_input(_key(KEY_ESCAPE))
 	_check(screen.finished and progress.has_seen_story(progress.STORY_INTRO), "Esc skips the whole intro and marks it seen")
 	screen.free()
 	_check(not Story.intro_due(progress), "...so it isn't due again")
 	progress.story_seen = 0
-	# Touch: the fast-forward pod skips the whole intro in one tap (a tap elsewhere only moves on one shot).
+	# Touch: the fast-forward pod skips the whole intro in one tap (a tap elsewhere does nothing but light it).
 	Platform.override = "ios"
 	screen = await _open("intro", false)
 	await _frames(20)
@@ -85,7 +86,7 @@ func _initialize() -> void:
 	tap.pressed = true
 	tap.position = Vector2(160, 90)
 	screen._unhandled_input(tap)
-	_check(screen.touch_skip and screen.index == 1 and not screen.finished, "touch: a tap on the picture moves on one shot")
+	_check(screen.touch_skip and screen.index == 0 and not screen.finished, "touch: a tap on the picture doesn't cut to the next shot")
 	await _frames(20)
 	tap.position = screen.SKIP_POD.get_center()
 	screen._unhandled_input(tap)
@@ -102,7 +103,9 @@ func _initialize() -> void:
 	for i in screen.cards.size():
 		await _frames(20)
 		screen._unhandled_input(_key(KEY_A))
-	_check(screen.finished and progress.has_seen_story(progress.STORY_INTRO), "clicking through every card finishes it")
+	_check(not screen.finished and screen.index == 0, "clicking a lot never skips shots (one continuous sequence)")
+	screen._unhandled_input(_key(KEY_ESCAPE))
+	_check(screen.finished and progress.has_seen_story(progress.STORY_INTRO), "...skipping it whole marks it seen")
 	screen.free()
 	progress.save_progress()
 	progress.story_seen = 0

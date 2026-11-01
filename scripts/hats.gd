@@ -186,6 +186,15 @@ static func material_for(id: String, dye := "") -> Material:
 	return flow_material(i >= 0 and DYES[i].get("gradient", false) and dye in dyes_for(id) and not get_hat(id).get("flows", false))
 
 
+## A dye swatch's material (the SHOP's dye tiles, the wardrobe's color picker): PRISM turns as one, RAINBOW runs
+## the jelly skin's gradient across the swatch (owner, 2026-11-01: the two must not look alike), none for the rest.
+static func swatch_material(dye: String) -> Material:
+	if not dye_flows(dye):
+		return null
+	var i := dye_index(dye)
+	return flow_material(i >= 0 and DYES[i].get("gradient", false))
+
+
 ## The flowing-rainbow shader (assets/shaders/rainbow_hat.gdshader) as a new material; `gradient`:
 ## a rainbow running across the pixels and flowing (like the rainbow jelly skin) instead of the
 ## whole thing turning one color at a time (the RAINBOW dye; PRISM turns as one).

@@ -178,7 +178,7 @@ func _check_preview() -> void:
 	_check(is_equal_approx(again._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(again.slime.max_speed, top_speed)
 		and is_equal_approx(again.light_reach, Upgrades.light_reach(3)), "...still with the maxed upgrades")
 	again._dry_up()
-	await _wait_seconds(again.DRY_CHOICE_DELAY + 0.3)
+	await _wait_seconds(again.DRY_HOLD + again.DRY_CHOICE_DELAY + 0.3)
 	_check(again.hud.choice_buttons.size() == 1 and again.hud.choice_buttons[0].text == "CONTINUE",
 		"a dry-up offers CONTINUE only (no NEW MAZE: %s)" % again.hud.choice_buttons[0].text)
 	again.free()
@@ -261,6 +261,10 @@ func _check_try_button() -> void:
 	await physics_frame
 	game._on_goal_body_entered(game.slime)
 	await _wait_seconds(game.CHOICE_DELAY + 0.3)
+	for i in 300:  # (a played level stages its result panel first, ANI-02: the row comes after it)
+		if not game.hud.choice_buttons.is_empty():
+			break
+		await physics_frame
 	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
 	_check(game.won and texts == ["TRY THE FULL GAME", "CONTINUE"] and game.hud.choice_buttons[0].has_focus(),
 		"level %d's chalice: TRY THE FULL GAME (focused) and CONTINUE (%s)" % [Demo.LEVELS, texts])

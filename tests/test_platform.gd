@@ -130,7 +130,20 @@ func _settings_fullscreen() -> void:
 			_check(not progress.vibration and vib.text == "VIBRATION: OFF", "%s: ...a press turns it off" % kind)
 			vib.pressed.emit()
 			_check(progress.vibration, "%s: ...and on again" % kind)
+			_check(screen.controls_button == null and screen.save_code_button.position == screen._cell(1, 1),
+				"%s: no CONTROLS (no keys to rebind on a phone), SAVE CODE moves up into its cell" % kind)
 		screen.free()
+	# An iPad has no vibration motor (owner, 2026-11-01): no VIBRATION, and the app has no window to make full screen.
+	Platform.reset_overrides()
+	Platform.override = "ios"
+	Platform.ipad_override = 1
+	var pad_screen: Control = SETTINGS.instantiate()
+	root.add_child(pad_screen)
+	await process_frame
+	_check(not Platform.has_vibration() and pad_screen.vibration_button == null and pad_screen.fullscreen_button == null
+		and pad_screen.controls_button == null and pad_screen.save_code_button.position == pad_screen._cell(1, 0),
+		"iPad: no VIBRATION, FULLSCREEN or CONTROLS; SAVE CODE heads the column")
+	pad_screen.free()
 	Platform.reset_overrides()
 
 
@@ -161,7 +174,10 @@ func _fullscreen_memory() -> void:
 ## The Steam seam: saved milestones are reported on PlatformEvents.progress_event (nothing listens yet).
 func _progress_events() -> void:
 	var got: Array = []
-	var take := func(id: String, value: int) -> void: got.append([id, value])
+	# (IMP-07's "ach_*" and "medal_milestone" events are checked in test_achievements)
+	var take := func(id: String, value: int) -> void:
+		if not id.begins_with("ach_") and id != "medal_milestone":
+			got.append([id, value])
 	events.progress_event.connect(take)
 	progress.saving_enabled = true
 	progress.dev_tools = false

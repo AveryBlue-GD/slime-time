@@ -24,6 +24,7 @@ var progress: Node
 
 
 func _initialize() -> void:
+	Economy.r_always_force = 0  # (these cover the RESTART / UPGRADES prompt; test_chill_lane covers R always restarting)
 	Economy.random_tickets_force = 0  # (the attempt pod's chalice number alone: no ticket pickups in these mazes)
 	Economy.descent_force = 1  # Descent is switched off in the game (D11); this suite tests it
 	Economy.random_cap_force = 1  # the daily ticket cap is off in the game; this suite tests it
@@ -177,10 +178,10 @@ func _initialize() -> void:
 	_set_mode(true)
 	var game := await _start_new_maze()
 	game.set_dev_bright(true)
-	_check(_pod(game) == _text(1, 0), "dev FULL BRIGHT: the pod shows 0 (%s)" % _pod(game))
+	_check(_pod(game) == _text(1, 10), "dev FULL BRIGHT: dev mode keeps the pod at 10 (%s)" % _pod(game))
 	game = await _restart(game, "pause_keys")
 	var tw := await _win(game)
-	_check(tw.shown == _text(2, 0) and tw.paid == 0, "...still 0 on the restarted run (toggle kept), and a win pays 0 (%s)" % tw.shown)
+	_check(tw.shown == _text(2, 8) and tw.paid == 8, "...still counting on the restarted run (toggle kept), and a win pays the 8 shown (%s)" % tw.shown)
 	progress.dev_bright = false
 	await _leave(game)
 	_reset_day()

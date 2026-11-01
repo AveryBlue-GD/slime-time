@@ -39,7 +39,7 @@ func _initialize() -> void:
 	await _focus()
 	await _pick_and_back()
 	language.disable()
-	Economy.languages_force = -1
+	Economy.languages_force = 0
 	Economy.forced_locale = ""
 	_check(not language.active and TranslationServer.get_loaded_locales().is_empty(), "the suite leaves nothing loaded")
 	_result()
@@ -73,7 +73,11 @@ func _button_layout(node: Node) -> Array[String]:
 
 
 func _gate_off() -> void:
-	_check(not Economy.languages_on(), "the languages gate is off by default")
+	# The gate ships ON (owner, 2026-11-01); these checks run with it forced off, as a test flag would.
+	Economy.languages_force = 0
+	language.disable()
+	TranslationServer.set_locale("en")
+	_check(not Economy.languages_on(), "the languages gate forced off")
 	var settings: Control = await _open(SETTINGS)
 	_check(settings.language_button == null, "gate off: SETTINGS has no LANGUAGE button")
 	var with_code := settings.find_children("*", "Button", true, false).filter(func(b: Node) -> bool: return b.has_meta("code"))
@@ -95,7 +99,7 @@ func _gate_off() -> void:
 	_check(on_layout == layout, "gate on (English): every other SETTINGS button keeps its text and place")
 	_close(settings)
 	language.disable()
-	Economy.languages_force = -1
+	Economy.languages_force = 0
 	_check(progress.language == "", "nothing picked yet: no saved language")
 
 

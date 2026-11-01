@@ -6,7 +6,7 @@ extends "res://tests/suite_base.gd"
 ## clear of the wall (a second one splats), a glide-only autopilot run on the low first meter picks up
 ## the coin and dries up after it, the dry-up row is RESTART only, RESTART is attempt 2 with a full meter
 ## and the coin kept, the chalice row is HUB only, the beats come once each in order, the R prompt has no
-## UPGRADES, SKIP TRAINING ends it, and nothing is saved (coins, records, medals, maps, dry-ups, tickets,
+## UPGRADES, SKIP TRAINING ends it on a SETTINGS replay (the first run's SKIP TUTORIAL asks twice, then skips the tour too), and nothing is saved (coins, records, medals, maps, dry-ups, tickets,
 ## skin; a replay writes no bit). Gate off: a story level plays exactly as before (no training branch).
 ## Prints the autopilot's beat timings (a lower bound for a player: no reading, no hesitation).
 ## Uses a throwaway save; the real save's md5 is checked unchanged at the end.
@@ -375,28 +375,52 @@ func _coin_line_source() -> void:
 	game.slime.position = game.goal.position
 	await _until(func() -> bool: return _shown_buttons(game).size() > 0, 240)
 	_check(game.won and Training.coin_taken, "the coin, then the chalice")
-	game.pause_menu.open()
-	game.pause_menu.buttons[3].pressed.emit()
+	_shown_buttons(game)[0].pressed.emit()
 	await _until_scene(UIKit.HUB_SCENE)
-	_check(progress.training_coin and progress.training_skipped, "...then SKIP TRAINING from the win panel: training_coin true")
+	_check(progress.training_coin and not progress.training_skipped, "...then HUB from the win panel: training_coin true")
 	await _clear_scene()
 
 
-# --- SKIP TRAINING
+# --- SKIP: the first run can't be skipped by accident (owner, 2026-10-27) but can on purpose (owner, 2026-11-01):
+# SKIP TUTORIAL asks once more, then skips the training and the hub tour; the SETTINGS replay keeps SKIP TRAINING
 func _skip() -> void:
 	progress.reset_progress()
 	progress.prepare_training(false)
 	var game := await _start_game()
 	await _action("menu")
 	await process_frame
-	_check(game.pause_menu.visible and game.pause_menu.buttons[3].text == "SKIP TRAINING", "the pause menu offers SKIP TRAINING")
+	_check(game.pause_menu.visible and game.pause_menu.buttons[3].visible and game.pause_menu.buttons[3].text == "SKIP TUTORIAL",
+		"first run: the pause menu offers SKIP TUTORIAL")
 	_check(game.pause_menu.buttons[0].has_focus(), "...RESUME keeps the focus")
+	game.pause_menu._quit()
+	await _physics_frames(10)
+	_check(current_scene == game and progress.mode == progress.MODE_TRAINING and not progress.training_skipped
+		and not progress.has_seen_tutorial(progress.TUTORIAL_TRAINING) and game.pause_menu.buttons[3].text == "SURE? AGAIN",
+		"...one press only asks again (SURE? AGAIN): still in the maze, nothing saved")
+	game.pause_menu.resume()
+	await _physics_frames(2)
+	await _action("menu")
+	await process_frame
+	_check(game.pause_menu.buttons[3].text == "SKIP TUTORIAL", "...reopening the menu disarms it")
+	game.pause_menu._quit()
+	game.pause_menu._quit()
+	var skipped_hub: Node = await _until_scene(UIKit.HUB_SCENE)
+	_check(skipped_hub != null and progress.has_seen_tutorial(progress.TUTORIAL_TRAINING) and progress.has_seen_tutorial(progress.TUTORIAL_HUB)
+		and not progress.hub_tour_due(), "...the second press skips the training and the hub tour (both saved as seen)")
+	await _clear_scene()
+	progress.reset_progress()
+	progress.prepare_training(true)
+	game = await _start_game()
+	await _action("menu")
+	await process_frame
+	_check(game.pause_menu.visible and game.pause_menu.buttons[3].visible and game.pause_menu.buttons[3].text == "SKIP TRAINING",
+		"replay: the pause menu offers SKIP TRAINING")
 	game.pause_menu.buttons[3].pressed.emit()
 	var hub: Node = await _until_scene(UIKit.HUB_SCENE)
-	_check(hub != null and progress.training_skipped and progress.has_seen_tutorial(progress.TUTORIAL_TRAINING) and progress.mode == progress.MODE_STORY,
-		"SKIP TRAINING: the hub, training saved as skipped")
+	_check(hub != null and progress.training_skipped and progress.mode == progress.MODE_STORY, "replay SKIP TRAINING: the hub")
 	_check(Training.attempt == 1 and not Training.coin_taken, "...the run's state is cleared")
 	await _clear_scene()
+	progress.tour_replay = false
 
 
 # --- The SETTINGS replay writes nothing

@@ -6,7 +6,11 @@ extends Node2D
 ## - archway: STORY (level select, with the hard mode switch)
 ## - map table: MAP TABLE (the trail maps of the story levels: scripts/ui/map_select.gd)
 ## - coin bag: a board of the coins found in each story level (no screen change)
-## - portal: RANDOMIZER (dimmed and locked until the story is beaten)
+## - portal: RANDOMIZER (dimmed and locked until the story is beaten); one press starts a random maze (with DESCENT
+##   on, a choice of the two). Beside it stands the small DAILY MAZE sign (not on the ring): a gold "!" until
+##   today's daily is won, then a check and "NEW IN 5H". Every station's name shows for NAMES_TIME seconds when
+##   you arrive, and a "!" marks news (an affordable upgrade or spin, a new achievement). On a touchscreen a tap on
+##   a station glides the slime there.
 ## - wardrobe: COSMETICS (pages SKINS / HATS / TRAILS / PAPERS)
 ## - cauldron: UPGRADES
 ## - prize wheel: PRIZE WHEEL: WHEEL | SHOP (HatWheel). Spin for a random hat or wheel trail you don't have yet (won
@@ -94,7 +98,7 @@ const PORTAL_PANEL := Rect2(70, 45, 180, 89)
 const RESUME_PANEL := Rect2(80, 57, 160, 66)
 ## Esc's menu over the hub (MENU, then BACK / SETTINGS / QUIT TO TITLE stacked): PANEL_PAD, the title,
 ## HUB_MENU_TITLE_GAP, three buttons GAP_S apart, PANEL_PAD; centred.
-const HUB_MENU_PANEL := Rect2(94, 53, 132, 74)
+const HUB_MENU_PANEL := Rect2(94, 45, 132, 90)  # (74 tall without the ACHIEVEMENTS button)
 ## Its buttons' width in English (the pause stack's; one width for all three, a longer text widens all of them).
 const HUB_MENU_BUTTON_W := 100
 ## The gap between the title's line box and the first button (4 px under the drips in English).
@@ -103,6 +107,24 @@ const HUB_MENU_TITLE_GAP := 6
 ## box and the buttons (4 px under the drips in English).
 const DIALOG_INSET := 16.0
 const DIALOG_GAP := 6.0
+## The station names fade in on arrival and are gone after this many seconds (the last NAMES_FADE of it fading).
+## A station name keeps this many px off every other prop's sprite (UI-14).
+const LABEL_PROP_GAP := 2.0
+const NAMES_TIME := 3.0
+const NAMES_FADE := 0.5
+## The DAILY MAZE sign stands this far (px along the ring) from the portal, toward the next station.
+const SIGN_GAP := 30.0
+## The sign is used from this close (a ring station's USE_GAP is 9): standing at the portal or the next station
+## never picks the sign instead.
+const SIGN_USE_GAP := 5.0
+const SIGN_SIZE := Vector2i(16, 26)
+## A tap within this many px of a station (its sprite box grown) glides the slime there.
+const TAP_GROW := 6.0
+## A station's name label: tapped anywhere on it or this close round it (px) counts as a tap on the station.
+const LABEL_TAP_GROW := 5.0
+## Room around the near station's sprite (and the prompt) that still counts as a tap on it (view px).
+const TAP_MARGIN := 8.0  # (owner, 2026-11-01: more grace round the prompt, was 4)
+const GLIDE_REACHED := 5.0
 enum View { FRONT, SIDE, BACK }
 ## A station within this many degrees of straight across the room shows its front, of straight
 ## ahead its back, else its side. Kept clear of every ring spot for 7-9 stations (spots 40-51 degrees
@@ -138,6 +160,26 @@ var _turn_dir := 1
 
 var slime: Slime
 var hat: Hat
+## Props that stand beside a station instead of on the ring (the DAILY MAZE sign, beside the portal): same
+## dictionaries as `stations`, plus `anchor` (the ring station it stands by). Empty while the daily is off.
+var extras: Array[Dictionary] = []
+## The station names (shown NAMES_TIME seconds on arrival) and the "!" badges: id -> Label.
+var name_layer: Control
+var name_labels := {}
+var badge_layer: Control
+var badges := {}  # id -> Label: the logical state (text "!" or the NEW IN line, visible = news); the "!" is drawn by badge_art
+var badge_art := {}  # id -> {node: TextureRect, on: seconds since the news showed, off: seconds since it went, phase: bob offset}
+var _hint_time := 0.0
+const BADGE_SIZE := Vector2i(7, 10)
+const BADGE_BOB_CYCLE := 1.6  # seconds: 3 steps at rest, 3 steps 1 px up (0,0,0,1,1,1)
+const BADGE_POP_STEP := 0.05  # pop-in: 3 integer steps (3, 1, 0 px low); then a quick fade out over BADGE_FADE
+const BADGE_FADE := 0.12
+const BADGE_STAGGER := 0.08  # seconds between badges popping in once the names are gone
+var _names_t := 0.0
+## A touch tap's glide to a station (Hub.glide_path): the waypoints left; empty = not gliding.
+var glide_path: Array[Vector2] = []
+var glide_target := ""
+var _glide_held: Array[String] = []
 ## Each: {id, name, sprite, body, size, frames, flat, view, flipped}; index = place in the ring.
 var stations: Array[Dictionary] = []
 ## How far the room has turned (radians); station i stands at -PI/2 + turn + i * step.
@@ -151,6 +193,10 @@ var rotor: Sprite2D
 var rotor_base: Sprite2D
 ## The station (or {id = "rotor"}) the slime is next to ({} = none).
 var near: Dictionary = {}
+## IMP3-04: what a press at the DAILY sign does, always what the prompt names: the daily while today's is not won; once it
+## is, the weekly while this week's is unplayed (`sign_weekly`); with both done the BOARDS page.
+var sign_weekly := false
+var sign_boards := false
 var world: Node2D
 var prompt: PanelContainer
 var prompt_name: Label
@@ -206,6 +252,7 @@ var hub_menu_panel: Panel
 var hub_menu_title: Label
 var menu_back: Button
 var menu_settings: Button
+var menu_achievements: Button  # (IMP-07, only while Economy.ACHIEVEMENTS)
 var menu_quit: Button
 ## Where the hub menu's panel is in the current language (HUB_MENU_PANEL in English).
 var hub_menu_rect := HUB_MENU_PANEL
@@ -230,9 +277,11 @@ const NOTICE_MIN_PAD := UIKit.GAP_M + 1
 func _ready() -> void:
 	Progress.end_demo_preview()  # (a safety net: the demo's preview maze never lasts past the game scene)
 	Progress.discard_random_map()  # (back in the hub: the random maze's map is gone)
+	Progress.relaxed_level = 0  # (a level's RELAXED YES lasts until you leave it)
 	var tour_due: bool = Progress.hub_tour_due()
 	if tour_due:
 		return_to = ""  # (the tour starts with the archway at the back)
+	Progress.warm_ghosts.call_deferred()  # (IMP4-01: the ghosts file is parsed here, not on a level's first frame)
 	_build_room()
 	_build_stations()
 	_spawn_slime()
@@ -319,9 +368,23 @@ func _build_stations() -> void:
 		_station("random").sprite.modulate = Color(0.45, 0.45, 0.5)
 	if not Demo.hat_wheel_open() or Progress.demo_wheel_block() == "closed":  # (left out: the web demo; or not open yet)
 		_station("wheel").sprite.modulate = Color(0.45, 0.45, 0.5)
+	_build_daily_sign()
 	var back := _station(return_to)
 	if not back.is_empty():
 		turn = -stations.find(back) * step  # that station back at the back of the room
+
+
+## The DAILY MAZE sign beside the portal (IMP2-06): only where the portal is open and the daily is offered.
+func _build_daily_sign() -> void:
+	if not Economy.daily_maze() or not Progress.is_randomizer_unlocked() or not Demo.randomizer_open():
+		return
+	var sprite := _make_sprite("daily_sign", SIGN_SIZE)
+	sprite.material = _skin_material()  # (its post and page are not goo: only the shades the skin shader finds change)
+	world.add_child(sprite)
+	var body := _add_body(Vector2.ZERO, SIGN_SIZE.x / 2.0 - 4.0, true)
+	# i18n: station name / prompt label, max 110px, 1 line; the daily maze (the same maze for everyone today)
+	extras.append({id = "daily", name = Loc.t("hub.station.daily", "DAILY MAZE"), sprite = sprite, body = body, size = SIGN_SIZE, frames = 2,
+		anims = [], frame = 0, seq = [], seq_t = 0.0, pool = null, flat = false, view = View.FRONT, flipped = false, anchor = "random"})
 
 
 func _add_station(id: String, title: String, art: String, size: Vector2i, frames: int, flat := false) -> void:
@@ -477,6 +540,7 @@ func _build_ui() -> void:
 	prompt_bang = UIKit.make_label("!", 8, UIKit.GOLD)
 	row.add_child(prompt_bang)
 	prompt.visible = false
+	_build_hints()
 	_build_coin_board(root)
 	_build_ticket_pod(root)
 	_build_quit_menu(root)
@@ -509,9 +573,315 @@ func _build_ui() -> void:
 	_touch_controls.home_icon = Platform.is_mobile_native()  # (D10: its button goes to the title)
 	_touch_controls.pause_tapped.connect(func() -> void:
 		_home_tap = _touch_controls.home_icon)  # (elsewhere its `menu` press opens the hub menu, like Esc)
+	_touch_controls.tap_claim = _claims_touch  # (the station you stand at opens on release; JUMP only leaps)
+	_touch_controls.tapped.connect(_on_tap)
 	PlatformEvents.input_kind_changed.connect(func(_kind: String) -> void:
 		if hat_wheel.visible:
 			hat_wheel.set_spin_key(_spin_key()))  # (the spin hint names the device in use: F / X)
+
+
+## The station names (on arrival, NAMES_TIME seconds) and the "!" badges (news at a station), drawn over the room
+## and under the menus; positioned with their station each frame (_place_hints). Not under `root`: they
+## follow the room, which is never mirrored.
+func _build_hints() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 1
+	add_child(layer)
+	name_layer = Control.new()
+	name_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(name_layer)
+	badge_layer = Control.new()
+	badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(badge_layer)
+	for station: Dictionary in _all_props():
+		var label := UIKit.make_label(station.name, UIKit.FONT, UIKit.TEXT)
+		var back := StyleBoxFlat.new()
+		back.bg_color = UIKit.DEEP  # (CON-23: opaque plate)
+		back.content_margin_left = 3
+		back.content_margin_right = 2
+		back.content_margin_top = 1
+		back.content_margin_bottom = 1
+		label.add_theme_stylebox_override("normal", back)
+		name_layer.add_child(label)
+		label.reset_size()
+		name_labels[station.id] = label
+		if station.id in ["upgrades", "wheel", "settings", "daily"]:
+			var bang := UIKit.make_label("!", UIKit.FONT, UIKit.GOLD)
+			badge_layer.add_child(bang)
+			bang.reset_size()
+			badges[station.id] = bang
+			bang.remove_from_group(SkinText.GROUP)  # (never recoloured by the skin: the "!" is drawn by the sprite)
+			var art := TextureRect.new()
+			art.texture = load(ART + "badge.png")
+			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			art.size = Vector2(BADGE_SIZE)
+			art.visible = false
+			badge_layer.add_child(art)
+			badge_art[station.id] = {node = art, on = -1.0, off = BADGE_FADE, phase = float(badge_art.size()) * 0.4}
+	_refresh_badges()
+	_place_hints()
+
+
+## Every prop that can be walked up to: the ring's stations, then the ones beside them.
+func _all_props() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	out.append_array(stations)
+	out.append_array(extras)
+	return out
+
+
+## Whether station `id` has news: a coin upgrade or a ticket store item you can pay for (the cauldron), a spin you
+## can pay for (the prize wheel), an achievement not seen yet (the settings signpost), today's daily not won yet.
+func has_news(id: String) -> bool:
+	if tour != null:
+		return false
+	match id:
+		"upgrades":
+			return Progress.hub_news("upgrades", Progress.upgrade_buyable() or Progress.store_affordable("upgrades"))
+		"wheel":
+			return not Progress.dev_tools and Demo.hat_wheel_open() and Progress.hub_news("wheel", Progress.can_spin_hats())
+		"settings":
+			return Progress.has_new_achievement()
+		"daily":
+			return not Progress.daily_won_today()
+	return false
+
+
+func _refresh_badges() -> void:
+	for id: String in badges:
+		var bang: Label = badges[id]
+		if id == "daily" and Progress.daily_won_today():  # (won: the sign shows when the next one comes)
+			# i18n: small label over the DAILY sign once today's daily is won, max 60px, 1 line; {h} = whole hours until the next one
+			bang.text = Loc.t("hub.daily.next", "NEW IN {h}H", {h = Progress.daily_hours_left()})
+			bang.add_theme_color_override("font_color", UIKit.TEXT_DIM)
+			bang.self_modulate = Color.WHITE
+			bang.material = UIKit.text_material()
+			bang.add_theme_stylebox_override("normal", _badge_style(UIKit.DEEP))
+			bang.visible = true
+		else:
+			bang.text = "!"
+			bang.add_theme_color_override("font_color", Color(0, 0, 0, 0))  # (the "!" is the badge sprite; this label only holds the state)
+			bang.self_modulate = Color(1, 1, 1, 0)  # (and no drip shader / skin recolour may draw it)
+			bang.material = null
+			bang.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+			bang.visible = has_news(id)
+		bang.reset_size()
+
+
+func _badge_style(color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.content_margin_left = 3
+	style.content_margin_right = 2
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
+	return style
+
+
+## Puts the name labels and badges on their stations (the name under the feet, the badge over the head).
+func _place_hints() -> void:
+	if name_layer == null:
+		return
+	var safe := UIKit.safe_rect()
+	var placed: Array[Rect2] = []
+	for station: Dictionary in _all_props():
+		var label: Label = name_labels[station.id]
+		# (the name under the feet; the sign beside the portal wears its name over its head, clear of the portal's)
+		var beside: bool = station.has("anchor")
+		label.position = _solve_label(station, label, beside, safe, placed)
+		placed.append(Rect2(label.position, label.size))
+		if badges.has(station.id):
+			_place_badge(station, label, beside, safe)
+	_clear_badges(safe)
+	_hint_time = _time
+
+
+## The touch circles at rest (the joystick's home and the JUMP button, grown for a longer JUMP word) that a
+## station name keeps clear of (UI-05).
+func _touch_circles() -> Array[Rect2]:
+	var joy_r: float = _touch_controls.JOY_RADIUS + 1.0
+	var jump_r: float = _touch_controls.JUMP_RADIUS + 5.0
+	return [Rect2(_touch_controls.JOY_HOME - Vector2.ONE * joy_r, Vector2.ONE * joy_r * 2.0),
+		Rect2(_touch_controls.JUMP_CENTER - Vector2.ONE * jump_r, Vector2.ONE * jump_r * 2.0)]
+
+
+## UI-24: the one-pass label solver. Candidates, in order of preference (below the feet, above the head, then
+## each of those slid sideways, then left and right of the prop; the portal's sign starts above): the first
+## that sits inside the safe rect and touches no other prop's sprite (LABEL_PROP_GAP off), no touch circle
+## (joystick, JUMP) and no label already placed is taken; when none is free, the least overlapping one.
+func _solve_label(station: Dictionary, label: Label, beside: bool, safe: Rect2, placed: Array[Rect2]) -> Vector2:
+	var at: Vector2 = station.sprite.position
+	var size := label.size
+	var cx := roundf(at.x - size.x / 2.0)
+	var below: float = minf(at.y + 2.0, safe.end.y - size.y - 1.0)
+	var above: float = at.y - station.size.y - size.y - 1.0
+	var mid_y: float = at.y - station.size.y / 2.0 - size.y / 2.0
+	var obstacles: Array[Rect2] = []
+	for other: Dictionary in _all_props():
+		if other.id == station.id:
+			continue
+		var op: Vector2 = other.sprite.position
+		obstacles.append(Rect2(op.x - other.size.x / 2.0, op.y - other.size.y, other.size.x, other.size.y).grow(LABEL_PROP_GAP))
+	if _touch_controls != null and _touch_controls.visible:
+		for circle: Rect2 in _touch_circles():  # (a name on a touch circle costs more than one on a prop)
+			for _w in (40 if station.id == "settings" or station.id == "quit" else 3):  # (SETTINGS and QUIT must stay clear)
+				obstacles.append(circle)
+	if ticket_label != null and ticket_label.is_inside_tree():  # (the ticket / medal pod in the corner)
+		var pod := ticket_label.get_parent() as Control
+		if pod != null:
+			obstacles.append(pod.get_global_rect().grow(4.0))
+	obstacles.append_array(placed)
+	# (attached candidates only: straight below / above, then right / left, centred on the prop's axis, each at the
+	# tight gap and at GAP_S; never slid away, so a name always reads as its own prop's)
+	var cands: Array[Vector2] = []
+	var gaps: Array[float] = [0.0, float(UIKit.GAP_S)]
+	var half_w: float = station.size.x / 2.0
+	for g: float in gaps:
+		var by: float = (below if not beside else above)
+		var ay: float = (above if not beside else below)
+		if g > 0.0:
+			by += g if not beside else -g
+			ay += -g if not beside else g
+		cands.append(Vector2(cx, by))
+		cands.append(Vector2(cx, ay))
+	for g: float in gaps:
+		cands.append(Vector2(at.x + half_w + LABEL_PROP_GAP + 1.0 + g, mid_y))
+		cands.append(Vector2(at.x - half_w - size.x - LABEL_PROP_GAP - 1.0 - g, mid_y))
+	# (last resorts, still on the prop: slid along its edge, nearer one side)
+	for shift: float in [6.0, 12.0, 18.0, 24.0, 30.0, 36.0, 44.0]:
+		for y: float in [below if not beside else above, above if not beside else below]:
+			cands.append(Vector2(cx - shift, y))
+			cands.append(Vector2(cx + shift, y))
+	for dy: float in [-12.0, 12.0, -24.0, 24.0]:  # (and the sides, raised or lowered along the prop)
+		cands.append(Vector2(at.x + half_w + LABEL_PROP_GAP + 1.0, mid_y + dy))
+		cands.append(Vector2(at.x - half_w - size.x - LABEL_PROP_GAP - 1.0, mid_y + dy))
+	var own := Vector2(at.x, at.y - station.size.y / 2.0)
+	var others: Array[Vector2] = []
+	for other: Dictionary in _all_props():
+		if other.id != station.id:
+			others.append(Vector2(other.sprite.position.x, other.sprite.position.y - other.size.y / 2.0))
+	var best := cands[0]
+	var best_cost := INF
+	var inner := safe.grow(-1.0)
+	for c: Vector2 in cands:
+		var r := Rect2(roundf(c.x), roundf(c.y), size.x, size.y)
+		# (a name pushed against a screen edge is judged where it ends up)
+		r.position = Vector2(clampf(r.position.x, inner.position.x, maxf(inner.position.x, inner.end.x - size.x)),
+			clampf(r.position.y, inner.position.y, maxf(inner.position.y, inner.end.y - size.y)))
+		var cost := 0.0
+		for o: Rect2 in obstacles:
+			var hit := o.intersection(r)
+			if hit.has_area():
+				cost += 10.0 + hit.get_area()
+		# (the name's centre must be nearer its own prop than any other: a hard rule, the least wrong when none is)
+		var centre := r.get_center()
+		var d_own := centre.distance_to(own)
+		for op2: Vector2 in others:
+			var d_other := centre.distance_to(op2)
+			if d_other <= d_own:
+				cost += 5000.0 + (d_own - d_other)
+		cost += d_own * 0.01  # (all else equal, the one closest to the prop)
+		if cost < best_cost - 0.0001:
+			best_cost = cost
+			best = r.position
+	return best
+
+
+## A "!" badge never covers a visible station name or another badge (IMP2-06 fix): a badge that would moves to the
+## first clear spot, beside its own station's head (left, then right), then above each overlapping name, then above
+## the badges; whole pixels, inside the safe rect; the bob (already in its position) goes with it. Tested by test_hub_badges.
+func _clear_badges(safe: Rect2) -> void:
+	var taken: Array[Rect2] = []
+	for id: String in name_labels:
+		var label: Label = name_labels[id]
+		if label.visible and name_layer.visible:
+			taken.append(Rect2(label.position, label.size))
+	var placed: Array[Rect2] = []
+	for station: Dictionary in _all_props():
+		if not badge_art.has(station.id):
+			continue
+		var node: TextureRect = badge_art[station.id].node
+		if not node.visible:
+			continue
+		var base := node.position
+		var offsets: Array[Vector2] = [Vector2.ZERO]
+		var half_w := float(station.size.x) / 2.0
+		var head_dy := 0.0
+		offsets.append(Vector2(-half_w - 5.0, head_dy))  # (its x is the station's - 3)
+		offsets.append(Vector2(half_w + 4.0, head_dy))
+		for rect: Rect2 in taken:
+			offsets.append(Vector2(0.0, rect.position.y - BADGE_SIZE.y - 2.0 - base.y))
+		for rect: Rect2 in placed:
+			offsets.append(Vector2(0.0, rect.position.y - BADGE_SIZE.y - 3.0 - base.y))
+		var chosen := Vector2.ZERO
+		for d: Vector2 in offsets:
+			var r := _badge_test_rect(base + d)
+			if safe.grow(-1.0).encloses(r) and not _hits_any(r, taken) and not _hits_any(r, placed):
+				chosen = d
+				break
+		node.position = base + chosen
+		placed.append(_badge_test_rect(node.position))
+
+
+## A badge's footprint for the overlap test: its sprite plus the 1 px of bob and the 1 px tail margin above.
+func _badge_test_rect(pos: Vector2) -> Rect2:
+	return Rect2(pos.x, pos.y - 1.0, BADGE_SIZE.x, BADGE_SIZE.y + 2.0)
+
+
+func _hits_any(r: Rect2, others: Array[Rect2]) -> bool:
+	for o in others:
+		if r.intersects(o):
+			return true
+	return false
+
+
+## One station's badge. The "!" is a 7x10 sprite put on the station's own snapped position (the pixel the station
+## sprite sits on, so it can't jitter against it while the room turns); it bobs 1 px on a slow cycle with a hold
+## at each end, pops in over 3 integer steps, fades out quickly, and hides while you stand at the station (its
+## prompt says it). Reduce Motion: static. The NEW IN line over the sold DAILY sign is a plain label, no bob.
+func _place_badge(station: Dictionary, label: Label, beside: bool, safe: Rect2) -> void:
+	var bang: Label = badges[station.id]
+	var at: Vector2 = station.sprite.position
+	if beside:
+		# (the NEW IN line sits on the sign's head like the "!"; above the name while the names show)
+		var head_y: float = at.y - station.size.y - bang.size.y - 1.0
+		if name_layer != null and name_layer.visible:
+			head_y = minf(head_y, label.position.y - bang.size.y - 1.0)
+		bang.position = Vector2(roundf(at.x - bang.size.x / 2.0), maxf(safe.position.y + 1.0, head_y))
+	var art: Dictionary = badge_art[station.id]
+	var node: TextureRect = art.node
+	var dt := _time - _hint_time
+	var names_up: bool = name_layer != null and name_layer.visible  # (no "!" while the names show, nor while they fade)
+	var want: bool = bang.text == "!" and bang.visible and near.get("id", "") != station.id and not names_up
+	if names_up:
+		art.off = BADGE_FADE
+	if want:
+		if art.on <= -1.0:  # (just came up: a slight stagger between the badges, none with Reduce Motion)
+			art.on = 0.0 if Progress.reduce_motion else -BADGE_STAGGER * float(badge_art.keys().find(station.id))
+		art.on += dt
+		art.off = 0.0
+	else:
+		art.on = -1.0
+		art.off += dt
+	var alpha := 1.0
+	var drop := 0.0
+	if want and art.on < 0.0:
+		alpha = 0.0
+	elif want:
+		var step := int(art.on / BADGE_POP_STEP)
+		if not Progress.reduce_motion and step < 3:
+			drop = [3.0, 1.0, 0.0][step]
+			alpha = [0.4, 0.8, 1.0][step]
+	else:
+		alpha = 0.0 if Progress.reduce_motion or art.off >= BADGE_FADE else snappedf(1.0 - art.off / BADGE_FADE, 0.25)
+	node.visible = alpha > 0.0
+	if not node.visible:
+		return
+	var bob := 0.0
+	if not Progress.reduce_motion and int(fposmod(_time + art.phase, BADGE_BOB_CYCLE) / (BADGE_BOB_CYCLE / 6.0)) >= 3:
+		bob = 1.0
+	node.modulate.a = alpha
+	node.position = Vector2(roundf(at.x) - 3.0, maxf(safe.position.y + 2.0, at.y - station.size.y - BADGE_SIZE.y - 1.0 - bob + drop))
 
 
 ## Once after the upgrades v2 migration gave coins back (Progress.take_tree_refund_notice, which
@@ -757,14 +1127,25 @@ func _build_hub_menu(root: Control) -> void:
 	hub_menu_title = UIKit.add_label(hub_menu, Loc.t("hub.menu.title", "MENU"), Rect2(), 8, UIKit.GOLD)
 	var size := Vector2(HUB_MENU_BUTTON_W, UIKit.button_h())
 	menu_back = UIKit.make_button(Loc.t("common.back", "BACK"), func() -> void: close_hub_menu(), size)
+	# i18n: hub Esc menu button, max 90px, 1 line; opens the achievements page
+	menu_achievements = UIKit.make_button(Loc.t("hub.menu.achievements", "ACHIEVEMENTS"), _hub_menu_achievements, size)
 	menu_settings = UIKit.make_button(Loc.t("hub.station.settings", "SETTINGS"), _hub_menu_settings, size)
 	# i18n: hub Esc menu button, max 90px, 1 line (a longer one widens all three); goes back to the title screen
 	menu_quit = UIKit.make_button(Loc.t("hub.menu.quit_title", "QUIT TO TITLE"), _hub_menu_quit, size)
-	var order: Array[Button] = [menu_back, menu_settings, menu_quit]
+	var order := _hub_menu_buttons()
 	for b in order:
 		hub_menu.add_child(b)
 	_layout_hub_menu()
 	_focus_column(order)
+
+
+## The hub menu's buttons, top to bottom.
+func _hub_menu_buttons() -> Array[Button]:
+	var out: Array[Button] = [menu_back]
+	if Economy.ACHIEVEMENTS and not Demo.on():
+		out.append(menu_achievements)
+	out.append_array([menu_settings, menu_quit])
+	return out
 
 
 ## Up / down (and Tab) cycle through `order` and wrap around; left / right stay put.
@@ -782,7 +1163,7 @@ func _focus_column(order: Array[Button]) -> void:
 ## The title, HUB_MENU_TITLE_GAP, the three buttons GAP_S apart (equal widths from the longest word),
 ## PANEL_PAD above and below: HUB_MENU_PANEL in English, wider for a longer text, taller for a taller script.
 func _layout_hub_menu() -> void:
-	var buttons: Array[Button] = [menu_back, menu_settings, menu_quit]
+	var buttons := _hub_menu_buttons()
 	var texts := buttons.map(func(b: Button) -> String: return b.text)
 	var bw: int = UIKit.tab_widths(texts, HUB_MENU_BUTTON_W)[0]
 	for b in buttons:
@@ -791,7 +1172,8 @@ func _layout_hub_menu() -> void:
 	var w := maxf(HUB_MENU_PANEL.size.x, bw + 2 * DIALOG_INSET)
 	w = maxf(w, _widest([hub_menu_title]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP + buttons.size() * bh + (buttons.size() - 1) * UIKit.GAP_S + UIKit.PANEL_PAD
+	var gap := UIKit.menu_gap()  # (touch: a 22 px pitch, IMP3-04)
+	var h := text_top + UIKit.line_h() + HUB_MENU_TITLE_GAP + buttons.size() * bh + (buttons.size() - 1) * gap + UIKit.PANEL_PAD
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	hub_menu_panel.position = rect.position
 	hub_menu_panel.size = rect.size
@@ -801,7 +1183,7 @@ func _layout_hub_menu() -> void:
 		b.custom_minimum_size = Vector2(bw, bh)
 		b.size = b.custom_minimum_size
 		b.position = Vector2(UIKit.center_x(bw, rect.position.x, rect.size.x), y)
-		y += bh + UIKit.GAP_S
+		y += bh + gap
 	hub_menu_rect = rect
 
 
@@ -830,6 +1212,14 @@ func _hub_menu_settings() -> void:
 		return
 	close_hub_menu()
 	_leave(_station("settings"), "res://scenes/controls.tscn")
+
+
+## ACHIEVEMENTS: the goals page (BACK returns to the hub in front of the signpost, like SETTINGS).
+func _hub_menu_achievements() -> void:
+	if not hub_menu.visible:
+		return
+	close_hub_menu()
+	_leave(_station("settings"), "res://scenes/achievements.tscn")
 
 
 ## QUIT TO TITLE: the goo wipe to the title (what Esc in the hub did before the menu).
@@ -863,8 +1253,16 @@ func _build_portal_menu(root: Control) -> void:
 	portal_back = UIKit.make_button(Loc.t("common.back", "BACK"), close_portal_menu, Vector2(56, UIKit.button_h()))
 	portal_menu.add_child(portal_back)
 	_layout_portal_menu()
-	var order: Array[Button] = [maze_button, descent_button, portal_back]
-	_focus_column(order)
+	_focus_column(_portal_order())
+
+
+## The portal's focus order.
+func _portal_order() -> Array[Button]:
+	var order: Array[Button] = [maze_button]
+	if Economy.descent_on():
+		order.append(descent_button)
+	order.append(portal_back)
+	return order
 
 
 ## Title, the two modes (stack_pitch apart), the info line, BACK: gaps of 6 / 3 / 5 / 6 px between
@@ -873,27 +1271,35 @@ func _build_portal_menu(root: Control) -> void:
 func _layout_portal_menu() -> void:
 	var line := UIKit.line_h()
 	var bh := UIKit.button_h()
-	var mode_w: int = UIKit.tab_widths([maze_button.text, descent_button.text], 120)[0]
+	var modes: Array[Button] = [maze_button]
+	if Economy.descent_on():
+		modes.append(descent_button)
+	var mode_texts: Array[String] = []
+	for b: Button in modes:
+		mode_texts.append(b.text)
+	var mode_w: int = UIKit.tab_widths(mode_texts, 120)[0]
 	var back_w := UIKit.button_w(portal_back.text, 56)
-	for b: Button in [maze_button, descent_button]:
-		UIKit.note_text_w(b, [maze_button.text, descent_button.text], 120)
+	for b: Button in modes:
+		UIKit.note_text_w(b, mode_texts, 120)
 	UIKit.note_text_w(portal_back, [portal_back.text], 56)
 	var w := maxf(PORTAL_PANEL.size.x, mode_w + 2 * 30)
 	w = maxf(w, _widest([portal_title, portal_info]) + 2 * UIKit.PANEL_PAD)
 	var text_top := UIKit.panel_text_top()  # (PANEL_PAD; lower by the title's marks' rows)
-	var h := text_top + UIKit.PANEL_PAD + line + 6 + bh + UIKit.GAP_S + bh + 5 + line + 6 + bh
+	var gap := UIKit.menu_gap()  # (touch: a 22 px pitch between the buttons, IMP3-04)
+	var below := maxi(5, gap)  # (the last mode to the info line / BACK)
+	var h := text_top + UIKit.PANEL_PAD + line + 6 + modes.size() * (bh + gap) + below - gap + (line + 6 if portal_info.visible else 0) + bh
 	var rect := Rect2(UIKit.center_x(w), floorf((180.0 - h) / 2.0), w, h)
 	portal_panel.position = rect.position
 	portal_panel.size = rect.size
 	var y := rect.position.y + text_top
 	_stack_lines([portal_title], rect, y)
 	y += line + 6
-	for b: Button in [maze_button, descent_button]:
+	for b: Button in modes:
 		b.custom_minimum_size = Vector2(mode_w, bh)
 		b.size = b.custom_minimum_size
 		b.position = Vector2(UIKit.center_x(mode_w, rect.position.x, rect.size.x), y)
-		y += bh + UIKit.GAP_S
-	y += 5 - UIKit.GAP_S
+		y += bh + gap
+	y += below - gap
 	_stack_lines([portal_info], rect, y)
 	portal_back.custom_minimum_size = Vector2(back_w, bh)
 	portal_back.size = portal_back.custom_minimum_size
@@ -901,12 +1307,17 @@ func _layout_portal_menu() -> void:
 
 
 func open_portal_menu() -> void:
+	descent_button.visible = Economy.descent_on()  # (Descent stays invisible while it is switched off)
+	portal_info.visible = Economy.descent_on()
+	_focus_column(_portal_order())
 	UIKit.relayout(portal_menu)  # (right-to-left: lay out in LTR coordinates, mirrored at the frame's end)
 	var best: int = Progress.descent_best_floor
 	var left: int = Progress.descent_paid_left()
 	# i18n: max 170px, 1 line; the spaces are spacing, not words
 	var paid := {left = left, total = Economy.DESCENT_PAID_PER_DAY, best = best}
-	if best > 0:
+	if not Economy.descent_on():
+		portal_info.text = ""
+	elif best > 0:
 		portal_info.text = Loc.t("hub.portal.info_best", "BEST FLOOR {best}   PAID RUNS {left}/{total}", paid)
 	else:
 		portal_info.text = Loc.t("hub.portal.info", "PAID RUNS {left}/{total}", paid)
@@ -1082,13 +1493,14 @@ func _build_ticket_pod(root: Control) -> void:
 	row.add_child(UIKit.make_icon("ticket", Color.WHITE))
 	ticket_label = UIKit.make_label("", 8, Color8(255, 226, 150))
 	row.add_child(ticket_label)
-	row.add_child(UIKit.make_icon("medal", UIKit.GOLD))
+	row.add_child(UIKit.make_icon("medal", Color.WHITE))  # CON-04: a reward icon, full colour
 	medal_label = UIKit.make_label("", 8, UIKit.GOLD)
 	row.add_child(medal_label)
 	_refresh_tickets()
 
 
 func _refresh_tickets() -> void:
+	_refresh_badges()
 	ticket_label.text = str(Progress.tickets)
 	# The demo counts only its own levels' medals (desktop 4 levels = 12, web 3 = 9); the full game all 30.
 	medal_label.text = "%d/%d" % [Progress.medals_total(false, Demo.levels()), Demo.levels() * Progress.TIER_GOLD]
@@ -1338,10 +1750,193 @@ func _spin_room_wheel() -> void:
 	wheel.seq_t = 0.0
 
 
+## The prop (ring station or extra) a tap at `pos` lands on: its sprite box grown by TAP_GROW.
+func prop_at(pos: Vector2) -> Dictionary:
+	for prop: Dictionary in _all_props():
+		var box := Rect2(prop.sprite.position + Vector2(-prop.size.x / 2.0, -prop.size.y), Vector2(prop.size)).grow(TAP_GROW)
+		if prop.flat:
+			box = Rect2(prop.sprite.position - Vector2(prop.size) / 2.0, Vector2(prop.size)).grow(TAP_GROW)
+		if box.has_point(pos):
+			return prop
+	# Its name label counts too, all of it and LABEL_TAP_GROW round it (owner, 2026-11-01: a tap anywhere on a
+	# station's name, not just next to the station, must reach it instead of the joystick).
+	if name_layer != null and name_layer.visible:
+		for prop: Dictionary in _all_props():
+			var label: Label = name_labels.get(prop.id)
+			if label != null and label.visible and label.get_global_rect().grow(LABEL_TAP_GROW).has_point(pos):
+				return prop
+	return {}
+
+
+## Where the slime stands to use `prop`: on the ring of spots in front of it, at its angle round the room.
+func use_spot(prop: Dictionary) -> Vector2:
+	var offset: Vector2 = prop.sprite.position - CENTER
+	var a := atan2(offset.y / RING.y, offset.x / RING.x)
+	var spot := CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y)
+	if prop.has("anchor"):
+		# A sign is used from SIGN_USE_GAP, much closer than a ring station's gap: walk the spot in until it is
+		# 0.5 px from its footprint, so a glide always ends in range (found by a test at several room turns).
+		var at: Vector2 = prop.sprite.position + Vector2(0, -2)
+		for i in 40:
+			if _gap_from(spot, at, _footprint(prop)) <= 0.5:
+				break
+			spot = spot.move_toward(at, 1.0)
+	return spot
+
+
+## The waypoints from `from` to the spot in front of `prop`: round the ring of spots (clear of the stations and of the
+## wheel in the middle) the shorter way, in steps of at most 30 degrees, ending on the spot.
+func path_to_prop(from: Vector2, prop: Dictionary) -> Array[Vector2]:
+	var spot := use_spot(prop)
+	var path: Array[Vector2] = []
+	if (spot - from).length() < 24.0:
+		path.append(spot)  # (already close: straight there)
+		return path
+	var offset := from - CENTER
+	var a0 := atan2(offset.y / USE_RING.y, offset.x / USE_RING.x)
+	var a1 := atan2((spot.y - CENTER.y) / USE_RING.y, (spot.x - CENTER.x) / USE_RING.x)
+	var delta := wrapf(a1 - a0, -PI, PI)
+	var steps := maxi(1, ceili(absf(delta) / deg_to_rad(30.0)))
+	for k in range(0, steps + 1):
+		var a := a0 + delta * float(k) / steps
+		path.append(CENTER + Vector2(cos(a) * USE_RING.x, sin(a) * USE_RING.y))
+	path[path.size() - 1] = spot
+	return path
+
+
+## Starts gliding to `prop` (a touch tap on it): the slime follows path_to_prop until it arrives or any manual input.
+func glide_to(prop: Dictionary) -> void:
+	if prop.is_empty() or slime.frozen or turning or hub_menu.visible or quit_menu.visible or portal_menu.visible \
+			or resume_menu.visible or hat_wheel.visible or coin_board.visible:
+		return
+	glide_target = prop.id
+	glide_path = path_to_prop(slime.position, prop)
+
+
+func _exit_tree() -> void:
+	stop_glide()  # (our own action presses must not outlive the hub)
+
+
+func stop_glide() -> void:
+	glide_path.clear()
+	glide_target = ""
+	for action in _glide_held:
+		Input.action_release(action)
+	_glide_held.clear()
+
+
+## True if a touch at `pos` (view px) is on the station or wheel the slime stands at, or on its prompt: the touch
+## controls then keep it from the joystick and JUMP and hand it to _on_tap on release (owner, 2026-10-21).
+func tap_hits(pos: Vector2) -> bool:
+	if near.is_empty() or turning or slime.frozen or _blocking_overlay():
+		return false
+	if prompt != null and prompt.visible and prompt.get_global_rect().grow(TAP_MARGIN).has_point(pos):
+		return true
+	if near.id == "rotor":
+		for sprite: Sprite2D in [rotor, rotor_base]:
+			if sprite != null and (sprite.get_global_transform_with_canvas() * sprite.get_rect()).grow(TAP_MARGIN).has_point(pos):
+				return true
+		return false
+	return prop_at(pos).get("id", "") == near.id 			or (near.sprite.get_global_transform_with_canvas() * near.sprite.get_rect()).grow(TAP_MARGIN).has_point(pos)
+
+
+## The touches the touch controls hand to _on_tap (on release) instead of the joystick / JUMP: one on the station
+## or wheel the slime stands at (tap_hits, owner 2026-10-21), and one on another station in JUMP's half but off the
+## JUMP circle, so that tap glides there (IMP2-06) instead of leaping. In the joystick's half a quick tap on a
+## station still reaches the joystick too (no move) and glides on release.
+func _claims_touch(pos: Vector2) -> bool:
+	if tap_hits(pos):
+		return true
+	if _touch_controls == null or not _touch_controls.catches_jump(pos) or _touch_controls.on_jump_button(pos):
+		return false
+	if slime.frozen or turning or slime.state != Slime.State.GLIDE or _blocking_overlay():
+		return false
+	return not prop_at(pos).is_empty()
+
+
+## An overlay that takes the room's taps (its own buttons answer them).
+func _blocking_overlay() -> bool:
+	return hub_menu.visible or quit_menu.visible or portal_menu.visible or resume_menu.visible 			or hat_wheel.visible or coin_board.visible
+
+
+## A tap (TouchControls.tapped): on the station / wheel the slime stands at (a claimed touch, tap_hits) it uses it; a
+## quick tap on another station glides the slime there (IMP2-06).
+func _on_tap(pos: Vector2) -> void:
+	if _wore_toast_item():
+		return  # (the tap wore a toast's item: only that)
+	if slime.frozen or turning or slime.state != Slime.State.GLIDE:
+		return  # (a use, a turn or a leap is under way: a tap's release must not use a station twice)
+	if tap_hits(pos):
+		if near.id == "rotor":
+			turn_room(1)
+		else:
+			_use(near)  # (already at it: a tap uses it)
+		return
+	var prop := prop_at(pos)
+	if prop.is_empty() or (not near.is_empty() and near.id == prop.id):
+		return  # (nothing there, or a joystick / JUMP touch that only reached the station on its way)
+	glide_to(prop)
+
+
+## A real key, button or new touch hands the slime back (our own glide presses are actions, not events).
+func _input(event: InputEvent) -> void:
+	if glide_path.is_empty():
+		return
+	if (event is InputEventKey or event is InputEventJoypadButton or event is InputEventScreenTouch) and event.pressed:
+		stop_glide()
+	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
+		stop_glide()
+
+
+## One physics step of the glide: press the 8-way direction toward the next waypoint; release at the end.
+func _glide_step() -> void:
+	if glide_path.is_empty():
+		return
+	if slime.frozen or turning:
+		stop_glide()
+		return
+	if _touch_controls != null and _touch_controls.joy_vector.length() > 0.2:
+		stop_glide()  # (the joystick is in use)
+		return
+	if glide_path.size() == 1 and not near.is_empty() and near.id == glide_target:
+		stop_glide()  # (in use range of the target: a sign's range is tight, stop where it counts)
+		return
+	var to := glide_path[0] - slime.position
+	var reach := GLIDE_REACHED
+	for prop: Dictionary in extras:
+		if prop.id == glide_target:
+			reach = 1.5  # (a sign's use range is tight: walk right up to it)
+	if to.length() <= (reach if glide_path.size() == 1 else reach + 5.0):
+		glide_path.remove_at(0)
+		if glide_path.is_empty():
+			stop_glide()
+		return
+	var angle := snappedf(to.angle(), PI / 4.0)
+	var dir := Vector2(roundf(cos(angle)), roundf(sin(angle)))
+	var wanted: Array[String] = []
+	if dir.x > 0.5:
+		wanted.append("move_right")
+	elif dir.x < -0.5:
+		wanted.append("move_left")
+	if dir.y > 0.5:
+		wanted.append("move_down")
+	elif dir.y < -0.5:
+		wanted.append("move_up")
+	for action in _glide_held:
+		if not action in wanted:
+			Input.action_release(action)
+	for action in wanted:
+		Input.action_press(action)
+	_glide_held.assign(wanted)
+
+
 func _physics_process(delta: float) -> void:
 	var home_tap := _home_tap  # (the D10 home button's tap: the `menu` press it makes is that tap's)
 	if Input.is_action_just_pressed("menu"):
 		_home_tap = false
+	if not glide_path.is_empty() and (hub_menu.visible or quit_menu.visible or portal_menu.visible or resume_menu.visible
+			or hat_wheel.visible or coin_board.visible):
+		stop_glide()  # (a panel opened mid-glide: our own direction presses must not stay held under it)
 	if hub_menu.visible:
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
 			_sfx("click", 0.8)
@@ -1365,7 +1960,7 @@ func _physics_process(delta: float) -> void:
 	if hat_wheel.visible:
 		# Only the interact key (F / X) or the SPIN button spins: never JUMP, which a touchscreen presses for any
 		# tap on the right half (a paid spin by accident, audit H4).
-		var pressed := Input.is_action_just_pressed("interact")
+		var pressed := _interact_pressed()
 		if hat_wheel.spinning:
 			return
 		if Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("ui_cancel"):
@@ -1409,12 +2004,11 @@ func _physics_process(delta: float) -> void:
 			turn = wrapf(_turn_to, -PI, PI)
 			_place_all()
 			room_turned.emit(back_station().id, _turn_dir)
+	_glide_step()
 	_update_near()
-	# The interact key (F) uses the station or wheel you're next to; on a touchscreen there's no
-	# such key, so right next to one JUMP uses it instead of leaping.
-	var touch := _touch_controls != null and _touch_controls.visible
-	slime.can_charge = near.is_empty() or not touch
-	var used := Input.is_action_just_pressed("interact") or (touch and Input.is_action_just_pressed("jump"))
+	# The interact key (F) uses the station or wheel you're next to; on a touchscreen a tap on it (or on its
+	# prompt) does (tap_hits, _on_tap). JUMP always leaps (owner, 2026-10-21).
+	var used := _interact_pressed()
 	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
 		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
 		# 2026-10-22); holding left turns it the other way.
@@ -1428,6 +2022,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	_place_hints()
 	for station in stations:
 		if not station.anims.is_empty():
 			_play_idle_anims(station, delta)
@@ -1441,6 +2036,23 @@ func _process(delta: float) -> void:
 			station.pool.modulate.a = POOLS[station.id].a * flicker * (1.4 if lit else 1.0)
 		if station.id != "random" or Progress.is_randomizer_unlocked():
 			station.sprite.self_modulate = Color(1.25, 1.25, 1.25) if lit else Color.WHITE
+	for prop: Dictionary in extras:
+		prop.sprite.self_modulate = Color(1.25, 1.25, 1.25) if prop == near else Color.WHITE
+	if name_layer != null:
+		_names_t += delta
+		name_layer.modulate.a = clampf((NAMES_TIME - _names_t) / NAMES_FADE, 0.0, 1.0)
+		name_layer.visible = _names_t < NAMES_TIME
+		# (IMP4-03 / BUG4-06: a station name under the sign's prompt waits while it is up: the prompt's goo face is
+		# translucent at its top rows, so a name behind it showed through as stray pixels over the lumps)
+		# (and every name waits while an overlay is open: the panels' faces are translucent too)
+		var overlay_up := false
+		for node: Control in [coin_board, quit_menu, portal_menu, resume_menu, hub_menu, hat_wheel]:
+			if node != null and node.visible:
+				overlay_up = true
+		var up_rect := prompt.get_global_rect().grow(1.0) if prompt.visible else Rect2()
+		for id: String in name_labels:
+			var under: Label = name_labels[id]
+			under.visible = not (overlay_up or (prompt.visible and up_rect.intersects(Rect2(under.global_position, under.size))))
 	rotor.region_rect.position.x = (int(_turn_t * 12.0) % 4 if turning else 0) * 26
 	var lit_rotor := Color(1.25, 1.25, 1.25) if near.get("id", "") == "rotor" else Color.WHITE
 	rotor.self_modulate = lit_rotor
@@ -1449,8 +2061,8 @@ func _process(delta: float) -> void:
 
 ## Turns the room one station round (1 = the next station clockwise comes to the back).
 func turn_room(direction: int) -> void:
-	if turning:
-		return
+	if turning or (tour != null and tour.holds_room()):
+		return  # (the guided tour's end: the room holds the archway at the back)
 	turning = true
 	_turn_from = turn
 	_turn_to = turn - step * direction
@@ -1492,7 +2104,27 @@ func _place_all() -> void:
 		if not station.flat:
 			station.sprite.flip_h = station.flipped
 			_set_frame(station, _frame_of(station))
+	_place_extras()
+	_place_hints()
 	(room.material as ShaderMaterial).set_shader_parameter("turn", turn)
+
+
+## The props beside a station (the DAILY MAZE sign) go on the ring a SIGN_GAP px arc from it, with the view for where
+## they stand like any station.
+func _place_extras() -> void:
+	for prop: Dictionary in extras:
+		var i := stations.find(_station(prop.anchor))
+		var a := -PI / 2.0 + turn + i * step
+		var speed := Vector2(-sin(a) * RING.x, cos(a) * RING.y).length()  # (px per radian along the ring here)
+		a += SIGN_GAP / speed
+		var base := CENTER + Vector2(cos(a) * RING.x, sin(a) * RING.y)
+		prop.sprite.position = base.round()
+		if prop.body:
+			prop.body.position = base + Vector2(0, -2)
+		prop.view = View.FRONT  # (a sign is for reading: its face shows from every side of the room)
+		prop.flipped = false
+		prop.sprite.flip_h = false
+		_set_frame(prop, 1 if Progress.daily_won_today() else 0)
 
 
 ## The frame a station shows now: its idle animation's, or (portal, cauldron, coin bag) a loop.
@@ -1582,14 +2214,18 @@ func _update_near() -> void:
 	var best := {}
 	var best_gap := USE_GAP
 	if not turning:
-		for station in stations:
+		for station in _all_props():
 			var gap := _gap_to(station.sprite.position + (Vector2.ZERO if station.flat else Vector2(0, -2)), _footprint(station))
+			if station.has("anchor") and gap > SIGN_USE_GAP:
+				continue
 			if gap < best_gap:
 				best_gap = gap
 				best = station
 		if best.is_empty() and _gap_to(rotor.position + Vector2(0, -2), ROTOR_RADIUS) < USE_GAP:
 			best = {id = "rotor", name = Loc.t("hub.prompt.rotate", "ROTATE")}
 	if best == near:
+		if not near.is_empty() and near.id == "daily" and Progress.utc_day() != _sign_day:
+			_show_prompt()  # (UTC midnight passed while standing at the sign: the daily / weekly decision is stale)
 		return
 	near = best
 	_show_prompt()
@@ -1603,7 +2239,12 @@ func _footprint(station: Dictionary) -> float:
 ## How far the slime's edge is from a footprint oval (`radius` wide, half as deep, as the
 ## collision bodies) at `at`, measured from any side. Negative = standing on or in it.
 func _gap_to(at: Vector2, radius: float) -> float:
-	var v := slime.position - at
+	return _gap_from(slime.position, at, radius)
+
+
+## The same gap for a slime standing at `from`.
+func _gap_from(from: Vector2, at: Vector2, radius: float) -> float:
+	var v := from - at
 	if v.is_zero_approx():
 		return -radius
 	var dir := v.normalized()
@@ -1611,37 +2252,91 @@ func _gap_to(at: Vector2, radius: float) -> float:
 	return v.length() - edge - Slime.RADIUS
 
 
+## Whether this week's weekly can be started from the DAILY sign and has not been won yet (BOARDS on, not the demo).
+func weekly_unplayed() -> bool:
+	if tour != null or not Economy.boards_on() or Demo.on():
+		return false
+	var week := Boards.week_of(Progress.utc_day())
+	return Progress.board_for("weekly", week).is_empty() and Progress.weekly_played_week != week
+
+
+var _sign_day := 0  # (the UTC day the DAILY sign prompt was decided on)
+
+
 func _show_prompt(note := "") -> void:
-	prompt.visible = not near.is_empty()
-	if near.is_empty():
+	# (the guided tour's last line shows with nothing in reach too: it walks the slime to the archway)
+	var guide: String = tour.guide_line() if tour != null and near.is_empty() else ""
+	prompt.visible = not near.is_empty() or guide != ""
+	if not prompt.visible:
 		return
 	var price := false
-	var line: String = tour.line_for(near.id) if tour != null and note == "" else ""
-	prompt_name.text = near.name if line == "" else line
+	var near_id: String = near.get("id", "")  # (empty while the guided tour's last line shows with nothing in reach)
+	var line: String = tour.line_for(near.get("id", "")) if tour != null and note == "" else ""
+	prompt_name.text = near.get("name", "") if line == "" else line
+	sign_weekly = false
+	sign_boards = false
+	_sign_day = Progress.utc_day()
+	if near_id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
+		# IMP4-02: an unplayed weekly comes first once today's daily was tried (won or lost) or on Saturday / Sunday
+		var daily_done: bool = Progress.daily_won_today()
+		sign_weekly = weekly_unplayed() and (daily_done or Progress.daily_attempted_today() or Boards.weekday(Progress.utc_day()) >= 5)
+		sign_boards = daily_done and not sign_weekly
+	if near_id == "daily" and sign_boards and line == "" and note == "":
+		prompt_name.text = Loc.t("hub.station.boards", "BOARDS")  # i18n: prompt label at the DAILY sign once the daily and the weekly are done, max 110px, 1 line; opens the best-times page
+	elif near_id == "daily" and sign_weekly and line == "" and note == "":
+		prompt_name.text = Loc.t("hub.station.weekly", "WEEKLY MAZE")  # i18n: prompt label at the DAILY sign, max 110px, 1 line; this week's maze (the same for everyone, all week)
 	if note != "":
 		prompt_key.text = note
 	elif line != "":
 		prompt_key.text = tour.key_text()  # (the tour's line by the wheel: the key that turns the room)
-	elif near.id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
+	elif near_id == "story" and not Demo.level_open(Progress.current_level, Progress.hard_mode):
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: the next level is a full-game one, shown as plainly locked)
-	elif (near.id == "random" and not Demo.randomizer_open()) or (near.id == "wheel" and not Demo.hat_wheel_open()):
+	elif (near_id == "random" and not Demo.randomizer_open()) or (near_id == "wheel" and not Demo.hat_wheel_open()):
 		prompt_key.text = Demo.full_game_text()
-	elif near.id == "random" and not Progress.is_randomizer_unlocked():
+	elif near_id == "daily" and sign_boards:
+		prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
+	elif near_id == "daily" and sign_weekly:
+		var wk_n: int = Boards.weekly_number(Boards.week_of(Progress.utc_day()))
+		if Progress.weekly_days_left() > 1:
+			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {d} = days left in the week (2..7)
+			prompt_key.text = Loc.t("hub.prompt.weekly_ends_d", "#{n}  ENDS IN {d}D", {n = wk_n, d = Progress.weekly_days_left()})
+		else:
+			# i18n: prompt next to the WEEKLY MAZE name, max 130px, 1 line; {n} = this week's weekly number (not played yet), {h} = hours until it ends (1..24)
+			prompt_key.text = Loc.t("hub.prompt.weekly_ends_h", "#{n}  ENDS IN {h}H", {n = wk_n, h = Progress.daily_hours_left()})
+	elif near_id == "daily":
+		var streak: int = Progress.daily_streak_now()
+		if Progress.daily_won_today():
+			prompt_key.text = UIKit.format_time(Progress.daily_best_ms / 1000.0)
+		elif Progress.daily_saver_pending():
+			# i18n: prompt next to the DAILY MAZE name, max 80px, 1 line (a missed day is covered: winning today keeps the streak)
+			prompt_key.text = Loc.t("hub.prompt.daily_saved", "STREAK SAVED")
+		elif streak > 0:
+			# IMP3-03: the streak ends with today (UTC): the time left, in hours, or in minutes under the last hour
+			var mins: int = Progress.daily_minutes_left()
+			if mins < 60:
+				# i18n: prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {m} = minutes until the streak ends (1..59)
+				prompt_key.text = Loc.t("hub.prompt.daily_streak_m", "STREAK {n}  ENDS IN {m}M", {n = streak, m = mins})
+			else:
+				# i18n: prompt next to the DAILY MAZE name, max 130px, 1 line; {n} = days in a row with a daily win, {h} = hours until the streak ends (1..24)
+				prompt_key.text = Loc.t("hub.prompt.daily_streak", "STREAK {n}  ENDS IN {h}H", {n = streak, h = Progress.daily_hours_left()})
+		else:
+			prompt_key.text = ""
+	elif near_id == "random" and not Progress.is_randomizer_unlocked():
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")
-	elif near.id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
+	elif near_id == "random" and Economy.descent_on() and Progress.descent_best_floor > 0:
 		prompt_key.text = Loc.t("hub.prompt.best_floor", "BEST FLOOR {floor}", {floor = Progress.descent_best_floor})  # Descent's record
-	elif near.id == "wheel" and Progress.demo_wheel_block() != "":
+	elif near_id == "wheel" and Progress.demo_wheel_block() != "":
 		prompt_key.text = Loc.t("hub.prompt.locked", "LOCKED")  # (the demo: before its end screen, or its hats used up)
-	elif near.id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
+	elif near_id == "wheel" and (Progress.hats_left().is_empty() or not (Progress.dev_tools or Hats.available)):
 		prompt_key.text = Loc.t("hub.prompt.shop", "SHOP")  # every hat won: the overlay opens on its SHOP
-	elif near.id == "wheel":
+	elif near_id == "wheel":
 		var cost: int = Progress.spin_cost()  # the next spin's price, with the ticket icon
 		prompt_key.text = Loc.t("hub.prompt.free", "FREE") if cost == 0 else str(cost)
 		price = cost > 0
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
 	# "!" when something in that station's store is affordable (the cheapest unowned item).
-	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id)
+	prompt_bang.visible = note == "" and line == "" and near_id in ["wheel", "upgrades"] and Progress.store_affordable(near_id) and Progress.hub_news(near_id, true)
 	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
 	# (the goo's top room is the marks this line has: a line without any sits as in English)
@@ -1676,8 +2371,13 @@ func _station(id: String) -> Dictionary:
 
 ## Uses a station: opens its screen, or says why it can't.
 func _use(station: Dictionary) -> void:
+	if tour != null and tour.blocks(station.id):
+		_deny(tour.wait_note())  # (the guided tour: the wheel first, then the archway)
+		return
 	if tour != null:
 		tour.station_used(station.id)
+	if station.id in ["upgrades", "wheel"] and not Progress.dev_tools:
+		Progress.hub_mark_seen(station.id)  # (IMP3-03: its "!" waits for something newly affordable)
 	match station.id:
 		"story":
 			_leave(station, "res://scenes/level_select.tscn")
@@ -1689,12 +2389,22 @@ func _use(station: Dictionary) -> void:
 			_leave(station, "res://scenes/upgrades.tscn")
 		"settings":
 			_leave(station, "res://scenes/controls.tscn")
+		"daily":
+			if sign_boards:  # (both done: the prompt says BOARDS)
+				(load("res://scripts/ui/boards_screen.gd") as GDScript).back_scene = UIKit.HUB_SCENE
+				_leave(station, "res://scenes/boards.tscn")
+				return
+			if sign_weekly:  # (the prompt says WEEKLY MAZE: the daily is won, this week's is not)
+				Progress.start_weekly()
+			else:
+				Progress.start_daily()
+			_leave(_station("random"), UIKit.GAME_SCENE)
 		"random":
 			if Progress.is_randomizer_unlocked():
 				if Economy.descent_on():
-					open_portal_menu()  # RANDOM MAZE or DESCENT
+					open_portal_menu()  # RANDOM MAZE, DESCENT
 				else:
-					_begin_random_maze()  # Descent is cut (D11): straight into a random maze
+					_begin_random_maze()  # one press: straight into a random maze (the daily has its own sign)
 			elif not Demo.randomizer_open():
 				_deny(Demo.full_game_text())
 			elif Demo.on():
@@ -1732,3 +2442,17 @@ func _sfx(sound: String, pitch := 1.0) -> void:
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
 		sfx.play(sound, -6.0, pitch)
+
+
+## True within 150 ms of wearing a toast's item (a tap or a key): that touch must not also leap, use or glide.
+func _wore_toast_item() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	return transition != null and transition.wore_recently()
+
+
+## F pressed this frame, unless it was spent wearing a toast's item (Transition.interact_free).
+func _interact_pressed() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	if transition != null:
+		return transition.interact_free()
+	return Input.is_action_just_pressed("interact")

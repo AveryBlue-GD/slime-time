@@ -31,6 +31,9 @@ the skin shader recolors it to the equipped skin; stone stays off the dried-crus
                            with a goo trail and a red X), a compass, a quill in a pot of goo, a small
                            lantern and a drawer / the desk side-on (board edge-on) / the board's braced back
                            with a rolled scroll; frames: the lantern flame flickering
+- daily_sign.png 16x26 x2 : DAILY MAZE (beside the portal, not on the ring): a small calendar board on a post /
+                           edge-on / its plain back; frames: 0 today's daily waits (gold "!" is drawn by the game),
+                           1 it was won today (a green check on the page)
 - rotor.png     26x36 x4 : the wheel on a stick in the middle: a ship's wheel with handles and a
                            brass hub on a rope-wrapped post, spinning
 (The room itself is drawn live by assets/shaders/hub_room.gdshader, so it can turn.)
@@ -330,18 +333,32 @@ def portal() -> list:
 
 
 def portal_side() -> list:
+    """SPR-03: the 3/4 view: the ring about half as wide with its thickness showing, the vortex
+    squashed inside it."""
     frames = []
-    glow = [rgb(84, 40, 150), rgb(140, 84, 220), rgb(214, 180, 255)]
+    swirl = [rgb(36, 16, 66), rgb(80, 38, 146), rgb(136, 82, 218), rgb(212, 178, 255)]
     for f in range(6):
         cv = Canvas(30, 40)
-        cv.ellipse(15, 18, 4.5, 17, lambda x, y, u, v: STONE[3] if u < -0.3 else STONE[2] if u < 0.3 else STONE[1])
-        for y in range(4, 33):  # a sliver of the vortex on the side facing the center
-            cv.put(19, y, glow[(y + f) % 3])
-            if (y + f * 2) % 7 == 0:
-                cv.put(20, y, glow[2])
-        for i in range(4):
-            cv.put(13, 6 + i * 8, RUNE[1] if (i + f) % 4 == 0 else RUNE[0])
-        _plinth(cv, 12, 34)
+        cv.ellipse(18, 18, 7.5, 17, lambda x, y, u, v: STONE[1] if u > 0.3 else STONE[0])  # the ring's depth
+        cv.ellipse(15, 18, 7.5, 17, _ring)
+
+        def vortex(x, y, u, v):
+            r = math.hypot(u, v)
+            a = math.atan2(v, u) + r * 5.0 - f * (math.pi / 3)
+            band = (math.sin(a * 2) + 1) / 2 * (1 - r * 0.6)
+            return swirl[min(3, int(band * 4))] if r > 0.16 else swirl[3]
+        cv.ellipse(14, 18, 4.6, 13, vortex)
+        for i in range(8):
+            a = i / 8 * math.tau - math.pi / 2
+            if math.cos(a) > 0.5:
+                continue
+            cv.put(round(15 + math.cos(a) * 6.5), round(18 + math.sin(a) * 15), RUNE[1] if (i + f) % 4 == 0 else RUNE[0])
+        rng = random.Random(f)
+        for _ in range(3):
+            a = rng.uniform(0, math.tau)
+            d = rng.uniform(2, 5)
+            cv.put(round(14 + math.cos(a) * d), round(18 + math.sin(a) * d * 1.8), rgb(244, 232, 255))
+        _plinth(cv, 16, 34)
         cv.outline()
         frames.append(cv.px)
     return frames
@@ -626,10 +643,13 @@ def _wheel_stand(cv: Canvas, cx: int) -> None:
 WHEEL_FRAMES = 24
 
 
-def _wheel_front(k: int) -> list:
+def _wheel_front(k: int, squash: float = 1.0) -> list:
+    """squash < 1 is the 3/4 view (SPR-03): the same wheel turned away, its face about half as
+    wide and the rim's thickness showing on the far side."""
     cv = Canvas(32, 40)
     _wheel_stand(cv, 16)
     turn = k / WHEEL_FRAMES * math.tau
+    fx = 16 if squash >= 1.0 else 14.5
 
     def face(x, y, u, v):
         r = math.hypot(u, v)
@@ -641,15 +661,22 @@ def _wheel_front(k: int) -> list:
         if (a * 6) % 1 < 0.07:
             return rgb(240, 236, 226)  # divider lines
         return WEDGES[int(a * 6) % 6]
-    cv.ellipse(16, 15, 13.5, 13.5, face)
+    if squash < 1.0:  # the rim's thickness, seen past the face
+        cv.ellipse(fx + 2.5, 15, 13.5 * squash, 13.5, lambda x, y, u, v: WOOD[1] if u + v * 0.3 < 0.4 else WOOD[0])
+    cv.ellipse(fx, 15, 13.5 * squash, 13.5, face)
     for i in range(12):  # pegs round the rim
         a = i / 12 * math.tau + turn
-        cv.put(round(16 + math.cos(a) * 12.4), round(15 + math.sin(a) * 12.4), GOLD[3])
+        if squash < 1.0 and math.cos(a) < -0.2:
+            continue  # on the hidden half
+        cv.put(round(fx + math.cos(a) * 12.4 * squash), round(15 + math.sin(a) * 12.4), GOLD[3])
     for a6 in range(0, 6, 2):  # little hats on alternate wedges
         ang = (a6 + 0.5) / 6 * math.tau - math.pi + turn
-        hx, hy = round(16 + math.cos(ang) * 7.5), round(15 + math.sin(ang) * 7.5)
+        hx, hy = round(fx + math.cos(ang) * 7.5 * squash), round(15 + math.sin(ang) * 7.5)
         cv.rect(hx - 1, hy, 3, 1, OUTLINE)
         cv.rect(hx, hy - 2, 1, 2, OUTLINE)
+    if squash < 1.0:  # the hub peg
+        cv.ellipse(fx, 15, 1.6, 2.2, GOLD[2])
+        cv.put(round(fx), 14, GOLD[3])
     cv.rect(15, 0, 3, 2, IRON[3])  # the flapper, kicked over when a peg is passing
     kick = 1 if k % 2 else 0
     cv.put(16 + kick, 2, RED[2])
@@ -663,19 +690,7 @@ def wheel() -> list:
 
 
 def wheel_side() -> list:
-    frames = []
-    for k in range(WHEEL_FRAMES):
-        cv = Canvas(32, 40)
-        _wheel_stand(cv, 16)
-        for y in range(2, 29):  # edge-on: a thin rim, its colors and pegs rolling past
-            cv.put(15, y, WOOD[3])
-            cv.put(16, y, WEDGES[((y + k) // 4) % 6])
-            if (y + k) % 4 == 1:
-                cv.put(17, y, GOLD[3])
-        cv.rect(15, 0, 3, 2, IRON[3])
-        cv.outline()
-        frames.append(cv.px)
-    return frames
+    return [_wheel_front(k, 0.5) for k in range(WHEEL_FRAMES)]
 
 
 def wheel_back() -> list:
@@ -705,18 +720,28 @@ def wheel_back() -> list:
 
 # ----------------------------------------------------------------- SETTINGS: the gear post
 
-def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, back=False) -> None:
+def _gear(cv: Canvas, cx: float, cy: float, r: float, teeth: int, turn: float, back=False,
+          sx: float = 1.0, depth: int = 0, valley: float = 0.78) -> None:
+    """sx < 1 squashes it for the 3/4 view; depth = px of the gear's thickness showing on the right."""
     def g(x, y, u, v):
         rr = math.hypot(u, v)
         a = math.atan2(v, u) + turn
-        if rr > (1.0 if math.cos(a * teeth) > 0.2 else 0.78):
+        if rr > (1.0 if math.cos(a * teeth) > 0.2 else valley):
             return None
         if rr < 0.28:
             return IRON[0]
+        if depth and rr > 0.8 and u > 0.1:
+            return IRON[1]  # SPR-25: the rim band on the far (right) side, the gear's thickness
         if back:
             return IRON[1] if rr > 0.5 else IRON[2]
         return IRON[4] if (u + v < -0.7) else IRON[3] if u + v < 0 else IRON[2]
-    cv.ellipse(cx, cy, r, r, g)
+    if depth:
+        for d in range(depth, 0, -1):
+            cv.ellipse(cx + d, cy, r * sx, r, lambda x, y, u, v: None if g(x, y, u, v) is None else IRON[1])
+    cv.ellipse(cx, cy, r * sx, r, g)
+    if depth:  # SPR-25: the axle, a 2x2 dark hub with a light dot offset toward the viewer
+        cv.rect(round(cx) - 1, round(cy) - 1, 2, 2, IRON[0])
+        cv.put(round(cx) - 1, round(cy) - 1, IRON[4])
 
 
 def _post(cv: Canvas, x: int, top: int) -> None:
@@ -749,18 +774,16 @@ def signpost() -> list:
 
 
 def signpost_side() -> list:
+    """SPR-03: the 3/4 view, both gears turned half away with their thickness showing."""
     frames = []
     for k in range(GEAR_FRAMES):
         cv = Canvas(24, 34)
         _post(cv, 10, 12)
-        for y in range(1, 16):  # the big gear edge-on, its teeth rolling past
-            cv.put(13, y, IRON[3])
-            cv.put(14, y, IRON[2])
-            if (y + k) % 3 == 0:
-                cv.put(15, y, IRON[2])
-        for y in range(11, 19):  # the small one, rolling the other way
-            cv.put(15, y, IRON[3] if (y - k) % 2 else IRON[2])
-        cv.vline(9, 19, 26, IRON[2])   # the wrench, side on
+        _gear(cv, 12, 8, 7.5, 8, k * BIG_STEP, sx=0.62, depth=2, valley=0.7)
+        _gear(cv, 17, 14.5, 4.0, 6, 0.3 - k * SMALL_STEP, sx=0.62, depth=1, valley=0.62)
+        cv.vline(11, 19, 26, IRON[3])  # a wrench hanging off the post, turned
+        cv.vline(12, 19, 26, IRON[2])
+        cv.put(11, 18, IRON[2])
         cv.outline()
         frames.append(cv.px)
     return frames
@@ -945,10 +968,17 @@ def _maptable_front(f: int) -> list:
 def _maptable_side(f: int) -> list:
     cv = Canvas(30, 36)
     rng = random.Random(32)
-    cv.rect(8, 1, 2, 21, WOOD[1])             # the board edge-on, at the desk's back
-    cv.vline(8, 1, 21, WOOD[3])
-    cv.vline(10, 3, 17, PARCHMENT[2])         # the map's edge, toward the center
-    cv.put(10, 3, RED[2])
+    cv.rect(5, 1, 8, 19, WOOD[1])             # SPR-03: the board in 3/4, its map squashed to 5 px
+    cv.vline(5, 1, 19, WOOD[3])
+    cv.hline(5, 12, 1, WOOD[3])
+    cv.rect(7, 3, 5, 15, PARCHMENT[2])
+    cv.vline(7, 3, 17, PARCHMENT[3])
+    cv.hline(7, 11, 17, PARCHMENT[1])
+    for y in (6, 9, 12):
+        cv.hline(8, 10, y, PARCHMENT[1])
+    cv.put(10, 8, RED[2])
+    cv.put(9, 9, RED[1])
+    cv.vline(13, 2, 19, WOOD[0])              # the board's thickness
     cv.rect(7, 21, 16, 3, WOOD[2])            # the desk top, end-on (its depth)
     cv.hline(7, 22, 21, WOOD[4])
     plank(cv, 8, 24, 14, 6, rng, vertical=False, tone=1)  # the desk's side
@@ -1044,6 +1074,86 @@ def rotor() -> list:
     return frames
 
 
+# ----------------------------------------------------------------- DAILY MAZE: the calendar sign
+
+def _daily_post(cv: Canvas) -> None:
+    plank(cv, 7, 12, 2, 13, random.Random(21), vertical=True, tone=2)
+    cv.rect(4, 23, 8, 3, STONE[1])
+    cv.hline(4, 11, 23, STONE[3])
+
+
+def daily_sign(done: bool) -> list:
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(1, 1, 14, 13, WOOD[2])            # the frame
+    cv.hline(1, 14, 1, WOOD[4])
+    cv.rect(2, 2, 12, 11, rgb(226, 212, 176)) # the page
+    cv.rect(2, 2, 12, 3, RED[1])              # the calendar's red band
+    cv.hline(2, 13, 2, RED[2])
+    for x in (4, 11):                         # binder rings
+        cv.put(x, 1, IRON[3])
+    for y in (7, 9, 11):                      # rows of days
+        for x in range(3, 13, 2):
+            cv.put(x, y, rgb(150, 138, 110))
+    if done:                                  # a green check over the days
+        for (x, y) in ((4, 9), (5, 10), (6, 11), (7, 10), (8, 9), (9, 8), (10, 7), (11, 6)):
+            cv.put(x, y, rgb(40, 150, 70))
+            cv.put(x, y + 1, rgb(24, 100, 50))
+    cv.outline()
+    return cv.px
+
+
+def daily_sign_side() -> list:
+    """SPR-03: the calendar board in 3/4: the page about 7 px wide, the frame's thickness beside it."""
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(3, 1, 9, 13, WOOD[2])             # the frame, its right edge in shade
+    cv.hline(3, 11, 1, WOOD[4])
+    cv.vline(11, 2, 13, WOOD[1])
+    cv.vline(12, 3, 13, WOOD[0])
+    cv.rect(4, 2, 6, 11, rgb(206, 192, 158))  # the page, squashed
+    cv.rect(4, 2, 6, 3, RED[1])
+    cv.hline(4, 9, 2, RED[2])
+    for y in (7, 9, 11):
+        for x in (5, 7, 9):
+            cv.put(x, y, rgb(140, 128, 102))
+    cv.put(5, 1, IRON[3])
+    cv.put(8, 1, IRON[3])
+    cv.outline()
+    return cv.px
+
+
+def daily_sign_back() -> list:
+    cv = Canvas(16, 26)
+    _daily_post(cv)
+    cv.rect(1, 1, 14, 13, WOOD[1])
+    cv.rect(2, 2, 12, 11, WOOD[2])
+    cv.hline(2, 13, 7, WOOD[1])               # a brace across
+    cv.outline()
+    return cv.px
+
+
+def badge() -> list:
+    """The gold "!" news badge over a station (7x10): a plate with a dark mark and a 3x2 tapering tail, no text, no drips."""
+    cv = Canvas(7, 10)
+    cv.rect(0, 0, 7, 8, OUTLINE)
+    for (x, y) in ((0, 0), (6, 0), (0, 7), (6, 7)):   # rounded corners
+        cv.put(x, y, CLEAR)
+    cv.rect(1, 1, 5, 6, GOLD[2])
+    cv.hline(1, 5, 1, GOLD[3])                         # the top highlight
+    cv.hline(1, 5, 6, GOLD[1])                         # the shaded foot
+    mark = rgb(40, 22, 8)
+    for y in (2, 3, 4):                                # the "!": a stem and a dot
+        cv.put(3, y, mark)
+    cv.put(3, 6, mark)
+    for x in (2, 4):                                   # the tail: 3 px wide, 2 tall, tapering to a point (gold, darker edge)
+        cv.put(x, 8, GOLD[1])
+    cv.put(3, 7, GOLD[1])                              # (opens the plate's foot into the tail)
+    cv.put(3, 8, GOLD[2])
+    cv.put(3, 9, GOLD[1])
+    return cv.px
+
+
 def save(name: str, rows_of_frames: list) -> None:
     """Writes a sheet: one row per view, its frames side by side."""
     rows = []
@@ -1066,6 +1176,8 @@ if __name__ == "__main__":
         "hatch": [hatch()] * 3,
         "maptable": [maptable(), maptable_side(), maptable_back()],
         "rotor": [rotor()],
+        "daily_sign": [[daily_sign(False), daily_sign(True)], [daily_sign_side()] * 2, [daily_sign_back()] * 2],
+        "badge": [[badge()]],
     }
     for name, rows in sheets.items():
         save(name, rows)

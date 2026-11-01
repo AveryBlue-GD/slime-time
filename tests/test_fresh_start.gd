@@ -53,11 +53,11 @@ func _initialize() -> void:
 	full.coins_found = {1: ["2,3", "5,1"]}
 	full.best_times = {1: 12.5}
 	full.medals = {1: 2}
+	full.saving_enabled = true
+	full.save_progress()  # (settles the achievements first: a save adopts the goals the state meets)
 	var written: ConfigFile = full._write()
 	_check(written.get_value("meta", "epoch", -1) == epoch and written.get_value("meta", "version", -1) == PROGRESS_SCRIPT.SAVE_VERSION,
 		"a save writes [meta] epoch = %d and version %d" % [epoch, PROGRESS_SCRIPT.SAVE_VERSION])
-	full.saving_enabled = true
-	full.save_progress()
 	var back := _new_progress(full.save_path)
 	back.load_progress()
 	_check(back._write().encode_to_text() == written.encode_to_text(), "a save of this epoch loads back exactly")

@@ -112,13 +112,13 @@ func _initialize() -> void:
 	var file := ConfigFile.new()
 	var fresh: Node = preload("res://scripts/progress.gd").new()
 	fresh._read(file)
-	_check(not fresh.reduce_motion and fresh.fog_brightness == fresh.FOG_NORMAL, "an old save without the new keys loads with the defaults")
+	_check(not fresh.reduce_motion and fresh.fog_brightness == fresh.FOG_BRIGHT, "an old save without the new keys loads with the defaults (fog BRIGHT, owner 2026-11-01)")
 	fresh.reduce_motion = true
-	fresh.fog_brightness = fresh.FOG_BRIGHT
+	fresh.fog_brightness = fresh.FOG_DARK
 	var written: ConfigFile = fresh._write()
 	var other: Node = preload("res://scripts/progress.gd").new()
 	other._read(written)
-	_check(other.reduce_motion and other.fog_brightness == other.FOG_BRIGHT, "reduce motion and fog brightness round-trip")
+	_check(other.reduce_motion and other.fog_brightness == other.FOG_DARK, "reduce motion and fog brightness round-trip")
 	written.set_value("settings", "fog_brightness", 99)
 	other._read(written)
 	_check(other.fog_brightness == other.FOG_BRIGHT, "a bad fog value is clamped")

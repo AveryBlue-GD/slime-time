@@ -322,13 +322,13 @@ func _make_tile(level: int) -> Button:
 	var locked := survey.is_empty() or not Survey.fits(survey, maze)
 	button.disabled = locked
 	button.set_meta("level", level)
-	var name_label := UIKit.make_label(Themes.display_name(Themes.for_level(level)), 8, UIKit.TEXT_OFF if locked else UIKit.TEXT)
+	var name_label := UIKit.make_label(Themes.display_name(Themes.for_level(level)), 8, UIKit.TEXT_DIM if locked else UIKit.TEXT)
 	name_label.position = Vector2(TEXT_X, _name_y)
 	button.add_child(name_label)
 	button.set_meta("name_label", name_label)
 	var percent := 0 if locked else roundi(Survey.completeness(survey, maze) * 100.0)
 	button.set_meta("percent", percent)
-	var percent_label := UIKit.make_label("%d%%" % percent, UIKit.FONT, UIKit.TEXT_OFF if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
+	var percent_label := UIKit.make_label("%d%%" % percent, UIKit.FONT, UIKit.lift_to_contrast(UIKit.TEXT_OFF, UIKit.BUTTON, 4.5) if locked else (UIKit.GOLD if percent >= 100 else UIKit.TEXT_DIM))
 	percent_label.position = Vector2(TEXT_X, _percent_y)  # the dense two-line pitch under the name
 	button.add_child(percent_label)
 	UIKit.use_plain_font(percent_label)

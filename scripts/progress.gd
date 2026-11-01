@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--demo-end` (with `--demo`) starts with levels 1-3 cleared so level 4 (the demo's last) is next (enable_demo_end_test),`--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--demo-end` (with `--demo`) starts with levels 1-3 cleared so level 4 (the demo's last) is next (enable_demo_end_test),`--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nolightlife` turns off the Light & Life lighting (Economy.LIGHT_LIFE_TEST), `--noorchestra` turns off the layered level music (Economy.ORCHESTRA_TEST), `--noboards` turns off the local boards and ghosts (Economy.BOARDS_TEST), `--nolurkers` turns off the fog lurkers (Economy.LURKERS_TEST), `--lurkers` puts them in every random maze, `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -18,6 +18,8 @@ const TUTORIAL_LEAP := 2
 const TUTORIAL_TRAINING := 4
 const TUTORIAL_HUB := 8
 ## 16, 32, 64, 128: the ability tutorial's lines were shown (AbilityCoach.BITS).
+## The prize wheel's first-visit guide (HatWheel coach, owner 2026-11-01) was played through to its free spin.
+const TUTORIAL_WHEEL := 256
 
 ## Remappable actions and their default (primary) keys. Movement also keeps the arrow keys
 ## as fixed secondary keys, so the game stays playable whatever gets remapped.
@@ -110,7 +112,9 @@ var current_level := 1
 ## tree = 3 marks the repriced tree (MORE SLIME 80 / SPEED 46 / BRIGHTNESS 39): tree 2 levels are
 ## repriced on load (_migrate_prices), no save version bump needed. Both can still run for a real
 ## player: release-epoch saves were written by builds with tree 1 and tree 2.
-const SAVE_VERSION := 6
+## 7 = the [achievements] section (known goals, flags, medal milestones paid): an older build that rolled such a
+## save back would re-pay the milestones, so it now sees a newer save and keeps it (SAVE_NEWER_GUARD).
+const SAVE_VERSION := 7
 ## TICKET VOUCHERS: the renewable, cosmetic-and-utility currency (never converted to or from coins).
 ## The ONLY faucet is the randomizer, whose goal IS a ticket: a win pays by how many attempts that
 ## maze took (RANDOM_ATTEMPT_PAY: first try 10, then 8, 6, 4, 2, and 1 from the sixth on); only
@@ -150,7 +154,19 @@ const SILVER_FACTOR := 1.3
 ## Slime reserve (ASSIST): after this many dry-ups on one level in a session, the next attempt
 ## can be played with a bit more slime (never on hard mode; no medals, records or tickets).
 const ASSIST_AFTER := 3
+## ...on the last three story levels (L8-L10) already after this many (IMP2-04).
+const ASSIST_AFTER_LATE := 2
+const ASSIST_LATE_FROM := 8
 const ASSIST_BONUS := 0.10
+## ONE ASSIST (IMP2-07): RELAXED's extra slime: this much, plus RELAXED_GROWTH per dry-up on the level, up to RELAXED_MAX.
+const RELAXED_BONUS := 0.25
+const RELAXED_GROWTH := 0.02
+const RELAXED_MAX := 0.50
+## Levels whose CALM MODE offer was answered NO this session (never saved).
+var calm_declined := {}
+## The story level whose RELAXED offer was answered YES: RELAXED applies to it only (not saved) until the player leaves
+## the level or wins it; 0 = none. The SETTINGS toggle (`relaxed`) is the permanent one.
+var relaxed_level := 0
 var tickets := 0
 var tickets_lifetime := 0
 ## Best medal tier per level (hard mode's under level + HARD_RECORDS): key -> 1..3.
@@ -180,6 +196,14 @@ var random_offer_shown := {}
 ## Not saved: the ticket pickups (TicketPickup cells) taken in each randomizer maze (same keys as
 ## random_attempts), so its retries don't put them out again. Cleared with random_attempts.
 var random_tickets_taken := {}
+## The taken pickups whose pay is still held for the win (key -> cells): a retry before the win puts them back in the maze.
+var random_tickets_held := {}
+## Not saved (ABANDON_COUNTS): the attempts an abandoned maze used, the next maze's attempt count starts
+## from it; and whether the slime moved in the current maze (so leaving it counts as abandoning it).
+var random_attempt_base := 0
+var random_moved := false
+## Not saved: the current random maze was won (replaying it, then leaving, is no abandoning). Cleared with every new maze.
+var random_maze_won := false
 ## Not saved: the level whose next attempt was chosen to be played with the slime reserve.
 var assist_level := 0
 ## Tests set a day number here instead of reading the clock (-1 = use the clock).
@@ -212,6 +236,57 @@ var descent_runs := 0
 var descent_pay_day := 0
 var descent_paid := 0
 var descent_milestones := 0
+## IMP-06 daily maze. `random_daily`: the current random maze is today's daily (runtime only). Saved [daily]:
+## the UTC day of the last daily win, its best time (ms), the streak as of that day, the best streak ever.
+var random_daily := false
+## The UTC day the current daily was started on (a daily won past midnight still counts for its own day), and the
+## abandon penalty (attempt base) of the random maze left for the daily, kept for the next random maze. Runtime only.
+var daily_run_day := 0
+var random_attempt_carry := 0
+var daily_day := 0
+var daily_best_ms := 0
+var daily_streak := 0
+var daily_best_streak := 0
+## The week (Boards.week_of) whose weekly was won, even a RELAXED / assisted win that posts no board time (saved [boards]).
+var weekly_played_week := 0
+## The week (Boards.week_of) that weekly_paid tickets were paid for (saved [boards] weekly_paid_week / weekly_paid).
+var weekly_paid_week := 0
+var weekly_paid := 0
+## The UTC day a daily was last started (won or lost): the hub sign then offers an unplayed weekly (saved [boards] daily_attempted_day).
+var daily_attempted_day := 0
+## IMP2-05: the UTC day the streak saver last kept a streak (0 = never); one saver per Economy.DAILY_SAVER_DAYS days. Saved [daily].
+var daily_saver_day := 0
+## BM-03 BOARDS (Economy.BOARDS_TEST): your top times per daily's UTC day / weekly's week number (Boards entries), the best daily ever
+## (ms, 0 = none) and the GHOST toggle. Saved [boards]. `random_weekly`: the current random maze is this week's weekly (runtime
+## only; mutually exclusive with `random_daily`). The ghosts (best run of the day / week) live in the side file ghosts_path().
+var board_daily := {}
+var board_weekly := {}
+var board_best_daily_ms := 0
+var ghost_on := true
+## IMP4-04: the one-time "a pale slime races your best run" toast was shown (saved as [boards] ghost_intro).
+var ghost_intro_seen := false
+## IMP3-03 [hub] seen: per hub station ("upgrades" / "wheel") the money in hand (coins + tickets / tickets) when it was last
+## opened (-1 = never). Its "!" shows only when the store is affordable AND you hold more than then (something became
+## newly affordable); opening the station clears it.
+var hub_seen := {}
+var random_weekly := false
+var _ghosts: Dictionary = {}
+var _ghosts_loaded := false
+## How many times ghosts.cfg was parsed (a test reads it: none on a level's first frame, the hub warms it).
+var ghost_parse_count := 0
+## IMP-07 achievements: ids already unlocked and announced (saved [achievements]; `ach_seeded` = that section exists, else
+## an old save adopts what it already earned silently), the stored facts a goal can't derive (Achievements.FLAG_*), and how
+## many OLD medal milestones (every 10 medals, 5 tickets) were paid: kept as it was, no longer paid (IMP2-03).
+## `ach_rewarded`: the goals whose reward cosmetic was granted; `medal_ms_mask`: the Achievements.MILESTONES paid (bit = index).
+var ach_known: Array[String] = []
+var ach_seeded := true
+var ach_flags := 0
+## How many unlocked goals the ACHIEVEMENTS page has shown (saved): more known than seen = the hub's "!" on the signpost.
+var ach_seen := 0
+var medal_milestones_paid := 0
+var ach_rewarded: Array[String] = []
+var medal_ms_mask := 0
+var _ach_checking := false
 
 var selected_skin := Skins.DEFAULT
 ## The hat the slime wears (Hats.NONE for none).
@@ -271,8 +346,12 @@ var all_coins_debug := false
 var custom_color := Color8(239, 125, 47)
 ## The hub's color ([skin] hub, owner 2026-10-21): "" = AUTO (the worn skin's), else a skin id whose
 ## look (opaque) the room and stations take; `hub_custom` = the custom color it was set to (the
-## wardrobe gives the wheel a fresh color each visit). Only once normal mode is beaten (hub_color_open).
+## wardrobe gives the wheel a fresh color each visit). Open from the start (hub_color_open).
 var hub_skin := ""
+## The wardrobe's RANDOM LOOK toggle ([skin] random_look, default off): each new run starts in a freshly rolled look
+## (LookRoller.roll_for_run). `keep_look_once`: the next scene load is a retry of the same attempt, keep the look (never saved).
+var random_look := false
+var keep_look_once := false
 var hub_custom := Color8(239, 125, 47)
 var sound_on := true
 ## Sound-effects volume, 0-1 (the SFX audio bus: Sfx and the level ambience; saved as `volume`, which
@@ -280,10 +359,18 @@ var sound_on := true
 ## Settings has a slider for each (UIKit.make_volume_slider); the Master bus stays at 0 dB.
 var volume := 0.8
 var music_volume := 0.8
+## IMP-05 (Economy.LEVEL_MUSIC): the quiet music bed in levels (Settings: LEVEL MUSIC).
+var level_music := true
 const SFX_BUS := "SFX"  # i18n: ignore (an audio bus name)
 const MUSIC_BUS := "Music"  # i18n: ignore (an audio bus name)
 ## Reduce motion: no screen shake, camera kick or hit-stop (see Game.motion_scale).
 var reduce_motion := false
+## RELAXED (SETTINGS, IMP-01): no idle drain; a run played with it earns no medals, records or tickets.
+var relaxed := false
+## LURKERS (SETTINGS, BM-01 Economy.LURKERS_TEST): ON = lurkers in every normal random maze (not the daily / weekly:
+## they are the same for everyone). Off by default. Hard mode always has them. Replaces CALM DARK ([settings] calm_dark,
+## which is migrated: a save that had it on starts with this off).
+var lurkers_random := false
 ## Phones buzz on a splat (Slime._buzz); SETTINGS VIBRATION (Platform.has_vibration) turns it off.
 var vibration := true
 ## Desktop: the window was fullscreen when last toggled (saved [settings] fullscreen, only written when on;
@@ -294,11 +381,11 @@ var fullscreen := false
 ## had one stays byte-identical. Never in save codes (a device preference): a loaded code keeps it. Set
 ## only by Language.pick; kept by RESET PROGRESS.
 var language := ""
-## Fog brightness: FOG_DARK, FOG_NORMAL (the default look) or FOG_BRIGHT (see Game.fog_look).
+## Fog brightness: FOG_DARK, FOG_NORMAL or FOG_BRIGHT (the default for a new save; see Game.fog_look).
 const FOG_DARK := 0
 const FOG_NORMAL := 1
 const FOG_BRIGHT := 2
-var fog_brightness := FOG_NORMAL
+var fog_brightness := FOG_BRIGHT  # (owner, 2026-11-01: every new save starts BRIGHT on every platform; SETTINGS FOG still cycles it)
 ## Hard mode: explored areas that fully dim are swallowed by fog again (no faint memory).
 var hard_mode := false
 ## Record (fastest) clear time per story level, in seconds.
@@ -370,6 +457,8 @@ func _ready() -> void:
 		load_progress(REAL_SAVE_PATH)  # dev/headless/movie runs read the player's save, never write it
 	else:
 		load_progress()
+	if OS.has_feature(SKIP_DEMO_FEATURE) and not _is_test_or_tool_run():
+		skip_demo_levels()
 	apply_bindings()
 	apply_volume()
 	if fullscreen and save_path == REAL_SAVE_PATH and Platform.remembers_fullscreen():
@@ -490,6 +579,21 @@ func _ready() -> void:
 		elif arg == "--nocoincatch":  # A/B: the old instant pickup (coin catch is on by default now)
 			saving_enabled = false
 			Economy.coincatch_force = 0
+		elif arg == "--nolightlife":  # A/B: the old lighting (Economy.LIGHT_LIFE_TEST)
+			saving_enabled = false
+			Economy.lightlife_force = 0
+		elif arg == "--nolurkers":  # A/B: no lurkers (Economy.LURKERS_TEST)
+			saving_enabled = false
+			Economy.lurkers_force = 0
+		elif arg == "--lurkers":  # test: lurkers in every random maze (Economy.LURKERS_TEST)
+			saving_enabled = false
+			Economy.lurkers_force = 2
+		elif arg == "--noboards":  # A/B: no boards, weekly maze or ghost (Economy.BOARDS_TEST)
+			saving_enabled = false
+			Economy.boards_force = 0
+		elif arg == "--noorchestra":  # A/B: the plain IMP-05 level bed (Economy.ORCHESTRA_TEST)
+			saving_enabled = false
+			Economy.orchestra_force = 0
 		elif arg == "--nocoinreveal":  # A/B: no revealed coins on the maps in dev (Economy.MAP_COIN_REVEAL_TEST)
 			saving_enabled = false
 			Economy.mapcoinreveal_force = 0
@@ -621,6 +725,7 @@ func window_mode_changed(mode: int) -> bool:
 func _exit_tree() -> void:
 	if _owns_throwaway_save():
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(ghosts_path()))  # (BM-03: the ghosts' side file)
 
 
 func _owns_throwaway_save() -> bool:
@@ -714,17 +819,36 @@ func load_progress(path := "") -> void:
 	if file == null:
 		if Demo.on():
 			demo_guard = true  # (maybe a newer full game's save the demo can't read: play fresh, never touch it)
+		elif owned and _peek_version(file_path) > SAVE_VERSION and Economy.SAVE_NEWER_GUARD:
+			# A newer game's save the allow-list rejected (a section this build doesn't know): not damaged. Keep a copy, play fresh in memory.
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(newer_backup_path(file_path)))
+			saving_enabled = false
+			notify_once("newer", Loc.t("notice.save_newer", "NEWER SAVE KEPT: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 		elif owned:
 			_set_aside_corrupt(file_path)
 		return
 	if not _is_this_epoch(file):
+		if owned and not Demo.on():  # (a save of another release epoch is replaced by the next save: keep a copy of it first)
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(other_epoch_backup_path(file_path)))
 		demo_guard = Demo.on()  # (the demo never overwrites another epoch's save; the full game starts fresh)
 		return  # one from another release epoch: a fresh start (the file is overwritten on the next save)
 	if Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
 		demo_guard = true  # a newer full game's save: play fresh in memory, never write it
 		return
+	if Economy.SAVE_NEWER_GUARD and not Demo.on() and SaveFile.get_int(file, "meta", "version", 0) > SAVE_VERSION:
+		# A newer game wrote this: keep a copy, play fresh in memory and never write over it.
+		if owned:
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(file_path), ProjectSettings.globalize_path(newer_backup_path(file_path)))
+			saving_enabled = false
+			notify_once("newer", Loc.t("notice.save_newer", "NEWER SAVE KEPT: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
+		return
 	_read(file)
 	_guard_full_save(file)
+	if owned and is_inside_tree():
+		# An old save: its goals are adopted silently and the medal milestones it already passed are paid once (one
+		# notice). Only the real session (the autoload in the tree), so reading a file stays a pure function of it.
+		if check_achievements():
+			save_progress()
 	# An older (version 5) save was migrated in memory (the coin tree); write it back once so the
 	# migration doesn't rerun on each launch.
 	if SaveFile.get_int(file, "meta", "version", 0) < SAVE_VERSION:
@@ -752,6 +876,50 @@ const CORRUPT_KEEP := 3
 var corrupt_backup := ""
 
 
+static func other_epoch_backup_path(path: String) -> String:
+	return "%s.oldepoch.cfg" % path.get_basename()
+
+
+## The `version=` number written in the save at `path` without parsing it (0 if there is none): the
+## allow-list can reject a newer build's save, and that must not be mistaken for damage.
+static func _peek_version(path: String) -> int:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() > SaveText.MAX_BYTES:
+		return 0
+	for line in f.get_as_text().split("\n"):
+		var t := line.strip_edges()
+		if t.begins_with("version") and "=" in t:
+			var v := t.get_slice("=", 1).strip_edges()
+			if v.is_valid_int():
+				return v.to_int()
+	return 0
+
+
+static func newer_backup_path(path: String) -> String:
+	return "%s.newer.cfg" % path.get_basename()
+
+
+## Short toasts waiting for Transition to show (each key once per session).
+var notices: Array[String] = []
+var _notice_keys := {}
+## Notice text -> group ("ach" = an achievement, "reward" = a medal milestone): those are good news, merged when
+## several wait ("+3 ACHIEVEMENTS") and held while a run is in progress; every other notice (an error) shows at once.
+var notice_groups := {}
+## IMP3-06 WEAR IT: notice text -> the cosmetic id that toast grants (its toast offers to wear it: Transition).
+var notice_wear := {}
+
+
+func notify_once(key: String, text: String, group := "", wear := "") -> void:
+	if not Economy.SAVE_NOTICES or _notice_keys.has(key):
+		return
+	_notice_keys[key] = true
+	notices.append(text)
+	if group != "":
+		notice_groups[text] = group
+	if wear != "":
+		notice_wear[text] = wear
+
+
 static func corrupt_backup_path(path: String, n := 1) -> String:
 	return "%s.corrupt%s.cfg" % [path.get_basename(), "" if n <= 1 else ".%d" % n]
 
@@ -767,6 +935,7 @@ func _set_aside_corrupt(path: String) -> void:
 	var backup := corrupt_backup_path(path)
 	if DirAccess.rename_absolute(g.call(path), g.call(backup)) == OK or DirAccess.copy_absolute(g.call(path), g.call(backup)) == OK:
 		corrupt_backup = backup
+		notify_once("corrupt", Loc.t("notice.save_damaged", "SAVE WAS DAMAGED: A BACKUP WAS KEPT"))  # i18n: toast, max 296px, 2 lines
 	else:
 		saving_enabled = false
 
@@ -921,15 +1090,53 @@ func _read_store(file: ConfigFile) -> void:
 	SaveFile.read_store(self, file)
 
 
+## While > 0 save_progress() only notes that a save is due; end_save_batch() writes it once (LookRoller.apply).
+var _save_batch := 0
+var _save_batch_dirty := false
+## Saves that reached the writer (tests count them).
+var saves_written := 0
+
+
+## Note: inside a batch `save_failed` and `check_achievements` (both part of the real write) wait for the closing write.
+func begin_save_batch() -> void:
+	_save_batch += 1
+	if _save_batch == 1:
+		_close_open_save_batch.call_deferred()  # (a batch an error left open must not swallow every later save)
+
+
+func _close_open_save_batch() -> void:
+	if _save_batch <= 0:
+		return
+	_save_batch = 0
+	if _save_batch_dirty:
+		_save_batch_dirty = false
+		save_progress()
+
+
+func end_save_batch() -> void:
+	_save_batch = maxi(0, _save_batch - 1)
+	if _save_batch == 0 and _save_batch_dirty:
+		_save_batch_dirty = false
+		save_progress()
+
+
 ## Writes the save (if saving is on). Returns false if it couldn't be written: the old file is then
 ## left exactly as it was, the progress stays in memory and the write is retried later
 ## (SAVE_RETRY_FIRST seconds, doubling up to SAVE_RETRY_MAX) and on the next save.
 func save_progress() -> bool:
+	if _save_batch > 0:  # (inside begin_save_batch: one write at the end instead)
+		_save_batch_dirty = true
+		return true
+	check_achievements()
+	if demo_guard and saving_enabled and Demo.on():
+		notify_once("demo", Loc.t("notice.demo_unsaved", "DEMO: PROGRESS NOT SAVED"))  # i18n: toast, max 296px, 2 lines
 	if not saving_enabled or demo_guard or _preview_save != null:
 		return true  # (nothing is written during the demo's FULL GAME PREVIEW: end_demo_preview puts it all back)
+	saves_written += 1
 	var ok := write_atomic(save_path, _write().encode_to_text())
 	save_failed = not ok
 	if not ok:
+		notify_once("failed", Loc.t("notice.save_failed", "SAVE FAILED: COPY YOUR SAVE CODE IN SETTINGS"))  # i18n: toast, max 296px, 2 lines
 		_schedule_save_retry()
 	else:
 		_retry_delay = SAVE_RETRY_FIRST
@@ -967,9 +1174,111 @@ func _retry_save() -> void:
 func report_progress(id: String, value: int) -> void:
 	if dev_tools or not saving_enabled:
 		return
-	var events := get_node_or_null("/root/PlatformEvents")
+	var events := get_node_or_null("/root/PlatformEvents") if is_inside_tree() else null
 	if events:
 		events.progress_event.emit(id, value)
+
+
+## Unlocks every goal that is newly met (a toast each, `progress_event` "ach_<id>" = 1 for a store backend), and pays the
+## medal milestones not paid yet. Runs at the top of every save, so the new state is in the file. `silent`: adopt without
+## toasts (the first look at an old save). Dev, story-complete and demo runs unlock nothing (their progress isn't real).
+func check_achievements(silent := false) -> bool:
+	if not Economy.ACHIEVEMENTS or _ach_checking or dev_tools or not saving_enabled or Demo.on():
+		return false
+	_ach_checking = true
+	var changed := false  # (a reward or a milestone was granted: the caller saves it)
+	if jelly:
+		ach_flags |= Achievements.FLAG_JELLY
+	var fresh_seed := not ach_seeded  # (an old save's first look; a new save starts seeded)
+	ach_seeded = true
+	var announced: Array[String] = []
+	for id in Achievements.met_ids(self):
+		if id in ach_known:
+			continue
+		ach_known.append(id)
+		if silent or fresh_seed:
+			continue
+		announced.append(id)
+		for a in Achievements.list():
+			if a.id == id:
+				var reward := Achievements.reward_for(id)
+				if reward != "":
+					# i18n: unlock toast with a reward, max 296px, 2 lines; {goal} = the goal text, {name} = the cosmetic won (e.g. NIGHT PAPER)
+					notify_once("ach_" + id, Loc.t("ach.toast_reward", "ACHIEVEMENT: {goal}. REWARD: {name}", {goal = a.goal, name = Cosmetics.display_name(reward)}), "ach", reward)
+				else:
+					# i18n: unlock toast, max 296px, 2 lines; {goal} = the achievement's goal text (e.g. BEAT LEVEL 1)
+					notify_once("ach_" + id, Loc.t("ach.toast", "ACHIEVEMENT: {goal}", {goal = a.goal}), "ach")
+		report_progress("ach_" + id, 1)
+	# Goal rewards (IMP2-03): once per goal. A save that already had the goal gets it now, in one merged notice.
+	var late: Array[String] = []
+	var late_wear: Array[String] = []  # (the cosmetic each late text grants, "" = tickets)
+	for id in Achievements.met_ids(self):
+		var reward := Achievements.reward_for(id)
+		if reward == "" or id in ach_rewarded:
+			continue
+		ach_rewarded.append(id)
+		changed = true
+		if not owns_cosmetic(reward):
+			cosmetics_owned.append(reward)
+		if not id in announced and not silent:
+			# i18n: toast, max 296px, 2 lines; {name} = the cosmetic a goal already met just granted (e.g. NIGHT PAPER)
+			late.append(Loc.t("ach.reward_late", "NEW REWARD: {name}", {name = Cosmetics.display_name(reward)}))
+			late_wear.append(reward)
+	# Medal milestones (IMP2-03): a named cosmetic each, or a spin's worth of tickets when it is already owned.
+	var earned := Achievements.medals_earned(self)
+	for i in Achievements.MILESTONES.size():
+		var m: Dictionary = Achievements.MILESTONES[i]
+		if earned < int(m.medals) or medal_ms_mask & (1 << i) != 0:
+			continue
+		medal_ms_mask |= 1 << i
+		changed = true
+		var text: String
+		if owns_cosmetic(m.cosmetic):
+			add_tickets(Economy.MEDAL_MILESTONE_TICKETS, false)
+			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {n} = tickets (one wheel spin)
+			text = Loc.t("ach.medal_reward", "{medals} MEDALS: +{n} TICKETS", {medals = m.medals, n = Economy.MEDAL_MILESTONE_TICKETS})
+			late_wear.append("")
+		else:
+			cosmetics_owned.append(m.cosmetic)
+			# i18n: toast, max 296px, 2 lines; {medals} = the medal count reached, {name} = the cosmetic won (e.g. BLUEPRINT PAPER)
+			text = Loc.t("ach.medal_cosmetic", "{medals} MEDALS: {name}", {medals = m.medals, name = Cosmetics.display_name(m.cosmetic)})
+			late_wear.append(m.cosmetic)
+		late.append(text)
+		report_progress("medal_milestone", int(m.medals))
+	# One notice for everything granted now (a save that already had the goals and medals gets a single merged one).
+	if late.size() == 1 and not silent:
+		notify_once("ach_late_" + late[0], late[0], "reward", late_wear[0])
+	elif late.size() > 1 and not silent:
+		# i18n: toast, max 296px, 2 lines; {n} = how many goal and medal rewards were granted at once (2 or more)
+		notify_once("ach_late_many_%d_%d" % [ach_rewarded.size(), medal_ms_mask],Loc.t("ach.reward_late_many", "{n} NEW REWARDS FOR YOUR GOALS", {n = late.size()}), "reward")
+	_ach_checking = false
+	return changed
+
+
+## Whether an unlocked goal has not been shown on the ACHIEVEMENTS page yet (the hub's "!").
+func has_new_achievement() -> bool:
+	return Economy.ACHIEVEMENTS and not Demo.on() and ach_known.size() > ach_seen
+
+
+## The ACHIEVEMENTS page was opened: every goal unlocked so far is seen. Saved with the next save.
+func mark_achievements_seen() -> void:
+	if ach_known.size() != ach_seen:
+		ach_seen = ach_known.size()
+		save_progress()
+
+
+## Remembers that ability `id` was used (the ability goal); saved with the next save.
+func note_ability_used(id: String) -> void:
+	var bit: int = {"rifle": Achievements.FLAG_RIFLE, "splat": Achievements.FLAG_SPLAT, "kaze": Achievements.FLAG_KAZE}.get(id, 0)
+	if bit != 0 and not Demo.on():
+		ach_flags |= bit
+
+
+## A won randomizer maze with abilities in hand and none used (call after complete_random saved; the next save keeps it).
+func note_clean_random_win() -> void:
+	if not Demo.on():
+		ach_flags |= Achievements.FLAG_CLEAN_WIN
+		save_progress()
 
 
 ## The app is going to the background (PlatformEvents): every change is already saved the moment it happens
@@ -1116,10 +1425,10 @@ static func is_demo_save(file: ConfigFile) -> bool:
 
 ## Records a story win and picks the next level (back to 1 after beating the last one). On hard
 ## mode it also unlocks that level's solid skin.
-func complete_level(level: int, save := true) -> void:
+func complete_level(level: int, save := true, credit := true) -> void:
 	if level < 1 or level > Levels.COUNT:
 		return  # (not a story level: a randomizer maze or a Descent floor has level 0)
-	if hard_mode and not level in hard_cleared:
+	if hard_mode and credit and not level in hard_cleared:  # (a no-credit run, e.g. RELAXED, earns no hard-mode skin)
 		hard_cleared.append(level)
 	levels_cleared = maxi(levels_cleared, level)
 	dry_ups.erase(level)
@@ -1345,6 +1654,27 @@ func enable_story_complete() -> void:
 	seed_full_surveys()
 
 
+## Test builds only (an export with the custom feature `skip_demo`: SKIP_DEMO=1 tools/ios_build.sh): the
+## save starts past the demo's story levels (1..Demo.LEVELS cleared with their coins, intro and tutorial
+## seen), so the full game's later content is one PLAY away. Saved; a save already past them is left as is.
+const SKIP_DEMO_FEATURE := "skip_demo"
+
+
+func skip_demo_levels() -> void:
+	if levels_cleared >= Demo.LEVELS:
+		return
+	story_seen |= STORY_INTRO
+	tutorial_seen |= TUTORIAL_MOVE | TUTORIAL_LEAP | TUTORIAL_TRAINING | TUTORIAL_HUB
+	for level in range(1, Demo.LEVELS + 1):
+		var keys: Array = []
+		keys.assign(Levels.coin_keys(level))
+		coins_found[level] = keys
+		if not level in skin_notices_seen:
+			skin_notices_seen.append(level)
+		complete_level(level, false)
+	save_progress()
+
+
 ## Debug `--autoplay` (tools/play.sh --autoplay, see scripts/autoplay/autoplay.gd): the game plays
 ## the story by itself from a brand-new player's state, in memory only (the real save is never read
 ## and nothing is saved). Story intro/finale count as seen unless `--autoplay-cinematics`; the
@@ -1360,6 +1690,7 @@ func enable_autoplay() -> void:
 
 func start_story(level: int) -> void:
 	mode = MODE_STORY
+	relaxed_level = 0
 	current_level = clampi(level, 1, highest_unlocked)
 
 
@@ -1367,9 +1698,12 @@ func start_story(level: int) -> void:
 ## random_payout: the attempt table, capped at 1 for a typed / replayed seed or no MORE SLIME bought;
 ## 0 once today's 5 paying wins are used, while assisted (or dev toggles), or for a seed that already
 ## paid today). Returns the tickets paid. The maze stays the same until the player picks NEW MAZE.
-func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
-	randoms_cleared += 1
-	randoms_won += 1
+func complete_random(assisted := false, seed_value := 0, attempt := 1, factor := 1.0, counts := true, daily := false) -> int:
+	if counts:  # (a repeat daily win counts toward nothing unless Economy.REPEAT_DAILY_COUNTS)
+		randoms_cleared += 1
+		randoms_won += 1
+	random_moved = false  # (a win is no abandoning: the next maze starts at attempt 1)
+	random_maze_won = true  # (replaying it and leaving is no abandoning: _abandon_base ignores its attempts)
 	var paid := 0
 	if not assisted:
 		_check_pay_day()
@@ -1377,9 +1711,10 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 			random_pay_day = utc_day()
 			random_paid = 0
 			random_paid_seeds.clear()
-		paid = random_tickets_due(attempt, seed_value)
+		paid = random_tickets_due(attempt, seed_value, factor, daily)
 		if paid > 0:
-			random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
+			if not daily:  # (the daily has its own once-a-day gate, seed_paid_today: it never uses up a paying random win)
+				random_paid = mini(random_paid + 1, RANDOM_PAID_PER_DAY)  # counts up to the cap (when it's on)
 			if seed_value != 0:
 				random_paid_seeds.append(seed_value)
 				while random_paid_seeds.size() > PAID_SEEDS_MAX:
@@ -1388,7 +1723,8 @@ func complete_random(assisted := false, seed_value := 0, attempt := 1) -> int:
 	if seed_value != 0:
 		random_seed_fresh = false  # winning it again is a replay
 	save_progress()
-	report_progress("random_wins", randoms_won)
+	if counts:
+		report_progress("random_wins", randoms_won)
 	return paid
 
 
@@ -1399,7 +1735,15 @@ static func random_attempt_key(seed_value: int, seed_level: int, hard := false) 
 
 ## Counts one more start of the maze under `key` and returns which attempt this is (1 = first).
 func begin_random_attempt(key: String) -> int:
-	random_attempts[key] = int(random_attempts.get(key, 0)) + 1
+	# A pickup taken but not yet paid (held for the win) was lost with the last attempt: it is in the maze again.
+	var lost: Array = random_tickets_held.get(key, [])
+	if not lost.is_empty():
+		var taken: Array = random_tickets_taken.get(key, [])
+		for cell: Vector2i in lost:
+			taken.erase(cell)
+		random_tickets_taken[key] = taken
+	random_tickets_held.erase(key)
+	random_attempts[key] = int(random_attempts.get(key, random_attempt_base)) + 1
 	return random_attempts[key]
 
 
@@ -1410,18 +1754,38 @@ func random_ticket_taken(key: String, cell: Vector2i) -> bool:
 
 ## Takes the ticket pickup at `cell` of the maze under `key` and pays it (unless `unpaid`: an assisted
 ## or dev-toggled run takes it for nothing). Returns the tickets paid. Saves.
-func take_random_ticket(key: String, cell: Vector2i, unpaid := false) -> int:
+## With `held` (Economy.PICKUPS_ON_WIN) nothing is paid here: the amount it is worth is returned and the
+## caller holds it until the maze is won.
+func take_random_ticket(key: String, cell: Vector2i, unpaid := false, held := false) -> int:
 	if random_ticket_taken(key, cell):
 		return 0
 	var taken: Array = random_tickets_taken.get(key, [])
 	taken.append(cell)
 	random_tickets_taken[key] = taken
-	return 0 if unpaid else add_tickets(Economy.RANDOM_TICKET_PAY)
+	if held and not unpaid:
+		var cells: Array = random_tickets_held.get(key, [])
+		cells.append(cell)
+		random_tickets_held[key] = cells
+	if unpaid:
+		return 0
+	return Economy.RANDOM_TICKET_PAY if held else add_tickets(Economy.RANDOM_TICKET_PAY)
 
 
-## Tickets a win pays on attempt `attempt` before any cap: 5, 4, 3, 2, then 1 from the fifth on.
+## Tickets a win pays on attempt `attempt` before any cap: 10, 8, 6, 4, 2, then 1 from the sixth on.
 static func tickets_for_attempt(attempt: int) -> int:
 	return RANDOM_ATTEMPT_PAY[clampi(attempt, 1, RANDOM_ATTEMPT_PAY.size()) - 1]
+
+
+## The pay factor of a maze (Economy.PAY_BY_LENGTH): its route in cells over a typical maze's route at the
+## same MORE SLIME level, clamped. Integer-derived, the same on every platform.
+static func random_length_factor(seed_value: int, seed_level := 0, hard := false) -> float:
+	if not Economy.pay_by_length():
+		return 1.0
+	if hard:
+		return clampf(Economy.HARD_LENGTH_FACTOR, Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
+	var route := Levels.random_route_cells(seed_value, hard, seed_level)
+	var typical := Levels.random_route_cells_for(Economy.LENGTH_TYPICAL_PERMILLE, seed_level)
+	return clampf(float(route) / float(maxi(typical, 1)), Economy.LENGTH_PAY_MIN, Economy.LENGTH_PAY_MAX)
 
 
 # ---------------------------------------------------------------- tickets and medals
@@ -1444,17 +1808,24 @@ func _check_pay_day() -> void:
 
 
 ## What a randomizer win on `attempt` would pay right now (see random_payout).
-func random_tickets_due(attempt := 1, seed_value := 0) -> int:
-	return random_payout(attempt, seed_value).tickets
+func random_tickets_due(attempt := 1, seed_value := 0, factor := 1.0, daily := false) -> int:
+	return random_payout(attempt, seed_value, factor, daily).tickets
 
 
 ## What a randomizer win on `attempt` of the maze `seed_value` would pay right now, and why it is
 ## less than the table says: {tickets, table, cap} with cap "" (full), "daily" (today's paying wins
 ## are used up: 0), "paid" (this seed already paid today: 0), "replay" (a typed or replayed seed: 1)
 ## or "slime" (no MORE SLIME bought: 1; never in dev mode, where everything is unlocked). Assisted / dev-toggled runs are the caller's (they pay 0).
-func random_payout(attempt := 1, seed_value := 0) -> Dictionary:
+## `factor` = random_length_factor of the maze (1.0 = the table as is).
+func random_payout(attempt := 1, seed_value := 0, factor := 1.0, daily := false) -> Dictionary:
 	_check_pay_day()
+	if daily:  # IMP2-05: the first daily win of the day pays a flat Economy.DAILY_WIN_TICKETS, past every cap but the day's own
+		if seed_paid_today(seed_value):
+			return {tickets = 0, table = Economy.DAILY_WIN_TICKETS, cap = "paid"}
+		return {tickets = Economy.DAILY_WIN_TICKETS, table = Economy.DAILY_WIN_TICKETS, cap = ""}
 	var table := tickets_for_attempt(attempt)
+	if factor != 1.0:
+		table = maxi(1, roundi(table * factor))
 	var open := not Economy.random_daily_cap_on() or utc_day() > random_pay_day or random_paid < RANDOM_PAID_PER_DAY
 	if not open:
 		return {tickets = 0, table = table, cap = "daily"}
@@ -1549,11 +1920,32 @@ func all_medals() -> bool:
 
 # ---------------------------------------------------------------- slime reserve (assist)
 
-## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups on this story level since
+## Whether the dry-up screen should offer the slime reserve: 3+ dry-ups (2+ on L8-L10) on this story level since
 ## it was last cleared (this session), and never on hard mode.
 func assist_offered(for_level: int) -> bool:
-	return not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
-			and int(dry_ups.get(for_level, 0)) >= ASSIST_AFTER
+	return not Economy.one_assist() and not hard_mode and for_level >= 1 and for_level <= Levels.COUNT \
+			and int(dry_ups.get(for_level, 0)) >= (ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER)
+
+
+## RELAXED's extra slime fraction on `for_level` (0 with ONE_ASSIST off): 25% + 2% per dry-up there, at most 50%.
+## A random maze (`random`) has no dry-up count of its own: it starts at the base 25% (not the level number's story count).
+func relaxed_bonus(for_level: int, random := false) -> float:
+	if not Economy.one_assist():
+		return 0.0
+	return minf(RELAXED_MAX, RELAXED_BONUS + RELAXED_GROWTH * (0 if random else int(dry_ups.get(for_level, 0))))
+
+
+## RELAXED applies on `for_level` now: the SETTINGS toggle, or this level's YES to the dry-up offer.
+func relaxed_on(for_level: int) -> bool:
+	return relaxed or (relaxed_level != 0 and relaxed_level == for_level)
+
+
+## Whether the dry-up screen asks "RELAXED?" (ONE ASSIST): RELAXED is off, not hard mode, enough dry-ups on this story
+## level (3, or 2 on L8-L10), and it wasn't answered NO this session.
+func calm_offered(for_level: int) -> bool:
+	var needed := ASSIST_AFTER_LATE if for_level >= ASSIST_LATE_FROM else ASSIST_AFTER
+	return Economy.one_assist() and not hard_mode and not relaxed_on(for_level) and not calm_declined.has(for_level) \
+			and for_level >= 1 and for_level <= Levels.COUNT and int(dry_ups.get(for_level, 0)) >= needed
 
 
 ## Chooses to play `for_level`'s next attempt with the reserve. False if it isn't on offer.
@@ -1572,11 +1964,253 @@ func take_assist(for_level: int) -> bool:
 
 
 func start_random() -> void:
+	# (random_daily stays as it is: new_random_maze reads it to hand the carried abandon penalty on, then clears it)
 	if demo_preview_due() or demo_preview_replay():
+		random_daily = false
 		begin_demo_preview()  # (the demo's randomizer is the FULL GAME PREVIEW maze, from its first use on: owner 2026-10-23)
 		return
 	mode = MODE_RANDOM
 	new_random_maze()
+
+
+## The seed of UTC day `day`: the same for everyone, pure integer maths (1 to 2,000,000,000).
+static func daily_seed(day: int) -> int:
+	var x: int = (day * 2654435761 + 40503) & 0xFFFFFFFF
+	x = ((x ^ (x >> 15)) * 2246822519) & 0xFFFFFFFF
+	x = ((x ^ (x >> 13)) * 3266489917) & 0xFFFFFFFF
+	x ^= x >> 16
+	return x % 2_000_000_000 + 1
+
+
+## Starts today's daily maze: its seed, MORE SLIME 0 (everyone's maze is the same), normal rules, attempt 1.
+func start_daily() -> void:
+	mode = MODE_RANDOM
+	discard_random_map()
+	if not random_daily:  # (a random maze left unfinished keeps its abandon penalty for the next random maze)
+		random_attempt_carry = _abandon_base()
+	random_daily = true
+	random_weekly = false
+	daily_run_day = utc_day()
+	if daily_attempted_day != daily_run_day:
+		daily_attempted_day = daily_run_day
+		save_progress()
+	random_seed = daily_seed(daily_run_day)
+	random_level = 0
+	random_seed_fresh = true
+	random_attempt_base = 0
+	random_moved = false
+	random_maze_won = false
+	random_attempts.clear()
+	random_offer_shown.clear()
+	random_tickets_taken.clear()
+	random_tickets_held.clear()
+
+
+## True when a daily win is already recorded for today.
+func daily_won_today() -> bool:
+	return daily_day != 0 and daily_day == utc_day() and daily_best_ms > 0
+
+
+## True when today's daily was started (won or lost).
+func daily_attempted_today() -> bool:
+	return daily_attempted_day != 0 and daily_attempted_day == utc_day()
+
+
+## Whole days (1..7) left in this UTC week, today included (Monday 7 ... Sunday 1).
+func weekly_days_left() -> int:
+	return 7 - Boards.weekday(utc_day())
+
+
+## Whole minutes (1..1440) until the next UTC day's daily (the streak line's last hour).
+func daily_minutes_left() -> int:
+	return clampi(ceili((86400 - int(Time.get_unix_time_from_system()) % 86400) / 60.0), 1, 1440)
+
+
+## Whole hours (1..24) until the next UTC day's daily (the hub sign's NEW IN {h}H).
+func daily_hours_left() -> int:
+	var into_day := int(Time.get_unix_time_from_system()) % 86400
+	return clampi(ceili((86400 - into_day) / 3600.0), 1, 24)
+
+
+## True when a daily win is recorded for UTC day `day`.
+func daily_won_on(day: int) -> bool:
+	return daily_day != 0 and daily_day == day and daily_best_ms > 0
+
+
+## True when the one-per-week streak saver is free on UTC day `day`.
+func daily_saver_ready(day := 0) -> bool:
+	var today := day if day > 0 else utc_day()
+	return daily_saver_day == 0 or today - daily_saver_day >= Economy.DAILY_SAVER_DAYS
+
+
+## True when exactly one day was missed (the last win is the day before yesterday) and the saver is free: winning today
+## keeps the streak (the portal sign says STREAK SAVED).
+func daily_saver_pending() -> bool:
+	return daily_streak > 0 and daily_day != 0 and daily_day == utc_day() - 2 and daily_saver_ready()
+
+
+## The streak as it stands: 0 once a day was missed (the last win is older than yesterday), unless the saver covers it.
+func daily_streak_now() -> int:
+	if daily_saver_pending():
+		return daily_streak
+	return daily_streak if daily_day != 0 and daily_day >= utc_day() - 1 else 0
+
+
+## "DAILY #n": the day's number counted from Economy.DAILY_EPOCH_DAY (2026-11-01 = #1; at least 1).
+static func daily_number(day: int) -> int:
+	return maxi(day - Economy.DAILY_EPOCH_DAY + 1, 1)
+
+
+## Records a daily win of `ms`: best time of the day, the streak (+1 on a new day, 1 after a gap; one missed day is
+## covered by the saver when it is free) and the 10-ticket bonus on every 7th day of it. Returns {best_ms, new_best,
+## first, streak, bonus, saved, number}. Saves.
+func record_daily(ms: int, day := 0) -> Dictionary:
+	var today := day if day > 0 else utc_day()  # (`day`: the day the daily was started on)
+	var first := not (daily_day != 0 and daily_day == today and daily_best_ms > 0)
+	var bonus := 0
+	var saved := false
+	if first:
+		if daily_day != 0 and daily_day == today - 1:
+			daily_streak += 1
+		elif daily_streak > 0 and daily_day != 0 and daily_day == today - 2 and daily_saver_ready(today):
+			daily_streak += 1  # exactly one day missed: the saver keeps the streak
+			daily_saver_day = today
+			saved = true
+		else:
+			daily_streak = 1
+		daily_day = today
+		daily_best_ms = 0
+		daily_best_streak = maxi(daily_best_streak, daily_streak)
+		if daily_streak % Economy.DAILY_STREAK_STEP == 0:
+			bonus = add_tickets(Economy.DAILY_STREAK_BONUS, false)
+	var new_best := daily_best_ms == 0 or ms < daily_best_ms
+	if new_best:
+		daily_best_ms = ms
+	save_progress()
+	return {best_ms = daily_best_ms, new_best = new_best, first = first, streak = daily_streak, bonus = bonus, saved = saved, number = daily_number(today)}
+
+
+# ---------------------------------------------------------------- BM-03 boards and ghosts
+
+## Starts this week's WEEKLY maze: the week's seed, a fixed loadout (MORE SLIME Economy.WEEKLY_SLIME, no abilities), normal rules.
+## Pays nothing and counts toward nothing (it only posts a board time).
+func start_weekly() -> void:
+	mode = MODE_RANDOM
+	discard_random_map()
+	if not random_daily and not random_weekly:
+		random_attempt_carry = _abandon_base()
+	random_daily = false
+	random_weekly = true
+	daily_run_day = utc_day()  # (the day it was started on, for the board)
+	random_seed = Boards.weekly_seed(Boards.week_of(daily_run_day))
+	random_level = Economy.WEEKLY_SLIME
+	random_seed_fresh = true
+	random_attempt_base = 0
+	random_moved = false
+	random_maze_won = false
+	random_attempts.clear()
+	random_offer_shown.clear()
+	random_tickets_taken.clear()
+	random_tickets_held.clear()
+
+
+## The board of `kind` ("daily" / "weekly") for the day / week `key`.
+func board_for(kind: String, key: int) -> Array:
+	var all: Dictionary = board_weekly if kind == "weekly" else board_daily
+	return all.get(key, [])
+
+
+## Remembers that this week's weekly was won (saved), board time or not.
+func mark_weekly_played(week: int) -> void:
+	if week > weekly_played_week:
+		weekly_played_week = week
+		save_progress()
+
+
+## What a weekly win of `week` in `time` s on a maze of par `par` pays now: its total worth minus what the week already paid.
+func weekly_pay_due(week: int, time: float, par: float) -> int:
+	var paid := weekly_paid if weekly_paid_week == week else 0
+	return maxi(Economy.weekly_pay(time, par) - paid, 0)
+
+
+## Pays a weekly win (saved): only the improvement over this week's earlier pay. Returns the tickets added.
+func pay_weekly(week: int, time: float, par: float) -> int:
+	var due := weekly_pay_due(week, time, par)
+	if due <= 0:
+		return 0
+	weekly_paid = (weekly_paid if weekly_paid_week == week else 0) + due
+	weekly_paid_week = week
+	var added := add_tickets(due, false)
+	save_progress()
+	return added
+
+
+## Posts a finished run's time to the board of `kind` (the run started on UTC day `day`), saves, and tells a store backend
+## (progress_event `board_daily` / `board_weekly`, value = ms). Returns {rank (0 = not in the top 5), board, key, best_daily}.
+## RELAXED, assisted and dev runs never call this.
+func post_board(kind: String, ms: int, day: int) -> Dictionary:
+	var weekly := kind == "weekly"
+	var key := Boards.week_of(day) if weekly else day
+	var all: Dictionary = board_weekly if weekly else board_daily
+	var board := Boards.inserted(all.get(key, []), ms, day)
+	all[key] = board
+	_prune_boards(all, Boards.KEEP_WEEKS if weekly else Boards.KEEP_DAYS)
+	var best_daily := false
+	if not weekly and (board_best_daily_ms == 0 or ms < board_best_daily_ms):
+		board_best_daily_ms = ms
+		best_daily = true
+	save_progress()
+	report_progress("board_weekly" if weekly else "board_daily", ms)
+	return {rank = Boards.rank_of(board, ms, day), board = board, key = key, best_daily = best_daily}
+
+
+static func _prune_boards(all: Dictionary, keep: int) -> void:
+	var keys := all.keys()
+	keys.sort()
+	while keys.size() > keep:
+		all.erase(keys.pop_front())
+
+
+func ghosts_path() -> String:
+	return "user://ghosts.cfg" if save_path == REAL_SAVE_PATH else save_path.get_basename() + "_ghosts.cfg"
+
+
+func _load_ghosts() -> void:
+	if not _ghosts_loaded:
+		_ghosts_loaded = true
+		if saving_enabled:
+			ghost_parse_count += 1
+			_ghosts = Boards.read_ghosts(ghosts_path())
+		else:
+			_ghosts = {}
+
+
+## Parses ghosts.cfg now (the hub calls this behind its transition, so a level's first frame never does).
+func warm_ghosts() -> void:
+	_load_ghosts()
+
+
+## The best run recorded for `kind`'s `key` (day / week): {key, ms, pts} or {} (nothing, or another day's).
+func ghost_for(kind: String, key: int) -> Dictionary:
+	_load_ghosts()
+	var g: Dictionary = _ghosts.get(kind, {})
+	return g if int(g.get("key", 0)) == key else {}
+
+
+## Keeps `pts` (packed positions) as the ghost of `kind` / `key` when it beats the one there (or replaces another day's).
+## Returns true when it was kept (and, when saving, survived the file write). Capped at Economy.GHOST_MAX samples; written to the side file when saving is on.
+func record_ghost(kind: String, key: int, ms: int, pts: Array) -> bool:
+	if pts.size() < 2 or pts.size() > Economy.GHOST_MAX or ms <= 0:
+		return false
+	_load_ghosts()
+	var old := ghost_for(kind, key)
+	if not old.is_empty() and int(old.ms) <= ms:
+		return false
+	_ghosts.erase(kind)  # (re-added last: the dict order is the touch order, the oldest-touched kind is trimmed first)
+	_ghosts[kind] = {key = key, ms = ms, pts = pts.duplicate()}
+	if saving_enabled and not demo_guard and _preview_save == null:
+		return Boards.write_ghosts(ghosts_path(), _ghosts, kind) and _ghosts.has(kind)
+	return true
 
 
 # ---------------------------------------------------------------- the demo's FULL GAME PREVIEW
@@ -1586,7 +2220,7 @@ var _preview_save: ConfigFile = null
 ## What isn't in a save but the preview changes (the randomizer's current maze, the worn-skin override).
 var _preview_live := {}
 const _PREVIEW_LIVE_KEYS: Array[String] = ["mode", "random_seed", "random_level", "random_seed_fresh", "randoms_cleared",
-	"random_attempts", "random_offer_shown", "random_tickets_taken", "skin_override", "hard_mode", "current_level", "return_to_game"]
+	"random_attempts", "random_attempt_base", "random_moved", "random_offer_shown", "random_tickets_taken", "skin_override", "hard_mode", "current_level", "return_to_game"]
 
 
 ## The preview's card was shown (once per preview; its restarts go straight in). Not saved.
@@ -1621,13 +2255,16 @@ func begin_demo_preview() -> void:
 		_preview_live[key] = value.duplicate(true) if value is Dictionary or value is Array else value
 	Demo.preview = true
 	mode = MODE_RANDOM
+	random_daily = false
 	hard_mode = false
 	random_seed = Demo.PREVIEW_SEED
 	random_level = Demo.PREVIEW_LEVEL
 	random_seed_fresh = false
 	random_attempts.clear()
+	random_attempt_base = 0
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 	_borrow_preview_look()
 	for id in Abilities.ids():
 		abilities[id] = Abilities.max_level(id)
@@ -1978,7 +2615,18 @@ func discard_random_map() -> void:
 	random_map_key = ""
 
 
+## The attempt the next random maze starts at: the highest attempt reached on the last one, if it was abandoned after a move.
+func _abandon_base() -> int:
+	var used := 0
+	for count in random_attempts.values():
+		used = maxi(used, int(count))
+	return mini(used, RANDOM_ATTEMPT_PAY.size() - 1) if Economy.abandon_counts() and random_moved and not random_maze_won else 0
+
+
 func new_random_maze() -> void:
+	var from_daily := random_daily or random_weekly
+	random_daily = false
+	random_weekly = false
 	discard_random_map()
 	random_seed = randi_range(1, 2_000_000_000)
 	if Demo.gentle_maze(randoms_won):  # (the demo's first mazes: a seed that doesn't ask for most of the meter)
@@ -1988,9 +2636,15 @@ func new_random_maze() -> void:
 			random_seed = randi_range(1, 2_000_000_000)
 	random_level = -1
 	random_seed_fresh = true  # (the demo too: a new random maze each time, its theme from Demo.themes())
-	random_attempts.clear()  # a new maze starts counting at attempt 1
+	# a new maze starts counting at attempt 1, unless the last one was abandoned after a move (ABANDON_COUNTS)
+	random_attempt_base = random_attempt_carry if from_daily else _abandon_base()
+	random_attempt_carry = 0
+	random_moved = false
+	random_maze_won = false
+	random_attempts.clear()
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 
 
 # ---------------------------------------------------------------- skins
@@ -2070,6 +2724,17 @@ func upgrade_buyable() -> bool:
 		if not upgrade.get("dev", false) and upgrade_level(id) < Demo.upgrade_cap(id) and coins() >= Upgrades.cost(id, upgrade_level(id)):
 			return true
 	return false
+
+
+## The next MORE SLIME level when the coins in hand already pay for it: {percent, cost} (percent = how much
+## further the meter goes, from the real tables), else {}. The dry-up row's UPGRADES hint (IMP2-04).
+func slime_upgrade_offer() -> Dictionary:
+	var level := upgrade_level("slime")
+	var cost := Upgrades.cost("slime", level)
+	if level >= Demo.upgrade_cap("slime") or cost <= 0 or coins() < cost:
+		return {}
+	var gain := Upgrades.slime_factor(level + 1) / maxf(Upgrades.slime_factor(level), 0.01) - 1.0
+	return {percent = roundi(gain * 100.0), cost = cost}
 
 
 func upgrade_level(id: String) -> int:
@@ -2434,6 +3099,31 @@ func equip_cosmetic(id: String) -> bool:
 	return true
 
 
+## BUG4-13: what a WEAR IT toast can offer: a cosmetic id, "skin:<id>" / "skin:<id>:pastel" (a skin, in its pastel version),
+## or "hat:<id>" (a hat); true when it is owned / unlocked right now.
+func can_wear(id: String) -> bool:
+	if id.begins_with("skin:"):
+		var parts := id.split(":")
+		return parts.size() >= 2 and is_skin_unlocked(parts[1], false, parts.size() >= 3 and parts[2] == "pastel")
+	if id.begins_with("hat:"):
+		return is_hat_unlocked(id.trim_prefix("hat:"))
+	return owns_cosmetic(id)
+
+
+## Wears what a WEAR IT toast offered (see can_wear); one save. False when it can't be worn.
+func wear_reward(id: String) -> bool:
+	if not can_wear(id):
+		return false
+	if id.begins_with("skin:"):
+		var parts := id.split(":")
+		select_skin(parts[1], false, parts.size() >= 3 and parts[2] == "pastel")  # saves
+		return true
+	if id.begins_with("hat:"):
+		select_hat(id.trim_prefix("hat:"))  # saves
+		return true
+	return equip_cosmetic(id)
+
+
 ## Takes off cosmetic `id` if it is worn (back to its kind's default). Saves.
 func unequip_cosmetic(id: String) -> void:
 	if trail_style == id:
@@ -2451,15 +3141,34 @@ func _wear(id: String) -> void:
 		map_paper = id
 
 
-## The cheapest thing in the store not owned yet (hat spin, hat dye, workshop level, cosmetic)
-## is affordable: the hub prompts show a "!" (spec C.3).
-func store_affordable(where: String) -> bool:
-	if dev_tools:
+## Marks station `id` as opened now: its "!" waits for something cheaper than what was affordable at this visit (BUG4-12).
+## In memory only: the station's own saves (and the next one) persist it, so opening a station writes nothing (BUG4-08).
+func hub_mark_seen(id: String) -> void:
+	var cheapest := hub_cheapest(id)
+	if cheapest > TICKETS_MAX:
+		hub_seen.erase(id)
+	else:
+		hub_seen[id] = cheapest
+
+
+## True when station `id` ("upgrades" / "wheel") has something new to buy: affordable now (`affordable`), and either nothing
+## was affordable at the last visit or something cheaper than that visit's cheapest is. Nothing affordable clears the marker.
+func hub_news(id: String, affordable: bool) -> bool:
+	if not affordable:
+		hub_seen.erase(id)
 		return false
+	var seen: int = hub_seen.get(id, -1)
+	return seen < 0 or hub_cheapest(id) < seen
+
+
+## The price of the cheapest thing in `where`'s ticket store still to buy (TICKETS_MAX + 1 = nothing).
+func store_cheapest(where: String) -> int:
+	if dev_tools:
+		return TICKETS_MAX + 1
 	var cheapest := TICKETS_MAX + 1
 	if where == "upgrades":
 		if not workshop_open() and not abilities_open():
-			return false
+			return TICKETS_MAX + 1
 		if workshop_open():
 			for id in Workshop.ids():
 				if workshop_level(id) < Workshop.max_level(id):
@@ -2472,7 +3181,7 @@ func store_affordable(where: String) -> bool:
 		if Hats.available and not hats_left().is_empty() and Demo.hat_wheel_open() and demo_wheel_block() == "":
 			cheapest = mini(cheapest, spin_cost())
 		if not Demo.shop_open():
-			return cheapest <= tickets  # (the demo: the SHOP is in the full game)
+			return cheapest  # (the demo: the SHOP is in the full game)
 		for id in Cosmetics.ids():
 			if not owns_cosmetic(id):
 				cheapest = mini(cheapest, cosmetic_price(id))
@@ -2480,7 +3189,29 @@ func store_affordable(where: String) -> bool:
 			for dye in Hats.dyes_for(hat):
 				if not owns_dye(hat, dye):
 					cheapest = mini(cheapest, dye_price(dye))
-	return cheapest <= tickets
+	return cheapest
+
+
+func store_affordable(where: String) -> bool:
+	return store_cheapest(where) <= tickets
+
+
+## The price of the cheapest thing station `id` ("upgrades" / "wheel") lets you pay for right now (TICKETS_MAX + 1 = none).
+func hub_cheapest(id: String) -> int:
+	var cheapest := TICKETS_MAX + 1
+	var store := store_cheapest(id)
+	if store <= tickets:
+		cheapest = store
+	if id == "upgrades":
+		for upgrade: Dictionary in Upgrades.LIST:
+			var uid: String = upgrade.id
+			if not upgrade.get("dev", false) and upgrade_level(uid) < Demo.upgrade_cap(uid):
+				var cost := Upgrades.cost(uid, upgrade_level(uid))
+				if cost <= coins():
+					cheapest = mini(cheapest, cost)
+	elif can_spin_hats():
+		cheapest = mini(cheapest, spin_cost())
+	return cheapest
 
 
 ## A hat won on the wheel: it's yours (off the wheel), and the slime puts it on. Saved.
@@ -2624,6 +3355,8 @@ func reset_progress() -> void:
 	training_skipped = false
 	story_seen = 0
 	dry_ups = {}
+	calm_declined = {}
+	relaxed_level = 0
 	tickets = 0
 	tickets_lifetime = 0
 	medals = {}
@@ -2644,11 +3377,15 @@ func reset_progress() -> void:
 	random_paid_seeds.clear()
 	random_seed_fresh = true
 	random_attempts.clear()
+	random_attempt_base = 0
+	random_moved = false
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
+	random_tickets_held.clear()
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false
+	ghost_intro_seen = false
 	descent_run = {}
 	descent_resume = {}
 	descent_best_floor = 0
@@ -2657,12 +3394,37 @@ func reset_progress() -> void:
 	descent_pay_day = 0
 	descent_paid = 0
 	descent_milestones = 0
+	daily_day = 0
+	daily_best_ms = 0
+	daily_streak = 0
+	daily_best_streak = 0
+	board_daily.clear()
+	board_weekly.clear()
+	hub_seen.clear()
+	board_best_daily_ms = 0
+	weekly_played_week = 0
+	weekly_paid_week = 0
+	weekly_paid = 0
+	daily_attempted_day = 0
+	_ghosts = {}
+	_ghosts_loaded = true
+	if saving_enabled and FileAccess.file_exists(ghosts_path()):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(ghosts_path()))
+	ach_known.clear()
+	ach_seeded = true
+	ach_seen = 0
+	ach_flags = 0
+	medal_milestones_paid = 0
+	ach_rewarded.clear()
+	medal_ms_mask = 0
+	daily_saver_day = 0
 	save_progress()
 
 
-## Whether the hub's color can be chosen: normal mode beaten (all story levels cleared), or dev mode.
+## Whether the hub's color can be chosen: always (owner, 2026-11-01: the player's choice from the start, no longer
+## locked behind beating the story). Kept as a seam so the wardrobe's HUB page asks one place.
 func hub_color_open() -> bool:
-	return dev_tools or levels_cleared >= Levels.COUNT
+	return true
 
 
 ## The skin the hub wears: "" = AUTO (the worn skin's), or the chosen one while it's allowed.

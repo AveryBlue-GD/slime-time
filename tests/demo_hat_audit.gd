@@ -19,7 +19,7 @@ const POSES := [
 	["air_e", 3, "AIR"], ["land_e", 0, "LAND"], ["splat_w", 0, "SPLAT"],
 ]
 const FRAME_ANIMS := ["idle", "glide_e", "charge_e", "launch_e", "air_e", "land_e", "splat_e", "splat_w",
-	"splat_n", "splat_s", "celebrate", "recover", "glide_n", "glide_s"]
+	"splat_n", "splat_s", "celebrate", "recover", "glide_n", "glide_s", "hurt"]
 const BG := Color8(34, 40, 58)
 const BG_ALT := Color8(62, 58, 56)
 

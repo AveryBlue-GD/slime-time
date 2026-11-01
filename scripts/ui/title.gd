@@ -39,7 +39,7 @@ const SLIME_OUT := 20
 const SLIME_Y := 112
 ## The 2x slime's ink around its position (measured: body, eyes and shadow), and how far above the
 ## button's middle its position goes to stand level with the button (ink centred on the button's rows).
-const SLIME_INK := Rect2(-16, -12, 32, 30)
+const SLIME_INK := Rect2(-8, -6, 16, 15)
 const SLIME_LEVEL := 3
 ## Demo builds only (Platform.is_demo()): the DEMO sticker (tools/make_demo_sticker.py, 65x40, pre-tilted
 ## pixel art) at this top-left corner, under the logo's D by the left slime (over its hat, on purpose).
@@ -54,6 +54,14 @@ const TAGLINE_BOTTOM := 176
 const TAGLINE_W := 300
 
 var enter_button: Button
+## The launch card while it plays (null otherwise, and after it is freed).
+var intro_card: IntroCard
+## The two slimes beside the button hop and glide in their lit pocket (idle that keeps moving); Reduce Motion: still.
+var _idle_slimes: Array[Node2D] = []
+var _idle_base: Array[Vector2] = []
+var _idle_time := 0.0
+const HOP_EVERY := 1.2
+const HOP_TIME := 0.45
 var story_button: Button
 ## QUIT (bottom-right, mirroring STORY): only where the game may close itself (Platform.can_quit, the hub
 ## trapdoor's rule), else null. It quits at once: the title is a deliberate place (no confirm panel).
@@ -76,6 +84,9 @@ static func logo_texture(index := -1) -> Texture2D:
 
 
 func _ready() -> void:
+	# A cold launch = the title the game booted into, not the one after the first-launch story intro (which
+	# sets Story.launched) and not a return from the hub: only that one gets the launch card (IMP2-01).
+	var cold := (get_tree().current_scene == self or IntroCard.force) and not Story.launched
 	Progress.end_demo_preview()  # (a safety net: the demo's preview maze never lasts past the game scene)
 	# The very first launch of a fresh save opens with the animated intro (the launch trailer),
 	# which then wipes into this screen. Only the title the game boots into counts.
@@ -109,6 +120,13 @@ func _ready() -> void:
 	logo.position = Vector2(roundf((320 - logo.texture.get_width()) / 2.0), 12)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
+	if not Progress.reduce_motion:
+		var drip := LogoDrip.new()  # ANI-11: one drip on the logo now and then stretches, drops and splats
+		drip.name = "LogoDrip"
+		drip.position = logo.position
+		drip.material = logo.material  # (same skin recolor as the logo it grows from)
+		add_child(drip)
+		drip.setup(logo.texture.get_image())
 	# A fresh save plays level 1 right away; the hub opens up once the first chalice is won.
 	var fresh: bool = Progress.is_fresh_save()
 	# Same 16 px lettering as the tagline, so the button isn't dwarfed by it.
@@ -119,7 +137,7 @@ func _ready() -> void:
 	# it taller (enter_height), the slimes staying level with its middle.
 	var previews: Array[Node2D] = []
 	for i in 2:
-		var preview := UIKit.make_slime_preview(Progress.skin_color(), 2, Progress.is_rainbow(), null, Progress.is_stopwatch())
+		var preview := UIKit.make_slime_preview(Progress.skin_color(), 1, Progress.is_rainbow(), null, Progress.is_stopwatch())
 		add_child(preview)
 		previews.append(preview)
 		if Progress.selected_hat != Hats.NONE:  # the hat you're wearing, at the same 2x size
@@ -133,6 +151,7 @@ func _ready() -> void:
 
 	enter_button = UIKit.make_button(enter_text, _play if fresh else _enter, Vector2(ENTER_SIZE.x, enter_height(enter_text)))
 	enter_button.add_theme_font_size_override("font_size", UIKit.FONT_BIG)
+	enter_button.material = UIKit.clean_big_material()  # BUG2-05: 16 px button text reads clean, no drips
 	UIKit.use_big_font(enter_button, 16)
 	var shift := UIKit.ink_shift(enter_text, UIKit.FONT_BIG)
 	if UIKit.tall_script() or _marked_locale():
@@ -173,6 +192,7 @@ func _ready() -> void:
 	var parts := [Loc.t("title.tagline.1", "ESCAPE THE FOG"), Loc.t("title.tagline.2", "BEFORE YOU DRY UP")]
 	var tagline := UIKit.make_label(Loc.lines(parts), UIKit.FONT_BIG, UIKit.TEXT_DIM)  # big, filling the bottom
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tagline.material = UIKit.clean_big_material()  # BUG2-05: the tagline has no drips (the logo and headings keep theirs)
 	var spacing := UIKit.line_spacing() * 2  # (10 in English: the big font's double line spacing)
 	tagline.add_theme_constant_override("line_spacing", spacing)
 	add_child(tagline)
@@ -211,8 +231,59 @@ func _ready() -> void:
 		slime_y = int(enter_rect.position.y) + floori(enter_size.y / 2.0) - SLIME_LEVEL
 		for preview in previews:
 			preview.position.y = slime_y
+	for preview in previews:
+		_idle_slimes.append(preview)
+		_idle_base.append(preview.position)
+		if not Progress.reduce_motion:
+			(preview as AnimatedSprite2D).speed_scale = 2.0  # (a quicker, bouncier idle between hops)
 	_warm_up_shaders()
 	_start_preload(fresh)
+	if IntroCard.due(cold, Progress):
+		_start_intro_card()
+
+
+func _process(delta: float) -> void:
+	if Progress.reduce_motion or _idle_slimes.is_empty():
+		return
+	_idle_time += delta
+	for i in _idle_slimes.size():
+		var sprite := _idle_slimes[i] as AnimatedSprite2D
+		var side := "e" if i == 0 else "w"  # (each hops toward the button)
+		var phase := fposmod(_idle_time + 0.6 * i, HOP_EVERY) / HOP_TIME  # (the two slimes hop out of step)
+		var offset := Vector2.ZERO
+		if phase < 1.0:  # a hop, gliding 4 px toward the button and back, whole pixels, in its air frames
+			offset = Vector2(roundf(4.0 * sin(PI * phase) * (1.0 if i == 0 else -1.0)), -roundf(9.0 * 4.0 * phase * (1.0 - phase)))
+			_show_frame(sprite, "air_" + side, mini(3, int(phase * 4.0)))
+		elif phase < 1.3:  # the landing squash
+			_show_frame(sprite, "land_" + side, mini(3, int((phase - 1.0) / 0.3 * 4.0)))
+		elif sprite.animation != &"idle":
+			sprite.play("idle")
+		_idle_slimes[i].position = _idle_base[i] + offset
+
+
+func _show_frame(sprite: AnimatedSprite2D, anim: String, frame: int) -> void:
+	if sprite.animation != StringName(anim):
+		sprite.play(anim)
+		sprite.pause()
+	sprite.frame = frame
+
+
+## The launch card over the title (the preload and shader warm-up above run underneath it). The title's own UI
+## (everything but the drifting backdrop) is held invisible and fades in as the card hands over.
+func _start_intro_card() -> void:
+	var ui: Array[CanvasItem] = []
+	for child in get_children():
+		if child is CanvasItem and not child is MenuBackdrop:
+			ui.append(child)
+	var set_alpha := func(a: float) -> void:
+		for item in ui:
+			if is_instance_valid(item):
+				item.modulate.a = a
+	var card := IntroCard.new()
+	add_child(card)
+	card.setup(set_alpha, Progress.reduce_motion)
+	card.finished.connect(func() -> void: set_alpha.call(1.0))
+	intro_card = card
 
 
 ## The DEMO sticker (demo builds): its letters are in the slime sheet's goo shades, so the skin shader
@@ -376,6 +447,111 @@ func _replay_story() -> void:
 	Story.play(get_tree(), "intro", UIKit.TITLE_SCENE)
 
 
+## ANI-11 / ANI-29: a living drip on the logo. Every 1.5-3 s one of the logo's own drip tips stretches 2 px over
+## 3 frames, then a 2x3 droplet (lit top pixel, body, outline foot) falls 8-14 px under gravity (1, 1, 2, 2, 3 px
+## per 0.05 s step, then 3), splats 5 px wide and fades in 4 steps. All in whole pixels,
+## in the logo's own goo shades (sampled from its pixels, so the skin shader recolours it with the logo).
+class LogoDrip extends Node2D:
+	const STRETCH := 0.05  # s per stretch frame (3 frames)
+	const FALL := 0.4  # (8 gravity steps: enough for 14 px; it rests on the ground row for any spare steps)
+	const STEP := 0.05  # s per gravity step
+	const DROP: Array[int] = [0, 1, 2, 4, 6, 9]  # px fallen after each step (1, 1, 2, 2, 3), then 3 more per step
+	const SPLAT := 0.1
+	const FADE_STEP := 0.08  # 4 steps
+	var tips: Array[Vector2i] = []  # x, bottom row of each drip tip
+	var cols: Array[Color] = []  # per tip: outline, mid, dark, lit (as drawn in the logo)
+	var _wait := 2.0
+	var _t := 0.0
+	var _tip := -1
+	var _fall := 8
+	var _rng := RandomNumberGenerator.new()
+
+	func setup(img: Image) -> void:
+		_rng.randomize()
+		if img == null or img.is_compressed():
+			set_process(false)
+			return
+		var w := img.get_width()
+		var h := img.get_height()
+		var bottom: Array[int] = []
+		for x in w:
+			var b := -1
+			for y in range(h - 1, -1, -1):
+				var c := img.get_pixel(x, y)
+				if c.a > 0.5 and c.r8 + c.g8 + c.b8 > 90:  # (not the DEEP drop shadow, 16 16 28)
+					b = y
+					break
+			bottom.append(b)
+		for x in range(4, w - 4):
+			var b := bottom[x]
+			if b < 6 or b + 12 >= h + 40:
+				continue
+			var ok := b >= bottom[x - 1] and b >= bottom[x + 1] and b >= bottom[x - 2] and b >= bottom[x + 2]
+			if ok and b - mini(bottom[x - 4], bottom[x + 4]) >= 4 and b > bottom[x - 1] - 1 and (tips.is_empty() or x - tips[-1].x > 5):
+				tips.append(Vector2i(x, b))
+				cols.append(img.get_pixel(x, b))
+				cols.append(img.get_pixel(x, b - 2))
+				cols.append(img.get_pixel(x, b - 4))
+				var lit := img.get_pixel(x, b - 2)
+				for dy in range(1, 9):  # the lightest pixel in the stem above the tip: the droplet's glint
+					var c := img.get_pixel(x, b - dy)
+					if c.a > 0.5 and c.get_luminance() > lit.get_luminance():
+						lit = c
+				cols.append(lit)
+		if tips.is_empty():
+			set_process(false)
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if _tip < 0:
+			if _t >= _wait:
+				_tip = _rng.randi() % tips.size()
+				_fall = _rng.randi_range(8, 14)
+				_t = 0.0
+		elif _t >= 3.0 * STRETCH + FALL + SPLAT + 4.0 * FADE_STEP:
+			_tip = -1
+			_t = 0.0
+			_wait = _rng.randf_range(1.5, 3.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		if _tip < 0:
+			return
+		var tip := tips[_tip]
+		var edge := cols[_tip * 4]
+		var mid := cols[_tip * 4 + 1]
+		var dark := cols[_tip * 4 + 2]
+		var lit := cols[_tip * 4 + 3]
+		var t := _t
+		var stretch_end := 3.0 * STRETCH
+		if t < stretch_end:
+			var rows := 1 if t < STRETCH else 2
+			for r in rows:
+				draw_rect(Rect2(tip.x - 1, tip.y + 1 + r, 3 if r == 0 else 1, 1), edge if r == rows - 1 else dark)
+			draw_rect(Rect2(tip.x, tip.y + 1, 1, rows), mid if rows > 1 else dark)
+			return
+		t -= stretch_end
+		var top := tip.y + 3
+		if t < FALL:
+			var step := int(t / STEP)
+			var fallen: int = DROP[step] if step < DROP.size() else DROP[-1] + (step - DROP.size() + 1) * 3
+			var y := top + mini(fallen, _fall - 3)
+			draw_rect(Rect2(tip.x - 1, y, 2, 3), mid)
+			draw_rect(Rect2(tip.x - 1, y, 1, 1), lit)
+			draw_rect(Rect2(tip.x - 1, y + 2, 2, 1), edge)
+			return
+		t -= FALL
+		var ground := top + _fall - 3 + 2
+		var alpha := 1.0
+		if t >= SPLAT:
+			alpha = 1.0 - floorf((t - SPLAT) / FADE_STEP) * 0.25
+		if alpha <= 0.0:
+			return
+		var c := Color(dark, alpha)
+		draw_rect(Rect2(tip.x - 2, ground, 5, 1), Color(edge, alpha))
+		draw_rect(Rect2(tip.x - 1, ground, 3, 1), c)
+
+
 ## A test build's stamp (tools/ios_build.sh writes application/config/version: commit, time, which app), tiny and dim
 ## in the bottom left corner, so builds can be told apart on the phone. Other builds have none (nothing shows).
 func _add_build_stamp() -> void:
@@ -383,11 +559,51 @@ func _add_build_stamp() -> void:
 	if stamp == "":
 		return
 	print("BUILD " + stamp)
-	var label := UIKit.make_label(stamp, UIKit.FONT, UIKit.TEXT_OFF)  # i18n: ignore (a test build's id: commit and time)
+	var label := UIKit.make_label(stamp + (DEV_MARK if Progress.dev_tools else ""), UIKit.FONT, UIKit.TEXT_OFF)  # i18n: ignore (a test build's id: commit and time)
 	label.name = "BuildStamp"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	label.position = Vector2(UIKit.hud_edge().x, 2)
+	stamp_label = label
+
+
+## Dev mode on a phone (owner, 2026-11-01: test builds have no launch flags): DEV_TAPS taps on the build stamp
+## (or within DEV_TAP_GROW px of it), each within DEV_TAP_GAP s of the last, turn dev mode on for this session,
+## exactly as `--dev` (Progress.enable_dev_mode: everything unlocked, the pause menu's DEV panel, nothing saved;
+## the next launch is the normal save again). Only where the stamp shows (tools/ios_build.sh test builds) and in
+## debug builds; a store build has neither.
+const DEV_TAPS := 5
+const DEV_TAP_GAP := 0.8
+const DEV_TAP_GROW := 10.0
+const DEV_MARK := "  DEV"  # i18n: ignore (a test build's dev-mode mark, beside the stamp)
+var stamp_label: Label
+var _dev_taps := 0
+var _dev_tap_time := -100.0
+
+
+func _input(event: InputEvent) -> void:
+	if stamp_label == null or Progress.dev_tools or not OS.is_debug_build():
+		return
+	# (a touch also sends an emulated click: only the touch counts)
+	var tap: bool = (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed
+		and event.button_index == MOUSE_BUTTON_LEFT and event.device != InputEvent.DEVICE_ID_EMULATION)
+	if tap and dev_tap(event.position, Time.get_ticks_msec() / 1000.0):
+		get_viewport().set_input_as_handled()
+
+
+## One tap at `pos` (screen px) at time `now` (s): true when it was on the stamp (counted). The DEV_TAPS-th
+## turns dev mode on.
+func dev_tap(pos: Vector2, now: float) -> bool:
+	if not stamp_label.get_global_rect().grow(DEV_TAP_GROW).has_point(pos):
+		return false
+	_dev_taps = _dev_taps + 1 if now - _dev_tap_time <= DEV_TAP_GAP else 1
+	_dev_tap_time = now
+	if _dev_taps >= DEV_TAPS:
+		Progress.enable_dev_mode()
+		stamp_label.text = build_stamp() + DEV_MARK
+		Sfx.play("unlock")
+		print("DEV MODE ON (this session, nothing saved)")
+	return true
 
 
 static func build_stamp() -> String:

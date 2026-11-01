@@ -573,7 +573,9 @@ func _change(id: String, up: bool) -> void:
 	if changed and up and id == "brightness":
 		_show_preview(Upgrades.reveal_radius(before), Upgrades.reveal_radius(before + 1))
 	if changed and up:
-		_upgrade_sound(Progress.upgrade_level(id), Upgrades.max_level(id))
+		_upgrade_sound(Progress.upgrade_level(id), Upgrades.max_level(id), rows[id].pips)
+	elif changed:
+		_play("refund", -6.0)
 	_refresh()
 
 
@@ -628,9 +630,9 @@ func _buy_confirmed() -> void:
 	_close_confirm(false)
 	if kind == "ability":
 		if Progress.buy_ability(id):
-			_upgrade_sound(Progress.ability_level(id), Abilities.max_level(id))
+			_upgrade_sound(Progress.ability_level(id), Abilities.max_level(id), ability_rows[id].pips)
 	elif Progress.buy_workshop(id):
-		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id))
+		_upgrade_sound(Progress.workshop_level(id), Workshop.max_level(id), ticket_rows[id].pips)
 	_refresh()
 	var focus_rows := ability_rows if kind == "ability" else ticket_rows
 	if focus_rows.has(id):
@@ -702,12 +704,27 @@ func _end_preview() -> void:
 	hint.visible = true
 
 
-## A power-up swell, a little higher for each level.
-func _upgrade_sound(level: int, top_level: int) -> void:
+## The power-up (a rising arpeggio and lock-in blip, a little higher for each level; the track's last level
+## adds a run of sparkles) and a gold pulse over the bar's pips (none with Reduce Motion). `last_played`
+## says which sound it was (tests).
+var last_played := ""
+
+
+func _upgrade_sound(level: int, top_level: int, pips: Array = []) -> void:
+	var top := maxi(top_level - 1, 1)
+	_play("upgrade_max" if level >= top_level else "upgrade", -4.0, 1.0 + 0.3 * (level - 1) / top)
+	if not Progress.reduce_motion and not pips.is_empty():
+		var tween := create_tween().set_parallel(true)
+		for pip: ColorRect in pips:
+			pip.modulate = Color(2.2, 1.8, 0.9)
+			tween.tween_property(pip, "modulate", Color.WHITE, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
+	last_played = sound
 	var sfx := get_node_or_null("/root/Sfx")
 	if sfx:
-		var top := maxi(top_level - 1, 1)
-		sfx.play("upgrade", -4.0, 1.0 + 0.3 * (level - 1) / top)
+		sfx.play(sound, volume_db, pitch)
 
 
 func _refresh() -> void:
@@ -798,8 +815,35 @@ static func demo_full_text() -> String:
 
 func _color_pips(pips: Array, level: int, skin: Color, cap := 99) -> void:
 	for i in pips.size():
-		# (past the demo's cap: a darker, locked pip)
-		(pips[i] as ColorRect).color = skin if i < level else (Color8(74, 70, 96) if i < cap else Color8(40, 38, 54))
+		var pip := pips[i] as ColorRect
+		var on: bool = i < level
+		# UI-32, the HUD meter's segment style: a filled pip is the skin's goo with a 1 px lit top row; an empty one is
+		# the sunken track inside a hollow 1 px outline (past the demo's cap: a darker, locked outline).
+		pip.color = skin if on else HudTrack.COLOR
+		var seg := pip.get_node_or_null("Seg") as Control
+		if seg == null:
+			seg = HudTrack.new()
+			seg.name = "Seg"
+			seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pip.add_child(seg)
+		seg.position = Vector2.ZERO
+		seg.size = pip.size
+		seg.set("filled", on)
+		seg.set("outline", Color(skin, 0.55) if i < cap else Color8(60, 56, 78))
+		seg.queue_redraw()
+
+
+## One upgrade pip's overlay (UI-32): the lit top row of a filled pip, the hollow outline of an empty one.
+class HudTrack extends Control:
+	const COLOR := Color8(40, 34, 52)  # (the HUD meter's sunken track)
+	var filled := false
+	var outline := Color.WHITE
+
+	func _draw() -> void:
+		if filled:
+			draw_rect(Rect2(0, 0, size.x, 1), Color(1, 1, 1, 0.35))
+		else:
+			draw_rect(Rect2(Vector2.ZERO, size), outline, false, 1.0)
 
 
 ## Leaves: back into the level after a dry-up, otherwise to the hub.

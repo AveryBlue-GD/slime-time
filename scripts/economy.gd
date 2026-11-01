@@ -81,6 +81,82 @@ static func random_daily_cap_on() -> bool:
 ## RANDOM_TICKET_PAY each when touched; a maze's taken pickups stay gone on its retries (in memory, per
 ## seed code), a typed / replayed seed has none, and an assisted or dev-toggled run's pay nothing.
 const RANDOM_CHALICE := true
+## IMP-02 (economy integrity). PICKUPS_ON_WIN: a random maze's ticket pickups are HELD during the run
+## and paid only with the chalice win (a dry-up, restart, NEW MAZE or leaving loses the held ones; a taken
+## pickup stays gone on the maze's retries). False = pay on touch, as before.
+const PICKUPS_ON_WIN := true
+## PAY_BY_LENGTH: a random win's table pay (RANDOM_ATTEMPT_PAY) is scaled by the maze's length factor
+## (Progress.random_length_factor: the seed's route in cells over the route of a typical maze, usage
+## median 578 permille, at the same MORE SLIME level, so upgrades alone don't raise it), clamped to
+## LENGTH_PAY_MIN..LENGTH_PAY_MAX, rounded, at least 1; a HARD maze pays the flat HARD_LENGTH_FACTOR (its
+## route is always the hard target; no LURKER_PAY on top, IMP3-01), so a first-try hard win pays as much as a long normal maze; the replay / seed-paid / no-MORE-SLIME caps
+## still apply after it. False = the table as is.
+const PAY_BY_LENGTH := true
+const LENGTH_TYPICAL_PERMILLE := 578  # (the usage median, Levels.USAGE_QUANTILES)
+const LENGTH_PAY_MIN := 0.4
+const LENGTH_PAY_MAX := 1.5
+const HARD_LENGTH_FACTOR := 1.4  # (IMP2-04: hard random mazes paid 10 against up to 14 for long normal ones)
+## ABANDON_COUNTS: NEW MAZE or leaving for the hub after at least one move in a random maze counts as a
+## spent attempt: the next maze starts at the abandoned one's attempt count + 1 (up to the last pay tier);
+## a win resets it, and the first maze (or one after a win) starts at attempt 1. False = always 1.
+const ABANDON_COUNTS := true
+## IMP-06 DAILY_MAZE: the randomizer portal offers a DAILY MAZE (one seed per UTC day from Progress.daily_seed,
+## normal mode, MORE SLIME 0 so it is the same for everyone), best time, a win streak and a 10-ticket bonus at
+## every 7th day of it. The first win of a day pays like attempt 1; later wins that day pay nothing. False = no
+## daily option. Hidden in the demo.
+const DAILY_MAZE := true
+## Owner default (Q1, 2026-10-23): winning the daily again the same UTC day counts toward randoms_won / win achievements (false = it doesn't).
+const REPEAT_DAILY_COUNTS := false
+const DAILY_STREAK_STEP := 7
+const DAILY_STREAK_BONUS := 10
+## IMP2-05: the first daily win of a UTC day pays this many tickets (one wheel spin), exempt from the no-MORE-SLIME cap and the
+## length factor; repeats pay 0. DAILY_EPOCH_DAY = the UTC day number (days since 1970) of "DAILY #1" (2026-11-01).
+## One automatic streak saver per DAILY_SAVER_DAYS days: missing exactly one day keeps the streak.
+const DAILY_WIN_TICKETS := 20
+const DAILY_EPOCH_DAY := 20758
+const DAILY_SAVER_DAYS := 7
+
+## IMP-07 ACHIEVEMENTS: the hub menu's ACHIEVEMENTS page (scripts/achievements.gd), an unlock toast for each goal and
+## the pooled MEDAL MILESTONES (IMP2-03: Achievements.MILESTONES at 15 / 30 / 45 / 60 medals earned, any tier, normal + hard,
+## each a named cosmetic, or MEDAL_MILESTONE_TICKETS tickets = one wheel spin when it is already owned). About 8 goals
+## also grant a cosmetic (Achievements.REWARDS). Off: no page, no toasts, no milestone pay.
+const ACHIEVEMENTS := true
+const MEDAL_MILESTONE_TICKETS := 20
+## Test hooks for the three (-1 follow the const, 0 off, 1 on), like `random_cap_force`.
+static var pickups_on_win_force := -1
+static var pay_by_length_force := -1
+static var abandon_counts_force := -1
+
+
+## What a weekly finished in `time` seconds is worth in total on a maze of par `par` (the pod and the payout both use this).
+static func weekly_pay(time: float, par: float) -> int:
+	if par <= 0.0:
+		return WEEKLY_PAY_MIN
+	var ratio := time / par
+	var full := 1.0 / WEEKLY_PAR_WINDOW
+	if ratio <= full:
+		return WEEKLY_PAY_MAX
+	if ratio >= WEEKLY_PAR_FLOOR:
+		return WEEKLY_PAY_MIN
+	return WEEKLY_PAY_MIN + floori((WEEKLY_PAY_MAX - WEEKLY_PAY_MIN) * (WEEKLY_PAR_FLOOR - ratio) / (WEEKLY_PAR_FLOOR - full))
+
+
+static func daily_maze() -> bool:
+	return DAILY_MAZE and not Demo.on()
+
+
+static func pickups_on_win() -> bool:
+	return PICKUPS_ON_WIN if pickups_on_win_force < 0 else pickups_on_win_force == 1
+
+
+static func pay_by_length() -> bool:
+	return PAY_BY_LENGTH if pay_by_length_force < 0 else pay_by_length_force == 1
+
+
+static func abandon_counts() -> bool:
+	return ABANDON_COUNTS if abandon_counts_force < 0 else abandon_counts_force == 1
+
+
 ## Standing still drains the meter (owner, 2026-10-22; Game._idle_drain): IDLE_DRAIN percent a second
 ## in any level once the slime has moved (not charging, not in training, never in the hub, paused or
 ## while a SLIME SENSE peek is up). `idle_drain_force` (-1 follow the const, 0 off, 1 on) is a test
@@ -88,6 +164,27 @@ const RANDOM_CHALICE := true
 const IDLE_DRAIN_ON := true
 const IDLE_DRAIN := 0.5
 static var idle_drain_force := -1
+## Chill lane (IMP-01): standing still drains nothing for the first IDLE_GRACE seconds of being still
+## (moving resets it), nothing at all while aiming an ability, and R always restarts the run at once
+## (R_ALWAYS_RESTARTS: no RESTART / UPGRADES prompt; spending stays on the dry-up screen).
+## SETTINGS RELAXED (Progress.relaxed) turns idle drain off; such a run earns no medals, records or tickets
+## (see Progress.complete_random / Game.no_credit for what it still counts toward).
+## ONE ASSIST (IMP2-07): RELAXED is the single assist: no idle drain AND +25% slime (+2% per dry-up on that level, max +50%),
+## offered after 3 dry-ups (2 on L8-L10) as "RELAXED?" (story levels, never on hard; YES = RELAXED for that level only). False = the old +10% reserve offer and a plain RELAXED.
+const ONE_ASSIST := true
+## Does a RELAXED random win count toward randoms_won (pastel / rainbow / rand_10 / rand_50 rewards, NEXT UNLOCK)?
+## Owner default (Lead, 2026-10-24): no, it pays more slime but is not a "real" win. Coins found in story still count.
+const RELAXED_COUNTS_WINS := false
+static var one_assist_force := -1  # (test hook: -1 follow the const, 0 off, 1 on)
+static func one_assist() -> bool:
+	return ONE_ASSIST if one_assist_force < 0 else one_assist_force == 1
+const IDLE_GRACE := 4.0
+const R_ALWAYS_RESTARTS := true
+static var r_always_force := -1  # (test hook: -1 follow the const, 0 off = the old RESTART / UPGRADES prompt, 1 on)
+
+
+static func r_always_restarts() -> bool:
+	return R_ALWAYS_RESTARTS if r_always_force < 0 else r_always_force == 1
 
 
 static func idle_drain_on() -> bool:
@@ -110,7 +207,7 @@ const TICKETS_REPLAY_CAP := 1
 
 ## ---------------------------------------------------------------- tickets: the hat wheel (C.1)
 ## The first spin is free, then every spin costs SPIN_COST (owner, 2026-10-22: a flat 20; SPIN_STEP /
-## SPIN_COST_MAX still allow a rising price): 0, 20, 20 ... = 420 for all 22 prizes.
+## SPIN_COST_MAX still allow a rising price): 0, 20, 20 ... = 520 for all 27 prizes (26 paid spins).
 const SPIN_COST := 20
 const SPIN_STEP := 0
 const SPIN_COST_MAX := 20
@@ -176,6 +273,12 @@ const WIND_REFILL_TIME := 0.4
 ## [descent_run], [descent] stats and milestones are KEPT in the save untouched and come back when
 ## this is true again. `descent_force` (-1 follow the const, 0 off, 1 on) is a test hook, like
 ## `workshop_force`.
+## IMP-04: a save from a NEWER game version is backed up (save.newer.cfg) and never overwritten (saving off for the
+## session); false = the old behaviour (read what fits, overwrite it on the next save).
+const SAVE_NEWER_GUARD := true
+## IMP-04: a short once-per-session notice when a save fails, a damaged save was set aside, a newer save is
+## protected or the demo isn't saving (Progress.notices, shown by Transition).
+const SAVE_NOTICES := true
 const DESCENT_ENABLED := false
 static var descent_force := -1
 
@@ -263,6 +366,106 @@ static func coin_catch_on() -> bool:
 	return COIN_CATCH_TEST if coincatch_force < 0 else coincatch_force == 1
 
 
+## ---------------------------------------------------------------- LIGHT & LIFE (BM-09 test, 2026-10-24)
+## ONE switch for the lighting polish inside the fog shader (scripts/light_life.gd, fog.gdshader): the
+## lit pocket tinted by the theme and the skin with a dithered falloff, rim light on walls beside fresh
+## trail, glints on fresh trail that fade with age, a few more theme motes (cap 40), faint pixel god-rays
+## from the goal through the fog within 12 tiles, and a win "sunrise" (a light ring, a 2-frame hit-stop).
+## The deep fog stays near-black. false = the old look exactly (pixel-identical). `--nolightlife`
+## (debug builds) sets `lightlife_force` = 0; suites force it off (tests/suite_base.gd) unless they test it.
+const LIGHT_LIFE_TEST := true
+static var lightlife_force := -1
+
+
+static func light_life_on() -> bool:
+	return LIGHT_LIFE_TEST if lightlife_force < 0 else lightlife_force == 1
+
+
+## ---------------------------------------------------------------- LURKERS (BM-01 test, 2026-10-24)
+## Pale, blind creatures in the fog of 1 random / daily maze in LURKERS_ONE_IN (seeded, so the daily is the same for
+## everyone), 2-3 each (scripts/lurkers.gd). Only their eye glints show through the fog; the body shows in the light.
+## Three one-rule hunters on the maze grid: CRAWLER -> the slime, SNIFFER -> the trail (3 cells behind the slime),
+## LANTERN-EATER -> the brightest lit cell near the slime. Dormant until the slime is within LURKER_WAKE_DIST px.
+## Standing still past IDLE_GRACE = stealth (they wander). Contact: LURKER_HIT percent of the meter, a one-tile
+## knockback, LURKER_INVULN s of safety (LURKER_INVULN_TOUCH on touch); never kills. SLIME SPLAT stuns them, a leap
+## landing on one bonks it. Normal random mazes with lurkers pay LURKER_PAY x (hard pays only HARD_LENGTH_FACTOR, no premium). Rules (Lurkers.allowed): ALWAYS in hard mode (hard story
+## levels, hard random mazes; even with RELAXED); normal random mazes only with SETTINGS LURKERS on; never in the
+## daily / weekly, normal story, training / the tutorial, Descent or the demo. `--nolurkers` (debug builds) sets `lurkers_force` = 0,
+## `--lurkers` = 2 (every random maze, for testing); suites force it off (tests/suite_base.gd) unless they test it.
+const LURKERS_TEST := true
+static var lurkers_force := -1
+const LURKER_WAKE_DIST := 96.0
+const LURKER_SPEED := 38.0
+const LURKER_HIT := 15.0
+## Hard mode: the allowances are tight, so a contact costs less; hard story levels 1-3 have 2 lurkers, the rest 3.
+const LURKER_HIT_HARD := 4.0  # (IMP3-01: two hits on a 1.18+ allowance stay finishable: 1.18 x 0.92 = 1.086)
+const LURKER_HARD_FEW_LEVELS := 3
+const LURKER_INVULN := 1.0
+const LURKER_INVULN_TOUCH := 1.5
+const LURKER_INVULN_TOUCH_HARD := 2.0  # (IMP3-01: hard on a touch screen: a longer safe window)
+const LURKER_CONTACT_DIST := 5.0
+const LURKER_NEAR_MISS_DIST := 8.0
+const LURKER_SLOWMO := 0.3
+const LURKER_PAY := 1.25
+const LURKER_STUN_SPLAT := 4.0
+const LURKER_STUN_BONK := 2.0
+
+
+static func lurkers_on() -> bool:
+	return LURKERS_TEST if lurkers_force < 0 else lurkers_force >= 1
+
+
+## ---------------------------------------------------------------- GOO ORCHESTRA (BM-08 test, 2026-10-24)
+## Level music as three synced layers (assets/music/orch_*.ogg from tools/make_music.py): BASE always, PULSE
+## while the slime moves, TENSION on a low meter or after the chalice is first seen within 12 tiles, each faded
+## over 0.5 s (Music); the music ducks ~5 dB for 0.3 s under splat, coin and win sounds; a short sting when the
+## chalice is first seen (once per attempt) and one over the win; each coin within 2 s of the last one plays a
+## semitone higher (cap +6). Each theme plays the layers at its own pitch (Music.ORCH_THEME_PITCH). On the
+## web one pre-mixed bed (the IMP-05 one) plays instead of three streams. false = the IMP-05 bed exactly.
+## `--noorchestra` (debug builds) sets `orchestra_force` = 0; suites force it off (tests/suite_base.gd).
+const ORCHESTRA_TEST := true
+const ORCH_COIN_WINDOW := 2.0
+const ORCH_COIN_MAX := 6
+static var orchestra_force := -1
+
+
+static func orchestra_on() -> bool:
+	return ORCHESTRA_TEST if orchestra_force < 0 else orchestra_force == 1
+
+
+## ---------------------------------------------------------------- BOARDS & GHOSTS (BM-03, local only, no network)
+## Your own top BOARD_TOP times for each day's DAILY MAZE and each ISO week's WEEKLY MAZE (a seed from the week, MORE SLIME
+## WEEKLY_SLIME, no abilities, so it is the same for everyone), a BOARDS page (the hub's daily sign, SETTINGS), the best run of
+## the day / week recorded at GHOST_HZ (positions only, at most GHOST_MAX samples) and replayed as a translucent slime
+## on later attempts with a "+1.2s" split at the chalice. Every post goes out as `board_daily` / `board_weekly` through
+## PlatformEvents.progress_event for a future Steam / Game Center backend. RELAXED runs post nothing; hidden in the demo.
+## `--noboards` (debug builds) sets `boards_force` = 0; suites force it off (tests/suite_base.gd) unless they test it.
+const BOARDS_TEST := true
+static var boards_force := -1
+const BOARD_TOP := 5
+## The weekly pays by time against its PAR (Levels.weekly_par: the maze's shortest route at the fixed SPEED, plus a cost per turn):
+## WEEKLY_PAY_MAX tickets at a run time <= par / WEEKLY_PAR_WINDOW, linearly down to WEEKLY_PAY_MIN at WEEKLY_PAR_FLOOR x par (and
+## slower). Each win pays only the improvement over what the week already paid, so a faster replay earns more, never twice.
+## Past the no-MORE-SLIME cap and the random-pay slot (like the daily); no pickups, win credit, medal or goal count.
+const WEEKLY_PAY_MAX := 20
+const WEEKLY_PAY_MIN := 2
+const WEEKLY_PAR_WINDOW := 0.9
+const WEEKLY_PAR_FLOOR := 2.0
+## Par's cost per turn of the route, as a share of (top speed / acceleration) seconds. 0.0: calibrated against the route pilot, which
+## loses nothing at the corners of these mazes (it finishes 5-6 % over par on ten weeks; any turn cost put par over its time).
+const WEEKLY_PAR_TURN := 0.0
+const WEEKLY_SLIME := 3
+## ...and its SPEED / BRIGHTNESS levels (a mid-game player's), so a weekly time is comparable whatever the player bought.
+const WEEKLY_SPEED := 2
+const WEEKLY_BRIGHTNESS := 1
+const GHOST_HZ := 10
+const GHOST_MAX := 3000
+
+
+static func boards_on() -> bool:
+	return (BOARDS_TEST if boards_force < 0 else boards_force == 1) and daily_maze() and not Demo.on()
+
+
 ## ---------------------------------------------------------------- MAP COIN REVEAL (owner, 2026-10-18; on for everyone 2026-10-21)
 ## The MAP TABLE's trail maps never draw collected coins. An UNCOLLECTED coin is drawn on its map once
 ## a run has "revealed" it: its cell center came within the slime's light (its keep-lit light:
@@ -323,6 +526,17 @@ const COIN_CATCH_FIZZ_DB := -8.0
 ## hub bits (Progress.TUTORIAL_TRAINING / TUTORIAL_HUB) are never written, so saves are byte-identical.
 ## `--tutorial[=maze|hub]` (debug builds only, like every launch flag) sets `tutorial_force` = 1 on a
 ## clean in-memory fresh state (see Progress.enable_tutorial_test); tests set it too.
+## IMP-03: 8 px text (body, buttons, HUD, coach) renders without drips; only 16 px titles drip.
+## false = the old look everywhere.
+const CLEAN_SMALL_TEXT := true
+## IMP2-01: the 1.8 s launch card (scripts/ui/intro_card.gd) on every cold launch except the first-ever one
+## (the story intro plays then); false = the title opens as before.
+const INTRO_CARD := true
+## IMP-05: the unrevealed fog is near-black (Dark / Normal fog looks; Bright keeps its lighter mist, and is
+## the default on touch devices). false = the old murky mid-tone.
+const DARK_FOG := true
+## IMP-05: a sparse quiet music bed under the level ambience (Settings: LEVEL MUSIC, saved). false = silent levels.
+const LEVEL_MUSIC := true
 const TUTORIAL_TEST := true
 static var tutorial_force := -1
 
@@ -338,7 +552,13 @@ static func tutorial_on() -> bool:
 ## `--languages` (debug builds only, like every launch flag) sets `languages_force` = 1 (the saved choice
 ## or the OS locale); `--lang=xx` also forces locale xx for that run (`forced_locale`, never saved).
 ## Tests set both too.
-const LANGUAGES_TEST := false
+## ON for everyone (owner, 2026-11-01: the LANGUAGE button on every platform, phones and tablets too). Lines not
+## translated yet show in English (Loc falls back to the source text).
+const LANGUAGES_TEST := true
+## A new player starts in English, not in the OS language (LANGUAGES_FOLLOW_OS false), while the translations are
+## unfinished: a half-translated first launch reads worse than English; LANGUAGE in SETTINGS picks one. The
+## `--languages` / `--lang=xx` test flags still follow the OS / the flag.
+const LANGUAGES_FOLLOW_OS := false
 static var languages_force := -1
 static var forced_locale := ""
 
@@ -367,7 +587,7 @@ static func abilities_on() -> bool:
 
 
 ## Doubled along with the doubled payouts (owner, 2026-10-22): first ability 30 tickets = about 5
-## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all three maxed = 190 + 190 + 280 = 660.
+## wins; SPLAT costs the same as the RIFLE (owner, 2026-10-22); all four maxed (RIFLE, SPLAT, SLIMAKAZE, SLIME SENSE) = 190 + 190 + 280 + 190 = 850.
 ## `slime` cut by 40% (owner, 2026-10-23: too hard; was 2 / 4 / 30).
 const ABILITIES := {
 	"rifle": {costs = [30, 60, 100], charges = [1, 1, 1], slime = 1.2},

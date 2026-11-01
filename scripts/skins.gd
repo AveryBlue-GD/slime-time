@@ -67,7 +67,7 @@ const PRESETS := [
 	{id = "grape", name = "GRAPE", color = Color8(140, 72, 200), unlock = 4},  # i18n: ignore (English source); 5 Toxic Tunnels: toxic ooze
 	{id = "crimson", name = "CRIMSON", color = Color8(200, 40, 60), unlock = 5},  # i18n: ignore (English source); 6 Creepy Catacombs: blood
 	{id = "frost", name = "FROST", color = Color8(190, 225, 245), unlock = 6},  # i18n: ignore (English source); 7 Frozen Fortress
-	{id = "shadow", name = "INKKY", color = Color8(84, 70, 110), unlock = 7},  # i18n: ignore (English source); 8 Obsidian Oubliette
+	{id = "shadow", name = "INKKY", color = Color8(104, 88, 140), unlock = 7},  # i18n: ignore (English source); 8 Obsidian Oubliette
 	{id = "bubblegum", name = "BUBBLEGUM", color = Color8(240, 110, 180), unlock = 8},  # i18n: ignore (English source); 9 Crystal Caverns
 	{id = "ember", name = "EMBER", color = Color8(239, 125, 47), unlock = 9},  # i18n: ignore (English source); 10 Volcanic Vault: molten
 ]
@@ -105,6 +105,14 @@ static func pastel_wins(id: String) -> int:
 		if PRESETS[i].id == id:
 			return (i + 1) * PASTEL_WINS_STEP
 	return -1
+
+
+## Every randomizer-win count that unlocks a pastel version (the presets, then the rainbow): the achievements page's reward road.
+static func pastel_marks() -> Array[int]:
+	var out: Array[int] = []
+	for id: String in PRESETS.map(func(preset: Dictionary) -> String: return preset.id) + [RAINBOW]:
+		out.append(pastel_wins(id))
+	return out
 
 
 ## The skin whose pastel version unlocks at exactly `wins` randomizer wins ("" if none).
@@ -217,14 +225,36 @@ static func unlocked_by_level(level: int) -> String:
 ## the outline. Shadows drift a little toward cooler hues and lights toward warmer ones.
 ## (tools/make_placeholder_art.py app_icon uses the same math.)
 static func shades(base: Color) -> Dictionary:
+	# SPR-30: yellows (hue 40-60 deg) shade toward orange, not olive-brown (Lemon keeps its gold, clear of Ember's orange)
+	var warm := 0.033 if base.h * 360.0 >= 40.0 and base.h * 360.0 <= 62.0 and base.s > 0.5 else 0.0
 	return {
 		highlight = Color.from_hsv(wrapf(base.h + 0.05, 0.0, 1.0), base.s * 0.35, minf(base.v * 1.25 + 0.3, 1.0)),
 		light = Color.from_hsv(wrapf(base.h + 0.03, 0.0, 1.0), base.s * 0.7, minf(base.v * 1.2 + 0.12, 1.0)),
 		mid = base,
-		dark = Color.from_hsv(wrapf(base.h - 0.05, 0.0, 1.0), minf(base.s * 1.1, 1.0), base.v * 0.55),
-		deep = Color.from_hsv(wrapf(base.h - 0.08, 0.0, 1.0), minf(base.s * 1.15, 1.0), base.v * 0.33),
-		outline = Color.from_hsv(wrapf(base.h - 0.1, 0.0, 1.0), minf(base.s * 1.2, 1.0), base.v * 0.17),
+		dark = Color.from_hsv(wrapf(base.h - 0.05 - warm, 0.0, 1.0), minf(base.s * 1.1, 1.0), base.v * 0.55),
+		deep = Color.from_hsv(wrapf(base.h - 0.08 - warm, 0.0, 1.0), minf(base.s * 1.15, 1.0), base.v * 0.33),
+		outline = Color.from_hsv(wrapf(base.h - 0.1 - warm, 0.0, 1.0), minf(base.s * 1.2, 1.0), base.v * 0.17),
 	}
+
+
+## SPR-28: the locked-skin silhouette of a slime preview: navy `k` fill with a lighter navy outline (never a pure-black disc).
+## The preview's modulate (x0.6) dims the sheet's white glint and eyes to a dark-on-dark shape, so the shades are set 1/0.6 up.
+const LOCK_MODULATE := Color(0.6, 0.6, 0.6, 0.9)
+const LOCK_FILL := Color(26.0 / 153.0, 28.0 / 153.0, 44.0 / 153.0)
+const LOCK_OUTLINE := Color(52.0 / 153.0, 56.0 / 153.0, 84.0 / 153.0)
+
+
+static func lock_look(preview: CanvasItem) -> void:
+	var material := preview.material as ShaderMaterial
+	preview.modulate = LOCK_MODULATE
+	if material == null:
+		return
+	material.set_shader_parameter("rainbow", false)
+	material.set_shader_parameter("clock_on", 0.0)
+	material.set_shader_parameter("translucency", 0.0)
+	for shade in ["highlight", "light", "mid", "dark", "deep"]:
+		material.set_shader_parameter(shade, LOCK_FILL)
+	material.set_shader_parameter("outline", LOCK_OUTLINE)
 
 
 ## Shades for a PASTEL base: brighter and softer than shades(), with gentler shadows.
