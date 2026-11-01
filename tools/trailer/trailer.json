@@ -732,7 +732,7 @@
   },
   {
    "id": "D",
-   "name": "272,544 looks",
+   "name": "726,784 looks",
    "music": "trailer_1",
    "hook": "one slime, its look flipping: skins, hats, dyes, trails, CHAMELEON colors, then everything (flash-safe rates)",
    "beats": [
@@ -787,7 +787,7 @@
      "dur": 3.0,
      "color": "mint",
      "caption": [
-      "6 TRAILS"
+      "16 TRAILS"
      ],
      "center": "frame",
      "above": 70
@@ -810,7 +810,7 @@
      "dur": 5.0,
      "color": "gold",
      "caption": [
-      "272,544",
+      "726,784",
       "DIFFERENT LOOKS"
      ],
      "center": "frame",
@@ -847,7 +847,7 @@
   },
   {
    "id": "E",
-   "name": "272,544 looks, on the beat",
+   "name": "726,784 looks, on the beat",
    "music": "trailer_1",
    "hook": "draft D cut to the music: the flips land on its beats and eighths, the captions change on the bar lines",
    "beats": [
@@ -902,7 +902,7 @@
      "dur": 4.166667,
      "color": "mint",
      "caption": [
-      "6 TRAILS"
+      "16 TRAILS"
      ],
      "center": "frame",
      "above": 70
@@ -925,7 +925,7 @@
      "dur": 4.15,
      "color": "gold",
      "caption": [
-      "272,544",
+      "726,784",
       "DIFFERENT LOOKS"
      ],
      "center": "frame",

@@ -168,7 +168,7 @@ func _physics_process(delta: float) -> void:
 			_next()
 		return
 	game.touch_controls.step_coach(delta)
-	if Input.is_action_just_pressed("interact"):
+	if _interact_pressed():
 		skip()
 		return
 	if int(runner.charges.get(current, 0)) < _charges_at:
@@ -301,6 +301,12 @@ func _refresh_skip() -> void:
 	skip_pod.size = size
 	var edge := UIKit.hud_edge()
 	var y: float = edge.y + UIKit.pod_h() + UIKit.GAP_XS
+	# UI-01: under the lowest visible pod of the SKIP pod's own side (the attempt pod sits in that column)
+	if game.hud:
+		for pod: Rect2 in game.hud.pod_rects():
+			var same_side: bool = (pod.get_center().x < UIKit.SCREEN.x / 2.0) == UIKit.rtl() and absf(pod.get_center().x - UIKit.SCREEN.x / 2.0) > 20.0
+			if same_side:
+				y = maxf(y, pod.end.y + UIKit.GAP_XS)
 	if game.touch_controls.visible:
 		y = maxf(y, game.touch_controls.pause_rect.end.y + UIKit.GAP_XS)
 	skip_pod.position = Vector2(edge.x if UIKit.rtl() else UIKit.SCREEN.x - edge.x - size.x, y)
@@ -322,3 +328,11 @@ func _input(event: InputEvent) -> void:
 	if (touch or click) and skip_rect().has_point(event.position):
 		get_viewport().set_input_as_handled()
 		skip()
+
+
+## F pressed this frame, unless it was spent wearing a toast's item (Transition.interact_free).
+func _interact_pressed() -> bool:
+	var transition := get_node_or_null("/root/Transition")
+	if transition != null:
+		return transition.interact_free()
+	return Input.is_action_just_pressed("interact")

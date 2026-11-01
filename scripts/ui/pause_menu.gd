@@ -29,6 +29,11 @@ const BOTTOM := 176
 ## Two columns (a taller script's buttons that no longer fit one column): COLUMN_W each, GAP_L apart.
 const COLUMN_GAP := UIKit.GAP_L
 
+
+## The gap between the two columns: GAP_L, thumb-sized (UIKit.menu_gap) on a touch screen.
+static func column_gap() -> int:
+	return maxi(COLUMN_GAP, UIKit.menu_gap()) if UIKit.touch_active() else COLUMN_GAP
+
 var buttons: Array[Button] = []
 var wishlist_button: Button
 var sound_button: Button
@@ -88,7 +93,7 @@ func _ready() -> void:
 	menu.position = Vector2(PANEL_X + 10, MENU_TOP)
 	menu.custom_minimum_size = Vector2(_col_w, 0)
 	menu.add_theme_constant_override("v_separation", UIKit.GAP_S)
-	menu.add_theme_constant_override("h_separation", COLUMN_GAP)
+	menu.add_theme_constant_override("h_separation", column_gap())
 	root.add_child(menu)
 	_menu = menu
 	sound_button = UIKit.make_button("", _toggle_sound)
@@ -236,6 +241,8 @@ func open() -> void:
 	if _focus_lock.is_empty():
 		_focus_lock = UIKit.lock_focus(get_parent(), self)
 	_sfx("pause")
+	UIKit.pop_in(_panel)  # ANI-12: the panel and its buttons settle in 3 whole-pixel steps
+	UIKit.pop_in(_menu)
 
 
 ## Lays the menu out for `count` buttons (docs/ui-rules.md section 10): PAUSED, then the panel
@@ -248,6 +255,7 @@ func open() -> void:
 ## under the title's ink instead of its line box, then a taller script's title rises until its first
 ## ink is on TITLE_Y (English's first ink row; CJK: 6 empty rows on top), then two columns.
 func _layout(count: int, hud: Node) -> void:
+	_menu.add_theme_constant_override("v_separation", UIKit.menu_gap())  # (touch: a 22 px pitch, IMP3-04)
 	var title_y := _title_slot(hud)
 	var menu_top := title_y + UIKit.title_h() + TITLE_TO_PANEL + UIKit.PANEL_PAD  # MENU_TOP in English
 	var note_h := UIKit.line_h() + int(UIKit.metrics().ink_below) + int(UIKit.metrics().ink_above) + UIKit.GAP_M if descent_note.visible else 0
@@ -293,7 +301,7 @@ func _layout(count: int, hud: Node) -> void:
 		_menu.remove_child(last)
 		_last_row.add_child(last)
 		_last_row.visible = true
-	var width := _col_w * columns + COLUMN_GAP * (columns - 1)
+	var width := _col_w * columns + column_gap() * (columns - 1)
 	var panel_w := PANEL_W + width - COLUMN_W
 	var panel_x := UIKit.center_x(panel_w)  # PANEL_X in English
 	# A wider panel keeps GAP_XS under the HUD pods it would reach (when the bottom has the room).
@@ -314,7 +322,7 @@ func _layout(count: int, hud: Node) -> void:
 	_menu.size = Vector2.ZERO
 	if _last_row and _last_row.visible:
 		var rows := ceili(count / 2.0)
-		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.GAP_S))
+		_last_row.position = Vector2(UIKit.center_x(_col_w), menu_top + (rows - 1) * (UIKit.button_h() + UIKit.menu_gap()))
 		_last_row.size = Vector2(_col_w, UIKit.button_h())
 	_panel.position = Vector2(panel_x, menu_top - UIKit.PANEL_PAD)
 	_panel.size = Vector2(panel_w, UIKit.PANEL_PAD * 2 + _stack_h(count, columns))
@@ -366,14 +374,14 @@ func _title_slot(hud: Node, own_marks := false, lift := 0) -> int:
 func _column_w(root: Control) -> int:
 	var english := COLUMN_W - VOLUME_BOX_EXTRA - ceili(UIKit.font_for(UIKit.FONT).get_string_size("VOLUME", HORIZONTAL_ALIGNMENT_LEFT, -1, UIKit.FONT).x)  # i18n: ignore (English's label, measured for its slider length)
 	var label := COLUMN_W - VOLUME_BOX_EXTRA - int(floorf(UIKit.volume_slider_width(root, COLUMN_W, ["sfx"])))
-	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - COLUMN_GAP) / 2.0)
+	var widest := floori((UIKit.SCREEN.x - 2 * UIKit.EDGE - (PANEL_W - COLUMN_W) - column_gap()) / 2.0)
 	return clampi(VOLUME_BOX_EXTRA + label + english, COLUMN_W, widest)
 
 
 ## The button stack's height for `count` buttons in `columns` columns.
 func _stack_h(count: int, columns: int) -> int:
 	var rows := ceili(count / float(columns))
-	return rows * UIKit.button_h() + (rows - 1) * UIKit.GAP_S
+	return rows * UIKit.button_h() + (rows - 1) * UIKit.menu_gap()
 
 
 ## PAUSED's line box top: TITLE_Y, lower by the title's accent room.
@@ -442,6 +450,8 @@ func _submit_seed(text: String) -> void:
 	var progress := get_node_or_null("/root/Progress")
 	if progress:
 		progress.random_seed = value
+		progress.random_daily = false
+		progress.random_weekly = false
 		progress.random_level = code.y  # -1 (a plain number): the game uses the player's own level
 		progress.random_seed_fresh = false  # a typed seed pays at most 1 ticket
 	resume()
@@ -461,6 +471,9 @@ func _restart() -> void:
 		get_parent().retry("pause RESTART")  # i18n: ignore (DevLog route name; the next training attempt: full meter, the coin kept)
 		return
 	DevLog.route(get_tree(), "pause RESTART", get_parent())
+	var progress := get_node_or_null("/root/Progress")
+	if progress:
+		progress.keep_look_once = true  # (the same attempt again keeps the look)
 	get_tree().reload_current_scene()
 
 

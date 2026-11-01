@@ -64,6 +64,7 @@ const AREA_STATIONS := {"maps": "maps", "settings": "settings", "wheel": "wheel"
 
 
 func _initialize() -> void:
+	Economy.r_always_force = 0  # (the fuzz models the RESTART / UPGRADES prompt; test_chill_lane covers R restarting at once)
 	Economy.descent_force = 1  # Descent is switched off in the game (D11); this suite tests it
 	await process_frame
 	for arg in OS.get_cmdline_user_args():
@@ -398,7 +399,7 @@ func _descent() -> void:
 	inv("portal choice")
 	await L.tap(KEY_DOWN)
 	await L.frames(2)
-	check(L.focus() == hub.descent_button, "DESC-PORTAL", "down moves to DESCENT")
+	check(L.focus() == hub.descent_button, "DESC-PORTAL", "down moves to DESCENT (the daily has its own sign)")
 	await L.tap(KEY_UP)
 	await L.tap(KEY_UP)
 	await L.frames(2)
@@ -980,7 +981,10 @@ func _game() -> void:
 	game = await _fresh_scene(L.GAME)
 	await L.frames(20)
 	game._on_goal_body_entered(game.slime)
-	await L.frames(60)
+	for _i in 20:  # (the result is staged ~1.2 s on purpose, ANI-02: poll for the buttons, bounded)
+		await L.frames(15)
+		if game.won and game.hud.choice_buttons.size() == 3:
+			break
 	check(game.won and game.hud.choice_buttons.size() == 3, "WIN-CHOICES", "win shows REPLAY / NEXT LEVEL / HUB")
 	inv("win choices")
 	await esc()
@@ -1173,12 +1177,14 @@ func _variants() -> void:
 	var hub: Node2D = await _fresh_scene(L.HUB)
 	inv("hub touch")
 	check(hub_to("maps"), "HUB-TP", "map table reachable (touch)")
-	# JUMP uses the station on a touchscreen: press the jump action
-	L.action("jump", true)
+	# a tap on the station opens it on a touchscreen (JUMP only leaps, owner 2026-10-21)
+	var table: Sprite2D = hub.near.get("sprite") if hub.near.has("sprite") else null
+	var at: Vector2 = (table.get_global_transform_with_canvas() * table.get_rect()).get_center() if table else Vector2.ZERO
+	hub._touch_controls._touch_down(0, at)
 	await L.frames(2)
-	L.action("jump", false)
+	hub._touch_controls._touch_up(0, at)
 	await L.settle()
-	check(L.kind() == "maps", "TOUCH-USE", "JUMP next to the map table opens it on touch (got %s)" % L.kind())
+	check(L.kind() == "maps", "TOUCH-USE", "a tap on the map table opens it on touch (got %s)" % L.kind())
 	inv("maps touch")
 	# the touch pause button must not leave the menu action held
 	L.progress.start_story(2)

@@ -150,7 +150,7 @@ func _initialize() -> void:
 	_check(screen.showcase.visible and actor.position != actor_start and actor.animation != "idle",
 		"clicking a skin plays it on the preview stage (now %s at %s)" % [actor.animation, actor.position])
 	screen._on_tile(Skins.RAINBOW)
-	_check(screen.showcase.slime != actor and screen.showcase.slime.modulate.r == 0.0, "...a locked one as a silhouette")
+	_check(screen.showcase.slime != actor and screen.showcase.slime.modulate.is_equal_approx(Skins.LOCK_MODULATE), "...a locked one as a silhouette (SPR-28: the navy lock look, not a black disc)")
 	screen.free()
 	progress.levels_cleared = 10
 	progress.selected_skin = Skins.CUSTOM

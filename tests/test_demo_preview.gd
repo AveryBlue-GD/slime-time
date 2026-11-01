@@ -178,7 +178,7 @@ func _check_preview() -> void:
 	_check(is_equal_approx(again._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(again.slime.max_speed, top_speed)
 		and is_equal_approx(again.light_reach, Upgrades.light_reach(3)), "...still with the maxed upgrades")
 	again._dry_up()
-	await _wait_seconds(again.DRY_CHOICE_DELAY + 0.3)
+	await _wait_seconds(again.DRY_HOLD + again.DRY_CHOICE_DELAY + 0.3)
 	_check(again.hud.choice_buttons.size() == 1 and again.hud.choice_buttons[0].text == "CONTINUE",
 		"a dry-up offers CONTINUE only (no NEW MAZE: %s)" % again.hud.choice_buttons[0].text)
 	again.free()

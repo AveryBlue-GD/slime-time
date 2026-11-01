@@ -31,7 +31,7 @@ HEIGHT = 7
 ## Drips hang below the baseline, inside the line's 2 px of descender space.
 DRIP_ROWS = 2
 LINE_HEIGHT = HEIGHT + DRIP_ROWS
-PAL.update({"1": (215, 215, 215, 255), "2": (160, 160, 160, 255)})  # body / drip shades
+FONT_PAL = {**PAL, "1": (215, 215, 215, 255), "2": (160, 160, 160, 255)}  # body / drip shades
 SPACE_ADVANCE = 2   # word gap 3 px (1 + 2), was 4 (5 px): the owner found the words too far apart (2026-10-21)
 
 GLYPHS = {
@@ -113,7 +113,7 @@ def write_png(path: Path, rows: list[str]) -> None:
     """write_png, but an image whose pixels didn't change keeps its old bytes: zlib builds differ
     between machines, and pixel.png / pixel_big.png must stay byte-identical for English."""
     old = path.read_bytes() if path.exists() else None
-    _write_png(path, rows)
+    _write_png(path, rows, FONT_PAL)
     if old is not None and _png_pixels(old) == _png_pixels(path.read_bytes()):
         path.write_bytes(old)
 

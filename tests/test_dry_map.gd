@@ -35,8 +35,16 @@ func _initialize() -> void:
 	await _stop(game)
 
 	game = await _dry(1, false, false, true)
-	_check(_labels(game) == ["RESTART", "ASSIST", "UPGRADES", "MAP"] and _row_inside(game), "with the ASSIST offer: 4 buttons, inside the screen: %s" % [_labels(game)])
+	_check(_labels(game) == ["YES", "NO"] and _row_inside(game), "with the RELAXED offer: YES / NO, inside the screen: %s" % [_labels(game)])
+	game.decline_calm()
+	_check(_labels(game) == ["RESTART", "UPGRADES", "MAP"] and _row_inside(game), "...NO brings the plain row back: %s" % [_labels(game)])
 	await _stop(game)
+
+	Economy.one_assist_force = 0  # (the old reserve offer, kept behind ONE_ASSIST)
+	game = await _dry(1, false, false, true)
+	_check(_labels(game) == ["RESTART", "ASSIST", "UPGRADES", "MAP"] and _row_inside(game), "with the old ASSIST offer: 4 buttons, inside the screen: %s" % [_labels(game)])
+	await _stop(game)
+	Economy.one_assist_force = -1
 
 	game = await _dry(0, false, true)
 	_check(_labels(game) == ["RESTART", "NEW MAZE", "UPGRADES", "MAP"] and _row_inside(game) and game.hud.choice_buttons[0].has_focus(),

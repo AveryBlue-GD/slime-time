@@ -18,7 +18,8 @@ import math
 import random
 from pathlib import Path
 
-from make_placeholder_art import PAL, write_png
+from make_placeholder_art import PAL
+from make_placeholder_art import write_png as _write_png
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "assets" / "sprites" / "title"
 VARIANTS = 12  # keep equal to LOGO_VARIANTS in scripts/ui/title.gd
@@ -28,7 +29,11 @@ RADIUS = 3.3  # strokes ~7 px thick; holes stay ~5 px open so letters still read
 LETTER_GAP = 3
 SPACE = 10
 MARGIN = 4
-PAL["K"] = (8, 8, 14, 255)  # drop shadow, darker than the menu background
+TITLE_PAL = {**PAL, "K": (16, 16, 28, 255)}  # CON-06: a derived palette; K = drop shadow in the menu "DEEP" (CON-22)
+
+
+def write_png(path, rows):
+    _write_png(path, rows, TITLE_PAL)
 
 LETTERS = {
     "S": [".###.", "#...#", "#....", ".###.", "....#", "#...#", ".###."],

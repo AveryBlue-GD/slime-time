@@ -134,7 +134,7 @@ demo never writes a full-game save, nor one it can't read, from another epoch or
 Only a plain launch touches the real save: `user://save.cfg` in the release dir `SlimeTime_R1` (`~/Library/Application
 Support/SlimeTime_R1/save.cfg` on macOS). The pre-release save (`.../Godot/app_userdata/Slime Time/save.cfg`) is never read. Tests,
 tools, headless, movie, screenshot and dev runs write a throwaway file; `--story` / `--autoplay` use clean in-memory state. Saves
-and codes carry `[meta] epoch` (`Progress.RELEASE_EPOCH` = 1, codes `SLIME2-`); save version 6. Saves are atomic and untrusted
+and codes carry `[meta] epoch` (`Progress.RELEASE_EPOCH` = 1, codes `SLIME2-`); save version 7. Saves are atomic and untrusted
 text passes `scripts/save_text.gd` first ([qa-release-report.md](qa-release-report.md)). Fresh-start policy and how to bump
 it: [itch-release.md](itch-release.md). Never run the game when the owner may be playing.
 
@@ -149,6 +149,10 @@ are in the repo (they need SDKs, a keystore, a Team ID, GodotSteam): the presets
 [spring-cleaning/phase5-platform.md](spring-cleaning/phase5-platform.md). The Windows build zip and itch promo images are out
 of date (v2.2); rebuild only when asked. Targets (owner): stable 60 fps on low-end PCs and low-to-mid mobile, smooth scaling to
 120/144/240 Hz; English only until the game is finalized (`tests/i18n_mode.gd` ENGLISH_ONLY; pending list `i18n/pending.md`). Perf notes: [perf/](perf/).
+
+## Review-team features (test copy, `dry-run-improvement-test`)
+
+Added by the review team and kept behind switches in `scripts/economy.gd` (each has a `--no...` debug flag and a suite `*_force` so older suites run without it): **lurkers** (`LURKERS_TEST`, `--nolurkers` / `--lurkers`; always in hard mazes, SETTINGS toggle in normal random mazes, never in the daily / weekly or the demo); **boards and ghosts** (`BOARDS_TEST`, `--noboards`: daily and weekly top-5 boards, the weekly maze with a fixed loadout MORE SLIME 3 / SPEED 2 / BRIGHTNESS 1, ghost replays in `ghosts.cfg`); **orchestra** (`ORCHESTRA_TEST`, `--noorchestra`: three synced level-music layers plus stings, desktop only, excluded from the Web exports); **Light & Life** (`LIGHT_LIFE_TEST`, `--nolightlife`: the new lighting); the **launch intro card** (`INTRO_CARD`, 1.8 s on every cold launch but the first). Suites: `test_lurkers`, `test_boards`, `test_orchestra`, `test_light_life`, `test_shipping_config` (the shipped configuration end to end).
 
 ## Open tasks and open questions
 

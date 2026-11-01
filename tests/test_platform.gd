@@ -161,7 +161,10 @@ func _fullscreen_memory() -> void:
 ## The Steam seam: saved milestones are reported on PlatformEvents.progress_event (nothing listens yet).
 func _progress_events() -> void:
 	var got: Array = []
-	var take := func(id: String, value: int) -> void: got.append([id, value])
+	# (IMP-07's "ach_*" and "medal_milestone" events are checked in test_achievements)
+	var take := func(id: String, value: int) -> void:
+		if not id.begins_with("ach_") and id != "medal_milestone":
+			got.append([id, value])
 	events.progress_event.connect(take)
 	progress.saving_enabled = true
 	progress.dev_tools = false

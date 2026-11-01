@@ -14,6 +14,8 @@ gem in the caverns, a flame in the vault. Coin.GLOW (scripts/coin.gd) matches ea
 import math
 from pathlib import Path
 
+from art_checks import outline_problems
+from make_placeholder_art import PAL
 from upscale_png import write_png  # writes rows of RGBA tuples
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "sprites"
@@ -46,6 +48,8 @@ EMBLEMS = {
     "crystal": [".###.", "#####", "#####", ".###.", "..#.."],
     "volcanic": ["..#..", ".##..", ".###.", "#####", ".###."],
 }
+OUTLINE_FLOOR = {"obsidian": (30, 24, 52)}
+GOLD, GOLD_SHADOW, GOLD_GLINT = PAL["y"], PAL["o"], PAL["Y"]  # CON-06: named from the shared palette
 THEME_ORDER = ["dungeon", "mossy", "sandstone", "sunken", "sewers", "catacombs", "frozen", "obsidian",
                "crystal", "volcanic"]
 
@@ -57,13 +61,15 @@ def mix(a: tuple, b: tuple, f: float) -> tuple:
 def coin_frame(theme: str, k: int) -> list[list[tuple]]:
     rim, face, light, shine, emblem = [(*c, 255) for c in COINS[theme]]
     outline = mix(rim, (0, 0, 0), 0.5)
+    if theme in OUTLINE_FLOOR:  # CON-03: a tinted dark, never near-black
+        outline = tuple(max(a, b) for a, b in zip(outline, OUTLINE_FLOOR[theme])) + (255,)
     shade = mix(face, rim, 0.45)  # the face's shadowed lower-right
     ridge = mix(rim, (0, 0, 0), 0.25)
     angle = k * math.pi / FRAMES
     turn = abs(math.cos(angle))
-    rx = max(5.0 * turn, 0.8)
     ry = 5.0
     thick = round(2.0 * math.sin(angle))  # the edge you see as it turns
+    rx = max(5.0 * turn - thick / 2.0, 0.8)  # SPR-24: the edge is part of the width, so the spin only narrows
     cx = SIZE / 2.0 - thick / 2.0
     cy = SIZE / 2.0
 
@@ -124,10 +130,41 @@ def coin_frame(theme: str, k: int) -> list[list[tuple]]:
         for x in range(SIZE):
             if (x, y) in body and any((x + dx, y + dy) not in body for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 out[y][x] = outline
+    if theme != "dungeon":  # SPR-10 / CON-07: every themed coin keeps a gold rim and a gold glint
+        ring = [(x, y) for x, y in body if in_face(x, y) and out[y][x] != outline
+                and any((x + dx, y + dy) not in body or out[y + dy][x + dx] == outline
+                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+        best = None
+        for x, y in ring:
+            u, v = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+            lit = -0.6 * u - 0.8 * v
+            out[y][x] = GOLD if lit > -0.1 else GOLD_SHADOW
+            if best is None or lit > best[0]:
+                best = (lit, x, y)
+        if best and rx >= 2.2:
+            out[best[2]][best[1]] = GOLD_GLINT
     return out
 
 
+def check() -> int:
+    """CON-06 / M32: no outline darker than a max channel of 16, and the two sheets agree."""
+    bad = 0
+    for theme in THEME_ORDER:
+        rim = COINS[theme][0]
+        o = mix((*rim, 255), (0, 0, 0), 0.5)
+        if theme in OUTLINE_FLOOR:
+            o = tuple(max(a, b) for a, b in zip(o, OUTLINE_FLOOR[theme]))
+        for msg in outline_problems({"coin " + theme: o}):
+            print(msg)
+            bad += 1
+    print("coins check: %s" % ("OK" if not bad else "FAIL"))
+    return 1 if bad else 0
+
+
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv:
+        sys.exit(check())
     rows = []
     for theme in THEME_ORDER:
         frames = [coin_frame(theme, k) for k in range(FRAMES)]

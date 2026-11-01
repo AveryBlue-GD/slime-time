@@ -94,15 +94,17 @@ func _initialize() -> void:
 	print("  [%d ms] _full_round_trip()" % (Time.get_ticks_msec() - t0))
 	_disk_full()
 	print("  [%d ms] _disk_full()" % (Time.get_ticks_msec() - t0))
+	print("  NOTE: the code fuzz makes zlib refuse ~7.7k broken streams; the engine prints one 'Condition \"err != 1\"' line each (expected, counted as noise, not a failure)")
 	_code_fuzz()
 	print("  [%d ms] _code_fuzz()" % (Time.get_ticks_msec() - t0))
+	_e("the fuzz's harmless engine messages stay bounded (%d)" % errlog.noise, errlog.noise < 20000)
 	_e("whole suite: %d engine/script errors (%s)" % [errlog.count, "; ".join(errlog.lines)], errlog.count == 0)
 
 	for path: String in watched:
 		var now: String = FileAccess.get_md5(path) if FileAccess.file_exists(path) else ""
 		_e("real save %s untouched" % path, now == watched[path])
 	for path in scratch:
-		for f in [path, path + ".tmp", PROGRESS_SCRIPT.corrupt_backup_path(path, 1), PROGRESS_SCRIPT.corrupt_backup_path(path, 2), PROGRESS_SCRIPT.corrupt_backup_path(path, 3)]:
+		for f in [path, path + ".tmp", PROGRESS_SCRIPT.newer_backup_path(path), PROGRESS_SCRIPT.corrupt_backup_path(path, 1), PROGRESS_SCRIPT.corrupt_backup_path(path, 2), PROGRESS_SCRIPT.corrupt_backup_path(path, 3)]:
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	for line in known:
 		print("  KNOWN " + line)
@@ -295,6 +297,8 @@ func _future() -> void:
 			p.load_progress()
 			var accepted: bool = p.levels_cleared == 7
 			var expect: bool = typeof(epoch) == TYPE_INT and epoch == 1
+			if typeof(ver) == TYPE_INT and ver > PROGRESS_SCRIPT.SAVE_VERSION:
+				expect = false  # IMP-04: a newer save is backed up and never read or overwritten
 			_e("version %s epoch %s -> %s" % [ver, epoch, "loaded" if accepted else "fresh"], accepted == expect and _insane(p) == "")
 			p.free()
 	# a save from the future that is loaded then saved loses nothing it understood
@@ -304,13 +308,13 @@ func _future() -> void:
 	var path := _scratch("future2")
 	file.save(path)
 	var p := _new_at(path)
-	p.load_progress()
 	p.saving_enabled = true
+	p.load_progress()
 	p.save_progress()
 	var after := ConfigFile.new()
 	after.load(path)
-	_e("a version 99 save, loaded and saved again, is rewritten as version %s and drops [future] (a downgrade eats unknown data)" % after.get_value("meta", "version"),
-		after.get_value("meta", "version") == PROGRESS_SCRIPT.SAVE_VERSION)
+	_e("a version 99 save is kept as is (IMP-04: backed up, saving off), never downgraded",
+		after.get_value("meta", "version") == 99 and after.has_section_key("future", "new_feature"))
 	p.free()
 
 
@@ -569,9 +573,9 @@ func _state_fuzz() -> void:
 				if first == "":
 					first = "run %d step %d: %s" % [run, step, why]
 		# the round trip: file and code both give back exactly this state
-		var text: String = _canon(p._write())
 		p.saving_enabled = true
-		p.save_progress()
+		p.save_progress()  # (settles the achievements: goals met by the state are adopted at every save)
+		var text: String = _canon(p._write())
 		var q := _new_at(p.save_path)
 		q.load_progress()
 		var r := _new("state_code")

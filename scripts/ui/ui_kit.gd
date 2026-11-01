@@ -9,6 +9,8 @@ const HUB_SCENE := "res://scenes/hub.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 const BG := Color8(26, 28, 44)
+## CON-22: the one dark navy below BG (drop shadows, pod rims, label plates, locked fills); no near-black tier beyond it.
+const DEEP := Color8(16, 16, 28)
 const BUTTON := Color8(51, 44, 64)
 const BUTTON_PRESSED := Color8(37, 113, 121)
 const TEXT := Color8(244, 244, 244)
@@ -79,6 +81,7 @@ const Lang := preload("res://scripts/language.gd")
 ## mouse event Godot makes from one); a real mouse turns it off. See note_pointer / touch_active.
 static var touch_in_use := false
 static var _text_material: ShaderMaterial
+static var _clean_big_material: ShaderMaterial
 static var _tabular_font: FontFile
 static var _drip_scene := -1
 static var _metrics_code := ""
@@ -202,6 +205,12 @@ static func choice_y() -> int:
 ## Pitch of a stack of buttons `gap` apart (16 in English with GAP_S).
 static func stack_pitch(gap := GAP_S) -> int:
 	return button_h() + gap
+
+
+## IMP3-04: the gap of a stack of menu buttons: GAP_S, or while touch is in use the one that makes the pitch TOUCH_MIN
+## (22 px: a thumb's width; 9 px between 13 px buttons in English). Built at layout time, so a menu opened after a tap has it.
+static func menu_gap() -> int:
+	return maxi(GAP_S, TOUCH_MIN - button_h()) if touch_active() else GAP_S
 
 
 ## The title's line box: top (TITLE_Y in English, lower by the accents' head room), height (20 in
@@ -542,6 +551,16 @@ static func noted_text_w(control: Control) -> int:
 	if button_w(String(control.get("text")), note.min_w, note.font_size, note.extra) > w:
 		return -1
 	return w
+
+
+## The check box's slot (UI-26): the 9 x 9 box on a 9 x 16 transparent sheet, CHECK_BOX_TOP rows down.
+const CHECK_BOX_TOP := 3
+static func _check_slot(file: String) -> Texture2D:
+	var box: Image = (load(UI_DIR + file) as Texture2D).get_image()
+	var sheet := Image.create(box.get_width(), 16, false, Image.FORMAT_RGBA8)
+	sheet.blit_rect(box, Rect2i(Vector2i.ZERO, box.get_size()), Vector2i(0, CHECK_BOX_TOP))
+	return ImageTexture.create_from_image(sheet)
+
 
 
 ## A CheckBox's width past its text, as button_w's `extra` (note_text_w(box, [text], 0, FONT,
@@ -1024,7 +1043,8 @@ static func _queue_mirror(root: Node) -> void:
 	_mirror_deferred.bind(root).call_deferred()
 
 
-static func _mirror_deferred(root: Node) -> void:
+## (`root` is a Variant: a freed node would fail the typed-argument conversion of the deferred call.)
+static func _mirror_deferred(root: Variant) -> void:
 	if not is_instance_valid(root) or not root.has_meta(MIRROR_META):
 		return
 	var state: Dictionary = root.get_meta(MIRROR_META)
@@ -1175,6 +1195,14 @@ static func make_theme() -> Theme:
 		theme.set_stylebox(state, "CheckBox", StyleBoxEmpty.new())
 	theme.set_icon("unchecked", "CheckBox", load(UI_DIR + "check_off.png"))
 	theme.set_icon("checked", "CheckBox", load(UI_DIR + "check_on.png"))
+	# UI-26: Godot reserves the widest of all its check / radio icons for the box's slot (the default radio icons are
+	# 16 px: the 9 px box sat 12 px from its label and 3 px high). Every slot gets the box on a 9 x 16 sheet, its rows
+	# centred on the text body (CHECK_BOX_TOP), so the box is attached to its label (a taller script keeps the old slot).
+	if not tall_script():
+		for icon_name in ["unchecked", "unchecked_disabled", "radio_unchecked", "radio_unchecked_disabled"]:
+			theme.set_icon(icon_name, "CheckBox", _check_slot("check_off.png"))
+		for icon_name in ["checked", "checked_disabled", "radio_checked", "radio_checked_disabled"]:
+			theme.set_icon(icon_name, "CheckBox", _check_slot("check_on.png"))
 	theme.set_constant("h_separation", "CheckBox", 4)
 	theme.set_color("font_color", "Label", TEXT)
 	# The font's line box is only the 7 px letter body (the drips hang below it), so lines are
@@ -1346,7 +1374,7 @@ static func setup_screen(root: Control, title: String) -> SkinText:
 		label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		label.offset_top = title_top()  # TITLE_Y / TITLE_Y + 20 in English
 		label.offset_bottom = title_bottom()
-		label.add_theme_color_override("font_shadow_color", Color(BG, 0.85))
+		label.add_theme_color_override("font_shadow_color", DEEP)
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 2)
 	mirror_root(root)  # (right-to-left languages only: flipped once the screen is built)
@@ -1359,6 +1387,67 @@ static func add_skin_text(root: Control) -> SkinText:
 	skin_text.theme_owner = root
 	root.add_child(skin_text)
 	return skin_text
+
+
+## WCAG relative luminance of a colour (sRGB).
+static func luminance(c: Color) -> float:
+	var out := 0.0
+	var k := [0.2126, 0.7152, 0.0722]
+	var ch := [c.r, c.g, c.b]
+	for i in 3:
+		var v: float = ch[i]
+		out += k[i] * (v / 12.92 if v <= 0.04045 else pow((v + 0.055) / 1.055, 2.4))
+	return out
+
+
+## Contrast ratio of two colours (1..21).
+static func contrast(a: Color, b: Color) -> float:
+	var la := luminance(a)
+	var lb := luminance(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+## The shared contrast helper (M3: meter fill 3:1, message text 4.5:1): `color` lightened toward white, as little as
+## it takes, until it reads `ratio`:1 on `on`. A colour that already does is returned as is; the hue stays.
+static func lift_to_contrast(color: Color, on: Color, ratio: float) -> Color:
+	if contrast(color, on) >= ratio:
+		return color
+	var lo := 0.0
+	var hi := 1.0
+	for i in 12:
+		var mid := (lo + hi) / 2.0
+		if contrast(color.lerp(Color.WHITE, mid), on) >= ratio:
+			hi = mid
+		else:
+			lo = mid
+	return Color(color.lerp(Color.WHITE, hi), color.a)
+
+
+## ANI-12: a control settles into place in 3 whole-pixel steps (4 px low, 1 px high, home) over ~0.1 s. Off with
+## Reduce Motion (and in headless / test runs of a node that is not in the tree).
+## `steps`: [[y offset, seconds], ...] before it is home (the default: 4 px low, 1 px high).
+static func pop_in(node: Control, steps: Array = [[4.0, 0.034], [-1.0, 0.033]]) -> void:
+	if node == null or not node.is_inside_tree() or DisplayServer.get_name() == "headless":
+		return  # (nothing to see headless; keeps layout tests deterministic)
+	var progress := node.get_node_or_null("/root/Progress")
+	if progress != null and progress.reduce_motion:
+		return
+	var tree := node.get_tree()
+	var shown_a := node.modulate.a
+	node.modulate.a = 0.0  # (ANI-22: not drawn at home for the frame the container needs to place it)
+	await tree.process_frame  # (a container has placed it by now)
+	if not is_instance_valid(node):
+		return
+	if node.modulate.a == 0.0:
+		node.modulate.a = shown_a
+	var home := node.position
+	for step: Array in steps:
+		if not is_instance_valid(node):
+			return
+		node.position = home + Vector2(0, step[0])
+		await tree.create_timer(step[1], true, false, true).timeout
+	if is_instance_valid(node):
+		node.position = home
 
 
 static func make_label(text: String, font_size := FONT, color := TEXT) -> Label:
@@ -1379,6 +1468,31 @@ static func make_label(text: String, font_size := FONT, color := TEXT) -> Label:
 
 ## 16 px text uses the 2x font, whose letter gaps are split evenly so centered titles sit exactly
 ## on center (the 8 px font, scaled up, would put them a pixel right).
+## UI-28: a full 1 px outline round a label's text (8 copies behind it, in `color`), for text over the
+## world. The copies follow the label's text, font and size whenever it redraws.
+static func outline_label(label: Label, color := DEEP) -> void:
+	var copies: Array[Label] = []
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			var c := Label.new()
+			c.show_behind_parent = true
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			c.position = Vector2(dx, dy)
+			c.add_theme_color_override("font_color", color)
+			label.add_child(c)
+			copies.append(c)
+	label.draw.connect(func() -> void:
+		for c in copies:
+			c.text = label.text
+			c.size = label.size
+			c.horizontal_alignment = label.horizontal_alignment
+			c.add_theme_font_size_override("font_size", label.get_theme_font_size("font_size"))
+			c.add_theme_font_override("font", label.get_theme_font("font")))
+	label.queue_redraw()
+
+
 static func use_big_font(control: Control, font_size: int) -> void:
 	if font_size == FONT_BIG:
 		control.add_theme_font_override("font", load("res://assets/fonts/pixel_big.fnt"))
@@ -1404,6 +1518,7 @@ static func text_material() -> ShaderMaterial:
 	if _text_material == null:
 		_text_material = ShaderMaterial.new()
 		_text_material.shader = load("res://assets/shaders/text_drips.gdshader")
+		_text_material.set_shader_parameter("clean_small", Economy.CLEAN_SMALL_TEXT)
 	# New drips every time a screen opens: a fresh seed the first time text is made in each scene.
 	var tree := Engine.get_main_loop() as SceneTree
 	var scene_id := tree.current_scene.get_instance_id() if tree and tree.current_scene else 0
@@ -1411,6 +1526,16 @@ static func text_material() -> ShaderMaterial:
 		_drip_scene = scene_id
 		_text_material.set_shader_parameter("seed", float(randi() % 10000))
 	return _text_material
+
+
+## The 16 px text without drips (BUG2-05: the title's tagline and ENTER THE HUB read clean; headings keep text_material()).
+static func clean_big_material() -> ShaderMaterial:
+	if _clean_big_material == null:
+		_clean_big_material = ShaderMaterial.new()
+		_clean_big_material.shader = load("res://assets/shaders/text_drips.gdshader")
+		_clean_big_material.set_shader_parameter("clean_small", Economy.CLEAN_SMALL_TEXT)
+		_clean_big_material.set_shader_parameter("clean_big", true)
+	return _clean_big_material
 
 
 static func make_button(text: String, on_press: Callable, min_size := Vector2(0, BUTTON_H)) -> Button:
