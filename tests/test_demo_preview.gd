@@ -1,7 +1,7 @@
 extends "res://tests/suite_base.gd"
 
 ## The demo's FULL GAME PREVIEW (Demo.PREVIEW, Progress.begin_demo_preview / end_demo_preview, game.gd `preview`):
-## the RANDOM_WINS-th randomizer win leads into one fixed maze with every ability and a borrowed look, its card
+## the randomizer portal's first use after the demo's levels leads into one fixed maze with every ability and a borrowed look, its card
 ## first, no attempts / pickups / pay, CONTINUE only into the end screen; nothing it borrows reaches the save
 ## (none written meanwhile, the state from before put back after); after it the randomizer portal always plays it again
 ## (just the maze: the ability tutorial is its first run's). The ability tutorial (AbilityCoach): a line per ability,
@@ -22,6 +22,10 @@ func _initialize() -> void:
 	Demo.strip_test = true
 	Demo.denied.clear()
 	await _check_preview()
+	await _check_restarts()
+	await _check_tutorial_restart(true)
+	await _check_tutorial_restart(false)
+	await _check_try_button()
 	Platform.reset_overrides()
 	Demo.strip_test = false
 	_result()
@@ -36,24 +40,31 @@ func _check_preview() -> void:
 	progress.reset_progress()
 	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
 	progress.levels_cleared = Demo.LEVELS
-	progress.randoms_won = Demo.RANDOM_WINS
+	progress.randoms_won = 0
 	progress.tickets = 7
 	progress.tickets_lifetime = 12
 	progress.abilities = {rifle = 1}
+	progress.upgrades = {slime = 2, speed = 1}
+	progress.coins_found = {1: ["a", "b", "c", "d", "e", "f"], 2: ["a", "b", "c", "d", "e", "f", "g", "h", "i"]}  # (15 found, 11 in the upgrades: 4 in hand)
 	progress.selected_skin = "lemon"
-	progress.start_random()
+	progress.random_seed = 4242
 	progress.save_progress()
-	_check(progress.demo_preview_due(), "after the demo's randomizer wins the preview is due")
+	var player_upgrades: Dictionary = progress.upgrades.duplicate()
+	var player_coins: int = progress.coins()
+	var caps := {}
+	for id: String in Demo.UPGRADE_CAPS:
+		caps[id] = Demo.upgrade_cap(id)
+	_check(progress.demo_preview_due(), "right after the demo's levels the preview is due (no randomizer wins first, owner 2026-10-23)")
 	Platform.demo_override = 0
 	_check(not progress.demo_preview_due(), "...never in the full game")
 	Platform.demo_override = 1
 	var player_seed: int = progress.random_seed
 
-	progress.begin_demo_preview()
+	progress.start_random()  # (the randomizer portal's first use after the demo's END OF THE DEMO screen)
 	var saved_at_start := _disk()
 	_check(progress.in_demo_preview() and Demo.preview and progress.has_seen_story(progress.STORY_DEMO_PREVIEW)
 		and "story_seen=%d" % progress.story_seen in saved_at_start,
-		"begin: the preview runs, its seen bit is saved first (plays once)")
+		"the portal's first use: the preview runs, its seen bit is saved first (its first run plays once)")
 	_check(progress.random_seed == Demo.PREVIEW_SEED and progress.mode == progress.MODE_RANDOM and not progress.hard_mode,
 		"the hand-picked seed, a normal randomizer maze")
 	var all_abilities := true
@@ -64,6 +75,16 @@ func _check_preview() -> void:
 		and Cosmetics.kind_of(progress.trail_style) == Cosmetics.TRAIL,
 		"a borrowed look: %s%s, hat %s, trail %s" % [progress.active_skin(), " jelly" if progress.jelly else (" pastel" if progress.pastel else ""),
 		progress.selected_hat, progress.trail_style])
+	var maxed := true
+	for id in ["slime", "speed", "brightness"]:
+		maxed = maxed and progress.upgrade_level(id) == Upgrades.max_level(id)
+	_check(maxed and Upgrades.max_level("slime") == 7 and Upgrades.max_level("speed") == 4 and Upgrades.max_level("brightness") == 3
+		and progress.upgrade_level("power") == 0,
+		"the coin upgrades at the full game's top levels (MORE SLIME 7, SPEED 4, BRIGHTNESS 3; no dev wall power): %s" % [progress.upgrades])
+	var caps_now := {}
+	for id: String in caps:
+		caps_now[id] = Demo.upgrade_cap(id)
+	_check(caps_now == caps and not progress.buy_upgrade("slime"), "...the demo's caps stay as they are (%s), nothing can be bought" % [caps_now])
 	progress.tickets += 50
 	progress.save_progress()
 	_check(_disk() == saved_at_start, "no save is written while it runs")
@@ -77,6 +98,10 @@ func _check_preview() -> void:
 	_check(game.preview and game.random_seed == Demo.PREVIEW_SEED and game.seed_level == Demo.PREVIEW_LEVEL,
 		"the game plays the preview maze (seed %d, level %d)" % [game.random_seed, game.seed_level])
 	_check(game.tickets.is_empty() and game.attempt_key == "" and not game.hud.attempt_pod.visible, "no ticket pickups, attempts or pod")
+	var top_speed := 72.0 * Upgrades.speed_factor(4)
+	_check(is_equal_approx(game._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(game.slime.max_speed, top_speed)
+		and is_equal_approx(game.light_reach, Upgrades.light_reach(3)),
+		"the run uses them: meter x%.2f, speed %.1f, light +%.0f px" % [game._applied_slime_factor(), game.slime.max_speed, game.light_reach])
 	var runner: Node = game.get("abilities")
 	_check(runner != null and runner.levels.size() == Abilities.ids().size(), "every ability works in it (%s)" % [runner.levels if runner else {}])
 	_check(game.preview_card_up and game.slime.frozen and game.hud.message.visible and game.hud.choice_buttons.size() == 1,
@@ -97,6 +122,12 @@ func _check_preview() -> void:
 	game.slime.position += Vector2.ZERO
 	await _physics_frames(10)
 	_check(game.slime.hold and game.run_time == clock_held and coach.skip_pod.visible, "the slime is held (no clock) while the line waits, SKIP shown")
+	var locked_ids := func() -> Array:
+		return game.touch_controls.abilities.filter(func(item: Dictionary) -> bool: return item.locked).map(func(item: Dictionary) -> String: return item.id)
+	var splat_left: int = runner.charges.splat
+	_check(not runner.use("splat") and runner.charges.splat == splat_left and not runner.start_aim("kaze") and runner.aiming == "",
+		"only the prompted ability works: GOO GRENADE / SLIMAKAZE do nothing during SLIME SNIPER's line")
+	_check(locked_ids.call() == ["splat", "kaze", "sense"], "...their buttons (and the HUD strip) show dimmed (%s)" % [locked_ids.call()])
 	runner.start_aim("rifle")
 	await _physics_frames(2)
 	_check(game.hud.training_line_text() == AbilityCoach.aim_line(), "aiming: %s" % AbilityCoach.aim_line())
@@ -110,14 +141,31 @@ func _check_preview() -> void:
 	for text in [AbilityCoach.aim_line(), AbilityCoach.done_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)):
 		widest = maxf(widest, UIKit.text_w(text))
 	_check(widest <= game.hud.TRAINING_LINE_W, "every coach line fits the line's %d px (widest %d)" % [game.hud.TRAINING_LINE_W, widest])
+	progress.force_touch = true
+	var touch_lines: Array = [AbilityCoach.aim_line()] + Abilities.ids().map(func(id: String) -> String: return AbilityCoach.line(id)) \
+		+ [AbilityCoach.cancel_line()]
+	progress.force_touch = false
+	var touch_widest := 0.0
+	for text: String in touch_lines:
+		touch_widest = maxf(touch_widest, UIKit.text_w(text))
+	_check(touch_lines[1] == "TAP SLIME SNIPER, AIM WITH THE STICK" and touch_lines[0] == "AIM WITH THE STICK, THEN PRESS JUMP"
+		and touch_lines[3].begins_with("TAP ") and touch_lines[-1] == "LET GO TO FIRE, DRAG TO X TO CANCEL" and touch_widest <= game.hud.TRAINING_LINE_W,
+		"on touch the aimed ones say how to aim (%s), all within %d px (widest %d)" % [touch_lines, game.hud.TRAINING_LINE_W, touch_widest])
 	await _physics_frames(2)
+	_check(locked_ids.call() == ["rifle", "kaze", "sense"] and not runner.use("sense") and game.random_map_view == null,
+		"each one unlocks when its line comes up: GOO GRENADE's line, the others held back (%s)" % [locked_ids.call()])
+	runner.start_aim("splat")
+	coach.skip()
+	await _physics_frames(2)
+	_check(locked_ids.call().is_empty() and runner.locked.is_empty(), "SKIP: every ability works")
+	_check(runner.aiming == "" and not game.slime.aim_lock, "...and an aim that was up is called off (the joystick moves again)")
 	_check(runner.use("sense") and game.random_map_view != null, "SLIME SENSE peeks at the map")
 	game._close_run_map()
 	await _physics_frames(2)
 	var tickets_before: int = progress.tickets
 	game._on_goal_body_entered(game.slime)
 	await _wait_seconds(game.CHOICE_DELAY + 0.3)
-	_check(game.won and game.hud.choice_buttons.size() == 1 and progress.tickets == tickets_before and progress.randoms_won == Demo.RANDOM_WINS,
+	_check(game.won and game.hud.choice_buttons.size() == 1 and progress.tickets == tickets_before and progress.randoms_won == 0,
 		"a win pays and counts nothing, CONTINUE only")
 	_check(game.preview_exit() == DemoEnd.SCENE and DemoEnd.from == DemoEnd.FROM_RANDOM, "QUIT in the pause menu goes on to the randomizer's end screen")
 	game.free()
@@ -125,11 +173,21 @@ func _check_preview() -> void:
 	root.add_child(again)
 	current_scene = again
 	await physics_frame
-	_check(again.preview and not again.preview_card_up, "a restart goes straight in (the card is once)")
+	_check(again.preview and not again.preview_card_up and again.random_seed == Demo.PREVIEW_SEED and progress.random_seed == Demo.PREVIEW_SEED,
+		"a restart goes straight in (the card is once), the same maze (seed %d)" % again.random_seed)
+	_check(is_equal_approx(again._applied_slime_factor(), Upgrades.slime_factor(7)) and is_equal_approx(again.slime.max_speed, top_speed)
+		and is_equal_approx(again.light_reach, Upgrades.light_reach(3)), "...still with the maxed upgrades")
 	again._dry_up()
 	await _wait_seconds(again.DRY_HOLD + again.DRY_CHOICE_DELAY + 0.3)
-	_check(again.hud.choice_buttons.size() == 1, "a dry-up offers CONTINUE only")
+	_check(again.hud.choice_buttons.size() == 1 and again.hud.choice_buttons[0].text == "CONTINUE",
+		"a dry-up offers CONTINUE only (no NEW MAZE: %s)" % again.hud.choice_buttons[0].text)
 	again.free()
+	var reset: Node2D = BASE_MAIN.instantiate()
+	root.add_child(reset)
+	current_scene = reset
+	await physics_frame
+	_check(reset.preview and reset.random_seed == Demo.PREVIEW_SEED, "...and the restart after that dry-up is the same maze again")
+	reset.free()
 
 	# The end: everything from before is back, and saving with it.
 	var seen_then: int = progress.STORY_INTRO | progress.STORY_DEMO_END | progress.STORY_DEMO_PREVIEW
@@ -142,12 +200,14 @@ func _check_preview() -> void:
 	_check(progress.active_skin() == "lemon" and progress.selected_hat == Hats.NONE and progress.abilities == {rifle = 1}
 		and progress.random_seed == player_seed and progress.skin_override == "",
 		"...the player's skin, hat, abilities and maze")
+	_check(progress.upgrades == player_upgrades and progress.coins() == player_coins and player_coins == 4 and progress.upgrade_level("brightness") == 0,
+		"...the player's own upgrades (%s) and coins (%d)" % [progress.upgrades, progress.coins()])
 	progress.save_progress()
 	_check(_disk() == saved_at_start, "...and the next save writes that")
 	progress.story_seen = seen_then | progress.STORY_DEMO_PREVIEW_COACHED
 	progress.save_progress()
 	var after_first := _disk()
-	_check(not progress.demo_preview_due(), "the 3rd win's preview is once")
+	_check(not progress.demo_preview_due(), "the first entry's preview (with its tutorial) is once")
 	progress.end_demo_preview()  # (twice is harmless)
 	_check(progress._write().encode_to_text() == after_first, "a second end_demo_preview changes nothing")
 	# The randomizer portal after the demo: the preview maze again, without its tutorial.
@@ -161,14 +221,15 @@ func _check_preview() -> void:
 	replay.free()
 	progress.end_demo_preview()
 	_check(progress._write().encode_to_text() == after_first, "...and leaves the save as it was")
-	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END  # (a demo whose preview hasn't played: its own randomizer)
-	# Outside the preview: each ability's line once (the demo's own randomizer: SLIME SNIPER), then never again.
+	# Outside the preview (the full game's randomizer): each ability's line once, for the ones you have (SLIME SNIPER).
+	Platform.demo_override = 0
 	progress.start_random()
+	_check(not progress.in_demo_preview() and progress.random_seed != Demo.PREVIEW_SEED, "the full game's portal: a new random maze")
 	var maze: Node2D = BASE_MAIN.instantiate()
 	root.add_child(maze)
 	current_scene = maze
 	await physics_frame
-	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a demo random maze coaches SLIME SNIPER the first time")
+	_check(maze.coach != null and maze.coach.steps == ["rifle"], "a random maze coaches SLIME SNIPER the first time")
 	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
 	_check(maze.slime.hold and maze.coach.current == "rifle", "...holding the slime")
 	maze.coach.skip()
@@ -181,5 +242,162 @@ func _check_preview() -> void:
 	await physics_frame
 	_check(later.coach == null, "...and not again")
 	later.free()
+	Platform.demo_override = 1
 	_check(Demo.denied.is_empty(), "the preview loads nothing a stripped demo export leaves out (%s)" % [Demo.denied])
 	current_scene = null
+
+
+## TRY THE FULL GAME (owner, 2026-10-23): the level 4 chalice's win row offers it first (focused, beside CONTINUE)
+## and it goes straight into the preview maze with the ability tutorial, as the randomizer portal does.
+func _check_try_button() -> void:
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO
+	progress.levels_cleared = Demo.LEVELS - 1
+	progress.highest_unlocked = Demo.LEVELS
+	progress.start_story(Demo.LEVELS)
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._on_goal_body_entered(game.slime)
+	await _wait_seconds(game.CHOICE_DELAY + 0.3)
+	var texts: Array = game.hud.choice_buttons.map(func(b: Button) -> String: return b.text)
+	_check(game.won and texts == ["TRY THE FULL GAME", "CONTINUE"] and game.hud.choice_buttons[0].has_focus(),
+		"level %d's chalice: TRY THE FULL GAME (focused) and CONTINUE (%s)" % [Demo.LEVELS, texts])
+	_check(not progress.has_seen_story(progress.STORY_DEMO_PREVIEW), "...the preview not started yet")
+	game.hud.choice_buttons[0].pressed.emit()
+	var preview: Node = null
+	for i in 240:
+		await process_frame
+		if current_scene != null and current_scene != game and current_scene.get("preview") == true:
+			preview = current_scene
+			break
+	_check(preview != null and progress.in_demo_preview() and preview.random_seed == Demo.PREVIEW_SEED,
+		"...pressed: the FULL GAME PREVIEW maze (seed %d)" % (preview.random_seed if preview else 0))
+	if preview:
+		preview._close_preview_card()
+		await physics_frame
+		_check(preview.coach != null and preview.coach.steps.size() + (1 if preview.coach.current != "" else 0) == Abilities.ids().size(),
+			"...with the ability tutorial (every ability)")
+		preview.free()
+	current_scene = null
+	progress.end_demo_preview()
+	_check(not progress.in_demo_preview() and progress.levels_cleared == Demo.LEVELS, "...and afterwards the save is the player's (level %d cleared)" % Demo.LEVELS)
+	progress.hard_mode = true
+	progress.hard_cleared.clear()
+	progress.start_story(1)
+	var hard: Node2D = BASE_MAIN.instantiate()
+	root.add_child(hard)
+	current_scene = hard
+	await physics_frame
+	_check(not hard.can_try_full_game(), "hard level %d (the demo's last hard one): no TRY THE FULL GAME" % Demo.hard_levels())
+	hard.free()
+	current_scene = null
+	progress.hard_mode = false
+
+
+## A run's own look and maze (the slime's skin colours its goo trail, which draws the map).
+func _fingerprint(game: Node) -> String:
+	return "%d/%d/%s/%s/%d %s %s %s %s" % [game.random_seed, game.seed_level, game.theme, game.maze.get("start"), str(game.maze).hash(),
+		progress.active_skin(), progress.jelly, progress.selected_hat, progress.trail_style]
+
+
+## Bug (owner, 2026-10-23, on the phone): after the first restart the preview's map looked different. Every real
+## restart path (the pause menu's RESTART, R) reloads the scene: the same maze AND the same borrowed look.
+func _check_restarts() -> void:
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
+	progress.levels_cleared = Demo.LEVELS
+	progress.start_random()
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._close_preview_card()
+	var first := _fingerprint(game)
+	var seen: Array[String] = [first]
+	for n in 2:
+		game.pause_menu._restart()  # (a reload of the scene, as on the phone)
+		for i in 120:
+			await process_frame
+			if current_scene != null and current_scene != game:
+				break
+		game = current_scene
+		await physics_frame
+		seen.append(_fingerprint(game))
+	_check(seen.all(func(f: String) -> bool: return f == first) and game.preview,
+		"the preview maze is identical over two pause-menu restarts, its look too (%s)" % [seen])
+	game.replay("R")
+	for i in 120:
+		await process_frame
+		if current_scene != null and current_scene != game:
+			break
+	game = current_scene
+	await physics_frame
+	_check(_fingerprint(game) == first, "...and after R's replay (%s)" % _fingerprint(game))
+	current_scene = null
+	game.free()
+	progress.end_demo_preview()
+
+
+
+## The preview starts over once its ability tutorial is done (owner, 2026-10-23): `skip` = by SKIP, else by using every
+## ability. NOW FOR REAL!, then the same maze and look, a full meter, a fresh clock and charges, no tutorial again, no aim
+## left up, and no save written.
+func _check_tutorial_restart(skip: bool) -> void:
+	var how := "SKIP" if skip else "every ability used"
+	progress.reset_progress()
+	progress.story_seen = progress.STORY_INTRO | progress.STORY_DEMO_END
+	progress.levels_cleared = Demo.LEVELS
+	progress.save_progress()
+	progress.start_random()
+	var disk := _disk()  # (the preview's seen bit was saved as it began: nothing after that)
+	var game: Node2D = BASE_MAIN.instantiate()
+	root.add_child(game)
+	current_scene = game
+	await physics_frame
+	game._close_preview_card()
+	var first := _fingerprint(game)
+	var coach: AbilityCoach = game.coach
+	await _wait_seconds(AbilityCoach.START_DELAY + 0.2)
+	var runner: AbilityRunner = game.get("abilities")
+	if skip:
+		runner.start_aim("rifle")
+		coach.skip()
+	else:
+		for id in Abilities.ids():
+			for i in 300:  # (its line up and the slime free to use it: SLIMAKAZE's dash and stun have to end first)
+				if coach.current == id and runner.can_use(id):
+					break
+				await physics_frame
+			runner.use(id)
+			game._close_run_map()
+			await _physics_frames(2)
+		await _wait_seconds(AbilityCoach.GAP + 0.2)
+		_check(game.hud.training_line_text() == AbilityCoach.done_line() and game.slime.hold,
+			"[%s] the last line, the slime held: %s" % [how, game.hud.training_line_text()])
+		await _wait_seconds(AbilityCoach.DONE_TIME)
+	await physics_frame
+	_check(game.hud.training_line_text() == "NOW FOR REAL!" and game.slime.hold and runner.aiming == "" and not game.slime.aim_lock,
+		"[%s] NOW FOR REAL!, the slime held, no aim up (%s)" % [how, game.hud.training_line_text()])
+	var restarted: Node = null
+	for i in 240:
+		await process_frame
+		if current_scene != null and current_scene != game:
+			restarted = current_scene
+			break
+	_check(restarted != null and restarted.preview and _fingerprint(restarted) == first,
+		"[%s] ...then the run starts over: the same maze and look (%s)" % [how, _fingerprint(restarted) if restarted else ""])
+	if restarted:
+		await physics_frame
+		var full: bool = restarted.slime_remaining >= 99.9
+		_check(restarted.coach == null and not restarted.preview_card_up and restarted.run_time < 0.1 and full
+			and restarted.abilities.charges.rifle == Abilities.charges("rifle", Abilities.max_level("rifle")),
+			"[%s] ...no tutorial again, no card, a fresh clock, a full meter and full charges" % how)
+		_check(is_equal_approx(restarted._applied_slime_factor(), Upgrades.slime_factor(7))
+			and is_equal_approx(restarted.slime.max_speed, 72.0 * Upgrades.speed_factor(4)) and is_equal_approx(restarted.light_reach, Upgrades.light_reach(3)),
+			"[%s] ...still with the maxed upgrades" % how)
+		_check(progress.has_seen_story(progress.STORY_DEMO_PREVIEW_COACHED) and _disk() == disk, "[%s] ...the tutorial marked done, no save written" % how)
+		restarted.free()
+	current_scene = null
+	progress.end_demo_preview()

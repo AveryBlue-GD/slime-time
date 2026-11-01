@@ -76,6 +76,13 @@ msgctxt "coach.sense"
 msgid "PEEKS AT THE MAP"
 msgstr ""
 
+#. ability tutorial line (touch, an aimed ability: tap its button, then the joystick aims), max 192px, 1 line; {name} = ability name
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.line_touch_aim"
+msgid "TAP {name}, AIM WITH THE STICK"
+msgstr ""
+
 #. ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
@@ -90,6 +97,27 @@ msgctxt "coach.line"
 msgid "{key} {name}: {what}"
 msgstr ""
 
+#. ability tutorial line (touch, JUMP held while aiming: letting go fires, letting go on the small X beside JUMP cancels), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim_cancel"
+msgid "LET GO TO FIRE, DRAG TO X TO CANCEL"
+msgstr ""
+
+#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
+#. budget: max 34px
+#: scripts/ability_coach.gd scripts/ui/touch_controls.gd
+msgctxt "touch.jump"
+msgid "JUMP"
+msgstr "HOP"
+
+#. ability tutorial line (touch, the aim is up: the joystick aims, JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.aim_touch"
+msgid "AIM WITH THE STICK, THEN PRESS {jump}"
+msgstr ""
+
 #. ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
 #. budget: max 192px, lines 1
 #: scripts/ability_coach.gd
@@ -102,6 +130,13 @@ msgstr ""
 #: scripts/ability_coach.gd
 msgctxt "coach.done"
 msgid "THAT'S EVERY ABILITY, GOOD LUCK"
+msgstr ""
+
+#. ability tutorial (preview): the run starts over now, the tutorial is done; max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/ability_coach.gd
+msgctxt "coach.for_real"
+msgid "NOW FOR REAL!"
 msgstr ""
 
 #. the hub tour's SKIP pod (top right), max 40px, 1 line
@@ -424,6 +459,13 @@ msgstr ""
 msgctxt "trail.abyss.desc"
 msgid "DARK GOO, FAINT STARS"
 msgstr "BAVA SCURA, STELLE FIOCHE"
+
+#. button (demo: plays the FULL GAME PREVIEW maze), on the win row beside CONTINUE and on the end screen's bottom row, max 120px, 1 line
+#. budget: max 120px, lines 1
+#: scripts/demo.gd
+msgctxt "demo.try_full_game"
+msgid "TRY THE FULL GAME"
+msgstr ""
 
 #. lock label (demo build) on the hub's randomizer portal / hat wheel prompt when they are left out; max 52px, 1 line
 #. budget: max 52px, lines 1
@@ -1504,11 +1546,11 @@ msgctxt "hub.prompt.beat_all"
 msgid "BEAT ALL {count} LEVELS"
 msgstr "SUPERA TUTTI I {count} LIVELLI"
 
-#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
-#. budget: max 192px, lines 1
+#. hub prompt during the first hub tour (a station that opens once the tour is done), max 110px, 1 line
+#. budget: max 110px, lines 1
 #: scripts/hub_tour.gd
-msgctxt "hub.tour.end"
-msgid "THE WAY UP, WALK IN"
+msgctxt "hub.tour.after"
+msgid "AFTER THE TOUR"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line; {left} = the left key (A), or LEFT on a pad / touch
@@ -1516,6 +1558,13 @@ msgstr ""
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.turn_back"
 msgid "HOLD {left} TO TURN IT BACK"
+msgstr ""
+
+#. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.end"
+msgid "THE WAY UP, WALK IN"
 msgstr ""
 
 #. hub tour line in the hub prompt box (the use key follows), max 192px, 1 line
@@ -1558,6 +1607,13 @@ msgstr ""
 #: scripts/hub_tour.gd
 msgctxt "hub.tour.coins_practice"
 msgid "THE PRACTICE COIN WAS FAKE. SORRY"
+msgstr ""
+
+#. hub tour line (demo build: the portal plays the FULL GAME PREVIEW maze) in the hub prompt box (the use key follows), max 192px, 1 line
+#. budget: max 192px, lines 1
+#: scripts/hub_tour.gd
+msgctxt "hub.tour.random_preview"
+msgid "A TASTE OF THE FULL GAME"
 msgstr ""
 
 #: scripts/hub_tour.gd
@@ -2607,11 +2663,11 @@ msgctxt "settings.sound.off"
 msgid "SOUND: OFF"
 msgstr "AUDIO: NO"
 
-#. demo end screen, line under the title, max 300px, 1 line; {count} = abilities the demo lacks (2)
+#. demo end screen, line under the title, max 300px, 1 line
 #. budget: max 300px, lines 1
 #: scripts/ui/demo_end.gd
 msgctxt "demo.end.random"
-msgid "THE FULL GAME ADDS {count} ABILITIES AND THE SHOP"
+msgid "THE FULL GAME ADDS ENDLESS MAZES AND THE SHOP"
 msgstr ""
 
 #. demo end screen, line under the title (the story's voice: the slime climbs to daylight), max 300px, 1 line
@@ -2978,6 +3034,13 @@ msgstr ""
 #: scripts/ui/hat_wheel.gd
 msgctxt "wheel.demo_shop"
 msgid "THE SHOP OPENS IN THE FULL GAME"
+msgstr ""
+
+#. SHOP status line (DYES: a hat not won yet), max 240px, 1 line
+#. budget: max 240px, lines 1
+#: scripts/ui/hat_wheel.gd
+msgctxt "wheel.dye_locked"
+msgid "WIN IT ON THE PRIZE WHEEL"
 msgstr ""
 
 #. SHOP status line (DYES: a dyeable hat's tile), max 240px, 1 line
@@ -3589,13 +3652,6 @@ msgstr "FUGGI DALLA NEBBIA"
 msgctxt "title.tagline.2"
 msgid "BEFORE YOU DRY UP"
 msgstr "O SECCA NEL TENTATIVO"
-
-#. touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
-#. budget: max 34px
-#: scripts/ui/touch_controls.gd
-msgctxt "touch.jump"
-msgid "JUMP"
-msgstr "HOP"
 
 #. toast, max 150px, 1 line; {n} = how many achievements unlocked at once (2 or more)
 #. budget: max 150px, lines 1

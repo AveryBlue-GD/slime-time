@@ -76,8 +76,23 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   (CLEAR A LEVEL TO UNLOCK THE NEXT / EACH CLEAR ALSO UNLOCKS A NEW SKIN); hard: one line, BEAT A LEVEL ON HARD
   FOR ITS JELLY SKIN (the full game's hard line too). The hub archway says LOCKED once the next level is a full-game one.
   The map table keeps the later levels sealed. The HUD still says LEVEL n/10 (the full game's size, on purpose).
+- **TRY THE FULL GAME** (owner, 2026-10-23): the level 4 chalice's first win row is TRY THE FULL GAME (focused) and
+  CONTINUE; the end screen has it too (bottom left, focused; KEEP PLAYING bottom right). It plays the FULL GAME PREVIEW
+  maze (`Progress.start_random`, as the portal: the ability tutorial on its first run); its CONTINUE opens the end screen.
+  Not on hard mode's last level. In the ability tutorial only the prompted ability works (`AbilityRunner.locked`: the
+  others don't fire and show dimmed, also between lines); all of them after it ends or SKIP. On touch the ability
+  buttons are one row along the bottom (between the joystick and JUMP, over the training line; `TouchControls.ABILITY_ROW_X`), the full game too.
+  Touch aiming (owner, 2026-10-23, the full game too): a tap on SLIME SNIPER / GOO GRENADE's button shows the PC's aim
+  guide and from then on the joystick only aims (8 ways; the slime stays put) until letting go of JUMP fires it (JUMP
+  blinks a gold ring while an aim is up and never leaps then) or letting go on the X beside a held JUMP calls it off (top
+  right of JUMP, above it where a notch cuts in). A drag never aims; the same button again does nothing; the other aimed
+  one's switches; SLIMAKAZE / SLIME SENSE are dimmed and do nothing meanwhile. A pause, the run's end or the tutorial's
+  SKIP call an aim off. The tutorial's touch lines: TAP {name}, AIM WITH THE STICK / AIM WITH THE STICK, THEN PRESS JUMP /
+  (JUMP held) LET GO TO FIRE, DRAG TO X TO CANCEL. The preview keeps its
+  borrowed look over restarts (game.gd `_exit_tree` left the skin override on: a restart showed the player's own skin,
+  whose goo trail coloured the map differently; owner bug 2026-10-23).
 - **End screen** (`scenes/demo_end.tscn`, `scripts/ui/demo_end.gd`): after the last demo level's chalice (level 4) the win row is
-  CONTINUE only the first time (every finisher sees the pitch before the hub and the randomizer), later
+  TRY THE FULL GAME and CONTINUE the first time (every finisher sees the pitch before the hub and the randomizer), later
   REPLAY / CONTINUE / HUB. Also after the third demo maze is first won (top line: the full game's endless mazes
   and 3 abilities). Not from a level tile any more (locked tiles do nothing). Layout: END OF THE DEMO, a story-voice line (THE WAY OUT
   IS STILL UP THERE), WISHLIST (hidden while the URL is empty; focused first when shown), five teaser cards that
@@ -106,26 +121,38 @@ refund anything there, so the hand is never above `Demo.coins_total()` (a maxed 
   SLIME 3, SPEED 2, BRIGHTNESS 1 (web too): cost column FULL in gold, darker pips past the cap, hint line MORE UPGRADE LEVELS IN THE FULL GAME). TICKETS tab: only SLIME RIFLE can be bought (the others
   show FULL); in a maze only RIFLE works (`AbilityRunner.create`).
 - **Hard mode:** level 1 only.
-- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). As in the full game, every
+- **Randomizer:** opens after the last demo level (`Progress.is_randomizer_unlocked`). **Since 2026-10-23 (owner) its
+  portal plays the FULL GAME PREVIEW maze from the first use (below): no random mazes in the demo.** What follows is
+  the fallback with `Demo.PREVIEW` off (or a random maze started another way): as in the full game, every
   maze is a new random one (`Progress.new_random_maze`: a random seed, so a new layout and start; entering the portal,
   NEW MAZE after a dry-up and after a win; RESTART replays the same maze), paying tickets as usual. The end screen's
   pitch follows the `RANDOM_WINS`-th win. (Until 2026-10-20 the demo replayed three fixed seeds picked by
   `randoms_won`: a dry-up or a fresh portal visit gave the same Dark Dungeon maze and start again, owner bug report.)
   Only the demo's themes (`Themes.for_seed` picks from `Demo.themes()`), no typed seeds (the
   pause menu's seed button is hidden). Locked portal prompt: CLEAR LEVEL 4; on the web (left out): FULL GAME.
-- **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the `RANDOM_WINS`-th win's NEW MAZE leads first into
+- **FULL GAME PREVIEW** (owner, 2026-10-22; `Demo.PREVIEW`): the randomizer portal's first use after level 4's END OF
+  THE DEMO screen (owner, 2026-10-23; until then it followed the `RANDOM_WINS`-th randomizer win) leads into
   one hand-picked maze (`PREVIEW_SEED` 1854 at MORE SLIME `PREVIEW_LEVEL` 3: Sunken Shrine, 33 x 20 cells, a perfect
-  route uses ~64% of the meter) with every ability at its top level and a random full-game look (a skin past the
+  route uses ~64% of the meter at MORE SLIME 3) with every ability at its top level, the coin upgrades at the full game's
+  top levels (owner, 2026-10-23: MORE SLIME 7, SPEED 4, BRIGHTNESS 3, past the demo's caps; the maze keeps its level-3
+  size, so a perfect route takes ~46% of the meter; the ticket workshop is off, nothing to max) and a random full-game look (a skin past the
   demo's, opaque / jelly / pastel, a hat, sometimes dyed, a trail, a map paper). A card (FULL GAME PREVIEW / PLAY)
   comes first (once; RESTART goes straight in); no ticket pickups, attempts, pod, pay or records; its win or dry-up
   offers only CONTINUE and the pause menu's QUIT also goes on to the randomizer's end screen. Nothing borrowed
   reaches the save: `Progress.begin_demo_preview` saves the seen bit (`PREVIEW_SEEN_BIT` 16: once per save), keeps a
   `_write()` of the whole state and writes nothing until `end_demo_preview` (DemoEnd, the hub and the title call it)
-  reads that back (its first run is the 3rd win's; later ones come from the portal). Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
+  reads that back (every run comes from the portal; `Progress.start_random`: `demo_preview_due` the first time,
+  `demo_preview_replay` after). Its CONTINUE opens the randomizer's end screen (top line THE FULL GAME ADDS ENDLESS
+  MAZES AND THE SHOP). No randomizer wins, so the demo pays no randomizer tickets: the prize wheel's first spin is free. Debug: `--demo --demo-preview` with `scenes/main.tscn` starts it. Tests: `tests/test_demo_preview.gd`.
   After PLAY the ability tutorial (`scripts/ability_coach.gd`, owner 2026-10-22) walks through every ability on the
   training line pod: key (touch: TAP, the button blinks gold), name and what it does; the slime is held (turning only,
   no clock or drain) until that ability is used, SKIP (F / pad X / tap) ends it. Outside the preview it shows each
   ability's line once, in the first random maze with it (`tutorial_seen` bits 16-128; the demo: SLIME SNIPER).
+  Once the tutorial is done (every line, then THAT'S EVERY ABILITY) or SKIPped, the preview starts over (owner, 2026-10-23:
+  NOW FOR REAL!, then the same maze and look reloaded: a full meter, a fresh clock and charges, nothing opened or revealed,
+  no tutorial again; `AbilityCoach._begin_restart`, `game.restart_after_tutorial`). A tapped aim stops the slime dead
+  (no slide on under a held stick); on the phone a touch's emulated mouse click never fires an aim (it did: the stick
+  then moved the slime again, owner bug 2026-10-23).
   After the preview has played, the randomizer portal always plays it again (`Progress.demo_preview_replay`, owner
   2026-10-22: no new seeds), as just the maze (its tutorial is the first run's: `story_seen` bit 32).
 - **Hat wheel:** shut until the end screen was seen (`Progress.demo_wheel_block()` = `Demo.wheel_block`: "closed";

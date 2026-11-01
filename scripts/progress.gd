@@ -3,7 +3,7 @@ extends Node
 ## Autoload "Progress": levels cleared/unlocked, the chosen skin, key bindings, and which
 ## mode the game scene should start in. Saved to user://save.cfg.
 ## Debug (after `--` on the command line, never saved): `--level=N` starts on level N,
-## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nolightlife` turns off the Light & Life lighting (Economy.LIGHT_LIFE_TEST), `--noorchestra` turns off the layered level music (Economy.ORCHESTRA_TEST), `--noboards` turns off the local boards and ghosts (Economy.BOARDS_TEST), `--nolurkers` turns off the fog lurkers (Economy.LURKERS_TEST), `--lurkers` puts them in every random maze, `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
+## `--unlock-all` unlocks every level, skin and hat, `--story-complete` starts as a player who beat the story on normal and hard with every coin (see enable_story_complete), `--skin=ID` picks a skin, `--random` plays randomizer mazes, `--demo-preview` (with `--demo`) starts the demo's FULL GAME PREVIEW maze (open scenes/main.tscn), `--demo-end` (with `--demo`) starts with levels 1-3 cleared so level 4 (the demo's last) is next (enable_demo_end_test),`--descent` (or `--descent=SEED`) starts a Descent run (in memory, like every run), `--hard` turns on hard mode, `--touch` shows touch controls, `--hat=ID` wears a hat, `--dye=ID` gives every dyeable hat that dye (e.g. rainbow), `--tickets=N` sets the ticket balance, `--jelly` tries the see-through slime (only demo_coin_catch reads it), `--upgrades=a,b,c` / `--coins=N` set upgrade levels (MORE SLIME 0-7, SPEED 0-4, BRIGHTNESS 0-3) and coins (for promo shots), `--workshop=w,c,s,m,n` sets the ticket workshop's levels (0-3), `--abilities=r,s,k` sets the ticket abilities' levels (SLIME RIFLE, SLIME SPLAT, SLIMAKAZE, 0-3), `--trail=ID` / `--paper=ID` own and wear a trail style / map paper, `--softbounce` tries the soft wall bounce (Economy.SOFT_BOUNCE_TEST), `--coincatch` forces the coin catch on (now the default), `--nocoincatch` the old instant pickup (Economy.COIN_CATCH_TEST), `--pastel` wears the PASTEL version of the skin (Progress.pastel), `--nolightlife` turns off the Light & Life lighting (Economy.LIGHT_LIFE_TEST), `--noorchestra` turns off the layered level music (Economy.ORCHESTRA_TEST), `--noboards` turns off the local boards and ghosts (Economy.BOARDS_TEST), `--nolurkers` turns off the fog lurkers (Economy.LURKERS_TEST), `--lurkers` puts them in every random maze, `--nocoinreveal` turns off the dev map coin reveal (Economy.MAP_COIN_REVEAL_TEST: revealed uncollected coins on the maps, dev only), `--languages` turns on the translations test (Economy.LANGUAGES_TEST: the saved language or the OS locale), `--lang=xx` also forces locale xx for this run, over the saved language (never saved; `--lang=pseudo` = pseudo-localization), `--tutorial` plays the first-session tutorial test (Economy.TUTORIAL_TEST, docs/tutorial/design.md) on a clean in-memory fresh save: the launch intro, then the SPLASHDOWN training maze, then the hub tour (the real save is never read or written; see enable_tutorial_test), `--tutorial=maze` starts in the training maze and `--tutorial=hub` in the hub tour, `--quiet-window` (from tools/play.ps1) cleans up after a no-focus start, `--save-path=user://x.cfg` saves to that file. Any debug flag, test, headless or movie run saves to a per-process throwaway file, never user://save.cfg. All of these work only in debug builds (the editor binary): an exported release build ignores every flag but `--touch` and `--web-ui` (see game_args).
 
 const MODE_STORY := "story"
 const MODE_RANDOM := "random"
@@ -489,10 +489,11 @@ func _ready() -> void:
 			saving_enabled = false
 			levels_cleared = Demo.levels()
 			highest_unlocked = Demo.levels()
-			randoms_won = Demo.RANDOM_WINS
 			story_seen |= STORY_INTRO | STORY_DEMO_END
 			tickets_lifetime = maxi(tickets_lifetime, 1)
 			begin_demo_preview()
+		elif arg == "--demo-end" and Demo.on():  # the demo's last story level next (with --demo; see enable_demo_end_test)
+			enable_demo_end_test()
 		elif arg == "--descent" or arg.begins_with("--descent="):  # a Descent run (--descent=SEED: that run seed)
 			start_descent(arg.trim_prefix("--descent=").to_int() if arg.begins_with("--descent=") else 0)
 		elif arg.begins_with("--skin="):
@@ -1583,6 +1584,17 @@ func take_tutorial_launch() -> String:
 	return TOUR_SCENE if hub_tour_due() else ""
 
 
+## Debug `--demo --demo-end`: a demo player one level from its end, nothing saved: levels 1 to
+## Demo.levels() - 1 cleared the way a chalice clears them (complete_level), the intro and the tutorial
+## seen, so the title goes to the hub with the last demo level (4) next and its chalice shows TRY THE FULL GAME.
+func enable_demo_end_test() -> void:
+	saving_enabled = false
+	story_seen |= STORY_INTRO
+	tutorial_seen |= TUTORIAL_MOVE | TUTORIAL_LEAP | TUTORIAL_TRAINING | TUTORIAL_HUB
+	for level in range(1, Demo.levels()):
+		complete_level(level, false)
+
+
 ## Dev mode, exactly as `--unlock-all` (tools/play.sh --dev) sets it up: every level unlocked,
 ## dev tools on, nothing saved. Tests call this to play in the owner's dev launch configuration.
 func enable_dev_mode() -> void:
@@ -1951,9 +1963,9 @@ func take_assist(for_level: int) -> bool:
 
 func start_random() -> void:
 	# (random_daily stays as it is: new_random_maze reads it to hand the carried abandon penalty on, then clears it)
-	if demo_preview_replay():
+	if demo_preview_due() or demo_preview_replay():
 		random_daily = false
-		begin_demo_preview()  # (the demo beaten: its randomizer is the FULL GAME PREVIEW maze from now on, owner 2026-10-22)
+		begin_demo_preview()  # (the demo's randomizer is the FULL GAME PREVIEW maze, from its first use on: owner 2026-10-23)
 		return
 	mode = MODE_RANDOM
 	new_random_maze()
@@ -2219,13 +2231,15 @@ func demo_preview_replay() -> bool:
 	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
 
 
-## Whether the RANDOM_WINS-th randomizer win leads into the preview now (a demo with it, not seen yet).
+## Whether the preview's first run is next (a demo with it, not seen yet): the randomizer portal's first use after
+## the demo's levels (owner, 2026-10-23; it used to follow the RANDOM_WINS-th randomizer win, still the fallback in
+## game.gd play_next for a random maze started some other way).
 func demo_preview_due() -> bool:
 	return Demo.on() and Demo.PREVIEW and Economy.abilities_on() and not has_seen_story(STORY_DEMO_PREVIEW) and _preview_save == null
 
 
 ## Starts the demo's FULL GAME PREVIEW (Demo.PREVIEW): marks it seen (saved, so it plays once), keeps the whole
-## state as it is now, then sets up the preview maze and its borrowed look and abilities, in memory only (no save
+## state as it is now, then sets up the preview maze and its borrowed look, abilities and maxed coin upgrades, in memory only (no save
 ## is written until end_demo_preview). The game scene reloaded after this plays it (game.gd `preview`).
 func begin_demo_preview() -> void:
 	if _preview_save != null:
@@ -2252,6 +2266,11 @@ func begin_demo_preview() -> void:
 	_borrow_preview_look()
 	for id in Abilities.ids():
 		abilities[id] = Abilities.max_level(id)
+	# the coin upgrades at the full game's top levels (owner, 2026-10-23: MORE SLIME 7, SPEED 4, BRIGHTNESS 3), past
+	# the demo's caps; the maze keeps its PREVIEW_LEVEL size. (The ticket workshop is off, Economy.WORKSHOP_ENABLED.)
+	for upgrade: Dictionary in Upgrades.LIST:
+		if not upgrade.get("dev", false):
+			upgrades[upgrade.id] = Upgrades.max_level(upgrade.id)
 
 
 ## A random look from the full game: a skin past the demo's (opaque, jelly or pastel), a hat (sometimes dyed),
@@ -2282,7 +2301,7 @@ func _borrow_preview_look() -> void:
 	map_paper = papers.pick_random()
 
 
-## Ends the preview (if one runs): everything goes back to how it was before it (the borrowed look, abilities,
+## Ends the preview (if one runs): everything goes back to how it was before it (the borrowed look, abilities, upgrades,
 ## the maze's attempts and records alike), and saving is back on.
 func end_demo_preview() -> void:
 	if _preview_save == null:

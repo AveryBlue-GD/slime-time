@@ -3,8 +3,8 @@ extends "res://tests/suite_base.gd"
 ## ABILITIES v1 (docs/design/upgrades-v2.md "Abilities v1", with the pass-over-walls buff): SLIME RIFLE
 ## (pierces walls: reveals exactly the tiles on its line for its range, floor tiles with the walls around
 ## them), SLIME SPLAT (lobbed over walls exactly its range ahead, reveals exactly the 5x5 around it),
-## SLIMAKAZE (dashes to the wall, costs 30% - into the goal too -, a deterministic splatter over walls;
-## never kills unless the meter holds <= 30%), fog bytes and survey tiles in step, charges per attempt
+## SLIMAKAZE (dashes to the wall, costs Economy.ABILITIES.kaze.slime % - into the goal too -, a deterministic splatter over walls;
+## never kills unless the meter holds no more than that), fog bytes and survey tiles in step, charges per attempt
 ## and their refill, slime costs, the input actions (defaults 1 / 2 / 3, remapping, old saves keep
 ## their bindings), touch buttons, the HUD strip, OFF in every story level (normal, hard) and hard-mode randomizer / with the flag off, ON in
 ## randomizer mazes and Descent, par and payout untouched, the TICKETS tab purchase flow (exact tickets,
@@ -40,6 +40,8 @@ func _initialize() -> void:
 	await _sense()
 	await _inputs()
 	await _touch()
+	await _touch_aim()
+	await _touch_aim_held_stick()
 	await _modes()
 	await _store()
 	_saves()
@@ -57,6 +59,8 @@ func _state(levels: Dictionary) -> void:
 	progress.saving_enabled = false
 	progress.dev_tools = false
 	progress.tutorial_seen = 3
+	for id in Abilities.ids():
+		progress.tutorial_seen |= AbilityCoach.bit(id)  # (the ability tutorial is its own test: test_demo_preview)
 	progress.levels_cleared = 10
 	progress.highest_unlocked = 10
 	progress.hard_mode = false
@@ -236,7 +240,7 @@ func _rifle() -> void:
 						streak += 1
 			_check(streak > 0 and streak <= 24, "a thin goo streak crosses a floor tile past the wall (%d of 64 cells goo'd)" % streak)
 			_check(is_equal_approx(meter - game.slime_remaining, Economy.ABILITIES.rifle.slime) and game.abilities.charges.rifle == 0,
-				"one shot costs %.0f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
+				"one shot costs %.1f%% of the meter and its charge" % Economy.ABILITIES.rifle.slime)
 			_check(not game.abilities.use("rifle"), "no charges left: it doesn't fire")
 		await _stop(game)
 	# At the maze's outer edge it stops (nothing outside the maze).
@@ -380,11 +384,11 @@ func _kaze_kill_and_refuse() -> void:
 	var game := await _spawn(6)
 	var dir := _dir_with(game, 2)
 	_aim(game, dir)
-	game.slime_remaining = 20.0
+	game.slime_remaining = Economy.ABILITIES.kaze.slime - 6.0
 	game.abilities.use("kaze")
 	game.abilities.flush()
 	await _physics_frames(game.slime.splat_stun * 60 + 60)
-	_check(game.slime_remaining == 0.0 and game.finished and not game.won, "SLIMAKAZE with 20% left (<= its 30%): the impact dries the slime up")
+	_check(game.slime_remaining == 0.0 and game.finished and not game.won, "SLIMAKAZE with %.0f%% left (<= its %.0f%%): the impact dries the slime up" % [Economy.ABILITIES.kaze.slime - 6.0, Economy.ABILITIES.kaze.slime])
 	await _stop(game)
 	_state({kaze = 1})
 	game = await _spawn(1)
@@ -438,11 +442,11 @@ func _goal_game(kind: String) -> Node2D:
 	return null
 
 
-## SLIMAKAZE dashing into the chalice / ticket pays its 30% there: with <= 30% left it dries up (no
-## win); with more it wins with 30% less (Descent carries that meter to the next floor).
+## SLIMAKAZE dashing into the chalice / ticket pays its cost (Economy.ABILITIES.kaze.slime) there: with no more left it dries up (no
+## win); with more it wins with that much less (Descent carries that meter to the next floor).
 func _kaze_goal() -> void:
 	for kind: String in ["random", "descent"]:
-		for meter: float in [20.0, 60.0]:
+		for meter: float in [Economy.ABILITIES.kaze.slime - 6.0, 60.0]:
 			var game := await _goal_game(kind)
 			if game == null:
 				_check(false, "%s: a goal with a 2-tile corridor into it" % kind)
@@ -459,7 +463,7 @@ func _kaze_goal() -> void:
 			var want := maxf(meter - Economy.ABILITIES.kaze.slime, 0.0)
 			if meter <= Economy.ABILITIES.kaze.slime:
 				_check(fired and game.finished and not game.won and game.slime_remaining == 0.0,
-					"%s: SLIMAKAZE into the goal with %.0f%% left pays 30%% there and dries up (finished %s, won %s, %.1f%%)" % [kind, meter, game.finished, game.won, game.slime_remaining])
+					"%s: SLIMAKAZE into the goal with %.0f%% left pays %.0f%% there and dries up (finished %s, won %s, %.1f%%)" % [kind, meter, Economy.ABILITIES.kaze.slime, game.finished, game.won, game.slime_remaining])
 			else:
 				_check(fired and game.won and is_equal_approx(game.slime_remaining, want),
 					"%s: SLIMAKAZE into the goal with %.0f%% left wins with %.0f%% (won %s, %.1f%%)" % [kind, meter, want, game.won, game.slime_remaining])
@@ -475,7 +479,7 @@ func _kaze_goal() -> void:
 	_place(saved, into.from, into.dir)
 	saved.workshop = {wind = 1}
 	saved.wind_state = "ready"
-	saved.slime_remaining = 20.0
+	saved.slime_remaining = Economy.ABILITIES.kaze.slime - 6.0  # (<= its cost: the impact empties the meter)
 	saved.abilities.use("kaze")
 	for i in 60:
 		if saved.finished:
@@ -779,7 +783,7 @@ func _touch() -> void:
 	var jump_pts: Array[Vector2] = []
 	var button_pts: Array[Vector2] = []
 	for y in range(-10, 191, 2):
-		for x in range(150, 341, 2):
+		for x in range(60, 341, 2):
 			var p := Vector2(x, y)
 			if tc.ability_at(p) >= 0:
 				button_pts.append(p)
@@ -787,6 +791,7 @@ func _touch() -> void:
 			if Input.is_action_pressed("jump"):
 				jump_pts.append(p)
 			_tap(tc, 7, Vector2(-60, -60), false)  # (lifted far away: an ability doesn't fire)
+			game.abilities.cancel_aim()  # (a tap on SLIME RIFLE's button brings its aim up: the probe is about the hit areas)
 	var gap := INF
 	for b in button_pts:
 		for j in jump_pts:
@@ -804,8 +809,18 @@ func _touch() -> void:
 			_tap(tc, 7, Vector2(-60, -60), false)
 	_check(missed.is_empty(), "a thumb missing JUMP (up to 25 px off its edge, all round) still leaps, never an ability (%s)" % [missed.slice(0, 4)])
 	_check(_charges_left(game) == {rifle = 1, kaze = 1}, "probing every spot (each lifted off its button) fired nothing")
-	_check(center.kaze.distance_to(TouchControls.JUMP_CENTER) > center.rifle.distance_to(TouchControls.JUMP_CENTER),
-		"SLIMAKAZE sits farther from JUMP than SLIME RIFLE")
+	# The buttons: one row along the bottom (owner, 2026-10-23), in Abilities order like the HUD strip, clear of the
+	# joystick's home ring, JUMP, the training line's bottom spot and the HUD's pods, gold ring included.
+	_check(center.rifle.y == center.kaze.y and center.rifle.x < center.kaze.x and center.rifle.y > 120,
+		"the ability buttons sit in one row along the bottom, SLIME RIFLE first (%s / %s)" % [center.rifle, center.kaze])
+	var row := tc.ability_row_rect()
+	var joy := Rect2(TouchControls.JOY_HOME - Vector2.ONE * TouchControls.JOY_RADIUS, Vector2.ONE * TouchControls.JOY_RADIUS * 2.0)
+	var jump_r := TouchControls.JUMP_RADIUS + 6.0  # (the circle grows a little for a longer JUMP word)
+	var jump := Rect2(TouchControls.JUMP_CENTER - Vector2.ONE * jump_r, Vector2.ONE * jump_r * 2.0)
+	var line_top := UIKit.SCREEN.y - UIKit.hud_edge().y - UIKit.pod_h()
+	var clash: Array = game.hud.pod_rects().filter(func(r: Rect2) -> bool: return r.intersects(row))
+	_check(row.has_area() and clash.is_empty() and not row.intersects(joy) and not row.intersects(jump) and row.end.y <= line_top,
+		"...clear of the joystick, JUMP, the training line (top %d) and the HUD pods (%s, %s)" % [line_top, row, clash])
 	var kaze_only: Array[Dictionary] = [{id = "kaze", left = 1, max = 1}]
 	tc.set_abilities(kaze_only)
 	_check(_button_center(tc, 0).distance_to(TouchControls.JUMP_CENTER) > 80.0, "owning only SLIMAKAZE, its button keeps its far spot (%s)" % _button_center(tc, 0))
@@ -816,21 +831,262 @@ func _touch() -> void:
 			break
 		await physics_frame
 	_place(game, _start_tile(game), _dir_with(game, 1))
-	# Fires on RELEASE, and only on its own button.
+	# SLIME RIFLE aims (owner, 2026-10-23): its button brings the aim up, letting go fires nothing (JUMP does: _touch_aim).
 	_tap(tc, 3, center.rifle, true)
 	await _physics_frames(2)
-	_check(game.abilities.can_use("rifle") and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"), "touching SLIME RIFLE's button doesn't fire it yet")
-	_tap(tc, 3, center.rifle + Vector2(0, 40), false)
-	await _physics_frames(1)
-	_check(game.abilities.charges.rifle == 1, "sliding off the button and letting go cancels it")
-	_tap(tc, 3, center.rifle, true)
-	await _physics_frames(1)
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("jump"),
+		"touching SLIME RIFLE's button brings up its aim, fires nothing")
 	_tap(tc, 3, center.rifle + Vector2(3, 0), false)
 	await _physics_frames(1)
-	_check(game.abilities.charges.rifle == 0 and not Input.is_action_pressed("ability_rifle") and not Input.is_action_pressed("jump"),
-		"lifting the finger on the button fires SLIME RIFLE (no JUMP, nothing left held)")
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1 and not Input.is_action_pressed("ability_rifle")
+		and not Input.is_action_pressed("jump"), "lifting the finger fires nothing either (the aim stays up, nothing left held)")
+	_tap(tc, 3, center.rifle, true)
+	_tap(tc, 3, center.rifle, false)
+	await _physics_frames(1)
+	_check(game.abilities.aiming == "rifle" and game.abilities.charges.rifle == 1, "its button again does nothing (only the X calls it off)")
+	game.abilities.cancel_aim()
 	progress.force_touch = false
 	await _stop(game)
+
+
+## Touch aiming (owner, 2026-10-23, as on the PC): SLIME SNIPER / GOO GRENADE's button brings up the aim guide (letting go
+## doesn't fire), the joystick or a drag turns it (8 ways), JUMP fires it (no leap, nothing left held) and blinks a gold ring
+## meanwhile; the same button again calls it off, another ability's switches; SLIME SENSE stays a tap.
+func _touch_aim() -> void:
+	_state({rifle = 3, splat = 3, sense = 1})
+	progress.force_touch = true
+	var game := await _spawn(4)
+	current_scene = game  # (SLIME SENSE's map locks the focus of the running scene)
+	var tc: TouchControls = game.touch_controls
+	var runner: AbilityRunner = game.abilities
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	_place(game, _start_tile(game), _dir_with(game, 1))
+	await _physics_frames(2)
+	runner.charges.rifle = 3  # (a few uses for the steps below)
+	runner.charges.splat = 3
+	var rifle := tc.slot_center(0)
+	var left: int = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "rifle" and game.slime.aim_lock and runner.charges.rifle == left and tc.aim_ring,
+		"touch: a tap on SLIME SNIPER brings up its aim (nothing spent, letting go fires nothing), JUMP's gold ring on")
+	# On a phone every touch also arrives as an emulated left click (Godot's emulate_mouse_from_touch): the tap that
+	# brought the aim up, a thumb on the stick or on JUMP must never fire it (owner bug 2026-10-23: it fired at once).
+	var fake := InputEventMouseButton.new()
+	fake.button_index = MOUSE_BUTTON_LEFT
+	fake.pressed = true
+	fake.device = InputEvent.DEVICE_ID_EMULATION
+	runner._unhandled_input(fake)
+	await _physics_frames(2)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == left, "...a touch's emulated mouse click doesn't fire it (only JUMP does)")
+	var still: Vector2 = game.slime.position
+	Input.action_press("move_up")
+	await _physics_frames(20)
+	Input.action_release("move_up")
+	_check(runner.aim_dir == Vector2i(0, -1) and game.slime.position == still,
+		"...the joystick only aims now (up: %s), the slime stays put" % runner.aim_dir)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(10)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == left and tc.cancel_shown() and not Input.is_action_pressed("jump")
+		and game.slime.state == Slime.State.GLIDE, "...JUMP held: nothing fires yet, no leap, the X shows by JUMP")
+	var x := tc.cancel_center()
+	_check(x.distance_to(TouchControls.JUMP_CENTER) > TouchControls.JUMP_RADIUS + TouchControls.CANCEL_HIT - 0.01 and x.x < TouchControls.JUMP_CENTER.x + 40
+		and x.y < TouchControls.JUMP_CENTER.y and Rect2(Vector2.ZERO, TouchControls.SCREEN).grow(-TouchControls.CANCEL_HIT).has_point(x)
+		and not tc.ability_row_rect().grow(TouchControls.CANCEL_HIT).has_point(x) and not tc.pause_rect.grow(TouchControls.CANCEL_HIT).has_point(x),
+		"...the X sits just outside JUMP's top right, on screen, clear of JUMP, the ability row and pause (%s)" % x)
+	Platform.safe_area_override = Rect2i(0, 0, 1240, 720)  # (a notch's inset on the right, 40 px of a 1280 window: 10 view px)
+	Platform.window_override = Vector2i(1280, 720)
+	var notched := tc.cancel_center()
+	Platform.safe_area_override = Rect2i()
+	Platform.window_override = Vector2i.ZERO
+	_check(notched.distance_to(TouchControls.JUMP_CENTER) > TouchControls.JUMP_RADIUS + TouchControls.CANCEL_HIT - 0.01 and notched.x <= 310 - TouchControls.CANCEL_HIT,
+		"...with a notch on the right it moves above JUMP, still clear of it (%s)" % notched)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left - 1 and game.slime.facing.is_equal_approx(Vector2.UP)
+		and game.slime.state != Slime.State.CHARGING and not tc.aim_ring and not tc.cancel_shown(),
+		"...JUMP let go: it fires along the aim (no charge starts, the ring and the X gone)")
+	await _physics_frames(10)
+	_check(not Input.is_action_pressed("jump") and game.slime.state == Slime.State.GLIDE, "...nothing held, no leap")
+	await _physics_frames(30)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(2)
+	_check(game.slime.state == Slime.State.CHARGING, "the next JUMP is a real leap again")
+	_tap(tc, 5, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(90)
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	# The X: JUMP held, dragged onto it and let go there: called off, nothing spent, no leap.
+	left = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_drag(tc, 5, x + Vector2(4, 3))  # (a forgiving disc: a little off its middle)
+	await _physics_frames(2)
+	_check(tc._cancel_hover, "dragged onto the X: it lights up")
+	_tap(tc, 5, x + Vector2(4, 3), false)
+	await _physics_frames(10)
+	_check(runner.aiming == "" and runner.charges.rifle == left and not game.slime.aim_lock and game.slime.state == Slime.State.GLIDE
+		and not Input.is_action_pressed("jump") and not tc.cancel_shown(), "...let go on the X: the aim is called off (nothing spent, no leap)")
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_drag(tc, 5, x)
+	_drag(tc, 5, TouchControls.JUMP_CENTER + Vector2(-6, 4))
+	await _physics_frames(2)
+	_check(not tc._cancel_hover and tc.cancel_shown(), "dragged back off the X: unlit")
+	_tap(tc, 5, TouchControls.JUMP_CENTER + Vector2(-6, 4), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == left - 1, "...let go there: it fires")
+	await _physics_frames(30)
+	runner.charges.rifle = 3
+	left = runner.charges.rifle
+	_tap(tc, 4, rifle, true)
+	var before: Vector2i = runner.aim_dir
+	_drag(tc, 4, rifle + Vector2(30, -30))
+	_tap(tc, 4, rifle + Vector2(30, -30), false)
+	await _physics_frames(2)
+	_check(runner.aiming == "rifle" and runner.aim_dir == before and runner.charges.rifle == left,
+		"a drag off the button doesn't aim (only the joystick does: %s)" % runner.aim_dir)
+	var splat := tc.slot_center(1)
+	_tap(tc, 4, splat, true)
+	_tap(tc, 4, splat, false)
+	_check(runner.aiming == "splat", "GOO GRENADE's button switches the aim to it")
+	_tap(tc, 4, splat, true)
+	_tap(tc, 4, splat, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "splat" and game.slime.aim_lock and tc.aim_ring, "...and again does nothing (still aiming)")
+	var sense := tc.slot_center(2)
+	_tap(tc, 6, sense, true)
+	_tap(tc, 6, sense, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "splat" and game.random_map_view == null and tc.abilities[2].id == "sense",
+		"SLIME SENSE does nothing while aiming (dimmed)")
+	_tap(tc, 5, TouchControls.JUMP_CENTER, true)
+	_tap(tc, 5, x, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.splat == 3 and not game.slime.aim_lock and not tc.aim_ring, "...the X calls it off (nothing spent)")
+	var moved_from: Vector2 = game.slime.position
+	Input.action_press("move_right")
+	Input.action_press("move_down")
+	await _physics_frames(20)
+	Input.action_release("move_right")
+	Input.action_release("move_down")
+	_check(game.slime.position != moved_from, "...then the joystick moves the slime again")
+	_tap(tc, 6, sense, true)
+	_tap(tc, 6, sense, false)
+	await _physics_frames(2)
+	_check(game.random_map_view != null, "...and SLIME SENSE is a tap again (it peeks)")
+	game._close_run_map()
+	await _physics_frames(2)
+	# Nothing leaves the joystick stuck aiming: the pause menu, a dry-up.
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	await _physics_frames(2)
+	paused = true
+	await process_frame
+	paused = false
+	await _physics_frames(2)
+	_check(runner.aiming == "" and not game.slime.aim_lock and not tc.aim_ring, "a pause calls the aim off (the joystick moves again)")
+	_tap(tc, 4, rifle, true)
+	_tap(tc, 4, rifle, false)
+	await _physics_frames(2)
+	game._dry_up()
+	await _physics_frames(3)
+	_check(runner.aiming == "" and not game.slime.aim_lock and not tc.aim_ring, "drying up calls it off too")
+	current_scene = null
+	progress.force_touch = false
+	await _stop(game)
+
+
+## On the phone (owner bug 2026-10-23): a thumb holds the stick (the slime gliding) while the other taps SLIME SNIPER. Real
+## events through Input (as iOS sends them, Godot's emulated mouse clicks included): from the tap the slime stops dead
+## (no slide on) and the stick only aims; JUMP let go fires; then the same held stick moves the slime again.
+func _touch_aim_held_stick() -> void:
+	_state({rifle = 3})
+	progress.force_touch = true
+	var game := await _spawn(4)
+	current_scene = game
+	var tc: TouchControls = game.touch_controls
+	var runner: AbilityRunner = game.abilities
+	for i in 180:
+		if game.slime.state == Slime.State.GLIDE:
+			break
+		await physics_frame
+	runner.charges.rifle = 3
+	var dir := _dir_with(game, 1)
+	_place(game, _start_tile(game), dir)
+	await _physics_frames(2)
+	var stick := TouchControls.JOY_HOME
+	_real_touch(0, stick, true)
+	_real_drag(0, stick + Vector2(dir) * 18.0)
+	await _physics_frames(8)
+	_check(game.slime.velocity.length() > 1.0, "the held stick glides the slime (%s)" % game.slime.velocity)
+	var rifle := tc.slot_center(0)
+	_real_touch(1, rifle, true)
+	_real_touch(1, rifle, false)
+	await _physics_frames(1)
+	var at_tap: Vector2 = game.slime.position
+	await _physics_frames(30)
+	_check(runner.aiming == "rifle" and runner.charges.rifle == 3 and game.slime.position == at_tap and game.slime.velocity == Vector2.ZERO,
+		"tap SLIME SNIPER with the stick held: the aim is up, nothing fired, the slime stops dead (moved %s)" % (game.slime.position - at_tap))
+	_check(runner.aim_dir == Abilities.aim8(Vector2(dir)), "...the held stick aims it (%s)" % runner.aim_dir)
+	_real_drag(0, stick + Vector2(-dir.y, dir.x) * 18.0)
+	await _physics_frames(10)
+	_check(runner.aim_dir == Abilities.aim8(Vector2(-dir.y, dir.x)) and game.slime.position == at_tap, "...turning the stick turns the aim, the slime stays (%s)" % runner.aim_dir)
+	_real_touch(2, TouchControls.JUMP_CENTER, true)
+	await _physics_frames(3)
+	_check(runner.aiming == "rifle" and tc.cancel_shown() and game.slime.position == at_tap, "...JUMP held: the X shows, nothing fired, the slime stays")
+	_real_touch(2, TouchControls.JUMP_CENTER, false)
+	await _physics_frames(2)
+	_check(runner.aiming == "" and runner.charges.rifle == 2, "...JUMP let go: it fires")
+	_real_drag(0, stick + Vector2(dir) * 18.0)
+	await _physics_frames(15)
+	_check(game.slime.position != at_tap, "...then the held stick moves the slime again")
+	_real_touch(0, stick, false)
+	current_scene = null
+	progress.force_touch = false
+	await _stop(game)
+
+
+## A touch as the device sends it: in window pixels into the root viewport (its whole input path: _input, the GUI,
+## _unhandled_input), followed, for a finger down / up, by the left click Godot emulates from it on the phone.
+func _real_touch(index: int, pos: Vector2, pressed: bool) -> void:
+	var at := root.get_final_transform() * pos
+	var event := InputEventScreenTouch.new()
+	event.index = index
+	event.position = at
+	event.pressed = pressed
+	root.push_input(event)
+	if true:  # (every finger: Godot emulates the mouse from each)
+		var click := InputEventMouseButton.new()
+		click.device = InputEvent.DEVICE_ID_EMULATION
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = at
+		click.global_position = at
+		root.push_input(click)
+
+
+func _real_drag(index: int, pos: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = root.get_final_transform() * pos
+	root.push_input(event)
+
+
+## A touch drag straight into the controls.
+func _drag(tc: TouchControls, index: int, pos: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = pos
+	tc._input(event)
 
 
 ## A touch event straight into the controls (viewport coordinates).
@@ -847,7 +1103,7 @@ func _button_center(tc: TouchControls, i: int) -> Vector2:
 	var sum := Vector2.ZERO
 	var n := 0
 	for y in 180:
-		for x in range(150, 320):
+		for x in range(0, 320):
 			if tc.ability_at(Vector2(x, y)) == i:
 				sum += Vector2(x, y)
 				n += 1

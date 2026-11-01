@@ -6,12 +6,17 @@ extends CanvasLayer
 ##   directions so the slime's lane assist still lines it up with corridors
 ## - right half: the JUMP button (hold to charge, aim with the joystick, release to leap)
 ## - top-right corner: pause
-## - ABILITIES (when the run has any): a small round button each, in a cluster left of the JUMP zone
-##   (ABILITY_SLOTS: each ability has its own spot, SLIMAKAZE the farthest from JUMP), with its icon
-##   and uses left; an ability fires on RELEASE, and only if the finger is still on its button (slide
-##   off to cancel). With buttons shown JUMP catches the right strip x >= JUMP_ZONE_X (not the whole
-##   right half), and a DEAD_RING gap between that zone and the buttons does nothing, so a thumb that
-##   misses JUMP still leaps (or does nothing) and never fires an ability.
+## - ABILITIES (when the run has any): a small round button each, in one row along the bottom (owner, 2026-10-23:
+##   between the joystick's home and JUMP, over the training line's bottom spot; each ability has its own spot, in
+##   Abilities order like the HUD strip), with its icon; an ability fires on RELEASE, and only if the finger is still on its button
+##   (slide off to cancel). An AIMED one (SLIME SNIPER, GOO GRENADE; owner 2026-10-23, as on the PC) aims instead: a tap
+##   brings up its aim guide (AbilityRunner aim mode) and from then on the joystick only aims (8 ways; the slime stays)
+##   until JUMP fires it or the X calls it off; its button again does nothing, the other aimed one's switches, the tap
+##   ones (SLIMAKAZE, SLIME SENSE) are dimmed and do nothing meanwhile. While an aim is up JUMP wears a blinking gold
+##   ring (aim_ring) and doesn't leap: held, it shows a small X just outside its top right (cancel_center); letting go
+##   fires, letting go on the X calls the aim off. A DEAD_RING round each button does nothing (no joystick, no JUMP), so a thumb that
+##   misses one never moves or leaps, and JUMP's half never fires an ability. A button the ability tutorial
+##   holds back (`locked`, AbilityRunner.locked) is dimmed; its tap does nothing.
 ## Shown on touchscreens (Platform.has_touch: also the --touch debug flag); hidden again when a keyboard or a
 ## gamepad is used.
 
@@ -59,15 +64,17 @@ var _tap_start := {}
 var tap_claim := Callable()
 var _tap_touch := -1
 const MOVE_ACTIONS := ["move_right", "move_left", "move_down", "move_up"]
-## ABILITIES: each ability's button center, in Abilities order (rifle, splat, kaze: the cheapest
-## nearest the thumb, SLIMAKAZE farthest), and the radius (the hit disc is ABILITY_HIT).
-const ABILITY_SLOTS: Array[Vector2] = [Vector2(207, 150), Vector2(207, 122), Vector2(181, 136), Vector2(181, 108)]
+## ABILITIES: the row's first button center x (in Abilities order: rifle, splat, kaze, sense, ABILITY_STEP
+## apart, centred: x 101..219 with the gold ring, clear of the joystick's home ring (to x 60) and JUMP (from x 256)),
+## its center's lift over the training line's bottom spot (row_y), and the radius (the hit disc is ABILITY_HIT).
+const ABILITY_ROW_X := 115.0
+const ABILITY_STEP := 30.0
+const ABILITY_ROW_LIFT := 18.0
 const ABILITY_RADIUS := 11.0
 const ABILITY_HIT := ABILITY_RADIUS + 2.0
-## With ability buttons shown, JUMP catches every touch at x >= JUMP_ZONE_X (the full height, the
-## letterbox beyond the right edge too; minus pause); without them the whole right half as before.
-const JUMP_ZONE_X := 228.0
-## The gap kept between JUMP's catch zone and every ability hit disc: touches there do nothing.
+## The tutorial's gold ring round a button (ABILITY_RADIUS + COACH_RING, 2 px wide).
+const COACH_RING := 2.0
+## The gap kept round every ability hit disc where touches do nothing (no joystick, no JUMP).
 const DEAD_RING := 8.0
 ## [{id, left, max}] from AbilityRunner.strip (empty: no buttons).
 var abilities: Array[Dictionary] = []
@@ -75,8 +82,28 @@ var abilities: Array[Dictionary] = []
 ## release, if still on that button.
 var _ability_touch := {}
 var _ability_pos := {}
-## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use).
+## Emitted when a touch is released on the ability button it went down on (AbilityRunner.use; not the aimed ones).
 signal ability_tapped(id: String)
+## An aimed ability's button pressed (its aim comes up, or switches to it); `ability_released` only when the controls let
+## go of everything (the app goes away: the aim is called off, `fire` false).
+signal ability_pressed(id: String)
+signal ability_released(id: String, fire: bool)
+## True while an aim is up (AbilityRunner): JUMP fires it, so JUMP blinks a gold ring.
+var aim_ring := false
+var _aim_clock := 0.0
+## JUMP pressed while an aim is up: that finger (it presses no "jump"; -1 = none) and whether it is on the X now.
+var _aim_jump_touch := -1
+var _cancel_hover := false
+## JUMP let go while an aim is up: fire it, or (`cancel`, let go on the X) call it off.
+signal aim_jump_released(cancel: bool)
+## The X: its center CANCEL_GAP outside JUMP's ring (up and right), its tap disc CANCEL_HIT (forgiving; it ends at
+## JUMP's ring, so a thumb let go on JUMP itself always fires), its glyph CANCEL_SIZE across.
+const CANCEL_GAP := 10.0
+const CANCEL_HIT := 10.0
+const CANCEL_SIZE := 7
+## JUMP's drawn radius (jump_radius: its word may grow it), kept by the last draw.
+var _jump_r := JUMP_RADIUS
+
 
 var joy_vector := Vector2.ZERO
 var _joy_touch := -1
@@ -146,9 +173,15 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and event.index == _joy_touch:
 		_move_joystick(event.position)
 		get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag and event.index == _aim_jump_touch:
+		var hover := on_cancel(event.position)
+		if hover != _cancel_hover:
+			_cancel_hover = hover
+			_canvas.queue_redraw()
+		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and _ability_touch.has(event.index):
 		_ability_pos[event.index] = event.position  # (the held look follows the finger on / off)
-		_canvas.queue_redraw()
+		_canvas.queue_redraw()  # (a drag never aims: the joystick does, owner 2026-10-23)
 		get_viewport().set_input_as_handled()
 
 
@@ -163,6 +196,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 	if slot >= 0:
 		_ability_touch[index] = slot
 		_ability_pos[index] = pos
+		if aimed(abilities[slot].id):
+			ability_pressed.emit(abilities[slot].id)
 	elif pause_rect.grow(PAUSE_TOUCH_MARGIN).has_point(pos):
 		_release_pause()  # (a second finger on it: the first one's press ends)
 		_pause_touch = index
@@ -171,6 +206,8 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		pause.action = "menu"
 		pause.pressed = true
 		Input.parse_input_event(pause)
+	elif near_ability(pos):
+		pass  # (the dead ring round the ability buttons: a missed button does nothing)
 	elif _tap_touch == -1 and tap_claim.is_valid() and tap_claim.call(pos):
 		_tap_touch = index
 	elif pos.x < SCREEN.x / 2.0:
@@ -178,11 +215,13 @@ func _touch_down(index: int, pos: Vector2) -> void:
 			_joy_touch = index
 			_joy_center = joystick_center_for(pos)
 			_move_joystick(pos)
-	elif not catches_jump(pos):
-		pass  # (abilities shown: the dead ring / the buttons' side of the right half)
 	elif _jump_touch == -1:
 		_jump_touch = index
-		_press("jump")
+		if aim_ring:
+			_aim_jump_touch = index  # (an aim is up: JUMP fires it on release, or the X calls it off; no leap)
+			_cancel_hover = false
+		else:
+			_press("jump")
 	_canvas.queue_redraw()
 
 
@@ -191,7 +230,9 @@ func _touch_up(index: int, pos: Vector2) -> void:
 		var slot: int = _ability_touch[index]
 		_ability_touch.erase(index)
 		_ability_pos.erase(index)
-		if slot < abilities.size() and ability_at(pos) == slot:
+		if slot >= abilities.size() or aimed(abilities[slot].id):
+			pass  # (an aimed one: letting go doesn't fire, JUMP does)
+		elif ability_at(pos) == slot:
 			ability_tapped.emit(abilities[slot].id)
 	elif index == _pause_touch:
 		_release_pause()
@@ -206,6 +247,10 @@ func _touch_up(index: int, pos: Vector2) -> void:
 	elif index == _jump_touch:
 		_jump_touch = -1
 		_release("jump")
+		if index == _aim_jump_touch:
+			_aim_jump_touch = -1
+			_cancel_hover = false
+			aim_jump_released.emit(on_cancel(pos))
 	_canvas.queue_redraw()
 
 
@@ -266,6 +311,45 @@ func set_coach(id: String) -> void:
 		_canvas.queue_redraw()
 
 
+## The X's center: just outside JUMP's ring, up and right; straight above JUMP where the safe screen (a notch's
+## inset) would cut into it.
+func cancel_center() -> Vector2:
+	var safe := Platform.safe_rect().grow(-CANCEL_HIT)
+	var at := JUMP_CENTER + Vector2(1, -1).normalized() * (_jump_r + CANCEL_GAP)
+	if safe.has_point(at):
+		return at
+	return (JUMP_CENTER + Vector2(0, -(_jump_r + CANCEL_GAP))).clamp(safe.position, safe.end)
+
+
+## True on the X's tap disc.
+func on_cancel(pos: Vector2) -> bool:
+	return pos.distance_to(cancel_center()) <= CANCEL_HIT
+
+
+## True while the X shows (JUMP held with an aim up).
+func cancel_shown() -> bool:
+	return aim_ring and _aim_jump_touch != -1
+
+
+## Turns JUMP's gold ring on or off (AbilityRunner: an aim is up); it blinks on its own clock.
+func set_aim_ring(on: bool) -> void:
+	if aim_ring == on:
+		return
+	aim_ring = on
+	_aim_clock = 0.0
+	if _canvas:
+		_canvas.queue_redraw()
+
+
+func _process(delta: float) -> void:
+	if not aim_ring:
+		return
+	var was := fmod(_aim_clock, COACH_BLINK) < COACH_BLINK / 2.0
+	_aim_clock += delta
+	if _canvas and was != (fmod(_aim_clock, COACH_BLINK) < COACH_BLINK / 2.0):
+		_canvas.queue_redraw()
+
+
 ## Ticks the coached button's blink (AbilityCoach, while it shows a line).
 func step_coach(delta: float) -> void:
 	var was := fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0
@@ -280,6 +364,11 @@ func set_abilities(items: Array[Dictionary]) -> void:
 		_canvas.queue_redraw()
 
 
+## True for an ability whose button aims before it fires (AbilityRunner.AIMED).
+static func aimed(id: String) -> bool:
+	return id in AbilityRunner.AIMED
+
+
 ## The index (in `abilities`) of the button under `pos` (-1 = none).
 func ability_at(pos: Vector2) -> int:
 	for i in abilities.size():
@@ -288,20 +377,44 @@ func ability_at(pos: Vector2) -> int:
 	return -1
 
 
-## The center of the button of `abilities[i]`: its ability's own spot (so SLIMAKAZE never takes the
-## spot nearest JUMP, whatever else is owned).
+## The center of the button of `abilities[i]`: its ability's own spot in the top row (the same whatever
+## else is owned).
 func slot_center(i: int) -> Vector2:
-	return ABILITY_SLOTS[clampi(Abilities.ids().find(abilities[i].id), 0, ABILITY_SLOTS.size() - 1)]
+	return Vector2(ABILITY_ROW_X + ABILITY_STEP * maxi(Abilities.ids().find(abilities[i].id), 0), row_y())
 
 
-## The left edge of JUMP's catch zone (x >= this counts as JUMP; the pause button is checked first).
+## The ability row's center line: over the HUD's bottom pod row (the training line's spot), the gold ring clear of it.
+static func row_y() -> float:
+	return SCREEN.y - UIKit.hud_edge().y - UIKit.pod_h() - ABILITY_ROW_LIFT
+
+
+## True within the dead ring round any ability button (touches there do nothing).
+func near_ability(pos: Vector2) -> bool:
+	for i in abilities.size():
+		if pos.distance_to(slot_center(i)) <= ABILITY_HIT + DEAD_RING:
+			return true
+	return false
+
+
+## The ability buttons' rect on screen, their gold ring included (empty while none show): the HUD's lines keep off it.
+func ability_row_rect() -> Rect2:
+	if not visible or menu_open or abilities.is_empty():
+		return Rect2()
+	var rect := Rect2(slot_center(0), Vector2.ZERO)
+	for i in abilities.size():
+		rect = rect.expand(slot_center(i))
+	return rect.grow(ABILITY_RADIUS + COACH_RING + 1.0)
+
+
+## The left edge of JUMP's catch zone (x >= this counts as JUMP; the pause button and the ability buttons'
+## dead ring are checked first).
 func jump_zone_left() -> float:
-	return JUMP_ZONE_X if not abilities.is_empty() else SCREEN.x / 2.0
+	return SCREEN.x / 2.0
 
 
 ## True if a touch at `pos` (not on pause or a button) goes to JUMP.
 func catches_jump(pos: Vector2) -> bool:
-	return pos.x >= jump_zone_left()
+	return pos.x >= jump_zone_left() and not near_ability(pos)
 
 
 ## True if a touch at `pos` is on the JUMP circle itself (drawn at JUMP_CENTER), not just in JUMP's half: there a
@@ -347,11 +460,17 @@ func _release_all() -> void:
 	_jump_touch = -1
 	_tap_touch = -1  # (nothing opens: a tap only counts on a real release)
 	_tap_start.clear()  # (nor glides: a touch that outlived this is no tap)
+	_aim_jump_touch = -1  # (the aim stays up: nothing fires without a real release)
+	_cancel_hover = false
 	_joy_center = JOY_HOME
 	joy_vector = Vector2.ZERO
 	_steer(Vector2.ZERO)
 	_release("jump")
-	_ability_touch.clear()  # (nothing fires: an ability only fires on a real release)
+	for index: int in _ability_touch:  # (nothing fires: an ability only fires on a real release; an aim is called off)
+		var slot: int = _ability_touch[index]
+		if slot < abilities.size() and aimed(abilities[slot].id):
+			ability_released.emit(abilities[slot].id, false)
+	_ability_touch.clear()
 	_ability_pos.clear()
 	if _canvas:
 		_canvas.queue_redraw()
@@ -389,24 +508,36 @@ func _draw_controls() -> void:
 	var jump_text := Loc.t("touch.jump", "JUMP")  # i18n: touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
 	var label_width := font.get_string_size(jump_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var radius := jump_radius(label_width, font.get_height(8))
+	_jump_r = radius
 	_canvas.draw_circle(JUMP_CENTER, radius, Color(color, 0.55) if pressed else dim)
 	_canvas.draw_arc(JUMP_CENTER, radius, 0.0, TAU, 32, Color(color, 0.8), 1.0)
 	_canvas.draw_string(font, (JUMP_CENTER + Vector2(-label_width / 2.0, jump_baseline(font))).round(), jump_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.9))
-	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used.
+	if aim_ring and fmod(_aim_clock, COACH_BLINK) < COACH_BLINK / 2.0:
+		_canvas.draw_arc(JUMP_CENTER, radius + COACH_RING, 0.0, TAU, 32, UIKit.GOLD, 2.0)  # (an aim is up: JUMP fires it)
+	if cancel_shown():  # the X: a dim disc and a pixel X, gold while the finger is on it
+		var x_at := cancel_center().round()
+		var ink := UIKit.GOLD if _cancel_hover else Color(1, 1, 1, 0.9)
+		_canvas.draw_circle(x_at, CANCEL_SIZE / 2.0 + 3.0, Color(color, 0.55) if _cancel_hover else dim)
+		_canvas.draw_arc(x_at, CANCEL_SIZE / 2.0 + 3.0, 0.0, TAU, 20, ink, 1.0)
+		var half := CANCEL_SIZE / 2
+		for i in CANCEL_SIZE:
+			_canvas.draw_rect(Rect2(x_at + Vector2(i - half, i - half) - Vector2(0.5, 0.5), Vector2.ONE), ink)
+			_canvas.draw_rect(Rect2(x_at + Vector2(half - i, i - half) - Vector2(0.5, 0.5), Vector2.ONE), ink)
+	# Ability buttons: a ring, the icon (2x); lit when ready, dimmed once used or while the tutorial holds it back.
 	for i in abilities.size():
 		var item: Dictionary = abilities[i]
 		var at := slot_center(i)
 		var held := false
 		for index: int in _ability_touch:
-			held = held or (_ability_touch[index] == i and ability_at(_ability_pos.get(index, at)) == i)
-		var ready := int(item.left) > 0
+			held = held or (_ability_touch[index] == i and (aimed(item.id) or ability_at(_ability_pos.get(index, at)) == i))
+		var ready: bool = int(item.left) > 0 and not item.get("locked", false) and (aimed(item.id) or not aim_ring)
 		_canvas.draw_circle(at, ABILITY_RADIUS, Color(color, 0.55) if held else dim)
 		_canvas.draw_arc(at, ABILITY_RADIUS, 0.0, TAU, 24, Color(color, 0.8 if ready else 0.35), 1.0)
 		_canvas.draw_texture_rect(Abilities.icon(item.id), Rect2(at + Vector2(-8, -10), Vector2(16, 16)), false,
 			Color(1, 1, 1, 0.95 if ready else 0.35))
 		if item.id == coach_id and fmod(_coach_clock, COACH_BLINK) < COACH_BLINK / 2.0:
-			_canvas.draw_arc(at, ABILITY_RADIUS + 2.0, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
+			_canvas.draw_arc(at, ABILITY_RADIUS + COACH_RING, 0.0, TAU, 24, UIKit.GOLD, 2.0)  # (the tutorial's ability: tap this)
 	# Pause button: two bars (or the hub's home icon on phones).
 	if _pause_pod == null:
 		_pause_pod = UIKit.panel_style(true)  # UI-27: the HUD pod frame, not a borderless dark box

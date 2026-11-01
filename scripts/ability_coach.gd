@@ -6,8 +6,9 @@ extends Node
 ## PREVIEW shows every one on its first run: Progress.STORY_DEMO_PREVIEW_COACHED): the key (on touch: TAP, and that
 ## ability's button blinks gold), the name and what it does. While a line shows the slime is held (Slime.hold: the
 ## direction keys only turn it, to aim; no clock, no drain) until that ability is used (an aimed one first says how to
-## fire once its aim is up). SKIP (a pod under the top right pods: the use key F / pad X, or a tap or click) ends the
-## whole tutorial. A line used or skipped is marked seen. Built by game.gd next to the AbilityRunner; it waits while
+## fire once its aim is up). Only the prompted ability works meanwhile (AbilityRunner.locked, owner 2026-10-23: the
+## others don't fire and show dimmed, also between lines); all of them once it ends. SKIP (a pod under the top right
+## pods: the use key F / pad X, or a tap or click) ends the whole tutorial. A line used or skipped is marked seen. Built by game.gd next to the AbilityRunner; it waits while
 ## the preview's card is up and stops when the run ends.
 
 ## Each ability's Progress.tutorial_seen bit: its coach line was shown (1-8 are the tutorial's own bits).
@@ -17,6 +18,9 @@ const START_DELAY := 1.6
 const GAP := 0.6
 ## How long the closing line stays (the preview only).
 const DONE_TIME := 3.0
+## The preview (owner, 2026-10-23): once the tutorial is done (or SKIPped) the run starts over, the same maze and look,
+## a full meter, a fresh clock and charges, nothing the tutorial opened or revealed; RESTART_TIME after its line.
+const RESTART_TIME := 1.2
 
 var game: Node
 var runner: AbilityRunner
@@ -26,8 +30,10 @@ var current := ""
 var skipped := false
 var _charges_at := 0
 var _wait := START_DELAY
-var _aim_shown := false
+## The aim's line showing ("" = the ability's own line): aim_line, or cancel_line while JUMP is held on touch.
+var _aim_text := ""
 var _done_left := -1.0
+var _restart_left := -1.0
 var _layer: CanvasLayer
 var skip_pod: PanelContainer
 var skip_key: Label
@@ -54,6 +60,7 @@ static func create(owner_game: Node) -> AbilityCoach:
 	coach.steps = todo
 	owner_game.hud.ensure_training_line()
 	owner_game.add_child(coach)
+	runner_node.set_locked("")  # (none works until its line comes up)
 	return coach
 
 
@@ -91,6 +98,9 @@ static func what(id: String) -> String:
 
 ## The coach line for ability `id`: its key (TAP on touch), its name and what it does.
 static func line(id: String) -> String:
+	if on_touch() and id in AbilityRunner.AIMED:
+		# i18n: ability tutorial line (touch, an aimed ability: tap its button, then the joystick aims), max 192px, 1 line; {name} = ability name
+		return Loc.t("coach.line_touch_aim", "TAP {name}, AIM WITH THE STICK", {name = Abilities.display_name(id)})
 	if on_touch():
 		# i18n: ability tutorial line (touch: its button blinks), max 192px, 1 line; {name} = ability name, {what} = coach.*
 		return Loc.t("coach.line_touch", "TAP {name}: {what}", {name = Abilities.display_name(id), what = what(id)})
@@ -98,8 +108,22 @@ static func line(id: String) -> String:
 	return Loc.t("coach.line", "{key} {name}: {what}", {key = key_text(Abilities.action(id)), name = Abilities.display_name(id), what = what(id)})
 
 
+## The line while JUMP is held on touch with the aim up (its X shows): let go fires, on the X cancels.
+static func cancel_line() -> String:
+	# i18n: ability tutorial line (touch, JUMP held while aiming: letting go fires, letting go on the small X beside JUMP cancels), max 192px, 1 line
+	return Loc.t("coach.aim_cancel", "LET GO TO FIRE, DRAG TO X TO CANCEL")
+
+
+## The touch JUMP button's word (its label: TouchControls draws Loc touch.jump).
+static func jump_word() -> String:
+	return Loc.t("touch.jump", "JUMP")  # i18n: touch jump button, inside a 38 px circle, max 34px, grows to 48px (the circle grows)
+
+
 ## The line while an aimed ability's aim is up: how to fire it.
 static func aim_line() -> String:
+	if on_touch():
+		# i18n: ability tutorial line (touch, the aim is up: the joystick aims, JUMP blinks gold and fires it), max 192px, 1 line; {jump} = the JUMP button's word (touch.jump)
+		return Loc.t("coach.aim_touch", "AIM WITH THE STICK, THEN PRESS {jump}", {jump = jump_word()})
 	# i18n: ability tutorial line (aim mode is up), max 192px, 1 line; {key} = the leap key (SPACE, A)
 	return Loc.t("coach.aim", "AIM, THEN {key} TO FIRE", {key = key_text("jump")})
 
@@ -120,11 +144,22 @@ func _physics_process(delta: float) -> void:
 		return
 	if game.get("preview_card_up") == true:
 		return
+	if _restart_left >= 0.0:
+		_restart_left -= delta
+		if _restart_left <= 0.0:
+			_restart_left = -1.0
+			set_physics_process(false)
+			game.restart_after_tutorial()
+		return
 	game.hud.training_slime_rect = game._slime_screen_rect()
+	game.hud.training_buttons_rect = game.touch_controls.ability_row_rect()
 	_refresh_skip()
 	if _done_left >= 0.0:
 		_done_left -= delta
-		if _done_left <= 0.0:
+		if _done_left <= 0.0 and game.get("preview") == true:
+			_done_left = -1.0
+			_begin_restart()
+		elif _done_left <= 0.0:
 			_stop()
 		return
 	if current == "":
@@ -139,25 +174,28 @@ func _physics_process(delta: float) -> void:
 	if int(runner.charges.get(current, 0)) < _charges_at:
 		_finish_step()
 		return
-	if runner.aiming == current and not _aim_shown:
-		_aim_shown = true
-		game.hud.show_training_line(aim_line())
-	elif runner.aiming != current and _aim_shown:
-		_aim_shown = false  # (the aim was cancelled: back to the ability's own line)
-		game.hud.show_training_line(line(current))
+	var want := ""
+	if runner.aiming == current:
+		want = cancel_line() if game.touch_controls.cancel_shown() else aim_line()
+	if want != _aim_text:
+		_aim_text = want
+		game.hud.show_training_line(want if want != "" else line(current))  # ("": the aim was cancelled, back to the ability's line)
 
 
 func _next() -> void:
 	if steps.is_empty():
+		runner.set_locked("", true)  # (every line shown: all of them work)
 		if game.get("preview") == true:
 			_done_left = DONE_TIME
+			game.slime.hold = true  # (the run starts over after this line: nothing to play meanwhile)
 			game.hud.show_training_line(done_line())
 		else:
 			_stop()
 		return
 	current = steps.pop_front()
+	runner.set_locked(current)
 	_charges_at = int(runner.charges.get(current, 0))
-	_aim_shown = false
+	_aim_text = ""
 	game.slime.hold = true
 	game.touch_controls.set_coach(current)
 	game.hud.show_training_line(line(current))
@@ -166,6 +204,7 @@ func _next() -> void:
 func _finish_step() -> void:
 	game.progress.mark_tutorial_seen(bit(current))
 	current = ""
+	runner.set_locked("")  # (between lines: none)
 	_wait = GAP
 	game.slime.hold = false
 	game.touch_controls.set_coach("")
@@ -183,10 +222,36 @@ func skip() -> void:
 		game.progress.mark_tutorial_seen(bit(id))
 	steps.clear()
 	current = ""
-	_stop()
+	if game.get("preview") == true:
+		_begin_restart()
+	else:
+		_stop()
+
+
+## The preview's tutorial is over (done or SKIPped): NOW FOR REAL!, then the run starts over (game.restart_after_tutorial)
+## without the tutorial (its bit is set in memory: the preview writes no save; Progress.end_demo_preview saves it).
+func _begin_restart() -> void:
+	runner.cancel_aim()
+	runner.set_locked("", true)
+	game.progress.story_seen |= game.progress.STORY_DEMO_PREVIEW_COACHED
+	game.touch_controls.set_coach("")
+	game.slime.hold = true
+	if skip_pod:
+		skip_pod.visible = false
+	current = ""
+	game.hud.show_training_line(restart_line())
+	_restart_left = RESTART_TIME
+
+
+## The line before the preview starts over after its tutorial.
+static func restart_line() -> String:
+	# i18n: ability tutorial (preview): the run starts over now, the tutorial is done; max 192px, 1 line
+	return Loc.t("coach.for_real", "NOW FOR REAL!")
 
 
 func _stop() -> void:
+	runner.cancel_aim()  # (SKIP or the run's end: the joystick moves again)
+	runner.set_locked("", true)
 	game.slime.hold = false
 	game.touch_controls.set_coach("")
 	game.hud.hide_training_line()

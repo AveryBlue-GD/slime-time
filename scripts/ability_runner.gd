@@ -38,6 +38,9 @@ const AIMED: Array[String] = ["rifle", "splat"]
 const AIM_DOT := Color(1.0, 1.0, 1.0, 0.75)
 var aiming := ""
 var aim_dir := Vector2i.RIGHT
+## Abilities the tutorial holds back (AbilityCoach, owner 2026-10-23: only the one it prompts can be used): they
+## don't fire (a click), and the strip / touch buttons show them dimmed. Empty = all work.
+var locked: Array[String] = []
 ## Ticks a straight aim must hold after a diagonal one before it takes over (see _aim_step).
 const AIM_SETTLE := 6
 var _aim_settle := 0
@@ -64,18 +67,31 @@ static func create(owner_game: Node2D) -> AbilityRunner:
 	runner.z_index = Z
 	owner_game.add_child(runner)
 	runner.slime.dash_hit.connect(runner._on_dash_hit)
-	owner_game.touch_controls.ability_tapped.connect(runner.use)
+	owner_game.touch_controls.ability_tapped.connect(runner._touch_tap)
+	owner_game.touch_controls.ability_pressed.connect(runner._touch_aim_start)
+	owner_game.touch_controls.ability_released.connect(runner._touch_aim_end)
+	owner_game.touch_controls.aim_jump_released.connect(runner._touch_aim_jump)
 	runner._refresh()
 	return runner
 
 
-## The strip the HUD and the touch buttons show: [{id, left, max}] in Abilities order.
+## The strip the HUD and the touch buttons show: [{id, left, max, locked}] in Abilities order.
 func strip() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for id in Abilities.ids():
 		if levels.has(id):
-			out.append({id = id, left = int(charges[id]), max = Abilities.charges(id, levels[id])})
+			out.append({id = id, left = int(charges[id]), max = Abilities.charges(id, levels[id]), locked = id in locked})
 	return out
+
+
+## Holds back every ability but `allowed` ("": all of them; see locked), or none with `none`.
+func set_locked(allowed: String, none := false) -> void:
+	locked.clear()
+	if not none:
+		for id: String in levels:
+			if id != allowed:
+				locked.append(id)
+	_refresh()
 
 
 func _refresh() -> void:
@@ -110,6 +126,8 @@ func start_aim(id: String) -> bool:
 	aiming = id
 	aim_dir = Abilities.aim(slime.facing)
 	slime.aim_lock = true
+	slime.velocity = Vector2.ZERO  # (it stops dead: a held stick's glide doesn't slide on while it aims, owner 2026-10-23)
+	game.touch_controls.set_aim_ring(true)  # (touch: JUMP fires it, so JUMP blinks)
 	_sfx("click", -6.0)
 	queue_redraw()
 	return true
@@ -121,6 +139,7 @@ func cancel_aim() -> void:
 		return
 	aiming = ""
 	slime.aim_lock = false
+	game.touch_controls.set_aim_ring(false)
 	queue_redraw()
 
 
@@ -131,11 +150,60 @@ func fire_aim() -> bool:
 		return false
 	var id := aiming
 	aiming = ""
+	game.touch_controls.set_aim_ring(false)
 	queue_redraw()
 	slime.facing = Vector2(aim_dir).normalized()
 	var fired := use(id, aim_dir)
 	slime.set_deferred("aim_lock", false)
 	return fired
+
+
+## Touch (TouchControls; owner 2026-10-23): an aimed ability's button brings up its aim; from then on the joystick only
+## aims (8 ways, _aim_step; the slime stays) until letting go of JUMP fires it or letting go on the X beside JUMP calls it
+## off (_touch_aim_jump). Its button again does nothing, the other aimed one's switches to it. The PC's JUMP key still
+## fires on its press and the ability's key again cancels (_aim_step / start_aim).
+func _touch_aim_start(id: String) -> void:
+	if aiming == id:
+		return  # (only the X calls it off on touch)
+	if aiming != "":
+		if not can_use(id):
+			_sfx("click", -10.0)
+			return  # (the other one can't: keep this aim)
+		cancel_aim()
+	start_aim(id)
+
+
+## Touch: a tap-to-fire ability's button (SLIMAKAZE, SLIME SENSE); nothing while an aim is up (dimmed meanwhile).
+func _touch_tap(id: String) -> void:
+	if aiming != "":
+		_sfx("click", -10.0)
+		return
+	use(id)
+
+
+## The tree paused (the pause menu, the app in the background): an aim is called off, so the joystick moves again.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PAUSED:
+		cancel_aim()
+
+
+## Touch: JUMP let go while aiming (TouchControls presses no "jump" then): fire, or call it off (let go on the X).
+func _touch_aim_jump(cancel: bool) -> void:
+	if aiming == "":
+		return
+	if cancel:
+		cancel_aim()
+	else:
+		fire_aim()
+
+
+func _touch_aim_end(id: String, fire: bool) -> void:
+	if aiming != id:
+		return
+	if fire:
+		fire_aim()
+	else:
+		cancel_aim()
 
 
 func _aim_step() -> void:
@@ -167,9 +235,12 @@ func _aim_step() -> void:
 
 
 ## A left click (mouse) fires while aiming.
+## Not a phone's touch: Godot also sends every touch as an emulated left click (emulate_mouse_from_touch), which fired
+## the aim the moment its button, the stick or JUMP was touched (owner bug 2026-10-23); touch fires only by JUMP.
 func _unhandled_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
-	if aiming != "" and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+	if aiming != "" and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
+			and click.device != InputEvent.DEVICE_ID_EMULATION:
 		get_viewport().set_input_as_handled()
 		fire_aim()
 
@@ -196,7 +267,7 @@ func _draw() -> void:
 ## leaping, charging, stunned, dashing, frozen; the run not over) and, for RIFLE / SPLAT, more slime
 ## in the meter than one use costs (SLIMAKAZE may use the last of it).
 func can_use(id: String) -> bool:
-	if int(charges.get(id, 0)) <= 0 or game.finished or slime.frozen or slime.state != Slime.State.GLIDE:
+	if id in locked or int(charges.get(id, 0)) <= 0 or game.finished or slime.frozen or slime.state != Slime.State.GLIDE:
 		return false
 	return id == "kaze" or game.slime_remaining > Abilities.slime_cost(id)
 
@@ -205,6 +276,9 @@ func can_use(id: String) -> bool:
 ## when a wall is right ahead.
 ## `aimed`: the aim mode's direction (8 ways); zero = the facing snapped to the grid (4 ways).
 func use(id: String, aimed := Vector2i.ZERO) -> bool:
+	if id in locked:
+		_sfx("click", -10.0)
+		return false
 	if id == "sense":
 		return _peek()
 	if not can_use(id):

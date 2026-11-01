@@ -2052,8 +2052,8 @@ func _process(delta: float) -> void:
 
 ## Turns the room one station round (1 = the next station clockwise comes to the back).
 func turn_room(direction: int) -> void:
-	if turning:
-		return
+	if turning or (tour != null and tour.holds_room()):
+		return  # (the guided tour's end: the room holds the archway at the back)
 	turning = true
 	_turn_from = turn
 	_turn_to = turn - step * direction
@@ -2255,11 +2255,13 @@ var _sign_day := 0  # (the UTC day the DAILY sign prompt was decided on)
 
 
 func _show_prompt(note := "") -> void:
-	prompt.visible = not near.is_empty()
-	if near.is_empty():
+	# (the guided tour's last line shows with nothing in reach too: it walks the slime to the archway)
+	var guide: String = tour.guide_line() if tour != null and near.is_empty() else ""
+	prompt.visible = not near.is_empty() or guide != ""
+	if not prompt.visible:
 		return
 	var price := false
-	var line: String = tour.line_for(near.id) if tour != null and note == "" else ""
+	var line: String = tour.line_for(near.get("id", "")) if tour != null and note == "" else ""
 	prompt_name.text = near.name if line == "" else line
 	sign_weekly = false
 	sign_boards = false
@@ -2324,7 +2326,7 @@ func _show_prompt(note := "") -> void:
 	else:
 		prompt_key.text = ""  # just its name: the interact key uses it
 	# "!" when something in that station's store is affordable (the cheapest unowned item).
-	prompt_bang.visible = note == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id) and Progress.hub_news(near.id, true)
+	prompt_bang.visible = note == "" and line == "" and near.id in ["wheel", "upgrades"] and Progress.store_affordable(near.id) and Progress.hub_news(near.id, true)
 	prompt_icon.visible = price and note == ""
 	prompt_key.visible = prompt_key.text != ""
 	# (the goo's top room is the marks this line has: a line without any sits as in English)
@@ -2359,6 +2361,9 @@ func _station(id: String) -> Dictionary:
 
 ## Uses a station: opens its screen, or says why it can't.
 func _use(station: Dictionary) -> void:
+	if tour != null and tour.blocks(station.id):
+		_deny(tour.wait_note())  # (the guided tour: the wheel first, then the archway)
+		return
 	if tour != null:
 		tour.station_used(station.id)
 	if station.id in ["upgrades", "wheel"] and not Progress.dev_tools:

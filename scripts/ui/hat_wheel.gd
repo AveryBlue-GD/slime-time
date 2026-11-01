@@ -14,8 +14,9 @@ extends Control
 ## hat (Progress.wheel_pool). A won hat comes off the wheel, so there are never duplicates: an empty wheel once
 ## every hat is yours.
 ## SHOP: three sections (DYES, TRAILS, PAPERS) of goo-framed tiles with their prices and the ticket
-## icon. Hats are never sold. DYES (section id "hats"): a tile per dyeable hat you have won (its name
-## and how many of its dyes you own); pressing one opens its colors (`dye_hat`): ORIGINAL and each dye
+## icon. Hats are never sold. DYES (section id "hats"): a tile per dyeable hat (its name and how many
+## of its dyes you own; one not won yet is dimmed with a lock: WIN IT ON THE PRIZE WHEEL, no dyes for it);
+## pressing a won one opens its colors (`dye_hat`): ORIGINAL and each dye
 ## (a swatch, the name, the price or OWNED / WORN; Hats.dyes_for, Economy.DYE_PRICE). Pressing an owned
 ## one puts the hat on in it; Esc / B or the DYES button go back to the hats. TRAILS / PAPERS =
 ## Cosmetics; an owned one is worn / taken off by pressing its tile. Buying asks once (BUY GOLD
@@ -757,6 +758,8 @@ func _preview_room() -> float:
 ## The width of a tile's right part for item `id`: its price and the ticket icon, OWNED / WORN, or
 ## a dyeable hat's dye count.
 func _right_w(id: String) -> int:
+	if _hat_locked(id):
+		return UIKit.icon_ink_rect("lock").size.x
 	if _is_hat(id):
 		return UIKit.text_w(_dye_count(id))
 	if _owned(id):
@@ -839,7 +842,7 @@ func _section_ids() -> Array[String]:
 					ids.append("%s:%s" % [dye_hat, dye])
 				return ids
 			for hat in Hats.ids():
-				if Hats.is_dyeable(hat) and Progress.is_hat_unlocked(hat):
+				if Hats.is_dyeable(hat):
 					ids.append(hat)
 			return ids
 		"trails":
@@ -850,6 +853,11 @@ func _section_ids() -> Array[String]:
 ## A DYES hat tile (a dyeable hat's id).
 func _is_hat(id: String) -> bool:
 	return not Hats.get_hat(id).is_empty()
+
+
+## A DYES hat tile of a hat not won yet (on show, locked: no dyes for it).
+func _hat_locked(id: String) -> bool:
+	return _is_hat(id) and not Progress.is_hat_unlocked(id)
 
 
 ## A DYES color tile ("hat:dye"; "hat:" = ORIGINAL).
@@ -904,7 +912,7 @@ func _empty_texts() -> Array[String]:
 ## A goo-framed tile: the item's name, and its price with the ticket icon (or OWNED / WORN).
 func _make_tile(id: String) -> Button:
 	var tile := UIKit.make_button("", func() -> void: _on_tile(id), tile_size)
-	var name_label := UIKit.make_label(_name_of(id), UIKit.FONT, UIKit.TEXT)
+	var name_label := UIKit.make_label(_name_of(id), UIKit.FONT, UIKit.TEXT_OFF if _hat_locked(id) else UIKit.TEXT)
 	var text_y := UIKit.button_v_margins().x  # (3 in English: the tile's text rows)
 	# (right-to-left: the Kufi letters have no side bearing, the slimy font's 1 px is on the left, so
 	# the right-aligned name keeps 1 px more from the tile's inner border: 3 clear columns, as English's left)
@@ -950,7 +958,9 @@ func _make_tile(id: String) -> Button:
 		right.position = Vector2(TILE.x - 4 - 40, text_y - 1)
 		right.size = Vector2(40, 9)
 	tile.add_child(right)
-	if _is_hat(id):
+	if _hat_locked(id):
+		right.add_child(UIKit.make_icon("lock", UIKit.TEXT_OFF))
+	elif _is_hat(id):
 		right.add_child(UIKit.make_label(_dye_count(id), UIKit.FONT, UIKit.TEXT_DIM))
 		if Progress.selected_hat == id:
 			UIKit.set_selected(tile, true)
@@ -1007,6 +1017,9 @@ func _status_texts(id: String) -> Array[String]:
 		var name := _dye_title(id) if _is_dye(id) else Hats.display_name(id) if _is_hat(id) else Cosmetics.display_name(id)
 		# i18n: SHOP status line (demo build), max 300px, 1 line
 		return [name, Loc.t("wheel.demo_shop", "THE SHOP OPENS IN THE FULL GAME")]
+	if _hat_locked(id):
+		# i18n: SHOP status line (DYES: a hat not won yet), max 240px, 1 line
+		return [Hats.display_name(id), Loc.t("wheel.dye_locked", "WIN IT ON THE PRIZE WHEEL")]
 	if _is_hat(id):
 		# i18n: SHOP status line (DYES: a dyeable hat's tile), max 240px, 1 line
 		return [Hats.display_name(id), Loc.t("wheel.pick_dye", "PRESS TO PICK ITS COLOR")]
@@ -1185,6 +1198,10 @@ static func paper_swatch(paper: String, ink: Color) -> Image:
 
 
 func _on_tile(id: String) -> void:
+	if _hat_locked(id):  # not won yet: no dyes for it
+		_sfx("click", -6.0, 0.6)
+		_describe(id)
+		return
 	if _is_hat(id):  # a dyeable hat: its colors
 		_sfx("click", -6.0)
 		dye_hat = id
