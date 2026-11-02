@@ -3279,7 +3279,7 @@ func _close_preview_card() -> void:
 	preview_card_up = false
 	hud.clear_result()
 	slime.frozen = false
-	touch_controls.visible = _card_touch
+	touch_controls.show_controls(_card_touch)
 	hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
 
 

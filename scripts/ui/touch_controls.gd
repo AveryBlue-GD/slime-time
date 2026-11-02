@@ -145,8 +145,13 @@ var menu_open := false:
 			_canvas.queue_redraw()
 
 
+## True after hide_controls() (a level's end, a card with buttons): no touch brings the controls back until the game
+## calls show_controls(). (A tap on the result screen used to show them over the panel and press JUMP: audit D2-01.)
+var suppressed := false
+
+
 func _input(event: InputEvent) -> void:
-	if menu_open:
+	if menu_open or suppressed:
 		return
 	if (event is InputEventKey or event is InputEventJoypadButton) and event.pressed and visible:
 		_release_all()
@@ -432,10 +437,17 @@ func joystick_rect() -> Rect2:
 	return Rect2(_joy_center - Vector2.ONE * JOY_RADIUS, Vector2.ONE * JOY_RADIUS * 2.0)
 
 
-## Hides the controls (e.g. when a level ends and menu buttons take over).
+## Hides the controls (e.g. when a level ends and menu buttons take over) until show_controls().
 func hide_controls() -> void:
 	_release_all()
+	suppressed = true
 	visible = false
+
+
+## Undoes hide_controls(): touches drive the controls again; `shown` = whether they show right away.
+func show_controls(shown: bool) -> void:
+	suppressed = false
+	visible = shown
 
 
 ## Lets go of the pause button's `menu` press, if it is held.
