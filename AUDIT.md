@@ -305,3 +305,24 @@ gate (every suite + import + pck sizes + the 8-scenario bench) ran on batches (s
 Mini-audits: after 9 fixes (22e6dee, a misplaced doc comment), after 13 (f4dd771, same), after 19 (an independent
 reviewer read the perf diffs: no bugs; one same-language fallback detail, fixed in f8de561).
 
+
+## 5. Gates (full check on batches)
+
+Every gate: fresh checkout of the commit, asset import, all suites (`TIMES=1`), `test_save_robust` again as a non-root
+user, engine warnings / errors in the suite logs, export packs for macOS / iOS / Web, `bench/run.sh --runs 7`.
+Results in each row: suites failed (always only the root-only `test_save_robust`, which passed as non-root every time),
+import warnings, startup ms, hub frame avg ms, memory peak MB.
+
+| gate | commit | suites | import warnings | startup | hub avg | mem peak |
+|---|---|---|---|---|---|---|
+| base | 4826fd0 | 137, 1 root-only | 0 | 2113 | 1.314 | 109.15 |
+| fix01-06 | 1aa3f06..5584a3a (each) | 137-138, 1 root-only | 0 | 2057-2215 | 1.273-1.377 | 109.15-109.28 |
+| fix09 | 11943d9 | 138, 1 root-only | 0 | 2171 | | 109.29 |
+| fix17 | bd20f86 | 138, 1 root-only | 0 | 2190 | | 109.39 |
+| final | c75be70 | 138, 1 root-only | 0 | 1909 | 0.387 | 109.35 |
+
+The memory peak rises with the size of the script source text (probe: +130 KB of comment lines in one script = +3.4 MB);
+the cleanup added ~8 KB of source, mostly comments. Exported builds ship binary tokens without comments
+(`script_export_mode=2`). The head-to-head base vs final bench (9 runs each, alternating) is in CLEANUP_REPORT.md section 1.
+New engine-error lines in the final logs: 23 x "Clipboard is not supported by this display server" from the nav fuzz walk
+reaching PASTE CODE under the headless test display (the walk's path changed); 4 fewer "resources still in use at exit".
