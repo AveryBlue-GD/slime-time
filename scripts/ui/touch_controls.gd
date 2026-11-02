@@ -166,6 +166,9 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			_tap_start[event.index] = {pos = event.position, at = Time.get_ticks_msec()}
 			_touch_down(event.index, event.position)
+		elif event.canceled:  # (the OS took the touch back: let go of whatever it held, firing nothing; audit D2-05)
+			_tap_start.erase(event.index)
+			_cancel_touch(event.index)
 		else:
 			var start: Dictionary = _tap_start.get(event.index, {})
 			_tap_start.erase(event.index)
@@ -256,6 +259,34 @@ func _touch_up(index: int, pos: Vector2) -> void:
 			_aim_jump_touch = -1
 			_cancel_hover = false
 			aim_jump_released.emit(on_cancel(pos))
+	_canvas.queue_redraw()
+
+
+## A touch the OS cancelled (a system gesture, palm rejection): what it held is let go without acting, as
+## _release_all() does for every touch: no leap (the charge is dropped), no ability fired, no tap, an aim stays up.
+func _cancel_touch(index: int) -> void:
+	if _ability_touch.has(index):
+		var slot: int = _ability_touch[index]
+		_ability_touch.erase(index)
+		_ability_pos.erase(index)
+		if slot < abilities.size() and aimed(abilities[slot].id):
+			ability_released.emit(abilities[slot].id, false)
+	elif index == _pause_touch:
+		_release_pause()
+	elif index == _tap_touch:
+		_tap_touch = -1
+	elif index == _joy_touch:
+		_joy_touch = -1
+		_joy_center = JOY_HOME
+		joy_vector = Vector2.ZERO
+		_steer(Vector2.ZERO)
+	elif index == _jump_touch:
+		_jump_touch = -1
+		if index == _aim_jump_touch:
+			_aim_jump_touch = -1
+			_cancel_hover = false
+		get_tree().call_group(Slime.GROUP, "cancel_charge")  # (before the release, which would launch it)
+		_release("jump")
 	_canvas.queue_redraw()
 
 

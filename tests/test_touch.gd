@@ -66,6 +66,22 @@ func _initialize() -> void:
 		"releasing JUMP leaps")
 	await _physics_frames(60)
 
+	# Cleanup audit D2-05: a touch the OS cancels (a system gesture, palm rejection, a notification pulled down) lets go
+	# of JUMP without leaping.
+	_send_touch(1, Vector2(282, 142), true)
+	await _physics_frames(30)
+	var charging: bool = game.slime.state == Slime.State.CHARGING
+	var cancel := InputEventScreenTouch.new()
+	cancel.index = 1
+	cancel.position = _to_window(Vector2(282, 142))
+	cancel.pressed = false
+	cancel.canceled = true
+	Input.parse_input_event(cancel)
+	await _physics_frames(3)
+	_check(charging and game.slime.state == Slime.State.GLIDE and not game.slime.is_airborne() and not Input.is_action_pressed("jump"),
+		"a cancelled JUMP touch drops the charge without leaping (state %d)" % game.slime.state)
+	await _physics_frames(10)
+
 	# Pause button.
 	_send_touch(2, Vector2(309, 41), true)
 	await process_frame
