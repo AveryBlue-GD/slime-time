@@ -3382,6 +3382,14 @@ func reset_progress() -> void:
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
 	random_tickets_held.clear()
+	# (the run state a reset must not keep either: a penalty parked for a daily / weekly was saved into the fresh
+	# save as [wallet] attempt_base and charged the first random maze after the story was beaten again: audit B-02)
+	random_attempt_carry = 0
+	random_maze_won = false
+	random_daily = false
+	random_weekly = false
+	daily_run_day = 0
+	discard_random_map()
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false
