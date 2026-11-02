@@ -65,10 +65,26 @@ static func _count_registration() -> void:
 		prune()
 
 
-## Drops the refs of freed boxes and themes.
+## Drops the refs of freed boxes and themes, and the canvas items of freed controls from `_drawn`.
 static func prune() -> void:
 	_boxes = _live(_boxes)
 	_themes = _live(_themes)
+	_prune_drawn()
+
+
+## `_drawn` only empties on a rainbow tint, so without the rainbow skin it kept the canvas items of
+## every screen ever opened (cleanup audit D1-03). Keeps the ones live controls still own (tint
+## only redraws those anyway).
+static func _prune_drawn() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if _drawn.is_empty() or tree == null or tree.root == null:
+		return
+	var live := {}
+	for node: Node in tree.root.find_children("*", "Control", true, false):
+		var item := (node as Control).get_canvas_item()
+		if _drawn.has(item):
+			live[item] = true
+	_drawn = live
 
 
 static func _live(refs: Array[WeakRef]) -> Array[WeakRef]:
