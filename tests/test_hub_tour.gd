@@ -36,6 +36,7 @@ func _initialize() -> void:
 	await _full_tour()
 	await _no_skips()
 	await _skips()
+	await _badges_wait_for_tour()
 	await _station_ends_it()
 	await _devices()
 	await _layout()
@@ -219,6 +220,25 @@ func _no_skips() -> void:
 
 
 # --- A SETTINGS replay's tour: skip at every step with Esc, B, a tap or a left click on the SKIP pod
+## Cleanup audit C-02: no "!" badge during the guided first tour (a fresh save has a free spin: the prize wheel's badge used
+## to show 3 s in, while using the wheel said AFTER THE TOUR); the badges come back once the tour is over.
+func _badges_wait_for_tour() -> void:
+	await _due_save()
+	progress.dev_tools = false
+	var hub := await _open()
+	await _physics_frames(2)
+	var shown: Array = hub.badges.keys().filter(func(id: String) -> bool: return hub.badges[id].visible and id != "daily")
+	_check(shown.is_empty(), "guided tour: no station shows a \"!\" badge (%s)" % [shown])
+	hub.tour._finish()  # (the room has come round: the arrow to the archway)
+	await _physics_frames(2)
+	hub.tour.station_used("story")  # (the archway used: the tour's end)
+	await _physics_frames(2)
+	var wheel_news: bool = hub.has_news("wheel")
+	_check(not hub.badges.has("wheel") or hub.badges["wheel"].visible == wheel_news,
+		"...after the tour the badges follow the news again (wheel news %s)" % wheel_news)
+	await _close(hub)
+
+
 func _skips() -> void:
 	var ways := ["menu", "ui_cancel", "touch", "click"]
 	for step in 9:
@@ -247,6 +267,15 @@ func _skips() -> void:
 			and hub.prompt_name.text == "ROTATE" and _saved_bits() & progress.TUTORIAL_HUB == 0,
 			"replay, skip after %d turns (%s): over, still in the hub, ROTATE again, nothing saved" % [step, how])
 		_check(not hub.hub_menu.visible, "...the skipping press doesn't also open the hub menu (%s)" % how)
+		if step == 0:
+			# cleanup audit C-03: a skipped tour stays a child of the hub; R must turn the room again after it
+			var turn_before: float = hub.turn
+			await _press("restart")
+			for i in 120:
+				if not hub.turning:
+					break
+				await physics_frame
+			_check(hub.turn != turn_before, "...after the skip, R turns the room again (turn %s -> %s)" % [turn_before, hub.turn])
 		if how == "menu":
 			await _press("menu")
 			_check(hub.hub_menu.visible and hub.menu_back.has_focus(), "...after the tour, Esc opens the hub menu (%s)" % how)
