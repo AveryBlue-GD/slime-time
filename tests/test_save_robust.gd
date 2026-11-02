@@ -391,6 +391,22 @@ func _overwrite_policy() -> void:
 	rv.saving_enabled = true
 	rv.load_progress()
 	_e("...which the next launch promotes to the save (levels_cleared=%d)" % rv.levels_cleared, rv.levels_cleared == 7 and FileAccess.file_exists(rp) and not FileAccess.file_exists(rp + ".tmp"))
+	# cleanup audit B-01: a save made while that lone temp is still there (the retry, before any relaunch) writes the save's
+	# empty place directly and drops the temp only after: the only copy is never truncated or deleted first
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	_store(rp + ".tmp", rv._write().encode_to_text())  # the lone temp again (levels 7)
+	rv.levels_cleared = 8
+	var direct_ok: bool = rv.save_progress()
+	_e("a save with a lone temp and no save file writes the save directly (levels_cleared=%d) and then drops the temp" % _load_levels(rp),
+		direct_ok and _load_levels(rp) == 8 and not FileAccess.file_exists(rp + ".tmp"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	_store(rp + ".tmp", rv._write().encode_to_text())  # a lone temp (levels 8) again...
+	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(rp))  # ...and the save's place can't be written (a folder)
+	rv.levels_cleared = 9
+	_e("...and if that direct write fails, the lone temp is left untouched (levels %d)" % _load_levels(rp + ".tmp"),
+		not rv.save_progress() and _load_levels(rp + ".tmp") == 8)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp + ".tmp"))
 	for n in [rn, rv]:
 		n.free()
 	# an interrupted save: a temp next to a save is discarded; a lone valid temp (crash between remove and rename) is used
