@@ -12,6 +12,8 @@ extends SceneTree
 ##                 runs only while they show). Needs --unlock-all (all 8 stations).
 ##   skins_papers  SkinsScreen._refresh_papers(id) as a focus move on the PAPERS page calls it (D1-02: it re-rendered
 ##                 all 12 paper maps per move; now only a tile whose look changed). Needs --unlock-all.
+##   map_frame     MapView._draw_frame on a 200x140 map, every theme (D2-07: it walked every pixel of the map to paint
+##                 the 4 px frame; now only the band). Pixel-identical (checked by md5 in the audit).
 
 const ROUNDS := 7
 
@@ -29,6 +31,8 @@ func _initialize() -> void:
 			await _hub_hints()
 		"skins_papers":
 			await _skins_papers()
+		"map_frame":
+			_map_frame()
 		_:
 			push_error("micro.gd: unknown --case=%s" % case_name)
 	quit(0)
@@ -78,3 +82,12 @@ func _skins_papers() -> void:
 		k[0] += 1
 		screen._refresh_papers(ids[k[0] % ids.size()])
 	_report({papers = ids.size(), focus_move_us = snappedf(_time(focus_move, 20), 0.01)})
+
+
+func _map_frame() -> void:
+	var img := Image.create(200, 140, false, Image.FORMAT_RGBA8)
+	var themes: Array = MapView.THEMED.keys()
+	var all_themes := func() -> void:
+		for theme: String in themes:
+			MapView._draw_frame(img, theme)
+	_report({themes = themes.size(), size = "200x140", per_frame_us = snappedf(_time(all_themes, 5) / themes.size(), 0.01)})
