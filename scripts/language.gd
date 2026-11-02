@@ -5,7 +5,7 @@ extends Node
 ## - Gate off (Economy.languages_on() false, the default): loads NO translation, adds no font fallback,
 ##   never touches the text direction; the locale is pinned to English (so nothing can follow the OS
 ##   language); Loc.t returns the English source text. The game looks and saves exactly as before.
-## - Gate on (`--languages`, `--lang=xx`, tests): loads the catalogs (CATALOGS), picks the locale
+## - Gate on (`--languages`, `--lang=xx`, tests): picks the locale (loading its catalog from CATALOGS)
 ##   (`--lang=xx`, else the player's saved choice, else the OS locale if supported, else English),
 ##   installs the font fallbacks (every script, the current one first), sets the text direction, emits
 ##   `language_changed`. `metrics(code)` gives later chunks each locale's line / button sizes.
@@ -213,7 +213,6 @@ func enable() -> void:
 	if not active:
 		active = true
 		_locale_before = TranslationServer.get_locale()
-		_load_catalogs()
 	var progress := get_node_or_null("/root/Progress")
 	var saved: String = progress.language if progress else ""
 	var os_locale := OS.get_locale() if Economy.LANGUAGES_FOLLOW_OS or Economy.languages_force == 1 else ""
@@ -259,6 +258,7 @@ func set_locale(code: String) -> void:
 		return
 	var changed := code != locale
 	locale = code
+	_load_catalog_of(code)
 	TranslationServer.set_locale(SOURCE_LOCALE if code == PSEUDO else code)
 	_apply_pseudo(code == PSEUDO)
 	_install_fonts()
@@ -286,10 +286,12 @@ func is_rtl() -> bool:
 	return active and locale in RTL_LOCALES
 
 
-func _load_catalogs() -> void:
-	for path: String in CATALOGS:
-		if ResourceLoader.exists(path):
-			load_catalog(path)
+## Loads the catalog of `code` the first time that language is used (cleanup audit E-03: all 17, ~2 MB of .po,
+## used to load at every launch, ~0.2 s, even for English). A missing file is skipped (as before).
+func _load_catalog_of(code: String) -> void:
+	var path := "res://locale/%s.po" % code
+	if path in CATALOGS and ResourceLoader.exists(path):
+		load_catalog(path)
 
 
 ## Pseudo-localization for `--lang=pseudo` (docs/i18n/plan.md section 8): English through
