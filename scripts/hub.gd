@@ -696,12 +696,16 @@ func _place_hints() -> void:
 		return
 	var safe := UIKit.safe_rect()
 	var placed: Array[Rect2] = []
+	# The names hide for good after NAMES_TIME, and nothing reads a hidden name's position (the badges only
+	# keep clear of names while they show), so the solver stops then (cleanup audit C-01: it ran every frame).
+	var names_up := name_layer.visible
 	for station: Dictionary in _all_props():
 		var label: Label = name_labels[station.id]
 		# (the name under the feet; the sign beside the portal wears its name over its head, clear of the portal's)
 		var beside: bool = station.has("anchor")
-		label.position = _solve_label(station, label, beside, safe, placed)
-		placed.append(Rect2(label.position, label.size))
+		if names_up:
+			label.position = _solve_label(station, label, beside, safe, placed)
+			placed.append(Rect2(label.position, label.size))
 		if badges.has(station.id):
 			_place_badge(station, label, beside, safe)
 	_clear_badges(safe)
