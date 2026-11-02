@@ -96,6 +96,18 @@ func _initialize() -> void:
 	root.add_child(screen)
 	await process_frame
 	_check(screen.tiles.has(Skins.RAINBOW) and screen.tiles.size() == 13, "skins screen has a rainbow tile")
+	# Cleanup audit D1-05: the rainbow's per-frame step keeps its control lists between frames; a button added (or
+	# removed) meanwhile must be in (out of) them by the next step, or it would keep a stale text color.
+	var st: SkinText = screen.find_children("*", "SkinText", true, false)[0]
+	await process_frame
+	var cached: Array[Node] = st.controls("buttons", st.theme_owner, "Button")
+	var late := Button.new()
+	st.theme_owner.add_child(late)
+	_check(late in st.controls("buttons", st.theme_owner, "Button") and late in st.controls("all", root, "Control")
+		and cached.size() + 1 == st.controls("buttons", st.theme_owner, "Button").size(), "a button added during the rainbow is recolored too")
+	late.free()
+	_check(not st.controls("buttons", st.theme_owner, "Button").has(null) and st.controls("buttons", st.theme_owner, "Button").size() == cached.size(),
+		"...and one freed drops out")
 	screen.free()
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_save))

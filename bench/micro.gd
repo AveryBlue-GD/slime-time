@@ -17,6 +17,8 @@ extends SceneTree
 ##   showcase_trail  The skins screen's stage over 600 frames (10 s of its routine): how many times the trail layer
 ##                 drew (D2-06: redrawing only on a cell or alpha-step change cut 242 draws to 214, too little for the
 ##                 per-frame check it costs, so the change was rejected; the case stays as the evidence).
+##   rainbow_flow  One frame of the rainbow skin's recolor (every SkinText's _process) on the skins screen and the
+##                 hub (D1-05: tree walks per frame). Needs --unlock-all.
 
 const ROUNDS := 7
 
@@ -38,6 +40,8 @@ func _initialize() -> void:
 			_map_frame()
 		"showcase_trail":
 			await _showcase_trail()
+		"rainbow_flow":
+			await _rainbow_flow()
 		_:
 			push_error("micro.gd: unknown --case=%s" % case_name)
 	quit(0)
@@ -109,3 +113,26 @@ func _showcase_trail() -> void:
 	for i in 600:
 		await process_frame
 	_report({frames = 600, trail_draws = stats.draws})
+
+
+func _rainbow_flow() -> void:
+	var progress := root.get_node("Progress")
+	progress.selected_skin = Skins.RAINBOW
+	var out := {}
+	for scene: String in ["res://scenes/skins.tscn", "res://scenes/hub.tscn"]:
+		var screen: Node = load(scene).instantiate()
+		root.add_child(screen)
+		current_scene = screen
+		for i in 10:
+			await process_frame
+		var texts: Array[Node] = root.find_children("*", "SkinText", true, false)
+		var one_frame := func() -> void:
+			for st: Node in texts:
+				st._process(1.0 / 60.0)
+		out[scene.get_file().get_basename() + "_us"] = snappedf(_time(one_frame, 60), 0.01)
+		out[scene.get_file().get_basename() + "_skin_texts"] = texts.size()
+		out[scene.get_file().get_basename() + "_controls"] = root.find_children("*", "Control", true, false).size()
+		screen.queue_free()
+		await process_frame
+		await process_frame
+	_report(out)
