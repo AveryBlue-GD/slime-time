@@ -178,7 +178,9 @@ var bonks := 0
 var _push_left := 0.0
 var _push_dir := Vector2.ZERO
 var _trail: Array[Vector2i] = []
-var _slowmo_until_ms := -1
+## Seconds of the near-miss slow-mo left (-1 = none). Counted on this node's (pausable) frame time, not the wall
+## clock: a pause used to end it on resume (cleanup audit A-06).
+var _slowmo_left := -1.0
 var _slowmo_acc := 0.0
 var _eyes: EyeLayer
 var _blink := 0.0
@@ -387,7 +389,7 @@ static func cell_of(pos: Vector2) -> Vector2i:
 
 
 func _process(_delta: float) -> void:
-	if _slowmo_until_ms >= 0:
+	if _slowmo_left >= 0.0:
 		_slowmo_step()
 	if _eyes != null:
 		_eyes.queue_redraw()
@@ -404,8 +406,9 @@ func _slowmo_step() -> void:
 	var run := _slowmo_acc >= 1.0
 	if run:
 		_slowmo_acc -= 1.0
-	if Time.get_ticks_msec() >= _slowmo_until_ms:
-		_slowmo_until_ms = -1
+	_slowmo_left -= get_process_delta_time()
+	if _slowmo_left <= 0.0:
+		_slowmo_left = -1.0
 		run = true
 		settle_clock()
 	_slowmo_set(run)
@@ -435,8 +438,8 @@ func _slowmo_set(run: bool) -> void:
 
 
 func _exit_tree() -> void:
-	if _slowmo_until_ms >= 0:
-		_slowmo_until_ms = -1
+	if _slowmo_left >= 0.0:
+		_slowmo_left = -1.0
 		_slowmo_set(true)
 	if is_instance_valid(slime):
 		_show_slime(true)
@@ -581,11 +584,11 @@ func _near_miss(l: Lurker, d: float) -> void:
 		l.near_active = false
 		if not l.near_hit and invuln <= 0.0:
 			near_misses += 1
-			if game.motion_scale() > 0.0 and _slowmo_until_ms < 0:
+			if game.motion_scale() > 0.0 and _slowmo_left < 0.0:
 				_slowmo_acc = 0.0
 				_clock_wall = 0.0
 				_clock_rt0 = game.run_time
-				_slowmo_until_ms = Time.get_ticks_msec() + int(Economy.LURKER_SLOWMO * 1000.0)
+				_slowmo_left = Economy.LURKER_SLOWMO
 
 
 ## Contact: the meter loses LURKER_HIT percent (never its last 1%), the slime is pushed a tile away and is safe for a while.
