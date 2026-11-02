@@ -1760,6 +1760,13 @@ static func format_time(seconds: float) -> String:
 
 
 ## Changes screens behind a goo wipe (instantly when the Transition autoload isn't there).
+## True while a screen change (the goo wipe) is running: a second go() is refused, so a handler that changes Progress
+## before going must ask this first, or a quick second tap changes what the first one starts (audit D2-04).
+static func leaving(tree: SceneTree) -> bool:
+	var transition := tree.root.get_node_or_null("Transition")
+	return transition != null and transition.busy
+
+
 static func go(tree: SceneTree, scene: String) -> void:
 	var transition := tree.root.get_node_or_null("Transition")
 	if transition:

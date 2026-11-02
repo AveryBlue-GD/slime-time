@@ -32,5 +32,24 @@ func _initialize() -> void:
 	for i in 30:
 		await process_frame
 	_check(not sheet.visible, "and the sheet slides off afterwards")
+
+	# Cleanup audit D2-04: a second tap while the first tap's wipe runs changes nothing (it used to start level 2 instead)
+	var progress: Node = root.get_node("Progress")
+	progress.highest_unlocked = 10
+	var select: Control = load("res://scenes/level_select.tscn").instantiate()
+	root.add_child(select)
+	current_scene = select
+	await process_frame
+	select._play(1)
+	await process_frame
+	select._play(2)  # (the second tile, tapped during the cover)
+	_check(progress.current_level == 1, "level select: a second tile tapped during the wipe doesn't change the level (%d)" % progress.current_level)
+	while transition.busy:
+		await process_frame
+	await process_frame
+	if current_scene != null:
+		current_scene.queue_free()
+		current_scene = null
+	await process_frame
 	_result()
 	quit(1 if failures else 0)

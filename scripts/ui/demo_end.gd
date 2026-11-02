@@ -173,6 +173,8 @@ static func try_shown() -> bool:
 
 
 func _try_full_game() -> void:
+	if UIKit.leaving(get_tree()):
+		return
 	get_node("/root/Progress").start_random()
 	UIKit.go(get_tree(), UIKit.GAME_SCENE)
 

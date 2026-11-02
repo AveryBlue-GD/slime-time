@@ -406,6 +406,8 @@ func _enter() -> void:
 ## First launch: straight into level 1 (the intro already played when the game opened). With the
 ## tutorial test on, a save that hasn't had the training yet (quit during it) gets the training maze.
 func _play() -> void:
+	if UIKit.leaving(get_tree()):
+		return
 	if Progress.tutorial_due():
 		Progress.start_training(false)
 		return
