@@ -1529,11 +1529,11 @@ func _unflash(node: Control) -> void:
 	tw.tween_property(node, "modulate", Color.WHITE, 0.0)
 
 
-## Waits `seconds` (not while paused); false if a key press cut it short.
 func progress_node() -> Node:
 	return get_node_or_null("/root/Progress")
 
 
+## Waits `seconds` (not while paused); false if a key press cut it short.
 func _stage_wait(seconds: float) -> bool:
 	var left := seconds
 	while left > 0.0:
@@ -1542,6 +1542,8 @@ func _stage_wait(seconds: float) -> bool:
 		await get_tree().process_frame
 		if not is_instance_valid(self) or not is_inside_tree():
 			return false
+		if get_tree().paused:
+			continue  # (process_frame fires under the pause menu too; its keys don't skip the staging; audit C-08)
 		left -= get_process_delta_time()
 		if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("interact"):
 			return false

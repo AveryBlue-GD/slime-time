@@ -2863,6 +2863,8 @@ func _dry_hold() -> void:
 		await get_tree().process_frame
 		if not is_inside_tree() or not is_instance_valid(slime) or _leaving():
 			break
+		if get_tree().paused:
+			continue  # (process_frame fires under the pause menu too: the hold waits, and the menu's keys don't skip it; audit A-03)
 		t += get_process_delta_time()
 		var k := 1.0 - clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0)
 		k = floorf(k * 6.0) / 6.0  # (whole steps, no smooth blur)
