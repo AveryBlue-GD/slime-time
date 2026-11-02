@@ -2442,10 +2442,16 @@ func _use(station: Dictionary) -> void:
 
 
 func _leave(station: Dictionary, scene: String) -> void:
-	return_to = station.id
+	return_to = return_id(station)
 	_sfx("click")
 	slime.frozen = true
 	UIKit.go(get_tree(), scene)
+
+
+## The ring station the hub turns to when the player comes back from `station`'s screen: an extra (the DAILY sign) is not
+## on the ring, so it is its anchor (the portal), else the hub opened with the room reset after BOARDS (audit C-04).
+static func return_id(station: Dictionary) -> String:
+	return station.get("anchor", station.id)
 
 
 func _deny(why: String) -> void:
