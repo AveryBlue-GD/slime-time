@@ -286,12 +286,15 @@ func is_rtl() -> bool:
 	return active and locale in RTL_LOCALES
 
 
-## Loads the catalog of `code` the first time that language is used (cleanup audit E-03: all 17, ~2 MB of .po,
-## used to load at every launch, ~0.2 s, even for English). A missing file is skipped (as before).
+## Loads the catalogs of `code`'s language the first time it is used (cleanup audit E-03: all 17, ~2 MB of .po,
+## used to load at every launch, ~0.2 s, even for English). Every catalog of the same language comes too (zh_TW
+## brings zh_CN and back): Godot falls back to a same-language catalog for a string the current one lacks, as it
+## did with all of them loaded. A missing file is skipped (as before).
 func _load_catalog_of(code: String) -> void:
-	var path := "res://locale/%s.po" % code
-	if path in CATALOGS and ResourceLoader.exists(path):
-		load_catalog(path)
+	var language := code.get_slice("_", 0)
+	for path: String in CATALOGS:
+		if path.get_file().get_basename().get_slice("_", 0) == language and ResourceLoader.exists(path):
+			load_catalog(path)
 
 
 ## Pseudo-localization for `--lang=pseudo` (docs/i18n/plan.md section 8): English through
