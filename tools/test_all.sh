@@ -84,7 +84,7 @@ done
 
 # Sweep what dead test processes left in the user dir. Only names the tests make (never save.cfg / dev_attempts.log).
 userdir="$HOME/Library/Application Support/SlimeTime_R1"
-[ -d "$userdir" ] || userdir="$HOME/.local/share/godot/app_userdata/SlimeTime_R1"
+[ -d "$userdir" ] || userdir="${XDG_DATA_HOME:-$HOME/.local/share}/SlimeTime_R1"
 swept=0
 if [ -d "$userdir" ]; then
     for f in "$userdir"/dev_attempts_*.log "$userdir"/qa_robust_*.cfg "$userdir"/test_*.cfg; do
@@ -126,7 +126,7 @@ run_job() { # "suite|label|args": runs one headless job, leaves <label>.log and 
     fi
     # the job's own throwaway files (a crash or a kill never reaches the suite's _result())
     local pid ud="$HOME/Library/Application Support/SlimeTime_R1"
-    [ -d "$ud" ] || ud="$HOME/.local/share/godot/app_userdata/SlimeTime_R1"
+    [ -d "$ud" ] || ud="${XDG_DATA_HOME:-$HOME/.local/share}/SlimeTime_R1"
     pid="$(cat "$work/$file.pid" 2>/dev/null)"
     if [ -n "$pid" ] && [ -d "$ud" ]; then
         rm -f "$ud/dev_attempts_$pid.log" "$ud/${suite}_$pid"*.cfg "$ud/qa_robust_${pid}_"*.cfg
