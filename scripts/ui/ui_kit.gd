@@ -24,7 +24,7 @@ const LINE_SPACING := 5
 const SCREEN := Vector2(320, 180)
 ## Menu chrome (BACK, tabs, corner buttons, balance pods) sits this far from the screen edges.
 const EDGE := 4
-## In-level HUD pods and the hub's ticket pod sit this far from the edges (HUD.POD_MARGIN); on a phone whose
+## In-level HUD pods and the hub's ticket pod sit this far from the edges; on a phone whose
 ## safe area cuts into the view (rounded corners, a notch without bars) further in: see hud_edge.
 const HUD_EDGE := 3
 ## Top of the bottom-row buttons (BACK bottom left, the page's own action bottom right): 13 tall, B = 3.

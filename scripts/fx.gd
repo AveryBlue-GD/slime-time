@@ -114,7 +114,6 @@ static func make_drips() -> CPUParticles2D:
 ## colours (bright -> base -> outline) instead of alpha fades, and a random lifetime so they don't
 ## all vanish on the same frame.
 enum Preset { GOO, GOLD, DUST }
-const DUST_BRIGHT := Color8(200, 196, 204)
 const DUST_BASE := Color8(148, 140, 150)
 
 static var _star_texture: ImageTexture
@@ -166,17 +165,6 @@ static func burst(parent: Node, pos: Vector2, color: Color, amount: int, speed: 
 	particles.emitting = true
 	particles.finished.connect(particles.queue_free)
 	return particles
-
-
-## Grey crust flakes for the dry-up (ANI-01): `amount` flecks at `pos`, sinking a little.
-static func crust_flakes(parent: Node, pos: Vector2, amount := 7) -> CPUParticles2D:
-	return burst(parent, pos, DUST_BASE, amount, 26.0, Vector2.UP, 180.0, false, Preset.DUST)
-
-
-## The skin's three steps for a dashed afterimage (ANI-10): [bright, base, outline] as opaque
-## palette-like colours (no alpha: dither them instead).
-static func afterimage_colors(base: Color) -> PackedColorArray:
-	return PackedColorArray([base.lightened(0.35), base, base.darkened(0.45)])
 
 
 ## Brightest at birth, then the base colour, then a dark outline shade for the last fifth: stepped,

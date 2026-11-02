@@ -59,7 +59,6 @@ var _splash: Texture2D
 var _sheet: Texture2D
 var _logo: Texture2D
 var _drop_x := 150.0
-var _skipped := false
 
 
 ## Whether the card plays. `cold`: this title is the one the game booted into, not preceded by the first-launch
@@ -183,7 +182,6 @@ func _finish(skipped: bool) -> void:
 	if not running:
 		return
 	running = false
-	_skipped = skipped
 	if _set_ui_alpha.is_valid():
 		_set_ui_alpha.call(1.0)
 	var music := get_node_or_null("/root/Music")
@@ -194,8 +192,6 @@ func _finish(skipped: bool) -> void:
 	queue_free.call_deferred()
 
 
-func was_skipped() -> bool:
-	return _skipped
 
 
 ## Everything is a function of `time`: the veil, the fog hole, the art and the title's UI alpha.

@@ -173,15 +173,6 @@ static func reward_for(id: String) -> String:
 	return REWARDS.get(id, "")
 
 
-## The milestone indexes reached at `earned` medals.
-static func milestones_reached(earned: int) -> Array[int]:
-	var out: Array[int] = []
-	for i in MILESTONES.size():
-		if earned >= int(MILESTONES[i].medals):
-			out.append(i)
-	return out
-
-
 ## The next milestone's medal count above `earned` (0 once every one is reached).
 static func next_milestone(earned: int) -> int:
 	for m: Dictionary in MILESTONES:

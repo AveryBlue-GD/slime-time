@@ -340,7 +340,7 @@ class StageArt extends Node2D:
 		for i in Themes.BY_LEVEL.size():
 			var id: String = Themes.BY_LEVEL[Themes.BY_LEVEL.size() - 1 - i]
 			var pal: Dictionary = THEME_PAL.get(id, THEME_PAL["dungeon"])
-			layers.append({id = id, name = Themes.display_name(id), pal = pal, rim = _rim_colors(id, pal), hole = _make_hole(7100 + i * 37, 16)})
+			layers.append({id = id, pal = pal, rim = _rim_colors(id, pal), hole = _make_hole(7100 + i * 37, 16)})
 		corridor_hole = _make_hole(7777, 30)
 		for k in 2:
 			var lip := PackedVector2Array()

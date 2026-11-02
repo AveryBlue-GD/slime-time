@@ -8,7 +8,6 @@ extends CanvasLayer
 const BAR_SIZE := Vector2(51, 6)
 const SEGMENTS := 4
 const CHUNK := 12
-const POD_MARGIN := 3
 ## Below this percent the meter turns red and pulses.
 const LOW_PERCENT := 20.0
 ## Seconds the area name stays up before fading.
@@ -551,7 +550,7 @@ func _make_bar(preset: Control.LayoutPreset) -> BoxContainer:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bar)
 	bar.set_anchors_preset(preset)
-	var edge := UIKit.hud_edge()  # (POD_MARGIN, unless a phone's safe area cuts deeper)
+	var edge := UIKit.hud_edge()  # (UIKit.HUD_EDGE, unless a phone's safe area cuts deeper)
 	bar.offset_top = edge.y
 	if preset == Control.PRESET_TOP_RIGHT:
 		bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN

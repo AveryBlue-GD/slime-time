@@ -346,7 +346,7 @@ func _fire_rifle(tile: Vector2i, dir: Vector2i) -> void:
 	var lane := (Vector2(tile) + Vector2(0.5, 0.5)) * Abilities.TILE
 	var from := lane
 	if dir.x != 0 and dir.y != 0:
-		from = lane  # (diagonal: from its tile's centre, along the tiles' diagonal)
+		pass  # (diagonal: from its tile's centre, along the tiles' diagonal)
 	elif dir.x != 0:
 		from.x = slime.position.x
 	else:

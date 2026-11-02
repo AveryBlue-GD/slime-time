@@ -800,10 +800,6 @@ func hurt(away: Vector2) -> void:
 		_recoil = Vector2.ZERO
 
 
-func is_hurt() -> bool:
-	return _hurt_ticks > 0
-
-
 ## SLIMAKAZE (ANI-27): two outline-only afterimages in the skin's outline colour (the near one a solid ring, the far one dotted) trail the dash (previous positions).
 func _start_ghosts() -> void:
 	_ghost_trail.clear()
