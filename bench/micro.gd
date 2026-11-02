@@ -10,6 +10,8 @@ extends SceneTree
 ## Cases:
 ##   hub_hints     Hub._place_hints() with the station names showing and after they hid (C-01: the solver now
 ##                 runs only while they show). Needs --unlock-all (all 8 stations).
+##   skins_papers  SkinsScreen._refresh_papers(id) as a focus move on the PAPERS page calls it (D1-02: it re-rendered
+##                 all 12 paper maps per move; now only a tile whose look changed). Needs --unlock-all.
 
 const ROUNDS := 7
 
@@ -25,6 +27,8 @@ func _initialize() -> void:
 	match case_name:
 		"hub_hints":
 			await _hub_hints()
+		"skins_papers":
+			await _skins_papers()
 		_:
 			push_error("micro.gd: unknown --case=%s" % case_name)
 	quit(0)
@@ -58,3 +62,19 @@ func _hub_hints() -> void:
 	hub.name_layer.visible = false
 	var hidden := _time(hub._place_hints, 500)
 	_report({stations = hub.stations.size(), names_shown_us = snappedf(shown, 0.01), names_hidden_us = snappedf(hidden, 0.01)})
+
+
+func _skins_papers() -> void:
+	var screen: Node = load("res://scenes/skins.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	for i in 5:
+		await process_frame
+	screen.show_page("papers")
+	await process_frame
+	var ids: Array = screen.paper_tiles.keys()
+	var k := [0]
+	var focus_move := func() -> void:
+		k[0] += 1
+		screen._refresh_papers(ids[k[0] % ids.size()])
+	_report({papers = ids.size(), focus_move_us = snappedf(_time(focus_move, 20), 0.01)})
