@@ -1300,6 +1300,20 @@ static func write_atomic(path: String, text: String) -> bool:
 	var bytes := text.to_utf8_buffer()
 	var temp := path + TEMP_SUFFIX
 	var g_temp := ProjectSettings.globalize_path(temp)
+	if FileAccess.file_exists(temp) and not FileAccess.file_exists(path):
+		# A temp with no save is the only copy (a rename failed after Windows removed the old save, below). Writing
+		# the temp again would truncate it first, and a failed write would then delete it: nothing left (audit B-01).
+		# The save's place is empty, so write there directly and drop the temp only once that file verifies.
+		var direct := FileAccess.open(path, FileAccess.WRITE)
+		if direct == null:
+			return false
+		var ok := direct.store_buffer(bytes)
+		direct.close()
+		if ok and FileAccess.get_file_as_bytes(path) == bytes:
+			DirAccess.remove_absolute(g_temp)
+			return true
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))  # (a half-written file; the temp stays)
+		return false
 	var f := FileAccess.open(temp, FileAccess.WRITE)
 	if f == null:
 		return false
@@ -3382,6 +3396,14 @@ func reset_progress() -> void:
 	random_offer_shown.clear()
 	random_tickets_taken.clear()
 	random_tickets_held.clear()
+	# (the run state a reset must not keep either: a penalty parked for a daily / weekly was saved into the fresh
+	# save as [wallet] attempt_base and charged the first random maze after the story was beaten again: audit B-02)
+	random_attempt_carry = 0
+	random_maze_won = false
+	random_daily = false
+	random_weekly = false
+	daily_run_day = 0
+	discard_random_map()
 	assist_level = 0
 	maps = {}
 	maps_hint_seen = false

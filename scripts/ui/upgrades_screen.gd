@@ -727,6 +727,17 @@ func _play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
 		sfx.play(sound, volume_db, pitch)
 
 
+## A COINS row's cost: gold FULL in the demo, kept out of the skin recolor (SkinText's group) so the deferred recolor
+## doesn't repaint it dim (cleanup audit D1-01); otherwise the skin's dim text colour, back in the group.
+func _color_cost(cost: Label, capped: bool, skin: Color) -> void:
+	if capped:
+		cost.remove_from_group(SkinText.GROUP)
+		cost.add_theme_color_override("font_color", UIKit.GOLD)
+	else:
+		cost.add_to_group(SkinText.GROUP)
+		cost.add_theme_color_override("font_color", SkinText.color_for(SkinText.ROLE_DIM, skin))
+
+
 func _refresh() -> void:
 	var tickets := page != "coins"
 	coin_label.text = str(maxi(Progress.tickets if tickets else Progress.coins(), 0))  # never negative
@@ -739,7 +750,7 @@ func _refresh() -> void:
 		var maxed := level >= Upgrades.max_level(id)
 		var capped := not maxed and level >= cap  # the demo: the next level is in the full game
 		row.cost.text = Loc.t("upgrades.max", "MAX") if maxed else (demo_full_text() if capped else "%d" % Upgrades.cost(id, level))
-		row.cost.add_theme_color_override("font_color", UIKit.GOLD if capped else UIKit.TEXT_DIM)
+		_color_cost(row.cost, capped, skin)
 		row.plus.disabled = maxed or capped or Progress.coins() < Upgrades.cost(id, level)
 		row.minus.disabled = level <= 0
 	var open: bool = Progress.workshop_open()

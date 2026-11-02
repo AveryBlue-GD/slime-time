@@ -164,6 +164,12 @@ func _hub() -> void:
 	progress.post_board("weekly", 50000, progress.utc_day())
 	hub._show_prompt()
 	_check(hub.sign_boards and hub.prompt_name.text == "BOARDS", "...and with both done it opens BOARDS (%s)" % hub.prompt_name.text)
+	var daily_sign: Dictionary = {}
+	for extra: Dictionary in hub.extras:
+		if extra.id == "daily":
+			daily_sign = extra
+	_check(not daily_sign.is_empty() and hub.return_id(daily_sign) == "random" and not hub._station(hub.return_id(daily_sign)).is_empty(),
+		"cleanup audit C-04: back from BOARDS (opened by the DAILY sign) the hub faces the portal the sign stands by")
 	# BUG4-04: a RELAXED / assisted weekly win posts no board time but still counts as played, and the mark is saved
 	progress.board_weekly.clear()
 	_check(hub.weekly_unplayed(), "BUG4-04: the weekly is unplayed again (board cleared)")
@@ -183,6 +189,15 @@ func _hub() -> void:
 	progress.record_daily(41000, progress.utc_day())
 	hub._refresh_badges()
 	_check(hub.badges["daily"].text.begins_with("NEW IN ") and hub.badges["daily"].text.ends_with("H"), "...NEW IN <h>H after (%s)" % hub.badges["daily"].text)
+	# Cleanup audit C-09: midnight (UTC) during the visit brings the next daily's badge back without leaving the hub
+	progress.day_override = progress.utc_day() + 1
+	await process_frame
+	await process_frame
+	_check(not hub.badges["daily"].text.begins_with("NEW IN "), "...and a new day during the visit takes NEW IN off (%s)" % hub.badges["daily"].text)
+	progress.day_override = -1
+	await process_frame
+	await process_frame
+	_check(hub.badges["daily"].text.begins_with("NEW IN "), "...back on today: NEW IN again (%s)" % hub.badges["daily"].text)
 	# Names on arrival.
 	_check(hub.name_layer.visible and hub.name_labels.size() == 10, "every station name shows on arrival (%d)" % hub.name_labels.size())
 	var badge_seen := false

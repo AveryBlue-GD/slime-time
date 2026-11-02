@@ -18,9 +18,11 @@ func _initialize() -> void:
 	var game := await _play()
 	await _dry_up(game)
 	_check(game.finished and not game.won, "the slime dries up")
+	var light_before: Vector2 = game.slime_light.scale
 	game.pause_menu.open()
 	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 60)
 	_check(current_scene == game and paused and game.pause_menu.visible, "pausing holds everything (nothing reloads underneath)")
+	_check(game.slime_light.scale == light_before, "...the dry-up hold too: its light doesn't close under the menu (%s -> %s, audit A-03)" % [light_before, game.slime_light.scale])
 	game.pause_menu.resume()
 	await _frames(int((game.CHOICE_DELAY + game.DRY_HOLD) * 60) + 10)
 	_check(current_scene == game and game.hud.choice_buttons.size() == 3, "after resuming, RESTART, UPGRADES and MAP appear (no automatic restart)")

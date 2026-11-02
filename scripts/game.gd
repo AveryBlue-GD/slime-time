@@ -2863,6 +2863,8 @@ func _dry_hold() -> void:
 		await get_tree().process_frame
 		if not is_inside_tree() or not is_instance_valid(slime) or _leaving():
 			break
+		if get_tree().paused:
+			continue  # (process_frame fires under the pause menu too: the hold waits, and the menu's keys don't skip it; audit A-03)
 		t += get_process_delta_time()
 		var k := 1.0 - clampf(t / (DRY_HOLD * 0.75), 0.0, 1.0)
 		k = floorf(k * 6.0) / 6.0  # (whole steps, no smooth blur)
@@ -3279,7 +3281,7 @@ func _close_preview_card() -> void:
 	preview_card_up = false
 	hud.clear_result()
 	slime.frozen = false
-	touch_controls.visible = _card_touch
+	touch_controls.show_controls(_card_touch)
 	hud.show_area_name(Themes.display_name(theme), Loc.t("hud.area.preview", "FULL GAME PREVIEW"))
 
 

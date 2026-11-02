@@ -220,6 +220,18 @@ func _abandon_progress_level() -> void:
 	progress.new_random_maze()
 	_check(progress.begin_random_attempt("c2") == 1, "replaying a won maze and then leaving does not charge the next maze")
 
+	# cleanup audit B-02: RESET PROGRESS while a penalty is parked for the daily (a maze left after a move, then DAILY,
+	# then back to the hub) clears it: the reset save carries no base and the next random maze opens at attempt 1
+	progress.new_random_maze()
+	progress.begin_random_attempt("d1")
+	progress.begin_random_attempt("d1")
+	progress.random_moved = true
+	progress.start_daily()  # the penalty (attempt 2) is parked in random_attempt_carry while the daily is up
+	progress.reset_progress()  # SETTINGS > RESET PROGRESS
+	_check(SaveFile.write(progress).get_value("wallet", "attempt_base", 0) == 0, "RESET PROGRESS saves no parked abandon penalty")
+	progress.new_random_maze()
+	_check(progress.begin_random_attempt("d2") == 1, "...and the first random maze after a reset opens at attempt 1")
+
 
 ## --- Held pickups: paid with the win, lost on a dry-up
 func _held_pickups() -> void:

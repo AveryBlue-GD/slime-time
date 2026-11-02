@@ -180,8 +180,13 @@ func _initialize() -> void:
 	for k in 5:
 		await process_frame
 	_check(Engine.time_scale == 1.0, "paused during the slow-mo: Engine.time_scale stays 1.0")
+	OS.delay_msec(int(Economy.LURKER_SLOWMO * 1000.0) + 50)  # (a pause longer than the whole slow-mo)
+	await process_frame
 	paused = false
-	lk._slowmo_until_ms = Time.get_ticks_msec() - 1
+	await process_frame
+	_check(lk._slowmo_left > 0.0,
+		"...and the slow-mo is still on after the pause (it used to end on the wall clock; audit A-06)")
+	lk._slowmo_left = 0.0
 	await process_frame
 	_check(game.is_physics_processing() and Engine.time_scale == 1.0, "slow-mo over: the level runs at full speed again")
 	# IMP4-05: the slow-mo's skipped frames are added back: run_time tracks the frames lived through (1 tick = 1/60 s here)
@@ -193,11 +198,11 @@ func _initialize() -> void:
 	var misses0 := lk.near_misses
 	lk._near_miss(l, Economy.LURKER_NEAR_MISS_DIST + 20.0)
 	var frames := 0
-	if lk._slowmo_until_ms >= 0:
+	if lk._slowmo_left >= 0.0:
 		for k in 18:  # (headless frames run faster than the slow-mo's wall-clock window: expire it by hand)
 			await physics_frame
 			frames += 1
-		lk._slowmo_until_ms = Time.get_ticks_msec() - 1
+		lk._slowmo_left = 0.0
 		for k in 3:
 			await physics_frame
 			frames += 1

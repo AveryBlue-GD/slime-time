@@ -225,9 +225,6 @@ SOUNDS = {
     # Level taken back out (the - button): a gentle slide down, three soft falling notes.
     "refund": lambda: mix(bloop(300, 110, 0.22, 0.2, wobble=0.04, release=0.1),
                           seq(*(bloop(f, f * 0.99, 0.07, 0.16, shape="tri", release=0.03) for f in (440, 330, 220)))),
-    # Gold skin, gliding: a little jingle of coins.
-    "jingle": lambda: mix(chime_tone(784, 0.12, 0.3), [0.0] * int(0.03 * RATE) + chime_tone(1047, 0.12, 0.22),
-                          [0.0] * int(0.06 * RATE) + chime_tone(880, 0.14, 0.18)),
     # A wall giving way (dev wall power): stone crunching apart and rubble pattering down.
     "crumble": lambda: mix(wet_thud(0.35, 0.5, seed=31, release=0.25), crunch(0.5, 0.5, seed=32),
                            bloop(160, 50, 0.3, 0.3, release=0.2)),

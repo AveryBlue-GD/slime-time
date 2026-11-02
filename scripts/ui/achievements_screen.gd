@@ -186,12 +186,12 @@ func _show_page() -> void:
 	var top := _band_top() + UIKit.panel_v_margins().x
 	var unlocked := 0
 	for a in all:
-		if Achievements.met(p, a.id):
+		if Achievements.unlocked(p, a.id):
 			unlocked += 1
 	var y := top
 	for i: int in pages()[page]:
 		var a: Dictionary = all[i]
-		var on := Achievements.met(p, a.id)
+		var on := Achievements.unlocked(p, a.id)
 		var row := Control.new()
 		row.set_meta("id", a.id)
 		row.set_meta("unlocked", on)

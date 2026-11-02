@@ -310,6 +310,8 @@ func _make_lock() -> Control:
 
 
 func _play(level: int) -> void:
+	if UIKit.leaving(get_tree()):
+		return  # (a second tap during the wipe: the first one's level stands)
 	if not Demo.level_open(level, Progress.hard_mode):
 		return  # (the demo: a full-game level stays shut; its tile is disabled anyway)
 	Progress.start_story(level)

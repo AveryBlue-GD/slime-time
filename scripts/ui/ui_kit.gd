@@ -24,7 +24,7 @@ const LINE_SPACING := 5
 const SCREEN := Vector2(320, 180)
 ## Menu chrome (BACK, tabs, corner buttons, balance pods) sits this far from the screen edges.
 const EDGE := 4
-## In-level HUD pods and the hub's ticket pod sit this far from the edges (HUD.POD_MARGIN); on a phone whose
+## In-level HUD pods and the hub's ticket pod sit this far from the edges; on a phone whose
 ## safe area cuts into the view (rounded corners, a notch without bars) further in: see hud_edge.
 const HUD_EDGE := 3
 ## Top of the bottom-row buttons (BACK bottom left, the page's own action bottom right): 13 tall, B = 3.
@@ -1757,6 +1757,13 @@ static func make_slime_preview(color: Color, scale := 1, rainbow := false, jelly
 static func format_time(seconds: float) -> String:
 	var tenths := int(seconds * 10.0)
 	return "%d:%02d.%d" % [tenths / 600, (tenths / 10) % 60, tenths % 10]
+
+
+## True while a screen change (the goo wipe) is running: a second go() is refused, so a handler that changes Progress
+## before going must ask this first, or a quick second tap changes what the first one starts (audit D2-04).
+static func leaving(tree: SceneTree) -> bool:
+	var transition := tree.root.get_node_or_null("Transition")
+	return transition != null and transition.busy
 
 
 ## Changes screens behind a goo wipe (instantly when the Transition autoload isn't there).

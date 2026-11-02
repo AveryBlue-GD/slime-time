@@ -18,6 +18,19 @@ func _initialize() -> void:
 	progress.skin_notices_seen.append(1)  # level 1 must not re-equip its first-run skin under us
 	for id: String in ["ember", Skins.STOPWATCH, Skins.RAINBOW, "lime", Skins.CUSTOM, Skins.STOPWATCH, "frost"]:
 		await _visit(id)
+	# Cleanup audit D1-03: GooBox remembers the canvas items its boxes drew into (for the rainbow's redraw); the
+	# entries of freed screens used to pile up for the whole session unless the rainbow skin was worn.
+	for i in 3:
+		await _go("res://scenes/skins.tscn")
+		await _go(UIKit.HUB_SCENE)
+	var live := {}
+	for node: Node in root.find_children("*", "Control", true, false):
+		live[(node as Control).get_canvas_item()] = true
+	var dead := 0
+	for item: RID in GooBox._drawn:
+		if not live.has(item):
+			dead += 1
+	_check(dead <= 64, "GooBox keeps no pile of freed screens' canvas items (%d of %d dead)" % [dead, GooBox._drawn.size()])
 	_result()
 	quit(1 if failures else 0)
 

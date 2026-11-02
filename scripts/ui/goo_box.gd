@@ -65,10 +65,26 @@ static func _count_registration() -> void:
 		prune()
 
 
-## Drops the refs of freed boxes and themes.
+## Drops the refs of freed boxes and themes, and the canvas items of freed controls from `_drawn`.
 static func prune() -> void:
 	_boxes = _live(_boxes)
 	_themes = _live(_themes)
+	_prune_drawn()
+
+
+## `_drawn` only empties on a rainbow tint, so without the rainbow skin it kept the canvas items of
+## every screen ever opened (cleanup audit D1-03). Keeps the ones live controls still own (tint
+## only redraws those anyway).
+static func _prune_drawn() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if _drawn.is_empty() or tree == null or tree.root == null:
+		return
+	var live := {}
+	for node: Node in tree.root.find_children("*", "Control", true, false):
+		var item := (node as Control).get_canvas_item()
+		if _drawn.has(item):
+			live[item] = true
+	_drawn = live
 
 
 static func _live(refs: Array[WeakRef]) -> Array[WeakRef]:
@@ -112,13 +128,14 @@ static func set_goo_color(color: Color) -> void:
 ## reads it when it draws, so redrawing the controls that drew one is enough. set_goo_color's change
 ## signals would re-theme every control under the tracked themes instead (re-layout, re-shaped
 ## text): 1-1.5 ms a frame on the hub and the skins screen on the M3. Same pixels.
-static func tint(color: Color, tree: SceneTree) -> void:
+## `controls`: every Control in the tree (the caller keeps the list, SkinText.controls).
+static func tint(color: Color, controls: Array[Node]) -> void:
 	if color.is_equal_approx(goo_color):
 		return
 	goo_color = color
 	var drawn := _drawn
 	_drawn = {}
-	for node: Node in tree.root.find_children("*", "Control", true, false):
+	for node: Node in controls:
 		var control := node as Control
 		if drawn.has(control.get_canvas_item()):
 			control.queue_redraw()

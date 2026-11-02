@@ -71,6 +71,8 @@ var tiles := {}
 var hat_tiles := {}
 var trail_tiles := {}
 var paper_tiles := {}
+## Per paper tile: the [skin color, owned] its preview was last rendered with (_refresh_papers).
+var _paper_looks := {}
 ## HUB page tiles: "" = AUTO, else a skin id.
 var hub_tiles := {}
 var status: Label
@@ -885,6 +887,10 @@ func _refresh_papers(focus_id := "") -> void:
 		# redraw: NIGHT is drawn in the skin color, which may have changed since the page was built
 		var map := paper_tiles[tile_id].get_child(0) as TextureRect
 		var owned := Progress.owns_cosmetic(tile_id)
+		var look := [Progress.skin_color(), owned]
+		if _paper_looks.get(tile_id) == look:
+			continue  # (a focus move: the same picture; re-rendering all 12 maps per move was cleanup audit D1-02)
+		_paper_looks[tile_id] = look
 		map.texture = ImageTexture.create_from_image(paper_preview(tile_id, Progress.skin_color(), not owned))
 		map.material = MapView.flow_material(tile_id) if owned else null
 

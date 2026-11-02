@@ -107,12 +107,16 @@ func _column(x: float, top: float, header: String, board: Array, key: int, weekl
 
 func _play_daily() -> void:
 	var p: Node = get_node("/root/Progress")
+	if UIKit.leaving(get_tree()):
+		return
 	p.start_daily()
 	UIKit.go(get_tree(), GAME_SCENE)
 
 
 func _play_weekly() -> void:
 	var p: Node = get_node("/root/Progress")
+	if UIKit.leaving(get_tree()):
+		return
 	p.start_weekly()
 	UIKit.go(get_tree(), GAME_SCENE)
 

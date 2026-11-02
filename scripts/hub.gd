@@ -293,6 +293,8 @@ func _ready() -> void:
 		tour = HubTour.new()
 		add_child(tour)  # (after the touch controls: a tap on its SKIP pod reaches it first)
 		tour.setup(self)
+		_refresh_badges()  # (the badges were built before the tour existed: none while it runs, audit C-02)
+	_badges_tour_active = _tour_active()
 	_place_all()
 	_fit_tree_notice()
 	_update_near()
@@ -633,7 +635,7 @@ func _all_props() -> Array[Dictionary]:
 ## Whether station `id` has news: a coin upgrade or a ticket store item you can pay for (the cauldron), a spin you
 ## can pay for (the prize wheel), an achievement not seen yet (the settings signpost), today's daily not won yet.
 func has_news(id: String) -> bool:
-	if tour != null:
+	if _tour_active():
 		return false
 	match id:
 		"upgrades":
@@ -647,7 +649,27 @@ func has_news(id: String) -> bool:
 	return false
 
 
+## True while a hub tour runs. A tour that ended (skipped, or its last station used) stays a child of the hub for the rest
+## of the visit, so `tour != null` alone kept R, the WEEKLY / BOARDS choice and the badges off after it (audit C-03).
+func _tour_active() -> bool:
+	return tour != null and not tour.over
+
+
+## _tour_active() when the badges were last refreshed: they come back the moment the tour ends.
+var _badges_tour_active := false
+
+
+## The UTC day and hours-left the badges were last refreshed for: "NEW IN {h}H" counts down, and a new day brings
+## the DAILY "!" back, during a visit too (cleanup audit C-09: they only refreshed on build and after a menu).
+var _badges_clock := -1
+
+
+static func _badge_clock() -> int:
+	return Progress.utc_day() * 100 + Progress.daily_hours_left()
+
+
 func _refresh_badges() -> void:
+	_badges_clock = _badge_clock()
 	for id: String in badges:
 		var bang: Label = badges[id]
 		if id == "daily" and Progress.daily_won_today():  # (won: the sign shows when the next one comes)
@@ -684,12 +706,16 @@ func _place_hints() -> void:
 		return
 	var safe := UIKit.safe_rect()
 	var placed: Array[Rect2] = []
+	# The names hide for good after NAMES_TIME, and nothing reads a hidden name's position (the badges only
+	# keep clear of names while they show), so the solver stops then (cleanup audit C-01: it ran every frame).
+	var names_up := name_layer.visible
 	for station: Dictionary in _all_props():
 		var label: Label = name_labels[station.id]
 		# (the name under the feet; the sign beside the portal wears its name over its head, clear of the portal's)
 		var beside: bool = station.has("anchor")
-		label.position = _solve_label(station, label, beside, safe, placed)
-		placed.append(Rect2(label.position, label.size))
+		if names_up:
+			label.position = _solve_label(station, label, beside, safe, placed)
+			placed.append(Rect2(label.position, label.size))
 		if badges.has(station.id):
 			_place_badge(station, label, beside, safe)
 	_clear_badges(safe)
@@ -2009,7 +2035,7 @@ func _physics_process(delta: float) -> void:
 	# The interact key (F) uses the station or wheel you're next to; on a touchscreen a tap on it (or on its
 	# prompt) does (tap_hits, _on_tap). JUMP always leaps (owner, 2026-10-21).
 	var used := _interact_pressed()
-	if Input.is_action_just_pressed("restart") and tour == null and not slime.frozen and slime.state == Slime.State.GLIDE:
+	if Input.is_action_just_pressed("restart") and not _tour_active() and not slime.frozen and slime.state == Slime.State.GLIDE:
 		# R (the levels' restart key; VIEW on a pad) turns the room from anywhere, like the wheel (owner,
 		# 2026-10-22); holding left turns it the other way.
 		turn_room(-1 if Input.is_action_pressed("move_left") else 1)
@@ -2022,6 +2048,11 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _tour_active() != _badges_tour_active:
+		_badges_tour_active = _tour_active()
+		_refresh_badges()
+	elif _badge_clock() != _badges_clock:
+		_refresh_badges()
 	_place_hints()
 	for station in stations:
 		if not station.anims.is_empty():
@@ -2254,7 +2285,7 @@ func _gap_from(from: Vector2, at: Vector2, radius: float) -> float:
 
 ## Whether this week's weekly can be started from the DAILY sign and has not been won yet (BOARDS on, not the demo).
 func weekly_unplayed() -> bool:
-	if tour != null or not Economy.boards_on() or Demo.on():
+	if _tour_active() or not Economy.boards_on() or Demo.on():
 		return false
 	var week := Boards.week_of(Progress.utc_day())
 	return Progress.board_for("weekly", week).is_empty() and Progress.weekly_played_week != week
@@ -2276,7 +2307,7 @@ func _show_prompt(note := "") -> void:
 	sign_weekly = false
 	sign_boards = false
 	_sign_day = Progress.utc_day()
-	if near_id == "daily" and Economy.boards_on() and not Demo.on() and tour == null:
+	if near_id == "daily" and Economy.boards_on() and not Demo.on() and not _tour_active():
 		# IMP4-02: an unplayed weekly comes first once today's daily was tried (won or lost) or on Saturday / Sunday
 		var daily_done: bool = Progress.daily_won_today()
 		sign_weekly = weekly_unplayed() and (daily_done or Progress.daily_attempted_today() or Boards.weekday(Progress.utc_day()) >= 5)
@@ -2427,10 +2458,16 @@ func _use(station: Dictionary) -> void:
 
 
 func _leave(station: Dictionary, scene: String) -> void:
-	return_to = station.id
+	return_to = return_id(station)
 	_sfx("click")
 	slime.frozen = true
 	UIKit.go(get_tree(), scene)
+
+
+## The ring station the hub turns to when the player comes back from `station`'s screen: an extra (the DAILY sign) is not
+## on the ring, so it is its anchor (the portal), else the hub opened with the room reset after BOARDS (audit C-04).
+static func return_id(station: Dictionary) -> String:
+	return station.get("anchor", station.id)
 
 
 func _deny(why: String) -> void:

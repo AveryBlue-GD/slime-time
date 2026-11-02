@@ -215,8 +215,6 @@ class _Graph:
 			dropped.erase(pick)
 			_improve(order, end_goal)
 			current = length(order, end_goal)
-		if order.is_empty() and end_goal and length(order, true) > limit:
-			current = length(order, true)  # not even the bare route fits (never on a story level)
 		return {order = order, tiles = current}
 
 	## Tiles saved by leaving out order[k].

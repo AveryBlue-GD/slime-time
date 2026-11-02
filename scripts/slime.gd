@@ -800,10 +800,6 @@ func hurt(away: Vector2) -> void:
 		_recoil = Vector2.ZERO
 
 
-func is_hurt() -> bool:
-	return _hurt_ticks > 0
-
-
 ## SLIMAKAZE (ANI-27): two outline-only afterimages in the skin's outline colour (the near one a solid ring, the far one dotted) trail the dash (previous positions).
 func _start_ghosts() -> void:
 	_ghost_trail.clear()
@@ -845,9 +841,19 @@ func _step_ghosts() -> void:
 		if shown:
 			g.texture = sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 			if g.material == null and mat != null:
-				g.material = mat.duplicate()
-				(g.material as ShaderMaterial).set_shader_parameter("ghost", 1.0 if i == 0 else 2.0)
+				g.material = _ghost_material(mat, 1.0 if i == 0 else 2.0)
 			g.global_position = _ghost_trail[lag].round()
+
+
+## A copy of the skin material for an afterimage. Not mat.duplicate(): in Godot 4.7 that wipes the colour uniforms
+## of both the copy and the original (the slime lost its skin colours after its first dash, cleanup audit A-02).
+static func _ghost_material(mat: ShaderMaterial, ghost: float) -> ShaderMaterial:
+	var copy := ShaderMaterial.new()
+	copy.shader = mat.shader
+	for u in mat.shader.get_shader_uniform_list():
+		copy.set_shader_parameter(u.name, mat.get_shader_parameter(u.name))
+	copy.set_shader_parameter("ghost", ghost)
+	return copy
 
 
 func _play(anim: String) -> void:

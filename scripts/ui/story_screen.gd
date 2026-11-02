@@ -340,7 +340,7 @@ class StageArt extends Node2D:
 		for i in Themes.BY_LEVEL.size():
 			var id: String = Themes.BY_LEVEL[Themes.BY_LEVEL.size() - 1 - i]
 			var pal: Dictionary = THEME_PAL.get(id, THEME_PAL["dungeon"])
-			layers.append({id = id, name = Themes.display_name(id), pal = pal, rim = _rim_colors(id, pal), hole = _make_hole(7100 + i * 37, 16)})
+			layers.append({id = id, pal = pal, rim = _rim_colors(id, pal), hole = _make_hole(7100 + i * 37, 16)})
 		corridor_hole = _make_hole(7777, 30)
 		for k in 2:
 			var lip := PackedVector2Array()
@@ -1055,7 +1055,11 @@ class StageArt extends Node2D:
 
 	## Ordered 2x2 dither offset for brick (col, row).
 	static func _bayer(col: int, row: int) -> float:
-		return [0.0, 0.5, 0.75, 0.25][posmod(col, 2) + posmod(row, 2) * 2]
+		return BAYER[posmod(col, 2) + posmod(row, 2) * 2]
+
+	## (consts, not literals: GDScript builds an Array literal on every call; cleanup audit D1-07)
+	const BAYER := [0.0, 0.5, 0.75, 0.25]
+	const FLAME_STEPS := [0.0, 1.0, 2.0, 1.0]
 
 	func _flicker(seed: float) -> float:
 		return 1.0 if screen.calm else 0.9 + 0.1 * sin(t * 23.0 + seed * 3.1) * sin(t * 7.0 + seed)
@@ -1250,7 +1254,7 @@ class StageArt extends Node2D:
 	## A flickering flame whose base sits at p (sc scales whole pixels).
 	func _flame(canvas: CanvasItem, p: Vector2, sc: float, seed: float, lean: float, size := 1.0) -> void:
 		var fi := 0 if screen.calm else int(t * 14.0 + seed * 7.0) % 4
-		var h: float = (4.0 + [0.0, 1.0, 2.0, 1.0][fi]) * size
+		var h: float = (4.0 + FLAME_STEPS[fi]) * size
 		var w := roundf(3.0 * size)
 		var base := p.round()
 		canvas.draw_rect(Rect2(base + Vector2(-floorf(w * 0.5), -roundf(h * 0.55)) * sc, Vector2(w, roundf(h * 0.55)) * sc), FLAME_HOT)

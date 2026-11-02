@@ -145,8 +145,13 @@ var menu_open := false:
 			_canvas.queue_redraw()
 
 
+## True after hide_controls() (a level's end, a card with buttons): no touch brings the controls back until the game
+## calls show_controls(). (A tap on the result screen used to show them over the panel and press JUMP: audit D2-01.)
+var suppressed := false
+
+
 func _input(event: InputEvent) -> void:
-	if menu_open:
+	if menu_open or suppressed:
 		return
 	if (event is InputEventKey or event is InputEventJoypadButton) and event.pressed and visible:
 		_release_all()
@@ -161,6 +166,9 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			_tap_start[event.index] = {pos = event.position, at = Time.get_ticks_msec()}
 			_touch_down(event.index, event.position)
+		elif event.canceled:  # (the OS took the touch back: let go of whatever it held, firing nothing; audit D2-05)
+			_tap_start.erase(event.index)
+			_cancel_touch(event.index)
 		else:
 			var start: Dictionary = _tap_start.get(event.index, {})
 			_tap_start.erase(event.index)
@@ -251,6 +259,34 @@ func _touch_up(index: int, pos: Vector2) -> void:
 			_aim_jump_touch = -1
 			_cancel_hover = false
 			aim_jump_released.emit(on_cancel(pos))
+	_canvas.queue_redraw()
+
+
+## A touch the OS cancelled (a system gesture, palm rejection): what it held is let go without acting, as
+## _release_all() does for every touch: no leap (the charge is dropped), no ability fired, no tap, an aim stays up.
+func _cancel_touch(index: int) -> void:
+	if _ability_touch.has(index):
+		var slot: int = _ability_touch[index]
+		_ability_touch.erase(index)
+		_ability_pos.erase(index)
+		if slot < abilities.size() and aimed(abilities[slot].id):
+			ability_released.emit(abilities[slot].id, false)
+	elif index == _pause_touch:
+		_release_pause()
+	elif index == _tap_touch:
+		_tap_touch = -1
+	elif index == _joy_touch:
+		_joy_touch = -1
+		_joy_center = JOY_HOME
+		joy_vector = Vector2.ZERO
+		_steer(Vector2.ZERO)
+	elif index == _jump_touch:
+		_jump_touch = -1
+		if index == _aim_jump_touch:
+			_aim_jump_touch = -1
+			_cancel_hover = false
+		get_tree().call_group(Slime.GROUP, "cancel_charge")  # (before the release, which would launch it)
+		_release("jump")
 	_canvas.queue_redraw()
 
 
@@ -432,10 +468,17 @@ func joystick_rect() -> Rect2:
 	return Rect2(_joy_center - Vector2.ONE * JOY_RADIUS, Vector2.ONE * JOY_RADIUS * 2.0)
 
 
-## Hides the controls (e.g. when a level ends and menu buttons take over).
+## Hides the controls (e.g. when a level ends and menu buttons take over) until show_controls().
 func hide_controls() -> void:
 	_release_all()
+	suppressed = true
 	visible = false
+
+
+## Undoes hide_controls(): touches drive the controls again; `shown` = whether they show right away.
+func show_controls(shown: bool) -> void:
+	suppressed = false
+	visible = shown
 
 
 ## Lets go of the pause button's `menu` press, if it is held.

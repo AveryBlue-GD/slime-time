@@ -28,6 +28,16 @@ func _initialize() -> void:
 	_check(_texts(game) == ["REPLAY", "NEXT LEVEL", "HUB"], "a story win offers REPLAY, NEXT LEVEL and HUB (%s)" % [_texts(game)])
 	_check(game.hud.choice_buttons[1].has_focus(), "NEXT LEVEL is focused for keyboard players")
 	_check(not game.touch_controls.visible, "touch controls get out of the way of the buttons")
+	# Cleanup audit D2-01: a tap on the result screen used to bring the joystick / JUMP back over the result panel
+	# and press `jump` (right half of the screen). Hidden at the level's end means hidden until the game shows them.
+	_send_touch(0, Vector2(306, 60), true)  # (right half, clear of the panel, its buttons and pause)
+	await process_frame
+	var jump_held := Input.is_action_pressed("jump")
+	_send_touch(0, Vector2(306, 60), false)
+	await process_frame
+	_check(not game.touch_controls.visible and not jump_held,
+		"a tap on the result screen doesn't bring the touch controls back or press JUMP (visible %s, jump %s)"
+		% [game.touch_controls.visible, jump_held])
 	game.hud.choice_buttons[1].pressed.emit()
 	var next := await _new_scene(game)
 	_check(next.level == 2, "NEXT LEVEL loads level 2 (got %d)" % next.level)

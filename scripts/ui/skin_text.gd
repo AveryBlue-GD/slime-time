@@ -23,6 +23,25 @@ var _time := 0.0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	recolor.call_deferred()
+	get_tree().node_added.connect(_tree_changed)
+	get_tree().node_removed.connect(_tree_changed)
+
+
+## The rainbow's per-frame step reads the same control lists every frame (every Control in the tree for
+## GooBox.tint, the buttons and sliders under theme_owner): they are kept until a Control enters or leaves
+## the tree, instead of three tree walks a frame (cleanup audit D1-05).
+var _lists := {}
+
+
+func controls(key: String, from: Node, type: String) -> Array[Node]:
+	if not _lists.has(key):
+		_lists[key] = from.find_children("*", type, true, false)
+	return _lists[key]
+
+
+func _tree_changed(node: Node) -> void:
+	if node is Control:
+		_lists.clear()
 
 
 ## The frame and rainbow time the shared part of `recolor` (group labels, goo color) last ran
@@ -72,7 +91,7 @@ func recolor(shared := true, flow := false) -> void:
 func _flow(shared: bool, base: Color, theme: Theme) -> void:
 	if shared:
 		_recolor_labels(true, base, true)
-		GooBox.tint(rainbow_color(_time, 160.0), get_tree())
+		GooBox.tint(rainbow_color(_time, 160.0), controls("all", get_tree().root, "Control"))
 	if theme == null or not is_instance_valid(theme_owner):
 		return
 	var held := theme.is_blocking_signals()
@@ -83,14 +102,14 @@ func _flow(shared: bool, base: Color, theme: Theme) -> void:
 	# buttons and check boxes read the ones set here. Sliders and focus frames draw the theme's own
 	# (changed) style boxes, so a redraw shows them.
 	# A hidden one is told when it shows (_button_shown), before it draws again.
-	for node: Node in theme_owner.find_children("*", "Button", true, false):
+	for node: Node in controls("buttons", theme_owner, "Button"):
 		var button := node as Control
 		if button.is_visible_in_tree():
 			button.notification(Control.NOTIFICATION_THEME_CHANGED)
 		elif not button.has_meta(HOOKED):
 			button.set_meta(HOOKED, true)
 			button.visibility_changed.connect(_button_shown.bind(button))
-	for node: Node in theme_owner.find_children("*", "HSlider", true, false):
+	for node: Node in controls("sliders", theme_owner, "HSlider"):
 		(node as Control).queue_redraw()
 
 

@@ -477,9 +477,13 @@ func _check_screens() -> void:
 		while progress.buy_upgrade(id):
 			pass
 	var upg: Control = await _open("res://scenes/upgrades.tscn")
+	await process_frame  # (the screen's deferred skin recolor has run)
+	await process_frame
 	for id: String in ["slime", "speed", "brightness"]:
 		var row: Dictionary = upg.rows[id]
 		_check(row.cost.text == "FULL" and row.plus.disabled and not row.minus.disabled, "upgrades: %s at %d shows FULL, + disabled" % [id, Demo.upgrade_cap(id)])
+		# cleanup audit D1-01: the skin recolor used to repaint the gold FULL dim before the first frame
+		_check(row.cost.get_theme_color("font_color") == UIKit.GOLD, "...in gold, after the skin recolor (%s)" % row.cost.get_theme_color("font_color"))
 	_check("MORE UPGRADE LEVELS" in upg.hint.text, "...the hint says more levels are in the full game (%s)" % upg.hint.text.replace("\n", " / "))
 	upg.free()
 	# Skins.

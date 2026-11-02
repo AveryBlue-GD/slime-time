@@ -216,8 +216,9 @@ func _fallback_to_english(template: Dictionary, catalogs: Dictionary) -> void:
 	Economy.languages_force = 1
 	progress.language = ""
 	language.enable()
-	_check(language.active and language.loaded_catalogs().size() == PLURAL_FORMS.size(),
-		"gate on: Language loads the %d catalogs" % PLURAL_FORMS.size())
+	# (cleanup audit E-03: a language's catalog loads when it is first used, not all 17 at launch)
+	_check(language.active and language.loaded_catalogs().is_empty() and language.locale == Language.SOURCE_LOCALE,
+		"gate on, English: Language loads no catalog")
 	for code: String in PLURAL_FORMS:
 		var po: Dictionary = catalogs[code]
 		if not po.ok:
@@ -245,6 +246,7 @@ func _fallback_to_english(template: Dictionary, catalogs: Dictionary) -> void:
 				if got != expect:
 					wrong.append("%s: %s" % [ctx, got])
 		_check(wrong.is_empty(), "%s: Godot returns each translation, English where untranslated%s" % [code, _list(wrong)])
+	_check(language.loaded_catalogs().size() == PLURAL_FORMS.size(), "each of the %d catalogs loaded when its language was used (%d)" % [PLURAL_FORMS.size(), language.loaded_catalogs().size()])
 	language.disable()
 	Economy.languages_force = 0
 	Economy.forced_locale = ""

@@ -61,7 +61,11 @@ func _process(_delta: float) -> void:
 		_last_size = size
 		_update()
 	elif visible and not get_tree().paused:
-		get_tree().paused = true  # something (a finished goo wipe) unpaused it under the cover
+		# Something unpaused it under the cover: a finished goo wipe, or the pause menu / restart prompt closed by
+		# Android back, Esc or a pad button. Either way the game is meant to be running, so turning the phone
+		# sideways must not restore an old "was paused" (that left the tree paused with no menu: cleanup audit D2-02).
+		_was_paused = false
+		get_tree().paused = true
 
 
 func _input(event: InputEvent) -> void:

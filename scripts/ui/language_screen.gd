@@ -201,6 +201,8 @@ func _link_focus(codes: Array[String]) -> void:
 ## Saves the choice (also when it is already the language in use, e.g. one that came from the OS) and
 ## rebuilds this page in it when it changed (every text is built in _ready, in the new locale).
 func _pick(code: String) -> void:
+	if UIKit.leaving(get_tree()):
+		return  # (BACK's wipe is running: a language tapped now would be saved and SETTINGS open in it)
 	var changed: bool = code != lang().locale
 	if lang().pick(code) and changed:
 		UIKit.go(get_tree(), SCENE)

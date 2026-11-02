@@ -127,6 +127,12 @@ static func progress(p: Node, id: String) -> Vector2i:
 	return pair
 
 
+## Shown as unlocked on the ACHIEVEMENTS page: won before (Progress.ach_known, which save codes carry) or met now. Some live
+## conditions can't be re-derived after a code import (the weekly board isn't in codes: audit B-03).
+static func unlocked(p: Node, id: String) -> bool:
+	return id in p.ach_known or met(p, id)
+
+
 ## Every goal met right now, as a list of ids.
 static func met_ids(p: Node) -> Array[String]:
 	var out: Array[String] = []
@@ -165,15 +171,6 @@ const MILESTONES := [
 ## Goal `id`'s reward cosmetic ("" = none).
 static func reward_for(id: String) -> String:
 	return REWARDS.get(id, "")
-
-
-## The milestone indexes reached at `earned` medals.
-static func milestones_reached(earned: int) -> Array[int]:
-	var out: Array[int] = []
-	for i in MILESTONES.size():
-		if earned >= int(MILESTONES[i].medals):
-			out.append(i)
-	return out
 
 
 ## The next milestone's medal count above `earned` (0 once every one is reached).

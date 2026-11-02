@@ -96,8 +96,9 @@ func _ready() -> void:
 	buttons = [
 		UIKit.make_button(texts[0], func() -> void: _choose_custom()),
 		UIKit.make_button(texts[1], func() -> void:
-			Progress.start_random()
-			UIKit.go(get_tree(), UIKit.GAME_SCENE)),
+			if not UIKit.leaving(get_tree()):  # (not during another button's wipe: it would reset the random maze)
+				Progress.start_random()
+				UIKit.go(get_tree(), UIKit.GAME_SCENE)),
 		UIKit.make_button(texts[2], func() -> void: UIKit.go(get_tree(), UIKit.HUB_SCENE)),
 	]
 	for button in buttons:

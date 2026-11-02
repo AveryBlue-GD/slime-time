@@ -218,7 +218,27 @@ func _initialize() -> void:
 	_check(scene.rows.size() == scene.pages()[0].size() and scene.page_count() >= 3, "page 1 shows %d rows of %d pages" % [scene.rows.size(), scene.page_count()])
 	_check(scene.header.text == "MEDALS 60 / ALL MEDAL REWARDS WON", "header: " + scene.header.text)
 	var unlocked_rows: int = scene.rows.filter(func(r: Control) -> bool: return r.get_meta("unlocked")).size()
-	_check(unlocked_rows == scene.pages()[0].filter(func(i: int) -> bool: return Achievements.met(p, Achievements.list()[i].id)).size(), "...unlocked rows match")
+	_check(unlocked_rows == scene.pages()[0].filter(func(i: int) -> bool: return Achievements.unlocked(p, Achievements.list()[i].id)).size(), "...unlocked rows match")
+	# cleanup audit B-03: a goal already won stays unlocked on the page when its live condition can't be re-derived, e.g.
+	# WIN A WEEKLY MAZE after a save code was imported (codes carry the won goals, not the weekly board)
+	var weekly_board = p.board_weekly.duplicate()
+	var known_before: Array = p.ach_known.duplicate()
+	p.board_weekly.clear()
+	if not "weekly_1" in p.ach_known:
+		p.ach_known.append("weekly_1")
+	var weekly_index: int = Achievements.ids().find("weekly_1")
+	for pg in scene.page_count():
+		if weekly_index in scene.pages()[pg]:
+			scene.page = pg
+	scene._show_page()
+	await process_frame
+	var weekly_row: Array = scene.rows.filter(func(r: Control) -> bool: return r.get_meta("id") == "weekly_1")
+	_check(weekly_row.size() == 1 and weekly_row[0].get_meta("unlocked"), "a won goal whose live condition is gone (weekly board not in a code) still shows unlocked")
+	p.board_weekly = weekly_board
+	p.ach_known.assign(known_before)
+	scene.page = 0
+	scene._show_page()
+	await process_frame
 	var reward_labels := 0
 	for r: Control in scene.rows:
 		for c in r.get_children():

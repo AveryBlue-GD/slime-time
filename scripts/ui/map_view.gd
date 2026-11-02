@@ -564,8 +564,16 @@ static func _draw_frame(image: Image, theme: String, colors: Array = []) -> void
 	var w := image.get_width()
 	var h := image.get_height()
 	var f := FRAME
+	# Only the band's pixels are visited (cleanup audit D2-07: the loop used to walk the whole map); each pixel's
+	# color depends only on its own place, so the order doesn't matter.
+	var all_x: Array[int] = []
+	var edge_x: Array[int] = []
+	for x in w:
+		all_x.append(x)
+		if x < f or x >= w - f:
+			edge_x.append(x)
 	for y in h:
-		for x in w:
+		for x in (all_x if y < f or y >= h - f else edge_x):
 			var d := mini(mini(x, y), mini(w - 1 - x, h - 1 - y))  # depth into the band, 0 = outer edge
 			if d >= f:
 				continue
