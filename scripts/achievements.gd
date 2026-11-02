@@ -127,13 +127,13 @@ static func progress(p: Node, id: String) -> Vector2i:
 	return pair
 
 
-## Every goal met right now, as a list of ids.
 ## Shown as unlocked on the ACHIEVEMENTS page: won before (Progress.ach_known, which save codes carry) or met now. Some live
 ## conditions can't be re-derived after a code import (the weekly board isn't in codes: audit B-03).
 static func unlocked(p: Node, id: String) -> bool:
 	return id in p.ach_known or met(p, id)
 
 
+## Every goal met right now, as a list of ids.
 static func met_ids(p: Node) -> Array[String]:
 	var out: Array[String] = []
 	for id in ids():
