@@ -108,6 +108,17 @@ func _initialize() -> void:
 	hint.set_shown(true)
 	hint.set_shown(false)
 	_check(paused, "rotate hint: an open pause menu stays paused")
+	# Cleanup audit D2-02: the pause menu closed UNDER the cover (Android back, Esc, a pad button) means "running":
+	# turning sideways must not leave the tree paused with no menu (a softlock: nothing could unpause it).
+	paused = true  # the pause menu is open
+	hint.set_shown(true)
+	await process_frame
+	paused = false  # ...and is closed while the cover is still up (the cover re-pauses on the next frame)
+	await process_frame
+	await process_frame
+	_check(paused, "rotate hint: still paused under the cover after the menu closed")
+	hint.set_shown(false)
+	_check(not paused, "rotate hint: a pause menu closed under the cover leaves the game running when turned sideways")
 	hint.set_shown(true)
 	var other := Node.new()
 	root.add_child(other)
