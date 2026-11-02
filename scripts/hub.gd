@@ -659,7 +659,17 @@ func _tour_active() -> bool:
 var _badges_tour_active := false
 
 
+## The UTC day and hours-left the badges were last refreshed for: "NEW IN {h}H" counts down, and a new day brings
+## the DAILY "!" back, during a visit too (cleanup audit C-09: they only refreshed on build and after a menu).
+var _badges_clock := -1
+
+
+static func _badge_clock() -> int:
+	return Progress.utc_day() * 100 + Progress.daily_hours_left()
+
+
 func _refresh_badges() -> void:
+	_badges_clock = _badge_clock()
 	for id: String in badges:
 		var bang: Label = badges[id]
 		if id == "daily" and Progress.daily_won_today():  # (won: the sign shows when the next one comes)
@@ -2040,6 +2050,8 @@ func _process(delta: float) -> void:
 	_time += delta
 	if _tour_active() != _badges_tour_active:
 		_badges_tour_active = _tour_active()
+		_refresh_badges()
+	elif _badge_clock() != _badges_clock:
 		_refresh_badges()
 	_place_hints()
 	for station in stations:

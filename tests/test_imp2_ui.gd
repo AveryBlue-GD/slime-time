@@ -189,6 +189,15 @@ func _hub() -> void:
 	progress.record_daily(41000, progress.utc_day())
 	hub._refresh_badges()
 	_check(hub.badges["daily"].text.begins_with("NEW IN ") and hub.badges["daily"].text.ends_with("H"), "...NEW IN <h>H after (%s)" % hub.badges["daily"].text)
+	# Cleanup audit C-09: midnight (UTC) during the visit brings the next daily's badge back without leaving the hub
+	progress.day_override = progress.utc_day() + 1
+	await process_frame
+	await process_frame
+	_check(not hub.badges["daily"].text.begins_with("NEW IN "), "...and a new day during the visit takes NEW IN off (%s)" % hub.badges["daily"].text)
+	progress.day_override = -1
+	await process_frame
+	await process_frame
+	_check(hub.badges["daily"].text.begins_with("NEW IN "), "...back on today: NEW IN again (%s)" % hub.badges["daily"].text)
 	# Names on arrival.
 	_check(hub.name_layer.visible and hub.name_labels.size() == 10, "every station name shows on arrival (%d)" % hub.name_labels.size())
 	var badge_seen := false
