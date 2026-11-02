@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _rifle()
 	await _splat()
 	await _kaze()
+	await _kaze_ghost_colours()
 	await _kaze_kill_and_refuse()
 	await _kaze_goal()
 	await _kaze_off_lane()
@@ -295,6 +296,40 @@ func _splat() -> void:
 
 
 # ---------------------------------------------------------------- SLIMAKAZE
+
+## Cleanup audit A-02: the afterimages used to copy the slime's material with duplicate(), which (in Godot 4.7) wipes
+## the colour uniforms of BOTH copies, so after the first dash the slime itself lost its skin colours.
+func _kaze_ghost_colours() -> void:
+	_state({kaze = 1})
+	var game := await _spawn(6)
+	var best := Vector2i.ZERO
+	var most := 0
+	for d: Vector2i in MazeGenerator.DIRS:
+		var n := Abilities.line_tiles(game.maze, _start_tile(game), d).size()
+		if n > most:
+			most = n
+			best = d
+	_aim(game, best)
+	var smat := game.slime.sprite.material as ShaderMaterial
+	var outline_before: Variant = smat.get_shader_parameter("outline")
+	game.abilities.use("kaze")
+	var ghost_shown := false
+	for f in 60:
+		await _physics_frames(1)
+		for g in game.slime._ghosts:
+			ghost_shown = ghost_shown or g.visible
+	smat = game.slime.sprite.material as ShaderMaterial
+	_check(ghost_shown and smat.get_shader_parameter("mid") != null and smat.get_shader_parameter("outline") == outline_before,
+		"SLIMAKAZE: the afterimages show (%s, a %d-tile line) and the slime keeps its skin colours (outline %s -> %s)" % [ghost_shown, most, outline_before, smat.get_shader_parameter("outline")])
+	var ghosts := 0
+	var ghost_ok := true
+	for g in game.slime._ghosts:
+		var gm := g.material as ShaderMaterial
+		if gm != null:  # (a ghost that never showed on a short dash has none yet)
+			ghosts += 1
+			ghost_ok = ghost_ok and gm.get_shader_parameter("outline") == outline_before and gm.get_shader_parameter("ghost") > 0.0
+	_check(ghosts > 0 and ghost_ok, "...and the afterimages (%d) carry the skin's outline colour" % ghosts)
+
 
 func _kaze() -> void:
 	var results := []
