@@ -171,37 +171,37 @@ No critical findings. Order below = the order the loop works them.
 
 | id | category | where | finding | fix plan | status |
 |---|---|---|---|---|---|
-| D2-02 | bug (softlock) | scripts/ui/rotate_hint.gd `_process` / `set_shown` | Pause menu open, phone turned upright, menu closed by back / Esc / pad while the cover is up, phone turned sideways: the tree stays paused with no menu, nothing can unpause | clear `_was_paused` where `_process` re-pauses under the cover | open |
-| D2-01 | bug | scripts/ui/touch_controls.gd `hide_controls` / `_input` | After a level ends the touch controls hide, but the first tap on the result screen shows them again on top of the result panel and presses jump / move | a `suppressed` flag set by `hide_controls`, cleared only by an explicit show | open |
-| D2-03 | bug | scripts/ui/transition.gd `go` | `go()` doesn't kill the previous uncover tween; leaving a screen within 0.32 s of arriving lets the old tween hide the goo sheet mid-wipe | kill `_tween` at the start of `go()` | open |
-| D1-01 | bug | scripts/ui/upgrades_screen.gd `_refresh` | Demo build: the gold "FULL" cost label is repainted dim by SkinText before the first frame | take the capped label out of the skin-text group (as hub.gd does) | open |
+| D2-02 | bug (softlock) | scripts/ui/rotate_hint.gd `_process` / `set_shown` | Pause menu open, phone turned upright, menu closed by back / Esc / pad while the cover is up, phone turned sideways: the tree stays paused with no menu, nothing can unpause | clear `_was_paused` where `_process` re-pauses under the cover | fixed (1) |
+| D2-01 | bug | scripts/ui/touch_controls.gd `hide_controls` / `_input` | After a level ends the touch controls hide, but the first tap on the result screen shows them again on top of the result panel and presses jump / move | a `suppressed` flag set by `hide_controls`, cleared only by an explicit show | fixed (2) |
+| D2-03 | bug | scripts/ui/transition.gd `go` | `go()` doesn't kill the previous uncover tween; leaving a screen within 0.32 s of arriving lets the old tween hide the goo sheet mid-wipe | kill `_tween` at the start of `go()` | fixed (3) |
+| D1-01 | bug | scripts/ui/upgrades_screen.gd `_refresh` | Demo build: the gold "FULL" cost label is repainted dim by SkinText before the first frame | take the capped label out of the skin-text group (as hub.gd does) | fixed (4) |
 
 ### Medium
 
 | id | category | where | finding | fix plan | status |
 |---|---|---|---|---|---|
-| B-01 | bug (save loss, rare) | scripts/progress.gd `write_atomic` | When the rename fails after Windows removed the old save, the next write truncates and deletes the temp file that is then the only copy | promote an orphaned temp first; never delete the temp while the save is missing | open |
-| B-02 | bug (economy) | scripts/progress.gd `reset_progress` | RESET PROGRESS keeps the parked randomizer abandon penalty, which is saved; first random maze after re-beating the story pays 1 instead of 10 | reset the runtime randomizer fields in `reset_progress` | open |
-| B-03 | bug | scripts/ui/achievements_screen.gd, achievements.gd | WIN A WEEKLY MAZE shows locked after a save-code import (boards aren't in codes) though its reward stays owned | count a goal unlocked if it is in `ach_known` or met | open |
-| C-03 | bug | scripts/hub.gd tour gates | After a replayed tour is skipped / finished, the hub stays in tour mode: R doesn't turn the room, the DAILY sign never offers WEEKLY / BOARDS | gate on "tour active" (`tour != null and not tour.over`) | open |
-| C-02 | bug | scripts/hub.gd `_ready` | "!" badges are built before the tour exists, so a "!" shows on the prize wheel during the guided first tour | refresh badges after the tour is set up and when it ends | open |
-| C-04 | bug | scripts/hub.gd daily -> boards | Coming back from BOARDS (opened from the DAILY sign) resets the room instead of facing the sign | leave with the portal station, as the daily start does | open |
-| D2-04 | bug | level_select / title / victory / boards / demo_end / language screens | Handlers change Progress before `UIKit.go`, which silently refuses during a wipe: a quick double tap starts the second level / maze | check `Transition.busy` first (or make `go` return bool) | open |
-| D2-05 | bug | scripts/ui/touch_controls.gd | OS-cancelled touches (`canceled` flag) still leap / fire abilities / tap | on `canceled`, release without acting | open |
-| A-01 | bug, **feel** | scripts/game.gd `_idle_drain`, lurkers.gd | Lurker stealth ("stand still") reads `_still_time`, which only grows when idle drain is on, so stealth never works with RELAXED / NO DRAIN | count stillness on its own, independent of the drain gates | open (flag) |
-| A-02 | bug? | scripts/slime.gd `_afterimage` | SLIMAKAZE afterimage `mat.duplicate()`; game.gd notes duplicate() drops colour params in this Godot | headless check first; build the material like `_build_outer_fog` if real | open (verify) |
-| D1-04 | bug? | scripts/ui/goo_box.gd `_draw` | Layout cache key truncates the 64-bit RID to int32, so a rebuilt tile in a reused slot may get the old tile's lumps | headless check; key by the full id | open (verify) |
-| D1-03 | leak | scripts/ui/goo_box.gd `_drawn` | Grows for the whole session unless rainbow is on | record only while tinting / clear on recolor | open |
-| C-01 | hot-path | scripts/hub.gd `_process` -> `_place_hints` | Label solver runs every frame although names hide for good after 3 s | solve only while names are visible | open |
-| D1-02 | hot-path | scripts/ui/skins_screen.gd `_refresh_papers` | Every focus move on PAPERS re-renders all 12 paper maps (new textures + materials) | render on page show / look change only | open |
-| D1-05 | hot-path | goo_box.gd `tint`, skin_text.gd `_flow` | Rainbow skin: up to 7 full tree walks per frame | cache control lists per SkinText | open |
-| D1-07 | hot-path | scripts/ui/story_screen.gd | Array literals per brick, lambdas per hero, Dictionary particles (cpu.md #7 remainder) | const arrays, keep RNG order | open |
-| D2-06 | hot-path | scripts/ui/skin_showcase.gd `_age_trail` | Trail redrawn every frame even when unchanged | redraw on cell or alpha-step change | open |
-| D2-07 | hot-path | scripts/ui/map_view.gd `_draw_frame` | Per-pixel loop over the whole map to paint a 4 px frame | iterate the four bands only | open |
-| E-03 | hot-path | scripts/language.gd `enable` | All 17 `.po` catalogs (~2 MB) loaded at every launch, even for English | load the current locale only | open |
+| B-01 | bug (save loss, rare) | scripts/progress.gd `write_atomic` | When the rename fails after Windows removed the old save, the next write truncates and deletes the temp file that is then the only copy | promote an orphaned temp first; never delete the temp while the save is missing | fixed (6) |
+| B-02 | bug (economy) | scripts/progress.gd `reset_progress` | RESET PROGRESS keeps the parked randomizer abandon penalty, which is saved; first random maze after re-beating the story pays 1 instead of 10 | reset the runtime randomizer fields in `reset_progress` | fixed (5) |
+| B-03 | bug | scripts/ui/achievements_screen.gd, achievements.gd | WIN A WEEKLY MAZE shows locked after a save-code import (boards aren't in codes) though its reward stays owned | count a goal unlocked if it is in `ach_known` or met | fixed (7) |
+| C-03 | bug | scripts/hub.gd tour gates | After a replayed tour is skipped / finished, the hub stays in tour mode: R doesn't turn the room, the DAILY sign never offers WEEKLY / BOARDS | gate on "tour active" (`tour != null and not tour.over`) | fixed (8) |
+| C-02 | bug | scripts/hub.gd `_ready` | "!" badges are built before the tour exists, so a "!" shows on the prize wheel during the guided first tour | refresh badges after the tour is set up and when it ends | fixed (8) |
+| C-04 | bug | scripts/hub.gd daily -> boards | Coming back from BOARDS (opened from the DAILY sign) resets the room instead of facing the sign | leave with the portal station, as the daily start does | fixed (9) |
+| D2-04 | bug | level_select / title / victory / boards / demo_end / language screens | Handlers change Progress before `UIKit.go`, which silently refuses during a wipe: a quick double tap starts the second level / maze | check `Transition.busy` first (or make `go` return bool) | fixed (10) |
+| D2-05 | bug | scripts/ui/touch_controls.gd | OS-cancelled touches (`canceled` flag) still leap / fire abilities / tap | on `canceled`, release without acting | fixed (11) |
+| A-01 | bug, **feel** | scripts/game.gd `_idle_drain`, lurkers.gd | Lurker stealth ("stand still") reads `_still_time`, which only grows when idle drain is on, so stealth never works with RELAXED / NO DRAIN | count stillness on its own, independent of the drain gates | owner (feel) |
+| A-02 | bug? | scripts/slime.gd `_afterimage` | SLIMAKAZE afterimage `mat.duplicate()`; game.gd notes duplicate() drops colour params in this Godot | headless check first; build the material like `_build_outer_fog` if real | fixed (12), confirmed real |
+| D1-04 | bug? | scripts/ui/goo_box.gd `_draw` | Layout cache key truncates the 64-bit RID to int32, so a rebuilt tile in a reused slot may get the old tile's lumps | headless check; key by the full id | owner (look; confirmed real, see 4) |
+| D1-03 | leak | scripts/ui/goo_box.gd `_drawn` | Grows for the whole session unless rainbow is on | record only while tinting / clear on recolor | fixed (13) |
+| C-01 | hot-path | scripts/hub.gd `_process` -> `_place_hints` | Label solver runs every frame although names hide for good after 3 s | solve only while names are visible | fixed (14) |
+| D1-02 | hot-path | scripts/ui/skins_screen.gd `_refresh_papers` | Every focus move on PAPERS re-renders all 12 paper maps (new textures + materials) | render on page show / look change only | fixed (15) |
+| D1-05 | hot-path | goo_box.gd `tint`, skin_text.gd `_flow` | Rainbow skin: up to 7 full tree walks per frame | cache control lists per SkinText | fixed (18) |
+| D1-07 | hot-path | scripts/ui/story_screen.gd | Array literals per brick, lambdas per hero, Dictionary particles (cpu.md #7 remainder) | const arrays, keep RNG order | fixed in part (20) |
+| D2-06 | hot-path | scripts/ui/skin_showcase.gd `_age_trail` | Trail redrawn every frame even when unchanged | redraw on cell or alpha-step change | left (measured, 17) |
+| D2-07 | hot-path | scripts/ui/map_view.gd `_draw_frame` | Per-pixel loop over the whole map to paint a 4 px frame | iterate the four bands only | fixed (16) |
+| E-03 | hot-path | scripts/language.gd `enable` | All 17 `.po` catalogs (~2 MB) loaded at every launch, even for English | load the current locale only | fixed (19) |
 | A-21 | architecture | scripts/game.gd 1105-1664 | 560-line fog / trail engine mixed into game.gd | extract a `RevealMap` class | left (large refactor; see report) |
 | E-01 | mac-ios | export_presets.cfg | macOS bundle id `com.slimetime.game` vs iOS `com.averyblue.drytrying` | owner picks one | owner |
-| E-02 | mac-ios | export_presets.cfg macOS presets | Icon is the 256 px icon.png upscaled with filtering (`icon_interpolation=4`) for Retina sizes | use `assets/ios/icon_1024.png`, interpolation 0 | open |
+| E-02 | mac-ios | export_presets.cfg macOS presets | Icon is the 256 px icon.png upscaled with filtering (`icon_interpolation=4`) for Retina sizes | use `assets/ios/icon_1024.png`, interpolation 0 | fixed (21) |
 | E-04 | mac-ios | export_presets.cfg | Ad-hoc signing, no notarization / sandbox: fine for itch, blocks a notarized or Mac App Store release | owner, at release time | owner |
 
 ### Low
@@ -210,14 +210,14 @@ No critical findings. Order below = the order the loop works them.
 |---|---|---|---|---|
 | T-01 | test hygiene | tests/test_coins.gd:60, test_workshop.gd:121 | `obj in typed_array` on a freed coin logs engine errors; check `is_instance_valid` first | open |
 | T-02 | test hygiene | tests/test_fresh_start.gd:187 | `raw_to_base64` of an empty buffer logs an engine error | open |
-| T-03 | bug (warning) | scripts/ui/upgrades_screen.gd:325 | `_fit_title` sets `size` on an anchored label (48 warnings under non-English locales) | open |
+| T-03 | bug (warning) | scripts/ui/upgrades_screen.gd:325 | `_fit_title` sets `size` on an anchored label (48 warnings under non-English locales) | left (fix moves the title; needs a visual check per locale) |
 | T-04 | test hygiene | 80 suites | "ObjectDB instances leaked at exit": suites quit with live nodes | left (test teardown only) |
-| A-03 | bug | game.gd `_dry_hold` | The dry-up hold keeps counting under the pause menu | open |
+| A-03 | bug | game.gd `_dry_hold` | The dry-up hold keeps counting under the pause menu | fixed (23) |
 | A-04 | bug? | ghost_racer.gd | Ghost racer drawn over the fog (same z, added later): shows the best route through fog | owner |
 | A-05 | hygiene | ambient.gd, game.gd | Motes z 9 draw over pickups (z 6), comments say under | open (comments) |
-| A-06 | bug | lurkers.gd | Near-miss slow-mo ends on the wall clock (a pause ends it) | open |
+| A-06 | bug | lurkers.gd | Near-miss slow-mo ends on the wall clock (a pause ends it) | fixed (24) |
 | A-07..A-11 | hot-path | game.gd, fx.gd, lurkers.gd | Per-row array literals in `_disc_runs`, Image round-trip in `_rgba8`, new gradients per burst, material per glimmer, eye layer redraw every frame | open |
-| A-12, A-13 | dead-code | fx.gd, slime.gd | `Fx.crust_flakes`, `afterimage_colors`, `DUST_BRIGHT`, `Slime.is_hurt`: no references | open |
+| A-12, A-13 | dead-code | fx.gd, slime.gd | `Fx.crust_flakes`, `afterimage_colors`, `DUST_BRIGHT`, `Slime.is_hurt`: no references | fixed (22) |
 | A-14 | dead-code | game.gd | `_fog_packed`, `_fog_lit_ticks`, `_cell_pos` used only by tests | left (test API) |
 | A-15..A-17 | duplication | game.gd, shaders | MAGNET pickup rule copied; slime screen rect twice; `bayer4` / noise copied across shaders | open |
 | A-18..A-19 | magic-number | levels.gd, ticket_goal.gd, fog.gdshader | Copies of slime speed / grab radius; vignette 176x100 | open |
@@ -229,33 +229,33 @@ No critical findings. Order below = the order the loop works them.
 | B-08, B-09 | hot-path | achievements.gd, hat.gd | Achievement list rebuilt 2-3x per save; hat catalog lookups per frame | open |
 | B-10..B-13, B-16 | duplication | progress.gd, boards.gd, dev_log.gd, survey.gd, demo.gd | Random-maze reset block x5; daily hash x2; tool-flag lists drifted; base64 check x2 and missing in ghost decoder; story bits x2 | open |
 | B-14 | unchecked-error | boards.gd | Ghost file read fully before its size check | open |
-| B-15 | dead-code | achievements.gd, progress.gd, descent.gd | `milestones_reached`, unused `silent` param, unreachable fallback dicts | open |
+| B-15 | dead-code | achievements.gd, progress.gd, descent.gd | `milestones_reached`, unused `silent` param, unreachable fallback dicts | fixed in part (22) |
 | B-17, B-18 | hygiene / magic | progress.gd, hats.gd, demo.gd | Stale prices in comments; repeated default colour literal | open |
 | B-19 | architecture | progress.gd | God object (3,683 lines); concrete 6-way split in report B | left (large refactor) |
 | C-05, C-06 | hot-path | hub.gd, hud.gd | Deep Dictionary `==` per frame (cpu.md #10); training line re-laid out per frame | open |
 | C-07 | bug, **look** | hud.gd | Rainbow meter outlines never recolour | owner |
-| C-08 | bug | hud.gd `_stage_wait` | Result staging runs on under the pause menu | open |
-| C-09 | bug | hub.gd | DAILY badge hours never refresh during a visit | open |
+| C-08 | bug | hud.gd `_stage_wait` | Result staging runs on under the pause menu | fixed (23) |
+| C-09 | bug | hub.gd | DAILY badge hours never refresh during a visit | fixed (28) |
 | C-10, C-11 | duplication | hub_tour.gd, ability_coach.gd, hub.gd | SKIP pod copied; overlay-open list x5 (already drifted) | open |
-| C-12, C-13 | dead-code | hud.gd, ability_runner.gd, autoplay_planner.gd | Unused / duplicate constants; two no-op branches | open |
+| C-12, C-13 | dead-code | hud.gd, ability_runner.gd, autoplay_planner.gd | Unused / duplicate constants; two no-op branches | C-12 POD_MARGIN fixed (22), colours open; C-13 fixed (22) |
 | C-14..C-16 | hygiene / magic | abilities.gd, hub.gd, hud.gd | Stale comments; lines with lost continuations (tabs mid-line); screen-size literals | open |
 | C-17, C-19 | autoplay (debug) | autoplay*.gd | Banner rebuilt per frame; finds a button by English text | open |
 | C-18 | architecture | game.gd | Training cues loaded as an optional "chunk" with guards that can't fail | open |
 | D1-06 | hot-path | ui_kit.gd `set_selected` | Not idempotent: every wardrobe focus move re-themes the whole grid | open |
-| D1-08 | bug | skins_screen.gd `_hold_look_note` | Resumes after an await on a freed screen | open |
-| D1-09, D1-10 | dead-code | story_screen.gd, hat_wheel.gd | Unread `name` key; unreachable "trails" shop section | open |
+| D1-08 | bug | skins_screen.gd `_hold_look_note` | Resumes after an await on a freed screen | not reproduced (Godot 4.7.2 drops the coroutine silently; probe) |
+| D1-09, D1-10 | dead-code | story_screen.gd, hat_wheel.gd | Unread `name` key; unreachable "trails" shop section | D1-09 fixed (22); D1-10 open |
 | D1-11..D1-14 | hot-path | controls.gd, story_screen.gd, ui_kit.gd | FULLSCREEN text per frame; story cover redraw under Reduce Motion; 8 check-box textures per theme; outline label re-applies 16 overrides per draw | open |
 | D1-15..D1-18 | duplication / hygiene | upgrades_screen.gd, skins_screen.gd, hat_wheel.gd | Ticket-confirm copied x3; repeated code; BACK rewired by "last connection"; workshop rows ignore locale metrics | open |
 | D2-08 | hot-path | title.gd LogoDrip | Redraw every frame while idle | open |
 | D2-09 | unchecked-error | transition.gd | `change_scene_to_file` result ignored | open |
-| D2-10, D2-11 | dead-code | intro_card.gd, map_view.gd | `was_skipped()` unused; `route_width` test-only | open |
+| D2-10, D2-11 | dead-code | intro_card.gd, map_view.gd | `was_skipped()` unused; `route_width` test-only | D2-10 fixed (22); D2-11 left (test API) |
 | D2-12..D2-14 | duplication / hygiene | several screens, touch_controls.gd, transition.gd | Scene paths re-declared; tabs mid-line; duplicate assignment | open |
 | E-05 | mac-ios | project.godot | Fullscreen only on F11, which macOS takes for Show Desktop; add Ctrl+Cmd+F | open |
-| E-06 | bug (tooling) | tools/test_all.sh | Linux user-dir path wrong, so the stale test-file sweep never runs on Linux | open |
+| E-06 | bug (tooling) | tools/test_all.sh | Linux user-dir path wrong, so the stale test-file sweep never runs on Linux | fixed (26) |
 | E-07 | hygiene | tools/ios_build.sh | Edits tracked files in place (a killed build can leave the real Team ID in the tree) | left (owner's Mac-only tool; flagged) |
-| E-08 | hygiene | .github/workflows/tests.yml | `--import \|\| true` hides import failures; no `permissions:` block | open |
-| E-09 | dead asset | sfx.gd, assets/sounds/jingle.wav | Loaded with 3 players at boot, never played | open |
-| E-10 | unchecked-error | sfx.gd | `play` / `stop` index without `has()` | open |
+| E-08 | hygiene | .github/workflows/tests.yml | `--import \|\| true` hides import failures; no `permissions:` block | fixed in part (27) |
+| E-09 | dead asset | sfx.gd, assets/sounds/jingle.wav | Loaded with 3 players at boot, never played | fixed (25) |
+| E-10 | unchecked-error | sfx.gd | `play` / `stop` index without `has()` | left (the error flags a mistyped name) |
 | E-11, E-12 | hygiene | language.gd, docs | Stale comments (languages "off"), icon size in docs | open |
 | E-13 | mac-ios | App Store Connect | iOS app offered on Apple Silicon Macs would act as iOS | owner (release checklist) |
 
@@ -265,4 +265,43 @@ No critical findings. Order below = the order the loop works them.
 
 Each entry: finding id(s), what changed, the test that pins it, and before / after numbers. Commit per entry.
 
-_(entries added as the loop runs)_
+Bug-fix entries: "test" names the check added (it failed with the fix reverted, then passed). Perf entries cite
+`bench/micro.gd` (`MICRO` lines, microseconds per call, median of 7 rounds) or `bench/run.sh` (median of N runs). All
+timings are headless on the cloud container while other jobs ran, so absolute numbers are inflated; only the
+before / after ratio in the same session counts. Each entry also passed the suites touching its files; the full
+gate (every suite + import + pck sizes + the 8-scenario bench) ran on batches (section 5).
+
+| # | id | commit | change | evidence |
+|---|---|---|---|---|
+| 1 | D2-02 | 1aa3f06 | rotate_hint: `_was_paused` cleared where `_process` re-pauses under the cover | test_touch: tree unpaused after the sequence (was stuck paused) |
+| 2 | D2-01 | b0dc4af | touch_controls `suppressed` flag; only `show_controls` clears it. Note: the touch pause button is not on result screens (their buttons and Esc remain) | test_next_steps: a tap on the result screen keeps controls hidden |
+| 3 | D2-03 | 7896237 | transition.go kills the running uncover tween | test_transition (new): sheet never hides mid-cover |
+| 4 | D1-01 | a50467a | upgrades `_color_cost`: capped cost leaves the SkinText group, stays gold | test_demo: FULL gold after a recolor |
+| 5 | B-02 | 9630783 | reset_progress also clears the parked randomizer penalty and runtime maze state | test_shipping_config |
+| 6 | B-01 | 5584a3a | write_atomic: a lone temp (save missing) is written over only after the new save verifies | test_save_robust: temp untouched on a failed write |
+| 7 | B-03 | e7c724f | `Achievements.unlocked()` = known or met; the page uses it | test_achievements: weekly goal unlocked after a code import |
+| 8 | C-02, C-03 | dd1372d | hub `_tour_active()`; badges refreshed after tour setup and when it ends | test_hub_tour: no "!" during the tour; R turns the room after a skip |
+| 9 | C-04 | 11943d9 | `return_id(station)` = anchor or id | test_imp2_ui: back from BOARDS faces the portal |
+| 10 | D2-04 | 4e4cb24 | `UIKit.leaving()` guard in 6 handlers that change Progress before going | test_transition: a second level-select tap during the wipe keeps level 1 |
+| 11 | D2-05 | e92ba38 | OS-cancelled touches release without acting | test_touch: cancelled jump never leaps |
+| 12 | A-02 | efc5139 | ghost material built by copying uniforms (`duplicate()` wiped colours of BOTH materials in 4.7.2, probe) | test_abilities: slime outline after a dash (was `<null>`) |
+| 13 | D1-03 | 7d0bb48 | GooBox.prune() keeps only live controls' canvas items | probe: +19 entries per skins visit, never freed -> bounded; test_hub_skin_flow |
+| 14 | C-01 | 3ce857b | hub label solver only while names show | MICRO hub_hints: `_place_hints` 945-1022 us -> 26-29 us per frame after the names hide |
+| 15 | D1-02 | 5561e30 | paper preview re-rendered only when [skin colour, owned] changes | MICRO skins_papers: focus move 6472-6616 us -> 763-768 us |
+| 16 | D2-07 | b83f0e7 | `_draw_frame` visits only the band | MICRO map_frame: 4346-4380 us -> 2665-2846 us per 200x140 frame; md5 of every theme x 3 sizes identical |
+| 17 | D2-06 | (rejected) | redraw the showcase trail only on change | MICRO showcase_trail: 242 -> 214 draws / 600 frames; too small for the per-frame check it adds: reverted, case kept |
+| 18 | D1-05 | bd20f86 | SkinText keeps its control lists until a Control enters / leaves | MICRO rainbow_flow: skins 1046-1167 -> 679-698 us, hub 587-665 -> 359-368 us per frame; test_rainbow checks list invalidation |
+| 19 | E-03 | 2b9611b, f8de561 | a language's catalogs load on first use (same-language catalogs together, so zh_TW still falls back to zh_CN) | probe: loading all 17 = 208-240 ms; bench startup 2091 -> 1834 ms (5 runs); test_i18n_catalog |
+| 20 | D1-07 (part) | e4515a0 | story `_bayer` / `_flame` use const tables | probe: 270 -> 144 ns per call; bench story avg 0.915 / 0.899 -> 0.893 / 0.826 ms (two interleaved 5-run pairs) |
+| 21 | E-02 + hygiene | 09bb606 | macOS presets `icon_interpolation=0`; `bench/*` excluded from every preset; demo / Steam presets regenerated | test_demo_export, test_shipping_config |
+| 22 | A-12, A-13, B-15, C-12, C-13, D1-09, D2-10 | df89ec1 | deleted unreferenced functions, constants, a field and two no-op branches (-36 lines) | repo-wide grep; suites touching each file |
+| 23 | A-03, C-08 | 8dc6e28 | dry-up hold and win staging don't count paused frames | test_pause_restart: light 0.83 -> 0.00001 under the menu before, unchanged after |
+| 24 | A-06 | 9a09583 | lurker slow-mo counts down on pausable frame time | test_lurkers: still on after a pause longer than the slow-mo |
+| 25 | E-09 | bdbb4de | removed the never-played jingle (3 players loaded at boot) | test_phase6, test_upgrade_sounds |
+| 26 | E-06 | c42391a | test_all.sh sweeps `${XDG_DATA_HOME:-~/.local/share}/SlimeTime_R1` | first run swept 21 stale files |
+| 27 | E-08 (part) | e24373c | CI `permissions: contents: read` | YAML parses |
+| 28 | C-09 | c75be70 | hub refreshes badges when the UTC day / hours left change (visible: NEW IN {h}H now counts down) | test_imp2_ui: new day during a visit drops NEW IN |
+
+Mini-audits: after 9 fixes (22e6dee, a misplaced doc comment), after 13 (f4dd771, same), after 19 (an independent
+reviewer read the perf diffs: no bugs; one same-language fallback detail, fixed in f8de561).
+
