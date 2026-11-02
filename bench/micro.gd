@@ -14,6 +14,9 @@ extends SceneTree
 ##                 all 12 paper maps per move; now only a tile whose look changed). Needs --unlock-all.
 ##   map_frame     MapView._draw_frame on a 200x140 map, every theme (D2-07: it walked every pixel of the map to paint
 ##                 the 4 px frame; now only the band). Pixel-identical (checked by md5 in the audit).
+##   showcase_trail  The skins screen's stage over 600 frames (10 s of its routine): how many times the trail layer
+##                 drew (D2-06: redrawing only on a cell or alpha-step change cut 242 draws to 214, too little for the
+##                 per-frame check it costs, so the change was rejected; the case stays as the evidence).
 
 const ROUNDS := 7
 
@@ -33,6 +36,8 @@ func _initialize() -> void:
 			await _skins_papers()
 		"map_frame":
 			_map_frame()
+		"showcase_trail":
+			await _showcase_trail()
 		_:
 			push_error("micro.gd: unknown --case=%s" % case_name)
 	quit(0)
@@ -91,3 +96,16 @@ func _map_frame() -> void:
 		for theme: String in themes:
 			MapView._draw_frame(img, theme)
 	_report({themes = themes.size(), size = "200x140", per_frame_us = snappedf(_time(all_themes, 5) / themes.size(), 0.01)})
+
+
+func _showcase_trail() -> void:
+	var showcase := SkinShowcase.new()
+	root.add_child(showcase)
+	showcase.show_skin(Skins.get_preset("lime").color, false, false)
+	await process_frame
+	var layer: CanvasItem = showcase._trail
+	var stats := {draws = 0}
+	layer.draw.connect(func() -> void: stats.draws += 1)
+	for i in 600:
+		await process_frame
+	_report({frames = 600, trail_draws = stats.draws})
