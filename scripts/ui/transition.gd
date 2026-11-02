@@ -108,6 +108,8 @@ func go(scene: String) -> void:
 	_paint()
 	_set_edges(0.0, 0.0)
 	_sheet.visible = true
+	if _tween:
+		_tween.kill()  # (the last arrival's uncover may still run: its end would hide the sheet mid-cover, audit D2-03)
 	_tween = create_tween()
 	_tween.tween_method(func(v: float) -> void: _set_edges(v, 0.0), 0.0, OFF_SCREEN, COVER_TIME) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
